@@ -87,6 +87,10 @@
   color: var(--text) !important;
 }
 
+.workspace-screen .toolbar button svg {
+  color: var(--text) !important;
+}
+
 .workspace-screen .toolbar :is(.sc-tool-button, .tool-button, .sc-popover__trigger):hover:not(:disabled) {
   border-color: var(--border) !important;
   background: #f8fafc !important;
