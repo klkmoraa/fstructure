@@ -35,7 +35,6 @@ import { createBlankProject, exampleProjects } from '../../data/defaultProject';
 import { useI18n } from '../../i18n/useI18n';
 import { usePhase2I18n } from '../../i18n/usePhase2I18n';
 import { useProjectAnalysis, useProjectModel } from '../../store/ProjectContext';
-import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
 import { exportProjectJson, safeProjectFilename } from '../../utils/export';
 import { normalizeProject } from '../../data/migrate';
 import { saveBytes, type SaveOutcome } from '../../platform/fileSystem';
@@ -106,7 +105,6 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
     analyze,
     ensureEducationTrace,
   } = useProjectAnalysis();
-  const { theme, setTheme } = useWorkspaceUI();
   const { language, t } = useI18n();
   const { t: phase2T } = usePhase2I18n(language);
   const classroomSession = useClassroomSession();
@@ -322,14 +320,14 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
     analyze();
   };
 
-  // Single source for undo/redo, datasheet, Model Doctor, analyze, theme and
+  // Single source for undo/redo, datasheet, Model Doctor, analyze and
   // the plain-export controls (CRI-103): the button below reads label/disabled/run
   // straight off `commandRegistry` instead of recomputing them, so it can never
   // drift from the same command's Palette entry. `analyze` here is
   // `requestAnalysis` (this button's own classroom-session bookkeeping), not the
   // raw `analyze` — the registry only fixes *which* command runs and how its
   // enabled state is computed, not which concrete callback a surface supplies.
-  const topBarCommandContext: TopBarCommandContext = { t, project, isAnalyzing, canUndo, canRedo, theme, setTheme, analyze: requestAnalysis, undo, redo };
+  const topBarCommandContext: TopBarCommandContext = { t, project, isAnalyzing, canUndo, canRedo, theme: 'light', setTheme: () => undefined, analyze: requestAnalysis, undo, redo };
   const command = (id: Parameters<typeof resolveTopBarCommand>[0]) => resolveTopBarCommand(id, topBarCommandContext);
 
   const exportPortable = async () => {
@@ -472,8 +470,6 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
   const redoCommand = command('analysis:redo');
   const datasheetCommand = command('tool:datasheet');
   const modelDoctorCommand = command('analysis:model-doctor');
-  const themeCommand = command('view:theme');
-  const ThemeIcon = themeCommand.icon;
   const exportJsonCommand = command('export:json');
   const structuralBomCommand = command('export:bom');
   const StructuralBomIcon = structuralBomCommand.icon;
@@ -560,7 +556,6 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
                   <button onClick={() => { datasheetCommand.run(); setShowProjectMenu(false); }}><Sheet size={16} /> {datasheetCommand.label}</button>
                   {onOpenSpace3D ? <button onClick={() => { onOpenSpace3D(); setShowProjectMenu(false); }}><Box size={16} /> {t('space3d.open')}</button> : null}
                   <button onClick={() => { modelDoctorCommand.run(); setShowProjectMenu(false); }}><Wrench size={16} /> {modelDoctorCommand.label}</button>
-                  <button onClick={() => { themeCommand.run(); setShowProjectMenu(false); }}><ThemeIcon size={16} /> {themeCommand.label}</button>
                 </div>
               </div>
             </m.div>
@@ -729,7 +724,6 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
                   <div className="menu-section">
                     <div className="menu-section-title">{t('menu.sectionPreferences')}</div>
                     <label className="mobile-menu-field"><span>{t('language.label')}</span><select value={language} onChange={(event) => updateProjectView((draft) => ({ ...draft, settings: { ...draft.settings, language: event.target.value as 'es' | 'en' } }))}><option value="es">{t('language.es')}</option><option value="en">{t('language.en')}</option></select></label>
-                    <button onClick={() => { themeCommand.run(); setShowMobileMenu(false); }}><ThemeIcon size={17} /> {themeCommand.label}</button>
                   </div>
                   {layoutActions ? <div className="menu-section overflow-layout-actions" role="group" aria-label={t('shell.viewLayout')}>
                     <div className="menu-section-title">{t('menu.sectionViews')}</div>

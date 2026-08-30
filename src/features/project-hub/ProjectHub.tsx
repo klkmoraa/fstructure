@@ -142,11 +142,13 @@ export const ProjectHub = ({
   repository,
   onOpen,
   limit,
+  filter = '',
   variant = 'full',
 }: {
   repository?: ProjectRepository;
   onOpen: (record: StoredProjectRecord) => void;
   limit?: number;
+  filter?: string;
   variant?: 'full' | 'recent';
 }) => {
   const { language } = useI18n();
@@ -300,12 +302,18 @@ export const ProjectHub = ({
     && recovery.projectId === record.id
     && projectEntityCount(recovery.project) > projectEntityCount(record.project),
   ));
-  const visibleProjects = limit === undefined ? projectsForDisplay : projectsForDisplay.slice(0, Math.max(0, limit));
+  const normalizedFilter = filter.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase(language);
+  const matchesFilter = (name: string) => !normalizedFilter || name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase(language).includes(normalizedFilter);
+  const filteredProjects = projectsForDisplay.filter((record) => matchesFilter(record.name));
+  const filteredRecoveries = recoveries.filter((recovery) => matchesFilter(recovery.project.name));
+  const visibleProjects = limit === undefined ? filteredProjects : filteredProjects.slice(0, Math.max(0, limit));
+  const noMatches = Boolean(normalizedFilter) && filteredProjects.length === 0 && filteredRecoveries.length === 0 && (projects.length > 0 || recoveries.length > 0);
 
   return <section className={`project-hub project-hub--${variant}${collapsed ? ' project-hub--collapsed' : ''}`} data-project-hub-layout="visual-library" aria-label={t('hub.title')}>
     {loading ? <p role="status">{t('hub.loading')}</p> : null}
     {error ? <p className="project-hub__error" role="alert">{error}</p> : null}
     {!loading && projects.length === 0 ? <p className="project-hub__empty">{t('hub.empty')}</p> : null}
+    {!loading && noMatches ? <p className="project-hub__empty" role="status">{t('hub.noMatches')}</p> : null}
     {visibleProjects.length ? <div className="project-hub__list">
       {visibleProjects.map((record) => <div className="project-hub__entry" key={record.id}><article className="project-hub__row">
         <div className="project-hub__preview" aria-hidden="true">
@@ -342,9 +350,9 @@ export const ProjectHub = ({
         onChanged={() => { void refresh(); }}
       /> : null}</div>)}
     </div> : null}
-    {recoveries.length ? <section className="project-hub__recoveries" aria-labelledby="recoveries-title">
-      <h3 id="recoveries-title">{t('hub.recoveries', { count: recoveries.length })}</h3>
-      {recoveries.map((recovery) => {
+    {filteredRecoveries.length ? <section className="project-hub__recoveries" aria-labelledby="recoveries-title">
+      <h3 id="recoveries-title">{t('hub.recoveries', { count: filteredRecoveries.length })}</h3>
+      {filteredRecoveries.map((recovery) => {
         const current = projects.find((record) => record.id === recovery.projectId);
         const conflict = recovery.reason === 'conflict' && current;
         const recoveryCase = activeCaseName(recovery.project);

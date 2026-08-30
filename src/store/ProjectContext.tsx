@@ -47,11 +47,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [selection, setSelectionState] = useState<Selection>(null);
-  const [theme, setTheme] = useState<ThemeMode>(() => {
-    const saved = localStorage.getItem('structureCo.theme');
-    if (saved === 'light' || saved === 'dark') return saved;
-    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const theme: ThemeMode = 'light';
+  const setTheme = useCallback((_nextTheme: ThemeMode) => undefined, []);
   const [resultTab, setResultTab] = useState<ResultTab>('moment');
   const [selectedCombinationId, setSelectedCombinationIdState] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);

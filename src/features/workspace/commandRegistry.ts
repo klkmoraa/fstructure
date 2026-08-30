@@ -31,11 +31,9 @@ import {
   GitCompareArrows,
   Layers3,
   LocateFixed,
-  Moon,
   Play,
   Redo2,
   Sheet,
-  Sun,
   Undo2,
   Wrench,
 } from 'lucide-react';
@@ -200,14 +198,6 @@ const STATIC_COMMANDS: readonly CommandDefinition[] = [
     icon: Layers3,
     label: (ctx) => ctx.t(readCanvasViewSettings(ctx.project).snap ? 'canvas.snapOff' : 'canvas.snapOn'),
     run: (ctx) => ctx.updateProjectView((draft) => withCanvasViewSettings(draft, { snap: !readCanvasViewSettings(draft).snap })),
-  },
-  {
-    id: 'view:theme',
-    category: 'view',
-    icon: Moon,
-    iconFor: (ctx) => (ctx.theme === 'light' ? Moon : Sun),
-    label: (ctx) => ctx.t(ctx.theme === 'light' ? 'theme.dark' : 'theme.light'),
-    run: (ctx) => ctx.setTheme(ctx.theme === 'light' ? 'dark' : 'light'),
   },
   {
     id: 'export:bom',
@@ -446,7 +436,7 @@ export const buildCommands = (ctx: CommandContext): CommandListItem[] => [
  */
 const TOPBAR_COMMAND_IDS = [
   'analysis:run', 'analysis:undo', 'analysis:redo', 'analysis:model-doctor',
-  'tool:datasheet', 'view:theme',
+  'tool:datasheet',
   'export:bom', 'export:json', 'export:svg', 'export:png', 'export:print',
 ] as const;
 
@@ -474,7 +464,7 @@ const TOPBAR_CONTEXT_STUBS: Pick<CommandContext,
 /**
  * Resolves one command's projected state (label, disabled, run, shortcut)
  * for a button outside the Palette — TopBar's undo/redo, datasheet, Model
- * Doctor, analyze, theme and export controls. The button reads `.label`,
+ * Doctor, analyze and export controls. The button reads `.label`,
  * `.disabled` and `.run` straight off the result instead of recomputing them,
  * so the button and the Palette entry for the same `commandId` can never
  * drift apart.

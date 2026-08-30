@@ -2,10 +2,10 @@ import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
 import { ProjectHub } from '../project-hub/ProjectHub';
 
-export const Phase2ProjectHub = ({ onOpenWorkspace, variant = 'full', limit }: { onOpenWorkspace: () => void; variant?: 'full' | 'recent'; limit?: number }) => {
+export const Phase2ProjectHub = ({ onOpenWorkspace, variant = 'full', limit, filter = '' }: { onOpenWorkspace: () => void; variant?: 'full' | 'recent'; limit?: number; filter?: string }) => {
   const { replaceProject } = useProject();
   const { language } = useI18n();
-  return <ProjectHub variant={variant} limit={limit} onOpen={(record) => {
+  return <ProjectHub variant={variant} limit={limit} filter={filter} onOpen={(record) => {
     replaceProject({ ...record.project, settings: { ...record.project.settings, language } }, undefined, record.revision);
     onOpenWorkspace();
   }} />;

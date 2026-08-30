@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { useMemo } from 'react';
 import { STRUCTURAL_ASSET_REGISTRY } from './registry';
 import { ThreeStructuralImage } from './ThreeStructuralImage';
 import { isThreeStructuralAssetId } from './threeStructuralRender';
@@ -22,7 +21,7 @@ const FAMILY_LABELS: Record<StructuralAssetFamily, string> = {
 const families = Object.keys(FAMILY_LABELS) as StructuralAssetFamily[];
 
 export function StructuralAssetStudio() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const theme = 'light' as const;
   const groups = useMemo(() => families.map((family) => ({
     family,
     assets: STRUCTURAL_ASSET_REGISTRY.filter((asset) => asset.family === family).map((asset) => {
@@ -36,12 +35,8 @@ export function StructuralAssetStudio() {
       <div>
         <p>FusionStructure · biblioteca estructural 3D</p>
         <h1>Atlas estructural</h1>
-        <span>40 escenas Three.js editables, transparentes y preparadas para Día y Noche.</span>
+        <span>40 escenas Three.js editables, transparentes y preparadas para documentación técnica.</span>
       </div>
-      <button type="button" onClick={() => setTheme((current) => current === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? 'Ver modo Noche' : 'Ver modo Día'}>
-        {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-        <span>{theme === 'light' ? 'Noche' : 'Día'}</span>
-      </button>
     </header>
 
     <div className="asset-studio__body">
