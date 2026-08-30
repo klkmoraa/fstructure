@@ -7,19 +7,22 @@
   font-family: var(--sc-font-ui);
 }
 
+/* La vitrina previsualiza cada activo en Día y en Noche a la vez, así que su
+   bloque oscuro local es legítimo: no sigue al tema de la aplicación. Lo que
+   no lo era son sus valores — un petróleo propio y una sombra claymórfica que
+   nadie más del producto tenía ya. Ahora repite los neutros de la fundación. */
 .asset-studio[data-theme='dark'] {
-  --sc-color-bg-app: #07161b;
-  --sc-color-bg-canvas: #0b1d23;
-  --sc-color-surface-1: #112830;
-  --sc-color-surface-2: #17333d;
-  --sc-color-surface-elevated: #17343e;
-  --sc-color-text-primary: #f3f0e8;
-  --sc-color-text-secondary: #c1ceca;
-  --sc-color-text-muted: #91a29f;
-  --sc-color-border: #29434b;
-  --sc-color-border-soft: #1f3942;
-  --sc-color-divider: #203941;
-  --sc-shadow-xs: 2px 3px 6px rgb(0 0 0 / .42), -2px -2px 4px rgb(67 98 108 / .14), inset 0 1px 0 rgb(255 255 255 / .05), inset -1px -1px 3px rgb(0 0 0 / .25);
+  --sc-color-bg-app: #0b0b0b;
+  --sc-color-bg-canvas: #0b0b0b;
+  --sc-color-surface-1: #121212;
+  --sc-color-surface-2: #171717;
+  --sc-color-surface-elevated: #171717;
+  --sc-color-text-primary: #f7f7f7;
+  --sc-color-text-secondary: #a6a6a6;
+  --sc-color-text-muted: #8c8c8c;
+  --sc-color-border: #303030;
+  --sc-color-border-soft: #242424;
+  --sc-color-divider: #242424;
   color-scheme: dark;
 }
 

@@ -594,18 +594,16 @@
 
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button,
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .sc-popover__trigger {
-  width:42px;
-  min-width:42px;
-  height:42px;
-  min-height:42px;
+  width:38px;
+  min-width:38px;
+  height:38px;
+  min-height:38px;
   padding:0;
-  border-radius:var(--sc-radius-card);
-  box-shadow:var(--sc-shadow-xs);
-  transition:
-    transform 260ms cubic-bezier(.2,.85,.24,1.22),
-    box-shadow 220ms var(--sc-ease-standard),
-    background-color 180ms var(--sc-ease-standard),
-    border-color 180ms var(--sc-ease-standard);
+  border:1px solid transparent;
+  border-radius:var(--sc-radius-control);
+  background:transparent;
+  box-shadow:none;
+  transition:var(--sc-transition-control);
 }
 
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-collapse-toggle {
@@ -717,20 +715,34 @@
   border-radius:var(--sc-radius-panel);
 }
 
+/* El dock acoplado abajo imitaba el Dock de macOS: al pasar el cursor la tecla
+   se levantaba 7px, escalaba a 1,1 y proyectaba un zócalo teñido con el color
+   de la herramienta. Era la última pieza del producto que aún se movía en Z.
+   Aquí una tecla cambia de plano y nada más. */
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:hover:not(:disabled),
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .sc-popover__trigger:hover:not(:disabled) {
-  z-index:2;
-  transform:translateY(-7px) scale(1.1);
-  box-shadow:
-    0 5px 0 color-mix(in srgb,var(--tool-color,var(--accent)) 18%,transparent),
-    var(--sc-shadow-md);
+  background:var(--sc-color-surface-2);
+  color:var(--sc-color-text-primary);
+  transform:none;
+  box-shadow:none;
 }
 
+/* Elegida: tinta plena, igual que en el riel lateral. El `background` va con
+   más peso que `[data-pressed='true']` de `material.css`, que si no dejaba la
+   tecla en gris claro con el icono en blanco — invisible. */
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active,.is-active),
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active,.is-active):hover:not(:disabled) {
+  border-color:var(--sc-color-action-primary);
+  background:var(--sc-color-action-primary);
+  color:var(--sc-color-action-foreground);
+  transform:none;
+  box-shadow:none;
+}
+
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:active:not(:disabled),
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .sc-popover__trigger:active:not(:disabled) {
-  transform:var(--sc-press-transform);
-  box-shadow:var(--sc-shadow-pressed);
+  transform:none;
+  box-shadow:none;
 }
 
 .tool-rail-tooltip[data-placement='top'] {
@@ -1855,9 +1867,10 @@
   align-items:center;
 }
 
+/* Acoplado a la izquierda el gesto era el mismo, desplazado al eje X. */
 .app-shell[data-shell-class='X2'][data-tool-dock-position='left'] .tool-rail.is-floating-dock .tool-button:hover:not(:disabled),
 .app-shell[data-shell-class='X2'][data-tool-dock-position='left'] .tool-rail.is-floating-dock .sc-popover__trigger:hover:not(:disabled) {
-  transform:translateX(6px) scale(1.08);
+  transform:none;
 }
 
 .app-shell[data-shell-class='X2'] .center-stage {
