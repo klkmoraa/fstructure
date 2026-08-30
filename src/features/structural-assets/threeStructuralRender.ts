@@ -133,8 +133,8 @@ export const renderThreeStructuralAssetDataUrl = async (
   const scene = new THREE.Scene();
   const group = buildThreeStructuralGroup(assetId, theme);
   scene.add(group);
-  scene.add(new THREE.HemisphereLight(theme === 'day' ? 0xfffbef : 0xe9f5f3, theme === 'day' ? 0x687577 : 0x061216, theme === 'day' ? 2.6 : 2.25));
-  const key = new THREE.DirectionalLight(theme === 'day' ? 0xfff4dc : 0xdcefee, theme === 'day' ? 4.2 : 3.5);
+  scene.add(new THREE.HemisphereLight(theme === 'day' ? 0xffffff : 0xf2f2f2, theme === 'day' ? 0x737373 : 0x0b0b0b, theme === 'day' ? 2.6 : 2.25));
+  const key = new THREE.DirectionalLight(theme === 'day' ? 0xffffff : 0xf2f2f2, theme === 'day' ? 4.2 : 3.5);
   key.position.set(-4.5, 7, 5.5);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -143,7 +143,7 @@ export const renderThreeStructuralAssetDataUrl = async (
   key.shadow.camera.top = 6;
   key.shadow.camera.bottom = -6;
   scene.add(key);
-  const rim = new THREE.DirectionalLight(theme === 'day' ? 0xb8d9d1 : 0x78b8aa, 1.55);
+  const rim = new THREE.DirectionalLight(theme === 'day' ? 0xdcdcdc : 0x8a8a8a, 1.55);
   rim.position.set(5, 3, -5);
   scene.add(rim);
 
@@ -152,7 +152,7 @@ export const renderThreeStructuralAssetDataUrl = async (
   const size = bounds.getSize(new THREE.Vector3());
   const shadow = new THREE.Mesh(
     new THREE.PlaneGeometry(Math.max(4, size.x + 1.15), Math.max(3.4, size.z + 1.15)),
-    new THREE.ShadowMaterial({ color: theme === 'day' ? 0x263330 : 0x000000, opacity: theme === 'day' ? 0.1 : 0.18 }),
+    new THREE.ShadowMaterial({ color: 0x0a0a0a, opacity: theme === 'day' ? 0.08 : 0.18 }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.set(center.x, bounds.min.y - 0.055, center.z);

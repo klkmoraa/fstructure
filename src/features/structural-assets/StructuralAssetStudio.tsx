@@ -4,7 +4,6 @@ import { ThreeStructuralImage } from './ThreeStructuralImage';
 import { isThreeStructuralAssetId } from './threeStructuralRender';
 import type { StructuralAssetFamily } from './types';
 import './structuralAssetStudio.css';
-import './structuralAssetStudioMinimal.css';
 
 const FAMILY_LABELS: Record<StructuralAssetFamily, string> = {
   portal: 'Pórticos',
