@@ -131,11 +131,11 @@
   min-width: 42px !important;
 }
 
-.app-shell[data-shell-class='K0'] .topbar-wordmark {
+.workspace-screen .topbar-wordmark {
   font-size: 0 !important;
 }
 
-.app-shell[data-shell-class='K0'] .topbar-wordmark::after {
+.workspace-screen .topbar-wordmark::after {
   content: 'FS';
   font-size: 12px;
   font-weight: 760;
