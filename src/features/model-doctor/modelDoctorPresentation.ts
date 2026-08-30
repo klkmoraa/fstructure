@@ -50,7 +50,7 @@ const noSupportsRepair = (language: Language | undefined): ContextualModelDoctor
     tool: 'support',
     actionLabel: 'Add supports',
     previewTitle: 'Before adding supports',
-    previewDescription: 'StructureCo will open the Support tool, but will not choose the support type or location for you.',
+    previewDescription: 'FusionStructure will open the Support tool, but will not choose the support type or location for you.',
     steps: [
       'Choose the node that represents each physical support.',
       'Click the node and review the support type before continuing.',
@@ -63,7 +63,7 @@ const noSupportsRepair = (language: Language | undefined): ContextualModelDoctor
     tool: 'support',
     actionLabel: 'Añadir apoyos',
     previewTitle: 'Antes de añadir apoyos',
-    previewDescription: 'StructureCo abrirá la herramienta Apoyo, pero no elegirá por ti el tipo ni la posición de cada apoyo.',
+    previewDescription: 'FusionStructure abrirá la herramienta Apoyo, pero no elegirá por ti el tipo ni la posición de cada apoyo.',
     steps: [
       'Elige el nudo que representa cada apoyo físico.',
       'Toca el nudo y revisa el tipo de apoyo antes de continuar.',
@@ -98,7 +98,7 @@ const englishSpecific = (finding: ModelDoctorFinding): Pick<PresentedModelDoctor
   if (id.startsWith('A-')) return { title: 'Invalid cross-sectional area', explanation: `The area A of ${subject(finding)} must be finite and greater than zero.` };
   if (id.startsWith('I-')) return { title: 'Invalid second moment of area', explanation: `The inertia I of ${subject(finding)} must be finite and greater than zero.` };
   if (/^(EA|EI|GAs)-/.test(id)) return { title: 'Structural stiffness outside the numeric range', explanation: `The combined stiffness values of ${subject(finding)} exceed the available numeric range.` };
-  if (/^(G|As|density|timoshenko|release-type|rotational-spring|rigid-offset)-/.test(id)) return { title: 'Invalid or incompatible member property', explanation: `StructureCo detected an invalid property or end condition on ${subject(finding)}.` };
+  if (/^(G|As|density|timoshenko|release-type|rotational-spring|rigid-offset)-/.test(id)) return { title: 'Invalid or incompatible member property', explanation: `FusionStructure detected an invalid property or end condition on ${subject(finding)}.` };
   if (id.startsWith('combination-factor-')) return {
     title: 'Invalid load-combination factor',
     explanation: `${subject(finding)} contains a load-case factor that is not a finite number.`,
@@ -108,7 +108,7 @@ const englishSpecific = (finding: ModelDoctorFinding): Pick<PresentedModelDoctor
     explanation: `The prescribed support displacement affecting ${subject(finding)} is not a finite number.`,
   };
   if (/^(missing|nodal-node|nodal-case|member-load-member|member-load-case|prescribed-node|prescribed-case|initial-effect-member|initial-effect-case|combination)-/.test(id)) return { title: 'Broken model reference', explanation: `${subject(finding)} refers to a node, member, or load case that does not exist.` };
-  if (/^(support|spring|prescribed-support|prescribed-component|prescribed-value)-/.test(id)) return { title: 'Invalid or incompatible restraint', explanation: `StructureCo detected an invalid support, spring, or prescribed displacement affecting ${subject(finding)}.` };
+  if (/^(support|spring|prescribed-support|prescribed-component|prescribed-value)-/.test(id)) return { title: 'Invalid or incompatible restraint', explanation: `FusionStructure detected an invalid support, spring, or prescribed displacement affecting ${subject(finding)}.` };
   if (/^(distributed-domain|distributed-value)-/.test(id)) return { title: 'Invalid distributed-load interval', explanation: `${subject(finding)} has an invalid interval or non-finite distributed-load value.` };
   if (/^(rigid-load|truss-member-load|free-rotation-moment|hinge-moment)-/.test(id)) return { title: 'Load incompatible with its structural target', explanation: `${subject(finding)} cannot act on the selected member or degree of freedom with the current model definition.` };
   if (/^(nodal-value|point-position|point-value|horizontal-basis|vertical-basis|self-weight)-/.test(id)) return { title: 'Invalid load definition', explanation: `${subject(finding)} contains a non-finite value, invalid position, or incompatible length basis.` };
@@ -123,7 +123,7 @@ const englishSpecific = (finding: ModelDoctorFinding): Pick<PresentedModelDoctor
     title: 'Indeterminate exercise in Classroom mode',
     explanation: 'The basic static count found structural redundancies, so the diagrams depend on the automatic stiffness values hidden by Classroom mode.',
   };
-  return { title: `${finding.category[0].toUpperCase()}${finding.category.slice(1)} issue`, explanation: `StructureCo detected a ${finding.category} condition affecting ${subject(finding)}.` };
+  return { title: `${finding.category[0].toUpperCase()}${finding.category.slice(1)} issue`, explanation: `FusionStructure detected a ${finding.category} condition affecting ${subject(finding)}.` };
 };
 
 export const presentModelDoctorFinding = (finding: ModelDoctorFinding, language: Language | undefined): PresentedModelDoctorFinding => {
@@ -154,7 +154,7 @@ export const presentModelDoctorFinding = (finding: ModelDoctorFinding, language:
     title: 'The model has no supports',
     explanation: 'No node has a support restraint or a positive nodal spring connected to ground, so the model can move as a rigid body.',
     whyItMatters,
-    suggestedAction: 'Add the supports that represent the problem’s physical boundary conditions. StructureCo will not choose their type or position automatically.',
+    suggestedAction: 'Add the supports that represent the problem’s physical boundary conditions. FusionStructure will not choose their type or position automatically.',
     contextualRepair: noSupportsRepair(language),
   };
   return { ...specific, whyItMatters, suggestedAction: englishAction[finding.category] };

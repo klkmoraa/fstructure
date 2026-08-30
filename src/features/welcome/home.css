@@ -1,7 +1,7 @@
 /* ===========================================================================
    Inicio/Home · Fase 7
    ---------------------------------------------------------------------------
-   La portada usa la misma materia Clay que el producto, pero una jerarquía
+   La portada usa la misma materia Minimal que el producto, pero una jerarquía
    editorial propia: proyecto actual, acciones cortas y biblioteca real. Estas
    reglas viven bajo `home-atlas` para no volver a cambiar las rutas secundarias
    (Aula, ejemplos, DXF y Space 3D) que aún usan la composición de Welcome.
@@ -40,18 +40,18 @@
   padding: clamp(24px, 3.2vw, 40px);
   border-color: color-mix(in srgb, var(--accent) 38%, var(--sc-color-border));
   background: var(--sc-color-surface-1);
-  box-shadow: var(--sc-shadow-clay-md);
+  box-shadow: var(--sc-shadow-md);
 }
 
 .home-atlas .home-dashboard .welcome-resume-card:hover {
-  box-shadow: var(--sc-shadow-clay-lg);
+  box-shadow: var(--sc-shadow-lg);
   transform: translateY(-2px);
 }
 
 .home-atlas .home-dashboard .welcome-resume-card:active {
   background: var(--sc-color-surface-inset);
-  box-shadow: var(--sc-shadow-clay-pressed);
-  transform: var(--sc-clay-press-transform);
+  box-shadow: var(--sc-shadow-pressed);
+  transform: var(--sc-press-transform);
 }
 
 .home-atlas .home-dashboard .welcome-resume-eyebrow {
@@ -76,10 +76,10 @@
   place-items: center;
   min-height: 196px;
   padding: clamp(16px, 2.4vw, 28px);
-  border: var(--sc-clay-edge);
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-xl);
   background: var(--sc-color-surface-1);
-  box-shadow: var(--sc-shadow-clay-sm);
+  box-shadow: var(--sc-shadow-sm);
 }
 
 .home-atlas .home-dashboard .welcome-portal .portal-hero {
@@ -101,21 +101,21 @@
   min-height: 96px;
   gap: 10px;
   padding: 12px;
-  border: var(--sc-clay-edge);
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-md);
   background: var(--sc-color-surface-1);
-  box-shadow: var(--sc-shadow-clay-xs);
+  box-shadow: var(--sc-shadow-xs);
 }
 
 .home-atlas .home-quick-actions .welcome-launcher-card:hover {
-  box-shadow: var(--sc-shadow-clay-sm);
+  box-shadow: var(--sc-shadow-sm);
   transform: translateY(-1.5px);
 }
 
 .home-atlas .home-quick-actions .welcome-launcher-card:active {
   background: var(--sc-color-surface-inset);
-  box-shadow: var(--sc-shadow-clay-pressed);
-  transform: var(--sc-clay-press-transform);
+  box-shadow: var(--sc-shadow-pressed);
+  transform: var(--sc-press-transform);
 }
 
 .home-atlas .home-quick-actions .welcome-launcher-icon {
@@ -154,10 +154,10 @@
 
 .home-atlas .home-dashboard-stage > .project-hub {
   padding: clamp(16px, 2.2vw, 26px);
-  border: var(--sc-clay-edge);
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-xl);
   background: var(--sc-color-surface-1);
-  box-shadow: var(--sc-shadow-clay-sm);
+  box-shadow: var(--sc-shadow-sm);
 }
 
 .home-atlas .home-dashboard-stage > .project-hub .project-hub__row {

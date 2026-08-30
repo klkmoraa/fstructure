@@ -21,9 +21,9 @@
   padding: 14px;
   color: var(--text);
   background: var(--sc-color-surface-1);
-  border: var(--sc-clay-edge);
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-panel);
-  box-shadow: var(--sc-shadow-clay-lg);
+  box-shadow: var(--sc-shadow-lg);
   overscroll-behavior: contain;
 }
 
@@ -36,7 +36,7 @@
   width: min(520px, calc(100% - 24px));
   max-height: calc(100% - 24px);
   border-color:var(--sc-color-border-soft);
-  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--sc-color-text-primary) 5%,transparent),var(--sc-shadow-clay-sm);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--sc-color-text-primary) 5%,transparent),var(--sc-shadow-sm);
 }
 
 .structure-generator[data-surface-presentation='sheet'] {
@@ -96,9 +96,9 @@
   padding:5px 5px 7px;
   color: var(--text);
   background: var(--sc-color-surface-2);
-  border: var(--sc-clay-edge);
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-md);
-  box-shadow: var(--sc-shadow-clay-xs);
+  box-shadow: var(--sc-shadow-xs);
   font: inherit;
   font-size:0.68rem;
   font-weight: 650;
@@ -106,14 +106,14 @@
   transition: transform 140ms cubic-bezier(.2,.8,.2,1), box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
-.structure-generator__families > button:hover { transform: translateY(-1px); box-shadow: var(--sc-shadow-clay-sm); }
-.structure-generator__families > button:active { transform: var(--sc-clay-press-transform); box-shadow: var(--sc-shadow-clay-pressed); }
+.structure-generator__families > button:hover { transform: translateY(-1px); box-shadow: var(--sc-shadow-sm); }
+.structure-generator__families > button:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
 .structure-generator__families > button[aria-checked='true'] {
   color: var(--accent);
   background: var(--accent-soft);
   border-color: color-mix(in srgb, var(--accent) 48%, var(--sc-color-border));
-  box-shadow: var(--sc-shadow-clay-pressed);
-  transform: var(--sc-clay-press-transform);
+  box-shadow: var(--sc-shadow-pressed);
+  transform: var(--sc-press-transform);
 }
 
 .generator-family-preview { width:100%; height:38px; overflow:visible; }
@@ -132,10 +132,10 @@
   display:grid;
   gap:10px;
   padding:10px;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:var(--sc-radius-md);
   background:var(--sc-color-surface-inset);
-  box-shadow:var(--sc-shadow-clay-pressed);
+  box-shadow:var(--sc-shadow-pressed);
 }
 
 .structure-generator__pair {
@@ -149,7 +149,7 @@
   gap: 8px;
   padding: 10px;
   background: var(--sc-color-surface-2, transparent);
-  border: var(--sc-clay-edge);
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-md);
 }
 
@@ -187,7 +187,7 @@
   gap: 8px;
   padding: 10px;
   background: var(--sc-color-surface-2, transparent);
-  border: var(--sc-clay-edge);
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-md);
 }
 
@@ -283,7 +283,7 @@
     border-radius: var(--sc-radius-lg) var(--sc-radius-lg) var(--sc-radius-sm) var(--sc-radius-sm);
   }
 
-  /* El segmento clay seleccionado se hunde y escala. Se le da holgura para que
+  /* El segmento minimal seleccionado se hunde y escala. Se le da holgura para que
      su caja medida siga siendo un objetivo táctil de 44 px. */
   .structure-generator .sc-segmented > button,
   .structure-generator__check input,

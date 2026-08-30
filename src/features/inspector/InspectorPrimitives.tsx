@@ -4,13 +4,56 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useI18n } from '../../i18n/useI18n';
 import { Accordion } from '../../design-system/components/disclosure';
 import { Drawer } from '../../design-system/components/overlays';
+import { fromDisplay, toDisplay, unitLabel, type UnitQuantity } from '../../engine/units';
+import type { UnitSystemId } from '../../types';
 import { useShellComposition } from '../workspace/useShellComposition';
+import { InspectorNumericField } from './InspectorNumericField';
 
 export interface InspectorSummaryMetric {
   label: string;
   value: string;
   tone?: 'neutral' | 'axial' | 'shear' | 'moment';
 }
+
+export const PhysicalNumberField = ({
+  label,
+  value,
+  units,
+  quantity,
+  resetKey,
+  onCommit,
+  hint,
+  validate,
+  disabled,
+  lockedReason,
+}: {
+  label: string;
+  value: number;
+  units: UnitSystemId;
+  quantity: UnitQuantity;
+  resetKey: string;
+  onCommit: (value: number) => void;
+  hint?: string;
+  validate?: (value: number) => string | undefined;
+  disabled?: boolean;
+  lockedReason?: string;
+}) => {
+  const { language } = useI18n();
+  return (
+    <InspectorNumericField
+      label={label}
+      value={toDisplay(value, units, quantity)}
+      unit={unitLabel(units, quantity)}
+      resetKey={`${resetKey}:${units}`}
+      hint={hint}
+      validate={validate}
+      disabled={disabled}
+      lockedReason={lockedReason}
+      language={language}
+      onCommit={(displayValue) => onCommit(fromDisplay(displayValue, units, quantity))}
+    />
+  );
+};
 
 export const InspectorSelectionSummary = ({
   icon: Icon,

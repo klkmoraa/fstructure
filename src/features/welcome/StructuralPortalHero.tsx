@@ -3,7 +3,7 @@ import { buildPortal, projectIso, DEFAULT_PORTAL, type Face, type MaterialId } f
 import { formatFixed } from '../../utils/numberFormat';
 
 /**
- * Pórtico clay de la bienvenida.
+ * Pórtico minimal de la bienvenida.
  *
  * Pinta la geometría que `isometricPortal.ts` deriva. No hay WebGL: la escena
  * de la referencia es estática —cámara ortográfica fija, sin órbita, materiales
@@ -19,7 +19,7 @@ import { formatFixed } from '../../utils/numberFormat';
  * Decorativo a efectos de accesibilidad. Todo lo que comunica está en el texto
  * que la acompaña.
  *
- * ACABADO CLAY (CRI-104). El grano y la luz de borde son UN filtro SVG, y vive
+ * ACABADO minimal (CRI-104). El grano y la luz de borde son UN filtro SVG, y vive
  * exclusivamente dentro de este `<svg>`: no se aplica a ninguna superficie de
  * interfaz, que es lo que hace asumible su coste. Se engancha desde CSS
  * (`.portal-hero__body { filter: url(#…) }`), no con el atributo `filter`, y
@@ -44,10 +44,10 @@ import { formatFixed } from '../../utils/numberFormat';
 
 /** Token base de cada material. El sombreado modula su luminosidad en CSS. */
 const MATERIAL_TOKEN: Record<MaterialId, string> = {
-  column: 'var(--sc-color-clay-ivory)',
-  beam: 'var(--sc-color-clay-lime)',
-  base: 'var(--sc-color-clay-lime-deep)',
-  capital: 'var(--sc-color-clay-ivory-deep)',
+  column: 'var(--sc-color-illustration-ivory)',
+  beam: 'var(--sc-color-illustration-lime)',
+  base: 'var(--sc-color-illustration-lime-deep)',
+  capital: 'var(--sc-color-illustration-ivory-deep)',
 };
 
 /* `formatFixed`, no `toFixed` crudo: la política numérica única (ver
@@ -123,11 +123,11 @@ const canTilt = () =>
   !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 /**
- * Id del filtro. Fijo y con prefijo del sistema: sólo hay una pieza clay en la
+ * Id del filtro. Fijo y con prefijo del sistema: sólo hay una pieza minimal en la
  * bienvenida, así que no hay colisión posible, y el CSS necesita poder
- * nombrarlo (`filter: url(#sc-portal-clay)`) para poder anularlo.
+ * nombrarlo (`filter: url(#sc-portal-minimal)`) para poder anularlo.
  */
-const PORTAL_FILTER_ID = 'sc-portal-clay';
+const PORTAL_FILTER_ID = 'sc-portal-minimal';
 
 export const StructuralPortalHero = () => {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -287,7 +287,7 @@ export const StructuralPortalHero = () => {
         />
       ))}
 
-      {/* El cuerpo sólido es lo único que recibe el acabado clay. La rejilla y
+      {/* El cuerpo sólido es lo único que recibe el acabado minimal. La rejilla y
           las sombras de contacto quedan fuera del filtro: son el plano, no la
           pieza, y filtrarlas sólo añadiría coste. */}
       <g className="portal-hero__body">

@@ -7,7 +7,6 @@ import { exportProjectJson } from '../../utils/export';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { NewExerciseDialog } from './NewExerciseDialog';
-import { BrandMark } from '../topbar/BrandMark';
 import { presentExample } from './examplePresentation';
 import { shouldResumeDirectly, useWelcomeEntry } from './welcomeEntry';
 import { STRUCTURAL_ASSET_IDS, ThreeStructuralImage } from '../structural-assets';
@@ -21,6 +20,7 @@ import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { useModalFocus } from '../../design-system/components/modalFocus';
 import { clearLocalMetrics, exportLocalMetrics, getLocalMetrics, setLocalMetricsOptIn, type LocalMetricsStore } from '../../analytics/localMetrics';
 import './totalHome.css';
+import '../../minimal.css';
 
 const PortableImportCenter = lazy(() => import('../import-export/PortableImportCenter').then((module) => ({ default: module.PortableImportCenter })));
 const Phase2ProjectHub = lazy(() => import('./Phase2ProjectHub').then((module) => ({ default: module.Phase2ProjectHub })));
@@ -41,7 +41,7 @@ type NavigationDestination = HomeView | 'studio';
 const copy = {
   es: {
     navigation: 'Navegación principal', home: 'Inicio', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar', space3d: 'Space 3D',
-    settings: 'Ajustes', settingsTitle: 'Ajustes', settingsBody: 'Personaliza cómo se presenta StructureCo en este dispositivo.', language: 'Idioma', theme: 'Tema', light: 'Claro', dark: 'Oscuro', closeSettings: 'Cerrar ajustes', studio: 'Estudio de ilustraciones', menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', current: 'Proyecto abierto', continue: 'Continuar proyecto', create: 'Nuevo proyecto', localMetrics: 'Diagnóstico local', localMetricsBody: 'Opcional. Guarda sólo eventos agregados en este dispositivo; nunca envía geometría, cargas, resultados ni datos personales.', localMetricsOptIn: 'Guardar mediciones locales para mejorar el flujo', localMetricsCount: '{count} observaciones locales', exportDiagnostics: 'Exportar diagnóstico', clearDiagnostics: 'Borrar observaciones',
+    settings: 'Ajustes', settingsTitle: 'Ajustes', settingsBody: 'Personaliza cómo se presenta FusionStructure en este dispositivo.', language: 'Idioma', theme: 'Tema', light: 'Claro', dark: 'Oscuro', closeSettings: 'Cerrar ajustes', studio: 'Estudio de ilustraciones', menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', current: 'Proyecto abierto', continue: 'Continuar proyecto', create: 'Nuevo proyecto', localMetrics: 'Diagnóstico local', localMetricsBody: 'Opcional. Guarda sólo eventos agregados en este dispositivo; nunca envía geometría, cargas, resultados ni datos personales.', localMetricsOptIn: 'Guardar mediciones locales para mejorar el flujo', localMetricsCount: '{count} observaciones locales', exportDiagnostics: 'Exportar diagnóstico', clearDiagnostics: 'Borrar observaciones',
     recent: 'Proyectos recientes', viewAll: 'Ver todos', templatesTitle: 'Elige una estructura de partida', templatesBody: 'Abre un modelo preparado y adáptalo a tu caso.',
     projectsTitle: 'Tus proyectos', projectsBody: 'Abre, renombra o duplica el trabajo guardado en este dispositivo.',
     classroomTitle: 'Aprende resolviendo una estructura', classroomBody: 'Elige un caso, ajusta sus datos y avanza con una guía que no te quita el control del modelo.', classroomAction: 'Crear desde cero', classroomCases: 'O empieza con un caso preparado',
@@ -52,7 +52,7 @@ const copy = {
   },
   en: {
     navigation: 'Primary navigation', home: 'Home', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import', space3d: 'Space 3D',
-    settings: 'Settings', settingsTitle: 'Settings', settingsBody: 'Personalize how StructureCo is presented on this device.', language: 'Language', theme: 'Theme', light: 'Light', dark: 'Dark', closeSettings: 'Close settings', studio: 'Illustration Studio', menu: 'Open navigation', closeMenu: 'Close navigation', current: 'Open project', continue: 'Continue project', create: 'New project', localMetrics: 'Local diagnostics', localMetricsBody: 'Optional. Stores aggregate events on this device only; it never sends geometry, loads, results, or personal data.', localMetricsOptIn: 'Store local measurements to improve the flow', localMetricsCount: '{count} local observations', exportDiagnostics: 'Export diagnostics', clearDiagnostics: 'Erase observations',
+    settings: 'Settings', settingsTitle: 'Settings', settingsBody: 'Personalize how FusionStructure is presented on this device.', language: 'Language', theme: 'Theme', light: 'Light', dark: 'Dark', closeSettings: 'Close settings', studio: 'Illustration Studio', menu: 'Open navigation', closeMenu: 'Close navigation', current: 'Open project', continue: 'Continue project', create: 'New project', localMetrics: 'Local diagnostics', localMetricsBody: 'Optional. Stores aggregate events on this device only; it never sends geometry, loads, results, or personal data.', localMetricsOptIn: 'Store local measurements to improve the flow', localMetricsCount: '{count} local observations', exportDiagnostics: 'Export diagnostics', clearDiagnostics: 'Erase observations',
     recent: 'Recent projects', viewAll: 'View all', templatesTitle: 'Choose a starting structure', templatesBody: 'Open a prepared model and adapt it to your case.',
     projectsTitle: 'Your projects', projectsBody: 'Open, rename, or duplicate work saved on this device.',
     classroomTitle: 'Learn by solving a structure', classroomBody: 'Choose a case, adjust its data, and move forward with guidance that keeps you in control of the model.', classroomAction: 'Start from scratch', classroomCases: 'Or begin with a prepared case',
@@ -301,8 +301,8 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
             </section>;
 
   return <><main ref={homeRef} className="sc-home" data-testid="welcome-screen">
-    <aside className="sc-home-sidebar"><div className="sc-home-wordmark"><BrandMark size={30} /><strong><span>structure</span>Co</strong></div>{renderNavigation()}<button type="button" className="sc-home-settings" onClick={(event) => openPreferences(event.currentTarget)}><Settings size={19} /><span>{text.settings}</span></button></aside>
-    <header className="sc-home-mobile-header"><div className="sc-home-wordmark"><BrandMark size={27} /><strong><span>structure</span>Co</strong></div><button ref={mobileMenuButtonRef} type="button" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button></header>
+    <aside className="sc-home-sidebar"><div className="sc-home-wordmark"><strong>FusionStructure</strong></div>{renderNavigation()}<button type="button" className="sc-home-settings" onClick={(event) => openPreferences(event.currentTarget)}><Settings size={19} /><span>{text.settings}</span></button></aside>
+    <header className="sc-home-mobile-header"><div className="sc-home-wordmark"><strong>FusionStructure</strong></div><button ref={mobileMenuButtonRef} type="button" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button></header>
     {mobileNavOpen ? renderNavigation(true) : null}
     <div className="sc-home-main"><header className="sc-home-topline"><span>{text[view]}</span><div><label><span className="sr-only">{t('language.label')}</span><select value={language} onChange={(event) => updateLanguage(event.target.value as 'es' | 'en')}><option value="es">ES</option><option value="en">EN</option></select></label><button type="button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? t('theme.dark') : t('theme.light')}>{theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}</button></div></header><div className="sc-home-content">{content}</div></div>
     {importCenterOpen ? <Suspense fallback={null}><PortableImportCenter open currentProjectName={project.name} onClose={() => setImportCenterOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { replaceProject({ ...outcome.project, settings: { ...outcome.project.settings, language } }, outcome.restoredAnalysis); setImportCenterOpen(false); onOpenWorkspace(); }} /></Suspense> : null}

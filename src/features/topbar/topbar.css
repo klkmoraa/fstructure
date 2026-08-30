@@ -75,7 +75,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
 .analyze-button { border: 0; color: var(--accent-foreground); background: var(--accent-fill); width:148px; min-width:148px; height: var(--sc-control-height-touch); padding: 0 var(--sc-space-5); border-radius: var(--sc-radius-md); display: flex; align-items: center; justify-content:center; gap:var(--sc-space-2); font-weight:700; }
 .analyze-button > .sc-button__label { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .analyze-button:hover:not(:disabled) { background:var(--accent-hover); transform:translateY(-1px); }
-.analyze-button:not(:disabled):active { transform:var(--sc-clay-press-transform); transition-duration:var(--sc-motion-press); }
+.analyze-button:not(:disabled):active { transform:var(--sc-press-transform); transition-duration:var(--sc-motion-press); }
 .project-menu { left: 46px; top: 48px; width: 310px; }
 .portable-export-error { padding:8px 10px; border-radius:8px; background:color-mix(in srgb,var(--error) 9%,var(--surface)); color:var(--error); font-size:9px; line-height:1.35; }
 .portable-export-error.desktop { position:absolute; z-index:45; right:18px; top:calc(100% + 6px); width:min(300px,calc(100vw - 24px)); border:1px solid color-mix(in srgb,var(--error) 30%,var(--border)); box-shadow:var(--shadow); }
@@ -174,7 +174,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   .analysis-reliability-label,
   .analysis-reliability-value { display:inline; }
 }
-.analyze-button:not(:disabled):active { transform:var(--sc-clay-press-transform); }
+.analyze-button:not(:disabled):active { transform:var(--sc-press-transform); }
 .analyze-button.analyzing { box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 12%,transparent); }
 .project-menu { transform-origin:top left; }
 
@@ -215,9 +215,9 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
 .results-panel {
   background:var(--sc-color-surface-1);
   border-color:var(--sc-color-border);
-  box-shadow:var(--sc-shadow-clay-sm);
+  box-shadow:var(--sc-shadow-sm);
 }
-.topbar { border-bottom:1px solid var(--sc-color-border); box-shadow:var(--sc-shadow-clay-xs); }
+.topbar { border-bottom:1px solid var(--sc-color-border); box-shadow:var(--sc-shadow-xs); }
 
 .brand-mark { color:var(--accent); }
 .compact-select,
@@ -228,10 +228,10 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
 
 .theme-toggle,
 .topbar button:not(.analyze-button):not(.sc-button--primary) {
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
 }
 
-/* --- TopBar: arcilla real, no una sombra suelta sobre fondo transparente ---
+/* --- TopBar: volumen real, no una sombra suelta sobre fondo transparente ---
    La regla de arriba sólo pone la sombra de reposo; sin una superficie
    propia detrás (estos controles traían background:transparent, herencia
    del diseño plano previo) la sombra flotaba sin nada que elevar. Aquí se
@@ -239,28 +239,28 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
    elevado, pulsado/abierto rehundido — igual que el resto del sistema. */
 .brand-home-button { background:var(--sc-color-surface-1); transition:var(--sc-transition-control); }
 .brand-home-button:hover,
-.brand-home-button:focus-visible { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-clay-sm); transform:translateY(-1.5px); }
-.brand-home-button:active { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-clay-pressed); transform:var(--sc-clay-press-transform); }
+.brand-home-button:focus-visible { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-sm); transform:translateY(-1.5px); }
+.brand-home-button:active { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 
 .project-menu-toggle { background:var(--sc-color-surface-1); transition:var(--sc-transition-control); }
 .project-menu-toggle:hover,
-.project-menu-toggle:focus-visible { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-clay-sm); transform:translateY(-1px); }
+.project-menu-toggle:focus-visible { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-sm); transform:translateY(-1px); }
 .project-menu-toggle:active,
-.project-menu-toggle[aria-expanded='true'] { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-clay-pressed); transform:var(--sc-clay-press-transform); }
+.project-menu-toggle[aria-expanded='true'] { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 
-.autosave-state { background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-clay-xs); transition:var(--sc-transition-control); }
-.autosave-state:hover { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-clay-sm); }
+.autosave-state { background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-xs); transition:var(--sc-transition-control); }
+.autosave-state:hover { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-sm); }
 
 /* El selector genérico de arriba congela la sombra en `xs` en todo estado
    porque su combinación de :not() lo hace más específico que
    `.sc-icon-button:hover`/`:active`. Se restaura aquí la profundidad. */
-.topbar .sc-icon-button:not(:disabled):hover { box-shadow:var(--sc-shadow-clay-sm); }
+.topbar .sc-icon-button:not(:disabled):hover { box-shadow:var(--sc-shadow-sm); }
 .topbar .sc-icon-button:not(:disabled):active,
-.topbar .sc-icon-button[aria-expanded='true']:not(:disabled) { box-shadow:var(--sc-shadow-clay-pressed); }
+.topbar .sc-icon-button[aria-expanded='true']:not(:disabled) { box-shadow:var(--sc-shadow-pressed); }
 
-.topbar-context-zone .compact-select { background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-clay-xs); }
-.topbar-context-zone .compact-select:hover { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-clay-sm); }
-.topbar-context-zone .compact-select:focus-visible { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-clay-pressed), 0 0 0 var(--sc-focus-ring-width) color-mix(in srgb, var(--focus) 34%, transparent); }
+.topbar-context-zone .compact-select { background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-xs); }
+.topbar-context-zone .compact-select:hover { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-sm); }
+.topbar-context-zone .compact-select:focus-visible { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed), 0 0 0 var(--sc-focus-ring-width) color-mix(in srgb, var(--focus) 34%, transparent); }
 
 /* Workspace: barras, navegación y chrome del lienzo --------------------- */
 .topbar,
@@ -272,7 +272,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   box-shadow:none;
 }
 .topbar { background:color-mix(in srgb,var(--surface) 92%,transparent); box-shadow:0 1px 0 color-mix(in srgb,var(--sc-color-surface-elevated) 72%,transparent); }
-.topbar [data-topbar-cluster] { min-height:calc(var(--sc-control-height-md) + 10px); padding:5px; border:1px solid color-mix(in srgb,var(--border) 66%,transparent); border-radius:var(--sc-radius-lg); background:color-mix(in srgb,var(--sc-color-surface-1) 86%,transparent); box-shadow:var(--sc-shadow-clay-pressed); }
+.topbar [data-topbar-cluster] { min-height:calc(var(--sc-control-height-md) + 10px); padding:5px; border:1px solid color-mix(in srgb,var(--border) 66%,transparent); border-radius:var(--sc-radius-lg); background:color-mix(in srgb,var(--sc-color-surface-1) 86%,transparent); box-shadow:var(--sc-shadow-pressed); }
 .topbar [data-topbar-cluster='document'] { padding-inline:5px 8px; }
 .topbar [data-topbar-cluster='context'] { gap:4px; padding-inline:5px; }
 .topbar [data-topbar-cluster='actions'] { gap:5px; padding-inline:5px; }
@@ -280,13 +280,13 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
 .topbar [data-topbar-cluster] .autosave-state { border-left:0; }
 .topbar-context-control { min-width:0; display:grid; gap:1px; padding:3px 4px; border-radius:var(--sc-radius-sm); color:var(--subtle); cursor:pointer; }
 .topbar-context-control > span { padding-inline:7px; overflow:hidden; color:var(--subtle); font-family:var(--sc-font-mono); font-size:8px; font-weight:750; letter-spacing:.065em; line-height:1; text-overflow:ellipsis; text-transform:uppercase; white-space:nowrap; }
-.topbar .topbar-context-control .compact-select { width:100%; height:30px; min-height:30px; padding:0 26px 0 8px; border:1px solid color-mix(in srgb,var(--border) 72%,transparent); background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-clay-xs); font-size:11px; font-weight:650; }
-.topbar .topbar-context-control .compact-select:hover { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-clay-sm); transform:translateY(-1px); }
+.topbar .topbar-context-control .compact-select { width:100%; height:30px; min-height:30px; padding:0 26px 0 8px; border:1px solid color-mix(in srgb,var(--border) 72%,transparent); background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-xs); font-size:11px; font-weight:650; }
+.topbar .topbar-context-control .compact-select:hover { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-sm); transform:translateY(-1px); }
 /* El foco es un anillo y sólo un anillo (V-14). Antes hundía el control con
-   la cavidad clay y lo desplazaba 1px: enfocar un selector no es pulsarlo, y
+   la cavidad minimal y lo desplazaba 1px: enfocar un selector no es pulsarlo, y
    el hundimiento borraba la diferencia entre "puedo escribir aquí" y "lo estoy
    pulsando". El canto y el relieve del control no cambian al enfocarlo. */
-.topbar .topbar-context-control .compact-select:focus-visible { box-shadow:var(--sc-shadow-clay-xs),var(--sc-ring-focus); }
+.topbar .topbar-context-control .compact-select:focus-visible { box-shadow:var(--sc-shadow-xs),var(--sc-ring-focus); }
 .topbar-context-control--scenario { background:color-mix(in srgb,var(--accent) 7%,transparent); }
 .topbar-context-control--scenario > span { color:var(--accent); }
 .topbar-context-control--scenario .compact-select { border-color:color-mix(in srgb,var(--accent) 28%,var(--border)); }
@@ -299,16 +299,16 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
 .diagram-cursor-readout {
   background:var(--sc-color-surface-2);
   border:0;
-  box-shadow:var(--sc-shadow-clay-pressed);
+  box-shadow:var(--sc-shadow-pressed);
 }
 .topbar .compact-select:hover,
-.topbar .project-name input:hover { box-shadow:var(--sc-shadow-clay-pressed); }
+.topbar .project-name input:hover { box-shadow:var(--sc-shadow-pressed); }
 .topbar :is(.icon-button,.project-menu-toggle,.brand-home-button):hover:not(:disabled),
 .canvas-controls button:hover { background:var(--sc-color-surface-2); color:var(--text); }
 .topbar :is(.icon-button,.project-menu-toggle,.brand-home-button):active:not(:disabled),
-.canvas-controls button:active { box-shadow:var(--sc-shadow-clay-pressed); transform:var(--sc-clay-press-transform); }
-.analysis-status { box-shadow:var(--sc-shadow-clay-xs); transition:transform var(--sc-motion-press) var(--sc-ease-press), box-shadow var(--sc-motion-control) var(--sc-ease-standard), background var(--sc-motion-control) var(--sc-ease-standard); }
-.analysis-status:active { transform:var(--sc-clay-press-transform); box-shadow:var(--sc-shadow-clay-pressed); }
+.canvas-controls button:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+.analysis-status { box-shadow:var(--sc-shadow-xs); transition:transform var(--sc-motion-press) var(--sc-ease-press), box-shadow var(--sc-motion-control) var(--sc-ease-standard), background var(--sc-motion-control) var(--sc-ease-standard); }
+.analysis-status:active { transform:var(--sc-press-transform); box-shadow:var(--sc-shadow-pressed); }
 
 /* La marca es el ancla de la cabecera, no un icono auxiliar. Gana presencia
    en escritorio sin reducir objetivos táctiles ni sacrificar el título del
@@ -327,22 +327,22 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   display:inline-flex;
   align-items:center;
   gap:7px;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:var(--sc-radius-pill);
   background:var(--sc-color-surface-1);
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
   color:var(--muted);
   font-size:var(--sc-font-size-technical);
   cursor:pointer;
   transition:var(--sc-transition-control);
 }
-.topbar-command-button:hover { color:var(--text); box-shadow:var(--sc-shadow-clay-sm); transform:translateY(-1.5px); }
-.topbar-command-button:active { box-shadow:var(--sc-shadow-clay-pressed); transform:var(--sc-clay-press-transform); }
+.topbar-command-button:hover { color:var(--text); box-shadow:var(--sc-shadow-sm); transform:translateY(-1.5px); }
+.topbar-command-button:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 .topbar-command-button kbd {
   padding:1px 5px;
   border-radius:var(--sc-radius-xs);
   background:var(--sc-color-surface-2);
-  box-shadow:var(--sc-shadow-clay-pressed);
+  box-shadow:var(--sc-shadow-pressed);
   color:var(--subtle);
   font-family:var(--sc-font-mono);
   font-size:var(--sc-font-size-caption);
@@ -390,7 +390,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   display:flex;
   flex-direction:column;
   overflow:hidden;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:var(--sc-radius-modal);
   background:var(--sc-color-surface-1);
   box-shadow:var(--sc-shadow-modal);
@@ -411,18 +411,18 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   height:34px;
   display:grid;
   place-items:center;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:11px;
   background:var(--sc-color-surface-2);
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
 }
-.command-palette-head__icon { color:var(--accent); box-shadow:var(--sc-shadow-clay-pressed); }
+.command-palette-head__icon { color:var(--accent); box-shadow:var(--sc-shadow-pressed); }
 .command-palette-head > div { min-width:0; display:grid; gap:1px; }
 .command-palette-head > div > span { color:var(--accent); font-family:var(--sc-font-mono); font-size:9px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
 .command-palette-close { color:var(--muted); cursor:pointer; transition:var(--sc-transition-control); }
-.command-palette-close:hover { color:var(--text); transform:translateY(-1px); box-shadow:var(--sc-shadow-clay-sm); }
-.command-palette-close:active { transform:var(--sc-clay-press-transform); box-shadow:var(--sc-shadow-clay-pressed); }
-.command-palette-close:focus-visible { outline:none; box-shadow:var(--sc-shadow-clay-xs),var(--sc-ring-focus); }
+.command-palette-close:hover { color:var(--text); transform:translateY(-1px); box-shadow:var(--sc-shadow-sm); }
+.command-palette-close:active { transform:var(--sc-press-transform); box-shadow:var(--sc-shadow-pressed); }
+.command-palette-close:focus-visible { outline:none; box-shadow:var(--sc-shadow-xs),var(--sc-ring-focus); }
 .command-palette-title {
   margin:0;
   color:var(--text);
@@ -447,16 +447,16 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   border:0;
   border-radius:var(--sc-radius-sm);
   background:var(--sc-color-surface-2);
-  box-shadow:var(--sc-shadow-clay-pressed);
+  box-shadow:var(--sc-shadow-pressed);
   color:var(--text);
   font-size:var(--sc-font-size-body);
 }
-.command-palette-search input:focus-visible { outline:none; box-shadow:var(--sc-shadow-clay-pressed),var(--sc-ring-focus); }
+.command-palette-search input:focus-visible { outline:none; box-shadow:var(--sc-shadow-pressed),var(--sc-ring-focus); }
 .command-palette-search kbd {
   padding:2px 7px;
   border-radius:var(--sc-radius-xs);
   background:var(--sc-color-surface-2);
-  box-shadow:var(--sc-shadow-clay-pressed);
+  box-shadow:var(--sc-shadow-pressed);
   color:var(--subtle);
   font-family:var(--sc-font-mono);
   font-size:var(--sc-font-size-caption);
@@ -494,7 +494,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
 .command-palette-item.is-active {
   border-color:color-mix(in srgb,var(--accent) 24%,var(--border));
   background:var(--sc-color-surface-inset);
-  box-shadow:var(--sc-shadow-clay-pressed);
+  box-shadow:var(--sc-shadow-pressed);
 }
 .command-palette-item.is-active svg { color:var(--accent); }
 .command-palette-item:disabled { opacity:.45; cursor:not-allowed; }
@@ -506,7 +506,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   padding:2px 7px;
   border-radius:var(--sc-radius-xs);
   background:var(--sc-color-surface-2);
-  box-shadow:var(--sc-shadow-clay-pressed);
+  box-shadow:var(--sc-shadow-pressed);
   color:var(--subtle);
   font-family:var(--sc-font-mono);
   font-size:var(--sc-font-size-caption);
@@ -533,7 +533,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
  *
  * La cinta es una sola superficie de trabajo. Esta capa usa clases propias
  * para no arrastrar la composición histórica de pequeños clusters; conserva
- * los tokens Clay, los tres roles de zona y todos los comandos existentes.
+ * los tokens Minimal, los tres roles de zona y todos los comandos existentes.
  */
 
 .app-shell .topbar.topbar--atelier {
@@ -563,15 +563,15 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   flex:0 0 44px;
   display:grid;
   place-items:center;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:14px;
   background:var(--sc-color-surface-elevated);
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
   color:var(--accent);
 }
 .topbar--atelier .brand-home-button:hover,
-.topbar--atelier .brand-home-button:focus-visible { background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-clay-sm); transform:translateY(-1px); }
-.topbar--atelier .brand-home-button:active { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-clay-pressed); transform:var(--sc-clay-press-transform); }
+.topbar--atelier .brand-home-button:focus-visible { background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-sm); transform:translateY(-1px); }
+.topbar--atelier .brand-home-button:active { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 .topbar--atelier .brand-home-button svg { width:27px; height:27px; }
 
 .topbar--atelier .topbar-project-trigger,
@@ -580,10 +580,10 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   min-height:44px;
   display:grid;
   align-items:center;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:14px;
   background:var(--sc-color-surface-elevated);
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
   color:var(--text);
   cursor:pointer;
   font:inherit;
@@ -593,11 +593,11 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
 .topbar--atelier .topbar-project-trigger:hover,
 .topbar--atelier .topbar-analysis-trigger:hover,
 .topbar--atelier .topbar-project-trigger:focus-visible,
-.topbar--atelier .topbar-analysis-trigger:focus-visible { background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-clay-sm); transform:translateY(-1px); }
+.topbar--atelier .topbar-analysis-trigger:focus-visible { background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-sm); transform:translateY(-1px); }
 .topbar--atelier .topbar-project-trigger:active,
 .topbar--atelier .topbar-project-trigger[aria-expanded='true'],
 .topbar--atelier .topbar-analysis-trigger:active,
-.topbar--atelier .topbar-analysis-trigger[aria-expanded='true'] { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-clay-pressed); transform:var(--sc-clay-press-transform); }
+.topbar--atelier .topbar-analysis-trigger[aria-expanded='true'] { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 
 .topbar--atelier .topbar-project-trigger {
   grid-template-columns:minmax(0, 1fr) auto;
@@ -639,16 +639,16 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   padding:0;
   display:grid;
   place-items:center;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:13px;
   background:var(--sc-color-surface-elevated);
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
   color:var(--muted);
 }
 .topbar--atelier .topbar-primary-actions .sc-icon-button:hover:not(:disabled),
-.topbar--atelier .topbar-command-button:hover { color:var(--text); background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-clay-sm); transform:translateY(-1px); }
+.topbar--atelier .topbar-command-button:hover { color:var(--text); background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-sm); transform:translateY(-1px); }
 .topbar--atelier .topbar-primary-actions .sc-icon-button:active:not(:disabled),
-.topbar--atelier .topbar-command-button:active { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-clay-pressed); transform:var(--sc-clay-press-transform); }
+.topbar--atelier .topbar-command-button:active { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 .topbar--atelier .topbar-command-button > span { display:none; }
 
 .topbar--atelier .analyze-button {
@@ -659,19 +659,19 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   border:1px solid color-mix(in srgb, var(--accent) 74%, var(--sc-color-border));
   border-radius:14px;
   background:var(--accent-fill);
-  box-shadow:0 5px 0 color-mix(in srgb, var(--accent) 26%, var(--sc-color-text-primary) 16%), var(--sc-shadow-clay-xs);
+  box-shadow:0 5px 0 color-mix(in srgb, var(--accent) 26%, var(--sc-color-text-primary) 16%), var(--sc-shadow-xs);
   color:#fff;
   font-size:12px;
   font-weight:800;
   letter-spacing:.005em;
 }
-.topbar--atelier .analyze-button:hover:not(:disabled) { background:var(--accent-hover); box-shadow:0 7px 0 color-mix(in srgb, var(--accent) 30%, var(--sc-color-text-primary) 16%), var(--sc-shadow-clay-sm); transform:translateY(-1px); }
-.topbar--atelier .analyze-button:active:not(:disabled) { box-shadow:0 2px 0 color-mix(in srgb, var(--accent) 28%, var(--sc-color-text-primary) 16%), var(--sc-shadow-clay-pressed); transform:translateY(2px) scale(.985); }
+.topbar--atelier .analyze-button:hover:not(:disabled) { background:var(--accent-hover); box-shadow:0 7px 0 color-mix(in srgb, var(--accent) 30%, var(--sc-color-text-primary) 16%), var(--sc-shadow-sm); transform:translateY(-1px); }
+.topbar--atelier .analyze-button:active:not(:disabled) { box-shadow:0 2px 0 color-mix(in srgb, var(--accent) 28%, var(--sc-color-text-primary) 16%), var(--sc-shadow-pressed); transform:translateY(2px) scale(.985); }
 .topbar--atelier .analyze-button .sc-button__label { display:block; color:#fff; }
 
 .topbar--atelier .topbar-health-zone { justify-self:end; gap:5px; }
 .topbar--atelier .analysis-status-shell { min-width:32px; }
-.topbar--atelier .analysis-status { height:40px; min-width:40px; padding:0; border-radius:13px; box-shadow:var(--sc-shadow-clay-xs); }
+.topbar--atelier .analysis-status { height:40px; min-width:40px; padding:0; border-radius:13px; box-shadow:var(--sc-shadow-xs); }
 .topbar--atelier .analysis-status-label { display:none; }
 .topbar--atelier .analysis-reliability-line { display:none; }
 .topbar--atelier .autosave-state {
@@ -679,10 +679,10 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   min-height:40px;
   justify-content:center;
   padding:0;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:13px;
   background:var(--sc-color-surface-elevated);
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
 }
 .topbar--atelier .autosave-state__label { display:none; }
 .topbar--atelier .topbar-conflict-resolver {
@@ -709,10 +709,10 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   width:100%;
   min-height:42px;
   padding:0 11px;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:11px;
   background:var(--sc-color-surface-inset);
-  box-shadow:var(--sc-shadow-clay-pressed);
+  box-shadow:var(--sc-shadow-pressed);
   color:var(--text);
   font-family:var(--sc-font-sans);
   font-size:13px;
@@ -721,7 +721,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   text-transform:none;
 }
 .topbar--atelier .topbar-panel-field input:focus-visible,
-.topbar--atelier .topbar-panel-field select:focus-visible { outline:none; box-shadow:var(--sc-shadow-clay-pressed),var(--sc-ring-focus); }
+.topbar--atelier .topbar-panel-field select:focus-visible { outline:none; box-shadow:var(--sc-shadow-pressed),var(--sc-ring-focus); }
 .topbar--atelier .topbar-analysis-panel > p { margin:4px 6px 9px; color:var(--subtle); font-family:var(--sc-font-mono); font-size:9px; font-weight:750; letter-spacing:.08em; text-transform:uppercase; }
 .topbar--atelier .topbar-panel-actions { display:grid; gap:3px; margin-top:9px; padding-top:8px; border-top:1px solid var(--sc-color-border-soft); }
 .topbar--atelier .topbar-project-panel .topbar-panel-actions button,
@@ -767,19 +767,19 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   min-height:66px;
   align-items:flex-start;
   padding:10px;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:13px;
   background:var(--sc-color-surface-elevated);
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
 }
 .topbar--atelier .topbar-project-panel .topbar-panel-actions > button:hover {
-  box-shadow:var(--sc-shadow-clay-sm);
+  box-shadow:var(--sc-shadow-sm);
   transform:translateY(-1px);
 }
 .topbar--atelier .topbar-project-panel .topbar-panel-actions > button:active {
   background:var(--sc-color-surface-inset);
-  box-shadow:var(--sc-shadow-clay-pressed);
-  transform:var(--sc-clay-press-transform);
+  box-shadow:var(--sc-shadow-pressed);
+  transform:var(--sc-press-transform);
 }
 .topbar--atelier .topbar-project-panel .topbar-panel-actions > button:last-child {
   grid-column:1/-1;
@@ -905,12 +905,12 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   padding:7px;
   grid-template-columns:minmax(210px,.78fr) minmax(540px,1.7fr) max-content;
   gap:7px;
-  border:var(--sc-clay-edge);
+  border:var(--sc-surface-edge);
   border-radius:20px;
   background:var(--sc-color-surface-1);
   box-shadow:
     0 6px 0 color-mix(in srgb,var(--sc-color-text-primary) 8%,transparent),
-    var(--sc-shadow-clay-md);
+    var(--sc-shadow-md);
   isolation:isolate;
   z-index:45;
 }
@@ -921,7 +921,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   border:1px solid var(--sc-color-border-soft);
   border-radius:15px;
   background:var(--sc-color-surface-inset);
-  box-shadow:var(--sc-shadow-clay-pressed);
+  box-shadow:var(--sc-shadow-pressed);
 }
 
 .app-shell[data-shell-class='X2'] .topbar--atelier .topbar-project-zone {
@@ -950,7 +950,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
 .app-shell[data-shell-class='X2'] .topbar--atelier .topbar-project-trigger:focus-visible {
   border-color:var(--sc-color-border-soft);
   background:var(--sc-color-surface-elevated);
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
 }
 
 .app-shell[data-shell-class='X2'] .topbar--atelier .topbar-project-trigger > strong {
@@ -985,7 +985,7 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   border:1px solid var(--sc-color-border-soft);
   border-radius:12px;
   background:var(--sc-color-surface-1);
-  box-shadow:var(--sc-shadow-clay-xs);
+  box-shadow:var(--sc-shadow-xs);
 }
 
 .app-shell[data-shell-class='X2'] .topbar--atelier .topbar-history-cluster .sc-icon-button {
@@ -1009,32 +1009,32 @@ button.analysis-status:hover { background:color-mix(in srgb,var(--analysis-statu
   border-radius:11px;
 }
 
-.app-shell[data-shell-class='X2'] .topbar--atelier .analyze-button--clay-primary {
+.app-shell[data-shell-class='X2'] .topbar--atelier .analyze-button--minimal-primary {
   min-width:118px;
   height:42px;
   border-radius:12px;
   color:#fff !important;
   box-shadow:
     0 4px 0 color-mix(in srgb,var(--accent) 46%,#14352c),
-    var(--sc-shadow-clay-xs);
+    var(--sc-shadow-xs);
 }
 
-.app-shell[data-shell-class='X2'] .topbar--atelier .analyze-button--clay-primary :is(svg,.sc-button__label) {
+.app-shell[data-shell-class='X2'] .topbar--atelier .analyze-button--minimal-primary :is(svg,.sc-button__label) {
   color:#fff !important;
 }
 
-.app-shell[data-shell-class='X2'] .topbar--atelier .analyze-button--clay-primary:hover:not(:disabled) {
+.app-shell[data-shell-class='X2'] .topbar--atelier .analyze-button--minimal-primary:hover:not(:disabled) {
   transform:translateY(-2px);
   box-shadow:
     0 6px 0 color-mix(in srgb,var(--accent) 48%,#14352c),
-    var(--sc-shadow-clay-sm);
+    var(--sc-shadow-sm);
 }
 
-.app-shell[data-shell-class='X2'] .topbar--atelier .analyze-button--clay-primary:active:not(:disabled) {
+.app-shell[data-shell-class='X2'] .topbar--atelier .analyze-button--minimal-primary:active:not(:disabled) {
   transform:translateY(2px) scale(.985);
   box-shadow:
     0 1px 0 color-mix(in srgb,var(--accent) 44%,#14352c),
-    var(--sc-shadow-clay-pressed);
+    var(--sc-shadow-pressed);
 }
 
 .app-shell[data-shell-class='X2'] .topbar--atelier .topbar-health-zone {

@@ -15,7 +15,7 @@ export const shareOrDownloadPortableBytes = async (
   bytes: Uint8Array,
   filename: string,
   mimeType: string,
-  title = 'Expediente structureCo',
+  title = 'Expediente FusionStructure',
 ): Promise<'shared' | 'downloaded' | 'cancelled'> => {
   const file = new File([bytes as BlobPart], filename, { type: mimeType });
   if (typeof navigator.share === 'function' && navigator.canShare?.({ files: [file] })) {
