@@ -45,6 +45,8 @@ import { formatInspectorValue } from './numericFormatting';
 import { SectionPresetSelector } from './SectionPresetSelector';
 import { PersonalSectionSelector } from './PersonalSectionSelector';
 import { SectionViewer2D } from './SectionViewer2D';
+import { SupportPicker } from './SupportPicker';
+import { applySupportPreset, type SupportEntry } from './supportCatalog';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
 import { MemberFavoritesPanel } from '../library/MemberFavoritesPanel';
 import {
@@ -194,7 +196,9 @@ export const InspectorProperties = () => {
       if (!node) return draft;
       if (key === 'x' || key === 'y') node[key] = Number(value);
       else if (key === 'internalHinge') node.internalHinge = Boolean(value);
-      else if (key === 'supportType') {
+      else if (key === 'supportPreset') {
+        node.support = applySupportPreset(node.support, value as SupportEntry);
+      } else if (key === 'supportType') {
         const type = value as SupportType;
         const spring = node.support.spring;
         node.support = type === 'roller'
@@ -203,10 +207,14 @@ export const InspectorProperties = () => {
             ? { type, restrainX: false, restrainY: false, restrainR: false, spring }
             : { type, spring };
       } else if (key === 'supportAngle') node.support.angleDeg = Number(value);
+      else if (key === 'supportVisualAngle') {
+        if (value === null) delete node.support.angleDeg;
+        else node.support.angleDeg = Number(value);
+      }
       else if (key === 'restrainX' || key === 'restrainY' || key === 'restrainR') node.support[key] = Boolean(value);
       else if (key.startsWith('spring.')) {
         node.support.spring ??= {};
-        const springKey = key.split('.')[1] as 'kx' | 'ky' | 'kr' | 'kNormal';
+        const springKey = key.split('.')[1] as 'kx' | 'ky' | 'kr' | 'kNormal' | 'angleDeg';
         node.support.spring[springKey] = Number(value);
       } else if (key.startsWith('prescribed.')) {
         node.support.prescribed ??= {};
@@ -403,13 +411,6 @@ export const InspectorProperties = () => {
       </label>
     </InspectorPropertyGroup>
 
-    {!classroomMode ? <InspectorPropertyGroup title={t('inspector.springs')} description={t('inspector.optionalSupportStiffnesses')}>
-      <PhysicalNumberField label="kx" value={selectedNode.support.spring?.kx ?? 0} units={units} quantity="translationalStiffness" resetKey={`${selectionKey}:spring-kx`} validate={nonNegative} onCommit={(value) => updateNode('spring.kx', value)} />
-      <PhysicalNumberField label="ky" value={selectedNode.support.spring?.ky ?? 0} units={units} quantity="translationalStiffness" resetKey={`${selectionKey}:spring-ky`} validate={nonNegative} onCommit={(value) => updateNode('spring.ky', value)} />
-      <PhysicalNumberField label="kθ" value={selectedNode.support.spring?.kr ?? 0} units={units} quantity="rotationalStiffness" resetKey={`${selectionKey}:spring-kr`} validate={nonNegative} onCommit={(value) => updateNode('spring.kr', value)} />
-      <PhysicalNumberField label={t('inspector.kNormal')} value={selectedNode.support.spring?.kNormal ?? 0} units={units} quantity="translationalStiffness" resetKey={`${selectionKey}:spring-normal`} validate={nonNegative} onCommit={(value) => updateNode('spring.kNormal', value)} />
-    </InspectorPropertyGroup> : <InspectorLockedState title={t('inspector.springsLockedClassroom')}>{t('inspector.springsLockedClassroomBody')}</InspectorLockedState>}
-
     {!classroomMode ? <InspectorPropertyGroup title="Vínculos, contacto y fricción" description="Conecta este nodo al terreno o a otro nodo; los contactos se resuelven por conjunto activo.">
       <div className="section-heading"><span className="section-description">{selectedNodeLinks.length ? `${selectedNodeLinks.length} vínculo(s) definido(s)` : 'Sin vínculos especiales'}</span><button type="button" className="mini-button" aria-label="Agregar vínculo" onClick={() => updateProject((draft) => {
         draft.nodeLinks ??= [];
@@ -600,15 +601,18 @@ export const InspectorProperties = () => {
       <InspectorPropertyGroup title={t('inspector.frequentProperties')} description={t('inspector.nodeFrequentDescription')}>
         <PhysicalNumberField label="X" value={selectedNode.x} units={units} quantity="length" resetKey={`${selectionKey}:x`} onCommit={(value) => updateNode('x', value)} />
         <PhysicalNumberField label="Y" value={selectedNode.y} units={units} quantity="length" resetKey={`${selectionKey}:y`} onCommit={(value) => updateNode('y', value)} />
-        <SelectField label={t('inspector.support')} value={selectedNode.support.type} onChange={(value) => updateNode('supportType', value)}>
-          <option value="none">{t('inspector.free')}</option><option value="pin">{t('inspector.pin')}</option><option value="roller">{t('inspector.roller')}</option><option value="fixed">{t('inspector.fixed')}</option><option value="custom">{t('inspector.custom')}</option>
-        </SelectField>
-        {selectedNode.support.type === 'roller' ? <InspectorNumericField label={t('inspector.normal')} value={selectedNode.support.angleDeg ?? 90} unit="°" resetKey={`${selectionKey}:support-angle`} language={language} formatOptions={{ maximumFractionDigits: 2 }} hint={t('inspector.rollerNormalHint')} onCommit={(value) => updateNode('supportAngle', value)} /> : null}
-        {selectedNode.support.type === 'custom' ? <div className="checkbox-grid" role="group" aria-label={t('inspector.restrictedDegreesOfFreedom')}>
-          <label><input type="checkbox" checked={selectedNode.support.restrainX ?? false} onChange={(event) => updateNode('restrainX', event.target.checked)} /> Ux</label>
-          <label><input type="checkbox" checked={selectedNode.support.restrainY ?? false} onChange={(event) => updateNode('restrainY', event.target.checked)} /> Uy</label>
-          <label><input type="checkbox" checked={selectedNode.support.restrainR ?? false} onChange={(event) => updateNode('restrainR', event.target.checked)} /> Rz</label>
-        </div> : null}
+        <SupportPicker
+          support={selectedNode.support}
+          selectionKey={selectionKey}
+          units={units}
+          classroomMode={classroomMode}
+          settlementCount={selectedNodePrescribed.length}
+          onApplyPreset={(entry) => updateNode('supportPreset', entry)}
+          onAngleChange={(value) => updateNode('supportAngle', value)}
+          onVisualAngleChange={(value) => updateNode('supportVisualAngle', value)}
+          onRestraintChange={(key, value) => updateNode(key, value)}
+          onSpringChange={(key, value) => updateNode(`spring.${key}`, value)}
+        />
       </InspectorPropertyGroup>
       <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived" description={t('inspector.derivedReadOnlyDescription')}>
         <InspectorDerivedList rows={[

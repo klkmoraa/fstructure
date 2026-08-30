@@ -41,7 +41,6 @@ import { normalizeProject } from '../../data/migrate';
 import { saveBytes, type SaveOutcome } from '../../platform/fileSystem';
 import { buildShareLink } from '../../utils/shareLink';
 import { AnalysisStatus } from './AnalysisStatus';
-import { BrandMark } from './BrandMark';
 import { Button, IconButton } from '../../design-system/components/controls';
 import { useClassroomSession } from '../../store/ClassroomSessionContext';
 import { presentExample } from '../welcome/examplePresentation';
@@ -487,7 +486,7 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
     <header ref={topbarRef} className="topbar topbar--atelier" data-topbar-layout="command-island">
       <div className="topbar-zone topbar-document-zone topbar-project-zone" data-topbar-zone="document" data-topbar-role="project">
         <button className="brand-mark brand-home-button" type="button" aria-label={t('navigation.home')} onClick={onOpenHome}>
-          <BrandMark size={46} />
+          <span className="topbar-wordmark" aria-hidden="true">FusionStructure</span>
         </button>
         <button
           ref={projectMenuButtonRef}
@@ -763,7 +762,7 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
             </AnimatePresence>
           </div>
           <Button
-            className={`analyze-button analyze-button--clay-primary${isAnalyzing ? ' analyzing' : ''}`}
+            className={`analyze-button analyze-button--minimal-primary${isAnalyzing ? ' analyzing' : ''}`}
             data-label-tone="on-brand"
             variant="primary"
             size="touch"

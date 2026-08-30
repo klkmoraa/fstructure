@@ -64,7 +64,7 @@
 }
 
 .structural-bom__family-filter button { padding: 0 12px; font-weight: 650; }
-.structural-bom__family-filter button.active { color: var(--sc-color-text-primary); background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-clay-xs); }
+.structural-bom__family-filter button.active { color: var(--sc-color-text-primary); background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); }
 
 .structural-bom__identity-filter { display: grid; gap: 4px; min-width: 180px; }
 .structural-bom__identity-filter span { color: var(--sc-color-text-muted); font-size: 0.72rem; }

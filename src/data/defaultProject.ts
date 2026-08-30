@@ -171,7 +171,7 @@ export const createHibbelerStyleDiagramPractice = (): ProjectModel => ({
   ],
   educationalCase: {
     kind: 'original-practice',
-    sourceTitle: 'Práctica original structureCo basada en la metodología de Hibbeler',
+    sourceTitle: 'Práctica original FusionStructure basada en la metodología de Hibbeler',
     sourceUrl: HIBBELER_PEARSON_11E,
     chapter: 'Tema equivalente al capítulo 4 · Cargas internas en miembros',
     note: 'Ejercicio original; no reproduce un enunciado ni una figura del libro.',
@@ -204,7 +204,7 @@ export const createHibbelerStyleTrussPractice = (): ProjectModel => ({
   memberLoads: [],
   educationalCase: {
     kind: 'original-practice',
-    sourceTitle: 'Práctica original structureCo basada en la metodología de Hibbeler',
+    sourceTitle: 'Práctica original FusionStructure basada en la metodología de Hibbeler',
     sourceUrl: HIBBELER_PEARSON_11E,
     chapter: 'Tema equivalente al capítulo 3 · Armaduras estáticamente determinadas',
     note: 'Ejercicio original con geometría 3–4–5; no reproduce un problema del libro.',

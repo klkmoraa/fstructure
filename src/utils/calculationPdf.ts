@@ -61,7 +61,7 @@ const METHOD_FILENAME: Record<SolutionMethodId, string> = {
  * duplicated rather than imported so the report never depends on the UI's language state —
  * the document is written in Spanish regardless of the interface.
  */
-const PROFESSIONAL_NOTE = 'structureCo es una ayuda de modelado y cálculo: no sustituye la revisión, '
+const PROFESSIONAL_NOTE = 'FusionStructure es una ayuda de modelado y cálculo: no sustituye la revisión, '
   + 'el criterio ni la certificación de un profesional. Los resultados dependen enteramente del '
   + 'modelo introducido, y su idoneidad es responsabilidad del ingeniero que firma.';
 

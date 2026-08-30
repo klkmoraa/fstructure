@@ -34,7 +34,7 @@ export function StructuralAssetStudio() {
   return <main className="asset-studio" data-theme={theme} data-testid="structural-asset-studio">
     <header className="asset-studio__header">
       <div>
-        <p>StructureCo · biblioteca estructural 3D</p>
+        <p>FusionStructure · biblioteca estructural 3D</p>
         <h1>Atlas estructural</h1>
         <span>40 escenas Three.js editables, transparentes y preparadas para Día y Noche.</span>
       </div>

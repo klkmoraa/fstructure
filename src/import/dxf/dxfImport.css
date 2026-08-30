@@ -47,14 +47,14 @@
   border-radius: 10px;
   background: var(--accent-fill, var(--accent, #007d61));
   color: var(--accent-foreground);
-  box-shadow: var(--sc-shadow-clay-action, 0 3px 0 rgb(0 0 0 / .16));
+  box-shadow: var(--sc-shadow-action, 0 3px 0 rgb(0 0 0 / .16));
   font: inherit;
   font-weight: 750;
   cursor: pointer;
 }
 
 .dxf-file-field input:hover::file-selector-button {
-  box-shadow: var(--sc-shadow-clay-action-hover, 0 5px 0 rgb(0 0 0 / .18));
+  box-shadow: var(--sc-shadow-action-hover, 0 5px 0 rgb(0 0 0 / .18));
   transform: translateY(-1px);
 }
 
