@@ -83,6 +83,10 @@
   box-shadow: none !important;
 }
 
+.workspace-screen .toolbar :is(.sc-tool-button, .tool-button, .sc-popover__trigger) {
+  color: var(--text) !important;
+}
+
 .workspace-screen .toolbar :is(.sc-tool-button, .tool-button, .sc-popover__trigger):hover:not(:disabled) {
   border-color: var(--border) !important;
   background: #f8fafc !important;
@@ -124,6 +128,19 @@
   border-radius: 8px !important;
   background: #ffffff !important;
   box-shadow: var(--sc-shadow-floating) !important;
+}
+
+.workspace-screen .canvas-view-chips .active {
+  border-color: var(--border-soft) !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen .app-shell-skip-link {
+  border-radius: 6px !important;
+  box-shadow: none !important;
 }
 
 .app-shell[data-shell-class='K0'] .topbar--atelier .brand-home-button {
