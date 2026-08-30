@@ -109,7 +109,7 @@
 
 .home-atlas .home-quick-actions .welcome-launcher-card:hover {
   box-shadow: var(--sc-shadow-sm);
-  transform: translateY(-1.5px);
+
 }
 
 .home-atlas .home-quick-actions .welcome-launcher-card:active {

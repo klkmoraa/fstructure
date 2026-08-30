@@ -17,12 +17,18 @@ export type MaterialKit = {
 };
 
 export const createMaterialKit = (theme: StructuralRenderTheme): MaterialKit => ({
-  concrete: new THREE.MeshStandardMaterial({ color: theme === 'day' ? 0xbab3a9 : 0xb9bdb8, roughness: 0.96, metalness: 0 }),
-  steel: new THREE.MeshStandardMaterial({ color: theme === 'day' ? 0x667173 : 0x9ba3a2, roughness: 0.86, metalness: 0.16 }),
-  base: new THREE.MeshStandardMaterial({ color: theme === 'day' ? 0xd7d0c5 : 0x9ca5a2, roughness: 0.98, metalness: 0 }),
-  accent: new THREE.MeshStandardMaterial({ color: 0x007d61, roughness: 0.92, metalness: 0.02 }),
-  rebar: new THREE.MeshStandardMaterial({ color: 0x168a6c, roughness: 0.78, metalness: 0.22 }),
-  edge: new THREE.LineBasicMaterial({ color: theme === 'day' ? 0x17383b : 0xf0ece4, transparent: true, opacity: theme === 'day' ? 0.48 : 0.64 }),
+  // Paleta acromática. La versión anterior horneaba la identidad de
+  // StructureCo en la ilustración: `0x007d61` era literalmente su color de
+  // acción y `0x168a6c` su verde de cortante, así que el pórtico seguía siendo
+  // verde por mucho que la interfaz dejara de serlo. Aquí los cuatro
+  // materiales se separan por VALOR, no por hue, que es como se separa todo lo
+  // demás en FusionStructure.
+  concrete: new THREE.MeshStandardMaterial({ color: theme === 'day' ? 0xd4d4d4 : 0x8a8a8a, roughness: 0.96, metalness: 0 }),
+  steel: new THREE.MeshStandardMaterial({ color: theme === 'day' ? 0x8f8f8f : 0xa8a8a8, roughness: 0.86, metalness: 0.16 }),
+  base: new THREE.MeshStandardMaterial({ color: theme === 'day' ? 0xe8e8e8 : 0x737373, roughness: 0.98, metalness: 0 }),
+  accent: new THREE.MeshStandardMaterial({ color: theme === 'day' ? 0x333333 : 0xf7f7f7, roughness: 0.92, metalness: 0.02 }),
+  rebar: new THREE.MeshStandardMaterial({ color: theme === 'day' ? 0x525252 : 0xc4c4c4, roughness: 0.78, metalness: 0.22 }),
+  edge: new THREE.LineBasicMaterial({ color: theme === 'day' ? 0x0a0a0a : 0xf7f7f7, transparent: true, opacity: theme === 'day' ? 0.42 : 0.56 }),
 });
 
 export const roundedMember = (
@@ -165,8 +171,8 @@ export const renderPortalAssetDataUrl = async (assetId: PortalAssetId, theme: St
   const scene = new THREE.Scene();
   const group = buildPortalGroup(assetId, theme);
   scene.add(group);
-  scene.add(new THREE.HemisphereLight(theme === 'day' ? 0xfffbef : 0xe9f5f3, theme === 'day' ? 0x687577 : 0x061216, theme === 'day' ? 2.6 : 2.25));
-  const key = new THREE.DirectionalLight(theme === 'day' ? 0xfff4dc : 0xdcefee, theme === 'day' ? 4.4 : 3.6);
+  scene.add(new THREE.HemisphereLight(theme === 'day' ? 0xffffff : 0xf2f2f2, theme === 'day' ? 0x737373 : 0x0b0b0b, theme === 'day' ? 2.6 : 2.25));
+  const key = new THREE.DirectionalLight(theme === 'day' ? 0xffffff : 0xf2f2f2, theme === 'day' ? 4.4 : 3.6);
   key.position.set(-4.5, 7, 5.5);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
@@ -175,13 +181,13 @@ export const renderPortalAssetDataUrl = async (assetId: PortalAssetId, theme: St
   key.shadow.camera.top = 5;
   key.shadow.camera.bottom = -5;
   scene.add(key);
-  const rim = new THREE.DirectionalLight(theme === 'day' ? 0xb8d9d1 : 0x78b8aa, 1.7);
+  const rim = new THREE.DirectionalLight(theme === 'day' ? 0xdcdcdc : 0x8a8a8a, 1.7);
   rim.position.set(5, 3, -5);
   scene.add(rim);
 
   const shadow = new THREE.Mesh(
     new THREE.PlaneGeometry(6.8, 4.8),
-    new THREE.ShadowMaterial({ color: theme === 'day' ? 0x263330 : 0x000000, opacity: theme === 'day' ? 0.11 : 0.2 }),
+    new THREE.ShadowMaterial({ color: 0x0a0a0a, opacity: theme === 'day' ? 0.09 : 0.2 }),
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = -0.275;

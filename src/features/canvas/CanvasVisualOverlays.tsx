@@ -18,8 +18,8 @@ export const GlobalAxes = ({ canvasHeight }: { canvasHeight: number }) => <g cla
   <line x1="0" y1="0" x2="58" y2="0" markerEnd="url(#axis-x)" />
   <line x1="0" y1="0" x2="0" y2="-58" markerEnd="url(#axis-y)" />
   <defs>
-    <marker id="axis-x" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="var(--moment)" /></marker>
-    <marker id="axis-y" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="var(--shear)" /></marker>
+    <marker id="axis-x" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="var(--axis)" /></marker>
+    <marker id="axis-y" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10Z" fill="var(--axis)" /></marker>
   </defs>
   <text x="65" y="5" className="axis-x-label">X</text><text x="-5" y="-66" className="axis-y-label">Y</text>
 </g>;

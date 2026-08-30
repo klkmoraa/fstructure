@@ -106,7 +106,7 @@
   transition: transform 140ms cubic-bezier(.2,.8,.2,1), box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
-.structure-generator__families > button:hover { transform: translateY(-1px); box-shadow: var(--sc-shadow-sm); }
+.structure-generator__families > button:hover { box-shadow: var(--sc-shadow-sm); }
 .structure-generator__families > button:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
 .structure-generator__families > button[aria-checked='true'] {
   color: var(--accent);

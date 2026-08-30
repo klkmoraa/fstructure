@@ -15,6 +15,7 @@ import {
   HardDriveDownload,
   Maximize2,
   Minimize2,
+  Moon,
   MoreHorizontal,
   PanelBottom,
   PanelRightClose,
@@ -27,6 +28,7 @@ import {
   Sheet,
   SlidersHorizontal,
   Sparkles,
+  Sun,
   Layers3,
   Undo2,
   Wrench,
@@ -34,7 +36,7 @@ import {
 import { createBlankProject, exampleProjects } from '../../data/defaultProject';
 import { useI18n } from '../../i18n/useI18n';
 import { usePhase2I18n } from '../../i18n/usePhase2I18n';
-import { useProjectAnalysis, useProjectModel } from '../../store/ProjectContext';
+import { useProjectAnalysis, useProjectModel, useWorkspaceUI } from '../../store/ProjectContext';
 import { exportProjectJson, safeProjectFilename } from '../../utils/export';
 import { normalizeProject } from '../../data/migrate';
 import { saveBytes, type SaveOutcome } from '../../platform/fileSystem';
@@ -105,6 +107,9 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
     analyze,
     ensureEducationTrace,
   } = useProjectAnalysis();
+  // Sólo `theme` se lee del contexto de UI aquí; el resto de su estado
+  // (herramienta activa, selección, cursor de diagrama) no viste esta barra.
+  const { theme, setTheme } = useWorkspaceUI();
   const { language, t } = useI18n();
   const { t: phase2T } = usePhase2I18n(language);
   const classroomSession = useClassroomSession();
@@ -327,7 +332,7 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
   // `requestAnalysis` (this button's own classroom-session bookkeeping), not the
   // raw `analyze` — the registry only fixes *which* command runs and how its
   // enabled state is computed, not which concrete callback a surface supplies.
-  const topBarCommandContext: TopBarCommandContext = { t, project, isAnalyzing, canUndo, canRedo, theme: 'light', setTheme: () => undefined, analyze: requestAnalysis, undo, redo };
+  const topBarCommandContext: TopBarCommandContext = { t, project, isAnalyzing, canUndo, canRedo, theme, setTheme, analyze: requestAnalysis, undo, redo };
   const command = (id: Parameters<typeof resolveTopBarCommand>[0]) => resolveTopBarCommand(id, topBarCommandContext);
 
   const exportPortable = async () => {
@@ -479,10 +484,10 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
   const analysisOrderLabel = t(project.settings.analysisMode === 'p-delta' ? 'analysis.orderPDelta' : 'analysis.orderFirst');
   const analysisModeLabel = t(project.settings.calculationMode === 'classroom' ? 'analysis.modeClassroom' : 'analysis.modeComplete');
   return (
-    <header ref={topbarRef} className="topbar topbar--atelier" data-topbar-layout="command-island">
+    <header ref={topbarRef} className="topbar topbar--fusion" data-topbar-layout="single-row">
       <div className="topbar-zone topbar-document-zone topbar-project-zone" data-topbar-zone="document" data-topbar-role="project">
         <button className="brand-mark brand-home-button" type="button" aria-label={t('navigation.home')} onClick={onOpenHome}>
-          <span className="topbar-wordmark" aria-hidden="true">FusionStructure</span>
+          <span className="topbar-wordmark" aria-hidden="true">FS</span>
         </button>
         <button
           ref={projectMenuButtonRef}
@@ -779,6 +784,16 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
         >
           <Wrench size={17} aria-hidden="true" />
           <span>{modelDoctorCommand.label}</span>
+        </button>
+        <button
+          type="button"
+          className="topbar-command-button theme-toggle"
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          aria-label={t(theme === 'dark' ? 'theme.light' : 'theme.dark')}
+          title={t(theme === 'dark' ? 'theme.light' : 'theme.dark')}
+        >
+          {theme === 'dark' ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}
+          <span>{t(theme === 'dark' ? 'theme.light' : 'theme.dark')}</span>
         </button>
         <AnalysisStatus
           projectId={project.id}

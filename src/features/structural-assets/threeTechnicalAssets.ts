@@ -329,8 +329,8 @@ export const buildThreeTechnicalGroup = (assetId: ThreeTechnicalAssetId, theme: 
 };
 
 export const THREE_TECHNICAL_LOAD_COLORS = Object.freeze({
-  point: '#2f73c8',
-  distributed: '#65a323',
-  varying: '#65a323',
-  appliedMoment: '#c65f86',
+  point: '#e5484d',
+  distributed: '#e5484d',
+  varying: '#e5484d',
+  appliedMoment: '#e5484d',
 });

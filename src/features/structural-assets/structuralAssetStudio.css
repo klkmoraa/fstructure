@@ -7,19 +7,22 @@
   font-family: var(--sc-font-ui);
 }
 
+/* La vitrina previsualiza cada activo en Día y en Noche a la vez, así que su
+   bloque oscuro local es legítimo: no sigue al tema de la aplicación. Lo que
+   no lo era son sus valores — un petróleo propio y una sombra claymórfica que
+   nadie más del producto tenía ya. Ahora repite los neutros de la fundación. */
 .asset-studio[data-theme='dark'] {
-  --sc-color-bg-app: #07161b;
-  --sc-color-bg-canvas: #0b1d23;
-  --sc-color-surface-1: #112830;
-  --sc-color-surface-2: #17333d;
-  --sc-color-surface-elevated: #17343e;
-  --sc-color-text-primary: #f3f0e8;
-  --sc-color-text-secondary: #c1ceca;
-  --sc-color-text-muted: #91a29f;
-  --sc-color-border: #29434b;
-  --sc-color-border-soft: #1f3942;
-  --sc-color-divider: #203941;
-  --sc-shadow-xs: 2px 3px 6px rgb(0 0 0 / .42), -2px -2px 4px rgb(67 98 108 / .14), inset 0 1px 0 rgb(255 255 255 / .05), inset -1px -1px 3px rgb(0 0 0 / .25);
+  --sc-color-bg-app: #0b0b0b;
+  --sc-color-bg-canvas: #0b0b0b;
+  --sc-color-surface-1: #121212;
+  --sc-color-surface-2: #171717;
+  --sc-color-surface-elevated: #171717;
+  --sc-color-text-primary: #f7f7f7;
+  --sc-color-text-secondary: #a6a6a6;
+  --sc-color-text-muted: #8c8c8c;
+  --sc-color-border: #303030;
+  --sc-color-border-soft: #242424;
+  --sc-color-divider: #242424;
   color-scheme: dark;
 }
 
@@ -41,7 +44,7 @@
 .asset-studio__header p { margin: 0; color: var(--sc-color-action-primary); font: 720 10px/1 var(--sc-font-mono); letter-spacing: .12em; text-transform: uppercase; }
 .asset-studio__header h1 { margin: 0; font-size: clamp(29px, 4vw, 47px); letter-spacing: -.05em; line-height: .95; }
 .asset-studio__header span { color: var(--sc-color-text-secondary); font-size: 12px; }
-.asset-studio__header > button { min-width: 104px; min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--sc-color-border); border-radius: 11px; background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); box-shadow: var(--sc-shadow-xs); cursor: pointer; font: 700 12px/1 var(--sc-font-ui); }
+.asset-studio__header > button { min-width: 104px; min-height: 44px; padding: 0 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); box-shadow: var(--sc-shadow-xs); cursor: pointer; font: 700 12px/1 var(--sc-font-ui); }
 
 .asset-studio__body { width: min(1480px, 100%); margin-inline: auto; padding: 33px clamp(16px, 4vw, 56px) 80px; display: grid; gap: 42px; }
 .asset-studio__family { display: grid; gap: 14px; }
@@ -50,7 +53,7 @@
 .asset-studio__family > header span { color: var(--sc-color-text-muted); font: 600 10px/1 var(--sc-font-mono); }
 .asset-studio__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 
-.asset-studio__card { min-width: 0; overflow: hidden; border: 1px solid var(--sc-color-border-soft); border-radius: 16px; background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); }
+.asset-studio__card { min-width: 0; overflow: hidden; border: 1px solid var(--sc-color-border-soft); border-radius: var(--sc-radius-panel); background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); }
 .asset-studio__canvas { min-height: 190px; padding: 10px; display: grid; place-items: center; border-bottom: 1px solid var(--sc-color-border-soft); background: var(--sc-color-bg-canvas); }
 .asset-studio__canvas :is(img, svg) { width: 100%; max-height: 190px; }
 .asset-studio__meta { min-height: 76px; padding: 12px 14px 13px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 10px; align-items: baseline; }

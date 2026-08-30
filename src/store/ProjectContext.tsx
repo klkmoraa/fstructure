@@ -39,6 +39,23 @@ interface HistoryEntry {
 // the editor shell; this key carries only revision notifications, never data.
 const PROJECT_LIBRARY_CHANGE_KEY = 'structureCo.project-library.changed';
 
+const THEME_STORAGE_KEY = 'fusionstructure.theme';
+
+/**
+ * Tema inicial. La fusión había clavado el valor a `'light'` con un `setTheme`
+ * vacío, así que el conmutador del producto y el comando de la paleta existían
+ * pero no hacían nada. El orden es: lo que el usuario eligió aquí antes, y si
+ * nunca eligió, lo que pide el sistema.
+ */
+const readPreferredTheme = (): ThemeMode => {
+  if (typeof window === 'undefined') return 'light';
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'light' || stored === 'dark') return stored;
+  } catch { /* almacenamiento bloqueado: se decide por preferencia del sistema */ }
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [initial] = useState(() => loadProjectFromStorage(localStorage));
   const [project, setProject] = useState<ProjectModel>(initial.project);
@@ -47,8 +64,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [selection, setSelectionState] = useState<Selection>(null);
-  const theme: ThemeMode = 'light';
-  const setTheme = useCallback((_nextTheme: ThemeMode) => undefined, []);
+  const [theme, setTheme] = useState<ThemeMode>(readPreferredTheme);
   const [resultTab, setResultTab] = useState<ResultTab>('moment');
   const [selectedCombinationId, setSelectedCombinationIdState] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -208,7 +224,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem('structureCo.theme', theme);
+    try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* modo privado: el tema vive sólo en memoria */ }
   }, [theme]);
 
   useEffect(() => {

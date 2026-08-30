@@ -10,7 +10,7 @@
   gap: 12px;
   padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--sc-radius-panel);
   background: var(--surface-raised);
   box-shadow: var(--shadow-lg);
 }

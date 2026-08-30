@@ -21,7 +21,6 @@ import {
 } from './presetRepository';
 import { buildStudioScene, disposeStudioScene, renderStudioPng, serializeStudioSvg, type StudioExportScale } from './studioScene';
 import './illustrationStudio.css';
-import './illustrationStudioMinimal.css';
 
 type StudioSection = 'proportions' | 'material' | 'camera' | 'detail';
 type StudioLanguage = 'es' | 'en';

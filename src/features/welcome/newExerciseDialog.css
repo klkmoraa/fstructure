@@ -13,7 +13,7 @@
   max-height: min(780px, calc(100dvh - 36px));
   overflow: hidden;
   border: var(--sc-surface-edge);
-  border-radius: 24px;
+  border-radius: var(--sc-radius-panel);
   background: var(--sc-color-surface-1);
   color: var(--sc-color-text-primary);
   box-shadow: var(--sc-shadow-floating);
@@ -64,7 +64,7 @@
   width: 44px;
   height: 44px;
   border: var(--sc-surface-edge);
-  border-radius: 13px;
+  border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-1);
   color: var(--sc-color-text-primary);
   box-shadow: var(--sc-shadow-xs);
@@ -72,7 +72,7 @@
   transition: var(--sc-transition-control);
 }
 
-.new-exercise-close:hover { transform: translateY(-1px); box-shadow: var(--sc-shadow-sm); }
+.new-exercise-close:hover { box-shadow: var(--sc-shadow-sm); }
 .new-exercise-close:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
 
 .new-exercise-form {
@@ -112,7 +112,7 @@
   padding: 11px;
   overflow: hidden;
   border: var(--sc-surface-edge);
-  border-radius: 15px;
+  border-radius: var(--sc-radius-panel);
   background: var(--sc-color-surface-1);
   color: var(--sc-color-text-primary);
   box-shadow: var(--sc-shadow-xs);
@@ -139,7 +139,7 @@
   display: grid;
   place-items: center;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-inset);
 }
 
@@ -199,7 +199,7 @@
   padding: 14px;
   overflow-y: auto;
   border: var(--sc-surface-edge);
-  border-radius: 18px;
+  border-radius: var(--sc-radius-panel);
   background: var(--sc-color-surface-inset);
   box-shadow: var(--sc-shadow-pressed);
 }
@@ -210,7 +210,7 @@
   place-items: center;
   overflow: hidden;
   border: var(--sc-surface-edge);
-  border-radius: 13px;
+  border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-1);
   box-shadow: var(--sc-shadow-xs);
 }
@@ -234,7 +234,7 @@
   align-items: center;
   overflow: hidden;
   border: var(--sc-surface-edge);
-  border-radius: 10px;
+  border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-1);
   box-shadow: var(--sc-shadow-pressed);
 }
@@ -258,7 +258,7 @@
   min-height: 48px;
   margin-top: 2px;
   border: 1px solid var(--sc-color-action-edge);
-  border-radius: 12px;
+  border-radius: var(--sc-radius-card);
   background: var(--sc-color-action-primary);
   color: #fff;
   box-shadow: var(--sc-shadow-action);
@@ -271,7 +271,7 @@
 
 .sc-home .new-exercise-submit { color: #fff; }
 
-.new-exercise-submit:hover { transform: translateY(-1px); background: var(--sc-color-action-hover); }
+.new-exercise-submit:hover { background: var(--sc-color-action-hover); }
 .new-exercise-submit:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
 
 .new-exercise-template:focus-visible,
@@ -290,7 +290,7 @@
   .new-exercise-dialog {
     width: 100%;
     max-height: calc(100dvh - max(8px, env(safe-area-inset-top)));
-    border-radius: 22px 22px 0 0;
+    border-radius: var(--sc-radius-panel) 22px 0 0;
     border-block-end: 0;
   }
 

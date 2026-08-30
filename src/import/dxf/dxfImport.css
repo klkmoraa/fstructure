@@ -9,9 +9,9 @@
   align-items: flex-start;
   gap: 9px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: var(--sc-radius-card);
   background: color-mix(in srgb, var(--warning) 10%, var(--surface));
-  color: var(--text, #282331);
+  color: var(--text);
   font-size: 0.84rem;
 }
 
@@ -31,10 +31,10 @@
 .dxf-file-field input {
   min-height: 58px;
   padding: 9px 10px;
-  border: 1px dashed color-mix(in srgb, var(--accent, #007d61) 42%, var(--border, #d7cfdf));
-  border-radius: 13px;
-  background: color-mix(in srgb, var(--accent, #007d61) 4%, var(--surface-2, #f3eee6));
-  color: var(--text-muted, #6c6377);
+  border: 1px dashed color-mix(in srgb, var(--accent) 42%, var(--border));
+  border-radius: var(--sc-radius-card);
+  background: color-mix(in srgb, var(--accent) 4%, var(--surface-2));
+  color: var(--text-muted);
   font-size: 0.76rem;
   cursor: pointer;
 }
@@ -43,9 +43,9 @@
   min-height: 38px;
   margin-inline-end: 11px;
   padding: 0 13px;
-  border: 1px solid color-mix(in srgb, var(--accent, #007d61) 58%, var(--border, #d7cfdf));
-  border-radius: 10px;
-  background: var(--accent-fill, var(--accent, #007d61));
+  border: 1px solid color-mix(in srgb, var(--accent) 58%, var(--border));
+  border-radius: var(--sc-radius-card);
+  background: var(--accent-fill, var(--accent));
   color: var(--accent-foreground);
   box-shadow: var(--sc-shadow-action, 0 3px 0 rgb(0 0 0 / .16));
   font: inherit;
@@ -55,7 +55,7 @@
 
 .dxf-file-field input:hover::file-selector-button {
   box-shadow: var(--sc-shadow-action-hover, 0 5px 0 rgb(0 0 0 / .18));
-  transform: translateY(-1px);
+
 }
 
 .dxf-file-field input:focus-visible {
@@ -76,23 +76,23 @@
 
 .dxf-preview-summary span,
 .dxf-preview-summary small {
-  color: var(--text-muted, #6c6377);
+  color: var(--text-muted);
 }
 
 .dxf-preview {
   width: 100%;
   min-height: 190px;
-  background: var(--canvas-bg, #f8f5fb);
-  border-radius: 12px;
+  background: var(--canvas-bg);
+  border-radius: var(--sc-radius-card);
 }
 
 .dxf-preview rect {
   fill: transparent;
-  stroke: var(--border, #d7cfdf);
+  stroke: var(--border);
 }
 
 .dxf-preview line {
-  stroke: var(--text, #282331);
+  stroke: var(--text);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
@@ -114,14 +114,14 @@
 
 .dxf-diagnostics li.error,
 .dxf-blocking-message {
-  color: var(--danger, #a92f45);
+  color: var(--danger);
 }
 
 .dxf-empty-state {
   display: grid;
   justify-items: center;
   padding: 28px;
-  color: var(--text-muted, #6c6377);
+  color: var(--text-muted);
   text-align: center;
 }
 
