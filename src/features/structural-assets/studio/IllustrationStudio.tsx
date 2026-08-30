@@ -18,12 +18,12 @@ import {
   writePersonalPresetLibrary,
   type PersonalStudioPreset,
   type StudioParameters,
-  type StudioPreviewTheme,
 } from './presetRepository';
 import { buildStudioScene, disposeStudioScene, renderStudioPng, serializeStudioSvg, type StudioExportScale } from './studioScene';
 import './illustrationStudio.css';
+import './illustrationStudioMinimal.css';
 
-type StudioSection = 'proportions' | 'material' | 'camera' | 'detail' | 'view';
+type StudioSection = 'proportions' | 'material' | 'camera' | 'detail';
 type StudioLanguage = 'es' | 'en';
 
 const families = [...new Set(STRUCTURAL_ASSET_REGISTRY.map((asset) => asset.family))];
@@ -98,14 +98,16 @@ const download = (href: string, filename: string) => {
   anchor.click();
 };
 
-export function IllustrationStudio({ language = 'es', initialTheme = 'light', onClose }: { language?: StudioLanguage; initialTheme?: StudioPreviewTheme; onClose: () => void }) {
+const lightParameters = (parameters: StudioParameters): StudioParameters => ({ ...parameters, previewTheme: 'light' });
+
+export function IllustrationStudio({ language = 'es', onClose }: { language?: StudioLanguage; initialTheme?: 'light' | 'dark'; onClose: () => void }) {
   const t = copy[language];
   const assetLabel = (assetId: string) => language === 'es' ? spanishAssetLabels[assetId] : STRUCTURAL_ASSET_REGISTRY.find((asset) => asset.id === assetId)?.label;
   const dialogRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [library, setLibrary] = useState<PersonalStudioPreset[]>(() => readPersonalPresetLibrary(localStorage));
   const [selectedPersonalId, setSelectedPersonalId] = useState<string>();
-  const [parameters, setParameters] = useState<StudioParameters>(() => ({ ...FACTORY_STUDIO_PRESETS[0].parameters, previewTheme: initialTheme }));
+  const [parameters, setParameters] = useState<StudioParameters>(() => lightParameters(FACTORY_STUDIO_PRESETS[0].parameters));
   const [section, setSection] = useState<StudioSection>('proportions');
   const [scale, setScale] = useState<StudioExportScale>(1);
   const [renameDraft, setRenameDraft] = useState('');
@@ -126,27 +128,27 @@ export function IllustrationStudio({ language = 'es', initialTheme = 'light', on
 
   const commit = (patch: Partial<StudioParameters>) => {
     setFeedback(undefined);
+    const safePatch: Partial<StudioParameters> = { ...patch, previewTheme: 'light' };
     if (activePersonal) {
-      const next = updatePersonalPreset(library, activePersonal.id, patch);
+      const next = updatePersonalPreset(library, activePersonal.id, safePatch);
       applyLibrary(next);
-      setParameters({ ...next.find((preset) => preset.id === activePersonal.id)!.parameters });
+      setParameters(lightParameters(next.find((preset) => preset.id === activePersonal.id)!.parameters));
       return;
     }
     const factory = FACTORY_STUDIO_PRESETS.find((preset) => preset.assetId === parameters.assetId) ?? FACTORY_STUDIO_PRESETS[0];
     const id = `personal:${crypto.randomUUID()}`;
     const created = createPersonalPreset(library, factory.assetId, uniqueName(library, `${assetLabel(factory.assetId)} — ${t.personal}`), id);
-    const next = updatePersonalPreset(created, id, { ...patch, previewTheme: patch.previewTheme ?? parameters.previewTheme });
+    const next = updatePersonalPreset(created, id, safePatch);
     applyLibrary(next);
     setSelectedPersonalId(id);
-    setParameters({ ...next.find((preset) => preset.id === id)!.parameters });
+    setParameters(lightParameters(next.find((preset) => preset.id === id)!.parameters));
   };
 
   const assets = useMemo(() => STRUCTURAL_ASSET_REGISTRY.filter((asset) => asset.family === activeFamily), [activeFamily]);
   const chooseFactory = (assetId: string) => {
     const factory = FACTORY_STUDIO_PRESETS.find((preset) => preset.assetId === assetId)!;
-    const previewTheme = parameters.previewTheme;
     setSelectedPersonalId(undefined);
-    setParameters({ ...factory.parameters, previewTheme });
+    setParameters(lightParameters(factory.parameters));
     setFeedback(undefined);
   };
   const duplicate = () => {
@@ -154,15 +156,12 @@ export function IllustrationStudio({ language = 'es', initialTheme = 'light', on
     const name = uniqueName(library, `${activePersonal.name} — ${t.duplicate}`);
     const id = `personal:${crypto.randomUUID()}`;
     const next = duplicatePersonalPreset(library, activePersonal.id, name, id);
-    applyLibrary(next); setSelectedPersonalId(id); setParameters({ ...next.at(-1)!.parameters });
+    applyLibrary(next); setSelectedPersonalId(id); setParameters(lightParameters(next.at(-1)!.parameters));
   };
   const restore = () => {
     if (!activePersonal) return;
-    const previewTheme = parameters.previewTheme;
-    const next = restorePersonalPreset(library, activePersonal.id).map((preset) => preset.id === activePersonal.id
-      ? { ...preset, parameters: { ...preset.parameters, previewTheme } }
-      : preset);
-    applyLibrary(next); setParameters({ ...next.find((preset) => preset.id === activePersonal.id)!.parameters });
+    const next = restorePersonalPreset(library, activePersonal.id);
+    applyLibrary(next); setParameters(lightParameters(next.find((preset) => preset.id === activePersonal.id)!.parameters));
   };
   const remove = () => {
     if (!activePersonal) return;
@@ -199,14 +198,14 @@ export function IllustrationStudio({ language = 'es', initialTheme = 'light', on
     }
   };
 
-  const tabs: Array<[StudioSection, string]> = [['proportions', t.proportions], ['material', t.material], ['camera', t.camera], ['detail', t.detail], ['view', t.view]];
+  const tabs: Array<[StudioSection, string]> = [['proportions', t.proportions], ['material', t.material], ['camera', t.camera], ['detail', t.detail]];
   return <section ref={dialogRef} className="illustration-studio" data-studio-theme={parameters.previewTheme} role="dialog" aria-modal="true" aria-label={t.title} tabIndex={-1}>
     <header className="illustration-studio__header"><div><span>{t.eyebrow}</span><h1>{t.title}</h1></div><button ref={closeRef} type="button" aria-label={t.close} onClick={onClose}><X /></button></header>
     <div className="illustration-studio__body">
       <aside className="illustration-studio__library">
         <div className="illustration-studio__rail" aria-label={t.families}>{families.map((family) => <button type="button" key={family} aria-pressed={family === activeFamily} onClick={() => chooseFactory(STRUCTURAL_ASSET_REGISTRY.find((asset) => asset.family === family)!.id)}>{language === 'es' ? familyLabels[family] : englishFamilyLabels[family]}</button>)}</div>
         <div className="illustration-studio__rail illustration-studio__rail--assets" aria-label={t.assets}>{assets.map((asset) => <button type="button" key={asset.id} aria-pressed={asset.id === parameters.assetId} onClick={() => chooseFactory(asset.id)}>{assetLabel(asset.id)}</button>)}</div>
-        <label className="illustration-studio__preset"><span>{t.savedDesigns}</span><select aria-label={t.savedDesigns} value={selectedPersonalId ?? ''} onChange={(event) => { const preset = library.find((item) => item.id === event.target.value); if (preset) { setSelectedPersonalId(preset.id); setParameters({ ...preset.parameters }); setFeedback(undefined); } else chooseFactory(parameters.assetId); }}><option value="">{t.factory}</option>{library.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label>
+        <label className="illustration-studio__preset"><span>{t.savedDesigns}</span><select aria-label={t.savedDesigns} value={selectedPersonalId ?? ''} onChange={(event) => { const preset = library.find((item) => item.id === event.target.value); if (preset) { setSelectedPersonalId(preset.id); setParameters(lightParameters(preset.parameters)); setFeedback(undefined); } else chooseFactory(parameters.assetId); }}><option value="">{t.factory}</option>{library.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}</select></label>
         {activePersonal ? <div className="illustration-studio__preset-actions"><input aria-label={t.designName} value={renameDraft} onChange={(event) => { setRenameDraft(event.target.value); setFeedback(undefined); }} onBlur={commitRename} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commitRename(); } }} /><button type="button" aria-label={t.duplicate} onClick={duplicate}><Copy /></button><button type="button" aria-label={t.restore} onClick={restore}><RotateCcw /></button><button type="button" aria-label={t.delete} onClick={remove}><Trash2 /></button></div> : null}
       </aside>
       <main className="illustration-studio__workbench">
@@ -217,7 +216,6 @@ export function IllustrationStudio({ language = 'es', initialTheme = 'light', on
           {section === 'material' ? <div className="illustration-studio__choices">{(['factory', 'concrete', 'steel', 'timber', 'technical'] as const).map((value) => <button type="button" key={value} aria-pressed={parameters.material === value} onClick={() => commit({ material: value })}>{t[value]}</button>)}</div> : null}
           {section === 'camera' ? <div className="illustration-studio__choices">{(['isometric', 'front', 'side', 'top'] as const).map((value) => <button type="button" key={value} aria-pressed={parameters.camera === value} onClick={() => commit({ camera: value })}>{t[value]}</button>)}</div> : null}
           {section === 'detail' ? <div className="illustration-studio__choices">{(['hero', 'card', 'compact'] as const).map((value) => <button type="button" key={value} aria-pressed={parameters.detail === value} onClick={() => commit({ detail: value })}>{t[value]}</button>)}</div> : null}
-          {section === 'view' ? <div className="illustration-studio__choices"><button type="button" aria-pressed={parameters.previewTheme === 'light'} onClick={() => commit({ previewTheme: 'light' })}>{t.day}</button><button type="button" aria-pressed={parameters.previewTheme === 'dark'} onClick={() => commit({ previewTheme: 'dark' })}>{t.night}</button></div> : null}
         </div>
       </main>
     </div>
@@ -227,6 +225,5 @@ export function IllustrationStudio({ language = 'es', initialTheme = 'light', on
 }
 
 export function IllustrationStudioRoute() {
-  const initialTheme = new URLSearchParams(window.location.search).get('theme') === 'dark' ? 'dark' : 'light';
-  return <IllustrationStudio language={document.documentElement.lang === 'en' ? 'en' : 'es'} initialTheme={initialTheme} onClose={() => { window.location.href = '/'; }} />;
+  return <IllustrationStudio language={document.documentElement.lang === 'en' ? 'en' : 'es'} initialTheme="light" onClose={() => { window.location.href = '/'; }} />;
 }

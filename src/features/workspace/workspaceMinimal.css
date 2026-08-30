@@ -171,3 +171,75 @@
     animation-duration: .01ms !important;
   }
 }
+
+/* Deferred data surfaces can arrive after this shell. Keep their outer chrome
+   flat too; technical colours inside tables and diagrams are intentionally not
+   touched. */
+.workspace-screen :is(
+  .sc-modal-surface,
+  .command-palette,
+  .dense-results-surface,
+  .structural-bom-surface,
+  .revision-comparison-surface,
+  .model-doctor-surface,
+  .datasheet-surface,
+  .structure-generator,
+  .local-command-assistant
+) {
+  border-color: var(--border-soft) !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen :is(
+  .sc-modal-surface__header,
+  .sc-modal-surface__body,
+  .command-palette-head,
+  .dense-results-panel,
+  .dense-results-tabs,
+  .results-commandbar,
+  .datasheet-card,
+  .datasheet-context,
+  .datasheet-review,
+  .model-doctor-health,
+  .model-doctor-finding,
+  .structural-bom__scope,
+  .structural-bom__family-filter,
+  .structural-bom__metrics > div,
+  .revision-comparison__empty-state,
+  .revision-comparison__revisions article,
+  .revision-comparison__summary > div,
+  .structure-generator__parameter-stage
+) {
+  border-color: var(--border-soft) !important;
+  border-radius: 6px !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen :is(
+  .command-palette button,
+  .dense-results-surface button,
+  .structural-bom-surface button,
+  .revision-comparison-surface button,
+  .model-doctor-surface button,
+  .datasheet-surface button,
+  .structure-generator button
+) {
+  box-shadow: none !important;
+}
+
+.workspace-screen :is(
+  .command-palette button:hover,
+  .dense-results-surface button:hover,
+  .structural-bom-surface button:hover,
+  .revision-comparison-surface button:hover,
+  .model-doctor-surface button:hover,
+  .datasheet-surface button:hover,
+  .structure-generator button:hover
+) {
+  transform: none !important;
+}

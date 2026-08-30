@@ -515,7 +515,7 @@ const AnalysisSetupPanel = ({ activeTool, onChooseTool, selectedCombinationId, s
 const DisplayPanel = ({ includeCalculationMode = true }: { includeCalculationMode?: boolean }) => {
   const { project, updateProjectView } = useProjectModel();
   const { language, t } = useI18n();
-  const { theme, setTheme } = useWorkspaceUI();
+  const { theme } = useWorkspaceUI();
   const units = project.settings.units;
   const view = readCanvasViewSettings(project);
   const display = (value: number, quantity: UnitQuantity) => toDisplay(value, units, quantity);
@@ -535,7 +535,6 @@ const DisplayPanel = ({ includeCalculationMode = true }: { includeCalculationMod
       theme={theme}
       view={view}
       onApply={(favorite) => {
-        setTheme(favorite.theme);
         updateProjectView((draft) => withCanvasViewSettings(draft, favorite.view));
       }}
     />
