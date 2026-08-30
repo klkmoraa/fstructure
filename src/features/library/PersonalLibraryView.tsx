@@ -24,7 +24,7 @@ const COPY = {
     kind: 'Tipo de favorito', filters: 'Filtrar por tipo', name: 'Nombre del favorito', materialLabel: 'Material', sectionLabel: 'Sección', save: 'Guardar favorito', cancel: 'Cancelar',
     empty: 'Todavía no guardas favoritos.', emptyBody: 'Créalo aquí o guarda una identidad desde el Inspector.', noResults: 'No hay favoritos que coincidan con esta búsqueda.',
     trash: 'Papelera', active: 'Volver a favoritos', rename: 'Renombrar', duplicate: 'Duplicar', delete: 'Borrar', restore: 'Restaurar', newName: 'Nuevo nombre', saveName: 'Guardar nombre',
-    copy: 'Copia', catalog: 'Catálogo integrado', units: 'Unidades', updated: 'Actualizado', day: 'Día', night: 'Noche', results: 'favoritos visibles',
+    copy: 'Copia', catalog: 'Catálogo integrado', units: 'Unidades', updated: 'Actualizado', results: 'favoritos visibles',
     saved: 'Favorito guardado.', renamed: 'Nombre actualizado.', duplicated: 'Favorito duplicado.', deleted: 'Favorito movido a Papelera. Los proyectos no cambiaron.', restored: 'Favorito restaurado.',
     storageError: 'No se pudo guardar la biblioteca en este dispositivo. El proyecto no cambió.', conflict: 'No se restauró porque ese nombre ya está en uso. Renombra uno de los dos.', invalid: 'No se completó la operación. Revisa el nombre y las referencias.',
   },
@@ -34,7 +34,7 @@ const COPY = {
     kind: 'Favorite type', filters: 'Filter by type', name: 'Favorite name', materialLabel: 'Material', sectionLabel: 'Section', save: 'Save favorite', cancel: 'Cancel',
     empty: 'You have no saved favorites yet.', emptyBody: 'Create one here or save an explicit identity from the Inspector.', noResults: 'No favorites match this search.',
     trash: 'Trash', active: 'Back to favorites', rename: 'Rename', duplicate: 'Duplicate', delete: 'Delete', restore: 'Restore', newName: 'New name', saveName: 'Save name',
-    copy: 'Copy', catalog: 'Built-in catalog', units: 'Units', updated: 'Updated', day: 'Day', night: 'Night', results: 'visible favorites',
+    copy: 'Copy', catalog: 'Built-in catalog', units: 'Units', updated: 'Updated', results: 'visible favorites',
     saved: 'Favorite saved.', renamed: 'Name updated.', duplicated: 'Favorite duplicated.', deleted: 'Favorite moved to Trash. Projects were not changed.', restored: 'Favorite restored.',
     storageError: 'The library could not be saved on this device. The project was not changed.', conflict: 'Restore failed because that name is already in use. Rename one of them.', invalid: 'The operation could not be completed. Review the name and references.',
   },
@@ -46,7 +46,7 @@ const favoriteDetails = (favorite: PersonalFavorite, copy: typeof COPY.es | type
   if (favorite.kind === 'material') return `${copy.catalog} · ${favorite.materialId}`;
   if (favorite.kind === 'section') return `${copy.catalog} · ${favorite.sectionId}`;
   if (favorite.kind === 'pair') return `${copy.catalog} · ${favorite.materialId} + ${favorite.sectionId}`;
-  return `${favorite.theme === 'light' ? copy.day : copy.night} · ${copy.units} ${favorite.unitsAtSave}`;
+  return `${copy.units} ${favorite.unitsAtSave}`;
 };
 
 const feedbackFor = (result: LibraryOperationResult, success: string, copy: typeof COPY.es | typeof COPY.en) => result.ok
