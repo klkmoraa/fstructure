@@ -243,3 +243,150 @@
 ) {
   transform: none !important;
 }
+
+/* Final flat pass --------------------------------------------------------
+   Feature CSS is intentionally split by domain and some deferred surfaces can
+   arrive after this shell. These low-cost role selectors keep their chrome
+   neutral without touching the SVG/canvas diagram layers or their technical
+   colour palette. */
+
+.workspace-screen :where(
+  [data-level],
+  [class*='card'],
+  [class*='panel'],
+  [class*='surface'],
+  [class*='dialog'],
+  [class*='drawer'],
+  [class*='sheet'],
+  [class*='popover'],
+  [class*='dock'],
+  [class*='toolbar'],
+  [class*='summary'],
+  [class*='control']
+) {
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen :where(
+  [data-level],
+  [class*='card'],
+  [class*='panel'],
+  [class*='surface'],
+  [class*='dialog'],
+  [class*='drawer'],
+  [class*='sheet'],
+  [class*='popover'],
+  [class*='dock'],
+  [class*='toolbar'],
+  [class*='summary'],
+  [class*='control'],
+  .number-control,
+  .segmented-control,
+  .compact-toggle-grid label,
+  .learning-level,
+  .response-selector,
+  .diagram-cursor-readout,
+  .classroom-pedagogy-levels,
+  .quick-entry-bar,
+  .candidate-picker,
+  .repeat-action-control,
+  .repeat-preview,
+  .tool-rail.is-floating-dock
+) {
+  border-radius: 8px !important;
+}
+
+.workspace-screen :where(
+  .number-control,
+  .select-field select,
+  .compact-select,
+  .segmented-control,
+  .compact-toggle-grid label,
+  .learning-level,
+  .response-selector,
+  .diagram-cursor-readout,
+  .classroom-pedagogy-levels,
+  .tool-rail.is-floating-dock,
+  .topbar--atelier [data-topbar-cluster]
+) {
+  background: #ffffff !important;
+  border-color: var(--border-soft) !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen :where(
+  .number-control,
+  .select-field select,
+  .compact-select,
+  .segmented-control,
+  .compact-toggle-grid label,
+  .learning-level,
+  .response-selector,
+  .diagram-cursor-readout,
+  .classroom-pedagogy-levels
+) :is(input, select, button) {
+  background: #ffffff !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen :where(
+  .tool-button,
+  .sc-tool-button,
+  .sc-layer-toggle,
+  .canvas-controls button,
+  .results-metric-cards > button,
+  .result-summary-actions button,
+  .issue-action,
+  .quick-entry-cancel,
+  .repeat-preview button,
+  .classroom-pedagogy-levels button
+) {
+  border-radius: 6px !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.workspace-screen :where(
+  .tool-button,
+  .sc-tool-button,
+  .sc-layer-toggle,
+  .canvas-controls button,
+  .results-metric-cards > button,
+  .result-summary-actions button,
+  .issue-action,
+  .quick-entry-cancel,
+  .repeat-preview button,
+  .classroom-pedagogy-levels button
+):is(:hover, :focus-visible):not(:disabled) {
+  background: #f8fafc !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.workspace-screen :where(
+  .tool-button.active,
+  .sc-tool-button[aria-pressed='true'],
+  .sc-layer-toggle[aria-pressed='true'],
+  .learning-level button.active,
+  .response-selector button.active,
+  .classroom-pedagogy-levels button[aria-pressed='true']
+) {
+  background: #f1f5f9 !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+  transform: translateY(1px) !important;
+}
+
+.workspace-screen :where(
+  .import-center-backdrop,
+  .sc-overlay,
+  .mobile-inspector-backdrop,
+  .results-sheet-backdrop
+) {
+  backdrop-filter: none !important;
+}
