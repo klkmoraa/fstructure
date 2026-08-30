@@ -1,0 +1,152 @@
+/* Workspace-only tail overrides. This file stays in the deferred workspace
+   chunk so its flat treatment wins after feature styles load. */
+
+.workspace-screen .topbar.topbar--atelier {
+  border: 0 !important;
+  border-bottom: 1px solid var(--border-soft) !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen .topbar--atelier > .topbar-zone {
+  border: 1px solid var(--border-soft) !important;
+  border-radius: 7px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen .topbar--atelier :is(
+  .brand-home-button,
+  .topbar-project-trigger,
+  .topbar-analysis-trigger,
+  .topbar-command-button,
+  .sc-button,
+  .sc-icon-button,
+  .analysis-status,
+  .autosave-state
+) {
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen .topbar--atelier .topbar-history-cluster {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen .topbar--atelier .analyze-button,
+.workspace-screen .topbar--atelier .topbar-analysis-trigger {
+  border-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
+.workspace-screen .topbar--atelier .analyze-button:hover,
+.workspace-screen .topbar--atelier .topbar-analysis-trigger:hover {
+  background: #000000 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.workspace-screen .center-stage {
+  border: 1px solid var(--border-soft) !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen :is(
+  .canvas-mode-badge,
+  .canvas-controls,
+  .canvas-status,
+  .canvas-layer-button,
+  .canvas-view-status span,
+  .analysis-status,
+  .autosave-state
+) {
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen .toolbar.tool-rail {
+  border: 1px solid var(--border-soft) !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen .toolbar :is(.sc-tool-button, .tool-button, .sc-popover__trigger, .dock-collapse-toggle, .dock-position-toggle) {
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen .toolbar :is(.sc-tool-button, .tool-button, .sc-popover__trigger):hover:not(:disabled) {
+  border-color: var(--border) !important;
+  background: #f8fafc !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.workspace-screen .toolbar :is(.sc-tool-button, .tool-button)[aria-pressed='true'],
+.workspace-screen .toolbar :is(.sc-tool-button, .tool-button).active {
+  border-color: var(--border) !important;
+  background: #f1f5f9 !important;
+  color: var(--text) !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen :is(.inspector-panel, .results-panel, .professional-note) {
+  border-color: var(--border-soft) !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen :is(
+  .inspector-summary,
+  .inspector-property-group,
+  .selection-card,
+  .effect-card,
+  .combination-card,
+  .method-card,
+  .summary-card,
+  .result-card
+) {
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.workspace-screen :is(.sc-popover__surface, .popover, .topbar-project-panel, .topbar-analysis-panel, .topbar-utilities-panel) {
+  border: 1px solid var(--border-soft) !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  box-shadow: var(--sc-shadow-floating) !important;
+}
+
+.app-shell[data-shell-class='K0'] .topbar--atelier .brand-home-button {
+  width: 42px !important;
+  min-width: 42px !important;
+}
+
+.app-shell[data-shell-class='K0'] .topbar-wordmark {
+  font-size: 0 !important;
+}
+
+.app-shell[data-shell-class='K0'] .topbar-wordmark::after {
+  content: 'FS';
+  font-size: 12px;
+  font-weight: 760;
+  letter-spacing: -.02em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-screen *,
+  .workspace-screen *::before,
+  .workspace-screen *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}
