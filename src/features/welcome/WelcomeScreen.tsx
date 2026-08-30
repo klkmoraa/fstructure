@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Box, Folder, GraduationCap, Home, Image as ImageIcon, LayoutTemplate, LibraryBig, Menu, Moon, Play, Settings, Sun, Upload, X } from 'lucide-react';
+import { ArrowRight, Box, Folder, GraduationCap, Home, Image as ImageIcon, LayoutTemplate, LibraryBig, Menu, Play, Search, Settings, Upload, X } from 'lucide-react';
 import { m, useReducedMotion } from 'motion/react';
 import { createBlankProject, exampleProjects } from '../../data/defaultProject';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
@@ -41,7 +41,7 @@ type NavigationDestination = HomeView | 'studio';
 const copy = {
   es: {
     navigation: 'Navegación principal', home: 'Inicio', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar', space3d: 'Space 3D',
-    settings: 'Ajustes', settingsTitle: 'Ajustes', settingsBody: 'Personaliza cómo se presenta FusionStructure en este dispositivo.', language: 'Idioma', theme: 'Tema', light: 'Claro', dark: 'Oscuro', closeSettings: 'Cerrar ajustes', studio: 'Estudio de ilustraciones', menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', current: 'Proyecto abierto', continue: 'Continuar proyecto', create: 'Nuevo proyecto', localMetrics: 'Diagnóstico local', localMetricsBody: 'Opcional. Guarda sólo eventos agregados en este dispositivo; nunca envía geometría, cargas, resultados ni datos personales.', localMetricsOptIn: 'Guardar mediciones locales para mejorar el flujo', localMetricsCount: '{count} observaciones locales', exportDiagnostics: 'Exportar diagnóstico', clearDiagnostics: 'Borrar observaciones',
+    settings: 'Ajustes', settingsTitle: 'Ajustes', settingsBody: 'Personaliza cómo se presenta FusionStructure en este dispositivo.', language: 'Idioma', closeSettings: 'Cerrar ajustes', studio: 'Estudio de ilustraciones', menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', current: 'Proyecto abierto', continue: 'Continuar proyecto', create: 'Nuevo proyecto', localMetrics: 'Diagnóstico local', localMetricsBody: 'Opcional. Guarda sólo eventos agregados en este dispositivo; nunca envía geometría, cargas, resultados ni datos personales.', localMetricsOptIn: 'Guardar mediciones locales para mejorar el flujo', localMetricsCount: '{count} observaciones locales', exportDiagnostics: 'Exportar diagnóstico', clearDiagnostics: 'Borrar observaciones', search: 'Buscar', searchPlaceholder: 'Buscar proyectos o accesos…', clearSearch: 'Borrar búsqueda', noQuickMatches: 'No hay accesos rápidos que coincidan.',
     recent: 'Proyectos recientes', viewAll: 'Ver todos', templatesTitle: 'Elige una estructura de partida', templatesBody: 'Abre un modelo preparado y adáptalo a tu caso.',
     projectsTitle: 'Tus proyectos', projectsBody: 'Abre, renombra o duplica el trabajo guardado en este dispositivo.',
     classroomTitle: 'Aprende resolviendo una estructura', classroomBody: 'Elige un caso, ajusta sus datos y avanza con una guía que no te quita el control del modelo.', classroomAction: 'Crear desde cero', classroomCases: 'O empieza con un caso preparado',
@@ -52,7 +52,7 @@ const copy = {
   },
   en: {
     navigation: 'Primary navigation', home: 'Home', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import', space3d: 'Space 3D',
-    settings: 'Settings', settingsTitle: 'Settings', settingsBody: 'Personalize how FusionStructure is presented on this device.', language: 'Language', theme: 'Theme', light: 'Light', dark: 'Dark', closeSettings: 'Close settings', studio: 'Illustration Studio', menu: 'Open navigation', closeMenu: 'Close navigation', current: 'Open project', continue: 'Continue project', create: 'New project', localMetrics: 'Local diagnostics', localMetricsBody: 'Optional. Stores aggregate events on this device only; it never sends geometry, loads, results, or personal data.', localMetricsOptIn: 'Store local measurements to improve the flow', localMetricsCount: '{count} local observations', exportDiagnostics: 'Export diagnostics', clearDiagnostics: 'Erase observations',
+    settings: 'Settings', settingsTitle: 'Settings', settingsBody: 'Personalize how FusionStructure is presented on this device.', language: 'Language', closeSettings: 'Close settings', studio: 'Illustration Studio', menu: 'Open navigation', closeMenu: 'Close navigation', current: 'Open project', continue: 'Continue project', create: 'New project', localMetrics: 'Local diagnostics', localMetricsBody: 'Optional. Stores aggregate events on this device only; it never sends geometry, loads, results, or personal data.', localMetricsOptIn: 'Store local measurements to improve the flow', localMetricsCount: '{count} local observations', exportDiagnostics: 'Export diagnostics', clearDiagnostics: 'Erase observations', search: 'Search', searchPlaceholder: 'Search projects or shortcuts…', clearSearch: 'Clear search', noQuickMatches: 'No quick access items match.',
     recent: 'Recent projects', viewAll: 'View all', templatesTitle: 'Choose a starting structure', templatesBody: 'Open a prepared model and adapt it to your case.',
     projectsTitle: 'Your projects', projectsBody: 'Open, rename, or duplicate work saved on this device.',
     classroomTitle: 'Learn by solving a structure', classroomBody: 'Choose a case, adjust its data, and move forward with guidance that keeps you in control of the model.', classroomAction: 'Start from scratch', classroomCases: 'Or begin with a prepared case',
@@ -84,13 +84,11 @@ const templateAssetId = (name: string): ThreeStructuralAssetId => {
 
 interface WelcomePreferencesProps {
   language: 'es' | 'en';
-  theme: 'light' | 'dark';
   onLanguageChange: (language: 'es' | 'en') => void;
-  onThemeChange: (theme: 'light' | 'dark') => void;
   onClose: () => void;
 }
 
-const WelcomePreferences = ({ language, theme, onLanguageChange, onThemeChange, onClose }: WelcomePreferencesProps) => {
+const WelcomePreferences = ({ language, onLanguageChange, onClose }: WelcomePreferencesProps) => {
   const text = copy[language];
   const [metrics, setMetrics] = useState<LocalMetricsStore>(() => getLocalMetrics(window.localStorage));
   const dialogRef = useRef<HTMLElement>(null);
@@ -111,7 +109,6 @@ const WelcomePreferences = ({ language, theme, onLanguageChange, onThemeChange, 
     <h2>{text.settingsTitle}</h2>
     <p>{text.settingsBody}</p>
     <label className="sc-home-settings-field"><span>{text.language}</span><select aria-label={text.language} value={language} onChange={(event) => onLanguageChange(event.target.value as 'es' | 'en')}><option value="es">ES</option><option value="en">EN</option></select></label>
-    <fieldset className="sc-home-settings-field"><legend>{text.theme}</legend><div><button type="button" aria-pressed={theme === 'light'} onClick={() => onThemeChange('light')}>{text.light}</button><button type="button" aria-pressed={theme === 'dark'} onClick={() => onThemeChange('dark')}>{text.dark}</button></div></fieldset>
     <section className="sc-home-settings-metrics" aria-labelledby="local-metrics-title">
       <h3 id="local-metrics-title">{text.localMetrics}</h3>
       <p>{text.localMetricsBody}</p>
@@ -125,7 +122,7 @@ const WelcomePreferences = ({ language, theme, onLanguageChange, onThemeChange, 
 export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspace, allowDirectResume = false, onDirectResume, initialView = 'home' }: WelcomeScreenProps) => {
   const { project, replaceProject, updateProjectView } = useProject();
   const { language, t } = useI18n();
-  const { theme, setTheme } = useWorkspaceUI();
+  const { theme } = useWorkspaceUI();
   const reducedMotion = useReducedMotion();
   const text = copy[language];
   const [view, setView] = useState<HomeView>(initialView);
@@ -136,7 +133,9 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   const [exerciseTemplateId, setExerciseTemplateId] = useState<ClassroomExerciseTemplateId>('blank');
   const [importCenterOpen, setImportCenterOpen] = useState(false);
   const [dxfImportOpen, setDxfImportOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const homeRef = useRef<HTMLElement>(null);
   const preferencesLauncherRef = useRef<HTMLButtonElement | null>(null);
   const studioLauncherRef = useRef<HTMLButtonElement | null>(null);
@@ -160,6 +159,20 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     window.addEventListener('keydown', closeMobileNavigation);
     return () => window.removeEventListener('keydown', closeMobileNavigation);
   }, [mobileNavOpen]);
+
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const typing = target?.matches('input, textarea, select, [contenteditable="true"]');
+      const shortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
+      if ((!shortcut && event.key !== '/') || (typing && !shortcut) || preferencesOpen || studioOpen || exerciseDialogOpen || importCenterOpen || dxfImportOpen) return;
+      event.preventDefault();
+      if (view !== 'home' && view !== 'projects') setView('home');
+      window.requestAnimationFrame(() => searchInputRef.current?.focus());
+    };
+    window.addEventListener('keydown', focusSearch);
+    return () => window.removeEventListener('keydown', focusSearch);
+  }, [dxfImportOpen, exerciseDialogOpen, importCenterOpen, preferencesOpen, studioOpen, view]);
 
   useEffect(() => {
     if ((!preferencesOpen && !studioOpen) || !homeRef.current) return undefined;
@@ -187,6 +200,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   };
   const navigate = (next: HomeView) => {
     setView(next);
+    setSearchQuery('');
     setMobileNavOpen(false);
   };
   const updateLanguage = (nextLanguage: 'es' | 'en') => updateProjectView((draft) => ({ ...draft, settings: { ...draft.settings, language: nextLanguage } }));
@@ -212,6 +226,12 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     setExerciseTemplateId(templateId);
     setExerciseDialogOpen(true);
   };
+  const normalizedSearch = searchQuery.trim().toLocaleLowerCase(language);
+  const quickActions = [
+    { id: 'import', label: text.import, icon: Upload, action: () => setImportCenterOpen(true) },
+    { id: 'classroom', label: text.classroom, icon: GraduationCap, action: () => openExercise() },
+    { id: 'space3d', label: text.space3d, icon: Box, action: () => onOpenSpace3D?.() },
+  ].filter((item) => !normalizedSearch || item.label.toLocaleLowerCase(language).includes(normalizedSearch));
   const renderNavigation = (mobile = false) => <nav className={mobile ? 'sc-home-nav sc-home-nav--mobile' : 'sc-home-nav'} aria-label={text.navigation}>
     {NAV_ITEMS.map(({ id, icon: Icon }) => <button key={id} type="button" className={id !== 'studio' && view === id ? 'is-active' : undefined} aria-current={id !== 'studio' && view === id ? 'page' : undefined} onClick={(event) => id === 'studio' ? openStudio(event.currentTarget) : navigate(id)}><Icon size={19} /><span>{text[id]}</span></button>)}
     {mobile ? <button type="button" onClick={(event) => openPreferences(event.currentTarget)}><Settings size={19} /><span>{text.settings}</span></button> : null}
@@ -234,14 +254,13 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     <section className="sc-home-quick" aria-labelledby="home-quick-title" data-testid="home-secondary-actions">
       <div className="sc-home-section-heading"><h2 id="home-quick-title">{text.secondary}</h2></div>
       <div className="sc-home-quick-row">
-        <button type="button" onClick={() => setImportCenterOpen(true)}><Upload size={18} /><span>{text.import}</span></button>
-        <button type="button" onClick={() => openExercise()}><GraduationCap size={18} /><span>{text.classroom}</span></button>
-        <button type="button" onClick={onOpenSpace3D}><Box size={18} /><span>{text.space3d}</span></button>
+        {quickActions.map(({ id, label, icon: Icon, action }) => <button key={id} type="button" onClick={action}><Icon size={18} /><span>{label}</span></button>)}
       </div>
+      {normalizedSearch && quickActions.length === 0 ? <p className="sc-home-search-empty" role="status">{text.noQuickMatches}</p> : null}
     </section>
     <section className="sc-home-recents" aria-labelledby="home-recents-title">
       <div className="sc-home-section-heading"><h2 id="home-recents-title">{text.recent}</h2><button type="button" onClick={() => setView('projects')}>{text.viewAll}<ArrowRight size={15} /></button></div>
-      <Suspense fallback={<p role="status">{t('hub.loading')}</p>}><Phase2ProjectHub onOpenWorkspace={onOpenWorkspace} variant="recent" limit={3} /></Suspense>
+      <Suspense fallback={<p role="status">{t('hub.loading')}</p>}><Phase2ProjectHub onOpenWorkspace={onOpenWorkspace} variant="recent" limit={3} filter={searchQuery} /></Suspense>
     </section>
   </>;
 
@@ -277,7 +296,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   </section>;
 
   const content = view === 'home' ? dashboard
-    : view === 'projects' ? <section className="sc-home-view"><header><p>{text.projects}</p><h2>{text.projectsTitle}</h2><span>{text.projectsBody}</span></header><Suspense fallback={<p role="status">{t('hub.loading')}</p>}><Phase2ProjectHub onOpenWorkspace={onOpenWorkspace} /></Suspense></section>
+    : view === 'projects' ? <section className="sc-home-view"><header><p>{text.projects}</p><h2>{text.projectsTitle}</h2><span>{text.projectsBody}</span></header><Suspense fallback={<p role="status">{t('hub.loading')}</p>}><Phase2ProjectHub onOpenWorkspace={onOpenWorkspace} filter={searchQuery} /></Suspense></section>
       : view === 'templates' ? templates
         : view === 'library' ? <PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} />
           : view === 'classroom' ? classroomLanding
@@ -304,8 +323,8 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     <aside className="sc-home-sidebar"><div className="sc-home-wordmark"><strong>FusionStructure</strong></div>{renderNavigation()}<button type="button" className="sc-home-settings" onClick={(event) => openPreferences(event.currentTarget)}><Settings size={19} /><span>{text.settings}</span></button></aside>
     <header className="sc-home-mobile-header"><div className="sc-home-wordmark"><strong>FusionStructure</strong></div><button ref={mobileMenuButtonRef} type="button" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button></header>
     {mobileNavOpen ? renderNavigation(true) : null}
-    <div className="sc-home-main"><header className="sc-home-topline"><span>{text[view]}</span><div><label><span className="sr-only">{t('language.label')}</span><select value={language} onChange={(event) => updateLanguage(event.target.value as 'es' | 'en')}><option value="es">ES</option><option value="en">EN</option></select></label><button type="button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? t('theme.dark') : t('theme.light')}>{theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}</button></div></header><div className="sc-home-content">{content}</div></div>
+    <div className="sc-home-main"><header className="sc-home-topline"><span>{text[view]}</span><div className="sc-home-search" role="search"><Search size={16} aria-hidden="true" /><input ref={searchInputRef} type="search" value={searchQuery} aria-label={text.search} placeholder={text.searchPlaceholder} onChange={(event) => { setSearchQuery(event.currentTarget.value); if (event.currentTarget.value && view !== 'home' && view !== 'projects') setView('home'); }} />{searchQuery ? <button type="button" aria-label={text.clearSearch} onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}</div><div className="sc-home-topline-actions"><label><span className="sr-only">{t('language.label')}</span><select value={language} onChange={(event) => updateLanguage(event.target.value as 'es' | 'en')}><option value="es">ES</option><option value="en">EN</option></select></label></div></header><div className="sc-home-content">{content}</div></div>
     {importCenterOpen ? <Suspense fallback={null}><PortableImportCenter open currentProjectName={project.name} onClose={() => setImportCenterOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { replaceProject({ ...outcome.project, settings: { ...outcome.project.settings, language } }, outcome.restoredAnalysis); setImportCenterOpen(false); onOpenWorkspace(); }} /></Suspense> : null}
     <NewExerciseDialog open={exerciseDialogOpen} initialTemplateId={exerciseTemplateId} onClose={() => setExerciseDialogOpen(false)} onCreate={(next) => { replaceProject({ ...next, settings: { ...next.settings, language } }); setExerciseDialogOpen(false); onOpenWorkspace(); }} />
-  </main>{preferencesOpen ? <WelcomePreferences language={language} theme={theme} onLanguageChange={updateLanguage} onThemeChange={setTheme} onClose={closePreferences} /> : null}{studioOpen ? <IllustrationStudio language={language} initialTheme={theme} onClose={closeStudio} /> : null}</>;
+  </main>{preferencesOpen ? <WelcomePreferences language={language} onLanguageChange={updateLanguage} onClose={closePreferences} /> : null}{studioOpen ? <IllustrationStudio language={language} initialTheme={theme} onClose={closeStudio} /> : null}</>;
 };
