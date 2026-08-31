@@ -51,7 +51,7 @@
    debajo del alto natural de la fila y no cambia nada de lo que hay hoy; en
    Medium y en Compact la fila crece hasta la densidad que su clase paga. */
 .results-table th, .results-table td { height: var(--sc-density-row); }
-.diagram-result-layout { display:grid; grid-template-columns: 310px minmax(0,1fr); min-height:100%; }
+.diagram-result-layout { display:grid; grid-template-columns:minmax(0,1fr); min-height:100%; }
 .results-metric-cards { grid-column:1/-1; display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:7px; margin:12px 18px 0; }
 .results-metric-cards > div,
 .results-metric-cards > button { --metric-color:var(--accent); min-width:0; min-height:52px; padding:8px 10px; border:0; border-radius:var(--sc-radius-sm); background:var(--surface); box-shadow:var(--sc-shadow-xs); display:grid; align-content:start; gap:2px; text-align:left; color:var(--text); font:inherit; }
@@ -69,15 +69,10 @@
    chart stayed a fixed size, leaving a wall of empty space below both. In
    focus the guidance column is dropped and the chart stretches to fill the
    freed height instead. */
-.results-panel.results-mode-focused .diagram-guidance,
-.results-panel.results-mode-focused .deformation-guidance { display:none; }
 .results-panel.results-mode-focused .diagram-result-layout,
 .results-panel.results-mode-focused .deformation-result-layout { display:flex; flex-direction:column; height:100%; }
 .results-panel.results-mode-focused .diagram-chart { flex:1 1 auto; min-height:0; }
 .results-panel.results-mode-focused .diagram-chart svg { flex:1 1 auto; height:auto; min-height:240px; }
-.diagram-guidance { border-right:1px solid var(--border); padding:14px 20px; display:grid; grid-template-columns:24px 1fr; align-content:start; gap:10px 10px; }
-.diagram-guidance strong{font-size:11px}.diagram-guidance p{margin:3px 0 8px;color:var(--muted);font-size:10px;line-height:1.4}
-.step-badge{width:23px;height:23px;border-radius:50%;display:grid;place-items:center;color:white;font-size:10px;background: var(--accent-fill)}.step-badge.muted{background:var(--subtle)}
 .diagram-chart{padding:12px 22px 10px;min-width:0;display:flex;flex-direction:column}.diagram-chart-heading{display:flex;align-items:center;gap:12px;font-size:11px;min-height:32px}.diagram-chart-heading label{display:flex;align-items:center;gap:6px;color:var(--muted)}.diagram-chart-heading select{border:1px solid var(--border);background:var(--surface);border-radius:var(--sc-radius-control);padding:4px 22px 4px 7px;font-size:10px}.diagram-chart-heading strong{flex:1}.diagram-chart-heading small{color:var(--muted);font-size:9px}.diagram-chart-heading button{border:0;background:transparent;width:28px;height:28px;display:grid;place-items:center;border-radius:var(--sc-radius-control)}.diagram-chart-heading button:hover{background:var(--surface-2)}
 .diagram-chart svg{width:100%;height:170px;overflow:visible;touch-action:none}.chart-axis{stroke:var(--text);stroke-width:1}.chart-line{stroke-width:2}.diagram-chart.axial .chart-line{stroke:var(--axial)}.diagram-chart.axial .chart-fill{fill:var(--axial)}.diagram-chart.shear .chart-line{stroke:var(--shear)}.diagram-chart.shear .chart-fill{fill:var(--shear)}.diagram-chart.moment .chart-line{stroke:var(--moment)}.diagram-chart.moment .chart-fill{fill:var(--moment)}.diagram-chart text{font-size:10px;fill:var(--text)}
 .chart-break{stroke:var(--border);stroke-width:1;stroke-dasharray:3 4}.chart-jump{stroke:currentColor;stroke-width:2.2;stroke-dasharray:4 2}.diagram-chart.axial .chart-jump{color:var(--axial)}.diagram-chart.shear .chart-jump{color:var(--shear)}.diagram-chart.moment .chart-jump{color:var(--moment)}.chart-tick line{stroke:var(--muted);stroke-width:1}.chart-tick text{fill:var(--muted);font-size:8px}.chart-critical circle{fill:currentColor;stroke:var(--surface);stroke-width:1.5}.chart-critical.zero circle{fill:var(--surface);stroke:currentColor;stroke-width:2}.chart-critical text{fill:currentColor;font-weight:700;paint-order:stroke;stroke:var(--surface);stroke-width:3px}.diagram-chart.axial .chart-critical{color:var(--axial)}.diagram-chart.shear .chart-critical{color:var(--shear)}.diagram-chart.moment .chart-critical{color:var(--moment)}
@@ -169,7 +164,6 @@
   .results-panel { min-height:180px; max-height:58dvh; }
   .results-body { padding-bottom:calc(70px + env(safe-area-inset-bottom)); }
   .diagram-result-layout { grid-template-columns:1fr; }
-  .diagram-guidance { display:none; }
   .results-metric-cards { grid-template-columns:1fr; margin:8px 10px 0; gap:5px; }
   .results-metric-cards > div,
   .results-metric-cards > button { min-height:40px; padding:6px 9px; }
@@ -445,8 +439,6 @@
 /* Compacto muestra la lectura esencial sin pagar una altura de panel por una
    columna de ayuda vacía. Expandido conserva la guía, pero el gráfico y sus
    tarjetas dejan de estirarse hasta formar una pared de espacio muerto. */
-.results-panel.results-mode-compact .diagram-guidance,
-.results-panel.results-mode-compact .deformation-guidance { display:none; }
 .results-panel.results-mode-compact .diagram-result-layout,
 .results-panel.results-mode-compact .deformation-result-layout { min-height:0; }
 .results-panel.results-mode-compact .diagram-chart { padding:6px 14px 7px; }
@@ -458,7 +450,6 @@
 .results-panel.results-mode-compact .results-metric-cards strong { font-size:11px; }
 .results-panel.results-mode-expanded .diagram-result-layout,
 .results-panel.results-mode-expanded .deformation-result-layout { min-height:0; }
-.results-panel.results-mode-expanded .diagram-guidance { padding-block:9px; }
 .results-panel.results-mode-expanded .diagram-chart { padding-block:8px; }
 .results-panel.results-mode-expanded .diagram-chart svg { height:140px; }
 .result-tabs { height:60px; flex-basis:60px; align-items:stretch; gap:10px; padding-inline:16px; }
