@@ -44,16 +44,12 @@ export interface ShellComposition {
 // 1. Constantes de chrome — despejadas de las mediciones de CRI-7 §2
 // ---------------------------------------------------------------------------
 
-/** Ver `canvas-budget-model.mjs` §1: cada número trae su despeje documentado. */
+/** Medidas del cromo permanente que compone el shell actual. */
 export const CHROME = {
-  /** 8.9% de 1024×768 = 69 985 px² / 1024 = 68.3 px · 7.6% de 1440×900 → 68.4 px */
-  topBarWide: 68,
-  /** 2.9% de 1024×768 = 22 806 px² / 1024 = 22.3 px */
-  footerWide: 22,
-  /** 14.1% de 1024×768 = 110 887 px² / (768−68−22) = 163.6 px */
-  railLabels: 164,
-  /** Declarado por styles.css para 1024–1439 (el tier que F-01 dejó muerto). */
-  railIcons: 76,
+  /** `console.css`: ancho de la consola colapsada; al revelar etiquetas se superpone. */
+  consoleWide: 52,
+  /** `instrument.css`: franja persistente de lectura del modelo. */
+  instrumentWide: 24,
   /** DEFAULT_INSPECTOR_WIDTH · useWorkspaceLayoutPreferences.ts */
   detailDock: 320,
   /** Ancho del detalle superpuesto en Medium, sobre MIN_INSPECTOR_WIDTH = 280. */
@@ -81,15 +77,15 @@ interface WideComposition {
 }
 
 const WIDE_COMPOSITIONS: readonly WideComposition[] = [
-  // Expanded · dos docks laterales: rail con etiquetas + detalle acoplado.
-  { id: 'X2', railWidth: CHROME.railLabels, detailWidth: CHROME.detailDock, detailPersistent: true },
-  // Medium · un dock lateral + detalle superpuesto sin reflow.
-  { id: 'M1', railWidth: CHROME.railIcons, detailWidth: CHROME.detailOverlayMedium, detailPersistent: false },
+  // Expanded · consola a la izquierda + detalle acoplado.
+  { id: 'X2', railWidth: CHROME.consoleWide, detailWidth: CHROME.detailDock, detailPersistent: true },
+  // Medium · la misma consola + detalle superpuesto sin reflow.
+  { id: 'M1', railWidth: CHROME.consoleWide, detailWidth: CHROME.detailOverlayMedium, detailPersistent: false },
 ];
 
-/** Altura del escenario: viewport menos las bandas fijas de la composición ancha. */
+/** Altura del escenario: viewport menos la única franja horizontal permanente. */
 const wideStageHeight = (viewport: ShellViewport) =>
-  Math.max(0, viewport.height - CHROME.topBarWide - CHROME.footerWide);
+  Math.max(0, viewport.height - CHROME.instrumentWide);
 
 /**
  * ¿Paga el presupuesto esta composición ancha en este viewport?
