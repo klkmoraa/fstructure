@@ -1,4 +1,4 @@
-import { Crosshair, LocateFixed, Minus, Plus, X } from 'lucide-react';
+import { LocateFixed, Minus, Plus, X } from 'lucide-react';
 import { useEffect, type Dispatch, type RefObject } from 'react';
 import { useI18n } from '../../i18n/useI18n';
 import { IconButton } from '../../design-system/components/controls';
@@ -86,11 +86,9 @@ export const CanvasChrome = ({
       <IconButton label={t('canvas.zoomOut')} title={t('canvas.zoomOut')} onClick={onZoomOut}><Minus size={18} /></IconButton>
       <IconButton label={t('canvas.fit')} title={t('canvas.fit')} onClick={onFit}><LocateFixed size={18} /></IconButton>
     </div>
-    <div className="canvas-status" data-canvas-chrome="coordinates">
-      <Crosshair size={14} aria-hidden="true" />
+    <div className="sr-only" aria-live="polite">
       <output ref={coordinateReadoutRef} className="canvas-coordinate-output" aria-label={t('canvas.coordinates')}>X — · Y — {lengthLabel}</output>
-      <span className="canvas-status-divider" aria-hidden="true">·</span>
-      <span className="canvas-scale-output">{t('canvas.scale')} {formatFixed((scale / 85), 2)}×</span>
+      <output className="canvas-scale-output">{t('canvas.scale')} {formatFixed((scale / 85), 2)}×</output>
     </div>
   </>;
 };
