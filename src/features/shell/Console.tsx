@@ -8,10 +8,8 @@ import './console.css';
 export interface ConsoleLayoutActions {
   inspectorCollapsed: boolean;
   fullCanvas: boolean;
-  toolDockPosition: 'bottom' | 'left';
   onToggleInspector: (trigger?: HTMLElement | null) => void;
   onToggleFullCanvas: () => void;
-  onToolDockPositionChange: (position: 'bottom' | 'left') => void;
   onOpenAnalysisSetup: () => void;
   onOpenViewSettings: () => void;
 }

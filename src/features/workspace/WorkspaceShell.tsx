@@ -375,16 +375,14 @@ const WorkspaceBrokerContent = ({
     inspectorCollapsed={!inspectorOpen}
     inspectorCompact={detail.open && layout.inspectorCompact}
     inspectorWidth={layout.inspectorWidth}
-    toolDockPosition={layout.toolDockPosition}
     fullCanvas={layout.fullCanvas}
-    topBar={<Console
+    console={<Console
       onOpenHome={onOpenHome}
       onOpenSpace3D={onOpenSpace3D}
       resultsOpen={results.open}
       layoutActions={{
         inspectorCollapsed: !inspectorOpen,
         fullCanvas: layout.fullCanvas,
-        toolDockPosition: layout.toolDockPosition,
         onToggleInspector: (trigger) => {
           if (layout.fullCanvas) setPreference('fullCanvas', false);
           if (detail.open) closeDetail();
@@ -405,12 +403,10 @@ const WorkspaceBrokerContent = ({
           }
           togglePreference('fullCanvas');
         },
-        onToolDockPositionChange: (position) => setPreference('toolDockPosition', position),
         onOpenAnalysisSetup: () => openSurface('analysisSetup'),
         onOpenViewSettings: () => openSurface('view'),
       }}
     />}
-    toolRail={null}
     workspace={<>
       {project.settings.calculationMode === 'classroom' ? <ClassroomGuide className="classroom-workspace-journey" project={project} analysis={analysis} onChooseTool={setActiveTool} onAnalyze={() => {
         emitWorkspaceCommand('analysis-requested');
@@ -488,7 +484,7 @@ const WorkspaceBrokerContent = ({
     floatingActions={shellClass === 'K0' ? undefined : <div className="workspace-surface-launcher">
       <button className="mobile-inspector-toggle" onClick={(event) => openDetail(event.currentTarget)} aria-label={t('inspector.open')} aria-expanded={detail.status === 'active'} aria-controls="workspace-detail"><SlidersHorizontal size={20} /></button>
     </div>}
-    footer={<Instrument />}
+    instrument={<Instrument />}
   /></DataSurfaceRetainedStateProvider>;
 };
 

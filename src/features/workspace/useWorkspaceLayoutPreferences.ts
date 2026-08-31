@@ -4,7 +4,6 @@ export const WORKSPACE_LAYOUT_STORAGE_KEY = 'structureco:workspace-layout:v2';
 const LEGACY_WORKSPACE_LAYOUT_STORAGE_KEY = 'structureco:workspace-layout:v1';
 
 export type InspectorDetent = 'compact' | 'medium' | 'large';
-export type ToolDockPosition = 'bottom' | 'left';
 
 /**
  * `toolRailCompact` ya NO vive aquí: desde CRI-89 la compacidad del riel se
@@ -23,7 +22,6 @@ export interface WorkspaceLayoutPreferences {
   fullCanvas: boolean;
   inspectorWidth: number;
   inspectorDetent: InspectorDetent;
-  toolDockPosition: ToolDockPosition;
 }
 
 export const MIN_INSPECTOR_WIDTH = 280;
@@ -72,7 +70,6 @@ const DEFAULT_PREFERENCES: WorkspaceLayoutPreferences = {
   fullCanvas: false,
   inspectorWidth: DEFAULT_INSPECTOR_WIDTH,
   inspectorDetent: 'medium',
-  toolDockPosition: 'bottom',
 };
 
 /** Lo que hubiera en la clave y este lector ya no gobierna. Se conserva tal cual. */
@@ -116,9 +113,6 @@ const readPreferences = (): WorkspaceLayoutPreferences => {
     inspectorDetent: stored.inspectorDetent === 'compact' || stored.inspectorDetent === 'medium' || stored.inspectorDetent === 'large'
       ? stored.inspectorDetent
       : DEFAULT_PREFERENCES.inspectorDetent,
-    toolDockPosition: stored.toolDockPosition === 'left' || stored.toolDockPosition === 'bottom'
-      ? stored.toolDockPosition
-      : DEFAULT_PREFERENCES.toolDockPosition,
   };
 };
 
