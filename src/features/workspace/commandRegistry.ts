@@ -425,4 +425,3 @@ export const buildCommands = (ctx: CommandContext): CommandListItem[] => [
   ...nodeCommands(ctx),
   ...memberCommands(ctx),
 ];
-

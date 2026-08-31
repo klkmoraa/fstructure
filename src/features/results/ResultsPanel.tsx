@@ -204,6 +204,23 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
     document.addEventListener('keydown', onSheetEscape);
     return () => document.removeEventListener('keydown', onSheetEscape);
   }, [closeMobileResults, isMobile, status]);
+  useEffect(() => {
+    if (isMobile || status !== 'active') return undefined;
+    const onDesktopEscape = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape') return;
+      const modalAbove = [...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')].some((element) => {
+        if (element === panelRef.current || panelRef.current?.contains(element)) return false;
+        const style = window.getComputedStyle(element);
+        return !element.hidden && !element.inert && element.getAttribute('aria-hidden') !== 'true'
+          && style.display !== 'none' && style.visibility !== 'hidden';
+      });
+      if (modalAbove) return;
+      event.preventDefault();
+      onOpenChange?.(false);
+    };
+    document.addEventListener('keydown', onDesktopEscape);
+    return () => document.removeEventListener('keydown', onDesktopEscape);
+  }, [isMobile, onOpenChange, status]);
   const scheduleHeight = (next: number) => {
     pendingHeightRef.current = next;
     if (resizeFrameRef.current !== null) return;
