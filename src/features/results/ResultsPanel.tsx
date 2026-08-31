@@ -18,7 +18,6 @@ import { formatFixed, formatScientific } from '../../utils/numberFormat';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
 import type { SurfacePresentation, SurfaceStatus } from '../workspace/surfacePresentation';
 import { ResultExtremeCard } from './ResultExtremeCard';
-import { DENSE_RESULT_VIEWS, preloadDenseResultsSurface, preloadInfluenceLineView, type DenseResultView } from './denseResults';
 import { reliabilityLevelLabelKey } from './reliabilityCopy';
 import { formatResultNumber } from './resultFormatting';
 import './results.css';
@@ -34,18 +33,6 @@ const tabs: Array<{ id: ResultTab; labelKey: TranslationKey; color?: string }> =
   { id: 'shear', labelKey: 'results.shear', color: 'shear' },
   { id: 'moment', labelKey: 'results.moment', color: 'moment' },
   { id: 'deformed', labelKey: 'results.deformed' },
-];
-
-const denseViewLabelKey: Record<DenseResultView, TranslationKey> = {
-  reactions: 'results.reactions',
-  influence: 'results.influence',
-  learn: 'results.learn',
-};
-
-const dataViewActions: ReadonlyArray<{ command: 'open-datasheet' | 'open-model-doctor' | 'open-structural-bom'; labelKey: TranslationKey }> = [
-  { command: 'open-datasheet', labelKey: 'datasheet.title' },
-  { command: 'open-model-doctor', labelKey: 'modelDoctor.open' },
-  { command: 'open-structural-bom', labelKey: 'bom.title' },
 ];
 
 type ResultsPanelMode = 'compact' | 'expanded' | 'focused';
@@ -217,6 +204,23 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
     document.addEventListener('keydown', onSheetEscape);
     return () => document.removeEventListener('keydown', onSheetEscape);
   }, [closeMobileResults, isMobile, status]);
+  useEffect(() => {
+    if (isMobile || status !== 'active') return undefined;
+    const onDesktopEscape = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape') return;
+      const modalAbove = [...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')].some((element) => {
+        if (element === panelRef.current || panelRef.current?.contains(element)) return false;
+        const style = window.getComputedStyle(element);
+        return !element.hidden && !element.inert && element.getAttribute('aria-hidden') !== 'true'
+          && style.display !== 'none' && style.visibility !== 'hidden';
+      });
+      if (modalAbove) return;
+      event.preventDefault();
+      onOpenChange?.(false);
+    };
+    document.addEventListener('keydown', onDesktopEscape);
+    return () => document.removeEventListener('keydown', onDesktopEscape);
+  }, [isMobile, onOpenChange, status]);
   const scheduleHeight = (next: number) => {
     pendingHeightRef.current = next;
     if (resizeFrameRef.current !== null) return;
@@ -371,26 +375,6 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
             window.requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-result-tab="${next.id}"]`)?.focus());
           }}>{t(tab.labelKey)}</button>;
         })}</div>
-        <div className="results-dense-rail" role="group" aria-label={t('results.denseViews')}>
-          {DENSE_RESULT_VIEWS.map((view) => <button
-            key={view}
-            type="button"
-            className="results-dense-rail__action"
-            data-dense-launcher={view}
-            onFocus={() => { void preloadDenseResultsSurface(); if (view === 'influence') void preloadInfluenceLineView(); }}
-            onPointerEnter={() => { void preloadDenseResultsSurface(); if (view === 'influence') void preloadInfluenceLineView(); }}
-            onClick={(event) => emitWorkspaceCommand('open-dense-results', { view, trigger: event.currentTarget })}
-          >{t(denseViewLabelKey[view])}</button>)}
-        </div>
-        <div className="results-dense-rail results-data-rail" role="group" aria-label={t('results.dataViews')}>
-          {dataViewActions.map(({ command, labelKey }) => <button
-            key={command}
-            type="button"
-            className="results-dense-rail__action"
-            data-result-data-launcher={command}
-            onClick={() => emitWorkspaceCommand(command)}
-          >{t(labelKey)}</button>)}
-        </div>
       </nav>
       <div id="results-content" className="results-body" role="tabpanel" aria-labelledby={`result-tab-${activeTab.id}`} aria-busy={isAnalyzing}>
         {!analysis ? <EmptyResults onAnalyze={() => {
@@ -593,7 +577,6 @@ const DiagramView = ({ type, memberResult, memberId, isMobile }: { type: Diagram
       />
       {cursorPoint ? <div className="diagram-cursor-readout diagram-cursor-metric"><span>{t('results.cursorValue')}</span><strong>{formatFixed(displayValue(cursorPoint[type]), 3)} {unit}</strong><small>x {formatFixed(toDisplay(cursorPoint.x, units, 'length'), 2)} {lengthUnit}</small></div> : null}
     </ResultMetricRail>
-    <div className="diagram-guidance"><div className={`step-badge ${colorClass}`}>1</div><div><strong>{label}</strong><p>{t('results.exactCurves')}</p></div><div className="step-badge muted">2</div><div><strong>{t('results.mainValues')}</strong><p>{t('results.maximum')} {formatFixed(displayValue(max), 3)} {unit}<br />{t('results.minimum')} {formatFixed(displayValue(min), 3)} {unit}</p></div><div className="step-badge muted">3</div><div><strong>{t('results.verification')}</strong><p>{t('results.derivativeCheck')}</p></div></div>
     <div className={`diagram-chart ${colorClass}`} data-testid="diagram-chart"><div className="diagram-chart-heading"><label><span>{t('results.member')}</span><select aria-label={t('results.memberForDiagram')} value={memberId} onChange={(event) => { setSelection({ kind: 'member', id: event.target.value }); setResultCursor(null); }}>{memberOptions.map((member) => <option key={member.memberId} value={member.memberId}>{member.memberId}</option>)}</select></label><strong>{label}</strong><button className="envelope-toggle" aria-pressed={envelopeMode} disabled={envelopeBusy} title={t('results.compareAllCases')} onClick={() => { if (!envelopeScenarios) runEnvelopeAnalysis(); setEnvelopeMode((current) => !current); }}>{envelopeBusy ? '…' : 'Env.'}</button><small>{envelopeMode ? t('results.scenarioCount', { count: envelope?.includedScenarioIds.length ?? 0 }) : pinnedX === null ? t('results.pointerHint') : t('results.pinnedHint')}</small></div><span id={cursorHelpId} className="sr-only">{t('results.chartKeyboardHelp')}</span><svg tabIndex={0} role="img" aria-label={diagramAriaLabel} aria-describedby={cursorHelpId} aria-keyshortcuts="ArrowLeft ArrowRight Home End Escape" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" onKeyDown={movePinnedByKeyboard} onPointerMove={(event) => setHoverX(pointerX(event))} onPointerDown={(event) => pinAt(pointerX(event))} onPointerLeave={() => setHoverX(null)}>
       <title>{diagramAriaLabel}</title><desc>{t('results.chartKeyboardHelp')}</desc>
       <line className="chart-axis" x1="0" y1={baseline} x2={width} y2={baseline} />
@@ -624,13 +607,8 @@ const DeformationView = ({ memberResult, memberId, isMobile }: { memberResult: M
   const L = memberResult.length;
   const pinnedX = resultCursor?.memberId === memberId && resultCursor.pinned ? Math.max(0, Math.min(L, resultCursor.x)) : null;
   const units = project.settings.units;
-  const unit = quantity === 'theta' ? 'rad' : unitLabel(units, 'length');
-  const displayValue = (value: number) => quantity === 'theta' ? value : toDisplay(value, units, 'length');
   const critical = memberResult.deformationCriticalPoints.filter((point) => point.quantity === quantity);
   const candidates = critical.filter((point) => point.kind === 'maximum' || point.kind === 'minimum' || point.kind === 'end');
-  const maximum = candidates.reduce((best, point) => point.value > best.value ? point : best, candidates[0]);
-  const minimum = candidates.reduce((best, point) => point.value < best.value ? point : best, candidates[0]);
-  const absolute = [maximum, minimum].filter(Boolean).reduce((best, point) => Math.abs(point.value) > Math.abs(best.value) ? point : best);
   const maxAbsValue = Math.max(1e-15, ...candidates.map((point) => Math.abs(point.value)), ...memberResult.deformation.map((point) => Math.abs(point[quantity])));
   const absoluteFor = (targetQuantity: 'u' | 'v' | 'theta') => {
     const points = memberResult.deformationCriticalPoints.filter((point) => point.quantity === targetQuantity && (point.kind === 'maximum' || point.kind === 'minimum' || point.kind === 'end'));
@@ -693,7 +671,6 @@ const DeformationView = ({ memberResult, memberId, isMobile }: { memberResult: M
         accent="deformation"
       />)}
     </ResultMetricRail>
-    <div className="diagram-guidance deformation-guidance"><div className="step-badge deformed">1</div><div><strong>{t('results.exactMemberResponseTitle')}</strong><p>{t('results.exactMemberResponseBody')}</p></div><div className="step-badge muted">2</div><div><strong>{t('results.interiorMaximum')}</strong><p>{absolute ? t('results.responseAtPosition', { quantity, value: formatScientific(displayValue(absolute.value), 4), unit, x: formatFixed(toDisplay(absolute.x, units, 'length'), 3), lengthUnit: unitLabel(units, 'length') }) : '—'}</p></div></div>
     <div className="diagram-chart deformation" data-testid="deformation-chart"><div className="diagram-chart-heading"><label><span>{t('results.member')}</span><select aria-label={t('results.memberForDeformation')} value={memberId} onChange={(event) => { setSelection({ kind: 'member', id: event.target.value }); setResultCursor(null); }}>{memberOptions.map((member) => <option key={member.memberId} value={member.memberId}>{member.memberId}</option>)}</select></label><div className="response-selector" role="group" aria-label={t('results.memberResponse')}>{(['u', 'v', 'theta'] as const).map((item) => <button key={item} aria-pressed={quantity === item} className={quantity === item ? 'active' : ''} onClick={() => setQuantity(item)}>{item === 'theta' ? 'θ' : item}</button>)}</div><small>{pinnedX === null ? t('results.pointerHint') : t('results.pinnedHint')}</small></div>
       <span id={cursorHelpId} className="sr-only">{t('results.chartKeyboardHelp')}</span>
       <svg tabIndex={0} role="img" aria-label={responseAriaLabel} aria-describedby={cursorHelpId} aria-keyshortcuts="ArrowLeft ArrowRight Home End Escape" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" onKeyDown={movePinnedByKeyboard} onPointerMove={(event) => setHoverX(pointerX(event))} onPointerDown={(event) => pinAt(pointerX(event))} onPointerLeave={() => setHoverX(null)}>

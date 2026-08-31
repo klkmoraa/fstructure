@@ -1,15 +1,13 @@
 import type { CSSProperties, ReactNode, Ref } from 'react';
 import { isToolRailCompact, type ShellClass } from './shellComposition';
-import type { ToolDockPosition } from './useWorkspaceLayoutPreferences';
 
 export interface AppShellLayoutProps {
   projectId: string;
   skipLabel: string;
-  topBar: ReactNode;
-  toolRail: ReactNode;
+  console: ReactNode;
   workspace: ReactNode;
   inspector: ReactNode;
-  footer?: ReactNode;
+  instrument?: ReactNode;
   backdrop?: ReactNode;
   floatingActions?: ReactNode;
   /**
@@ -22,7 +20,6 @@ export interface AppShellLayoutProps {
   inspectorCompact?: boolean;
   fullCanvas?: boolean;
   inspectorWidth?: number;
-  toolDockPosition?: ToolDockPosition;
   ref?: Ref<HTMLDivElement>;
 }
 
@@ -34,11 +31,10 @@ export interface AppShellLayoutProps {
 export function AppShellLayout({
   projectId,
   skipLabel,
-  topBar,
-  toolRail,
+  console,
   workspace,
   inspector,
-  footer,
+  instrument,
   backdrop,
   floatingActions,
   shellClass = 'X2',
@@ -46,7 +42,6 @@ export function AppShellLayout({
   inspectorCompact = false,
   fullCanvas = false,
   inspectorWidth,
-  toolDockPosition = 'bottom',
   ref,
 }: AppShellLayoutProps) {
   return <div
@@ -58,13 +53,11 @@ export function AppShellLayout({
     data-inspector-compact={inspectorCompact || undefined}
     data-full-canvas={fullCanvas || undefined}
     data-tool-rail-compact={isToolRailCompact(shellClass) || undefined}
-    data-tool-dock-position={toolDockPosition}
     style={inspectorWidth === undefined ? undefined : { '--inspector-w': `${inspectorWidth}px` } as CSSProperties}
   >
     <a className="app-shell-skip-link" href="#workspace-canvas">{skipLabel}</a>
-    {topBar}
+    {console}
     <div className="workspace">
-      {toolRail}
       <main id="workspace-canvas" className="center-stage" tabIndex={-1}>
         {workspace}
       </main>
@@ -72,6 +65,6 @@ export function AppShellLayout({
       {inspector}
       {floatingActions}
     </div>
-    {footer}
+    {instrument}
   </div>;
 }

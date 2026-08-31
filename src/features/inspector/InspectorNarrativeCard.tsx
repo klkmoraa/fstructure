@@ -53,24 +53,20 @@ export const InspectorNarrativeCard = ({ member, result, analysis, units }: Insp
         <CircleSlash size={15} aria-hidden="true" />
         <strong>{t('elastic.unavailableTitle')}</strong>
       </header>
-      {blockedKey ? <p className="inspector-narrative-body">{t(blockedKey)}</p> : null}
-      {/* Bloqueado no es «limitado»: se cita la causa, en el idioma activo, sin
-          etiquetar la lectura como algo intermedio y utilizable. */}
-      {view.blocker === 'unreliable' && view.governingCheck ? <p className="elastic-demand-blocked-cause" data-testid="inspector-blocked-cause">
-        <span>{t('elastic.blockedGoverning', { check: reliabilityCheckLabel(view.governingCheck, t) })}</span>
-        <span className="elastic-demand-limited-message">{describeReliabilityCheck(view.governingCheck, t)}</span>
-      </p> : null}
-      {view.gaps.length ? <ul className="elastic-demand-missing">
-        {view.gaps.map((gap) => <li key={gap}>{t(gapLabel[gap])}</li>)}
-      </ul> : null}
-      <small className="inspector-narrative-basis">{t('elastic.limitNote')}</small>
+      <details className="elastic-how">
+        <summary aria-label={t('elastic.limitNote')}>?</summary>
+        {blockedKey ? <p>{t(blockedKey)}</p> : null}
+        {view.blocker === 'unreliable' && view.governingCheck ? <p data-testid="inspector-blocked-cause">
+          <span>{t('elastic.blockedGoverning', { check: reliabilityCheckLabel(view.governingCheck, t) })}</span>
+          <span className="elastic-demand-limited-message">{describeReliabilityCheck(view.governingCheck, t)}</span>
+        </p> : null}
+        {view.gaps.length ? <ul className="elastic-demand-missing">{view.gaps.map((gap) => <li key={gap}>{t(gapLabel[gap])}</li>)}</ul> : null}
+        <small>{t('elastic.limitNote')}</small>
+      </details>
     </section>;
   }
 
   const { index, confidence, governingCheck } = view;
-  const axialPercent = Math.round(index.axialShare * 100);
-  const bendingPercent = 100 - axialPercent;
-  const mode = axialPercent >= 70 ? 'axial' : bendingPercent >= 70 ? 'bending' : 'combined';
   const paint = elasticIndexPaint(index.ratio);
   const percent = index.ratio * 100;
   const ratioText = formatFixed(index.ratio, 2, 'inspector');
@@ -87,13 +83,6 @@ export const InspectorNarrativeCard = ({ member, result, analysis, units }: Insp
       <strong>{t('inspector.narrativeTitle')}</strong>
     </header>
 
-    <p className="inspector-narrative-body">{t(
-      mode === 'axial' ? 'inspector.narrativeModeAxial'
-        : mode === 'bending' ? 'inspector.narrativeModeBending'
-          : 'inspector.narrativeModeCombined',
-      { id: member.id, axial: axialPercent, bending: bendingPercent },
-    )}</p>
-
     <p className="elastic-index-value" data-testid="inspector-elastic-value">{t('elastic.value', {
       ratio: ratioText,
       percent: formatFixed(percent, 0, 'inspector'),
@@ -108,16 +97,14 @@ export const InspectorNarrativeCard = ({ member, result, analysis, units }: Insp
       <span className="elastic-index-reference" style={{ left: `${ELASTIC_REFERENCE_RATIO * 100}%` }} />
     </div>
 
-    {confidence === 'limited' ? <p className="elastic-demand-limited" role="note" data-testid="inspector-limited-cause">
-      <strong>{t('elastic.limitedConfidence')}</strong>
-      {governingCheck ? <>
+    {confidence === 'limited' ? <details className="elastic-how" data-testid="inspector-limited-cause">
+      <summary aria-label={t('elastic.limitedConfidence')}>?</summary>
+      {governingCheck ? <p>
         <span>{t('elastic.limitedGoverning', { check: reliabilityCheckLabel(governingCheck, t) })}</span>
         <span className="elastic-demand-limited-message">{describeReliabilityCheck(governingCheck, t)}</span>
-        <button type="button" onClick={() => emitWorkspaceCommand('open-model-doctor')}>
-          {t('elastic.actionDoctor')}
-        </button>
-      </> : null}
-    </p> : null}
+        <button type="button" onClick={() => emitWorkspaceCommand('open-model-doctor')}>{t('elastic.actionDoctor')}</button>
+      </p> : null}
+    </details> : null}
 
     <dl className="inspector-narrative-values">
       <div>

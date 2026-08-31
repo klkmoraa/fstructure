@@ -1,0 +1,3 @@
+.instrument { grid-area:footer; min-height:24px; height:24px; display:flex; align-items:center; gap:12px; overflow:hidden; padding:0 10px; border-top:1px solid var(--border-soft); background:var(--surface); color:var(--muted); font:var(--sc-font-size-label)/1 var(--sc-font-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.instrument span { display:inline-flex; align-items:center; gap:4px; }.instrument b { color:var(--text); }.instrument__tool { margin-left:auto; text-transform:uppercase; letter-spacing:.08em; }.instrument__storage.is-issue,.instrument__analysis.is-solved { color:var(--text); }
+@media (max-width:1023px) { .instrument { padding:0 8px; gap:8px; }.instrument__tool { display:none!important; } }

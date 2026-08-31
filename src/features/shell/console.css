@@ -1,0 +1,20 @@
+.console { grid-area:console; z-index:20; width:52px; min-width:52px; display:flex; flex-direction:column; overflow:visible; border-right:1px solid var(--border-soft); background:var(--surface); transition:width var(--sc-motion-fast) var(--sc-ease-standard); }
+.console:hover,.console:focus-within { width:200px; box-shadow:var(--sc-shadow-drop); }
+.console button { min-width:44px; min-height:44px; border:0; background:transparent; color:var(--text); display:flex; align-items:center; gap:10px; padding:0 16px; text-align:left; white-space:nowrap; overflow:hidden; }
+.console button:hover,.console button:focus-visible,.console button.is-active { background:var(--surface-2); }
+.console button span { opacity:0; transition:opacity var(--sc-motion-fast) var(--sc-ease-standard); }
+.console:hover button span,.console:focus-within button span { opacity:1; }
+.console__head,.console__foot,.console__surfaces { display:grid; gap:1px; }
+.console__brand { font-weight:800; letter-spacing:-.08em; }
+.console__project { font-size:var(--sc-font-size-label); font-weight:700; }
+.console__body { min-height:0; flex:1; overflow-y:auto; overflow-x:hidden; display:grid; align-content:start; gap:8px; }
+.console__tools .toolbar { width:100%; padding:0; border:0; overflow:visible; }
+.console__tools .toolbar-spacer,.console__tools .selection-tip,.console__tools .dock-collapse-toggle { display:none; }
+.console__tools .desktop-tool-list { display:grid; gap:1px; }
+.console__tools .tool-group { display:contents; }
+.console__tools .tool-group-heading { display:none; }
+.console__tools .tool-group-actions { display:contents; }
+.console__tools .tool-button { width:100%; }
+.console__foot { border-top:1px solid var(--border-soft); }
+.console__analyze { background:var(--sc-color-action-primary)!important; color:var(--sc-color-action-foreground)!important; }
+@media (max-width:1023px) { .console { position:fixed; inset:auto 0 0; z-index:40; width:100%; height:52px; border-width:1px 0 0; flex-direction:row; overflow:hidden; } .console:hover,.console:focus-within { width:100%; box-shadow:0 -8px 20px color-mix(in srgb,var(--text) 12%,transparent); } .console__head,.console__foot,.console__body { display:flex; flex:none; overflow:hidden; } .console__head,.console__foot { gap:1px; } .console__body { flex:1; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; } .console__body::-webkit-scrollbar { display:none; } .console__surfaces,.console__tools,.console__tools .toolbar { display:flex; flex:none; width:max-content; } .console__tools .desktop-tool-list { display:none; } .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock { display:flex; flex:none; width:max-content; max-width:none; padding:0; gap:1px; overflow:visible; } .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock .tool-button { width:44px; min-width:44px; min-height:44px; height:44px; } .console button { padding:0 13px; } .console button span { display:none; } .console__project { display:none!important; } }

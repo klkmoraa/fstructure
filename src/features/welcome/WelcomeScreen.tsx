@@ -204,7 +204,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   };
   const updateLanguage = (nextLanguage: 'es' | 'en') => updateProjectView((draft) => ({ ...draft, settings: { ...draft.settings, language: nextLanguage } }));
   const openPreferences = (launcher: HTMLButtonElement) => {
-    preferencesLauncherRef.current = launcher.closest('.sc-home-nav--mobile') ? mobileMenuButtonRef.current : launcher;
+    preferencesLauncherRef.current = launcher.closest('.sc-home-nav--menu') ? mobileMenuButtonRef.current : launcher;
     setMobileNavOpen(false);
     setPreferencesOpen(true);
   };
@@ -231,52 +231,46 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     { id: 'classroom', label: text.classroom, icon: GraduationCap, action: () => openExercise() },
     { id: 'space3d', label: text.space3d, icon: Box, action: () => onOpenSpace3D?.() },
   ].filter((item) => !normalizedSearch || item.label.toLocaleLowerCase(language).includes(normalizedSearch));
-  const renderNavigation = (mobile = false) => <nav className={mobile ? 'sc-home-nav sc-home-nav--mobile' : 'sc-home-nav'} aria-label={text.navigation}>
-    {NAV_ITEMS.map(({ id, icon: Icon }) => <button key={id} type="button" className={id !== 'studio' && view === id ? 'is-active' : undefined} aria-current={id !== 'studio' && view === id ? 'page' : undefined} onClick={(event) => id === 'studio' ? openStudio(event.currentTarget) : navigate(id)}><Icon size={19} /><span>{text[id]}</span></button>)}
-    {mobile ? <button type="button" onClick={(event) => openPreferences(event.currentTarget)}><Settings size={19} /><span>{text.settings}</span></button> : null}
+  const renderNavigation = (menu = false) => <nav className={menu ? 'sc-home-nav sc-home-nav--menu' : 'sc-home-nav sc-home-nav--console'} aria-label={text.navigation}>
+    {NAV_ITEMS.map(({ id, icon: Icon }) => <button key={id} type="button" aria-label={text[id]} title={text[id]} className={id !== 'studio' && view === id ? 'is-active' : undefined} aria-current={id !== 'studio' && view === id ? 'page' : undefined} onClick={(event) => id === 'studio' ? openStudio(event.currentTarget) : navigate(id)}><Icon size={19} /><span>{text[id]}</span></button>)}
+    <button type="button" aria-label={text.settings} title={text.settings} onClick={(event) => openPreferences(event.currentTarget)}><Settings size={19} /><span>{text.settings}</span></button>
   </nav>;
 
   const dashboard = <>
     <section className="sc-home-hero" aria-labelledby="home-current-project">
       <div className="sc-home-primary-actions" onPointerEnter={onPreloadWorkspace} onFocusCapture={onPreloadWorkspace}>
-        <p>{text.current}</p><h2 id="home-current-project">{project.name}</h2>
+        <h2 id="home-current-project">{project.name}</h2>
         <div className="sc-home-primary-buttons">
           <button type="button" className="sc-home-continue" onClick={onOpenWorkspace} aria-label={text.continue}><Play size={17} fill="currentColor" /><span>{text.continue}</span></button>
           <button type="button" className="sc-home-new" onClick={openBlankProject} aria-label={text.create}><span aria-hidden="true">＋</span>{text.create}</button>
         </div>
-        <small>{text.local}</small>
       </div>
       <m.div className="sc-home-hero-asset" initial={reducedMotion ? false : { opacity: 0, y: -14, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={reducedMotion ? { duration: 0 } : { type: 'spring', stiffness: 220, damping: 24, mass: 0.8 }}>
         <ThreeStructuralImage assetId={heroId as PortalAssetId} theme={theme} eager />
       </m.div>
     </section>
-    <section className="sc-home-quick" aria-labelledby="home-quick-title" data-testid="home-secondary-actions">
-      <div className="sc-home-section-heading"><h2 id="home-quick-title">{text.secondary}</h2></div>
+    <section className="sc-home-quick" aria-label={text.secondary} data-testid="home-secondary-actions">
       <div className="sc-home-quick-row">
         {quickActions.map(({ id, label, icon: Icon, action }) => <button key={id} type="button" onClick={action}><Icon size={18} /><span>{label}</span></button>)}
       </div>
       {normalizedSearch && quickActions.length === 0 ? <p className="sc-home-search-empty" role="status">{text.noQuickMatches}</p> : null}
     </section>
-    <section className="sc-home-recents" aria-labelledby="home-recents-title">
-      <div className="sc-home-section-heading"><h2 id="home-recents-title">{text.recent}</h2><button type="button" onClick={() => setView('projects')}>{text.viewAll}<ArrowRight size={15} /></button></div>
+    <section className="sc-home-recents" aria-label={text.recent}>
+      <div className="sc-home-section-heading"><button type="button" onClick={() => setView('projects')}>{text.viewAll}<ArrowRight size={15} /></button></div>
       <Suspense fallback={<p role="status">{t('hub.loading')}</p>}><Phase2ProjectHub onOpenWorkspace={onOpenWorkspace} variant="recent" limit={3} filter={searchQuery} /></Suspense>
     </section>
   </>;
 
-  const templates = <section className="sc-home-view" aria-labelledby="home-templates-title">
-    <header><p>{text.templates}</p><h2 id="home-templates-title">{text.templatesTitle}</h2><span>{text.templatesBody}</span></header>
+  const templates = <section className="sc-home-view" aria-label={text.templates}>
     <div className="sc-home-template-grid">{exampleProjects.map((example) => {
       const presented = presentExample(example.name, example.description, t);
       return <button key={example.name} type="button" onClick={() => openExample(example.build)}><ThreeStructuralImage assetId={templateAssetId(example.name)} theme={theme} /><strong>{presented.name}</strong><span>{presented.description}</span></button>;
     })}</div>
   </section>;
 
-  const classroomLanding = <section className="sc-home-classroom" aria-labelledby="home-classroom-title">
+  const classroomLanding = <section className="sc-home-classroom" aria-label={text.classroom}>
     <div className="sc-home-classroom-hero">
       <div>
-        <p>{text.classroom}</p>
-        <h2 id="home-classroom-title">{text.classroomTitle}</h2>
-        <span>{text.classroomBody}</span>
         <button type="button" className="sc-home-continue" onClick={() => openExercise()}>{text.classroomAction}<ArrowRight size={16} /></button>
       </div>
       <ThreeStructuralImage assetId="portal:two-story" theme={theme} eager />
@@ -295,23 +289,14 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   </section>;
 
   const content = view === 'home' ? dashboard
-    : view === 'projects' ? <section className="sc-home-view"><header><p>{text.projects}</p><h2>{text.projectsTitle}</h2><span>{text.projectsBody}</span></header><Suspense fallback={<p role="status">{t('hub.loading')}</p>}><Phase2ProjectHub onOpenWorkspace={onOpenWorkspace} filter={searchQuery} /></Suspense></section>
+    : view === 'projects' ? <section className="sc-home-view" aria-label={text.projects}><Suspense fallback={<p role="status">{t('hub.loading')}</p>}><Phase2ProjectHub onOpenWorkspace={onOpenWorkspace} filter={searchQuery} /></Suspense></section>
       : view === 'templates' ? templates
         : view === 'library' ? <PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} />
           : view === 'classroom' ? classroomLanding
-          : view === 'import' ? <section className="sc-home-view"><header><p>{text.import}</p><h2>{text.importTitle}</h2><span>{text.importBody}</span></header><div className="sc-home-import-grid"><button type="button" className="welcome-import-card" onClick={() => setImportCenterOpen(true)}><Upload size={20} /><strong>{t('welcome.import')}</strong><span>{t('welcome.importDescription')}</span></button><Suspense fallback={null}><Phase2DxfAction open={dxfImportOpen} onOpenChange={setDxfImportOpen} onOpenWorkspace={onOpenWorkspace} /></Suspense></div></section>
-            : <section className="sc-home-space" aria-labelledby="home-space-title">
+          : view === 'import' ? <section className="sc-home-view" aria-label={text.import}><div className="sc-home-import-grid"><button type="button" className="welcome-import-card" onClick={() => setImportCenterOpen(true)}><Upload size={20} /><strong>{t('welcome.import')}</strong></button><Suspense fallback={null}><Phase2DxfAction open={dxfImportOpen} onOpenChange={setDxfImportOpen} onOpenWorkspace={onOpenWorkspace} /></Suspense></div></section>
+            : <section className="sc-home-space" aria-label={text.space3d}>
               <div className="sc-home-space__copy">
-                <p>{text.space3d}</p>
-                <h2 id="home-space-title">{text.spaceTitle}</h2>
-                <span>{text.spaceBody}</span>
-                <aside className="sc-home-space__orientation" role="note"><strong>{text.spaceExperimental}</strong><span>{text.spaceNotice}</span></aside>
                 <div className="sc-home-space__actions"><button type="button" className="sc-home-continue" onClick={onOpenSpace3D}>{text.spaceAction}<ArrowRight size={16} /></button><button type="button" className="sc-home-space__return" onClick={onOpenWorkspace}>{text.spaceContinue2D}</button></div>
-                <div className="sc-home-space__capabilities" aria-label={text.space3d}>
-                  <span><strong>XYZ</strong>{text.spaceCoordinates}</span>
-                  <span><strong>3D</strong>{text.spaceModel}</span>
-                  <span><strong>↧</strong>{text.spaceLoads}</span>
-                </div>
               </div>
               <div className="sc-home-space__asset">
                 <ThreeStructuralImage assetId="space-frame:multi-bay" theme={theme} alt={text.spacePreview} eager />
@@ -319,8 +304,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
             </section>;
 
   return <><main ref={homeRef} className="sc-home" data-testid="welcome-screen">
-    <aside className="sc-home-sidebar"><div className="sc-home-wordmark"><strong>FusionStructure</strong></div>{renderNavigation()}<button type="button" className="sc-home-settings" onClick={(event) => openPreferences(event.currentTarget)}><Settings size={19} /><span>{text.settings}</span></button></aside>
-    <header className="sc-home-mobile-header"><div className="sc-home-wordmark"><strong>FusionStructure</strong></div><button ref={mobileMenuButtonRef} type="button" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button></header>
+    <header className="sc-home-console"><div className="sc-home-wordmark"><strong>FusionStructure</strong></div>{renderNavigation()}<button ref={mobileMenuButtonRef} className="sc-home-console__menu" type="button" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button></header>
     {mobileNavOpen ? renderNavigation(true) : null}
     <div className="sc-home-main"><header className="sc-home-topline"><span>{text[view]}</span><div className="sc-home-search" role="search"><Search size={16} aria-hidden="true" /><input ref={searchInputRef} type="search" value={searchQuery} aria-label={text.search} placeholder={text.searchPlaceholder} onChange={(event) => { setSearchQuery(event.currentTarget.value); if (event.currentTarget.value && view !== 'home' && view !== 'projects') setView('home'); }} />{searchQuery ? <button type="button" aria-label={text.clearSearch} onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}</div><div className="sc-home-topline-actions"><label><span className="sr-only">{t('language.label')}</span><select value={language} onChange={(event) => updateLanguage(event.target.value as 'es' | 'en')}><option value="es">ES</option><option value="en">EN</option></select></label></div></header><div className="sc-home-content">{content}</div></div>
     {importCenterOpen ? <Suspense fallback={null}><PortableImportCenter open currentProjectName={project.name} onClose={() => setImportCenterOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { replaceProject({ ...outcome.project, settings: { ...outcome.project.settings, language } }, outcome.restoredAnalysis); setImportCenterOpen(false); onOpenWorkspace(); }} /></Suspense> : null}

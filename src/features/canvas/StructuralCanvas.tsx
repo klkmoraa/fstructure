@@ -2545,9 +2545,7 @@ export const StructuralCanvas = ({
       />
 
       <CanvasChrome
-        modeLabel={t(toolLabelKeys[activeTool])}
         placementInstruction={loadPlacementInstruction}
-        showHelp={layers.help}
         layers={layers}
         dispatchLayers={dispatchLayers}
         resultTab={resultTab}

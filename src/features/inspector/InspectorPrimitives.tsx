@@ -91,7 +91,6 @@ export const InspectorSelectionSummary = ({
 
 export const InspectorPropertyGroup = ({
   title,
-  description,
   mode = 'editable',
   children,
   className = '',
@@ -107,7 +106,6 @@ export const InspectorPropertyGroup = ({
     <header className="inspector-property-group__header">
       <div>
         <h3>{title}</h3>
-        {description ? <p>{description}</p> : null}
       </div>
       <span className="inspector-property-group__mode">
         {mode === 'editable' ? <PencilLine size={13} aria-hidden="true" /> : <LockKeyhole size={13} aria-hidden="true" />}

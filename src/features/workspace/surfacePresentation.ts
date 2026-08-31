@@ -226,9 +226,9 @@ export const resolveSurfaceActivity = (
   state: SurfaceBrokerState,
 ): SurfaceActivityMap => {
   const open = BROKER_SURFACE_IDS.filter((surface) => state.surfaces[surface].open);
-  const compactWinner = shellClass === 'K0'
-    ? latest(open, state)
-    : undefined;
+  // La ranura contextual no depende del ancho: detalle, configuración, vista,
+  // resultados y paleta son alternativas de atención también en escritorio.
+  const layerWinner = latest(open.filter((surface) => surfaceActivityClass(surface) === 'layer'), state);
   const mediumGeneratorActive = shellClass === 'M1' && state.surfaces.generator.open;
   const modalWinner = latest(open.filter((surface) => (
     isModalPresentation(resolveSurfacePresentation(shellClass, surface))
@@ -242,7 +242,7 @@ export const resolveSurfaceActivity = (
     else if (mediumGeneratorActive
       && surface !== 'generator'
       && ['detail', 'analysisSetup', 'view', 'results'].includes(surface)) status = 'suspended';
-    else if (compactWinner && compactWinner !== surface) status = 'suspended';
+    else if (surfaceActivityClass(surface) === 'layer' && layerWinner && layerWinner !== surface) status = 'suspended';
     else if (isModalPresentation(presentation) && modalWinner !== surface) status = 'suspended';
     return [surface, { ...intent, presentation, status }];
   })) as SurfaceActivityMap;
