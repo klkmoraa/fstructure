@@ -1,4 +1,12 @@
 .app-shell { height: 100%; height: 100dvh; background: var(--app-bg); color: var(--text); display: flex; flex-direction: column; }
+/* La consola sustituye topbar + riel: una sola pieza permanente, sin reducir
+   el lienzo cuando revela sus etiquetas. */
+.app-shell:has(.console) { display:grid; grid-template-columns:52px minmax(0,1fr); grid-template-rows:minmax(0,1fr) 22px; grid-template-areas:"console workspace" "console footer"; }
+.app-shell:has(.console) > .console { grid-area:console; }
+.app-shell:has(.console) > .workspace { grid-area:workspace; min-height:0; }
+.app-shell:has(.console) > .professional-note { grid-area:footer; }
+.app-shell:has(.console) > .workspace { grid-template-columns:minmax(0,1fr) var(--inspector-w); }
+@media (max-width:1023px) { .app-shell:has(.console) { display:flex; padding-bottom:52px; } .app-shell:has(.console) > .workspace { grid-template-columns:minmax(0,1fr) var(--inspector-w); } }
 .history-controls { gap: var(--sc-space-1); }
 .compact-select { height: var(--sc-control-height-md); border: 0; background: transparent; border-radius: var(--sc-radius-md); padding: 0 28px 0 10px; color:var(--text); font-size:var(--sc-font-size-control); font-weight:520; max-width:170px; }
 .compact-select:hover,.compact-select:focus-visible { background:var(--surface-2); }

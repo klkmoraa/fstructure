@@ -3,8 +3,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { Inspector } from '../inspector/Inspector';
 import { ResultsPanel } from '../results/ResultsPanel';
 import { StructuralCanvas } from '../canvas/StructuralCanvas';
-import { ToolRail } from '../canvas/ToolRail';
-import { TopBar } from '../topbar/TopBar';
+import { Console } from '../shell/Console';
 import { ClassroomGuide } from '../classroom/ClassroomGuide';
 import { ToastNotification } from './ToastNotification';
 import { useI18n } from '../../i18n/useI18n';
@@ -377,7 +376,7 @@ const WorkspaceBrokerContent = ({
     inspectorWidth={layout.inspectorWidth}
     toolDockPosition={layout.toolDockPosition}
     fullCanvas={layout.fullCanvas}
-    topBar={<TopBar
+    topBar={<Console
       onOpenHome={onOpenHome}
       onOpenSpace3D={onOpenSpace3D}
       resultsOpen={results.open}
@@ -410,7 +409,7 @@ const WorkspaceBrokerContent = ({
         onOpenViewSettings: () => openSurface('view'),
       }}
     />}
-    toolRail={<ToolRail />}
+    toolRail={null}
     workspace={<>
       {project.settings.calculationMode === 'classroom' ? <ClassroomGuide className="classroom-workspace-journey" project={project} analysis={analysis} onChooseTool={setActiveTool} onAnalyze={() => {
         emitWorkspaceCommand('analysis-requested');
