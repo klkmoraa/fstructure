@@ -5,7 +5,7 @@ import {
   PORTABLE_FORMAT_VERSION,
   type PortableProvenance,
   type PortableReportMetadata,
-  type StructureCoPortablePayload,
+  type PortablePayload,
 } from './portableTypes';
 
 export interface PortablePayloadOptions {
@@ -45,12 +45,13 @@ const countLoads = (project: ProjectModel): number =>
 const jsonSnapshot = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 const payloadDataForChecksum = (
+  format: PortablePayload['format'],
   metadata: PortableReportMetadata,
   provenance: PortableProvenance,
   project: ProjectModel,
   analysis: AnalysisResult,
 ) => ({
-  format: 'structureco-portable' as const,
+  format,
   formatVersion: PORTABLE_FORMAT_VERSION,
   metadata,
   provenance,
@@ -58,11 +59,14 @@ const payloadDataForChecksum = (
   analysis,
 });
 
+const isSupportedPayloadFormat = (value: unknown): value is PortablePayload['format'] =>
+  value === 'fusionstructure-portable' || value === 'structureco-portable';
+
 export const createPortablePayload = async (
   project: ProjectModel,
   analysis: AnalysisResult,
   options: PortablePayloadOptions = {},
-): Promise<StructureCoPortablePayload> => {
+): Promise<PortablePayload> => {
   const projectSnapshot = jsonSnapshot(project);
   const analysisSnapshot = jsonSnapshot(analysis);
   const metadata: PortableReportMetadata = {
@@ -78,26 +82,26 @@ export const createPortablePayload = async (
     pDeltaExperimental: analysis.pDelta?.experimental === true,
   };
   const provenance: PortableProvenance = {
-    generatedBy: 'structureCo',
+    generatedBy: 'FusionStructure',
     source: 'native-export',
     generatedAt: options.generatedAt ?? new Date().toISOString(),
     appVersion: options.appVersion ?? APP_VERSION,
     projectSchemaVersion: project.schemaVersion,
     analysisIncluded: true,
   };
-  const data = payloadDataForChecksum(metadata, provenance, projectSnapshot, analysisSnapshot);
+  const data = payloadDataForChecksum('fusionstructure-portable', metadata, provenance, projectSnapshot, analysisSnapshot);
   return {
     ...data,
     checksum: { algorithm: 'SHA-256', value: await sha256Hex(canonicalStringify(data)) },
   };
 };
 
-export const serializePortablePayload = (payload: StructureCoPortablePayload, pretty = false): string =>
+export const serializePortablePayload = (payload: PortablePayload, pretty = false): string =>
   JSON.stringify(payload, null, pretty ? 2 : undefined);
 
-const assertPayloadShape: (value: unknown) => asserts value is StructureCoPortablePayload = (value) => {
+const assertPayloadShape: (value: unknown) => asserts value is PortablePayload = (value) => {
   if (!isRecord(value)
-    || value.format !== 'structureco-portable'
+    || !isSupportedPayloadFormat(value.format)
     || value.formatVersion !== PORTABLE_FORMAT_VERSION
     || !isRecord(value.metadata)
     || !isRecord(value.provenance)
@@ -106,25 +110,25 @@ const assertPayloadShape: (value: unknown) => asserts value is StructureCoPortab
     || !isRecord(value.checksum)
     || value.checksum.algorithm !== 'SHA-256'
     || typeof value.checksum.value !== 'string') {
-    throw new Error('El adjunto no es un expediente structureCo compatible.');
+    throw new Error('El adjunto no es un expediente FusionStructure compatible.');
   }
 };
 
-export const verifyPortablePayload = async (payload: StructureCoPortablePayload): Promise<boolean> => {
-  const data = payloadDataForChecksum(payload.metadata, payload.provenance, payload.project, payload.analysis);
+export const verifyPortablePayload = async (payload: PortablePayload): Promise<boolean> => {
+  const data = payloadDataForChecksum(payload.format, payload.metadata, payload.provenance, payload.project, payload.analysis);
   const expected = await sha256Hex(canonicalStringify(data));
   return expected === payload.checksum.value.toLowerCase();
 };
 
 export const parsePortablePayload = async (
   input: string | Uint8Array,
-): Promise<StructureCoPortablePayload> => {
+): Promise<PortablePayload> => {
   let parsed: unknown;
   try {
     const text = typeof input === 'string' ? input : new TextDecoder().decode(input);
     parsed = JSON.parse(text) as unknown;
   } catch {
-    throw new Error('El adjunto structureCo no contiene JSON válido.');
+    throw new Error('El adjunto FusionStructure no contiene JSON válido.');
   }
   assertPayloadShape(parsed);
   if (!await verifyPortablePayload(parsed)) {

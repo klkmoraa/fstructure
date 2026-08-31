@@ -30,7 +30,7 @@ export interface RevisionAnalysisBinding {
 
 export interface RevisionSnapshot {
   schemaVersion: 1;
-  kind: 'structureco-revision-snapshot';
+  kind: 'fusionstructure-revision-snapshot';
   revisionId: string;
   capturedAt: string;
   project: ProjectModel;
@@ -68,7 +68,7 @@ export interface RevisionChangeSummary {
 
 export interface RevisionComparison {
   schemaVersion: 1;
-  kind: 'structureco-revision-comparison';
+  kind: 'fusionstructure-revision-comparison';
   baseRevisionId: string;
   targetRevisionId: string;
   baseAnalysisState: RevisionAnalysisState;
@@ -133,7 +133,7 @@ export const captureRevisionSnapshot = async (
   const analysisClone = analysis ? structuredClone(analysis) : null;
   return {
     schemaVersion: 1,
-    kind: 'structureco-revision-snapshot',
+    kind: 'fusionstructure-revision-snapshot',
     revisionId: `sha256:${await sha256(projectClone)}`,
     capturedAt,
     project: projectClone,
@@ -467,7 +467,7 @@ export const buildRevisionComparison = (base: RevisionSnapshot, target: Revision
   const result = summaryOf(changes, 'result');
   return {
     schemaVersion: 1,
-    kind: 'structureco-revision-comparison',
+    kind: 'fusionstructure-revision-comparison',
     baseRevisionId: base.revisionId,
     targetRevisionId: target.revisionId,
     baseAnalysisState: baseState,

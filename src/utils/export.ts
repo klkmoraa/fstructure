@@ -21,13 +21,13 @@ export const safeProjectFilename = (name: string): string => name
   .replace(/[^a-zA-Z0-9 _-]/g, '')
   .trim()
   .replace(/\s+/g, '-')
-  .toLowerCase() || 'structureco-project';
+  .toLowerCase() || 'fusionstructure-project';
 
 export const exportProjectJson = (project: ProjectModel) => {
   const normalized = normalizeProject(project);
   download(
     new Blob([JSON.stringify(normalized, null, 2)], { type: 'application/json' }),
-    `${safeProjectFilename(normalized.name)}.structureco.json`,
+    `${safeProjectFilename(normalized.name)}.fusionstructure.json`,
   );
 };
 

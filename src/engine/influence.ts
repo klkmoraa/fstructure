@@ -5,7 +5,7 @@ import { isTrustedForCombination, resolveReliability, worstLevel } from './relia
 import { analyzeProject } from './solver';
 
 const GEOMETRY_EPS = 1e-10;
-const UNIT_CASE_ID = '__structureco_influence_unit__';
+const UNIT_CASE_ID = '__fusionstructure_influence_unit__';
 const FIT_ABSCISSAE = [1 / 8, 3 / 8, 5 / 8, 7 / 8] as const;
 const VALIDATION_ABSCISSAE = [0.22360679774997896, 0.7548776662466927] as const;
 

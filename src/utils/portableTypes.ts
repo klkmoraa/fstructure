@@ -1,9 +1,21 @@
 import type { AnalysisResult, NumericQualityState, ProjectModel, UnitSystemId } from '../types';
 
-export const STRUCTURECO_PAYLOAD_FILENAME = 'structureco-payload.json';
-export const STRUCTURECO_PAYLOAD_MIME = 'application/vnd.structureco.project+json';
-export const STRUCTURECO_BUNDLE_MIME = 'application/vnd.structureco.bundle+zip';
+export const PORTABLE_PAYLOAD_FILENAME = 'fusionstructure-payload.json';
+export const PORTABLE_PAYLOAD_MIME = 'application/vnd.fusionstructure.project+json';
+export const PORTABLE_BUNDLE_MIME = 'application/vnd.fusionstructure.bundle+zip';
+
+/**
+ * Compatibility identifiers are read-only migration points. New exports never use them,
+ * but existing local projects and previously generated files must remain recoverable.
+ */
+export const LEGACY_PORTABLE_PAYLOAD_FILENAME = 'structureco-payload.json';
+export const LEGACY_PORTABLE_PAYLOAD_SUFFIX = '.structureco.json';
+export const LEGACY_PORTABLE_BUNDLE_EXTENSION = '.structureco';
+
 export const PORTABLE_FORMAT_VERSION = 1 as const;
+
+export type PortablePayloadFormat = 'fusionstructure-portable' | 'structureco-portable';
+export type PortableBundleFormat = 'fusionstructure-bundle' | 'structureco-bundle';
 
 export interface PortableReportMetadata {
   projectName: string;
@@ -19,7 +31,7 @@ export interface PortableReportMetadata {
 }
 
 export interface PortableProvenance {
-  generatedBy: 'structureCo';
+  generatedBy: 'FusionStructure' | 'structureCo';
   source: 'native-export';
   generatedAt: string;
   appVersion: string;
@@ -33,8 +45,8 @@ export interface PortableChecksum {
 }
 
 /** Exact, machine-readable project snapshot embedded in a human PDF. */
-export interface StructureCoPortablePayload {
-  format: 'structureco-portable';
+export interface PortablePayload {
+  format: PortablePayloadFormat;
   formatVersion: typeof PORTABLE_FORMAT_VERSION;
   metadata: PortableReportMetadata;
   provenance: PortableProvenance;
@@ -51,7 +63,7 @@ export interface PdfInspection {
   pageCount: number;
   text: string;
   textByPage: string[];
-  payload?: StructureCoPortablePayload;
+  payload?: PortablePayload;
   attachmentName?: string;
   warnings: string[];
   summary: {
@@ -63,7 +75,7 @@ export interface PdfInspection {
 }
 
 export interface PortableBundleManifest {
-  format: 'structureco-bundle';
+  format: PortableBundleFormat;
   formatVersion: typeof PORTABLE_FORMAT_VERSION;
   createdAt: string;
   appVersion: string;
@@ -76,4 +88,3 @@ export interface PortableBundleManifest {
     report: 'report/calculation-report.pdf';
   };
 }
-

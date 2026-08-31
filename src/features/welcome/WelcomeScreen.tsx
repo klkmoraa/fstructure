@@ -99,7 +99,7 @@ const WelcomePreferences = ({ language, onLanguageChange, onClose }: WelcomePref
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = 'structureco-local-diagnostics.json';
+    anchor.download = 'fusionstructure-local-diagnostics.json';
     anchor.click();
     URL.revokeObjectURL(url);
   };

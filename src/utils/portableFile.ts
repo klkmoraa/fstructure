@@ -3,7 +3,11 @@ import { normalizeProject } from '../data/migrate';
 import { inspectPdf, type InspectPdfOptions } from './pdfImport';
 import { parsePortablePayload } from './portablePayload';
 import { readPortableBundle, type PortableBundleContents } from './portableBundle';
-import type { PdfInspection, StructureCoPortablePayload } from './portableTypes';
+import {
+  LEGACY_PORTABLE_BUNDLE_EXTENSION,
+  type PdfInspection,
+  type PortablePayload,
+} from './portableTypes';
 import { assertWithinBudget, FILE_BUDGETS, hasSignature, readSignature } from './fileGuards';
 
 interface PortableFileBase {
@@ -12,10 +16,10 @@ interface PortableFileBase {
 }
 
 export type PortableFileInspection =
-  | (PortableFileBase & { kind: 'native-pdf'; canRestoreProject: true; pdf: PdfInspection; payload: StructureCoPortablePayload })
+  | (PortableFileBase & { kind: 'native-pdf'; canRestoreProject: true; pdf: PdfInspection; payload: PortablePayload })
   | (PortableFileBase & { kind: 'external-pdf' | 'scanned-pdf'; canRestoreProject: false; pdf: PdfInspection })
-  | (PortableFileBase & { kind: 'bundle'; canRestoreProject: true; bundle: PortableBundleContents; payload: StructureCoPortablePayload })
-  | (PortableFileBase & { kind: 'payload-json'; canRestoreProject: true; payload: StructureCoPortablePayload })
+  | (PortableFileBase & { kind: 'bundle'; canRestoreProject: true; bundle: PortableBundleContents; payload: PortablePayload })
+  | (PortableFileBase & { kind: 'payload-json'; canRestoreProject: true; payload: PortablePayload })
   | (PortableFileBase & { kind: 'project-json'; canRestoreProject: true; project: ProjectModel });
 
 const PDF_SIGNATURE = [0x25, 0x50, 0x44, 0x46] as const;
@@ -35,9 +39,9 @@ const classifyFile = (file: File, signature: Uint8Array): PortableFileKind => {
   if (hasSignature(signature, ZIP_SIGNATURE)) return 'bundle';
   if (hasSignature(signature, JSON_SIGNATURE)) return 'json';
   if (file.type === 'application/pdf' || lowerName.endsWith('.pdf')) return 'pdf';
-  if (lowerName.endsWith('.structureco')) return 'bundle';
+  if (lowerName.endsWith('.fusionstructure') || lowerName.endsWith(LEGACY_PORTABLE_BUNDLE_EXTENSION)) return 'bundle';
   if (lowerName.endsWith('.json') || file.type.includes('json')) return 'json';
-  throw new Error('Formato no compatible. Usa PDF, .structureco o .structureco.json.');
+  throw new Error('Formato no compatible. Usa PDF, .fusionstructure o .fusionstructure.json.');
 };
 
 const BUDGET_BY_KIND: Record<PortableFileKind, number> = {
@@ -48,7 +52,7 @@ const BUDGET_BY_KIND: Record<PortableFileKind, number> = {
 
 const LABEL_BY_KIND: Record<PortableFileKind, string> = {
   pdf: 'PDF',
-  bundle: '.structureco',
+  bundle: '.fusionstructure',
   json: 'JSON',
 };
 
@@ -59,14 +63,19 @@ const inspectJson = async (bytes: Uint8Array, base: PortableFileBase): Promise<P
   } catch {
     throw new Error('El archivo JSON no es valido.');
   }
-  if (typeof parsed === 'object' && parsed !== null && 'format' in parsed && parsed.format === 'structureco-portable') {
+  if (
+    typeof parsed === 'object'
+    && parsed !== null
+    && 'format' in parsed
+    && (parsed.format === 'fusionstructure-portable' || parsed.format === 'structureco-portable')
+  ) {
     const payload = await parsePortablePayload(bytes);
     return { ...base, kind: 'payload-json', canRestoreProject: true, payload };
   }
   return { ...base, kind: 'project-json', canRestoreProject: true, project: normalizeProject(parsed) };
 };
 
-/** Single adapter for the import center: PDF, .structureco ZIP, or JSON. */
+/** Single adapter for the import center: PDF, .fusionstructure ZIP, or JSON. */
 export const inspectPortableFile = async (
   file: File,
   options?: InspectPdfOptions,

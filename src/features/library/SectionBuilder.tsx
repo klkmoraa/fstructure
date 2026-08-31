@@ -213,7 +213,7 @@ export const SectionBuilder = ({
       setFeedback({ role: 'alert', text: copy.exportEmpty });
       return;
     }
-    onDownload(encodePersonalSections(sections), 'structureco-secciones-personales.json');
+    onDownload(encodePersonalSections(sections), 'fusionstructure-secciones-personales.json');
   };
 
   const dimensionField = (key: string, label: string) => {

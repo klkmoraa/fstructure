@@ -1,5 +1,5 @@
 /**
- * Resource budgets for everything structureCo reads from disk.
+ * Resource budgets for everything FusionStructure reads from disk.
  *
  * The rule these enforce is "reject before allocating": a file's declared size is
  * checked against a budget *before* its bytes are pulled into memory, and an archive's

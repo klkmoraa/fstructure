@@ -8,7 +8,7 @@
  */
 import type { AnalysisResult, LoadCombination, MemberModel, MemberResult, NodeModel, ProjectModel } from '../../types';
 import type { SolutionMethodId } from '../../analysis-methods/methodRegistry';
-import type { StructureCoPortablePayload } from '../portableTypes';
+import type { PortablePayload } from '../portableTypes';
 import type { PortablePayloadOptions } from '../portablePayload';
 import type { PdfLayout } from './pdfBuilder';
 
@@ -57,7 +57,7 @@ export const CALCULATION_PDF_EXPORT_DEFAULTS = {
 export interface CalculationReportArtifact {
   bytes: Uint8Array;
   filename: string;
-  payload: StructureCoPortablePayload;
+  payload: PortablePayload;
   /** Method represented by this immutable export artifact. */
   solutionMethod: SolutionMethodId;
   /** Deep, load-aware applicability checked by the real procedure modules. */
@@ -132,7 +132,7 @@ export interface ReportContext {
   readonly layout: PdfLayout;
   readonly project: ProjectModel;
   readonly analysis: AnalysisResult;
-  readonly payload: StructureCoPortablePayload;
+  readonly payload: PortablePayload;
   readonly options: CalculationReportOptions;
   /** Method selected for this PDF only; it never changes the solver or stored project. */
   readonly solutionMethod: SolutionMethodId;

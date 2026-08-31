@@ -4,7 +4,7 @@
  * The panels of the workspace — TopBar, canvas, Inspector, results dock, classroom guide —
  * cannot reach each other through the project store, because what they exchange are
  * *intentions* ("centre this object", "expand the results sheet") rather than state.
- * They used raw `window.dispatchEvent(new CustomEvent('structureco:…'))`, with the name
+ * Historically, surfaces used raw `window.dispatchEvent` calls; the name
  * spelled out at 27 call sites and a `detail` typed as `any`. A typo in either produced
  * silence, not an error.
  *
@@ -80,7 +80,7 @@ export interface WorkspaceCommands {
 
 export type WorkspaceCommand = keyof WorkspaceCommands;
 
-const EVENT_PREFIX = 'structureco:';
+const EVENT_PREFIX = 'fusionstructure:';
 
 const eventName = (command: WorkspaceCommand): string => `${EVENT_PREFIX}${command}`;
 
