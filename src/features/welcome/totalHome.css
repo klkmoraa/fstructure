@@ -4,8 +4,8 @@
   min-height: 100dvh;
   overflow-x: hidden;
   overflow-y: auto;
-  display: grid;
-  grid-template-columns: 216px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   background: var(--sc-color-bg-app);
   color: var(--sc-color-text-primary);
   font-family: var(--sc-font-ui, "Instrument Sans", sans-serif);
@@ -16,18 +16,7 @@
 
 .sc-home button { color: inherit; }
 
-.sc-home-sidebar {
-  position: sticky;
-  inset-block-start: 0;
-  height: 100dvh;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 26px;
-  padding: 25px 17px 18px;
-  border-inline-end: 1px solid var(--sc-color-border-soft);
-  background: var(--sc-color-surface-1);
-}
+.sc-home-console { min-height:52px; z-index:20; display:flex; align-items:center; gap:8px; padding:4px 16px; border-block-end:1px solid var(--sc-color-border-soft); background:var(--sc-color-surface-1); }
 
 .sc-home-wordmark {
   min-width: 0;
@@ -95,9 +84,11 @@
   box-shadow: var(--sc-shadow-pressed, inset 0 2px 4px rgb(25 35 32 / .12));
 }
 
-.sc-home-settings { margin-top: auto; }
-.sc-home-mobile-header,
-.sc-home-nav--mobile { display: none; }
+.sc-home-nav--console { margin-left:auto; display:flex; align-items:center; gap:2px; }
+.sc-home-nav--console button { width:36px; min-height:36px; justify-content:center; padding:0; }
+.sc-home-nav--console button span { display:none; }
+.sc-home-console__menu,
+.sc-home-nav--menu { display:none; }
 
 .sc-home-main {
   min-width: 0;
@@ -583,14 +574,6 @@
 
 
 @media (max-width: 1100px) {
-  .sc-home { grid-template-columns: 78px minmax(0, 1fr); }
-  .sc-home-sidebar { padding-inline: 11px; }
-  .sc-home-sidebar .sc-home-wordmark strong,
-  .sc-home-sidebar .sc-home-nav span,
-  .sc-home-sidebar .sc-home-settings span { display: none; }
-  .sc-home-sidebar .sc-home-wordmark,
-  .sc-home-sidebar .sc-home-nav button,
-  .sc-home-sidebar .sc-home-settings { justify-content: center; padding-inline: 0; }
   .sc-home-hero { grid-template-columns: minmax(280px, .9fr) minmax(350px, 1.1fr); }
   .sc-home-primary-actions { padding: 34px; }
   .sc-home-primary-buttons { grid-template-columns: 1fr; }
@@ -606,9 +589,8 @@
    `device-width` covers the iPhone case when the webview reports 980/1024px
    for layout while its physical CSS screen remains phone-sized. */
 @media (max-width: 760px), (max-device-width: 760px), (hover: none) and (pointer: coarse) and (max-width: 1023px) {
-  .sc-home { display: block; }
-  .sc-home-sidebar { display: none; }
-  .sc-home-mobile-header {
+  .sc-home { display:flex; }
+  .sc-home-console {
     position: sticky;
     inset-block-start: 0;
     z-index: 40;
@@ -620,7 +602,7 @@
     border-block-end: 1px solid var(--sc-color-border-soft);
     background: var(--sc-color-surface-1);
   }
-  .sc-home-mobile-header > button {
+  .sc-home-console__menu {
     width: 44px;
     height: 44px;
     display: grid;
@@ -630,7 +612,8 @@
     background: var(--sc-color-surface-elevated);
     box-shadow: var(--sc-shadow-xs, 0 2px 5px rgb(32 42 39 / .12));
   }
-  .sc-home-nav--mobile {
+  .sc-home-nav--console { display:none; }
+  .sc-home-nav--menu {
     position: fixed;
     z-index: 39;
     inset: 62px 0 auto;
