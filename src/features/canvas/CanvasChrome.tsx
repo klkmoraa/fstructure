@@ -11,9 +11,7 @@ import { formatFixed } from '../../utils/numberFormat';
 import { onWorkspaceCommand } from '../workspace/workspaceCommands';
 
 export interface CanvasChromeProps {
-  modeLabel: string;
   placementInstruction: string | null;
-  showHelp: boolean;
   layers: EditorLayerState;
   dispatchLayers: Dispatch<EditorLayerAction>;
   resultTab: ResultTab;
@@ -37,9 +35,7 @@ export interface CanvasChromeProps {
 
 /** Presentation-only canvas controls. Camera and model mutations stay upstream. */
 export const CanvasChrome = ({
-  modeLabel,
   placementInstruction,
-  showHelp,
   layers,
   dispatchLayers,
   resultTab,
@@ -67,14 +63,10 @@ export const CanvasChrome = ({
   }, [onFit]);
 
   return <>
-    <div className={`canvas-mode-badge${placementInstruction ? ' placing-load' : ''}`} role="status" aria-live="polite" data-canvas-chrome="mode">
-      <strong>{modeLabel}</strong>
-      {placementInstruction ? <span className="canvas-action-instruction">{placementInstruction}</span> : showHelp ? <>
-        <span className="desktop-gesture-hint">{t('canvas.gestureDesktop')}</span>
-        <span className="touch-gesture-hint">{t('canvas.gestureTouch')}</span>
-      </> : null}
-      {placementInstruction ? <IconButton size="sm" label={t('canvas.cancelPlacement')} onClick={onCancelPlacement}><X size={14} /></IconButton> : null}
-    </div>
+    {placementInstruction ? <div className="canvas-mode-badge placing-load" role="status" aria-live="polite" data-canvas-chrome="mode">
+      <span className="canvas-action-instruction">{placementInstruction}</span>
+      <IconButton size="sm" label={t('canvas.cancelPlacement')} onClick={onCancelPlacement}><X size={14} /></IconButton>
+    </div> : null}
     <CanvasLayers layers={layers} dispatch={dispatchLayers} />
     <CanvasEvidenceRail layers={layers} dispatch={dispatchLayers} resultTab={resultTab} setResultTab={setResultTab} visible={analysisAvailable} stackActive={stackActive} stackAvailable={stackAvailable} stackQuantities={stackQuantities} onStackToggle={onStackToggle} onStackQuantityToggle={onStackQuantityToggle} />
     <div className="canvas-view-chips" role="status" aria-label={t('canvas.viewStatus')} data-canvas-chrome="view-status">
