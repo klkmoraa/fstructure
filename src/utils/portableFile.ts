@@ -5,7 +5,6 @@ import { parsePortablePayload } from './portablePayload';
 import { readPortableBundle, type PortableBundleContents } from './portableBundle';
 import {
   LEGACY_PORTABLE_BUNDLE_EXTENSION,
-  LEGACY_PORTABLE_PAYLOAD_SUFFIX,
   type PdfInspection,
   type PortablePayload,
 } from './portableTypes';
