@@ -4,6 +4,7 @@ import { Inspector } from '../inspector/Inspector';
 import { ResultsPanel } from '../results/ResultsPanel';
 import { StructuralCanvas } from '../canvas/StructuralCanvas';
 import { Console } from '../shell/Console';
+import { Instrument } from '../shell/Instrument';
 import { ClassroomGuide } from '../classroom/ClassroomGuide';
 import { ToastNotification } from './ToastNotification';
 import { useI18n } from '../../i18n/useI18n';
@@ -487,7 +488,7 @@ const WorkspaceBrokerContent = ({
     floatingActions={shellClass === 'K0' ? undefined : <div className="workspace-surface-launcher">
       <button className="mobile-inspector-toggle" onClick={(event) => openDetail(event.currentTarget)} aria-label={t('inspector.open')} aria-expanded={detail.status === 'active'} aria-controls="workspace-detail"><SlidersHorizontal size={20} /></button>
     </div>}
-    footer={<div className="professional-note">{t('app.professionalNote')}</div>}
+    footer={<Instrument />}
   /></DataSurfaceRetainedStateProvider>;
 };
 
