@@ -102,17 +102,17 @@ const localizeReaderError = (reason: unknown, language: Language, t: Translate):
   if (!(reason instanceof Error)) return t('importCenter.inspectError');
   const exactKeys: Record<string, TranslationKey> = {
     'El archivo JSON no es valido.': 'importCenter.readerInvalidJson',
-    'Formato no compatible. Usa PDF, .structureco o .structureco.json.': 'importCenter.readerUnsupportedFormat',
+    'Formato no compatible. Usa PDF, .fusionstructure o .fusionstructure.json.': 'importCenter.readerUnsupportedFormat',
     'El PDF esta protegido con contrasena y no puede inspeccionarse.': 'importCenter.readerPdfPassword',
-    'El archivo .structureco no es un paquete ZIP valido.': 'importCenter.readerInvalidBundle',
+    'El archivo .fusionstructure no es un paquete ZIP valido.': 'importCenter.readerInvalidBundle',
     'El paquete no contiene manifest.json.': 'importCenter.readerMissingManifest',
-    'El paquete no tiene un manifest structureCo compatible.': 'importCenter.readerIncompatibleManifest',
-    'El paquete structureCo esta incompleto.': 'importCenter.readerIncompleteBundle',
+    'El paquete no tiene un manifest FusionStructure compatible.': 'importCenter.readerIncompatibleManifest',
+    'El paquete FusionStructure esta incompleto.': 'importCenter.readerIncompleteBundle',
     'El checksum del manifest no coincide con el expediente.': 'importCenter.readerChecksumMismatch',
     'Los datos separados del paquete no coinciden con el expediente firmado.': 'importCenter.readerPackageMismatch',
     'Este navegador no ofrece SHA-256 para verificar el expediente.': 'importCenter.readerShaUnavailable',
-    'El adjunto no es un expediente structureCo compatible.': 'importCenter.readerIncompatibleAttachment',
-    'El adjunto structureCo no contiene JSON válido.': 'importCenter.readerInvalidAttachmentJson',
+    'El adjunto no es un expediente FusionStructure compatible.': 'importCenter.readerIncompatibleAttachment',
+    'El adjunto FusionStructure no contiene JSON válido.': 'importCenter.readerInvalidAttachmentJson',
     'El expediente fue modificado o está dañado: el checksum no coincide.': 'importCenter.readerDamagedPackage',
   };
   const exactKey = exactKeys[reason.message];
@@ -150,7 +150,7 @@ const mapInspection = (inspection: PortableFileInspection, t: Translate): Import
   const kind: ImportInspection['kind'] = isPdf
     ? 'pdf'
     : inspection.kind === 'bundle'
-      ? 'structureco'
+      ? 'fusionstructure'
       : 'json';
 
   if (!inspection.canRestoreProject) {

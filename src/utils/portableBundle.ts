@@ -11,20 +11,20 @@ import {
 import {
   PORTABLE_FORMAT_VERSION,
   type PortableBundleManifest,
-  type StructureCoPortablePayload,
+  type PortablePayload,
 } from './portableTypes';
 
 export interface PortableBundleArtifact {
   bytes: Uint8Array;
   filename: string;
   manifest: PortableBundleManifest;
-  payload: StructureCoPortablePayload;
+  payload: PortablePayload;
   reportBytes: Uint8Array;
 }
 
 export interface PortableBundleContents {
   manifest: PortableBundleManifest;
-  payload: StructureCoPortablePayload;
+  payload: PortablePayload;
   reportBytes: Uint8Array;
 }
 
@@ -33,7 +33,7 @@ const safeFilename = (name: string): string => name
   .replace(/[^a-zA-Z0-9 _-]/g, '')
   .trim()
   .replace(/\s+/g, '-')
-  .toLowerCase() || 'structureco-project';
+  .toLowerCase() || 'fusionstructure-project';
 
 const decodeJson = (bytes: Uint8Array, label: string): unknown => {
   try {
@@ -47,21 +47,22 @@ const REQUIRED_MANIFEST_FILES = ['payload', 'project', 'analysis', 'report'] as 
 
 const assertManifest: (value: unknown) => asserts value is PortableBundleManifest = (value) => {
   if (typeof value !== 'object' || value === null
-    || !('format' in value) || value.format !== 'structureco-bundle'
+    || !('format' in value)
+    || (value.format !== 'fusionstructure-bundle' && value.format !== 'structureco-bundle')
     || !('formatVersion' in value) || value.formatVersion !== PORTABLE_FORMAT_VERSION
     || !('payloadChecksum' in value) || typeof value.payloadChecksum !== 'string') {
-    throw new Error('El paquete no tiene un manifest structureCo compatible.');
+    throw new Error('El paquete no tiene un manifest FusionStructure compatible.');
   }
   // `files` drives every lookup below, so it is validated here rather than crashing
   // with a TypeError on a hand-edited or truncated manifest.
   const files: unknown = 'files' in value ? value.files : undefined;
   if (typeof files !== 'object' || files === null || Array.isArray(files)) {
-    throw new Error('El paquete no tiene un manifest structureCo compatible.');
+    throw new Error('El paquete no tiene un manifest FusionStructure compatible.');
   }
   for (const key of REQUIRED_MANIFEST_FILES) {
     const entry: unknown = (files as Record<string, unknown>)[key];
     if (typeof entry !== 'string' || entry === '') {
-      throw new Error('El paquete no tiene un manifest structureCo compatible.');
+      throw new Error('El paquete no tiene un manifest FusionStructure compatible.');
     }
     assertSafeArchivePath(entry);
   }
@@ -77,7 +78,7 @@ export const createPortableBundle = async (
     createCalculationReport(project, analysis, options),
   ]);
   const manifest: PortableBundleManifest = {
-    format: 'structureco-bundle',
+    format: 'fusionstructure-bundle',
     formatVersion: PORTABLE_FORMAT_VERSION,
     createdAt: report.payload.provenance.generatedAt,
     appVersion: report.payload.provenance.appVersion,
@@ -99,7 +100,7 @@ export const createPortableBundle = async (
   }, { level: 6 });
   return {
     bytes,
-    filename: `${safeFilename(project.name)}.structureco`,
+    filename: `${safeFilename(project.name)}.fusionstructure`,
     manifest,
     payload: report.payload,
     reportBytes: report.bytes,
@@ -109,13 +110,13 @@ export const createPortableBundle = async (
 export const readPortableBundle = async (
   input: ArrayBuffer | Uint8Array | Blob,
 ): Promise<PortableBundleContents> => {
-  if (input instanceof Blob) assertWithinBudget(input.size, FILE_BUDGETS.bundleBytes, '.structureco');
+  if (input instanceof Blob) assertWithinBudget(input.size, FILE_BUDGETS.bundleBytes, '.fusionstructure');
   const source = input instanceof Blob
     ? new Uint8Array(await input.arrayBuffer())
     : input instanceof Uint8Array
       ? input
       : new Uint8Array(input);
-  assertWithinBudget(source.byteLength, FILE_BUDGETS.bundleBytes, '.structureco');
+  assertWithinBudget(source.byteLength, FILE_BUDGETS.bundleBytes, '.fusionstructure');
   const { unzipSync } = await import('fflate');
   // The filter runs against each entry's declared header before it is inflated, so a
   // zip bomb is rejected on its claims instead of on the memory it would have taken.
@@ -130,7 +131,7 @@ export const readPortableBundle = async (
     });
   } catch (error) {
     if (error instanceof FileBudgetError) throw error;
-    throw new Error('El archivo .structureco no es un paquete ZIP valido.');
+    throw new Error('El archivo .fusionstructure no es un paquete ZIP valido.');
   }
   const manifestBytes = files['manifest.json'];
   if (!manifestBytes) throw new Error('El paquete no contiene manifest.json.');
@@ -142,7 +143,7 @@ export const readPortableBundle = async (
   const analysisBytes = files[manifest.files.analysis];
   const reportBytes = files[manifest.files.report];
   if (!payloadBytes || !projectBytes || !analysisBytes || !reportBytes) {
-    throw new Error('El paquete structureCo esta incompleto.');
+    throw new Error('El paquete FusionStructure esta incompleto.');
   }
   const payload = await parsePortablePayload(payloadBytes);
   if (payload.checksum.value !== manifest.payloadChecksum) throw new Error('El checksum del manifest no coincide con el expediente.');

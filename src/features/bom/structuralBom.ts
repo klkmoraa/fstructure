@@ -303,7 +303,7 @@ const safeFilename = (name: string): string => name
   .replace(/[^a-zA-Z0-9 _-]/g, '')
   .trim()
   .replace(/\s+/g, '-')
-  .toLowerCase() || 'structureco';
+  .toLowerCase() || 'fusionstructure';
 
 export const structuralBomCsvFilename = (project: Pick<ProjectModel, 'name'>): string => (
   `${safeFilename(project.name)}-bom-estructural.csv`

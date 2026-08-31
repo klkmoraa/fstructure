@@ -351,7 +351,7 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
       const portable = await import('../../utils/portable');
       const options = { appVersion: APP_VERSION, scenarioName, scenarioFactors, includeEducationTrace: true };
       const bundle = await portable.createPortableBundle(project, exportAnalysis, options);
-      await portable.shareOrDownloadPortableBytes(bundle.bytes, bundle.filename, portable.STRUCTURECO_BUNDLE_MIME, t('portable.bundleShareTitle', { name: project.name }));
+      await portable.shareOrDownloadPortableBytes(bundle.bytes, bundle.filename, portable.PORTABLE_BUNDLE_MIME, t('portable.bundleShareTitle', { name: project.name }));
       emitWorkspaceCommand('show-toast', { message: t('export.completed'), description: project.name, tone: 'success' });
       setShowExportMenu(false);
       setShowMobileMenu(false);
@@ -434,7 +434,7 @@ export const TopBar = ({ onOpenHome, onOpenSpace3D, layoutActions, resultsOpen =
 
   const handleSaveToDisk = async () => {
     const normalized = normalizeProject(project);
-    const filename = `${safeProjectFilename(normalized.name)}.structureco.json`;
+    const filename = `${safeProjectFilename(normalized.name)}.fusionstructure.json`;
     const outcome: SaveOutcome = await saveBytes({
       bytes: new TextEncoder().encode(JSON.stringify(normalized, null, 2)),
       filename,

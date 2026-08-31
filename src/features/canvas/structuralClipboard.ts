@@ -1,6 +1,6 @@
 import type { ModelClipboard } from '../../data/modelOperations';
 
-const STRUCTURAL_CLIPBOARD_PREFIX = 'structureco:model-clipboard:v1\n';
+const STRUCTURAL_CLIPBOARD_PREFIX = 'fusionstructure:model-clipboard:v1\n';
 
 export interface ClipboardReadTextPort {
   readText?: () => Promise<string>;

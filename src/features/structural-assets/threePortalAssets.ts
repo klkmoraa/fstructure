@@ -18,7 +18,7 @@ export type MaterialKit = {
 
 export const createMaterialKit = (theme: StructuralRenderTheme): MaterialKit => ({
   // Paleta acromática. La versión anterior horneaba la identidad de
-  // StructureCo en la ilustración: `0x007d61` era literalmente su color de
+  // FusionStructure en la ilustración: `0x007d61` era literalmente su color de
   // acción y `0x168a6c` su verde de cortante, así que el pórtico seguía siendo
   // verde por mucho que la interfaz dejara de serlo. Aquí los cuatro
   // materiales se separan por VALOR, no por hue, que es como se separa todo lo

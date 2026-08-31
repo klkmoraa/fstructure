@@ -1,8 +1,10 @@
 import {
-  STRUCTURECO_PAYLOAD_FILENAME,
+  LEGACY_PORTABLE_PAYLOAD_FILENAME,
+  LEGACY_PORTABLE_PAYLOAD_SUFFIX,
+  PORTABLE_PAYLOAD_FILENAME,
   type PdfImportKind,
   type PdfInspection,
-  type StructureCoPortablePayload,
+  type PortablePayload,
 } from './portableTypes';
 import { parsePortablePayload } from './portablePayload';
 import { FILE_BUDGETS, PDF_BUDGETS } from './fileGuards';
@@ -24,7 +26,7 @@ const titleFromText = (text: string): string =>
 
 export const classifyPdfContent = (
   textByPage: string[],
-  payload?: StructureCoPortablePayload,
+  payload?: PortablePayload,
 ): { kind: PdfImportKind; confidence: number } => {
   if (payload) return { kind: 'native', confidence: 0.99 };
   const meaningfulCharacters = textByPage.join('').replace(/\s/g, '').length;
@@ -75,14 +77,19 @@ export const inspectPdf = async (
   }
 
   const warnings: string[] = [];
-  let payload: StructureCoPortablePayload | undefined;
+  let payload: PortablePayload | undefined;
   let attachmentName: string | undefined;
   const attachments = await documentProxy.getAttachments();
   if (attachments) {
     let examined = 0;
     for (const [key, attachment] of attachments) {
       const filename = attachment.filename || key;
-      if (filename.toLowerCase() !== STRUCTURECO_PAYLOAD_FILENAME && !filename.toLowerCase().endsWith('.structureco.json')) continue;
+      const lowerFilename = filename.toLowerCase();
+      const isPortableAttachment = lowerFilename === PORTABLE_PAYLOAD_FILENAME
+        || lowerFilename === LEGACY_PORTABLE_PAYLOAD_FILENAME
+        || lowerFilename.endsWith('.fusionstructure.json')
+        || lowerFilename.endsWith(LEGACY_PORTABLE_PAYLOAD_SUFFIX);
+      if (!isPortableAttachment) continue;
       examined += 1;
       if (examined > PDF_BUDGETS.maxAttachments) {
         warnings.push(`Solo se examinaron los primeros ${PDF_BUDGETS.maxAttachments} adjuntos.`);

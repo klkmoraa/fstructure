@@ -34,7 +34,7 @@ describe('createPortablePayload / verifyPortablePayload / parsePortablePayload',
     await expect(parsePortablePayload(serializePortablePayload(tampered))).rejects.toThrow(/checksum/);
   });
 
-  it('rechaza un adjunto que no tiene la forma de un expediente structureCo', async () => {
+  it('rechaza un adjunto que no tiene la forma de un expediente FusionStructure', async () => {
     await expect(parsePortablePayload(JSON.stringify({ hola: 'mundo' }))).rejects.toThrow(/no es un expediente/);
     await expect(parsePortablePayload('esto no es JSON')).rejects.toThrow(/JSON válido/);
   });

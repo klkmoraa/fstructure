@@ -26,7 +26,7 @@ const safeFilename = (name: string): string => name
   .replace(/[^a-zA-Z0-9 _-]/g, '')
   .trim()
   .replace(/\s+/g, '-')
-  .toLowerCase() || 'structureco-results';
+  .toLowerCase() || 'fusionstructure-results';
 
 /**
  * Builds one rectangular, machine-readable CSV. Internal values are converted

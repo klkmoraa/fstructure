@@ -16,7 +16,7 @@ export const safeFilename = (name: string): string => name
   .replace(/[^a-zA-Z0-9 _-]/g, '')
   .trim()
   .replace(/\s+/g, '-')
-  .toLowerCase() || 'structureco-project';
+  .toLowerCase() || 'fusionstructure-project';
 
 export const number = (value: number, digits = 6): string =>
   formatNumber(value, 'report', { significantDigits: digits });

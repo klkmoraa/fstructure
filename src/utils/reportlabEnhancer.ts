@@ -40,7 +40,7 @@ const bytesToBase64 = (bytes: Uint8Array): string => {
 /**
  * Adds ReportLab's vector diagram appendix when the optional local companion is running.
  *
- * StructureCo is a static browser application, so Python cannot execute inside its runtime.
+ * FusionStructure is a static browser application, so Python cannot execute inside its runtime.
  * The local companion is deliberately optional: it receives the already calculated PDF and
  * payload, adds pages, and never becomes an alternative solver. A published/offline copy keeps
  * the complete browser report when the companion is absent.

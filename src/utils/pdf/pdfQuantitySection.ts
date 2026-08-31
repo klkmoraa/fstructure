@@ -7,7 +7,7 @@
  * were an editorial choice ("se muestran los primeros 2"). The functions now flow into a
  * table that pages by itself, so a forty-member model prints forty members.
  *
- * The response quantities use StructureCo's own technical axial/shear/moment colours from
+ * The response quantities use FusionStructure's own technical axial/shear/moment colours from
  * `pdfTheme.ts`. They are reserved for the technical curves, so the paper remains quiet and
  * the three diagrams can be recognised at a glance.
  */

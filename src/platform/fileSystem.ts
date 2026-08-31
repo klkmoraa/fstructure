@@ -83,7 +83,7 @@ export const saveBytes = async (request: SaveRequest): Promise<SaveOutcome> => {
 /**
  * Consume el archivo con el que el sistema operativo abrió la aplicación.
  * Declarar `file_handlers` sin atender esta cola haría que un doble clic
- * arrancara StructureCo pero ignorara el expediente.
+ * arrancara FusionStructure pero ignorara el expediente.
  */
 export const consumeLaunchQueue = (onFile: (launched: LaunchedFile) => void): void => {
   const queue = (window as unknown as {

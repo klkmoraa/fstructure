@@ -1,5 +1,5 @@
 /**
- * Single numeric presentation policy for structureCo.
+ * Single numeric presentation policy for FusionStructure.
  *
  * Before this module the product had five independent formatters with incompatible
  * thresholds, so one stored value could read as `1e-14` in the Inspector, `1.0000e-14`

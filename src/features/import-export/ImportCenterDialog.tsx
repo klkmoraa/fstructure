@@ -41,7 +41,7 @@ export interface ImportContentOption {
 }
 
 export interface ImportInspection {
-  kind: 'json' | 'pdf' | 'structureco';
+  kind: 'json' | 'pdf' | 'fusionstructure';
   sourceLabel: string;
   version?: string;
   confidence: number;
@@ -137,7 +137,7 @@ const defaultContents = (project: ProjectModel, t: Translate): ImportContentOpti
 const classifyFile = (file: File): ImportInspection['kind'] => {
   const name = file.name.toLowerCase();
   if (file.type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
-  if (name.endsWith('.structureco')) return 'structureco';
+  if (name.endsWith('.fusionstructure') || name.endsWith('.structureco')) return 'fusionstructure';
   return 'json';
 };
 
@@ -209,7 +209,7 @@ const formatBytes =(bytes: number) => {
 
 const getFileIcon = (kind?: ImportInspection['kind']) => {
   if (kind === 'pdf') return FileText;
-  if (kind === 'structureco') return FileArchive;
+  if (kind === 'fusionstructure') return FileArchive;
   return FileJson;
 };
 
@@ -415,7 +415,7 @@ export const ImportCenterDialog = ({
                   className="import-file-input"
                   type="file"
                   tabIndex={-1}
-                  accept="application/json,application/pdf,.json,.pdf,.structureco,.structureco.json"
+                  accept="application/json,application/pdf,.json,.pdf,.fusionstructure,.fusionstructure.json,.structureco,.structureco.json"
                   aria-label={t('importCenter.fileInput')}
                   onChange={(event) => {
                     const nextFile = event.currentTarget.files?.[0];

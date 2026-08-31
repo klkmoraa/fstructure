@@ -147,7 +147,7 @@ export const reflectPointAcrossLine = (point: Point2D, start: Point2D, end: Poin
 };
 
 const snapshotReplacer = (_key: string, value: unknown) => value === undefined
-  ? { __structureCoStructuralEditUndefined: true }
+  ? { __FusionStructureStructuralEditUndefined: true }
   : value;
 
 export const structuralEditSnapshot = (project: ProjectModel): string => JSON.stringify(project, snapshotReplacer);
