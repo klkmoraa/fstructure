@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useRef } from 'react';
 import type { AnalysisResult, DiagramQuantity, MemberModel, NodeModel, ProjectModel } from '../../types';
 import type { InfluenceCanvasState, ModeShapeCanvasState, ResultCursor, ResultTab } from '../../store/ProjectContext';
 import type { CanvasCamera } from './canvasInteraction';
@@ -74,6 +74,23 @@ const CanvasResultLayerImpl = ({
   const view = readCanvasViewSettings(project);
   const scaleFor = (result: MemberResult) => diagramPixelScaleFor(project, resultTab, globalDiagramMax, result);
 
+  /**
+   * Identidad de la corrida que se está mirando.
+   *
+   * El diagrama se anima al APARECER, que es cuando explica algo: una corrida
+   * nueva devuelve un resultado nuevo. Encadenarlo al render lo haría repetirse
+   * en cada paneo y en cada zoom, convirtiendo una explicación en un parpadeo.
+   * Este contador sólo avanza cuando cambia el objeto de análisis, y viaja como
+   * `key` de la capa para que la animación vuelva a correr exactamente ahí.
+   */
+  const runRef = useRef(0);
+  const lastAnalysisRef = useRef<AnalysisResult | null>(null);
+  if (lastAnalysisRef.current !== analysis) {
+    lastAnalysisRef.current = analysis;
+    runRef.current += 1;
+  }
+  const runKey = `${runRef.current}:${resultTab}`;
+
   const diagramPath = (member: MemberModel) => {
     const result = resultMap.get(member.id);
     const ni = nodeMap.get(member.i); const nj = nodeMap.get(member.j);
@@ -125,7 +142,9 @@ const CanvasResultLayerImpl = ({
     jumpCommands.push(`M ${lastPoint.x} ${lastPoint.y} L ${baselineEnd.x} ${baselineEnd.y}`);
     return <g key={member.id} className={`diagram-shape ${key}`}>
       <path d={fillCommands.join(' ')} className="diagram-fill" />
-      <path d={lineCommands.join(' ')} className="diagram-line-exact" />
+      {/* `pathLength` normaliza la longitud a 1: el trazo se dibuja al mismo
+          ritmo tanto en una barra corta como en una larga. */}
+      <path d={lineCommands.join(' ')} className="diagram-line-exact" pathLength={1} />
       <path d={jumpCommands.join(' ')} className="diagram-jumps" />
     </g>;
   };
@@ -387,8 +406,8 @@ const CanvasResultLayerImpl = ({
 
   if (slot === 'diagrams') {
     return <>
-      {showResults ? <g className="diagram-layer">{project.members.map(diagramPath)}</g> : null}
-      {showResults && resultsAllowed && resultTab === 'deformed' && analysis?.success ? <g className="deformed-layer">{project.members.map((member) => <path key={member.id} d={deformedPath(member)} />)}</g> : null}
+      {showResults ? <g key={runKey} className="diagram-layer">{project.members.map(diagramPath)}</g> : null}
+      {showResults && resultsAllowed && resultTab === 'deformed' && analysis?.success ? <g key={runKey} className="deformed-layer">{project.members.map((member) => <path key={member.id} d={deformedPath(member)} />)}</g> : null}
       {renderModeShape()}
       {showResults ? renderResultCursor() : null}
       {showDiagnostics ? renderMechanism() : null}

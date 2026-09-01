@@ -48,6 +48,7 @@ import { layoutSmartLabels, smartLabelDetailForScale, type SmartLabelCandidate }
 import { buildCanvasSelectionVisualState, selectionEnvelopeForPoints } from './selectionVisuals';
 import { emitWorkspaceCommand, onWorkspaceCommand, type FocusableSelection } from '../workspace/workspaceCommands';
 import { CanvasGeometryLayer, type StructuralTarget } from './CanvasGeometryLayer';
+import { CanvasEmptyState } from './CanvasEmptyState';
 import {
   flexibleRatioFromGross,
   grossRatioAtPoint,
@@ -2582,6 +2583,10 @@ export const StructuralCanvas = ({
         {!stackActive ? <GlobalAxes canvasHeight={size.height} /> : null}
         </g>
       </svg>
+
+      {/* El estado vacío es del lienzo, no del proyecto: aparece siempre que no
+          hay geometría que mirar y se retira con el primer nudo. */}
+      {project.nodes.length === 0 && !generatorOpen ? <CanvasEmptyState onSelectTool={setActiveTool} /> : null}
 
       {supportPlacement ? <SupportPlacementPopover
         nodeId={supportPlacement.nodeId}
