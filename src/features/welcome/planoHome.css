@@ -329,7 +329,11 @@
 
 @media (max-width: 1100px) {
   .plano-hero { grid-template-columns: minmax(0, 1fr); }
-  .plano-hero__stage { order: -1; }
+  /* Apilado, el diagrama va DESPUÉS del nombre y de la acción: su viewBox es
+     420×300, así que puesto arriba crecía con el ancho disponible y empujaba
+     «Continuar» fuera de la primera pantalla. */
+  .plano-hero__stage { width: 100%; max-width: 460px; justify-self: center; }
+  .plano-hero__copy { justify-self: stretch; }
   .plano-capabilities { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
