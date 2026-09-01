@@ -1,20 +1,208 @@
-.console { grid-area:console; z-index:20; width:52px; min-width:52px; display:flex; flex-direction:column; overflow:visible; border-right:1px solid var(--border-soft); background:var(--surface); transition:width var(--sc-motion-fast) var(--sc-ease-standard); }
-.console:hover,.console:focus-within { width:200px; box-shadow:var(--sc-shadow-drop); }
-.console button { min-width:44px; min-height:44px; border:0; background:transparent; color:var(--text); display:flex; align-items:center; gap:10px; padding:0 16px; text-align:left; white-space:nowrap; overflow:hidden; }
-.console button:hover,.console button:focus-visible,.console button.is-active { background:var(--surface-2); }
-.console button span { opacity:0; transition:opacity var(--sc-motion-fast) var(--sc-ease-standard); }
-.console:hover button span,.console:focus-within button span { opacity:1; }
-.console__head,.console__foot,.console__surfaces { display:grid; gap:1px; }
-.console__brand { font-weight:800; letter-spacing:-.08em; }
-.console__project { font-size:var(--sc-font-size-label); font-weight:700; }
-.console__body { min-height:0; flex:1; overflow-y:auto; overflow-x:hidden; display:grid; align-content:start; gap:8px; }
-.console__tools .toolbar { width:100%; padding:0; border:0; overflow:visible; }
-.console__tools .toolbar-spacer,.console__tools .selection-tip,.console__tools .dock-collapse-toggle { display:none; }
-.console__tools .desktop-tool-list { display:grid; gap:1px; }
-.console__tools .tool-group { display:contents; }
-.console__tools .tool-group-heading { display:none; }
-.console__tools .tool-group-actions { display:contents; }
-.console__tools .tool-button { width:100%; }
-.console__foot { border-top:1px solid var(--border-soft); }
-.console__analyze { background:var(--sc-color-action-primary)!important; color:var(--sc-color-action-foreground)!important; }
-@media (max-width:1023px) { .console { position:fixed; inset:auto 0 0; z-index:40; width:100%; height:52px; border-width:1px 0 0; flex-direction:row; overflow:hidden; } .console:hover,.console:focus-within { width:100%; box-shadow:0 -8px 20px color-mix(in srgb,var(--text) 12%,transparent); } .console__head,.console__foot,.console__body { display:flex; flex:none; overflow:hidden; } .console__head,.console__foot { gap:1px; } .console__body { flex:1; overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; scrollbar-width:none; } .console__body::-webkit-scrollbar { display:none; } .console__surfaces,.console__tools,.console__tools .toolbar { display:flex; flex:none; width:max-content; } .console__tools .desktop-tool-list { display:none; } .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock { display:flex; flex:none; width:max-content; max-width:none; padding:0; gap:1px; overflow:visible; } .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock .tool-button { width:44px; min-width:44px; min-height:44px; height:44px; } .console button { padding:0 13px; } .console button span { display:none; } .console__project { display:none!important; } }
+/*
+ * Consola: navegación, superficies, herramientas y acciones del proyecto.
+ *
+ * En escritorio es una columna de 52px que se despliega sobre el lienzo sin
+ * moverlo —la celda de la retícula no cambia de ancho—. En K0 es una banda
+ * inferior donde lo que primero se alcanza son las herramientas de modelado.
+ *
+ * REGLA QUE SOSTIENE ESTA HOJA: la consola aloja el riel de herramientas
+ * completo, así que ningún selector puede apuntar a `.console button span` o a
+ * `.console button svg` en general. Las etiquetas propias de la consola se
+ * llaman `.console__label`; todo lo demás pertenece al riel y se deja intacto.
+ */
+
+.console {
+  grid-area: console;
+  z-index: 20;
+  width: 52px;
+  min-width: 52px;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  border-right: 1px solid var(--border-soft);
+  background: var(--surface);
+  transition: width var(--sc-motion-bridge) var(--sc-ease-reveal);
+}
+
+.console:hover,
+.console:focus-within { width: 216px; box-shadow: var(--sc-shadow-drop); }
+
+.console button {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  white-space: nowrap;
+  transition: background var(--sc-motion-quick) var(--sc-ease-standard), color var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+/* Un icono nunca es material comprimible: sin esto el `flex-shrink` por defecto
+   lo reduce a 0px de ancho en cuanto la etiqueta no cabe, y la consola entera
+   se queda en blanco. */
+.console button > svg { flex: none; }
+
+.console button:hover,
+.console button:focus-visible { background: var(--surface-2); }
+.console button.is-active { background: var(--surface-2); color: var(--accent-ink); box-shadow: inset 2px 0 0 var(--accent-ink); }
+.console button:disabled { color: var(--sc-color-text-disabled); }
+
+/* La etiqueta existe siempre para el lector de pantalla; sólo se revela cuando
+   la consola tiene sitio para leerla. */
+.console__label {
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-size: var(--sc-font-size-control);
+  font-weight: var(--sc-font-weight-semibold);
+  text-overflow: ellipsis;
+  transition: opacity var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+.console:hover .console__label,
+.console:focus-within .console__label { opacity: 1; }
+
+.console__head,
+.console__foot,
+.console__surfaces { display: grid; gap: 1px; }
+
+.console__head { padding-block-end: 6px; border-bottom: 1px solid var(--border-soft); }
+.console__brand { gap: 12px; }
+.console__brand .console__label { font-size: var(--sc-font-size-title); font-weight: var(--sc-font-weight-heavy); letter-spacing: var(--sc-tracking-tight); }
+
+/* El nombre del proyecto sólo existe cuando la consola está desplegada: en
+   52px no cabe nada legible y una elipsis suelta no informa. */
+.console__project { min-height: 30px; padding-block: 0; color: var(--muted); }
+.console__project-name {
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-semibold);
+  text-overflow: ellipsis;
+  transition: opacity var(--sc-motion-quick) var(--sc-ease-standard);
+}
+.console:hover .console__project-name,
+.console:focus-within .console__project-name { opacity: 1; }
+
+.console__body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding-block: 6px;
+  scrollbar-width: thin;
+}
+
+.console__surfaces { padding-block-end: 10px; border-bottom: 1px solid var(--border-soft); }
+
+.console__tools .toolbar { width: 100%; padding: 0; border: 0; overflow: visible; }
+.console__tools .toolbar-spacer,
+.console__tools .selection-tip,
+.console__tools .dock-collapse-toggle { display: none; }
+.console__tools .desktop-tool-list { display: grid; gap: 1px; }
+.console__tools .tool-group { display: contents; }
+.console__tools .tool-group-heading { display: none; }
+.console__tools .tool-group-actions { display: contents; }
+.console__tools .tool-button { width: 100%; }
+
+.console__foot { padding-block-start: 6px; border-top: 1px solid var(--border-soft); }
+
+/* La especificidad tiene que ganarle a `.console button`, que declara fondo
+   transparente para todas las acciones del riel. */
+.console button.console__analyze {
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+}
+.console button.console__analyze:hover:not(:disabled),
+.console button.console__analyze:focus-visible:not(:disabled) { background: var(--sc-color-action-hover); }
+.console button.console__analyze:disabled { background: var(--sc-color-fill-primary); color: var(--sc-color-text-disabled-content); }
+
+@media (max-width: 1023px) {
+  .console {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 40;
+    width: 100%;
+    height: calc(56px + env(safe-area-inset-bottom));
+    padding-block-end: env(safe-area-inset-bottom);
+    flex-direction: row;
+    align-items: stretch;
+    overflow: hidden;
+    border-width: 1px 0 0;
+  }
+
+  .console:hover,
+  .console:focus-within { width: 100%; box-shadow: var(--sc-shadow-sheet); }
+
+  /* En K0 la etiqueta no cabe nunca: el nombre accesible vive en `aria-label`.
+     El selector nombra también el elemento porque `.console button` ya declara
+     `display:flex` con más especificidad que una clase suelta. */
+  .console__label { display: none; }
+  .console button.console__project { display: none; }
+  /* En K0 el lienzo YA ocupa la pantalla: el modo completo sólo escondería el
+     riel y dejaría al usuario sin herramientas. */
+  .console button.console__canvas-toggle { display: none; }
+
+  .console__head,
+  .console__foot,
+  .console__body { display: flex; flex: none; overflow: hidden; padding: 0; border: 0; gap: 0; }
+  .console__head { border-inline-end: 1px solid var(--border-soft); }
+  .console__foot { border-inline-start: 1px solid var(--border-soft); }
+
+  /* Las herramientas ocupan el carril desplazable y son lo primero que alcanza
+     el pulgar; superficies y acciones quedan ancladas a los extremos. */
+  .console__body {
+    flex: 1;
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .console__body::-webkit-scrollbar { display: none; }
+
+  /* El carril desplaza: un desvanecido en el borde lo dice sin ocupar sitio. */
+  .console__body {
+    mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+  }
+
+  .console__surfaces,
+  .console__tools,
+  .console__tools .toolbar { display: flex; flex: none; width: max-content; gap: 0; }
+  /* `order` y no `row-reverse`: invertir el eje de un carril desplazable lo
+     arranca en su extremo contrario y deja las herramientas fuera de vista. */
+  .console__tools { order: 1; }
+  .console__surfaces { order: 2; border-inline-start: 1px solid var(--border-soft); }
+  .console__tools .desktop-tool-list { display: none; }
+  .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock {
+    display: flex;
+    flex: none;
+    width: max-content;
+    max-width: none;
+    padding: 0;
+    gap: 0;
+    overflow: visible;
+  }
+  .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock .tool-button {
+    width: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    height: 48px;
+  }
+
+  .console button { min-height: 48px; padding: 0 13px; justify-content: center; }
+  .console button.is-active { box-shadow: inset 0 2px 0 var(--accent-ink); }
+  .console__analyze { min-width: 56px; }
+}

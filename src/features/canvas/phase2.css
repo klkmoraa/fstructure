@@ -107,7 +107,6 @@
 .touch-gesture-hint { display:none; }
 /* Coordinate readout is informational. It must never steal a structural
    selection gesture from geometry beneath the floating canvas chrome. */
-.canvas-status { position: absolute; right: 14px; bottom: 12px; color: var(--subtle); font-size: var(--sc-font-size-technical); display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: var(--sc-radius-control); pointer-events:none; }
 .canvas-feedback { position:absolute; z-index:6; left:50%; top:58px; transform:translateX(-50%); width:max-content; max-width:calc(100% - 28px); padding:9px 12px; border-radius:var(--sc-radius-control); color:var(--text); font-size:var(--sc-font-size-label); line-height:1.4; text-align:center; pointer-events:none; }
 .canvas-host .canvas-feedback { border-color:color-mix(in srgb,var(--warning) 35%,var(--border)); }
 .canvas-result-legend { position:absolute; left:16px; top:54px; z-index:8; width:min(260px,calc(100% - 32px)); padding:9px 11px; border-radius:var(--sc-radius-control); display:grid; grid-template-columns:auto 1fr; align-items:center; gap:4px 9px; pointer-events:none; }
@@ -146,7 +145,6 @@
   .professional-note { display:none; }
   .toolbar { bottom:8px; }
   .canvas-controls { bottom:70px; }
-  .canvas-status { bottom:68px; }
   .mobile-inspector-toggle { bottom:78px; }
 }
 button, .icon-button, .tool-button, .compact-select, .number-control, .selection-card,
@@ -157,7 +155,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .canvas-mode-badge { padding:8px 11px; border-radius:var(--sc-radius-control); font-size:var(--sc-font-size-technical); }
 .canvas-mode-badge strong { font-size:13px; }
 .canvas-controls { border-radius:var(--sc-radius-control); }
-.canvas-status { font-size:var(--sc-font-size-technical); }
 
 @media (max-width:460px) {
   .brand-mark,.brand-mark svg { width:28px; height:28px; }
@@ -327,7 +324,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .influence-line-view .diagram-chart { margin:0 8px; }
 
   .canvas-controls { bottom:14px; }
-  .canvas-status { bottom:12px; }
   .canvas-mode-badge { max-width:calc(100% - 82px); overflow:hidden; white-space:nowrap; }
   .mobile-inspector-toggle {
     top:12px;
@@ -593,18 +589,23 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   border-radius:var(--sc-radius-card);
 }
 .canvas-controls button + button { border-top:0; border-left:1px solid var(--border-soft); }
+/* LECTURA ÚNICA. Coordenada y escala viven en el `Instrument`, la franja
+   permanente del borde inferior. Este bloque sigue existiendo porque es su
+   FUENTE —el instrumento observa estos nodos— pero no se pinta: repetido sobre
+   el lienzo tapaba el riel de herramientas y obligaba a leer dos veces lo
+   mismo. No se sustituye por `display:none` porque un nodo sin caja deja de
+   emitir mutaciones de layout en algunos navegadores. */
 .canvas-status {
-  z-index:7;
-  right:auto;
-  left:50%;
-  bottom:12px;
-  min-height:38px;
-  max-width:calc(100% - 390px);
-  transform:translateX(-50%);
-  padding:0 11px;
-  border-radius:var(--sc-radius-card);
-  color:var(--muted);
+  position:absolute;
+  width:1px;
+  height:1px;
+  margin:-1px;
+  padding:0;
+  border:0;
+  overflow:hidden;
+  clip-path:inset(50%);
   white-space:nowrap;
+  pointer-events:none;
 }
 .canvas-coordinate-output { color:var(--text); font-variant-numeric:tabular-nums; }
 .canvas-scale-output { color:var(--muted); font-variant-numeric:tabular-nums; }
@@ -673,23 +674,10 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
     right:max(10px,env(safe-area-inset-right));
     bottom:10px;
   }
-  .canvas-status {
-    left:50%;
-    right:auto;
-    bottom:10px;
-    min-height:36px;
-    max-width:calc(100% - 310px);
-    transform:translateX(-50%);
-  }
   .canvas-result-legend { top:104px; left:10px; }
   .canvas-feedback { top:104px; }
   .canvas-hint { top:104px; }
   .quick-entry-bar { bottom:70px; }
-}
-
-@media (pointer:coarse) {
-  .canvas-coordinate-output,.canvas-status-divider { display:none; }
-  .canvas-status { min-width:86px; justify-content:center; }
 }
 
 @media (max-width:460px) {
@@ -702,8 +690,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .canvas-mode-badge { top:8px; left:8px; max-width:calc(100% - 66px); }
   .canvas-view-chips { display:none; }
   .canvas-controls { right:8px; bottom:8px; }
-  .canvas-status { bottom:8px; min-height:34px; max-width:96px; padding-inline:8px; overflow:hidden; }
-  .canvas-coordinate-output,.canvas-status-divider { display:none; }
   .desktop-gesture-hint { display:none; }
   .touch-gesture-hint { display:inline; }
   .canvas-result-legend { top:96px; width:calc(100% - 20px); }
@@ -1438,25 +1424,12 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   /* El zoom vive en la esquina inferior derecha; el radar se apila encima y
      el pie de coordenadas recorta su ancho para no cruzarse con ninguno. */
   .canvas-minimap { bottom:calc(12px + var(--sc-control-height-md) * 3 + 8px); }
-  .canvas-status { max-width:calc(100% - 430px); }
 }
 /* El panel de capas baja por el mismo borde derecho y cubriría el radar. Se
    retira mientras el panel está abierto: dos objetos en el mismo sitio no se
    resuelven apilándolos, se resuelve mostrando uno. */
 .canvas-host:has(.canvas-layer-panel) .canvas-minimap { display:none; }
 
-/* En teléfonos estrechos la pastilla de coordenadas se centraba en el ancho
-   completo, sin descontar el grupo de zoom (~134px) que ocupa la esquina
-   inferior derecha: a 375px se solapaban 3px. Deja de centrarse y se ancla a
-   la izquierda, que en esta franja está libre, con holgura garantizada. */
-@media (max-width:640px) {
-  .canvas-status {
-    left:max(8px,env(safe-area-inset-left));
-    right:auto;
-    transform:none;
-    max-width:calc(100% - 168px);
-  }
-}
 @media (max-width:1023px) {
   /* En táctil el lienzo es el recurso escaso: el radar se retira y deja el
      dibujo limpio bajo el dedo. */

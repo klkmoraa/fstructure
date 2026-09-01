@@ -1,3 +1,55 @@
-.instrument { grid-area:footer; min-height:24px; height:24px; display:flex; align-items:center; gap:12px; overflow:hidden; padding:0 10px; border-top:1px solid var(--border-soft); background:var(--surface); color:var(--muted); font:var(--sc-font-size-label)/1 var(--sc-font-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
-.instrument span { display:inline-flex; align-items:center; gap:4px; }.instrument b { color:var(--text); }.instrument__tool { margin-left:auto; text-transform:uppercase; letter-spacing:.08em; }.instrument__storage.is-issue,.instrument__analysis.is-solved { color:var(--text); }
-@media (max-width:1023px) { .instrument { padding:0 8px; gap:8px; }.instrument__tool { display:none!important; } }
+/*
+ * Instrument: la franja de estado del borde inferior.
+ *
+ * Es la única lectura de coordenada, escala, conteos y estado del editor. Su
+ * altura es fija y su contenido nunca desborda: cada tramo se retira en el
+ * ancho en el que dejaría de caber, empezando por lo que el dispositivo no
+ * puede producir.
+ */
+
+.instrument {
+  grid-area: footer;
+  min-height: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: 0 10px;
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--muted);
+  font: var(--sc-font-size-label) / 1 var(--sc-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.instrument span { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.instrument b { color: var(--text); font-weight: var(--sc-font-weight-bold); }
+.instrument svg { flex: none; }
+
+.instrument__tool { margin-left: auto; text-transform: uppercase; letter-spacing: var(--sc-tracking-eyebrow); }
+.instrument__storage.is-issue { color: var(--sc-color-state-error-foreground); }
+.instrument__analysis.is-solved { color: var(--text); }
+
+/* La corrida es el dato que más cambia: no se deja recortar por el borde. */
+.instrument__analysis { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 1023px) {
+  .instrument { gap: 10px; padding: 0 10px; }
+  /* Sin puntero no hay coordenada que leer, y el nombre de la herramienta ya
+     lo dice el botón activo del riel. El selector nombra el elemento porque
+     `.instrument span` ya declara `display` con más especificidad. */
+  .instrument span.instrument__coordinates,
+  .instrument span.instrument__tool { display: none; }
+  .instrument span.instrument__word { display: none; }
+}
+
+@media (max-width: 420px) {
+  /* A este ancho sólo caben los tres conteos y los dos estados. */
+  .instrument span.instrument__scale { display: none; }
+}
+
+@media (pointer: coarse) {
+  .instrument span.instrument__coordinates { display: none; }
+}
