@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Box, Folder, GraduationCap, Home, Image as ImageIcon, LayoutTemplate, LibraryBig, Menu, Play, Search, Settings, Upload, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Box, Folder, GraduationCap, Home, Image as ImageIcon, LayoutTemplate, LibraryBig, Menu, Play, Search, Settings, Upload, X } from 'lucide-react';
 import { m, useReducedMotion } from 'motion/react';
 import { createBlankProject, exampleProjects } from '../../data/defaultProject';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
@@ -8,11 +8,11 @@ import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { NewExerciseDialog } from './NewExerciseDialog';
 import { presentExample } from './examplePresentation';
-import { shouldResumeDirectly, useWelcomeEntry } from './welcomeEntry';
 import { STRUCTURAL_ASSET_IDS, ThreeStructuralImage } from '../structural-assets';
 import type { PortalAssetId } from '../structural-assets/threePortalAssets';
 import type { ThreeStructuralAssetId } from '../structural-assets/threeStructuralRender';
 import { resolveSessionHeroId } from './homeSession';
+import { FusionLanding } from './FusionLanding';
 import { IllustrationStudio } from '../structural-assets/studio/IllustrationStudio';
 import type { ClassroomExerciseTemplateId } from '../../education/exerciseTemplates';
 import { PersonalLibraryView } from '../library/PersonalLibraryView';
@@ -29,17 +29,17 @@ interface WelcomeScreenProps {
   onOpenWorkspace: () => void;
   onOpenSpace3D?: () => void;
   onPreloadWorkspace?: () => void;
-  allowDirectResume?: boolean;
-  onDirectResume?: () => void;
+  onViewChange?: (view: HomeView) => void;
   initialView?: HomeView;
 }
 
-export type HomeView = 'home' | 'projects' | 'templates' | 'library' | 'classroom' | 'import' | 'space3d';
+export type HomeView = 'home' | 'solver2d' | 'projects' | 'templates' | 'library' | 'classroom' | 'import' | 'space3d';
 type NavigationDestination = HomeView | 'studio';
 
 const copy = {
   es: {
-    navigation: 'Navegación principal', home: 'Inicio', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar', space3d: 'Space 3D',
+    navigation: 'Navegación del Solver 2D', home: 'Plataforma', solver2d: 'Solver 2D', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar', space3d: 'Solver 3D',
+    backPlatform: 'Volver a la plataforma',
     settings: 'Ajustes', settingsTitle: 'Ajustes', settingsBody: 'Personaliza cómo se presenta FusionStructure en este dispositivo.', language: 'Idioma', closeSettings: 'Cerrar ajustes', studio: 'Estudio de ilustraciones', menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', current: 'Proyecto abierto', continue: 'Continuar proyecto', create: 'Nuevo proyecto', localMetrics: 'Diagnóstico local', localMetricsBody: 'Opcional. Guarda sólo eventos agregados en este dispositivo; nunca envía geometría, cargas, resultados ni datos personales.', localMetricsOptIn: 'Guardar mediciones locales para mejorar el flujo', localMetricsCount: '{count} observaciones locales', exportDiagnostics: 'Exportar diagnóstico', clearDiagnostics: 'Borrar observaciones', search: 'Buscar', searchPlaceholder: 'Buscar proyectos o accesos…', clearSearch: 'Borrar búsqueda', noQuickMatches: 'No hay accesos rápidos que coincidan.',
     recent: 'Proyectos recientes', viewAll: 'Ver todos', templatesTitle: 'Elige una estructura de partida', templatesBody: 'Abre un modelo preparado y adáptalo a tu caso.',
     projectsTitle: 'Tus proyectos', projectsBody: 'Abre, renombra o duplica el trabajo guardado en este dispositivo.',
@@ -50,7 +50,8 @@ const copy = {
     secondary: 'Accesos rápidos', local: 'Guardado local en este dispositivo',
   },
   en: {
-    navigation: 'Primary navigation', home: 'Home', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import', space3d: 'Space 3D',
+    navigation: '2D Solver navigation', home: 'Platform', solver2d: '2D Solver', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import', space3d: '3D Solver',
+    backPlatform: 'Back to platform',
     settings: 'Settings', settingsTitle: 'Settings', settingsBody: 'Personalize how FusionStructure is presented on this device.', language: 'Language', closeSettings: 'Close settings', studio: 'Illustration Studio', menu: 'Open navigation', closeMenu: 'Close navigation', current: 'Open project', continue: 'Continue project', create: 'New project', localMetrics: 'Local diagnostics', localMetricsBody: 'Optional. Stores aggregate events on this device only; it never sends geometry, loads, results, or personal data.', localMetricsOptIn: 'Store local measurements to improve the flow', localMetricsCount: '{count} local observations', exportDiagnostics: 'Export diagnostics', clearDiagnostics: 'Erase observations', search: 'Search', searchPlaceholder: 'Search projects or shortcuts…', clearSearch: 'Clear search', noQuickMatches: 'No quick access items match.',
     recent: 'Recent projects', viewAll: 'View all', templatesTitle: 'Choose a starting structure', templatesBody: 'Open a prepared model and adapt it to your case.',
     projectsTitle: 'Your projects', projectsBody: 'Open, rename, or duplicate work saved on this device.',
@@ -63,7 +64,7 @@ const copy = {
 } as const;
 
 const NAV_ITEMS: ReadonlyArray<{ id: NavigationDestination; icon: typeof Home }> = [
-  { id: 'home', icon: Home }, { id: 'projects', icon: Folder }, { id: 'templates', icon: LayoutTemplate },
+  { id: 'solver2d', icon: Home }, { id: 'projects', icon: Folder }, { id: 'templates', icon: LayoutTemplate },
   { id: 'library', icon: LibraryBig }, { id: 'studio', icon: ImageIcon }, { id: 'classroom', icon: GraduationCap }, { id: 'import', icon: Upload }, { id: 'space3d', icon: Box },
 ];
 
@@ -118,7 +119,7 @@ const WelcomePreferences = ({ language, onLanguageChange, onClose }: WelcomePref
   </section>;
 };
 
-export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspace, allowDirectResume = false, onDirectResume, initialView = 'home' }: WelcomeScreenProps) => {
+export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspace, onViewChange, initialView = 'home' }: WelcomeScreenProps) => {
   const { project, replaceProject, updateProjectView } = useProject();
   const { language, t } = useI18n();
   const { theme } = useWorkspaceUI();
@@ -138,14 +139,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   const homeRef = useRef<HTMLElement>(null);
   const preferencesLauncherRef = useRef<HTMLButtonElement | null>(null);
   const studioLauncherRef = useRef<HTMLButtonElement | null>(null);
-  const entry = useWelcomeEntry();
   const heroId = useMemo(() => resolveSessionHeroId(HOME_HERO_IDS, window.sessionStorage), []);
-
-  useEffect(() => {
-    if (!allowDirectResume || !shouldResumeDirectly(entry)) return;
-    onDirectResume?.();
-    onOpenWorkspace();
-  }, [allowDirectResume, entry, onDirectResume, onOpenWorkspace]);
 
   useEffect(() => {
     if (!mobileNavOpen) return;
@@ -166,7 +160,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
       const shortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k';
       if ((!shortcut && event.key !== '/') || (typing && !shortcut) || preferencesOpen || studioOpen || exerciseDialogOpen || importCenterOpen || dxfImportOpen) return;
       event.preventDefault();
-      if (view !== 'home' && view !== 'projects') setView('home');
+      if (view !== 'solver2d' && view !== 'projects') setView('solver2d');
       window.requestAnimationFrame(() => searchInputRef.current?.focus());
     };
     window.addEventListener('keydown', focusSearch);
@@ -199,6 +193,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   };
   const navigate = (next: HomeView) => {
     setView(next);
+    onViewChange?.(next);
     setSearchQuery('');
     setMobileNavOpen(false);
   };
@@ -229,14 +224,22 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   const quickActions = [
     { id: 'import', label: text.import, icon: Upload, action: () => setImportCenterOpen(true) },
     { id: 'classroom', label: text.classroom, icon: GraduationCap, action: () => openExercise() },
-    { id: 'space3d', label: text.space3d, icon: Box, action: () => onOpenSpace3D?.() },
+    { id: 'space3d', label: text.space3d, icon: Box, action: () => navigate('space3d') },
   ].filter((item) => !normalizedSearch || item.label.toLocaleLowerCase(language).includes(normalizedSearch));
   const renderNavigation = (menu = false) => <nav className={menu ? 'sc-home-nav sc-home-nav--menu' : 'sc-home-nav sc-home-nav--console'} aria-label={text.navigation}>
     {NAV_ITEMS.map(({ id, icon: Icon }) => <button key={id} type="button" aria-label={text[id]} title={text[id]} className={id !== 'studio' && view === id ? 'is-active' : undefined} aria-current={id !== 'studio' && view === id ? 'page' : undefined} onClick={(event) => id === 'studio' ? openStudio(event.currentTarget) : navigate(id)}><Icon size={19} /><span>{text[id]}</span></button>)}
     <button type="button" aria-label={text.settings} title={text.settings} onClick={(event) => openPreferences(event.currentTarget)}><Settings size={19} /><span>{text.settings}</span></button>
   </nav>;
 
-  const dashboard = <>
+  const platformLanding = <FusionLanding
+    language={language}
+    onOpenSolver2D={() => navigate('solver2d')}
+    onOpenSolver3D={() => navigate('space3d')}
+    onOpenClassroom={() => navigate('classroom')}
+    onOpenImport={() => navigate('import')}
+  />;
+
+  const solver2dDashboard = <>
     <section className="sc-home-hero" aria-labelledby="home-current-project">
       <div className="sc-home-primary-actions" onPointerEnter={onPreloadWorkspace} onFocusCapture={onPreloadWorkspace}>
         <h2 id="home-current-project">{project.name}</h2>
@@ -288,26 +291,41 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     </div>
   </section>;
 
-  const content = view === 'home' ? dashboard
+  const solver2dContent = view === 'solver2d' ? solver2dDashboard
     : view === 'projects' ? <section className="sc-home-view" aria-label={text.projects}><Suspense fallback={<p role="status">{t('hub.loading')}</p>}><Phase2ProjectHub onOpenWorkspace={onOpenWorkspace} filter={searchQuery} /></Suspense></section>
       : view === 'templates' ? templates
         : view === 'library' ? <PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} />
           : view === 'classroom' ? classroomLanding
-          : view === 'import' ? <section className="sc-home-view" aria-label={text.import}><div className="sc-home-import-grid"><button type="button" className="welcome-import-card" onClick={() => setImportCenterOpen(true)}><Upload size={20} /><strong>{t('welcome.import')}</strong></button><Suspense fallback={null}><Phase2DxfAction open={dxfImportOpen} onOpenChange={setDxfImportOpen} onOpenWorkspace={onOpenWorkspace} /></Suspense></div></section>
-            : <section className="sc-home-space" aria-label={text.space3d}>
-              <div className="sc-home-space__copy">
-                <div className="sc-home-space__actions"><button type="button" className="sc-home-continue" onClick={onOpenSpace3D}>{text.spaceAction}<ArrowRight size={16} /></button><button type="button" className="sc-home-space__return" onClick={onOpenWorkspace}>{text.spaceContinue2D}</button></div>
-              </div>
-              <div className="sc-home-space__asset">
-                <ThreeStructuralImage assetId="space-frame:multi-bay" theme={theme} alt={text.spacePreview} eager />
-              </div>
-            </section>;
+            : view === 'import' ? <section className="sc-home-view" aria-label={text.import}><div className="sc-home-import-grid"><button type="button" className="welcome-import-card" onClick={() => setImportCenterOpen(true)}><Upload size={20} /><strong>{t('welcome.import')}</strong></button><Suspense fallback={null}><Phase2DxfAction open={dxfImportOpen} onOpenChange={setDxfImportOpen} onOpenWorkspace={onOpenWorkspace} /></Suspense></div></section>
+              : null;
 
-  return <><main ref={homeRef} className="sc-home" data-testid="welcome-screen">
-    <header className="sc-home-console"><div className="sc-home-wordmark"><strong>FusionStructure</strong></div>{renderNavigation()}<button ref={mobileMenuButtonRef} className="sc-home-console__menu" type="button" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button></header>
-    {mobileNavOpen ? renderNavigation(true) : null}
-    <div className="sc-home-main"><header className="sc-home-topline"><span>{text[view]}</span><div className="sc-home-search" role="search"><Search size={16} aria-hidden="true" /><input ref={searchInputRef} type="search" value={searchQuery} aria-label={text.search} placeholder={text.searchPlaceholder} onChange={(event) => { setSearchQuery(event.currentTarget.value); if (event.currentTarget.value && view !== 'home' && view !== 'projects') setView('home'); }} />{searchQuery ? <button type="button" aria-label={text.clearSearch} onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}</div><div className="sc-home-topline-actions"><label><span className="sr-only">{t('language.label')}</span><select value={language} onChange={(event) => updateLanguage(event.target.value as 'es' | 'en')}><option value="es">ES</option><option value="en">EN</option></select></label></div></header><div className="sc-home-content">{content}</div></div>
+  const space3dWelcome = <section className="sc-home-space" aria-label={text.space3d}>
+    <div className="sc-home-space__copy">
+      <button type="button" className="sc-tool-welcome__back" onClick={() => navigate('home')}><ArrowLeft size={15} />{text.backPlatform}</button>
+      <p>FS-A02 · {text.spaceExperimental}</p>
+      <h2>{text.spaceTitle}</h2>
+      <span>{text.spaceBody}</span>
+      <div className="sc-home-space__orientation"><strong>{text.spaceExperimental}</strong><span>{text.spaceNotice}</span></div>
+      <div className="sc-home-space__actions"><button type="button" className="sc-home-continue" onClick={onOpenSpace3D}>{text.spaceAction}<ArrowRight size={16} /></button><button type="button" className="sc-home-space__return" onClick={() => navigate('solver2d')}>{text.spaceContinue2D}</button></div>
+      <div className="sc-home-space__capabilities"><span><strong>XYZ</strong>{text.spaceCoordinates}</span><span><strong>6 GDL</strong>{text.spaceModel}</span><span><strong>N / M</strong>{text.spaceLoads}</span></div>
+    </div>
+    <div className="sc-home-space__asset">
+      <ThreeStructuralImage assetId="space-frame:multi-bay" theme={theme} alt={text.spacePreview} eager />
+    </div>
+  </section>;
+
+  const screen = view === 'home'
+    ? <main ref={homeRef} className="sc-home fs-platform-landing" data-testid="platform-landing">{platformLanding}</main>
+    : view === 'space3d'
+      ? <main ref={homeRef} className="sc-home sc-tool-welcome sc-tool-welcome--3d" data-testid="solver3d-welcome">{space3dWelcome}</main>
+      : <main ref={homeRef} className="sc-home" data-testid="solver2d-welcome">
+        <header className="sc-home-console"><button type="button" className="sc-home-wordmark" onClick={() => navigate('home')} aria-label={text.backPlatform}><strong>FusionStructure</strong><span>Solver 2D</span></button>{renderNavigation()}<button ref={mobileMenuButtonRef} className="sc-home-console__menu" type="button" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button></header>
+        {mobileNavOpen ? renderNavigation(true) : null}
+        <div className="sc-home-main"><header className="sc-home-topline"><span>{text[view]}</span><div className="sc-home-search" role="search"><Search size={16} aria-hidden="true" /><input ref={searchInputRef} type="search" value={searchQuery} aria-label={text.search} placeholder={text.searchPlaceholder} onChange={(event) => { setSearchQuery(event.currentTarget.value); if (event.currentTarget.value && view !== 'solver2d' && view !== 'projects') setView('solver2d'); }} />{searchQuery ? <button type="button" aria-label={text.clearSearch} onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}</div><div className="sc-home-topline-actions"><label><span className="sr-only">{t('language.label')}</span><select value={language} onChange={(event) => updateLanguage(event.target.value as 'es' | 'en')}><option value="es">ES</option><option value="en">EN</option></select></label></div></header><div className="sc-home-content">{solver2dContent}</div></div>
+      </main>;
+
+  return <>{screen}
     {importCenterOpen ? <Suspense fallback={null}><PortableImportCenter open currentProjectName={project.name} onClose={() => setImportCenterOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { replaceProject({ ...outcome.project, settings: { ...outcome.project.settings, language } }, outcome.restoredAnalysis); setImportCenterOpen(false); onOpenWorkspace(); }} /></Suspense> : null}
     <NewExerciseDialog open={exerciseDialogOpen} initialTemplateId={exerciseTemplateId} onClose={() => setExerciseDialogOpen(false)} onCreate={(next) => { replaceProject({ ...next, settings: { ...next.settings, language } }); setExerciseDialogOpen(false); onOpenWorkspace(); }} />
-  </main>{preferencesOpen ? <WelcomePreferences language={language} onLanguageChange={updateLanguage} onClose={closePreferences} /> : null}{studioOpen ? <IllustrationStudio language={language} initialTheme={theme} onClose={closeStudio} /> : null}</>;
+    {preferencesOpen ? <WelcomePreferences language={language} onLanguageChange={updateLanguage} onClose={closePreferences} /> : null}{studioOpen ? <IllustrationStudio language={language} initialTheme={theme} onClose={closeStudio} /> : null}</>;
 };
