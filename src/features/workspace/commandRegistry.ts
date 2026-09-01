@@ -34,6 +34,7 @@ import {
   Play,
   Redo2,
   Sheet,
+  Sparkles,
   Undo2,
   Wrench,
 } from 'lucide-react';
@@ -177,6 +178,17 @@ const STATIC_COMMANDS: readonly CommandDefinition[] = [
     route: () => 'Herramientas › Generador',
     deferredOpen: true,
     run: () => emitWorkspaceCommand('open-structure-generator'),
+  },
+  {
+    id: 'tool:local-assistant',
+    category: 'tools',
+    icon: Sparkles,
+    label: (ctx) => ctx.t('assistant.localLabel'),
+    hint: (ctx) => ctx.t('assistant.localDescription'),
+    aliases: () => ['asistente', 'proponer cambio', 'ai', 'assistant', 'suggest change'],
+    route: () => 'Herramientas › Asistente local',
+    deferredOpen: true,
+    run: () => emitWorkspaceCommand('open-local-assistant', {}),
   },
   {
     id: 'view:fit',

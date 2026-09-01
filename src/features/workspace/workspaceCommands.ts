@@ -64,6 +64,8 @@ export interface WorkspaceCommands {
   'open-revision-comparison': void;
   /** Open the contextual structural-editing surface for the current selection. */
   'open-structural-edit': void;
+  /** Open the local, review-first command assistant. */
+  'open-local-assistant': { trigger?: HTMLElement | null };
   /**
    * Open the structure generator over the canvas. It needs no selection: it
    * creates geometry rather than transforming what is already there.
