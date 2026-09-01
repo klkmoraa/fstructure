@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Inspector } from '../inspector/Inspector';
 import { ResultsPanel } from '../results/ResultsPanel';
@@ -21,13 +21,16 @@ import { preloadDenseResultsSurface, type DenseResultView } from '../results/den
 import type { SurfaceId } from './surfacePresentation';
 import '../../design-system/components/ui.css';
 import './phase1.css';
+import '../canvas/mobileCanvasDensity.css';
 import { emitWorkspaceCommand, onWorkspaceCommand } from './workspaceCommands';
 import { isOwnHistoryScope } from './commandRegistry';
 import type { AnalysisResult } from '../../types';
 import type { RevisionSnapshot } from '../revision-comparison/revisionComparison';
 import { DataSurfaceRetainedStateProvider } from './DataSurfaceRetainedState';
+import { LazySurface } from './LazySurface';
 
 const LazyCommandPalette = lazy(() => import('./CommandPalette').then((module) => ({ default: module.CommandPalette })));
+const LazyLocalCommandAssistant = lazy(() => import('../ai/LocalCommandAssistant').then((module) => ({ default: module.LocalCommandAssistant })));
 const LazyModelDoctor = lazy(() => import('../model-doctor/ModelDoctor').then((module) => ({ default: module.ModelDoctor })));
 const LazyDatasheet = lazy(() => import('../datasheet/DatasheetPanel').then((module) => ({ default: module.DatasheetPanel })));
 const LazyStructuralBom = lazy(() => import('../bom/StructuralBomPanel').then((module) => ({ default: module.StructuralBomPanel })));
@@ -83,6 +86,8 @@ const WorkspaceBrokerContent = ({
   const { t } = useI18n();
   const { project, analysis, isAnalyzing, setActiveTool, setResultTab, analyze, undo, redo, canUndo, canRedo } = useProject();
   const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
+  const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
+  const localAssistantTriggerRef = useRef<HTMLElement | null>(null);
   const modelDoctorNotificationIdRef = useRef(0);
   const pendingModelDoctorNotificationIdRef = useRef<number | null>(null);
   const reportedAnalysisRef = useRef<AnalysisResult | null>(null);
@@ -144,6 +149,11 @@ const WorkspaceBrokerContent = ({
         if (canOpenPalette) openSurface('palette');
       }),
       onWorkspaceCommand('open-model-doctor', () => openSurface('doctor')),
+      onWorkspaceCommand('open-local-assistant', ({ trigger }) => {
+        localAssistantTriggerRef.current = trigger ?? null;
+        closeSurface('palette');
+        setLocalAssistantOpen(true);
+      }),
       onWorkspaceCommand('open-datasheet', () => openSurface('datasheet')),
       onWorkspaceCommand('open-structural-bom', () => openSurface('bom')),
       onWorkspaceCommand('open-revision-comparison', () => openSurface('comparison')),
@@ -419,23 +429,32 @@ const WorkspaceBrokerContent = ({
         onOpenChange={setResultsOpen}
       /> : null}
       <ToastNotification />
-      {broker.isRetained('palette') ? <Suspense fallback={null}><LazyCommandPalette
+      {broker.isRetained('palette') ? <LazySurface><LazyCommandPalette
         open={palette.status === 'active'}
         onClose={() => closeSurface('palette')}
         dispatchLayers={dispatchEditorLayers}
         presentation={palette.presentation as 'overlay' | 'sheet'}
-      /></Suspense> : null}
+      /></LazySurface> : null}
+      {localAssistantOpen ? <LazySurface><LazyLocalCommandAssistant
+        open
+        onClose={() => {
+          setLocalAssistantOpen(false);
+          const trigger = localAssistantTriggerRef.current;
+          localAssistantTriggerRef.current = null;
+          if (trigger?.isConnected) window.requestAnimationFrame(() => trigger.focus({ preventScroll: true }));
+        }}
+      /></LazySurface> : null}
       {/* Invocada, nunca residente: sólo existe en el árbol mientras el broker
           la retiene, y desaparece al cerrarse (CRI-101). */}
-      {broker.isRetained('dense') ? <Suspense fallback={<span className="sr-only" role="status">{t('results.denseLoading')}</span>}><LazyDenseResults
+      {broker.isRetained('dense') ? <LazySurface pending={<span className="sr-only" role="status">{t('results.denseLoading')}</span>}><LazyDenseResults
         open={dense.status === 'active'}
         view={denseView}
         onViewChange={setDenseView}
         onOpenChange={setDenseOpen}
         presentation={dense.presentation as 'drawer' | 'fullscreen'}
         onSurfaceReady={markDenseReady}
-      /></Suspense> : null}
-      {broker.isRetained('datasheet') ? <Suspense fallback={null}><LazyDatasheet
+      /></LazySurface> : null}
+      {broker.isRetained('datasheet') ? <LazySurface><LazyDatasheet
         open={datasheet.status === 'active'}
         onOpenChange={setDatasheetOpen}
         presentation={datasheet.presentation as 'drawer' | 'fullscreen'}
@@ -443,8 +462,8 @@ const WorkspaceBrokerContent = ({
         extent={datasheet.extent}
         onPeek={peekDatasheet}
         onRestore={restoreDatasheet}
-      /></Suspense> : null}
-      {broker.isRetained('bom') ? <Suspense fallback={null}><LazyStructuralBom
+      /></LazySurface> : null}
+      {broker.isRetained('bom') ? <LazySurface><LazyStructuralBom
         open={bom.status === 'active'}
         onOpenChange={setBomOpen}
         presentation={bom.presentation as 'drawer' | 'fullscreen'}
@@ -452,8 +471,8 @@ const WorkspaceBrokerContent = ({
         extent={bom.extent}
         onPeek={peekBom}
         onRestore={restoreBom}
-      /></Suspense> : null}
-      {broker.isRetained('comparison') ? <Suspense fallback={null}><LazyRevisionComparison
+      /></LazySurface> : null}
+      {broker.isRetained('comparison') ? <LazySurface><LazyRevisionComparison
         open={comparison.status === 'active'}
         onOpenChange={setComparisonOpen}
         presentation={comparison.presentation as 'drawer' | 'fullscreen'}
@@ -463,8 +482,8 @@ const WorkspaceBrokerContent = ({
         onRestore={restoreComparison}
         baseline={revisionBaseline}
         onBaselineChange={setRevisionBaseline}
-      /></Suspense> : null}
-      {broker.isRetained('doctor') ? <Suspense fallback={<span className="sr-only" role="status">{t('modelDoctor.loading')}</span>}><LazyModelDoctor
+      /></LazySurface> : null}
+      {broker.isRetained('doctor') ? <LazySurface pending={<span className="sr-only" role="status">{t('modelDoctor.loading')}</span>}><LazyModelDoctor
         open={doctor.status === 'active'}
         onOpenChange={setDoctorOpen}
         onSurfaceReady={markDoctorReady}
@@ -474,7 +493,7 @@ const WorkspaceBrokerContent = ({
         extent={doctor.extent}
         onPeek={peekDoctor}
         onRestore={restoreDoctor}
-      /></Suspense> : null}
+      /></LazySurface> : null}
     </>}
     inspector={<div className="workspace-surfaces" data-workspace-right-slot>
       {broker.isRetained('detail') ? <Inspector surface="detail" className={detail.presentation === 'sheet' && detail.status === 'active' ? 'mobile-open' : ''} desktopWidth={layout.inspectorWidth} presentation={detail.presentation as 'dock' | 'inset' | 'sheet'} status={detail.status} onClose={closeDetail} compact={detail.presentation !== 'sheet' && layout.inspectorCompact} onExpand={() => setPreference('inspectorCompact', false)} onDesktopWidthChange={(width) => setPreference('inspectorWidth', width)} mobileDetent={layout.inspectorDetent} onMobileDetentChange={(detent) => setPreference('inspectorDetent', detent)} onMobileDetentCycle={cycleInspectorDetent} /> : null}

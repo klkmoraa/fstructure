@@ -1,4 +1,4 @@
-import { LocateFixed, Minus, Plus, X } from 'lucide-react';
+import { Crosshair, LocateFixed, Minus, Plus, X } from 'lucide-react';
 import { useEffect, type Dispatch, type RefObject } from 'react';
 import { useI18n } from '../../i18n/useI18n';
 import { IconButton } from '../../design-system/components/controls';
@@ -11,7 +11,9 @@ import { formatFixed } from '../../utils/numberFormat';
 import { onWorkspaceCommand } from '../workspace/workspaceCommands';
 
 export interface CanvasChromeProps {
+  modeLabel: string;
   placementInstruction: string | null;
+  showHelp: boolean;
   layers: EditorLayerState;
   dispatchLayers: Dispatch<EditorLayerAction>;
   resultTab: ResultTab;
@@ -35,7 +37,9 @@ export interface CanvasChromeProps {
 
 /** Presentation-only canvas controls. Camera and model mutations stay upstream. */
 export const CanvasChrome = ({
+  modeLabel,
   placementInstruction,
+  showHelp,
   layers,
   dispatchLayers,
   resultTab,
@@ -63,10 +67,14 @@ export const CanvasChrome = ({
   }, [onFit]);
 
   return <>
-    {placementInstruction ? <div className="canvas-mode-badge placing-load" role="status" aria-live="polite" data-canvas-chrome="mode">
-      <span className="canvas-action-instruction">{placementInstruction}</span>
-      <IconButton size="sm" label={t('canvas.cancelPlacement')} onClick={onCancelPlacement}><X size={14} /></IconButton>
-    </div> : null}
+    <div className={`canvas-mode-badge${placementInstruction ? ' placing-load has-context' : showHelp ? ' has-context' : ''}`} role="status" aria-live="polite" data-canvas-chrome="mode">
+      <strong>{modeLabel}</strong>
+      {placementInstruction ? <span className="canvas-action-instruction">{placementInstruction}</span> : showHelp ? <>
+        <span className="desktop-gesture-hint">{t('canvas.gestureDesktop')}</span>
+        <span className="touch-gesture-hint">{t('canvas.gestureTouch')}</span>
+      </> : null}
+      {placementInstruction ? <IconButton size="sm" label={t('canvas.cancelPlacement')} onClick={onCancelPlacement}><X size={14} /></IconButton> : null}
+    </div>
     <CanvasLayers layers={layers} dispatch={dispatchLayers} />
     <CanvasEvidenceRail layers={layers} dispatch={dispatchLayers} resultTab={resultTab} setResultTab={setResultTab} visible={analysisAvailable} stackActive={stackActive} stackAvailable={stackAvailable} stackQuantities={stackQuantities} onStackToggle={onStackToggle} onStackQuantityToggle={onStackQuantityToggle} />
     <div className="canvas-view-chips" role="status" aria-label={t('canvas.viewStatus')} data-canvas-chrome="view-status">
@@ -76,11 +84,13 @@ export const CanvasChrome = ({
     <div className="canvas-controls" role="group" aria-label={t('canvas.viewControls')} data-canvas-chrome="camera">
       <IconButton label={t('canvas.zoomIn')} title={t('canvas.zoomIn')} onClick={onZoomIn}><Plus size={18} /></IconButton>
       <IconButton label={t('canvas.zoomOut')} title={t('canvas.zoomOut')} onClick={onZoomOut}><Minus size={18} /></IconButton>
-      <IconButton label={t('canvas.fit')} title={t('canvas.fit')} onClick={onFit}><LocateFixed size={18} /></IconButton>
+      <IconButton label={t('canvas.fit')} title={t('canvas.fit')} onClick={() => onFit()}><LocateFixed size={18} /></IconButton>
     </div>
-    <div className="sr-only" aria-live="polite">
+    <div className="canvas-status" data-canvas-chrome="coordinates">
+      <Crosshair size={14} aria-hidden="true" />
       <output ref={coordinateReadoutRef} className="canvas-coordinate-output" aria-label={t('canvas.coordinates')}>X — · Y — {lengthLabel}</output>
-      <output className="canvas-scale-output">{t('canvas.scale')} {formatFixed((scale / 85), 2)}×</output>
+      <span className="canvas-status-divider" aria-hidden="true">·</span>
+      <span className="canvas-scale-output">{t('canvas.scale')} {formatFixed((scale / 85), 2)}×</span>
     </div>
   </>;
 };

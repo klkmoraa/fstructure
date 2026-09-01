@@ -51,12 +51,12 @@ export const LocalCommandAssistant = ({ open, onClose }: LocalCommandAssistantPr
         sectionIds: standardSections.map((section) => section.id), materialIds: standardMaterials.map((material) => material.id),
       };
       const validated = validateLocalProposal(proposeLocalCommand(request));
-      if (!validated.ok) { setNotice({ tone: 'error', title: t('proposal.rejectedTitle'), message: validated.reason }); return; }
+      if (!validated.ok) { setNotice({ tone: 'error', title: t('proposal.rejectedTitle'), message: t(validated.key, validated.params) }); return; }
       const proposal = validated.value;
       if (proposal.status === 'needs-clarification') { setNotice({ tone: 'info', title: t('proposal.clarifyTitle'), message: proposal.question }); return; }
       if (proposal.status === 'rejected') { setNotice({ tone: 'error', title: t('proposal.rejectedTitle'), message: proposal.reason }); return; }
       const outcome = prepareLocalProposal(project, snapshotHash, proposal);
-      if (!outcome.ok) { setNotice({ tone: 'error', title: t('proposal.rejectedTitle'), message: outcome.reason }); return; }
+      if (!outcome.ok) { setNotice({ tone: 'error', title: t('proposal.rejectedTitle'), message: t(outcome.key, outcome.params) }); return; }
       setPrepared(outcome.value);
     } catch {
       setNotice({ tone: 'error', title: t('proposal.rejectedTitle'), message: t('proposal.failed') });
@@ -68,7 +68,7 @@ export const LocalCommandAssistant = ({ open, onClose }: LocalCommandAssistantPr
     setBusy(true);
     try {
       const outcome = confirmLocalProposal(prepared, { proposalId: prepared.proposal.proposalId, snapshotHash: prepared.proposal.snapshotHash }, await projectChecksum(project));
-      if (!outcome.ok) { setNotice({ tone: 'error', title: t('proposal.rejectedTitle'), message: outcome.reason }); setPrepared(null); return; }
+      if (!outcome.ok) { setNotice({ tone: 'error', title: t('proposal.rejectedTitle'), message: t(outcome.key) }); setPrepared(null); return; }
       await executeProjectCommand(outcome.command);
       emitWorkspaceCommand('show-toast', { message: t('proposal.applied'), description: prepared.proposal.summary, tone: 'success' });
       handleClose();

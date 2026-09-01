@@ -3,10 +3,13 @@ import { standardMaterials } from '../data/standardMaterials';
 import { standardSections } from '../data/standardSections';
 import { diffProjects, type ProjectDiff } from '../data/projectDiff';
 import type { MemberModel, ProjectModel } from '../types';
+import { allowedUnits, ProposalUnitError, toBaseUnits, type ProposalQuantity, type ProposalQuantityKind } from './proposalUnits';
+import { translatePhase2, type Phase2TranslationKey } from '../i18n/phase2Catalogs';
 
-export interface ProposalQuantity { value: number; unit: string; }
+export type { ProposalQuantity } from './proposalUnits';
+
 export type ProposedOperation =
-  | { kind: 'member.update'; memberId: string; changes: Partial<Record<'E' | 'A' | 'I' | 'density', ProposalQuantity>> }
+  | { kind: 'member.update'; memberId: string; changes: Partial<Record<'E' | 'A' | 'I' | 'density', ProposalQuantity>> & { label?: string } }
   | { kind: 'member.section.apply'; memberId: string; sectionId: string }
   | { kind: 'member.material.apply'; memberId: string; materialId: string };
 
@@ -29,32 +32,26 @@ export interface ProposalRequest {
   materialIds: readonly string[];
 }
 
-type QuantityKind = 'elasticModulus' | 'area' | 'inertia' | 'density';
-const FACTORS: Record<QuantityKind, Record<string, number>> = {
-  elasticModulus: { Pa: 1e-3, kPa: 1, MPa: 1e3, GPa: 1e6, psi: 6.894757293168361e-3, ksi: 6.894757293168361 },
-  area: { m2: 1, cm2: 1e-4, mm2: 1e-6, in2: 6.4516e-4 },
-  inertia: { m4: 1, cm4: 1e-8, mm4: 1e-12, in4: 4.162314256e-7 },
-  density: { 'kg/m3': 1, 'lb/ft3': 16.018463373960142 },
-};
-const FIELD_KINDS = { E: 'elasticModulus', A: 'area', I: 'inertia', density: 'density' } as const;
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const SHA256 = /^[a-f0-9]{64}$/;
-
-const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const proposalId = () => {
   if (!globalThis.crypto?.randomUUID) throw new Error('Web Crypto no puede crear una propuesta local.');
   return globalThis.crypto.randomUUID();
 };
 const mentioned = (intent: string, ids: readonly string[]) => {
   const lower = intent.toLowerCase();
-  return [...ids].sort((left, right) => right.length - left.length).find((id) => lower.includes(id.toLowerCase()));
+  const isTokenBoundary = (character: string | undefined) => !character || !/[a-z0-9_]/i.test(character);
+  return [...ids].sort((left, right) => right.length - left.length).find((id) => {
+    const candidate = id.toLowerCase();
+    let from = 0;
+    while (from < lower.length) {
+      const index = lower.indexOf(candidate, from);
+      if (index < 0) return false;
+      if (isTokenBoundary(lower[index - 1]) && isTokenBoundary(lower[index + candidate.length])) return true;
+      from = index + candidate.length;
+    }
+    return false;
+  });
 };
-const allowedUnits = (kind: QuantityKind) => Object.keys(FACTORS[kind]);
-const toBase = (quantity: ProposalQuantity, kind: QuantityKind) => {
-  const factor = FACTORS[kind][quantity.unit];
-  if (factor === undefined || !Number.isFinite(quantity.value)) throw new Error(`La unidad ${quantity.unit} no está admitida para ${kind}.`);
-  return quantity.value * factor;
-};
+const FIELD_KINDS = { E: 'elasticModulus', A: 'area', I: 'inertia', density: 'density' } as const satisfies Record<'E' | 'A' | 'I' | 'density', ProposalQuantityKind>;
 const quantityIn = (intent: string, field: keyof typeof FIELD_KINDS): ProposalQuantity | null => {
   const kind = FIELD_KINDS[field];
   const units = allowedUnits(kind).map((unit) => unit.replace(/[/\\^$*+?.()|[\]{}]/g, '\\$&')).join('|');
@@ -82,58 +79,89 @@ export const proposeLocalCommand = (request: ProposalRequest): LocalProposal => 
   return { ...base, status: 'rejected', summary: `No existe una operación compatible para ${memberId}.`, reason: 'Nombra una sección, material o propiedad con unidad explícita.' };
 };
 
-const rejectExtra = (value: Record<string, unknown>, keys: readonly string[]) => Object.keys(value).filter((key) => !keys.includes(key));
-const validQuantity = (value: unknown): value is ProposalQuantity => record(value) && rejectExtra(value, ['value', 'unit']).length === 0 && typeof value.value === 'number' && Number.isFinite(value.value) && typeof value.unit === 'string' && value.unit.length > 0;
-
 /** Frontera estricta para cualquier proveedor futuro: no convierte ni ignora datos externos. */
-export const validateLocalProposal = (input: unknown): { ok: true; value: LocalProposal } | { ok: false; reason: string } => {
-  if (!record(input) || input.version !== 1 || typeof input.proposalId !== 'string' || !UUID.test(input.proposalId) || typeof input.snapshotHash !== 'string' || !SHA256.test(input.snapshotHash) || typeof input.summary !== 'string' || !input.summary.trim() || input.summary.length > 240) return { ok: false, reason: 'La propuesta no cumple el contrato local.' };
-  const status = input.status;
-  if (status === 'needs-clarification' && rejectExtra(input, ['version', 'proposalId', 'snapshotHash', 'summary', 'status', 'question']).length === 0 && typeof input.question === 'string' && input.question.trim()) return { ok: true, value: input as LocalProposal };
-  if (status === 'rejected' && rejectExtra(input, ['version', 'proposalId', 'snapshotHash', 'summary', 'status', 'reason']).length === 0 && typeof input.reason === 'string' && input.reason.trim()) return { ok: true, value: input as LocalProposal };
-  if (status !== 'ready' || rejectExtra(input, ['version', 'proposalId', 'snapshotHash', 'summary', 'status', 'operation']).length || !record(input.operation) || typeof input.operation.kind !== 'string' || typeof input.operation.memberId !== 'string' || !input.operation.memberId) return { ok: false, reason: 'La operación propuesta no está permitida.' };
-  const operation = input.operation;
-  if (operation.kind === 'member.section.apply' && rejectExtra(operation, ['kind', 'memberId', 'sectionId']).length === 0 && typeof operation.sectionId === 'string' && operation.sectionId) return { ok: true, value: input as LocalProposal };
-  if (operation.kind === 'member.material.apply' && rejectExtra(operation, ['kind', 'memberId', 'materialId']).length === 0 && typeof operation.materialId === 'string' && operation.materialId) return { ok: true, value: input as LocalProposal };
-  if (operation.kind === 'member.update' && rejectExtra(operation, ['kind', 'memberId', 'changes']).length === 0 && record(operation.changes) && Object.keys(operation.changes).length && Object.keys(operation.changes).every((field) => ['E', 'A', 'I', 'density'].includes(field) && validQuantity((operation.changes as Record<string, unknown>)[field]))) return { ok: true, value: input as LocalProposal };
-  return { ok: false, reason: 'La operación propuesta no está permitida.' };
-};
+export { validateLocalProposal } from './proposalValidation';
 
-const commandFor = (project: ProjectModel, operation: ProposedOperation): ProjectCommand | { error: string } => {
+export type ProposalPreparationCode = 'stale-snapshot' | 'unknown-id' | 'bad-units' | 'no-effect' | 'compile-error';
+export interface ProposalPreparationFailure {
+  ok: false;
+  code: ProposalPreparationCode;
+  reason: string;
+  key: Phase2TranslationKey;
+  params?: Record<string, string | number>;
+}
+
+const preparationFailure = (
+  code: ProposalPreparationCode,
+  key: Phase2TranslationKey,
+  params?: Record<string, string | number>,
+): ProposalPreparationFailure => ({ ok: false, code, reason: translatePhase2('es', key, params), key, params });
+
+const commandFor = (project: ProjectModel, operation: ProposedOperation): ProjectCommand | ProposalPreparationFailure => {
   const member = project.members.find((candidate) => candidate.id === operation.memberId);
-  if (!member) return { error: `La barra ${operation.memberId} ya no existe.` };
+  if (!member) return preparationFailure('unknown-id', 'proposal.error.unknownMember', { memberId: operation.memberId });
   if (operation.kind === 'member.section.apply') {
     const section = standardSections.find((candidate) => candidate.id === operation.sectionId);
-    return section ? { kind: 'member.section.apply', description: `Aplicar sección ${section.name}`, memberId: member.id, sectionId: section.id, properties: { A: section.area, I: section.inertiaX } } : { error: 'La sección no existe en el catálogo local.' };
+    return section
+      ? { kind: 'member.section.apply', description: `Aplicar sección ${section.name}`, memberId: member.id, sectionId: section.id, properties: { A: section.area, I: section.inertiaX } }
+      : preparationFailure('unknown-id', 'proposal.error.unknownSection', { sectionId: operation.sectionId });
   }
   if (operation.kind === 'member.material.apply') {
     const material = standardMaterials.find((candidate) => candidate.id === operation.materialId);
-    return material ? { kind: 'member.material.apply', description: `Aplicar material ${material.name}`, memberId: member.id, materialId: material.id, properties: { E: material.elasticModulus, G: material.shearModulus, density: material.density } } : { error: 'El material no existe en el catálogo local.' };
+    return material
+      ? { kind: 'member.material.apply', description: `Aplicar material ${material.name}`, memberId: member.id, materialId: material.id, properties: { E: material.elasticModulus, G: material.shearModulus, density: material.density } }
+      : preparationFailure('unknown-id', 'proposal.error.unknownMaterial', { materialId: operation.materialId });
   }
   const changes: Partial<Omit<MemberModel, 'id'>> = {};
-  try {
-    Object.entries(operation.changes).forEach(([field, quantity]) => {
-      const value = toBase(quantity!, FIELD_KINDS[field as keyof typeof FIELD_KINDS]);
-      if (!(value > 0)) throw new Error(`El valor de ${field} debe ser positivo.`);
-      (changes as Record<string, number>)[field] = value;
-    });
-  } catch (error) { return { error: error instanceof Error ? error.message : 'No se pudo convertir la propuesta.' }; }
+  for (const field of ['E', 'A', 'I', 'density'] as const) {
+    const quantity = operation.changes[field];
+    if (quantity === undefined) continue;
+    try {
+      const value = toBaseUnits(quantity, FIELD_KINDS[field]);
+      if (!(value > 0)) return preparationFailure('bad-units', 'proposal.error.notPositive', { field });
+      changes[field] = value;
+    } catch (error) {
+      if (error instanceof ProposalUnitError) return preparationFailure('bad-units', error.key, error.params);
+      return preparationFailure('bad-units', 'proposal.error.quantityNotFinite');
+    }
+  }
+  if (operation.changes.label !== undefined) changes.label = operation.changes.label;
   return { kind: 'member.update', description: `Actualizar ${Object.keys(changes).join(', ')} en ${member.id}`, memberId: member.id, changes };
 };
 
 export type PreparedLocalProposal = { proposal: Extract<LocalProposal, { status: 'ready' }>; command: ProjectCommand; diff: ProjectDiff };
-export const prepareLocalProposal = (project: ProjectModel, snapshotHash: string, proposal: Extract<LocalProposal, { status: 'ready' }>): { ok: true; value: PreparedLocalProposal } | { ok: false; reason: string } => {
-  if (proposal.snapshotHash !== snapshotHash) return { ok: false, reason: 'El proyecto cambió antes de preparar la propuesta.' };
+export type ProposalPreparationOutcome = { ok: true; value: PreparedLocalProposal } | ProposalPreparationFailure;
+export const prepareLocalProposal = (project: ProjectModel, snapshotHash: string, proposal: Extract<LocalProposal, { status: 'ready' }>): ProposalPreparationOutcome => {
+  if (proposal.snapshotHash !== snapshotHash) return preparationFailure('stale-snapshot', 'proposal.error.staleSnapshot');
   const command = commandFor(project, proposal.operation);
-  if ('error' in command) return { ok: false, reason: command.error };
+  if ('ok' in command) return command;
+  const draft = structuredClone(project);
   try {
-    const after = applyProjectPatch(project, compileProjectCommand(project, command).forward);
+    const after = applyProjectPatch(draft, compileProjectCommand(draft, command).forward);
     const diff = diffProjects(project, after);
-    return diff.identical ? { ok: false, reason: 'La propuesta no cambiaría el proyecto.' } : { ok: true, value: { proposal, command, diff } };
-  } catch (error) { return { ok: false, reason: error instanceof Error ? error.message : 'No se pudo preparar la propuesta.' }; }
+    return diff.identical ? preparationFailure('no-effect', 'proposal.error.noEffect') : { ok: true, value: { proposal, command, diff } };
+  } catch {
+    return preparationFailure('compile-error', 'proposal.failed');
+  }
 };
 
-export const confirmLocalProposal = (prepared: PreparedLocalProposal, confirmation: { proposalId: string; snapshotHash: string }, currentHash: string): { ok: true; command: ProjectCommand } | { ok: false; reason: string } => {
-  if (confirmation.proposalId !== prepared.proposal.proposalId || confirmation.snapshotHash !== prepared.proposal.snapshotHash) return { ok: false, reason: 'La confirmación no corresponde a la propuesta revisada.' };
-  return currentHash === prepared.proposal.snapshotHash ? { ok: true, command: prepared.command } : { ok: false, reason: 'El proyecto cambió mientras revisabas la propuesta.' };
+export type ProposalConfirmationCode = 'mismatched-proposal' | 'mismatched-snapshot' | 'project-changed';
+export type ProposalConfirmationOutcome =
+  | { ok: true; command: ProjectCommand }
+  | { ok: false; code: ProposalConfirmationCode; reason: string; key: Phase2TranslationKey };
+
+export const confirmLocalProposal = (
+  prepared: PreparedLocalProposal,
+  confirmation: { proposalId: string; snapshotHash: string },
+  currentHash: string,
+): ProposalConfirmationOutcome => {
+  if (confirmation.proposalId !== prepared.proposal.proposalId) {
+    return { ok: false, code: 'mismatched-proposal', reason: translatePhase2('es', 'proposal.error.mismatchedProposal'), key: 'proposal.error.mismatchedProposal' };
+  }
+  if (confirmation.snapshotHash !== prepared.proposal.snapshotHash) {
+    return { ok: false, code: 'mismatched-snapshot', reason: translatePhase2('es', 'proposal.error.mismatchedSnapshot'), key: 'proposal.error.mismatchedSnapshot' };
+  }
+  return currentHash === prepared.proposal.snapshotHash
+    ? { ok: true, command: prepared.command }
+    : { ok: false, code: 'project-changed', reason: translatePhase2('es', 'proposal.error.projectChanged'), key: 'proposal.error.projectChanged' };
 };

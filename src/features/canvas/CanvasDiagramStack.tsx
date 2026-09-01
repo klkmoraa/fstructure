@@ -11,6 +11,8 @@ type Translate = (key: TranslationKey, variables?: Record<string, string | numbe
 type DiagramSize = { width: number; height: number };
 type Bounds = { minX: number; maxX: number; minY: number; maxY: number };
 type ExternalCell = { quantity: StackQuantity; x: number; y: number; width: number; height: number };
+type CanvasCell = { quantity: StackQuantity; x: number; y: number; width: number; height: number };
+const isCompactViewport = (size: DiagramSize) => size.width < 700 || size.height < 600;
 
 const boundsOf = (project: ProjectModel): Bounds => {
   const [first, ...rest] = project.nodes;
@@ -30,8 +32,45 @@ const maximumFor = (results: readonly MemberResult[], quantity: StackQuantity): 
       : Math.max(Math.abs(result.minMoment), Math.abs(result.maxMoment))),
 );
 
+/**
+ * Compact ACM uses the same viewport as the model. The top and bottom margins
+ * leave the evidence rail and camera controls usable without creating a second
+ * scroll shelf below the canvas.
+ */
+const canvasCells = (size: DiagramSize, quantities: readonly StackQuantity[]): CanvasCell[] => {
+  if (!quantities.length) return [];
+  const compact = isCompactViewport(size);
+  const left = compact ? 10 : 18;
+  const right = compact ? 10 : 84;
+  const top = compact ? 76 : 70;
+  const bottom = compact ? 68 : 54;
+  const gap = compact ? 6 : 10;
+  const usableWidth = Math.max(1, size.width - left - right);
+  const usableHeight = Math.max(1, size.height - top - bottom);
+
+  if (!compact && usableWidth / Math.max(1, usableHeight) > 1.7) {
+    const width = Math.max(1, (usableWidth - gap * (quantities.length - 1)) / quantities.length);
+    return quantities.map((quantity, index) => ({
+      quantity,
+      x: left + index * (width + gap),
+      y: top,
+      width,
+      height: usableHeight,
+    }));
+  }
+
+  const height = Math.max(1, (usableHeight - gap * (quantities.length - 1)) / quantities.length);
+  return quantities.map((quantity, index) => ({
+    quantity,
+    x: left,
+    y: top + index * (height + gap),
+    width: usableWidth,
+    height,
+  }));
+};
+
 const externalCells = (bounds: Bounds, size: DiagramSize, quantities: readonly StackQuantity[]): { cells: ExternalCell[]; bottomReserve: number } => {
-  const compact = size.height < 560 || size.width < 700;
+  const compact = isCompactViewport(size);
   const outerX = compact ? 14 : 30;
   const outerRight = compact ? 14 : 178;
   // The compact canvas keeps its zoom controls at the lower-right corner.
@@ -66,9 +105,11 @@ const externalCells = (bounds: Bounds, size: DiagramSize, quantities: readonly S
   };
 };
 
-/** Reserve enough exterior space to keep ACM separate from the original model. */
-export const externalStackBottomReserve = (project: ProjectModel, size: DiagramSize, quantityCount: number): number =>
-  externalCells(boundsOf(project), size, STACK_QUANTITIES.slice(0, Math.max(1, quantityCount))).bottomReserve;
+/** Reserve exterior space only for the desktop ACM sheet; compact ACM fills the canvas. */
+export const externalStackBottomReserve = (project: ProjectModel, size: DiagramSize, quantityCount: number): number => {
+  if (isCompactViewport(size)) return 0;
+  return externalCells(boundsOf(project), size, STACK_QUANTITIES.slice(0, Math.max(1, quantityCount))).bottomReserve;
+};
 
 /**
  * ACM is a complete structural reading outside the model. Wide structures use
@@ -85,11 +126,11 @@ export const CanvasDiagramStack = memo(({
   size: DiagramSize;
   t: Translate;
 }) => {
-  const compact = size.height < 560 || size.width < 700;
+  const compact = isCompactViewport(size);
   const resultMap = useMemo(() => new Map(results.map((result) => [result.memberId, result])), [results]);
   const visibleQuantities = useMemo(() => STACK_QUANTITIES.filter((quantity) => quantities.includes(quantity)), [quantities]);
   const bounds = useMemo(() => boundsOf(project), [project]);
-  const cells = useMemo(() => externalCells(bounds, size, visibleQuantities).cells, [bounds, size, visibleQuantities]);
+  const cells = useMemo(() => compact ? canvasCells(size, visibleQuantities) : externalCells(bounds, size, visibleQuantities).cells, [bounds, compact, size, visibleQuantities]);
   const maxima = useMemo(() => Object.fromEntries(STACK_QUANTITIES.map((quantity) => [quantity, maximumFor(results, quantity)])) as Record<StackQuantity, number>, [results]);
   const solvedMembers = useMemo(() => project.members.flatMap((member) => {
     const result = resultMap.get(member.id);
@@ -112,26 +153,38 @@ export const CanvasDiagramStack = memo(({
     return text.includes('.') ? text.replace(/0+$/, '').replace(/\.$/, '') : text;
   };
 
-  return <g className="diagram-stack-layer diagram-stack-layer--external" data-canvas-layer="diagram-stack" aria-label={t('canvas.evidenceStackStructure')}>
+  return <g className={`diagram-stack-layer ${compact ? 'diagram-stack-layer--canvas' : 'diagram-stack-layer--external'}`} data-canvas-layer="diagram-stack" aria-label={t('canvas.evidenceStackStructure')}>
     <title>{t('canvas.evidenceStackStructureDetail')}</title>
+    {compact ? <rect className="diagram-stack-canvas-mask" x="0" y="0" width={size.width} height={size.height} fill="var(--canvas-bg)" /> : null}
     {cells.map((cell) => {
       const spanX = Math.max(1e-9, bounds.maxX - bounds.minX);
       const spanY = Math.max(1e-9, bounds.maxY - bounds.minY);
-      const topInset = compact ? 16 : 22;
-      const padding = compact ? 10 : 16;
-      const amplitude = Math.max(compact ? 12 : 17, Math.min(compact ? 20 : 34, cell.height * .2));
+      const titleHeight = compact ? 18 : 0;
+      const paddingX = compact ? 12 : 16;
+      const paddingY = compact ? 8 : 0;
+      const topInset = compact ? 0 : 22;
+      const padding = compact ? 0 : 16;
+      const amplitude = compact
+        ? Math.max(10, Math.min(19, cell.height * .17))
+        : Math.max(17, Math.min(34, cell.height * .2));
       // Keep the entire portal and the signed diagram offsets inside its lane.
-      // This makes every N/V/M copy legible as a complete pórtico, just like
-      // the reference calculation sheets, rather than a cropped thumbnail.
-      const usableHeight = Math.max(1, cell.height - topInset - padding - amplitude * 2);
-      const scale = Math.min((cell.width - padding * 2) / spanX, usableHeight / spanY);
+      // Compact mode uses a dedicated scene; desktop keeps the established
+      // exterior calculation sheet geometry.
+      const usableHeight = compact
+        ? Math.max(1, cell.height - titleHeight - paddingY * 2 - amplitude * 2)
+        : Math.max(1, cell.height - topInset - padding - amplitude * 2);
+      const usableWidth = compact ? Math.max(1, cell.width - paddingX * 2) : cell.width - padding * 2;
+      const scale = Math.min(usableWidth / spanX, usableHeight / spanY);
       const contentWidth = spanX * scale;
       const contentHeight = spanY * scale;
       const originX = cell.x + (cell.width - contentWidth) / 2 - bounds.minX * scale;
-      const originY = cell.y + topInset + amplitude + (usableHeight - contentHeight) / 2 + bounds.maxY * scale;
+      const originY = compact
+        ? cell.y + titleHeight + paddingY + amplitude + (usableHeight - contentHeight) / 2 + bounds.maxY * scale
+        : cell.y + topInset + amplitude + (usableHeight - contentHeight) / 2 + bounds.maxY * scale;
       const screenPoint = (node: NodeModel) => ({ x: originX + node.x * scale, y: originY - node.y * scale });
       return <g key={cell.quantity} className={`diagram-stack-panel ${cell.quantity}`} data-stack-panel={cell.quantity}>
-        <text className="diagram-stack-panel-title" x={cell.x} y={cell.y + 10}>{compact ? STACK_SYMBOLS[cell.quantity] : `${STACK_SYMBOLS[cell.quantity]} · ${labelFor(cell.quantity)}`}</text>
+        {compact ? <rect className="diagram-stack-panel-surface" x={cell.x} y={cell.y} width={cell.width} height={cell.height} rx="10" /> : null}
+        <text className="diagram-stack-panel-title" x={cell.x + (compact ? 10 : 0)} y={cell.y + (compact ? 14 : 10)}>{compact ? STACK_SYMBOLS[cell.quantity] : `${STACK_SYMBOLS[cell.quantity]} · ${labelFor(cell.quantity)}`}</text>
         {solvedMembers.map(({ member, result, start, end, axis }) => {
           const memberStart = screenPoint(start);
           const memberEnd = screenPoint(end);
@@ -177,13 +230,13 @@ export const CanvasDiagramStack = memo(({
             <path className="diagram-stack-member-baseline" d={`M ${baselineStart.x} ${baselineStart.y} L ${baselineEnd.x} ${baselineEnd.y}`} />
             <path className="diagram-stack-member-fill" d={fill.join(' ')} />
             <path className="diagram-stack-member-line" d={line.join(' ')} />
-            <text className="diagram-stack-member-label" x={midpoint.x} y={midpoint.y - 6} textAnchor="middle">{member.id}</text>
+            {!compact ? <text className="diagram-stack-member-label" x={midpoint.x} y={midpoint.y - 6} textAnchor="middle">{member.id}</text> : null}
             {readingPoints.map((point, index) => {
               const reading = position(point.x, point.value);
               const side = Math.sign(point.value) || (index % 2 ? -1 : 1);
               return <g key={`${point.kind}:${point.x}:${point.value}`} className="diagram-stack-reading" data-stack-reading={`${member.id}:${cell.quantity}:${point.kind}`}>
-                <circle cx={reading.x} cy={reading.y} r={compact ? 1.8 : 2.4} />
-                <text x={reading.x + normal.x * side * 7} y={reading.y + normal.y * side * 7 - 2} textAnchor="middle">{formatValue(point.value)}</text>
+                <circle cx={reading.x} cy={reading.y} r={compact ? 1.6 : 2.4} />
+                <text x={reading.x + normal.x * side * (compact ? 6 : 7)} y={reading.y + normal.y * side * (compact ? 6 : 7) - 2} textAnchor="middle">{formatValue(point.value)}</text>
               </g>;
             })}
             <title>{`${member.id} · ${STACK_SYMBOLS[cell.quantity]}`}</title>

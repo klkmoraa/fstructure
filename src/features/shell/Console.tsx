@@ -1,4 +1,4 @@
-import { Layers3, Moon, Play, Search, SlidersHorizontal, Sun } from 'lucide-react';
+import { Layers3, Moon, Play, Search, SlidersHorizontal, Sparkles, Sun } from 'lucide-react';
 import { ToolRail } from '../canvas/ToolRail';
 import { useI18n } from '../../i18n/useI18n';
 import { useProjectAnalysis, useProjectModel, useWorkspaceUI } from '../../store/ProjectContext';
@@ -39,6 +39,7 @@ export const Console = ({ onOpenHome, onOpenSpace3D: _onOpenSpace3D, layoutActio
         <button type="button" className={resultsOpen ? 'is-active' : ''} onClick={(event) => emitWorkspaceCommand('toggle-results', { trigger: event.currentTarget })} aria-label={t('results.outputs')}><Layers3 size={18} /><span>{t('results.outputs')}</span></button>
         <button type="button" onClick={layoutActions.onOpenAnalysisSetup} aria-label={t('inspector.analysisSetupLauncher')}><SlidersHorizontal size={18} /><span>{t('inspector.analysisSetupLauncher')}</span></button>
         <button type="button" onClick={layoutActions.onOpenViewSettings} aria-label={t('inspector.viewTab')}><Layers3 size={18} /><span>{t('inspector.viewTab')}</span></button>
+        <button type="button" onClick={(event) => emitWorkspaceCommand('open-local-assistant', { trigger: event.currentTarget })} aria-label={t('assistant.localLabel')}><Sparkles size={18} /><span>{t('assistant.localLabel')}</span></button>
       </div>
       <div className="console__tools"><ToolRail /></div>
     </div>
