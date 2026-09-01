@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { ArrowRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
-import { PlanoMark } from '../../design-system/brand';
-import { PLANO } from '../../design-system/moduleIdentity';
+import { Solver2DMark } from '../../design-system/brand';
+import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import type { ProjectModel } from '../../types';
-import { PlanoHeroDiagram } from './PlanoHeroDiagram';
-import './planoHome.css';
+import { Solver2DHeroDiagram } from './Solver2DHeroDiagram';
+import './solver2dHome.css';
 
-export interface PlanoHomeProps {
+export interface Solver2DHomeProps {
   language: 'es' | 'en';
   project: ProjectModel;
   onContinue: () => void;
@@ -46,7 +46,7 @@ const copy = {
     recentTitle: 'Proyectos recientes',
     recentBody: 'Guardados en este dispositivo.',
     viewAll: 'Ver todos',
-    capabilityTitle: 'Qué hace Plano',
+    capabilityTitle: 'Qué hace FStructure',
     capabilityBody: 'Cada capacidad lleva su estado declarado.',
     available: 'Disponible',
     experimental: 'Experimental',
@@ -62,7 +62,7 @@ const copy = {
     capInteropBody: 'Importación de un subconjunto DXF, enlaces compartibles y versiones locales.',
     capLearning: 'Trazabilidad educativa',
     capLearningBody: 'Cada resultado puede abrir su método, sus unidades y sus límites.',
-    note: 'Plano es experimental. Un resultado numérico puede ser incorrecto por un modelo, una unidad, una hipótesis o una propiedad mal elegida: no sustituye el criterio de una persona responsable ni una revisión independiente.',
+    note: 'FStructure es experimental. Un resultado numérico puede ser incorrecto por un modelo, una unidad, una hipótesis o una propiedad mal elegida: no sustituye el criterio de una persona responsable ni una revisión independiente.',
   },
   en: {
     role: '2D Solver',
@@ -87,7 +87,7 @@ const copy = {
     recentTitle: 'Recent projects',
     recentBody: 'Saved on this device.',
     viewAll: 'View all',
-    capabilityTitle: 'What Plano does',
+    capabilityTitle: 'What FStructure does',
     capabilityBody: 'Every capability carries its declared state.',
     available: 'Available',
     experimental: 'Experimental',
@@ -103,11 +103,11 @@ const copy = {
     capInteropBody: 'Import of a DXF subset, shareable links, and local versions.',
     capLearning: 'Educational traceability',
     capLearningBody: 'Every result can open its method, its units, and its limits.',
-    note: 'Plano is experimental. A numeric result can be wrong because of a model, a unit, an assumption, or a badly chosen property: it does not replace the judgement of a responsible person or an independent review.',
+    note: 'FStructure is experimental. A numeric result can be wrong because of a model, a unit, an assumption, or a badly chosen property: it does not replace the judgement of a responsible person or an independent review.',
   },
 } as const;
 
-export const PlanoHome = ({
+export const Solver2DHome = ({
   language,
   project,
   onContinue,
@@ -118,7 +118,7 @@ export const PlanoHome = ({
   onOpenProjects,
   recents,
   onPreloadWorkspace,
-}: PlanoHomeProps) => {
+}: Solver2DHomeProps) => {
   const text = copy[language];
   const reducedMotion = useReducedMotion() ?? false;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
@@ -139,44 +139,44 @@ export const PlanoHome = ({
     { id: 'learning', state: 'available', label: text.capLearning, body: text.capLearningBody },
   ] as const;
 
-  return <div className="plano-home">
-    <section className="plano-hero" aria-labelledby="plano-hero-name">
-      <div className="plano-hero__copy">
-        <span className="plano-hero__eyebrow">{PLANO.product}<b>·</b>{text.role}</span>
-        <h1 id="plano-hero-name" className="plano-hero__name"><PlanoMark size={48} />{PLANO.name}</h1>
-        <p className="plano-hero__lead"><strong>{text.leadStrong}</strong> {text.lead}</p>
+  return <div className="solver2d-home">
+    <section className="solver2d-hero" aria-labelledby="solver2d-hero-name">
+      <div className="solver2d-hero__copy">
+        <span className="solver2d-hero__eyebrow">{SOLVER_2D.product}<b>·</b>{text.role}</span>
+        <h1 id="solver2d-hero-name" className="solver2d-hero__name"><Solver2DMark size={48} />{SOLVER_2D.name}</h1>
+        <p className="solver2d-hero__lead"><strong>{text.leadStrong}</strong> {text.lead}</p>
 
-        <div className="plano-open" onPointerEnter={onPreloadWorkspace} onFocusCapture={onPreloadWorkspace}>
-          <div className="plano-open__head">
-            <span className="plano-open__label">{text.open}</span>
-            <h2 className="plano-open__name" title={project.name}>{project.name}</h2>
-            <p className="plano-open__counts">
+        <div className="solver2d-open" onPointerEnter={onPreloadWorkspace} onFocusCapture={onPreloadWorkspace}>
+          <div className="solver2d-open__head">
+            <span className="solver2d-open__label">{text.open}</span>
+            <h2 className="solver2d-open__name" title={project.name}>{project.name}</h2>
+            <p className="solver2d-open__counts">
               <span><b>{project.nodes.length}</b> {text.nodes}</span>
               <span><b>{project.members.length}</b> {text.members}</span>
               <span><b>{loadCount}</b> {text.loads}</span>
             </p>
           </div>
-          <div className="plano-open__actions">
-            <button type="button" className="plano-action plano-action--primary" onClick={onContinue}>
+          <div className="solver2d-open__actions">
+            <button type="button" className="solver2d-action solver2d-action--primary" onClick={onContinue}>
               <Play size={16} fill="currentColor" />{text.continue}
             </button>
-            <button type="button" className="plano-action" onClick={onCreateBlank}>
+            <button type="button" className="solver2d-action" onClick={onCreateBlank}>
               <FilePlus2 size={16} />{text.create}
             </button>
           </div>
         </div>
       </div>
-      <div className="plano-hero__stage"><PlanoHeroDiagram reducedMotion={reducedMotion} /></div>
+      <div className="solver2d-hero__stage"><Solver2DHeroDiagram reducedMotion={reducedMotion} /></div>
     </section>
 
-    <section className="plano-section" aria-labelledby="plano-start-title">
-      <header className="plano-section__head">
-        <div><h2 id="plano-start-title">{text.startTitle}</h2><p>{text.startBody}</p></div>
+    <section className="solver2d-section" aria-labelledby="solver2d-start-title">
+      <header className="solver2d-section__head">
+        <div><h2 id="solver2d-start-title">{text.startTitle}</h2><p>{text.startBody}</p></div>
       </header>
-      <div className="plano-paths">
+      <div className="solver2d-paths">
         {paths.map(({ id, icon: Icon, tone, label, body, action }) => (
-          <button key={id} type="button" className="plano-path" style={{ '--path-tone': tone } as React.CSSProperties} onClick={action}>
-            <span className="plano-path__icon" aria-hidden="true"><Icon size={17} /></span>
+          <button key={id} type="button" className="solver2d-path" style={{ '--path-tone': tone } as React.CSSProperties} onClick={action}>
+            <span className="solver2d-path__icon" aria-hidden="true"><Icon size={17} /></span>
             <strong>{label}</strong>
             <span>{body}</span>
           </button>
@@ -184,28 +184,28 @@ export const PlanoHome = ({
       </div>
     </section>
 
-    <section className="plano-section" aria-labelledby="plano-recent-title">
-      <header className="plano-section__head">
-        <div><h2 id="plano-recent-title">{text.recentTitle}</h2><p>{text.recentBody}</p></div>
-        <button type="button" className="plano-section__link" onClick={onOpenProjects}>{text.viewAll}<ArrowRight size={15} /></button>
+    <section className="solver2d-section" aria-labelledby="solver2d-recent-title">
+      <header className="solver2d-section__head">
+        <div><h2 id="solver2d-recent-title">{text.recentTitle}</h2><p>{text.recentBody}</p></div>
+        <button type="button" className="solver2d-section__link" onClick={onOpenProjects}>{text.viewAll}<ArrowRight size={15} /></button>
       </header>
-      <div className="plano-recents">{recents}</div>
+      <div className="solver2d-recents">{recents}</div>
     </section>
 
-    <section className="plano-section" aria-labelledby="plano-capability-title">
-      <header className="plano-section__head">
-        <div><h2 id="plano-capability-title">{text.capabilityTitle}</h2><p>{text.capabilityBody}</p></div>
+    <section className="solver2d-section" aria-labelledby="solver2d-capability-title">
+      <header className="solver2d-section__head">
+        <div><h2 id="solver2d-capability-title">{text.capabilityTitle}</h2><p>{text.capabilityBody}</p></div>
       </header>
-      <div className="plano-capabilities">
+      <div className="solver2d-capabilities">
         {capabilities.map(({ id, state, label, body }) => (
-          <article key={id} className="plano-capability">
-            <span className="plano-state" data-state={state}>{state === 'available' ? text.available : text.experimental}</span>
+          <article key={id} className="solver2d-capability">
+            <span className="solver2d-state" data-state={state}>{state === 'available' ? text.available : text.experimental}</span>
             <strong>{label}</strong>
             <p>{body}</p>
           </article>
         ))}
       </div>
-      <p className="plano-note">{text.note}</p>
+      <p className="solver2d-note">{text.note}</p>
     </section>
   </div>;
 };

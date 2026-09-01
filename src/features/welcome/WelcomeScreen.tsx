@@ -10,9 +10,9 @@ import { presentExample } from './examplePresentation';
 import { ThreeStructuralImage } from '../structural-assets';
 import type { ThreeStructuralAssetId } from '../structural-assets/threeStructuralRender';
 import { FusionLanding } from './FusionLanding';
-import { PlanoHome } from './PlanoHome';
-import { PlanoMark } from '../../design-system/brand';
-import { PLANO } from '../../design-system/moduleIdentity';
+import { Solver2DHome } from './Solver2DHome';
+import { Solver2DMark } from '../../design-system/brand';
+import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { IllustrationStudio } from '../structural-assets/studio/IllustrationStudio';
 import type { ClassroomExerciseTemplateId } from '../../education/exerciseTemplates';
 import { PersonalLibraryView } from '../library/PersonalLibraryView';
@@ -38,7 +38,7 @@ type NavigationDestination = HomeView | 'studio';
 
 const copy = {
   es: {
-    navigation: 'Navegación de Plano', home: 'Plataforma', solver2d: 'Plano', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar', space3d: 'Solver 3D',
+    navigation: 'Navegación de FStructure', home: 'Plataforma', solver2d: 'FStructure', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar', space3d: 'Solver 3D',
     backPlatform: 'Volver a la plataforma',
     settings: 'Ajustes', settingsTitle: 'Ajustes', settingsBody: 'Personaliza cómo se presenta FusionStructure en este dispositivo.', language: 'Idioma', closeSettings: 'Cerrar ajustes', studio: 'Estudio de ilustraciones', menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', current: 'Proyecto abierto', continue: 'Continuar proyecto', create: 'Nuevo proyecto', localMetrics: 'Diagnóstico local', localMetricsBody: 'Opcional. Guarda sólo eventos agregados en este dispositivo; nunca envía geometría, cargas, resultados ni datos personales.', localMetricsOptIn: 'Guardar mediciones locales para mejorar el flujo', localMetricsCount: '{count} observaciones locales', exportDiagnostics: 'Exportar diagnóstico', clearDiagnostics: 'Borrar observaciones', search: 'Buscar', searchPlaceholder: 'Buscar proyectos o accesos…', clearSearch: 'Borrar búsqueda', noQuickMatches: 'No hay accesos rápidos que coincidan.',
     recent: 'Proyectos recientes', viewAll: 'Ver todos', templatesTitle: 'Elige una estructura de partida', templatesBody: 'Abre un modelo preparado y adáptalo a tu caso.',
@@ -50,7 +50,7 @@ const copy = {
     secondary: 'Accesos rápidos', local: 'Guardado local en este dispositivo',
   },
   en: {
-    navigation: 'Plano navigation', home: 'Platform', solver2d: 'Plano', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import', space3d: '3D Solver',
+    navigation: 'FStructure navigation', home: 'Platform', solver2d: 'FStructure', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import', space3d: '3D Solver',
     backPlatform: 'Back to platform',
     settings: 'Settings', settingsTitle: 'Settings', settingsBody: 'Personalize how FusionStructure is presented on this device.', language: 'Language', closeSettings: 'Close settings', studio: 'Illustration Studio', menu: 'Open navigation', closeMenu: 'Close navigation', current: 'Open project', continue: 'Continue project', create: 'New project', localMetrics: 'Local diagnostics', localMetricsBody: 'Optional. Stores aggregate events on this device only; it never sends geometry, loads, results, or personal data.', localMetricsOptIn: 'Store local measurements to improve the flow', localMetricsCount: '{count} local observations', exportDiagnostics: 'Export diagnostics', clearDiagnostics: 'Erase observations', search: 'Search', searchPlaceholder: 'Search projects or shortcuts…', clearSearch: 'Clear search', noQuickMatches: 'No quick access items match.',
     recent: 'Recent projects', viewAll: 'View all', templatesTitle: 'Choose a starting structure', templatesBody: 'Open a prepared model and adapt it to your case.',
@@ -229,7 +229,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     onOpenImport={() => navigate('import')}
   />;
 
-  const solver2dDashboard = <PlanoHome
+  const solver2dDashboard = <Solver2DHome
     language={language}
     project={project}
     onContinue={onOpenWorkspace}
@@ -305,7 +305,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     : view === 'space3d'
       ? <main ref={homeRef} className="sc-home sc-tool-welcome sc-tool-welcome--3d" data-testid="solver3d-welcome">{space3dWelcome}</main>
       : <main ref={homeRef} className="sc-home" data-testid="solver2d-welcome">
-        <header className="sc-home-console"><button type="button" className="sc-home-wordmark" onClick={() => navigate('home')} aria-label={text.backPlatform}><PlanoMark size={22} /><strong>{PLANO.name}</strong><span>{PLANO.product}</span></button>{renderNavigation()}<button ref={mobileMenuButtonRef} className="sc-home-console__menu" type="button" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button></header>
+        <header className="sc-home-console"><button type="button" className="sc-home-wordmark" onClick={() => navigate('home')} aria-label={text.backPlatform}><Solver2DMark size={22} /><strong>{SOLVER_2D.name}</strong><span>{SOLVER_2D.product}</span></button>{renderNavigation()}<button ref={mobileMenuButtonRef} className="sc-home-console__menu" type="button" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button></header>
         {mobileNavOpen ? renderNavigation(true) : null}
         <div className="sc-home-main"><header className="sc-home-topline"><span>{text[view]}</span><div className="sc-home-search" role="search"><Search size={16} aria-hidden="true" /><input ref={searchInputRef} type="search" value={searchQuery} aria-label={text.search} placeholder={text.searchPlaceholder} onChange={(event) => { setSearchQuery(event.currentTarget.value); if (event.currentTarget.value && view !== 'solver2d' && view !== 'projects') setView('solver2d'); }} />{searchQuery ? <button type="button" aria-label={text.clearSearch} onClick={() => { setSearchQuery(''); searchInputRef.current?.focus(); }}><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}</div><div className="sc-home-topline-actions"><label><span className="sr-only">{t('language.label')}</span><select value={language} onChange={(event) => updateLanguage(event.target.value as 'es' | 'en')}><option value="es">ES</option><option value="en">EN</option></select></label></div></header><div className="sc-home-content">{solver2dContent}</div></div>
       </main>;

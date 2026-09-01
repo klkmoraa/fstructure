@@ -1,12 +1,12 @@
 /*
- * Inicio de Plano.
+ * Inicio del solver 2D.
  *
  * Tres bloques y nada más: quién eres y qué abres (portada), por dónde empiezas
  * (rutas) y qué hay guardado (recientes). Debajo, lo que el módulo hace de
  * verdad, con su estado declarado.
  */
 
-.plano-home {
+.solver2d-home {
   display: grid;
   gap: clamp(28px, 4vw, 48px);
   padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 48px) clamp(48px, 6vw, 72px);
@@ -14,7 +14,7 @@
 
 /* ---------------------------------------------------------------- Portada */
 
-.plano-hero {
+.solver2d-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
   align-items: center;
@@ -23,9 +23,9 @@
   border-bottom: 1px solid var(--sc-color-border-soft);
 }
 
-.plano-hero__copy { min-width: 0; display: grid; gap: 14px; justify-items: start; }
+.solver2d-hero__copy { min-width: 0; display: grid; gap: 14px; justify-items: start; }
 
-.plano-hero__eyebrow {
+.solver2d-hero__eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -37,9 +37,9 @@
   text-transform: uppercase;
 }
 
-.plano-hero__eyebrow b { color: var(--fs-signal-action); font-weight: inherit; }
+.solver2d-hero__eyebrow b { color: var(--fs-signal-action); font-weight: inherit; }
 
-.plano-hero__name {
+.solver2d-hero__name {
   margin: 0;
   display: flex;
   align-items: center;
@@ -50,7 +50,7 @@
   line-height: 0.98;
 }
 
-.plano-hero__lead {
+.solver2d-hero__lead {
   max-width: 46ch;
   margin: 0;
   color: var(--sc-color-text-secondary);
@@ -58,11 +58,11 @@
   line-height: var(--sc-line-height-body);
 }
 
-.plano-hero__lead strong { color: var(--sc-color-text-primary); font-weight: var(--sc-font-weight-semibold); }
+.solver2d-hero__lead strong { color: var(--sc-color-text-primary); font-weight: var(--sc-font-weight-semibold); }
 
 /* Tarjeta del proyecto abierto: es la acción principal de la pantalla, así que
    es lo único con superficie propia dentro de la portada. */
-.plano-open {
+.solver2d-open {
   width: 100%;
   margin-block-start: 6px;
   display: grid;
@@ -73,9 +73,9 @@
   background: var(--sc-color-surface-elevated);
 }
 
-.plano-open__head { min-width: 0; display: grid; gap: 6px; }
+.solver2d-open__head { min-width: 0; display: grid; gap: 6px; }
 
-.plano-open__label {
+.solver2d-open__label {
   color: var(--sc-color-text-muted);
   font-family: var(--sc-font-mono);
   font-size: var(--sc-font-size-label);
@@ -84,7 +84,7 @@
   text-transform: uppercase;
 }
 
-.plano-open__name {
+.solver2d-open__name {
   margin: 0;
   overflow: hidden;
   font-size: clamp(18px, 2vw, 22px);
@@ -94,7 +94,7 @@
   white-space: nowrap;
 }
 
-.plano-open__counts {
+.solver2d-open__counts {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
@@ -104,11 +104,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-.plano-open__counts b { color: var(--sc-color-text-primary); font-weight: var(--sc-font-weight-bold); }
+.solver2d-open__counts b { color: var(--sc-color-text-primary); font-weight: var(--sc-font-weight-bold); }
 
-.plano-open__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.solver2d-open__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
-.plano-action {
+.solver2d-action {
   min-height: 42px;
   display: inline-flex;
   align-items: center;
@@ -124,19 +124,19 @@
   transition: background var(--sc-motion-quick) var(--sc-ease-standard), border-color var(--sc-motion-quick) var(--sc-ease-standard), color var(--sc-motion-quick) var(--sc-ease-standard);
 }
 
-.plano-action svg { flex: none; }
-.plano-action:hover { background: var(--sc-color-surface-2); border-color: var(--sc-color-border-strong); }
+.solver2d-action svg { flex: none; }
+.solver2d-action:hover { background: var(--sc-color-surface-2); border-color: var(--sc-color-border-strong); }
 
-.plano-action--primary {
+.solver2d-action--primary {
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);
 }
-.plano-action--primary:hover { background: var(--sc-color-action-hover); border-color: var(--sc-color-action-hover); color: var(--sc-color-action-foreground); }
+.solver2d-action--primary:hover { background: var(--sc-color-action-hover); border-color: var(--sc-color-action-hover); color: var(--sc-color-action-foreground); }
 
 /* -------------------------------------------------------------- Diagrama */
 
-.plano-hero__stage {
+.solver2d-hero__stage {
   min-width: 0;
   padding: clamp(12px, 2vw, 22px);
   border: 1px solid var(--sc-color-border-soft);
@@ -144,17 +144,17 @@
   background: var(--sc-color-bg-canvas);
 }
 
-.plano-diagram { width: 100%; height: auto; display: block; overflow: visible; }
+.solver2d-diagram { width: 100%; height: auto; display: block; overflow: visible; }
 
-.plano-diagram__grid line { stroke: var(--sc-color-canvas-grid); stroke-width: 1; }
+.solver2d-diagram__grid line { stroke: var(--sc-color-canvas-grid); stroke-width: 1; }
 
-.plano-diagram g:not(.plano-diagram__grid) {
+.solver2d-diagram g:not(.solver2d-diagram__grid) {
   opacity: 0;
   transition: opacity var(--sc-motion-reveal) var(--sc-ease-reveal);
 }
-.plano-diagram g.is-on { opacity: 1; }
+.solver2d-diagram g.is-on { opacity: 1; }
 
-.plano-diagram__frame path {
+.solver2d-diagram__frame path {
   fill: none;
   stroke: var(--sc-color-canvas-member);
   stroke-width: 5;
@@ -162,15 +162,15 @@
   stroke-linejoin: round;
 }
 
-.plano-diagram__supports path { fill: none; stroke: var(--sc-color-canvas-member); stroke-width: 2; stroke-linecap: round; }
-.plano-diagram__supports circle { fill: var(--sc-color-canvas-node-fill); stroke: var(--sc-color-canvas-member); stroke-width: 2; }
+.solver2d-diagram__supports path { fill: none; stroke: var(--sc-color-canvas-member); stroke-width: 2; stroke-linecap: round; }
+.solver2d-diagram__supports circle { fill: var(--sc-color-canvas-node-fill); stroke: var(--sc-color-canvas-member); stroke-width: 2; }
 
-.plano-diagram__load path { fill: none; stroke: var(--fs-signal-action); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.solver2d-diagram__load path { fill: none; stroke: var(--fs-signal-action); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-.plano-diagram__moment-fill { fill: var(--sc-color-influence-area); stroke: none; }
-.plano-diagram__moment-line { fill: none; stroke: var(--fs-signal-moment); stroke-width: 2.5; stroke-linecap: round; }
+.solver2d-diagram__moment-fill { fill: var(--sc-color-influence-area); stroke: none; }
+.solver2d-diagram__moment-line { fill: none; stroke: var(--fs-signal-moment); stroke-width: 2.5; stroke-linecap: round; }
 
-.plano-diagram__deformed path {
+.solver2d-diagram__deformed path {
   fill: none;
   stroke: var(--fs-signal-deformed);
   stroke-width: 2.5;
@@ -182,38 +182,38 @@
    son las que explican una causa, y son las únicas que ganan algo con verse
    recorrer su propio camino. */
 @media (prefers-reduced-motion: no-preference) {
-  .plano-diagram:not(.is-static) .plano-diagram__moment-line,
-  .plano-diagram:not(.is-static) .plano-diagram__deformed path {
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__moment-line,
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__deformed path {
     stroke-dashoffset: 520;
     stroke-dasharray: 520;
   }
-  .plano-diagram:not(.is-static) .plano-diagram__moment.is-on .plano-diagram__moment-line,
-  .plano-diagram:not(.is-static) .plano-diagram__deformed.is-on path {
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__moment.is-on .solver2d-diagram__moment-line,
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__deformed.is-on path {
     stroke-dashoffset: 0;
     transition: stroke-dashoffset var(--sc-motion-pulse) var(--sc-ease-reveal);
   }
   /* La deformada recupera su discontinuo cuando termina de dibujarse. */
-  .plano-diagram:not(.is-static) .plano-diagram__deformed.is-on path { animation: plano-dash-settle 1ms linear var(--sc-motion-pulse) forwards; }
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__deformed.is-on path { animation: solver2d-dash-settle 1ms linear var(--sc-motion-pulse) forwards; }
 }
 
-@keyframes plano-dash-settle { to { stroke-dasharray: 7 6; } }
+@keyframes solver2d-dash-settle { to { stroke-dasharray: 7 6; } }
 
 /* ------------------------------------------------------------------ Rutas */
 
-.plano-section { display: grid; gap: 16px; }
+.solver2d-section { display: grid; gap: 16px; }
 
-.plano-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.solver2d-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
 
-.plano-section__head h2 {
+.solver2d-section__head h2 {
   margin: 0;
   font-size: var(--sc-font-size-display-md);
   font-weight: var(--sc-font-weight-bold);
   letter-spacing: var(--sc-tracking-tight);
 }
 
-.plano-section__head p { margin: 0; color: var(--sc-color-text-muted); font-size: var(--sc-font-size-body); }
+.solver2d-section__head p { margin: 0; color: var(--sc-color-text-muted); font-size: var(--sc-font-size-body); }
 
-.plano-section__link {
+.solver2d-section__link {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -225,11 +225,11 @@
   font-size: var(--sc-font-size-control);
   font-weight: var(--sc-font-weight-semibold);
 }
-.plano-section__link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.solver2d-section__link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-.plano-paths { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.solver2d-paths { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 
-.plano-path {
+.solver2d-path {
   min-height: 118px;
   display: grid;
   align-content: start;
@@ -244,9 +244,9 @@
   transition: border-color var(--sc-motion-quick) var(--sc-ease-standard), background var(--sc-motion-quick) var(--sc-ease-standard);
 }
 
-.plano-path:hover { border-color: var(--sc-color-border-strong); background: var(--sc-color-surface-2); }
+.solver2d-path:hover { border-color: var(--sc-color-border-strong); background: var(--sc-color-surface-2); }
 
-.plano-path__icon {
+.solver2d-path__icon {
   width: 32px;
   height: 32px;
   margin-block-end: 3px;
@@ -257,19 +257,19 @@
   color: var(--path-tone, var(--sc-color-text-primary));
 }
 
-.plano-path strong { font-size: var(--sc-font-size-panel); font-weight: var(--sc-font-weight-bold); }
-.plano-path span { color: var(--sc-color-text-muted); font-size: var(--sc-font-size-caption); line-height: var(--sc-line-height-compact); }
+.solver2d-path strong { font-size: var(--sc-font-size-panel); font-weight: var(--sc-font-weight-bold); }
+.solver2d-path span { color: var(--sc-color-text-muted); font-size: var(--sc-font-size-caption); line-height: var(--sc-line-height-compact); }
 
 /* --------------------------------------------------------------- Recientes */
 
 /* El hub de proyectos es una tabla en su superficie propia. Aquí entra como
    rejilla de tarjetas: en Inicio lo que importa es reconocer un proyecto, no
    comparar columnas. */
-.plano-recents .project-hub { padding: 0; border: 0; background: transparent; }
-.plano-recents .project-hub__header,
-.plano-recents .project-hub__columns { display: none; }
-.plano-recents .project-hub__list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.plano-recents .project-hub__row {
+.solver2d-recents .project-hub { padding: 0; border: 0; background: transparent; }
+.solver2d-recents .project-hub__header,
+.solver2d-recents .project-hub__columns { display: none; }
+.solver2d-recents .project-hub__list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.solver2d-recents .project-hub__row {
   min-height: 116px;
   padding: 15px;
   display: grid;
@@ -278,15 +278,15 @@
   gap: 10px;
   border-radius: var(--sc-radius-card);
 }
-.plano-recents .project-hub__updated { grid-column: 1; }
-.plano-recents .project-hub__actions { grid-column: 1; justify-content: flex-start; }
-.plano-recents .project-hub__actions button:first-child { margin-inline-end: auto; }
+.solver2d-recents .project-hub__updated { grid-column: 1; }
+.solver2d-recents .project-hub__actions { grid-column: 1; justify-content: flex-start; }
+.solver2d-recents .project-hub__actions button:first-child { margin-inline-end: auto; }
 
 /* ------------------------------------------------------------ Capacidades */
 
-.plano-capabilities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.solver2d-capabilities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 
-.plano-capability {
+.solver2d-capability {
   display: grid;
   gap: 6px;
   padding: 14px 15px;
@@ -295,10 +295,10 @@
   background: var(--sc-color-surface-1);
 }
 
-.plano-capability strong { font-size: var(--sc-font-size-panel); font-weight: var(--sc-font-weight-bold); }
-.plano-capability p { margin: 0; color: var(--sc-color-text-muted); font-size: var(--sc-font-size-caption); line-height: var(--sc-line-height-compact); }
+.solver2d-capability strong { font-size: var(--sc-font-size-panel); font-weight: var(--sc-font-weight-bold); }
+.solver2d-capability p { margin: 0; color: var(--sc-color-text-muted); font-size: var(--sc-font-size-caption); line-height: var(--sc-line-height-compact); }
 
-.plano-state {
+.solver2d-state {
   justify-self: start;
   display: inline-flex;
   align-items: center;
@@ -314,11 +314,11 @@
   text-transform: uppercase;
 }
 
-.plano-state::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
-.plano-state[data-state='available'] { color: var(--sc-color-signal-shear-ink); }
-.plano-state[data-state='experimental'] { color: var(--sc-color-signal-alert-ink); }
+.solver2d-state::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+.solver2d-state[data-state='available'] { color: var(--sc-color-signal-shear-ink); }
+.solver2d-state[data-state='experimental'] { color: var(--sc-color-signal-alert-ink); }
 
-.plano-note {
+.solver2d-note {
   margin: 0;
   color: var(--sc-color-text-muted);
   font-size: var(--sc-font-size-caption);
@@ -328,26 +328,26 @@
 /* -------------------------------------------------------------- Respuesta */
 
 @media (max-width: 1100px) {
-  .plano-hero { grid-template-columns: minmax(0, 1fr); }
+  .solver2d-hero { grid-template-columns: minmax(0, 1fr); }
   /* Apilado, el diagrama va DESPUÉS del nombre y de la acción: su viewBox es
      420×300, así que puesto arriba crecía con el ancho disponible y empujaba
      «Continuar» fuera de la primera pantalla. */
-  .plano-hero__stage { width: 100%; max-width: 460px; justify-self: center; }
-  .plano-hero__copy { justify-self: stretch; }
-  .plano-capabilities { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .solver2d-hero__stage { width: 100%; max-width: 460px; justify-self: center; }
+  .solver2d-hero__copy { justify-self: stretch; }
+  .solver2d-capabilities { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px) {
-  .plano-home { gap: 30px; padding-inline: 14px; }
-  .plano-recents .project-hub__list { grid-template-columns: minmax(0, 1fr); }
-  .plano-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .plano-capabilities { grid-template-columns: minmax(0, 1fr); }
-  .plano-hero__name { font-size: clamp(34px, 12vw, 46px); }
-  .plano-open__actions { display: grid; grid-template-columns: minmax(0, 1fr); }
-  .plano-action { justify-content: center; }
+  .solver2d-home { gap: 30px; padding-inline: 14px; }
+  .solver2d-recents .project-hub__list { grid-template-columns: minmax(0, 1fr); }
+  .solver2d-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .solver2d-capabilities { grid-template-columns: minmax(0, 1fr); }
+  .solver2d-hero__name { font-size: clamp(34px, 12vw, 46px); }
+  .solver2d-open__actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .solver2d-action { justify-content: center; }
 }
 
 @media (max-width: 380px) {
-  .plano-paths { grid-template-columns: minmax(0, 1fr); }
-  .plano-path { min-height: 0; }
+  .solver2d-paths { grid-template-columns: minmax(0, 1fr); }
+  .solver2d-path { min-height: 0; }
 }

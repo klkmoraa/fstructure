@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 /**
- * Diagrama de portada de Plano.
+ * Diagrama de portada del solver 2D.
  *
  * No es una ilustración: es lo que hace el módulo, dibujado con las señales del
  * sistema. Un pórtico entra como geometría, recibe una carga y devuelve su
@@ -24,7 +24,7 @@ const STEPS = [
 
 type StepId = (typeof STEPS)[number]['id'];
 
-export const PlanoHeroDiagram = ({ reducedMotion = false }: { reducedMotion?: boolean }) => {
+export const Solver2DHeroDiagram = ({ reducedMotion = false }: { reducedMotion?: boolean }) => {
   const [revealed, setRevealed] = useState<ReadonlySet<StepId>>(() =>
     reducedMotion ? new Set(STEPS.map((step) => step.id)) : new Set());
   const timers = useRef<number[]>([]);
@@ -45,23 +45,23 @@ export const PlanoHeroDiagram = ({ reducedMotion = false }: { reducedMotion?: bo
   const on = (step: StepId) => (revealed.has(step) ? ' is-on' : '');
 
   return <svg
-    className={`plano-diagram${reducedMotion ? ' is-static' : ''}`}
+    className={`solver2d-diagram${reducedMotion ? ' is-static' : ''}`}
     viewBox="0 0 420 300"
     role="img"
     aria-label="Pórtico de un vano con carga uniforme, su diagrama de momento y su deformada"
   >
-    <g className="plano-diagram__grid" aria-hidden="true">
+    <g className="solver2d-diagram__grid" aria-hidden="true">
       {[0, 1, 2, 3, 4, 5, 6].map((i) => <line key={`v${i}`} x1={40 + i * 56} y1="24" x2={40 + i * 56} y2="252" />)}
       {[0, 1, 2, 3, 4].map((i) => <line key={`h${i}`} x1="40" y1={24 + i * 57} x2="376" y2={24 + i * 57} />)}
     </g>
 
     {/* Geometría: dos columnas y una trabe. */}
-    <g className={`plano-diagram__frame${on('frame')}`}>
+    <g className={`solver2d-diagram__frame${on('frame')}`}>
       <path d="M96 220V96h224v124" />
     </g>
 
     {/* Apoyos: el empotramiento que cierra el modelo. */}
-    <g className={`plano-diagram__supports${on('supports')}`}>
+    <g className={`solver2d-diagram__supports${on('supports')}`}>
       <path d="M78 220h36M302 220h36" />
       <path d="M82 220l-8 10M92 220l-8 10M102 220l-8 10M112 220l-8 10" />
       <path d="M306 220l-8 10M316 220l-8 10M326 220l-8 10M336 220l-8 10" />
@@ -70,7 +70,7 @@ export const PlanoHeroDiagram = ({ reducedMotion = false }: { reducedMotion?: bo
     </g>
 
     {/* Acción: la carga uniforme sobre la trabe. */}
-    <g className={`plano-diagram__load${on('load')}`}>
+    <g className={`solver2d-diagram__load${on('load')}`}>
       <path d="M96 62h224" />
       {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
         <path key={i} d={`M${96 + i * 32}, 62 V90 m-4-6 4 6 4-6`} />
@@ -78,13 +78,13 @@ export const PlanoHeroDiagram = ({ reducedMotion = false }: { reducedMotion?: bo
     </g>
 
     {/* Resultado: momento flector sobre la trabe. */}
-    <g className={`plano-diagram__moment${on('moment')}`}>
-      <path className="plano-diagram__moment-fill" d="M96 96c56 0 56 62 112 62s56-62 112-62v-4H96Z" />
-      <path className="plano-diagram__moment-line" d="M96 96c56 0 56 62 112 62s56-62 112-62" />
+    <g className={`solver2d-diagram__moment${on('moment')}`}>
+      <path className="solver2d-diagram__moment-fill" d="M96 96c56 0 56 62 112 62s56-62 112-62v-4H96Z" />
+      <path className="solver2d-diagram__moment-line" d="M96 96c56 0 56 62 112 62s56-62 112-62" />
     </g>
 
     {/* Respuesta: la deformada del mismo pórtico. */}
-    <g className={`plano-diagram__deformed${on('deformed')}`}>
+    <g className={`solver2d-diagram__deformed${on('deformed')}`}>
       <path d="M90 220c0-70 4-100 6-126 44-16 180-16 224 0 2 26 6 56 6 126" />
     </g>
   </svg>;

@@ -1,6 +1,7 @@
 import { ChartNoAxesCombined, Eye, Maximize2, Minimize2, Moon, PanelRight, Play, Search, SlidersHorizontal, Sparkles, Sun } from 'lucide-react';
 import { ToolRail } from '../canvas/ToolRail';
-import { PlanoMark } from '../../design-system/brand';
+import { Solver2DMark } from '../../design-system/brand';
+import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { useI18n } from '../../i18n/useI18n';
 import { useProjectAnalysis, useProjectModel, useWorkspaceUI } from '../../store/ProjectContext';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
@@ -42,8 +43,8 @@ export const Console = ({ onOpenHome, onOpenSpace3D: _onOpenSpace3D, layoutActio
   return <aside className="console" aria-label={t('toolbar.primary')}>
     <div className="console__head">
       <button type="button" className="console__brand" onClick={onOpenHome} aria-label={t('navigation.home')} title={t('navigation.home')}>
-        <PlanoMark size={22} />
-        <Label>Plano</Label>
+        <Solver2DMark size={22} />
+        <Label>{SOLVER_2D.name}</Label>
       </button>
       <button type="button" className="console__project" onClick={() => emitWorkspaceCommand('open-command-palette')} aria-label={`${t('topbar.currentProject')}: ${project.name}`} title={project.name}>
         <span className="console__project-name">{project.name}</span>
