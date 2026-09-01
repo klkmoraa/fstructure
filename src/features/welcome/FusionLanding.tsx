@@ -1,5 +1,5 @@
 import { type KeyboardEvent, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUpRight, Blocks, ChartNoAxesCombined, FolderKanban, GraduationCap, Network, Play, Route } from 'lucide-react';
+import { ArrowDown, ArrowRight, ArrowUpRight, Blocks, ChartNoAxesCombined, FileCheck2, FolderKanban, GraduationCap, Network, Play, Route } from 'lucide-react';
 import './fusionLanding.css';
 
 interface FusionLandingProps {
@@ -36,17 +36,17 @@ const FAMILIES: readonly Family[] = [
 
 const copy = {
   es: {
-    principle: 'Make complexity legible.', title: 'Todo conectado a la estructura.', body: 'Del primer trazo a lo que se entrega, un proyecto se entiende como uno.', enter: 'Entrar al workspace', explore: 'Conocer la plataforma',
-    familiesTitle: 'Un sistema. Seis formas de avanzar.', familiesBody: 'Cada familia parte del mismo proyecto, por eso cada decisión llega más lejos.', exploreFamily: 'Explorar familia',
-    create: 'Crear', createBody: 'Define el modelo que todas las demás decisiones comparten.', understand: 'Entender', understandBody: 'Haz visibles las relaciones, hipótesis y consecuencias.', deliver: 'Entregar', deliverBody: 'Convierte el trabajo en un expediente que conserva contexto.',
-    platform: 'La plataforma', platformBody: 'FusionStructure reúne la continuidad que normalmente se pierde entre herramientas.', note: 'Visión de producto en evolución. Algunas superficies continúan desarrollándose.',
+    principle: 'Make complexity legible.', title: 'Todo el proyecto. Una lectura.', body: 'Modelo, comportamiento y evidencia conservan el mismo contexto.', enter: 'Entrar al workspace', explore: 'Ver cómo funciona',
+    proofTitle: 'Una fuente. Tres lecturas.', proofModel: 'Modela la intención.', proofAnalysis: 'Ve el comportamiento.', proofEvidence: 'Entrega el contexto.',
+    familiesTitle: 'El proyecto no termina en el cálculo.', familiesBody: 'Seis superficies comparten una misma estructura, para que cada decisión conserve significado.', exploreFamily: 'Explorar familia',
+    platform: 'La plataforma', platformBody: 'La complejidad no desaparece. Se vuelve legible.', note: 'Visión de producto en evolución. Algunas superficies continúan desarrollándose.',
     openAnalysis: 'Abrir análisis', openProject: 'Abrir proyecto', openLearning: 'Abrir aprendizaje', openSpace: 'Explorar espacio 3D',
   },
   en: {
-    principle: 'Make complexity legible.', title: 'Everything connected to the structure.', body: 'From the first line to what is delivered, a project is understood as one.', enter: 'Enter workspace', explore: 'Explore the platform',
-    familiesTitle: 'One system. Six ways forward.', familiesBody: 'Every family starts from the same project, so every decision reaches further.', exploreFamily: 'Explore family',
-    create: 'Create', createBody: 'Define the model every other decision shares.', understand: 'Understand', understandBody: 'Make relationships, assumptions, and consequences visible.', deliver: 'Deliver', deliverBody: 'Turn the work into a record that retains context.',
-    platform: 'The platform', platformBody: 'FusionStructure brings together the continuity that is usually lost between tools.', note: 'An evolving product vision. Some surfaces are still in development.',
+    principle: 'Make complexity legible.', title: 'The whole project. One reading.', body: 'Model, behaviour, and evidence retain the same context.', enter: 'Enter workspace', explore: 'See how it works',
+    proofTitle: 'One source. Three readings.', proofModel: 'Model the intent.', proofAnalysis: 'See the behaviour.', proofEvidence: 'Deliver the context.',
+    familiesTitle: 'The project does not end at calculation.', familiesBody: 'Six surfaces share the same structure, so every decision retains meaning.', exploreFamily: 'Explore family',
+    platform: 'The platform', platformBody: 'Complexity does not disappear. It becomes legible.', note: 'An evolving product vision. Some surfaces are still in development.',
     openAnalysis: 'Open analysis', openProject: 'Open project', openLearning: 'Open learning', openSpace: 'Explore 3D space',
   },
 } as const;
@@ -81,13 +81,21 @@ export const FusionLanding = ({ language, onOpenSolver2D, onOpenSolver3D, onOpen
       <div className="fs-landing-hero__visual" aria-hidden="true"><img src="./assets/landing/fusionstructure-hero-v3.png" alt="" decoding="async" fetchPriority="high" /></div>
     </section>
 
+    <section className="fs-proof" aria-labelledby="fusion-proof-title">
+      <header className="fs-proof__heading"><span>{text.platform}</span><h2 id="fusion-proof-title">{text.proofTitle}</h2></header>
+      <div className="fs-proof__grid">
+        <button type="button" className="fs-proof-card fs-proof-card--model" onClick={() => onOpenSolver3D?.()}><div className="fs-proof-card__media"><img src="./assets/tool-mockups/fs-m02-modelo-bim.png" alt="" loading="lazy" decoding="async" /></div><div className="fs-proof-card__copy"><span>01 / {language === 'es' ? 'MODELO' : 'MODEL'}</span><strong>{text.proofModel}</strong><ArrowUpRight size={16} aria-hidden="true" /></div></button>
+        <button type="button" className="fs-proof-card fs-proof-card--analysis" onClick={onOpenSolver2D}><div className="fs-proof-card__media"><img src="./assets/tool-mockups/fs-a02-solver-3d.png" alt="" loading="lazy" decoding="async" /></div><div className="fs-proof-card__copy"><span>02 / {language === 'es' ? 'ANÁLISIS' : 'ANALYSIS'}</span><strong>{text.proofAnalysis}</strong><ArrowUpRight size={16} aria-hidden="true" /></div></button>
+        <button type="button" className="fs-proof-card fs-proof-card--evidence" onClick={onOpenImport}><div className="fs-proof-card__media"><img src="./assets/tool-mockups/fs-p01-documentos.png" alt="" loading="lazy" decoding="async" /></div><div className="fs-proof-card__copy"><span>03 / {language === 'es' ? 'EVIDENCIA' : 'EVIDENCE'}</span><strong>{text.proofEvidence}</strong><FileCheck2 size={16} aria-hidden="true" /></div></button>
+      </div>
+    </section>
+
     <section id="fusion-families" className="fs-families" aria-labelledby="fusion-families-title">
       <header className="fs-section-heading"><span>{text.platform}</span><h2 id="fusion-families-title">{text.familiesTitle}</h2><p>{text.familiesBody}</p></header>
       <div className="fs-family-stage"><div className="fs-family-stage__media" data-tone={activeFamily.tone}><img key={activeFamily.id} src={`./assets/landing/${activeFamily.image}`} alt="" loading="lazy" decoding="async" /></div><article key={activeFamily.id} id="fs-family-panel" className="fs-family-stage__copy" role="tabpanel" aria-labelledby={`fs-family-tab-${activeFamily.id}`} tabIndex={0}><div className="fs-family-stage__index"><span>{activeFamily.code}</span><ActiveIcon size={21} aria-hidden="true" /></div><h3>{activeFamily.name[language]}</h3><strong>{activeFamily.line[language]}</strong><p>{activeFamily.detail[language]}</p>{activeAction ? <button type="button" onClick={openActiveFamily}>{activeAction}<ArrowUpRight size={16} /></button> : <span className="fs-family-stage__concept">{text.exploreFamily}<ArrowRight size={15} /></span>}</article></div>
       <div className="fs-family-list" role="tablist" aria-label={text.familiesTitle}>{FAMILIES.map((family) => { const selected = family.id === activeFamily.id; return <button key={family.id} id={`fs-family-tab-${family.id}`} data-tone={family.tone} type="button" role="tab" aria-label={family.name[language]} aria-controls="fs-family-panel" aria-selected={selected} tabIndex={selected ? 0 : -1} className={selected ? 'is-active' : undefined} onClick={() => setActiveFamilyId(family.id)} onKeyDown={(event) => selectFamilyFromKeyboard(event, family.id)}><span data-tone={family.tone}><img src={`./assets/brand/${family.mark}`} alt="" loading="lazy" decoding="async" /></span><strong>{family.name[language]}</strong><small aria-hidden="true">{family.code}</small></button>; })}</div>
     </section>
 
-    <section className="fs-product-flow" aria-label={text.platform}><article className="fs-product-flow__step"><div><span>01</span><h2>{text.create}</h2><p>{text.createBody}</p></div><img src="./assets/landing/fusionstructure-project-v3.png" alt="" loading="lazy" decoding="async" /></article><article className="fs-product-flow__step fs-product-flow__step--reverse"><div><span>02</span><h2>{text.understand}</h2><p>{text.understandBody}</p></div><img src="./assets/landing/fusionstructure-analysis-v3.png" alt="" loading="lazy" decoding="async" /></article><article className="fs-product-flow__step"><div><span>03</span><h2>{text.deliver}</h2><p>{text.deliverBody}</p></div><img src="./assets/landing/fusionstructure-hero-v3.png" alt="" loading="lazy" decoding="async" /></article></section>
     <footer className="fs-landing-footer"><p>{text.platformBody}</p><small>{text.note}</small></footer>
   </div>;
 };

@@ -62,4 +62,13 @@ describe('navegación por herramienta', () => {
     await user.keyboard('{End}');
     expect(screen.getByRole('tab', { name: 'Aprendizaje' }).getAttribute('aria-selected')).toBe('true');
   });
+
+  it('abre el análisis desde la lectura de producto correspondiente', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(await screen.findByRole('button', { name: /Ve el comportamiento/i }));
+
+    expect(screen.getByTestId('solver2d-welcome')).toBeTruthy();
+  });
 });
