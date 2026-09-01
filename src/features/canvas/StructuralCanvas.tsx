@@ -58,6 +58,7 @@ import {
   toGlobalVector,
 } from '../../graphics/structureGeometry';
 import { CanvasResultLayer, diagramPixelScaleFor, reactionClearanceFor } from './CanvasResultLayer';
+import { criticalStampsFor } from './criticalStamps';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
 import { CanvasMiniMap } from './CanvasMiniMap';
 import { CanvasDiagramStack, externalStackBottomReserve } from './CanvasDiagramStack';
@@ -2155,7 +2156,10 @@ export const StructuralCanvas = ({
       const selected = selectionVisualState.memberLoadId === load.id;
       if (!selected && !layers.labels) continue;
       const priority = selected ? 0 as const : 1 as const;
-      const tone = selected ? 'selection' as const : load.type === 'distributed' ? 'shear' as const : load.type === 'moment' ? 'moment' as const : 'force' as const;
+      // Una carga distribuida es una ACCIÓN aplicada. Llevaba el tono del
+      // cortante, que es un resultado interno: en la misma vista, la causa y
+      // la consecuencia salían del mismo color.
+      const tone = selected ? 'selection' as const : load.type === 'moment' ? 'moment' as const : 'force' as const;
       if (load.type === 'point') {
         const base = stationOf(load.position ?? 0.5);
         const px = load.px ?? 0;
@@ -2219,10 +2223,10 @@ export const StructuralCanvas = ({
       const { bottom: bottomClearance, side: sideClearance } = reactionClearanceFor(node.support.type);
       if (Math.abs(result.rx) > 1e-8) {
         const direction = Math.sign(result.rx);
-        smartLabelCandidates.push({ id: `reaction:${node.id}:rx`, text: `Rx = ${formatFixed(toDisplay(result.rx, units, 'force'), 3)} ${forceLabel}`, anchor: { x: point.x - direction * (sideClearance + 24), y: point.y - 14 }, priority: 1, tone: 'axial', preferredOffset: { x: 0, y: 0 } });
+        smartLabelCandidates.push({ id: `reaction:${node.id}:rx`, text: `Rx = ${formatFixed(toDisplay(result.rx, units, 'force'), 3)} ${forceLabel}`, anchor: { x: point.x - direction * (sideClearance + 24), y: point.y - 14 }, priority: 1, tone: 'reaction', preferredOffset: { x: 0, y: 0 } });
       }
       if (Math.abs(result.ry) > 1e-8) {
-        smartLabelCandidates.push({ id: `reaction:${node.id}:ry`, text: `Ry = ${formatFixed(toDisplay(result.ry, units, 'force'), 3)} ${forceLabel}`, anchor: { x: point.x + 18, y: point.y + bottomClearance + 24 }, priority: 1, tone: 'axial', preferredOffset: { x: 0, y: 0 } });
+        smartLabelCandidates.push({ id: `reaction:${node.id}:ry`, text: `Ry = ${formatFixed(toDisplay(result.ry, units, 'force'), 3)} ${forceLabel}`, anchor: { x: point.x + 18, y: point.y + bottomClearance + 24 }, priority: 1, tone: 'reaction', preferredOffset: { x: 0, y: 0 } });
       }
       if (Math.abs(result.rm) > 1e-8) {
         smartLabelCandidates.push({ id: `reaction:${node.id}:rm`, text: `Mᵣ = ${formatFixed(toDisplay(result.rm, units, 'moment'), 3)} ${momentLabel}`, anchor: { x: point.x, y: point.y - 38 }, priority: 1, tone: 'moment', preferredOffset: { x: 0, y: 0 } });
@@ -2232,6 +2236,11 @@ export const StructuralCanvas = ({
     if (['axial', 'shear', 'moment'].includes(resultTab) && view.showResultOverlay) {
       const quantity = resultTab as DiagramQuantity;
       const side = view.diagramSide === 'negative' ? -1 : 1;
+      // Cortante y momento ya sellan su máximo y su mínimo sobre la barra, con
+      // el valor Y su estación (`CanvasResultLayer.renderCriticalPoints`). Una
+      // etiqueta con la mitad de esa información encima del mismo punto no
+      // añade nada y era la causa principal del amontonamiento junto al pico.
+      const stampedExtremes = quantity === 'shear' || quantity === 'moment';
       for (const member of project.members) {
         const result = resultMap.get(member.id);
         const ni = nodeMap.get(member.i);
@@ -2255,6 +2264,7 @@ export const StructuralCanvas = ({
           })
           .slice(0, size.width < 520 ? 2 : 6);
         for (const [index, point] of points.entries()) {
+          if (stampedExtremes && (point.kind === 'maximum' || point.kind === 'minimum')) continue;
           const grossX = (result.startOffset ?? 0) + point.x;
           const baseX = ni.x + tx * grossX;
           const baseY = ni.y + ty * grossX;
@@ -2275,11 +2285,33 @@ export const StructuralCanvas = ({
     }
   }
 
-    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(size), camera.scale);
+    // Los sellos de extremo se dibujan en la capa de resultados y no pasan por
+    // aquí: se reservan sus cajas para que ninguna etiqueta caiga encima del
+    // pico que hay que leer.
+    const reserved = resultsAllowed && analysis?.success && view.showResultOverlay && layers.results
+      ? criticalStampsFor({
+        project,
+        resultTab,
+        diagramSide: view.diagramSide === 'negative' ? 'negative' : 'positive',
+        camera,
+        toScreen,
+        nodeMap,
+        resultMap,
+        globalDiagramMax,
+        diagramPixelScaleFor: (result: (typeof analysis.memberResults)[number]) => diagramPixelScaleFor(project, resultTab, globalDiagramMax, result),
+        units,
+        lengthLabel,
+        forceLabel,
+        momentLabel,
+        size,
+      }).map((stamp) => stamp.rect)
+      : [];
+
+    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(size), camera.scale, reserved);
   }, [
     activeTool,
     analysis,
-    camera.scale,
+    camera,
     distributedLabel,
     forceLabel,
     globalDiagramMax,

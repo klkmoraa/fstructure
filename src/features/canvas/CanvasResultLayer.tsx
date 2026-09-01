@@ -9,6 +9,7 @@ import { formatFixed, formatScientific } from '../../utils/numberFormat';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { modeShapePoints, modeShapeScaleFor } from './modeShapePath';
+import { criticalStampsFor } from './criticalStamps';
 
 type MemberResult = AnalysisResult['memberResults'][number];
 type NodeResult = AnalysisResult['nodeResults'][number];
@@ -63,35 +64,6 @@ export const diagramPixelScaleFor = (project: ProjectModel, resultTab: ResultTab
     if (point.quantity === key) maximum = Math.max(maximum, Math.abs(point.value));
   }
   return (68 * view.diagramScale) / maximum;
-};
-
-/**
- * Un extremo sólo se sella si vale al menos esta fracción del máximo global del
- * diagrama. Sin el filtro, una estructura de treinta barras se cubre de
- * etiquetas —incluidas las de los tramos que apenas trabajan— y el sello deja
- * de señalar nada. Con él quedan los picos que de verdad gobiernan.
- */
-const CRITICAL_MARKER_MIN_SHARE = 0.15;
-
-/** Extremos M/V ya resueltos por el análisis, listos para sellar sobre la barra. */
-// oxlint-disable-next-line react/only-export-components
-export const criticalExtremesFor = (
-  points: ReadonlyArray<MemberResult['criticalPoints'][number]>,
-  quantity: DiagramQuantity,
-  floor: number,
-): Array<{ point: MemberResult['criticalPoints'][number]; extreme: 'max' | 'min' }> => {
-  const candidates = points.filter((point) => point.quantity === quantity);
-  if (candidates.length === 0) return [];
-  const highest = candidates.reduce((best, point) => (point.value > best.value ? point : best));
-  const lowest = candidates.reduce((best, point) => (point.value < best.value ? point : best));
-  const marks: Array<{ point: MemberResult['criticalPoints'][number]; extreme: 'max' | 'min' }> = [];
-  if (Math.abs(highest.value) >= floor) marks.push({ point: highest, extreme: 'max' });
-  // Un diagrama de signo constante tiene un solo extremo interesante: sellarlo
-  // dos veces apilaría dos etiquetas idénticas sobre el mismo punto.
-  if (Math.abs(lowest.value) >= floor && Math.abs(lowest.value - highest.value) > 1e-9) {
-    marks.push({ point: lowest, extreme: 'min' });
-  }
-  return marks;
 };
 
 const CanvasResultLayerImpl = ({
@@ -240,57 +212,39 @@ const CanvasResultLayerImpl = ({
    */
   const renderCriticalPoints = () => {
     if (!resultsAllowed || !analysis?.success || !view.showResultOverlay) return null;
-    if (resultTab !== 'shear' && resultTab !== 'moment') return null;
-    const key = resultTab as DiagramQuantity;
-    const symbol = key === 'shear' ? 'V' : 'M';
-    const displayQuantity = key === 'moment' ? 'moment' as const : 'force' as const;
-    const valueUnit = key === 'moment' ? momentLabel : forceLabel;
-    const floor = Math.max(globalDiagramMax * CRITICAL_MARKER_MIN_SHARE, 1e-9);
-    const side = view.diagramSide === 'negative' ? -1 : 1;
-
-    const stamps = project.members.flatMap((member) => {
-      const result = resultMap.get(member.id);
-      const ni = nodeMap.get(member.i);
-      const nj = nodeMap.get(member.j);
-      if (!result || !ni || !nj || !result.criticalPoints.length) return [];
-      const axis = memberAxis(member, ni, nj);
-      if (axis.length <= 1e-12) return [];
-      const nx = axis.normal.x * side;
-      const ny = axis.normal.y * side;
-      const diagramPixelScale = scaleFor(result);
-      return criticalExtremesFor(result.criticalPoints, key, floor).map(({ point, extreme }) => {
-        const grossX = (result.startOffset ?? 0) + point.x;
-        const baseX = ni.x + axis.c * grossX;
-        const baseY = ni.y + axis.s * grossX;
-        const offsetModel = (point.value * diagramPixelScale) / camera.scale;
-        const base = toScreen(baseX, baseY);
-        const tip = toScreen(baseX + nx * offsetModel, baseY + ny * offsetModel);
-        const value = `${symbol}${extreme === 'max' ? 'max' : 'min'} ${formatFixed(toDisplay(point.value, units, displayQuantity), 2)} ${valueUnit}`;
-        const station = `x ${formatFixed(toDisplay(point.x, units, 'length'), 2)} ${lengthLabel}`;
-        // El sello se aparta hacia el lado libre del diagrama, nunca hacia la
-        // barra: ahí es donde ya hay geometría y etiquetas de modelo.
-        const away = Math.sign(offsetModel) || 1;
-        const width = Math.max(value.length, station.length) * 5.1 + 11;
-        const anchorX = Math.min(Math.max(tip.x + nx * away * 9, 4), Math.max(size.width - width - 4, 4));
-        const anchorY = Math.min(Math.max(tip.y + ny * away * 9 - 11, 4), Math.max(size.height - 30, 4));
-        return <g
-          key={`${member.id}-${key}-${extreme}`}
-          className={`critical-point-marker is-${extreme}`}
-          data-critical-point={`${member.id}:${key}:${extreme}`}
-          pointerEvents="none"
-        >
-          <title>{`${member.id} · ${value} · ${station}`}</title>
-          <line className="critical-point-stem" x1={base.x} y1={base.y} x2={tip.x} y2={tip.y} />
-          <circle className="critical-point-dot" cx={tip.x} cy={tip.y} r="3.2" />
-          <g transform={`translate(${anchorX} ${anchorY})`}>
-            <rect className="critical-point-stamp" width={width} height="25" rx="6" />
-            <text className="critical-point-value" x="6" y="11">{value}</text>
-            <text className="critical-point-station" x="6" y="20">{station}</text>
-          </g>
-        </g>;
-      });
+    const stamps = criticalStampsFor({
+      project,
+      resultTab,
+      diagramSide: view.diagramSide === 'negative' ? 'negative' : 'positive',
+      camera,
+      toScreen,
+      nodeMap,
+      resultMap,
+      globalDiagramMax,
+      diagramPixelScaleFor: scaleFor,
+      units,
+      lengthLabel,
+      forceLabel,
+      momentLabel,
+      size,
     });
-    return stamps.length ? <g className={`critical-point-layer is-${key}`} aria-hidden="true">{stamps}</g> : null;
+    if (!stamps.length) return null;
+
+    return <g className="critical-point-layer" aria-hidden="true">{stamps.map((stamp) => <g
+      key={stamp.key}
+      className={`critical-point-marker is-${stamp.extreme}`}
+      data-critical-point={`${stamp.memberId}:${resultTab}:${stamp.extreme}`}
+      pointerEvents="none"
+    >
+      <title>{`${stamp.memberId} · ${stamp.value} · ${stamp.station}`}</title>
+      <line className="critical-point-stem" x1={stamp.base.x} y1={stamp.base.y} x2={stamp.tip.x} y2={stamp.tip.y} />
+      <circle className="critical-point-dot" cx={stamp.tip.x} cy={stamp.tip.y} r="3.2" />
+      <g transform={`translate(${stamp.rect.x} ${stamp.rect.y})`}>
+        <rect className="critical-point-stamp" width={stamp.rect.width} height={stamp.rect.height} rx="6" />
+        <text className="critical-point-value" x="6" y="11">{stamp.value}</text>
+        <text className="critical-point-station" x="6" y="20">{stamp.station}</text>
+      </g>
+    </g>)}</g>;
   };
 
   const renderInfluenceOverlay = () => {
