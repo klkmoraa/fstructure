@@ -23,11 +23,12 @@
 .member-hit { stroke: transparent; stroke-width: 18; }
 .member-object:hover:not(.selected) .member-line { stroke: var(--accent); }
 .member-object.selected .member-line { stroke: var(--member); stroke-width: 3.6; }
-.member-object:focus-visible .member-line { stroke:var(--focus); stroke-width:5; filter:drop-shadow(0 0 4px color-mix(in srgb,var(--focus) 58%,transparent)); }
+.member-object:focus-visible .member-line { stroke:var(--focus); stroke-width:5; }
+.member-object:focus-visible { outline:var(--sc-focus-ring-width) solid var(--focus); outline-offset:3px; }
 .member-selection-halo { stroke:var(--selection); stroke-width:10; stroke-linecap:round; opacity:.34; pointer-events:none; vector-effect:non-scaling-stroke; }
 .candidate-preview-halo { fill:none; stroke:var(--focus); stroke-width:7; stroke-linecap:round; stroke-dasharray:3 3; opacity:.78; pointer-events:none; vector-effect:non-scaling-stroke; }
 .candidate-preview-ring { fill:none; stroke:var(--focus); stroke-width:2; stroke-dasharray:3 3; pointer-events:none; vector-effect:non-scaling-stroke; }
-.member-object.learning-highlight .member-line { stroke: var(--axis); stroke-width: 5; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--axis) 65%, transparent)); }
+.member-object.learning-highlight .member-line { stroke: var(--axis); stroke-width: 5; }
 .rigid-zone-layer line { stroke: var(--axis); stroke-width: 7; stroke-linecap: butt; pointer-events: none; }
 .rigid-zone-layer circle { fill: var(--canvas-bg); stroke: var(--axis); stroke-width: 2; pointer-events: none; }
 .selection-marquee { fill: color-mix(in srgb, var(--selection) 12%, transparent); stroke: var(--selection); stroke-width: 1.5; stroke-dasharray: 6 4; pointer-events: none; }
@@ -50,8 +51,9 @@
 .node-object:hover:not(.selected) .node-dot { stroke: var(--accent); stroke-width: 3; r: 8px; }
 .node-object.selected .node-dot { fill:var(--canvas-bg); stroke:var(--selection); stroke-width:3; r:8px; }
 .node-object.candidate-preview .node-dot { stroke:var(--focus); stroke-width:3; }
-.node-object:focus-visible .node-dot { stroke:var(--focus); stroke-width:4; r:9px; filter:drop-shadow(0 0 4px color-mix(in srgb,var(--focus) 58%,transparent)); }
-.node-object.learning-highlight .node-dot { fill: var(--axis); stroke: var(--canvas-bg); stroke-width: 3; r: 10px; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--axis) 70%, transparent)); }
+.node-object:focus-visible .node-dot { stroke:var(--focus); stroke-width:4; r:9px; }
+.node-object:focus-visible { outline:var(--sc-focus-ring-width) solid var(--focus); outline-offset:3px; }
+.node-object.learning-highlight .node-dot { fill: var(--axis); stroke: var(--canvas-bg); stroke-width: 3; r: 10px; }
 .node-object.member-start .node-dot { fill: var(--accent-soft); stroke: var(--accent-on-soft); r: 10px; }
 .support-symbol .support-body-fill { fill: color-mix(in srgb, var(--surface) 92%, var(--canvas-bg)); stroke: var(--member); }
 .support-symbol .support-pin-dot { fill: var(--canvas-bg); stroke: var(--member); stroke-width: 1.8px; }
@@ -75,10 +77,10 @@
 .multi-selection-handle { fill:var(--surface); stroke:var(--selection); stroke-width:1.5; vector-effect:non-scaling-stroke; }
 .multi-selection-badge rect { fill:color-mix(in srgb,var(--selection) 12%,var(--surface)); stroke:var(--selection); stroke-width:1; }
 .multi-selection-badge text { fill:var(--selection); font-size:10px; font-weight:800; }
-.deformed-layer path { fill: none; stroke: var(--deformed); stroke-width: 3; stroke-dasharray: 6 4; filter: drop-shadow(0 0 4px color-mix(in srgb, var(--deformed) 35%, transparent)); }
-.mode-shape-layer { fill:none; pointer-events:none; }.mode-shape-layer path { fill:none; stroke-width:3; stroke-dasharray:10 5; filter:drop-shadow(0 0 5px color-mix(in srgb,currentColor 38%,transparent)); }.mode-shape-layer.is-modal { color:var(--deformed); }.mode-shape-layer.is-modal path { stroke:var(--deformed); }.mode-shape-layer.is-buckling { color:var(--warning); }.mode-shape-layer.is-buckling path { stroke:var(--warning); }
+.deformed-layer path { fill: none; stroke: var(--deformed); stroke-width: 2.6; stroke-dasharray: 6 4; stroke-linecap: round; }
+.mode-shape-layer { fill:none; pointer-events:none; }.mode-shape-layer path { fill:none; stroke-width:2.6; stroke-dasharray:10 5; stroke-linecap:round; }.mode-shape-layer.is-modal { color:var(--deformed); }.mode-shape-layer.is-modal path { stroke:var(--deformed); }.mode-shape-layer.is-buckling { color:var(--warning); }.mode-shape-layer.is-buckling path { stroke:var(--warning); }
 .mechanism-layer { pointer-events: none; }
-.mechanism-member { stroke: var(--warning); stroke-width: 4; stroke-dasharray: 9 6; opacity: .88; filter: drop-shadow(0 0 5px color-mix(in srgb, var(--warning) 38%, transparent)); }
+.mechanism-member { stroke: var(--sc-color-signal-alert-ink); stroke-width: 4; stroke-dasharray: 9 6; }
 .mechanism-node line, .mechanism-node path { fill: none; stroke: var(--warning); stroke-width: 2; stroke-dasharray: 4 3; }
 .mechanism-node circle { fill: color-mix(in srgb, var(--warning) 20%, var(--canvas-bg)); stroke: var(--warning); stroke-width: 2.5; }
 .mechanism-node text { fill: var(--warning); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
@@ -107,7 +109,6 @@
 .touch-gesture-hint { display:none; }
 /* Coordinate readout is informational. It must never steal a structural
    selection gesture from geometry beneath the floating canvas chrome. */
-.canvas-status { position: absolute; right: 14px; bottom: 12px; color: var(--subtle); font-size: var(--sc-font-size-technical); display: flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: var(--sc-radius-control); pointer-events:none; }
 .canvas-feedback { position:absolute; z-index:6; left:50%; top:58px; transform:translateX(-50%); width:max-content; max-width:calc(100% - 28px); padding:9px 12px; border-radius:var(--sc-radius-control); color:var(--text); font-size:var(--sc-font-size-label); line-height:1.4; text-align:center; pointer-events:none; }
 .canvas-host .canvas-feedback { border-color:color-mix(in srgb,var(--warning) 35%,var(--border)); }
 .canvas-result-legend { position:absolute; left:16px; top:54px; z-index:8; width:min(260px,calc(100% - 32px)); padding:9px 11px; border-radius:var(--sc-radius-control); display:grid; grid-template-columns:auto 1fr; align-items:center; gap:4px 9px; pointer-events:none; }
@@ -135,8 +136,8 @@
 .cut-resultants{display:grid;gap:3px;padding:5px 0}.cut-resultants small,.cut-no-loads{color:var(--muted);font-size:9px}.cut-resultants span{font-size:9px;font-variant-numeric:tabular-nums}.cut-resultants b{color:var(--text);margin-right:4px}.cut-substitution{display:grid;gap:3px;padding:5px 0;border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft)}
 .cut-residuals { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-top:2px; color:var(--muted); font-variant-numeric:tabular-nums; }
 .cut-tooltip strong { margin-bottom: 2px; }
-.reaction-symbol { stroke: var(--axial); fill: none; stroke-width: 2.2; }
-.reaction-symbol text { fill: var(--axial); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
+.reaction-symbol { stroke: var(--reaction); fill: none; stroke-width: 2.2; }
+.reaction-symbol text { fill: var(--reaction); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
 .local-axes line { stroke: var(--axis); stroke-width: 1.5; }
 .local-axes text { fill: var(--axis); font-size: 10px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 3px; }
 
@@ -146,7 +147,6 @@
   .professional-note { display:none; }
   .toolbar { bottom:8px; }
   .canvas-controls { bottom:70px; }
-  .canvas-status { bottom:68px; }
   .mobile-inspector-toggle { bottom:78px; }
 }
 button, .icon-button, .tool-button, .compact-select, .number-control, .selection-card,
@@ -157,7 +157,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .canvas-mode-badge { padding:8px 11px; border-radius:var(--sc-radius-control); font-size:var(--sc-font-size-technical); }
 .canvas-mode-badge strong { font-size:13px; }
 .canvas-controls { border-radius:var(--sc-radius-control); }
-.canvas-status { font-size:var(--sc-font-size-technical); }
 
 @media (max-width:460px) {
   .brand-mark,.brand-mark svg { width:28px; height:28px; }
@@ -327,7 +326,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .influence-line-view .diagram-chart { margin:0 8px; }
 
   .canvas-controls { bottom:14px; }
-  .canvas-status { bottom:12px; }
   .canvas-mode-badge { max-width:calc(100% - 82px); overflow:hidden; white-space:nowrap; }
   .mobile-inspector-toggle {
     top:12px;
@@ -593,18 +591,23 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   border-radius:var(--sc-radius-card);
 }
 .canvas-controls button + button { border-top:0; border-left:1px solid var(--border-soft); }
+/* LECTURA ÚNICA. Coordenada y escala viven en el `Instrument`, la franja
+   permanente del borde inferior. Este bloque sigue existiendo porque es su
+   FUENTE —el instrumento observa estos nodos— pero no se pinta: repetido sobre
+   el lienzo tapaba el riel de herramientas y obligaba a leer dos veces lo
+   mismo. No se sustituye por `display:none` porque un nodo sin caja deja de
+   emitir mutaciones de layout en algunos navegadores. */
 .canvas-status {
-  z-index:7;
-  right:auto;
-  left:50%;
-  bottom:12px;
-  min-height:38px;
-  max-width:calc(100% - 390px);
-  transform:translateX(-50%);
-  padding:0 11px;
-  border-radius:var(--sc-radius-card);
-  color:var(--muted);
+  position:absolute;
+  width:1px;
+  height:1px;
+  margin:-1px;
+  padding:0;
+  border:0;
+  overflow:hidden;
+  clip-path:inset(50%);
   white-space:nowrap;
+  pointer-events:none;
 }
 .canvas-coordinate-output { color:var(--text); font-variant-numeric:tabular-nums; }
 .canvas-scale-output { color:var(--muted); font-variant-numeric:tabular-nums; }
@@ -673,23 +676,10 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
     right:max(10px,env(safe-area-inset-right));
     bottom:10px;
   }
-  .canvas-status {
-    left:50%;
-    right:auto;
-    bottom:10px;
-    min-height:36px;
-    max-width:calc(100% - 310px);
-    transform:translateX(-50%);
-  }
   .canvas-result-legend { top:104px; left:10px; }
   .canvas-feedback { top:104px; }
   .canvas-hint { top:104px; }
   .quick-entry-bar { bottom:70px; }
-}
-
-@media (pointer:coarse) {
-  .canvas-coordinate-output,.canvas-status-divider { display:none; }
-  .canvas-status { min-width:86px; justify-content:center; }
 }
 
 @media (max-width:460px) {
@@ -702,8 +692,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .canvas-mode-badge { top:8px; left:8px; max-width:calc(100% - 66px); }
   .canvas-view-chips { display:none; }
   .canvas-controls { right:8px; bottom:8px; }
-  .canvas-status { bottom:8px; min-height:34px; max-width:96px; padding-inline:8px; overflow:hidden; }
-  .canvas-coordinate-output,.canvas-status-divider { display:none; }
   .desktop-gesture-hint { display:none; }
   .touch-gesture-hint { display:inline; }
   .canvas-result-legend { top:96px; width:calc(100% - 20px); }
@@ -1438,25 +1426,12 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   /* El zoom vive en la esquina inferior derecha; el radar se apila encima y
      el pie de coordenadas recorta su ancho para no cruzarse con ninguno. */
   .canvas-minimap { bottom:calc(12px + var(--sc-control-height-md) * 3 + 8px); }
-  .canvas-status { max-width:calc(100% - 430px); }
 }
 /* El panel de capas baja por el mismo borde derecho y cubriría el radar. Se
    retira mientras el panel está abierto: dos objetos en el mismo sitio no se
    resuelven apilándolos, se resuelve mostrando uno. */
 .canvas-host:has(.canvas-layer-panel) .canvas-minimap { display:none; }
 
-/* En teléfonos estrechos la pastilla de coordenadas se centraba en el ancho
-   completo, sin descontar el grupo de zoom (~134px) que ocupa la esquina
-   inferior derecha: a 375px se solapaban 3px. Deja de centrarse y se ancla a
-   la izquierda, que en esta franja está libre, con holgura garantizada. */
-@media (max-width:640px) {
-  .canvas-status {
-    left:max(8px,env(safe-area-inset-left));
-    right:auto;
-    transform:none;
-    max-width:calc(100% - 168px);
-  }
-}
 @media (max-width:1023px) {
   /* En táctil el lienzo es el recurso escaso: el radar se retira y deja el
      dibujo limpio bajo el dedo. */
@@ -1845,19 +1820,28 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .smart-label.tone-moment { color:var(--moment); }
 .smart-label.tone-dimension { color:var(--dimension); }
 .smart-label.tone-axial { color:var(--axial); }
+/* La reacción es un resultado del apoyo, no una fuerza axial de la barra:
+   compartían color y no había forma de distinguirlas en la misma vista. */
+.smart-label.tone-reaction { color:var(--reaction); }
 .node-object { cursor: pointer; }
 .node-object:focus-visible { outline:none; }
 .node-object text { font-size: 12px; font-weight: 600; fill: var(--text); paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
-.support-symbol { stroke: var(--member); fill: none; vector-effect: non-scaling-stroke; transition: stroke var(--motion-fast) var(--ease-native), filter var(--motion-fast) var(--ease-native); }
-.support-symbol:hover { stroke: var(--accent); filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--accent) 30%, transparent)); }
+.support-symbol { stroke: var(--member); fill: none; vector-effect: non-scaling-stroke; transition: stroke var(--motion-fast) var(--ease-native), stroke-width var(--motion-fast) var(--ease-native); }
+.support-symbol:hover { stroke: var(--accent); stroke-width: 2.4; }
 .support-symbol.selected { stroke: var(--selection); }
 .load-symbol { stroke: var(--force); fill: none; stroke-width: 2.2; cursor: pointer; }
 .load-symbol text, .distributed-symbol text { fill: var(--force); stroke: none; font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
-.load-symbol.selected { filter:drop-shadow(0 0 4px color-mix(in srgb,var(--selection) 46%,transparent)); }
-.distributed-symbol { stroke: var(--shear); stroke-width: 1.5; cursor: pointer; }
-.distributed-symbol text { fill: var(--shear); }
-.distributed-symbol.selected { filter:drop-shadow(0 0 4px color-mix(in srgb,var(--selection) 46%,transparent)); }
-.load-symbol:focus-visible,.distributed-symbol:focus-visible { outline:none; filter:drop-shadow(0 0 6px color-mix(in srgb,var(--focus) 64%,transparent)); }
+/* Una carga distribuida es una ACCIÓN aplicada, no un cortante. Pintarla con
+   la señal del cortante la volvía indistinguible de un resultado interno en la
+   única pantalla donde los dos conviven. */
+.distributed-symbol { stroke: var(--force); stroke-width: 1.6; cursor: pointer; }
+.distributed-symbol text { fill: var(--force); }
+/* La selección ya se dibuja con su halo; un resplandor encima sólo emborrona
+   el trazo que hay que leer. */
+.load-symbol.selected .load-hit,
+.distributed-symbol.selected .load-hit { stroke: color-mix(in srgb, var(--selection) 22%, transparent) !important; }
+.load-symbol:focus-visible,
+.distributed-symbol:focus-visible { outline: var(--sc-focus-ring-width) solid var(--focus); outline-offset: 3px; }
 .candidate-picker { position:absolute; z-index:34; width:min(244px,calc(100% - 16px)); display:grid; gap:7px; padding:10px; border:1px solid var(--border); border-radius:var(--sc-radius-card); background:var(--surface); color:var(--text); box-shadow:var(--sc-shadow-sm); }
 .candidate-picker>strong { font-size:10px; }
 .candidate-picker [role='listbox'] { display:grid; gap:4px; outline:none; }
@@ -1895,3 +1879,94 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 /* El color es el de la magnitud que se está mirando, el mismo del diagrama:
    la capa declara cuál y el sello lo hereda. */
 .critical-point-layer { --critical-color:var(--moment); }
+
+/* --- Estado vacío del lienzo ------------------------------------------ */
+/* No captura el puntero: quien ya sabe lo que hace puede dibujar encima sin
+   cerrarlo. Sólo sus propios botones lo reciben. */
+.canvas-empty {
+  position: absolute;
+  inset: var(--canvas-safe-top) var(--canvas-safe-right) var(--canvas-safe-bottom) var(--canvas-safe-left);
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.canvas-empty__card {
+  width: min(440px, 100%);
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--sc-radius-panel);
+  background: var(--surface);
+  pointer-events: auto;
+}
+
+.canvas-empty__card h2 {
+  margin: 0;
+  font-size: var(--sc-font-size-title);
+  font-weight: var(--sc-font-weight-bold);
+  letter-spacing: var(--sc-tracking-tight);
+}
+
+.canvas-empty__card p {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: var(--sc-font-size-body);
+  line-height: var(--sc-line-height-compact);
+}
+
+.canvas-empty__actions { display: grid; gap: 6px; }
+
+.canvas-empty__action {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: start;
+  transition: background var(--sc-motion-quick) var(--sc-ease-standard), border-color var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+.canvas-empty__action:hover { border-color: var(--border-strong, var(--border)); background: var(--surface-3); }
+.canvas-empty__action svg { flex: none; color: var(--muted); }
+.canvas-empty__action span { min-width: 0; display: grid; gap: 1px; }
+.canvas-empty__action strong { font-size: var(--sc-font-size-control); font-weight: var(--sc-font-weight-semibold); }
+.canvas-empty__action small { color: var(--muted); font-size: var(--sc-font-size-caption); line-height: var(--sc-line-height-compact); }
+
+@media (max-width: 640px) {
+  .canvas-empty__card { padding: 16px; }
+  .canvas-empty__action small { display: none; }
+}
+
+/* --- Entrada del resultado --------------------------------------------- */
+/* El diagrama se dibuja cuando llega una corrida nueva: primero la curva
+   exacta, después el área que la acompaña. Es la única animación del lienzo y
+   existe para decir que ESTO es la consecuencia de lo que acabas de pedir. La
+   capa se remonta con la corrida (`key`), no con el render, así que un paneo o
+   un zoom no la repiten. */
+@media (prefers-reduced-motion: no-preference) {
+  .diagram-layer .diagram-line-exact {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: diagram-trace var(--sc-motion-pulse) var(--sc-ease-reveal) forwards;
+  }
+
+  .diagram-layer .diagram-fill,
+  .diagram-layer .diagram-jumps,
+  .deformed-layer path {
+    animation: diagram-settle var(--sc-motion-reveal) var(--sc-ease-reveal) both;
+  }
+
+  .diagram-layer .diagram-fill { animation-delay: var(--sc-motion-bridge); }
+}
+
+@keyframes diagram-trace { to { stroke-dashoffset: 0; } }
+@keyframes diagram-settle { from { opacity: 0; } to { opacity: 1; } }
