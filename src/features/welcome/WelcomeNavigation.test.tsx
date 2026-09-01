@@ -18,15 +18,16 @@ describe('navegación por herramienta', () => {
     render(<App />);
 
     expect(await screen.findByTestId('platform-landing')).toBeTruthy();
-    expect(screen.queryByRole('navigation', { name: 'Navegación del Solver 2D' })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: 'Navegación de FStructure' })).toBeNull();
     expect(screen.queryByText('Proyectos recientes')).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Entrar al workspace' }));
 
     expect(screen.getByTestId('solver2d-welcome')).toBeTruthy();
-    expect(screen.getByRole('navigation', { name: 'Navegación del Solver 2D' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Continuar proyecto' })).toBeTruthy();
-    expect(screen.getByRole('region', { name: 'Accesos rápidos' })).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: 'Navegación de FStructure' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'FStructure' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Por dónde empezar' })).toBeTruthy();
     expect(screen.queryByRole('application', { name: 'Área de trabajo estructural interactiva' })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Volver a la plataforma' }));
@@ -34,7 +35,7 @@ describe('navegación por herramienta', () => {
     await user.click(screen.getByRole('button', { name: 'Explorar espacio 3D' }));
 
     expect(screen.getByTestId('solver3d-welcome')).toBeTruthy();
-    expect(screen.queryByRole('navigation', { name: 'Navegación del Solver 2D' })).toBeNull();
+    expect(screen.queryByRole('navigation', { name: 'Navegación de FStructure' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Abrir Space 3D' })).toBeTruthy();
   });
 
@@ -43,7 +44,7 @@ describe('navegación por herramienta', () => {
     render(<App />);
 
     expect(await screen.findByTestId('solver2d-welcome')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Continuar proyecto' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeTruthy();
     expect(screen.queryByRole('application', { name: 'Área de trabajo estructural interactiva' })).toBeNull();
   });
 

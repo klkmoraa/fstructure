@@ -1,0 +1,353 @@
+/*
+ * Inicio del solver 2D.
+ *
+ * Tres bloques y nada más: quién eres y qué abres (portada), por dónde empiezas
+ * (rutas) y qué hay guardado (recientes). Debajo, lo que el módulo hace de
+ * verdad, con su estado declarado.
+ */
+
+.solver2d-home {
+  display: grid;
+  gap: clamp(28px, 4vw, 48px);
+  padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 48px) clamp(48px, 6vw, 72px);
+}
+
+/* ---------------------------------------------------------------- Portada */
+
+.solver2d-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 56px);
+  padding-block-end: clamp(24px, 3vw, 40px);
+  border-bottom: 1px solid var(--sc-color-border-soft);
+}
+
+.solver2d-hero__copy { min-width: 0; display: grid; gap: 14px; justify-items: start; }
+
+.solver2d-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sc-color-text-muted);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-bold);
+  letter-spacing: var(--sc-tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.solver2d-hero__eyebrow b { color: var(--fs-signal-action); font-weight: inherit; }
+
+.solver2d-hero__name {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: clamp(38px, 6vw, 62px);
+  font-weight: var(--sc-font-weight-heavy);
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+}
+
+.solver2d-hero__lead {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--sc-color-text-secondary);
+  font-size: clamp(14px, 1.3vw, 16px);
+  line-height: var(--sc-line-height-body);
+}
+
+.solver2d-hero__lead strong { color: var(--sc-color-text-primary); font-weight: var(--sc-font-weight-semibold); }
+
+/* Tarjeta del proyecto abierto: es la acción principal de la pantalla, así que
+   es lo único con superficie propia dentro de la portada. */
+.solver2d-open {
+  width: 100%;
+  margin-block-start: 6px;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-elevated);
+}
+
+.solver2d-open__head { min-width: 0; display: grid; gap: 6px; }
+
+.solver2d-open__label {
+  color: var(--sc-color-text-muted);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-bold);
+  letter-spacing: var(--sc-tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.solver2d-open__name {
+  margin: 0;
+  overflow: hidden;
+  font-size: clamp(18px, 2vw, 22px);
+  font-weight: var(--sc-font-weight-bold);
+  letter-spacing: var(--sc-tracking-tight);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.solver2d-open__counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--sc-color-text-muted);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.solver2d-open__counts b { color: var(--sc-color-text-primary); font-weight: var(--sc-font-weight-bold); }
+
+.solver2d-open__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.solver2d-action {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 18px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  cursor: pointer;
+  font-size: var(--sc-font-size-body);
+  font-weight: var(--sc-font-weight-semibold);
+  transition: background var(--sc-motion-quick) var(--sc-ease-standard), border-color var(--sc-motion-quick) var(--sc-ease-standard), color var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+.solver2d-action svg { flex: none; }
+.solver2d-action:hover { background: var(--sc-color-surface-2); border-color: var(--sc-color-border-strong); }
+
+.solver2d-action--primary {
+  border-color: var(--sc-color-action-primary);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+}
+.solver2d-action--primary:hover { background: var(--sc-color-action-hover); border-color: var(--sc-color-action-hover); color: var(--sc-color-action-foreground); }
+
+/* -------------------------------------------------------------- Diagrama */
+
+.solver2d-hero__stage {
+  min-width: 0;
+  padding: clamp(12px, 2vw, 22px);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-bg-canvas);
+}
+
+.solver2d-diagram { width: 100%; height: auto; display: block; overflow: visible; }
+
+.solver2d-diagram__grid line { stroke: var(--sc-color-canvas-grid); stroke-width: 1; }
+
+.solver2d-diagram g:not(.solver2d-diagram__grid) {
+  opacity: 0;
+  transition: opacity var(--sc-motion-reveal) var(--sc-ease-reveal);
+}
+.solver2d-diagram g.is-on { opacity: 1; }
+
+.solver2d-diagram__frame path {
+  fill: none;
+  stroke: var(--sc-color-canvas-member);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.solver2d-diagram__supports path { fill: none; stroke: var(--sc-color-canvas-member); stroke-width: 2; stroke-linecap: round; }
+.solver2d-diagram__supports circle { fill: var(--sc-color-canvas-node-fill); stroke: var(--sc-color-canvas-member); stroke-width: 2; }
+
+.solver2d-diagram__load path { fill: none; stroke: var(--fs-signal-action); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.solver2d-diagram__moment-fill { fill: var(--sc-color-influence-area); stroke: none; }
+.solver2d-diagram__moment-line { fill: none; stroke: var(--fs-signal-moment); stroke-width: 2.5; stroke-linecap: round; }
+
+.solver2d-diagram__deformed path {
+  fill: none;
+  stroke: var(--fs-signal-deformed);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 7 6;
+}
+
+/* El trazo se dibuja, no aparece. Sólo lo hacen las dos curvas de resultado:
+   son las que explican una causa, y son las únicas que ganan algo con verse
+   recorrer su propio camino. */
+@media (prefers-reduced-motion: no-preference) {
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__moment-line,
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__deformed path {
+    stroke-dashoffset: 520;
+    stroke-dasharray: 520;
+  }
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__moment.is-on .solver2d-diagram__moment-line,
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__deformed.is-on path {
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset var(--sc-motion-pulse) var(--sc-ease-reveal);
+  }
+  /* La deformada recupera su discontinuo cuando termina de dibujarse. */
+  .solver2d-diagram:not(.is-static) .solver2d-diagram__deformed.is-on path { animation: solver2d-dash-settle 1ms linear var(--sc-motion-pulse) forwards; }
+}
+
+@keyframes solver2d-dash-settle { to { stroke-dasharray: 7 6; } }
+
+/* ------------------------------------------------------------------ Rutas */
+
+.solver2d-section { display: grid; gap: 16px; }
+
+.solver2d-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+
+.solver2d-section__head h2 {
+  margin: 0;
+  font-size: var(--sc-font-size-display-md);
+  font-weight: var(--sc-font-weight-bold);
+  letter-spacing: var(--sc-tracking-tight);
+}
+
+.solver2d-section__head p { margin: 0; color: var(--sc-color-text-muted); font-size: var(--sc-font-size-body); }
+
+.solver2d-section__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 2px;
+  border: 0;
+  background: none;
+  color: var(--sc-color-text-primary);
+  cursor: pointer;
+  font-size: var(--sc-font-size-control);
+  font-weight: var(--sc-font-weight-semibold);
+}
+.solver2d-section__link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.solver2d-paths { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+
+.solver2d-path {
+  min-height: 118px;
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 15px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  color: inherit;
+  cursor: pointer;
+  text-align: start;
+  transition: border-color var(--sc-motion-quick) var(--sc-ease-standard), background var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+.solver2d-path:hover { border-color: var(--sc-color-border-strong); background: var(--sc-color-surface-2); }
+
+.solver2d-path__icon {
+  width: 32px;
+  height: 32px;
+  margin-block-end: 3px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  color: var(--path-tone, var(--sc-color-text-primary));
+}
+
+.solver2d-path strong { font-size: var(--sc-font-size-panel); font-weight: var(--sc-font-weight-bold); }
+.solver2d-path span { color: var(--sc-color-text-muted); font-size: var(--sc-font-size-caption); line-height: var(--sc-line-height-compact); }
+
+/* --------------------------------------------------------------- Recientes */
+
+/* El hub de proyectos es una tabla en su superficie propia. Aquí entra como
+   rejilla de tarjetas: en Inicio lo que importa es reconocer un proyecto, no
+   comparar columnas. */
+.solver2d-recents .project-hub { padding: 0; border: 0; background: transparent; }
+.solver2d-recents .project-hub__header,
+.solver2d-recents .project-hub__columns { display: none; }
+.solver2d-recents .project-hub__list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.solver2d-recents .project-hub__row {
+  min-height: 116px;
+  padding: 15px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: space-between;
+  gap: 10px;
+  border-radius: var(--sc-radius-card);
+}
+.solver2d-recents .project-hub__updated { grid-column: 1; }
+.solver2d-recents .project-hub__actions { grid-column: 1; justify-content: flex-start; }
+.solver2d-recents .project-hub__actions button:first-child { margin-inline-end: auto; }
+
+/* ------------------------------------------------------------ Capacidades */
+
+.solver2d-capabilities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+
+.solver2d-capability {
+  display: grid;
+  gap: 6px;
+  padding: 14px 15px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+}
+
+.solver2d-capability strong { font-size: var(--sc-font-size-panel); font-weight: var(--sc-font-weight-bold); }
+.solver2d-capability p { margin: 0; color: var(--sc-color-text-muted); font-size: var(--sc-font-size-caption); line-height: var(--sc-line-height-compact); }
+
+.solver2d-state {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 6px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-pill);
+  color: var(--sc-color-text-secondary);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-bold);
+  letter-spacing: var(--sc-tracking-wide);
+  text-transform: uppercase;
+}
+
+.solver2d-state::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+.solver2d-state[data-state='available'] { color: var(--sc-color-signal-shear-ink); }
+.solver2d-state[data-state='experimental'] { color: var(--sc-color-signal-alert-ink); }
+
+.solver2d-note {
+  margin: 0;
+  color: var(--sc-color-text-muted);
+  font-size: var(--sc-font-size-caption);
+  line-height: var(--sc-line-height-compact);
+}
+
+/* -------------------------------------------------------------- Respuesta */
+
+@media (max-width: 1100px) {
+  .solver2d-hero { grid-template-columns: minmax(0, 1fr); }
+  /* Apilado, el diagrama va DESPUÉS del nombre y de la acción: su viewBox es
+     420×300, así que puesto arriba crecía con el ancho disponible y empujaba
+     «Continuar» fuera de la primera pantalla. */
+  .solver2d-hero__stage { width: 100%; max-width: 460px; justify-self: center; }
+  .solver2d-hero__copy { justify-self: stretch; }
+  .solver2d-capabilities { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 720px) {
+  .solver2d-home { gap: 30px; padding-inline: 14px; }
+  .solver2d-recents .project-hub__list { grid-template-columns: minmax(0, 1fr); }
+  .solver2d-paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .solver2d-capabilities { grid-template-columns: minmax(0, 1fr); }
+  .solver2d-hero__name { font-size: clamp(34px, 12vw, 46px); }
+  .solver2d-open__actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .solver2d-action { justify-content: center; }
+}
+
+@media (max-width: 380px) {
+  .solver2d-paths { grid-template-columns: minmax(0, 1fr); }
+  .solver2d-path { min-height: 0; }
+}

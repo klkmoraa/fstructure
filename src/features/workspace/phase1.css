@@ -5,7 +5,17 @@
 .app-shell:has(.console) > .console { grid-area:console; }
 .app-shell:has(.console) > .workspace { grid-area:workspace; min-height:0; }
 .app-shell:has(.console) > .workspace { grid-template-columns:minmax(0,1fr) var(--inspector-w); }
-@media (max-width:1023px) { .app-shell:has(.console) { display:flex; padding-bottom:52px; } .app-shell:has(.console) > .workspace { grid-template-columns:minmax(0,1fr) var(--inspector-w); } }
+/* La consola en K0 es una banda fija al borde inferior. El hueco que el shell
+   le reserva y su altura real salen del MISMO valor: mientras cada uno tenía el
+   suyo, la franja de estado quedaba parcialmente debajo de la banda. */
+@media (max-width:1023px) {
+  .app-shell:has(.console) {
+    display:flex;
+    --console-band:calc(56px + env(safe-area-inset-bottom));
+    padding-bottom:var(--console-band);
+  }
+  .app-shell:has(.console) > .workspace { grid-template-columns:minmax(0,1fr) var(--inspector-w); }
+}
 .history-controls { gap: var(--sc-space-1); }
 .compact-select { height: var(--sc-control-height-md); border: 0; background: transparent; border-radius: var(--sc-radius-md); padding: 0 28px 0 10px; color:var(--text); font-size:var(--sc-font-size-control); font-weight:520; max-width:170px; }
 .compact-select:hover,.compact-select:focus-visible { background:var(--surface-2); }
@@ -392,15 +402,17 @@
 .overlap-picker button { min-height:38px; padding:7px 9px; border:0; border-radius:var(--sc-radius-card); background:transparent; color:var(--text); text-align:left; }
 .overlap-picker button:hover,.overlap-picker button:focus-visible,.overlap-picker button[aria-selected='true'] { background:var(--accent-soft); color:var(--accent-on-soft); }
 .repeat-action-control { position:absolute; z-index:21; right:14px; bottom:68px; min-height:44px; padding:4px 7px 4px 5px; display:inline-flex; align-items:center; gap:7px; border:var(--sc-surface-edge); border-radius:var(--sc-radius-pill); background:var(--sc-color-surface-1); color:var(--text); font-size:10px; font-weight:750; letter-spacing:.01em; box-shadow:var(--sc-shadow-xs); cursor:pointer; }
-.repeat-action-control__icon { width:32px; height:32px; display:grid; place-items:center; flex:0 0 auto; border-radius:50%; background:color-mix(in srgb,var(--success) 12%,var(--sc-color-surface-2)); color:var(--success); box-shadow:var(--sc-shadow-pressed); }
+/* Repetir una acción no es un estado de éxito: el verde es del dominio y
+   aquí sólo decoraba. El control vuelve a la tinta del chrome. */
+.repeat-action-control__icon { width:32px; height:32px; display:grid; place-items:center; flex:0 0 auto; border-radius:50%; background:var(--sc-color-surface-2); color:var(--sc-color-text-secondary); }
 .repeat-action-control__copy { min-width:0; white-space:nowrap; }
-.repeat-action-control kbd { min-width:22px; min-height:22px; display:grid; place-items:center; padding:0 5px; border-radius:var(--sc-radius-card); background:var(--sc-color-surface-2); box-shadow:var(--sc-shadow-pressed); color:var(--success); font-family:var(--sc-font-mono); font-size:10px; font-weight:800; }
+.repeat-action-control kbd { min-width:22px; min-height:22px; display:grid; place-items:center; padding:0 5px; border:1px solid var(--sc-color-border-soft); border-radius:var(--sc-radius-card); background:var(--sc-color-surface-2); color:var(--sc-color-text-secondary); font-family:var(--sc-font-mono); font-size:10px; font-weight:800; }
 .repeat-action-control:hover { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-sm); }
-.repeat-action-control:hover .repeat-action-control__icon { background:color-mix(in srgb,var(--success) 17%,var(--sc-color-surface-2)); }
+.repeat-action-control:hover .repeat-action-control__icon { background:var(--sc-color-surface-3); color:var(--sc-color-text-primary); }
 .repeat-action-control:active,.repeat-action-control[data-repeat-affordance='active'] { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 .repeat-action-control:focus-visible,.repeat-preview button:focus-visible { outline:none; box-shadow:var(--sc-shadow-pressed),var(--sc-ring-focus); }
-.repeat-preview { position:absolute; z-index:22; left:50%; top:58px; transform:translateX(-50%); width:min(388px,calc(100% - 28px)); padding:8px; display:grid; grid-template-columns:34px minmax(0,1fr) auto; align-items:center; gap:9px; border:var(--sc-surface-edge); border-inline-start:3px solid color-mix(in srgb,var(--success) 74%,var(--border)); border-radius:var(--sc-radius-card); background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-md); }
-.repeat-preview__icon { width:34px; height:34px; display:grid; place-items:center; border-radius:var(--sc-radius-card); background:color-mix(in srgb,var(--success) 11%,var(--sc-color-surface-2)); color:var(--success); box-shadow:var(--sc-shadow-pressed); }
+.repeat-preview { position:absolute; z-index:22; left:50%; top:58px; transform:translateX(-50%); width:min(388px,calc(100% - 28px)); padding:8px; display:grid; grid-template-columns:34px minmax(0,1fr) auto; align-items:center; gap:9px; border:var(--sc-surface-edge); border-inline-start:3px solid var(--sc-color-border-strong); border-radius:var(--sc-radius-card); background:var(--sc-color-surface-1); box-shadow:var(--sc-shadow-md); }
+.repeat-preview__icon { width:34px; height:34px; display:grid; place-items:center; border-radius:var(--sc-radius-card); background:var(--sc-color-surface-2); color:var(--sc-color-text-secondary); }
 .repeat-preview__copy { min-width:0; display:grid; gap:2px; }
 .repeat-preview strong,.repeat-preview__copy > span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .repeat-preview strong { color:var(--text); font-size:11px; line-height:1.2; }.repeat-preview__copy > span { color:var(--muted); font-size:9px; line-height:1.35; }.repeat-preview button { min-height:34px; padding:0 9px; border:var(--sc-surface-edge); border-radius:var(--sc-radius-sm); background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-xs); color:var(--muted); font-size:9px; font-weight:700; white-space:nowrap; cursor:pointer; transition:var(--sc-transition-control); }.repeat-preview button:hover:not(:disabled) { color:var(--text); box-shadow:var(--sc-shadow-sm); }.repeat-preview button:active:not(:disabled) { background:var(--sc-color-surface-pressed); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
@@ -458,7 +470,10 @@
 .app-shell:has(.inspector-panel[data-surface-presentation='inset']) .workspace { grid-template-columns:var(--toolbar-w) minmax(0,1fr); }
 .inspector-panel[data-surface-presentation='dock'] { position:relative; display:flex; inset:auto; width:auto; height:auto; max-height:none; clip-path:none; border-radius:0; }
 .inspector-panel[data-surface-presentation='inset'] { position:absolute; z-index:31; inset:8px 8px 8px auto; display:flex; width:min(420px,calc(100% - 16px)); height:auto; max-height:none; clip-path:none; border-radius:var(--sc-radius-lg); }
-.inspector-panel[data-surface-presentation='sheet'] { position:fixed; z-index:31; inset:auto 0 calc(64px + var(--sc-visual-viewport-bottom,0px)); display:flex; width:100%; height:min(58dvh,540px); max-height:calc(var(--sc-visual-viewport-height,100dvh) - 76px); clip-path:none; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
+/* La hoja se apoya sobre la banda de la consola, no sobre una constante: los
+   64px fijos que había aquí dejaban de coincidir en cuanto la banda cambiaba de
+   altura o el dispositivo añadía área segura. */
+.inspector-panel[data-surface-presentation='sheet'] { position:fixed; z-index:31; inset:auto 0 calc(var(--console-band,56px) + 8px + var(--sc-visual-viewport-bottom,0px)); display:flex; width:100%; height:min(58dvh,540px); max-height:calc(var(--sc-visual-viewport-height,100dvh) - 76px); clip-path:none; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
 .results-panel[data-surface-presentation='dock'] { position:relative; inset:auto; width:auto; }
 .results-panel[data-surface-presentation='inset'] { position:absolute; z-index:8; inset:auto 8px 8px; width:auto; height:min(42dvh,320px)!important; border-radius:var(--sc-radius-lg); }
 .results-panel[data-surface-presentation='sheet'] { position:absolute; z-index:8; inset:auto 0 0; width:100%; height:min(55dvh,500px)!important; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
@@ -486,9 +501,13 @@
   .inspector-panel.mobile-open[data-mobile-detent='compact'] { height:min(35dvh,320px); }
   .inspector-panel.mobile-open[data-mobile-detent='medium'] { height:min(55dvh,540px); }
   .inspector-panel.mobile-open[data-mobile-detent='large'] { height:min(85dvh,780px,calc(var(--sc-visual-viewport-height,100dvh) - 76px)); }
-  /* The Inspector owns the lower interaction plane while its sheet is open.
-     Keeping the canvas dock there blocks the Inspector's last controls. */
-  .app-shell:has(.inspector-panel.mobile-open[data-surface-presentation='sheet']) .tool-rail {
+  /* El Inspector se queda con el plano inferior de interacción mientras su hoja
+     está abierta: un dock flotando sobre el lienzo taparía sus últimos
+     controles. Pero el riel que vive DENTRO de la consola no flota —es la banda
+     inferior, y la hoja se apoya encima de ella—, así que ocultarlo sólo dejaba
+     al usuario sin herramientas de modelado y con un hueco en blanco en la
+     banda. La regla apunta ahora al riel que de verdad flota. */
+  .app-shell:has(.inspector-panel.mobile-open[data-surface-presentation='sheet']) .tool-rail:not(.console__tools .tool-rail) {
     opacity:0;
     pointer-events:none;
   }
@@ -1000,20 +1019,31 @@
     border-color 180ms var(--sc-ease-standard);
 }
 
+/* Un hover cambia de plano; no levanta la pieza. */
 .app-shell .tool-rail .tool-button:hover:not(:disabled) {
   border-color:color-mix(in srgb,var(--tool-color,var(--accent)) 36%,var(--sc-color-border));
   background:var(--sc-color-surface-elevated);
-  box-shadow:var(--sc-shadow-md);
-  transform:translateY(-2px);
 }
 
+/* ÚNICA definición de «herramienta activa», para las tres composiciones:
+   inversión a tinta. El riel es chrome y por tanto acromático —el color queda
+   para lo que el modelo dice, no para el botón que lo dibuja—, así que la
+   herramienta activa se distingue por inversión y no por tinte.
+
+   `--tool-color` también se invierte: varias reglas leen esa variable para el
+   icono y para el filete, y todas tienen que llegar a la misma conclusión que
+   el fondo que ya se pintó. Sin esto, el glifo se quedaba en gris sobre negro y
+   la herramienta activa parecía un hueco. */
 .app-shell .tool-rail .tool-button:is(.active,.is-active),
-.app-shell .tool-rail .tool-button:is(.active,.is-active):hover:not(:disabled),
+.app-shell .tool-rail .tool-button:is(.active,.is-active):hover:not(:disabled) {
+  --tool-color:var(--sc-color-action-foreground);
+  border-color:var(--sc-color-action-primary);
+  background:var(--sc-color-action-primary);
+  color:var(--sc-color-action-foreground);
+}
+
 .app-shell .tool-rail .tool-button:active:not(:disabled) {
-  border-color:color-mix(in srgb,var(--tool-color,var(--accent)) 34%,var(--sc-color-border));
   background:var(--sc-color-surface-pressed);
-  box-shadow:var(--sc-shadow-pressed);
-  transform:var(--sc-press-transform);
 }
 
 .app-shell .tool-rail .tool-button:disabled {
@@ -1148,11 +1178,8 @@
   box-shadow:var(--sc-shadow-xs);
 }
 
-.app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button.active,
 .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:active:not(:disabled) {
   background:var(--sc-color-surface-pressed);
-  box-shadow:var(--sc-shadow-pressed);
-  transform:var(--sc-press-transform);
 }
 
 .app-shell[data-shell-class='K0'] .inspector-panel[data-surface-presentation='sheet']::before {
@@ -1626,6 +1653,9 @@
     display:none;
   }
 
+  /* El riel táctil usa el MISMO radio que cualquier otro control: un botón de
+     44px y otro de 28px son los dos controles. El círculo que había aquí era la
+     única forma del sistema que no salía de la escala. */
   .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button {
     width:44px;
     min-width:44px;
@@ -1635,7 +1665,7 @@
     scroll-snap-align:center;
     padding:0;
     border:1px solid transparent;
-    border-radius:50%;
+    border-radius:var(--sc-radius-control);
     background:transparent;
     box-shadow:none;
   }
@@ -1654,13 +1684,18 @@
     box-shadow:var(--sc-shadow-xs);
   }
 
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button.active,
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button.is-active,
+  /* La composición táctil declara su propio reposo transparente unas líneas más
+     arriba, con la misma especificidad que la definición compartida y después
+     que ella: sin repetir aquí el estado activo, la inversión a tinta se
+     perdía. Los valores son los mismos; la única fuente sigue siendo
+     `.app-shell .tool-rail .tool-button:is(.active,.is-active)`. */
+  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active,.is-active) {
+    border-color:var(--sc-color-action-primary);
+    background:var(--sc-color-action-primary);
+  }
+
   .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:active:not(:disabled) {
-    border-color:color-mix(in srgb,var(--tool-color,var(--accent)) 24%,var(--sc-color-border));
-    background:var(--sc-color-surface-inset);
-    color:var(--tool-color,var(--accent));
-    box-shadow:var(--sc-shadow-pressed);
+    background:var(--sc-color-surface-pressed);
     transform:var(--sc-press-transform);
   }
 
