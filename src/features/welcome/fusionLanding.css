@@ -84,7 +84,7 @@
 .fs-landing-nav__links a,
 .fs-landing-nav__brand,
 .fs-landing-footer a {
-  transition: color 180ms var(--sc-ease-standard), opacity 180ms var(--sc-ease-standard);
+  transition: color var(--sc-motion-control) var(--sc-ease-standard), opacity var(--sc-motion-control) var(--sc-ease-standard);
 }
 
 .fs-landing-nav__links a:hover,
@@ -127,7 +127,7 @@
   flex-direction: column;
   justify-content: center;
   border-right: var(--sc-depth-base-border);
-  animation: fs-landing-enter 720ms var(--sc-ease-reveal) both;
+  animation: fs-landing-enter var(--sc-motion-trace) var(--sc-ease-reveal) both;
 }
 
 .fs-landing-eyebrow,
@@ -192,7 +192,7 @@
   font-size: var(--sc-font-size-control);
   font-weight: 650;
   cursor: pointer;
-  transition: transform 180ms var(--sc-ease-press), background 180ms var(--sc-ease-standard), box-shadow 180ms var(--sc-ease-standard);
+  transition: transform var(--sc-motion-press) var(--sc-ease-press), background var(--sc-motion-control) var(--sc-ease-standard), box-shadow var(--sc-motion-control) var(--sc-ease-standard);
 }
 
 .fs-action:hover,
@@ -406,7 +406,7 @@
   z-index: 2;
   object-fit: contain;
   filter: drop-shadow(var(--sc-depth-raised-shadow));
-  transition: transform 560ms var(--sc-ease-emphasized);
+  transition: transform var(--sc-motion-trace) var(--sc-ease-emphasized);
 }
 
 .fs-tool-card:hover .fs-tool-card__media img {
@@ -810,9 +810,9 @@
   .fs-landing *::before,
   .fs-landing *::after {
     scroll-behavior: auto !important;
-    animation-duration: 1ms !important;
+    animation-duration: 0s !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 1ms !important;
+    transition-duration: 0s !important;
   }
 
   .fs-hero-motion {
