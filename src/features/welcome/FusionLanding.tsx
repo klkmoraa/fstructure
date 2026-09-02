@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useState } from 'react';
+import { type CSSProperties, type KeyboardEvent, useState } from 'react';
 import {
   ArrowDown,
   ArrowRight,
@@ -291,7 +291,15 @@ export const FusionLanding = ({ language, onOpenSolver2D, onOpenSolver3D, onOpen
               decoding="async"
             />
           </div>
-          <article key={activeFamily.id} id="fs-family-panel" className="fs-family-workbench__copy" role="tabpanel" aria-labelledby={`fs-family-tab-${activeFamily.id}`} tabIndex={0}>
+          <article
+            key={activeFamily.id}
+            id="fs-family-panel"
+            className="fs-family-workbench__copy"
+            style={{ '--fs-title-chars': activeFamily.name[language].length } as CSSProperties}
+            role="tabpanel"
+            aria-labelledby={`fs-family-tab-${activeFamily.id}`}
+            tabIndex={0}
+          >
             <div className="fs-family-workbench__meta">
               <span>{activeFamily.code}</span>
               <ActiveIcon size={20} aria-hidden="true" />
@@ -349,7 +357,11 @@ export const FusionLanding = ({ language, onOpenSolver2D, onOpenSolver3D, onOpen
       <section className="fs-product-flow" aria-label={text.title}>
         {WORKFLOW.map((step, index) => (
           <article key={step.id} className={`fs-product-flow__step ${index % 2 === 1 ? 'fs-product-flow__step--reverse' : ''}`}>
-            <div className="fs-product-flow__copy">
+            {/* El titular es tipografía de display dentro de una columna
+                estrecha, así que su tamaño tiene que conocer el largo de la
+                palabra que le toca: `Understand` no cabe donde sí cabe
+                `Entender`. Ver `fusionLanding.css`. */}
+            <div className="fs-product-flow__copy" style={{ '--fs-title-chars': text[step.id].length } as CSSProperties}>
               <span>{step.index}</span>
               <h2>{text[step.id]}</h2>
               <p>{text[`${step.id}Body`]}</p>

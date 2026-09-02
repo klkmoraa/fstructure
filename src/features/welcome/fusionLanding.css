@@ -274,6 +274,7 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
 }
 
 .fs-family-workbench__copy {
+  container-type: inline-size;
   min-height: 380px;
   padding: clamp(26px, 4vw, 54px);
   display: flex;
@@ -316,11 +317,25 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   font-weight: 700;
 }
 
+/* El texto y su acción se centran juntos en el hueco que queda, en vez de
+   hundirse al fondo. Con `margin-top: auto` sólo en el texto, el panel tenía
+   dos anclas —el índice arriba y el nombre abajo— y en cuanto la mesa pasaba
+   de unos 500px de alto, los 250px de en medio dejaban de leerse como aire y
+   pasaban a leerse como un hueco.
+
+   Los dos automáticos van en extremos distintos del grupo a propósito: el
+   sobrante se reparte por encima del texto y por debajo de la acción, así que
+   los dos se quedan pegados entre sí en vez de separarse. Cuando no sobra
+   nada —en móvil, donde el panel se ajusta al texto— no hacen nada. */
 .fs-family-workbench__copy > div:nth-child(2) { margin-top: auto; }
+.fs-family-workbench__copy > :nth-child(3) { margin-bottom: auto; }
 
 .fs-family-workbench h3 {
   margin: 0 0 11px;
-  font-size: clamp(36px, 3.5vw, 58px);
+  font-size: min(
+    clamp(36px, 3.5vw, 58px),
+    calc(100cqi / (var(--fs-title-chars, 8) * 0.5))
+  );
   font-weight: 660;
   letter-spacing: -.065em;
   line-height: .94;
@@ -429,7 +444,24 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   border-block-end: 1px solid var(--sc-color-border-soft);
 }
 
+/* TIPOGRAFÍA DE DISPLAY EN COLUMNA ESTRECHA.
+   Estos dos titulares se dimensionaban con `vw` —el ancho del VIEWPORT— dentro
+   de columnas que ocupan un tercio de él. Con las palabras cortas del español
+   colaba; con las largas del inglés no: `Understand` se salía de su columna
+   entre 56 y 88px en todo el rango de 1024 a 1600, y `Connections` otro tanto
+   a 1280 y 1440. No se veía en revisión porque la revisión se hace en español.
+
+   El tamaño pasa a conocer dos cosas que antes ignoraba: el ancho de SU columna
+   (`cqi`, de ahí el `container-type` de abajo) y cuántos caracteres le tocan
+   —`--fs-title-chars`, que pone el componente—. El coeficiente es el ancho
+   medio por carácter de cada escala, medido sobre la palabra más ancha que
+   cada bloque puede recibir.
+
+   `min()` con el `clamp` original significa que el tope sólo actúa cuando de
+   verdad haría falta: `Crear`, `Civil` o `Análisis` conservan su tamaño
+   exacto, y sólo las palabras que no caben bajan. */
 .fs-product-flow__copy {
+  container-type: inline-size;
   padding: var(--fs-landing-gutter);
   display: flex;
   flex-direction: column;
@@ -439,7 +471,10 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
 .fs-product-flow__copy h2 {
   max-width: 430px;
   margin-top: 19px;
-  font-size: clamp(52px, 6.1vw, 98px);
+  font-size: min(
+    clamp(52px, 6.1vw, 98px),
+    calc(100cqi / (var(--fs-title-chars, 8) * 0.46))
+  );
 }
 
 .fs-product-flow__copy p {
