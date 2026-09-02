@@ -76,7 +76,7 @@ import {
 import { SurfacePresentationContext } from '../workspace/SurfacePresentationContext';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { ELASTIC_SATURATION_RATIO, elasticDemandGate, elasticDemandView, elasticIndexPaint, sectionElasticIndex } from '../results/elasticDemand';
-import { CoordinateEntry, type CoordinateOrigin } from './CoordinateEntry';
+import { CoordinateEntry, type CoordinateOrigin, type CoordinatePreview } from './CoordinateEntry';
 import { resolveRepeatRecipe, type RepeatRecipe } from './repeatAction';
 import { RepeatActionOverlay } from './RepeatActionOverlay';
 import { prepareDuplicatePreview } from './duplicatePreview';
@@ -278,7 +278,7 @@ export const StructuralCanvas = ({
   // propio botón. `coordinatePreview` es el punto que el panel está definiendo,
   // en unidades de modelo, para que el lienzo lo dibuje antes de confirmarlo.
   const [coordinateEntryOpen, setCoordinateEntryOpen] = useState(false);
-  const [coordinatePreview, setCoordinatePreview] = useState<{ x: number; y: number } | null>(null);
+  const [coordinatePreview, setCoordinatePreview] = useState<CoordinatePreview | null>(null);
   const [candidatePicker, setCandidatePicker] = useState<CandidatePickerState | null>(null);
   const [supportPlacement, setSupportPlacement] = useState<{
     nodeId: string;
@@ -829,11 +829,14 @@ export const StructuralCanvas = ({
     return id;
   };
 
-  const createMemberEndpoint = async (point: { x: number; y: number }) => {
+  /** Devuelve si el punto se ACEPTÓ: el primer extremo siempre, el segundo sólo
+   *  cuando de verdad se separa del primero. Quien escribe las coordenadas usa
+   *  esa respuesta para decidir si puede vaciar sus campos. */
+  const createMemberEndpoint = async (point: { x: number; y: number }): Promise<boolean> => {
     if (!memberStart) {
       const id = addNode(point);
       setMemberStart(id);
-      return;
+      return id !== '';
     }
     const startNode = nodeMap.get(memberStart);
     if (!startNode || Math.hypot(point.x - startNode.x, point.y - startNode.y) <= 1e-10) {
@@ -841,7 +844,7 @@ export const StructuralCanvas = ({
       // donde salen los demás avisos de colocación del lienzo, y así también se
       // ve cuando el extremo se pica con el dedo en vez de escribirse.
       showCanvasFeedback(t('canvas.endpointSeparated'));
-      return;
+      return false;
     }
     let memberId = '';
     const template = repeatRecipe?.kind === 'member'
@@ -858,12 +861,17 @@ export const StructuralCanvas = ({
     setMemberStart(null);
     if (memberId) setSelection({ kind: 'member', id: memberId });
     setRepeatRecipe(null);
+    return memberId !== '';
   };
 
-  /** Un punto escrito se coloca tal cual: ya es exacto y no pasa por `snapPoint`. */
-  const placeTypedPoint = (point: { x: number; y: number }) => {
-    if (activeTool === 'member') void createMemberEndpoint(point);
-    else addNode(point);
+  /** Un punto escrito se coloca tal cual: ya es exacto y no pasa por `snapPoint`.
+   *
+   *  Devuelve si el modelo lo aceptó, para que el panel sepa si puede vaciar sus
+   *  campos: un extremo de barra coincidente con su origen se rechaza, y borrar
+   *  los números ahí obliga a reescribir los dos para corregir uno. */
+  const placeTypedPoint = async (point: { x: number; y: number }) => {
+    if (activeTool !== 'member') return addNode(point) !== '';
+    return createMemberEndpoint(point);
   };
 
   /** El nudo desde el que miden los modos relativo y polar.
@@ -2572,8 +2580,13 @@ export const StructuralCanvas = ({
             también la medida, que es lo que hace comprobable el número escrito
             sin tener que confirmarlo. */}
         {coordinatePreview ? (() => {
-          const point = toScreen(coordinatePreview.x, coordinatePreview.y);
-          const from = coordinateOrigin ? toScreen(coordinateOrigin.x, coordinateOrigin.y) : null;
+          const point = toScreen(coordinatePreview.point.x, coordinatePreview.point.y);
+          // El origen lo declara el PANEL, que es quien conoce el modo. Aquí
+          // sólo se sabe qué nudo está seleccionado, y en Absoluto ese nudo no
+          // es el origen de nada: dibujar la medida desde él haría leer un
+          // desplazamiento relativo donde el panel dice «desde el origen del
+          // modelo».
+          const from = coordinatePreview.origin ? toScreen(coordinatePreview.origin.x, coordinatePreview.origin.y) : null;
           return <g className="coordinate-preview" pointerEvents="none" aria-hidden="true">
             {from ? <line x1={from.x} y1={from.y} x2={point.x} y2={point.y} /> : null}
             <circle className="coordinate-preview__halo" cx={point.x} cy={point.y} r={11} />

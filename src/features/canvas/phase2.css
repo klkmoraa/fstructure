@@ -166,6 +166,42 @@
   bottom:calc(18px + var(--sc-control-height-md) * 3 + 10px + var(--sc-size-target-touch) + 8px);
   width:272px;
 }
+
+/* La geometría de la hoja va con el ATRIBUTO, no con una consulta de ancho.
+   `compact` sale de la clase de shell, y K0 llega hasta 1023px: atada a
+   `max-width:700px`, entre 701 y 1023 el panel se declaraba `sheet` y no lo
+   alcanzaba ni esta regla ni la de `anchored`. Sin inset ni ancho, un
+   `position:absolute` cae en su sitio estático —detrás de un `svg` de alto
+   completo— y se abría fuera del lienzo, que además recorta. Las dos fuentes de
+   la decisión tienen que ser una. */
+.coordinate-entry[data-coordinate-entry='sheet'] {
+  /* Se ancla al borde del disparador y NO va a sangre completa: K0 llega a
+     1023px, y a ese ancho una hoja a todo lo ancho estira las teclas del
+     teclado a 290px cada una. Un teclado numérico se usa con un pulgar y su
+     ancho útil no crece con la pantalla. En teléfono sí va a sangre, porque
+     ahí 420px ya son toda la pantalla. */
+  left:auto;
+  right:max(10px,env(safe-area-inset-right));
+  bottom:10px;
+  width:min(420px,calc(100% - 20px));
+  max-height:calc(100% - 20px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border-radius:var(--sc-radius-sheet);
+}
+/* El teclado propio es táctil en todo el rango compacto, no sólo en teléfono. */
+.coordinate-entry[data-coordinate-entry='sheet'] .coordinate-entry__keypad button { min-height:46px; font-size:var(--sc-font-size-display-md); }
+.coordinate-entry[data-coordinate-entry='sheet'] .coordinate-entry__fields input { height:46px; }
+
+/* El disparador acompaña a los controles de cámara, que en compacto se pasan
+   al borde derecho en fila (regla de `@media (max-width:1023px)`). */
+@media (max-width:1023px) {
+  .canvas-coordinate-launcher {
+    left:auto;
+    right:12px;
+    bottom:calc(12px + var(--sc-control-height-md) + 8px);
+  }
+}
 .coordinate-entry__head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
 .coordinate-entry__head strong { font-size:var(--sc-font-size-control); font-weight:var(--sc-font-weight-bold); }
 
@@ -309,18 +345,18 @@
 .coordinate-preview__halo { fill:none; stroke:currentColor; stroke-width:1.6; opacity:.45; vector-effect:non-scaling-stroke; }
 .coordinate-preview__dot { fill:currentColor; stroke:none; }
 
-/* En teléfono el panel es una hoja a lo ancho, apoyada sobre la banda de la
-   consola y sobre el área segura. No usa `100dvh` ni el viewport visual porque
-   el teclado del sistema no sube: los campos son de sólo lectura y las teclas
-   son suyas. Esa es toda la razón de tener teclado propio — con el nativo, la
-   hoja quedaría empujada fuera de la pantalla y la previsualización, tapada. */
+/* En teléfono la hoja se aprieta contra los bordes y el disparador baja de
+   tamaño, porque la cámara también lo hace (`mobileCanvasDensity.css`). El área
+   segura INFERIOR no se suma: ya la reserva la banda de la consola
+   (`--console-band` en `phase1.css`) y el lienzo termina encima de ella, así
+   que contarla otra vez la contaría dos veces. Los lados sí, porque en
+   horizontal el recorte de la pantalla no lo cubre nadie.
+
+   La hoja no usa `100dvh` ni el viewport visual porque el teclado del sistema
+   no sube: los campos son de sólo lectura y las teclas son suyas. Esa es toda
+   la razón de tener teclado propio. */
 @media (max-width:700px) {
-  /* El área segura inferior ya la reserva la banda de la consola
-     (`--console-band` en `phase1.css`), y el lienzo termina encima de ella:
-     volver a sumarla aquí la contaría dos veces. Los lados sí, porque en
-     horizontal el recorte de la pantalla no lo cubre nadie. */
   .canvas-coordinate-launcher {
-    left:auto;
     right:max(7px,env(safe-area-inset-right));
     bottom:55px;
   }
@@ -332,15 +368,7 @@
     bottom:7px;
     width:auto;
     max-height:calc(100% - 14px);
-    overflow-y:auto;
-    overscroll-behavior:contain;
-    border-radius:var(--sc-radius-sheet);
   }
-  /* Las teclas mandan en el alto de la hoja: por debajo de esto un pulgar
-     empieza a fallar, y una tecla que falla en una entrada numérica no es un
-     detalle de comodidad. */
-  .coordinate-entry__keypad button { min-height:46px; font-size:var(--sc-font-size-display-md); }
-  .coordinate-entry__fields input { height:46px; }
 }
 
 .canvas-hint { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); border-radius: var(--sc-radius-pill); padding: 7px 9px 7px 13px; font-size: 12px; display:flex; align-items:center; gap:8px; pointer-events:none; }.canvas-hint button { width:24px; height:24px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--surface-2); color:var(--muted); pointer-events:auto; }.canvas-hint button:hover { color:var(--text); background:var(--border-soft); }
@@ -2145,7 +2173,7 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
   .diagram-layer .diagram-line-exact {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
-    animation: diagram-trace var(--sc-motion-pulse) var(--sc-ease-reveal) forwards;
+    animation: diagram-trace var(--sc-motion-trace) var(--sc-ease-reveal) forwards;
   }
 
   .diagram-layer .diagram-fill,

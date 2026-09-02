@@ -23,8 +23,10 @@ afterEach(cleanup);
 const N1 = { x: 2, y: 1, label: 'N1' };
 
 const montar = (props: Partial<Parameters<typeof CoordinateEntry>[0]> = {}) => {
-  const onPlace = vi.fn();
-  const onPreviewChange = vi.fn();
+  // Por defecto el modelo acepta; una prueba del rechazo pasa el suyo, y el
+  // espía que se devuelve tiene que ser ÉSE y no el de aquí.
+  const onPlace = vi.fn(props.onPlace ?? (() => true));
+  const onPreviewChange = vi.fn(props.onPreviewChange ?? (() => undefined));
   render(<ProjectProvider><CoordinateEntry
     open
     onOpenChange={() => undefined}
@@ -32,10 +34,10 @@ const montar = (props: Partial<Parameters<typeof CoordinateEntry>[0]> = {}) => {
     origin={null}
     units="kN-m"
     lengthLabel="m"
-    onPlace={onPlace}
-    onPreviewChange={onPreviewChange}
     compact={false}
     {...props}
+    onPlace={onPlace}
+    onPreviewChange={onPreviewChange}
   /></ProjectProvider>);
   return { onPlace, onPreviewChange };
 };
@@ -99,9 +101,51 @@ describe('CoordinateEntry · el punto que produce', () => {
     const [x, y] = campos();
     await userEvent.type(x, '5');
     await userEvent.type(y, '6');
-    expect(onPreviewChange).toHaveBeenLastCalledWith({ x: 5, y: 6 });
+    expect(onPreviewChange).toHaveBeenLastCalledWith({ point: { x: 5, y: 6 }, origin: null });
     await userEvent.clear(y);
     expect(onPreviewChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('en Absoluto no manda origen aunque haya un nudo de referencia', async () => {
+    // El lienzo conoce el nudo seleccionado pero no el modo. Si el origen se
+    // dedujera allí, en Absoluto se dibujaría una medida desde ese nudo y se
+    // leería como un desplazamiento relativo, justo donde el panel dice «desde
+    // el origen del modelo».
+    const { onPreviewChange } = montar({ origin: N1 });
+    await userEvent.type(campos()[0], '5');
+    await userEvent.type(campos()[1], '6');
+    expect(onPreviewChange).toHaveBeenLastCalledWith({ point: { x: 5, y: 6 }, origin: null });
+  });
+
+  it('en Relativo manda el origen desde el que mide', async () => {
+    const { onPreviewChange } = montar({ origin: N1 });
+    await userEvent.click(screen.getByRole('button', { name: 'Relativo' }));
+    await userEvent.type(campos()[0], '1');
+    await userEvent.type(campos()[1], '1');
+    expect(onPreviewChange).toHaveBeenLastCalledWith({ point: { x: 3, y: 2 }, origin: { x: 2, y: 1 } });
+  });
+
+  it('conserva los campos cuando el modelo rechaza la colocación', async () => {
+    // Colocar puede rechazarse —un extremo de barra que coincide con su
+    // origen—. Vaciar igual obliga a reescribir los dos números para corregir
+    // uno, y el aviso llega cuando ya no se ve lo que se escribió.
+    const { onPlace } = montar({ target: 'member', onPlace: vi.fn(() => false) });
+    await userEvent.type(campos()[0], '4');
+    await userEvent.type(campos()[1], '5');
+    await userEvent.click(screen.getByRole('button', { name: /crear|colocar/i }));
+    expect(onPlace).toHaveBeenCalledTimes(1);
+    expect(campos().map((campo) => campo.value)).toEqual(['4', '5']);
+  });
+
+  it('espera a una colocación asíncrona antes de decidir si vacía', async () => {
+    // `createMemberEndpoint` es asíncrona: sin esperar su respuesta, el panel
+    // vaciaría los campos antes de saber si el modelo aceptó.
+    const { onPlace } = montar({ target: 'member', onPlace: vi.fn(async () => false) });
+    await userEvent.type(campos()[0], '4');
+    await userEvent.type(campos()[1], '5');
+    await userEvent.click(screen.getByRole('button', { name: /crear|colocar/i }));
+    expect(onPlace).toHaveBeenCalledTimes(1);
+    expect(campos().map((campo) => campo.value)).toEqual(['4', '5']);
   });
 
   it('convierte a unidades de modelo: en N-mm, 1000 escritos son 1 metro', async () => {

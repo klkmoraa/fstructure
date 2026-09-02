@@ -45,6 +45,13 @@ import { formatFixed } from '../../utils/numberFormat';
 
 export type CoordinateMode = 'absolute' | 'relative' | 'polar';
 
+/** Lo que el lienzo necesita para dibujar el punto antes de confirmarlo. */
+export interface CoordinatePreview {
+  point: { x: number; y: number };
+  /** Sólo en Relativo y Polar: el nudo desde el que se está midiendo. */
+  origin: { x: number; y: number } | null;
+}
+
 /** El nudo desde el que se miden los modos relativo y polar. */
 export interface CoordinateOrigin {
   x: number;
@@ -61,10 +68,18 @@ export interface CoordinateEntryProps {
   origin: CoordinateOrigin | null;
   units: UnitSystemId;
   lengthLabel: string;
-  /** Punto resuelto, en unidades de MODELO. */
-  onPlace: (point: { x: number; y: number }) => void;
-  /** Punto resuelto o `null`, en unidades de MODELO, para el fantasma. */
-  onPreviewChange: (point: { x: number; y: number } | null) => void;
+  /** Coloca el punto resuelto, en unidades de MODELO.
+   *
+   *  Devuelve si el modelo lo ACEPTÓ. Colocar puede rechazarse —un extremo de
+   *  barra que coincide con su origen— y sin esa respuesta el panel vaciaba los
+   *  campos igual: el aviso llegaba con los números ya borrados y había que
+   *  reescribir los dos para corregir uno. */
+  onPlace: (point: { x: number; y: number }) => boolean | Promise<boolean>;
+  /** El fantasma: el punto resuelto y, si el modo lo mide desde un nudo, el
+   *  origen que de verdad se usó. En Absoluto el origen es `null` aunque haya un
+   *  nudo seleccionado — dibujar la medida ahí haría leer un desplazamiento
+   *  relativo donde el panel dice «desde el origen del modelo». */
+  onPreviewChange: (preview: CoordinatePreview | null) => void;
   /** K0: añade el teclado propio y ancla el panel al borde inferior. */
   compact: boolean;
 }
@@ -124,13 +139,22 @@ export const CoordinateEntry = ({
   const resolved = open ? resolve() : null;
 
   // La previsualización es un efecto porque vive en el lienzo, no aquí: el
-  // panel dice cuál es el punto y el lienzo decide cómo dibujarlo.
+  // panel dice cuál es el punto y desde dónde lo mide, y el lienzo decide cómo
+  // dibujarlo. El origen se manda desde aquí y no se deduce allí: el lienzo
+  // conoce el nudo seleccionado pero no el modo, y en Absoluto ese nudo no es
+  // el origen de nada.
+  const midiendoDesdeOrigen = mode !== 'absolute' && origin !== null;
   const previewX = resolved?.x ?? null;
   const previewY = resolved?.y ?? null;
+  const originX = midiendoDesdeOrigen ? origin.x : null;
+  const originY = midiendoDesdeOrigen ? origin.y : null;
   useEffect(() => {
-    onPreviewChange(previewX === null || previewY === null ? null : { x: previewX, y: previewY });
+    onPreviewChange(previewX === null || previewY === null ? null : {
+      point: { x: previewX, y: previewY },
+      origin: originX === null || originY === null ? null : { x: originX, y: originY },
+    });
     return () => onPreviewChange(null);
-  }, [onPreviewChange, previewX, previewY]);
+  }, [onPreviewChange, originX, originY, previewX, previewY]);
 
   useEffect(() => {
     if (!open) return;
@@ -169,13 +193,16 @@ export const CoordinateEntry = ({
     })());
   };
 
-  const submit = () => {
+  const submit = async () => {
     const point = resolve();
     if (!point) {
       setError(t('canvas.twoValidNumbers'));
       return;
     }
-    onPlace(point);
+    // Sólo se vacía si el modelo lo aceptó. Un extremo de barra que coincide con
+    // su origen se rechaza, y borrar los campos ahí obliga a reescribir los dos
+    // números para corregir uno.
+    if (!(await onPlace(point))) return;
     // «Colocar y seguir»: los campos se vacían y el panel se queda. Encadenar
     // una retícula de nudos es el caso normal, no la excepción.
     setValues({ first: '', second: '' });
@@ -246,7 +273,7 @@ export const CoordinateEntry = ({
           value={values[field]}
           onFocus={() => setFocused(field)}
           onChange={(event) => setField(field, event.target.value)}
-          onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); submit(); } }}
+          onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void submit(); } }}
         />
         <small>{field === 'first' ? lengthLabel : secondUnit}</small>
       </label>)}
@@ -278,7 +305,7 @@ export const CoordinateEntry = ({
 
     {error ? <p className="coordinate-entry__error" role="alert">{error}</p> : null}
 
-    <button type="button" className="coordinate-entry__place" onClick={submit}>
+    <button type="button" className="coordinate-entry__place" onClick={() => { void submit(); }}>
       <Plus size={15} aria-hidden="true" />
       {t(target === 'node' ? 'coord.placeAndContinue' : 'canvas.createMember')}
     </button>
