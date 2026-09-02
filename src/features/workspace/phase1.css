@@ -557,11 +557,18 @@
   box-shadow:var(--sc-shadow-md);
 }
 
+/* El riel flota SOBRE el lienzo, no sobre Resultados. `bottom:76px` era una
+   constante contra el borde de la ventana —ningún antepasado del riel está
+   posicionado—, así que no sabía nada del panel: con Resultados desplegado el
+   riel caía dentro y tapaba la explicación del índice elástico, y con el panel
+   plegado tapaba media banda del centro analítico. `--results-band` la publica
+   el propio panel al medirse, así que arrastrar su separador o plegarlo mueve
+   el riel con él. El respaldo cubre el caso sin panel montado. */
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock {
   position:absolute;
   z-index:38;
   left:50%;
-  bottom:76px;
+  bottom:calc(var(--results-band,76px) + 14px);
   width:max-content;
   max-width:calc(100% - 40px);
   height:auto;
@@ -1748,9 +1755,29 @@
     --sc-tool-color:color-mix(in srgb,var(--sc-color-tool-point-load) 70%,var(--sc-color-text-primary));
   }
 
+  /* «Enfocar» y «✕» se suben a la fila del título en vez de gastar una fila
+     propia. Medido en un teléfono: la barra ocupaba 53px de un panel de 464,
+     un 11% del alto, para dos controles que caben de sobra al final del
+     título. La fila del título reserva su hueco con `padding-inline-end`, así
+     que el galón de plegado sigue teniendo su sitio y no se solapan. */
   .app-shell[data-shell-class='K0'] .results-panel .results-mobile-commandbar {
     align-items:center;
     gap:6px;
+  }
+
+  .app-shell[data-shell-class='K0'] .results-panel:not(.mobile-collapsed) .results-mobile-commandbar {
+    position:absolute;
+    inset-block-start:0;
+    inset-inline-end:8px;
+    z-index:3;
+    height:48px;
+    padding:0;
+    border:0;
+    background:transparent;
+  }
+
+  .app-shell[data-shell-class='K0'] .results-panel:not(.mobile-collapsed) .results-mobile-toggle {
+    padding-inline-end:148px;
   }
 
   .app-shell[data-shell-class='K0'] .results-panel .result-metric-rail.is-mobile {
