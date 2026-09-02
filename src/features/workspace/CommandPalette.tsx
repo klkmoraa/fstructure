@@ -7,6 +7,7 @@ import { buildCommands, type CommandCategory, type CommandContext, type CommandL
 import type { EditorLayerAction } from '../canvas/editorLayers';
 import type { SurfacePresentation } from './surfacePresentation';
 import { recordLocalMetric } from '../../analytics/localMetrics';
+import './commandPalette.css';
 
 export interface CommandPaletteProps {
   open: boolean;

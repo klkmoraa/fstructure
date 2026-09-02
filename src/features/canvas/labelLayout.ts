@@ -1,7 +1,16 @@
 import type { CanvasSafeRect } from './canvasChromeGeometry';
 
 export type SmartLabelPriority = 0 | 1 | 2 | 3;
-export type SmartLabelTone = 'neutral' | 'selection' | 'force' | 'shear' | 'moment' | 'dimension' | 'axial' | 'reaction';
+/**
+ * Los tres primeros tonos de carga nombran la FAMILIA de lo que se aplica, no
+ * la señal del resultado que comparte su tono. `force` y `moment` seguían
+ * pintando la etiqueta de una distribuida con el azul de la puntual y la de un
+ * momento aplicado con el rojo del momento flector, de modo que el número no
+ * decía de qué carga era y contradecía al símbolo que anotaba.
+ */
+export type SmartLabelTone =
+  | 'load-point' | 'load-distributed' | 'load-moment'
+  | 'neutral' | 'selection' | 'force' | 'shear' | 'moment' | 'dimension' | 'axial' | 'reaction';
 
 export interface SmartLabelCandidate {
   id: string;

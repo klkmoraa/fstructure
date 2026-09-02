@@ -2121,7 +2121,7 @@ export const StructuralCanvas = ({
           text: `${formatFixed(toDisplay(magnitude, units, 'force'), 2)} ${forceLabel}`,
           anchor: { x: point.x - ux * 62, y: point.y - uy * 62 - 5 },
           priority: selected ? 0 : 1,
-          tone: selected ? 'selection' : 'force',
+          tone: selected ? 'selection' : 'load-point',
           preferredOffset: { x: 0, y: 0 },
           forceVisible: selected,
         });
@@ -2131,7 +2131,7 @@ export const StructuralCanvas = ({
           text: `${formatFixed(toDisplay(load.mz, units, 'moment'), 2)} ${momentLabel}`,
           anchor: { x: point.x, y: point.y - 38 },
           priority: selected ? 0 : 1,
-          tone: selected ? 'selection' : 'moment',
+          tone: selected ? 'selection' : 'load-moment',
           preferredOffset: { x: 0, y: 0 },
           forceVisible: selected,
         });
@@ -2152,10 +2152,17 @@ export const StructuralCanvas = ({
       const selected = selectionVisualState.memberLoadId === load.id;
       if (!selected && !layers.labels) continue;
       const priority = selected ? 0 as const : 1 as const;
-      // Una carga distribuida es una ACCIÓN aplicada. Llevaba el tono del
-      // cortante, que es un resultado interno: en la misma vista, la causa y
-      // la consecuencia salían del mismo color.
-      const tone = selected ? 'selection' as const : load.type === 'moment' ? 'moment' as const : 'force' as const;
+      // Una carga es una ACCIÓN aplicada, y su etiqueta se pinta con el color
+      // de su TIPO. Antes las tres compartían dos tonos de resultado —`force`,
+      // que es el azul de la puntual, y `moment`, que es el rojo del momento
+      // flector—, así que el número de una distribuida salía azul junto a una
+      // flecha bermellón y el de un momento aplicado salía del color del
+      // diagrama que ese momento produce.
+      const tone = selected
+        ? 'selection' as const
+        : load.type === 'moment' ? 'load-moment' as const
+          : load.type === 'distributed' ? 'load-distributed' as const
+            : 'load-point' as const;
       if (load.type === 'point') {
         const base = stationOf(load.position ?? 0.5);
         const px = load.px ?? 0;

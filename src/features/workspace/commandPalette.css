@@ -1,0 +1,290 @@
+/* Paleta de comandos.
+   ---------------------------------------------------------------------------
+   Estas reglas vivían en `features/topbar/topbar.css`, la hoja de la barra
+   superior que lanzaba la paleta. Al retirar esa barra (ad45103) se borró la
+   hoja entera y la paleta se quedó sin una sola regla: dejó de ser un modal y
+   pasó a ser texto en el flujo del documento, debajo del lienzo. De ahí que
+   ahora la hoja sea del COMPONENTE y la importe él: mientras el componente
+   exista, sus reglas viajan con él y no pueden quedarse huérfanas al retirar
+   una superficie vecina.
+
+   La forma es la de antes —una caja, un campo y filas—, con una diferencia: la
+   ruta y la pista de cada comando se leen en una segunda línea en vez de
+   ocultarse. Sin ellas, «Analizar» y «Comparar revisiones» eran dos etiquetas
+   sin contexto; con ellas, cada fila dice a qué parte del producto pertenece. */
+
+.command-palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--sc-z-modal);
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  padding: max(72px, env(safe-area-inset-top)) var(--sc-space-4) var(--sc-space-4);
+  background: var(--sc-color-overlay-strong);
+}
+
+.command-palette {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(70dvh, 560px);
+  overflow: hidden;
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-modal);
+  background: var(--sc-color-surface-floating);
+  color: var(--sc-color-text-primary);
+  box-shadow: var(--sc-shadow-modal);
+}
+
+.command-palette-head {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: var(--sc-space-2);
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border-block-end: 1px solid var(--sc-color-border-soft);
+}
+
+.command-palette-head__icon { display: grid; place-items: center; color: var(--sc-color-text-muted); }
+.command-palette-head > div { display: grid; gap: 0; min-width: 0; }
+
+.command-palette-head > div > span {
+  color: var(--sc-color-text-muted);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-label);
+  letter-spacing: var(--sc-tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.command-palette-title {
+  margin: 0;
+  font-size: var(--sc-font-size-control);
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+.command-palette-close {
+  display: grid;
+  place-items: center;
+  width: var(--sc-size-target-touch);
+  height: var(--sc-size-target-touch);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--sc-color-text-muted);
+  cursor: pointer;
+}
+
+.command-palette-close:hover { background: var(--sc-color-surface-2); color: var(--sc-color-text-primary); }
+.command-palette-close:focus-visible { outline: none; box-shadow: var(--sc-ring-focus); }
+
+.command-palette-search {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border-block-end: 1px solid var(--sc-color-border-soft);
+  color: var(--sc-color-text-muted);
+}
+
+.command-palette-search input {
+  width: 100%;
+  min-width: 0;
+  height: var(--sc-size-target-touch);
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font-family: inherit;
+  font-size: var(--sc-font-size-subtitle);
+}
+
+.command-palette-search kbd {
+  flex: 0 0 auto;
+  padding: 2px var(--sc-space-1);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  color: var(--sc-color-text-muted);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-label);
+}
+
+.command-palette-list {
+  flex: 1;
+  min-height: 0;
+  padding: var(--sc-space-1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.command-palette-empty {
+  padding: var(--sc-space-4);
+  color: var(--sc-color-text-muted);
+  font-size: var(--sc-font-size-control);
+  text-align: center;
+}
+
+.command-palette-group + .command-palette-group {
+  margin-block-start: var(--sc-space-1);
+  padding-block-start: var(--sc-space-1);
+  border-block-start: 1px solid var(--sc-color-border-soft);
+}
+
+.command-palette-group h3 {
+  margin: 0;
+  padding: var(--sc-space-1) var(--sc-space-2);
+  color: var(--sc-color-text-muted);
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-medium);
+  letter-spacing: var(--sc-tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.command-palette-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  width: 100%;
+  min-height: var(--sc-size-target-touch);
+  padding: var(--sc-space-1) var(--sc-space-2);
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font-family: inherit;
+  font-size: var(--sc-font-size-control);
+  text-align: start;
+  cursor: pointer;
+}
+
+.command-palette-item svg { flex: 0 0 auto; color: var(--sc-color-text-muted); }
+.command-palette-item:hover:not(:disabled) { background: var(--sc-color-surface-2); }
+.command-palette-item.is-active { background: var(--sc-color-surface-2); }
+.command-palette-item.is-active svg { color: var(--sc-color-text-primary); }
+.command-palette-item:disabled { opacity: .5; cursor: not-allowed; }
+.command-palette-item:focus-visible { outline: none; box-shadow: var(--sc-ring-focus); }
+
+.command-palette-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.command-palette-label strong {
+  overflow: hidden;
+  font-weight: var(--sc-font-weight-regular);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette-label small {
+  overflow: hidden;
+  color: var(--sc-color-text-muted);
+  font-size: var(--sc-font-size-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-palette-route { font-family: var(--sc-font-mono); }
+
+.command-palette-item kbd {
+  flex: 0 0 auto;
+  margin-inline-start: auto;
+  padding: 1px var(--sc-space-1);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  color: var(--sc-color-text-muted);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-label);
+}
+
+/* Confirmación: un comando que no se deshace no se dispara por acierto de
+   teclado. Ocupa el cuerpo entero de la paleta para que no quede duda de qué
+   se está confirmando. */
+.command-palette-review {
+  display: grid;
+  gap: var(--sc-space-2);
+  padding: var(--sc-space-4);
+}
+
+.command-palette-review h3 {
+  margin: 0;
+  color: var(--sc-color-text-muted);
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-medium);
+  letter-spacing: var(--sc-tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+.command-palette-review strong { font-size: var(--sc-font-size-subtitle); }
+
+.command-palette-review small {
+  color: var(--sc-color-text-muted);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-label);
+}
+
+.command-palette-review p {
+  margin: 0;
+  color: var(--sc-color-text-secondary);
+  font-size: var(--sc-font-size-control);
+  line-height: 1.5;
+}
+
+.command-palette-review footer {
+  display: flex;
+  gap: var(--sc-space-2);
+  justify-content: end;
+  margin-block-start: var(--sc-space-1);
+}
+
+.command-palette-review footer button {
+  min-height: var(--sc-size-target-touch);
+  padding-inline: var(--sc-space-4);
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  font-family: inherit;
+  font-size: var(--sc-font-size-control);
+  cursor: pointer;
+}
+
+.command-palette-review footer button:last-child {
+  border-color: var(--sc-color-action-edge);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+}
+
+.command-palette-review footer button:focus-visible { outline: none; box-shadow: var(--sc-ring-focus); }
+
+.command-palette-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sc-space-1) var(--sc-space-3);
+  justify-content: space-between;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border-block-start: 1px solid var(--sc-color-border-soft);
+  color: var(--sc-color-text-muted);
+  font-size: var(--sc-font-size-caption);
+}
+
+/* La paleta como hoja: en K0 sube desde el borde inferior, donde está el
+   pulgar, en vez de caer desde arriba. */
+.command-palette-backdrop--sheet {
+  align-items: end;
+  padding: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+.command-palette-backdrop--sheet .command-palette {
+  width: 100%;
+  max-height: min(88dvh, 720px);
+  border-radius: var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0;
+  padding-block-end: env(safe-area-inset-bottom);
+  pointer-events: auto;
+}

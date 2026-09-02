@@ -65,11 +65,24 @@
 .support-symbol.selected .support-body-fill { fill: color-mix(in srgb, var(--selection) 20%, var(--surface)); stroke: var(--selection); }
 .support-symbol.selected .support-pin-dot, .support-symbol.selected .support-roller-wheel, .support-symbol.selected .support-baseplate, .support-symbol.selected .support-spring-coil, .support-symbol.selected .support-spring-arc { stroke: var(--selection); }
 .support-selection-frame { fill:color-mix(in srgb,var(--selection) 8%,transparent); stroke:var(--selection); stroke-width:1.5; stroke-dasharray:4 3; vector-effect:non-scaling-stroke; }
-.load-symbol--point { stroke:var(--sc-color-load-point); color:var(--sc-color-load-point); }
-.load-symbol--point text { fill:var(--sc-color-load-point); }
-.load-symbol--moment { stroke:var(--sc-color-load-moment-applied); color:var(--sc-color-load-moment-applied); }
-.load-symbol--moment text { fill:var(--sc-color-load-moment-applied); }
-.load-symbol--distributed { stroke:var(--sc-color-load-distributed); color:var(--sc-color-load-distributed); }
+/* Una carga se pinta de UN color, y ese color lo elige su tipo.
+   ---------------------------------------------------------------------------
+   Antes cada tipo declaraba aquí su `stroke` y su `fill`, y más abajo
+   `.load-symbol` y `.distributed-symbol` volvían a declararlos con `--force`,
+   que es el color de la carga PUNTUAL. Al tener la misma especificidad y venir
+   después, ganaban las de abajo: el trazo de una distribuida y el número de
+   cualquier carga se pintaban de azul de puntual mientras la punta de flecha
+   —que sí sale de su propio `marker`— se pintaba del color del tipo. Ese es el
+   bicolor que se veía en pantalla: asta de un color y punta de otro.
+
+   La corrección no es reordenar reglas: el tipo publica su tinta en
+   `--load-ink` y todo lo que dibuja la carga —asta, arco, número— la consume.
+   La propiedad no se redeclara en ninguna regla genérica, así que el orden
+   deja de decidir el color. */
+.load-symbol, .distributed-symbol { --load-ink:var(--sc-color-load-point); }
+.load-symbol--point { --load-ink:var(--sc-color-load-point); }
+.load-symbol--moment { --load-ink:var(--sc-color-load-moment-applied); }
+.load-symbol--distributed { --load-ink:var(--sc-color-load-distributed); }
 .load-selection-halo { fill:none; stroke:var(--selection)!important; stroke-width:8!important; stroke-linecap:round; opacity:.4; pointer-events:none; vector-effect:non-scaling-stroke; }
 .load-hit { fill:none!important; stroke:transparent!important; stroke-width:28!important; pointer-events:stroke; vector-effect:non-scaling-stroke; }
 .multi-selection-envelope { pointer-events:none; color:var(--selection); }
@@ -1367,6 +1380,7 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .canvas-evidence-layer--shear[aria-pressed='true'] { color:var(--shear); border-color:color-mix(in srgb,var(--shear) 46%,var(--sc-color-border-soft)); }
 .canvas-evidence-layer--moment[aria-pressed='true'] { color:var(--moment); border-color:color-mix(in srgb,var(--moment) 46%,var(--sc-color-border-soft)); }
 .canvas-evidence-layer--deformed[aria-pressed='true'] { color:var(--deformed); border-color:color-mix(in srgb,var(--deformed) 46%,var(--sc-color-border-soft)); }
+.canvas-evidence-layer--heatmap[aria-pressed='true'] { color:var(--yield); border-color:color-mix(in srgb,var(--yield) 46%,var(--sc-color-border-soft)); }
 .canvas-evidence-layer--stack[aria-pressed='true'] { color:var(--moment); border-color:color-mix(in srgb,var(--moment) 46%,var(--sc-color-border-soft)); }
 .canvas-evidence-stack-choices { display:flex; gap:2px; padding-left:2px; }
 .canvas-evidence-stack-choice { min-width:26px; height:26px; padding:0 6px; border:1px solid var(--sc-color-border-soft); border-radius:var(--sc-radius-card); color:var(--muted); background:var(--surface); font-size:11px; font-weight:750; }
@@ -2099,6 +2113,11 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .smart-label.tone-selection { color:var(--selection); }
 .smart-label.tone-selection rect { fill:color-mix(in srgb,var(--selection) 12%,var(--surface)); stroke:var(--selection); stroke-width:1.6; }
 .smart-label.tone-force { color:var(--force); }
+/* La etiqueta de una carga toma el color de SU tipo, el mismo `--load-ink`
+   que pinta el símbolo que anota. */
+.smart-label.tone-load-point { color:var(--sc-color-load-point); }
+.smart-label.tone-load-distributed { color:var(--sc-color-load-distributed); }
+.smart-label.tone-load-moment { color:var(--sc-color-load-moment-applied); }
 .smart-label.tone-shear { color:var(--shear); }
 .smart-label.tone-moment { color:var(--moment); }
 .smart-label.tone-dimension { color:var(--dimension); }
@@ -2112,13 +2131,13 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .support-symbol { stroke: var(--member); fill: none; vector-effect: non-scaling-stroke; transition: stroke var(--motion-fast) var(--ease-native), stroke-width var(--motion-fast) var(--ease-native); }
 .support-symbol:hover { stroke: var(--accent); stroke-width: 2.4; }
 .support-symbol.selected { stroke: var(--selection); }
-.load-symbol { stroke: var(--force); fill: none; stroke-width: 2.2; cursor: pointer; }
-.load-symbol text, .distributed-symbol text { fill: var(--force); stroke: none; font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
+.load-symbol { stroke: var(--load-ink); color: var(--load-ink); fill: none; stroke-width: 2.2; cursor: pointer; }
+.load-symbol text, .distributed-symbol text { fill: var(--load-ink); stroke: none; font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
 /* Una carga distribuida es una ACCIÓN aplicada, no un cortante. Pintarla con
    la señal del cortante la volvía indistinguible de un resultado interno en la
-   única pantalla donde los dos conviven. */
-.distributed-symbol { stroke: var(--force); stroke-width: 1.6; cursor: pointer; }
-.distributed-symbol text { fill: var(--force); }
+   única pantalla donde los dos conviven. El color sale de `--load-ink`, que
+   publica el modificador de tipo: aquí sólo se decide el grosor del trazo. */
+.distributed-symbol { stroke: var(--load-ink); color: var(--load-ink); stroke-width: 1.6; cursor: pointer; }
 /* La selección ya se dibuja con su halo; un resplandor encima sólo emborrona
    el trazo que hay que leer. */
 .load-symbol.selected .load-hit,

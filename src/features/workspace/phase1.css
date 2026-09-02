@@ -483,8 +483,9 @@
 .results-panel[data-surface-presentation='dock'] { position:relative; inset:auto; width:auto; }
 .results-panel[data-surface-presentation='inset'] { position:absolute; z-index:8; inset:auto 8px 8px; width:auto; height:min(42dvh,320px)!important; border-radius:var(--sc-radius-lg); }
 .results-panel[data-surface-presentation='sheet'] { position:absolute; z-index:8; inset:auto 0 0; width:100%; height:min(55dvh,500px)!important; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
-.command-palette-backdrop--sheet { align-items:end; padding:0; background:transparent; pointer-events:none; }
-.command-palette-backdrop--sheet .command-palette { width:100%; max-height:min(88dvh,720px); border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; pointer-events:auto; }
+/* La variante en hoja de la paleta vive con el resto de sus reglas, en
+   `commandPalette.css`: separarla de su base fue lo que dejó a la paleta sin
+   estilo cuando se retiró la hoja que la alojaba. */
 
 @media (max-width:1023px) {
   .inspector-panel[data-surface-presentation='sheet']::before { display:none; }
