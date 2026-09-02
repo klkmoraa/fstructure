@@ -1,23 +1,22 @@
 .fs-landing { --fs-landing-gutter: clamp(22px, 5vw, 88px); --fs-paper: #f6f5f0; --fs-surface: #fffefa; --fs-surface-muted: #ecefe8; --fs-ink: #171a1c; --fs-ink-muted: #626b65; --fs-line: #d1d8d1; --fs-line-strong: #a7b1a9; --fs-shadow: #d6dcd5; --fs-signal-axial: #63c5ff; --fs-signal-moment: #ff6f66; --fs-signal-shear: #55c990; --fs-signal-alert: #f3c553; --fs-signal-deformed: #9b87ff; --fs-signal-yield: #ef7ab9; --sc-color-bg-app: var(--fs-paper); --sc-color-text-primary: var(--fs-ink); --sc-color-text-secondary: color-mix(in srgb, var(--fs-ink) 76%, var(--fs-paper)); --sc-color-text-muted: var(--fs-ink-muted); --sc-color-border: var(--fs-line); --sc-color-border-strong: var(--fs-line-strong); --sc-color-surface-2: var(--fs-surface-muted); --sc-color-surface-pressed: color-mix(in srgb, var(--fs-surface-muted) 72%, var(--fs-ink)); --sc-color-action-primary: var(--fs-ink); --sc-color-action-hover: color-mix(in srgb, var(--fs-ink) 88%, var(--fs-paper)); --sc-color-action-foreground: var(--fs-paper); --sc-color-focus: var(--fs-signal-axial);
-  /* Clay leve: un solo escalón de volumen tomado de la referencia StructureCo (luz
-     arriba-izquierda, sombra + brillo de contacto) pero calmado a la tinta neutra de
-     FusionStructure — nunca al cálido marrón del original — y a una fracción de su
-     fuerza, así que separa sin volver a inflar la caja. */
-  --fs-clay-radius-sm: 12px; --fs-clay-radius-md: 18px; --fs-clay-radius-lg: 24px;
-  --fs-clay-edge: 1px solid color-mix(in srgb, var(--fs-line) 55%, white);
-  --fs-clay-shadow-sm: 3px 4px 10px rgba(23, 26, 28, .08), -2px -2px 7px rgba(255, 255, 255, .6);
-  --fs-clay-shadow-md: 6px 8px 18px rgba(23, 26, 28, .1), -3px -3px 10px rgba(255, 255, 255, .65);
-  --fs-clay-shadow-lg: 10px 13px 28px rgba(23, 26, 28, .12), -4px -4px 14px rgba(255, 255, 255, .7);
-  --fs-clay-shadow-sheet: 0 -10px 24px rgba(23, 26, 28, .05);
-  --fs-clay-press: translateY(1px);
+  /* La arcilla del landing ya no declara valores: los toma de la fundación, que
+     adoptó este mismo material para todo el producto. Estos alias se conservan
+     porque el resto de la hoja los nombra, pero ninguno tiene valor propio —la
+     arquitectura del repo es explícita en que no puede haber una segunda
+     verdad—. Cambiar la materia del landing es cambiar `tokens.css`. */
+  --fs-clay-radius-sm: var(--sc-radius-card);
+  --fs-clay-radius-md: var(--sc-radius-panel);
+  --fs-clay-radius-lg: var(--sc-radius-modal);
+  --fs-clay-edge: var(--sc-surface-edge);
+  --fs-clay-shadow-sm: var(--sc-shadow-raised);
+  --fs-clay-shadow-md: var(--sc-shadow-lifted);
+  --fs-clay-shadow-lg: var(--sc-shadow-lg);
+  --fs-clay-shadow-sheet: var(--sc-shadow-sheet);
+  --fs-clay-press: var(--sc-press-transform);
   color: var(--sc-color-text-primary); background: var(--sc-color-bg-app); font-family: var(--sc-font-ui); overflow: clip; text-rendering: optimizeLegibility; }
-html[data-theme='dark'] .fs-landing { --fs-paper: #171a1c; --fs-surface: #252a2e; --fs-surface-muted: #30363b; --fs-ink: #f4f5f3; --fs-ink-muted: #b8bdc0; --fs-line: #4f5853; --fs-line-strong: #6a746e; --fs-shadow: #080a0b;
-  --fs-clay-edge: 1px solid var(--fs-line);
-  --fs-clay-shadow-sm: 3px 4px 10px rgba(0, 0, 0, .4), -2px -2px 7px rgba(110, 122, 128, .16);
-  --fs-clay-shadow-md: 6px 8px 18px rgba(0, 0, 0, .46), -3px -3px 10px rgba(110, 122, 128, .2);
-  --fs-clay-shadow-lg: 10px 13px 28px rgba(0, 0, 0, .52), -4px -4px 14px rgba(110, 122, 128, .24);
-  --fs-clay-shadow-sheet: 0 -10px 24px rgba(0, 0, 0, .32);
-}
+/* Noche sólo recalibra el papel y la tinta del landing: la arcilla ya viene
+   recalibrada desde la fundación, que declara su propio bloque nocturno. */
+html[data-theme='dark'] .fs-landing { --fs-paper: #171a1c; --fs-surface: #252a2e; --fs-surface-muted: #30363b; --fs-ink: #f4f5f3; --fs-ink-muted: #b8bdc0; --fs-line: #4f5853; --fs-line-strong: #6a746e; --fs-shadow: #080a0b; }
 .fs-landing button { font: inherit; }
 .fs-landing-hero { min-height: min(820px, calc(100dvh - 42px)); display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.38fr); align-items: stretch; border-block-end: 1px solid var(--sc-color-border); }
 .fs-landing-hero__copy { position: relative; z-index: 1; min-height: 620px; padding: clamp(42px, 8vh, 104px) var(--fs-landing-gutter); display: flex; flex-direction: column; justify-content: center; }
@@ -29,7 +28,7 @@ html[data-theme='dark'] .fs-landing { --fs-paper: #171a1c; --fs-surface: #252a2e
 .fs-landing-hero__copy > p { max-width: 405px; margin: 30px 0 0; color: var(--sc-color-text-secondary); font-size: clamp(16px, 1.45vw, 20px); line-height: 1.42; }
 .fs-landing-hero__actions { margin-top: 34px; display: flex; flex-wrap: wrap; gap: 9px; }
 .fs-landing .fs-action, .fs-landing .fs-family-stage__copy button { min-height: 44px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: var(--fs-clay-edge); border-radius: var(--fs-clay-radius-sm); background: var(--fs-surface); box-shadow: var(--fs-clay-shadow-sm); color: var(--sc-color-text-primary); cursor: pointer; font-size: 12px; font-weight: 720; transition: background-color var(--sc-motion-standard) var(--sc-ease-standard), border-color var(--sc-motion-standard) var(--sc-ease-standard), color var(--sc-motion-standard) var(--sc-ease-standard), transform var(--sc-motion-standard) var(--sc-ease-standard), box-shadow var(--sc-motion-standard) var(--sc-ease-standard); }
-.fs-landing .fs-action:hover, .fs-landing .fs-family-stage__copy button:hover { background: var(--sc-color-surface-pressed); box-shadow: var(--fs-clay-shadow-md); }.fs-landing .fs-action:active, .fs-landing .fs-family-stage__copy button:active { transform: var(--fs-clay-press); box-shadow: var(--fs-clay-shadow-sm); }.fs-landing .fs-action--primary { border-color: var(--sc-color-action-primary); border-radius: var(--fs-clay-radius-md); background: var(--sc-color-action-primary); box-shadow: var(--fs-clay-shadow-md); color: var(--sc-color-action-foreground); }.fs-landing .fs-action--primary:hover { background: var(--sc-color-action-hover); box-shadow: var(--fs-clay-shadow-lg); }.fs-landing .fs-action--primary:active { box-shadow: 2px 3px 8px rgba(23, 26, 28, .2), inset 0 1px 3px rgba(0, 0, 0, .22); }
+.fs-landing .fs-action:hover, .fs-landing .fs-family-stage__copy button:hover { background: var(--sc-color-surface-pressed); box-shadow: var(--fs-clay-shadow-md); }.fs-landing .fs-action:active, .fs-landing .fs-family-stage__copy button:active { transform: var(--fs-clay-press); box-shadow: var(--fs-clay-shadow-sm); }.fs-landing .fs-action--primary { border-color: var(--sc-color-action-primary); border-radius: var(--fs-clay-radius-md); background: var(--sc-color-action-primary); box-shadow: var(--fs-clay-shadow-md); color: var(--sc-color-action-foreground); }.fs-landing .fs-action--primary:hover { background: var(--sc-color-action-hover); box-shadow: var(--fs-clay-shadow-lg); }.fs-landing .fs-action--primary:active { box-shadow: var(--sc-shadow-action-pressed); }
 .fs-landing-hero__visual { min-width: 0; display: grid; align-items: end; overflow: hidden; background: var(--fs-surface); }.fs-landing-hero__visual img { width: 100%; min-height: 100%; box-sizing: border-box; padding: clamp(14px, 2.4vw, 30px); border-radius: var(--fs-clay-radius-lg); box-shadow: var(--fs-clay-shadow-lg); object-fit: cover; object-position: 58% center; animation: fs-hero-reveal 1100ms cubic-bezier(.2,.8,.2,1) both; }
 .fs-families { padding: clamp(82px, 12vw, 172px) var(--fs-landing-gutter); }.fs-section-heading { max-width: 720px; }.fs-section-heading > span, .fs-product-flow__step span { color: var(--sc-color-text-muted); font-family: var(--sc-font-mono, monospace); font-size: 10px; font-weight: 760; letter-spacing: .12em; text-transform: uppercase; }
 /* Los códigos de dos cifras (índice de familia, paso del flujo) son el mismo
