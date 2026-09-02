@@ -21,15 +21,19 @@
   .canvas-mode-badge:not(.placing-load),
   .canvas-view-chips { display:none; }
 
-  /* Reserve the right edge for the layer launcher so the result rail never
-     sits beneath it. The rail can still scroll horizontally when all modes
-     are available. */
+  /* El borde derecho queda reservado para el lanzador de capas: el riel nunca
+     pasa por debajo de él. Dentro de ese hueco el riel se ajusta a su
+     contenido, así que la ficha que no cabe queda cortada A MEDIAS dentro del
+     riel, y esa mitad visible es lo que anuncia que hay más. Antes el riel
+     llegaba siempre al borde de la pantalla y el corte se leía como final de
+     lista —y, al centrar contenido desbordado, la primera ficha ni siquiera
+     era alcanzable. */
   .canvas-evidence-rail {
     top:7px;
     left:7px;
     right:54px;
-    width:auto;
-    max-width:none;
+    width:max-content;
+    max-width:calc(100% - 61px);
     min-height:42px;
     gap:3px;
     padding:3px;

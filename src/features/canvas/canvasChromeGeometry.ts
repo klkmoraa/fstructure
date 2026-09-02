@@ -73,6 +73,45 @@ export const canvasSafeRect = (
   };
 };
 
+/**
+ * Lo que una carga dibuja ALREDEDOR de su nudo, en píxeles de pantalla.
+ *
+ * El encuadre siempre midió `modelBounds(project.nodes)`, que son los nudos y
+ * nada más. Pero una carga no se dibuja en el nudo: la flecha de una puntual
+ * arranca 60px antes y su número se ancla a 62px, y esos píxeles no dependen
+ * del zoom porque el símbolo se dibuja en espacio de pantalla. Con el nudo
+ * pegado al borde del rectángulo seguro —que es justo donde lo deja un
+ * encuadre perfecto— la flecha caía fuera del lienzo: en un teléfono, «Ajustar
+ * modelo a la vista» dejaba media carga fuera de la vista.
+ *
+ * 66px cubre el caso peor de las cuatro familias (la puntual, con 60px de asta
+ * más su punta) sin reservar el ancho de la etiqueta, que ya se recorta contra
+ * el rectángulo seguro por su cuenta.
+ */
+export const LOAD_DECORATION_RESERVE_PX = 66;
+
+/**
+ * Convierte esa reserva de pantalla a unidades de modelo con la escala de un
+ * primer encuadre y ensancha los límites. Es una sola pasada de corrección, no
+ * un punto fijo: el segundo encuadre sale algo más alejado que el necesario, y
+ * ese error va del lado seguro —sobra margen, no falta.
+ */
+export const expandBoundsForDecoration = (
+  bounds: ModelBounds,
+  scale: number,
+  reservePx: number = LOAD_DECORATION_RESERVE_PX,
+): ModelBounds => {
+  const safeBounds = finiteModelBounds(bounds);
+  if (!Number.isFinite(scale) || scale <= 0 || !Number.isFinite(reservePx) || reservePx <= 0) return safeBounds;
+  const margin = reservePx / scale;
+  return {
+    minX: safeBounds.minX - margin,
+    maxX: safeBounds.maxX + margin,
+    minY: safeBounds.minY - margin,
+    maxY: safeBounds.maxY + margin,
+  };
+};
+
 /** Fits model bounds inside the chrome-free rectangle without changing model data. */
 export const cameraToFitBounds = (
   bounds: ModelBounds,

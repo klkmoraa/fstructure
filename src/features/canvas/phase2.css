@@ -1337,7 +1337,17 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 }
 
 /* Evidencia es un riel del dibujo: elegir una opción enciende sólo la capa
-   sobre el canvas y no obliga a abrir el panel de capas. */
+   sobre el canvas y no obliga a abrir el panel de capas.
+
+   El riel SE AJUSTA A SU CONTENIDO. Antes iba de `left:8px` a `right:8px` y
+   centraba las fichas dentro: en escritorio eso era una banda blanca de borde a
+   borde con seis fichas perdidas en medio —cromo que ocupa el ancho del lienzo
+   sin decir nada—, y en teléfono era peor que feo. Centrar contenido que
+   desborda un contenedor con `overflow-x` deja el desbordamiento IZQUIERDO
+   fuera del alcance del desplazamiento: la primera ficha, «Axial», se veía
+   cortada y no había forma de llegar a ella. `width:max-content` con
+   `margin-inline:auto` centra la caja en vez del contenido, y `safe center`
+   se rinde a `start` justo cuando ya no cabe, que es cuando centrar hace daño. */
 .canvas-evidence-rail {
   position:absolute;
   z-index:8;
@@ -1347,9 +1357,11 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   display:flex;
   align-items:center;
   gap:5px;
-  max-width:none;
+  width:max-content;
+  max-width:calc(100% - 16px);
   min-width:0;
-  justify-content:center;
+  margin-inline:auto;
+  justify-content:safe center;
   padding:3px;
   overflow-x:auto;
   overscroll-behavior-x:contain;

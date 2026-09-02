@@ -41,7 +41,7 @@ import {
   type ScreenPoint,
 } from './canvasInteraction';
 import { toolFromShortcut } from './toolRegistry';
-import { cameraToFitBounds, canvasSafeInsetsFor, canvasSafeRect } from './canvasChromeGeometry';
+import { cameraToFitBounds, canvasSafeInsetsFor, canvasSafeRect, expandBoundsForDecoration } from './canvasChromeGeometry';
 import type { EditorLayerAction, EditorLayerState } from './editorLayers';
 import { CanvasChrome } from './CanvasChrome';
 import { layoutSmartLabels, smartLabelDetailForScale, type SmartLabelCandidate } from './labelLayout';
@@ -667,12 +667,20 @@ export const StructuralCanvas = ({
       : 0;
     const viewport = { width: size.width, height: size.height };
     const insets = canvasSafeInsetsFor(viewport);
-    updateCamera(cameraToFitBounds(
-      modelBounds(project.nodes),
-      viewport,
-      { ...insets, bottom: insets.bottom + safeBottomReserve },
-    ));
-  }, [project.nodes, size, updateCamera]);
+    const fitInsets = { ...insets, bottom: insets.bottom + safeBottomReserve };
+    const bounds = modelBounds(project.nodes);
+    const first = cameraToFitBounds(bounds, viewport, fitInsets);
+    // Encuadrar los nudos no es encuadrar el dibujo: las cargas se dibujan en
+    // espacio de pantalla ALREDEDOR del nudo, así que con el modelo ajustado al
+    // milímetro sus flechas caen fuera del lienzo. La reserva se convierte a
+    // unidades de modelo con la escala del primer encuadre y sólo se paga
+    // cuando hay cargas que dibujar: un modelo sin cargas se sigue ajustando
+    // exacto, sin margen que no le corresponde.
+    const decorated = project.nodalLoads.length + project.memberLoads.length > 0
+      ? expandBoundsForDecoration(bounds, first.scale)
+      : bounds;
+    updateCamera(decorated === bounds ? first : cameraToFitBounds(decorated, viewport, fitInsets));
+  }, [project.memberLoads.length, project.nodalLoads.length, project.nodes, size, updateCamera]);
 
   const navigateMinimapTo = useCallback((point: ModelPoint) => {
     updateCamera((current) => ({

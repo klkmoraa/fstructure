@@ -329,6 +329,20 @@
   .results-dense-launchers { padding:0 10px 8px; }
 }
 .scenario-card-failure { grid-column:1/-1; color:var(--muted); font-size:var(--sc-font-size-label); }
+/* La comparación de casos falla y lo dice con `role="alert"`, pero no tenía una
+   sola regla: se leía como un párrafo cualquiera del panel. Un aviso que no se
+   distingue del texto de al lado no es un aviso. */
+.scenario-error {
+  margin:0;
+  padding:8px 10px;
+  border:1px solid color-mix(in srgb,var(--error) 45%,var(--border));
+  border-inline-start:3px solid var(--error);
+  border-radius:var(--sc-radius-card);
+  background:color-mix(in srgb,var(--error) 7%,var(--surface));
+  color:var(--text);
+  font-size:var(--sc-font-size-label);
+  line-height:1.45;
+}
 .summary-table-wrap { overflow:auto; }
 .result-extrema-table caption { padding:8px 10px; text-align:left; background:var(--surface-2); color:var(--muted); font-size:9px; }
 .result-extrema-table td button { width:100%; border:0; background:transparent; color:var(--text); padding:4px; display:grid; gap:1px; text-align:right; font:inherit; }
