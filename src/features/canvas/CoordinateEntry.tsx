@@ -34,13 +34,14 @@
  * nodo más cercano sería descartar lo que la persona acaba de teclear.
  */
 import { useEffect, useId, useRef, useState } from 'react';
-import { Delete, Plus, X } from 'lucide-react';
+import { ArrowRight, Delete, Plus, X } from 'lucide-react';
 import { useI18n } from '../../i18n/useI18n';
 import { CoordinateEntryGlyph } from '../../design-system/icons/structural';
 import { IconButton } from '../../design-system/components/controls';
-import { fromDisplay } from '../../engine/units';
+import { fromDisplay, toDisplay } from '../../engine/units';
 import type { UnitSystemId } from '../../types';
 import { parseLocalizedDecimal } from './quickEntry';
+import { formatFixed } from '../../utils/numberFormat';
 
 export type CoordinateMode = 'absolute' | 'relative' | 'polar';
 
@@ -249,19 +250,30 @@ export const CoordinateEntry = ({
         />
         <small>{field === 'first' ? lengthLabel : secondUnit}</small>
       </label>)}
+      {/* Borrar edita un campo, así que vive con los campos. Sola en una cuarta
+          fila del teclado dejaba dos huecos y 52px de hoja por nada. */}
+      {compact ? <button
+        type="button"
+        className="coordinate-entry__erase"
+        onClick={() => press('backspace')}
+        aria-label={t('coord.backspace')}
+      ><Delete size={17} /></button> : null}
     </div>
+
+    {/* En relativo y en polar los campos NO dicen dónde acaba el punto. Y en un
+        teléfono la hoja tapa buena parte del lienzo, así que el fantasma puede
+        quedar detrás de ella. Esta línea hace comprobable el destino sin
+        depender de verlo. */}
+    {resolved ? <p className="coordinate-entry__resolved">
+      <ArrowRight size={13} aria-hidden="true" />
+      X {formatFixed(toDisplay(resolved.x, units, 'length'), 3)} · Y {formatFixed(toDisplay(resolved.y, units, 'length'), 3)} {lengthLabel}
+    </p> : null}
 
     {compact ? <div className="coordinate-entry__keypad" role="group" aria-label={t('coord.keypad')}>
       {KEYPAD.map((key) => <button key={key} type="button" onClick={() => press(key)}>{key}</button>)}
       <button type="button" onClick={() => press('sign')} aria-label={t('coord.sign')}>±</button>
       <button type="button" onClick={() => press('0')}>0</button>
       <button type="button" onClick={() => press(',')} aria-label={t('coord.decimal')}>,</button>
-      <button
-        type="button"
-        className="coordinate-entry__erase"
-        onClick={() => press('backspace')}
-        aria-label={t('coord.backspace')}
-      ><Delete size={16} /></button>
     </div> : null}
 
     {error ? <p className="coordinate-entry__error" role="alert">{error}</p> : null}

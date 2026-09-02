@@ -11,7 +11,13 @@
 @media (max-width:1023px) {
   .app-shell:has(.console) {
     display:flex;
-    --console-band:calc(56px + env(safe-area-inset-bottom));
+    /* 60 y no 56: las teclas del riel miden 48px y en 56 quedaban con 4px
+       arriba y abajo, tocando los cantos de la banda. Cuatro píxeles de lienzo
+       a cambio de que una tecla de 48px no se lea recortada contra el borde de
+       la pantalla es un cambio barato. El área segura se suma aparte y es lo
+       que mantiene la banda por encima del indicador de inicio y de la barra
+       inferior de Safari. */
+    --console-band:calc(60px + env(safe-area-inset-bottom));
     padding-bottom:var(--console-band);
   }
   .app-shell:has(.console) > .workspace { grid-template-columns:minmax(0,1fr) var(--inspector-w); }
@@ -235,7 +241,11 @@
 .mobile-tool-palette,
 .inspector-panel.mobile-open {
   background:var(--surface);
-  border-color:color-mix(in srgb,var(--border) 72%,white);
+  /* Era `color-mix(..., white)`, y `white` es ciego al tema: en Día lavaba un
+     filete ya pálido hacia el papel y en Noche lo aclaraba por casualidad. Lo
+     que separa una superficie flotante es el filete fuerte del sistema, que
+     tiene su par Día/Noche. */
+  border-color:var(--sc-color-border);
   border-style:solid;
   border-width:var(--inspector-border-width,1px);
   box-shadow:var(--sc-shadow-lg);
@@ -469,7 +479,7 @@
 /* La hoja se apoya sobre la banda de la consola, no sobre una constante: los
    64px fijos que había aquí dejaban de coincidir en cuanto la banda cambiaba de
    altura o el dispositivo añadía área segura. */
-.inspector-panel[data-surface-presentation='sheet'] { position:fixed; z-index:31; inset:auto 0 calc(var(--console-band,56px) + 8px + var(--sc-visual-viewport-bottom,0px)); display:flex; width:100%; height:min(58dvh,540px); max-height:calc(var(--sc-visual-viewport-height,100dvh) - 76px); clip-path:none; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
+.inspector-panel[data-surface-presentation='sheet'] { position:fixed; z-index:31; inset:auto 0 calc(var(--console-band,60px) + 8px + var(--sc-visual-viewport-bottom,0px)); display:flex; width:100%; height:min(58dvh,540px); max-height:calc(var(--sc-visual-viewport-height,100dvh) - 76px); clip-path:none; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
 .results-panel[data-surface-presentation='dock'] { position:relative; inset:auto; width:auto; }
 .results-panel[data-surface-presentation='inset'] { position:absolute; z-index:8; inset:auto 8px 8px; width:auto; height:min(42dvh,320px)!important; border-radius:var(--sc-radius-lg); }
 .results-panel[data-surface-presentation='sheet'] { position:absolute; z-index:8; inset:auto 0 0; width:100%; height:min(55dvh,500px)!important; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }

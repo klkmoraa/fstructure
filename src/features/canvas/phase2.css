@@ -205,7 +205,9 @@
   line-height:var(--sc-line-height-compact);
 }
 
+/* Dos campos y, en compacto, la tecla de borrar: es la que los edita. */
 .coordinate-entry__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.coordinate-entry__fields:has(.coordinate-entry__erase) { grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; }
 .coordinate-entry__fields label {
   min-width:0;
   display:grid;
@@ -250,7 +252,33 @@
   transition:var(--sc-transition-control);
 }
 .coordinate-entry__keypad button:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
-.coordinate-entry__erase { display:grid; place-items:center; }
+
+.coordinate-entry__erase {
+  width:var(--sc-control-height-touch);
+  display:grid;
+  place-items:center;
+  border:var(--sc-depth-raised-border);
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-depth-raised-shadow);
+  color:var(--sc-color-text-secondary);
+  cursor:pointer;
+}
+.coordinate-entry__erase:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+
+/* La lectura del destino resuelto. Tabular porque es una cifra que se compara
+   con la del lienzo, no una frase. */
+.coordinate-entry__resolved {
+  margin:0;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:var(--sc-color-text-secondary);
+  font-family:var(--sc-font-mono);
+  font-size:var(--sc-font-size-caption);
+  font-variant-numeric:var(--sc-numeric-variant);
+}
+.coordinate-entry__resolved svg { flex:none; color:var(--sc-color-text-muted); }
 
 .coordinate-entry__error { margin:0; color:var(--sc-color-signal-moment-ink); font-size:var(--sc-font-size-caption); }
 
@@ -1192,6 +1220,15 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   box-shadow: var(--sc-shadow-pressed);
   transform: var(--sc-press-transform);
 }
+/* El hueco de los nudos de un glifo estructural es el papel del plano sobre el
+   que se dibuja. En una tecla elegida ese plano se invirtió a tinta, así que el
+   hueco tiene que invertirse con ella o quedan dos agujeros del color de fuera
+   dentro de una pieza que ya no lo es. */
+.tool-rail .tool-button.active,
+.tool-rail .tool-button.is-active,
+.tool-rail.is-compact .tool-button.active,
+.tool-rail.is-compact .tool-button.is-active { --sc-glyph-hole: var(--sc-color-action-primary); }
+
 /* La barra de dominio: 2px en el canto de entrada de la tecla elegida, del
    color con el que esa herramienta dibuja en el lienzo. */
 .tool-rail .tool-button.active::before,
@@ -1236,11 +1273,13 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .tool-rail.is-compact .tool-button:active:not(:disabled) { transform:none; transition:none; }
 }
 
-/* El disparador de capas comparte la gramática: cavidad al estar abierto. */
+/* El disparador de capas comparte la gramática: cavidad al estar abierto. El
+   filete era `color-mix(..., white)` y en Día se disolvía contra el papel: un
+   botón flotando sobre el lienzo sin contorno legible. */
 .canvas-layer-trigger {
   background:var(--surface);
-  border:1px solid color-mix(in srgb,var(--border) 72%,white);
-  box-shadow:var(--sc-shadow-xs);
+  border:var(--sc-depth-raised-border);
+  box-shadow:var(--sc-depth-raised-shadow);
   transition:var(--sc-transition-control);
 }
 .canvas-layer-trigger:hover { box-shadow:var(--sc-shadow-sm); }
@@ -1690,8 +1729,10 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   opacity: 0.72;
 }
 
+/* El relleno del fantasma se mezcla contra la MESA, no contra `white`: sobre
+   carbón, mezclar con blanco daba un punto claro que no pertenecía a nada. */
 .duplicate-preview-node {
-  fill: color-mix(in srgb, var(--accent) 22%, white);
+  fill: color-mix(in srgb, var(--accent) 22%, var(--sc-color-bg-canvas));
   stroke: var(--accent);
   stroke-width: 2;
 }
