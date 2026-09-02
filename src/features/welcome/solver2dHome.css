@@ -194,15 +194,17 @@
 .solver2d-action--primary:active { background: var(--sc-color-action-pressed); box-shadow: var(--sc-shadow-action-pressed); }
 
 /* ------------------------------------------------------- Escena de portada
-   El objeto tridimensional y la hoja de análisis. El objeto es el render por
-   tema; la hoja lo pisa por abajo-derecha, que es donde la luz del sistema
-   deja la sombra, así que el apilamiento se lee como apoyo y no como collage. */
+   El pórtico tridimensional, solo. Llevaba encima una hoja con el diagrama de
+   análisis y la idea era buena —el objeto y lo que el solver devuelve de él—,
+   pero en la práctica la hoja tapaba media estructura: dos lecturas peleando
+   por el mismo sitio, y la que perdía era la que da la escala. La secuencia
+   de análisis sigue existiendo donde de verdad manda, que es el lienzo. */
 
 .solver2d-hero__stage { min-width: 0; }
 
 .solver2d-stage {
   position: relative;
-  padding: clamp(14px, 2vw, 26px) clamp(14px, 2vw, 26px) clamp(56px, 7vw, 84px);
+  padding: clamp(16px, 2.4vw, 30px);
   border: 1px solid var(--sc-color-border-soft);
   border-radius: var(--sc-radius-panel);
   background:
@@ -212,17 +214,17 @@
   box-shadow: var(--sc-shadow-inset);
 }
 
-.solver2d-stage__object { position: relative; display: grid; justify-items: center; }
+.solver2d-stage__object { display: grid; justify-items: center; }
 
 .solver2d-stage__object .three-structural-image,
 .solver2d-stage__object svg {
-  width: min(100%, 540px);
+  width: min(100%, 560px);
   height: auto;
   filter: drop-shadow(var(--sc-shadow-drop));
 }
 
-/* Flotación mínima: el objeto respira, no se pasea. Dos píxeles y medio de
-   recorrido en un ciclo largo — lo suficiente para que la escena esté viva sin
+/* Flotación mínima: el objeto respira, no se pasea. Cinco píxeles de recorrido
+   en un ciclo largo — lo suficiente para que la escena esté viva sin
    convertirse en una distracción encima de un botón. */
 @media (prefers-reduced-motion: no-preference) {
   .solver2d-stage:not(.is-static) .solver2d-stage__object .three-structural-image,
@@ -235,108 +237,6 @@
   0%, 100% { transform: none; }
   50% { transform: translateY(-5px); }
 }
-
-.solver2d-stage__tag {
-  justify-self: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 9px;
-  border: 1px solid var(--sc-color-border-soft);
-  border-radius: var(--sc-radius-pill);
-  background: var(--sc-color-surface-elevated);
-  color: var(--sc-color-text-muted);
-  font-family: var(--sc-font-mono);
-  font-size: var(--sc-font-size-label);
-  font-weight: var(--sc-font-weight-bold);
-  letter-spacing: var(--sc-tracking-wide);
-  text-transform: uppercase;
-}
-
-.solver2d-stage__object .solver2d-stage__tag { position: absolute; inset-block-start: 0; inset-inline-start: 0; }
-
-.solver2d-stage__sheet {
-  position: absolute;
-  z-index: 1;
-  inset-block-end: 14px;
-  inset-inline-end: 14px;
-  width: min(56%, 276px);
-  margin: 0;
-  padding: 10px 12px 8px;
-  display: grid;
-  gap: 8px;
-  border: 1px solid var(--sc-color-border);
-  border-radius: var(--sc-radius-card);
-  background: var(--sc-color-surface-elevated);
-  box-shadow: var(--sc-shadow-lifted);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .solver2d-stage:not(.is-static) .solver2d-stage__sheet {
-    animation: solver2d-sheet-in var(--sc-motion-reveal) var(--sc-ease-reveal) 420ms both;
-  }
-}
-
-@keyframes solver2d-sheet-in {
-  from { opacity: 0; transform: translate(6px, 14px); }
-  to { opacity: 1; transform: none; }
-}
-
-/* -------------------------------------------------------------- Diagrama */
-
-.solver2d-diagram { width: 100%; height: auto; display: block; overflow: visible; }
-
-.solver2d-diagram__grid line { stroke: var(--sc-color-canvas-grid); stroke-width: 1; }
-
-.solver2d-diagram g:not(.solver2d-diagram__grid) {
-  opacity: 0;
-  transition: opacity var(--sc-motion-reveal) var(--sc-ease-reveal);
-}
-.solver2d-diagram g.is-on { opacity: 1; }
-
-.solver2d-diagram__frame path {
-  fill: none;
-  stroke: var(--sc-color-canvas-member);
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.solver2d-diagram__supports path { fill: none; stroke: var(--sc-color-canvas-member); stroke-width: 2; stroke-linecap: round; }
-.solver2d-diagram__supports circle { fill: var(--sc-color-canvas-node-fill); stroke: var(--sc-color-canvas-member); stroke-width: 2; }
-
-.solver2d-diagram__load path { fill: none; stroke: var(--fs-signal-action); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-.solver2d-diagram__moment-fill { fill: var(--sc-color-influence-area); stroke: none; }
-.solver2d-diagram__moment-line { fill: none; stroke: var(--fs-signal-moment); stroke-width: 2.5; stroke-linecap: round; }
-
-.solver2d-diagram__deformed path {
-  fill: none;
-  stroke: var(--fs-signal-deformed);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-dasharray: 7 6;
-}
-
-/* El trazo se dibuja, no aparece. Sólo lo hacen las dos curvas de resultado:
-   son las que explican una causa, y son las únicas que ganan algo con verse
-   recorrer su propio camino. */
-@media (prefers-reduced-motion: no-preference) {
-  .solver2d-diagram:not(.is-static) .solver2d-diagram__moment-line,
-  .solver2d-diagram:not(.is-static) .solver2d-diagram__deformed path {
-    stroke-dashoffset: 520;
-    stroke-dasharray: 520;
-  }
-  .solver2d-diagram:not(.is-static) .solver2d-diagram__moment.is-on .solver2d-diagram__moment-line,
-  .solver2d-diagram:not(.is-static) .solver2d-diagram__deformed.is-on path {
-    stroke-dashoffset: 0;
-    transition: stroke-dashoffset var(--sc-motion-pulse) var(--sc-ease-reveal);
-  }
-  /* La deformada recupera su discontinuo cuando termina de dibujarse. */
-  .solver2d-diagram:not(.is-static) .solver2d-diagram__deformed.is-on path { animation: solver2d-dash-settle 1ms linear var(--sc-motion-pulse) forwards; }
-}
-
-@keyframes solver2d-dash-settle { to { stroke-dasharray: 7 6; } }
 
 /* ------------------------------------------------------------------ Rutas */
 
@@ -550,10 +450,6 @@
   .solver2d-hero__name { font-size: clamp(34px, 12vw, 46px); }
   .solver2d-open__actions { display: grid; grid-template-columns: minmax(0, 1fr); }
   .solver2d-action { justify-content: center; }
-  /* En pantallas estrechas la hoja deja de pisar al objeto y se coloca debajo:
-     superpuesta ocuparía media escena y ninguno de los dos se leería. */
-  .solver2d-stage { padding-block-end: clamp(14px, 2vw, 26px); }
-  .solver2d-stage__sheet { position: static; width: 100%; margin-block-start: 12px; }
 }
 
 @media (max-width: 380px) {

@@ -166,13 +166,22 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
 .fs-hero-signal-rail [data-signal='moment'] { background: var(--sc-color-technical-moment); }
 .fs-hero-signal-rail [data-signal='deformed'] { background: var(--sc-color-technical-deformed); }
 
+/* PLANO DE MATERIA. Estas cuatro superficies existen para partir la pantalla en
+   dos: papel a un lado, plano a otro. Pedían `--sc-color-surface-2`, que en la
+   fundación resuelve al MISMO valor que `--sc-color-bg-app` en Día (#f7f6f1),
+   así que en tema claro la mitad de la composición desaparecía —el héroe, la
+   mesa de familias y los tres pasos del recorrido quedaban sobre un plano
+   único— y sólo se leía en Noche, donde los dos roles sí se separan.
+   `--sc-color-surface-3` es el escalón que difiere del fondo en los dos temas.
+   El estado elegido del riel de familias se queda en `surface-2` a propósito:
+   ahí el papel de referencia es la tarjeta (`surface-1`), no el fondo. */
 .fs-landing-hero__visual {
   min-width: 0;
   min-height: 560px;
   padding: clamp(22px, 4vw, 68px);
   display: grid;
   place-items: center;
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-3);
 }
 
 .fs-hero-matter {
@@ -232,7 +241,7 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-3);
 }
 
 .fs-family-workbench__media img {
@@ -285,8 +294,13 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   font-size: 11px;
 }
 
+/* `inline-grid` no basta dentro de una columna flex: el estirado por defecto
+   la llevaba al ancho entero de la columna, así que el índice «01» salía como
+   una barra de 300px con dos cifras en el centro. */
 .fs-family-workbench__meta > span,
 .fs-product-flow__copy > span {
+  align-self: start;
+  justify-self: start;
   min-width: 31px;
   min-height: 29px;
   padding-inline: 8px;
@@ -442,12 +456,19 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   padding: clamp(34px, 6vw, 92px);
   display: grid;
   place-items: center;
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-3);
   overflow: hidden;
 }
 
+/* Las tres piezas del recorrido llegan en tres proporciones distintas —3:2,
+   1:1 y 4:5—. Dimensionadas por ancho, cada paso presentaba su arcilla a una
+   escala distinta y el recorrido se leía como tres maquetas sueltas. La caja
+   cuadrada las iguala sin recortar ninguna: lo que cambia es el hueco que
+   sobra, no el objeto. */
 .fs-product-flow__visual img {
-  width: min(100%, 650px);
+  width: min(100%, 560px);
+  aspect-ratio: 1;
+  height: auto;
   max-height: min(510px, 52vw);
   display: block;
   object-fit: contain;
@@ -465,7 +486,7 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   flex-direction: column;
   justify-content: space-between;
   gap: 48px;
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-3);
   border-radius: var(--sc-radius-modal) var(--sc-radius-modal) 0 0;
   box-shadow: var(--sc-shadow-sheet);
 }

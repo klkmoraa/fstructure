@@ -4,7 +4,7 @@ import { useReducedMotion } from 'motion/react';
 import { Solver2DMark } from '../../design-system/brand';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import type { ProjectModel, ThemeMode } from '../../types';
-import { Solver2DHeroStage } from './Solver2DHeroStage';
+import { ThreeStructuralImage } from '../structural-assets';
 import './solver2dHome.css';
 
 export interface Solver2DHomeProps {
@@ -32,8 +32,6 @@ const copy = {
     open: 'Proyecto abierto',
     continue: 'Continuar',
     create: 'Nuevo modelo',
-    stageObject: 'Modelo',
-    stageSheet: 'Análisis',
     stageAlt: 'Pórtico de un vano en tres dimensiones, con sus placas base y sus anclajes',
     nodes: 'nudos',
     members: 'barras',
@@ -76,8 +74,6 @@ const copy = {
     open: 'Open project',
     continue: 'Continue',
     create: 'New model',
-    stageObject: 'Model',
-    stageSheet: 'Analysis',
     stageAlt: 'Single-bay portal frame in three dimensions, with its base plates and anchors',
     nodes: 'nodes',
     members: 'members',
@@ -175,14 +171,15 @@ export const Solver2DHome = ({
           </div>
         </div>
       </div>
+      {/* La escena es el objeto y nada más. La hoja de análisis que se apoyaba
+          sobre él tapaba media estructura: dos lecturas compitiendo por el
+          mismo sitio, y la que perdía era justamente la que da la escala. */}
       <div className="solver2d-hero__stage" style={{ '--reveal-step': 2 } as React.CSSProperties}>
-        <Solver2DHeroStage
-          theme={theme}
-          reducedMotion={reducedMotion}
-          objectLabel={text.stageObject}
-          sheetLabel={text.stageSheet}
-          objectAlt={text.stageAlt}
-        />
+        <div className={`solver2d-stage${reducedMotion ? ' is-static' : ''}`}>
+          <div className="solver2d-stage__object">
+            <ThreeStructuralImage assetId="portal:single-bay" theme={theme} alt={text.stageAlt} eager />
+          </div>
+        </div>
       </div>
     </section>
 

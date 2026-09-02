@@ -38,11 +38,23 @@ interface Family {
   tone: FamilyTone;
 }
 
-const ART: Record<ArtId, string> = {
-  workspace: 'fusion-clay-workspace.png',
-  project: 'fusion-clay-project.png',
-  analysis: 'fusion-clay-analysis.png',
-  delivery: 'fusion-clay-delivery.png',
+/**
+ * Las cuatro piezas de arcilla del landing, con su tamaño intrínseco.
+ *
+ * Las medidas no son decorativas: sin `width`/`height` el navegador no puede
+ * reservar la caja antes de que llegue el archivo, y estas piezas pesan entre
+ * 0,9 y 1,7 MB. Mientras baja la del héroe, su tarjeta se colapsaba a un
+ * filete y el título saltaba al aparecer la imagen. Declarada la relación de
+ * aspecto, el hueco existe desde el primer fotograma.
+ *
+ * Las tres proporciones distintas (3:2, 1:1 y 4:5) son de origen y no se
+ * recortan: lo que las iguala es la caja de la escena, no el archivo.
+ */
+const ART: Record<ArtId, { file: string; width: number; height: number }> = {
+  workspace: { file: 'fusion-clay-workspace.png', width: 1536, height: 1024 },
+  project: { file: 'fusion-clay-project.png', width: 1122, height: 1402 },
+  analysis: { file: 'fusion-clay-analysis.png', width: 1254, height: 1254 },
+  delivery: { file: 'fusion-clay-delivery.png', width: 1536, height: 1024 },
 };
 
 const FAMILIES: readonly Family[] = [
@@ -173,7 +185,14 @@ export const FusionLanding = ({ language, onOpenSolver2D, onOpenSolver3D, onOpen
   const activeFamily = FAMILIES.find((family) => family.id === activeFamilyId) ?? FAMILIES[0];
   const ActiveIcon = activeFamily.icon;
 
-  const scrollToFamilies = () => document.getElementById('fusion-families')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  /* `behavior: 'smooth'` escrito en JavaScript le gana a `scroll-behavior` del
+     CSS, así que la guarda de movimiento reducido de la hoja no lo alcanzaba:
+     con la preferencia activada la página seguía deslizándose sola. Aquí se
+     consulta la preferencia y el salto pasa a ser instantáneo. */
+  const scrollToFamilies = () => document.getElementById('fusion-families')?.scrollIntoView({
+    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    block: 'start',
+  });
 
   const selectFamilyFromKeyboard = (event: KeyboardEvent<HTMLButtonElement>, currentFamilyId: FamilyId) => {
     const currentIndex = FAMILIES.findIndex((family) => family.id === currentFamilyId);
@@ -240,7 +259,14 @@ export const FusionLanding = ({ language, onOpenSolver2D, onOpenSolver3D, onOpen
         </div>
         <div className="fs-landing-hero__visual" aria-hidden="true">
           <div className="fs-hero-matter">
-            <img src={`./assets/landing/${ART.workspace}`} alt="" decoding="async" fetchPriority="high" />
+            <img
+              src={`./assets/landing/${ART.workspace.file}`}
+              width={ART.workspace.width}
+              height={ART.workspace.height}
+              alt=""
+              decoding="async"
+              fetchPriority="high"
+            />
           </div>
         </div>
       </section>
@@ -255,7 +281,15 @@ export const FusionLanding = ({ language, onOpenSolver2D, onOpenSolver3D, onOpen
           <div className="fs-family-workbench__media" aria-hidden="true">
             <span className="fs-workbench-orbit fs-workbench-orbit--one" />
             <span className="fs-workbench-orbit fs-workbench-orbit--two" />
-            <img key={activeFamily.id} src={`./assets/landing/${ART[activeFamily.art]}`} alt="" loading="lazy" decoding="async" />
+            <img
+              key={activeFamily.id}
+              src={`./assets/landing/${ART[activeFamily.art].file}`}
+              width={ART[activeFamily.art].width}
+              height={ART[activeFamily.art].height}
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
           </div>
           <article key={activeFamily.id} id="fs-family-panel" className="fs-family-workbench__copy" role="tabpanel" aria-labelledby={`fs-family-tab-${activeFamily.id}`} tabIndex={0}>
             <div className="fs-family-workbench__meta">
@@ -321,7 +355,14 @@ export const FusionLanding = ({ language, onOpenSolver2D, onOpenSolver3D, onOpen
               <p>{text[`${step.id}Body`]}</p>
             </div>
             <figure className="fs-product-flow__visual" aria-hidden="true">
-              <img src={`./assets/landing/${ART[step.art]}`} alt="" loading="lazy" decoding="async" />
+              <img
+                src={`./assets/landing/${ART[step.art].file}`}
+                width={ART[step.art].width}
+                height={ART[step.art].height}
+                alt=""
+                loading="lazy"
+                decoding="async"
+              />
             </figure>
           </article>
         ))}
