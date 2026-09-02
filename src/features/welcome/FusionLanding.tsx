@@ -1,15 +1,15 @@
-import { type CSSProperties, type KeyboardEvent, useState } from 'react';
 import {
   ArrowDown,
   ArrowRight,
   ArrowUpRight,
   Blocks,
-  ChartNoAxesCombined,
-  FolderKanban,
+  Box,
+  DraftingCompass,
   GraduationCap,
+  Layers3,
   Network,
-  Play,
-  Route,
+  Ruler,
+  type LucideIcon,
 } from 'lucide-react';
 import './fusionLanding.css';
 
@@ -18,377 +18,292 @@ interface FusionLandingProps {
   onOpenSolver2D: () => void;
   onOpenSolver3D?: () => void;
   onOpenClassroom?: () => void;
-  onOpenImport: () => void;
 }
 
 type Localized = { es: string; en: string };
-type FamilyId = 'analysis' | 'model' | 'civil' | 'project' | 'interop' | 'learning';
-type ArtId = 'workspace' | 'project' | 'analysis' | 'delivery';
-type FamilyTone = 'blue' | 'yellow' | 'green' | 'red' | 'pink' | 'purple';
+type ToolState = 'available' | 'experimental' | 'planned';
+type ToolTone = 'blue' | 'red' | 'green' | 'yellow' | 'purple' | 'pink';
 
-interface Family {
-  id: FamilyId;
+interface ToolDefinition {
+  id: string;
   code: string;
-  mark: string;
   name: Localized;
-  line: Localized;
-  detail: Localized;
-  art: ArtId;
-  icon: typeof ChartNoAxesCombined;
-  tone: FamilyTone;
+  summary: Localized;
+  state: ToolState;
+  tone: ToolTone;
+  image: string;
+  icon: LucideIcon;
+  action?: 'solver2d' | 'solver3d' | 'classroom';
 }
 
-/**
- * Las cuatro piezas de arcilla del landing, con su tamaño intrínseco.
- *
- * Las medidas no son decorativas: sin `width`/`height` el navegador no puede
- * reservar la caja antes de que llegue el archivo, y estas piezas pesan entre
- * 0,9 y 1,7 MB. Mientras baja la del héroe, su tarjeta se colapsaba a un
- * filete y el título saltaba al aparecer la imagen. Declarada la relación de
- * aspecto, el hueco existe desde el primer fotograma.
- *
- * Las tres proporciones distintas (3:2, 1:1 y 4:5) son de origen y no se
- * recortan: lo que las iguala es la caja de la escena, no el archivo.
- */
-const ART: Record<ArtId, { file: string; width: number; height: number }> = {
-  workspace: { file: 'fusion-clay-workspace.png', width: 1536, height: 1024 },
-  project: { file: 'fusion-clay-project.png', width: 1122, height: 1402 },
-  analysis: { file: 'fusion-clay-analysis.png', width: 1254, height: 1254 },
-  delivery: { file: 'fusion-clay-delivery.png', width: 1536, height: 1024 },
-};
-
-const FAMILIES: readonly Family[] = [
+const TOOLS: readonly ToolDefinition[] = [
   {
-    id: 'analysis',
-    code: '01',
-    mark: 'tools/analysis.svg',
-    name: { es: 'Análisis', en: 'Analysis' },
-    line: { es: 'Ve lo que sostiene cada decisión.', en: 'See what supports every decision.' },
-    detail: { es: 'Modelo, cargas, comportamiento y resultados en una misma lectura.', en: 'Model, loads, behaviour, and results in one clear view.' },
-    art: 'analysis',
-    icon: ChartNoAxesCombined,
+    id: 'solver-2d',
+    code: 'FS-A01',
+    name: { es: 'Solver 2D', en: '2D Solver' },
+    summary: { es: 'Modela, resuelve y documenta sistemas planos.', en: 'Model, solve, and document planar systems.' },
+    state: 'available',
     tone: 'blue',
+    image: 'solver-2d.webp',
+    icon: Ruler,
+    action: 'solver2d',
   },
   {
-    id: 'model',
-    code: '02',
-    mark: 'tools/model.svg',
-    name: { es: 'Modelo', en: 'Model' },
-    line: { es: 'Da forma al sistema físico.', en: 'Shape the physical system.' },
-    detail: { es: 'Geometría, materiales y relaciones que conservan su intención.', en: 'Geometry, materials, and relationships that retain their intent.' },
-    art: 'workspace',
-    icon: Blocks,
+    id: 'solver-3d',
+    code: 'FS-A02',
+    name: { es: 'Solver 3D', en: '3D Solver' },
+    summary: { es: 'Explora modelos espaciales y su respuesta estructural.', en: 'Explore spatial models and their structural response.' },
+    state: 'experimental',
     tone: 'red',
+    image: 'solver-3d.webp',
+    icon: Box,
+    action: 'solver3d',
   },
   {
-    id: 'civil',
-    code: '03',
-    mark: 'tools/civil.svg',
-    name: { es: 'Civil', en: 'Civil' },
-    line: { es: 'Relaciona terreno, agua y estructura.', en: 'Relate terrain, water, and structure.' },
-    detail: { es: 'El contexto deja de ser un archivo aparte.', en: 'Context stops being a separate file.' },
-    art: 'project',
-    icon: Route,
-    tone: 'green',
-  },
-  {
-    id: 'project',
-    code: '04',
-    mark: 'tools/project.svg',
-    name: { es: 'Proyecto', en: 'Project' },
-    line: { es: 'Conserva el porqué junto al resultado.', en: 'Keep the why beside the result.' },
-    detail: { es: 'Planos, cantidades, revisiones y decisiones comparten procedencia.', en: 'Drawings, quantities, revisions, and decisions share provenance.' },
-    art: 'project',
-    icon: FolderKanban,
-    tone: 'yellow',
-  },
-  {
-    id: 'interop',
-    code: '05',
-    mark: 'tools/connections.svg',
-    name: { es: 'Conexiones', en: 'Connections' },
-    line: { es: 'Mueve información sin perder significado.', en: 'Move information without losing meaning.' },
-    detail: { es: 'Un proyecto permanece reconocible al cruzar formatos y equipos.', en: 'A project remains recognisable across formats and teams.' },
-    art: 'delivery',
-    icon: Network,
+    id: 'finite-elements',
+    code: 'FS-A03',
+    name: { es: 'Elementos finitos', en: 'Finite elements' },
+    summary: { es: 'Superficies, mallas y resultados verificables.', en: 'Surfaces, meshes, and verifiable results.' },
+    state: 'planned',
     tone: 'purple',
+    image: 'finite-elements.webp',
+    icon: Layers3,
   },
   {
-    id: 'learning',
-    code: '06',
-    mark: 'tools/learning.svg',
-    name: { es: 'Aprendizaje', en: 'Learning' },
-    line: { es: 'Convierte modelos en comprensión.', en: 'Turn models into understanding.' },
-    detail: { es: 'La misma estructura puede ser una pregunta, una prueba y una explicación.', en: 'The same structure can be a question, a test, and an explanation.' },
-    art: 'analysis',
-    icon: GraduationCap,
+    id: 'cad',
+    code: 'FS-M01',
+    name: { es: 'CAD', en: 'CAD' },
+    summary: { es: 'Geometría abierta para intercambio con flujos CAD.', en: 'Open geometry for CAD exchange workflows.' },
+    state: 'planned',
+    tone: 'blue',
+    image: 'cad.webp',
+    icon: DraftingCompass,
+  },
+  {
+    id: 'bim',
+    code: 'FS-M02',
+    name: { es: 'BIM', en: 'BIM' },
+    summary: { es: 'Modelo coordinado, propiedades y procedencia.', en: 'Coordinated model, properties, and provenance.' },
+    state: 'planned',
+    tone: 'green',
+    image: 'bim.webp',
+    icon: Blocks,
+  },
+  {
+    id: 'quantities',
+    code: 'FS-P02',
+    name: { es: 'Cantidades y costos', en: 'Quantities and costs' },
+    summary: { es: 'Puente futuro hacia presupuestos tipo Neodata.', en: 'A future bridge to Neodata-style estimating.' },
+    state: 'planned',
+    tone: 'yellow',
+    image: 'quantities-costs.webp',
+    icon: Network,
+  },
+  {
+    id: 'classroom',
+    code: 'FS-L01',
+    name: { es: 'Aula estructural', en: 'Structural classroom' },
+    summary: { es: 'Ejemplos y explicaciones conectados al modelo.', en: 'Examples and explanations connected to the model.' },
+    state: 'available',
     tone: 'pink',
+    image: 'classroom.webp',
+    icon: GraduationCap,
+    action: 'classroom',
   },
 ];
 
 const copy = {
   es: {
-    principle: 'Make complexity legible.',
-    title: 'Todo conectado a la estructura.',
-    body: 'Del primer trazo a lo que se entrega, un proyecto se entiende como uno.',
-    enter: 'Entrar al workspace',
-    explore: 'Conocer la plataforma',
-    familiesTitle: 'Un sistema. Seis formas de avanzar.',
-    familiesBody: 'Cada familia parte del mismo proyecto, por eso cada decisión llega más lejos.',
-    exploreFamily: 'Explorar familia',
-    create: 'Crear',
-    createBody: 'Define el modelo que todas las demás decisiones comparten.',
-    understand: 'Entender',
-    understandBody: 'Haz visibles las relaciones, hipótesis y consecuencias.',
-    deliver: 'Entregar',
-    deliverBody: 'Convierte el trabajo en un expediente que conserva contexto.',
-    platformBody: 'FusionStructure reúne la continuidad que normalmente se pierde entre herramientas.',
-    note: 'Visión de producto en evolución. Algunas superficies continúan desarrollándose.',
-    openAnalysis: 'Abrir análisis',
-    openProject: 'Abrir proyecto',
-    openLearning: 'Abrir aprendizaje',
-    openSpace: 'Explorar espacio 3D',
+    eyebrow: 'Make complexity legible.',
+    title: 'Un proyecto. Todas tus herramientas.',
+    body: 'Modela, analiza y conserva el contexto estructural sin convertir cada etapa en un archivo aislado.',
+    explore: 'Explorar herramientas',
+    flow: 'Ver cómo se conecta',
+    heroStatus: 'Plataforma experimental',
+    toolsEyebrow: 'Herramientas',
+    toolsTitle: 'Elige la superficie que necesitas.',
+    toolsBody: '2D y 3D son productos separados dentro del mismo proyecto. Lo futuro se muestra como futuro.',
+    activeLabel: 'Trabajar ahora',
+    futureLabel: 'Siguiente horizonte',
+    available: 'Disponible',
+    experimental: 'Experimental',
+    planned: 'Planeado',
+    open: 'Abrir',
+    preparing: 'En preparación',
+    flowEyebrow: 'Proyecto común',
+    flowTitle: 'La continuidad es la herramienta principal.',
+    flowBody: 'Identidad, unidades, modelo, hipótesis y resultados permanecen relacionados mientras cambia la superficie de trabajo.',
+    flowSteps: ['Define el proyecto', 'Construye el modelo', 'Analiza con evidencia', 'Entrega con contexto'],
+    note: 'FusionStructure está en evolución. No sustituye revisión profesional ni constituye software certificado para obra.',
   },
   en: {
-    principle: 'Make complexity legible.',
-    title: 'Everything connected to the structure.',
-    body: 'From the first line to what is delivered, a project is understood as one.',
-    enter: 'Enter workspace',
-    explore: 'Explore the platform',
-    familiesTitle: 'One system. Six ways forward.',
-    familiesBody: 'Every family starts from the same project, so every decision reaches further.',
-    exploreFamily: 'Explore family',
-    create: 'Create',
-    createBody: 'Define the model every other decision shares.',
-    understand: 'Understand',
-    understandBody: 'Make relationships, assumptions, and consequences visible.',
-    deliver: 'Deliver',
-    deliverBody: 'Turn the work into a record that retains context.',
-    platformBody: 'FusionStructure brings together the continuity that is usually lost between tools.',
-    note: 'An evolving product vision. Some surfaces are still in development.',
-    openAnalysis: 'Open analysis',
-    openProject: 'Open project',
-    openLearning: 'Open learning',
-    openSpace: 'Explore 3D space',
+    eyebrow: 'Make complexity legible.',
+    title: 'One project. Every tool.',
+    body: 'Model, analyse, and preserve structural context without turning every phase into an isolated file.',
+    explore: 'Explore tools',
+    flow: 'See how it connects',
+    heroStatus: 'Experimental platform',
+    toolsEyebrow: 'Tools',
+    toolsTitle: 'Choose the surface you need.',
+    toolsBody: '2D and 3D are separate products inside the same project. Future work is shown as future work.',
+    activeLabel: 'Work now',
+    futureLabel: 'Next horizon',
+    available: 'Available',
+    experimental: 'Experimental',
+    planned: 'Planned',
+    open: 'Open',
+    preparing: 'In preparation',
+    flowEyebrow: 'Shared project',
+    flowTitle: 'Continuity is the primary tool.',
+    flowBody: 'Identity, units, model, assumptions, and results stay related as the working surface changes.',
+    flowSteps: ['Define the project', 'Build the model', 'Analyse with evidence', 'Deliver with context'],
+    note: 'FusionStructure is evolving. It does not replace professional review or constitute certified construction software.',
   },
 } as const;
 
-const WORKFLOW: readonly { id: 'create' | 'understand' | 'deliver'; index: string; art: ArtId }[] = [
-  { id: 'create', index: '01', art: 'project' },
-  { id: 'understand', index: '02', art: 'analysis' },
-  { id: 'deliver', index: '03', art: 'delivery' },
-];
+const stateLabel = (state: ToolState, language: 'es' | 'en') => copy[language][state];
 
-export const FusionLanding = ({ language, onOpenSolver2D, onOpenSolver3D, onOpenClassroom, onOpenImport }: FusionLandingProps) => {
+export const FusionLanding = ({ language, onOpenSolver2D, onOpenSolver3D, onOpenClassroom }: FusionLandingProps) => {
   const text = copy[language];
-  const [activeFamilyId, setActiveFamilyId] = useState<FamilyId>('analysis');
-  const activeFamily = FAMILIES.find((family) => family.id === activeFamilyId) ?? FAMILIES[0];
-  const ActiveIcon = activeFamily.icon;
+  const primaryTools = TOOLS.slice(0, 2);
+  const futureTools = TOOLS.slice(2);
 
-  /* `behavior: 'smooth'` escrito en JavaScript le gana a `scroll-behavior` del
-     CSS, así que la guarda de movimiento reducido de la hoja no lo alcanzaba:
-     con la preferencia activada la página seguía deslizándose sola. Aquí se
-     consulta la preferencia y el salto pasa a ser instantáneo. */
-  const scrollToFamilies = () => document.getElementById('fusion-families')?.scrollIntoView({
-    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-    block: 'start',
-  });
-
-  const selectFamilyFromKeyboard = (event: KeyboardEvent<HTMLButtonElement>, currentFamilyId: FamilyId) => {
-    const currentIndex = FAMILIES.findIndex((family) => family.id === currentFamilyId);
-    const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
-    const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? FAMILIES.length - 1 : direction === 0 ? currentIndex : (currentIndex + direction + FAMILIES.length) % FAMILIES.length;
-
-    if (nextIndex === currentIndex && direction === 0 && event.key !== 'Home' && event.key !== 'End') return;
-
-    event.preventDefault();
-    const nextFamily = FAMILIES[nextIndex];
-    event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`#fs-family-tab-${nextFamily.id}`)?.focus();
-    setActiveFamilyId(nextFamily.id);
+  const openTool = (action: ToolDefinition['action']) => {
+    if (action === 'solver2d') onOpenSolver2D();
+    if (action === 'solver3d') onOpenSolver3D?.();
+    if (action === 'classroom') onOpenClassroom?.();
   };
 
-  const openActiveFamily = () => {
-    if (activeFamily.id === 'analysis') onOpenSolver2D();
-    else if (activeFamily.id === 'learning') onOpenClassroom?.();
-    else if (activeFamily.id === 'project' || activeFamily.id === 'interop') onOpenImport();
-    else if (activeFamily.id === 'model') onOpenSolver3D?.();
-  };
+  const renderTool = (tool: ToolDefinition, featured = false) => {
+    const Icon = tool.icon;
+    const canOpen = Boolean(tool.action);
+    const toolName = tool.name[language];
 
-  const activeAction = activeFamily.id === 'analysis'
-    ? text.openAnalysis
-    : activeFamily.id === 'learning'
-      ? text.openLearning
-      : activeFamily.id === 'project' || activeFamily.id === 'interop'
-        ? text.openProject
-        : activeFamily.id === 'model'
-          ? text.openSpace
-          : undefined;
+    return (
+      <article className={`fs-tool-card${featured ? ' fs-tool-card--featured' : ''}`} data-tone={tool.tone} key={tool.id}>
+        <div className="fs-tool-card__media" aria-hidden="true">
+          <span className="fs-tool-card__datum fs-tool-card__datum--x" />
+          <span className="fs-tool-card__datum fs-tool-card__datum--y" />
+          <img
+            src={`./assets/landing/clay-tools/${tool.image}`}
+            width={featured ? 720 : 560}
+            height={featured ? 540 : 420}
+            alt=""
+            loading={featured ? 'eager' : 'lazy'}
+            decoding="async"
+          />
+        </div>
+        <div className="fs-tool-card__content">
+          <div className="fs-tool-card__meta">
+            <span className="fs-tool-card__code">{tool.code}</span>
+            <span className="fs-tool-state" data-state={tool.state}>{stateLabel(tool.state, language)}</span>
+          </div>
+          <div className="fs-tool-card__title">
+            <Icon size={featured ? 20 : 18} aria-hidden="true" />
+            <h3>{toolName}</h3>
+          </div>
+          <p>{tool.summary[language]}</p>
+          <button
+            type="button"
+            className="fs-tool-card__action"
+            disabled={!canOpen}
+            onClick={() => openTool(tool.action)}
+            aria-label={canOpen ? `${text.open} ${toolName}` : `${toolName}: ${text.preparing}`}
+          >
+            {canOpen ? text.open : text.preparing}
+            {canOpen ? <ArrowUpRight size={16} aria-hidden="true" /> : null}
+          </button>
+        </div>
+      </article>
+    );
+  };
 
   return (
-    <div className="fs-landing" data-active-tone={activeFamily.tone}>
-      <section className="fs-landing-hero" aria-labelledby="fusion-landing-title">
+    <main className="fs-landing">
+      <nav className="fs-landing-nav" aria-label={language === 'es' ? 'Navegación de plataforma' : 'Platform navigation'}>
+        <a className="fs-landing-nav__brand" href="#fusion-top" aria-label="FusionStructure">
+          <span className="fs-brandmark" aria-hidden="true">
+            <img className="fs-brandmark__light" src="./assets/brand/fusionstructure-mark.svg" alt="" />
+            <img className="fs-brandmark__dark" src="./assets/brand/fusionstructure-mark-inverse.svg" alt="" />
+          </span>
+          <span>FusionStructure</span>
+        </a>
+        <div className="fs-landing-nav__links">
+          <a href="#fusion-tools">{text.toolsEyebrow}</a>
+          <a href="#fusion-flow">{text.flowEyebrow}</a>
+        </div>
+        <span className="fs-landing-nav__state"><span aria-hidden="true" />{text.heroStatus}</span>
+      </nav>
+
+      <section className="fs-landing-hero" id="fusion-top" aria-labelledby="fusion-landing-title">
         <div className="fs-landing-hero__copy">
-          <div className="fs-identity">
-            <span className="fs-brandmark" aria-hidden="true">
-              <img className="fs-brandmark__light" src="./assets/brand/fusionstructure-mark.svg" alt="" />
-              <img className="fs-brandmark__dark" src="./assets/brand/fusionstructure-mark-inverse.svg" alt="" />
-            </span>
-            <span className="fs-wordmark">FusionStructure</span>
-          </div>
-          <div className="fs-hero-copy__body">
-            <span className="fs-principle">{text.principle}</span>
-            <h1 id="fusion-landing-title">{text.title}</h1>
-            <p>{text.body}</p>
-            <div className="fs-landing-hero__actions">
-              <button type="button" className="fs-action fs-action--primary" onClick={onOpenSolver2D}>
-                <Play size={16} fill="currentColor" />
-                {text.enter}
-              </button>
-              <button type="button" className="fs-action" onClick={scrollToFamilies}>
-                {text.explore}
-                <ArrowDown size={16} />
-              </button>
-            </div>
-          </div>
-          <div className="fs-hero-signal-rail" aria-hidden="true">
-            <span data-signal="axial" />
-            <span data-signal="shear" />
-            <span data-signal="moment" />
-            <span data-signal="deformed" />
+          <span className="fs-landing-eyebrow">{text.eyebrow}</span>
+          <h1 id="fusion-landing-title">{text.title}</h1>
+          <p>{text.body}</p>
+          <div className="fs-landing-hero__actions">
+            <a className="fs-action fs-action--primary" href="#fusion-tools">
+              {text.explore}<ArrowDown size={16} aria-hidden="true" />
+            </a>
+            <a className="fs-action" href="#fusion-flow">
+              {text.flow}<ArrowRight size={16} aria-hidden="true" />
+            </a>
           </div>
         </div>
+
         <div className="fs-landing-hero__visual" aria-hidden="true">
-          <div className="fs-hero-matter">
-            <img
-              src={`./assets/landing/${ART.workspace.file}`}
-              width={ART.workspace.width}
-              height={ART.workspace.height}
-              alt=""
-              decoding="async"
-              fetchPriority="high"
-            />
-          </div>
+          <span className="fs-landing-hero__datum fs-landing-hero__datum--x" />
+          <span className="fs-landing-hero__datum fs-landing-hero__datum--y" />
+          <video className="fs-hero-motion" autoPlay loop muted playsInline preload="metadata" poster="./assets/landing/clay-tools/hero-structure.webp" tabIndex={-1}>
+            <source src="./assets/landing/clay-tools/hero-loop.webm" type="video/webm" />
+          </video>
+          <img className="fs-hero-still" src="./assets/landing/clay-tools/hero-structure.webp" width="1280" height="853" alt="" />
+          <span className="fs-landing-hero__axis fs-landing-hero__axis--x">X</span>
+          <span className="fs-landing-hero__axis fs-landing-hero__axis--y">Y</span>
         </div>
       </section>
 
-      <section id="fusion-families" className="fs-families" aria-labelledby="fusion-families-title">
+      <section className="fs-tools" id="fusion-tools" aria-labelledby="fusion-tools-title">
         <header className="fs-section-heading">
-          <h2 id="fusion-families-title">{text.familiesTitle}</h2>
-          <p>{text.familiesBody}</p>
+          <span>{text.toolsEyebrow}</span>
+          <div>
+            <h2 id="fusion-tools-title">{text.toolsTitle}</h2>
+            <p>{text.toolsBody}</p>
+          </div>
         </header>
 
-        <div className="fs-family-workbench" data-tone={activeFamily.tone}>
-          <div className="fs-family-workbench__media" aria-hidden="true">
-            <span className="fs-workbench-orbit fs-workbench-orbit--one" />
-            <span className="fs-workbench-orbit fs-workbench-orbit--two" />
-            <img
-              key={activeFamily.id}
-              src={`./assets/landing/${ART[activeFamily.art].file}`}
-              width={ART[activeFamily.art].width}
-              height={ART[activeFamily.art].height}
-              alt=""
-              loading="lazy"
-              decoding="async"
-            />
-          </div>
-          <article
-            key={activeFamily.id}
-            id="fs-family-panel"
-            className="fs-family-workbench__copy"
-            style={{ '--fs-title-chars': activeFamily.name[language].length } as CSSProperties}
-            role="tabpanel"
-            aria-labelledby={`fs-family-tab-${activeFamily.id}`}
-            tabIndex={0}
-          >
-            <div className="fs-family-workbench__meta">
-              <span>{activeFamily.code}</span>
-              <ActiveIcon size={20} aria-hidden="true" />
-            </div>
-            <div>
-              <h3>{activeFamily.name[language]}</h3>
-              <strong>{activeFamily.line[language]}</strong>
-              <p>{activeFamily.detail[language]}</p>
-            </div>
-            {activeAction ? (
-              <button type="button" className="fs-family-action" onClick={openActiveFamily}>
-                {activeAction}
-                <ArrowUpRight size={16} />
-              </button>
-            ) : (
-              <span className="fs-family-stage__concept">
-                {text.exploreFamily}
-                <ArrowRight size={15} />
-              </span>
-            )}
-          </article>
-        </div>
+        <div className="fs-tools-subhead"><span>{text.activeLabel}</span><span>02</span></div>
+        <div className="fs-tools-featured">{primaryTools.map((tool) => renderTool(tool, true))}</div>
 
-        <div className="fs-family-rail" role="tablist" aria-label={text.familiesTitle}>
-          {FAMILIES.map((family) => {
-            const selected = family.id === activeFamily.id;
-
-            return (
-              <button
-                key={family.id}
-                id={`fs-family-tab-${family.id}`}
-                data-tone={family.tone}
-                type="button"
-                role="tab"
-                aria-label={family.name[language]}
-                aria-controls="fs-family-panel"
-                aria-selected={selected}
-                tabIndex={selected ? 0 : -1}
-                className={selected ? 'is-active' : undefined}
-                onClick={() => setActiveFamilyId(family.id)}
-                onKeyDown={(event) => selectFamilyFromKeyboard(event, family.id)}
-              >
-                <span className="fs-family-rail__mark">
-                  <img className="fs-family-mark__light" src={`./assets/brand/${family.mark}`} alt="" loading="lazy" decoding="async" />
-                  <img className="fs-family-mark__dark" src={`./assets/brand/${family.mark.replace('.svg', '-inverse.svg')}`} alt="" loading="lazy" decoding="async" />
-                </span>
-                <span>{family.name[language]}</span>
-                <small aria-hidden="true">{family.code}</small>
-              </button>
-            );
-          })}
-        </div>
+        <div className="fs-tools-subhead fs-tools-subhead--future"><span>{text.futureLabel}</span><span>05</span></div>
+        <div className="fs-tools-grid">{futureTools.map((tool) => renderTool(tool))}</div>
       </section>
 
-      <section className="fs-product-flow" aria-label={text.title}>
-        {WORKFLOW.map((step, index) => (
-          <article key={step.id} className={`fs-product-flow__step ${index % 2 === 1 ? 'fs-product-flow__step--reverse' : ''}`}>
-            {/* El titular es tipografía de display dentro de una columna
-                estrecha, así que su tamaño tiene que conocer el largo de la
-                palabra que le toca: `Understand` no cabe donde sí cabe
-                `Entender`. Ver `fusionLanding.css`. */}
-            <div className="fs-product-flow__copy" style={{ '--fs-title-chars': text[step.id].length } as CSSProperties}>
-              <span>{step.index}</span>
-              <h2>{text[step.id]}</h2>
-              <p>{text[`${step.id}Body`]}</p>
-            </div>
-            <figure className="fs-product-flow__visual" aria-hidden="true">
-              <img
-                src={`./assets/landing/${ART[step.art].file}`}
-                width={ART[step.art].width}
-                height={ART[step.art].height}
-                alt=""
-                loading="lazy"
-                decoding="async"
-              />
-            </figure>
-          </article>
-        ))}
+      <section className="fs-flow" id="fusion-flow" aria-labelledby="fusion-flow-title">
+        <div className="fs-flow__copy">
+          <span className="fs-landing-eyebrow">{text.flowEyebrow}</span>
+          <h2 id="fusion-flow-title">{text.flowTitle}</h2>
+          <p>{text.flowBody}</p>
+          <ol className="fs-flow__steps">
+            {text.flowSteps.map((step) => <li key={step}>{step}</li>)}
+          </ol>
+        </div>
+        <div className="fs-flow__object" aria-hidden="true">
+          <img src="./assets/landing/clay-tools/hero-structure.webp" width="1280" height="853" alt="" loading="lazy" />
+          <span className="fs-flow__orbit fs-flow__orbit--one" />
+          <span className="fs-flow__orbit fs-flow__orbit--two" />
+        </div>
       </section>
 
       <footer className="fs-landing-footer">
-        <div>
-          <span className="fs-footer-brand">FusionStructure</span>
-          <p>{text.platformBody}</p>
-        </div>
-        <div className="fs-landing-footer__end">
-          <small>{text.note}</small>
-        </div>
+        <a href="#fusion-top" aria-label={language === 'es' ? 'Volver al inicio' : 'Back to top'}>
+          <span className="fs-brandmark fs-brandmark--small" aria-hidden="true">
+            <img className="fs-brandmark__light" src="./assets/brand/fusionstructure-mark.svg" alt="" />
+            <img className="fs-brandmark__dark" src="./assets/brand/fusionstructure-mark-inverse.svg" alt="" />
+          </span>
+          FusionStructure
+        </a>
+        <p>{text.note}</p>
       </footer>
-    </div>
+    </main>
   );
 };
