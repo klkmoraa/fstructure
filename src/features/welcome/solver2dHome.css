@@ -71,7 +71,9 @@
   text-transform: uppercase;
 }
 
-.solver2d-hero__eyebrow b { color: var(--fs-signal-action); font-weight: inherit; }
+/* El separador del cintillo lleva el color de la familia a la que pertenece el
+   módulo —Análisis, FS-A02—, no una señal de dominio prestada. */
+.solver2d-hero__eyebrow b { color: var(--sc-color-family-analisis); font-weight: inherit; }
 
 .solver2d-hero__name {
   margin: 0;
@@ -420,8 +422,13 @@
 }
 
 .solver2d-state::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
-.solver2d-state[data-state='available'] { color: var(--sc-color-signal-shear-ink); }
-.solver2d-state[data-state='experimental'] { color: var(--sc-color-signal-alert-ink); }
+/* El estado de madurez tiene su propia escala en el brandbook y ya no toma
+   prestada una señal de dominio: en un producto experimental, cuánto se puede
+   confiar en una función es información de primer orden. */
+.solver2d-state[data-state='available'] { color: var(--sc-color-status-disponible); }
+.solver2d-state[data-state='experimental'] { color: var(--sc-color-status-experimental); }
+.solver2d-state[data-state='planned'] { color: var(--sc-color-status-planeado); }
+.solver2d-state[data-state='uncommitted'] { color: var(--sc-color-status-no-comprometido); }
 
 .solver2d-note {
   margin: 0;

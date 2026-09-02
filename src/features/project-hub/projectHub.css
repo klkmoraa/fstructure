@@ -48,7 +48,7 @@
   border-radius: var(--sc-radius-md);
   background: var(--sc-color-surface-elevated);
   box-shadow: var(--sc-shadow-xs);
-  transition: transform 220ms cubic-bezier(.2,.8,.2,1), box-shadow 220ms cubic-bezier(.2,.8,.2,1), border-color 220ms ease;
+  transition: transform var(--sc-motion-bridge) var(--sc-ease-standard), box-shadow var(--sc-motion-bridge) var(--sc-ease-standard), border-color var(--sc-motion-bridge) ease;
 }
 
 .project-hub__row:hover {
@@ -74,7 +74,7 @@
   height: 100%;
   object-fit: contain;
   transform: scale(1.08);
-  transition: transform 360ms cubic-bezier(.2,.8,.2,1);
+  transition: transform var(--sc-motion-reveal) var(--sc-ease-standard);
 }
 
 .project-hub__row:hover .project-hub__preview img,

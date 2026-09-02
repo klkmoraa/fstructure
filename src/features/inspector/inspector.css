@@ -536,7 +536,7 @@
   border-radius:50%;
   background:var(--sc-color-surface-elevated);
   box-shadow:var(--sc-shadow-xs);
-  transition:transform 240ms var(--sc-ease-standard);
+  transition:transform var(--sc-motion-reveal) var(--sc-ease-standard);
 }
 .toggle-row input[type='checkbox']:checked,
 .compact-toggle-grid input[type='checkbox']:checked {

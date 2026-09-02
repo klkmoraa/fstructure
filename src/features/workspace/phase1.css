@@ -646,7 +646,7 @@
   color:var(--sc-color-text-secondary);
   box-shadow:var(--sc-shadow-pressed);
   cursor:pointer;
-  transition:transform 220ms cubic-bezier(.2,.85,.24,1.18),box-shadow 180ms var(--sc-ease-standard),color 180ms var(--sc-ease-standard);
+  transition:transform var(--sc-motion-slow) var(--sc-ease-standard),box-shadow var(--sc-motion-bridge) var(--sc-ease-standard),color var(--sc-motion-bridge) var(--sc-ease-standard);
 }
 
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-collapse-toggle:hover,
@@ -675,7 +675,7 @@
   color:var(--sc-color-text-secondary);
   box-shadow:var(--sc-shadow-xs);
   cursor:pointer;
-  transition:transform 220ms cubic-bezier(.2,.85,.24,1.18),box-shadow 180ms var(--sc-ease-standard),color 180ms var(--sc-ease-standard);
+  transition:transform var(--sc-motion-slow) var(--sc-ease-standard),box-shadow var(--sc-motion-bridge) var(--sc-ease-standard),color var(--sc-motion-bridge) var(--sc-ease-standard);
 }
 
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-position-toggle:hover,
@@ -1017,10 +1017,10 @@
   background:var(--sc-color-surface-1);
   box-shadow:var(--sc-shadow-xs);
   transition:
-    transform 220ms var(--sc-ease-standard),
-    box-shadow 220ms var(--sc-ease-standard),
-    background-color 180ms var(--sc-ease-standard),
-    border-color 180ms var(--sc-ease-standard);
+    transform var(--sc-motion-slow) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-slow) var(--sc-ease-standard),
+    background-color var(--sc-motion-bridge) var(--sc-ease-standard),
+    border-color var(--sc-motion-bridge) var(--sc-ease-standard);
 }
 
 /* Un hover cambia de plano; no levanta la pieza. */
@@ -1099,10 +1099,10 @@
   min-height:40px;
   border-radius:var(--sc-radius-control);
   transition:
-    transform 200ms var(--sc-ease-standard),
-    box-shadow 200ms var(--sc-ease-standard),
-    color 180ms var(--sc-ease-standard),
-    background-color 180ms var(--sc-ease-standard);
+    transform var(--sc-motion-bridge) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-bridge) var(--sc-ease-standard),
+    color var(--sc-motion-bridge) var(--sc-ease-standard),
+    background-color var(--sc-motion-bridge) var(--sc-ease-standard);
 }
 
 .app-shell .inspector-tabs button:hover:not(.active) {
@@ -1267,7 +1267,7 @@
   border:1px solid var(--sc-color-border-soft);
   background:var(--sc-color-surface-1);
   box-shadow:var(--sc-shadow-xs);
-  transition:transform 180ms var(--sc-ease-standard),box-shadow 180ms var(--sc-ease-standard),background-color 180ms var(--sc-ease-standard),color 180ms var(--sc-ease-standard);
+  transition:transform var(--sc-motion-bridge) var(--sc-ease-standard),box-shadow var(--sc-motion-bridge) var(--sc-ease-standard),background-color var(--sc-motion-bridge) var(--sc-ease-standard),color var(--sc-motion-bridge) var(--sc-ease-standard);
 }
 
 .app-shell .results-panel :is(.results-mode-control button,.results-dense-launchers button,.result-summary-actions button,.diagram-chart-heading .envelope-toggle):hover:not(:disabled) {
@@ -1322,7 +1322,7 @@
   border:1px solid transparent;
   border-radius:var(--sc-radius-control);
   color:var(--sc-color-text-secondary);
-  transition:transform 180ms var(--sc-ease-standard),box-shadow 180ms var(--sc-ease-standard),background-color 180ms var(--sc-ease-standard),color 180ms var(--sc-ease-standard);
+  transition:transform var(--sc-motion-bridge) var(--sc-ease-standard),box-shadow var(--sc-motion-bridge) var(--sc-ease-standard),background-color var(--sc-motion-bridge) var(--sc-ease-standard),color var(--sc-motion-bridge) var(--sc-ease-standard);
 }
 
 .app-shell .results-panel .result-tabs button:hover:not([aria-selected='true']) {

@@ -31,7 +31,7 @@
 }
 
 .structural-illustration--motion-safe .structural-illustration__geometry {
-  animation: structural-asset-settle var(--structural-asset-duration, 480ms) cubic-bezier(.2, .8, .2, 1) both;
+  animation: structural-asset-settle var(--structural-asset-duration, var(--sc-motion-trace)) cubic-bezier(.2, .8, .2, 1) both;
   transform-box: fill-box;
   transform-origin: center bottom;
 }

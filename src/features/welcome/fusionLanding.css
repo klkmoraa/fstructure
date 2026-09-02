@@ -1,7 +1,7 @@
 .fs-landing {
   --fs-landing-gutter: clamp(22px, 6vw, 104px);
   --fs-landing-reading: 34rem;
-  --fs-signal: var(--sc-color-technical-axial);
+  --fs-signal: var(--sc-color-family-analisis);
   color: var(--sc-color-text-primary);
   background: var(--sc-color-bg-app);
   font-family: var(--sc-font-ui);
@@ -192,7 +192,7 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   border-radius: var(--sc-radius-modal);
   background: var(--sc-color-surface-1);
   box-shadow: var(--sc-shadow-lg);
-  animation: fs-hero-matter-in 620ms var(--sc-ease-reveal) both;
+  animation: fs-hero-matter-in var(--sc-motion-trace) var(--sc-ease-reveal) both;
 }
 
 .fs-hero-matter img {
@@ -216,7 +216,7 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
 }
 
 .fs-family-workbench {
-  --fs-signal: var(--sc-color-technical-axial);
+  --fs-signal: var(--sc-color-family-analisis);
   min-height: 540px;
   margin-top: clamp(44px, 7vw, 96px);
   display: grid;
@@ -228,11 +228,14 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   overflow: hidden;
 }
 
-.fs-family-workbench[data-tone='yellow'] { --fs-signal: var(--sc-color-technical-dimension); }
-.fs-family-workbench[data-tone='green'] { --fs-signal: var(--sc-color-technical-shear); }
-.fs-family-workbench[data-tone='red'] { --fs-signal: var(--sc-color-technical-load); }
-.fs-family-workbench[data-tone='pink'] { --fs-signal: var(--sc-color-technical-moment); }
-.fs-family-workbench[data-tone='purple'] { --fs-signal: var(--sc-color-technical-deformed); }
+/* La familia se pinta con el color de familia, no con una señal de dominio
+   prestada. `analisis` no necesita regla: es el valor por defecto. */
+.fs-family-workbench[data-tone='analisis'] { --fs-signal: var(--sc-color-family-analisis); }
+.fs-family-workbench[data-tone='modelo'] { --fs-signal: var(--sc-color-family-modelo); }
+.fs-family-workbench[data-tone='civil'] { --fs-signal: var(--sc-color-family-civil); }
+.fs-family-workbench[data-tone='proyecto'] { --fs-signal: var(--sc-color-family-proyecto); }
+.fs-family-workbench[data-tone='interop'] { --fs-signal: var(--sc-color-family-interop); }
+.fs-family-workbench[data-tone='aprendizaje'] { --fs-signal: var(--sc-color-family-aprendizaje); }
 
 .fs-family-workbench__media {
   position: relative;

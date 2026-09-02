@@ -129,10 +129,14 @@ export const Solver2DHome = ({
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
 
   const paths = [
-    { id: 'blank', icon: FilePlus2, tone: 'var(--fs-signal-action)', label: text.pathBlank, body: text.pathBlankBody, action: onCreateBlank },
-    { id: 'template', icon: LayoutTemplate, tone: 'var(--fs-signal-axial)', label: text.pathTemplate, body: text.pathTemplateBody, action: onOpenTemplates },
-    { id: 'classroom', icon: GraduationCap, tone: 'var(--fs-signal-shear)', label: text.pathClassroom, body: text.pathClassroomBody, action: onOpenClassroom },
-    { id: 'import', icon: Upload, tone: 'var(--fs-signal-deformed)', label: text.pathImport, body: text.pathImportBody, action: onOpenImport },
+    // Una ruta de entrada no es un resultado del solver: lleva el color de la
+    // familia del brandbook a la que pertenece lo que abre, no el de una señal
+    // de dominio. Con la señal prestada, «Empezar en blanco» compartía color
+    // con una carga aplicada y no significaba nada.
+    { id: 'blank', icon: FilePlus2, tone: 'var(--sc-color-family-modelo)', label: text.pathBlank, body: text.pathBlankBody, action: onCreateBlank },
+    { id: 'template', icon: LayoutTemplate, tone: 'var(--sc-color-family-analisis)', label: text.pathTemplate, body: text.pathTemplateBody, action: onOpenTemplates },
+    { id: 'classroom', icon: GraduationCap, tone: 'var(--sc-color-family-aprendizaje)', label: text.pathClassroom, body: text.pathClassroomBody, action: onOpenClassroom },
+    { id: 'import', icon: Upload, tone: 'var(--sc-color-family-interop)', label: text.pathImport, body: text.pathImportBody, action: onOpenImport },
   ] as const;
 
   const capabilities = [
