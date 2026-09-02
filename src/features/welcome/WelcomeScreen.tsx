@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Box, Folder, GraduationCap, Home, Image as ImageIcon, LayoutTemplate, LibraryBig, Menu, Search, Settings, Upload, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Box, Download, Folder, GraduationCap, Home, Image as ImageIcon, LayoutTemplate, LibraryBig, Menu, Moon, Search, Settings, Sun, Trash2, Upload, X } from 'lucide-react';
 import { createBlankProject, exampleProjects } from '../../data/defaultProject';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
 import { exportProjectJson } from '../../utils/export';
@@ -17,6 +17,7 @@ import { IllustrationStudio } from '../structural-assets/studio/IllustrationStud
 import type { ClassroomExerciseTemplateId } from '../../education/exerciseTemplates';
 import { PersonalLibraryView } from '../library/PersonalLibraryView';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
+import type { ThemeMode } from '../../types';
 import { useModalFocus } from '../../design-system/components/modalFocus';
 import { clearLocalMetrics, exportLocalMetrics, getLocalMetrics, setLocalMetricsOptIn, type LocalMetricsStore } from '../../analytics/localMetrics';
 import './totalHome.css';
@@ -40,11 +41,11 @@ const copy = {
   es: {
     navigation: 'Navegación de FStructure', home: 'Plataforma', solver2d: 'FStructure', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar', space3d: 'Solver 3D',
     backPlatform: 'Volver a la plataforma',
-    settings: 'Ajustes', settingsTitle: 'Ajustes', settingsBody: 'Personaliza cómo se presenta FusionStructure en este dispositivo.', language: 'Idioma', closeSettings: 'Cerrar ajustes', studio: 'Estudio de ilustraciones', menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', current: 'Proyecto abierto', continue: 'Continuar proyecto', create: 'Nuevo proyecto', localMetrics: 'Diagnóstico local', localMetricsBody: 'Opcional. Guarda sólo eventos agregados en este dispositivo; nunca envía geometría, cargas, resultados ni datos personales.', localMetricsOptIn: 'Guardar mediciones locales para mejorar el flujo', localMetricsCount: '{count} observaciones locales', exportDiagnostics: 'Exportar diagnóstico', clearDiagnostics: 'Borrar observaciones', search: 'Buscar', searchPlaceholder: 'Buscar proyectos o accesos…', clearSearch: 'Borrar búsqueda', noQuickMatches: 'No hay accesos rápidos que coincidan.',
+    settings: 'Ajustes', settingsTitle: 'Ajustes', settingsBody: 'Estas preferencias viven en este dispositivo y no viajan con el proyecto.', language: 'Idioma', languageBody: 'Idioma de la interfaz y de las lecturas del solver.', appearance: 'Apariencia', appearanceBody: 'El tema cambia el papel y la tinta; las seis señales del dominio no cambian de significado.', themeLight: 'Día', themeDark: 'Noche', closeSettings: 'Cerrar ajustes', studio: 'Estudio de ilustraciones', menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', current: 'Proyecto abierto', continue: 'Continuar proyecto', create: 'Nuevo proyecto', localMetrics: 'Diagnóstico local', localMetricsBody: 'Opcional. Guarda sólo eventos agregados en este dispositivo; nunca envía geometría, cargas, resultados ni datos personales.', localMetricsOptIn: 'Guardar mediciones locales para mejorar el flujo', localMetricsCount: '{count} observaciones locales', exportDiagnostics: 'Exportar diagnóstico', clearDiagnostics: 'Borrar observaciones', search: 'Buscar', searchPlaceholder: 'Buscar proyectos o accesos…', clearSearch: 'Borrar búsqueda', noQuickMatches: 'No hay accesos rápidos que coincidan.',
     recent: 'Proyectos recientes', viewAll: 'Ver todos', templatesTitle: 'Elige una estructura de partida', templatesBody: 'Abre un modelo preparado y adáptalo a tu caso.',
     projectsTitle: 'Tus proyectos', projectsBody: 'Abre, renombra o duplica el trabajo guardado en este dispositivo.',
     classroomTitle: 'Aprende resolviendo una estructura', classroomBody: 'Elige un caso, ajusta sus datos y avanza con una guía que no te quita el control del modelo.', classroomAction: 'Crear desde cero', classroomCases: 'O empieza con un caso preparado',
-    importTitle: 'Trae un modelo', importBody: 'Revisa el archivo antes de modificar el proyecto abierto.',
+    importTitle: 'Trae un modelo', importBody: 'Revisa el archivo antes de modificar el proyecto abierto.', importPortableBody: 'Expediente portable o JSON de proyecto, con vista previa antes de reemplazar nada.',
     spaceTitle: 'Construye en tres dimensiones', spaceBody: 'Trabaja con pórticos espaciales, niveles y cargas en un entorno separado de tu modelo 2D.', spaceAction: 'Abrir Space 3D', spaceExperimental: 'Experimental', spaceNotice: 'Este acceso abre un modelo espacial independiente. Antes de entrar verás qué se mantiene separado y cómo volver al editor 2D.', spaceContinue2D: 'Continuar en editor 2D',
     spacePreview: 'Pórtico espacial de varios vanos', spaceCoordinates: 'Ejes X, Y y Z', spaceModel: 'Geometría espacial', spaceLoads: 'Cargas y apoyos 3D',
     secondary: 'Accesos rápidos', local: 'Guardado local en este dispositivo',
@@ -52,11 +53,11 @@ const copy = {
   en: {
     navigation: 'FStructure navigation', home: 'Platform', solver2d: 'FStructure', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import', space3d: '3D Solver',
     backPlatform: 'Back to platform',
-    settings: 'Settings', settingsTitle: 'Settings', settingsBody: 'Personalize how FusionStructure is presented on this device.', language: 'Language', closeSettings: 'Close settings', studio: 'Illustration Studio', menu: 'Open navigation', closeMenu: 'Close navigation', current: 'Open project', continue: 'Continue project', create: 'New project', localMetrics: 'Local diagnostics', localMetricsBody: 'Optional. Stores aggregate events on this device only; it never sends geometry, loads, results, or personal data.', localMetricsOptIn: 'Store local measurements to improve the flow', localMetricsCount: '{count} local observations', exportDiagnostics: 'Export diagnostics', clearDiagnostics: 'Erase observations', search: 'Search', searchPlaceholder: 'Search projects or shortcuts…', clearSearch: 'Clear search', noQuickMatches: 'No quick access items match.',
+    settings: 'Settings', settingsTitle: 'Settings', settingsBody: 'These preferences live on this device and do not travel with the project.', language: 'Language', languageBody: 'Interface language and the wording of solver readings.', appearance: 'Appearance', appearanceBody: 'The theme changes paper and ink; the six domain signals never change meaning.', themeLight: 'Day', themeDark: 'Night', closeSettings: 'Close settings', studio: 'Illustration Studio', menu: 'Open navigation', closeMenu: 'Close navigation', current: 'Open project', continue: 'Continue project', create: 'New project', localMetrics: 'Local diagnostics', localMetricsBody: 'Optional. Stores aggregate events on this device only; it never sends geometry, loads, results, or personal data.', localMetricsOptIn: 'Store local measurements to improve the flow', localMetricsCount: '{count} local observations', exportDiagnostics: 'Export diagnostics', clearDiagnostics: 'Erase observations', search: 'Search', searchPlaceholder: 'Search projects or shortcuts…', clearSearch: 'Clear search', noQuickMatches: 'No quick access items match.',
     recent: 'Recent projects', viewAll: 'View all', templatesTitle: 'Choose a starting structure', templatesBody: 'Open a prepared model and adapt it to your case.',
     projectsTitle: 'Your projects', projectsBody: 'Open, rename, or duplicate work saved on this device.',
     classroomTitle: 'Learn by solving a structure', classroomBody: 'Choose a case, adjust its data, and move forward with guidance that keeps you in control of the model.', classroomAction: 'Start from scratch', classroomCases: 'Or begin with a prepared case',
-    importTitle: 'Bring in a model', importBody: 'Review the file before changing the open project.',
+    importTitle: 'Bring in a model', importBody: 'Review the file before changing the open project.', importPortableBody: 'Portable record or project JSON, previewed before anything is replaced.',
     spaceTitle: 'Build in three dimensions', spaceBody: 'Work with spatial frames, levels, and loads in an environment separate from your 2D model.', spaceAction: 'Open Space 3D', spaceExperimental: 'Experimental', spaceNotice: 'This entry opens an independent spatial model. Before entering, you will see what remains separate and how to return to the 2D editor.', spaceContinue2D: 'Continue in 2D editor',
     spacePreview: 'Multi-bay spatial frame', spaceCoordinates: 'X, Y, and Z axes', spaceModel: 'Spatial geometry', spaceLoads: '3D loads and supports',
     secondary: 'Quick access', local: 'Saved locally on this device',
@@ -82,11 +83,33 @@ const templateAssetId = (name: string): ThreeStructuralAssetId => {
 
 interface WelcomePreferencesProps {
   language: 'es' | 'en';
+  theme: ThemeMode;
   onLanguageChange: (language: 'es' | 'en') => void;
+  onThemeChange: (theme: ThemeMode) => void;
   onClose: () => void;
 }
 
-const WelcomePreferences = ({ language, onLanguageChange, onClose }: WelcomePreferencesProps) => {
+/**
+ * Ajustes de Inicio.
+ *
+ * Antes era un recuadro flotante anclado a la esquina inferior izquierda, sin
+ * velo, que se montaba encima del contenido y sólo ofrecía el idioma y el
+ * diagnóstico local. Tenía dos defectos que no eran de estilo:
+ *
+ * 1. **No decía dónde estabas.** Un diálogo modal sin velo deja la pantalla de
+ *    detrás igual de viva que la de delante, y el foco atrapado dentro se lee
+ *    como un fallo en vez de como una decisión.
+ * 2. **Le faltaba el ajuste que la gente busca primero.** El tema Día/Noche
+ *    existía en la consola del editor y en la paleta de comandos, pero no en
+ *    Ajustes, que es el único sitio donde alguien lo busca sin saber que el
+ *    editor existe.
+ *
+ * Ahora es una hoja centrada sobre velo, con tres bloques que declaran qué
+ * cambian y dónde vive lo que cambian. El velo cierra al pulsarlo, `Escape`
+ * cierra y el foco vuelve a quien abrió — eso último ya lo daba `useModalFocus`
+ * y sigue siendo suyo.
+ */
+const WelcomePreferences = ({ language, theme, onLanguageChange, onThemeChange, onClose }: WelcomePreferencesProps) => {
   const text = copy[language];
   const [metrics, setMetrics] = useState<LocalMetricsStore>(() => getLocalMetrics(window.localStorage));
   const dialogRef = useRef<HTMLElement>(null);
@@ -102,25 +125,73 @@ const WelcomePreferences = ({ language, onLanguageChange, onClose }: WelcomePref
     anchor.click();
     URL.revokeObjectURL(url);
   };
-  return <section ref={dialogRef} className="sc-home-settings-panel" role="dialog" aria-modal="true" aria-label={text.settingsTitle} tabIndex={-1}>
-    <button ref={closeRef} type="button" aria-label={text.closeSettings} onClick={onClose}><X size={19} /></button>
-    <h2>{text.settingsTitle}</h2>
-    <p>{text.settingsBody}</p>
-    <label className="sc-home-settings-field"><span>{text.language}</span><select aria-label={text.language} value={language} onChange={(event) => onLanguageChange(event.target.value as 'es' | 'en')}><option value="es">ES</option><option value="en">EN</option></select></label>
-    <section className="sc-home-settings-metrics" aria-labelledby="local-metrics-title">
-      <h3 id="local-metrics-title">{text.localMetrics}</h3>
-      <p>{text.localMetricsBody}</p>
-      <label><input type="checkbox" checked={metrics.optIn} onChange={(event) => setMetrics(setLocalMetricsOptIn(window.localStorage, event.currentTarget.checked))} />{text.localMetricsOptIn}</label>
-      <small>{text.localMetricsCount.replace('{count}', String(metrics.events.length))}</small>
-      <div><button type="button" onClick={downloadDiagnostics}>{text.exportDiagnostics}</button><button type="button" onClick={() => setMetrics(clearLocalMetrics(window.localStorage))} disabled={metrics.events.length === 0}>{text.clearDiagnostics}</button></div>
+
+  const themes: ReadonlyArray<{ id: ThemeMode; label: string; icon: typeof Sun }> = [
+    { id: 'light', label: text.themeLight, icon: Sun },
+    { id: 'dark', label: text.themeDark, icon: Moon },
+  ];
+  const languages: ReadonlyArray<{ id: 'es' | 'en'; label: string }> = [
+    { id: 'es', label: 'Español · ES' },
+    { id: 'en', label: 'English · EN' },
+  ];
+
+  return <div className="sc-home-settings-scrim" onPointerDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <section ref={dialogRef} className="sc-home-settings-panel" role="dialog" aria-modal="true" aria-labelledby="sc-home-settings-title" tabIndex={-1}>
+      <header className="sc-home-settings-panel__head">
+        <div>
+          <h2 id="sc-home-settings-title">{text.settingsTitle}</h2>
+          <p>{text.settingsBody}</p>
+        </div>
+        <button ref={closeRef} type="button" className="sc-home-settings-close" aria-label={text.closeSettings} onClick={onClose}><X size={18} /></button>
+      </header>
+
+      <section className="sc-home-settings-group" aria-labelledby="sc-home-settings-appearance">
+        <h3 id="sc-home-settings-appearance">{text.appearance}</h3>
+        <p>{text.appearanceBody}</p>
+        <div className="sc-home-settings-choice" role="group" aria-labelledby="sc-home-settings-appearance">
+          {themes.map(({ id, label, icon: Icon }) => <button
+            key={id}
+            type="button"
+            aria-pressed={theme === id}
+            onClick={() => onThemeChange(id)}
+          ><Icon size={15} aria-hidden="true" />{label}</button>)}
+        </div>
+      </section>
+
+      <section className="sc-home-settings-group" aria-labelledby="sc-home-settings-language">
+        <h3 id="sc-home-settings-language">{text.language}</h3>
+        <p>{text.languageBody}</p>
+        <div className="sc-home-settings-choice" role="group" aria-labelledby="sc-home-settings-language">
+          {languages.map(({ id, label }) => <button
+            key={id}
+            type="button"
+            aria-pressed={language === id}
+            onClick={() => onLanguageChange(id)}
+          >{label}</button>)}
+        </div>
+      </section>
+
+      <section className="sc-home-settings-group sc-home-settings-metrics" aria-labelledby="local-metrics-title">
+        <h3 id="local-metrics-title">{text.localMetrics}</h3>
+        <p>{text.localMetricsBody}</p>
+        <label className="sc-home-settings-switch">
+          <input type="checkbox" checked={metrics.optIn} onChange={(event) => setMetrics(setLocalMetricsOptIn(window.localStorage, event.currentTarget.checked))} />
+          <span>{text.localMetricsOptIn}</span>
+        </label>
+        <p className="sc-home-settings-count">{text.localMetricsCount.replace('{count}', String(metrics.events.length))}</p>
+        <div className="sc-home-settings-actions">
+          <button type="button" onClick={downloadDiagnostics}><Download size={14} aria-hidden="true" />{text.exportDiagnostics}</button>
+          <button type="button" onClick={() => setMetrics(clearLocalMetrics(window.localStorage))} disabled={metrics.events.length === 0}><Trash2 size={14} aria-hidden="true" />{text.clearDiagnostics}</button>
+        </div>
+      </section>
     </section>
-  </section>;
+  </div>;
 };
 
 export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspace, onViewChange, initialView = 'home' }: WelcomeScreenProps) => {
   const { project, replaceProject, updateProjectView } = useProject();
   const { language, t } = useI18n();
-  const { theme } = useWorkspaceUI();
+  const { theme, setTheme } = useWorkspaceUI();
   const text = copy[language];
   const [view, setView] = useState<HomeView>(initialView);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -231,6 +302,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
 
   const solver2dDashboard = <Solver2DHome
     language={language}
+    theme={theme}
     project={project}
     onContinue={onOpenWorkspace}
     onCreateBlank={openBlankProject}
@@ -282,7 +354,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
       : view === 'templates' ? templates
         : view === 'library' ? <PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} />
           : view === 'classroom' ? classroomLanding
-            : view === 'import' ? <section className="sc-home-view" aria-label={text.import}>{viewHeading(text.importTitle, text.importBody)}<div className="sc-home-import-grid"><button type="button" className="welcome-import-card" onClick={() => setImportCenterOpen(true)}><Upload size={20} /><strong>{t('welcome.import')}</strong></button><Suspense fallback={null}><Phase2DxfAction open={dxfImportOpen} onOpenChange={setDxfImportOpen} onOpenWorkspace={onOpenWorkspace} /></Suspense></div></section>
+            : view === 'import' ? <section className="sc-home-view" aria-label={text.import}>{viewHeading(text.importTitle, text.importBody)}<div className="sc-home-import-grid"><button type="button" className="welcome-import-card" onClick={() => setImportCenterOpen(true)}><span className="welcome-import-icon"><Upload size={20} /></span><span className="welcome-import-text"><strong>{t('welcome.import')}</strong><small>{text.importPortableBody}</small></span><ArrowRight size={16} className="welcome-launcher-arrow" /></button><Suspense fallback={null}><Phase2DxfAction open={dxfImportOpen} onOpenChange={setDxfImportOpen} onOpenWorkspace={onOpenWorkspace} /></Suspense></div></section>
               : null;
 
   const space3dWelcome = <section className="sc-home-space" aria-label={text.space3d}>
@@ -313,5 +385,5 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   return <>{screen}
     {importCenterOpen ? <Suspense fallback={null}><PortableImportCenter open currentProjectName={project.name} onClose={() => setImportCenterOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { replaceProject({ ...outcome.project, settings: { ...outcome.project.settings, language } }, outcome.restoredAnalysis); setImportCenterOpen(false); onOpenWorkspace(); }} /></Suspense> : null}
     <NewExerciseDialog open={exerciseDialogOpen} initialTemplateId={exerciseTemplateId} onClose={() => setExerciseDialogOpen(false)} onCreate={(next) => { replaceProject({ ...next, settings: { ...next.settings, language } }); setExerciseDialogOpen(false); onOpenWorkspace(); }} />
-    {preferencesOpen ? <WelcomePreferences language={language} onLanguageChange={updateLanguage} onClose={closePreferences} /> : null}{studioOpen ? <IllustrationStudio language={language} initialTheme={theme} onClose={closeStudio} /> : null}</>;
+    {preferencesOpen ? <WelcomePreferences language={language} theme={theme} onLanguageChange={updateLanguage} onThemeChange={setTheme} onClose={closePreferences} /> : null}{studioOpen ? <IllustrationStudio language={language} initialTheme={theme} onClose={closeStudio} /> : null}</>;
 };

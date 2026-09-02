@@ -978,8 +978,19 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);
-  box-shadow: none;
+  /* La tecla elegida es el único punto del riel con volumen: es la que dice
+     qué va a pasar cuando toques el lienzo, y con el riel entero plano no
+     tenía forma de distinguirse de un hover salvo por el color. */
+  box-shadow: var(--sc-shadow-action);
   transform: none;
+}
+/* Pulsar sí responde: el riel no se mueve al pasar por encima —sería un
+   temblor con teclas de 38px cada 2px—, pero una tecla que se acciona se
+   hunde el píxel del sistema. */
+.tool-rail .tool-button:active:not(:disabled),
+.tool-rail.is-compact .tool-button:active:not(:disabled) {
+  box-shadow: var(--sc-shadow-pressed);
+  transform: var(--sc-press-transform);
 }
 /* La barra de dominio: 2px en el canto de entrada de la tecla elegida, del
    color con el que esa herramienta dibuja en el lienzo. */

@@ -24,8 +24,10 @@
   transition: width var(--sc-motion-bridge) var(--sc-ease-reveal);
 }
 
+/* Desplegada, la consola TAPA el lienzo: eso es exactamente lo que en este
+   sistema autoriza una sombra de flotación, y no la de contacto que llevaba. */
 .console:hover,
-.console:focus-within { width: 216px; box-shadow: var(--sc-shadow-drop); }
+.console:focus-within { width: 216px; box-shadow: var(--sc-shadow-lg); }
 
 .console button {
   min-width: 44px;
@@ -51,6 +53,10 @@
 
 .console button:hover,
 .console button:focus-visible { background: var(--surface-2); }
+/* El fondo por sí solo no es un indicador de foco: es el mismo que da el
+   puntero. El anillo sí, y aquí va hacia dentro porque la consola mide 52px y
+   un anillo desplazado se saldría del riel. */
+.console button:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: calc(-1 * var(--sc-focus-ring-width)); }
 .console button.is-active { background: var(--surface-2); color: var(--accent-ink); box-shadow: inset 2px 0 0 var(--accent-ink); }
 .console button:disabled { color: var(--sc-color-text-disabled); }
 
