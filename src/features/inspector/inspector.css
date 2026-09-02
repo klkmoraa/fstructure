@@ -4,6 +4,77 @@
 .inspector-tabs button.active { color: var(--text); font-weight: 650; }
 .inspector-tabs button.active::after { content: ''; position: absolute; height: 2px; background: var(--accent-ink); left: 8px; right: 8px; bottom: -1px; }
 .mobile-inspector-close { display:none; }
+
+/* Cabecera de una superficie de contexto (detalle de la selección).
+   No tenía NINGUNA regla: el rótulo salía a sangre contra el filete del panel
+   y se cortaba, y el cierre quedaba con el botón por defecto del navegador.
+   Ahora comparte la altura y el aire de `.inspector-tabs`, para que abrir el
+   detalle no mueva el contenido de sitio. */
+.inspector-context-controls {
+  min-height: 52px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 12px 7px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inspector-context-controls > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-bold);
+  letter-spacing: var(--sc-tracking-eyebrow);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.inspector-context-controls > div { flex: none; display: flex; align-items: center; gap: 6px; }
+
+.inspector-context-expand {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-semibold);
+  transition: var(--sc-transition-control);
+}
+.inspector-context-expand:hover { border-color: var(--border); background: var(--surface-2); }
+.inspector-context-expand:active { transform: var(--sc-press-transform); }
+
+.inspector-context-close {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: var(--sc-transition-control);
+}
+.inspector-context-close:hover { border-color: var(--border-soft); background: var(--surface-2); color: var(--text); }
+.inspector-context-close:active { transform: var(--sc-press-transform); }
+
+.inspector-context-expand:focus-visible,
+.inspector-context-close:focus-visible {
+  outline: var(--sc-focus-ring-width) solid var(--focus);
+  outline-offset: var(--sc-focus-ring-offset);
+}
 .inspector-scroll { overflow-y: auto; min-height: 0; padding: 12px 16px 32px; }
 .inspector-section { padding: 9px 0 15px; border-bottom: 1px solid var(--border-soft); }
 .inspector-section h3 { margin: 0 0 10px; font-size: 12px; letter-spacing: .01em; }
@@ -142,9 +213,22 @@
 }
 .inspector-summary.is-empty .inspector-summary__preview { background:var(--surface-3); color:var(--muted); }
 .inspector-summary__identity>div { display:grid; min-width:0; gap:2px; }
-.inspector-summary__type { color:var(--muted); font-size:10px!important; font-weight:720; line-height:1.15!important; letter-spacing:.055em; text-transform:uppercase; }
-.inspector-summary__identity strong { overflow:hidden; color:var(--text); font-size:15px; line-height:1.2; text-overflow:ellipsis; white-space:nowrap; }
-.inspector-summary__identity small { overflow:hidden; color:var(--muted); line-height:1.35!important; text-overflow:ellipsis; white-space:nowrap; }
+.inspector-summary__type { color:var(--muted); font-family:var(--sc-font-mono); font-size:var(--sc-font-size-label); font-weight:720; line-height:var(--sc-line-height-tight); letter-spacing:var(--sc-tracking-eyebrow); text-transform:uppercase; }
+.inspector-summary__identity strong { overflow:hidden; color:var(--text); font-size:15px; line-height:var(--sc-line-height-tight); text-overflow:ellipsis; white-space:nowrap; }
+/* La descripción llega a dos líneas en vez de cortarse en la primera. Con una
+   sola línea, el estado vacío —«Selecciona un nodo, miembro, apoyo o carga en
+   el lienzo»— perdía justo la mitad que dice qué hacer. El identificador de
+   arriba sí sigue en una línea: ahí lo que sobra es un nombre largo, no una
+   instrucción. */
+.inspector-summary__identity small {
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-clamp:2;
+  overflow:hidden;
+  color:var(--muted);
+  line-height:var(--sc-line-height-compact);
+}
 .inspector-summary__metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; margin:0; }
 .inspector-summary__metrics>div { min-width:0; padding:7px 6px; border-radius:var(--sc-radius-card); background:var(--surface); text-align:center; }
 .inspector-summary__metrics dt { overflow:hidden; font-size:9px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }

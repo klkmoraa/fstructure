@@ -166,13 +166,22 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
 .fs-hero-signal-rail [data-signal='moment'] { background: var(--sc-color-technical-moment); }
 .fs-hero-signal-rail [data-signal='deformed'] { background: var(--sc-color-technical-deformed); }
 
+/* PLANO DE MATERIA. Estas cuatro superficies existen para partir la pantalla en
+   dos: papel a un lado, plano a otro. Pedían `--sc-color-surface-2`, que en la
+   fundación resuelve al MISMO valor que `--sc-color-bg-app` en Día (#f7f6f1),
+   así que en tema claro la mitad de la composición desaparecía —el héroe, la
+   mesa de familias y los tres pasos del recorrido quedaban sobre un plano
+   único— y sólo se leía en Noche, donde los dos roles sí se separan.
+   `--sc-color-surface-3` es el escalón que difiere del fondo en los dos temas.
+   El estado elegido del riel de familias se queda en `surface-2` a propósito:
+   ahí el papel de referencia es la tarjeta (`surface-1`), no el fondo. */
 .fs-landing-hero__visual {
   min-width: 0;
   min-height: 560px;
   padding: clamp(22px, 4vw, 68px);
   display: grid;
   place-items: center;
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-3);
 }
 
 .fs-hero-matter {
@@ -232,7 +241,7 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-3);
 }
 
 .fs-family-workbench__media img {
@@ -265,6 +274,7 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
 }
 
 .fs-family-workbench__copy {
+  container-type: inline-size;
   min-height: 380px;
   padding: clamp(26px, 4vw, 54px);
   display: flex;
@@ -285,8 +295,13 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   font-size: 11px;
 }
 
+/* `inline-grid` no basta dentro de una columna flex: el estirado por defecto
+   la llevaba al ancho entero de la columna, así que el índice «01» salía como
+   una barra de 300px con dos cifras en el centro. */
 .fs-family-workbench__meta > span,
 .fs-product-flow__copy > span {
+  align-self: start;
+  justify-self: start;
   min-width: 31px;
   min-height: 29px;
   padding-inline: 8px;
@@ -302,11 +317,25 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   font-weight: 700;
 }
 
+/* El texto y su acción se centran juntos en el hueco que queda, en vez de
+   hundirse al fondo. Con `margin-top: auto` sólo en el texto, el panel tenía
+   dos anclas —el índice arriba y el nombre abajo— y en cuanto la mesa pasaba
+   de unos 500px de alto, los 250px de en medio dejaban de leerse como aire y
+   pasaban a leerse como un hueco.
+
+   Los dos automáticos van en extremos distintos del grupo a propósito: el
+   sobrante se reparte por encima del texto y por debajo de la acción, así que
+   los dos se quedan pegados entre sí en vez de separarse. Cuando no sobra
+   nada —en móvil, donde el panel se ajusta al texto— no hacen nada. */
 .fs-family-workbench__copy > div:nth-child(2) { margin-top: auto; }
+.fs-family-workbench__copy > :nth-child(3) { margin-bottom: auto; }
 
 .fs-family-workbench h3 {
   margin: 0 0 11px;
-  font-size: clamp(36px, 3.5vw, 58px);
+  font-size: min(
+    clamp(36px, 3.5vw, 58px),
+    calc(100cqi / (var(--fs-title-chars, 8) * 0.5))
+  );
   font-weight: 660;
   letter-spacing: -.065em;
   line-height: .94;
@@ -415,7 +444,24 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   border-block-end: 1px solid var(--sc-color-border-soft);
 }
 
+/* TIPOGRAFÍA DE DISPLAY EN COLUMNA ESTRECHA.
+   Estos dos titulares se dimensionaban con `vw` —el ancho del VIEWPORT— dentro
+   de columnas que ocupan un tercio de él. Con las palabras cortas del español
+   colaba; con las largas del inglés no: `Understand` se salía de su columna
+   entre 56 y 88px en todo el rango de 1024 a 1600, y `Connections` otro tanto
+   a 1280 y 1440. No se veía en revisión porque la revisión se hace en español.
+
+   El tamaño pasa a conocer dos cosas que antes ignoraba: el ancho de SU columna
+   (`cqi`, de ahí el `container-type` de abajo) y cuántos caracteres le tocan
+   —`--fs-title-chars`, que pone el componente—. El coeficiente es el ancho
+   medio por carácter de cada escala, medido sobre la palabra más ancha que
+   cada bloque puede recibir.
+
+   `min()` con el `clamp` original significa que el tope sólo actúa cuando de
+   verdad haría falta: `Crear`, `Civil` o `Análisis` conservan su tamaño
+   exacto, y sólo las palabras que no caben bajan. */
 .fs-product-flow__copy {
+  container-type: inline-size;
   padding: var(--fs-landing-gutter);
   display: flex;
   flex-direction: column;
@@ -425,7 +471,10 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
 .fs-product-flow__copy h2 {
   max-width: 430px;
   margin-top: 19px;
-  font-size: clamp(52px, 6.1vw, 98px);
+  font-size: min(
+    clamp(52px, 6.1vw, 98px),
+    calc(100cqi / (var(--fs-title-chars, 8) * 0.46))
+  );
 }
 
 .fs-product-flow__copy p {
@@ -442,12 +491,19 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   padding: clamp(34px, 6vw, 92px);
   display: grid;
   place-items: center;
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-3);
   overflow: hidden;
 }
 
+/* Las tres piezas del recorrido llegan en tres proporciones distintas —3:2,
+   1:1 y 4:5—. Dimensionadas por ancho, cada paso presentaba su arcilla a una
+   escala distinta y el recorrido se leía como tres maquetas sueltas. La caja
+   cuadrada las iguala sin recortar ninguna: lo que cambia es el hueco que
+   sobra, no el objeto. */
 .fs-product-flow__visual img {
-  width: min(100%, 650px);
+  width: min(100%, 560px);
+  aspect-ratio: 1;
+  height: auto;
   max-height: min(510px, 52vw);
   display: block;
   object-fit: contain;
@@ -465,7 +521,7 @@ html[data-theme='dark'] .fs-family-mark__dark { display: block; }
   flex-direction: column;
   justify-content: space-between;
   gap: 48px;
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-3);
   border-radius: var(--sc-radius-modal) var(--sc-radius-modal) 0 0;
   box-shadow: var(--sc-shadow-sheet);
 }

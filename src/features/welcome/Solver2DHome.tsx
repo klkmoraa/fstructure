@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react';
-import { ArrowRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload } from 'lucide-react';
 import { useReducedMotion } from 'motion/react';
 import { Solver2DMark } from '../../design-system/brand';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
-import type { ProjectModel } from '../../types';
-import { Solver2DHeroDiagram } from './Solver2DHeroDiagram';
+import type { ProjectModel, ThemeMode } from '../../types';
+import { ThreeStructuralImage } from '../structural-assets';
 import './solver2dHome.css';
 
 export interface Solver2DHomeProps {
   language: 'es' | 'en';
+  /** Tema activo. La escena de portada tiene un render por tema, no un filtro. */
+  theme: ThemeMode;
   project: ProjectModel;
   onContinue: () => void;
   onCreateBlank: () => void;
@@ -30,6 +32,7 @@ const copy = {
     open: 'Proyecto abierto',
     continue: 'Continuar',
     create: 'Nuevo modelo',
+    stageAlt: 'Pórtico de un vano en tres dimensiones, con sus placas base y sus anclajes',
     nodes: 'nudos',
     members: 'barras',
     loads: 'cargas',
@@ -71,6 +74,7 @@ const copy = {
     open: 'Open project',
     continue: 'Continue',
     create: 'New model',
+    stageAlt: 'Single-bay portal frame in three dimensions, with its base plates and anchors',
     nodes: 'nodes',
     members: 'members',
     loads: 'loads',
@@ -109,6 +113,7 @@ const copy = {
 
 export const Solver2DHome = ({
   language,
+  theme,
   project,
   onContinue,
   onCreateBlank,
@@ -139,14 +144,14 @@ export const Solver2DHome = ({
     { id: 'learning', state: 'available', label: text.capLearning, body: text.capLearningBody },
   ] as const;
 
-  return <div className="solver2d-home">
+  return <div className={`solver2d-home${reducedMotion ? ' is-static' : ''}`}>
     <section className="solver2d-hero" aria-labelledby="solver2d-hero-name">
       <div className="solver2d-hero__copy">
-        <span className="solver2d-hero__eyebrow">{SOLVER_2D.product}<b>·</b>{text.role}</span>
-        <h1 id="solver2d-hero-name" className="solver2d-hero__name"><Solver2DMark size={48} />{SOLVER_2D.name}</h1>
-        <p className="solver2d-hero__lead"><strong>{text.leadStrong}</strong> {text.lead}</p>
+        <span className="solver2d-hero__eyebrow" style={{ '--reveal-step': 0 } as React.CSSProperties}>{SOLVER_2D.product}<b>·</b>{text.role}</span>
+        <h1 id="solver2d-hero-name" className="solver2d-hero__name" style={{ '--reveal-step': 1 } as React.CSSProperties}><Solver2DMark size={48} />{SOLVER_2D.name}</h1>
+        <p className="solver2d-hero__lead" style={{ '--reveal-step': 2 } as React.CSSProperties}><strong>{text.leadStrong}</strong> {text.lead}</p>
 
-        <div className="solver2d-open" onPointerEnter={onPreloadWorkspace} onFocusCapture={onPreloadWorkspace}>
+        <div className="solver2d-open" style={{ '--reveal-step': 3 } as React.CSSProperties} onPointerEnter={onPreloadWorkspace} onFocusCapture={onPreloadWorkspace}>
           <div className="solver2d-open__head">
             <span className="solver2d-open__label">{text.open}</span>
             <h2 className="solver2d-open__name" title={project.name}>{project.name}</h2>
@@ -166,7 +171,16 @@ export const Solver2DHome = ({
           </div>
         </div>
       </div>
-      <div className="solver2d-hero__stage"><Solver2DHeroDiagram reducedMotion={reducedMotion} /></div>
+      {/* La escena es el objeto y nada más. La hoja de análisis que se apoyaba
+          sobre él tapaba media estructura: dos lecturas compitiendo por el
+          mismo sitio, y la que perdía era justamente la que da la escala. */}
+      <div className="solver2d-hero__stage" style={{ '--reveal-step': 2 } as React.CSSProperties}>
+        <div className={`solver2d-stage${reducedMotion ? ' is-static' : ''}`}>
+          <div className="solver2d-stage__object">
+            <ThreeStructuralImage assetId="portal:single-bay" theme={theme} alt={text.stageAlt} eager />
+          </div>
+        </div>
+      </div>
     </section>
 
     <section className="solver2d-section" aria-labelledby="solver2d-start-title">
@@ -174,11 +188,18 @@ export const Solver2DHome = ({
         <div><h2 id="solver2d-start-title">{text.startTitle}</h2><p>{text.startBody}</p></div>
       </header>
       <div className="solver2d-paths">
-        {paths.map(({ id, icon: Icon, tone, label, body, action }) => (
-          <button key={id} type="button" className="solver2d-path" style={{ '--path-tone': tone } as React.CSSProperties} onClick={action}>
+        {paths.map(({ id, icon: Icon, tone, label, body, action }, index) => (
+          <button
+            key={id}
+            type="button"
+            className="solver2d-path"
+            style={{ '--path-tone': tone, '--reveal-step': index } as React.CSSProperties}
+            onClick={action}
+          >
             <span className="solver2d-path__icon" aria-hidden="true"><Icon size={17} /></span>
             <strong>{label}</strong>
-            <span>{body}</span>
+            <span className="solver2d-path__body">{body}</span>
+            <ArrowUpRight className="solver2d-path__go" size={15} aria-hidden="true" />
           </button>
         ))}
       </div>
@@ -197,8 +218,8 @@ export const Solver2DHome = ({
         <div><h2 id="solver2d-capability-title">{text.capabilityTitle}</h2><p>{text.capabilityBody}</p></div>
       </header>
       <div className="solver2d-capabilities">
-        {capabilities.map(({ id, state, label, body }) => (
-          <article key={id} className="solver2d-capability">
+        {capabilities.map(({ id, state, label, body }, index) => (
+          <article key={id} className="solver2d-capability" style={{ '--reveal-step': index } as React.CSSProperties}>
             <span className="solver2d-state" data-state={state}>{state === 'available' ? text.available : text.experimental}</span>
             <strong>{label}</strong>
             <p>{body}</p>

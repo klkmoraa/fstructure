@@ -829,7 +829,11 @@
   min-width:0;
   flex:1 1 auto;
   display:grid;
-  grid-template-columns:repeat(5,minmax(72px,1fr));
+  /* Las cinco magnitudes reparten el ancho, pero con un techo: estiradas
+     hasta el borde del panel cada tecla llegaba a rozar los 300px y la barra
+     dejaba de leerse como un control para parecer una navegación. */
+  grid-template-columns:repeat(5,minmax(72px,152px));
+  justify-content:start;
   gap:4px;
 }
 
@@ -1382,21 +1386,38 @@
   gap:10px;
 }
 
+/* El canto de inicio es por donde entra la señal de la magnitud —la misma
+   puerta estrecha que usa un toast para su estado—, así que la composición
+   declara el filete de 1px y deja ese lado a la tarjeta. */
 .app-shell .results-panel .result-extreme-card {
+  border:1px solid var(--sc-color-border-soft);
+  border-inline-start:2px solid var(--extreme-color,var(--sc-color-border));
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-shadow-xs);
+}
+
+.app-shell .results-panel .result-extreme-card:hover {
+  box-shadow:var(--sc-shadow-raised);
+}
+
+/* «Localizar» lleva al modelo: es una acción, no una cavidad. Con el relleno
+   pulsado que tenía antes se leía como un control ya accionado. */
+.app-shell .results-panel .result-extreme-card__locate {
   border:1px solid var(--sc-color-border-soft);
   background:var(--sc-color-surface-1);
   box-shadow:var(--sc-shadow-xs);
 }
 
-.app-shell .results-panel .result-extreme-card__locate {
-  border:1px solid var(--sc-color-border-soft);
-  background:var(--sc-color-surface-pressed);
-  box-shadow:var(--sc-shadow-pressed);
+.app-shell .results-panel .result-extreme-card__locate:hover:not(:disabled) {
+  border-color:var(--sc-color-border);
+  background:var(--sc-color-surface-elevated);
+  box-shadow:var(--sc-shadow-raised);
 }
 
-.app-shell .results-panel .result-extreme-card__locate:hover:not(:disabled) {
-  color:var(--accent);
-
+.app-shell .results-panel .result-extreme-card__locate:active:not(:disabled) {
+  background:var(--sc-color-surface-pressed);
+  box-shadow:var(--sc-shadow-pressed);
+  transform:var(--sc-press-transform);
 }
 
 /* La precisión se lee sobre BASE: el marco exterior puede elevarse, pero el
