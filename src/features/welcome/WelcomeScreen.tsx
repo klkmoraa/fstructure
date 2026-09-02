@@ -297,7 +297,6 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     onOpenSolver2D={() => navigate('solver2d')}
     onOpenSolver3D={() => navigate('space3d')}
     onOpenClassroom={() => navigate('classroom')}
-    onOpenImport={() => navigate('import')}
   />;
 
   const solver2dDashboard = <Solver2DHome
