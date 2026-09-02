@@ -141,7 +141,7 @@
     z-index: 40;
     width: 100%;
     /* El shell reserva exactamente esta altura (`--console-band`). */
-    height: var(--console-band, calc(56px + env(safe-area-inset-bottom)));
+    height: var(--console-band, calc(60px + env(safe-area-inset-bottom)));
     padding-block-end: env(safe-area-inset-bottom);
     flex-direction: row;
     align-items: stretch;
@@ -183,7 +183,14 @@
   /* El carril desplaza: un desvanecido en el borde lo dice sin ocupar sitio. */
   .console__body {
     mask-image: linear-gradient(to right, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
+    /* `proximity` y no `mandatory`: el carril se sigue desplazando libre, pero
+       un impulso que se queda a medio grupo termina de entrar en vez de dejar
+       media tecla asomando. Media tecla no se puede tocar y tampoco se puede
+       leer. */
+    scroll-snap-type: x proximity;
   }
+  .console__tools,
+  .console__surfaces { scroll-snap-align: start; }
 
 
   .console__surfaces,

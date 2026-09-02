@@ -24,7 +24,13 @@ interface FusionLandingProps {
 type Localized = { es: string; en: string };
 type FamilyId = 'analysis' | 'model' | 'civil' | 'project' | 'interop' | 'learning';
 type ArtId = 'workspace' | 'project' | 'analysis' | 'delivery';
-type FamilyTone = 'blue' | 'yellow' | 'green' | 'red' | 'pink' | 'purple';
+/** La familia del brandbook a la que pertenece cada herramienta.
+ *
+ * Antes esto era un hue suelto —`blue`, `red`, `pink`— y la hoja lo traducía a
+ * una señal de dominio: el landing pintaba «Modelo» con el color de una carga
+ * aplicada porque los dos eran rojos. El brandbook publica una escala de
+ * familia propia, y es la que se nombra aquí. */
+type FamilyTone = 'analisis' | 'modelo' | 'civil' | 'proyecto' | 'interop' | 'aprendizaje';
 
 interface Family {
   id: FamilyId;
@@ -67,7 +73,7 @@ const FAMILIES: readonly Family[] = [
     detail: { es: 'Modelo, cargas, comportamiento y resultados en una misma lectura.', en: 'Model, loads, behaviour, and results in one clear view.' },
     art: 'analysis',
     icon: ChartNoAxesCombined,
-    tone: 'blue',
+    tone: 'analisis',
   },
   {
     id: 'model',
@@ -78,7 +84,7 @@ const FAMILIES: readonly Family[] = [
     detail: { es: 'Geometría, materiales y relaciones que conservan su intención.', en: 'Geometry, materials, and relationships that retain their intent.' },
     art: 'workspace',
     icon: Blocks,
-    tone: 'red',
+    tone: 'modelo',
   },
   {
     id: 'civil',
@@ -89,7 +95,7 @@ const FAMILIES: readonly Family[] = [
     detail: { es: 'El contexto deja de ser un archivo aparte.', en: 'Context stops being a separate file.' },
     art: 'project',
     icon: Route,
-    tone: 'green',
+    tone: 'civil',
   },
   {
     id: 'project',
@@ -100,7 +106,7 @@ const FAMILIES: readonly Family[] = [
     detail: { es: 'Planos, cantidades, revisiones y decisiones comparten procedencia.', en: 'Drawings, quantities, revisions, and decisions share provenance.' },
     art: 'project',
     icon: FolderKanban,
-    tone: 'yellow',
+    tone: 'proyecto',
   },
   {
     id: 'interop',
@@ -111,7 +117,7 @@ const FAMILIES: readonly Family[] = [
     detail: { es: 'Un proyecto permanece reconocible al cruzar formatos y equipos.', en: 'A project remains recognisable across formats and teams.' },
     art: 'delivery',
     icon: Network,
-    tone: 'purple',
+    tone: 'interop',
   },
   {
     id: 'learning',
@@ -122,7 +128,7 @@ const FAMILIES: readonly Family[] = [
     detail: { es: 'La misma estructura puede ser una pregunta, una prueba y una explicación.', en: 'The same structure can be a question, a test, and an explanation.' },
     art: 'analysis',
     icon: GraduationCap,
-    tone: 'pink',
+    tone: 'aprendizaje',
   },
 ];
 

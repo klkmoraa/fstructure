@@ -246,6 +246,7 @@ export const ToolRail = () => {
   const [desktopDockCollapsed, setDesktopDockCollapsed] = useState(false);
   const loadMenuButtonRef = useRef<HTMLButtonElement>(null);
   const moreMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileDockRef = useRef<HTMLElement>(null);
   const paletteRef = useRef<HTMLElement>(null);
   const { shellClass } = useShellComposition();
   const surfacePresentation = useContext(SurfacePresentationContext);
@@ -367,6 +368,21 @@ export const ToolRail = () => {
     previousShellClassRef.current = shellClass;
     if (shellClass !== 'K0') setMobileMenu(null);
   }, [shellClass]);
+
+  /* En K0 el riel es un carril desplazable dentro de la banda de la consola, y
+     no entra entero: pasadas cuatro o cinco teclas, el resto queda fuera de
+     vista. Si la herramienta activa es una de las que quedaron fuera —porque se
+     eligió desde la paleta de comandos, desde el teclado, o porque el carril se
+     desplazó después—, la banda no muestra ninguna tecla encendida y lo que se
+     lee es «no hay herramienta activa», que es falso.
+     `block:'nearest'` y no `center`: sólo se mueve cuando de verdad hace
+     falta, así que elegir una tecla visible no arrastra el carril bajo el dedo. */
+  useEffect(() => {
+    const dock = mobileDockRef.current;
+    if (!dock || shellClass !== 'K0') return;
+    const activa = dock.querySelector('.tool-button.active, .tool-button.is-active');
+    activa?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeTool, shellClass]);
 
   const paletteTitle = mobileMenu === 'loads' ? t('toolbar.addLoad') : t('toolbar.moreSheetTitle');
   const paletteDescription = mobileMenu === 'loads' ? t('toolbar.loadSheetDescription') : t('toolbar.moreSheetDescription');
@@ -582,7 +598,7 @@ export const ToolRail = () => {
         <div className="toolbar-spacer" />
         <div className="selection-tip"><BoxSelect size={18} /><span>{t('toolbar.tip')}</span></div>
 
-        <nav className="mobile-tool-dock" aria-label={t('toolbar.primary')}>
+        <nav className="mobile-tool-dock" aria-label={t('toolbar.primary')} ref={mobileDockRef}>
           {mobilePrimaryTools.map((definition) => <RegisteredToolButton
             key={definition.id}
             definition={definition}

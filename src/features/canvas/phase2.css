@@ -119,9 +119,258 @@
 .canvas-result-legend.axial i { color:var(--axial); }
 .canvas-result-legend.shear i { color:var(--shear); border-top-style:dashed; }
 .canvas-result-legend.moment i { color:var(--moment); border-top-style:double; }
-.quick-entry-bar { position:absolute; z-index:22; left:50%; bottom:14px; transform:translateX(-50%); width:max-content; max-width:calc(100% - 190px); padding:6px 7px; border-radius:var(--sc-radius-control); display:flex; flex-wrap:nowrap; align-items:center; gap:6px; }
-.quick-entry-heading { flex:0 0 auto; display:flex; align-items:center; gap:6px; }.quick-entry-heading>strong { font-size:9px; font-weight:700; color:var(--muted); white-space:nowrap; }.quick-entry-mode { display:flex; gap:2px; padding:2px; border-radius:var(--sc-radius-card); background:var(--surface-2); box-shadow:var(--sc-shadow-pressed); }.quick-entry-mode button { min-height:24px; padding:0 7px; border:0; border-radius:var(--sc-radius-control); background:var(--surface); color:var(--muted); font-size:8px; box-shadow:var(--sc-shadow-xs); }.quick-entry-mode button:not([aria-pressed='true']):hover { box-shadow:var(--sc-shadow-sm); }.quick-entry-mode button[aria-pressed='true'] { background:var(--surface-3); color:var(--accent); font-weight:700; box-shadow:var(--sc-shadow-pressed); }
-.quick-entry-bar>label { flex:0 0 auto; width:92px; min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; border:1px solid var(--border-soft); border-radius:var(--sc-radius-card); background:var(--surface-2); box-shadow:var(--sc-shadow-pressed); overflow:hidden; }.quick-entry-bar>label>span,.quick-entry-bar>label>small { padding:0 6px; color:var(--muted); font-size:8px; }.quick-entry-bar input { width:100%; min-width:0; height:32px; border:0; outline:0; background:transparent; color:var(--text); font-variant-numeric:tabular-nums; }.quick-entry-bar>button[type='submit'] { flex:0 0 auto; min-height:32px; padding:0 11px; border:0; border-radius:var(--sc-radius-card); background: var(--accent-fill); color:var(--accent-foreground); font-size:9px; font-weight:750; white-space:nowrap; box-shadow:var(--sc-shadow-action); }.quick-entry-bar>button[type='submit']:hover { box-shadow:var(--sc-shadow-action-hover); }.quick-entry-bar>button[type='submit']:active { box-shadow:var(--sc-shadow-action-pressed); }.quick-entry-error { position:absolute; left:0; top:100%; margin-top:4px; color:var(--danger); font-size:9px; white-space:nowrap; }
+/* --- Entrada por coordenadas ------------------------------------------- */
+/* El botón vive junto a la cámara pero en su propio grupo: escribir un punto
+   es colocar, no mirar, y mezclarlo con el zoom lo convertía en un control de
+   vista. El glifo es propio (`CoordinateEntryGlyph`) y no una mira prestada:
+   la mira del `Instrument` informa y ésta hace. */
+.canvas-coordinate-launcher { position:absolute; z-index:9; left:14px; bottom:calc(18px + var(--sc-control-height-md) * 3 + 10px); }
+.canvas-coordinate-trigger {
+  width:var(--sc-size-target-touch);
+  height:var(--sc-size-target-touch);
+  display:grid;
+  place-items:center;
+  border:var(--sc-depth-raised-border);
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-depth-raised-shadow);
+  color:var(--sc-color-text-secondary);
+  cursor:pointer;
+  transition:var(--sc-transition-control);
+}
+.canvas-coordinate-trigger:hover { color:var(--sc-color-text-primary); box-shadow:var(--sc-shadow-lifted); }
+.canvas-coordinate-trigger:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+.canvas-coordinate-trigger:focus-visible { outline:var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset:var(--sc-focus-ring-offset); }
+/* Abierto es una cavidad: la tecla está DENTRO mientras su panel está fuera. */
+.canvas-coordinate-trigger.active {
+  background:var(--sc-color-surface-inset);
+  box-shadow:var(--sc-shadow-inset);
+  color:var(--sc-color-text-primary);
+}
+
+/* El panel. No es modal —ver la cabecera de `CoordinateEntry.tsx`— así que
+   sólo él toma el puntero y el lienzo sigue vivo alrededor. */
+.coordinate-entry {
+  position:absolute;
+  z-index:22;
+  display:grid;
+  gap:8px;
+  padding:12px;
+  border:var(--sc-depth-floating-border);
+  border-radius:var(--sc-radius-panel);
+  background:var(--sc-color-surface-floating);
+  box-shadow:var(--sc-depth-floating-shadow);
+}
+.coordinate-entry[data-coordinate-entry='anchored'] {
+  left:14px;
+  bottom:calc(18px + var(--sc-control-height-md) * 3 + 10px + var(--sc-size-target-touch) + 8px);
+  width:272px;
+}
+
+/* La geometría de la hoja va con el ATRIBUTO, no con una consulta de ancho.
+   `compact` sale de la clase de shell, y K0 llega hasta 1023px: atada a
+   `max-width:700px`, entre 701 y 1023 el panel se declaraba `sheet` y no lo
+   alcanzaba ni esta regla ni la de `anchored`. Sin inset ni ancho, un
+   `position:absolute` cae en su sitio estático —detrás de un `svg` de alto
+   completo— y se abría fuera del lienzo, que además recorta. Las dos fuentes de
+   la decisión tienen que ser una. */
+.coordinate-entry[data-coordinate-entry='sheet'] {
+  /* Se ancla al borde del disparador y NO va a sangre completa: K0 llega a
+     1023px, y a ese ancho una hoja a todo lo ancho estira las teclas del
+     teclado a 290px cada una. Un teclado numérico se usa con un pulgar y su
+     ancho útil no crece con la pantalla. En teléfono sí va a sangre, porque
+     ahí 420px ya son toda la pantalla. */
+  left:auto;
+  right:max(10px,env(safe-area-inset-right));
+  bottom:10px;
+  width:min(420px,calc(100% - 20px));
+  max-height:calc(100% - 20px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  border-radius:var(--sc-radius-sheet);
+}
+/* El teclado propio es táctil en todo el rango compacto, no sólo en teléfono. */
+.coordinate-entry[data-coordinate-entry='sheet'] .coordinate-entry__keypad button { min-height:46px; font-size:var(--sc-font-size-display-md); }
+.coordinate-entry[data-coordinate-entry='sheet'] .coordinate-entry__fields input { height:46px; }
+
+/* El disparador acompaña a los controles de cámara, que en compacto se pasan
+   al borde derecho en fila (regla de `@media (max-width:1023px)`). */
+@media (max-width:1023px) {
+  .canvas-coordinate-launcher {
+    left:auto;
+    right:12px;
+    bottom:calc(12px + var(--sc-control-height-md) + 8px);
+  }
+}
+.coordinate-entry__head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.coordinate-entry__head strong { font-size:var(--sc-font-size-control); font-weight:var(--sc-font-weight-bold); }
+
+.coordinate-entry__modes {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:2px;
+  padding:2px;
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-inset);
+  box-shadow:var(--sc-shadow-inset);
+}
+.coordinate-entry__modes button {
+  min-height:30px;
+  border:0;
+  border-radius:var(--sc-radius-control);
+  background:transparent;
+  color:var(--sc-color-text-secondary);
+  cursor:pointer;
+  font-size:var(--sc-font-size-label);
+  font-weight:var(--sc-font-weight-semibold);
+  transition:var(--sc-transition-control);
+}
+.coordinate-entry__modes button[aria-pressed='true'] {
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-shadow-raised);
+  color:var(--sc-color-text-primary);
+}
+/* Deshabilitado y no oculto: que Relativo exista es parte de saber que se
+   puede, y desaparecer no enseña qué le falta. */
+.coordinate-entry__modes button:disabled { color:var(--sc-color-text-disabled); cursor:default; }
+
+.coordinate-entry__origin {
+  margin:0;
+  color:var(--sc-color-text-muted);
+  font-size:var(--sc-font-size-caption);
+  line-height:var(--sc-line-height-compact);
+}
+
+/* Dos campos y, en compacto, la tecla de borrar: es la que los edita. */
+.coordinate-entry__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.coordinate-entry__fields:has(.coordinate-entry__erase) { grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; }
+.coordinate-entry__fields label {
+  min-width:0;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  border:1px solid var(--sc-color-border-soft);
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-inset);
+  box-shadow:var(--sc-shadow-inset);
+  overflow:hidden;
+}
+/* Con teclado propio, qué campo recibe la próxima tecla tiene que verse: el
+   cursor del sistema no está. */
+.coordinate-entry__fields label.is-focused { border-color:var(--sc-color-focus); }
+.coordinate-entry__fields label > span,
+.coordinate-entry__fields label > small { padding:0 7px; color:var(--sc-color-text-muted); font-size:var(--sc-font-size-label); }
+.coordinate-entry__fields input {
+  width:100%;
+  min-width:0;
+  height:var(--sc-control-height-touch);
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--sc-color-text-primary);
+  font-size:var(--sc-font-size-subtitle);
+  font-variant-numeric:var(--sc-numeric-variant);
+  text-align:end;
+}
+
+.coordinate-entry__keypad { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.coordinate-entry__keypad button {
+  min-height:var(--sc-control-height-touch);
+  border:var(--sc-depth-raised-border);
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-depth-raised-shadow);
+  color:var(--sc-color-text-primary);
+  cursor:pointer;
+  font-size:var(--sc-font-size-screen);
+  font-variant-numeric:var(--sc-numeric-variant);
+  font-weight:var(--sc-font-weight-semibold);
+  transition:var(--sc-transition-control);
+}
+.coordinate-entry__keypad button:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+
+.coordinate-entry__erase {
+  width:var(--sc-control-height-touch);
+  display:grid;
+  place-items:center;
+  border:var(--sc-depth-raised-border);
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-depth-raised-shadow);
+  color:var(--sc-color-text-secondary);
+  cursor:pointer;
+}
+.coordinate-entry__erase:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+
+/* La lectura del destino resuelto. Tabular porque es una cifra que se compara
+   con la del lienzo, no una frase. */
+.coordinate-entry__resolved {
+  margin:0;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:var(--sc-color-text-secondary);
+  font-family:var(--sc-font-mono);
+  font-size:var(--sc-font-size-caption);
+  font-variant-numeric:var(--sc-numeric-variant);
+}
+.coordinate-entry__resolved svg { flex:none; color:var(--sc-color-text-muted); }
+
+.coordinate-entry__error { margin:0; color:var(--sc-color-signal-moment-ink); font-size:var(--sc-font-size-caption); }
+
+.coordinate-entry__place {
+  min-height:var(--sc-control-height-touch);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border:0;
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-action-primary);
+  box-shadow:var(--sc-shadow-action);
+  color:var(--sc-color-action-foreground);
+  cursor:pointer;
+  font-size:var(--sc-font-size-control);
+  font-weight:var(--sc-font-weight-bold);
+}
+.coordinate-entry__place:hover { background:var(--sc-color-action-hover); box-shadow:var(--sc-shadow-action-hover); }
+.coordinate-entry__place:active { box-shadow:var(--sc-shadow-action-pressed); transform:var(--sc-press-transform); }
+
+/* La previsualización: la cruz de destino, su punto y —si hay origen— la medida
+   que los une. Es lo que hace comprobable un número escrito antes de
+   confirmarlo, y por eso el panel no puede llevar velo. */
+.coordinate-preview { color:var(--sc-color-selection-stroke); }
+.coordinate-preview line { stroke:currentColor; stroke-width:1.4; stroke-dasharray:5 4; vector-effect:non-scaling-stroke; }
+.coordinate-preview path { fill:none; stroke:currentColor; stroke-width:1.2; vector-effect:non-scaling-stroke; }
+.coordinate-preview__halo { fill:none; stroke:currentColor; stroke-width:1.6; opacity:.45; vector-effect:non-scaling-stroke; }
+.coordinate-preview__dot { fill:currentColor; stroke:none; }
+
+/* En teléfono la hoja se aprieta contra los bordes y el disparador baja de
+   tamaño, porque la cámara también lo hace (`mobileCanvasDensity.css`). El área
+   segura INFERIOR no se suma: ya la reserva la banda de la consola
+   (`--console-band` en `phase1.css`) y el lienzo termina encima de ella, así
+   que contarla otra vez la contaría dos veces. Los lados sí, porque en
+   horizontal el recorte de la pantalla no lo cubre nadie.
+
+   La hoja no usa `100dvh` ni el viewport visual porque el teclado del sistema
+   no sube: los campos son de sólo lectura y las teclas son suyas. Esa es toda
+   la razón de tener teclado propio. */
+@media (max-width:700px) {
+  .canvas-coordinate-launcher {
+    right:max(7px,env(safe-area-inset-right));
+    bottom:55px;
+  }
+  .canvas-coordinate-trigger { width:42px; height:42px; border-radius:var(--sc-radius-panel); }
+
+  .coordinate-entry[data-coordinate-entry='sheet'] {
+    left:max(7px,env(safe-area-inset-left));
+    right:max(7px,env(safe-area-inset-right));
+    bottom:7px;
+    width:auto;
+    max-height:calc(100% - 14px);
+  }
+}
+
 .canvas-hint { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); border-radius: var(--sc-radius-pill); padding: 7px 9px 7px 13px; font-size: 12px; display:flex; align-items:center; gap:8px; pointer-events:none; }.canvas-hint button { width:24px; height:24px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--surface-2); color:var(--muted); pointer-events:auto; }.canvas-hint button:hover { color:var(--text); background:var(--border-soft); }
 .cut-tooltip { position: absolute; z-index: 28; width:min(340px,calc(100% - 20px)); max-height:min(380px,calc(100% - 20px)); overflow:auto; border-radius: var(--sc-radius-card); padding: 11px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 11px; pointer-events: none; }
 .cut-title-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -418,14 +667,12 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 
 .results-panel :is(button,input,select),
 .inspector-panel :is(button,input,select),
-.quick-entry-bar :is(button,input,select),
 .import-center-dialog :is(button,input,select) {
   font-size:var(--sc-font-size-control)!important;
 }
 
 .results-panel :is(small,p,dt,dd,span,td,th,caption,code),
 .inspector-panel :is(small,p,label,span),
-.quick-entry-bar :is(small,span,strong),
 .import-center-dialog :is(small,p) {
   font-size:var(--sc-font-size-label)!important;
   line-height:1.4;
@@ -434,7 +681,7 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 @media (pointer:coarse) {
   .results-panel :is(button,input,select),
   .inspector-panel :is(button,input,select),
-  .quick-entry-bar button,
+  .coordinate-entry button,
   .import-center-dialog button,
   .canvas-hint button,
   .mobile-inspector-toggle {
@@ -614,7 +861,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .canvas-feedback { top:calc(var(--canvas-safe-top) + 8px); }
 .canvas-result-legend { top:calc(var(--canvas-safe-top) + 8px); left:12px; }
 .canvas-hint { top:calc(var(--canvas-safe-top) + 8px); }
-.quick-entry-bar { bottom:calc(var(--canvas-safe-bottom) + 8px); }
 
 /* El chrome del lienzo es opaco desde el ciclo 2. En escritorio, el ancho
    heredado del badge y la leyenda invadía el diagrama de momento: con vidrio
@@ -679,7 +925,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .canvas-result-legend { top:104px; left:10px; }
   .canvas-feedback { top:104px; }
   .canvas-hint { top:104px; }
-  .quick-entry-bar { bottom:70px; }
 }
 
 @media (max-width:460px) {
@@ -891,13 +1136,24 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .app-shell[data-tool-rail-compact='true'][data-inspector-collapsed='true'] .workspace {
     grid-template-columns:var(--sc-layout-rail-compact) minmax(0,1fr);
   }
-  /* ========================================================================
+}
+
+/* ========================================================================
    Dock de herramientas · definición única
    ------------------------------------------------------------------------
    Antes esta pieza estaba descrita cuatro veces en este mismo archivo, una por
    cada etapa de los dos productos de origen: 56px con etiqueta, 54px con
    etiqueta, 46px con etiqueta y 48px icon-only, cada una con su radio y su
    relieve. Aquí está una sola vez.
+
+   ESTE BLOQUE ES DE NIVEL SUPERIOR Y TIENE QUE SEGUIR SIÉNDOLO. Al unificarlo
+   se perdió la llave que cerraba el `@media (min-width:1440px)` de arriba, y
+   las 127 líneas siguientes quedaron dentro de una consulta de escritorio: en
+   un teléfono no se aplicaba ni el color base del icono, ni la normalización a
+   `currentColor`, ni el piso táctil de 44px del `@media (pointer:coarse)` del
+   final. El riel se quedaba con el color de dominio como único pintor del
+   glifo (`.tool-rail .sc-tool-button__icon svg`, más arriba), que es la razón
+   de que en Día los iconos no elegidos se perdieran contra el papel.
 
    Es un DOCK DE ICONOS. No lleva texto: el nombre de cada herramienta lo dan
    `aria-label` y el tooltip por foco/hover, que ya existían. Con eso el riel
@@ -943,7 +1199,11 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   border-radius: var(--sc-radius-control);
   background: transparent;
   color: var(--sc-color-text-secondary);
-  box-shadow: none;
+  /* La tecla en reposo se apoya en la bandeja con el escalón más bajo del
+     sistema. Declaraba `none` de cuando la fundación no tenía volumen, y desde
+     entonces `phase1.css` la contradecía con más especificidad: dos hojas
+     diciendo cosas distintas de la misma pieza. Aquí sale del contrato. */
+  box-shadow: var(--sc-shadow-xs);
   transform: none;
   transition: var(--sc-transition-control);
 }
@@ -992,6 +1252,15 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   box-shadow: var(--sc-shadow-pressed);
   transform: var(--sc-press-transform);
 }
+/* El hueco de los nudos de un glifo estructural es el papel del plano sobre el
+   que se dibuja. En una tecla elegida ese plano se invirtió a tinta, así que el
+   hueco tiene que invertirse con ella o quedan dos agujeros del color de fuera
+   dentro de una pieza que ya no lo es. */
+.tool-rail .tool-button.active,
+.tool-rail .tool-button.is-active,
+.tool-rail.is-compact .tool-button.active,
+.tool-rail.is-compact .tool-button.is-active { --sc-glyph-hole: var(--sc-color-action-primary); }
+
 /* La barra de dominio: 2px en el canto de entrada de la tecla elegida, del
    color con el que esa herramienta dibuja en el lienzo. */
 .tool-rail .tool-button.active::before,
@@ -1035,13 +1304,14 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .tool-rail.is-compact .tool-button:hover:not(:disabled),
   .tool-rail.is-compact .tool-button:active:not(:disabled) { transform:none; transition:none; }
 }
-}
 
-/* El disparador de capas comparte la gramática: cavidad al estar abierto. */
+/* El disparador de capas comparte la gramática: cavidad al estar abierto. El
+   filete era `color-mix(..., white)` y en Día se disolvía contra el papel: un
+   botón flotando sobre el lienzo sin contorno legible. */
 .canvas-layer-trigger {
   background:var(--surface);
-  border:1px solid color-mix(in srgb,var(--border) 72%,white);
-  box-shadow:var(--sc-shadow-xs);
+  border:var(--sc-depth-raised-border);
+  box-shadow:var(--sc-depth-raised-shadow);
   transition:var(--sc-transition-control);
 }
 .canvas-layer-trigger:hover { box-shadow:var(--sc-shadow-sm); }
@@ -1491,8 +1761,10 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   opacity: 0.72;
 }
 
+/* El relleno del fantasma se mezcla contra la MESA, no contra `white`: sobre
+   carbón, mezclar con blanco daba un punto claro que no pertenecía a nada. */
 .duplicate-preview-node {
-  fill: color-mix(in srgb, var(--accent) 22%, white);
+  fill: color-mix(in srgb, var(--accent) 22%, var(--sc-color-bg-canvas));
   stroke: var(--accent);
   stroke-width: 2;
 }
@@ -1891,72 +2163,6 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
    la capa declara cuál y el sello lo hereda. */
 .critical-point-layer { --critical-color:var(--moment); }
 
-/* --- Estado vacío del lienzo ------------------------------------------ */
-/* No captura el puntero: quien ya sabe lo que hace puede dibujar encima sin
-   cerrarlo. Sólo sus propios botones lo reciben. */
-.canvas-empty {
-  position: absolute;
-  inset: var(--canvas-safe-top) var(--canvas-safe-right) var(--canvas-safe-bottom) var(--canvas-safe-left);
-  z-index: 3;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-}
-
-.canvas-empty__card {
-  width: min(440px, 100%);
-  display: grid;
-  gap: 10px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--sc-radius-panel);
-  background: var(--surface);
-  pointer-events: auto;
-}
-
-.canvas-empty__card h2 {
-  margin: 0;
-  font-size: var(--sc-font-size-title);
-  font-weight: var(--sc-font-weight-bold);
-  letter-spacing: var(--sc-tracking-tight);
-}
-
-.canvas-empty__card p {
-  margin: 0 0 4px;
-  color: var(--muted);
-  font-size: var(--sc-font-size-body);
-  line-height: var(--sc-line-height-compact);
-}
-
-.canvas-empty__actions { display: grid; gap: 6px; }
-
-.canvas-empty__action {
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--sc-radius-card);
-  background: var(--surface-2);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  text-align: start;
-  transition: background var(--sc-motion-quick) var(--sc-ease-standard), border-color var(--sc-motion-quick) var(--sc-ease-standard);
-}
-
-.canvas-empty__action:hover { border-color: var(--border-strong, var(--border)); background: var(--surface-3); }
-.canvas-empty__action svg { flex: none; color: var(--muted); }
-.canvas-empty__action span { min-width: 0; display: grid; gap: 1px; }
-.canvas-empty__action strong { font-size: var(--sc-font-size-control); font-weight: var(--sc-font-weight-semibold); }
-.canvas-empty__action small { color: var(--muted); font-size: var(--sc-font-size-caption); line-height: var(--sc-line-height-compact); }
-
-@media (max-width: 640px) {
-  .canvas-empty__card { padding: 16px; }
-  .canvas-empty__action small { display: none; }
-}
-
 /* --- Entrada del resultado --------------------------------------------- */
 /* El diagrama se dibuja cuando llega una corrida nueva: primero la curva
    exacta, después el área que la acompaña. Es la única animación del lienzo y
@@ -1967,7 +2173,7 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
   .diagram-layer .diagram-line-exact {
     stroke-dasharray: 1;
     stroke-dashoffset: 1;
-    animation: diagram-trace var(--sc-motion-pulse) var(--sc-ease-reveal) forwards;
+    animation: diagram-trace var(--sc-motion-trace) var(--sc-ease-reveal) forwards;
   }
 
   .diagram-layer .diagram-fill,

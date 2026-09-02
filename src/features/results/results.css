@@ -350,11 +350,6 @@
   .result-extreme-grid { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); }
   .scenario-comparison-heading { align-items:flex-start; flex-direction:column; }
   .envelope-summary { grid-template-columns:1fr; }
-  .quick-entry-bar { left:8px; right:8px; bottom:70px; transform:none; width:auto; max-width:none; flex-wrap:wrap; padding:6px; gap:5px; }
-  .quick-entry-heading { width:100%; justify-content:space-between; }
-  .quick-entry-bar>label { flex:1 1 0; width:auto; }
-  .quick-entry-bar>button[type='submit'] { flex:1 1 auto; padding:0 9px; }
-  .quick-entry-cancel { flex:0 0 auto; }
 }
 .equation-block,.matrix-view table { font-family:var(--sc-font-mono); }
 
