@@ -31,6 +31,8 @@ const renderChrome = (onFit = () => undefined) => render(<ProjectProvider><Canva
   onZoomIn={() => undefined}
   onZoomOut={() => undefined}
   onFit={onFit}
+  coordinateEntryOpen={false}
+  onToggleCoordinateEntry={() => undefined}
 /></ProjectProvider>);
 
 describe('CanvasChrome', () => {

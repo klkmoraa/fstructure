@@ -76,7 +76,7 @@ import {
 import { SurfacePresentationContext } from '../workspace/SurfacePresentationContext';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { ELASTIC_SATURATION_RATIO, elasticDemandGate, elasticDemandView, elasticIndexPaint, sectionElasticIndex } from '../results/elasticDemand';
-import { parseQuickEntryPair } from './quickEntry';
+import { CoordinateEntry, type CoordinateOrigin } from './CoordinateEntry';
 import { resolveRepeatRecipe, type RepeatRecipe } from './repeatAction';
 import { RepeatActionOverlay } from './RepeatActionOverlay';
 import { prepareDuplicatePreview } from './duplicatePreview';
@@ -274,9 +274,11 @@ export const StructuralCanvas = ({
   const [interaction, setInteractionState] = useState<CanvasInteraction>(IDLE_INTERACTION);
   const [spacePressed, setSpacePressed] = useState(false);
   const [snapPreview, setSnapPreview] = useState<{ x: number; y: number; kind: SnapKind } | null>(null);
-  const [quickEntry, setQuickEntry] = useState({ first: '', second: '' });
-  const [quickEntryMode, setQuickEntryMode] = useState<'delta' | 'polar'>('delta');
-  const [quickEntryError, setQuickEntryError] = useState('');
+  // La entrada por coordenadas ya no está siempre encendida: se abre desde su
+  // propio botón. `coordinatePreview` es el punto que el panel está definiendo,
+  // en unidades de modelo, para que el lienzo lo dibuje antes de confirmarlo.
+  const [coordinateEntryOpen, setCoordinateEntryOpen] = useState(false);
+  const [coordinatePreview, setCoordinatePreview] = useState<{ x: number; y: number } | null>(null);
   const [candidatePicker, setCandidatePicker] = useState<CandidatePickerState | null>(null);
   const [supportPlacement, setSupportPlacement] = useState<{
     nodeId: string;
@@ -835,7 +837,10 @@ export const StructuralCanvas = ({
     }
     const startNode = nodeMap.get(memberStart);
     if (!startNode || Math.hypot(point.x - startNode.x, point.y - startNode.y) <= 1e-10) {
-      setQuickEntryError(t('canvas.endpointSeparated'));
+      // El aviso vivía dentro de la regleta de coordenadas. Sin ella, sale por
+      // donde salen los demás avisos de colocación del lienzo, y así también se
+      // ve cuando el extremo se pica con el dedo en vez de escribirse.
+      showCanvasFeedback(t('canvas.endpointSeparated'));
       return;
     }
     let memberId = '';
@@ -852,40 +857,24 @@ export const StructuralCanvas = ({
     if (result?.kind === 'member.createAtPoint') memberId = result.memberId;
     setMemberStart(null);
     if (memberId) setSelection({ kind: 'member', id: memberId });
-    setQuickEntry({ first: '', second: '' });
-    setQuickEntryError('');
     setRepeatRecipe(null);
   };
 
-  const submitQuickEntry = () => {
-    const parsed = parseQuickEntryPair(quickEntry.first, quickEntry.second);
-    if (!parsed.ok) {
-      setQuickEntryError(t('canvas.twoValidNumbers'));
-      return;
-    }
-    const { first, second } = parsed.value;
-    if (activeTool === 'node') {
-      addNode({ x: fromDisplay(first, units, 'length'), y: fromDisplay(second, units, 'length') });
-      setQuickEntry({ first: '', second: '' });
-      setQuickEntryError('');
-      return;
-    }
-    const startNode = memberStart ? nodeMap.get(memberStart) : null;
-    if (!startNode) return;
-    if (quickEntryMode === 'delta') {
-      void createMemberEndpoint({ x: startNode.x + fromDisplay(first, units, 'length'), y: startNode.y + fromDisplay(second, units, 'length') });
-    } else {
-      const length = fromDisplay(first, units, 'length');
-      const radians = second * Math.PI / 180;
-      void createMemberEndpoint({ x: startNode.x + length * Math.cos(radians), y: startNode.y + length * Math.sin(radians) });
-    }
+  /** Un punto escrito se coloca tal cual: ya es exacto y no pasa por `snapPoint`. */
+  const placeTypedPoint = (point: { x: number; y: number }) => {
+    if (activeTool === 'member') void createMemberEndpoint(point);
+    else addNode(point);
   };
 
-  const cancelQuickEntry = () => {
-    setQuickEntry({ first: '', second: '' });
-    setQuickEntryError('');
-    if (activeTool === 'member') setMemberStart(null);
-  };
+  /** El nudo desde el que miden los modos relativo y polar.
+   *  Con la herramienta Barra es el extremo ya fijado —no hay elección—; con la
+   *  herramienta Nudo es el que esté seleccionado, que es el que se acaba de
+   *  colocar salvo que se haya elegido otro a mano. */
+  const coordinateOrigin: CoordinateOrigin | null = (() => {
+    const id = activeTool === 'member' ? memberStart : selection?.kind === 'node' ? selection.id : null;
+    const node = id ? nodeMap.get(id) : null;
+    return node ? { x: node.x, y: node.y, label: node.id } : null;
+  })();
 
   const activateRepeat = useCallback(() => {
     const recipe = resolveRepeatRecipe(project, selection);
@@ -1930,8 +1919,7 @@ export const StructuralCanvas = ({
         }
         cancelActiveInteraction();
         setMemberStart(null);
-        setQuickEntry({ first: '', second: '' });
-        setQuickEntryError('');
+        setCoordinateEntryOpen(false);
         setRepeatRecipe(null);
         setSelection(null);
         setCut(null);
@@ -2577,6 +2565,23 @@ export const StructuralCanvas = ({
           t={t}
         />
 
+        {/* El punto que la entrada por coordenadas está definiendo, antes de
+            confirmarlo. Va DENTRO del svg y encima de todo lo demás para que se
+            lea sobre la geometría, y no captura el puntero: sigue siendo
+            posible picar debajo. Cuando hay origen —relativo o polar— se dibuja
+            también la medida, que es lo que hace comprobable el número escrito
+            sin tener que confirmarlo. */}
+        {coordinatePreview ? (() => {
+          const point = toScreen(coordinatePreview.x, coordinatePreview.y);
+          const from = coordinateOrigin ? toScreen(coordinateOrigin.x, coordinateOrigin.y) : null;
+          return <g className="coordinate-preview" pointerEvents="none" aria-hidden="true">
+            {from ? <line x1={from.x} y1={from.y} x2={point.x} y2={point.y} /> : null}
+            <circle className="coordinate-preview__halo" cx={point.x} cy={point.y} r={11} />
+            <path d={`M${point.x - 15} ${point.y}h30M${point.x} ${point.y - 15}v30`} />
+            <circle className="coordinate-preview__dot" cx={point.x} cy={point.y} r={3.4} />
+          </g>;
+        })() : null}
+
         {!stackActive ? smartLabelLayer : null}
 
         {!stackActive ? <GlobalAxes canvasHeight={size.height} /> : null}
@@ -2688,6 +2693,8 @@ export const StructuralCanvas = ({
         stackQuantities={stackQuantities}
         onStackToggle={toggleStack}
         onStackQuantityToggle={toggleStackQuantityChoice}
+        coordinateEntryOpen={coordinateEntryOpen}
+        onToggleCoordinateEntry={() => setCoordinateEntryOpen((current) => !current)}
       />
       {project.members.length >= 12 || project.nodes.length >= 16 ? <CanvasMiniMap
         nodes={project.nodes}
@@ -2733,14 +2740,17 @@ export const StructuralCanvas = ({
         })}</small> : null}
       </div> : null}
       {memberStart ? <div className="canvas-hint" role="status"><span>{t('canvas.touchDestinationNode')}</span><button type="button" onClick={() => setMemberStart(null)} aria-label={t('canvas.cancelMemberCreation')}><X size={14} /></button></div> : null}
-      {activeTool === 'node' || (activeTool === 'member' && memberStart) ? <form className="quick-entry-bar" aria-label={t('canvas.cadEntry')} onSubmit={(event) => { event.preventDefault(); submitQuickEntry(); }}>
-        <div className="quick-entry-heading"><strong>{t(activeTool === 'node' ? 'canvas.nodeByCoordinates' : 'canvas.memberEndpoint')}</strong>{activeTool === 'member' ? <div className="quick-entry-mode"><button type="button" aria-pressed={quickEntryMode === 'delta'} onClick={() => setQuickEntryMode('delta')}>ΔX · ΔY</button><button type="button" aria-pressed={quickEntryMode === 'polar'} onClick={() => setQuickEntryMode('polar')}>L · ∠</button></div> : null}</div>
-        <label><span>{activeTool === 'node' ? 'X' : quickEntryMode === 'delta' ? 'ΔX' : 'L'}</span><input type="text" inputMode="decimal" autoComplete="off" value={quickEntry.first} onChange={(event) => { setQuickEntry((current) => ({ ...current, first: event.target.value })); setQuickEntryError(''); }} /><small>{lengthLabel}</small></label>
-        <label><span>{activeTool === 'node' ? 'Y' : quickEntryMode === 'delta' ? 'ΔY' : '∠'}</span><input type="text" inputMode="decimal" autoComplete="off" value={quickEntry.second} onChange={(event) => { setQuickEntry((current) => ({ ...current, second: event.target.value })); setQuickEntryError(''); }} /><small>{activeTool === 'member' && quickEntryMode === 'polar' ? '°' : lengthLabel}</small></label>
-        <button type="submit">{t(activeTool === 'node' ? 'canvas.createNode' : 'canvas.createMember')}</button>
-        <button type="button" className="quick-entry-cancel" onClick={cancelQuickEntry}>{t('canvas.cancelPlacement')}</button>
-        {quickEntryError ? <span className="quick-entry-error" role="alert">{quickEntryError}</span> : null}
-      </form> : null}
+      <CoordinateEntry
+        open={coordinateEntryOpen}
+        onOpenChange={setCoordinateEntryOpen}
+        target={activeTool === 'member' && memberStart ? 'member' : 'node'}
+        origin={coordinateOrigin}
+        units={units}
+        lengthLabel={lengthLabel}
+        onPlace={placeTypedPoint}
+        onPreviewChange={setCoordinatePreview}
+        compact={compactCanvasChrome}
+      />
       {candidatePicker && (!surfaceBroker || candidatePickerSurface?.status === 'active') ? <div
         data-workspace-surface={surfaceBroker ? 'candidatePicker' : undefined}
         ref={surfaceBroker?.surfaceRootRef('candidatePicker') as Ref<HTMLDivElement> | undefined}

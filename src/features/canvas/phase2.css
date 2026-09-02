@@ -119,21 +119,200 @@
 .canvas-result-legend.axial i { color:var(--axial); }
 .canvas-result-legend.shear i { color:var(--shear); border-top-style:dashed; }
 .canvas-result-legend.moment i { color:var(--moment); border-top-style:double; }
-.quick-entry-bar { position:absolute; z-index:22; left:50%; bottom:14px; transform:translateX(-50%); width:max-content; max-width:calc(100% - 190px); padding:6px 7px; border-radius:var(--sc-radius-control); display:flex; flex-wrap:nowrap; align-items:center; gap:6px; }
-.quick-entry-heading { flex:0 0 auto; display:flex; align-items:center; gap:6px; }.quick-entry-heading>strong { font-size:9px; font-weight:700; color:var(--muted); white-space:nowrap; }.quick-entry-mode { display:flex; gap:2px; padding:2px; border-radius:var(--sc-radius-card); background:var(--surface-2); box-shadow:var(--sc-shadow-pressed); }.quick-entry-mode button { min-height:24px; padding:0 7px; border:0; border-radius:var(--sc-radius-control); background:var(--surface); color:var(--muted); font-size:8px; box-shadow:var(--sc-shadow-xs); }.quick-entry-mode button:not([aria-pressed='true']):hover { box-shadow:var(--sc-shadow-sm); }.quick-entry-mode button[aria-pressed='true'] { background:var(--surface-3); color:var(--accent); font-weight:700; box-shadow:var(--sc-shadow-pressed); }
-.quick-entry-bar>label { flex:0 0 auto; width:92px; min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; border:1px solid var(--border-soft); border-radius:var(--sc-radius-card); background:var(--surface-2); box-shadow:var(--sc-shadow-pressed); overflow:hidden; }.quick-entry-bar>label>span,.quick-entry-bar>label>small { padding:0 6px; color:var(--muted); font-size:8px; }.quick-entry-bar input { width:100%; min-width:0; height:32px; border:0; outline:0; background:transparent; color:var(--text); font-variant-numeric:tabular-nums; }.quick-entry-bar>button[type='submit'] { flex:0 0 auto; min-height:32px; padding:0 11px; border:0; border-radius:var(--sc-radius-card); background: var(--accent-fill); color:var(--accent-foreground); font-size:9px; font-weight:750; white-space:nowrap; box-shadow:var(--sc-shadow-action); }.quick-entry-bar>button[type='submit']:hover { box-shadow:var(--sc-shadow-action-hover); }.quick-entry-bar>button[type='submit']:active { box-shadow:var(--sc-shadow-action-pressed); }.quick-entry-error { position:absolute; left:0; top:100%; margin-top:4px; color:var(--danger); font-size:9px; white-space:nowrap; }
-/* La regleta de coordenadas en teléfono. Esta composición vivía en
-   `results/results.css`, una hoja que sólo se importa con `ResultsPanel`: como
-   `phase2.css` se importa después, la regla base de arriba —`left:50%` con
-   `width:max-content`— ganaba y la regleta se salía por el borde derecho de un
-   teléfono. El layout de una pieza del lienzo se declara en la hoja del
-   lienzo. */
+/* --- Entrada por coordenadas ------------------------------------------- */
+/* El botón vive junto a la cámara pero en su propio grupo: escribir un punto
+   es colocar, no mirar, y mezclarlo con el zoom lo convertía en un control de
+   vista. El glifo es propio (`CoordinateEntryGlyph`) y no una mira prestada:
+   la mira del `Instrument` informa y ésta hace. */
+.canvas-coordinate-launcher { position:absolute; z-index:9; left:14px; bottom:calc(18px + var(--sc-control-height-md) * 3 + 10px); }
+.canvas-coordinate-trigger {
+  width:var(--sc-size-target-touch);
+  height:var(--sc-size-target-touch);
+  display:grid;
+  place-items:center;
+  border:var(--sc-depth-raised-border);
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-depth-raised-shadow);
+  color:var(--sc-color-text-secondary);
+  cursor:pointer;
+  transition:var(--sc-transition-control);
+}
+.canvas-coordinate-trigger:hover { color:var(--sc-color-text-primary); box-shadow:var(--sc-shadow-lifted); }
+.canvas-coordinate-trigger:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+.canvas-coordinate-trigger:focus-visible { outline:var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset:var(--sc-focus-ring-offset); }
+/* Abierto es una cavidad: la tecla está DENTRO mientras su panel está fuera. */
+.canvas-coordinate-trigger.active {
+  background:var(--sc-color-surface-inset);
+  box-shadow:var(--sc-shadow-inset);
+  color:var(--sc-color-text-primary);
+}
+
+/* El panel. No es modal —ver la cabecera de `CoordinateEntry.tsx`— así que
+   sólo él toma el puntero y el lienzo sigue vivo alrededor. */
+.coordinate-entry {
+  position:absolute;
+  z-index:22;
+  display:grid;
+  gap:8px;
+  padding:12px;
+  border:var(--sc-depth-floating-border);
+  border-radius:var(--sc-radius-panel);
+  background:var(--sc-color-surface-floating);
+  box-shadow:var(--sc-depth-floating-shadow);
+}
+.coordinate-entry[data-coordinate-entry='anchored'] {
+  left:14px;
+  bottom:calc(18px + var(--sc-control-height-md) * 3 + 10px + var(--sc-size-target-touch) + 8px);
+  width:272px;
+}
+.coordinate-entry__head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.coordinate-entry__head strong { font-size:var(--sc-font-size-control); font-weight:var(--sc-font-weight-bold); }
+
+.coordinate-entry__modes {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:2px;
+  padding:2px;
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-inset);
+  box-shadow:var(--sc-shadow-inset);
+}
+.coordinate-entry__modes button {
+  min-height:30px;
+  border:0;
+  border-radius:var(--sc-radius-control);
+  background:transparent;
+  color:var(--sc-color-text-secondary);
+  cursor:pointer;
+  font-size:var(--sc-font-size-label);
+  font-weight:var(--sc-font-weight-semibold);
+  transition:var(--sc-transition-control);
+}
+.coordinate-entry__modes button[aria-pressed='true'] {
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-shadow-raised);
+  color:var(--sc-color-text-primary);
+}
+/* Deshabilitado y no oculto: que Relativo exista es parte de saber que se
+   puede, y desaparecer no enseña qué le falta. */
+.coordinate-entry__modes button:disabled { color:var(--sc-color-text-disabled); cursor:default; }
+
+.coordinate-entry__origin {
+  margin:0;
+  color:var(--sc-color-text-muted);
+  font-size:var(--sc-font-size-caption);
+  line-height:var(--sc-line-height-compact);
+}
+
+.coordinate-entry__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.coordinate-entry__fields label {
+  min-width:0;
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  border:1px solid var(--sc-color-border-soft);
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-inset);
+  box-shadow:var(--sc-shadow-inset);
+  overflow:hidden;
+}
+/* Con teclado propio, qué campo recibe la próxima tecla tiene que verse: el
+   cursor del sistema no está. */
+.coordinate-entry__fields label.is-focused { border-color:var(--sc-color-focus); }
+.coordinate-entry__fields label > span,
+.coordinate-entry__fields label > small { padding:0 7px; color:var(--sc-color-text-muted); font-size:var(--sc-font-size-label); }
+.coordinate-entry__fields input {
+  width:100%;
+  min-width:0;
+  height:var(--sc-control-height-touch);
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--sc-color-text-primary);
+  font-size:var(--sc-font-size-subtitle);
+  font-variant-numeric:var(--sc-numeric-variant);
+  text-align:end;
+}
+
+.coordinate-entry__keypad { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+.coordinate-entry__keypad button {
+  min-height:var(--sc-control-height-touch);
+  border:var(--sc-depth-raised-border);
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-depth-raised-shadow);
+  color:var(--sc-color-text-primary);
+  cursor:pointer;
+  font-size:var(--sc-font-size-screen);
+  font-variant-numeric:var(--sc-numeric-variant);
+  font-weight:var(--sc-font-weight-semibold);
+  transition:var(--sc-transition-control);
+}
+.coordinate-entry__keypad button:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+.coordinate-entry__erase { display:grid; place-items:center; }
+
+.coordinate-entry__error { margin:0; color:var(--sc-color-signal-moment-ink); font-size:var(--sc-font-size-caption); }
+
+.coordinate-entry__place {
+  min-height:var(--sc-control-height-touch);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border:0;
+  border-radius:var(--sc-radius-control);
+  background:var(--sc-color-action-primary);
+  box-shadow:var(--sc-shadow-action);
+  color:var(--sc-color-action-foreground);
+  cursor:pointer;
+  font-size:var(--sc-font-size-control);
+  font-weight:var(--sc-font-weight-bold);
+}
+.coordinate-entry__place:hover { background:var(--sc-color-action-hover); box-shadow:var(--sc-shadow-action-hover); }
+.coordinate-entry__place:active { box-shadow:var(--sc-shadow-action-pressed); transform:var(--sc-press-transform); }
+
+/* La previsualización: la cruz de destino, su punto y —si hay origen— la medida
+   que los une. Es lo que hace comprobable un número escrito antes de
+   confirmarlo, y por eso el panel no puede llevar velo. */
+.coordinate-preview { color:var(--sc-color-selection-stroke); }
+.coordinate-preview line { stroke:currentColor; stroke-width:1.4; stroke-dasharray:5 4; vector-effect:non-scaling-stroke; }
+.coordinate-preview path { fill:none; stroke:currentColor; stroke-width:1.2; vector-effect:non-scaling-stroke; }
+.coordinate-preview__halo { fill:none; stroke:currentColor; stroke-width:1.6; opacity:.45; vector-effect:non-scaling-stroke; }
+.coordinate-preview__dot { fill:currentColor; stroke:none; }
+
+/* En teléfono el panel es una hoja a lo ancho, apoyada sobre la banda de la
+   consola y sobre el área segura. No usa `100dvh` ni el viewport visual porque
+   el teclado del sistema no sube: los campos son de sólo lectura y las teclas
+   son suyas. Esa es toda la razón de tener teclado propio — con el nativo, la
+   hoja quedaría empujada fuera de la pantalla y la previsualización, tapada. */
 @media (max-width:700px) {
-  .quick-entry-bar { left:8px; right:8px; transform:none; width:auto; max-width:none; flex-wrap:wrap; padding:6px; gap:5px; }
-  .quick-entry-heading { width:100%; justify-content:space-between; }
-  .quick-entry-bar>label { flex:1 1 0; width:auto; }
-  .quick-entry-bar>button[type='submit'] { flex:1 1 auto; padding:0 9px; }
-  .quick-entry-cancel { flex:0 0 auto; }
+  /* El área segura inferior ya la reserva la banda de la consola
+     (`--console-band` en `phase1.css`), y el lienzo termina encima de ella:
+     volver a sumarla aquí la contaría dos veces. Los lados sí, porque en
+     horizontal el recorte de la pantalla no lo cubre nadie. */
+  .canvas-coordinate-launcher {
+    left:auto;
+    right:max(7px,env(safe-area-inset-right));
+    bottom:55px;
+  }
+  .canvas-coordinate-trigger { width:42px; height:42px; border-radius:var(--sc-radius-panel); }
+
+  .coordinate-entry[data-coordinate-entry='sheet'] {
+    left:max(7px,env(safe-area-inset-left));
+    right:max(7px,env(safe-area-inset-right));
+    bottom:7px;
+    width:auto;
+    max-height:calc(100% - 14px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    border-radius:var(--sc-radius-sheet);
+  }
+  /* Las teclas mandan en el alto de la hoja: por debajo de esto un pulgar
+     empieza a fallar, y una tecla que falla en una entrada numérica no es un
+     detalle de comodidad. */
+  .coordinate-entry__keypad button { min-height:46px; font-size:var(--sc-font-size-display-md); }
+  .coordinate-entry__fields input { height:46px; }
 }
 
 .canvas-hint { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); border-radius: var(--sc-radius-pill); padding: 7px 9px 7px 13px; font-size: 12px; display:flex; align-items:center; gap:8px; pointer-events:none; }.canvas-hint button { width:24px; height:24px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--surface-2); color:var(--muted); pointer-events:auto; }.canvas-hint button:hover { color:var(--text); background:var(--border-soft); }
@@ -432,14 +611,12 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 
 .results-panel :is(button,input,select),
 .inspector-panel :is(button,input,select),
-.quick-entry-bar :is(button,input,select),
 .import-center-dialog :is(button,input,select) {
   font-size:var(--sc-font-size-control)!important;
 }
 
 .results-panel :is(small,p,dt,dd,span,td,th,caption,code),
 .inspector-panel :is(small,p,label,span),
-.quick-entry-bar :is(small,span,strong),
 .import-center-dialog :is(small,p) {
   font-size:var(--sc-font-size-label)!important;
   line-height:1.4;
@@ -448,7 +625,7 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 @media (pointer:coarse) {
   .results-panel :is(button,input,select),
   .inspector-panel :is(button,input,select),
-  .quick-entry-bar button,
+  .coordinate-entry button,
   .import-center-dialog button,
   .canvas-hint button,
   .mobile-inspector-toggle {
@@ -628,7 +805,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .canvas-feedback { top:calc(var(--canvas-safe-top) + 8px); }
 .canvas-result-legend { top:calc(var(--canvas-safe-top) + 8px); left:12px; }
 .canvas-hint { top:calc(var(--canvas-safe-top) + 8px); }
-.quick-entry-bar { bottom:calc(var(--canvas-safe-bottom) + 8px); }
 
 /* El chrome del lienzo es opaco desde el ciclo 2. En escritorio, el ancho
    heredado del badge y la leyenda invadía el diagrama de momento: con vidrio
@@ -693,7 +869,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .canvas-result-legend { top:104px; left:10px; }
   .canvas-feedback { top:104px; }
   .canvas-hint { top:104px; }
-  .quick-entry-bar { bottom:70px; }
 }
 
 @media (max-width:460px) {

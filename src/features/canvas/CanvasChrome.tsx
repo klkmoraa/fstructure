@@ -9,6 +9,7 @@ import type { StackQuantity } from './diagramStack';
 import type { EditorLayerAction, EditorLayerState } from './editorLayers';
 import { formatFixed } from '../../utils/numberFormat';
 import { onWorkspaceCommand } from '../workspace/workspaceCommands';
+import { CoordinateEntryTrigger } from './CoordinateEntry';
 
 export interface CanvasChromeProps {
   modeLabel: string;
@@ -33,6 +34,9 @@ export interface CanvasChromeProps {
   stackQuantities?: readonly StackQuantity[];
   onStackToggle?: () => void;
   onStackQuantityToggle?: (quantity: StackQuantity) => void;
+  /** La entrada por coordenadas se abre desde aquí, junto a la cámara. */
+  coordinateEntryOpen: boolean;
+  onToggleCoordinateEntry: () => void;
 }
 
 /** Presentation-only canvas controls. Camera and model mutations stay upstream. */
@@ -59,6 +63,8 @@ export const CanvasChrome = ({
   stackQuantities,
   onStackToggle,
   onStackQuantityToggle,
+  coordinateEntryOpen,
+  onToggleCoordinateEntry,
 }: CanvasChromeProps) => {
   const { t } = useI18n();
 
@@ -85,6 +91,12 @@ export const CanvasChrome = ({
       <IconButton label={t('canvas.zoomIn')} title={t('canvas.zoomIn')} onClick={onZoomIn}><Plus size={18} /></IconButton>
       <IconButton label={t('canvas.zoomOut')} title={t('canvas.zoomOut')} onClick={onZoomOut}><Minus size={18} /></IconButton>
       <IconButton label={t('canvas.fit')} title={t('canvas.fit')} onClick={() => onFit()}><LocateFixed size={18} /></IconButton>
+    </div>
+    {/* Escribir un punto es una forma de colocarlo, no de mirar: por eso el
+        botón vive junto a la cámara pero en su propio grupo, con su glifo
+        propio y no una lupa o una mira prestadas. */}
+    <div className="canvas-coordinate-launcher" data-canvas-chrome="coordinate-entry">
+      <CoordinateEntryTrigger open={coordinateEntryOpen} onToggle={onToggleCoordinateEntry} />
     </div>
     <div className="canvas-status" data-canvas-chrome="coordinates">
       <Crosshair size={14} aria-hidden="true" />
