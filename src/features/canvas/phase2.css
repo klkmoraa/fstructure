@@ -122,6 +122,20 @@
 .quick-entry-bar { position:absolute; z-index:22; left:50%; bottom:14px; transform:translateX(-50%); width:max-content; max-width:calc(100% - 190px); padding:6px 7px; border-radius:var(--sc-radius-control); display:flex; flex-wrap:nowrap; align-items:center; gap:6px; }
 .quick-entry-heading { flex:0 0 auto; display:flex; align-items:center; gap:6px; }.quick-entry-heading>strong { font-size:9px; font-weight:700; color:var(--muted); white-space:nowrap; }.quick-entry-mode { display:flex; gap:2px; padding:2px; border-radius:var(--sc-radius-card); background:var(--surface-2); box-shadow:var(--sc-shadow-pressed); }.quick-entry-mode button { min-height:24px; padding:0 7px; border:0; border-radius:var(--sc-radius-control); background:var(--surface); color:var(--muted); font-size:8px; box-shadow:var(--sc-shadow-xs); }.quick-entry-mode button:not([aria-pressed='true']):hover { box-shadow:var(--sc-shadow-sm); }.quick-entry-mode button[aria-pressed='true'] { background:var(--surface-3); color:var(--accent); font-weight:700; box-shadow:var(--sc-shadow-pressed); }
 .quick-entry-bar>label { flex:0 0 auto; width:92px; min-width:0; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; border:1px solid var(--border-soft); border-radius:var(--sc-radius-card); background:var(--surface-2); box-shadow:var(--sc-shadow-pressed); overflow:hidden; }.quick-entry-bar>label>span,.quick-entry-bar>label>small { padding:0 6px; color:var(--muted); font-size:8px; }.quick-entry-bar input { width:100%; min-width:0; height:32px; border:0; outline:0; background:transparent; color:var(--text); font-variant-numeric:tabular-nums; }.quick-entry-bar>button[type='submit'] { flex:0 0 auto; min-height:32px; padding:0 11px; border:0; border-radius:var(--sc-radius-card); background: var(--accent-fill); color:var(--accent-foreground); font-size:9px; font-weight:750; white-space:nowrap; box-shadow:var(--sc-shadow-action); }.quick-entry-bar>button[type='submit']:hover { box-shadow:var(--sc-shadow-action-hover); }.quick-entry-bar>button[type='submit']:active { box-shadow:var(--sc-shadow-action-pressed); }.quick-entry-error { position:absolute; left:0; top:100%; margin-top:4px; color:var(--danger); font-size:9px; white-space:nowrap; }
+/* La regleta de coordenadas en teléfono. Esta composición vivía en
+   `results/results.css`, una hoja que sólo se importa con `ResultsPanel`: como
+   `phase2.css` se importa después, la regla base de arriba —`left:50%` con
+   `width:max-content`— ganaba y la regleta se salía por el borde derecho de un
+   teléfono. El layout de una pieza del lienzo se declara en la hoja del
+   lienzo. */
+@media (max-width:700px) {
+  .quick-entry-bar { left:8px; right:8px; transform:none; width:auto; max-width:none; flex-wrap:wrap; padding:6px; gap:5px; }
+  .quick-entry-heading { width:100%; justify-content:space-between; }
+  .quick-entry-bar>label { flex:1 1 0; width:auto; }
+  .quick-entry-bar>button[type='submit'] { flex:1 1 auto; padding:0 9px; }
+  .quick-entry-cancel { flex:0 0 auto; }
+}
+
 .canvas-hint { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); border-radius: var(--sc-radius-pill); padding: 7px 9px 7px 13px; font-size: 12px; display:flex; align-items:center; gap:8px; pointer-events:none; }.canvas-hint button { width:24px; height:24px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--surface-2); color:var(--muted); pointer-events:auto; }.canvas-hint button:hover { color:var(--text); background:var(--border-soft); }
 .cut-tooltip { position: absolute; z-index: 28; width:min(340px,calc(100% - 20px)); max-height:min(380px,calc(100% - 20px)); overflow:auto; border-radius: var(--sc-radius-card); padding: 11px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 11px; pointer-events: none; }
 .cut-title-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -891,13 +905,24 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .app-shell[data-tool-rail-compact='true'][data-inspector-collapsed='true'] .workspace {
     grid-template-columns:var(--sc-layout-rail-compact) minmax(0,1fr);
   }
-  /* ========================================================================
+}
+
+/* ========================================================================
    Dock de herramientas · definición única
    ------------------------------------------------------------------------
    Antes esta pieza estaba descrita cuatro veces en este mismo archivo, una por
    cada etapa de los dos productos de origen: 56px con etiqueta, 54px con
    etiqueta, 46px con etiqueta y 48px icon-only, cada una con su radio y su
    relieve. Aquí está una sola vez.
+
+   ESTE BLOQUE ES DE NIVEL SUPERIOR Y TIENE QUE SEGUIR SIÉNDOLO. Al unificarlo
+   se perdió la llave que cerraba el `@media (min-width:1440px)` de arriba, y
+   las 127 líneas siguientes quedaron dentro de una consulta de escritorio: en
+   un teléfono no se aplicaba ni el color base del icono, ni la normalización a
+   `currentColor`, ni el piso táctil de 44px del `@media (pointer:coarse)` del
+   final. El riel se quedaba con el color de dominio como único pintor del
+   glifo (`.tool-rail .sc-tool-button__icon svg`, más arriba), que es la razón
+   de que en Día los iconos no elegidos se perdieran contra el papel.
 
    Es un DOCK DE ICONOS. No lleva texto: el nombre de cada herramienta lo dan
    `aria-label` y el tooltip por foco/hover, que ya existían. Con eso el riel
@@ -1034,7 +1059,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .tool-rail.is-compact .tool-button,
   .tool-rail.is-compact .tool-button:hover:not(:disabled),
   .tool-rail.is-compact .tool-button:active:not(:disabled) { transform:none; transition:none; }
-}
 }
 
 /* El disparador de capas comparte la gramática: cavidad al estar abierto. */
