@@ -21,7 +21,8 @@ describe('navegación por herramienta', () => {
     expect(screen.queryByRole('navigation', { name: 'Navegación de FStructure' })).toBeNull();
     expect(screen.queryByText('Proyectos recientes')).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: 'Entrar al workspace' }));
+    expect(screen.getByRole('link', { name: 'Explorar herramientas' }).getAttribute('href')).toBe('#fusion-tools');
+    await user.click(screen.getByRole('button', { name: 'Abrir Solver 2D' }));
 
     expect(screen.getByTestId('solver2d-welcome')).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Navegación de FStructure' })).toBeTruthy();
@@ -31,8 +32,7 @@ describe('navegación por herramienta', () => {
     expect(screen.queryByRole('application', { name: 'Área de trabajo estructural interactiva' })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Volver a la plataforma' }));
-    await user.click(screen.getByRole('tab', { name: 'Modelo' }));
-    await user.click(screen.getByRole('button', { name: 'Explorar espacio 3D' }));
+    await user.click(screen.getByRole('button', { name: 'Abrir Solver 3D' }));
 
     expect(screen.getByTestId('solver3d-welcome')).toBeTruthy();
     expect(screen.queryByRole('navigation', { name: 'Navegación de FStructure' })).toBeNull();
@@ -48,19 +48,15 @@ describe('navegación por herramienta', () => {
     expect(screen.queryByRole('application', { name: 'Área de trabajo estructural interactiva' })).toBeNull();
   });
 
-  it('recorre las familias de plataforma con el teclado', async () => {
-    const user = userEvent.setup();
+  it('separa herramientas disponibles de módulos futuros', async () => {
     render(<App />);
 
-    const analysis = await screen.findByRole('tab', { name: 'Análisis' });
-    const model = screen.getByRole('tab', { name: 'Modelo' });
-    analysis.focus();
-    await user.keyboard('{ArrowRight}');
+    expect(await screen.findByRole('button', { name: 'Abrir Solver 2D' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Abrir Solver 3D' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Abrir Aula estructural' })).toBeTruthy();
 
-    expect(model.getAttribute('aria-selected')).toBe('true');
-    expect(document.activeElement).toBe(model);
-
-    await user.keyboard('{End}');
-    expect(screen.getByRole('tab', { name: 'Aprendizaje' }).getAttribute('aria-selected')).toBe('true');
+    const planned = screen.getAllByRole('button', { name: /En preparación$/ });
+    expect(planned).toHaveLength(4);
+    planned.forEach((button) => expect((button as HTMLButtonElement).disabled).toBe(true));
   });
 });
