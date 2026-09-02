@@ -1171,7 +1171,11 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   border-radius: var(--sc-radius-control);
   background: transparent;
   color: var(--sc-color-text-secondary);
-  box-shadow: none;
+  /* La tecla en reposo se apoya en la bandeja con el escalón más bajo del
+     sistema. Declaraba `none` de cuando la fundación no tenía volumen, y desde
+     entonces `phase1.css` la contradecía con más especificidad: dos hojas
+     diciendo cosas distintas de la misma pieza. Aquí sale del contrato. */
+  box-shadow: var(--sc-shadow-xs);
   transform: none;
   transition: var(--sc-transition-control);
 }
