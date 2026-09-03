@@ -57,4 +57,31 @@ describe('colocación de etiquetas del lienzo', () => {
     expect(placed[0].rect.x + placed[0].rect.width).toBeLessThanOrEqual(BOUNDS.x + BOUNDS.width);
     expect(placed[0].rect.y + placed[0].rect.height).toBeLessThanOrEqual(BOUNDS.y + BOUNDS.height);
   });
+
+  it('el identificador de una barra y el valor de su carga dejan de disputarse el punto medio', () => {
+    // Los dos rótulos de una viga cargada: el valor de la distribuida ancla en
+    // el centro del tramo, y el identificador anclaba ahí también. Uno de los
+    // dos tenía que apartarse y salía con guía, cruzándose con la otra sobre la
+    // propia barra. Anclando el identificador a un 30% del vano, cada uno cae
+    // en su posición preferida y ninguno necesita guía.
+    const viga = { izquierda: 300, derecha: 900, y: 200 };
+    const medio = (viga.izquierda + viga.derecha) / 2;
+    const estacion = viga.izquierda + (viga.derecha - viga.izquierda) * 0.3;
+
+    const disputado = layoutSmartLabels([
+      candidate({ id: 'member:M2', text: 'M2', anchor: { x: medio, y: viga.y }, priority: 0, preferredOffset: { x: 0, y: -21 }, forceVisible: true }),
+      candidate({ id: 'distributed-load:ML1', text: '14.00 kN/m', anchor: { x: medio, y: viga.y - 54 }, priority: 1, preferredOffset: { x: 0, y: 0 }, forceVisible: true }),
+    ], { x: 0, y: 0, width: 1200, height: 600 }, 120);
+
+    const separado = layoutSmartLabels([
+      candidate({ id: 'member:M2', text: 'M2', anchor: { x: estacion, y: viga.y }, priority: 0, preferredOffset: { x: 0, y: -21 }, forceVisible: true }),
+      candidate({ id: 'distributed-load:ML1', text: '14.00 kN/m', anchor: { x: medio, y: viga.y - 54 }, priority: 1, preferredOffset: { x: 0, y: 0 }, forceVisible: true }),
+    ], { x: 0, y: 0, width: 1200, height: 600 }, 120);
+
+    expect(disputado).toHaveLength(2);
+    expect(separado).toHaveLength(2);
+    expect(separado.every((label) => !label.leader)).toBe(true);
+    // Y las dos cajas dejan de tocarse.
+    expect(smartLabelRectsOverlap(separado[0].rect, separado[1].rect)).toBe(false);
+  });
 });

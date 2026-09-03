@@ -157,6 +157,13 @@
      `display:flex` con más especificidad que una clase suelta. */
   .console__label { display: none; }
   .console button.console__project { display: none; }
+  /* El conmutador de tema sale de la banda en K0. Medido en 390px: la cabecera
+     se llevaba 93 y el pie 133, y a las SEIS herramientas de modelado —lo único
+     que el pulgar usa sin parar— les quedaban 164, o sea tres y media. El tema
+     se cambia una vez por sesión y desde esta versión tiene su comando en la
+     paleta, que está a un toque en la misma banda; el carril gana su ancho.
+     En escritorio la banda es una columna y no compite por sitio: allí sigue. */
+  .console button.console__theme-toggle { display: none; }
   /* En K0 el lienzo YA ocupa la pantalla: el modo completo sólo escondería el
      riel y dejaría al usuario sin herramientas. */
   .console button.console__canvas-toggle { display: none; }

@@ -179,7 +179,6 @@
   .welcome-content { width:min(100% - 36px,760px); padding:44px 0 36px; gap:36px; }
   /* Con una sola columna la figura pasa de compañera del titular a remate de
      la sección: se centra, se acota y cede el ancho al texto. */
-  .portal-hero { max-width:400px; }
   .welcome-hero-launcher { grid-template-columns:1fr; }
   .welcome-launcher-card { grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"icon info arrow"; align-items:center; gap:14px; padding:16px 18px; }
   .welcome-workflow { padding:24px 20px; }

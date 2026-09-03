@@ -80,7 +80,7 @@ export const Console = ({ onOpenHome, onOpenSpace3D: _onOpenSpace3D, layoutActio
       <button type="button" className="console__canvas-toggle" onClick={layoutActions.onToggleFullCanvas} aria-label={canvasLabel} aria-pressed={layoutActions.fullCanvas} title={canvasLabel}>
         {layoutActions.fullCanvas ? <Minimize2 size={18} /> : <Maximize2 size={18} />}<Label>{canvasLabel}</Label>
       </button>
-      <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={themeLabel} title={themeLabel}>
+      <button type="button" className="console__theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={themeLabel} title={themeLabel}>
         {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}<Label>{themeLabel}</Label>
       </button>
     </div>

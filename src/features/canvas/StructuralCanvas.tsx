@@ -134,6 +134,15 @@ const CANVAS_SCENE_ID = 'canvas-scene-root';
 /** Misma razón: sin mapa de calor, la capa de geometría recibe siempre la misma referencia. */
 const EMPTY_DEMAND_RATIOS: ReadonlyMap<string, number> = new Map();
 
+/**
+ * Dónde se ancla el identificador de una barra, en fracción de su vano.
+ *
+ * No es el centro: el centro pertenece a la carga distribuida, que ancla ahí su
+ * valor. Un 30% deja los dos rótulos con territorio propio sin alejar el
+ * identificador de la barra que nombra.
+ */
+const MEMBER_LABEL_STATION = 0.3;
+
 interface Size {
   width: number;
   height: number;
@@ -2089,10 +2098,18 @@ export const StructuralCanvas = ({
     const anchor = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     const selected = selectedMemberIds.includes(member.id);
     if (selected || (layers.labels && layers.ids && view.showMemberLabels)) {
+      // El identificador NO se ancla al punto medio. Ahí es donde una carga
+      // distribuida pone su valor —su ancla es el centro del tramo cargado— y
+      // los dos pedían el mismo hueco justo encima de la barra: el repartidor
+      // apartaba uno y le dibujaba una guía, así que «M2» y «14.00 kN/m»
+      // acababan lado a lado con dos guías cruzándose sobre el miembro. A un
+      // 30% del vano cada uno tiene su sitio, y la separación sigue el eje de
+      // la barra, así que vale igual para una columna que para una viga.
+      const idAnchor = { x: a.x + (b.x - a.x) * MEMBER_LABEL_STATION, y: a.y + (b.y - a.y) * MEMBER_LABEL_STATION };
       smartLabelCandidates.push({
         id: `member:${member.id}`,
         text: member.id,
-        anchor,
+        anchor: idAnchor,
         priority: selected ? 0 : 2,
         tone: selected ? 'selection' : 'neutral',
         preferredOffset: { x: 0, y: -21 },
