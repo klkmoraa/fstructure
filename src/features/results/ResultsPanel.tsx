@@ -252,6 +252,17 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
     const panel = panelRef.current;
     const shell = panel?.closest<HTMLElement>('.app-shell');
     if (!panel || !shell) return undefined;
+    // Un panel que no está activo se monta con `hidden`, y un elemento oculto
+    // mide 0 en todo: su techo cae en y=0 y la banda salía igual a la ventana
+    // ENTERA, con lo que el riel flotante se iba por encima del área de
+    // trabajo. Abrir Vista o Detalle con Resultados abierto lo suspende, así
+    // que el usuario se quedaba sin herramientas por cambiar de superficie.
+    // Mientras no esté activo no hay banda que publicar: se retira, y el riel
+    // vuelve a su respaldo.
+    if (status !== 'active') {
+      shell.style.removeProperty('--results-band');
+      return undefined;
+    }
     const publish = () => {
       shell.style.setProperty(
         '--results-band',
