@@ -145,6 +145,11 @@
   z-index:calc(var(--sc-z-topbar) + 20);
   top:max(8px,env(safe-area-inset-top));
   left:max(8px,env(safe-area-inset-left));
+  /* El primer control alcanzable del editor no puede ser el único por debajo
+     del suelo táctil: se quedaba en 42px de alto. */
+  display:inline-flex;
+  align-items:center;
+  min-height:var(--sc-control-height-touch);
   padding:10px 14px;
   border:2px solid var(--focus);
   border-radius:var(--sc-radius-control);
@@ -495,7 +500,9 @@
   .inspector-panel[data-mobile-detent='medium'] { height:min(55dvh,540px); }
   .inspector-panel[data-mobile-detent='large'] { height:min(85dvh,780px,calc(var(--sc-visual-viewport-height,100dvh) - 8px)); }
   .inspector-sheet-controls { display:flex; align-items:center; justify-content:space-between; flex:0 0 auto; min-height:46px; padding:4px max(10px,env(safe-area-inset-right)) 0 max(10px,env(safe-area-inset-left)); }
-  .inspector-sheet-handle { display:grid; place-items:center; width:52px; height:34px; padding:0; border:1px solid var(--border-soft); border-radius:var(--sc-radius-pill); background:var(--surface-2); color:var(--muted); box-shadow:var(--sc-shadow-xs); cursor:pointer; }
+  /* El tirador es el control con el que se conduce la hoja entera: no puede
+     quedarse por debajo del suelo táctil (medía 34px de alto). */
+  .inspector-sheet-handle { display:grid; place-items:center; width:52px; height:var(--sc-control-height-touch); padding:0; border:1px solid var(--border-soft); border-radius:var(--sc-radius-pill); background:var(--surface-2); color:var(--muted); box-shadow:var(--sc-shadow-xs); cursor:pointer; }
   .inspector-sheet-handle:hover { color:var(--text); box-shadow:var(--sc-shadow-sm); }
   .inspector-sheet-handle:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
   .inspector-sheet-handle:focus-visible { outline:none; box-shadow:var(--sc-shadow-xs),var(--sc-ring-focus); }

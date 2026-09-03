@@ -373,7 +373,9 @@
     right:max(7px,env(safe-area-inset-right));
     bottom:55px;
   }
-  .canvas-coordinate-trigger { width:42px; height:42px; border-radius:var(--sc-radius-panel); }
+  /* La entrada precisa es «un elemento de trabajo, no un botón escondido»
+     según la propuesta: con más razón tiene que alcanzar el suelo táctil. */
+  .canvas-coordinate-trigger { width:var(--sc-control-height-touch); height:var(--sc-control-height-touch); border-radius:var(--sc-radius-panel); }
 
   .coordinate-entry[data-coordinate-entry='sheet'] {
     left:max(7px,env(safe-area-inset-left));

@@ -65,13 +65,16 @@
     font-size:11px;
   }
 
+  /* 44px es el suelo táctil del producto (`--sc-control-height-touch`), no una
+     preferencia: es la medida que la propuesta exige para «los controles
+     críticos» en móvil. Este lanzador se quedaba en 42. */
   .canvas-layer-trigger {
     top:7px;
     right:7px;
-    width:42px;
-    min-width:42px;
-    height:42px;
-    min-height:42px;
+    width:var(--sc-control-height-touch);
+    min-width:var(--sc-control-height-touch);
+    height:var(--sc-control-height-touch);
+    min-height:var(--sc-control-height-touch);
     border-radius:var(--sc-radius-panel);
   }
   .canvas-layer-panel {
@@ -140,12 +143,18 @@
     bottom:7px;
     border-radius:var(--sc-radius-panel);
   }
+  /* Densificar el cromo no puede encoger un área de pulsación por debajo del
+     suelo táctil: acercar, alejar y ajustar son controles críticos —sin ellos
+     no se encuadra el modelo con el dedo— y estos 40px los dejaban por debajo
+     de los 44 que el design system ya declara para táctil y que la propuesta
+     exige en móvil. Esta regla ganaba por especificidad a la del sistema, así
+     que el suelo no se respetaba aunque estuviera escrito. */
   .canvas-controls .sc-icon-button,
   .canvas-controls button {
-    width:40px;
-    min-width:40px;
-    height:40px;
-    min-height:40px;
+    width:var(--sc-control-height-touch);
+    min-width:var(--sc-control-height-touch);
+    height:var(--sc-control-height-touch);
+    min-height:var(--sc-control-height-touch);
   }
 
   /* A finger does not need a moving coordinate readout, but scale remains

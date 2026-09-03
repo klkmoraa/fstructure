@@ -334,8 +334,20 @@
 .inspector-inline-issues>div.is-error { border-color:color-mix(in srgb,var(--error) 34%,var(--border)); }
 .inspector-inline-issues>div.is-error>svg { color:var(--error); }
 .inspector-inline-issues>div.is-warning>svg { color:var(--warning); }
+
 .inspector-selection-danger { margin-top:8px; padding-top:12px; border-top:1px solid var(--border-soft); }
 .inspector-selection-danger .danger-button { margin:0 0 4px; min-height:40px; }
+
+/* Editar y eliminar la selección son las dos acciones que cierran el ciclo de
+   modelado desde el Inspector, y en un teléfono se pulsan con el dedo: 38px y
+   40px de alto las dejaban por debajo del suelo táctil del producto. Va después
+   de la regla de arriba a propósito: misma especificidad, así que el orden es
+   lo único que decide. La altura de escritorio no cambia; sólo se respeta el
+   suelo donde hay dedo. */
+@media (max-width:700px) {
+  .inspector-selection-edit,
+  .inspector-selection-danger .danger-button { min-height:var(--sc-control-height-touch); }
+}
 .inspector-property-group .subsection-title { margin:15px 0 7px; color:var(--muted); font-size:10px; font-weight:750; letter-spacing:.025em; text-transform:uppercase; }
 
 @media (min-width:701px) and (max-width:1023px) {
