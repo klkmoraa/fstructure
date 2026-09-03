@@ -14,6 +14,7 @@ import { readCanvasViewSettings, withCanvasViewSettings } from '../view/canvasVi
 import { MAX_INSPECTOR_WIDTH, MIN_INSPECTOR_WIDTH, clampInspectorWidth, type InspectorDetent } from '../workspace/useWorkspaceLayoutPreferences';
 import type { SurfacePresentation, SurfaceStatus } from '../workspace/surfacePresentation';
 import { ViewFavoritesPanel } from '../library/ViewFavoritesPanel';
+import { UnitSystemEditor } from './UnitSystemEditor';
 import './inspector.css';
 
 const NumberField = ({
@@ -529,6 +530,13 @@ const DisplayPanel = ({ includeCalculationMode = true }: { includeCalculationMod
         ? <div className="classroom-mode-card"><strong>{t('inspector.classroomEssentials')}</strong><span>{t('inspector.classroomEssentialsBody')}</span><small>{t('inspector.classroomRigidityWarning')}</small></div>
         : <div className="inspector-note"><CircleHelp size={17} /> {t('inspector.completeModeDescription')}</div>}
     </section> : null}
+    <UnitSystemEditor
+      value={units}
+      onChange={(value) => updateProjectView((draft) => ({
+        ...draft,
+        settings: { ...draft.settings, units: value },
+      }))}
+    />
     <ViewFavoritesPanel
       language={language}
       units={units}

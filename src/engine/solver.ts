@@ -1471,7 +1471,15 @@ const abortedResult = abortedAnalysis;
  * (`./pDelta.ts`) to fold each frame member's current axial force into its
  * local stiffness before condensation, iteration over iteration. Every
  * ordinary caller omits it and gets today's first-order behavior unchanged.
+ *
+ * An empty or all-zero map is common during the first P-Delta iteration. It
+ * must not disable first-order equilibrium and diagram audits when K_G is
+ * identically zero.
  */
+
+export const hasActivePDeltaForces = (forces?: ReadonlyMap<string, number>): boolean =>
+  Boolean(forces && [...forces.values()].some((value) => Number.isFinite(value) && value !== 0));
+
 export interface AnalyzeProjectOptions {
   pDeltaAxialForces?: Map<string, number>;
   /** Nonlinear-link tangent selected by the active-set wrapper for this iteration. */
@@ -1510,7 +1518,7 @@ export const analyzeProject = (
   // stiffness can never contribute anything to this run; relaxing the
   // first-order equilibrium checks for it would hide a genuine assembly bug
   // behind a P-Delta explanation that does not actually apply.
-  const pDeltaActive = Boolean(options?.pDeltaAxialForces?.size);
+  const pDeltaActive = hasActivePDeltaForces(options?.pDeltaAxialForces);
   let mechanism: NonNullable<AnalysisResult['mechanism']> | undefined;
   try {
     const assemblyStart = profileStart();

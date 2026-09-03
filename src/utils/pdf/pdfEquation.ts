@@ -15,7 +15,7 @@
  * still gate every block on `agrees(...)`, so a relation whose own numbers do not close is not
  * drawn at all.
  */
-import { unitLabel, type UnitQuantity } from '../../engine/units';
+import { ALL_UNIT_LABELS } from '../../engine/units';
 import { translateExpression } from './mathLatex';
 import { drawMathBlock, hasFraction, mathWidth } from './pdfMath';
 import type { PdfLayout } from './pdfBuilder';
@@ -38,20 +38,14 @@ export interface WorkedEquation {
 export type EquationInput = WorkedEquation | string;
 
 /**
- * Every unit label the product can print, across all four unit systems.
+ * Every unit label the product can print, across standard and custom unit profiles.
  *
  * Closed and computed once from `engine/units`, which is the single source of these strings —
  * not a hand-written list that could drift from it. It exists so a pre-built relation ending
  * in `… = 17.5 kN` can have its unit set upright without a shape heuristic deciding that some
  * trailing word "looks like" a unit and italicising a variable by mistake.
  */
-const UNIT_LABELS: ReadonlySet<string> = new Set([
-  'rad',
-  ...(['kN-m', 'N-mm', 'kgf-m', 'kip-ft'] as const).flatMap((system) => ([
-    'length', 'force', 'moment', 'distributedForce', 'elasticModulus', 'area', 'inertia',
-    'sectionModulus', 'sectionDimension', 'translationalStiffness', 'rotationalStiffness', 'density',
-  ] as UnitQuantity[]).map((quantity) => unitLabel(system, quantity))),
-]);
+const UNIT_LABELS = ALL_UNIT_LABELS;
 
 /**
  * Index of the first `=` that is the relation's own, i.e. outside every bracket.
