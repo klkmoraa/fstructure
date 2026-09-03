@@ -41,7 +41,7 @@ describe('WorkspaceTopBar', () => {
       />,
     );
 
-    expect(screen.getByRole('banner').getAttribute('data-workspace-topbar')).toBe('');
+    expect(screen.getByRole('banner').getAttribute('data-workspace-topbar')).toBe('true');
     expect(screen.getByText('Viga de prueba')).toBeTruthy();
     expect(screen.getByText('Guardado local')).toBeTruthy();
     expect(screen.getByText('Análisis actualizado')).toBeTruthy();
