@@ -57,7 +57,12 @@ export const SupportPlacementPopover = ({
 
   const select = (type: SupportPlacementType) => {
     setSelectedType(type);
-    const parsedAngle = Number(angleText);
+    // An empty string is coerced to zero by Number(), which silently changes
+    // the roller orientation when the user clears an incomplete edit. Accept
+    // the decimal comma used by the Spanish UI, but fall back for blank or
+    // otherwise invalid drafts.
+    const normalizedAngle = angleText.trim().replace(',', '.');
+    const parsedAngle = normalizedAngle === '' ? Number.NaN : Number(normalizedAngle);
     onSelect(type, Number.isFinite(parsedAngle) ? parsedAngle : initialAngleDeg);
   };
 
