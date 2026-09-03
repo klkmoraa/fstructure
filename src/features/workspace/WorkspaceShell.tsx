@@ -18,9 +18,17 @@ import { useShellComposition } from './useShellComposition';
 import { useSurfacePresentation } from './useSurfacePresentation';
 import { nextAvailableInspectorDetent, normalizeInspectorDetent, useWorkspaceLayoutPreferences } from './useWorkspaceLayoutPreferences';
 import { preloadDenseResultsSurface, type DenseResultView } from '../results/denseResults';
-import type { SurfaceId } from './surfacePresentation';
+import { reservesInspectorColumn, type SurfaceId } from './surfacePresentation';
 import '../../design-system/components/ui.css';
 import './phase1.css';
+/* La paleta se carga con `lazy()`, y su hoja viajaba SÓLO en ese trozo diferido:
+   el modal se montaba, tomaba el foco y no se veía si la hoja del trozo no
+   llegaba. La regla es la de CRI: una superficie modal no puede depender de un
+   trozo diferido para existir visualmente, así que sus reglas entran también por
+   esta entrada estable, que ya está cargada antes de que la paleta pueda
+   abrirse. El componente conserva su propio import —la hoja vive junto a él— y
+   el empaquetador resuelve el duplicado. */
+import './commandPalette.css';
 import '../canvas/mobileCanvasDensity.css';
 import { emitWorkspaceCommand, onWorkspaceCommand } from './workspaceCommands';
 import { isOwnHistoryScope } from './commandRegistry';
@@ -107,7 +115,13 @@ const WorkspaceBrokerContent = ({
   const comparison = broker.stateFor('comparison');
   const doctor = broker.stateFor('doctor');
   const palette = broker.stateFor('palette');
+  // Intención del usuario: qué superficie quiere tener a mano. Gobierna el
+  // botón de la consola y su alternancia, que deben poder CERRAR una superficie
+  // abierta aunque otra capa la haya suspendido.
   const inspectorOpen = detail.open || analysisSetup.open || view.open;
+  // Ocupación real: qué superficie está pintando. Gobierna la retícula, que sólo
+  // puede pagar ancho por algo que se ve (ver `reservesInspectorColumn`).
+  const inspectorShowsColumn = reservesInspectorColumn(detail, analysisSetup, view);
   const resultsWereOpenRef = useRef(results.open);
 
   useEffect(() => persistEditorLayerState(editorLayers), [editorLayers]);
@@ -382,7 +396,7 @@ const WorkspaceBrokerContent = ({
     projectId={projectId}
     skipLabel={t('shell.skipToCanvas')}
     shellClass={shellClass}
-    inspectorCollapsed={!inspectorOpen}
+    inspectorCollapsed={!inspectorShowsColumn}
     inspectorCompact={detail.open && layout.inspectorCompact}
     inspectorWidth={layout.inspectorWidth}
     fullCanvas={layout.fullCanvas}

@@ -257,7 +257,16 @@
 .inspector-property-group__body>.field-row + .select-field,
 .inspector-property-group__body>.select-field + .field-row,
 .inspector-property-group__body>.select-field + .select-field { margin-top:4px; }
-.select-field>span { display:grid; gap:2px; }
+/*
+ * La columna de la etiqueta mide ~100px con el Inspector en su ancho por
+ * defecto (310px), y ahí no cabe entero un identificador de catálogo como
+ * `AISC/Eurocódigo/ACI/NL`: sin punto de corte, la palabra se salía de su
+ * columna —medido a 1280px: 124px de contenido en 100px de caja, con
+ * `overflow:visible`— y se pintaba por encima del hueco y del propio control.
+ * `min-width:0` deja que la celda de rejilla encoja de verdad y
+ * `overflow-wrap:anywhere` autoriza el corte que la palabra no ofrece.
+ */
+.select-field>span { min-width:0; display:grid; gap:2px; overflow-wrap:anywhere; }
 .select-field>span small { color:var(--subtle); font-weight:400; line-height:1.35; }
 .select-field.is-disabled { color:var(--muted); }
 .select-field.is-disabled select { background:var(--surface-2); color:var(--muted); }
@@ -744,7 +753,12 @@
 /* Sin trazo: el borde lo pone `.section-shape--outline` con la forma real. */
 .section-viewer .section-stress-fill { stroke:none; }
 .section-viewer .section-stress-label { fill:var(--text); }
-.section-viewer-chips { margin:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+/* Tres columnas fijas dejaban 64px útiles por ficha, y una propiedad derivada
+   como `0.000117849 m³` necesita 71px: el valor se cortaba —sin siquiera la
+   elipsis, que `text-overflow` no puede pintar mientras el texto ajusta—. Las
+   fichas se reparten ahora por lo que de verdad cabe, y pasan a dos columnas
+   antes que recortar un número. */
+.section-viewer-chips { margin:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(88px,1fr)); gap:6px; }
 .section-viewer-chips > div {
   padding:6px 8px;
   display:grid;
@@ -761,8 +775,9 @@
   font-family:var(--sc-font-mono);
   font-size:11px;
   font-variant-numeric:var(--sc-numeric-variant);
-  overflow:hidden;
-  text-overflow:ellipsis;
+  /* Un número recortado miente sobre su valor. Si aun con el reparto de arriba
+     no cabe, que ajuste en dos líneas; nunca que se corte. */
+  overflow-wrap:anywhere;
 }
 
 /* --- Índice elástico estimado (Inspector + Resumen) -------------------- */

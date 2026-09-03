@@ -17,6 +17,7 @@ import { IllustrationStudio } from '../structural-assets/studio/IllustrationStud
 import type { ClassroomExerciseTemplateId } from '../../education/exerciseTemplates';
 import { PersonalLibraryView } from '../library/PersonalLibraryView';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
+import { shouldResumeDirectly, useWelcomeEntry } from './welcomeEntry';
 import type { ThemeMode } from '../../types';
 import { useModalFocus } from '../../design-system/components/modalFocus';
 import { clearLocalMetrics, exportLocalMetrics, getLocalMetrics, setLocalMetricsOptIn, type LocalMetricsStore } from '../../analytics/localMetrics';
@@ -205,6 +206,8 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const homeRef = useRef<HTMLElement>(null);
+  /** Quién está abriendo el producto, leído del repositorio real (CRI-104). */
+  const welcomeEntry = useWelcomeEntry();
   const preferencesLauncherRef = useRef<HTMLButtonElement | null>(null);
   const studioLauncherRef = useRef<HTMLButtonElement | null>(null);
 
@@ -292,9 +295,29 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     <button type="button" aria-label={text.settings} title={text.settings} onClick={(event) => openPreferences(event.currentTarget)}><Settings size={19} /><span>{text.settings}</span></button>
   </nav>;
 
+  /**
+   * Una sola acción desde la portada hasta un lienzo utilizable.
+   *
+   * «Abrir Solver 2D» dejaba siempre al usuario en la bienvenida del módulo y
+   * le pedía un segundo clic en «Continuar» para llegar al editor, incluso a
+   * quien ya tenía proyectos guardados y sólo quería seguir. `welcomeEntry` ya
+   * respondía a esa pregunta —y no la usaba nadie: el módulo estaba escrito y
+   * sin cablear—, así que la decisión se toma con él: si hay trabajo guardado y
+   * ninguna copia de recuperación pendiente, el CTA entra directo al proyecto;
+   * si no, entra a la bienvenida, que es donde viven la creación, la selección
+   * y la recuperación en un mismo paso.
+   */
+  const openSolver2D = () => {
+    if (shouldResumeDirectly(welcomeEntry)) {
+      onOpenWorkspace();
+      return;
+    }
+    navigate('solver2d');
+  };
+
   const platformLanding = <FusionLanding
     language={language}
-    onOpenSolver2D={() => navigate('solver2d')}
+    onOpenSolver2D={openSolver2D}
     onOpenSolver3D={() => navigate('space3d')}
     onOpenClassroom={() => navigate('classroom')}
   />;
