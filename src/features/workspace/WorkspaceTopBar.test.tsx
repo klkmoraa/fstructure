@@ -41,12 +41,12 @@ describe('WorkspaceTopBar', () => {
       />,
     );
 
-    expect(screen.getByRole('banner')).toHaveAttribute('data-workspace-topbar');
-    expect(screen.getByText('Viga de prueba')).toBeInTheDocument();
-    expect(screen.getByText('Guardado local')).toBeInTheDocument();
-    expect(screen.getByText('Análisis actualizado')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Deshacer' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Rehacer' })).toBeEnabled();
+    expect(screen.getByRole('banner').getAttribute('data-workspace-topbar')).toBe('');
+    expect(screen.getByText('Viga de prueba')).toBeTruthy();
+    expect(screen.getByText('Guardado local')).toBeTruthy();
+    expect(screen.getByText('Análisis actualizado')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Deshacer' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Rehacer' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('routes the four primary actions and exposes Results as a toggle', async () => {
@@ -84,8 +84,8 @@ describe('WorkspaceTopBar', () => {
     expect(onUndo).toHaveBeenCalledOnce();
     expect(onRedo).toHaveBeenCalledOnce();
     expect(onOpenResults).toHaveBeenCalledOnce();
-    expect(screen.getByRole('button', { name: 'Analizando…' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Resultados' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('Error al guardar')).toBeInTheDocument();
+    expect((screen.getByRole('button', { name: 'Analizando…' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Resultados' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Error al guardar')).toBeTruthy();
   });
 });
