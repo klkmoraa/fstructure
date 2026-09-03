@@ -573,13 +573,31 @@
    plegado tapaba media banda del centro analítico. `--results-band` la publica
    el propio panel al medirse, así que arrastrar su separador o plegarlo mueve
    el riel con él. El respaldo cubre el caso sin panel montado. */
+/*
+ * El riel se centra sobre EL LIENZO, no sobre la ventana.
+ *
+ * Con `left:50%` se centraba en el shell entero, así que al abrirse el
+ * Inspector el lienzo se estrechaba por la derecha y el riel se quedaba donde
+ * estaba: medido a 1280px con Cargas abierto, el riel llegaba a x=1196 y el
+ * Inspector empezaba en x=960 — 236px de riel encima del panel—. Ya pasaba
+ * antes de nombrar las herramientas (40px), y nombrarlas lo multiplicó.
+ *
+ * `--rail-reserved-right` es lo que el lienzo NO tiene a su derecha: la columna
+ * del Inspector cuando está reservada, y nada cuando no. Así el riel se centra
+ * y se limita con la misma cuenta con la que la retícula reparte el ancho.
+ */
+.app-shell[data-shell-class='X2'] { --rail-reserved-right:0px; }
+.app-shell[data-shell-class='X2']:not([data-inspector-collapsed='true']):not([data-full-canvas='true']) {
+  --rail-reserved-right:var(--inspector-w);
+}
+
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock {
   position:absolute;
   z-index:38;
-  left:50%;
+  left:calc(var(--console-w,52px) + (100% - var(--console-w,52px) - var(--rail-reserved-right,0px)) / 2);
   bottom:calc(var(--results-band,76px) + 14px);
   width:max-content;
-  max-width:calc(100% - 40px);
+  max-width:calc(100% - var(--console-w,52px) - var(--rail-reserved-right,0px) - 40px);
   height:auto;
   max-height:none;
   margin:0;
@@ -641,6 +659,18 @@
   flex:0 0 42px;
 }
 
+/*
+ * El ancla del tooltip reserva 42px por tecla. Con teclas cuadradas eso es
+ * exactamente su sitio; con una tecla nombrada, la tecla desborda su ranura y
+ * se pinta ENCIMA de la vecina —medido: «Nodo», «Miembro» y «Apoyo»
+ * superpuestos—. En el estado nombrado el ancla se ajusta a su contenido, que
+ * es lo que la fila flexible ya sabe repartir.
+ */
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='true'] .tool-rail-tooltip-anchor:has(.tool-button:not(.is-compact)) {
+  width:auto;
+  flex:0 0 auto;
+}
+
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button,
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .sc-popover__trigger {
   width:38px;
@@ -653,6 +683,67 @@
   background:transparent;
   box-shadow:none;
   transition:var(--sc-transition-control);
+}
+
+/*
+ * La tecla NOMBRADA del riel (fase 1 · «toolbar etiquetada de seis
+ * herramientas»).
+ *
+ * Recupera la retícula del design system —icono · rótulo · atajo— que el dock
+ * había aplastado a un cuadrado de 38px para todas por igual. Se cuelga de
+ * `data-tool-rail-labels`, que el riel publica, y vive junto a la regla del
+ * dock que corrige: mismo lugar, misma altura de especificidad, sin pelea.
+ *
+ * La altura no cambia (38px): lo que cambia es que la tecla deja de ser cuadrada
+ * y paga el ancho de su nombre. Las secundarias siguen compactas, y son ellas
+ * las que dejan sitio para que las seis quepan nombradas.
+ */
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='true'] .tool-button:not(.is-compact) {
+  width:auto;
+  min-width:38px;
+  padding-inline:7px;
+  /* `auto`, no `minmax(0,1fr)`: la columna del rótulo tiene que pedir su
+     ancho de contenido. Con `1fr` y `min-width:0` heredado del design system
+     se encogía a cero y la tecla volvía a ser un icono con un atajo al lado,
+     con el nombre pintándose fuera de su caja. */
+  grid-template-columns:20px auto auto;
+  justify-items:stretch;
+  align-items:center;
+  gap:6px;
+}
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='true'] .tool-button:not(.is-compact) .sc-tool-button__copy {
+  min-width:max-content;
+  justify-items:start;
+  text-align:start;
+}
+/*
+ * Entre 1024 y 1439px una regla del riel esconde el rótulo y el atajo de TODA
+ * tecla (`display:none`), que es lo que hacía que el riel se viera nombrado a
+ * 1440 y mudo a 1280. La tecla nombrada se exceptúa; las compactas siguen
+ * igual.
+ */
+@media (min-width:1024px) and (max-width:1439px) {
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='true'] .tool-button:not(.is-compact) > span:not(.sc-tool-button__icon),
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='true'] .tool-button:not(.is-compact) kbd {
+    display:revert;
+  }
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='true'] .tool-button:not(.is-compact) {
+    height:38px;
+    min-height:38px;
+    grid-template-columns:20px auto auto;
+    justify-items:stretch;
+    padding:0 7px;
+  }
+}
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='true'] .tool-button:not(.is-compact) kbd {
+  flex:none;
+  color:var(--sc-color-text-muted);
+  font-size:var(--sc-font-size-caption);
+}
+/* Elegida, el atajo hereda la tinta invertida para no perder contraste. */
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='true'] .tool-button:not(.is-compact):is(.active,.is-active) kbd {
+  color:currentColor;
+  opacity:.72;
 }
 
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-collapse-toggle {

@@ -30,6 +30,28 @@
 .console:focus-within { width: 216px; box-shadow: var(--sc-shadow-lg); }
 
 /*
+ * Los controles PROPIOS de la consola se pintan por encima del riel flotante.
+ *
+ * El riel vive dentro del DOM de la consola (`.console__tools`) aunque
+ * visualmente flote sobre el lienzo, así que subir `.console` entera lo subiría
+ * con él: hay que separar sus mandos del riel, no la consola del resto.
+ *
+ * Hasta que el riel nombró sus seis principales no había con qué chocar —el
+ * riel empezaba en x=360 y la consola desplegada llega a 216—. Nombrarlas mueve
+ * su borde izquierdo a x=84 (medido a 1280px) y, con el riel en z-index 38, el
+ * riel se comía los clics del pie de la consola: «Mostrar inspector» quedaba
+ * inalcanzable. La consola sólo se despliega bajo el puntero o el foco, así que
+ * mientras lo está ES la superficie que el usuario está usando y tiene que
+ * recibir sus propios clics.
+ */
+.console__head,
+.console__surfaces,
+.console__foot {
+  position: relative;
+  z-index: 39;
+}
+
+/*
  * La navegación termina donde empieza la bandeja de Resultados.
  *
  * Tapar el LIENZO al desplegarse está autorizado —arriba—: un lienzo se vuelve

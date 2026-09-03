@@ -28,6 +28,7 @@ import type { Tool } from '../../types';
 import { ToolButton as EditorToolButton, type ToolTone } from '../../design-system/components/editor';
 import { STRUCTURAL_TOOL_IDS, StructuralToolIcon } from './StructuralToolIcon';
 import {
+  isPrimaryRailTool,
   TOOL_GROUPS,
   TOOL_REGISTRY,
   type ToolDefinition,
@@ -75,6 +76,48 @@ const toolTones: Record<Tool, ToolTone> = {
 };
 
 type DesktopDockGroup = 'navigate' | 'build' | 'loads' | 'refine';
+
+/**
+ * Ancho de LIENZO desde el que el riel puede nombrar sus seis principales.
+ *
+ * No es una preferencia: es un presupuesto medido. Con las seis nombradas
+ * —icono · rótulo · atajo— y las secundarias compactas, el riel pide 1112px en
+ * español, que es el caso peor (en inglés los rótulos son más cortos). Sumados
+ * los 40px de aire que el dock se deja a los lados, el lienzo tiene que medir
+ * al menos 1152px para sostenerlas.
+ *
+ * Se mira el LIENZO y no la ventana a propósito: abrir el Inspector le quita
+ * 320px, y una cuenta hecha sobre la ventana dejaba al riel nombrado metiéndose
+ * 236px dentro del panel —medido a 1280px con Cargas abierto—. Cuando el lienzo
+ * no da, el riel renuncia a los nombres antes que salirse de su sitio.
+ *
+ * La propuesta pide riel etiquetado desde 1200px de ventana. Con el Inspector
+ * cerrado eso se cumple desde 1280 y no desde 1200: faltan 24px, y apretarlos
+ * saldría del rótulo o del atajo. Cerrar esa franja pide lo que la propuesta
+ * también dice —«las acciones menos frecuentes viven en Más»—, que es mover las
+ * ocho secundarias a un menú que todavía no existe en escritorio.
+ */
+const RAIL_LABELS_MIN_CANVAS = 1152;
+
+/**
+ * ¿Cabe el riel nombrado en el lienzo de ahora mismo?
+ *
+ * Observa el lienzo, no el riel: el ancho del riel depende de esta respuesta, y
+ * medirlo para decidirla sería un bucle. El lienzo no depende del riel.
+ */
+const useRailLabelBudget = (): boolean => {
+  const [fits, setFits] = useState(false);
+  useEffect(() => {
+    const stage = document.querySelector('.center-stage');
+    if (!stage) return undefined;
+    const measure = () => setFits(stage.getBoundingClientRect().width >= RAIL_LABELS_MIN_CANVAS);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, []);
+  return fits;
+};
 
 const DESKTOP_DOCK_GROUPS: readonly {
   id: DesktopDockGroup;
@@ -255,6 +298,7 @@ export const ToolRail = () => {
   const previousShellClassRef = useRef(shellClass);
   /** Expanded (`X2`) lleva etiqueta; Medium (`M1`) y Compact (`K0`) son icon-only. */
   const compact = shellClass !== 'X2';
+  const labelBudget = useRailLabelBudget();
   const { t } = useI18n();
   const classroom = project.settings.calculationMode === 'classroom';
   const activeDefinition = TOOL_REGISTRY.find((tool) => tool.id === activeTool);
@@ -473,12 +517,16 @@ export const ToolRail = () => {
       <div className="tool-group-actions">
         {groupTools.map((definition) => {
           const tipId = `tool-rail-tip-${definition.id}`;
+          // Las seis principales se leen sin apuntar con el ratón; el resto
+          // sigue siendo icono con su tooltip, que es lo que deja sitio para
+          // que las seis quepan nombradas.
+          const named = labelBudget && isPrimaryRailTool(definition.id);
           return <RailTooltip key={definition.id} id={tipId} content={`${t(definition.labelKey)} (${definition.shortcut})`} placement="top">
             <RegisteredToolButton
               definition={definition}
               label={t(definition.labelKey)}
               active={activeTool === definition.id}
-              compact
+              compact={!named}
               onSelect={selectTool}
               aria-describedby={tipId}
             />
@@ -517,7 +565,17 @@ export const ToolRail = () => {
 
   return (
     <>
-      <aside className={`toolbar tool-rail${compact ? ' is-compact' : ' is-floating-dock'}${desktopDockCollapsed ? ' is-dock-collapsed' : ''}${mobileMenu ? ' mobile-menu-open' : ''}`} aria-label={t('toolbar.label')} data-tool-rail={compact ? 'compact' : 'dock'}>
+      <aside
+        className={`toolbar tool-rail${compact ? ' is-compact' : ' is-floating-dock'}${desktopDockCollapsed ? ' is-dock-collapsed' : ''}${mobileMenu ? ' mobile-menu-open' : ''}`}
+        aria-label={t('toolbar.label')}
+        data-tool-rail={compact ? 'compact' : 'dock'}
+        /* Estado declarado, no deducido: el riel nombra sus seis principales
+           sólo donde hay ancho para ello y sin el cajón colapsado. La hoja se
+           cuelga de este atributo en vez de pelear por especificidad con las
+           reglas del dock, que es lo que el plan pide cuando dice que la
+           solución modele los estados en el layout. */
+        data-tool-rail-labels={!compact && !desktopDockCollapsed && labelBudget ? 'true' : undefined}
+      >
         <div className="desktop-tool-list" data-desktop-dock-tools={shellClass === 'X2' ? 'true' : undefined}>
           {shellClass === 'X2' ? desktopDockCollapsed && activeDefinition
             ? <RailTooltip id="tool-rail-tip-active-tool" content={`${t(activeDefinition.labelKey)} (${activeDefinition.shortcut})`} placement="top">

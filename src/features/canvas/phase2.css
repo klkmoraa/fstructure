@@ -1226,9 +1226,17 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .tool-rail.is-compact .tool-button .sc-tool-button__icon { width: 20px; height: 20px; display: grid; place-items: center; color: currentColor; }
 .tool-rail .tool-button .sc-tool-button__icon svg,
 .tool-rail.is-compact .tool-button .sc-tool-button__icon svg { width: 18px; height: 18px; color: currentColor; stroke-width: 1.7; }
-/* El rótulo y el atajo salen del riel pero siguen en el árbol accesible. */
-.tool-rail .tool-button > span:not(.sc-tool-button__icon),
-.tool-rail .tool-button kbd,
+/*
+ * El rótulo y el atajo salen del riel pero siguen en el árbol accesible —para
+ * el botón COMPACTO, que es el que se dibuja como cuadrado de icono—.
+ *
+ * Antes la regla no distinguía y escondía el rótulo de CUALQUIER tecla del
+ * riel, así que el riel era icono puro en todos los anchos y el nombre de una
+ * herramienta sólo aparecía al apuntarla. Acotarla a `.is-compact` deja que una
+ * tecla nombrada se vea nombrada; las demás no cambian.
+ */
+.tool-rail .tool-button.is-compact > span:not(.sc-tool-button__icon),
+.tool-rail .tool-button.is-compact kbd,
 .tool-rail.is-compact .tool-button > span:not(.sc-tool-button__icon),
 .tool-rail.is-compact .tool-button kbd {
   position: absolute; width: 1px; height: 1px;
