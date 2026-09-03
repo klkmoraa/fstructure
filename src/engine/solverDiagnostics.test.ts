@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { hasActivePDeltaForces } from './solver';
 
 describe('P-Delta activation', () => {
