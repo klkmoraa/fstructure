@@ -53,4 +53,23 @@ describe('SupportPlacementPopover', () => {
     fireEvent.keyDown(dialog, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledOnce();
   });
+
+  it('accepts a decimal comma and does not coerce an empty angle to zero', () => {
+    const onSelect = vi.fn();
+    render(<SupportPlacementPopover
+      {...baseProps}
+      initialAngleDeg={90}
+      onSelect={onSelect}
+      onCancel={vi.fn()}
+    />);
+
+    const angle = screen.getByRole('textbox', { name: 'Normal del rodillo' });
+    fireEvent.change(angle, { target: { value: '37,5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Rodillo' }));
+    expect(onSelect).toHaveBeenLastCalledWith('roller', 37.5);
+
+    fireEvent.change(angle, { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Rodillo' }));
+    expect(onSelect).toHaveBeenLastCalledWith('roller', 90);
+  });
 });

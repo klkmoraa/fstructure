@@ -48,9 +48,15 @@ const classroomProgressCopy: Record<ClassroomProgressStepId, { title: Translatio
 
 const readResultsMode = (): ResultsPanelMode => {
   if (typeof window === 'undefined') return 'expanded';
-  const stored = window.localStorage.getItem(RESULTS_MODE_STORAGE_KEY);
-  if (stored === 'focused') return 'expanded';
-  return stored === 'compact' || stored === 'expanded' ? stored : 'expanded';
+  try {
+    const stored = window.localStorage.getItem(RESULTS_MODE_STORAGE_KEY);
+    if (stored === 'focused') return 'expanded';
+    return stored === 'compact' || stored === 'expanded' ? stored : 'expanded';
+  } catch {
+    // Storage can be unavailable in hardened/private browser contexts. The
+    // results surface must remain usable even when preferences cannot persist.
+    return 'expanded';
+  }
 };
 
 // Results ya no consulta el ancho: `K0` es su modo móvil y `phone` su
