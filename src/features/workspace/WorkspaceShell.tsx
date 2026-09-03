@@ -10,8 +10,10 @@ import { ToastNotification } from './ToastNotification';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
 import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
+import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { createPersistedEditorLayerState, editorLayerReducer, persistEditorLayerState } from '../canvas/editorLayers';
 import { AppShellLayout } from './AppShellLayout';
+import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
 import { SurfacePresentationProvider } from './SurfacePresentationProvider';
 import { useShellComposition } from './useShellComposition';
@@ -21,6 +23,7 @@ import { preloadDenseResultsSurface, type DenseResultView } from '../results/den
 import { reservesInspectorColumn, type SurfaceId } from './surfacePresentation';
 import '../../design-system/components/ui.css';
 import './phase1.css';
+import './workspaceTopbar.css';
 /* La paleta se carga con `lazy()`, y su hoja viajaba SÓLO en ese trozo diferido:
    el modal se montaba, tomaba el foco y no se veía si la hoja del trozo no
    llegaba. La regla es la de CRI: una superficie modal no puede depender de un
@@ -92,7 +95,7 @@ const WorkspaceBrokerContent = ({
   const [revisionBaseline, setRevisionBaseline] = useState<RevisionSnapshot | null>(null);
   const [editorLayers, dispatchEditorLayers] = useReducer(editorLayerReducer, undefined, createPersistedEditorLayerState);
   const { t } = useI18n();
-  const { project, analysis, isAnalyzing, setActiveTool, setResultTab, analyze, undo, redo, canUndo, canRedo } = useProject();
+  const { project, analysis, isAnalyzing, storageIssue, storageMessage, setActiveTool, setResultTab, analyze, undo, redo, canUndo, canRedo } = useProject();
   const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
   const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
   const localAssistantTriggerRef = useRef<HTMLElement | null>(null);
@@ -400,6 +403,38 @@ const WorkspaceBrokerContent = ({
     inspectorCompact={detail.open && layout.inspectorCompact}
     inspectorWidth={layout.inspectorWidth}
     fullCanvas={layout.fullCanvas}
+    topbar={<WorkspaceTopBar
+      projectName={project.name}
+      storageState={storageIssue ? 'issue' : 'ready'}
+      storageMessage={storageMessage}
+      analysisState={isAnalyzing ? 'running' : analysis?.success ? 'resolved' : 'ready'}
+      resultsOpen={results.open}
+      canUndo={canUndo}
+      canRedo={canRedo}
+      labels={{
+        solverName: SOLVER_2D.name,
+        project: t('topbar.currentProject'),
+        openProject: t('palette.open'),
+        storageReady: t('storage.local'),
+        storageIssue: t('storage.failedShort'),
+        analysisReady: t('analysis.statusReady'),
+        analysisRunning: t('analysis.running'),
+        analysisResolved: t('analysis.statusResolved'),
+        undo: t('history.undo'),
+        redo: t('history.redo'),
+        analyze: t('analysis.run'),
+        results: t('results.outputs'),
+        actions: t('toolbar.primary'),
+      }}
+      onOpenProject={() => emitWorkspaceCommand('open-command-palette')}
+      onUndo={undo}
+      onRedo={redo}
+      onAnalyze={() => {
+        emitWorkspaceCommand('analysis-requested');
+        analyze();
+      }}
+      onOpenResults={() => openSurface('results')}
+    />}
     console={<Console
       onOpenHome={onOpenHome}
       onOpenSpace3D={onOpenSpace3D}
