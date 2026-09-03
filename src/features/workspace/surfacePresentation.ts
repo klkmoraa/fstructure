@@ -248,6 +248,29 @@ export const resolveSurfaceActivity = (
   })) as SurfaceActivityMap;
 };
 
+/**
+ * Las tres superficies que comparten la MISMA columna del inspector. No es una
+ * lista de estilo: es la única celda de la retícula que las tres disputan.
+ */
+export const INSPECTOR_SURFACE_IDS = ['detail', 'analysisSetup', 'view'] as const satisfies readonly SurfaceId[];
+
+/**
+ * ¿Debe la retícula reservar la columna del inspector?
+ *
+ * La respuesta es `active`, nunca `open`. Son dos preguntas distintas y
+ * confundirlas fue el defecto: `open` es la INTENCIÓN del usuario y sobrevive a
+ * la suspensión, así que con Cargas abierto y Resultados encima —que la
+ * suspende, ver `resolveSurfaceActivity`— el shell seguía reservando
+ * `--inspector-w` para un panel que en ese momento se monta con `hidden`.
+ * Medido en X2 a 1440px: 330px de columna vacía a la derecha del lienzo, que es
+ * exactamente la «columna derecha vacía» que la auditoría reporta.
+ *
+ * Una superficie suspendida no ocupa: por eso no paga ancho.
+ */
+export const reservesInspectorColumn = (
+  ...surfaces: ReadonlyArray<Pick<SurfaceActivity, 'status'>>
+): boolean => surfaces.some(({ status }) => status === 'active');
+
 export const setSurfaceExtent = (
   state: SurfaceBrokerState,
   shellClass: ShellClass,

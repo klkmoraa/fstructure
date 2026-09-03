@@ -1,0 +1,312 @@
+.workspace-topbar {
+  grid-area: topbar;
+  min-width: 0;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px clamp(10px, 1.8vw, 24px);
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text);
+  z-index: var(--sc-z-topbar, 30);
+}
+
+.workspace-topbar__project {
+  min-width: 0;
+  flex: 1 1 220px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 3px 8px 3px 2px;
+  border: 0;
+  border-radius: var(--sc-radius-card);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.workspace-topbar__project:hover,
+.workspace-topbar__project:focus-visible {
+  background: var(--surface-2);
+}
+
+.workspace-topbar__project:focus-visible,
+.workspace-topbar__icon-button:focus-visible,
+.workspace-topbar__action-button:focus-visible {
+  outline: var(--sc-focus-ring-width, 2px) solid var(--sc-color-focus, var(--focus));
+  outline-offset: -2px;
+}
+
+.workspace-topbar__project .fs-mark {
+  flex: 0 0 auto;
+  color: var(--accent);
+}
+
+.workspace-topbar__project-copy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.workspace-topbar__eyebrow {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.workspace-topbar__project-copy strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: -.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-topbar__status {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workspace-topbar__status-chip {
+  min-width: 0;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.workspace-topbar__status-chip > svg {
+  flex: 0 0 auto;
+  color: var(--success);
+}
+
+.workspace-topbar__status-chip.is-error {
+  color: var(--error);
+  border-color: color-mix(in srgb, var(--error) 34%, var(--border));
+  background: color-mix(in srgb, var(--error) 7%, var(--surface));
+}
+
+.workspace-topbar__status-chip.is-error > svg {
+  color: var(--error);
+}
+
+/*
+ * Un aviso, no un error: la copia de seguridad se recuperó, que es un final
+ * bueno de una situación mala. Lleva su propio tono para que no se lea como el
+ * fallo de guardado que NO ocurrió.
+ */
+.workspace-topbar__status-chip.is-notice {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+  background: color-mix(in srgb, var(--warning) 7%, var(--surface));
+}
+
+.workspace-topbar__status-chip.is-notice > svg {
+  color: var(--warning);
+}
+
+.workspace-topbar__status-chip.is-running {
+  color: var(--accent-ink);
+  border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
+  background: var(--accent-soft);
+}
+
+.workspace-topbar__status-chip.is-running > svg {
+  color: var(--accent);
+}
+
+.workspace-topbar__status-chip span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-topbar__status-chip strong {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-topbar__status-chip small {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-topbar__actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.workspace-topbar__icon-button,
+.workspace-topbar__action-button {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.workspace-topbar__icon-button:hover:not(:disabled),
+.workspace-topbar__action-button:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.workspace-topbar__icon-button:disabled,
+.workspace-topbar__action-button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+.workspace-topbar__action-button.is-primary {
+  border-color: var(--accent);
+  background: var(--accent-fill);
+  color: var(--accent-foreground);
+}
+
+.workspace-topbar__action-button.is-active {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent-on-soft);
+}
+
+.workspace-topbar__action-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 760px) {
+  /* `index.html` declara `viewport-fit=cover`, así que en un teléfono con
+     muesca —o instalada como PWA— el borde físico superior queda POR DEBAJO de
+     la barra de estado. Con 6px fijos de relleno, el proyecto, el estado y las
+     acciones se metían bajo ese recorte. El área segura entra en el relleno y
+     también en la altura mínima, como ya hacen las demás superficies móviles
+     del espacio de trabajo. */
+  /*
+   * La altura real de la barra se PUBLICA en `--topbar-h`, que es de donde ya
+   * la leen las superficies fijas del lienzo (`.mobile-tool-sheet-backdrop`, la
+   * paleta de herramientas y su hoja, en `phase2.css`). Sin esto, esas
+   * superficies seguían partiendo de los 48–58px heredados, sin el área segura,
+   * y en un teléfono con muesca el fondo del cajón —que va en el plano de las
+   * hojas— tapaba justo la franja que la barra acababa de proteger.
+   *
+   * La doble `:root` no es un adorno: `phase2.css` declara `--topbar-h` sobre
+   * `:root` con la misma especificidad, y cuál de las dos hojas se carga última
+   * no es algo en lo que apoyarse.
+   */
+  :root:root { --topbar-h: calc(56px + env(safe-area-inset-top)); }
+
+  .workspace-topbar {
+    min-height: var(--topbar-h);
+    gap: 7px;
+    padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
+  }
+
+  .workspace-topbar__project {
+    flex-basis: 125px;
+    gap: 6px;
+    padding-inline: 0;
+  }
+
+  .workspace-topbar__project .fs-mark {
+    width: 22px;
+    height: 22px;
+  }
+
+  .workspace-topbar__status {
+    gap: 3px;
+  }
+
+  .workspace-topbar__status-chip {
+    min-height: 32px;
+    max-width: 88px;
+    padding-inline: 6px;
+  }
+
+  .workspace-topbar__status-chip small {
+    display: none;
+  }
+
+  .workspace-topbar__actions {
+    gap: 3px;
+  }
+
+  .workspace-topbar__action-button {
+    width: 44px;
+    padding-inline: 0;
+  }
+
+  .workspace-topbar__action-button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .workspace-topbar__eyebrow {
+    display: none;
+  }
+
+  .workspace-topbar__project-copy strong {
+    font-size: 12px;
+  }
+
+  .workspace-topbar__status-chip {
+    max-width: 72px;
+    padding-inline: 5px;
+  }
+
+  .workspace-topbar__status-chip strong {
+    max-width: 44px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-topbar *,
+  .workspace-topbar *::before,
+  .workspace-topbar *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

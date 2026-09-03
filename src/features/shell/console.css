@@ -29,6 +29,57 @@
 .console:hover,
 .console:focus-within { width: 216px; box-shadow: var(--sc-shadow-lg); }
 
+/*
+ * Los controles PROPIOS de la consola se pintan por encima del riel flotante.
+ *
+ * El riel vive dentro del DOM de la consola (`.console__tools`) aunque
+ * visualmente flote sobre el lienzo, así que subir `.console` entera lo subiría
+ * con él: hay que separar sus mandos del riel, no la consola del resto.
+ *
+ * Hasta que el riel nombró sus seis principales no había con qué chocar —el
+ * riel empezaba en x=360 y la consola desplegada llega a 216—. Nombrarlas mueve
+ * su borde izquierdo a x=84 (medido a 1280px) y, con el riel en z-index 38, el
+ * riel se comía los clics del pie de la consola: «Mostrar inspector» quedaba
+ * inalcanzable. La consola sólo se despliega bajo el puntero o el foco, así que
+ * mientras lo está ES la superficie que el usuario está usando y tiene que
+ * recibir sus propios clics.
+ */
+.console__head,
+.console__surfaces,
+.console__foot {
+  position: relative;
+  z-index: 39;
+}
+
+/*
+ * La navegación termina donde empieza la bandeja de Resultados.
+ *
+ * Tapar el LIENZO al desplegarse está autorizado —arriba—: un lienzo se vuelve
+ * a descubrir retirando el puntero. Tapar una superficie que hay que LEER no lo
+ * está: «nada debe flotar encima de un panel si el usuario necesita leer o
+ * editar ambos a la vez». Y eso era justo lo que pasaba: con Resultados
+ * abierto, desplegar la consola cubría 144px de la bandeja —medido en X2 a
+ * 1440px—, y lo cubierto no era relleno sino su encabezado («Centro
+ * analítico»), su diagnóstico («Aún no hay resultados calculados») y el borde
+ * izquierdo de su único control; `elementFromPoint` sobre esa zona devolvía una
+ * etiqueta de la consola, así que el control tampoco se podía pulsar ahí.
+ *
+ * El arreglo no es un z-index —eso escondería el defecto sin resolver el
+ * solapamiento, y dejaría la bandeja tapando la navegación en vez de al revés—:
+ * es que la columna deje de llegar tan abajo. `--results-band` ya la publica el
+ * propio panel mientras está activo, medida desde el borde inferior de la
+ * ventana hasta su techo, y el riel flotante de herramientas ya se apoya en
+ * ella. La consola se apoya en la misma medida y así la bandeja ocupa una fila
+ * entera, sin nada de navegación por encima.
+ *
+ * Sólo aplica a la consola de escritorio: en K0 es una banda inferior fija
+ * —regla propia más abajo— y la bandeja de Resultados vive dentro del lienzo,
+ * por encima de ella, así que ahí no hay solapamiento que corregir.
+ */
+@media (min-width: 1024px) {
+  .console { margin-block-end: var(--results-band, 0px); }
+}
+
 .console button {
   min-width: 44px;
   min-height: 44px;

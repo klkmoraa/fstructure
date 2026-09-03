@@ -44,6 +44,24 @@ export const TOOL_REGISTRY: readonly ToolDefinition[] = [
   { id: 'delete', group: 'edit', labelKey: 'toolbar.delete', detailKey: 'toolbar.deleteDetail', shortcut: '⌫', mobile: 'more', classroomAdvanced: true, destructive: true },
 ] as const;
 
+/**
+ * Las seis herramientas que el riel nombra en voz alta.
+ *
+ * La propuesta las fija —Seleccionar, Nodo, Barra, Apoyo, Carga y Medir— y pide
+ * para ellas «icono + texto», con criterio de aceptación explícito: «las seis
+ * principales son legibles sin hover». Nombrarlas no es sólo descubrimiento:
+ * mientras el riel fue icono puro, la herramienta activa se distinguía por forma
+ * y color y por nada más, que es justo lo que el plan prohíbe cuando pide que
+ * los estados «incluyan texto e icono».
+ *
+ * No se reusa `mobile: 'primary'` porque contesta otra pregunta —qué cabe en la
+ * banda de un teléfono, que son cuatro— y una sola marca para las dos habría
+ * cambiado la banda móvil sin que nadie lo pidiera.
+ */
+export const PRIMARY_RAIL_TOOLS: readonly Tool[] = ['select', 'node', 'member', 'support', 'pointLoad', 'dimension'] as const;
+
+export const isPrimaryRailTool = (tool: Tool): boolean => PRIMARY_RAIL_TOOLS.includes(tool);
+
 export const TOOL_SHORTCUTS = new Map<string, Tool>(
   TOOL_REGISTRY.flatMap((definition) => definition.activationKey
     ? [[definition.activationKey, definition.id] as const]

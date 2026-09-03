@@ -10,17 +10,28 @@ import { ToastNotification } from './ToastNotification';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
 import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
+import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { createPersistedEditorLayerState, editorLayerReducer, persistEditorLayerState } from '../canvas/editorLayers';
 import { AppShellLayout } from './AppShellLayout';
+import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
 import { SurfacePresentationProvider } from './SurfacePresentationProvider';
 import { useShellComposition } from './useShellComposition';
 import { useSurfacePresentation } from './useSurfacePresentation';
 import { nextAvailableInspectorDetent, normalizeInspectorDetent, useWorkspaceLayoutPreferences } from './useWorkspaceLayoutPreferences';
 import { preloadDenseResultsSurface, type DenseResultView } from '../results/denseResults';
-import type { SurfaceId } from './surfacePresentation';
+import { reservesInspectorColumn, type SurfaceId } from './surfacePresentation';
 import '../../design-system/components/ui.css';
 import './phase1.css';
+import './workspaceTopbar.css';
+/* La paleta se carga con `lazy()`, y su hoja viajaba SÓLO en ese trozo diferido:
+   el modal se montaba, tomaba el foco y no se veía si la hoja del trozo no
+   llegaba. La regla es la de CRI: una superficie modal no puede depender de un
+   trozo diferido para existir visualmente, así que sus reglas entran también por
+   esta entrada estable, que ya está cargada antes de que la paleta pueda
+   abrirse. El componente conserva su propio import —la hoja vive junto a él— y
+   el empaquetador resuelve el duplicado. */
+import './commandPalette.css';
 import '../canvas/mobileCanvasDensity.css';
 import { emitWorkspaceCommand, onWorkspaceCommand } from './workspaceCommands';
 import { isOwnHistoryScope } from './commandRegistry';
@@ -84,7 +95,7 @@ const WorkspaceBrokerContent = ({
   const [revisionBaseline, setRevisionBaseline] = useState<RevisionSnapshot | null>(null);
   const [editorLayers, dispatchEditorLayers] = useReducer(editorLayerReducer, undefined, createPersistedEditorLayerState);
   const { t } = useI18n();
-  const { project, analysis, isAnalyzing, setActiveTool, setResultTab, analyze, undo, redo, canUndo, canRedo } = useProject();
+  const { project, analysis, isAnalyzing, storageIssue, storageMessage, setActiveTool, setResultTab, analyze, undo, redo, canUndo, canRedo } = useProject();
   const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
   const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
   const localAssistantTriggerRef = useRef<HTMLElement | null>(null);
@@ -107,7 +118,13 @@ const WorkspaceBrokerContent = ({
   const comparison = broker.stateFor('comparison');
   const doctor = broker.stateFor('doctor');
   const palette = broker.stateFor('palette');
+  // Intención del usuario: qué superficie quiere tener a mano. Gobierna el
+  // botón de la consola y su alternancia, que deben poder CERRAR una superficie
+  // abierta aunque otra capa la haya suspendido.
   const inspectorOpen = detail.open || analysisSetup.open || view.open;
+  // Ocupación real: qué superficie está pintando. Gobierna la retícula, que sólo
+  // puede pagar ancho por algo que se ve (ver `reservesInspectorColumn`).
+  const inspectorShowsColumn = reservesInspectorColumn(detail, analysisSetup, view);
   const resultsWereOpenRef = useRef(results.open);
 
   useEffect(() => persistEditorLayerState(editorLayers), [editorLayers]);
@@ -382,10 +399,65 @@ const WorkspaceBrokerContent = ({
     projectId={projectId}
     skipLabel={t('shell.skipToCanvas')}
     shellClass={shellClass}
-    inspectorCollapsed={!inspectorOpen}
+    inspectorCollapsed={!inspectorShowsColumn}
     inspectorCompact={detail.open && layout.inspectorCompact}
     inspectorWidth={layout.inspectorWidth}
     fullCanvas={layout.fullCanvas}
+    topbar={<WorkspaceTopBar
+      projectName={project.name}
+      storageState={!storageIssue ? 'ready' : storageIssue === 'recovered' ? 'recovered' : 'issue'}
+      storageMessage={storageMessage}
+      analysisState={isAnalyzing
+        ? 'running'
+        // Sin corrida todavía es `ready`; una corrida que falló es `failed`.
+        // Colapsar las dos en `ready` anunciaba «Listo para analizar» encima de
+        // un análisis que no salió.
+        : analysis
+          ? (analysis.success ? 'resolved' : 'failed')
+          : 'ready'}
+      resultsOpen={results.open}
+      canUndo={canUndo}
+      canRedo={canRedo}
+      labels={{
+        solverName: SOLVER_2D.name,
+        project: t('topbar.currentProject'),
+        openProject: t('palette.open'),
+        storageReady: t('storage.local'),
+        storageRecovered: t('storage.recoveredShort'),
+        // `storageIssue` no es sólo «no pude guardar»: `ProjectProvider` lo usa
+        // también para una recuperación desde el respaldo, una carga fallida,
+        // un conflicto de revisión y una biblioteca degradada. Rotularlos todos
+        // «Error al guardar» informa de la operación equivocada —una
+        // recuperación con éxito se leía como un fallo de guardado—, y el
+        // catálogo ya tiene la palabra corta de cada caso.
+        storageIssue: storageIssue === 'recovered' ? t('storage.recoveredShort')
+          : storageIssue === 'load-failed' ? t('storage.loadFailedShort')
+          : storageIssue === 'conflict' ? t('storage.conflictShort')
+          : storageIssue === 'repository-degraded' ? t('storage.repositoryShort')
+          : t('storage.failedShort'),
+        analysisReady: t('analysis.statusReady'),
+        analysisRunning: t('analysis.running'),
+        analysisResolved: t('analysis.statusResolved'),
+        analysisFailed: t('analysis.statusError'),
+        undo: t('history.undo'),
+        redo: t('history.redo'),
+        analyze: t('analysis.run'),
+        results: t('results.outputs'),
+        actions: t('toolbar.primary'),
+      }}
+      onOpenProject={() => emitWorkspaceCommand('open-command-palette')}
+      onUndo={undo}
+      onRedo={redo}
+      onAnalyze={() => {
+        emitWorkspaceCommand('analysis-requested');
+        analyze();
+      }}
+      // ALTERNA. `openSurface` sobre una superficie ya activa sólo renueva su
+      // activación, así que el botón no podía apagar lo que anunciaba encendido
+      // con `aria-pressed`. Se usa el mismo comando que el riel de la consola,
+      // que además devuelve el foco a quien lo pulsó.
+      onOpenResults={(trigger) => emitWorkspaceCommand('toggle-results', { trigger })}
+    />}
     console={<Console
       onOpenHome={onOpenHome}
       onOpenSpace3D={onOpenSpace3D}
