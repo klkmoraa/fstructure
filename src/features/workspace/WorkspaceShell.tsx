@@ -405,7 +405,7 @@ const WorkspaceBrokerContent = ({
     fullCanvas={layout.fullCanvas}
     topbar={<WorkspaceTopBar
       projectName={project.name}
-      storageState={storageIssue ? 'issue' : 'ready'}
+      storageState={!storageIssue ? 'ready' : storageIssue === 'recovered' ? 'recovered' : 'issue'}
       storageMessage={storageMessage}
       analysisState={isAnalyzing
         ? 'running'
@@ -423,6 +423,7 @@ const WorkspaceBrokerContent = ({
         project: t('topbar.currentProject'),
         openProject: t('palette.open'),
         storageReady: t('storage.local'),
+        storageRecovered: t('storage.recoveredShort'),
         // `storageIssue` no es sólo «no pude guardar»: `ProjectProvider` lo usa
         // también para una recuperación desde el respaldo, una carga fallida,
         // un conflicto de revisión y una biblioteca degradada. Rotularlos todos

@@ -2232,7 +2232,7 @@
 .mobile-storage-state small { color:var(--muted); font-size:var(--sc-font-size-label); }
 
 @media print {
-  html,body,#root{overflow:visible;height:auto}.topbar,.toolbar,.inspector-panel,.professional-note,.canvas-controls,.canvas-status,.resize-handle{display:none!important}.workspace{display:block}.center-stage{display:block}.canvas-host{height:58vh}.results-panel{height:auto!important;max-height:none;border:0}.results-body{overflow:visible;padding-bottom:0}.result-tabs{display:none}.structural-canvas{height:58vh}.diagram-result-layout{grid-template-columns:1fr}.diagram-guidance{display:none}
+  html,body,#root{overflow:visible;height:auto}.topbar,.workspace-topbar,.toolbar,.inspector-panel,.professional-note,.canvas-controls,.canvas-status,.resize-handle{display:none!important}.workspace{display:block}.center-stage{display:block}.canvas-host{height:58vh}.results-panel{height:auto!important;max-height:none;border:0}.results-body{overflow:visible;padding-bottom:0}.result-tabs{display:none}.structural-canvas{height:58vh}.diagram-result-layout{grid-template-columns:1fr}.diagram-guidance{display:none}
 }
 
 

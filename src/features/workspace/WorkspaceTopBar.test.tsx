@@ -9,6 +9,7 @@ const labels: WorkspaceTopBarLabels = {
   project: 'Proyecto actual',
   openProject: 'Abrir proyecto',
   storageReady: 'Guardado local',
+  storageRecovered: 'Recuperado',
   storageIssue: 'Error al guardar',
   analysisReady: 'Listo para analizar',
   analysisRunning: 'Analizando…',

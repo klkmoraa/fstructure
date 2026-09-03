@@ -100,23 +100,34 @@ type DesktopDockGroup = 'navigate' | 'build' | 'loads' | 'refine';
 const RAIL_LABELS_MIN_CANVAS = 1152;
 
 /**
+ * Lo que crece el riel cuando hay selección.
+ *
+ * El grupo «refine» suma entonces el lanzador de edición estructural: una tecla
+ * compacta (38px) y su hueco (3px). No está en los 1112px medidos, porque
+ * aquellos se tomaron sin nada seleccionado — y el dock es `width:max-content`,
+ * así que justo en el umbral bastaba seleccionar un nudo para que el riel se
+ * saliera del lienzo.
+ */
+const RAIL_SELECTION_ACTION_WIDTH = 41;
+
+/**
  * ¿Cabe el riel nombrado en el lienzo de ahora mismo?
  *
  * Observa el lienzo, no el riel: el ancho del riel depende de esta respuesta, y
  * medirlo para decidirla sería un bucle. El lienzo no depende del riel.
  */
-const useRailLabelBudget = (): boolean => {
-  const [fits, setFits] = useState(false);
+const useRailLabelBudget = (needed: number): boolean => {
+  const [stageWidth, setStageWidth] = useState(0);
   useEffect(() => {
     const stage = document.querySelector('.center-stage');
     if (!stage) return undefined;
-    const measure = () => setFits(stage.getBoundingClientRect().width >= RAIL_LABELS_MIN_CANVAS);
+    const measure = () => setStageWidth(stage.getBoundingClientRect().width);
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(stage);
     return () => observer.disconnect();
   }, []);
-  return fits;
+  return stageWidth >= needed;
 };
 
 const DESKTOP_DOCK_GROUPS: readonly {
@@ -298,7 +309,6 @@ export const ToolRail = () => {
   const previousShellClassRef = useRef(shellClass);
   /** Expanded (`X2`) lleva etiqueta; Medium (`M1`) y Compact (`K0`) son icon-only. */
   const compact = shellClass !== 'X2';
-  const labelBudget = useRailLabelBudget();
   const { t } = useI18n();
   const classroom = project.settings.calculationMode === 'classroom';
   const activeDefinition = TOOL_REGISTRY.find((tool) => tool.id === activeTool);
@@ -317,6 +327,12 @@ export const ToolRail = () => {
   const canEditSelection = selection?.kind === 'node'
     || selection?.kind === 'member'
     || (selection?.kind === 'multi' && (selection.nodeIds.length > 0 || selection.memberIds.length > 0));
+  // El presupuesto se pide DESPUÉS de saber si hay selección: con algo
+  // seleccionado el riel suma una tecla más, y pedirlo antes daría luz verde a
+  // un riel que ya no cabe.
+  const labelBudget = useRailLabelBudget(
+    RAIL_LABELS_MIN_CANVAS + (canEditSelection ? RAIL_SELECTION_ACTION_WIDTH : 0),
+  );
 
   // El generador es una superficie, no una herramienta de modelado. Cancelar
   // y Generar cierran la misma superficie; ese cierre devuelve el lienzo al

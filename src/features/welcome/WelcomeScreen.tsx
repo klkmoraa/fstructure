@@ -270,9 +270,18 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     replaceProject({ ...next, settings: { ...next.settings, language } });
     onOpenWorkspace();
   };
+  /**
+   * Marca como caducado cualquier enrutado que siga esperando.
+   *
+   * Lo llama TODA acción que cambie lo que el usuario está mirando, no sólo
+   * `navigate()`: el Estudio y los Ajustes abren pantalla propia sin pasar por
+   * ahí, y con un solo punto de incremento su elección quedaba a merced de la
+   * lectura anterior.
+   */
+  const supersedeRoute = () => { routeRequestRef.current += 1; };
+
   const navigate = (next: HomeView) => {
-    // Cualquier navegación invalida un enrutado pendiente: ver `openSolver2D`.
-    routeRequestRef.current += 1;
+    supersedeRoute();
     setView(next);
     onViewChange?.(next);
     setSearchQuery('');
@@ -280,6 +289,9 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   };
   const updateLanguage = (nextLanguage: 'es' | 'en') => updateProjectView((draft) => ({ ...draft, settings: { ...draft.settings, language: nextLanguage } }));
   const openPreferences = (launcher: HTMLButtonElement) => {
+    // Igual que el Estudio: abrir Ajustes es elegir otra cosa, y un enrutado
+    // pendiente no puede navegar por debajo del panel abierto.
+    supersedeRoute();
     preferencesLauncherRef.current = launcher.closest('.sc-home-nav--menu') ? mobileMenuButtonRef.current : launcher;
     setMobileNavOpen(false);
     setPreferencesOpen(true);
@@ -289,6 +301,11 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     window.setTimeout(() => preferencesLauncherRef.current?.focus(), 0);
   };
   const openStudio = (launcher: HTMLButtonElement) => {
+    // El Estudio no pasa por `navigate()` —es una pantalla propia, no una vista
+    // de la bienvenida—, así que tiene que invalidar el enrutado pendiente por
+    // su cuenta: si no, un «Abrir Solver 2D» todavía esperando la lectura del
+    // inventario le abriría el lienzo encima al volver.
+    supersedeRoute();
     studioLauncherRef.current = launcher.closest('.sc-home-nav--mobile') ? mobileMenuButtonRef.current : launcher;
     setMobileNavOpen(false);
     setStudioOpen(true);

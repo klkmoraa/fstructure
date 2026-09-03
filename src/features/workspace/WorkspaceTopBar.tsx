@@ -1,7 +1,15 @@
-import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, Undo2 } from 'lucide-react';
+import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, Undo2 } from 'lucide-react';
 import { Solver2DMark } from '../../design-system/brand';
 
-export type WorkspaceStorageState = 'ready' | 'issue';
+/**
+ * Recuperar el respaldo con éxito no es un fallo de guardado.
+ *
+ * Con dos estados, `recovered` caía en `issue` y la barra lo pintaba en rojo
+ * con el icono de «sin nube» sobre la palabra «Recuperado»: el icono decía una
+ * cosa y el texto la contraria. `Instrument` ya excluye `recovered` de su
+ * predicado de error; aquí no lo hacía.
+ */
+export type WorkspaceStorageState = 'ready' | 'recovered' | 'issue';
 /**
  * Un análisis que terminó MAL no es un modelo que no se ha corrido. Sin
  * `failed`, un `analysis.success === false` caía en `ready` y la barra decía
@@ -15,6 +23,7 @@ export interface WorkspaceTopBarLabels {
   project: string;
   openProject: string;
   storageReady: string;
+  storageRecovered: string;
   storageIssue: string;
   analysisReady: string;
   analysisRunning: string;
@@ -67,7 +76,11 @@ export const WorkspaceTopBar = ({
   onAnalyze,
   onOpenResults,
 }: WorkspaceTopBarProps) => {
-  const storageIssue = storageState === 'issue';
+  const storageFailed = storageState === 'issue';
+  const storageRecovered = storageState === 'recovered';
+  const storageLabel = storageFailed
+    ? labels.storageIssue
+    : storageRecovered ? labels.storageRecovered : labels.storageReady;
   const analysisRunning = analysisState === 'running';
   const analysisFailed = analysisState === 'failed';
   const analysisLabel = analysisRunning
@@ -95,15 +108,17 @@ export const WorkspaceTopBar = ({
 
     <div className="workspace-topbar__status" aria-label={labels.project}>
       <span
-        className={'workspace-topbar__status-chip' + (storageIssue ? ' is-error' : '')}
+        className={'workspace-topbar__status-chip' + (storageFailed ? ' is-error' : '') + (storageRecovered ? ' is-notice' : '')}
         role="status"
         data-storage-state={storageState}
-        title={storageIssue && storageMessage ? storageMessage : labels.storageReady}
+        title={storageMessage ?? labels.storageReady}
       >
-        {storageIssue ? <CloudOff size={15} aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
+        {storageFailed
+          ? <CloudOff size={15} aria-hidden="true" />
+          : storageRecovered ? <RotateCcw size={15} aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
         <span>
-          <strong>{storageIssue ? labels.storageIssue : labels.storageReady}</strong>
-          {storageIssue && storageMessage ? <small>{storageMessage}</small> : null}
+          <strong>{storageLabel}</strong>
+          {storageMessage ? <small>{storageMessage}</small> : null}
         </span>
       </span>
       <span

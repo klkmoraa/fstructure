@@ -109,6 +109,21 @@
   color: var(--error);
 }
 
+/*
+ * Un aviso, no un error: la copia de seguridad se recuperó, que es un final
+ * bueno de una situación mala. Lleva su propio tono para que no se lea como el
+ * fallo de guardado que NO ocurrió.
+ */
+.workspace-topbar__status-chip.is-notice {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 34%, var(--border));
+  background: color-mix(in srgb, var(--warning) 7%, var(--surface));
+}
+
+.workspace-topbar__status-chip.is-notice > svg {
+  color: var(--warning);
+}
+
 .workspace-topbar__status-chip.is-running {
   color: var(--accent-ink);
   border-color: color-mix(in srgb, var(--accent) 34%, var(--border));
@@ -203,8 +218,22 @@
      acciones se metían bajo ese recorte. El área segura entra en el relleno y
      también en la altura mínima, como ya hacen las demás superficies móviles
      del espacio de trabajo. */
+  /*
+   * La altura real de la barra se PUBLICA en `--topbar-h`, que es de donde ya
+   * la leen las superficies fijas del lienzo (`.mobile-tool-sheet-backdrop`, la
+   * paleta de herramientas y su hoja, en `phase2.css`). Sin esto, esas
+   * superficies seguían partiendo de los 48–58px heredados, sin el área segura,
+   * y en un teléfono con muesca el fondo del cajón —que va en el plano de las
+   * hojas— tapaba justo la franja que la barra acababa de proteger.
+   *
+   * La doble `:root` no es un adorno: `phase2.css` declara `--topbar-h` sobre
+   * `:root` con la misma especificidad, y cuál de las dos hojas se carga última
+   * no es algo en lo que apoyarse.
+   */
+  :root:root { --topbar-h: calc(56px + env(safe-area-inset-top)); }
+
   .workspace-topbar {
-    min-height: calc(56px + env(safe-area-inset-top));
+    min-height: var(--topbar-h);
     gap: 7px;
     padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
   }
