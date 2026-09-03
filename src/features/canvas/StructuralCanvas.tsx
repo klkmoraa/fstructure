@@ -41,7 +41,7 @@ import {
   type ScreenPoint,
 } from './canvasInteraction';
 import { toolFromShortcut } from './toolRegistry';
-import { cameraToFitBounds, canvasSafeInsetsFor, canvasSafeRect } from './canvasChromeGeometry';
+import { cameraToFitBounds, canvasSafeInsetsFor, canvasSafeRect, expandBoundsForDecoration } from './canvasChromeGeometry';
 import type { EditorLayerAction, EditorLayerState } from './editorLayers';
 import { CanvasChrome } from './CanvasChrome';
 import { layoutSmartLabels, smartLabelDetailForScale, type SmartLabelCandidate } from './labelLayout';
@@ -133,6 +133,15 @@ const CANVAS_SCENE_ID = 'canvas-scene-root';
 
 /** Misma razón: sin mapa de calor, la capa de geometría recibe siempre la misma referencia. */
 const EMPTY_DEMAND_RATIOS: ReadonlyMap<string, number> = new Map();
+
+/**
+ * Dónde se ancla el identificador de una barra, en fracción de su vano.
+ *
+ * No es el centro: el centro pertenece a la carga distribuida, que ancla ahí su
+ * valor. Un 30% deja los dos rótulos con territorio propio sin alejar el
+ * identificador de la barra que nombra.
+ */
+const MEMBER_LABEL_STATION = 0.3;
 
 interface Size {
   width: number;
@@ -459,6 +468,21 @@ export const StructuralCanvas = ({
         : null;
   const loadsLayerVisible = layers.loads || loadPlacementInstruction !== null;
   /**
+   * Si de verdad se está DIBUJANDO decoración de carga ahora mismo.
+   *
+   * Reúne las mismas cuatro condiciones que gobiernan el grupo `load-layer` —la
+   * capa encendida, la pila ACM apagada, el ajuste de vista y la vista de
+   * influencia— más la única que faltaba: que haya alguna carga. El encuadre
+   * miraba sólo si el proyecto tenía registros de carga, así que con las cargas
+   * OCULTAS seguía reservando 66px por cada lado y encogía el modelo sin
+   * dibujar nada en ese margen; en un teléfono eso se nota.
+   */
+  const loadDecorationDrawn = loadsLayerVisible
+    && !stackActive
+    && view.showLoads
+    && resultTab !== 'influence'
+    && project.nodalLoads.length + project.memberLoads.length > 0;
+  /**
    * El mapa de demanda es una lectura derivada, no un estado: se recalcula sólo
    * cuando la capa está encendida, así el coste no lo paga quien no lo pidió.
    *
@@ -667,12 +691,19 @@ export const StructuralCanvas = ({
       : 0;
     const viewport = { width: size.width, height: size.height };
     const insets = canvasSafeInsetsFor(viewport);
-    updateCamera(cameraToFitBounds(
-      modelBounds(project.nodes),
-      viewport,
-      { ...insets, bottom: insets.bottom + safeBottomReserve },
-    ));
-  }, [project.nodes, size, updateCamera]);
+    const fitInsets = { ...insets, bottom: insets.bottom + safeBottomReserve };
+    const bounds = modelBounds(project.nodes);
+    const first = cameraToFitBounds(bounds, viewport, fitInsets);
+    // Encuadrar los nudos no es encuadrar el dibujo: las cargas se dibujan en
+    // espacio de pantalla ALREDEDOR del nudo, así que con el modelo ajustado al
+    // milímetro sus flechas caen fuera del lienzo. La reserva se convierte a
+    // unidades de modelo con la escala del primer encuadre, y se paga sólo
+    // cuando esa decoración se está dibujando de verdad: un modelo sin cargas
+    // —o con la capa apagada, o en vista de influencia, o con ACM— se ajusta
+    // exacto, sin margen que no le corresponde.
+    const decorated = loadDecorationDrawn ? expandBoundsForDecoration(bounds, first.scale) : bounds;
+    updateCamera(decorated === bounds ? first : cameraToFitBounds(decorated, viewport, fitInsets));
+  }, [loadDecorationDrawn, project.nodes, size, updateCamera]);
 
   const navigateMinimapTo = useCallback((point: ModelPoint) => {
     updateCamera((current) => ({
@@ -2081,10 +2112,18 @@ export const StructuralCanvas = ({
     const anchor = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     const selected = selectedMemberIds.includes(member.id);
     if (selected || (layers.labels && layers.ids && view.showMemberLabels)) {
+      // El identificador NO se ancla al punto medio. Ahí es donde una carga
+      // distribuida pone su valor —su ancla es el centro del tramo cargado— y
+      // los dos pedían el mismo hueco justo encima de la barra: el repartidor
+      // apartaba uno y le dibujaba una guía, así que «M2» y «14.00 kN/m»
+      // acababan lado a lado con dos guías cruzándose sobre el miembro. A un
+      // 30% del vano cada uno tiene su sitio, y la separación sigue el eje de
+      // la barra, así que vale igual para una columna que para una viga.
+      const idAnchor = { x: a.x + (b.x - a.x) * MEMBER_LABEL_STATION, y: a.y + (b.y - a.y) * MEMBER_LABEL_STATION };
       smartLabelCandidates.push({
         id: `member:${member.id}`,
         text: member.id,
-        anchor,
+        anchor: idAnchor,
         priority: selected ? 0 : 2,
         tone: selected ? 'selection' : 'neutral',
         preferredOffset: { x: 0, y: -21 },
@@ -2121,7 +2160,7 @@ export const StructuralCanvas = ({
           text: `${formatFixed(toDisplay(magnitude, units, 'force'), 2)} ${forceLabel}`,
           anchor: { x: point.x - ux * 62, y: point.y - uy * 62 - 5 },
           priority: selected ? 0 : 1,
-          tone: selected ? 'selection' : 'force',
+          tone: selected ? 'selection' : 'load-point',
           preferredOffset: { x: 0, y: 0 },
           forceVisible: selected,
         });
@@ -2131,7 +2170,7 @@ export const StructuralCanvas = ({
           text: `${formatFixed(toDisplay(load.mz, units, 'moment'), 2)} ${momentLabel}`,
           anchor: { x: point.x, y: point.y - 38 },
           priority: selected ? 0 : 1,
-          tone: selected ? 'selection' : 'moment',
+          tone: selected ? 'selection' : 'load-moment',
           preferredOffset: { x: 0, y: 0 },
           forceVisible: selected,
         });
@@ -2152,10 +2191,17 @@ export const StructuralCanvas = ({
       const selected = selectionVisualState.memberLoadId === load.id;
       if (!selected && !layers.labels) continue;
       const priority = selected ? 0 as const : 1 as const;
-      // Una carga distribuida es una ACCIÓN aplicada. Llevaba el tono del
-      // cortante, que es un resultado interno: en la misma vista, la causa y
-      // la consecuencia salían del mismo color.
-      const tone = selected ? 'selection' as const : load.type === 'moment' ? 'moment' as const : 'force' as const;
+      // Una carga es una ACCIÓN aplicada, y su etiqueta se pinta con el color
+      // de su TIPO. Antes las tres compartían dos tonos de resultado —`force`,
+      // que es el azul de la puntual, y `moment`, que es el rojo del momento
+      // flector—, así que el número de una distribuida salía azul junto a una
+      // flecha bermellón y el de un momento aplicado salía del color del
+      // diagrama que ese momento produce.
+      const tone = selected
+        ? 'selection' as const
+        : load.type === 'moment' ? 'load-moment' as const
+          : load.type === 'distributed' ? 'load-distributed' as const
+            : 'load-point' as const;
       if (load.type === 'point') {
         const base = stationOf(load.position ?? 0.5);
         const px = load.px ?? 0;

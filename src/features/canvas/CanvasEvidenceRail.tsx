@@ -36,14 +36,21 @@ export const CanvasEvidenceRail = ({
   const { t } = useI18n();
   if (!visible) return null;
   return <div className="canvas-evidence-rail" role="group" aria-label={t('canvas.evidenceLayers')} data-canvas-chrome="evidence">
-    {EVIDENCE_LAYERS.filter(({ id }) => id !== 'heatmap').map(({ id, labelKey }) => <button
+    {/* El riel publica las CINCO capas de evidencia. El mapa de demanda —la
+        señal de fluencia— estaba excluido a mano y sólo se podía encender desde
+        el menú de capas: la única lectura que dice si una barra alcanza su Fy
+        era la única que no tenía ficha junto a N, V, M y la deformada. */}
+    {EVIDENCE_LAYERS.map(({ id, labelKey, chipLabelKey }) => <button
       key={id}
       type="button"
       className={`canvas-evidence-layer canvas-evidence-layer--${id}`}
       aria-pressed={isEvidenceLayerActive(id, resultTab, layers)}
+      /* La ficha se lee corta; el nombre completo de la capa sigue siendo el
+         nombre accesible para que no dependa de la abreviatura. */
+      aria-label={chipLabelKey ? t(labelKey) : undefined}
       data-evidence-layer={id}
       onClick={() => applyEvidenceLayerChoice(id, { resultTab, layers }, { setResultTab, dispatchLayers: dispatch })}
-    >{t(labelKey)}</button>)}
+    >{t(chipLabelKey ?? labelKey)}</button>)}
     <button
       type="button"
       className="canvas-evidence-layer canvas-evidence-layer--stack"

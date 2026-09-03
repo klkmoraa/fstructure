@@ -13,15 +13,18 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const renderChrome = (onFit = () => undefined) => render(<ProjectProvider><CanvasChrome
+const renderChrome = (
+  onFit = () => undefined,
+  overrides: { analysisAvailable?: boolean; dispatchLayers?: () => void } = {},
+) => render(<ProjectProvider><CanvasChrome
   modeLabel="Seleccionar"
   placementInstruction={null}
   showHelp={false}
   layers={{ model: true, loads: true, dimensions: false, ids: false, results: false, labels: true, help: false, diagnostics: true, heatmap: false }}
-  dispatchLayers={() => undefined}
+  dispatchLayers={overrides.dispatchLayers ?? (() => undefined)}
   resultTab="moment"
   setResultTab={() => undefined}
-  analysisAvailable={false}
+  analysisAvailable={overrides.analysisAvailable ?? false}
   snapEnabled
   gridEnabled
   coordinateReadoutRef={{ current: null }}
@@ -42,6 +45,22 @@ describe('CanvasChrome', () => {
     expect(container.querySelector('.canvas-mode-badge strong')).toBeTruthy();
     expect(container.querySelector('.canvas-mode-badge')?.classList.contains('has-context')).toBe(false);
     expect(container.querySelector('[data-canvas-chrome="coordinates"]')).toBeTruthy();
+  });
+
+  it('publica la fluencia como una evidencia más del riel', async () => {
+    // El mapa de demanda —la única lectura que dice si una barra alcanza su Fy—
+    // estaba excluido del riel a mano y sólo se encendía desde el menú de capas.
+    const user = userEvent.setup();
+    const dispatchLayers = vi.fn();
+    renderChrome(() => undefined, { analysisAvailable: true, dispatchLayers });
+
+    const chip = screen.getByRole('button', { name: 'Mapa de demanda' });
+    expect(chip.textContent).toBe('Fluencia');
+    expect(chip.getAttribute('data-evidence-layer')).toBe('heatmap');
+
+    await user.click(chip);
+
+    expect(dispatchLayers).toHaveBeenCalledWith({ type: 'toggle', layer: 'heatmap' });
   });
 
   it('no entrega el evento del botón como reserva al ajuste de cámara', async () => {

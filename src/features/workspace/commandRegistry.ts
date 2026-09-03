@@ -25,6 +25,7 @@ import type { ComponentType } from 'react';
 import {
   ChartNoAxesCombined,
   BoxSelect,
+  Moon,
   ClipboardList,
   Download,
   Grid3x3,
@@ -35,6 +36,7 @@ import {
   Redo2,
   Sheet,
   Sparkles,
+  Sun,
   Undo2,
   Wrench,
 } from 'lucide-react';
@@ -210,6 +212,20 @@ const STATIC_COMMANDS: readonly CommandDefinition[] = [
     icon: Layers3,
     label: (ctx) => ctx.t(readCanvasViewSettings(ctx.project).snap ? 'canvas.snapOff' : 'canvas.snapOn'),
     run: (ctx) => ctx.updateProjectView((draft) => withCanvasViewSettings(draft, { snap: !readCanvasViewSettings(draft).snap })),
+  },
+  {
+    /* El contexto ya traía `theme` y `setTheme`, y el comentario de `iconFor`
+       nombra «el conmutador de tema» como su razón de existir: el mando estaba
+       plumbado y el comando nunca se escribió. Sin él, en un teléfono el tema
+       sólo se podía cambiar desde la banda inferior, que es donde más falta
+       hace el sitio. */
+    id: 'view:theme',
+    category: 'view',
+    icon: Moon,
+    iconFor: (ctx) => ctx.theme === 'dark' ? Sun : Moon,
+    label: (ctx) => ctx.t(ctx.theme === 'dark' ? 'theme.light' : 'theme.dark'),
+    aliases: () => ['tema', 'oscuro', 'claro', 'theme', 'dark', 'light', 'modo noche'],
+    run: (ctx) => ctx.setTheme(ctx.theme === 'dark' ? 'light' : 'dark'),
   },
   {
     id: 'export:bom',

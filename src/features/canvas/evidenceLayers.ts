@@ -14,6 +14,14 @@ export type EvidenceLayerId = 'axial' | 'shear' | 'moment' | 'deformed' | 'heatm
 export interface EvidenceLayerDefinition {
   id: EvidenceLayerId;
   labelKey: TranslationKey;
+  /**
+   * Etiqueta corta para la ficha del riel, cuando el nombre completo de la
+   * capa no cabe en una fila de fichas. El mapa de demanda es el único caso:
+   * en el menú de capas se llama por lo que PINTA («Mapa de demanda», con su
+   * detalle), y en el riel por la señal que lo gobierna, «Fluencia», que es
+   * como el sistema visual publica ese color. Sin corta, se usa la larga.
+   */
+  chipLabelKey?: TranslationKey;
   /** The `resultTab` this evidence renders, or `null` for the demand map (its own boolean layer). */
   resultTab: ResultTab | null;
 }
@@ -23,7 +31,7 @@ export const EVIDENCE_LAYERS: readonly EvidenceLayerDefinition[] = [
   { id: 'shear', labelKey: 'results.shear', resultTab: 'shear' },
   { id: 'moment', labelKey: 'results.moment', resultTab: 'moment' },
   { id: 'deformed', labelKey: 'results.deformed', resultTab: 'deformed' },
-  { id: 'heatmap', labelKey: 'canvas.layerHeatmap', resultTab: null },
+  { id: 'heatmap', labelKey: 'canvas.layerHeatmap', chipLabelKey: 'canvas.evidenceYield', resultTab: null },
 ];
 
 /** Whether an evidence layer is currently lit on the canvas. */

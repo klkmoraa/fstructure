@@ -20,6 +20,7 @@ import type { SurfacePresentation, SurfaceStatus } from '../workspace/surfacePre
 import { ResultExtremeCard } from './ResultExtremeCard';
 import { reliabilityLevelLabelKey } from './reliabilityCopy';
 import { formatResultNumber } from './resultFormatting';
+import { resultsBandPx } from './resultsBand';
 import './results.css';
 
 /**
@@ -235,6 +236,54 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
     scheduleHeight(Math.max(150, Math.min(getViewportHeightPx(panelRef.current) * 0.72, drag.height + drag.y - event.clientY)));
   };
   const resizeBy = (delta: number) => setHeight((current) => Math.max(150, Math.min(getViewportHeightPx(panelRef.current) * 0.72, current + delta)));
+  /**
+   * El panel publica cuánto ocupa, medido desde el borde inferior de la
+   * ventana hasta su propio techo.
+   *
+   * El riel flotante de herramientas se anclaba a `bottom:76px` del bloque
+   * contenedor inicial —ningún antepasado suyo está posicionado—, así que era
+   * una constante ciega a este panel: con Resultados abierto, el riel caía
+   * DENTRO y tapaba la explicación del índice elástico; con Resultados plegado,
+   * tapaba media banda del centro analítico. La distancia se mide y se publica
+   * en vez de estimarse, de modo que arrastrar el separador o plegar el panel
+   * mueve el riel con él.
+   */
+  useEffect(() => {
+    const panel = panelRef.current;
+    const shell = panel?.closest<HTMLElement>('.app-shell');
+    if (!panel || !shell) return undefined;
+    // Un panel que no está activo se monta con `hidden`, y un elemento oculto
+    // mide 0 en todo: su techo cae en y=0 y la banda salía igual a la ventana
+    // ENTERA, con lo que el riel flotante se iba por encima del área de
+    // trabajo. Abrir Vista o Detalle con Resultados abierto lo suspende, así
+    // que el usuario se quedaba sin herramientas por cambiar de superficie.
+    // Mientras no esté activo no hay banda que publicar: se retira, y el riel
+    // vuelve a su respaldo.
+    if (status !== 'active') {
+      shell.style.removeProperty('--results-band');
+      return undefined;
+    }
+    const publish = () => {
+      shell.style.setProperty(
+        '--results-band',
+        `${resultsBandPx(getViewportHeightPx(panel), panel.getBoundingClientRect().top)}px`,
+      );
+    };
+    publish();
+    window.addEventListener('resize', publish);
+    // `ResizeObserver` es lo que capta el arrastre del separador, pero no está
+    // en todos los entornos —jsdom no lo trae—, y esta lectura es un accesorio
+    // de composición: sin él se publica igual, sólo que deja de seguir el
+    // arrastre. Un accesorio no puede tumbar el panel.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(publish);
+    observer?.observe(panel);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', publish);
+      shell.style.removeProperty('--results-band');
+    };
+  }, [status]);
+
   const choosePanelMode = (next: ResultsPanelMode, launcher: HTMLButtonElement) => {
     if (next === 'focused' && panelMode !== 'focused') {
       previousPanelModeRef.current = panelMode;
