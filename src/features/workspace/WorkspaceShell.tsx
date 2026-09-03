@@ -407,7 +407,14 @@ const WorkspaceBrokerContent = ({
       projectName={project.name}
       storageState={storageIssue ? 'issue' : 'ready'}
       storageMessage={storageMessage}
-      analysisState={isAnalyzing ? 'running' : analysis?.success ? 'resolved' : 'ready'}
+      analysisState={isAnalyzing
+        ? 'running'
+        // Sin corrida todavía es `ready`; una corrida que falló es `failed`.
+        // Colapsar las dos en `ready` anunciaba «Listo para analizar» encima de
+        // un análisis que no salió.
+        : analysis
+          ? (analysis.success ? 'resolved' : 'failed')
+          : 'ready'}
       resultsOpen={results.open}
       canUndo={canUndo}
       canRedo={canRedo}
@@ -416,10 +423,21 @@ const WorkspaceBrokerContent = ({
         project: t('topbar.currentProject'),
         openProject: t('palette.open'),
         storageReady: t('storage.local'),
-        storageIssue: t('storage.failedShort'),
+        // `storageIssue` no es sólo «no pude guardar»: `ProjectProvider` lo usa
+        // también para una recuperación desde el respaldo, una carga fallida,
+        // un conflicto de revisión y una biblioteca degradada. Rotularlos todos
+        // «Error al guardar» informa de la operación equivocada —una
+        // recuperación con éxito se leía como un fallo de guardado—, y el
+        // catálogo ya tiene la palabra corta de cada caso.
+        storageIssue: storageIssue === 'recovered' ? t('storage.recoveredShort')
+          : storageIssue === 'load-failed' ? t('storage.loadFailedShort')
+          : storageIssue === 'conflict' ? t('storage.conflictShort')
+          : storageIssue === 'repository-degraded' ? t('storage.repositoryShort')
+          : t('storage.failedShort'),
         analysisReady: t('analysis.statusReady'),
         analysisRunning: t('analysis.running'),
         analysisResolved: t('analysis.statusResolved'),
+        analysisFailed: t('analysis.statusError'),
         undo: t('history.undo'),
         redo: t('history.redo'),
         analyze: t('analysis.run'),
@@ -433,7 +451,11 @@ const WorkspaceBrokerContent = ({
         emitWorkspaceCommand('analysis-requested');
         analyze();
       }}
-      onOpenResults={() => openSurface('results')}
+      // ALTERNA. `openSurface` sobre una superficie ya activa sólo renueva su
+      // activación, así que el botón no podía apagar lo que anunciaba encendido
+      // con `aria-pressed`. Se usa el mismo comando que el riel de la consola,
+      // que además devuelve el foco a quien lo pulsó.
+      onOpenResults={(trigger) => emitWorkspaceCommand('toggle-results', { trigger })}
     />}
     console={<Console
       onOpenHome={onOpenHome}

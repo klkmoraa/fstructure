@@ -2,7 +2,13 @@ import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, Undo2 } from 'lucide
 import { Solver2DMark } from '../../design-system/brand';
 
 export type WorkspaceStorageState = 'ready' | 'issue';
-export type WorkspaceAnalysisState = 'ready' | 'running' | 'resolved';
+/**
+ * Un análisis que terminó MAL no es un modelo que no se ha corrido. Sin
+ * `failed`, un `analysis.success === false` caía en `ready` y la barra decía
+ * «Listo para analizar» encima de una corrida que falló: el estado más
+ * importante quedaba escondido detrás del más inocuo.
+ */
+export type WorkspaceAnalysisState = 'ready' | 'running' | 'resolved' | 'failed';
 
 export interface WorkspaceTopBarLabels {
   solverName: string;
@@ -13,6 +19,7 @@ export interface WorkspaceTopBarLabels {
   analysisReady: string;
   analysisRunning: string;
   analysisResolved: string;
+  analysisFailed: string;
   undo: string;
   redo: string;
   analyze: string;
@@ -33,7 +40,8 @@ export interface WorkspaceTopBarProps {
   onUndo: () => void;
   onRedo: () => void;
   onAnalyze: () => void;
-  onOpenResults: () => void;
+  /** Alterna Resultados. Recibe el disparador para que el foco vuelva a él. */
+  onOpenResults: (trigger: HTMLElement | null) => void;
 }
 
 /**
@@ -61,9 +69,12 @@ export const WorkspaceTopBar = ({
 }: WorkspaceTopBarProps) => {
   const storageIssue = storageState === 'issue';
   const analysisRunning = analysisState === 'running';
+  const analysisFailed = analysisState === 'failed';
   const analysisLabel = analysisRunning
     ? labels.analysisRunning
-    : analysisState === 'resolved'
+    : analysisFailed
+      ? labels.analysisFailed
+      : analysisState === 'resolved'
       ? labels.analysisResolved
       : labels.analysisReady;
 
@@ -96,7 +107,7 @@ export const WorkspaceTopBar = ({
         </span>
       </span>
       <span
-        className={'workspace-topbar__status-chip' + (analysisRunning ? ' is-running' : '')}
+        className={'workspace-topbar__status-chip' + (analysisRunning ? ' is-running' : '') + (analysisFailed ? ' is-error' : '')}
         role="status"
         data-analysis-state={analysisState}
       >
@@ -116,7 +127,7 @@ export const WorkspaceTopBar = ({
         <Play size={17} fill="currentColor" aria-hidden="true" />
         <span>{analysisRunning ? labels.analysisRunning : labels.analyze}</span>
       </button>
-      <button type="button" className={'workspace-topbar__action-button' + (resultsOpen ? ' is-active' : '')} onClick={onOpenResults} aria-label={labels.results} aria-pressed={resultsOpen}>
+      <button type="button" className={'workspace-topbar__action-button' + (resultsOpen ? ' is-active' : '')} onClick={(event) => onOpenResults(event.currentTarget)} aria-label={labels.results} aria-pressed={resultsOpen}>
         <ChartNoAxesCombined size={17} aria-hidden="true" />
         <span>{labels.results}</span>
       </button>

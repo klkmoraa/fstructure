@@ -197,10 +197,16 @@
 }
 
 @media (max-width: 760px) {
+  /* `index.html` declara `viewport-fit=cover`, así que en un teléfono con
+     muesca —o instalada como PWA— el borde físico superior queda POR DEBAJO de
+     la barra de estado. Con 6px fijos de relleno, el proyecto, el estado y las
+     acciones se metían bajo ese recorte. El área segura entra en el relleno y
+     también en la altura mínima, como ya hacen las demás superficies móviles
+     del espacio de trabajo. */
   .workspace-topbar {
-    min-height: 56px;
+    min-height: calc(56px + env(safe-area-inset-top));
     gap: 7px;
-    padding: 6px 8px;
+    padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
   }
 
   .workspace-topbar__project {

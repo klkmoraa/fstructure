@@ -208,6 +208,15 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
   const homeRef = useRef<HTMLElement>(null);
   /** Quién está abriendo el producto, leído del repositorio real (CRI-104). */
   const welcomeEntry = useWelcomeEntry();
+  /**
+   * Cuál es la última petición de ruta del usuario.
+   *
+   * `openSolver2D` espera una lectura de IndexedDB antes de enrutar, y la
+   * portada sigue viva mientras espera: si en ese hueco el usuario elige Aula o
+   * el Solver 3D, la continuación de la espera anterior llegaría después y le
+   * pisaría su elección más nueva. El contador dice qué petición manda.
+   */
+  const routeRequestRef = useRef(0);
   const preferencesLauncherRef = useRef<HTMLButtonElement | null>(null);
   const studioLauncherRef = useRef<HTMLButtonElement | null>(null);
 
@@ -262,6 +271,8 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
     onOpenWorkspace();
   };
   const navigate = (next: HomeView) => {
+    // Cualquier navegación invalida un enrutado pendiente: ver `openSolver2D`.
+    routeRequestRef.current += 1;
     setView(next);
     onViewChange?.(next);
     setSearchQuery('');
@@ -308,13 +319,14 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
    * y la recuperación en un mismo paso.
    */
   const openSolver2D = async () => {
-    // Un clic puede llegar antes de que termine la lectura del inventario, y
-    // decidir con `unknown` sería contestar «usuario nuevo» a quien no se ha
-    // preguntado todavía: justo el camino de dos clics que esto quita. Se
-    // espera a la misma lectura ya en curso —normalmente resuelta hace rato—.
-    const entry = welcomeEntry.entry.status === 'unknown'
-      ? await welcomeEntry.settled()
-      : welcomeEntry.entry;
+    // Se lee en el momento de decidir, no al montar: la biblioteca puede
+    // llenarse después del primer pintado (migración de la copia compatible), y
+    // decidir con un valor congelado —o con `unknown`— sería contestar «usuario
+    // nuevo» a quien no se ha preguntado todavía.
+    const request = ++routeRequestRef.current;
+    const entry = await welcomeEntry.read();
+    // Mientras se leía, el usuario pudo elegir otra cosa. Manda su elección.
+    if (request !== routeRequestRef.current) return;
     if (shouldResumeDirectly(entry, project.id)) {
       onOpenWorkspace();
       return;

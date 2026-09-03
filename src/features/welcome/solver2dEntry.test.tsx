@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../data/defaultProject';
@@ -120,6 +120,39 @@ describe('una sola acción desde la portada hasta el lienzo', () => {
   });
 
   /**
+   * El inventario no puede congelarse al montar: `ProjectProvider` sube la
+   * copia compatible de `localStorage` a IndexedDB por su cuenta y DESPUÉS del
+   * primer pintado, así que una biblioteca vacía al arrancar puede tener el
+   * proyecto un instante más tarde. Un valor capturado al montar dejaría a
+   * quien vuelve marcado como nuevo durante toda la vida de la pantalla.
+   */
+  it('lee el inventario al decidir, no al montar, para no congelar una biblioteca que aún se está llenando', async () => {
+    // La PRIMERA lectura ve la biblioteca vacía —la del montaje, antes de que la
+    // migración escriba— y las siguientes ya la ven con el proyecto. Se cuenta
+    // por llamada, no por reloj: así la prueba distingue de verdad entre leer al
+    // montar y leer al decidir, en vez de depender de quién gana una carrera.
+    let lecturas = 0;
+    inventario = {
+      listProjects: async () => {
+        lecturas += 1;
+        return lecturas === 1 ? [] : [{ id: abierto.id }];
+      },
+      listRecoveries: async () => [],
+    } as unknown as ProjectRepository;
+
+    const { default: App } = await import('../../App');
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByTestId('platform-landing');
+    // Se espera a que la lectura del montaje haya ocurrido: es la que devuelve
+    // vacío y la que una implementación que congele reutilizaría.
+    await waitFor(() => expect(lecturas).toBeGreaterThan(0));
+
+    await user.click(screen.getByRole('button', { name: 'Abrir Solver 2D' }));
+    await enElLienzo();
+  });
+
+  /**
    * La portada se pinta antes de que termine la lectura del inventario, así que
    * un clic rápido la encuentra en `unknown`. Decidir ahí sería contestar
    * «usuario nuevo» a quien no se ha preguntado, y devolver a quien vuelve al
@@ -137,5 +170,33 @@ describe('una sola acción desde la portada hasta el lienzo', () => {
 
     soltar();
     await enElLienzo();
+  });
+
+  /**
+   * La portada sigue viva mientras la lectura está en vuelo. Si el usuario se
+   * cansa y elige otra herramienta, la continuación de la espera anterior
+   * llegaría después: no puede pisarle la elección más nueva.
+   */
+  it('una navegación posterior gana a un enrutado que todavía estaba esperando', async () => {
+    let soltar = () => {};
+    const lectura = new Promise<void>((resolve) => { soltar = resolve; });
+    inventario = repositorio([abierto.id], 0, lectura);
+
+    const { default: App } = await import('../../App');
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByTestId('platform-landing');
+
+    await user.click(screen.getByRole('button', { name: 'Abrir Solver 2D' }));
+    // Sin respuesta todavía: el usuario cambia de idea.
+    await user.click(screen.getByRole('button', { name: 'Abrir Aula estructural' }));
+    expect(new URLSearchParams(window.location.search).get('surface')).toBe('classroom');
+
+    soltar();
+    // Se deja resolver la lectura y correr su continuación antes de comprobar.
+    await act(async () => { await lectura; });
+    // La elección nueva sigue en pie: la espera resuelta no devuelve al lienzo.
+    expect(new URLSearchParams(window.location.search).get('surface')).toBe('classroom');
+    expect(screen.queryByRole('application', { name: 'Área de trabajo estructural interactiva' })).toBeNull();
   });
 });

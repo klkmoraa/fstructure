@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ProjectRepository } from '../../storage/projectRepository';
 
 /**
@@ -69,37 +69,40 @@ export const readWelcomeEntry = async (repository?: ProjectRepository): Promise<
 };
 
 export interface WelcomeEntryRead {
-  /** Lo último que se sabe. `unknown` mientras la lectura no ha terminado. */
+  /** Lo último que se leyó. `unknown` mientras la primera lectura no termina. */
   entry: WelcomeEntry;
   /**
-   * La MISMA lectura, como promesa.
+   * Una lectura FRESCA del inventario, para decidir en el momento de decidir.
    *
-   * Existe por el clic que llega antes de que la lectura termine. Decidir con
-   * `unknown` no es decidir: es responder «usuario nuevo» a quien todavía no se
-   * ha preguntado, y devolver a quien vuelve al camino de dos clics que este
-   * cableado quita. Quien tenga que enrutar espera aquí —normalmente ya está
-   * resuelta— en vez de leer un estado a medias.
+   * No devuelve el `entry` de arriba ni una promesa cacheada, y es a propósito.
+   * El inventario no es un dato estable que pueda congelarse al montar: la
+   * biblioteca de IndexedDB se llena también DESPUÉS del primer pintado, porque
+   * `ProjectProvider` corre `migrateLegacyProject()` por su cuenta para subir
+   * la copia compatible de `localStorage`. Un valor capturado al montar deja a
+   * quien vuelve marcado como nuevo durante toda la vida de la pantalla.
+   *
+   * Queda una ventana que esto NO cierra: un clic mientras esa migración está
+   * todavía en vuelo lee una biblioteca aún vacía. La consecuencia es entrar a
+   * la bienvenida en vez de al proyecto —el comportamiento anterior, con
+   * «Continuar» a un clic—, así que la degradación va del lado seguro; cerrarla
+   * del todo exigiría que la pantalla supiera cuándo acaba una migración que
+   * hoy no publica ese hecho.
    */
-  settled: () => Promise<WelcomeEntry>;
+  read: () => Promise<WelcomeEntry>;
 }
 
 export const useWelcomeEntry = (repository?: ProjectRepository): WelcomeEntryRead => {
   const [entry, setEntry] = useState<WelcomeEntry>(PENDING);
-  const readRef = useRef<Promise<WelcomeEntry> | null>(null);
 
   useEffect(() => {
     let alive = true;
-    const read = readWelcomeEntry(repository);
-    readRef.current = read;
-    void read.then((next) => { if (alive) setEntry(next); });
+    void readWelcomeEntry(repository).then((next) => { if (alive) setEntry(next); });
     return () => { alive = false; };
   }, [repository]);
 
-  // El respaldo cubre el caso imposible en la práctica —un clic antes de que
-  // corran los efectos— sin dejar que `settled()` devuelva `null`.
-  const settled = useCallback(() => readRef.current ?? readWelcomeEntry(repository), [repository]);
+  const read = useCallback(() => readWelcomeEntry(repository), [repository]);
 
-  return { entry, settled };
+  return { entry, read };
 };
 
 /**
