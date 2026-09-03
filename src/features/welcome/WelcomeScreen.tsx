@@ -307,8 +307,15 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
    * si no, entra a la bienvenida, que es donde viven la creación, la selección
    * y la recuperación en un mismo paso.
    */
-  const openSolver2D = () => {
-    if (shouldResumeDirectly(welcomeEntry)) {
+  const openSolver2D = async () => {
+    // Un clic puede llegar antes de que termine la lectura del inventario, y
+    // decidir con `unknown` sería contestar «usuario nuevo» a quien no se ha
+    // preguntado todavía: justo el camino de dos clics que esto quita. Se
+    // espera a la misma lectura ya en curso —normalmente resuelta hace rato—.
+    const entry = welcomeEntry.entry.status === 'unknown'
+      ? await welcomeEntry.settled()
+      : welcomeEntry.entry;
+    if (shouldResumeDirectly(entry, project.id)) {
       onOpenWorkspace();
       return;
     }
@@ -317,7 +324,7 @@ export const WelcomeScreen = ({ onOpenWorkspace, onOpenSpace3D, onPreloadWorkspa
 
   const platformLanding = <FusionLanding
     language={language}
-    onOpenSolver2D={openSolver2D}
+    onOpenSolver2D={() => { void openSolver2D(); }}
     onOpenSolver3D={() => navigate('space3d')}
     onOpenClassroom={() => navigate('classroom')}
   />;
