@@ -468,6 +468,21 @@ export const StructuralCanvas = ({
         : null;
   const loadsLayerVisible = layers.loads || loadPlacementInstruction !== null;
   /**
+   * Si de verdad se está DIBUJANDO decoración de carga ahora mismo.
+   *
+   * Reúne las mismas cuatro condiciones que gobiernan el grupo `load-layer` —la
+   * capa encendida, la pila ACM apagada, el ajuste de vista y la vista de
+   * influencia— más la única que faltaba: que haya alguna carga. El encuadre
+   * miraba sólo si el proyecto tenía registros de carga, así que con las cargas
+   * OCULTAS seguía reservando 66px por cada lado y encogía el modelo sin
+   * dibujar nada en ese margen; en un teléfono eso se nota.
+   */
+  const loadDecorationDrawn = loadsLayerVisible
+    && !stackActive
+    && view.showLoads
+    && resultTab !== 'influence'
+    && project.nodalLoads.length + project.memberLoads.length > 0;
+  /**
    * El mapa de demanda es una lectura derivada, no un estado: se recalcula sólo
    * cuando la capa está encendida, así el coste no lo paga quien no lo pidió.
    *
@@ -682,14 +697,13 @@ export const StructuralCanvas = ({
     // Encuadrar los nudos no es encuadrar el dibujo: las cargas se dibujan en
     // espacio de pantalla ALREDEDOR del nudo, así que con el modelo ajustado al
     // milímetro sus flechas caen fuera del lienzo. La reserva se convierte a
-    // unidades de modelo con la escala del primer encuadre y sólo se paga
-    // cuando hay cargas que dibujar: un modelo sin cargas se sigue ajustando
+    // unidades de modelo con la escala del primer encuadre, y se paga sólo
+    // cuando esa decoración se está dibujando de verdad: un modelo sin cargas
+    // —o con la capa apagada, o en vista de influencia, o con ACM— se ajusta
     // exacto, sin margen que no le corresponde.
-    const decorated = project.nodalLoads.length + project.memberLoads.length > 0
-      ? expandBoundsForDecoration(bounds, first.scale)
-      : bounds;
+    const decorated = loadDecorationDrawn ? expandBoundsForDecoration(bounds, first.scale) : bounds;
     updateCamera(decorated === bounds ? first : cameraToFitBounds(decorated, viewport, fitInsets));
-  }, [project.memberLoads.length, project.nodalLoads.length, project.nodes, size, updateCamera]);
+  }, [loadDecorationDrawn, project.nodes, size, updateCamera]);
 
   const navigateMinimapTo = useCallback((point: ModelPoint) => {
     updateCamera((current) => ({
