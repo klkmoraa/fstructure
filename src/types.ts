@@ -17,7 +17,11 @@ export type MemberType = 'frame' | 'truss' | 'rigid';
 export type SupportType = 'none' | 'pin' | 'roller' | 'fixed' | 'custom';
 export type LoadCoordinateSystem = 'global' | 'local';
 export type LoadLengthBasis = 'real' | 'horizontal' | 'vertical';
-export type UnitSystemId = 'kN-m' | 'N-mm' | 'kgf-m' | 'kip-ft';
+export type BuiltInUnitSystemId =
+  | 'kN-m' | 'N-mm' | 'kgf-m' | 'kip-ft'
+  | 'N-m' | 'kN-cm' | 'kN-mm' | 'kgf-cm'
+  | 't-m' | 't-cm' | 'lb-ft' | 'lb-in' | 'kip-in' | 'MN-m';
+export type UnitSystemId = BuiltInUnitSystemId | `custom:${string}`;
 
 export interface SpringDefinition {
   kx?: number;

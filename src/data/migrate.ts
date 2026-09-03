@@ -20,6 +20,7 @@ import type {
   SupportDefinition,
 } from '../types';
 import { createId } from '../utils/id';
+import { isUnitSystemId } from '../engine/units';
 
 type JsonObject = Record<string, unknown>;
 const MAX_COLLECTION_ITEMS = 50_000;
@@ -89,6 +90,11 @@ const enumAt = <T extends string>(value: unknown, path: string, values: readonly
     : fail(path, `valor no permitido; use ${values.join(', ')}.`);
 };
 
+const unitSystemAt = (value: unknown, path: string, fallback: ProjectSettings['units']): ProjectSettings['units'] => {
+  if (value === undefined) return fallback;
+  return isUnitSystemId(value) ? value : fail(path, 'sistema de unidades no reconocido.');
+};
+
 /** Optional per-project P-Delta overrides; every field is optional and merged over the defaults. */
 const normalizePDeltaConfig = (input: unknown, path: string): ProjectSettings['pDeltaConfig'] => {
   if (input === undefined) return undefined;
@@ -148,7 +154,7 @@ const normalizeSettings = (input: unknown): ProjectSettings => {
   const snapTargetsRaw = raw.snapTargets === undefined ? {} : objectAt(raw.snapTargets, 'settings.snapTargets');
   const selectionFilterRaw = raw.selectionFilter === undefined ? {} : objectAt(raw.selectionFilter, 'settings.selectionFilter');
   const settings: ProjectSettings = {
-    units: enumAt(raw.units, 'settings.units', ['kN-m', 'N-mm', 'kgf-m', 'kip-ft'] as const, defaults.units),
+    units: unitSystemAt(raw.units, 'settings.units', defaults.units),
     language: enumAt(raw.language, 'settings.language', ['es', 'en'] as const, defaults.language),
     gridSize: finiteAt(raw.gridSize, 'settings.gridSize', defaults.gridSize),
     snap: booleanAt(raw.snap, 'settings.snap', defaults.snap),
