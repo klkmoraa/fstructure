@@ -1,0 +1,8 @@
+@import './design-system/tokens.css';
+@import './design-system/fonts.css';
+@import './design-system/material.css';
+@import './design-system/components/ui.css';
+
+html, body, #root { min-block-size: 100%; margin: 0; }
+body { min-block-size: 100dvh; background: var(--sc-color-bg-app); }
+button, input, select, textarea { font: inherit; }
