@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { MemberModel, NodeModel, ProjectModel } from '../../types';
 import type { AnalysisResult } from '../../types';
 import { CanvasDiagramStack, stackBottomReserve } from './CanvasDiagramStack';
+import { canvasSafeInsetsFor } from './canvasChromeGeometry';
 
 type MemberResult = AnalysisResult['memberResults'][number];
 
@@ -84,6 +85,20 @@ describe('CanvasDiagramStack', () => {
       const y = Number(title.getAttribute('y'));
       expect(y).toBeGreaterThanOrEqual(modelBandBottom);
       expect(y).toBeLessThanOrEqual(size.height);
+    }
+  });
+
+  /**
+   * El defecto que esta prueba guarda: con altos de carril fijos, un teléfono
+   * EN HORIZONTAL (844x390) pedía 273px de reserva y, con los 116px de inset
+   * superior, al modelo le quedaban 0.8px. `cameraToFitBounds` recorta ese
+   * rectángulo a 1px conservando su escala mínima, así que el modelo acababa
+   * dibujado encima de la lámina: la ventana que ACM venía a eliminar.
+   */
+  it('deja siempre banda al modelo, también en un lienzo bajo y ancho', () => {
+    for (const size of [{ width: 844, height: 390 }, { width: 390, height: 520 }, { width: 700, height: 300 }]) {
+      const band = size.height - canvasSafeInsetsFor(size).top - stackBottomReserve(project, size, 3);
+      expect(band, `${size.width}x${size.height}`).toBeGreaterThanOrEqual(24);
     }
   });
 

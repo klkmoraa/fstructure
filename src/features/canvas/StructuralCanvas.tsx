@@ -2045,8 +2045,22 @@ export const StructuralCanvas = ({
   // compete with them. This is presentation-only; the persisted layer choice
   // and model data remain untouched.
   const acmLayers = stackActive ? { ...layers, dimensions: false } : layers;
+  /**
+   * Encuadre con el que se entró en ACM, para poder devolverlo al salir.
+   *
+   * Abrir ACM reencuadra el modelo contra una banda reducida. Al cerrar, el
+   * efecto de abajo se volvía a ejecutar y no hacía NADA: la lámina
+   * desaparecía y el modelo se quedaba encogido y desplazado en la franja
+   * superior hasta que alguien pulsaba «Ajustar». Deshacer un reencuadre
+   * automático es devolver la cámara que había, no imponer otro encuadre
+   * automático encima del que la persona pudiera haber elegido.
+   */
+  const cameraBeforeStackRef = useRef<Camera | null>(null);
   const toggleStack = useCallback(() => {
-    if (!stackActive && !layers.results) dispatchLayers({ type: 'set', layer: 'results', visible: true });
+    if (!stackActive) {
+      if (!layers.results) dispatchLayers({ type: 'set', layer: 'results', visible: true });
+      cameraBeforeStackRef.current = cameraRef.current;
+    }
     setStackActive((current) => !current);
   }, [dispatchLayers, layers.results, stackActive]);
   const toggleStackQuantityChoice = useCallback((quantity: StackQuantity) => {
@@ -2057,8 +2071,15 @@ export const StructuralCanvas = ({
     });
   }, []);
   useEffect(() => {
-    if (stackActive) fitModel(stackBottomReserve(project, size, stackQuantities.length));
-  }, [fitModel, project, size, stackActive, stackQuantities.length]);
+    if (stackActive) {
+      fitModel(stackBottomReserve(project, size, stackQuantities.length));
+      return;
+    }
+    const restored = cameraBeforeStackRef.current;
+    if (!restored) return;
+    cameraBeforeStackRef.current = null;
+    updateCamera(restored);
+  }, [fitModel, project, size, stackActive, stackQuantities.length, updateCamera]);
   useEffect(() => onWorkspaceCommand('toggle-diagram-stack', toggleStack), [toggleStack]);
 
   const mechanismPixelScale = useMemo(() => {
