@@ -4,8 +4,9 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useI18n } from '../../i18n/useI18n';
 import { Accordion } from '../../design-system/components/disclosure';
 import { Drawer } from '../../design-system/components/overlays';
-import { fromDisplay, toDisplay, unitLabel, type UnitQuantity } from '../../engine/units';
-import type { UnitSystemId } from '../../types';
+import { unitLabel } from '../../engine/units';
+import { fromDisplay, toDisplay, type UnitQuantity } from '../../foundation/units';
+import type { UnitSystemId } from '../../foundation/units';
 import { useShellComposition } from '../workspace/useShellComposition';
 import { InspectorNumericField } from './InspectorNumericField';
 

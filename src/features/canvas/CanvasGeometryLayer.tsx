@@ -3,7 +3,7 @@ import type { MemberModel, NodeModel, ProjectModel } from '../../types';
 import type { CanvasSelectionVisualState } from './selectionVisuals';
 import type { EditorLayerState } from './editorLayers';
 import type { ResultTab } from '../../store/ProjectContext';
-import { toDisplay } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import {
   distributedIntensityAt,
   grossRatioFromFlexible,

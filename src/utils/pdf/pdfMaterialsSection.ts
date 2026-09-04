@@ -21,7 +21,8 @@ import { buildStructuralBom, type BomWarning, type StructuralBomRow } from '../.
 import { resolveSectionGeometry } from '../../features/inspector/sectionGeometry';
 import { findStandardMaterial, type StandardMaterial } from '../../data/standardMaterials';
 import { findStandardSection, type StandardSection } from '../../data/standardSections';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { drawSectionShape, sectionShapeBox, type Rect } from './pdfScene';
 import { drawFigureFrame } from './pdfChrome';
 import { number, unitFor } from './pdfFormat';

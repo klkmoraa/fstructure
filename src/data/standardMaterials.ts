@@ -2,7 +2,7 @@
  * Catálogo de materiales estructurales estándar (AISC / Eurocódigo / ACI / NDS).
  *
  * Todos los valores numéricos ya están en las unidades base internas del motor
- * (ver `src/engine/units.ts`): elasticModulus y shearModulus en kN/m², unitWeight
+ * (ver `src/foundation/units.ts`): elasticModulus y shearModulus en kN/m², unitWeight
  * en kN/m³, density en kg/m³, yieldStrength en kN/m² y thermalExpansion en 1/°C.
  * No requieren conversión antes de asignarse a `MemberModel.E` / `G` / `density`.
  *

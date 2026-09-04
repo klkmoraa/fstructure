@@ -22,6 +22,17 @@ describe('normalizeProject', () => {
     expect(normalized.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
   });
 
+  it('preserva una identidad personalizada válida al migrar un proyecto persistido', () => {
+    const source = createDefaultProject();
+    const legacy = {
+      ...source,
+      schemaVersion: 2,
+      settings: { ...source.settings, units: 'custom:T%20%2F%20M:t:m' },
+    };
+
+    expect(normalizeProject(legacy).settings.units).toBe('custom:T%20%2F%20M:t:m');
+  });
+
   it('rechaza un esquema más nuevo que el que la aplicación conoce', () => {
     expect(() => normalizeProject({
       ...createDefaultProject(),

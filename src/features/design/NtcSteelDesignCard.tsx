@@ -1,7 +1,8 @@
 import { BookOpenCheck, CircleSlash, TriangleAlert } from 'lucide-react';
 import { useMemo } from 'react';
 import { summarizeNtcSteelTensionDesign, type NtcSteelDesignBlocker } from '../../design/ntcSteel2023';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
 import { formatFixed } from '../../utils/numberFormat';

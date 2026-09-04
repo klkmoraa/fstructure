@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { ThemeMode, UnitSystemId } from '../../types';
+import type { ThemeMode } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import type { CanvasViewSettings } from '../view/canvasViewSettings';
 import type { PersonalViewFavorite } from './personalLibrary';
 import { usePersonalLibrary, type LibraryOperationResult } from './usePersonalLibrary';

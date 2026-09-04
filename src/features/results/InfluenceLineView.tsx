@@ -18,7 +18,8 @@ import {
 } from '../../engine/influence';
 import { axleTrainFromMovingLoadCase } from '../../engine/generatedLoads';
 import { useInfluenceAnalysis } from '../../engine/useInfluenceAnalysis';
-import { fromDisplay, toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { fromDisplay, toDisplay } from '../../foundation/units';
 import type { DiagramQuantity, ProjectModel, Selection } from '../../types';
 import type { InfluenceCanvasState } from '../../store/ProjectContext';
 import { useI18n } from '../../i18n/useI18n';

@@ -3,7 +3,7 @@
  * rectangulares genéricas de concreto y madera.
  *
  * Todos los valores numéricos ya están en las unidades base internas del motor
- * (ver `src/engine/units.ts`): depth/width/webThickness/flangeThickness/
+ * (ver `src/foundation/units.ts`): depth/width/webThickness/flangeThickness/
  * radiusOfGyrationX en m, area en m² (→ `MemberModel.A`), inertiaX/inertiaY en m⁴
  * (inertiaX → `MemberModel.I`, eje fuerte), sectionModulusX/plasticModulusX en m³
  * y linearWeight en kN/m. No requieren conversión antes de asignarse al miembro.

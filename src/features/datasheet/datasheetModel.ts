@@ -1,4 +1,4 @@
-import type { UnitQuantity } from '../../engine/units';
+import type { UnitQuantity } from '../../foundation/units';
 import { findStandardMaterial } from '../../data/standardMaterials';
 import { findStandardSection } from '../../data/standardSections';
 import type { TranslationKey } from '../../i18n/catalogs';

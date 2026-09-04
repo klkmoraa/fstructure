@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Grid3X3, Stethoscope, TriangleAlert } from 'lucide-react';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import { useProjectAnalysis } from '../../store/ProjectAnalysisContext';
 import { useProjectModel } from '../../store/ProjectModelContext';

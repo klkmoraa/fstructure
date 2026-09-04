@@ -1,5 +1,6 @@
 import type { AnalysisResult, ProjectModel } from '../types';
-import { toDisplay, unitLabel, type UnitQuantity } from '../engine/units';
+import { unitLabel } from '../engine/units';
+import { toDisplay, type UnitQuantity } from '../foundation/units';
 import { summarizeAnalysisResults } from '../engine/resultSummary';
 import { formatMachineNumber } from './numberFormat';
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, SegmentedControl } from '../../design-system/components/controls';
 import { Accordion, Tabs } from '../../design-system/components/disclosure';
 import type { Language } from '../../i18n/catalogs';
-import type { UnitSystemId } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { BulkChangeSummary } from './BulkChangeSummary';
 import { BulkPropertyField } from './BulkPropertyField';
 import { BulkSectionPreview } from './BulkSectionPreview';

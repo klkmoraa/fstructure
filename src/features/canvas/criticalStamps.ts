@@ -2,7 +2,7 @@ import type { AnalysisResult, DiagramQuantity, MemberModel, NodeModel, ProjectMo
 import type { ResultTab } from '../../store/ProjectContext';
 import type { CanvasCamera } from './canvasInteraction';
 import { memberAxis } from '../../graphics/structureGeometry';
-import { toDisplay } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { formatFixed } from '../../utils/numberFormat';
 import { smartLabelRectsOverlap, type SmartLabelRect } from './labelLayout';
 

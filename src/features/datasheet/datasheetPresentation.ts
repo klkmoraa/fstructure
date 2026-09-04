@@ -1,6 +1,8 @@
-import { toDisplay, unitLabel, type UnitQuantity } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay, type UnitQuantity } from '../../foundation/units';
 import type { Language, TranslationKey } from '../../i18n/catalogs';
-import type { ProjectModel, UnitSystemId } from '../../types';
+import type { ProjectModel } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { formatNumber } from '../../utils/numberFormat';
 import { bulkCatalogOptions, bulkMaterialLabel, bulkSectionLabel } from '../bulk-edit/bulkEditPresentation';
 import { serializeInspectorNumber } from '../inspector/numericFormatting';

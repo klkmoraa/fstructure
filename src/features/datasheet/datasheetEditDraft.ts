@@ -1,8 +1,9 @@
 import { projectTopologyTolerance } from '../../data/modelOperations';
 import { findStandardMaterial } from '../../data/standardMaterials';
 import { findStandardSection } from '../../data/standardSections';
-import { fromDisplay } from '../../engine/units';
-import type { ProjectModel, UnitSystemId } from '../../types';
+import { fromDisplay } from '../../foundation/units';
+import type { ProjectModel } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { parseInspectorNumber } from '../inspector/numericFormatting';
 import {
   datasheetField,

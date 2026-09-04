@@ -1,8 +1,10 @@
 import { CircleSlash, Gauge, Info } from 'lucide-react';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
-import type { AnalysisResult, MemberModel, MemberResult, UnitSystemId } from '../../types';
+import type { AnalysisResult, MemberModel, MemberResult } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { formatFixed } from '../../utils/numberFormat';
 import { formatInspectorValue } from './numericFormatting';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';

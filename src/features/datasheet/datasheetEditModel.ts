@@ -1,4 +1,4 @@
-import type { UnitQuantity } from '../../engine/units';
+import type { UnitQuantity } from '../../foundation/units';
 import type { MemberLoad, MemberModel, NodalLoad, NodeModel } from '../../types';
 import { bulkPropertyDescriptors } from '../bulk-edit/bulkEditProperties';
 import type { BulkIncompatibilityReason, BulkPropertyId } from '../bulk-edit/bulkEditTypes';

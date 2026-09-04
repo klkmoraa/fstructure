@@ -1,3 +1,8 @@
+import type { UnitSystemId } from './foundation/units';
+
+/** @deprecated Import neutral unit types directly from `foundation/units`. */
+export type { BuiltInUnitSystemId, UnitSystemId } from './foundation/units';
+
 export type ThemeMode = 'light' | 'dark';
 export type Tool =
   | 'select'
@@ -17,12 +22,6 @@ export type MemberType = 'frame' | 'truss' | 'rigid';
 export type SupportType = 'none' | 'pin' | 'roller' | 'fixed' | 'custom';
 export type LoadCoordinateSystem = 'global' | 'local';
 export type LoadLengthBasis = 'real' | 'horizontal' | 'vertical';
-export type BuiltInUnitSystemId =
-  | 'kN-m' | 'N-mm' | 'kgf-m' | 'kip-ft'
-  | 'N-m' | 'kN-cm' | 'kN-mm' | 'kgf-cm'
-  | 't-m' | 't-cm' | 'lb-ft' | 'lb-in' | 'kip-in' | 'MN-m';
-export type UnitSystemId = BuiltInUnitSystemId | `custom:${string}`;
-
 export interface SpringDefinition {
   kx?: number;
   ky?: number;

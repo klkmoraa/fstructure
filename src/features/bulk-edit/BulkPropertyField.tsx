@@ -1,9 +1,9 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { Undo2 } from 'lucide-react';
 import { SegmentedControl } from '../../design-system/components/controls';
-import { fromDisplay, toDisplay } from '../../engine/units';
+import { fromDisplay, toDisplay } from '../../foundation/units';
 import type { Language } from '../../i18n/catalogs';
-import type { UnitSystemId } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { parseInspectorNumber, serializeInspectorNumber } from '../inspector/numericFormatting';
 import { createBulkEditTranslator } from './bulkEditCopy';
 import {

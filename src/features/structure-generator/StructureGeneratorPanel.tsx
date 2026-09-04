@@ -10,7 +10,7 @@ import { standardMaterials } from '../../data/standardMaterials';
 import { standardSections } from '../../data/standardSections';
 import { unitLabel } from '../../engine/units';
 import type { Language } from '../../i18n/catalogs';
-import type { UnitSystemId } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import type { SurfacePresentation, SurfaceStatus } from '../workspace/surfacePresentation';
 import { GeneratorFamilyPreview } from './GeneratorFamilyPreview';
 import { createStructureGeneratorTranslator } from './structureGeneratorCopy';

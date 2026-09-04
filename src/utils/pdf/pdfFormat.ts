@@ -6,7 +6,8 @@
  * value could appear in three shapes across the app, the PDF and the annex.
  */
 import type { DiagramQuantity, MemberLoad, ProjectModel } from '../../types';
-import { toDisplay, unitLabel, type UnitQuantity } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay, type UnitQuantity } from '../../foundation/units';
 import { memberAxis } from '../../graphics/structureGeometry';
 import { formatNearZero, formatNumber } from '../numberFormat';
 import type { ModelIndex } from './reportContext';

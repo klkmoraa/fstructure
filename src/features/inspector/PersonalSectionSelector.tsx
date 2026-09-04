@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
 import { readPersonalSections, type PersonalParametricSection } from '../../data/personalSections';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
-import type { UnitSystemId } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { Dialog } from '../../design-system/components/overlays';
 import { Button } from '../../design-system/components/controls';
 import { SectionBuilder } from '../library/SectionBuilder';

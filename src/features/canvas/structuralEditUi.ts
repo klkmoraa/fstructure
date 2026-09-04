@@ -1,5 +1,5 @@
 import type { ProjectModel, Selection } from '../../types';
-import { fromDisplay, toDisplay } from '../../engine/units';
+import { fromDisplay, toDisplay } from '../../foundation/units';
 import { formatNumber } from '../../utils/numberFormat';
 import {
   resolveStructuralSelection,

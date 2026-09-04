@@ -3,7 +3,8 @@ import type { AnalysisResult, DiagramQuantity, MemberModel, NodeModel, ProjectMo
 import type { InfluenceCanvasState, ModeShapeCanvasState, ResultCursor, ResultTab } from '../../store/ProjectContext';
 import type { CanvasCamera } from './canvasInteraction';
 import { evaluateDeformationAt, evaluateDiagramAt, segmentBezierControls } from '../../engine/diagram';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { memberAxis } from '../../graphics/structureGeometry';
 import { formatFixed, formatScientific } from '../../utils/numberFormat';
 import type { TranslationKey } from '../../i18n/catalogs';

@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Copy, Pencil, RotateCcw, Search, Trash2, X } from 'lucide-react';
 import { standardMaterials } from '../../data/standardMaterials';
 import { standardSections } from '../../data/standardSections';
-import type { ThemeMode, UnitSystemId } from '../../types';
+import type { ThemeMode } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import type { CanvasViewSettings } from '../view/canvasViewSettings';
 import {
   searchFavorites,

@@ -15,8 +15,9 @@ import {
   type ParametricSectionProperties,
   type PersonalParametricSection,
 } from '../../data/personalSections';
-import { fromDisplay, toDisplay, unitLabel } from '../../engine/units';
-import type { UnitSystemId } from '../../types';
+import { unitLabel } from '../../engine/units';
+import { fromDisplay, toDisplay } from '../../foundation/units';
+import type { UnitSystemId } from '../../foundation/units';
 
 type Language = 'es' | 'en';
 

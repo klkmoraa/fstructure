@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import { Surface } from '../../design-system/components/surface';
 import { resolveReliability } from '../../engine/reliability';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
 import { ResultExtremeCard } from './ResultExtremeCard';

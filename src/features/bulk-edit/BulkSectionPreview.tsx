@@ -1,8 +1,9 @@
 import { ArrowRight } from 'lucide-react';
 import { findStandardSection } from '../../data/standardSections';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import type { Language } from '../../i18n/catalogs';
-import type { UnitSystemId } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { formatFixed } from '../../utils/numberFormat';
 import { SectionShape } from '../inspector/SectionShape';
 import { resolveSectionGeometry, sectionShapeLayout, type SectionGeometry } from '../inspector/sectionGeometry';

@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
 import {
-  createCustomUnitSystemId,
   FORCE_UNIT_OPTIONS,
-  isCustomUnitSystemId,
   LENGTH_UNIT_OPTIONS,
-  parseCustomUnitSystemId,
   UNIT_SYSTEM_PROFILES,
   unitSystemLabel,
 } from '../../engine/units';
-import type { UnitForceId, UnitLengthId } from '../../engine/units';
-import type { UnitSystemId } from '../../types';
+import {
+  createCustomUnitSystemId,
+  isCustomUnitSystemId,
+  parseCustomUnitSystemId,
+  type UnitForceId,
+  type UnitLengthId,
+  type UnitSystemId,
+} from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 
 const CUSTOM_VALUE = '__custom__';

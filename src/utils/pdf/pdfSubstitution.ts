@@ -24,7 +24,8 @@
  *  2. **Numeric noise reads as zero.** Every figure collapses against the governing
  *     magnitude of its own family, the same policy the rest of the report follows.
  */
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { memberAxis } from '../../graphics/structureGeometry';
 import { clearNumber, number } from './pdfFormat';
 import { asWorkedEquation, type EquationInput } from './pdfEquation';

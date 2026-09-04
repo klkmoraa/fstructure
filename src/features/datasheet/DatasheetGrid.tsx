@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import type { TranslationKey } from '../../i18n/catalogs';
-import type { UnitSystemId } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import {
   clampGridPosition,
   isGridNavigationKey,

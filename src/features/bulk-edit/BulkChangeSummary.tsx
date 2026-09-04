@@ -1,6 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import type { Language } from '../../i18n/catalogs';
-import type { UnitSystemId } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { findBulkProperty } from './bulkEditAggregation';
 import { createBulkEditTranslator } from './bulkEditCopy';
 import {

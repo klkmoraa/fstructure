@@ -20,7 +20,7 @@ import type {
   SupportDefinition,
 } from '../types';
 import { createId } from '../utils/id';
-import { isUnitSystemId } from '../engine/units';
+import { isUnitSystemId } from '../foundation/units';
 
 type JsonObject = Record<string, unknown>;
 const MAX_COLLECTION_ITEMS = 50_000;

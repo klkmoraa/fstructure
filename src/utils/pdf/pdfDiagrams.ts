@@ -8,7 +8,8 @@
  * structure with the same marks and must not reinvent any of them.
  */
 import type { AnalysisResult, DiagramQuantity } from '../../types';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { readCanvasViewSettings } from '../../features/view/canvasViewSettings';
 import { lerpPoint, memberAxis } from '../../graphics/structureGeometry';
 import {

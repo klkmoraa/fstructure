@@ -3,7 +3,7 @@ import type { NodeModel, ProjectModel } from '../../types';
 import type { SelectionEnvelope } from './selectionVisuals';
 import { selectionEnvelopeHandles } from './selectionVisuals';
 import type { SnapKind } from '../../utils/snapping';
-import { toDisplay } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { formatFixed } from '../../utils/numberFormat';
 import type { TranslationKey } from '../../i18n/catalogs';
 

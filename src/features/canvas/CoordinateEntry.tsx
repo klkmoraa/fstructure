@@ -38,8 +38,8 @@ import { ArrowRight, Delete, Plus, X } from 'lucide-react';
 import { useI18n } from '../../i18n/useI18n';
 import { CoordinateEntryGlyph } from '../../design-system/icons/structural';
 import { IconButton } from '../../design-system/components/controls';
-import { fromDisplay, toDisplay } from '../../engine/units';
-import type { UnitSystemId } from '../../types';
+import { fromDisplay, toDisplay } from '../../foundation/units';
+import type { UnitSystemId } from '../../foundation/units';
 import { parseLocalizedDecimal } from './quickEntry';
 import { formatFixed } from '../../utils/numberFormat';
 

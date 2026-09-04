@@ -1,4 +1,5 @@
-import type { AnalysisResult, NumericQualityState, ProjectModel, UnitSystemId } from '../types';
+import type { AnalysisResult, NumericQualityState, ProjectModel } from '../types';
+import type { UnitSystemId } from '../foundation/units';
 
 export const PORTABLE_PAYLOAD_FILENAME = 'fusionstructure-payload.json';
 export const PORTABLE_PAYLOAD_MIME = 'application/vnd.fusionstructure.project+json';

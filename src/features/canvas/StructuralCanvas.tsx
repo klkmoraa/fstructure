@@ -5,7 +5,8 @@ import type { DiagramPoint, DiagramQuantity, MemberModel, NodeModel, Selection, 
 import { evaluateDiagramAt } from '../../engine/diagram';
 import { buildLeftCutEquilibrium } from '../../engine/cut';
 import { resolveMemberLocalLoads } from '../../engine/solver';
-import { fromDisplay, toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { fromDisplay, toDisplay } from '../../foundation/units';
 import { exportSvgAsPng, exportSvgElement } from '../../utils/export';
 import { formatFixed, formatScientific } from '../../utils/numberFormat';
 import { copyModelSelection, ensureNodeAtPoint, pasteModelClipboard, structuralSelectionFromIds, toggleStructuralSelection, type ModelClipboard } from '../../data/modelOperations';

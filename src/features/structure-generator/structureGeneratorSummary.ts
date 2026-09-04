@@ -4,10 +4,11 @@ import type {
   GeneratedStructureSummary,
   GeneratorWarning,
 } from '../../data/generators/generatorTypes';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import type { Language } from '../../i18n/catalogs';
 import { formatNumber } from '../../utils/numberFormat';
-import type { UnitSystemId } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { createStructureGeneratorTranslator } from './structureGeneratorCopy';
 
 /**

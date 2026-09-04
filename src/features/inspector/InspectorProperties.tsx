@@ -17,7 +17,8 @@ import { BulkEditInspectorPanel } from '../bulk-edit/BulkEditInspectorPanel';
 import { repairProjectTopology } from '../../data/modelOperations';
 import type { StandardMaterial } from '../../data/standardMaterials';
 import type { StandardSection } from '../../data/standardSections';
-import { fromDisplay, toDisplay, unitLabel, type UnitQuantity } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { fromDisplay, toDisplay, type UnitQuantity } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import { useClassroomSession } from '../../store/ClassroomSessionContext';
 import { useProjectAnalysis } from '../../store/ProjectAnalysisContext';
@@ -32,9 +33,9 @@ import type {
   NodeLink,
   PrescribedDisplacement,
   SupportType,
-  UnitSystemId,
   ValidationIssue,
 } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { InspectorNarrativeCard } from './InspectorNarrativeCard';
 import { ModelOverviewPanel } from './ModelOverviewPanel';
 import { InspectorNumericField } from './InspectorNumericField';

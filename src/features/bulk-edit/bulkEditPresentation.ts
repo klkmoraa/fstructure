@@ -1,8 +1,9 @@
 import { findStandardMaterial, standardMaterials, type MaterialCategory } from '../../data/standardMaterials';
 import { findStandardSection, standardSections, type SectionShapeType } from '../../data/standardSections';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { es, translate, type Language, type TranslationKey } from '../../i18n/catalogs';
-import type { UnitSystemId } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { formatInspectorValue } from '../inspector/numericFormatting';
 import type { BulkEditCopyKey, BulkEditTranslate } from './bulkEditCopy';
 import { BULK_ENTITY_KINDS } from './bulkEditTypes';

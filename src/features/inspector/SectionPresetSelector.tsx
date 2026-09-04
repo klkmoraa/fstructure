@@ -1,8 +1,10 @@
 import { findStandardSection, standardSections, type SectionShapeType, type StandardSection } from '../../data/standardSections';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { useI18n } from '../../i18n/useI18n';
-import type { MemberPropertyOrigin, UnitSystemId } from '../../types';
+import type { MemberPropertyOrigin } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { formatInspectorValue } from './numericFormatting';
 
 const SHAPE_ORDER: readonly SectionShapeType[] = ['I', 'HSS_RECT', 'HSS_ROUND', 'C', 'L', 'RECT'];

@@ -1,7 +1,8 @@
 import { findStandardMaterial } from '../../data/standardMaterials';
 import { findStandardSection } from '../../data/standardSections';
-import type { ThemeMode, UnitSystemId } from '../../types';
-import { isUnitSystemId } from '../../engine/units';
+import type { ThemeMode } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
+import { isUnitSystemId } from '../../foundation/units';
 import type { CanvasViewSettings } from '../view/canvasViewSettings';
 
 export const PERSONAL_LIBRARY_STORAGE_KEY = 'structureCo.personal-library.v1';

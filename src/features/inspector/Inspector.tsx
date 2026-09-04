@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { ChevronRight, CircleHelp, GripHorizontal, MoveDown, Pencil, Plus, RotateCcw, Sigma, X } from 'lucide-react';
-import { fromDisplay, toDisplay, unitLabel, type UnitQuantity } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { fromDisplay, toDisplay, type UnitQuantity } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { useProjectAnalysis } from '../../store/ProjectAnalysisContext';

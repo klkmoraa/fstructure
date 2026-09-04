@@ -8,9 +8,10 @@ import type {
   GridMemberMode,
   TrussTopology,
 } from '../../data/generators/generatorTypes';
-import { fromDisplay, toDisplay } from '../../engine/units';
+import { fromDisplay, toDisplay } from '../../foundation/units';
 import { serializeNumber } from '../../utils/numberFormat';
-import type { SupportDefinition, SupportType, UnitSystemId } from '../../types';
+import type { SupportDefinition, SupportType } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 
 /**
  * Traducción del formulario de «Generar estructura» a parámetros del núcleo

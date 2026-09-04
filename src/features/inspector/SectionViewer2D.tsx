@@ -1,8 +1,10 @@
 import { useId, useMemo, useState } from 'react';
 import { Box, Ruler } from 'lucide-react';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
-import type { MemberPropertyOrigin, UnitSystemId } from '../../types';
+import type { MemberPropertyOrigin } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { formatFixed } from '../../utils/numberFormat';
 import { formatInspectorValue } from './numericFormatting';
 import { resolveSectionGeometry, sectionShapeLayout } from './sectionGeometry';

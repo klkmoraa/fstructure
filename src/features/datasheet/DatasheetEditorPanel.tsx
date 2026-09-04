@@ -1,6 +1,7 @@
 import { Button } from '../../design-system/components/controls';
 import type { Language, TranslationKey } from '../../i18n/catalogs';
-import type { ProjectModel, UnitSystemId } from '../../types';
+import type { ProjectModel } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import type { DatasheetEditError } from './datasheetEditDraft';
 import type { DatasheetFieldId } from './datasheetEditModel';
 import type { DatasheetRowKind } from './datasheetModel';

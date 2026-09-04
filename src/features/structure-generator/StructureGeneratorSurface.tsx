@@ -4,7 +4,7 @@ import {
   type PreparedStructureGeneration,
 } from '../../commands/structureGeneration';
 import { projectCommandSnapshot } from '../../commands/projectCommand';
-import { toDisplay } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { useProjectModel } from '../../store/ProjectModelContext';
 import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
 import { serializeNumber } from '../../utils/numberFormat';

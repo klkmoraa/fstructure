@@ -1,8 +1,10 @@
 import { findStandardMaterial, standardMaterials, type MaterialCategory, type StandardMaterial } from '../../data/standardMaterials';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { useI18n } from '../../i18n/useI18n';
-import type { MemberPropertyOrigin, UnitSystemId } from '../../types';
+import type { MemberPropertyOrigin } from '../../types';
+import type { UnitSystemId } from '../../foundation/units';
 import { formatInspectorValue } from './numericFormatting';
 
 const CATEGORY_ORDER: readonly MaterialCategory[] = ['STEEL', 'CONCRETE', 'TIMBER', 'ALUMINUM'];

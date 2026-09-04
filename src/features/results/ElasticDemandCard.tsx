@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { CircleSlash, Gauge, Info, LocateFixed } from 'lucide-react';
-import { toDisplay, unitLabel } from '../../engine/units';
+import { unitLabel } from '../../engine/units';
+import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { useProject } from '../../store/ProjectContext';

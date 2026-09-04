@@ -1,4 +1,4 @@
-import type { UnitQuantity } from '../../engine/units';
+import type { UnitQuantity } from '../../foundation/units';
 import type { MemberLoad, MemberModel, MemberType, NodalLoad, NodeModel } from '../../types';
 
 /**
