@@ -62,7 +62,7 @@ import { CanvasResultLayer, diagramPixelScaleFor, reactionClearanceFor } from '.
 import { criticalStampsFor } from './criticalStamps';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
 import { CanvasMiniMap } from './CanvasMiniMap';
-import { CanvasDiagramStack, externalStackBottomReserve } from './CanvasDiagramStack';
+import { CanvasDiagramStack, stackBottomReserve } from './CanvasDiagramStack';
 import { persistStackQuantities, readStoredStackQuantities, toggleStackQuantity, type StackQuantity } from './diagramStack';
 import { CanvasTouchLoupe } from './CanvasTouchLoupe';
 import { CandidatePicker } from './CanvasCandidatePicker';
@@ -692,7 +692,14 @@ export const StructuralCanvas = ({
       : 0;
     const viewport = { width: size.width, height: size.height };
     const insets = canvasSafeInsetsFor(viewport);
-    const fitInsets = { ...insets, bottom: insets.bottom + safeBottomReserve };
+    /* La reserva SUSTITUYE al margen inferior de cromo, no se le suma. La
+       lámina de ACM ya se dibuja por encima de la cámara y de la lectura de
+       coordenadas —ese margen está contado dentro de la reserva—, así que
+       sumarlo otra vez lo cobraba dos veces: en un teléfono el rectángulo
+       seguro se quedaba en unos pocos píxeles de alto y el modelo se encuadraba
+       a la escala mínima, encogido hasta ser ilegible justo cuando ACM lo pone
+       al lado de sus tres diagramas. */
+    const fitInsets = { ...insets, bottom: Math.max(insets.bottom, safeBottomReserve) };
     const bounds = modelBounds(project.nodes);
     const first = cameraToFitBounds(bounds, viewport, fitInsets);
     // Encuadrar los nudos no es encuadrar el dibujo: las cargas se dibujan en
@@ -2050,7 +2057,7 @@ export const StructuralCanvas = ({
     });
   }, []);
   useEffect(() => {
-    if (stackActive) fitModel(externalStackBottomReserve(project, size, stackQuantities.length));
+    if (stackActive) fitModel(stackBottomReserve(project, size, stackQuantities.length));
   }, [fitModel, project, size, stackActive, stackQuantities.length]);
   useEffect(() => onWorkspaceCommand('toggle-diagram-stack', toggleStack), [toggleStack]);
 

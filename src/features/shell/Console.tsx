@@ -55,7 +55,7 @@ export const Console = ({ onOpenHome, onOpenSpace3D: _onOpenSpace3D, layoutActio
     </div>
     <div className="console__body">
       <div className="console__surfaces" role="group" aria-label={t('shell.surfaces')}>
-        <button type="button" className={resultsOpen ? 'is-active' : ''} onClick={(event) => emitWorkspaceCommand('toggle-results', { trigger: event.currentTarget })} aria-label={t('results.outputs')} aria-pressed={resultsOpen} title={t('results.outputs')}>
+        <button type="button" className={`console__results${resultsOpen ? ' is-active' : ''}`} onClick={(event) => emitWorkspaceCommand('toggle-results', { trigger: event.currentTarget })} aria-label={t('results.outputs')} aria-pressed={resultsOpen} title={t('results.outputs')}>
           <ChartNoAxesCombined size={18} /><Label>{t('results.outputs')}</Label>
         </button>
         <button type="button" onClick={layoutActions.onOpenAnalysisSetup} aria-label={t('inspector.analysisSetupLauncher')} title={t('inspector.analysisSetupLauncher')}>

@@ -253,14 +253,30 @@
     gap: 3px;
   }
 
+  /*
+   * El estado se lee por el GLIFO y su color, no por media palabra.
+   *
+   * Con 88px de tope, «Listo para analizar» se publicaba como «L.» y
+   * «Guardado local» como «G…»: un recorte no informa de nada y encima invita a
+   * pulsarlo para descifrarlo. El icono ya distingue guardado/recuperado/fallo y
+   * corriendo/resuelto, el tono del chip lo confirma, y el texto completo sigue
+   * ahí para el lector de pantalla y en el `title` del puntero.
+   */
   .workspace-topbar__status-chip {
+    position: relative;
     min-height: 32px;
-    max-width: 88px;
-    padding-inline: 6px;
+    width: 32px;
+    padding-inline: 0;
+    justify-content: center;
   }
 
-  .workspace-topbar__status-chip small {
-    display: none;
+  .workspace-topbar__status-chip > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   .workspace-topbar__actions {
@@ -289,17 +305,6 @@
 
   .workspace-topbar__project-copy strong {
     font-size: 12px;
-  }
-
-  .workspace-topbar__status-chip {
-    max-width: 72px;
-    padding-inline: 5px;
-  }
-
-  .workspace-topbar__status-chip strong {
-    max-width: 44px;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 }
 

@@ -208,6 +208,27 @@
      `display:flex` con más especificidad que una clase suelta. */
   .console__label { display: none; }
   .console button.console__project { display: none; }
+
+  /*
+   * REPARTO K0: la barra superior manda, el dock ejecuta.
+   *
+   * Las dos franjas se repetían. Arriba ya viven la identidad del proyecto, el
+   * estado de guardado y de corrida, deshacer/rehacer, ANALIZAR y RESULTADOS;
+   * el dock repetía la marca, repetía Analizar y volvía a ofrecer Resultados.
+   * Un mismo mando en dos sitios no da dos caminos: da dos estados que hay que
+   * comparar, y en 390px cada copia se come el carril donde el pulgar busca las
+   * herramientas —por eso las fichas quedaban cortadas y a medio leer.
+   *
+   * El corte es por naturaleza, no por gusto: lo que informa del proyecto y lo
+   * que lanza y lee la corrida es de la barra superior; lo que DIBUJA sobre el
+   * lienzo —herramientas, capas, ajustes de vista, asistente e inspector— es
+   * del dock. Ninguna acción desaparece: cada una queda en una sola franja.
+   */
+  .console button.console__brand,
+  .console button.console__analyze,
+  .console button.console__results { display: none; }
+  /* Sin la marca, la cabecera es sólo la búsqueda: sin borde propio ni hueco. */
+  .console__head { border-inline-end: 0; }
   /* El conmutador de tema sale de la banda en K0. Medido en 390px: la cabecera
      se llevaba 93 y el pie 133, y a las SEIS herramientas de modelado —lo único
      que el pulgar usa sin parar— les quedaban 164, o sea tres y media. El tema

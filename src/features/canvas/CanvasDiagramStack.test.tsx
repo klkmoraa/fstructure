@@ -3,7 +3,7 @@ import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { MemberModel, NodeModel, ProjectModel } from '../../types';
 import type { AnalysisResult } from '../../types';
-import { CanvasDiagramStack, externalStackBottomReserve } from './CanvasDiagramStack';
+import { CanvasDiagramStack, stackBottomReserve } from './CanvasDiagramStack';
 
 type MemberResult = AnalysisResult['memberResults'][number];
 
@@ -55,39 +55,45 @@ const props = {
 };
 
 describe('CanvasDiagramStack', () => {
-  it('uses an in-canvas scene on compact viewports without reserving a second shelf', () => {
-    const { container } = render(<svg><CanvasDiagramStack {...props} size={{ width: 390, height: 520 }} /></svg>);
+  it('draws the compact sheet below the model without masking the canvas', () => {
+    const size = { width: 390, height: 520 };
+    const { container } = render(<svg><CanvasDiagramStack {...props} size={size} /></svg>);
     const layer = container.querySelector('[data-canvas-layer="diagram-stack"]');
 
-    expect(layer?.classList.contains('diagram-stack-layer--canvas')).toBe(true);
-    expect(layer?.querySelector('.diagram-stack-canvas-mask')).toBeTruthy();
+    expect(layer?.classList.contains('diagram-stack-layer--sheet')).toBe(true);
+    expect(layer?.classList.contains('is-compact')).toBe(true);
+    // Ni máscara opaca ni tarjetas: ACM no puede apagar el modelo del lienzo.
+    expect(layer?.querySelector('.diagram-stack-canvas-mask')).toBeNull();
+    expect(layer?.querySelector('.diagram-stack-panel-surface')).toBeNull();
     expect(layer?.querySelectorAll('[data-stack-panel]')).toHaveLength(3);
-    expect(layer?.querySelectorAll('.diagram-stack-member-label')).toHaveLength(0);
-    expect(externalStackBottomReserve(project, { width: 390, height: 520 }, 3)).toBe(0);
 
-    for (const surface of Array.from(layer?.querySelectorAll<SVGRectElement>('.diagram-stack-panel-surface') ?? [])) {
-      const x = Number(surface.getAttribute('x'));
-      const y = Number(surface.getAttribute('y'));
-      const width = Number(surface.getAttribute('width'));
-      const height = Number(surface.getAttribute('height'));
-      expect(x).toBeGreaterThanOrEqual(0);
-      expect(y).toBeGreaterThanOrEqual(0);
-      expect(x + width).toBeLessThanOrEqual(390);
-      expect(y + height).toBeLessThanOrEqual(520);
+    const reserve = stackBottomReserve(project, size, 3);
+    expect(reserve).toBeGreaterThan(0);
+    // El modelo conserva una banda propia arriba: la lámina va DEBAJO de él.
+    expect(reserve).toBeLessThan(size.height * 0.75);
+  });
+
+  it('keeps every compact lane inside the canvas and above the model band', () => {
+    const size = { width: 390, height: 520 };
+    const { container } = render(<svg><CanvasDiagramStack {...props} size={size} /></svg>);
+    const titles = Array.from(container.querySelectorAll<SVGTextElement>('.diagram-stack-panel-title'));
+    const modelBandBottom = size.height - stackBottomReserve(project, size, 3);
+
+    expect(titles).toHaveLength(3);
+    for (const title of titles) {
+      const y = Number(title.getAttribute('y'));
+      expect(y).toBeGreaterThanOrEqual(modelBandBottom);
+      expect(y).toBeLessThanOrEqual(size.height);
     }
-
-    const { container: shortDesktop } = render(<svg><CanvasDiagramStack {...props} size={{ width: 1280, height: 599 }} /></svg>);
-    expect(shortDesktop.querySelector('[data-canvas-layer="diagram-stack"]')?.classList.contains('diagram-stack-layer--canvas')).toBe(true);
-    expect(externalStackBottomReserve(project, { width: 1280, height: 599 }, 3)).toBe(0);
   });
 
   it('keeps the wide exterior replica for desktop reading space', () => {
     const { container } = render(<svg><CanvasDiagramStack {...props} size={{ width: 1280, height: 900 }} /></svg>);
     const layer = container.querySelector('[data-canvas-layer="diagram-stack"]');
 
-    expect(layer?.classList.contains('diagram-stack-layer--external')).toBe(true);
-    expect(layer?.querySelector('.diagram-stack-canvas-mask')).toBeNull();
+    expect(layer?.classList.contains('diagram-stack-layer--sheet')).toBe(true);
+    expect(layer?.classList.contains('is-compact')).toBe(false);
     expect(layer?.querySelectorAll('.diagram-stack-member-label')).toHaveLength(9);
-    expect(externalStackBottomReserve(project, { width: 1280, height: 900 }, 3)).toBeGreaterThan(0);
+    expect(stackBottomReserve(project, { width: 1280, height: 900 }, 3)).toBeGreaterThan(0);
   });
 });

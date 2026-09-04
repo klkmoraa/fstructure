@@ -1430,10 +1430,11 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .diagram-stack-lane.shear .diagram-stack-line { stroke:var(--shear); }.diagram-stack-lane.shear .diagram-stack-fill,.diagram-stack-lane.shear .diagram-stack-extreme,.diagram-stack-lane.shear .diagram-stack-extreme-label,.diagram-stack-lane.shear .diagram-stack-reading circle,.diagram-stack-lane.shear .diagram-stack-reading text,.diagram-stack-lane.shear .diagram-stack-caption { fill:var(--shear); }
 .diagram-stack-lane.moment .diagram-stack-line { stroke:var(--moment); }.diagram-stack-lane.moment .diagram-stack-fill,.diagram-stack-lane.moment .diagram-stack-extreme,.diagram-stack-lane.moment .diagram-stack-extreme-label,.diagram-stack-lane.moment .diagram-stack-reading circle,.diagram-stack-lane.moment .diagram-stack-reading text,.diagram-stack-lane.moment .diagram-stack-caption { fill:var(--moment); }
 
-/* ACM sits outside the editable model. It is a continuous calculation sheet:
-   the complete structure repeats down the canvas for N, V and M. There are no
-   cards, frames or miniatures competing with the structural diagrams. */
-.diagram-stack-layer--external { pointer-events:none; }
+/* ACM es una lámina de cálculo continua DEBAJO del modelo: la estructura
+   completa se repite en la parte baja del lienzo para N, V y M mientras el
+   modelo editable sigue dibujado arriba. No hay tarjetas, marcos ni ventanas
+   compitiendo con los diagramas estructurales. */
+.diagram-stack-layer--sheet { pointer-events:none; }
 .diagram-stack-panel-title { fill:var(--muted); font-size:11px; font-weight:750; letter-spacing:.02em; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:4px; }
 .diagram-stack-member-label { fill:var(--subtle); font-size:9px; font-weight:700; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:3px; }
 .diagram-stack-replica-member { stroke:var(--text); stroke-width:1.15; opacity:.72; }
@@ -1452,35 +1453,33 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .diagram-stack-panel.shear .diagram-stack-panel-title { fill:var(--shear); }
 .diagram-stack-panel.moment .diagram-stack-panel-title { fill:var(--moment); }
 
-/* En móvil ACM es una escena analítica dentro del lienzo. El fondo opaco y la
-   regla de hermanos posteriores apagan la composición editable sólo mientras
-   esta vista está activa; el proyecto, las capas persistidas y el solver no
-   cambian. Escritorio conserva la lámina exterior de lectura. */
-.diagram-stack-layer--canvas { pointer-events:none; }
-.diagram-stack-layer--canvas ~ g { display:none; }
-.diagram-stack-panel-surface {
-  fill:color-mix(in srgb,var(--surface) 24%,var(--canvas-bg));
-  stroke:color-mix(in srgb,var(--border) 66%,transparent);
-  stroke-width:1;
-  vector-effect:non-scaling-stroke;
-}
-.diagram-stack-layer--canvas .diagram-stack-panel-title { font-weight:800; letter-spacing:.02em; }
+/* La lámina estrecha sólo aprieta la tipografía y los trazos. NO apaga el
+   modelo: la máscara opaca y la regla `~ g { display:none }` que llevaba
+   escondían el modelo entero —nudos, apoyos, cargas y ejes— detrás de tres
+   tarjetas, y ACM dejaba de ser una lectura del modelo para ser otra ventana. */
+.diagram-stack-layer--sheet.is-compact .diagram-stack-panel-title { font-weight:800; letter-spacing:.02em; font-size:10px; }
+.diagram-stack-layer--sheet.is-compact .diagram-stack-reading text { font-size:8px; }
+.diagram-stack-layer--sheet.is-compact .diagram-stack-member-line { stroke-width:1.7; }
+.diagram-stack-layer--sheet.is-compact .diagram-stack-replica-member { stroke-width:1.4; opacity:.75; }
 
-@media (max-width:700px) {
-  .diagram-stack-layer--canvas .diagram-stack-panel-title { font-size:10px; }
-  .diagram-stack-layer--canvas .diagram-stack-reading text { font-size:8px; }
-  .diagram-stack-layer--canvas .diagram-stack-member-line { stroke-width:1.7; }
-  .diagram-stack-layer--canvas .diagram-stack-replica-member { stroke-width:1.4; opacity:.75; }
-  .diagram-stack-layer--canvas .diagram-stack-member-fill { opacity:.12; }
-}
-
+/* El riel comparte fila con el lanzador de capas, que flota anclado al borde
+   derecho. Llegar hasta ese borde metía la última ficha DEBAJO del lanzador:
+   ni se leía entera ni se podía pulsar, y el recorte parecía final de lista.
+   El carril reserva su carril: mide en `border-box` —el relleno y el filete
+   son parte del ancho que hay que descontar— y termina antes del botón. */
 @media (max-width:1023px) {
-  .canvas-evidence-rail { top:8px; left:max(8px,env(safe-area-inset-left)); right:max(8px,env(safe-area-inset-right)); max-width:none; }
+  .canvas-evidence-rail {
+    box-sizing:border-box;
+    top:8px;
+    left:max(8px,env(safe-area-inset-left));
+    right:calc(max(10px,env(safe-area-inset-right)) + 50px);
+    max-width:calc(100% - max(8px,env(safe-area-inset-left)) - max(10px,env(safe-area-inset-right)) - 58px);
+  }
   .canvas-evidence-layer { min-height:30px; padding-inline:8px; }
 }
 
 @media (max-width:460px) {
-  .canvas-evidence-rail { top:8px; left:8px; right:8px; max-width:none; }
+  .canvas-evidence-rail { top:8px; left:8px; right:58px; max-width:calc(100% - 66px); }
 }
 
 /* El riel compacto no debe encoger también el área táctil. En pantallas
@@ -2217,14 +2216,23 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
     animation: diagram-trace var(--sc-motion-trace) var(--sc-ease-reveal) forwards;
   }
 
-  .diagram-layer .diagram-fill,
   .diagram-layer .diagram-jumps,
   .deformed-layer path {
     animation: diagram-settle var(--sc-motion-reveal) var(--sc-ease-reveal) both;
   }
 
-  .diagram-layer .diagram-fill { animation-delay: var(--sc-motion-bridge); }
+  /* El área NO usa `diagram-settle`. Ese fotograma termina en `opacity:1` y,
+     con `animation-fill-mode: both`, ese valor sigue aplicándose cuando la
+     animación acaba: pisaba el `.diagram-fill { opacity:.18 }` de results.css y
+     dejaba el diagrama relleno de color macizo en vez del velo translúcido que
+     deja leer el modelo por debajo. El área tiene su propio fotograma, que
+     termina exactamente en la opacidad declarada. */
+  .diagram-layer .diagram-fill {
+    animation: diagram-fill-settle var(--sc-motion-reveal) var(--sc-ease-reveal) both;
+    animation-delay: var(--sc-motion-bridge);
+  }
 }
 
 @keyframes diagram-trace { to { stroke-dashoffset: 0; } }
 @keyframes diagram-settle { from { opacity: 0; } to { opacity: 1; } }
+@keyframes diagram-fill-settle { from { opacity: 0; } to { opacity: var(--diagram-fill-opacity, .18); } }

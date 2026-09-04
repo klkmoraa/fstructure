@@ -29,11 +29,15 @@
      lista —y, al centrar contenido desbordado, la primera ficha ni siquiera
      era alcanzable. */
   .canvas-evidence-rail {
+    /* El tope se mide en `border-box`: con `content-box`, el relleno y el
+       filete (8px) se sumaban DESPUÉS del cálculo y el riel volvía a colarse
+       bajo el lanzador de capas, que es justo lo que este hueco evita. */
+    box-sizing:border-box;
     top:7px;
     left:7px;
     right:54px;
     width:max-content;
-    max-width:calc(100% - 61px);
+    max-width:calc(100% - 68px);
     min-height:42px;
     gap:3px;
     padding:3px;
@@ -176,6 +180,13 @@
 }
 
 @media (max-width:420px) {
-  .canvas-evidence-layer { padding-inline:8px; font-size:10px; }
+  /* Las cinco capas de evidencia más ACM tienen que caber ENTERAS en un
+     teléfono estándar. Con 8px de relleno la fila medía 340 sobre 320 de hueco
+     y «Axial» se leía «xial»: un nombre a medias no es una etiqueta corta, es
+     una etiqueta rota. Apretar el relleno y recuperar seis píxeles del hueco
+     junto al lanzador de capas devuelve los seis nombres completos a 390px.
+     Por debajo de eso el riel sigue desplazándose, que es su salida honesta. */
+  .canvas-evidence-rail { max-width:calc(100% - 62px); }
+  .canvas-evidence-layer { padding-inline:6px; font-size:10px; }
   .canvas-result-legend { width:min(188px,calc(100% - 66px)); }
 }
