@@ -5,12 +5,14 @@
   "description": "Aplicación experimental de modelado y análisis estructural 2D de FusionStructure.",
   "type": "module",
   "scripts": {
+    "architecture:check": "node scripts/check-local-foundation-dependencies.mjs",
+    "architecture:test": "node --test scripts/check-local-foundation-dependencies.test.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "check": "npm run lint && npm run typecheck && npm run architecture:check && npm run architecture:test && npm run test && npm run build",
     "test": "vitest run --maxWorkers=1 --pool=threads --no-file-parallelism"
   },
   "dependencies": {

@@ -57,6 +57,12 @@ Una feature nueva debe declarar qué entidad del proyecto modifica, qué validac
 - Preferir formatos abiertos y adaptadores aislados.
 - Evitar que la interfaz sea la única fuente de reglas de negocio.
 
+## Foundation local
+
+- `src/foundation` es propiedad local y exclusiva de este repositorio: aquí viven las unidades, el álgebra lineal, los tipos numéricos y sus pruebas.
+- No agregar `@fusionstructure/foundation` ni imports o dependencias hacia productos hermanos, incluidos sus subpaths internos. Los consumidores de este producto usan las fuentes locales de `src/foundation`.
+- Un cambio local de Foundation requiere únicamente las puertas, pruebas y Pull Request de este repositorio. No requiere una publicación, prueba o PR coordinados en un producto hermano.
+
 ## Flujo de cierre
 
 El usuario autorizó actualizar el repositorio en esta sesión. Para cambios posteriores, no hacer push ni abrir un Pull Request salvo que se solicite explícitamente en esa sesión.
