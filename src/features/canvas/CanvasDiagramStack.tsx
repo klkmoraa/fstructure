@@ -3,6 +3,7 @@ import type { AnalysisResult, NodeModel, ProjectModel } from '../../types';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { segmentBezierControls } from '../../engine/diagram';
 import { memberAxis } from '../../graphics/structureGeometry';
+import { canvasSafeInsetsFor } from './canvasChromeGeometry';
 import { formatFixed } from '../../utils/numberFormat';
 import { STACK_QUANTITIES, STACK_SYMBOLS, type StackQuantity } from './diagramStack';
 
@@ -46,32 +47,61 @@ const stackCells = (bounds: Bounds, size: DiagramSize, quantities: readonly Stac
   const compact = isCompactViewport(size);
   const outerX = compact ? 12 : 30;
   const outerRight = compact ? 12 : 178;
-  // La esquina inferior del lienzo aloja la cámara, el lanzador flotante y la
-  // lectura de coordenadas: la lámina se apoya ENCIMA de esa franja. En móvil
-  // ese cromo es más alto, así que la franja reservada también lo es.
-  const bottom = compact ? 74 : 30;
+  const lanes = quantities.length;
   const gap = compact ? 6 : 18;
   // ACM se lee como en los ejemplos resueltos: un diagrama estructural completo
   // debajo de otro. El pórtico ancho reparte sus tres copias a lo ancho.
   const aspect = (bounds.maxX - bounds.minX) / Math.max(1e-9, bounds.maxY - bounds.minY);
-  if (!compact && aspect < 1.8) {
-    const height = Math.max(210, Math.min(380, size.height * .44));
-    const width = Math.max(1, (size.width - outerX - outerRight - gap * (quantities.length - 1)) / quantities.length);
-    const y = size.height - bottom - height;
+  if (!compact) {
+    const bottom = 30;
+    if (aspect < 1.8) {
+      const height = Math.max(210, Math.min(380, size.height * .44));
+      const width = Math.max(1, (size.width - outerX - outerRight - gap * (lanes - 1)) / lanes);
+      const y = size.height - bottom - height;
+      return {
+        cells: quantities.map((quantity, index) => ({ quantity, x: outerX + index * (width + gap), y, width, height })),
+        bottomReserve: height + bottom + 44,
+      };
+    }
+    const height = Math.max(112, Math.min(210, (size.height * .58 - gap * (lanes - 1)) / lanes));
+    const total = lanes * height + (lanes - 1) * gap;
     return {
-      cells: quantities.map((quantity, index) => ({ quantity, x: outerX + index * (width + gap), y, width, height })),
-      bottomReserve: height + bottom + 44,
+      cells: quantities.map((quantity, index) => ({ quantity, x: outerX, y: size.height - bottom - total + index * (height + gap), width: size.width - outerX - outerRight, height })),
+      bottomReserve: total + bottom + 44,
     };
   }
-  const height = Math.max(
-    compact ? 52 : 112,
-    Math.min(compact ? 96 : 210, (size.height * (compact ? .48 : .58) - gap * (quantities.length - 1)) / quantities.length),
+
+  /*
+   * La lámina compacta se dimensiona CONTRA lo que le queda al modelo, no
+   * contra la altura total del lienzo.
+   *
+   * Con un alto fijo de carril y una franja inferior fija, un lienzo bajo y
+   * ancho —un teléfono en horizontal, 844×390— se lo comía todo: la reserva
+   * salía 273px y, con los 116px de inset superior que declara
+   * `canvasSafeInsetsFor`, al modelo le quedaba menos de un píxel.
+   * `cameraToFitBounds` recorta ese rectángulo a 1px y conserva su escala
+   * mínima, así que el modelo se dibujaba ENCIMA de la lámina en lugar de
+   * arriba de ella: exactamente la ventana que este cambio venía a eliminar.
+   *
+   * Ahora la banda del modelo se aparta primero y los carriles se reparten lo
+   * que sobra. Los 24px de suelo son la última parada: por debajo de eso un
+   * diagrama ya no dice nada, y preferimos ceder banda que dibujar carriles
+   * invisibles.
+   */
+  const bottom = Math.min(74, Math.max(34, size.height * .16));
+  const tail = 12;
+  const modelBand = Math.max(56, Math.min(92, size.height * .24));
+  const room = Math.max(0, size.height - canvasSafeInsetsFor(size).top - modelBand - bottom - tail);
+  const height = Math.min(
+    96,
+    (size.height * .48 - gap * (lanes - 1)) / lanes,
+    Math.max(24, (room - gap * (lanes - 1)) / lanes),
   );
-  const total = quantities.length * height + Math.max(0, quantities.length - 1) * gap;
+  const total = lanes * height + (lanes - 1) * gap;
   const y = size.height - bottom - total;
   return {
     cells: quantities.map((quantity, index) => ({ quantity, x: outerX, y: y + index * (height + gap), width: size.width - outerX - outerRight, height })),
-    bottomReserve: total + bottom + (compact ? 12 : 44),
+    bottomReserve: total + bottom + tail,
   };
 };
 
