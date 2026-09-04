@@ -1,6 +1,7 @@
 # FStructure
 
-Aplicación y motor estructural 2D de FusionStructure. El proyecto conserva el
+Aplicación y motor estructural 2D de FusionStructure. La aplicación se publica
+en https://klkmoraa.github.io/fstructure/. El proyecto conserva el
 modelo, comandos, análisis, educación, exportaciones y persistencia propios de
 la superficie planar; Space 3D vive en un repositorio hermano.
 
