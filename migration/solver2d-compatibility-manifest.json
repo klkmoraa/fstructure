@@ -31,10 +31,11 @@
     { "id": "influence", "status": "unsupported", "capability": "influence", "oracle": "none" }
   ],
   "artifacts": [
-    { "path": "src/engine/solver2dCorpus.ts", "digestAlgorithm": "sha256", "sha256": "6450c7e8eeaac659f638954c30525f3bde53e1bdd37c0115361a438d556e3445", "role": "canonical inputs, expected outputs, oracle provenance" },
-    { "path": "src/engine/canonicalResult.ts", "digestAlgorithm": "sha256", "sha256": "5dac397d6498119efb2f5f41735154effc0a4257dca62f2e1ff99de302cb9ad1", "role": "deterministic result serializer" },
-    { "path": "src/engine/solver2dCorpus.test.ts", "digestAlgorithm": "sha256", "sha256": "d3c919650f959a6810336a6e2c4e5a3b90f3afe956f46f667abfeda5d4a4be46", "role": "executable compatibility and mutation-sensitivity tests" },
-    { "path": "src/engine/canonicalResult.test.ts", "digestAlgorithm": "sha256", "sha256": "8e2ae66522acd88a8a253d670888476416d296a7ca5cbc0842775abd8b741113", "role": "serializer TDD contract" }
+    { "path": "src/engine/solver2dCorpus.ts", "digestAlgorithm": "sha256-eol-lf-normalized-bytes-v1", "sha256": "6450c7e8eeaac659f638954c30525f3bde53e1bdd37c0115361a438d556e3445", "role": "canonical inputs, expected outputs, oracle provenance" },
+    { "path": "src/engine/canonicalResult.ts", "digestAlgorithm": "sha256-eol-lf-normalized-bytes-v1", "sha256": "5dac397d6498119efb2f5f41735154effc0a4257dca62f2e1ff99de302cb9ad1", "role": "deterministic result serializer" },
+    { "path": "src/engine/solver2dCorpus.test.ts", "digestAlgorithm": "sha256-eol-lf-normalized-bytes-v1", "sha256": "6511ad85ae208a4eeff4c8952a28793e6ae06d44713b80407eefdb928fba7cdf", "role": "executable compatibility and mutation-sensitivity tests" },
+    { "path": "src/engine/canonicalResult.test.ts", "digestAlgorithm": "sha256-eol-lf-normalized-bytes-v1", "sha256": "8e2ae66522acd88a8a253d670888476416d296a7ca5cbc0842775abd8b741113", "role": "serializer TDD contract" },
+    { "path": "src/compatibilityArtifactDigest.ts", "digestAlgorithm": "sha256-eol-lf-normalized-bytes-v1", "sha256": "94c1748742153fc5f76dc56fa8c38e09fb4f32a06aca3b5038aa2a8e9072fd10", "role": "canonical byte-level end-of-line digest verifier" }
   ],
   "claims": {
     "maturity": "experimental",
