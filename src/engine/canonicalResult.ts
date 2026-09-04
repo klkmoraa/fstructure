@@ -11,13 +11,15 @@ const normalizeNumber = (value: number): number | string => {
   return Number(value.toPrecision(12));
 };
 
+const compareCodeUnits = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0;
+
 const canonicalize = (value: unknown): unknown => {
   if (typeof value === 'number') return normalizeNumber(value);
   if (Array.isArray(value)) return value.map(canonicalize);
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value)
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => compareCodeUnits(left, right))
         .map(([key, entry]) => [key, canonicalize(entry)]),
     );
   }
@@ -35,10 +37,18 @@ export const serializeCanonicalResult = (result: AnalysisResult): string => {
     engineId: 'fusionstructure-2d',
     algorithmId: result.pDelta ? P_DELTA_ALGORITHM : LINEAR_STATIC_ALGORITHM,
     success: result.success,
-    issues: [...result.issues].sort((left, right) => left.id.localeCompare(right.id)),
-    displacements: result.displacements,
-    nodeResults: [...result.nodeResults].sort((left, right) => left.nodeId.localeCompare(right.nodeId)),
-    memberResults: [...result.memberResults].sort((left, right) => left.memberId.localeCompare(right.memberId)),
+    issues: [...result.issues].sort((left, right) => compareCodeUnits(left.id, right.id)),
+    // The raw solver vector follows mutable project-node order. Stable node
+    // records are the canonical source of displacement values for interchange.
+    displacements: [...result.nodeResults]
+      .sort((left, right) => compareCodeUnits(left.nodeId, right.nodeId))
+      .flatMap((node) => [
+        { nodeId: node.nodeId, component: 'ux', value: node.ux },
+        { nodeId: node.nodeId, component: 'uy', value: node.uy },
+        { nodeId: node.nodeId, component: 'rz', value: node.rz },
+      ]),
+    nodeResults: [...result.nodeResults].sort((left, right) => compareCodeUnits(left.nodeId, right.nodeId)),
+    memberResults: [...result.memberResults].sort((left, right) => compareCodeUnits(left.memberId, right.memberId)),
     equilibrium: result.equilibrium,
     residualNorm: result.residualNorm,
     constraintResidual: result.constraintResidual,

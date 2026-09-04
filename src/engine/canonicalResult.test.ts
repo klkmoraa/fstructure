@@ -35,4 +35,29 @@ describe('canonical 2D result serializer', () => {
     expect(first).not.toContain('-0');
     expect(first).toContain('"ux":0');
   });
+
+  it('does not depend on the input node order for the displacement payload', () => {
+    const first = result({
+      displacements: [1, 2, 3, 4, 5, 6],
+      nodeResults: [
+        { nodeId: 'N2', ux: 4, uy: 5, rz: 6, rx: 0, ry: 0, rm: 0 },
+        { nodeId: 'N1', ux: 1, uy: 2, rz: 3, rx: 0, ry: 0, rm: 0 },
+      ],
+    });
+    const second = result({
+      displacements: [4, 5, 6, 1, 2, 3],
+      nodeResults: [...first.nodeResults].reverse(),
+    });
+
+    expect(serializeCanonicalResult(first)).toBe(serializeCanonicalResult(second));
+  });
+
+  it('uses a locale-independent order for non-ASCII stable IDs', () => {
+    const first = result({ nodeResults: [
+      { nodeId: 'ä', ux: 1, uy: 0, rz: 0, rx: 0, ry: 0, rm: 0 },
+      { nodeId: 'z', ux: 2, uy: 0, rz: 0, rx: 0, ry: 0, rm: 0 },
+    ] });
+    const second = result({ nodeResults: [...first.nodeResults].reverse() });
+    expect(serializeCanonicalResult(first)).toBe(serializeCanonicalResult(second));
+  });
 });

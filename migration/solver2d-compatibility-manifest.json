@@ -31,10 +31,10 @@
     { "id": "influence", "status": "unsupported", "capability": "influence", "oracle": "none" }
   ],
   "artifacts": [
-    { "path": "src/engine/solver2dCorpus.ts", "digestAlgorithm": "sha256", "sha256": "afc08c118509a95a994a62f88c0e2a83084eb0ff89d8080b33ca9749c5a5bdb6", "role": "canonical inputs, expected outputs, oracle provenance" },
-    { "path": "src/engine/canonicalResult.ts", "digestAlgorithm": "sha256", "sha256": "070d520413755d0a172697d8a12722516b07988ddb095adbaad7110f0f98013c", "role": "deterministic result serializer" },
-    { "path": "src/engine/solver2dCorpus.test.ts", "digestAlgorithm": "sha256", "sha256": "bf62b60a356ba767d4eaa91b1f80085be49b10198657fa1b15d2487d0fe7c2d6", "role": "executable compatibility and mutation-sensitivity tests" },
-    { "path": "src/engine/canonicalResult.test.ts", "digestAlgorithm": "sha256", "sha256": "a0169544035937b9d1741c9952471bc471a7ac246519c4b06d62e8b7f2f80b64", "role": "serializer TDD contract" }
+    { "path": "src/engine/solver2dCorpus.ts", "digestAlgorithm": "sha256", "sha256": "bcfb56153bffe454fa712d9748fa2e09ad384edbaec2e75e458dbb62fd3c88b8", "role": "canonical inputs, expected outputs, oracle provenance" },
+    { "path": "src/engine/canonicalResult.ts", "digestAlgorithm": "sha256", "sha256": "4027d47bb6441a3c99897c718566ae9c0a432b8092c12d7a077a11919d39c681", "role": "deterministic result serializer" },
+    { "path": "src/engine/solver2dCorpus.test.ts", "digestAlgorithm": "sha256", "sha256": "e35bf96bc8eb34990738598a56806a1c8ddb56b1f918e85da2f84d5c4a50799e", "role": "executable compatibility and mutation-sensitivity tests" },
+    { "path": "src/engine/canonicalResult.test.ts", "digestAlgorithm": "sha256", "sha256": "bd0ee33d1c67a99192067b2dac866cc2f5b7f449be0937bc698d48bd2eb0aedc", "role": "serializer TDD contract" }
   ],
   "claims": {
     "maturity": "experimental",

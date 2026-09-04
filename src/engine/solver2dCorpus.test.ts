@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 
 import { analyzeProject } from './solver';
 import { analyzeProjectPDelta } from './pDelta';
-import { readCorpusAssertion, availableSolver2dCorpus, resolveCorpusProject, unsupportedSolver2dCapabilities, solver2dCorpus } from './solver2dCorpus';
+import { readCorpusAssertion, availableSolver2dCorpus, resolveCorpusProject, unsupportedSolver2dCapabilities, solver2dCorpus, evaluateCorpusInvariant } from './solver2dCorpus';
 import { serializeCanonicalResult } from './canonicalResult';
 
 const closeEnough = (actual: number, expected: number, atol: number, rtol: number): boolean => Math.abs(actual - expected) <= atol + rtol * Math.max(Math.abs(actual), Math.abs(expected));
@@ -27,7 +27,9 @@ describe('direct 2D numerical compatibility corpus', () => {
     expect(availableSolver2dCorpus.length).toBeGreaterThanOrEqual(12);
     for (const fixture of availableSolver2dCorpus) {
       const project = resolveCorpusProject(fixture);
-      const result = fixture.id === 'p-delta' ? analyzeProjectPDelta(project, undefined, { maxLoadSteps: 16, maxIterationsPerStep: 40 }) : analyzeProject(project, fixture.id === 'load-combination' ? project.combinations[0] : undefined, { includeEducationTrace: false });
+      const combination = fixture.id === 'load-combination' ? project.combinations[0] : undefined;
+      const result = fixture.id === 'p-delta' ? analyzeProjectPDelta(project, undefined, { maxLoadSteps: 16, maxIterationsPerStep: 40 }) : analyzeProject(project, combination, { includeEducationTrace: false });
+      for (const expected of fixture.assertions) expect(expected.nearZeroTolerance, `${fixture.id}/${expected.id} near-zero tolerance`).toBeGreaterThan(0);
       for (const expected of fixture.assertions) {
         if (!result.success && expected.target.kind !== 'analysis') continue;
         const actual = readCorpusAssertion(result, expected.target);
@@ -35,6 +37,10 @@ describe('direct 2D numerical compatibility corpus', () => {
         else expect(closeEnough(actual as number, expected.expected, expected.atol, expected.rtol), `${fixture.id}/${expected.id}: ${actual} vs ${expected.expected}`).toBe(true);
       }
       expect(fixture.invariants.length, `${fixture.id} must declare invariants`).toBeGreaterThan(0);
+      for (const invariant of fixture.invariants) {
+        const valid = evaluateCorpusInvariant(project, result, invariant, combination);
+        expect(valid, `${fixture.id}/${invariant.id}`).toBe(true);
+      }
       if (fixture.id !== 'mechanism-singularity') {
         // The P-Delta result intentionally keeps first-order global diagram
         // closure informational; its frozen tangent solve has its own residual.
