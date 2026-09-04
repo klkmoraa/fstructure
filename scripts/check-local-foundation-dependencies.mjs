@@ -8,6 +8,7 @@ export const ARCHIVED_FOUNDATION_PACKAGE = '@fusionstructure/foundation';
 const FUSIONSTRUCTURE_PACKAGE_PREFIX = '@fusionstructure/';
 const SIBLING_PRODUCT_DIRECTORIES = new Set([
   'foundation',
+  'fusionstructure-foundation',
   'fstructure-space3d',
   'space3d',
   'fusionstructure-web',

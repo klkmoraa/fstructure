@@ -119,6 +119,26 @@ test('rejects file and workspace references to sibling repository directories', 
   }
 });
 
+for (const reference of [
+  'file:../fusionstructure-foundation',
+  'workspace:../fusionstructure-foundation',
+  'npm:fusionstructure-foundation@^0.1.0',
+]) {
+  test(`rejects the archived Foundation repository name through ${reference}`, () => {
+    const root = createProject({
+      dependencies: { 'local-foundation': reference },
+      files: { 'src/local.ts': 'export const local = true;\n' },
+    });
+
+    const result = runGate(root);
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /package\.json#dependencies/);
+    assert.match(result.stderr, /local-foundation/);
+    assert.match(result.stderr, new RegExp(reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  });
+}
+
 test('rejects npm aliases to unscoped sibling product package names', () => {
   const references = [
     'npm:foundation@^0.1.0',
