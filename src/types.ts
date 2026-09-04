@@ -1,7 +1,15 @@
 import type { UnitSystemId } from './foundation/units';
+import type { LinearSolverDiagnostics } from './foundation/linearAlgebra';
 
 /** @deprecated Import neutral unit types directly from `foundation/units`. */
 export type { BuiltInUnitSystemId, UnitSystemId } from './foundation/units';
+/** @deprecated Import neutral numerical types directly from `foundation/linearAlgebra`. */
+export type {
+  LinearSolverBackend,
+  LinearSolverDiagnostics,
+  LinearSolverFallbackReason,
+  LinearSolverPolicy,
+} from './foundation/linearAlgebra';
 
 export type ThemeMode = 'light' | 'dark';
 export type Tool =
@@ -610,26 +618,6 @@ export interface ResultReliability {
 
 /** Public presentation state for numerical quality; it is not a safety rating. */
 export type NumericQualityState = 'stable' | 'limited' | 'unreliable' | 'failed' | 'unavailable';
-
-/** Backend policy for one complete analysis run. `auto` retains the hybrid solver gates. */
-export type LinearSolverPolicy = 'auto' | 'dense';
-export type LinearSolverBackend = 'dense-lu' | 'sparse-ldlt';
-export type LinearSolverFallbackReason =
-  | 'forced-dense'
-  | 'below-size-threshold'
-  | 'constraints-not-reducible'
-  | 'reduced-system-below-threshold'
-  | 'excessive-fill'
-  | 'non-positive-pivot';
-
-/** Additive trace of the actual linear backend used; never changes structural values. */
-export interface LinearSolverDiagnostics {
-  policy: LinearSolverPolicy;
-  backend: LinearSolverBackend;
-  fallbackReason?: LinearSolverFallbackReason;
-  dimension: number;
-  reducedDimension?: number;
-}
 
 /** Advanced load-stepping/iteration limits for the P-Delta solver; every field has a project-independent default. */
 export interface PDeltaConfig {

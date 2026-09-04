@@ -1,5 +1,5 @@
 /** Operaciones lineales para problemas de autovalores simétricos restringidos. */
-import { multiply, multiplyMatrixVector, transpose, zeros, type Matrix } from './math';
+import { multiply, multiplyMatrixVector, transpose, zeros, type Matrix } from '../foundation/linearAlgebra';
 
 const EPS = 1e-12;
 

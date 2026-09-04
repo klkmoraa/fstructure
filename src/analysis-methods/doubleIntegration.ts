@@ -20,7 +20,7 @@
  * opinion, it would be a bug, and `doubleIntegration.test.ts` fails when the gap opens.
  */
 import { analyzeProject } from '../engine/solver';
-import { solveLinearSystem } from '../engine/math';
+import { solveLinearSystem } from '../foundation/linearAlgebra';
 import type { AnalysisResult, LoadCombination, NodeModel, ProjectModel, SupportDefinition } from '../types';
 import { add, evaluate, integrate, scale, type Polynomial } from './polynomialAlgebra';
 import { buildBeamAxis, type BeamAxis } from './beamAxis';

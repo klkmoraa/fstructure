@@ -1,6 +1,6 @@
 import type { AnalysisResult, DiagramQuantity, MemberModel, ProjectModel, ReliabilityLevel } from '../types';
 import { evaluateDiagramAt, evaluatePolynomial, rootsInInterval } from './diagram';
-import { solveLinearSystem } from './math';
+import { solveLinearSystem } from '../foundation/linearAlgebra';
 import { isTrustedForCombination, resolveReliability, worstLevel } from './reliability';
 import { analyzeProject } from './solver';
 

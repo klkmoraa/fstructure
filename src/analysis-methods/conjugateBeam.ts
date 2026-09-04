@@ -21,7 +21,7 @@
  * is then checked against the solver's own slope and deflection at every point it reports, and
  * `conjugateBeam.test.ts` fails the moment that check opens a gap.
  */
-import { solveLinearSystem } from '../engine/math';
+import { solveLinearSystem } from '../foundation/linearAlgebra';
 import type { AnalysisResult, LoadCombination, ProjectModel, SupportDefinition } from '../types';
 import { evaluate, integrate, scale, type Polynomial } from './polynomialAlgebra';
 import { buildBeamAxis, type BeamAxis } from './beamAxis';

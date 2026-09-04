@@ -21,7 +21,7 @@
  * it would be a bug, and `castiglianoTruss.test.ts` fails when the gap opens.
  */
 import { analyzeProject } from '../engine/solver';
-import { solveLinearSystem } from '../engine/math';
+import { solveLinearSystem } from '../foundation/linearAlgebra';
 import type { AnalysisResult, LoadCombination, NodeModel, ProjectModel, SupportDefinition } from '../types';
 import { classifyStructure, type StructureClassification } from './structureClassification';
 import { axialForceOf, freeComponents, memberLength, type DisplacementComponent } from './virtualWork';

@@ -6,7 +6,7 @@
  * mismas restricciones del análisis autoritativo.
  */
 import type { MemberModel } from '../types';
-import { addToMatrix, multiply, transpose, zeros, type Matrix } from './math';
+import { addToMatrix, multiply, transpose, zeros, type Matrix } from '../foundation/linearAlgebra';
 import type { EigenAssembly } from './eigenAssembly';
 
 /** kg -> Mg. Con rigidez en kN/m, kN/m / Mg produce rad²/s². */

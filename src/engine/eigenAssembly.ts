@@ -1,6 +1,6 @@
 /** Ensamblaje común para modos propios; reutiliza las reglas cinemáticas del solver. */
 import type { MemberModel, NodalMass, NodeModel, ProjectModel } from '../types';
-import { addToMatrix, multiply, transpose, zeros, type Matrix } from './math';
+import { addToMatrix, multiply, transpose, zeros, type Matrix } from '../foundation/linearAlgebra';
 import {
   assembleKinematicConstraints, condenseConnections, deformableGeometryOf, frameLocalStiffness,
   foundationLocalStiffness, geometricStiffness, getNodeMap, rigidOffsetTransform, trussLocalStiffness, assembleNodeLink, linearizeNodeLink, type ConstraintDefinition,

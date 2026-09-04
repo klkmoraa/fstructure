@@ -6,7 +6,6 @@ import type {
   GlobalResultant,
   LoadAudit,
   LoadCombination,
-  LinearSolverPolicy,
   MemberLoad,
   MemberModel,
   MemberResult,
@@ -17,6 +16,7 @@ import type {
   ProjectModel,
   ValidationIssue,
 } from '../types';
+import type { LinearSolverPolicy } from '../foundation/linearAlgebra';
 import { memberInteriorRatioAtPoint, nodeHasStructuralActivity } from '../data/modelOperations';
 import { withResolvedGeneratedLoads } from './generatedLoads';
 import { abortedAnalysis } from './analysisFailure';
@@ -29,6 +29,7 @@ import { compareGeneralizedLoads, integrateIndependentMemberSourceLoads } from '
 import { profileEnd, profileStart } from './performanceProfiler';
 import { classifyAnalysisReliability } from './reliability';
 import {
+  LinearAlgebraError,
   addToMatrix,
   addToVector,
   findNullSpaceVector,
@@ -41,7 +42,7 @@ import {
   transpose,
   zeros,
   type Matrix,
-} from './math';
+} from '../foundation/linearAlgebra';
 
 export interface Geometry {
   L: number;
@@ -2452,10 +2453,21 @@ export const analyzeProject = (
     profileEnd('auditAndReliability', reliabilityStart);
     return { ...analysis, reliability };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido durante el análisis.';
-    const singular = message.toLowerCase().includes('singular') || message.toLowerCase().includes('mecanismo');
+    const numericalError = error instanceof LinearAlgebraError ? error : undefined;
+    const message = numericalError?.code === 'dimension-mismatch'
+      ? 'Dimensiones incompatibles en multiplicación de matrices.'
+      : numericalError?.code === 'non-square-system'
+        ? 'El sistema lineal no es cuadrado.'
+        : numericalError?.code === 'non-finite-value'
+          ? 'El sistema lineal contiene valores no finitos.'
+          : numericalError?.code === 'singular'
+            ? `La matriz es singular o existe un mecanismo estructural cerca del grado de libertad ${(numericalError.pivotIndex ?? 0) + 1}.`
+            : error instanceof Error ? error.message : 'Error desconocido durante el análisis.';
+    const singular = numericalError?.code === 'singular'
+      || message.toLowerCase().includes('singular')
+      || message.toLowerCase().includes('mecanismo');
     const pivotMatch = message.match(/grado de libertad\s+(\d+)/i);
-    const candidateIndex = pivotMatch ? Number(pivotMatch[1]) - 1 : -1;
+    const candidateIndex = numericalError?.pivotIndex ?? (pivotMatch ? Number(pivotMatch[1]) - 1 : -1);
     const candidateNode = candidateIndex >= 0 && candidateIndex < project.nodes.length * 3
       ? project.nodes[Math.floor(candidateIndex / 3)]
       : undefined;

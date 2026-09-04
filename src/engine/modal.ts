@@ -3,7 +3,7 @@ import type { ProjectModel, ValidationIssue } from '../types';
 import { constraintNullSpaceBasis, expandFromBasis, generalizedSmallestEigenpairs, projectOntoBasis } from './eigen';
 import { assembleForEigen } from './eigenAssembly';
 import { assembleMass, type MassFormulation } from './mass';
-import { multiplyMatrixVector, type Matrix } from './math';
+import { multiplyMatrixVector, type Matrix } from '../foundation/linearAlgebra';
 
 export interface ModeShapeNode { nodeId: string; ux: number; uy: number; rz: number }
 export interface VibrationMode {

@@ -19,7 +19,7 @@
  * `methodOfJoints.test.ts` fails when the gap opens.
  */
 import { selectedFactors } from '../engine/solver';
-import { solveLinearSystem } from '../engine/math';
+import { solveLinearSystem } from '../foundation/linearAlgebra';
 import type { AnalysisResult, LoadCombination, NodeModel, ProjectModel } from '../types';
 import { classifyStructure, type StructureClassification } from './structureClassification';
 import { axialForceOf, memberLength } from './virtualWork';
