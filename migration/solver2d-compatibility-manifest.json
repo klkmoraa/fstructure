@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "corpusId": "fusionstructure-direct-2d/v1",
+  "units": "kN-m",
+  "canonicalSerializer": {
+    "schema": "fusionstructure-2d-result/v1",
+    "engineId": "fusionstructure-2d",
+    "numericNormalization": "finite numbers rounded to 12 significant digits; absolute values <= 1e-12 become 0; non-finite values are strings",
+    "ordering": "issues by id, nodes by nodeId, members by memberId, object keys lexicographically"
+  },
+  "caseCount": 17,
+  "availableCaseCount": 14,
+  "unsupportedCaseCount": 3,
+  "cases": [
+    { "id": "axial-bar", "status": "available", "capability": "axial", "oracle": "closed-form" },
+    { "id": "simply-supported-point", "status": "available", "capability": "simply supported beam point load", "oracle": "closed-form" },
+    { "id": "simply-supported-udl", "status": "available", "capability": "distributed load", "oracle": "closed-form" },
+    { "id": "cantilever-point", "status": "available", "capability": "cantilever", "oracle": "closed-form" },
+    { "id": "cantilever-udl", "status": "available", "capability": "cantilever distributed load", "oracle": "closed-form" },
+    { "id": "sway-frame", "status": "available", "capability": "sway frame", "oracle": "symmetry and equilibrium" },
+    { "id": "triangular-truss", "status": "available", "capability": "truss", "oracle": "method of joints" },
+    { "id": "end-release", "status": "available", "capability": "release", "oracle": "closed-form" },
+    { "id": "spring-supported-bar", "status": "available", "capability": "spring", "oracle": "closed-form" },
+    { "id": "imposed-displacement", "status": "available", "capability": "imposed action", "oracle": "closed-form" },
+    { "id": "thermal-restraint", "status": "available", "capability": "thermal action", "oracle": "closed-form" },
+    { "id": "mechanism-singularity", "status": "available", "capability": "mechanism/singularity", "oracle": "independent stability check" },
+    { "id": "p-delta", "status": "available", "capability": "P-Delta", "oracle": "first-order sanity check and equilibrium" },
+    { "id": "load-combination", "status": "available", "capability": "load combinations", "oracle": "superposition" },
+    { "id": "buckling", "status": "unsupported", "capability": "buckling", "oracle": "none" },
+    { "id": "modal", "status": "unsupported", "capability": "modal", "oracle": "none" },
+    { "id": "influence", "status": "unsupported", "capability": "influence", "oracle": "none" }
+  ],
+  "artifacts": [
+    { "path": "src/engine/solver2dCorpus.ts", "digestAlgorithm": "sha256", "sha256": "afc08c118509a95a994a62f88c0e2a83084eb0ff89d8080b33ca9749c5a5bdb6", "role": "canonical inputs, expected outputs, oracle provenance" },
+    { "path": "src/engine/canonicalResult.ts", "digestAlgorithm": "sha256", "sha256": "070d520413755d0a172697d8a12722516b07988ddb095adbaad7110f0f98013c", "role": "deterministic result serializer" },
+    { "path": "src/engine/solver2dCorpus.test.ts", "digestAlgorithm": "sha256", "sha256": "bf62b60a356ba767d4eaa91b1f80085be49b10198657fa1b15d2487d0fe7c2d6", "role": "executable compatibility and mutation-sensitivity tests" },
+    { "path": "src/engine/canonicalResult.test.ts", "digestAlgorithm": "sha256", "sha256": "a0169544035937b9d1741c9952471bc471a7ac246519c4b06d62e8b7f2f80b64", "role": "serializer TDD contract" }
+  ],
+  "claims": {
+    "maturity": "experimental",
+    "normativeOrCertificationClaim": false,
+    "solverAlgorithmModified": false,
+    "unsupportedCapabilitiesFaked": false
+  }
+}
