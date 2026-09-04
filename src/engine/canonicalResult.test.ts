@@ -50,6 +50,7 @@ describe('canonical 2D result serializer', () => {
     });
 
     expect(serializeCanonicalResult(first)).toBe(serializeCanonicalResult(second));
+    expect(serializeCanonicalResult(first)).toContain('"schema":"fusionstructure-2d-result/v2"');
   });
 
   it('uses a locale-independent order for non-ASCII stable IDs', () => {

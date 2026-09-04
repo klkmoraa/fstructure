@@ -3,7 +3,7 @@
   "corpusId": "fusionstructure-direct-2d/v1",
   "units": "kN-m",
   "canonicalSerializer": {
-    "schema": "fusionstructure-2d-result/v1",
+    "schema": "fusionstructure-2d-result/v2",
     "engineId": "fusionstructure-2d",
     "numericNormalization": "finite numbers rounded to 12 significant digits; absolute values <= 1e-12 become 0; non-finite values are strings",
     "ordering": "issues by id, nodes by nodeId, members by memberId, object keys lexicographically"
@@ -31,10 +31,10 @@
     { "id": "influence", "status": "unsupported", "capability": "influence", "oracle": "none" }
   ],
   "artifacts": [
-    { "path": "src/engine/solver2dCorpus.ts", "digestAlgorithm": "sha256", "sha256": "bcfb56153bffe454fa712d9748fa2e09ad384edbaec2e75e458dbb62fd3c88b8", "role": "canonical inputs, expected outputs, oracle provenance" },
-    { "path": "src/engine/canonicalResult.ts", "digestAlgorithm": "sha256", "sha256": "4027d47bb6441a3c99897c718566ae9c0a432b8092c12d7a077a11919d39c681", "role": "deterministic result serializer" },
-    { "path": "src/engine/solver2dCorpus.test.ts", "digestAlgorithm": "sha256", "sha256": "e35bf96bc8eb34990738598a56806a1c8ddb56b1f918e85da2f84d5c4a50799e", "role": "executable compatibility and mutation-sensitivity tests" },
-    { "path": "src/engine/canonicalResult.test.ts", "digestAlgorithm": "sha256", "sha256": "bd0ee33d1c67a99192067b2dac866cc2f5b7f449be0937bc698d48bd2eb0aedc", "role": "serializer TDD contract" }
+    { "path": "src/engine/solver2dCorpus.ts", "digestAlgorithm": "sha256", "sha256": "6450c7e8eeaac659f638954c30525f3bde53e1bdd37c0115361a438d556e3445", "role": "canonical inputs, expected outputs, oracle provenance" },
+    { "path": "src/engine/canonicalResult.ts", "digestAlgorithm": "sha256", "sha256": "5dac397d6498119efb2f5f41735154effc0a4257dca62f2e1ff99de302cb9ad1", "role": "deterministic result serializer" },
+    { "path": "src/engine/solver2dCorpus.test.ts", "digestAlgorithm": "sha256", "sha256": "d3c919650f959a6810336a6e2c4e5a3b90f3afe956f46f667abfeda5d4a4be46", "role": "executable compatibility and mutation-sensitivity tests" },
+    { "path": "src/engine/canonicalResult.test.ts", "digestAlgorithm": "sha256", "sha256": "8e2ae66522acd88a8a253d670888476416d296a7ca5cbc0842775abd8b741113", "role": "serializer TDD contract" }
   ],
   "claims": {
     "maturity": "experimental",

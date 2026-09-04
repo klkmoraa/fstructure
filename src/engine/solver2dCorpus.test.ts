@@ -5,10 +5,8 @@ import { resolve } from 'node:path';
 
 import { analyzeProject } from './solver';
 import { analyzeProjectPDelta } from './pDelta';
-import { readCorpusAssertion, availableSolver2dCorpus, resolveCorpusProject, unsupportedSolver2dCapabilities, solver2dCorpus, evaluateCorpusInvariant } from './solver2dCorpus';
+import { readCorpusAssertion, availableSolver2dCorpus, resolveCorpusProject, unsupportedSolver2dCapabilities, solver2dCorpus, evaluateCorpusInvariant, corpusAssertionMatches } from './solver2dCorpus';
 import { serializeCanonicalResult } from './canonicalResult';
-
-const closeEnough = (actual: number, expected: number, atol: number, rtol: number): boolean => Math.abs(actual - expected) <= atol + rtol * Math.max(Math.abs(actual), Math.abs(expected));
 
 describe('direct 2D numerical compatibility corpus', () => {
   it('keeps the post-baseline manifest and artifact digests stable', () => {
@@ -34,7 +32,7 @@ describe('direct 2D numerical compatibility corpus', () => {
         if (!result.success && expected.target.kind !== 'analysis') continue;
         const actual = readCorpusAssertion(result, expected.target);
         if (typeof expected.expected === 'boolean') expect(actual, `${fixture.id}/${expected.id}`).toBe(expected.expected);
-        else expect(closeEnough(actual as number, expected.expected, expected.atol, expected.rtol), `${fixture.id}/${expected.id}: ${actual} vs ${expected.expected}`).toBe(true);
+        else expect(corpusAssertionMatches(actual as number, expected), `${fixture.id}/${expected.id}: ${actual} vs ${expected.expected}`).toBe(true);
       }
       expect(fixture.invariants.length, `${fixture.id} must declare invariants`).toBeGreaterThan(0);
       for (const invariant of fixture.invariants) {
@@ -68,5 +66,30 @@ describe('direct 2D numerical compatibility corpus', () => {
     mutated.memberLoads[0].py = -41;
     const changed = analyzeProject(mutated, undefined, { includeEducationTrace: false });
     expect(serializeCanonicalResult(original)).not.toBe(serializeCanonicalResult(changed));
+  });
+
+  it('applies near-zero tolerance instead of merely storing it', () => {
+    const nearZero = availableSolver2dCorpus.find((item) => item.id === 'end-release')!.assertions.find((item) => item.id === 'release-j-moment')!;
+    expect(corpusAssertionMatches(5e-11, nearZero)).toBe(true);
+    expect(corpusAssertionMatches(5e-9, nearZero)).toBe(false);
+  });
+
+  it('recomputes P-Delta amplification from a public first-order solve', () => {
+    const fixture = availableSolver2dCorpus.find((item) => item.id === 'p-delta')!;
+    const project = resolveCorpusProject(fixture);
+    const result = analyzeProjectPDelta(project, undefined, { maxLoadSteps: 16, maxIterationsPerStep: 40 });
+    const reportedFactor = result.pDelta!.amplificationFactor;
+    const forged = { ...result, pDelta: { ...result.pDelta!, amplificationFactor: 0 } };
+    expect(reportedFactor).toBeGreaterThanOrEqual(1);
+    expect(evaluateCorpusInvariant(project, forged, fixture.invariants[2])).toBe(true);
+  });
+
+  it('rejects distributed loads outside the independently supported domain', () => {
+    const fixture = availableSolver2dCorpus.find((item) => item.id === 'simply-supported-udl')!;
+    const project = resolveCorpusProject(fixture);
+    const result = analyzeProject(project, undefined, { includeEducationTrace: false });
+    const mutated = resolveCorpusProject(fixture);
+    mutated.memberLoads[0].start = 0.25;
+    expect(evaluateCorpusInvariant(mutated, result, fixture.invariants[0])).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 import type { AnalysisResult } from '../types';
 
-export const CANONICAL_RESULT_SCHEMA = 'fusionstructure-2d-result/v1';
+export const CANONICAL_RESULT_SCHEMA = 'fusionstructure-2d-result/v2';
 export const LINEAR_STATIC_ALGORITHM = 'matrix-stiffness-linear-static/v1';
 export const P_DELTA_ALGORITHM = 'matrix-stiffness-p-delta/v1';
 

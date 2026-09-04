@@ -1,5 +1,6 @@
 import type { AnalysisResult, LoadCombination, MemberLoad, ProjectModel } from '../types';
 import { createDefaultSettings } from '../data/defaultProject';
+import { analyzeProject } from './solver';
 
 export type CorpusStatus = 'available' | 'unsupported';
 export type CorpusAssertionTarget =
@@ -19,7 +20,7 @@ export interface CorpusAssertion {
 }
 
 export type CorpusInvariant =
-  | { id: string; kind: 'global-equilibrium'; description: string; atol: number; rtol: number }
+  | { id: string; kind: 'global-equilibrium'; description: string; atol: number; rtol: number; supportedLoadDomain: string }
   | { id: string; kind: 'finite-displacement'; description: string }
   | { id: string; kind: 'pdelta-amplification'; description: string; minimum: number }
   | { id: string; kind: 'node-symmetry'; description: string; nodeA: string; nodeB: string; component: 'ux' | 'uy' | 'rz'; atol: number; rtol: number }
@@ -73,13 +74,13 @@ const project = (name: string, nodes: ProjectModel['nodes'], members: ProjectMod
 const frameBeam = (name: string, length: number, loads: ProjectModel['memberLoads'], release = true): ProjectModel => project(
   name,
   [{ id: 'A', x: 0, y: 0, support: { type: 'pin' } }, { id: 'B', x: length, y: 0, support: { type: 'roller', angleDeg: 90 } }],
-  [{ ...member('AB', 'A', 'B'), ...(release ? { releases: { iMoment: true, jMoment: true } } : {}) }],
+  [{ ...member('AB', 'A', 'B'), E: 200_000_000, ...(release ? { releases: { iMoment: true, jMoment: true } } : {}) }],
   { memberLoads: loads },
 );
 
 const assertion = (id: string, target: CorpusAssertionTarget, expected: number | boolean, atol = 1e-8, rtol = 2e-7, nearZeroTolerance = 1e-10): CorpusAssertion => ({ id, target, expected, atol, rtol, nearZeroTolerance });
 const baseAssumptions = ['SI base units: force kN, length m, moment kN·m, rotation rad.', 'Positive global x/y follow the model axes; positive moment is counter-clockwise.', 'Small displacement linear elastic analysis unless the case explicitly selects P-Delta.', 'E, A and I are numerical inputs; self-weight is disabled.'];
-const equilibrium = (id: string): CorpusInvariant => ({ id, kind: 'global-equilibrium', description: 'Independently recomputed external loads plus reactions must close to zero in force and moment.', atol: 1e-8, rtol: 2e-7 });
+const equilibrium = (id: string): CorpusInvariant => ({ id, kind: 'global-equilibrium', description: 'Independently recomputed external loads plus reactions must close to zero in force and moment.', atol: 1e-8, rtol: 2e-7, supportedLoadDomain: 'Nodal loads, point/moment loads, and full-span uniform distributed loads in global axes with real-length basis.' });
 
 const available = (definition: Omit<Solver2DCorpusCase, 'status' | 'build'> & { build: () => ProjectModel }): Solver2DCorpusCase => ({ ...definition, status: 'available' });
 const unsupported = (id: string, title: string, capability: string, reason: string): Solver2DCorpusCase => ({
@@ -96,9 +97,9 @@ export const solver2dCorpus: Solver2DCorpusCase[] = [
   }),
   available({
     id: 'simply-supported-point', title: 'Viga simplemente apoyada con carga puntual', capability: 'simply-supported beam point load', schemaId: 'fusionstructure-2d-corpus/v1', engineId: 'fusionstructure-2d', algorithmId: 'matrix-stiffness-linear-static/v1', units: 'kN-m', assumptions: baseAssumptions,
-    oracle: { provenance: 'Closed form simply-supported beam.', derivation: 'P=40 kN at midspan, L=8 m: RA=RB=P/2=20 kN; Mmax=PL/4=80 kN·m; v(mid)=−PL³/(48EI)=−0.0266666667 m.' },
+    oracle: { provenance: 'Closed form simply-supported beam.', derivation: 'P=40 kN at midspan, L=8 m, E=200000000 kN/m², I=8e−5 m⁴: RA=RB=P/2=20 kN; Mmax=PL/4=80 kN·m; v(mid)=−PL³/(48EI)=−0.0266666667 m.' },
     build: () => frameBeam('simply-supported-point', 8, [{ id: 'P', memberId: 'AB', caseId: 'LC1', type: 'point', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1, position: 0.5, px: 0, py: -40 }]),
-    assertions: [assertion('point-ra', { kind: 'node', nodeId: 'A', component: 'ry' }, 20), assertion('point-rb', { kind: 'node', nodeId: 'B', component: 'ry' }, 20), assertion('point-mmax', { kind: 'member', memberId: 'AB', quantity: 'moment', extreme: 'maximum' }, 80), assertion('point-midspan-deflection', { kind: 'member-deformation', memberId: 'AB', x: 4, quantity: 'v' }, -26.6666666667)], invariants: [equilibrium('point-equilibrium')],
+    assertions: [assertion('point-ra', { kind: 'node', nodeId: 'A', component: 'ry' }, 20), assertion('point-rb', { kind: 'node', component: 'ry', nodeId: 'B' }, 20), assertion('point-mmax', { kind: 'member', memberId: 'AB', quantity: 'moment', extreme: 'maximum' }, 80), assertion('point-midspan-deflection', { kind: 'member-deformation', memberId: 'AB', x: 4, quantity: 'v' }, -0.026666666667)], invariants: [equilibrium('point-equilibrium')],
   }),
   available({
     id: 'simply-supported-udl', title: 'Viga simplemente apoyada con carga distribuida', capability: 'distributed load', schemaId: 'fusionstructure-2d-corpus/v1', engineId: 'fusionstructure-2d', algorithmId: 'matrix-stiffness-linear-static/v1', units: 'kN-m', assumptions: baseAssumptions,
@@ -185,6 +186,12 @@ export const resolveCorpusProject = (item: Solver2DCorpusCase): ProjectModel => 
   return item.build();
 };
 
+export const corpusAssertionMatches = (actual: number, expected: CorpusAssertion): boolean => {
+  if (typeof expected.expected !== 'number' || !Number.isFinite(actual)) return false;
+  const tolerance = Math.abs(expected.expected) <= expected.nearZeroTolerance ? expected.nearZeroTolerance : expected.atol;
+  return Math.abs(actual - expected.expected) <= tolerance + expected.rtol * Math.max(Math.abs(actual), Math.abs(expected.expected));
+};
+
 export const readCorpusAssertion = (result: AnalysisResult, target: CorpusAssertionTarget): number | boolean => {
   if (target.kind === 'analysis') {
     if (target.field === 'success') return result.success;
@@ -247,8 +254,20 @@ export const evaluateCorpusInvariant = (project: ProjectModel, result: AnalysisR
   if (invariant.kind === 'analysis-failed') return !result.success && result.issues.some((issue) => issue.severity === 'error');
   if (invariant.kind === 'finite-displacement') return result.success && result.displacements.every(Number.isFinite);
   if (invariant.kind === 'pdelta-amplification') {
-    const amplification = result.pDelta?.amplificationFactor;
-    return result.success && amplification !== undefined && Number.isFinite(amplification) && amplification >= invariant.minimum;
+    const firstOrder = analyzeProject(project, combination, { includeEducationTrace: false, linearBackend: 'dense' });
+    if (!result.success || !firstOrder.success) return false;
+    const firstByNode = new Map(firstOrder.nodeResults.map((entry) => [entry.nodeId, entry]));
+    let amplification = 0; let counted = false;
+    for (const second of result.nodeResults) {
+      const first = firstByNode.get(second.nodeId);
+      if (!first) return false;
+      for (const component of ['ux', 'uy', 'rz'] as const) {
+        if (Math.abs(first[component]) <= 1e-12) continue;
+        amplification = Math.max(amplification, Math.abs(second[component]) / Math.abs(first[component]));
+        counted = true;
+      }
+    }
+    return counted && Number.isFinite(amplification) && amplification >= invariant.minimum;
   }
   if (invariant.kind === 'node-symmetry') {
     const first = result.nodeResults.find((entry) => entry.nodeId === invariant.nodeA)?.[invariant.component];
@@ -279,6 +298,7 @@ export const evaluateCorpusInvariant = (project: ProjectModel, result: AnalysisR
     if (!geometry) continue;
     const factor = factorFor(project, load.caseId, combination);
     const startFraction = Math.min(load.start, load.end); const endFraction = Math.max(load.start, load.end);
+    if (load.type === 'distributed' && (load.coordinateSystem !== 'global' || load.lengthBasis !== 'real' || Math.abs(load.start) > 1e-12 || Math.abs(load.end - 1) > 1e-12 || Math.abs((load.qxEnd ?? load.qxStart ?? 0) - (load.qxStart ?? 0)) > 1e-12 || Math.abs((load.qyEnd ?? load.qyStart ?? 0) - (load.qyStart ?? 0)) > 1e-12)) return false;
     if (load.type === 'point') {
       const x = load.position ?? 0.5; const [px, py, pm] = globalLoadVector(load, geometry, x);
       const gx = geometry.start.x + geometry.dx * x; const gy = geometry.start.y + geometry.dy * x;
