@@ -6,6 +6,14 @@ import * as ts from 'typescript';
 
 export const ARCHIVED_FOUNDATION_PACKAGE = '@fusionstructure/foundation';
 const FUSIONSTRUCTURE_PACKAGE_PREFIX = '@fusionstructure/';
+const SIBLING_PRODUCT_DIRECTORIES = new Set([
+  'foundation',
+  'fstructure-space3d',
+  'space3d',
+  'fusionstructure-web',
+  'web',
+]);
+const NON_LITERAL_DYNAMIC_SPECIFIER = '<non-literal dynamic module specifier>';
 const DEPENDENCY_SECTIONS = [
   'dependencies',
   'devDependencies',
@@ -26,7 +34,7 @@ const sourceFiles = (directory) => {
   });
 };
 
-const moduleSpecifier = (expression) => expression && ts.isStringLiteral(expression) ? expression.text : null;
+const moduleSpecifier = (expression) => expression && ts.isStringLiteralLike(expression) ? expression.text : null;
 
 export const dependencySpecifiersIn = (source, sourcePath = 'source.ts') => {
   const sourceFile = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -49,7 +57,7 @@ export const dependencySpecifiersIn = (source, sourcePath = 'source.ts') => {
         || (ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === 'require');
       if (isDynamicImport || isRequire) {
         const specifier = moduleSpecifier(node.arguments[0]);
-        if (specifier) specifiers.push(specifier);
+        specifiers.push(specifier ?? NON_LITERAL_DYNAMIC_SPECIFIER);
       }
     }
     ts.forEachChild(node, visit);
@@ -75,7 +83,25 @@ const packageDependencyEntries = (packageJson, section) => {
 };
 
 const isForbiddenPackageReference = (value) => typeof value === 'string'
-  && (isForbiddenFoundationDependency(value) || value.includes(FUSIONSTRUCTURE_PACKAGE_PREFIX));
+  && (isForbiddenFoundationDependency(value)
+    || value.includes(FUSIONSTRUCTURE_PACKAGE_PREFIX)
+    || isSiblingProductProtocolReference(value));
+
+const isSiblingProductProtocolReference = (value) => {
+  const separator = value.indexOf(':');
+  const protocol = value.slice(0, separator);
+  const reference = value.slice(separator + 1);
+  if (!['file', 'workspace', 'npm'].includes(protocol) || !reference) return false;
+
+  if (protocol === 'npm') {
+    const packageName = reference.startsWith('@')
+      ? reference.slice(0, reference.indexOf('@', 1) === -1 ? reference.length : reference.indexOf('@', 1))
+      : reference.split('@', 1)[0];
+    return SIBLING_PRODUCT_DIRECTORIES.has(packageName);
+  }
+
+  return reference.replaceAll('\\', '/').split('/').some((segment) => SIBLING_PRODUCT_DIRECTORIES.has(segment));
+};
 
 export const findFoundationDependencyViolations = (root) => {
   const resolvedRoot = resolve(root);
@@ -83,7 +109,9 @@ export const findFoundationDependencyViolations = (root) => {
   for (const path of sourceFiles(join(resolvedRoot, 'src'))) {
     const source = readFileSync(path, 'utf8');
     for (const specifier of dependencySpecifiersIn(source, path)) {
-      if (isForbiddenFoundationDependency(specifier) || escapesProjectRoot(resolvedRoot, path, specifier)) {
+      if (specifier === NON_LITERAL_DYNAMIC_SPECIFIER
+        || isForbiddenFoundationDependency(specifier)
+        || escapesProjectRoot(resolvedRoot, path, specifier)) {
         violations.push(`${relative(resolvedRoot, path)} -> ${specifier}`);
       }
     }

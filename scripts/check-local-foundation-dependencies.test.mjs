@@ -94,6 +94,55 @@ test('rejects archived Foundation packages hidden behind npm aliases', () => {
   assert.match(result.stderr, /@fusionstructure\/foundation/);
 });
 
+test('rejects file and workspace references to sibling repository directories', () => {
+  const references = [
+    'file:../foundation',
+    'file:C:\\products\\foundation',
+    'workspace:../fstructure-space3d',
+    'file:../space3d',
+    'workspace:../fusionstructure-web',
+    'file:../web',
+  ];
+
+  for (const reference of references) {
+    const root = createProject({
+      dependencies: { 'local-product': reference },
+      files: { 'src/local.ts': 'export const local = true;\n' },
+    });
+
+    const result = runGate(root);
+
+    assert.notEqual(result.status, 0, reference);
+    assert.match(result.stderr, /package\.json#dependencies/);
+    assert.match(result.stderr, /local-product/);
+    assert.match(result.stderr, new RegExp(reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
+test('rejects npm aliases to unscoped sibling product package names', () => {
+  const references = [
+    'npm:foundation@^0.1.0',
+    'npm:fstructure-space3d@^0.1.0',
+    'npm:space3d@^0.1.0',
+    'npm:fusionstructure-web@^0.1.0',
+    'npm:web@^0.1.0',
+  ];
+
+  for (const reference of references) {
+    const root = createProject({
+      dependencies: { 'local-product': reference },
+      files: { 'src/local.ts': 'export const local = true;\n' },
+    });
+
+    const result = runGate(root);
+
+    assert.notEqual(result.status, 0, reference);
+    assert.match(result.stderr, /package\.json#dependencies/);
+    assert.match(result.stderr, /local-product/);
+    assert.match(result.stderr, new RegExp(reference.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
 test('rejects sibling-product internal imports in production TypeScript', () => {
   const root = createProject({
     files: {
@@ -105,6 +154,34 @@ test('rejects sibling-product internal imports in production TypeScript', () => 
 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /src[\\/]consumer\.tsx/);
+  assert.match(result.stderr, /@fusionstructure\/space3d\/internal/);
+});
+
+test('rejects non-literal dynamic import and require module specifiers', () => {
+  const root = createProject({
+    files: {
+      'src/consumer.ts': "const target = '@fusionstructure/foundation';\nvoid import(target);\nrequire(target);\n",
+    },
+  });
+
+  const result = runGate(root);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /src[\\/]consumer\.ts/);
+  assert.match(result.stderr, /non-literal dynamic module specifier/);
+});
+
+test('rejects forbidden dependencies expressed with literal template specifiers', () => {
+  const root = createProject({
+    files: {
+      'src/consumer.ts': "void import(`@fusionstructure/foundation`);\nrequire(`@fusionstructure/space3d/internal`);\n",
+    },
+  });
+
+  const result = runGate(root);
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /@fusionstructure\/foundation/);
   assert.match(result.stderr, /@fusionstructure\/space3d\/internal/);
 });
 
