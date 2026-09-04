@@ -10,8 +10,8 @@ type MemberResult = AnalysisResult['memberResults'][number];
 type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
 type DiagramSize = { width: number; height: number };
 type Bounds = { minX: number; maxX: number; minY: number; maxY: number };
-type ExternalCell = { quantity: StackQuantity; x: number; y: number; width: number; height: number };
-type CanvasCell = { quantity: StackQuantity; x: number; y: number; width: number; height: number };
+type StackCell = { quantity: StackQuantity; x: number; y: number; width: number; height: number };
+/** Un lienzo estrecho o bajo dibuja la lámina con métricas propias, no con las de escritorio. */
 const isCompactViewport = (size: DiagramSize) => size.width < 700 || size.height < 600;
 
 const boundsOf = (project: ProjectModel): Bounds => {
@@ -33,57 +33,27 @@ const maximumFor = (results: readonly MemberResult[], quantity: StackQuantity): 
 );
 
 /**
- * Compact ACM uses the same viewport as the model. The top and bottom margins
- * leave the evidence rail and camera controls usable without creating a second
- * scroll shelf below the canvas.
+ * Dónde se dibuja la lámina de ACM, en TODAS las composiciones.
+ *
+ * ACM es una lámina de cálculo debajo del modelo: la estructura completa se
+ * repite para N, V y M en la parte baja del lienzo, y el modelo editable se
+ * encuadra en lo que queda arriba (`stackBottomReserve`). No hay ventana, ni
+ * pestañas, ni una máscara que apague el modelo: antes, en móvil, ACM pintaba
+ * un rectángulo opaco sobre todo el lienzo y el modelo desaparecía.
  */
-const canvasCells = (size: DiagramSize, quantities: readonly StackQuantity[]): CanvasCell[] => {
-  if (!quantities.length) return [];
+const stackCells = (bounds: Bounds, size: DiagramSize, quantities: readonly StackQuantity[]): { cells: StackCell[]; bottomReserve: number } => {
+  if (!quantities.length) return { cells: [], bottomReserve: 0 };
   const compact = isCompactViewport(size);
-  const left = compact ? 10 : 18;
-  const right = compact ? 10 : 84;
-  const top = compact ? 76 : 70;
-  const bottom = compact ? 68 : 54;
-  const gap = compact ? 6 : 10;
-  const usableWidth = Math.max(1, size.width - left - right);
-  const usableHeight = Math.max(1, size.height - top - bottom);
-
-  if (!compact && usableWidth / Math.max(1, usableHeight) > 1.7) {
-    const width = Math.max(1, (usableWidth - gap * (quantities.length - 1)) / quantities.length);
-    return quantities.map((quantity, index) => ({
-      quantity,
-      x: left + index * (width + gap),
-      y: top,
-      width,
-      height: usableHeight,
-    }));
-  }
-
-  const height = Math.max(1, (usableHeight - gap * (quantities.length - 1)) / quantities.length);
-  return quantities.map((quantity, index) => ({
-    quantity,
-    x: left,
-    y: top + index * (height + gap),
-    width: usableWidth,
-    height,
-  }));
-};
-
-const externalCells = (bounds: Bounds, size: DiagramSize, quantities: readonly StackQuantity[]): { cells: ExternalCell[]; bottomReserve: number } => {
-  const compact = isCompactViewport(size);
-  const outerX = compact ? 14 : 30;
-  const outerRight = compact ? 14 : 178;
-  // The compact canvas keeps its zoom controls at the lower-right corner.
-  // Reserve that shelf so the final M diagram stays fully readable.
-  const bottom = compact ? 96 : 30;
-  const gap = compact ? 10 : 18;
-  // ACM is read exactly as the worked examples: one complete structural
-  // diagram beneath another. A frame is repeated down the canvas for N, V and
-  // M; it is never reduced to three cards or merged into the editable model.
+  const outerX = compact ? 12 : 30;
+  const outerRight = compact ? 12 : 178;
+  // La esquina inferior del lienzo aloja la cámara, el lanzador flotante y la
+  // lectura de coordenadas: la lámina se apoya ENCIMA de esa franja. En móvil
+  // ese cromo es más alto, así que la franja reservada también lo es.
+  const bottom = compact ? 74 : 30;
+  const gap = compact ? 6 : 18;
+  // ACM se lee como en los ejemplos resueltos: un diagrama estructural completo
+  // debajo de otro. El pórtico ancho reparte sus tres copias a lo ancho.
   const aspect = (bounds.maxX - bounds.minX) / Math.max(1e-9, bounds.maxY - bounds.minY);
-  // A pórtico has a genuinely two-dimensional topology. On a wide canvas its
-  // three full-size copies use the width side-by-side (not as cards); compact
-  // canvases keep the same copies one below another so the reading survives.
   if (!compact && aspect < 1.8) {
     const height = Math.max(210, Math.min(380, size.height * .44));
     const width = Math.max(1, (size.width - outerX - outerRight - gap * (quantities.length - 1)) / quantities.length);
@@ -94,27 +64,29 @@ const externalCells = (bounds: Bounds, size: DiagramSize, quantities: readonly S
     };
   }
   const height = Math.max(
-    compact ? 74 : 112,
-    Math.min(compact ? 128 : 210, (size.height * .58 - gap * (quantities.length - 1)) / quantities.length),
+    compact ? 52 : 112,
+    Math.min(compact ? 96 : 210, (size.height * (compact ? .48 : .58) - gap * (quantities.length - 1)) / quantities.length),
   );
   const total = quantities.length * height + Math.max(0, quantities.length - 1) * gap;
   const y = size.height - bottom - total;
   return {
     cells: quantities.map((quantity, index) => ({ quantity, x: outerX, y: y + index * (height + gap), width: size.width - outerX - outerRight, height })),
-    bottomReserve: total + bottom + (compact ? 30 : 44),
+    bottomReserve: total + bottom + (compact ? 12 : 44),
   };
 };
 
-/** Reserve exterior space only for the desktop ACM sheet; compact ACM fills the canvas. */
-export const externalStackBottomReserve = (project: ProjectModel, size: DiagramSize, quantityCount: number): number => {
-  if (isCompactViewport(size)) return 0;
-  return externalCells(boundsOf(project), size, STACK_QUANTITIES.slice(0, Math.max(1, quantityCount))).bottomReserve;
-};
+/**
+ * Alto que el encuadre del modelo debe dejar libre en la parte baja del lienzo
+ * mientras ACM está activo. Vale en todas las composiciones: la lámina siempre
+ * va DEBAJO del modelo, nunca encima.
+ */
+export const stackBottomReserve = (project: ProjectModel, size: DiagramSize, quantityCount: number): number =>
+  stackCells(boundsOf(project), size, STACK_QUANTITIES.slice(0, Math.max(1, quantityCount))).bottomReserve;
 
 /**
- * ACM is a complete structural reading outside the model. Wide structures use
- * vertical bands; pórticos use one miniature structural replica per response
- * beside the others. No analytical trace is painted over the editable model.
+ * ACM es una lectura estructural completa AL LADO del modelo, nunca encima ni
+ * en lugar de él: la estructura se repite en la parte baja del lienzo para N, V
+ * y M mientras el modelo editable sigue dibujado arriba.
  */
 export const CanvasDiagramStack = memo(({
   project, results, quantities, nodeMap, size, t,
@@ -130,7 +102,7 @@ export const CanvasDiagramStack = memo(({
   const resultMap = useMemo(() => new Map(results.map((result) => [result.memberId, result])), [results]);
   const visibleQuantities = useMemo(() => STACK_QUANTITIES.filter((quantity) => quantities.includes(quantity)), [quantities]);
   const bounds = useMemo(() => boundsOf(project), [project]);
-  const cells = useMemo(() => compact ? canvasCells(size, visibleQuantities) : externalCells(bounds, size, visibleQuantities).cells, [bounds, compact, size, visibleQuantities]);
+  const cells = useMemo(() => stackCells(bounds, size, visibleQuantities).cells, [bounds, size, visibleQuantities]);
   const maxima = useMemo(() => Object.fromEntries(STACK_QUANTITIES.map((quantity) => [quantity, maximumFor(results, quantity)])) as Record<StackQuantity, number>, [results]);
   const solvedMembers = useMemo(() => project.members.flatMap((member) => {
     const result = resultMap.get(member.id);
@@ -153,15 +125,14 @@ export const CanvasDiagramStack = memo(({
     return text.includes('.') ? text.replace(/0+$/, '').replace(/\.$/, '') : text;
   };
 
-  return <g className={`diagram-stack-layer ${compact ? 'diagram-stack-layer--canvas' : 'diagram-stack-layer--external'}`} data-canvas-layer="diagram-stack" aria-label={t('canvas.evidenceStackStructure')}>
+  return <g className={`diagram-stack-layer diagram-stack-layer--sheet${compact ? ' is-compact' : ''}`} data-canvas-layer="diagram-stack" data-stack-density={compact ? 'compact' : 'wide'} aria-label={t('canvas.evidenceStackStructure')}>
     <title>{t('canvas.evidenceStackStructureDetail')}</title>
-    {compact ? <rect className="diagram-stack-canvas-mask" x="0" y="0" width={size.width} height={size.height} fill="var(--canvas-bg)" /> : null}
     {cells.map((cell) => {
       const spanX = Math.max(1e-9, bounds.maxX - bounds.minX);
       const spanY = Math.max(1e-9, bounds.maxY - bounds.minY);
-      const titleHeight = compact ? 18 : 0;
-      const paddingX = compact ? 12 : 16;
-      const paddingY = compact ? 8 : 0;
+      const titleHeight = compact ? 14 : 0;
+      const paddingX = compact ? 4 : 16;
+      const paddingY = compact ? 4 : 0;
       const topInset = compact ? 0 : 22;
       const padding = compact ? 0 : 16;
       const amplitude = compact
@@ -183,8 +154,7 @@ export const CanvasDiagramStack = memo(({
         : cell.y + topInset + amplitude + (usableHeight - contentHeight) / 2 + bounds.maxY * scale;
       const screenPoint = (node: NodeModel) => ({ x: originX + node.x * scale, y: originY - node.y * scale });
       return <g key={cell.quantity} className={`diagram-stack-panel ${cell.quantity}`} data-stack-panel={cell.quantity}>
-        {compact ? <rect className="diagram-stack-panel-surface" x={cell.x} y={cell.y} width={cell.width} height={cell.height} rx="10" /> : null}
-        <text className="diagram-stack-panel-title" x={cell.x + (compact ? 10 : 0)} y={cell.y + (compact ? 14 : 10)}>{compact ? STACK_SYMBOLS[cell.quantity] : `${STACK_SYMBOLS[cell.quantity]} · ${labelFor(cell.quantity)}`}</text>
+        <text className="diagram-stack-panel-title" x={cell.x} y={cell.y + (compact ? 11 : 10)}>{compact ? STACK_SYMBOLS[cell.quantity] : `${STACK_SYMBOLS[cell.quantity]} · ${labelFor(cell.quantity)}`}</text>
         {solvedMembers.map(({ member, result, start, end, axis }) => {
           const memberStart = screenPoint(start);
           const memberEnd = screenPoint(end);

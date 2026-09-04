@@ -3,7 +3,11 @@
 .result-cursor-marker g rect { fill:color-mix(in srgb,var(--surface) 94%,transparent); stroke:var(--border); }
 .result-cursor-marker g text { fill:var(--text); font-size:9px; font-weight:750; }
 .diagram-shape { pointer-events: none; }
-.diagram-fill { opacity: .18; stroke: none; }
+/* El velo del diagrama: el área acompaña a la curva exacta, nunca la sustituye
+   por una mancha maciza. La opacidad se declara como variable porque la
+   animación de entrada del lienzo (`diagram-fill-settle`, phase2.css) tiene que
+   terminar EN ella y no en 1. */
+.diagram-fill { --diagram-fill-opacity: .18; opacity: var(--diagram-fill-opacity); stroke: none; }
 .diagram-line-exact { fill: none; stroke-width: 2.15; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .diagram-jumps { fill: none; stroke-width: 1.35; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; }
 .diagram-shape.axial .diagram-fill { fill: var(--axial); }.diagram-shape.axial .diagram-line-exact,.diagram-shape.axial .diagram-jumps { stroke: var(--axial); }

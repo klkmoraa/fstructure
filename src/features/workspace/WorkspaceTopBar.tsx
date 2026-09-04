@@ -125,6 +125,7 @@ export const WorkspaceTopBar = ({
         className={'workspace-topbar__status-chip' + (analysisRunning ? ' is-running' : '') + (analysisFailed ? ' is-error' : '')}
         role="status"
         data-analysis-state={analysisState}
+        title={analysisLabel}
       >
         {analysisRunning ? <Play size={15} fill="currentColor" aria-hidden="true" /> : <ChartNoAxesCombined size={15} aria-hidden="true" />}
         <span><strong>{analysisLabel}</strong></span>

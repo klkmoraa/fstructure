@@ -17,6 +17,7 @@ import { NumericQualityCard } from './NumericQualityCard';
 import { deriveClassroomProgress, type ClassroomProgressStepId } from '../../education/classroomProgress';
 import { formatFixed, formatScientific } from '../../utils/numberFormat';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
+import type { EvidenceLayerId } from '../canvas/evidenceLayers';
 import type { SurfacePresentation, SurfaceStatus } from '../workspace/surfacePresentation';
 import { ResultExtremeCard } from './ResultExtremeCard';
 import { reliabilityLevelLabelKey } from './reliabilityCopy';
@@ -29,12 +30,12 @@ import './results.css';
  * lecturas de diagrama del objeto activo. Reacciones, influencia y «Entender»
  * ya no son pestañas — son la superficie `dense`, que se invoca.
  */
-const tabs: Array<{ id: ResultTab; labelKey: TranslationKey; color?: string }> = [
+const tabs: Array<{ id: ResultTab; labelKey: TranslationKey; color?: string; evidence?: EvidenceLayerId }> = [
   { id: 'summary', labelKey: 'results.summary' },
-  { id: 'axial', labelKey: 'results.axial', color: 'axial' },
-  { id: 'shear', labelKey: 'results.shear', color: 'shear' },
-  { id: 'moment', labelKey: 'results.moment', color: 'moment' },
-  { id: 'deformed', labelKey: 'results.deformed' },
+  { id: 'axial', labelKey: 'results.axial', color: 'axial', evidence: 'axial' },
+  { id: 'shear', labelKey: 'results.shear', color: 'shear', evidence: 'shear' },
+  { id: 'moment', labelKey: 'results.moment', color: 'moment', evidence: 'moment' },
+  { id: 'deformed', labelKey: 'results.deformed', evidence: 'deformed' },
 ];
 
 type ResultsPanelMode = 'compact' | 'expanded' | 'focused';
@@ -128,6 +129,19 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
   const memberResult = selectedMemberId ? analysis?.memberResults.find((result) => result.memberId === selectedMemberId) : undefined;
   const availableTabs = tabs;
   const activeTab = availableTabs.find((tab) => tab.id === resultTab) ?? availableTabs[0];
+  /**
+   * Elegir una magnitud aquí es elegirla EN EL MODELO.
+   *
+   * `setResultTab` por sí solo movía la pestaña y dejaba el lienzo igual: la
+   * capa `results` sigue apagada mientras nadie la encienda, así que cambiar de
+   * cortante a momento en el panel no cambiaba el dibujo y sólo las fichas del
+   * riel del lienzo servían. El panel publica la misma intención que esas
+   * fichas y el shell la aplica en un único sitio.
+   */
+  const chooseTab = useCallback((tab: (typeof tabs)[number]) => {
+    if (tab.evidence) emitWorkspaceCommand('activate-evidence-layer', { layer: tab.evidence });
+    else setResultTab(tab.id);
+  }, [setResultTab]);
   /**
    * La bandeja cerrada no repite el Centro analítico: da la decisión de diez
    * segundos que sigue a Analizar. El extremo se vuelve a derivar de la
@@ -418,7 +432,7 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
       <nav className="result-tabs results-quantity-bar" aria-label={t('results.panel')} data-results-quantity-bar>
         <div className="results-quantity-tabs" role="tablist" aria-label={t('results.panel')}>{availableTabs.map((tab) => {
           const index = availableTabs.findIndex((item) => item.id === tab.id);
-          return <button id={`result-tab-${tab.id}`} key={tab.id} data-result-tab={tab.id} role="tab" aria-selected={activeTab.id === tab.id} aria-controls="results-content" tabIndex={activeTab.id === tab.id ? 0 : -1} className={`${activeTab.id === tab.id ? 'active' : ''} ${tab.color ?? ''}`} onClick={() => setResultTab(tab.id)} onKeyDown={(event) => {
+          return <button id={`result-tab-${tab.id}`} key={tab.id} data-result-tab={tab.id} role="tab" aria-selected={activeTab.id === tab.id} aria-controls="results-content" tabIndex={activeTab.id === tab.id ? 0 : -1} className={`${activeTab.id === tab.id ? 'active' : ''} ${tab.color ?? ''}`} onClick={() => chooseTab(tab)} onKeyDown={(event) => {
             let nextIndex = index;
             if (event.key === 'ArrowLeft') nextIndex = (index - 1 + availableTabs.length) % availableTabs.length;
             else if (event.key === 'ArrowRight') nextIndex = (index + 1) % availableTabs.length;
@@ -427,7 +441,7 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
             else return;
             event.preventDefault();
             const next = availableTabs[nextIndex];
-            setResultTab(next.id);
+            chooseTab(next);
             window.requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-result-tab="${next.id}"]`)?.focus());
           }}>{t(tab.labelKey)}</button>;
         })}</div>

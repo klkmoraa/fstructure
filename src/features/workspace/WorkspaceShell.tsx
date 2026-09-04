@@ -12,6 +12,7 @@ import { useProject } from '../../store/ProjectContext';
 import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { createPersistedEditorLayerState, editorLayerReducer, persistEditorLayerState } from '../canvas/editorLayers';
+import { activateEvidenceLayer } from '../canvas/evidenceLayers';
 import { AppShellLayout } from './AppShellLayout';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
@@ -186,6 +187,12 @@ const WorkspaceBrokerContent = ({
         setPendingModelDoctorNotification({ id, projectId: project.id, analysisAtRequest: analysis, hasStarted: false });
       }),
       onWorkspaceCommand('open-analysis-setup', () => openSurface('analysisSetup')),
+      /* Una magnitud elegida en cualquier superficie se enciende en el LIENZO.
+         El shell es el único que tiene el reductor de capas, así que aquí es
+         donde `resultTab` y la capa `results` se mueven juntos. */
+      onWorkspaceCommand('activate-evidence-layer', ({ layer }) => {
+        activateEvidenceLayer(layer, { setResultTab, dispatchLayers: dispatchEditorLayers });
+      }),
       onWorkspaceCommand('open-view-settings', () => openSurface('view')),
       /* `dense` es invocada: el lanzador viaja en el propio comando para que el
          broker sepa a dónde devolver el foco al cerrar.
@@ -212,17 +219,23 @@ const WorkspaceBrokerContent = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
-  // Al terminar una corrida válida, Resultados aparece en su modo cerrado:
-  // cabe junto al lienzo pero ya responde resultado, caso, actualidad y valor
-  // gobernante. No mueve el foco ni despliega el inspector; abrir el detalle
-  // sigue siendo una elección explícita de la persona.
+  /**
+    * Al terminar una corrida válida el resultado se publica EN EL LIENZO, no en
+    * una superficie que lo tape.
+    *
+    * Antes se abría Resultados sola. En K0 esa superficie es una hoja inferior:
+    * el modelo recién resuelto quedaba escondido detrás del panel justo en el
+    * momento en que había algo que mirar sobre él. Ahora la corrida enciende la
+    * capa de evidencia —el momento, que es la lectura de gobierno de una barra
+    * a flexión— y el modelo se queda a la vista con su diagrama encima. El
+    * Centro analítico sigue a un toque en la barra superior, cuando se pide.
+    */
   useEffect(() => {
     if (analysis?.success && analysis !== reportedAnalysisRef.current) {
-      setResultTab('summary');
-      openSurface('results');
+      activateEvidenceLayer('moment', { setResultTab, dispatchLayers: dispatchEditorLayers });
     }
     reportedAnalysisRef.current = analysis;
-  }, [analysis, openSurface, setResultTab]);
+  }, [analysis, setResultTab]);
 
   // Abrir Resultados no debe dejar al lado una ficha de edición completa.
   // La transición se produce una vez por apertura: si después la persona

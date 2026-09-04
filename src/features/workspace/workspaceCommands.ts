@@ -12,6 +12,7 @@
  * listening keeps working — but the name and the payload now have one definition each.
  */
 import type { Selection } from '../../types';
+import type { EvidenceLayerId } from '../canvas/evidenceLayers';
 import type { DenseResultView } from '../results/denseResults';
 
 /** A selection that names exactly one object; `multi` and `null` cannot be focused. */
@@ -60,6 +61,18 @@ export interface WorkspaceCommands {
   'open-structural-bom': void;
   /** Toggle the simultaneous N/V/M canvas reading for the current solved model. */
   'toggle-diagram-stack': void;
+  /**
+   * Enciende una capa de evidencia en el LIENZO (N, V, M, deformada o mapa).
+   *
+   * Existe porque el lienzo es el único sitio donde se lee un diagrama sobre la
+   * estructura, y su interruptor —`resultTab` más la capa `results`— vivía sólo
+   * en el riel de fichas. Cambiar de magnitud dentro del Centro analítico movía
+   * `resultTab` pero dejaba la capa apagada, así que el dibujo no cambiaba: la
+   * elección se veía en el panel y no en el modelo. Cualquier superficie emite
+   * esta intención y el shell, que es quien tiene el reductor de capas, la
+   * aplica en un solo sitio.
+   */
+  'activate-evidence-layer': { layer: EvidenceLayerId };
   /** Open the explicit baseline-to-current revision comparison. */
   'open-revision-comparison': void;
   /** Open the contextual structural-editing surface for the current selection. */
