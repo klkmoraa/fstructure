@@ -1,7 +1,7 @@
 {
   "name": "@fusionstructure/fstructure",
   "private": false,
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Aplicación experimental de modelado y análisis estructural 2D de FusionStructure.",
   "type": "module",
   "scripts": {
