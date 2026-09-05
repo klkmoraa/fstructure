@@ -22,16 +22,17 @@ Esta regla es técnica y de proceso. No significa que desaparezcan la licencia M
 
 ## Calidad mínima
 
-Antes de cerrar un cambio relevante:
+La validación por defecto debe ser proporcional al cambio y consumir el mínimo tiempo posible.
 
-- ejecutar `npm run check`;
-- leer el resultado completo;
-- indicar qué quedó verificado y qué no pudo ejecutarse;
-- actualizar la documentación si cambió el alcance, el formato de datos o una decisión de arquitectura;
-- conservar compatibilidad o escribir una migración cuando se toque información persistente;
-- no afirmar cumplimiento normativo, exactitud estructural o preparación para obra sin evidencia específica.
+- No ejecutar `npm run check`, la suite completa ni pruebas no relacionadas por rutina.
+- Para UI, estilos, copy, composición y refactors sin impacto de dominio: usar únicamente la comprobación más barata que detecte errores del cambio, normalmente build o typecheck y, cuando aporte valor, una revisión visual puntual.
+- Para solver, matemáticas, unidades, cargas, combinaciones, análisis, import/export estructural o resultados: ejecutar sólo las pruebas focalizadas directamente relacionadas y añadir un caso pequeño de referencia cuando cambie el comportamiento numérico.
+- Para persistencia, migraciones, undo/redo o formato de proyecto: ejecutar sólo las pruebas focalizadas del flujo tocado y comprobar que un proyecto existente puede abrirse/guardarse sin pérdida.
+- Ejecutar la suite completa únicamente si el usuario la pide expresamente, si se prepara una release importante o si un cambio transversal hace imposible aislar una verificación menor.
+- No crear pruebas nuevas para cambios puramente visuales salvo que exista una regresión concreta que valga la pena fijar.
+- Indicar brevemente qué se verificó y qué no; no presentar como validado aquello que no se ejecutó.
 
-La ausencia de una prueba no es evidencia de que la función funcione.
+La ausencia de una prueba no es evidencia de que la función funcione, pero tampoco justifica ejecutar pruebas irrelevantes.
 
 ## Dirección de producto
 
@@ -61,10 +62,10 @@ Una feature nueva debe declarar qué entidad del proyecto modifica, qué validac
 
 - `src/foundation` es propiedad local y exclusiva de este repositorio: aquí viven las unidades, el álgebra lineal, los tipos numéricos y sus pruebas.
 - No agregar `@fusionstructure/foundation` ni imports o dependencias hacia productos hermanos, incluidos sus subpaths internos. Los consumidores de este producto usan las fuentes locales de `src/foundation`.
-- Un cambio local de Foundation requiere únicamente las puertas, pruebas y Pull Request de este repositorio. No requiere una publicación, prueba o PR coordinados en un producto hermano.
+- Un cambio local de Foundation requiere únicamente la verificación mínima y focalizada de este repositorio. No requiere una publicación, prueba o PR coordinados en un producto hermano.
 
 ## Flujo de cierre
 
 El usuario autorizó actualizar el repositorio en esta sesión. Para cambios posteriores, no hacer push ni abrir un Pull Request salvo que se solicite explícitamente en esa sesión.
 
-Si el cambio toca una superficie crítica, dejar una nota de decisión o una prueba reproducible. Si una puerta falla, reportar el fallo exacto y no presentarlo como éxito.
+Si el cambio toca una superficie crítica, dejar una nota de decisión o una prueba reproducible. Si una verificación falla, reportar el fallo exacto y no presentarlo como éxito.
