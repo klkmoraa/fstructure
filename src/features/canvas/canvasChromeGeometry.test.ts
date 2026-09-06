@@ -21,6 +21,19 @@ describe('canvasChromeGeometry', () => {
     expect(camera.y - point.y * camera.scale).toBe(safe.y + safe.height / 2);
   });
 
+  it('centra el modelo en el canvas móvil cuando no hay una hoja abierta', () => {
+    const viewport = { width: 390, height: 709 };
+    const bounds = { minX: 0, maxX: 6, minY: 0, maxY: 4 };
+    const camera = cameraToFitBounds(bounds, viewport);
+    const modelCenter = {
+      x: camera.x + ((bounds.minX + bounds.maxX) / 2) * camera.scale,
+      y: camera.y - ((bounds.minY + bounds.maxY) / 2) * camera.scale,
+    };
+
+    expect(modelCenter.x).toBe(viewport.width / 2);
+    expect(modelCenter.y).toBe(viewport.height / 2);
+  });
+
   it('mantiene finita la cámara cuando los límites del modelo son corruptos', () => {
     const camera = cameraToFitBounds(
       { minX: Number.NaN, maxX: 6, minY: 0, maxY: 4 },

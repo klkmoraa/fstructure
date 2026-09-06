@@ -10,7 +10,7 @@
 
 /* El voladizo medio es la única pieza con color propio: es el miembro que
    responde a la carga. */
-.fs-mark__register { fill: var(--sc-color-signal-axial-ink); }
+.fs-mark__register { fill: var(--sc-color-brand-register); }
 
 /* La marca 2D conserva barra y deformada. Su marco de arcilla usa superficie
    y tinta neutras para no competir con las señales del modelo. */

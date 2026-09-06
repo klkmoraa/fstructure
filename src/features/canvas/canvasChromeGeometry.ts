@@ -45,8 +45,11 @@ export const finiteModelBounds = (bounds: ModelBounds): ModelBounds => {
 };
 
 export const canvasSafeInsetsFor = (viewport: ViewportSize): CanvasSafeInsets => {
-  if (viewport.width <= 480) return { top: 104, right: 58, bottom: 58, left: 58 };
-  if (viewport.width <= 1023) return { top: 116, right: 64, bottom: 62, left: 64 };
+  // En compacto el dock vive fuera del SVG y los controles de cámara ocupan
+  // ambos extremos por igual. Reservar 104px sólo arriba desplazaba el centro
+  // geométrico 23px hacia abajo cada vez que se pulsaba Encuadrar.
+  if (viewport.width <= 480) return { top: 58, right: 58, bottom: 58, left: 58 };
+  if (viewport.width <= 1023) return { top: 62, right: 64, bottom: 62, left: 64 };
   // Desktop tools float over the lower canvas. Include their 116px band and
   // 24px of support decoration when fitting, so the model remains selectable.
   return { top: 116, right: 68, bottom: 140, left: 68 };

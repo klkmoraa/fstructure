@@ -132,6 +132,10 @@
   --fs-signal-yield: #b44a7e;
   --fs-signal-attention: #8a6110;
 
+  /* Registro de la marca madre: rojo pastel, separado del rojo técnico de
+     momento para que el logo no parezca un resultado del solver. */
+  --fs-brand-register: #d96f67;
+
   /* Con el par Día/Noche, la tinta ES la señal. Se conservan los nombres para
      no reescribir los roles que los consumen. */
   --fs-signal-axial-ink: var(--fs-signal-axial);
@@ -280,6 +284,7 @@
   --sc-color-action-subtle: var(--fs-gray-50);
   --sc-color-brand: var(--fs-gray-950);
   --sc-color-brand-secondary: var(--fs-gray-700);
+  --sc-color-brand-register: var(--fs-brand-register);
   --sc-color-accent-blue-soft: var(--fs-gray-50);
   --sc-color-accent-violet-soft: var(--fs-gray-50);
 
@@ -924,6 +929,7 @@
   --fs-signal-deformed: #9b87ff;
   --fs-signal-yield: #ef7ab9;
   --fs-signal-attention: #f3c553;
+  --fs-brand-register: #f0958e;
 
   /* Sobre carbón la carga sube de luminosidad sin perder croma: el mismo
      cobalto, bermellón y esmeralda, recalibrados para que sigan separados de

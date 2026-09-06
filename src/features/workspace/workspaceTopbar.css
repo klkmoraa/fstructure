@@ -84,12 +84,8 @@
 }
 
 .workspace-topbar__brand .fs-mark {
-  width: 28px;
-  height: 28px;
-  padding: 5px;
-  border: 1px solid var(--sc-color-border-soft);
-  border-radius: var(--sc-radius-control);
-  background: var(--sc-color-surface-inset);
+  width: 27px;
+  height: 27px;
 }
 
 .workspace-topbar__project-copy {
@@ -408,9 +404,8 @@
   }
 
   .workspace-topbar__brand .fs-mark {
-    width: 24px;
-    height: 24px;
-    padding: 4px;
+    width: 25px;
+    height: 25px;
   }
 
   .workspace-topbar__status {

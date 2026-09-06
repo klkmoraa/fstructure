@@ -1,6 +1,6 @@
 import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Solver2DMark } from '../../design-system/brand';
+import { FusionMark } from '../../design-system/brand';
 
 /**
  * Recuperar el respaldo con éxito no es un fallo de guardado.
@@ -124,7 +124,7 @@ export const WorkspaceTopBar = ({
         aria-label={labels.home}
         title={labels.home}
       >
-        <Solver2DMark size={26} />
+        <FusionMark size={26} />
       </button>
       <button
         type="button"

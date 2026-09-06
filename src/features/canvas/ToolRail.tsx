@@ -15,7 +15,6 @@ import {
   PanelsTopLeft,
   RotateCcw,
   Ruler,
-  Search,
   Scissors,
   Sigma,
   type LucideIcon,
@@ -193,21 +192,6 @@ const PaletteToolButton = ({
   </button>
 );
 
-const MobileCommandPaletteButton = ({ label, accessibleLabel, onOpen }: { label: string; accessibleLabel: string; onOpen: () => void }) => <button
-  className="mobile-palette-tool tool-command-palette"
-  type="button"
-  role="menuitem"
-  aria-label={accessibleLabel}
-  aria-keyshortcuts="Control+K Meta+K"
-  onClick={onOpen}
->
-  <span className="mobile-palette-icon" aria-hidden="true"><Search size={23} strokeWidth={1.8} /></span>
-  <span className="mobile-palette-copy"><strong>{label}</strong></span>
-  <ChevronRight size={19} aria-hidden="true" />
-  <kbd>Ctrl K</kbd>
-</button>;
-
-
 /** The portal sheet owns inertness; restore it synchronously when it closes. */
 const setAppShellMobileInert = (inert: boolean) => {
   const background = document.querySelector<HTMLElement>('.app-shell');
@@ -276,12 +260,6 @@ export const ToolRail = () => {
     setActiveTool(tool);
     if (mobileMenu) closeMobileMenu();
     else setMobileMenu(null);
-  };
-
-  const openCommandPaletteFromMobile = () => {
-    moreMenuButtonRef.current?.focus({ preventScroll: true });
-    setMobileMenu(null);
-    emitWorkspaceCommand('open-command-palette');
   };
 
   const openStructuralEditFromMobile = () => {
@@ -406,7 +384,6 @@ export const ToolRail = () => {
             active={activeTool === definition.id}
             onSelect={selectTool}
           />)}
-          {group.id === 'navigate' ? <MobileCommandPaletteButton label={t('palette.openShort')} accessibleLabel={t('palette.open')} onOpen={openCommandPaletteFromMobile} /> : null}
           {group.id === 'create' ? <button
             className="mobile-palette-tool tool-structure-generator"
             type="button"
