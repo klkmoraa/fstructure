@@ -10,7 +10,6 @@ import { formatFixed, formatScientific } from '../../utils/numberFormat';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { modeShapePoints, modeShapeScaleFor } from './modeShapePath';
-import { criticalStampsFor } from './criticalStamps';
 
 type MemberResult = AnalysisResult['memberResults'][number];
 type NodeResult = AnalysisResult['nodeResults'][number];
@@ -221,52 +220,6 @@ const CanvasResultLayerImpl = ({
     return <g className="result-cursor-marker" transform={`translate(${screen.x} ${screen.y})`} pointerEvents="none"><circle r="6" /><path d="M-13 0H13M0-13V13" /><g transform="translate(10 -31)"><rect width={Math.max(90, label.length * 5.5)} height="22" rx="7" /><text x="8" y="15">{label}</text></g></g>;
   };
 
-  /**
-   * Sellos de Mmax/Mmin y Vmax/Vmin sobre la propia barra.
-   *
-   * Los valores y sus estaciones ya vienen resueltos en `criticalPoints`: aquí
-   * no se recalcula ni se re-muestrea nada, sólo se llevan a pantalla con la
-   * misma escala y el mismo lado que el diagrama que se está mirando. Antes el
-   * pico había que cazarlo moviendo el cursor sobre la curva o buscándolo en la
-   * tabla; ahora está donde ocurre.
-   */
-  const renderCriticalPoints = () => {
-    if (!resultsAllowed || !analysis?.success || !view.showResultOverlay) return null;
-    const stamps = criticalStampsFor({
-      project,
-      resultTab,
-      diagramSide: view.diagramSide === 'negative' ? 'negative' : 'positive',
-      camera,
-      toScreen,
-      nodeMap,
-      resultMap,
-      globalDiagramMax,
-      diagramPixelScaleFor: scaleFor,
-      units,
-      lengthLabel,
-      forceLabel,
-      momentLabel,
-      size,
-    });
-    if (!stamps.length) return null;
-
-    return <g className="critical-point-layer" aria-hidden="true">{stamps.map((stamp) => <g
-      key={stamp.key}
-      className={`critical-point-marker is-${stamp.extreme}`}
-      data-critical-point={`${stamp.memberId}:${resultTab}:${stamp.extreme}`}
-      pointerEvents="none"
-    >
-      <title>{`${stamp.memberId} · ${stamp.value} · ${stamp.station}`}</title>
-      <line className="critical-point-stem" x1={stamp.base.x} y1={stamp.base.y} x2={stamp.tip.x} y2={stamp.tip.y} />
-      <circle className="critical-point-dot" cx={stamp.tip.x} cy={stamp.tip.y} r="3.2" />
-      <g transform={`translate(${stamp.rect.x} ${stamp.rect.y})`}>
-        <rect className="critical-point-stamp" width={stamp.rect.width} height={stamp.rect.height} rx="6" />
-        <text className="critical-point-value" x="6" y="11">{stamp.value}</text>
-        <text className="critical-point-station" x="6" y="20">{stamp.station}</text>
-      </g>
-    </g>)}</g>;
-  };
-
   const renderInfluenceOverlay = () => {
     if (!resultsAllowed || resultTab !== 'influence' || !analysis?.success || !influenceCanvasState) return null;
     const path = influenceCanvasState.pathMemberIds.flatMap((memberId) => {
@@ -380,7 +333,7 @@ const CanvasResultLayerImpl = ({
       const length = 48;
       descriptions.push(`Rx = ${formatFixed(toDisplay(result.rx, units, 'force'), 3)} ${forceLabel}`);
       elements.push(
-        <line key="rx" data-reaction-component="rx" x1={p.x - direction * (sideClearance + length)} y1={p.y} x2={p.x - direction * sideClearance} y2={p.y} markerEnd="url(#arrow-blue)" />,
+        <line key="rx" data-reaction-component="rx" x1={p.x - direction * (sideClearance + length)} y1={p.y} x2={p.x - direction * sideClearance} y2={p.y} markerEnd="url(#arrow-reaction)" />,
       );
     }
     if (Math.abs(result.ry) > 1e-8) {
@@ -389,8 +342,8 @@ const CanvasResultLayerImpl = ({
       descriptions.push(`Ry = ${formatFixed(toDisplay(result.ry, units, 'force'), 3)} ${forceLabel}`);
       elements.push(
         screenDirection < 0
-          ? <line key="ry" data-reaction-component="ry" x1={p.x} y1={p.y + bottomClearance + length} x2={p.x} y2={p.y + bottomClearance} markerEnd="url(#arrow-blue)" />
-          : <line key="ry" data-reaction-component="ry" x1={p.x} y1={p.y + bottomClearance} x2={p.x} y2={p.y + bottomClearance + length} markerEnd="url(#arrow-blue)" />,
+          ? <line key="ry" data-reaction-component="ry" x1={p.x} y1={p.y + bottomClearance + length} x2={p.x} y2={p.y + bottomClearance} markerEnd="url(#arrow-reaction)" />
+          : <line key="ry" data-reaction-component="ry" x1={p.x} y1={p.y + bottomClearance} x2={p.x} y2={p.y + bottomClearance + length} markerEnd="url(#arrow-reaction)" />,
       );
     }
     if (Math.abs(result.rm) > 1e-8) {
@@ -400,15 +353,15 @@ const CanvasResultLayerImpl = ({
         ? `M ${p.x - 22} ${p.y - 10} A ${r} ${r} 0 1 0 ${p.x + 20} ${p.y - 14}`
         : `M ${p.x + 22} ${p.y - 10} A ${r} ${r} 0 1 1 ${p.x - 20} ${p.y - 14}`;
       descriptions.push(`Mᵣ = ${formatFixed(toDisplay(result.rm, units, 'moment'), 3)} ${momentLabel}`);
-      elements.push(<path key="moment" d={path} markerEnd="url(#arrow-blue)" />);
+      elements.push(<path key="moment" d={path} markerEnd="url(#arrow-reaction)" />);
     }
     return elements.length ? <g key={node.id} className="reaction-symbol" data-node-id={node.id}><title>{descriptions.join(' · ')}</title>{elements}</g> : null;
   };
 
   if (slot === 'diagrams') {
     return <>
-      {showResults ? <g key={runKey} className="diagram-layer">{project.members.map(diagramPath)}</g> : null}
-      {showResults && resultsAllowed && resultTab === 'deformed' && analysis?.success ? <g key={runKey} className="deformed-layer">{project.members.map((member) => <path key={member.id} d={deformedPath(member)} />)}</g> : null}
+      {showResults ? <g key={`${runKey}:diagram`} className="diagram-layer">{project.members.map(diagramPath)}</g> : null}
+      {showResults && resultsAllowed && resultTab === 'deformed' && analysis?.success ? <g key={`${runKey}:deformed`} className="deformed-layer">{project.members.map((member) => <path key={member.id} d={deformedPath(member)} />)}</g> : null}
       {renderModeShape()}
       {showResults ? renderResultCursor() : null}
       {showDiagnostics ? renderMechanism() : null}
@@ -417,7 +370,6 @@ const CanvasResultLayerImpl = ({
 
   return <>
     {showResults ? renderInfluenceOverlay() : null}
-    {showResults ? renderCriticalPoints() : null}
     {showResults ? <g className="reaction-layer">{project.nodes.map(renderReaction)}</g> : null}
   </>;
 };

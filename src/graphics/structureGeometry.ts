@@ -135,7 +135,7 @@ export const distributedIntensityAt = (load: MemberLoad, t: number): { qx: numbe
 });
 
 /** Bounding box of the model, the input of every fit-to-view transform. */
-export const modelBounds = (nodes: readonly NodeModel[]): ModelBounds => {
+export const modelBounds = (nodes: readonly Pick<NodeModel, 'x' | 'y'>[]): ModelBounds => {
   const xs = nodes.map((node) => node.x);
   const ys = nodes.map((node) => node.y);
   return {

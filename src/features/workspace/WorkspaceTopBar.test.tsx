@@ -7,7 +7,10 @@ import { WorkspaceTopBar, type WorkspaceTopBarLabels } from './WorkspaceTopBar';
 const labels: WorkspaceTopBarLabels = {
   solverName: 'FStructure',
   project: 'Proyecto actual',
-  openProject: 'Abrir proyecto',
+  home: 'Ir al inicio',
+  editProject: 'Nombre del proyecto',
+  saveProject: 'Guardar',
+  cancel: 'Cancelar',
   storageReady: 'Guardado local',
   storageRecovered: 'Recuperado',
   storageIssue: 'Error al guardar',
@@ -35,7 +38,8 @@ describe('WorkspaceTopBar', () => {
         resultsOpen={false}
         canUndo={false}
         canRedo
-        onOpenProject={vi.fn()}
+        onOpenHome={vi.fn()}
+        onRenameProject={vi.fn()}
         onUndo={vi.fn()}
         onRedo={vi.fn()}
         onAnalyze={vi.fn()}
@@ -45,7 +49,7 @@ describe('WorkspaceTopBar', () => {
 
     expect(screen.getByRole('banner').getAttribute('data-workspace-topbar')).toBe('true');
     expect(screen.getByText('Viga de prueba')).toBeTruthy();
-    expect(screen.getByText('Guardado local')).toBeTruthy();
+    expect(screen.queryByText('Guardado local')).toBeNull();
     expect(screen.getByText('Análisis actualizado')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Deshacer' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: 'Rehacer' }) as HTMLButtonElement).disabled).toBe(false);
@@ -53,7 +57,8 @@ describe('WorkspaceTopBar', () => {
 
   it('routes the four primary actions and exposes Results as a toggle', async () => {
     const user = userEvent.setup();
-    const onOpenProject = vi.fn();
+    const onOpenHome = vi.fn();
+    const onRenameProject = vi.fn();
     const onUndo = vi.fn();
     const onRedo = vi.fn();
     const onAnalyze = vi.fn();
@@ -69,7 +74,8 @@ describe('WorkspaceTopBar', () => {
         resultsOpen
         canUndo
         canRedo
-        onOpenProject={onOpenProject}
+        onOpenHome={onOpenHome}
+        onRenameProject={onRenameProject}
         onUndo={onUndo}
         onRedo={onRedo}
         onAnalyze={onAnalyze}
@@ -77,18 +83,53 @@ describe('WorkspaceTopBar', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: /Abrir proyecto/ }));
+    await user.click(screen.getByRole('button', { name: 'Ir al inicio' }));
     await user.click(screen.getByRole('button', { name: 'Deshacer' }));
     await user.click(screen.getByRole('button', { name: 'Rehacer' }));
     await user.click(screen.getByRole('button', { name: 'Resultados' }));
 
-    expect(onOpenProject).toHaveBeenCalledOnce();
+    expect(onOpenHome).toHaveBeenCalledOnce();
+    expect(onRenameProject).not.toHaveBeenCalled();
     expect(onUndo).toHaveBeenCalledOnce();
     expect(onRedo).toHaveBeenCalledOnce();
     expect(onOpenResults).toHaveBeenCalledOnce();
     expect((screen.getByRole('button', { name: 'Analizando…' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'Resultados' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByText('Error al guardar')).toBeTruthy();
+  });
+
+  it('lleva la marca al inicio y permite cambiar el nombre desde su propio control', async () => {
+    const user = userEvent.setup();
+    const onOpenHome = vi.fn();
+    const onRenameProject = vi.fn();
+
+    render(
+      <WorkspaceTopBar
+        labels={labels}
+        projectName="Pórtico de ejemplo"
+        storageState="ready"
+        analysisState="ready"
+        resultsOpen={false}
+        canUndo={false}
+        canRedo={false}
+        onOpenHome={onOpenHome}
+        onRenameProject={onRenameProject}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
+        onAnalyze={vi.fn()}
+        onOpenResults={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Ir al inicio' }));
+    await user.click(screen.getByRole('button', { name: 'Nombre del proyecto: Pórtico de ejemplo' }));
+    const input = screen.getByRole('textbox');
+    await user.clear(input);
+    await user.type(input, 'Pórtico norte');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    expect(onOpenHome).toHaveBeenCalledOnce();
+    expect(onRenameProject).toHaveBeenCalledWith('Pórtico norte');
   });
 
   /**
@@ -111,7 +152,8 @@ describe('WorkspaceTopBar', () => {
         resultsOpen
         canUndo
         canRedo
-        onOpenProject={vi.fn()}
+        onOpenHome={vi.fn()}
+        onRenameProject={vi.fn()}
         onUndo={vi.fn()}
         onRedo={vi.fn()}
         onAnalyze={vi.fn()}
@@ -140,7 +182,8 @@ describe('WorkspaceTopBar', () => {
         resultsOpen={false}
         canUndo={false}
         canRedo={false}
-        onOpenProject={vi.fn()}
+        onOpenHome={vi.fn()}
+        onRenameProject={vi.fn()}
         onUndo={vi.fn()}
         onRedo={vi.fn()}
         onAnalyze={vi.fn()}

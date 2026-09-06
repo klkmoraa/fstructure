@@ -1,4 +1,5 @@
 import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, Undo2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { Solver2DMark } from '../../design-system/brand';
 
 /**
@@ -21,7 +22,10 @@ export type WorkspaceAnalysisState = 'ready' | 'running' | 'resolved' | 'failed'
 export interface WorkspaceTopBarLabels {
   solverName: string;
   project: string;
-  openProject: string;
+  home: string;
+  editProject: string;
+  saveProject: string;
+  cancel: string;
   storageReady: string;
   storageRecovered: string;
   storageIssue: string;
@@ -45,7 +49,8 @@ export interface WorkspaceTopBarProps {
   canUndo: boolean;
   canRedo: boolean;
   labels: WorkspaceTopBarLabels;
-  onOpenProject: () => void;
+  onOpenHome: () => void;
+  onRenameProject: (name: string) => void;
   onUndo: () => void;
   onRedo: () => void;
   onAnalyze: () => void;
@@ -70,12 +75,16 @@ export const WorkspaceTopBar = ({
   canUndo,
   canRedo,
   labels,
-  onOpenProject,
+  onOpenHome,
+  onRenameProject,
   onUndo,
   onRedo,
   onAnalyze,
   onOpenResults,
 }: WorkspaceTopBarProps) => {
+  const [projectEditorOpen, setProjectEditorOpen] = useState(false);
+  const [draftName, setDraftName] = useState(projectName);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const storageFailed = storageState === 'issue';
   const storageRecovered = storageState === 'recovered';
   const storageLabel = storageFailed
@@ -90,63 +99,112 @@ export const WorkspaceTopBar = ({
       : analysisState === 'resolved'
       ? labels.analysisResolved
       : labels.analysisReady;
+  const showStorageStatus = storageState !== 'ready';
+
+  useEffect(() => {
+    if (!projectEditorOpen) setDraftName(projectName);
+  }, [projectEditorOpen, projectName]);
+
+  useEffect(() => {
+    if (projectEditorOpen) nameInputRef.current?.focus({ preventScroll: true });
+  }, [projectEditorOpen]);
+
+  const saveProjectName = () => {
+    const nextName = draftName.trim();
+    if (nextName) onRenameProject(nextName);
+    setProjectEditorOpen(false);
+  };
 
   return <header className="workspace-topbar" data-workspace-topbar>
-    <button
-      type="button"
-      className="workspace-topbar__project"
-      onClick={onOpenProject}
-      aria-label={labels.openProject + ': ' + projectName}
-      title={labels.openProject}
-    >
-      <Solver2DMark size={26} />
-      <span className="workspace-topbar__project-copy">
-        <span className="workspace-topbar__eyebrow">{labels.solverName}</span>
-        <strong>{projectName}</strong>
-      </span>
-    </button>
-
-    <div className="workspace-topbar__status" aria-label={labels.project}>
-      <span
-        className={'workspace-topbar__status-chip' + (storageFailed ? ' is-error' : '') + (storageRecovered ? ' is-notice' : '')}
-        role="status"
-        data-storage-state={storageState}
-        title={storageMessage ?? labels.storageReady}
+    <div className="workspace-topbar__project-group" data-workspace-group="project">
+      <button
+        type="button"
+        className="workspace-topbar__brand"
+        onClick={onOpenHome}
+        aria-label={labels.home}
+        title={labels.home}
       >
-        {storageFailed
-          ? <CloudOff size={15} aria-hidden="true" />
-          : storageRecovered ? <RotateCcw size={15} aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
-        <span>
-          <strong>{storageLabel}</strong>
-          {storageMessage ? <small>{storageMessage}</small> : null}
+        <Solver2DMark size={26} />
+      </button>
+      <button
+        type="button"
+        className="workspace-topbar__project"
+        onClick={() => setProjectEditorOpen(true)}
+        aria-label={labels.editProject + ': ' + projectName}
+        title={labels.editProject}
+        aria-expanded={projectEditorOpen}
+      >
+        <span className="workspace-topbar__project-copy">
+          <span className="workspace-topbar__eyebrow">{labels.solverName}</span>
+          <strong>{projectName}</strong>
         </span>
-      </span>
-      <span
-        className={'workspace-topbar__status-chip' + (analysisRunning ? ' is-running' : '') + (analysisFailed ? ' is-error' : '')}
-        role="status"
-        data-analysis-state={analysisState}
-        title={analysisLabel}
-      >
-        {analysisRunning ? <Play size={15} fill="currentColor" aria-hidden="true" /> : <ChartNoAxesCombined size={15} aria-hidden="true" />}
-        <span><strong>{analysisLabel}</strong></span>
-      </span>
+      </button>
+
+      {projectEditorOpen ? <form className="workspace-topbar__project-editor" aria-label={labels.editProject} onSubmit={(event) => {
+        event.preventDefault();
+        saveProjectName();
+      }}>
+        <label>
+          <span>{labels.editProject}</span>
+          <input ref={nameInputRef} value={draftName} onChange={(event) => setDraftName(event.currentTarget.value)} />
+        </label>
+        <div className="workspace-topbar__project-editor-actions">
+          <button type="button" onClick={() => setProjectEditorOpen(false)}>{labels.cancel}</button>
+          <button type="submit" disabled={!draftName.trim()}>{labels.saveProject}</button>
+        </div>
+      </form> : null}
+
+      <div className="workspace-topbar__status" aria-label={labels.project}>
+        {showStorageStatus ?
+        <span
+          className={'workspace-topbar__status-chip' + (storageFailed ? ' is-error' : '') + (storageRecovered ? ' is-notice' : '')}
+          role="status"
+          data-storage-state={storageState}
+          title={storageMessage ?? labels.storageReady}
+        >
+          {storageFailed
+            ? <CloudOff size={15} aria-hidden="true" />
+            : storageRecovered ? <RotateCcw size={15} aria-hidden="true" /> : <Check size={15} aria-hidden="true" />}
+          <span>
+            <strong>{storageLabel}</strong>
+            {storageMessage ? <small>{storageMessage}</small> : null}
+          </span>
+        </span> : null}
+        <span
+          className={'workspace-topbar__status-chip' + (analysisRunning ? ' is-running' : '') + (analysisFailed ? ' is-error' : '')}
+          role="status"
+          data-analysis-state={analysisState}
+          title={analysisLabel}
+        >
+          {analysisRunning ? <Play size={15} fill="currentColor" aria-hidden="true" /> : <ChartNoAxesCombined size={15} aria-hidden="true" />}
+          <span><strong>{analysisLabel}</strong></span>
+        </span>
+      </div>
     </div>
 
     <nav className="workspace-topbar__actions" aria-label={labels.actions}>
-      <button type="button" className="workspace-topbar__icon-button" onClick={onUndo} disabled={!canUndo} aria-label={labels.undo} title={labels.undo}>
-        <Undo2 size={17} aria-hidden="true" />
-      </button>
-      <button type="button" className="workspace-topbar__icon-button" onClick={onRedo} disabled={!canRedo} aria-label={labels.redo} title={labels.redo}>
-        <Redo2 size={17} aria-hidden="true" />
-      </button>
-      <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>
-        <Play size={17} fill="currentColor" aria-hidden="true" />
-        <span>{analysisRunning ? labels.analysisRunning : labels.analyze}</span>
-      </button>
-      <button type="button" className={'workspace-topbar__action-button' + (resultsOpen ? ' is-active' : '')} onClick={(event) => onOpenResults(event.currentTarget)} aria-label={labels.results} aria-pressed={resultsOpen}>
-        <ChartNoAxesCombined size={17} aria-hidden="true" />
-        <span>{labels.results}</span>
-      </button>
+      <div className="workspace-topbar__model-group" data-workspace-group="model">
+        <div className="workspace-topbar__history-group">
+          <button type="button" className="workspace-topbar__icon-button" onClick={onUndo} disabled={!canUndo} aria-label={labels.undo} title={labels.undo}>
+            <Undo2 size={17} aria-hidden="true" />
+          </button>
+          <button type="button" className="workspace-topbar__icon-button" onClick={onRedo} disabled={!canRedo} aria-label={labels.redo} title={labels.redo}>
+            <Redo2 size={17} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="workspace-topbar__results-group" data-workspace-group="results">
+          <button type="button" className={'workspace-topbar__action-button' + (resultsOpen ? ' is-active' : '')} onClick={(event) => onOpenResults(event.currentTarget)} aria-label={labels.results} aria-pressed={resultsOpen}>
+            <ChartNoAxesCombined size={17} aria-hidden="true" />
+            <span>{labels.results}</span>
+          </button>
+        </div>
+      </div>
+      <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
+        <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>
+          <Play size={17} fill="currentColor" aria-hidden="true" />
+          <span>{analysisRunning ? labels.analysisRunning : labels.analyze}</span>
+        </button>
+      </div>
     </nav>
   </header>;
 };

@@ -8,7 +8,6 @@ import { SurfacePresentationContext } from '../workspace/SurfacePresentationCont
 import { SurfacePresentationProvider } from '../workspace/SurfacePresentationProvider';
 import { ShellCompositionContext } from '../workspace/useShellComposition';
 import { ToolRail } from './ToolRail';
-import { isPrimaryRailTool, PRIMARY_RAIL_TOOLS } from './toolRegistry';
 
 const GeneratorStateHarness = () => {
   const { activeTool, setActiveTool } = useProject();
@@ -62,20 +61,29 @@ describe('ToolRail surface handoff', () => {
     await waitFor(() => expect(screen.getByLabelText('herramienta activa').textContent).toBe('select'));
   });
 
-  /**
-   * Las seis que el riel nombra son las que la propuesta fija, ni una más.
-   *
-   * La conducta —que se vean sin hover y que el riel no se salga— la mide
-   * `npm run ui:layout` en un navegador, porque es geometría. Lo que esta
-   * prueba sostiene desde CI es la LISTA: cambiarla en silencio cambiaría qué
-   * herramientas son legibles sin apuntar, que es el criterio de aceptación.
-   */
-  it('nombra exactamente las seis herramientas principales del plan', () => {
-    expect([...PRIMARY_RAIL_TOOLS]).toEqual(['select', 'node', 'member', 'support', 'pointLoad', 'dimension']);
-    expect(PRIMARY_RAIL_TOOLS.every(isPrimaryRailTool)).toBe(true);
-    // Las secundarias siguen siendo secundarias: si una se colara, el riel
-    // pediría más ancho del que su presupuesto tiene medido.
-    expect(isPrimaryRailTool('pan')).toBe(false);
-    expect(isPrimaryRailTool('delete')).toBe(false);
+  it('muestra texto sólo en la herramienta activa del dock', async () => {
+    const user = userEvent.setup();
+    const backgroundRef = createRef<HTMLDivElement>();
+    const { container } = render(
+      <ShellCompositionContext.Provider value={{ shellClass: 'X2', phone: false }}>
+        <ProjectProvider>
+          <SurfacePresentationProvider shellClass="X2" backgroundRef={backgroundRef}>
+            <div ref={backgroundRef}><ToolRail /></div>
+          </SurfacePresentationProvider>
+        </ProjectProvider>
+      </ShellCompositionContext.Provider>,
+    );
+
+    const select = container.querySelector<HTMLButtonElement>('[data-tool-id="select"]');
+    const node = container.querySelector<HTMLButtonElement>('[data-tool-id="node"]');
+    expect(container.querySelector('.desktop-tool-list .tool-command-palette')).toBeNull();
+    expect(container.querySelector('[data-tool-id="dimension"]')).toBeNull();
+    expect(container.querySelector('.mobile-tool-dock [data-tool-id="pan"]')).not.toBeNull();
+    expect(select?.classList.contains('is-compact')).toBe(false);
+    expect(node?.classList.contains('is-compact')).toBe(true);
+
+    await user.click(node!);
+    expect(select?.classList.contains('is-compact')).toBe(true);
+    expect(node?.classList.contains('is-compact')).toBe(false);
   });
 });

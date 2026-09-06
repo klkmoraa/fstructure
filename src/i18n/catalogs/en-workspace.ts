@@ -32,6 +32,8 @@ export const enWorkspace = {
   'navigation.home': 'Go to start',
   'project.name': 'Project name',
   'topbar.currentProject': 'Current project',
+  'topbar.saveProject': 'Save',
+  'topbar.cancelProject': 'Cancel',
   'topbar.analysisSettings': 'Analysis settings',
   'topbar.analysisSummary': 'Analysis context',
   'topbar.utilities': 'Workspace tools',

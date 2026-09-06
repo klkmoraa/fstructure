@@ -1,7 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { cameraToFitBounds, canvasSafeRect, expandBoundsForDecoration, LOAD_DECORATION_RESERVE_PX } from './canvasChromeGeometry';
+import { cameraToCenterPoint, cameraToFitBounds, canvasSafeRect, expandBoundsForDecoration, LOAD_DECORATION_RESERVE_PX } from './canvasChromeGeometry';
 
 describe('canvasChromeGeometry', () => {
+  it('encuadra los apoyos por encima de la barra flotante de escritorio', () => {
+    const viewport = { width: 1200, height: 616 };
+    const bounds = { minX: 0, maxX: 6, minY: 0, maxY: 4 };
+    const camera = cameraToFitBounds(bounds, viewport);
+    const supportBottom = camera.y - bounds.minY * camera.scale + 24;
+    // La barra comienza 116px antes del borde; el apoyo necesita 24px.
+    expect(supportBottom).toBeLessThanOrEqual(viewport.height - 116);
+  });
+
+  it('localiza objetos en el centro del rectángulo libre de controles', () => {
+    const viewport = { width: 1200, height: 616 };
+    const point = { x: 6, y: 4 };
+    const camera = cameraToCenterPoint(point, 85, viewport);
+    const safe = canvasSafeRect(viewport);
+
+    expect(camera.x + point.x * camera.scale).toBe(safe.x + safe.width / 2);
+    expect(camera.y - point.y * camera.scale).toBe(safe.y + safe.height / 2);
+  });
+
   it('mantiene finita la cámara cuando los límites del modelo son corruptos', () => {
     const camera = cameraToFitBounds(
       { minX: Number.NaN, maxX: 6, minY: 0, maxY: 4 },

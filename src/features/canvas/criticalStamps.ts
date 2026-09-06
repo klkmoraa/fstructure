@@ -148,50 +148,62 @@ export const criticalStampsFor = ({
     return leastCrowded?.rect ?? natural;
   };
 
-  return project.members.flatMap<CriticalStamp>((member: MemberModel) => {
+  /* Un sello por barra hacía que la vista general señalara cada extremo y no
+     el que gobierna: en un pórtico pequeño ya eran cuatro tarjetas sobre la
+     misma lectura. Conservamos el máximo y el mínimo globales, que son los
+     dos valores que orientan la revisión sin tapar el diagrama. */
+  const candidates = project.members.flatMap((member: MemberModel) => {
     const result = resultMap.get(member.id);
     const ni = nodeMap.get(member.i);
     const nj = nodeMap.get(member.j);
     if (!result || !ni || !nj || !result.criticalPoints.length) return [];
     const axis = memberAxis(member, ni, nj);
     if (axis.length <= 1e-12) return [];
+    return criticalExtremesFor(result.criticalPoints, quantity, floor).map(({ point, extreme }) => ({ member, result, ni, axis, point, extreme }));
+  });
+  const governing = (['max', 'min'] as const).flatMap((extreme) => {
+    const matching = candidates.filter((candidate) => candidate.extreme === extreme);
+    if (!matching.length) return [];
+    return [matching.reduce((best, candidate) => (
+      extreme === 'max'
+        ? candidate.point.value > best.point.value ? candidate : best
+        : candidate.point.value < best.point.value ? candidate : best
+    ))];
+  });
+
+  return governing.map(({ member, result, ni, axis, point, extreme }): CriticalStamp => {
     const nx = axis.normal.x * side;
     const ny = axis.normal.y * side;
     const diagramPixelScale = diagramPixelScaleFor(result);
-
-    return criticalExtremesFor(result.criticalPoints, quantity, floor).map(({ point, extreme }) => {
-      const grossX = (result.startOffset ?? 0) + point.x;
-      const baseX = ni.x + axis.c * grossX;
-      const baseY = ni.y + axis.s * grossX;
-      const offsetModel = (point.value * diagramPixelScale) / camera.scale;
-      const base = toScreen(baseX, baseY);
-      const tip = toScreen(baseX + nx * offsetModel, baseY + ny * offsetModel);
-      const value = `${symbol}${extreme === 'max' ? 'max' : 'min'} ${formatFixed(toDisplay(point.value, units, displayQuantity), 2)} ${valueUnit}`;
-      const station = `x ${formatFixed(toDisplay(point.x, units, 'length'), 2)} ${lengthLabel}`;
-      // El sello se aparta hacia el lado libre del diagrama, nunca hacia la
-      // barra: ahí es donde ya hay geometría y etiquetas de modelo.
-      const away = Math.sign(offsetModel) || 1;
-      const width = Math.max(value.length * VALUE_ADVANCE, station.length * STATION_ADVANCE) + 12;
-      const natural: SmartLabelRect = {
-        x: Math.min(Math.max(tip.x + nx * away * 9, 4), Math.max(size.width - width - 4, 4)),
-        y: Math.min(Math.max(tip.y + ny * away * 9 - 11, 4), Math.max(size.height - STAMP_HEIGHT - 4, 4)),
-        width,
-        height: STAMP_HEIGHT,
-      };
-      // Dos picos vecinos con la misma magnitud caen en el mismo sitio: el
-      // sello se aparta al hueco libre más cercano antes de dibujarse.
-      const rect = settle(natural);
-      placed.push(rect);
-      return {
-        key: `${member.id}-${quantity}-${extreme}`,
-        memberId: member.id,
-        extreme,
-        base,
-        tip,
-        rect,
-        value,
-        station,
-      };
-    });
+    const grossX = (result.startOffset ?? 0) + point.x;
+    const baseX = ni.x + axis.c * grossX;
+    const baseY = ni.y + axis.s * grossX;
+    const offsetModel = (point.value * diagramPixelScale) / camera.scale;
+    const base = toScreen(baseX, baseY);
+    const tip = toScreen(baseX + nx * offsetModel, baseY + ny * offsetModel);
+    const value = `${symbol}${extreme === 'max' ? 'max' : 'min'} ${formatFixed(toDisplay(point.value, units, displayQuantity), 2)} ${valueUnit}`;
+    const station = `x ${formatFixed(toDisplay(point.x, units, 'length'), 2)} ${lengthLabel}`;
+    // El sello se aparta hacia el lado libre del diagrama, nunca hacia la
+    // barra: ahí es donde ya hay geometría y etiquetas de modelo.
+    const away = Math.sign(offsetModel) || 1;
+    const width = Math.max(value.length * VALUE_ADVANCE, station.length * STATION_ADVANCE) + 12;
+    const natural: SmartLabelRect = {
+      x: Math.min(Math.max(tip.x + nx * away * 9, 4), Math.max(size.width - width - 4, 4)),
+      y: Math.min(Math.max(tip.y + ny * away * 9 - 11, 4), Math.max(size.height - STAMP_HEIGHT - 4, 4)),
+      width,
+      height: STAMP_HEIGHT,
+    };
+    const rect = settle(natural);
+    placed.push(rect);
+    return {
+      key: `${member.id}-${quantity}-${extreme}`,
+      memberId: member.id,
+      extreme,
+      base,
+      tip,
+      rect,
+      value,
+      station,
+    };
   });
 };

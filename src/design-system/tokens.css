@@ -512,22 +512,14 @@
   --sc-focus-ring-offset: 2px;
 
   /* ---- RADIOS ---------------------------------------------------------
-     La escala del brandbook, sin el escalón de rebaja que llevaba:
-
-       data 6px · control 12px · card 18px · panel 18px · modal 24px
-
-     El producto había bajado un escalón en todo argumentando densidad —filas
-     de 24px, controles de 28px—, y el dato lo había dejado en 0 con un
-     argumento propio: redondear una celda comparable rompe el barrido lineal
-     de la columna. El brandbook dice 6px también para el dato y eso es lo que
-     se implementa. Es el punto de esta migración con más riesgo visible, y por
-     eso se comprueba con capturas de hoja de datos, BOM y tabla de resultados
-     en los dos temas, no de memoria. */
+     Revisión clay: data 6px · control 12px · card/panel 22px · modal 28px.
+     Los campos mantienen su densidad; las superficies reciben el radio que
+     acompaña al volumen suave. Decisión: docs/design/clay/decision.md. */
   --sc-radius-data: 6px;
   --sc-radius-control: 12px;
-  --sc-radius-card: 18px;
-  --sc-radius-panel: 18px;
-  --sc-radius-modal: 24px;
+  --sc-radius-card: 22px;
+  --sc-radius-panel: 22px;
+  --sc-radius-modal: 28px;
   --sc-radius-sheet: 18px;
   --sc-radius-pill: 999px;
 
@@ -557,8 +549,8 @@
      Lo que NO vuelve del claymorphism de origen: el marfil cálido, el acento
      menta, la sombra con luz propia por pieza y los degradados de brillo.
      `designSystem.test.ts` sigue montando guardia sobre todo eso. */
-  --sc-shadow-raised: 3px 4px 10px rgb(20 23 26 / .08), -2px -2px 7px rgb(255 255 255 / .6);
-  --sc-shadow-lifted: 6px 8px 18px rgb(20 23 26 / .1), -3px -3px 10px rgb(255 255 255 / .65);
+  --sc-shadow-raised: 3px 5px 12px rgb(20 23 26 / .07), -2px -2px 7px rgb(255 255 255 / .7), inset 0 1px 0 rgb(255 255 255 / .75);
+  --sc-shadow-lifted: 5px 9px 22px rgb(20 23 26 / .1), -3px -3px 10px rgb(255 255 255 / .7), inset 0 1px 0 rgb(255 255 255 / .8);
   /* El escalón más bajo es el que sostiene la tecla del riel contra su bandeja,
      y en Día esas dos superficies se llevan 1,03:1 de contraste: la sombra es
      LO ÚNICO que las separa. A .06 no separaba nada —en Noche la misma capa va

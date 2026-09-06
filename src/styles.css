@@ -1,8 +1,144 @@
 @import './design-system/tokens.css';
 @import './design-system/fonts.css';
-@import './design-system/material.css';
-@import './design-system/components/ui.css';
 
-html, body, #root { min-block-size: 100%; margin: 0; }
-body { min-block-size: 100dvh; background: var(--sc-color-bg-app); }
-button, input, select, textarea { font: inherit; }
+/* The loading surface must arrive before the lazy editor stylesheet. */
+.workspace-loading {
+  width: 100%;
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  color: var(--sc-color-text-primary);
+  background: var(--sc-color-bg-app);
+  font-size: 15px;
+}
+
+/* FusionStructure · Base
+ *
+ * El reinicio, el marco de la aplicación y la capa de interacción nativa. Todo
+ * lo demás lo visten `design-system/material.css` (materia), `ui.css`
+ * (componentes) y las hojas de cada feature.
+ *
+ * Aquí no se declara ni un color literal: los cuatro planos, las tres tintas y
+ * los filetes vienen de la fundación, y por eso el tema oscuro no necesita ni
+ * una regla propia en este archivo. */
+
+:root {
+  font-family: var(--sc-font-ui);
+  color: var(--sc-color-text-primary);
+  background: var(--sc-color-bg-app);
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  font-variant-numeric: var(--sc-numeric-variant);
+  font-feature-settings: var(--sc-numeric-features);
+}
+
+/* `color-scheme` la fija el bloque de tema en la fundación; aquí sólo se
+   arrastran color y fondo, que dependen del tema activo. */
+:root[data-theme='dark'] {
+  color: var(--sc-color-text-primary);
+  background: var(--sc-color-bg-app);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+html { -webkit-tap-highlight-color: transparent; }
+#root { height: 100dvh; overflow: clip; }
+
+body {
+  background: var(--sc-color-bg-app);
+  color: var(--sc-color-text-primary);
+  font-size: var(--sc-font-size-body);
+  line-height: var(--sc-line-height-body);
+  letter-spacing: var(--sc-tracking-control);
+  font-variant-numeric: var(--sc-numeric-variant);
+  font-feature-settings: var(--sc-numeric-features);
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  font-size: var(--sc-font-size-control);
+  line-height: var(--sc-line-height-control);
+  letter-spacing: var(--sc-tracking-control);
+}
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .5; }
+input[type='checkbox'], input[type='radio'] { accent-color: var(--sc-color-action-primary); }
+
+/* Un anillo de tinta separado del control. Es la única señal de foco del
+   sistema: se lee sobre el papel, sobre un plano de tinta y en alto contraste,
+   y no introduce un color que la interfaz no tiene. */
+:where(button, input, select, textarea, summary, [role='button'], [role='tab']):focus-visible {
+  outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
+  outline-offset: var(--sc-focus-ring-offset);
+}
+
+.sr-only {
+  position: absolute !important; width: 1px !important; height: 1px !important;
+  padding: 0 !important; margin: -1px !important; overflow: hidden !important;
+  clip: rect(0,0,0,0) !important; white-space: nowrap !important; border: 0 !important;
+}
+
+/* Superficie de interfaz. La materia (fondo, filete, elevación) vive en
+   `design-system/material.css`; aquí sólo queda la forma. */
+.sc-surface {
+  border-radius: var(--sc-radius-card);
+  transition: var(--sc-transition-control);
+}
+
+/* ---- Marco de la aplicación -------------------------------------------
+   Las cuatro superficies del editor van a sangre contra el viewport, así que
+   ninguna se redondea y cada una lleva sólo el canto que de verdad separa. Es
+   estructura, no decoración: sin estas cuatro reglas el marco se desarma. */
+.topbar { min-height: var(--sc-layout-topbar); border-width: 0 0 1px; border-radius: 0; }
+.toolbar { border-width: 0 1px 0 0; border-radius: 0; }
+.inspector-panel { border-width: 0 0 0 1px; border-radius: 0; }
+.results-panel { border-width: 1px 0 0; border-radius: 0; }
+
+.center-stage,
+.canvas-shell,
+.structural-canvas,
+.canvas-viewport { background-color: var(--sc-color-bg-canvas); }
+
+/* ---- Interacción -------------------------------------------------------
+   Sin volumen no hay nada que hundir: un control pulsado cambia de plano, no
+   de posición. `--sc-press-transform` es `none` en la fundación y se conserva
+   como token para que un tema alternativo pueda devolverle el hundimiento sin
+   tocar una sola regla. */
+button:not(:disabled), summary, [role='tab'], [role='radio'] {
+  transform-origin: center;
+  touch-action: manipulation;
+}
+button:not(:disabled):active { transform: var(--sc-press-transform); transition-duration: var(--motion-press); }
+
+button, input, select, textarea, summary, [role='button'], [role='tab'] {
+  transition: var(--sc-transition-control);
+}
+
+.sc-spinner__ring { border-color: color-mix(in srgb, currentColor 20%, transparent); border-top-color: currentColor; }
+
+/* ---- Movimiento --------------------------------------------------------
+   Cortas y sin rebote. Una interfaz plana que rebota se lee como una lámina
+   suelta, no como un instrumento. */
+@keyframes native-screen-in { from { opacity:.8; } to { opacity:1; } }
+@keyframes native-menu-in { from { opacity:0; transform:translate3d(0,-4px,0); } to { opacity:1; transform:translate3d(0,0,0); } }
+@keyframes native-dialog-in { from { opacity:0; transform:translate3d(0,6px,0); } to { opacity:1; transform:translate3d(0,0,0); } }
+@keyframes native-content-in { from { opacity:0; transform:translate3d(0,3px,0); } to { opacity:1; transform:translate3d(0,0,0); } }
+@keyframes native-fade-in { from { opacity:0; } to { opacity:1; } }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.popover, .sc-popover__content { animation: native-menu-in var(--sc-motion-fast) var(--sc-ease-enter) both; }
+.sc-modal-surface, .import-center-dialog, .new-exercise-dialog, .sc-home-settings-panel {
+  animation: native-dialog-in var(--sc-motion-standard) var(--sc-ease-enter) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
+}

@@ -4,6 +4,7 @@ import type { CanvasSelectionVisualState } from './selectionVisuals';
 import type { EditorLayerState } from './editorLayers';
 import type { ResultTab } from '../../store/ProjectContext';
 import { toDisplay } from '../../foundation/units';
+import { unitLabel } from '../../engine/units';
 import {
   distributedIntensityAt,
   grossRatioFromFlexible,
@@ -238,21 +239,32 @@ const CanvasGeometryLayerImpl = ({
     const visibleLoadedLength = axis.length * camera.scale * Math.abs(load.end - load.start);
     const count = Math.max(3, Math.min(9, Math.round(visibleLoadedLength / 34) + 1));
     const arrows = [];
+    const envelopeTails: Array<{ x: number; y: number }> = [];
+    const envelopeBases: Array<{ x: number; y: number }> = [];
+    const maximumIntensity = Math.max(Math.abs(load.qyStart ?? 0), Math.abs(load.qyEnd ?? 0), Math.abs(load.qxStart ?? 0), Math.abs(load.qxEnd ?? 0), 1e-9);
+    const verticalSign = Math.sign((load.qyStart ?? 0) || (load.qyEnd ?? 0) || (load.qxStart ?? 0) || (load.qxEnd ?? 0) || -1);
     for (let i = 0; i < count; i += 1) {
       const t = i / (count - 1);
       const base = stationOf(load.start + (load.end - load.start) * t);
       const { qx, qy } = distributedIntensityAt(load, t);
-      const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, qx, qy);
-      const mag = Math.hypot(gx, gy) || 1; const ux = gx / mag; const uy = -gy / mag;
-      const length = 33 + 12 * (mag / Math.max(Math.abs(load.qyStart ?? 0), Math.abs(load.qyEnd ?? 0), Math.abs(load.qxStart ?? 0), Math.abs(load.qxEnd ?? 0), 1));
-      arrows.push(<line key={i} x1={base.x - ux * length} y1={base.y - uy * length} x2={base.x - ux * 5} y2={base.y - uy * 5} markerEnd="url(#arrow-load-distributed)" />);
+      const intensity = Math.hypot(qx, qy);
+      // La silueta de carga es deliberadamente ortogonal a la pantalla: todas
+      // las flechas quedan verticales y la arista superior describe con una
+      // sola recta la variación 0→q (triángulo) o q1→q2 (trapecio).
+      const length = intensity > 1e-9 ? 20 + 42 * (intensity / maximumIntensity) : 0;
+      const tail = { x: base.x, y: base.y + (verticalSign < 0 ? -length : length) };
+      envelopeTails.push(tail);
+      envelopeBases.push(base);
+      if (length > 0) arrows.push(<line key={i} x1={tail.x} y1={tail.y} x2={base.x} y2={base.y} markerEnd="url(#arrow-load-distributed)" />);
     }
     const qStartMagnitude = Math.hypot(load.qxStart ?? 0, load.qyStart ?? 0);
     const qEndMagnitude = Math.hypot(load.qxEnd ?? load.qxStart ?? 0, load.qyEnd ?? load.qyStart ?? 0);
     const average = (qStartMagnitude + qEndMagnitude) / 2;
     const hitStart = stationOf(load.start);
     const hitEnd = stationOf(load.end);
-    return <g key={load.id} className={`distributed-symbol load-symbol--distributed${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.distributedLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(average, units, 'distributedForce'), 2), unit: distributedLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}<line className="load-hit" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} />{arrows}</g>;
+    const envelope = [envelopeTails[0], envelopeTails.at(-1), envelopeBases.at(-1), envelopeBases[0]].filter(Boolean) as Array<{ x: number; y: number }>;
+    const envelopePath = envelope.length > 2 ? `M ${envelope.map((point) => `${point.x} ${point.y}`).join(' L ')} Z` : '';
+    return <g key={load.id} className={`distributed-symbol load-symbol--distributed${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.distributedLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(average, units, 'distributedForce'), 2), unit: distributedLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}<line className="load-hit" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /><path className="distributed-envelope" d={envelopePath} />{arrows}</g>;
   };
 
   if (slot === 'members') {
@@ -261,6 +273,7 @@ const CanvasGeometryLayerImpl = ({
         {project.members.map((member) => {
           const ni = nodeMap.get(member.i); const nj = nodeMap.get(member.j); if (!ni || !nj) return null;
           const a = toScreen(ni.x, ni.y); const b = toScreen(nj.x, nj.y);
+          const axis = memberAxis(member, ni, nj);
           const selected = selectedMemberIds.includes(member.id);
           const previewed = candidatePreview?.kind === 'member' && candidatePreview.id === member.id;
           const learningHighlighted = learningFocus?.memberIds.includes(member.id) ?? false;
@@ -303,6 +316,27 @@ const CanvasGeometryLayerImpl = ({
               {previewed ? <line className="candidate-preview-halo" x1={a.x} y1={a.y} x2={b.x} y2={b.y} /> : null}
               <line className="member-hit" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
               <line className="member-line" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+              {layers.dimensions && view.showDimensions ? (() => {
+                const screenLength = Math.hypot(b.x - a.x, b.y - a.y);
+                if (screenLength < 24) return null;
+                const ux = (b.x - a.x) / screenLength;
+                const uy = (b.y - a.y) / screenLength;
+                const nx = -uy;
+                const ny = ux;
+                const offset = 38;
+                const start = { x: a.x + nx * offset, y: a.y + ny * offset };
+                const end = { x: b.x + nx * offset, y: b.y + ny * offset };
+                const center = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+                let angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+                if (angle > 90 || angle < -90) angle += 180;
+                const value = `${formatFixed(toDisplay(axis.flexibleLength, units, 'length'), 2)} ${unitLabel(units, 'length')}`;
+                return <g className="member-dimension" pointerEvents="none">
+                  <line className="member-dimension-extension" x1={a.x} y1={a.y} x2={start.x} y2={start.y} />
+                  <line className="member-dimension-extension" x1={b.x} y1={b.y} x2={end.x} y2={end.y} />
+                  <line className="member-dimension-line" x1={start.x} y1={start.y} x2={end.x} y2={end.y} markerStart="url(#arrow-dimension)" markerEnd="url(#arrow-dimension)" />
+                  <text transform={`translate(${center.x} ${center.y - 6}) rotate(${angle})`} textAnchor="middle">{value}</text>
+                </g>;
+              })() : null}
               {member.type === 'frame' && ((member.rigidOffsetI ?? 0) > 0 || (member.rigidOffsetJ ?? 0) > 0) ? (() => {
                 const length = Math.hypot(nj.x - ni.x, nj.y - ni.y);
                 const ti = length > 0 ? (member.rigidOffsetI ?? 0) / length : 0;

@@ -72,7 +72,7 @@ const focusStableLauncherIfUnclaimed = (selector: string): void => {
   });
 };
 
-type WorkspaceShellProps = { onOpenHome: () => void; onOpenSpace3D: () => void; projectId: string };
+type WorkspaceShellProps = { onOpenHome: () => void; projectId: string };
 type LayoutController = ReturnType<typeof useWorkspaceLayoutPreferences>;
 type PendingModelDoctorNotification = {
   id: number;
@@ -83,7 +83,6 @@ type PendingModelDoctorNotification = {
 
 const WorkspaceBrokerContent = ({
   onOpenHome,
-  onOpenSpace3D,
   projectId,
   shellRef,
   layoutController,
@@ -96,7 +95,7 @@ const WorkspaceBrokerContent = ({
   const [revisionBaseline, setRevisionBaseline] = useState<RevisionSnapshot | null>(null);
   const [editorLayers, dispatchEditorLayers] = useReducer(editorLayerReducer, undefined, createPersistedEditorLayerState);
   const { t } = useI18n();
-  const { project, analysis, isAnalyzing, storageIssue, storageMessage, setActiveTool, setResultTab, analyze, undo, redo, canUndo, canRedo } = useProject();
+  const { project, analysis, isAnalyzing, storageIssue, storageMessage, renameProject, setActiveTool, setResultTab, analyze, undo, redo, canUndo, canRedo } = useProject();
   const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
   const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
   const localAssistantTriggerRef = useRef<HTMLElement | null>(null);
@@ -194,17 +193,15 @@ const WorkspaceBrokerContent = ({
         activateEvidenceLayer(layer, { setResultTab, dispatchLayers: dispatchEditorLayers });
       }),
       onWorkspaceCommand('open-view-settings', () => openSurface('view')),
-      /* `dense` es invocada: el lanzador viaja en el propio comando para que el
-         broker sepa a dónde devolver el foco al cerrar.
-         `influence` es además el único de los tres cuya lectura vive también
-         en el lienzo (CanvasResultLayer gatea el overlay de influencia con
-         `resultTab === 'influence'`, el mismo campo que `analyze()` ya mueve
-         a 'issues'/'summary'). CRI-101 dejó esa lectura sin quien la ponga:
-         el resto de superficies densas no tienen lectura en el lienzo, así
-         que no necesitan tocar `resultTab`. */
+      /* Los lanzadores de Influencia previos se conservan, pero ahora llevan a
+         la pestaña residente: la línea se lee junto a N/V/M, sin drawer. */
       onWorkspaceCommand('open-dense-results', ({ view: requestedView, trigger }) => {
+        if (requestedView === 'influence') {
+          setResultTab('influence');
+          openSurface('results', trigger);
+          return;
+        }
         setDenseView(requestedView);
-        if (requestedView === 'influence') setResultTab('influence');
         openSurface('dense', trigger);
       }),
     ];
@@ -434,7 +431,10 @@ const WorkspaceBrokerContent = ({
       labels={{
         solverName: SOLVER_2D.name,
         project: t('topbar.currentProject'),
-        openProject: t('palette.open'),
+        home: t('navigation.home'),
+        editProject: t('project.name'),
+        saveProject: t('topbar.saveProject'),
+        cancel: t('topbar.cancelProject'),
         storageReady: t('storage.local'),
         storageRecovered: t('storage.recoveredShort'),
         // `storageIssue` no es sólo «no pude guardar»: `ProjectProvider` lo usa
@@ -458,7 +458,8 @@ const WorkspaceBrokerContent = ({
         results: t('results.outputs'),
         actions: t('toolbar.primary'),
       }}
-      onOpenProject={() => emitWorkspaceCommand('open-command-palette')}
+      onOpenHome={onOpenHome}
+      onRenameProject={renameProject}
       onUndo={undo}
       onRedo={redo}
       onAnalyze={() => {
@@ -472,9 +473,6 @@ const WorkspaceBrokerContent = ({
       onOpenResults={(trigger) => emitWorkspaceCommand('toggle-results', { trigger })}
     />}
     console={<Console
-      onOpenHome={onOpenHome}
-      onOpenSpace3D={onOpenSpace3D}
-      resultsOpen={results.open}
       layoutActions={{
         inspectorCollapsed: !inspectorOpen,
         fullCanvas: layout.fullCanvas,

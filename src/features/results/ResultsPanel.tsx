@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { AlertCircle, ChevronUp, CircleDotDashed, GripHorizontal, X } from 'lucide-react';
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { AlertCircle, ChevronUp, CircleDotDashed, GripHorizontal, LoaderCircle, X } from 'lucide-react';
 import { useProject, type ResultTab } from '../../store/ProjectContext';
 import { evaluateDeformationAt, evaluateDiagramAt, segmentBezierControls } from '../../engine/diagram';
 import { resolveReliability } from '../../engine/reliability';
@@ -23,12 +23,13 @@ import { ResultExtremeCard } from './ResultExtremeCard';
 import { reliabilityLevelLabelKey } from './reliabilityCopy';
 import { formatResultNumber } from './resultFormatting';
 import { resultsBandPx } from './resultsBand';
+import { preloadInfluenceLineView } from './denseResults';
 import './results.css';
 
 /**
- * Lo que queda residente en el panel tras CRI-101: el resumen en tarjetas y las
- * lecturas de diagrama del objeto activo. Reacciones, influencia y «Entender»
- * ya no son pestañas — son la superficie `dense`, que se invoca.
+ * El panel conserva el resumen, N/V/M, deformada e influencia en el mismo
+ * contexto del objeto activo. Reacciones y «Entender» siguen siendo vistas
+ * densas que se invocan cuando se necesitan.
  */
 const tabs: Array<{ id: ResultTab; labelKey: TranslationKey; color?: string; evidence?: EvidenceLayerId }> = [
   { id: 'summary', labelKey: 'results.summary' },
@@ -36,7 +37,10 @@ const tabs: Array<{ id: ResultTab; labelKey: TranslationKey; color?: string; evi
   { id: 'shear', labelKey: 'results.shear', color: 'shear', evidence: 'shear' },
   { id: 'moment', labelKey: 'results.moment', color: 'moment', evidence: 'moment' },
   { id: 'deformed', labelKey: 'results.deformed', evidence: 'deformed' },
+  { id: 'influence', labelKey: 'results.influence', color: 'influence' },
 ];
+
+const LazyInfluenceLineView = lazy(() => preloadInfluenceLineView());
 
 type ResultsPanelMode = 'compact' | 'expanded' | 'focused';
 
@@ -87,7 +91,7 @@ export interface ResultsPanelProps {
 }
 
 export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenChange, defaultDesktopExpanded = false }: ResultsPanelProps) => {
-  const { project, analysis, resultTab, setResultTab, analyze, selection, isAnalyzing, selectedCombinationId } = useProject();
+  const { project, analysis, resultTab, setResultTab, analyze, selection, isAnalyzing, selectedCombinationId, setInfluenceCanvasState } = useProject();
   const { t } = useI18n();
   const isMobile = presentation === 'sheet';
   const [height, setHeight] = useState(() => isMobile ? Math.min(330, window.innerHeight * 0.4) : 285);
@@ -455,6 +459,9 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
         {analysis?.success && activeTab.id === 'summary' ? <ResultSummary /> : null}
         {analysis?.success && ['axial', 'shear', 'moment'].includes(activeTab.id) ? <DiagramView type={activeTab.id as 'axial' | 'shear' | 'moment'} memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
         {analysis?.success && activeTab.id === 'deformed' ? <DeformationView memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
+        {analysis?.success && activeTab.id === 'influence' ? <Suspense fallback={<div className="results-view-loading" role="status" aria-label={t('results.loadingInfluence')}><LoaderCircle className="spin" size={20} aria-hidden="true" /><span>{t('results.loadingInfluence')}</span></div>}>
+          <LazyInfluenceLineView project={project} selection={selection ?? undefined} onCanvasStateChange={setInfluenceCanvasState} />
+        </Suspense> : null}
       </div>
       </>}
     </section>

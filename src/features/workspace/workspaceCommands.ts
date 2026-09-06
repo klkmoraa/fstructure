@@ -13,7 +13,7 @@
  */
 import type { Selection } from '../../types';
 import type { EvidenceLayerId } from '../canvas/evidenceLayers';
-import type { DenseResultView } from '../results/denseResults';
+import type { DenseResultRequest } from '../results/denseResults';
 
 /** A selection that names exactly one object; `multi` and `null` cannot be focused. */
 export type FocusableSelection = Extract<NonNullable<Selection>, { id: string }>;
@@ -39,11 +39,10 @@ export interface WorkspaceCommands {
   /** Open canvas visibility and display settings. */
   'open-view-settings': void;
   /**
-   * Invoke the dense results surface (reactions, influence, "Entender") on a
-   * given view. It is never resident, so the launcher travels with the element
-   * that asked for it: the broker returns focus there when the surface closes.
+   * Invoke a detailed result. Reactions and "Entender" open the on-demand
+   * drawer; Influence is retained for old launchers and opens its Results tab.
    */
-  'open-dense-results': { view: DenseResultView; trigger?: HTMLElement | null };
+  'open-dense-results': { view: DenseResultRequest; trigger?: HTMLElement | null };
   /** Export the structural canvas as a standalone SVG file. */
   'export-svg': void;
   /** Export the structural canvas as a raster image. */

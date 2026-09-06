@@ -3,12 +3,10 @@ import { X } from 'lucide-react';
 import { useProject } from '../../store/ProjectContext';
 import type { DiagramPoint, DiagramQuantity, MemberModel, NodeModel, Selection, Tool } from '../../types';
 import { evaluateDiagramAt } from '../../engine/diagram';
-import { buildLeftCutEquilibrium } from '../../engine/cut';
-import { resolveMemberLocalLoads } from '../../engine/solver';
 import { unitLabel } from '../../engine/units';
 import { fromDisplay, toDisplay } from '../../foundation/units';
 import { exportSvgAsPng, exportSvgElement } from '../../utils/export';
-import { formatFixed, formatScientific } from '../../utils/numberFormat';
+import { formatFixed } from '../../utils/numberFormat';
 import { copyModelSelection, ensureNodeAtPoint, pasteModelClipboard, structuralSelectionFromIds, toggleStructuralSelection, type ModelClipboard } from '../../data/modelOperations';
 import {
   buildIntersectionSnapCandidates,
@@ -42,7 +40,7 @@ import {
   type ScreenPoint,
 } from './canvasInteraction';
 import { toolFromShortcut } from './toolRegistry';
-import { cameraToFitBounds, canvasSafeInsetsFor, canvasSafeRect, expandBoundsForDecoration } from './canvasChromeGeometry';
+import { cameraToCenterPoint, cameraToFitBounds, canvasSafeInsetsFor, canvasSafeRect, expandBoundsForDecoration } from './canvasChromeGeometry';
 import type { EditorLayerAction, EditorLayerState } from './editorLayers';
 import { CanvasChrome } from './CanvasChrome';
 import { layoutSmartLabels, smartLabelDetailForScale, type SmartLabelCandidate } from './labelLayout';
@@ -59,7 +57,6 @@ import {
   toGlobalVector,
 } from '../../graphics/structureGeometry';
 import { CanvasResultLayer, diagramPixelScaleFor, reactionClearanceFor } from './CanvasResultLayer';
-import { criticalStampsFor } from './criticalStamps';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
 import { CanvasMiniMap } from './CanvasMiniMap';
 import { CanvasDiagramStack, stackBottomReserve } from './CanvasDiagramStack';
@@ -76,7 +73,7 @@ import {
 } from './candidatePicker';
 import { SurfacePresentationContext } from '../workspace/SurfacePresentationContext';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
-import { ELASTIC_SATURATION_RATIO, elasticDemandGate, elasticDemandView, elasticIndexPaint, sectionElasticIndex } from '../results/elasticDemand';
+import { ELASTIC_SATURATION_RATIO, elasticDemandView, elasticIndexPaint } from '../results/elasticDemand';
 import { CoordinateEntry, type CoordinateOrigin, type CoordinatePreview } from './CoordinateEntry';
 import { resolveRepeatRecipe, type RepeatRecipe } from './repeatAction';
 import { RepeatActionOverlay } from './RepeatActionOverlay';
@@ -223,6 +220,8 @@ const toolLabelKeys: Record<Tool, TranslationKey> = {
   delete: 'toolbar.delete',
 };
 
+const COMPACT_CONTEXT_SHEETS = ['detail', 'analysisSetup', 'view', 'results'] as const;
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const nextId = (prefix: string, ids: string[]) => {
@@ -247,7 +246,6 @@ export const StructuralCanvas = ({
     selection,
     resultTab,
     setResultTab,
-    selectedCombinationId,
     setSelection,
     setActiveTool,
     executeProjectCommand,
@@ -260,6 +258,7 @@ export const StructuralCanvas = ({
     cancelProjectTransaction,
     learningFocus,
     resultCursor,
+    setResultCursor,
     influenceCanvasState,
     modeShapeState,
   } = useProject();
@@ -271,6 +270,10 @@ export const StructuralCanvas = ({
   const candidatePickerSurface = surfaceBroker?.stateFor('candidatePicker');
   const generatorSurface = surfaceBroker?.stateFor('generator');
   const compactCanvasChrome = surfaceBroker?.shellClass === 'K0';
+  const compactContextSheetOpen = compactCanvasChrome && COMPACT_CONTEXT_SHEETS.some((surface) => {
+    const state = surfaceBroker?.stateFor(surface);
+    return state?.presentation === 'sheet' && state.status === 'active';
+  });
   const hostRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const coordinateReadoutRef = useRef<HTMLOutputElement>(null);
@@ -458,7 +461,6 @@ export const StructuralCanvas = ({
   const forceLabel = unitLabel(units, 'force');
   const momentLabel = unitLabel(units, 'moment');
   const distributedLabel = unitLabel(units, 'distributedForce');
-  const selectedCombination = project.combinations.find((item) => item.id === selectedCombinationId) ?? null;
   const selectionVisualState = useMemo(() => buildCanvasSelectionVisualState(selection), [selection]);
   const loadPlacementInstruction = activeTool === 'pointLoad'
     ? t('canvas.placePointLoad')
@@ -483,6 +485,37 @@ export const StructuralCanvas = ({
     && view.showLoads
     && resultTab !== 'influence'
     && project.nodalLoads.length + project.memberLoads.length > 0;
+  /* La deformada se dibuja en coordenadas de modelo y puede salir mucho más
+     allá de los nudos. Ajustar sólo contra éstos dejaba la curva recortada y
+     el pórtico aparentemente descentrado. El encuadre usa los mismos puntos
+     que pinta CanvasResultLayer cuando esa evidencia está visible. */
+  const visibleFitBounds = useMemo(() => {
+    const bounds = modelBounds(project.nodes);
+    if (!layers.results || stackActive || resultTab !== 'deformed' || analysis?.success !== true) return bounds;
+    const points = project.nodes.map(({ x, y }) => ({ x, y }));
+    const scale = view.deformedScale;
+    for (const member of project.members) {
+      const result = resultMap.get(member.id);
+      const start = nodeMap.get(member.i);
+      const end = nodeMap.get(member.j);
+      if (!result || !start || !end || member.type === 'rigid') continue;
+      const { c, s } = memberAxis(member, start, end);
+      for (const point of result.deformation) {
+        const grossX = (result.startOffset ?? 0) + point.x;
+        points.push({
+          x: start.x + c * grossX + scale * (c * point.u - s * point.v),
+          y: start.y + s * grossX + scale * (s * point.u + c * point.v),
+        });
+      }
+      const startResult = nodeResultMap.get(member.i);
+      const endResult = nodeResultMap.get(member.j);
+      points.push(
+        { x: start.x + scale * (startResult?.ux ?? 0), y: start.y + scale * (startResult?.uy ?? 0) },
+        { x: end.x + scale * (endResult?.ux ?? 0), y: end.y + scale * (endResult?.uy ?? 0) },
+      );
+    }
+    return modelBounds(points);
+  }, [analysis?.success, layers.results, nodeMap, nodeResultMap, project.members, project.nodes, resultMap, resultTab, stackActive, view.deformedScale]);
   /**
    * El mapa de demanda es una lectura derivada, no un estado: se recalcula sólo
    * cuando la capa está encendida, así el coste no lo paga quien no lo pidió.
@@ -527,34 +560,6 @@ export const StructuralCanvas = ({
       maxY: Math.max(topLeft.y, bottomRight.y),
     };
   }, [camera, canvasMeasured, size.height, size.width]);
-  /**
-   * Tarjeta contextual: el índice elástico *en esa sección concreta*, no el de
-   * la barra entera. Comparte `sectionElasticIndex` y la puerta de confiabilidad
-   * con los paneles, así que aquí tampoco se publica un η sin Fy o sin W
-   * verificables: en ese caso el corte dice «no disponible» y explica por qué.
-   */
-  const cutDemand = useMemo(() => {
-    if (!cut?.point || !resultsAllowed) return null;
-    const member = memberMap.get(cut.memberId);
-    if (!member) return null;
-    if (elasticDemandGate(analysis).blocker) return { status: 'unavailable' as const };
-    const index = sectionElasticIndex(member, cut.point.axial, cut.point.moment);
-    return index.status === 'available'
-      ? { status: 'available' as const, ratio: index.ratio, ...elasticIndexPaint(index.ratio) }
-      : { status: 'unavailable' as const };
-  }, [analysis, cut, memberMap, resultsAllowed]);
-  const cutEquilibrium = useMemo(() => {
-    if (!cut?.point || !analysis?.success) return null;
-    const memberResult = resultMap.get(cut.memberId);
-    if (!memberResult) return null;
-    try {
-      const resolved = resolveMemberLocalLoads(project, cut.memberId, selectedCombination);
-      return buildLeftCutEquilibrium(memberResult.localEndForces, resolved.loads, cut.point);
-    } catch {
-      return null;
-    }
-  }, [analysis?.success, cut, project, resultMap, selectedCombination]);
-
   const transitionInteraction = useCallback((next: CanvasInteraction) => {
     interactionRef.current = next;
     setInteractionState(next);
@@ -683,7 +688,7 @@ export const StructuralCanvas = ({
     coordinateReadoutRef.current.textContent = `X ${formatFixed(toDisplay(point.x, units, 'length'), 3)} · Y ${formatFixed(toDisplay(point.y, units, 'length'), 3)} ${lengthLabel}`;
   }, [lengthLabel, localScreenPoint, units]);
 
-  const fitModel = useCallback((bottomReserve = 0) => {
+  const fitModel = useCallback((bottomReserve = 0, topReserve?: number) => {
     if (!project.nodes.length || !Number.isFinite(size.width) || !Number.isFinite(size.height) || size.width <= 0 || size.height <= 0) return;
     // React supplies a MouseEvent when this callback is handed directly to a
     // button. Only the ACM effect is allowed to provide a numeric reserve.
@@ -699,8 +704,15 @@ export const StructuralCanvas = ({
        seguro se quedaba en unos pocos píxeles de alto y el modelo se encuadraba
        a la escala mínima, encogido hasta ser ilegible justo cuando ACM lo pone
        al lado de sus tres diagramas. */
-    const fitInsets = { ...insets, bottom: Math.max(insets.bottom, safeBottomReserve) };
-    const bounds = modelBounds(project.nodes);
+    const safeTopReserve = typeof topReserve === 'number' && Number.isFinite(topReserve)
+      ? Math.max(0, topReserve)
+      : insets.top;
+    const fitInsets = {
+      ...insets,
+      top: safeTopReserve,
+      bottom: Math.max(insets.bottom, safeBottomReserve),
+    };
+    const bounds = visibleFitBounds;
     const first = cameraToFitBounds(bounds, viewport, fitInsets);
     // Encuadrar los nudos no es encuadrar el dibujo: las cargas se dibujan en
     // espacio de pantalla ALREDEDOR del nudo, así que con el modelo ajustado al
@@ -711,15 +723,54 @@ export const StructuralCanvas = ({
     // exacto, sin margen que no le corresponde.
     const decorated = loadDecorationDrawn ? expandBoundsForDecoration(bounds, first.scale) : bounds;
     updateCamera(decorated === bounds ? first : cameraToFitBounds(decorated, viewport, fitInsets));
-  }, [loadDecorationDrawn, project.nodes, size, updateCamera]);
+  }, [loadDecorationDrawn, project.nodes.length, size, updateCamera, visibleFitBounds]);
+
+  /* Las hojas K0 flotan sobre el canvas y por eso no disparan ResizeObserver
+     en su anfitrión. Al abrirse, medimos su techo real y encuadramos el modelo
+     contra el rectángulo que sigue visible; al cerrarse recuperamos el encuadre
+     completo. El observer también cubre cambios de detent y altura. */
+  useEffect(() => {
+    if (!canvasMeasured || !compactCanvasChrome) return undefined;
+    let sheetObserver: ResizeObserver | null = null;
+    const reframe = () => {
+      const host = hostRef.current;
+      if (!host || !compactContextSheetOpen) {
+        fitModel();
+        return;
+      }
+      const sheet = document.querySelector<HTMLElement>(
+        '[data-surface-presentation="sheet"][data-surface-status="active"]:not([hidden])',
+      );
+      if (!sheet) {
+        fitModel();
+        return;
+      }
+      const hostRect = host.getBoundingClientRect();
+      const sheetRect = sheet.getBoundingClientRect();
+      const bottomReserve = Math.max(0, hostRect.bottom - Math.max(hostRect.top, sheetRect.top) + 12);
+      /* Sin el riel de evidencia, 52px cubren el único control que permanece
+         arriba (Capas) y centran el pórtico en la ventana visible. */
+      fitModel(bottomReserve, 52);
+    };
+    const frame = window.requestAnimationFrame(() => {
+      reframe();
+      if (!compactContextSheetOpen) return;
+      const sheet = document.querySelector<HTMLElement>(
+        '[data-surface-presentation="sheet"][data-surface-status="active"]:not([hidden])',
+      );
+      if (!sheet) return;
+      sheetObserver = new ResizeObserver(reframe);
+      sheetObserver.observe(sheet);
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      sheetObserver?.disconnect();
+    };
+  }, [canvasMeasured, compactCanvasChrome, compactContextSheetOpen, fitModel]);
 
   const navigateMinimapTo = useCallback((point: ModelPoint) => {
-    updateCamera((current) => ({
-      scale: current.scale,
-      x: size.width / 2 - point.x * current.scale,
-      y: size.height / 2 + point.y * current.scale,
-    }));
-  }, [size.height, size.width, updateCamera]);
+    updateCamera((current) => cameraToCenterPoint(point, current.scale, size));
+  }, [size, updateCamera]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -771,7 +822,10 @@ export const StructuralCanvas = ({
       }
       if (!point) return;
       const scale = Math.max(85, cameraRef.current.scale);
-      updateCamera({ scale, x: size.width / 2 - point.x * scale, y: size.height / 2 + point.y * scale });
+      // Localizar centra dentro del rectángulo que permanece libre de dock,
+      // controles y barra superior; el centro geométrico del SVG puede quedar
+      // visualmente ocupado aunque siga dentro de sus límites.
+      updateCamera(cameraToCenterPoint(point, scale, size));
       showCanvasFeedback(t('canvas.objectCentered', { id: detail.id }));
       // "Localizar" from a peeked Datasheet/Doctor moves DOM focus here: the
       // background stops being inert the moment the surface degrades, and
@@ -2024,7 +2078,9 @@ export const StructuralCanvas = ({
     const ni = nodeMap.get(member.i)!;
     const nj = nodeMap.get(member.j)!;
     const ratio = grossRatioAtPoint(memberAxis(member, ni, nj), model);
-    setCut({ memberId: member.id, ratio, point: memberValueAt(member.id, ratio), clientX: event.clientX, clientY: event.clientY, pinned: false });
+    const point = memberValueAt(member.id, ratio);
+    setCut({ memberId: member.id, ratio, point, clientX: event.clientX, clientY: event.clientY, pinned: false });
+    if (point) setResultCursor({ memberId: member.id, x: point.x, pinned: false });
   });
 
   const globalDiagramMax = useMemo(() => {
@@ -2110,7 +2166,10 @@ export const StructuralCanvas = ({
     if (target.kind === 'nodalLoad' || target.kind === 'memberLoad') onRequestInspector?.();
   });
 
-  const onCutLeave = useCallback(() => setCut((current) => current?.pinned ? current : null), []);
+  const onCutLeave = useCallback(() => {
+    setCut((current) => current?.pinned ? current : null);
+    setResultCursor(resultCursor?.pinned ? resultCursor : null);
+  }, [resultCursor, setResultCursor]);
 
   const placedSmartLabels = useMemo(() => {
     const smartLabelCandidates: SmartLabelCandidate[] = [];
@@ -2160,7 +2219,7 @@ export const StructuralCanvas = ({
       });
     }
     const dimensionToolActive = activeTool === 'dimension';
-    if (dimensionToolActive || (layers.labels && layers.dimensions && (view.showLocalAxes || view.showDimensions))) {
+    if (dimensionToolActive || (layers.labels && layers.dimensions && view.showLocalAxes)) {
       smartLabelCandidates.push({
         id: `dimension:${member.id}`,
         text: `${formatFixed(toDisplay(Math.hypot(nj.x - ni.x, nj.y - ni.y), units, 'length'), 3)} ${lengthLabel}`,
@@ -2307,11 +2366,6 @@ export const StructuralCanvas = ({
     if (['axial', 'shear', 'moment'].includes(resultTab) && view.showResultOverlay) {
       const quantity = resultTab as DiagramQuantity;
       const side = view.diagramSide === 'negative' ? -1 : 1;
-      // Cortante y momento ya sellan su máximo y su mínimo sobre la barra, con
-      // el valor Y su estación (`CanvasResultLayer.renderCriticalPoints`). Una
-      // etiqueta con la mitad de esa información encima del mismo punto no
-      // añade nada y era la causa principal del amontonamiento junto al pico.
-      const stampedExtremes = quantity === 'shear' || quantity === 'moment';
       for (const member of project.members) {
         const result = resultMap.get(member.id);
         const ni = nodeMap.get(member.i);
@@ -2326,16 +2380,13 @@ export const StructuralCanvas = ({
         const ny = axis.normal.y * side;
         const quantityUnit = quantity === 'moment' ? momentLabel : forceLabel;
         const displayQuantity = quantity === 'moment' ? 'moment' as const : 'force' as const;
-        const points = result.criticalPoints
-          .filter((point) => point.quantity === quantity && ['maximum', 'minimum', 'end', 'jump'].includes(point.kind))
-          .filter((point, index, all) => all.findIndex((candidate) => Math.abs(candidate.x - point.x) <= Math.max(1, length) * 1e-7 && Math.abs(candidate.value - point.value) <= Math.max(1, Math.abs(point.value)) * 1e-7) === index)
-          .sort((first, second) => {
-            const rank = (kind: typeof first.kind) => kind === 'maximum' || kind === 'minimum' ? 0 : kind === 'jump' ? 1 : 2;
-            return rank(first.kind) - rank(second.kind) || first.x - second.x;
-          })
-          .slice(0, size.width < 520 ? 2 : 6);
-        for (const [index, point] of points.entries()) {
-          if (stampedExtremes && (point.kind === 'maximum' || point.kind === 'minimum')) continue;
+        const extrema = (['maximum', 'minimum'] as const).flatMap((kind) => {
+          const point = result.criticalPoints
+            .filter((candidate) => candidate.quantity === quantity && candidate.kind === kind)
+            .sort((first, second) => first.x - second.x)[0];
+          return point ? [{ ...point, kind }] : [];
+        }).filter((point, index, all) => index === 0 || Math.abs(point.x - all[index - 1].x) > Math.max(1, length) * 1e-7 || Math.abs(point.value - all[index - 1].value) > Math.max(1, Math.abs(point.value)) * 1e-7);
+        for (const point of extrema) {
           const grossX = (result.startOffset ?? 0) + point.x;
           const baseX = ni.x + tx * grossX;
           const baseY = ni.y + ty * grossX;
@@ -2343,11 +2394,11 @@ export const StructuralCanvas = ({
           const anchor = toScreen(baseX + nx * offsetModel, baseY + ny * offsetModel);
           const outward = point.value * side >= 0 ? 1 : -1;
           smartLabelCandidates.push({
-            id: `result:${member.id}:${quantity}:${point.kind}:${index}`,
-            text: `${quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M'} = ${formatFixed(toDisplay(point.value, units, displayQuantity), 2)} ${quantityUnit}`,
+            id: `result:${member.id}:${quantity}:${point.kind}`,
+            text: `${quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M'} ${point.kind === 'maximum' ? 'máx' : 'mín'} ${formatFixed(toDisplay(point.value, units, displayQuantity), 2)} ${quantityUnit}`,
             anchor,
-            priority: point.kind === 'maximum' || point.kind === 'minimum' ? 2 : 3,
-            forceVisible: point.kind === 'maximum' || point.kind === 'minimum',
+            priority: 2,
+            forceVisible: true,
             tone: quantity,
             preferredOffset: { x: nx * outward * 28, y: -ny * outward * 28 - 6 },
           });
@@ -2356,29 +2407,7 @@ export const StructuralCanvas = ({
     }
   }
 
-    // Los sellos de extremo se dibujan en la capa de resultados y no pasan por
-    // aquí: se reservan sus cajas para que ninguna etiqueta caiga encima del
-    // pico que hay que leer.
-    const reserved = resultsAllowed && analysis?.success && view.showResultOverlay && layers.results
-      ? criticalStampsFor({
-        project,
-        resultTab,
-        diagramSide: view.diagramSide === 'negative' ? 'negative' : 'positive',
-        camera,
-        toScreen,
-        nodeMap,
-        resultMap,
-        globalDiagramMax,
-        diagramPixelScaleFor: (result: (typeof analysis.memberResults)[number]) => diagramPixelScaleFor(project, resultTab, globalDiagramMax, result),
-        units,
-        lengthLabel,
-        forceLabel,
-        momentLabel,
-        size,
-      }).map((stamp) => stamp.rect)
-      : [];
-
-    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(size), camera.scale, reserved);
+    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(size), camera.scale);
   }, [
     activeTool,
     analysis,
@@ -2423,7 +2452,7 @@ export const StructuralCanvas = ({
   ]);
 
   return (
-    <div className="canvas-host" ref={hostRef}>
+    <div className="canvas-host" ref={hostRef} data-context-sheet-open={compactContextSheetOpen || undefined}>
       <svg
         ref={svgRef}
         className={`structural-canvas tool-${activeTool} interaction-${interaction.kind} ${spacePressed ? 'space-pan-ready' : ''}`}
@@ -2459,7 +2488,8 @@ export const StructuralCanvas = ({
           <marker id="arrow-load-point" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--sc-color-load-point)" /></marker>
           <marker id="arrow-load-distributed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--sc-color-load-distributed)" /></marker>
           <marker id="arrow-load-moment" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--sc-color-load-moment-applied)" /></marker>
-          <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--axial)" /></marker>
+          <marker id="arrow-reaction" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--reaction)" /></marker>
+          <marker id="arrow-dimension" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--dimension)" /></marker>
           <marker id="arrow-mechanism" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--warning)" /></marker>
         </defs>
         {/* Todo lo dibujable va dentro de un grupo con `id`: la lupa táctil lo
@@ -2766,7 +2796,7 @@ export const StructuralCanvas = ({
         dispatchLayers={dispatchLayers}
         resultTab={resultTab}
         setResultTab={setResultTab}
-        analysisAvailable={analysis?.success === true}
+        analysisAvailable={analysis?.success === true && !compactContextSheetOpen}
         snapEnabled={view.snap}
         gridEnabled={view.showGrid}
         coordinateReadoutRef={coordinateReadoutRef}
@@ -2859,17 +2889,9 @@ export const StructuralCanvas = ({
         />
       </div> : null}
       {cut?.point ? (
-        <div className="cut-tooltip" style={{ left: clamp(cut.clientX - (hostRef.current?.getBoundingClientRect().left ?? 0) + 14, 10, Math.max(10, size.width - 350)), top: clamp(cut.clientY - (hostRef.current?.getBoundingClientRect().top ?? 0) + 14, 10, Math.max(10, size.height - 390)) }}>
+        <div className="cut-tooltip" style={{ left: clamp(cut.clientX - (hostRef.current?.getBoundingClientRect().left ?? 0) + 14, 10, Math.max(10, size.width - 236)), top: clamp(cut.clientY - (hostRef.current?.getBoundingClientRect().top ?? 0) + 14, 10, Math.max(10, size.height - 118)) }}>
           <div className="cut-title-row">
             <strong>{t('canvas.cutTitle', { member: cut.memberId })}</strong>
-            {cutDemand ? <span
-              className="cut-demand-badge"
-              data-status={cutDemand.status}
-              data-at-reference={cutDemand.status === 'available' && cutDemand.atReference ? 'true' : undefined}
-              title={t(cutDemand.status === 'available' ? 'canvas.cutDemandHint' : 'canvas.cutDemandUnavailableHint')}
-            >{cutDemand.status === 'available'
-              ? `η ${formatFixed(cutDemand.ratio, 2)}`
-              : t('canvas.cutDemandUnavailable')}</span> : null}
             <span>{t(cut.pinned ? 'canvas.pinned' : 'canvas.preview')}</span>
           </div>
           <span>x = {formatFixed(toDisplay(cut.point.x, units, 'length'), 3)} {lengthLabel} <small className="cut-station">({formatFixed(cut.ratio * 100, 1)}% s/L)</small></span>
@@ -2878,39 +2900,6 @@ export const StructuralCanvas = ({
             <span className="shear-text">V = {formatFixed(toDisplay(cut.point.shear, units, 'force'), 3)} {forceLabel}</span>
             <span className="moment-text">M = {formatFixed(toDisplay(cut.point.moment, units, 'moment'), 3)} {momentLabel}</span>
           </div>
-          {cutEquilibrium ? (
-            <div className="cut-equilibrium">
-              <b>{t('canvas.leftSideFbd')}</b>
-              <svg className="cut-fbd" viewBox="0 0 280 82" role="img" aria-label={t('canvas.fbdAria', { member: cut.memberId, x: formatFixed(cut.point.x, 3) })}>
-                <line className="cut-fbd-member" x1="24" y1="43" x2="232" y2="43" />
-                <line className="cut-fbd-section" x1="232" y1="17" x2="232" y2="68" />
-                <line className="cut-fbd-axis" x1="24" y1="70" x2="65" y2="70" />
-                <line className="cut-fbd-axis" x1="24" y1="70" x2="24" y2="54" />
-                <text x="68" y="74">+x</text><text x="8" y="55">+y</text>
-                <text x="20" y="35">N₀, V₀, M₀</text>
-                <text x="238" y="29" className="axial-text">N</text>
-                <text x="238" y="45" className="shear-text">V</text>
-                <text x="238" y="61" className="moment-text">M</text>
-                {cutEquilibrium.resultants.filter((load) => load.kind !== 'moment').map((load, index) => {
-                  const px = 24 + (cutEquilibrium.x > 1e-12 ? Math.max(0, Math.min(1, load.sourceX / cutEquilibrium.x)) : 0) * 198;
-                  return <g key={`${load.kind}-${load.sourceX}-${index}`} className="cut-fbd-load"><line x1={px} y1="12" x2={px} y2="38" /><path d={`M ${px - 4} 33 L ${px} 40 L ${px + 4} 33 Z`} /><text x={px} y="10" textAnchor="middle">{load.kind === 'distributed' ? 'Rᵥ' : 'P'}</text></g>;
-                })}
-                <text x="140" y="80" textAnchor="middle">x = {formatFixed(toDisplay(cutEquilibrium.x, units, 'length'), 3)} {lengthLabel}</text>
-              </svg>
-              {cutEquilibrium.resultants.length ? <div className="cut-resultants"><small>{t('canvas.externalResultants')}</small>{cutEquilibrium.resultants.map((load, index) => <span key={`${load.kind}-${load.sourceX}-${index}`}><b>{t(load.kind === 'distributed' ? 'canvas.distributedKind' : load.kind === 'point' ? 'canvas.pointKind' : 'canvas.momentKind')}</b> x={formatFixed(toDisplay(load.sourceX, units, 'length'), 3)} {lengthLabel} · Fx={formatFixed(toDisplay(load.forceX, units, 'force'), 3)} {forceLabel} · Fy={formatFixed(toDisplay(load.forceY, units, 'force'), 3)} {forceLabel}{Math.abs(load.appliedMoment) > 1e-12 ? ` · M=${formatFixed(toDisplay(load.appliedMoment, units, 'moment'), 3)} ${momentLabel}` : ''}</span>)}</div> : <small className="cut-no-loads">{t('canvas.noExternalLoads')}</small>}
-              {cutEquilibrium.symbolicEquations.map((equation) => <code key={equation}>{equation}</code>)}
-              <div className="cut-substitution">
-                <code>ΣFₓ = {formatFixed(toDisplay(-cutEquilibrium.start.axial, units, 'force'), 3)} + {formatFixed(toDisplay(cutEquilibrium.totals.forceX, units, 'force'), 3)} + {formatFixed(toDisplay(cut.point.axial, units, 'force'), 3)} = {formatScientific(toDisplay(cutEquilibrium.residuals.forceX, units, 'force'), 1)} {forceLabel}</code>
-                <code>ΣFᵧ = {formatFixed(toDisplay(cutEquilibrium.start.shear, units, 'force'), 3)} + {formatFixed(toDisplay(cutEquilibrium.totals.forceY, units, 'force'), 3)} − {formatFixed(toDisplay(cut.point.shear, units, 'force'), 3)} = {formatScientific(toDisplay(cutEquilibrium.residuals.forceY, units, 'force'), 1)} {forceLabel}</code>
-                <code>ΣM = {formatFixed(toDisplay(-cutEquilibrium.start.moment, units, 'moment'), 3)} − ({formatFixed(toDisplay(cutEquilibrium.start.shear, units, 'force'), 3)})({formatFixed(toDisplay(cutEquilibrium.x, units, 'length'), 3)}) + {formatFixed(toDisplay(cutEquilibrium.totals.momentAboutCut, units, 'moment'), 3)} + {formatFixed(toDisplay(cut.point.moment, units, 'moment'), 3)} = {formatScientific(toDisplay(cutEquilibrium.residuals.moment, units, 'moment'), 1)} {momentLabel}</code>
-              </div>
-              <div className="cut-residuals">
-                <span>rₓ = {formatScientific(toDisplay(cutEquilibrium.residuals.forceX, units, 'force'), 1)} {forceLabel}</span>
-                <span>rᵧ = {formatScientific(toDisplay(cutEquilibrium.residuals.forceY, units, 'force'), 1)} {forceLabel}</span>
-                <span>rₘ = {formatScientific(toDisplay(cutEquilibrium.residuals.moment, units, 'moment'), 1)} {momentLabel}</span>
-              </div>
-            </div>
-          ) : null}
         </div>
       ) : null}
     </div>

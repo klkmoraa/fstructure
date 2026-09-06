@@ -387,11 +387,11 @@
 }
 
 .canvas-hint { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); border-radius: var(--sc-radius-pill); padding: 7px 9px 7px 13px; font-size: 12px; display:flex; align-items:center; gap:8px; pointer-events:none; }.canvas-hint button { width:24px; height:24px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--surface-2); color:var(--muted); pointer-events:auto; }.canvas-hint button:hover { color:var(--text); background:var(--border-soft); }
-.cut-tooltip { position: absolute; z-index: 28; width:min(340px,calc(100% - 20px)); max-height:min(380px,calc(100% - 20px)); overflow:auto; border-radius: var(--sc-radius-card); padding: 11px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 11px; pointer-events: none; }
+.cut-tooltip { position: absolute; z-index: 28; width:min(226px,calc(100% - 20px)); border-radius: var(--sc-radius-card); padding:8px 10px; display:flex; flex-direction:column; gap:4px; font-size:10px; pointer-events:none; }
 .cut-title-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .cut-title-row > span { color:var(--muted); font-size:10px; }
-.cut-values { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:7px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
-.cut-values span { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.cut-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:5px 0 0; border-top:1px solid var(--border-soft); }
+.cut-values span { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:9px; font-variant-numeric:tabular-nums; }
 .cut-equilibrium { display:flex; flex-direction:column; gap:4px; }
 .cut-equilibrium code { font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:9.5px; color:var(--muted-strong); white-space:normal; }
 .cut-fbd { width:100%; height:82px; border:1px solid var(--border-soft); border-radius:var(--sc-radius-card); background:var(--surface-2); }
@@ -2142,10 +2142,20 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .smart-label.tone-shear { color:var(--shear); }
 .smart-label.tone-moment { color:var(--moment); }
 .smart-label.tone-dimension { color:var(--dimension); }
+.smart-label.tone-dimension rect { fill:color-mix(in srgb,var(--surface) 82%,transparent); stroke:color-mix(in srgb,var(--dimension) 34%,transparent); filter:none; }
 .smart-label.tone-axial { color:var(--axial); }
 /* La reacción es un resultado del apoyo, no una fuerza axial de la barra:
    compartían color y no había forma de distinguirlas en la misma vista. */
 .smart-label.tone-reaction { color:var(--reaction); }
+/* Los extremos son anotaciones del diagrama, no tarjetas: dejan ver la curva
+   y el algoritmo de disposición conserva sus guías cuando dos valores cercanos
+   necesitan apartarse. */
+.smart-label:is([data-smart-label^='result:'],[data-smart-label^='reaction:']) rect { fill:none; stroke:none; }
+.smart-label:is([data-smart-label^='result:'],[data-smart-label^='reaction:']) text { font-size:9px; font-weight:700; }
+.member-dimension { color:var(--dimension); fill:none; stroke:currentColor; stroke-width:.7; opacity:.58; vector-effect:non-scaling-stroke; }
+.member-dimension-extension { stroke-dasharray:2 4; opacity:.78; }
+.member-dimension-line { stroke-width:.8; stroke-dasharray:3 3; }
+.member-dimension text { fill:currentColor; stroke:var(--canvas-bg); stroke-width:2px; paint-order:stroke; font-family:var(--sc-font-mono); font-size:9px; font-weight:650; }
 .node-object { cursor: pointer; }
 .node-object:focus-visible { outline:none; }
 .node-object text { font-size: 12px; font-weight: 600; fill: var(--text); paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
@@ -2159,6 +2169,7 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
    única pantalla donde los dos conviven. El color sale de `--load-ink`, que
    publica el modificador de tipo: aquí sólo se decide el grosor del trazo. */
 .distributed-symbol { stroke: var(--load-ink); color: var(--load-ink); stroke-width: 1.6; cursor: pointer; }
+.distributed-envelope { fill:color-mix(in srgb,var(--load-ink) 14%,transparent); stroke:var(--load-ink); stroke-width:1.1; stroke-linejoin:round; }
 /* La selección ya se dibuja con su halo; un resplandor encima sólo emborrona
    el trazo que hay que leer. */
 .load-symbol.selected .load-hit,

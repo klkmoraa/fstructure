@@ -47,7 +47,9 @@ export const finiteModelBounds = (bounds: ModelBounds): ModelBounds => {
 export const canvasSafeInsetsFor = (viewport: ViewportSize): CanvasSafeInsets => {
   if (viewport.width <= 480) return { top: 104, right: 58, bottom: 58, left: 58 };
   if (viewport.width <= 1023) return { top: 116, right: 64, bottom: 62, left: 64 };
-  return { top: 116, right: 68, bottom: 62, left: 68 };
+  // Desktop tools float over the lower canvas. Include their 116px band and
+  // 24px of support decoration when fitting, so the model remains selectable.
+  return { top: 116, right: 68, bottom: 140, left: 68 };
 };
 
 export const canvasSafeRect = (
@@ -109,6 +111,24 @@ export const expandBoundsForDecoration = (
     maxX: safeBounds.maxX + margin,
     minY: safeBounds.minY - margin,
     maxY: safeBounds.maxY + margin,
+  };
+};
+
+/** Centers one model point inside the canvas area that remains usable above chrome. */
+export const cameraToCenterPoint = (
+  point: { x: number; y: number },
+  scale: number,
+  viewport: ViewportSize,
+  insets: CanvasSafeInsets = canvasSafeInsetsFor(viewport),
+): CanvasCamera => {
+  const safe = canvasSafeRect(viewport, insets);
+  const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 85;
+  const centerX = safe.x + safe.width / 2;
+  const centerY = safe.y + safe.height / 2;
+  return {
+    scale: safeScale,
+    x: centerX - point.x * safeScale,
+    y: centerY + point.y * safeScale,
   };
 };
 

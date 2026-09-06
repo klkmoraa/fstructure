@@ -1,8 +1,8 @@
 /*
  * Consola: navegación, superficies, herramientas y acciones del proyecto.
  *
- * En escritorio es una columna de 52px que se despliega sobre el lienzo sin
- * moverlo —la celda de la retícula no cambia de ancho—. En K0 es una banda
+ * En escritorio es una columna estable de 52px; sus iconos no alteran el
+ * lienzo al recibir el puntero. En K0 es una banda
  * inferior donde lo que primero se alcanza son las herramientas de modelado.
  *
  * REGLA QUE SOSTIENE ESTA HOJA: la consola aloja el riel de herramientas
@@ -21,61 +21,22 @@
   overflow: visible;
   border-right: 1px solid var(--border-soft);
   background: var(--surface);
+  align-items: center;
   transition: width var(--sc-motion-bridge) var(--sc-ease-reveal);
 }
 
-/* Desplegada, la consola TAPA el lienzo: eso es exactamente lo que en este
-   sistema autoriza una sombra de flotación, y no la de contacto que llevaba. */
-.console:hover,
-.console:focus-within { width: 216px; box-shadow: var(--sc-shadow-lg); }
+/* La consola es una columna de iconos: las etiquetas viven en `aria-label`
+   y `title`, por lo que el lienzo no salta ni los mandos se desplazan al pasar
+   el ratón. */
 
-/*
- * Los controles PROPIOS de la consola se pintan por encima del riel flotante.
- *
- * El riel vive dentro del DOM de la consola (`.console__tools`) aunque
- * visualmente flote sobre el lienzo, así que subir `.console` entera lo subiría
- * con él: hay que separar sus mandos del riel, no la consola del resto.
- *
- * Hasta que el riel nombró sus seis principales no había con qué chocar —el
- * riel empezaba en x=360 y la consola desplegada llega a 216—. Nombrarlas mueve
- * su borde izquierdo a x=84 (medido a 1280px) y, con el riel en z-index 38, el
- * riel se comía los clics del pie de la consola: «Mostrar inspector» quedaba
- * inalcanzable. La consola sólo se despliega bajo el puntero o el foco, así que
- * mientras lo está ES la superficie que el usuario está usando y tiene que
- * recibir sus propios clics.
- */
-.console__head,
+/* Los controles propios se mantienen por encima del riel flotante. */
 .console__surfaces,
 .console__foot {
   position: relative;
   z-index: 39;
 }
 
-/*
- * La navegación termina donde empieza la bandeja de Resultados.
- *
- * Tapar el LIENZO al desplegarse está autorizado —arriba—: un lienzo se vuelve
- * a descubrir retirando el puntero. Tapar una superficie que hay que LEER no lo
- * está: «nada debe flotar encima de un panel si el usuario necesita leer o
- * editar ambos a la vez». Y eso era justo lo que pasaba: con Resultados
- * abierto, desplegar la consola cubría 144px de la bandeja —medido en X2 a
- * 1440px—, y lo cubierto no era relleno sino su encabezado («Centro
- * analítico»), su diagnóstico («Aún no hay resultados calculados») y el borde
- * izquierdo de su único control; `elementFromPoint` sobre esa zona devolvía una
- * etiqueta de la consola, así que el control tampoco se podía pulsar ahí.
- *
- * El arreglo no es un z-index —eso escondería el defecto sin resolver el
- * solapamiento, y dejaría la bandeja tapando la navegación en vez de al revés—:
- * es que la columna deje de llegar tan abajo. `--results-band` ya la publica el
- * propio panel mientras está activo, medida desde el borde inferior de la
- * ventana hasta su techo, y el riel flotante de herramientas ya se apoya en
- * ella. La consola se apoya en la misma medida y así la bandeja ocupa una fila
- * entera, sin nada de navegación por encima.
- *
- * Sólo aplica a la consola de escritorio: en K0 es una banda inferior fija
- * —regla propia más abajo— y la bandeja de Resultados vive dentro del lienzo,
- * por encima de ella, así que ahí no hay solapamiento que corregir.
- */
+/* Cuando Resultados está abierto, la columna termina antes de su bandeja. */
 @media (min-width: 1024px) {
   .console { margin-block-end: var(--results-band, 0px); }
 }
@@ -111,8 +72,7 @@
 .console button.is-active { background: var(--surface-2); color: var(--accent-ink); box-shadow: inset 2px 0 0 var(--accent-ink); }
 .console button:disabled { color: var(--sc-color-text-disabled); }
 
-/* La etiqueta existe siempre para el lector de pantalla; sólo se revela cuando
-   la consola tiene sitio para leerla. */
+/* La etiqueta aporta el nombre del control; la columna sólo muestra el icono. */
 .console__label {
   min-width: 0;
   overflow: hidden;
@@ -123,33 +83,12 @@
   transition: opacity var(--sc-motion-quick) var(--sc-ease-standard);
 }
 
-.console:hover .console__label,
-.console:focus-within .console__label { opacity: 1; }
 
-.console__head,
 .console__foot,
-.console__surfaces { display: grid; gap: 1px; }
-
-.console__head { padding-block-end: 6px; border-bottom: 1px solid var(--border-soft); }
-.console__brand { gap: 12px; }
-.console__brand .console__label { font-size: var(--sc-font-size-title); font-weight: var(--sc-font-weight-heavy); letter-spacing: var(--sc-tracking-tight); }
-
-/* El nombre del proyecto sólo existe cuando la consola está desplegada: en
-   52px no cabe nada legible y una elipsis suelta no informa. */
-.console__project { min-height: 30px; padding-block: 0; color: var(--muted); }
-.console__project-name {
-  min-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  font-size: var(--sc-font-size-caption);
-  font-weight: var(--sc-font-weight-semibold);
-  text-overflow: ellipsis;
-  transition: opacity var(--sc-motion-quick) var(--sc-ease-standard);
-}
-.console:hover .console__project-name,
-.console:focus-within .console__project-name { opacity: 1; }
+.console__surfaces { width: 44px; display: grid; justify-items: center; gap: 1px; }
 
 .console__body {
+  width: 44px;
   min-height: 0;
   flex: 1;
   overflow-y: auto;
@@ -175,16 +114,6 @@
 
 .console__foot { padding-block-start: 6px; border-top: 1px solid var(--border-soft); }
 
-/* La especificidad tiene que ganarle a `.console button`, que declara fondo
-   transparente para todas las acciones del riel. */
-.console button.console__analyze {
-  background: var(--sc-color-action-primary);
-  color: var(--sc-color-action-foreground);
-}
-.console button.console__analyze:hover:not(:disabled),
-.console button.console__analyze:focus-visible:not(:disabled) { background: var(--sc-color-action-hover); }
-.console button.console__analyze:disabled { background: var(--sc-color-fill-primary); color: var(--sc-color-text-disabled-content); }
-
 @media (max-width: 1023px) {
   .console {
     position: fixed;
@@ -192,7 +121,7 @@
     z-index: 40;
     width: 100%;
     /* El shell reserva exactamente esta altura (`--console-band`). */
-    height: var(--console-band, calc(60px + env(safe-area-inset-bottom)));
+    height: var(--console-band, calc(52px + env(safe-area-inset-bottom)));
     padding-block-end: env(safe-area-inset-bottom);
     flex-direction: row;
     align-items: stretch;
@@ -203,47 +132,18 @@
   .console:hover,
   .console:focus-within { width: 100%; box-shadow: var(--sc-shadow-sheet); }
 
-  /* En K0 la etiqueta no cabe nunca: el nombre accesible vive en `aria-label`.
-     El selector nombra también el elemento porque `.console button` ya declara
-     `display:flex` con más especificidad que una clase suelta. */
+  /* En K0 la etiqueta no cabe: el nombre accesible vive en `aria-label`. */
   .console__label { display: none; }
-  .console button.console__project { display: none; }
 
-  /*
-   * REPARTO K0: la barra superior manda, el dock ejecuta.
-   *
-   * Las dos franjas se repetían. Arriba ya viven la identidad del proyecto, el
-   * estado de guardado y de corrida, deshacer/rehacer, ANALIZAR y RESULTADOS;
-   * el dock repetía la marca, repetía Analizar y volvía a ofrecer Resultados.
-   * Un mismo mando en dos sitios no da dos caminos: da dos estados que hay que
-   * comparar, y en 390px cada copia se come el carril donde el pulgar busca las
-   * herramientas —por eso las fichas quedaban cortadas y a medio leer.
-   *
-   * El corte es por naturaleza, no por gusto: lo que informa del proyecto y lo
-   * que lanza y lee la corrida es de la barra superior; lo que DIBUJA sobre el
-   * lienzo —herramientas, capas, ajustes de vista, asistente e inspector— es
-   * del dock. Ninguna acción desaparece: cada una queda en una sola franja.
-   */
-  .console button.console__brand,
-  .console button.console__analyze,
-  .console button.console__results { display: none; }
-  /* Sin la marca, la cabecera es sólo la búsqueda: sin borde propio ni hueco. */
-  .console__head { border-inline-end: 0; }
-  /* El conmutador de tema sale de la banda en K0. Medido en 390px: la cabecera
-     se llevaba 93 y el pie 133, y a las SEIS herramientas de modelado —lo único
-     que el pulgar usa sin parar— les quedaban 164, o sea tres y media. El tema
-     se cambia una vez por sesión y desde esta versión tiene su comando en la
-     paleta, que está a un toque en la misma banda; el carril gana su ancho.
-     En escritorio la banda es una columna y no compite por sitio: allí sigue. */
+  /* El tema se cambia una vez por sesión; en K0 el carril conserva ese ancho
+     para las herramientas de modelado. */
   .console button.console__theme-toggle { display: none; }
   /* En K0 el lienzo YA ocupa la pantalla: el modo completo sólo escondería el
      riel y dejaría al usuario sin herramientas. */
   .console button.console__canvas-toggle { display: none; }
 
-  .console__head,
   .console__foot,
   .console__body { display: flex; flex: none; overflow: hidden; padding: 0; border: 0; gap: 0; }
-  .console__head { border-inline-end: 1px solid var(--border-soft); }
   .console__foot { border-inline-start: 1px solid var(--border-soft); }
 
   /* Las herramientas ocupan el carril desplazable y son lo primero que alcanza
@@ -285,18 +185,134 @@
     flex: none;
     width: max-content;
     max-width: none;
-    padding: 0;
-    gap: 0;
+    padding: 2px;
+    gap: 2px;
     overflow: visible;
   }
   .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock .tool-button {
-    width: 48px;
-    min-width: 48px;
-    min-height: 48px;
-    height: 48px;
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    height: 44px;
+    flex-basis: 44px;
   }
 
-  .console button { min-height: 48px; padding: 0 13px; justify-content: center; }
+  .console__tools .toolbar { height: 52px; min-height: 52px; }
+  .console__surfaces > button,
+  .console__foot > button { height: 44px; min-height: 44px; margin-block: 4px; }
+  .console button { padding: 0 11px; justify-content: center; }
   .console button.is-active { box-shadow: inset 0 2px 0 var(--accent-ink); }
-  .console__analyze { min-width: 56px; }
+}
+
+/* Clay shell pass -------------------------------------------------------
+   The console stays in its established column/bottom band. Its own controls
+   become small raised keys so the rail reads as one instrument, while the
+   structural tool dock keeps the canvas-centered position owned by phase1. */
+@media (min-width: 1024px) {
+  /* En X2 la consola sólo era el ancla DOM del dock. Se vuelve transparente al
+     layout, conserva el dock flotante y elimina la columna de iconos duplicada. */
+  .app-shell[data-shell-class='X2'] .console,
+  .app-shell[data-shell-class='X2'] .console__body,
+  .app-shell[data-shell-class='X2'] .console__tools { display: contents; }
+  .app-shell[data-shell-class='X2'] :is(.console__surfaces, .console__foot) { display: none; }
+
+  .console {
+    padding: 8px 4px;
+    border-right: 0;
+    background: var(--sc-color-bg-app);
+  }
+
+  .console__surfaces,
+  .console__foot {
+    gap: 6px;
+  }
+
+  .console__surfaces {
+    padding-block: 8px 12px;
+    border-bottom-color: var(--sc-color-border-soft);
+  }
+
+  .console__foot {
+    padding-block-start: 8px;
+    border-top-color: var(--sc-color-border-soft);
+  }
+
+  .console__surfaces > button,
+  .console__foot > button {
+    width: 44px;
+    min-width: 44px;
+    min-height: 42px;
+    height: 42px;
+    justify-content: center;
+    padding-inline: 0;
+    border: var(--sc-depth-raised-border);
+    border-radius: var(--sc-radius-control);
+    background: var(--sc-color-surface-1);
+    box-shadow: var(--sc-shadow-xs);
+    transition:
+      background-color var(--sc-motion-control) var(--sc-ease-standard),
+      border-color var(--sc-motion-control) var(--sc-ease-standard),
+      box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+      color var(--sc-motion-control) var(--sc-ease-standard),
+      transform var(--sc-motion-control) var(--sc-ease-press);
+  }
+
+  .console__surfaces > button:hover:not(:disabled),
+  .console__surfaces > button:focus-visible,
+  .console__foot > button:hover:not(:disabled),
+  .console__foot > button:focus-visible {
+    border-color: var(--sc-color-border);
+    background: var(--sc-color-surface-elevated);
+    box-shadow: var(--sc-shadow-lifted);
+    color: var(--sc-color-text-primary);
+  }
+
+  .console__surfaces > button:active:not(:disabled),
+  .console__foot > button:active:not(:disabled) {
+    background: var(--sc-color-surface-pressed);
+    box-shadow: var(--sc-shadow-pressed);
+  }
+
+  .console button.is-active {
+    border-color: var(--sc-color-border);
+    background: var(--sc-color-surface-pressed);
+    box-shadow: var(--sc-shadow-pressed);
+    color: var(--sc-color-text-primary);
+  }
+
+}
+
+@media (max-width: 1023px) {
+  .console {
+    border-top-color: var(--sc-color-border-soft);
+    background: var(--sc-color-bg-app);
+  }
+
+  .console__foot {
+    background: var(--sc-color-surface-inset);
+  }
+
+  .console__surfaces > button,
+  .console__foot > button {
+    border: var(--sc-depth-raised-border);
+    border-radius: var(--sc-radius-control);
+    background: var(--sc-color-surface-1);
+    box-shadow: var(--sc-shadow-xs);
+  }
+
+  .console button.is-active {
+    border-color: var(--sc-color-border);
+    background: var(--sc-color-surface-pressed);
+    box-shadow: var(--sc-shadow-pressed);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console,
+  .console *,
+  .console *::before,
+  .console *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

@@ -347,14 +347,13 @@ describe('color · la interfaz es acromática y el dominio es el único que tiñ
 });
 
 describe('forma · la escala de radios acompaña al volumen sin inflarlo', () => {
-  it('la escala es la del brandbook, y crece con el rol', () => {
+  it('la escala de arcilla crece con el rol', () => {
     // El radio acompaña a la sombra: sin curva, el canto duro delata que el
     // volumen es un adorno pegado. El producto había bajado un escalón en todo
-    // argumentando densidad; el brandbook publica 12 / 18 / 18 / 24 y es lo que
-    // se implementa.
+    // La revisión clay conserva controles compactos y suaviza las superficies.
     const escala = ['--sc-radius-control', '--sc-radius-card', '--sc-radius-panel', '--sc-radius-modal']
       .map((rol) => Number((valorEn(bloqueRaiz, rol) ?? '').replace('px', '')));
-    expect(escala).toEqual([12, 18, 18, 24]);
+    expect(escala).toEqual([12, 22, 22, 28]);
 
     // El dato deja de ser el escalón cero. Era la excepción mejor argumentada
     // del sistema —redondear una celda comparable rompe el barrido lineal de la

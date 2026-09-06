@@ -1,14 +1,10 @@
-import { lazy, Suspense, useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { LoaderCircle } from 'lucide-react';
+import { useRef, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { Drawer } from '../../design-system/components/overlays';
 import { useI18n } from '../../i18n/useI18n';
-import { useProject } from '../../store/ProjectContext';
 import type { SurfacePresentation } from '../workspace/surfacePresentation';
-import { DENSE_RESULT_VIEWS, preloadInfluenceLineView, type DenseResultView } from './denseResults';
+import { DENSE_RESULT_VIEWS, type DenseResultView } from './denseResults';
 import { LearnView } from './LearnView';
 import { ReactionsView } from './ReactionsView';
-
-const LazyInfluenceLineView = lazy(() => preloadInfluenceLineView());
 
 /**
  * La superficie `dense` de Results (CRI-101).
@@ -19,9 +15,9 @@ const LazyInfluenceLineView = lazy(() => preloadInfluenceLineView());
  * `onSurfaceReady`. El broker también elige cómo se presenta: `drawer` en
  * X2/M1, `fullscreen` en K0, y admite `peek` por ser modal en las tres.
  *
- * Aquí viven las tres vistas densas —reacciones, influencia y «Entender»—.
- * Ninguna recalcula nada: `dense` es proyección del mismo análisis, igual que
- * el panel del que salieron.
+ * Aquí viven las dos vistas densas —reacciones y «Entender»—. Influencia se
+ * lee directamente dentro del panel de Resultados para mantenerla en el mismo
+ * contexto que N/V/M y la deformada.
  */
 export interface DenseResultsSurfaceProps {
   open: boolean;
@@ -41,12 +37,10 @@ export const DenseResultsSurface = ({
   onSurfaceReady,
 }: DenseResultsSurfaceProps) => {
   const { t } = useI18n();
-  const { project, selection, setInfluenceCanvasState } = useProject();
   const tabsRef = useRef<HTMLDivElement>(null);
 
   const viewLabel: Record<DenseResultView, string> = {
     reactions: t('results.reactions'),
-    influence: t('results.influence'),
     learn: t('results.learn'),
   };
 
@@ -59,7 +53,6 @@ export const DenseResultsSurface = ({
     else return;
     event.preventDefault();
     const target = DENSE_RESULT_VIEWS[next];
-    if (target === 'influence') void preloadInfluenceLineView();
     onViewChange(target);
     window.requestAnimationFrame(() => {
       tabsRef.current?.querySelector<HTMLButtonElement>(`[data-dense-view="${target}"]`)?.focus();
@@ -90,8 +83,6 @@ export const DenseResultsSurface = ({
         aria-controls="dense-view-panel"
         tabIndex={view === candidate ? 0 : -1}
         className={view === candidate ? 'active' : ''}
-        onFocus={() => { if (candidate === 'influence') void preloadInfluenceLineView(); }}
-        onPointerEnter={() => { if (candidate === 'influence') void preloadInfluenceLineView(); }}
         onClick={() => onViewChange(candidate)}
         onKeyDown={(event) => onTabKeyDown(event, index)}
       >{viewLabel[candidate]}</button>)}
@@ -103,9 +94,6 @@ export const DenseResultsSurface = ({
       aria-labelledby={`dense-view-tab-${view}`}
     >
       {view === 'reactions' ? <ReactionsView /> : null}
-      {view === 'influence' ? <Suspense fallback={<div className="results-view-loading" role="status" aria-label={t('results.loadingInfluence')}><LoaderCircle className="spin" size={20} aria-hidden="true" /><span>{t('results.loadingInfluence')}</span></div>}>
-        <LazyInfluenceLineView project={project} selection={selection ?? undefined} onCanvasStateChange={setInfluenceCanvasState} />
-      </Suspense> : null}
       {view === 'learn' ? <LearnView /> : null}
     </div>
   </Drawer>;

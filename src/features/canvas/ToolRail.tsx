@@ -28,7 +28,6 @@ import type { Tool } from '../../types';
 import { ToolButton as EditorToolButton, type ToolTone } from '../../design-system/components/editor';
 import { STRUCTURAL_TOOL_IDS, StructuralToolIcon } from './StructuralToolIcon';
 import {
-  isPrimaryRailTool,
   TOOL_GROUPS,
   TOOL_REGISTRY,
   type ToolDefinition,
@@ -77,58 +76,9 @@ const toolTones: Record<Tool, ToolTone> = {
 
 type DesktopDockGroup = 'navigate' | 'build' | 'loads' | 'refine';
 
-/**
- * Ancho de LIENZO desde el que el riel puede nombrar sus seis principales.
- *
- * No es una preferencia: es un presupuesto medido. Con las seis nombradas
- * —icono · rótulo · atajo— y las secundarias compactas, el riel pide 1112px en
- * español, que es el caso peor (en inglés los rótulos son más cortos). Sumados
- * los 40px de aire que el dock se deja a los lados, el lienzo tiene que medir
- * al menos 1152px para sostenerlas.
- *
- * Se mira el LIENZO y no la ventana a propósito: abrir el Inspector le quita
- * 320px, y una cuenta hecha sobre la ventana dejaba al riel nombrado metiéndose
- * 236px dentro del panel —medido a 1280px con Cargas abierto—. Cuando el lienzo
- * no da, el riel renuncia a los nombres antes que salirse de su sitio.
- *
- * La propuesta pide riel etiquetado desde 1200px de ventana. Con el Inspector
- * cerrado eso se cumple desde 1280 y no desde 1200: faltan 24px, y apretarlos
- * saldría del rótulo o del atajo. Cerrar esa franja pide lo que la propuesta
- * también dice —«las acciones menos frecuentes viven en Más»—, que es mover las
- * ocho secundarias a un menú que todavía no existe en escritorio.
- */
-const RAIL_LABELS_MIN_CANVAS = 1152;
-
-/**
- * Lo que crece el riel cuando hay selección.
- *
- * El grupo «refine» suma entonces el lanzador de edición estructural: una tecla
- * compacta (38px) y su hueco (3px). No está en los 1112px medidos, porque
- * aquellos se tomaron sin nada seleccionado — y el dock es `width:max-content`,
- * así que justo en el umbral bastaba seleccionar un nudo para que el riel se
- * saliera del lienzo.
- */
-const RAIL_SELECTION_ACTION_WIDTH = 41;
-
-/**
- * ¿Cabe el riel nombrado en el lienzo de ahora mismo?
- *
- * Observa el lienzo, no el riel: el ancho del riel depende de esta respuesta, y
- * medirlo para decidirla sería un bucle. El lienzo no depende del riel.
- */
-const useRailLabelBudget = (needed: number): boolean => {
-  const [stageWidth, setStageWidth] = useState(0);
-  useEffect(() => {
-    const stage = document.querySelector('.center-stage');
-    if (!stage) return undefined;
-    const measure = () => setStageWidth(stage.getBoundingClientRect().width);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(stage);
-    return () => observer.disconnect();
-  }, []);
-  return stageWidth >= needed;
-};
+// Las cotas visibles se controlan desde Capas; una segunda herramienta de
+// colocación duplicaba ese estado sin añadir una acción distinta al flujo.
+const HIDDEN_RAIL_TOOL_IDS = new Set<Tool>(['dimension']);
 
 const DESKTOP_DOCK_GROUPS: readonly {
   id: DesktopDockGroup;
@@ -194,12 +144,11 @@ const RegisteredToolButton = ({
   menuItem?: boolean;
   'aria-describedby'?: string;
 }) => {
-  const { id, shortcut } = definition;
+  const { id } = definition;
   return <EditorToolButton
     className={`tool-button tool-${id}${active ? ' active' : ''}${definition.destructive ? ' destructive' : ''}${className ? ` ${className}` : ''}`}
     label={label}
     icon={<ToolGlyph definition={definition} />}
-    shortcut={shortcut}
     keyShortcut={definition.activationKey?.toUpperCase() ?? 'Delete Backspace'}
     tone={toolTones[id]}
     active={active}
@@ -243,24 +192,6 @@ const PaletteToolButton = ({
     <kbd>{definition.shortcut}</kbd>
   </button>
 );
-
-const CommandPaletteButton = ({
-  label,
-  accessibleLabel,
-  compact = false,
-  'aria-describedby': ariaDescribedBy,
-}: { label: string; accessibleLabel: string; compact?: boolean; 'aria-describedby'?: string }) => <button
-  type="button"
-  className={`sc-tool-button sc-tool-button--navigation tool-button tool-command-palette${compact ? ' is-compact' : ''}`}
-  aria-label={accessibleLabel}
-  aria-describedby={ariaDescribedBy}
-  aria-keyshortcuts="Control+K Meta+K"
-  onClick={() => emitWorkspaceCommand('open-command-palette')}
->
-  <span className="sc-tool-button__icon" aria-hidden="true"><Search size={22} strokeWidth={1.8} /></span>
-  <span className="sc-tool-button__copy"><strong>{label}</strong></span>
-  {!compact ? <kbd>Ctrl K</kbd> : null}
-</button>;
 
 const MobileCommandPaletteButton = ({ label, accessibleLabel, onOpen }: { label: string; accessibleLabel: string; onOpen: () => void }) => <button
   className="mobile-palette-tool tool-command-palette"
@@ -313,27 +244,21 @@ export const ToolRail = () => {
   const classroom = project.settings.calculationMode === 'classroom';
   const activeDefinition = TOOL_REGISTRY.find((tool) => tool.id === activeTool);
   const revealAdvanced = showAdvanced || Boolean(activeDefinition?.classroomAdvanced);
-  const visibleTools = classroom && !revealAdvanced
+  const visibleTools = (classroom && !revealAdvanced
     ? TOOL_REGISTRY.filter((tool) => !tool.classroomAdvanced)
-    : TOOL_REGISTRY;
-  const mobilePrimaryTools = TOOL_REGISTRY.filter((tool) => tool.mobile === 'primary');
+    : TOOL_REGISTRY
+  ).filter((tool) => !HIDDEN_RAIL_TOOL_IDS.has(tool.id));
+  const mobilePrimaryTools = visibleTools.filter((tool) => tool.mobile === 'primary');
   const mobilePaletteTools = mobileMenu === 'loads' || mobileMenu === 'more'
-    ? TOOL_REGISTRY.filter((tool) => tool.mobile === mobileMenu)
+    ? visibleTools.filter((tool) => tool.mobile === mobileMenu)
     : [];
-  const loadToolActive = TOOL_REGISTRY.some((tool) => tool.mobile === 'loads' && tool.id === activeTool);
-  const moreToolActive = TOOL_REGISTRY.some((tool) => tool.mobile === 'more' && tool.id === activeTool);
+  const loadToolActive = visibleTools.some((tool) => tool.mobile === 'loads' && tool.id === activeTool);
+  const moreToolActive = visibleTools.some((tool) => tool.mobile === 'more' && tool.id === activeTool);
   const loadGroupHighlighted = mobileMenu ? mobileMenu === 'loads' : loadToolActive;
   const moreGroupHighlighted = mobileMenu ? mobileMenu !== 'loads' : moreToolActive;
   const canEditSelection = selection?.kind === 'node'
     || selection?.kind === 'member'
     || (selection?.kind === 'multi' && (selection.nodeIds.length > 0 || selection.memberIds.length > 0));
-  // El presupuesto se pide DESPUÉS de saber si hay selección: con algo
-  // seleccionado el riel suma una tecla más, y pedirlo antes daría luz verde a
-  // un riel que ya no cabe.
-  const labelBudget = useRailLabelBudget(
-    RAIL_LABELS_MIN_CANVAS + (canEditSelection ? RAIL_SELECTION_ACTION_WIDTH : 0),
-  );
-
   // El generador es una superficie, no una herramienta de modelado. Cancelar
   // y Generar cierran la misma superficie; ese cierre devuelve el lienzo al
   // modo de selección, incluso si Nodo estaba activo antes de abrirla.
@@ -533,24 +458,19 @@ export const ToolRail = () => {
       <div className="tool-group-actions">
         {groupTools.map((definition) => {
           const tipId = `tool-rail-tip-${definition.id}`;
-          // Las seis principales se leen sin apuntar con el ratón; el resto
-          // sigue siendo icono con su tooltip, que es lo que deja sitio para
-          // que las seis quepan nombradas.
-          const named = labelBudget && isPrimaryRailTool(definition.id);
+          // El dock permanece silencioso: sólo la herramienta activa se nombra.
+          const active = activeTool === definition.id;
           return <RailTooltip key={definition.id} id={tipId} content={`${t(definition.labelKey)} (${definition.shortcut})`} placement="top">
             <RegisteredToolButton
               definition={definition}
               label={t(definition.labelKey)}
-              active={activeTool === definition.id}
-              compact={!named}
+              active={active}
+              compact={!active}
               onSelect={selectTool}
               aria-describedby={tipId}
             />
           </RailTooltip>;
         })}
-        {dockGroup.id === 'navigate' ? <RailTooltip id="tool-rail-tip-command-palette" content={`${t('palette.open')} (Ctrl K)`} placement="top">
-          <CommandPaletteButton label={t('palette.openShort')} accessibleLabel={t('palette.open')} compact aria-describedby="tool-rail-tip-command-palette" />
-        </RailTooltip> : null}
         {dockGroup.id === 'build' ? <RailTooltip id="tool-rail-tip-generator" content={t('generator.launcher')} placement="top">
           <EditorToolButton
             className="tool-button tool-structure-generator is-compact"
@@ -585,12 +505,8 @@ export const ToolRail = () => {
         className={`toolbar tool-rail${compact ? ' is-compact' : ' is-floating-dock'}${desktopDockCollapsed ? ' is-dock-collapsed' : ''}${mobileMenu ? ' mobile-menu-open' : ''}`}
         aria-label={t('toolbar.label')}
         data-tool-rail={compact ? 'compact' : 'dock'}
-        /* Estado declarado, no deducido: el riel nombra sus seis principales
-           sólo donde hay ancho para ello y sin el cajón colapsado. La hoja se
-           cuelga de este atributo en vez de pelear por especificidad con las
-           reglas del dock, que es lo que el plan pide cuando dice que la
-           solución modele los estados en el layout. */
-        data-tool-rail-labels={!compact && !desktopDockCollapsed && labelBudget ? 'true' : undefined}
+        /* La hoja expande una sola etiqueta: la herramienta activa. */
+        data-tool-rail-labels={!compact && !desktopDockCollapsed ? 'active' : undefined}
       >
         <div className="desktop-tool-list" data-desktop-dock-tools={shellClass === 'X2' ? 'true' : undefined}>
           {shellClass === 'X2' ? desktopDockCollapsed && activeDefinition
@@ -624,9 +540,6 @@ export const ToolRail = () => {
                     />
                   </RailTooltip>;
                 })}
-                {group.id === 'navigate' ? <RailTooltip id="tool-rail-tip-command-palette" content={`${t('palette.open')} (Ctrl K)`}>
-                  <CommandPaletteButton label={t('palette.openShort')} accessibleLabel={t('palette.open')} compact={compact} aria-describedby="tool-rail-tip-command-palette" />
-                </RailTooltip> : null}
                 {group.id === 'create' ? <RailTooltip id="tool-rail-tip-generator" content={t('generator.launcher')}>
                   <EditorToolButton
                     className={`tool-button tool-structure-generator${compact ? ' is-compact' : ''}`}

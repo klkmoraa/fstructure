@@ -48,6 +48,20 @@ describe('elegir una magnitud en Resultados enciende esa capa en el lienzo', () 
     expect(received).toEqual([]);
   });
 
+  it('mantiene Influencia como una pestaña del panel, sin pedir una vista densa', () => {
+    const received: string[] = [];
+    const stop = onWorkspaceCommand('activate-evidence-layer', ({ layer }) => received.push(layer));
+    const { container } = render(<ProjectProvider><div className="app-shell"><ResultsPanel status="active" defaultDesktopExpanded /></div></ProjectProvider>);
+
+    const influence = container.querySelector<HTMLButtonElement>('[data-result-tab="influence"]');
+    expect(influence).not.toBeNull();
+    act(() => { influence!.click(); });
+    stop();
+
+    expect(influence?.getAttribute('aria-selected')).toBe('true');
+    expect(received).toEqual([]);
+  });
+
   /** El shell aplica la intención sobre los mismos dos mandos que el riel. */
   it('aplicarla deja la capa encendida aunque el lienzo abriera con resultados apagados', () => {
     let layers: EditorLayerState = createEditorLayerState();
