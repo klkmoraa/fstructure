@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { ChevronRight, CircleHelp, GripHorizontal, MousePointer2, MoveDown, Pencil, Plus, RotateCcw, Sigma, X } from 'lucide-react';
+import { ChevronRight, CircleHelp, GripHorizontal, MoveDown, Pencil, Plus, RotateCcw, Sigma, X } from 'lucide-react';
 import { unitLabel } from '../../engine/units';
 import { fromDisplay, toDisplay, type UnitQuantity } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
@@ -267,11 +267,9 @@ const InspectorContent = ({
       </div> : null}
 
       <div id={surface ? `${surface}-tabpanel` : 'inspector-tabpanel'} className="inspector-scroll" role={surface ? undefined : 'tabpanel'} aria-labelledby={surface ? undefined : `inspector-tab-${activeTab}`}>
-        {surface === 'detail' && sheet && selection === null ? <MobileDetailEmptyState /> : <>
-          {activeTab === 'inspector' ? <InspectorProperties /> : null}
-          {activeTab === 'loads' ? <AnalysisSetupPanel activeTool={activeTool} onChooseTool={chooseLoadTool} selectedCombinationId={selectedCombinationId} setSelectedCombinationId={setSelectedCombinationId} /> : null}
-          {activeTab === 'display' ? <DisplayPanel includeCalculationMode={false} /> : null}
-        </>}
+        {activeTab === 'inspector' ? <InspectorProperties /> : null}
+        {activeTab === 'loads' ? <AnalysisSetupPanel activeTool={activeTool} onChooseTool={chooseLoadTool} selectedCombinationId={selectedCombinationId} setSelectedCombinationId={setSelectedCombinationId} /> : null}
+        {activeTab === 'display' ? <DisplayPanel includeCalculationMode={false} /> : null}
       </div>
     </aside>
   );
@@ -287,15 +285,6 @@ const AnalysisModePanel = () => {
     {project.settings.calculationMode === 'classroom'
       ? <div className="classroom-mode-card"><strong>{t('inspector.classroomEssentials')}</strong><span>{t('inspector.classroomEssentialsBody')}</span><small>{t('inspector.classroomRigidityWarning')}</small></div>
       : <div className="inspector-note"><CircleHelp size={17} /> {t('inspector.completeModeDescription')}</div>}
-  </section>;
-};
-
-const MobileDetailEmptyState = () => {
-  const { t } = useI18n();
-  return <section className="inspector-mobile-empty" aria-label={t('inspector.mobileEmptyTitle')}>
-    <MousePointer2 size={24} aria-hidden="true" />
-    <h2>{t('inspector.mobileEmptyTitle')}</h2>
-    <p>{t('inspector.mobileEmptyBody')}</p>
   </section>;
 };
 
