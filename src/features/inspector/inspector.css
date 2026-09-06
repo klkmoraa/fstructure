@@ -987,3 +987,11 @@ dt { color: var(--muted); } dd { margin: 0; font-variant-numeric: tabular-nums; 
 .unit-system-editor__custom select { min-width:0; width:100%; border-radius:var(--sc-radius-card); padding:7px 8px; }
 .unit-system-editor__apply { width:100%; min-height:34px; margin-top:7px; border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border)); border-radius:var(--sc-radius-card); background:var(--accent-soft); color:var(--accent-on-soft); font-size:11px; font-weight:650; }
 .unit-system-editor__apply:hover { border-color:var(--accent); }
+
+
+/* Compact surfaces open empty by design: the phone starts on the drawing,
+   so the inspector asks for a target before it mounts the full model summary. */
+.inspector-mobile-empty { min-height:180px; display:grid; place-items:center; align-content:center; gap:8px; padding:28px 22px; color:var(--muted); text-align:center; }
+.inspector-mobile-empty svg { color:var(--accent); }
+.inspector-mobile-empty h2 { margin:0; color:var(--text); font-size:16px; letter-spacing:-.02em; }
+.inspector-mobile-empty p { max-width:260px; margin:0; font-size:12px; line-height:1.45; }

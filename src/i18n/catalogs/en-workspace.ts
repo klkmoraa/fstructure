@@ -71,6 +71,8 @@ export const enWorkspace = {
   'shell.exitFullCanvas': 'Exit full canvas',
   'shell.hideInspector': 'Hide inspector',
   'shell.showInspector': 'Show inspector',
+  'inspector.mobileEmptyTitle': 'Select an element',
+  'inspector.mobileEmptyBody': 'Tap a node, member, support, or load to edit it.',
   'toolbar.label': 'Modeling tools',
   'toolbar.primary': 'Primary tools',
   'toolbar.loads': 'Load tools',

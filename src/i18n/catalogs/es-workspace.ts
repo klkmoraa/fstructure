@@ -71,6 +71,8 @@ export const esWorkspace = {
   'shell.exitFullCanvas': 'Salir de mesa completa',
   'shell.hideInspector': 'Ocultar inspector',
   'shell.showInspector': 'Mostrar inspector',
+  'inspector.mobileEmptyTitle': 'Selecciona un elemento',
+  'inspector.mobileEmptyBody': 'Toca un nodo, miembro, apoyo o carga para editarlo.',
   'toolbar.label': 'Herramientas de modelado',
   'toolbar.primary': 'Herramientas principales',
   'toolbar.loads': 'Herramientas de carga',
