@@ -491,7 +491,7 @@
 /* La hoja se apoya sobre la banda de la consola, no sobre una constante: los
    64px fijos que había aquí dejaban de coincidir en cuanto la banda cambiaba de
    altura o el dispositivo añadía área segura. */
-.inspector-panel[data-surface-presentation='sheet'] { position:fixed; z-index:31; inset:auto 0 calc(var(--console-band,60px) + 8px + var(--sc-visual-viewport-bottom,0px)); display:flex; width:100%; height:min(58dvh,540px); max-height:calc(var(--sc-visual-viewport-height,100dvh) - 76px); clip-path:none; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
+.inspector-panel[data-surface-presentation='sheet'] { position:fixed; z-index:var(--sc-z-sheet,50); inset:auto 0 calc(var(--console-band,60px) + 8px + var(--sc-visual-viewport-bottom,0px)); display:flex; width:100%; height:min(58dvh,540px); max-height:calc(var(--sc-visual-viewport-height,100dvh) - 76px); clip-path:none; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
 .results-panel[data-surface-presentation='dock'] { position:relative; inset:auto; width:auto; }
 .results-panel[data-surface-presentation='inset'] { position:absolute; z-index:8; inset:auto 8px 8px; width:auto; height:min(42dvh,320px)!important; border-radius:var(--sc-radius-lg); }
 .results-panel[data-surface-presentation='sheet'] { position:absolute; z-index:8; inset:auto 0 0; width:100%; height:min(55dvh,500px)!important; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
@@ -512,7 +512,24 @@
   .inspector-sheet-handle:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
   .inspector-sheet-handle:focus-visible { outline:none; box-shadow:var(--sc-shadow-xs),var(--sc-ring-focus); }
   .inspector-sheet-controls .mobile-inspector-close { display:grid!important; place-items:center; width:36px; height:36px; align-self:center; border-radius:var(--sc-radius-card); color:var(--muted); }
-  .inspector-sheet-controls .mobile-inspector-close:hover { background:var(--surface-2); color:var(--text); }
+  /* Safari conserva el bevel gris del botón nativo si sólo se declara
+     `display:grid`: el cierre debe ser una tecla del mismo instrumento que el
+     tirador, con apariencia idéntica en Día y Noche. */
+  .inspector-sheet-controls .mobile-inspector-close {
+    appearance:none;
+    -webkit-appearance:none;
+    min-width:var(--sc-control-height-touch);
+    min-height:var(--sc-control-height-touch);
+    padding:0;
+    border:var(--sc-surface-edge);
+    background:var(--sc-color-surface-1);
+    box-shadow:var(--sc-shadow-xs);
+    cursor:pointer;
+    transition:var(--sc-transition-control);
+  }
+  .inspector-sheet-controls .mobile-inspector-close:hover { border-color:var(--sc-color-border); background:var(--sc-color-surface-elevated); color:var(--text); box-shadow:var(--sc-shadow-sm); }
+  .inspector-sheet-controls .mobile-inspector-close:active { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+  .inspector-sheet-controls .mobile-inspector-close:focus-visible { outline:none; box-shadow:var(--sc-shadow-xs),var(--sc-ring-focus); }
   .inspector-sheet-controls .mobile-inspector-close::after { display:none; }
   .results-mobile-focus { display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
   .results-mobile-commandbar { display:flex; }
@@ -1923,6 +1940,126 @@
     background:var(--sc-color-surface-pressed);
     box-shadow:var(--sc-shadow-pressed);
     transform:var(--sc-press-transform);
+  }
+
+  /* Los editores de carga viven en la misma hoja que sus casos. Sus botones
+     locales no pasan por `.sc-button`, por eso Safari los dejaba planos o con
+     apariencia nativa. La hoja les presta las mismas teclas elevadas del
+     dock, y el estado seleccionado se hunde en la cavidad de la hoja. */
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-tool-grid button,
+  .app-shell[data-shell-class='K0'] .inspector-panel .mini-button {
+    appearance:none;
+    -webkit-appearance:none;
+    border:var(--sc-surface-edge);
+    background:var(--sc-color-surface-1);
+    box-shadow:var(--sc-shadow-xs);
+    color:var(--sc-color-text-primary);
+    cursor:pointer;
+    transition:var(--sc-transition-control);
+  }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-tool-grid button:hover:not(:disabled),
+  .app-shell[data-shell-class='K0'] .inspector-panel .mini-button:hover:not(:disabled) {
+    border-color:var(--sc-color-border);
+    background:var(--sc-color-surface-elevated);
+    box-shadow:var(--sc-shadow-sm);
+  }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-tool-grid button.active,
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-tool-grid button[aria-pressed='true'] {
+    border-color:var(--sc-color-action-primary);
+    background:var(--sc-color-surface-inset);
+    color:var(--accent);
+    box-shadow:var(--sc-shadow-pressed);
+  }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-tool-grid button:active:not(:disabled),
+  .app-shell[data-shell-class='K0'] .inspector-panel .mini-button:active:not(:disabled) {
+    background:var(--sc-color-surface-inset);
+    box-shadow:var(--sc-shadow-pressed);
+    transform:var(--sc-press-transform);
+  }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .mini-button {
+    width:var(--sc-control-height-touch);
+    min-width:var(--sc-control-height-touch);
+    height:var(--sc-control-height-touch);
+    min-height:var(--sc-control-height-touch);
+    padding:0;
+    border-radius:var(--sc-radius-control);
+  }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-row {
+    border:var(--sc-surface-edge);
+    background:var(--sc-color-surface-2);
+    box-shadow:var(--sc-shadow-pressed);
+  }
+
+  /* El check nativo de Safari ignora la materia del resto de la hoja y ocupa
+     un cuadrado blanco de 44px. Se conserva el tamaño táctil, pero el estado
+     vive en la misma tecla elevada/hundida que el resto del editor. */
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-row > input[type='checkbox'] {
+    appearance:none;
+    -webkit-appearance:none;
+    position:relative;
+    display:grid;
+    place-items:center;
+    width:var(--sc-control-height-touch);
+    min-width:var(--sc-control-height-touch);
+    height:var(--sc-control-height-touch);
+    min-height:var(--sc-control-height-touch);
+    margin:0;
+    border:var(--sc-surface-edge);
+    border-radius:var(--sc-radius-control);
+    background:var(--sc-color-surface-1);
+    box-shadow:var(--sc-shadow-xs);
+    color:var(--sc-color-action-foreground);
+    cursor:pointer;
+    transition:var(--sc-transition-control);
+  }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-row > input[type='checkbox']::after {
+    content:'✓';
+    opacity:0;
+    font-size:24px;
+    font-weight:var(--sc-font-weight-heavy);
+    line-height:1;
+    transition:opacity var(--sc-motion-quick) var(--sc-ease-standard);
+  }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-row > input[type='checkbox']:checked {
+    border-color:var(--sc-color-action-edge);
+    background:var(--sc-surface-fill-action);
+    box-shadow:var(--sc-shadow-action);
+  }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-row > input[type='checkbox']:checked::after { opacity:1; }
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-row > input[type='checkbox']:hover:not(:disabled) { background:var(--sc-color-surface-elevated); box-shadow:var(--sc-shadow-sm); }
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-row > input[type='checkbox']:checked:hover:not(:disabled) { background:var(--sc-color-action-hover); }
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-row > input[type='checkbox']:active:not(:disabled) { background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-row > input[type='checkbox']:focus-visible { outline:none; box-shadow:var(--sc-shadow-xs),var(--sc-ring-focus); }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-category select {
+    appearance:none;
+    -webkit-appearance:none;
+    min-height:var(--sc-control-height-sm);
+    padding:3px 24px 3px 8px;
+    border:var(--sc-surface-edge);
+    border-radius:var(--sc-radius-control);
+    background-color:var(--sc-color-surface-inset);
+    background-image:linear-gradient(45deg, transparent 50%, currentColor 50%),linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:calc(100% - 11px) 50%,calc(100% - 7px) 50%;
+    background-size:4px 4px,4px 4px;
+    background-repeat:no-repeat;
+    box-shadow:var(--sc-shadow-pressed);
+    color:var(--sc-color-text-primary);
+    font:inherit;
+  }
+
+  .app-shell[data-shell-class='K0'] .inspector-panel .load-case-category select:focus-visible {
+    outline:none;
+    border-color:var(--sc-color-focus);
+    box-shadow:var(--sc-shadow-pressed),var(--sc-ring-focus);
   }
 
   .inspector-advanced-editor .inspector-advanced__content {

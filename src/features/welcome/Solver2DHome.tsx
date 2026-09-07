@@ -125,7 +125,11 @@ export const Solver2DHome = ({
   const text = copy[language];
   const reducedMotion = useReducedMotion() ?? false;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
-  const portalAsset = `${import.meta.env.BASE_URL}assets/welcome/portal-${theme === 'dark' ? 'night' : 'day'}.svg`;
+  /* El objeto de bienvenida conserva la lectura clay blanca en ambos temas.
+     La escena vive sobre el fondo del tema, pero su material es la pieza de
+     referencia del módulo: cambiar la luz de la interfaz no debe convertirla
+     en una silueta gris ni hacer que Safari la descarte como fallback. */
+  const portalAsset = `${import.meta.env.BASE_URL}assets/welcome/portal-day.svg`;
 
   const paths = [
     // Una ruta de entrada no es un resultado del solver: lleva el color de la
@@ -178,7 +182,7 @@ export const Solver2DHome = ({
           sobre él tapaba media estructura: dos lecturas compitiendo por el
           mismo sitio, y la que perdía era justamente la que da la escala. */}
       <div className="solver2d-hero__stage" style={{ '--reveal-step': 2 } as React.CSSProperties}>
-        <div className={`solver2d-stage${reducedMotion ? ' is-static' : ''}`}>
+        <div className={`solver2d-stage${reducedMotion ? ' is-static' : ''}`} data-theme={theme}>
           <div className="solver2d-stage__object">
             <img className="three-structural-image" src={portalAsset} alt={text.stageAlt} width="900" height="600" decoding="async" />
           </div>

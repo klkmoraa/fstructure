@@ -367,8 +367,25 @@ const NtcCombinationDraftPanel = ({ setSelectedCombinationId }: Pick<{
   </section>;
 };
 
+const advancedLoadCopy = {
+  es: {
+    title: 'Fuentes de carga avanzadas', description: 'Se resuelven al analizar; no duplican cargas manuales.',
+    tributary: 'Superficie tributaria', hydrostatic: 'Hidrostática / terreno', foundation: 'Fundación elástica', livePattern: 'Patrón vivo', memberChain: 'Cadena de vigas', prestress: 'Pretensado',
+    source: 'Fuente', loadCase: 'Caso', members: 'Miembros (IDs separados por coma)', pressure: 'Presión', tributaryWidth: 'Ancho tributario', referenceElevation: 'Cota de referencia', unitWeight: 'Peso unitario', winkler: 'Módulo Winkler', pattern: 'Patrón', all: 'Todos', odd: 'Alternado impar', even: 'Alternado par', compression: 'Fuerza (compresión negativa)', eccentricity: 'Excentricidad local',
+    movingTitle: 'Cargas móviles persistentes', addMoving: 'Agregar carga móvil', moving: 'Carga móvil', response: 'Respuesta', targetMember: 'Miembro objetivo', targetPosition: 'x/L objetivo', firstAxle: 'Carga del primer eje', remove: 'Eliminar',
+  },
+  en: {
+    title: 'Advanced load sources', description: 'Resolved during analysis without duplicating manual loads.',
+    tributary: 'Tributary surface', hydrostatic: 'Hydrostatic / soil', foundation: 'Elastic foundation', livePattern: 'Live-load pattern', memberChain: 'Member chain', prestress: 'Prestress',
+    source: 'Source', loadCase: 'Load case', members: 'Members (comma-separated IDs)', pressure: 'Pressure', tributaryWidth: 'Tributary width', referenceElevation: 'Reference elevation', unitWeight: 'Unit weight', winkler: 'Winkler modulus', pattern: 'Pattern', all: 'All', odd: 'Alternating odd', even: 'Alternating even', compression: 'Force (negative in compression)', eccentricity: 'Local eccentricity',
+    movingTitle: 'Persistent moving loads', addMoving: 'Add moving load', moving: 'Moving load', response: 'Response', targetMember: 'Target member', targetPosition: 'Target x/L', firstAxle: 'First axle load', remove: 'Remove',
+  },
+} as const;
+
 const AdvancedLoadSourcesPanel = () => {
   const { project, updateProject } = useProjectModel();
+  const { language } = useI18n();
+  const text = advancedLoadCopy[language];
   const frameIds = project.members.filter((member) => member.type === 'frame').map((member) => member.id);
   const defaultCaseId = project.loadCases[0]?.id ?? 'LC1';
   const updateSource = (id: string, patch: Record<string, unknown>) => updateProject((draft) => {
@@ -380,7 +397,7 @@ const AdvancedLoadSourcesPanel = () => {
     if (!frameIds.length) return draft;
     draft.generatedLoadSources ??= [];
     let index = 1; while (draft.generatedLoadSources.some((item) => item.id === `GL${index}`)) index += 1;
-    const base = { id: `GL${index}`, kind, caseId: defaultCaseId, memberIds: [...frameIds], label: `Fuente ${index}` };
+    const base = { id: `GL${index}`, kind, caseId: defaultCaseId, memberIds: [...frameIds], label: `${text.source} ${index}` };
     const source: GeneratedLoadSource = kind === 'tributary-surface'
       ? { ...base, kind, pressure: 1, tributaryWidth: 1, direction: 'global-y' }
       : kind === 'hydrostatic' || kind === 'soil-pressure'
@@ -401,7 +418,7 @@ const AdvancedLoadSourcesPanel = () => {
     if (!frameIds.length) return draft;
     draft.movingLoadCases ??= [];
     let index = 1; while (draft.movingLoadCases.some((item) => item.id === `MOV${index}`)) index += 1;
-    draft.movingLoadCases.push({ id: `MOV${index}`, name: `Carga móvil ${index}`, memberIds: [...frameIds], targetMemberId: frameIds[0], targetPosition: 0.5, quantity: 'M', impactFactor: 1, axles: [{ id: 'E1', P: 100, offset: 0 }] });
+    draft.movingLoadCases.push({ id: `MOV${index}`, name: `${text.moving} ${index}`, memberIds: [...frameIds], targetMemberId: frameIds[0], targetPosition: 0.5, quantity: 'M', impactFactor: 1, axles: [{ id: 'E1', P: 100, offset: 0 }] });
     return draft;
   });
   const updateMoving = (id: string, patch: Partial<MovingLoadCase>) => updateProject((draft) => {
@@ -411,33 +428,33 @@ const AdvancedLoadSourcesPanel = () => {
   });
 
   return <section className="inspector-section">
-    <div className="section-heading"><h3>Fuentes de carga avanzadas</h3><span className="section-description">Se resuelven al analizar; no duplican cargas manuales.</span></div>
+    <div className="section-heading"><h3>{text.title}</h3><span className="section-description">{text.description}</span></div>
     <div className="load-tool-grid">
-      <button type="button" disabled={!frameIds.length} onClick={() => addSource('tributary-surface')}>Superficie tributaria</button>
-      <button type="button" disabled={!frameIds.length} onClick={() => addSource('hydrostatic')}>Hidrostática / terreno</button>
-      <button type="button" disabled={!frameIds.length} onClick={() => addSource('elastic-foundation')}>Fundación elástica</button>
-      <button type="button" disabled={!frameIds.length} onClick={() => addSource('live-pattern')}>Patrón vivo</button>
-      <button type="button" disabled={!frameIds.length} onClick={() => addSource('member-chain')}>Cadena de vigas</button>
-      <button type="button" disabled={!frameIds.length} onClick={() => addSource('prestress')}>Pretensado</button>
+      <button type="button" disabled={!frameIds.length} onClick={() => addSource('tributary-surface')}>{text.tributary}</button>
+      <button type="button" disabled={!frameIds.length} onClick={() => addSource('hydrostatic')}>{text.hydrostatic}</button>
+      <button type="button" disabled={!frameIds.length} onClick={() => addSource('elastic-foundation')}>{text.foundation}</button>
+      <button type="button" disabled={!frameIds.length} onClick={() => addSource('live-pattern')}>{text.livePattern}</button>
+      <button type="button" disabled={!frameIds.length} onClick={() => addSource('member-chain')}>{text.memberChain}</button>
+      <button type="button" disabled={!frameIds.length} onClick={() => addSource('prestress')}>{text.prestress}</button>
     </div>
     {(project.generatedLoadSources ?? []).map((source) => <details className="combination-card" key={source.id}>
       <summary>{source.label ?? source.id} · {source.kind}</summary>
-      {source.kind !== 'elastic-foundation' ? <label className="select-field"><span>Caso</span><select value={source.caseId} onChange={(event) => updateSource(source.id, { caseId: event.currentTarget.value })}>{project.loadCases.map((loadCase) => <option value={loadCase.id} key={loadCase.id}>{loadCase.name}</option>)}</select></label> : null}
-      <label className="select-field"><span>Miembros (IDs separados por coma)</span><input value={source.memberIds.join(', ')} onChange={(event) => updateMembers(source.id, event.currentTarget.value)} /></label>
-      {source.kind === 'tributary-surface' ? <><NumberField label="Presión" value={source.pressure} unit="kN/m²" resetKey={`${source.id}:pressure`} onChange={(value) => updateSource(source.id, { pressure: value })} /><NumberField label="Ancho tributario" value={source.tributaryWidth} unit="m" resetKey={`${source.id}:width`} onChange={(value) => updateSource(source.id, { tributaryWidth: Math.max(0, value) })} /></> : null}
-      {source.kind === 'hydrostatic' || source.kind === 'soil-pressure' ? <><NumberField label="Cota de referencia" value={source.referenceY} unit="m" resetKey={`${source.id}:level`} onChange={(value) => updateSource(source.id, { referenceY: value })} /><NumberField label="Peso unitario" value={source.unitWeight} unit="kN/m³" resetKey={`${source.id}:gamma`} onChange={(value) => updateSource(source.id, { unitWeight: value })} /></> : null}
-      {source.kind === 'elastic-foundation' ? <NumberField label="Módulo Winkler" value={source.stiffness} unit="kN/m²" resetKey={`${source.id}:foundation`} onChange={(value) => updateSource(source.id, { stiffness: Math.max(value, 1e-9) })} /> : null}
-      {source.kind === 'live-pattern' || source.kind === 'member-chain' ? <><NumberField label="qy" value={source.qy} unit="kN/m" resetKey={`${source.id}:qy`} onChange={(value) => updateSource(source.id, { qy: value })} />{source.kind === 'live-pattern' ? <label className="select-field"><span>Patrón</span><select value={source.pattern ?? 'all'} onChange={(event) => updateSource(source.id, { pattern: event.currentTarget.value })}><option value="all">Todos</option><option value="alternating-odd">Alternado impar</option><option value="alternating-even">Alternado par</option></select></label> : null}</> : null}
-      {source.kind === 'prestress' ? <><NumberField label="Fuerza (compresión negativa)" value={source.force} unit="kN" resetKey={`${source.id}:force`} onChange={(value) => updateSource(source.id, { force: value })} /><NumberField label="Excentricidad local" value={source.eccentricity ?? 0} unit="m" resetKey={`${source.id}:eccentricity`} onChange={(value) => updateSource(source.id, { eccentricity: value })} /></> : null}
-      <button type="button" className="icon-danger-button" onClick={() => updateProject((draft) => ({ ...draft, generatedLoadSources: (draft.generatedLoadSources ?? []).filter((item) => item.id !== source.id) }))}>Eliminar</button>
+      {source.kind !== 'elastic-foundation' ? <label className="select-field"><span>{text.loadCase}</span><select value={source.caseId} onChange={(event) => updateSource(source.id, { caseId: event.currentTarget.value })}>{project.loadCases.map((loadCase) => <option value={loadCase.id} key={loadCase.id}>{loadCase.name}</option>)}</select></label> : null}
+      <label className="select-field"><span>{text.members}</span><input value={source.memberIds.join(', ')} onChange={(event) => updateMembers(source.id, event.currentTarget.value)} /></label>
+      {source.kind === 'tributary-surface' ? <><NumberField label={text.pressure} value={source.pressure} unit="kN/m²" resetKey={`${source.id}:pressure`} onChange={(value) => updateSource(source.id, { pressure: value })} /><NumberField label={text.tributaryWidth} value={source.tributaryWidth} unit="m" resetKey={`${source.id}:width`} onChange={(value) => updateSource(source.id, { tributaryWidth: Math.max(0, value) })} /></> : null}
+      {source.kind === 'hydrostatic' || source.kind === 'soil-pressure' ? <><NumberField label={text.referenceElevation} value={source.referenceY} unit="m" resetKey={`${source.id}:level`} onChange={(value) => updateSource(source.id, { referenceY: value })} /><NumberField label={text.unitWeight} value={source.unitWeight} unit="kN/m³" resetKey={`${source.id}:gamma`} onChange={(value) => updateSource(source.id, { unitWeight: value })} /></> : null}
+      {source.kind === 'elastic-foundation' ? <NumberField label={text.winkler} value={source.stiffness} unit="kN/m²" resetKey={`${source.id}:foundation`} onChange={(value) => updateSource(source.id, { stiffness: Math.max(value, 1e-9) })} /> : null}
+      {source.kind === 'live-pattern' || source.kind === 'member-chain' ? <><NumberField label="qy" value={source.qy} unit="kN/m" resetKey={`${source.id}:qy`} onChange={(value) => updateSource(source.id, { qy: value })} />{source.kind === 'live-pattern' ? <label className="select-field"><span>{text.pattern}</span><select value={source.pattern ?? 'all'} onChange={(event) => updateSource(source.id, { pattern: event.currentTarget.value })}><option value="all">{text.all}</option><option value="alternating-odd">{text.odd}</option><option value="alternating-even">{text.even}</option></select></label> : null}</> : null}
+      {source.kind === 'prestress' ? <><NumberField label={text.compression} value={source.force} unit="kN" resetKey={`${source.id}:force`} onChange={(value) => updateSource(source.id, { force: value })} /><NumberField label={text.eccentricity} value={source.eccentricity ?? 0} unit="m" resetKey={`${source.id}:eccentricity`} onChange={(value) => updateSource(source.id, { eccentricity: value })} /></> : null}
+      <button type="button" className="icon-danger-button" onClick={() => updateProject((draft) => ({ ...draft, generatedLoadSources: (draft.generatedLoadSources ?? []).filter((item) => item.id !== source.id) }))}>{text.remove}</button>
     </details>)}
-    <div className="section-heading"><h3>Cargas móviles persistentes</h3><button type="button" className="mini-button" aria-label="Agregar carga móvil" disabled={!frameIds.length} onClick={addMoving}><Plus size={15} /></button></div>
+    <div className="section-heading"><h3>{text.movingTitle}</h3><button type="button" className="mini-button" aria-label={text.addMoving} disabled={!frameIds.length} onClick={addMoving}><Plus size={15} /></button></div>
     {(project.movingLoadCases ?? []).map((moving) => <details className="combination-card" key={moving.id}><summary>{moving.name}</summary>
-      <label className="select-field"><span>Respuesta</span><select value={moving.quantity} onChange={(event) => updateMoving(moving.id, { quantity: event.currentTarget.value as MovingLoadCase['quantity'] })}><option value="N">N</option><option value="V">V</option><option value="M">M</option></select></label>
-      <label className="select-field"><span>Miembro objetivo</span><select value={moving.targetMemberId} onChange={(event) => updateMoving(moving.id, { targetMemberId: event.currentTarget.value })}>{moving.memberIds.map((id) => <option value={id} key={id}>{id}</option>)}</select></label>
-      <NumberField label="x/L objetivo" value={moving.targetPosition} resetKey={`${moving.id}:target`} onChange={(value) => updateMoving(moving.id, { targetPosition: Math.max(0, Math.min(1, value)) })} />
-      <NumberField label="Carga del primer eje" value={moving.axles[0]?.P ?? 0} unit="kN" resetKey={`${moving.id}:axle`} onChange={(value) => updateMoving(moving.id, { axles: [{ ...(moving.axles[0] ?? { id: 'E1', offset: 0 }), P: Math.max(0, value) }, ...moving.axles.slice(1)] })} />
-      <button type="button" className="icon-danger-button" onClick={() => updateProject((draft) => ({ ...draft, movingLoadCases: (draft.movingLoadCases ?? []).filter((item) => item.id !== moving.id) }))}>Eliminar</button>
+      <label className="select-field"><span>{text.response}</span><select value={moving.quantity} onChange={(event) => updateMoving(moving.id, { quantity: event.currentTarget.value as MovingLoadCase['quantity'] })}><option value="N">N</option><option value="V">V</option><option value="M">M</option></select></label>
+      <label className="select-field"><span>{text.targetMember}</span><select value={moving.targetMemberId} onChange={(event) => updateMoving(moving.id, { targetMemberId: event.currentTarget.value })}>{moving.memberIds.map((id) => <option value={id} key={id}>{id}</option>)}</select></label>
+      <NumberField label={text.targetPosition} value={moving.targetPosition} resetKey={`${moving.id}:target`} onChange={(value) => updateMoving(moving.id, { targetPosition: Math.max(0, Math.min(1, value)) })} />
+      <NumberField label={text.firstAxle} value={moving.axles[0]?.P ?? 0} unit="kN" resetKey={`${moving.id}:axle`} onChange={(value) => updateMoving(moving.id, { axles: [{ ...(moving.axles[0] ?? { id: 'E1', offset: 0 }), P: Math.max(0, value) }, ...moving.axles.slice(1)] })} />
+      <button type="button" className="icon-danger-button" onClick={() => updateProject((draft) => ({ ...draft, movingLoadCases: (draft.movingLoadCases ?? []).filter((item) => item.id !== moving.id) }))}>{text.remove}</button>
     </details>)}
   </section>;
 };

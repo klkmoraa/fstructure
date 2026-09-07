@@ -182,6 +182,7 @@
   border: 1px solid var(--sc-color-border-soft);
   border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-elevated);
+  box-shadow: var(--sc-shadow-inset);
   color: var(--sc-color-text-muted);
   transition: border-color var(--sc-motion-quick) var(--sc-ease-standard), box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
 }
@@ -248,6 +249,35 @@
   color: var(--sc-color-text-primary);
   cursor: pointer;
   transition: var(--sc-transition-control), box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+/* Safari keeps its native double-chevron on a select unless the control opts
+   out of the platform chrome. The language switch is a compact app control,
+   so give it the same single, quiet chevron as the rest of the welcome
+   console while preserving the native select semantics and keyboard access. */
+.sc-home-topline-actions label {
+  position: relative;
+  display: inline-flex;
+}
+
+.sc-home-topline select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-inline: 11px 28px;
+}
+
+.sc-home-topline-actions label::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: 13px;
+  inset-block-start: 50%;
+  width: 6px;
+  height: 6px;
+  border-inline-end: 1.5px solid currentColor;
+  border-block-end: 1.5px solid currentColor;
+  color: var(--sc-color-text-secondary);
+  pointer-events: none;
+  transform: translateY(-65%) rotate(45deg);
 }
 
 .sc-home-topline select:hover,
@@ -821,6 +851,8 @@
   .sc-home {
     --home-frame-gap: 0px;
     width: 100%;
+    height: 100vh;
+    min-height: 100vh;
     height: 100dvh;
     min-height: 100dvh;
     margin: 0;
@@ -848,7 +880,7 @@
     border: 1px solid var(--sc-color-border-soft);
     border-radius: var(--sc-radius-card);
     background: var(--sc-color-surface-elevated);
-    box-shadow: none;
+    box-shadow: var(--sc-shadow-xs);
   }
   .sc-home-nav--console { display:none; }
   .sc-home-nav--menu {
@@ -871,6 +903,8 @@
   .sc-home-topline-actions { flex: 0 0 auto; }
   .sc-home-topline select,
   .sc-home-topline button { height: 44px; min-width: 44px; border-radius: var(--sc-radius-control); }
+  .sc-home-topline select { min-width: 66px; padding-inline: 11px 27px; }
+  .sc-home-topline-actions label::after { inset-inline-end: 13px; }
   .sc-home-search { height: 40px; border-radius: var(--sc-radius-card); }
   .sc-home-content { padding: 16px 14px 32px; gap: 25px; }
   .sc-home-hero {
@@ -972,6 +1006,7 @@
 @media (pointer: coarse) {
   .sc-home-topline select,
   .sc-home-topline button { min-width: 44px; height: 44px; }
+  .sc-home-topline select { min-width: 66px; }
 }
 
 
