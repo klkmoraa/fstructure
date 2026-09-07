@@ -253,7 +253,7 @@ export const ProjectHub = ({
     {visibleProjects.length ? <div className="project-hub__list">
       {visibleProjects.map((record) => <div className="project-hub__entry" key={record.id}><article className="project-hub__row">
         <div className="project-hub__preview" aria-hidden="true">
-          <ThreeStructuralImage assetId={projectAssetId(record.project)} theme={theme} />
+          <ThreeStructuralImage assetId={projectAssetId(record.project)} theme={theme} render="vector" />
         </div>
         <div className="project-hub__identity">
           {editing?.id === record.id ? <form onSubmit={(event) => { event.preventDefault(); void commitRename(); }}>

@@ -10,11 +10,12 @@ interface ThreeStructuralImageProps {
   alt?: string;
   className?: string;
   eager?: boolean;
+  render?: 'prerendered' | 'vector';
 }
 
-export function ThreeStructuralImage({ assetId, theme, alt = '', className = '', eager = false }: ThreeStructuralImageProps) {
+export function ThreeStructuralImage({ assetId, theme, alt = '', className = '', eager = false, render = 'prerendered' }: ThreeStructuralImageProps) {
   const [failed, setFailed] = useState(false);
-  if (failed) return <StructuralIllustration assetId={assetId} detail="hero" decorative={alt.length === 0} title={alt || undefined} motion="none" className={className} />;
+  if (render === 'vector' || failed) return <StructuralIllustration assetId={assetId} detail="hero" decorative={alt.length === 0} title={alt || undefined} motion="none" className={className} />;
   return <img
     alt={alt}
     className={`three-structural-image ${className}`.trim()}
