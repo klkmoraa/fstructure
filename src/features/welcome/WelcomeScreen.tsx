@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { createBlankProject, exampleProjects } from '../../data/defaultProject';
-import { FusionMark } from '../../design-system/brand';
+import { FStructureMark } from '../../design-system/brand';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { classroomExerciseTemplates, type ClassroomExerciseTemplateId } from '../../education/exerciseTemplates';
 import { useI18n } from '../../i18n/useI18n';
@@ -150,7 +150,7 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
   return <>
     <main className="sc-home" data-testid="solver2d-welcome">
       <header className="sc-home-console">
-        <button type="button" className="sc-home-wordmark" onClick={() => navigate('home')} aria-label={text.backHome}><FusionMark size={24} /><strong>{SOLVER_2D.name}</strong><span>{SOLVER_2D.product}</span></button>
+        <button type="button" className="sc-home-wordmark" onClick={() => navigate('home')} aria-label={text.backHome}><FStructureMark size={24} /><strong>{SOLVER_2D.name}</strong><span>{SOLVER_2D.product}</span></button>
         {renderNavigation()}
         <button type="button" className="sc-home-console__menu" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button>
       </header>

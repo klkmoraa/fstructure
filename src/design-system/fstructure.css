@@ -1,0 +1,883 @@
+/*
+ * FStructure · adaptación directa del brandbook web
+ *
+ * Únicas referencias: `FusionStructureBrand/brandbook-site/app/globals.css`
+ * y el HTML/JSX de `app/sections/Patterns.tsx`. Esta capa traduce esa misma
+ * retícula, materia, tipografía y jerarquía al DOM real del Solver 2D.
+ * FStructure pertenece a Análisis: la marca conserva tinta neutra y sólo su
+ * registro, controles activos y acciones primarias usan salmón.
+ */
+
+:root {
+  --fstructure-touch-target: 44px;
+  --fstructure-rail-width: 88px;
+  --fstructure-header-height: 64px;
+  --fstructure-status-height: 24px;
+}
+
+/* Inicio ---------------------------------------------------------------- */
+
+.sc-home {
+  border-color: var(--sc-color-border);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-bg-app);
+  box-shadow: var(--sc-shadow-lg);
+}
+
+.sc-home-console {
+  min-height: var(--fstructure-header-height);
+  padding: 0 clamp(16px, 3vw, 40px);
+  border-block-end-color: var(--sc-color-border-soft);
+  background: var(--sc-color-bg-app);
+  box-shadow: none;
+}
+
+.sc-home-wordmark {
+  min-height: var(--fstructure-touch-target);
+  gap: 10px;
+  padding-inline-end: 8px;
+  border-radius: var(--sc-radius-control);
+}
+
+.sc-home-wordmark .fs-mark {
+  width: 28px;
+  height: 28px;
+  color: var(--sc-color-text-primary);
+}
+
+.sc-home-wordmark .fs-mark--fstructure .fs-mark__register {
+  fill: var(--fs-family-analisis);
+}
+
+.sc-home-wordmark strong {
+  font-family: var(--sc-font-display);
+  font-size: 17px;
+  font-weight: var(--sc-font-weight-semibold);
+  letter-spacing: -.02em;
+}
+
+.sc-home-wordmark > span {
+  color: var(--sc-color-text-subtle);
+  font-family: var(--sc-font-mono);
+  font-size: 12px;
+}
+
+.sc-home-nav--console {
+  gap: 8px;
+}
+
+.sc-home-nav--console button {
+  position: relative;
+  width: 40px;
+  min-height: 40px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+}
+
+.sc-home-nav--console button.is-active {
+  border-color: var(--fs-family-analisis);
+  color: var(--fs-family-analisis);
+}
+
+.sc-home-nav--console button.is-active::after {
+  content: '';
+  position: absolute;
+  inset-inline: 10px;
+  inset-block-end: 0;
+  height: 2px;
+  background: var(--fs-family-analisis);
+}
+
+.sc-home-topline {
+  top: var(--fstructure-header-height);
+  min-height: 52px;
+  padding-inline: clamp(16px, 3vw, 40px);
+  border-block-end-color: var(--sc-color-border-soft);
+  background: var(--sc-color-bg-app);
+}
+
+.sc-home-topline > span {
+  color: var(--sc-color-text-secondary);
+  font: var(--sc-font-weight-medium) var(--sc-font-size-label) / 1 var(--sc-font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.sc-home-search {
+  height: 40px;
+  border-color: var(--sc-color-border);
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.sc-home-content {
+  padding: clamp(28px, 4vw, 56px) clamp(16px, 4vw, 64px) 56px;
+}
+
+.solver2d-home {
+  gap: clamp(32px, 4vw, 52px);
+}
+
+.solver2d-home :is(
+  .solver2d-hero__eyebrow,
+  .solver2d-hero__name,
+  .solver2d-hero__lead,
+  .solver2d-open,
+  .solver2d-hero__stage,
+  .solver2d-path,
+  .solver2d-capability
+) {
+  opacity: 1;
+}
+
+.solver2d-hero {
+  grid-template-columns: minmax(320px, .9fr) minmax(420px, 1.1fr);
+  min-height: 430px;
+  align-items: center;
+  gap: clamp(36px, 5vw, 76px);
+  padding: 16px 0 44px;
+  border-block-end-color: var(--sc-color-border-soft);
+}
+
+.solver2d-hero__copy {
+  align-self: center;
+  gap: 14px;
+  padding-top: 0;
+}
+
+.solver2d-hero__eyebrow,
+.solver2d-open__label {
+  color: var(--fs-family-analisis);
+}
+
+.solver2d-hero__name {
+  max-width: 560px;
+  font-family: var(--sc-font-display);
+  font-size: clamp(48px, 5.2vw, 76px);
+  letter-spacing: -.06em;
+  line-height: .96;
+}
+
+.solver2d-hero__lead {
+  max-width: 34ch;
+  color: var(--sc-color-text-secondary);
+  font-size: clamp(16px, 1.35vw, 19px);
+}
+
+.solver2d-open {
+  width: min(100%, 540px);
+  margin-block-start: 12px;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+}
+
+.solver2d-open:hover {
+  border-color: var(--sc-color-border);
+  box-shadow: var(--sc-shadow-action-hover);
+}
+
+.solver2d-open__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 3px 16px;
+}
+
+.solver2d-open__label {
+  grid-column: 1 / -1;
+}
+
+.solver2d-open__name {
+  max-width: 100%;
+  font-size: 15px;
+}
+
+.solver2d-open__counts {
+  display: flex;
+}
+
+.solver2d-action {
+  min-height: 42px;
+  padding-inline: 18px;
+  border-radius: var(--sc-radius-pill);
+}
+
+.solver2d-action--primary {
+  border-color: var(--fs-family-analisis);
+  background: var(--fs-family-analisis);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-action);
+}
+
+.solver2d-action--primary:hover {
+  background: var(--sc-color-action-hover);
+  box-shadow: var(--sc-shadow-action-hover);
+}
+
+.solver2d-action:active {
+  transform: var(--sc-press-transform);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.solver2d-hero__stage,
+.solver2d-stage {
+  min-height: 390px;
+}
+
+.solver2d-stage {
+  overflow: hidden;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.solver2d-stage::after {
+  content: 'FS-A01 · SOLVER 2D';
+  position: absolute;
+  inset-inline-end: 18px;
+  inset-block-end: 14px;
+  color: var(--sc-color-text-subtle);
+  font: var(--sc-font-size-label) / 1 var(--sc-font-mono);
+  letter-spacing: .06em;
+}
+
+.solver2d-stage__object {
+  width: 112%;
+  transform: translateY(-10px);
+}
+
+.solver2d-stage__object :is(.three-structural-image, svg) {
+  filter: none;
+}
+
+.solver2d-paths {
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.solver2d-path,
+.solver2d-capability,
+.solver2d-recents .project-hub {
+  border-color: var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+}
+
+.solver2d-path {
+  min-height: 148px;
+  padding: 18px;
+  box-shadow: var(--sc-shadow-raised);
+}
+
+.solver2d-path::before {
+  inset-inline: 0;
+  height: 3px;
+  border-radius: var(--sc-radius-card) var(--sc-radius-card) 0 0;
+}
+
+.solver2d-path__icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--sc-color-border-soft);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-xs);
+}
+
+/* Mesa de trabajo ------------------------------------------------------- */
+
+@media (min-width: 1024px) {
+  .app-shell[data-shell-class='X2']:has(.console) {
+    display: grid;
+    grid-template-columns: var(--fstructure-rail-width) minmax(0, 1fr);
+    grid-template-rows: var(--fstructure-header-height) minmax(0, 1fr) var(--fstructure-status-height);
+    grid-template-areas:
+      'topbar topbar'
+      'console workspace'
+      'footer footer';
+    gap: 1px;
+    background: var(--sc-color-border-soft);
+  }
+
+  /* Aunque es fixed, el enlace de salto sigue participando en el auto-placement
+     de CSS Grid. Anclarlo evita que el navegador cree una cuarta fila vacía. */
+  .app-shell[data-shell-class='X2'] > .app-shell-skip-link {
+    grid-area: topbar;
+  }
+
+  .app-shell[data-shell-class='X2'] > .console.console {
+    grid-area: console;
+    width: var(--fstructure-rail-width);
+    min-width: var(--fstructure-rail-width);
+    height: auto;
+    margin: 0;
+    padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 0;
+    background: var(--sc-color-surface-1);
+  }
+
+  .app-shell[data-shell-class='X2'] > .console.console > .console__body {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .app-shell[data-shell-class='X2'] > .console.console :is(.console__surfaces, .console__foot) {
+    width: 100%;
+    display: grid;
+    gap: 6px;
+  }
+
+  .app-shell[data-shell-class='X2'] > .console.console > .console__body > .console__tools {
+    min-height: 0;
+    display: block;
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .app-shell[data-shell-class='X2'] .console__tools::-webkit-scrollbar {
+    display: none;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock {
+    position: static;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.desktop-tool-list, .tool-group-actions) {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-group {
+    width: 100%;
+    padding: 4px 0;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-group + .dock-group {
+    border-block-start: 1px solid var(--sc-color-border-soft);
+    border-inline-start: 0;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-rail-tooltip-anchor {
+    width: 100%;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger) {
+    width: 100%;
+    min-width: var(--fstructure-touch-target);
+    height: auto;
+    min-height: 48px;
+    padding: 6px 4px;
+    border: 1px solid var(--sc-color-border-soft);
+    border-radius: var(--sc-radius-control);
+    background: var(--sc-color-surface-1);
+    box-shadow: var(--sc-shadow-xs);
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-button:not(.is-compact) {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-button:not(.is-compact) > span:not(.sc-tool-button__icon) {
+    display: none;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.dock-collapse-toggle, .dock-position-toggle) {
+    display: none;
+  }
+
+  .app-shell[data-shell-class='X2'] > .workspace {
+    grid-area: workspace;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--inspector-w);
+    gap: 12px;
+    padding: 12px;
+    background: var(--sc-color-bg-app);
+  }
+
+  .app-shell[data-shell-class='X2']:is([data-inspector-collapsed='true'], [data-full-canvas='true']) > .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app-shell[data-shell-class='X2'] .center-stage {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+    overflow: hidden;
+    contain: layout paint;
+    border: 1px solid var(--sc-color-border-soft);
+    border-radius: var(--sc-radius-card);
+    background: var(--sc-color-surface-inset);
+    box-shadow: var(--sc-shadow-inset);
+  }
+
+  .app-shell[data-shell-class='X2'] .inspector-panel[data-surface-presentation='dock'] {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--sc-color-border-soft);
+    border-radius: var(--sc-radius-card);
+    background: var(--sc-color-surface-1);
+    box-shadow: var(--sc-shadow-raised);
+  }
+}
+
+/* El referente aportado sólo define la geometría: iconos ópticos 24 × 24,
+   trazo 2 px y extremos redondeados. La librería existente conserva un único
+   lenguaje de símbolos y evita SVGs artesanales. */
+:is(
+  .sc-home,
+  .workspace-topbar,
+  .console,
+  .canvas-controls,
+  .canvas-view-controls,
+  .workspace-surface-launcher
+) button svg:not(.fs-mark) {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* La cámara del canvas ya agrupa eventos de puntero con requestAnimationFrame.
+   Este límite de pintura evita que cada cuadro vuelva a invalidar el chrome. */
+.app-shell .center-stage {
+  contain: layout paint;
+}
+
+/* El lienzo no debe parecer una hoja pegada al marco. La estructura exterior es
+   una pieza elevada y el plano técnico vive dentro de una segunda pieza,
+   hundida, igual que el workbench del Brandbook. El `canvas-host` es el plano
+   real que pinta la rejilla; por eso la sombra vive aquí y no sólo en `main`. */
+.app-shell.workspace-screen .center-stage {
+  padding: 8px;
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+}
+
+.app-shell.workspace-screen .center-stage > .canvas-host {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.app-shell.workspace-screen .center-stage > .canvas-host > .structural-canvas {
+  /* En el brandbook el plano de trabajo es `surface-sunken`; el SVG no debe
+     taparlo con otra hoja blanca. La rejilla y la geometría se dibujan sobre
+     el tono hundido del anfitrión. */
+  background: transparent;
+}
+
+/* La retícula técnica conserva el trazo tenue del brandbook, pero no puede
+   perderse contra `surface-sunken`. El escalón fuerte sigue siendo un token
+   canónico, no un color nuevo. */
+.app-shell.workspace-screen .center-stage > .canvas-host .grid-lines {
+  opacity: .82;
+}
+
+.app-shell.workspace-screen .center-stage > .canvas-host .grid-lines line {
+  stroke: var(--sc-color-canvas-grid-strong);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* El SVG conserva la rejilla técnica, mientras esta capa se pinta encima de
+   ella para que la cavidad no desaparezca bajo el contenido. Es el mismo
+   `shadow-inset` del Brandbook, no un degradado nuevo. */
+.app-shell.workspace-screen .center-stage > .canvas-host::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: var(--sc-shadow-inset);
+}
+
+/* Estado activo = pieza realmente presionada. Se conserva el salmón del
+   Brandbook y se añade su sombra seleccionada para que el cambio de plano sea
+   legible en móvil y escritorio, sin la raya lateral heredada. */
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active),
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled),
+.app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active, .is-active),
+.app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active, .is-active):hover:not(:disabled) {
+  --tool-color: var(--sc-color-action-foreground);
+  border-color: var(--sc-color-action-primary);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-selected);
+  transform: none;
+}
+
+/* En X2 estas tres acciones son la consola persistente del riel. El nombre ya
+   vive en aria-label/title; retirarlo del flujo evita que la opacidad del label
+   desplace el pictograma 10 px hacia la izquierda. */
+@media (min-width: 1024px) {
+  .app-shell[data-shell-class='X2'] .console :is(.console__surfaces, .console__foot) > button {
+    display: grid;
+    place-items: center;
+    gap: 0;
+  }
+
+  .app-shell[data-shell-class='X2'] .console :is(.console__surfaces, .console__foot) .console__label {
+    display: none;
+  }
+}
+
+.workspace-topbar {
+  min-height: var(--fstructure-header-height);
+  padding: 0 clamp(16px, 3vw, 40px);
+  border-block-end: 0;
+  background: var(--sc-color-bg-app);
+}
+
+.workspace-topbar__project-group {
+  flex: 1 1 auto;
+}
+
+.workspace-topbar__brand {
+  width: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  box-shadow: none;
+}
+
+.workspace-topbar__brand .fs-mark--fstructure .fs-mark__register {
+  fill: var(--fs-family-analisis);
+}
+
+.workspace-topbar__project {
+  min-height: 40px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  box-shadow: none;
+}
+
+.workspace-topbar__project:hover,
+.workspace-topbar__project:focus-visible,
+.workspace-topbar__brand:hover,
+.workspace-topbar__brand:focus-visible {
+  border-color: transparent;
+  background: var(--sc-color-surface-inset);
+  box-shadow: none;
+}
+
+.workspace-topbar__eyebrow {
+  color: var(--fs-family-analisis);
+  font-family: var(--sc-font-mono);
+  letter-spacing: .06em;
+}
+
+.workspace-topbar__project-copy strong {
+  font-family: var(--sc-font-display);
+}
+
+.workspace-topbar__status-chip {
+  border-radius: var(--sc-radius-pill);
+}
+
+.workspace-topbar__model-group,
+.workspace-topbar__calculate-group {
+  min-height: 40px;
+  border-radius: var(--sc-radius-pill);
+}
+
+.workspace-topbar__icon-button,
+.workspace-topbar__action-button {
+  min-height: 32px;
+  border-radius: var(--sc-radius-pill);
+}
+
+.workspace-topbar__action-button.is-primary,
+.workspace-topbar__project-editor-actions button[type='submit'] {
+  border-color: var(--fs-family-analisis);
+  background: var(--fs-family-analisis);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-action);
+}
+
+.workspace-topbar__action-button.is-active {
+  border-color: color-mix(in srgb, var(--fs-family-analisis) 45%, transparent);
+  background: color-mix(in srgb, var(--fs-family-analisis) 10%, var(--sc-color-surface-1));
+  color: var(--fs-family-analisis);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active) {
+  --tool-color: var(--sc-color-action-foreground);
+  border-color: var(--sc-color-action-primary);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-selected);
+  transform: none;
+}
+
+.instrument {
+  min-height: var(--fstructure-status-height);
+  height: var(--fstructure-status-height);
+  padding-inline: 12px;
+  border-block-start: 0;
+  background: var(--sc-color-surface-1);
+}
+
+.app-shell :is(
+  .number-control,
+  .select-field select,
+  .compact-select,
+  .segmented-control,
+  .inspector-summary,
+  .selection-card,
+  .inspector-note,
+  .effect-card,
+  .combination-card,
+  .norm-source
+) {
+  border-color: var(--sc-color-border-soft);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.import-center-backdrop,
+.command-palette-backdrop {
+  backdrop-filter: none;
+}
+
+/* Respuesta ------------------------------------------------------------- */
+
+@media (max-width: 1180px) and (min-width: 1024px) {
+  .workspace-topbar__status {
+    display: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .solver2d-hero {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .solver2d-hero__stage {
+    max-width: 680px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .app-shell.workspace-screen[data-shell-class='K0'] > .workspace {
+    gap: 10px;
+    padding: 10px 10px 8px;
+    background: var(--sc-color-bg-app);
+  }
+
+  .app-shell.workspace-screen[data-shell-class='K0'] .center-stage {
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--sc-color-border);
+    border-radius: var(--sc-radius-card);
+    background: var(--sc-color-surface-1);
+    box-shadow: var(--sc-shadow-raised);
+  }
+}
+
+@media (max-width: 760px) {
+  .sc-home {
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .sc-home-console {
+    padding-inline: 12px;
+  }
+
+  .sc-home-wordmark > span {
+    display: none;
+  }
+
+  .sc-home-nav--menu {
+    inset-block-start: var(--fstructure-header-height);
+    max-height: calc(100dvh - var(--fstructure-header-height));
+  }
+
+  .sc-home-topline {
+    top: var(--fstructure-header-height);
+    padding: 7px 12px;
+  }
+
+  .sc-home-content {
+    padding: 20px 14px 36px;
+  }
+
+  .solver2d-home {
+    gap: 30px;
+    padding-inline: 0;
+  }
+
+  .solver2d-hero {
+    gap: 22px;
+    padding: 8px 0 30px;
+  }
+
+  .solver2d-hero__name {
+    font-size: clamp(42px, 13vw, 58px);
+  }
+
+  .solver2d-open {
+    padding: 14px;
+  }
+
+  .solver2d-open__head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .solver2d-open__counts {
+    margin-block-start: 4px;
+  }
+
+  .solver2d-hero__stage,
+  .solver2d-stage {
+    min-height: 190px;
+  }
+
+  .solver2d-stage {
+    border-radius: var(--sc-radius-card);
+  }
+
+  .solver2d-stage__object {
+    width: min(118%, 520px);
+  }
+
+  .solver2d-path {
+    min-height: 132px;
+  }
+
+  .workspace-topbar {
+    min-height: var(--topbar-h);
+    padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
+  }
+
+  .workspace-topbar__status {
+    display: none;
+  }
+
+  .workspace-topbar__model-group,
+  .workspace-topbar__calculate-group {
+    box-shadow: var(--sc-shadow-inset);
+  }
+}
+
+@media (max-width: 420px) {
+  .solver2d-open__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-topbar__project {
+    max-width: 104px;
+  }
+
+  .workspace-topbar__project-copy strong {
+    max-width: 88px;
+  }
+}
+
+/* La presión no encoge ni desplaza la tecla: la superficie baja por materia.
+   El Brandbook resuelve el gesto con `shadow-inset`; conservar el tamaño evita
+   el rebote óptico que se sentía al tocar una herramienta en K0. */
+.app-shell.workspace-screen[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button,
+.app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button {
+  transition:
+    background-color var(--sc-motion-fast) var(--sc-ease-standard),
+    border-color var(--sc-motion-fast) var(--sc-ease-standard),
+    color var(--sc-motion-fast) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-fast) var(--sc-ease-standard);
+}
+
+.app-shell.workspace-screen[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:active:not(:disabled),
+.app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button:active:not(:disabled) {
+  transform: none;
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-pressed);
+}
+
+.app-shell.workspace-screen[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):active:not(:disabled),
+.app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active, .is-active):active:not(:disabled) {
+  border-color: var(--sc-color-action-primary);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-selected);
+}
+
+.app-shell.workspace-screen .workspace-topbar :is(.workspace-topbar__icon-button, .workspace-topbar__action-button):active:not(:disabled) {
+  transform: none;
+  box-shadow: var(--sc-shadow-pressed);
+}
+
+.app-shell.workspace-screen .workspace-topbar .workspace-topbar__action-button.is-primary:active:not(:disabled) {
+  border-color: var(--sc-color-action-primary);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-pressed);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .solver2d-home *,
+  .app-shell * {
+    scroll-behavior: auto;
+    animation-duration: .01ms;
+    animation-iteration-count: 1;
+    transition-duration: .01ms;
+  }
+}

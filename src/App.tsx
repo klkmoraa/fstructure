@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { LazyMotion, MotionConfig } from 'motion/react';
 import './styles.css';
 import './design-system/material.css';
 import { ProjectProvider, useProject } from './store/ProjectContext';
@@ -7,6 +8,9 @@ import WorkspaceShell from './features/workspace/WorkspaceShell';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 
 type AppSurface = 'welcome' | 'workspace2d';
+
+const loadMotionFeatures = () => import('./design-system/motionFeatures')
+  .then(({ default: features }) => features);
 
 const readSurface = (): AppSurface => new URLSearchParams(window.location.search).get('surface') === 'workspace2d'
   ? 'workspace2d'
@@ -39,6 +43,10 @@ const FStructureSurface = () => {
 };
 
 /** Standalone 2D product composition. */
-const App = () => <ProjectProvider><FStructureSurface /></ProjectProvider>;
+const App = () => <LazyMotion features={loadMotionFeatures} strict>
+  <MotionConfig reducedMotion="user">
+    <ProjectProvider><FStructureSurface /></ProjectProvider>
+  </MotionConfig>
+</LazyMotion>;
 
 export default App;

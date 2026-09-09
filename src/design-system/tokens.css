@@ -15,8 +15,9 @@
  *
  * LAS CUATRO REGLAS
  * ---------------------------------------------------------------------------
- *  1. EL CHROME NO TIENE COLOR. Fondos, superficies, bordes, texto, acciones y
- *     estados de control son neutros: papel en Día, carbón en Noche. La
+ *  1. EL CHROME ES NEUTRO; LA ACCIÓN IDENTIFICA EL PRODUCTO. Fondos,
+ *     superficies, bordes y texto son papel en Día y carbón en Noche. La
+ *     acción primaria de FStructure usa el salmón de la familia Análisis. La
  *     temperatura del papel es mínima y constante —la desviación entre canales
  *     nunca pasa de 12— y nunca se convierte en un tinte de marca. El acento es
  *     la tinta misma: carbón sobre papel en Día, papel sobre carbón en Noche.
@@ -64,27 +65,25 @@
   /* 1 · PRIMITIVAS                                                      */
   /* ------------------------------------------------------------------ */
 
-  /* PAPEL Y TINTA. La rampa de Día nace del papel del brandbook (#F6F5F0) y
-     termina en su carbón (#171A1C). No es una escala gris: es una escala de
-     papel, con una temperatura mínima y constante —la desviación entre canales
-     nunca pasa de 10— para que el chrome siga siendo neutro a la vista y el
-     color siga siendo exclusivo del dominio. */
+  /* PAPEL Y TINTA. Valores literales de `FusionStructureBrand/app/globals.css`.
+     Los escalones históricos que no existen en el brandbook apuntan al vecino
+     canónico más próximo; no introducen una paleta paralela. */
   --sc-white: #ffffff;
   --sc-black: #000000;
-  --fs-paper-0: #ffffff;
-  --fs-paper-25: #fdfdfb;
+  --fs-paper-0: #fffefa;
+  --fs-paper-25: #fffefa;
   --fs-paper-50: #f7f6f1;
-  --fs-paper-100: #f0efe9;
-  --fs-paper-150: #e8e7e0;
-  --fs-paper-200: #dcdbd3;
-  --fs-paper-300: #c6c5bc;
-  --fs-paper-400: #a9a8a0;
-  --fs-paper-500: #8e8d86;
-  --fs-paper-600: #73726c;
-  --fs-paper-700: #545350;
-  --fs-paper-800: #353432;
-  --fs-paper-900: #1f2123;
-  --fs-paper-950: #171a1c;
+  --fs-paper-100: #edefe9;
+  --fs-paper-150: #edefe9;
+  --fs-paper-200: #dde2dc;
+  --fs-paper-300: #c6cdc6;
+  --fs-paper-400: #a7b1a9;
+  --fs-paper-500: #7e8a84;
+  --fs-paper-600: #5c6a6f;
+  --fs-paper-700: #3f4a50;
+  --fs-paper-800: #3f4a50;
+  --fs-paper-900: #14171a;
+  --fs-paper-950: #14171a;
 
   /* Alias históricos de la rampa. El producto entero los usa; conservarlos
      evita una migración mecánica sin lectura en cada hoja de feature. */
@@ -125,12 +124,12 @@
      `action` deja de ser una señal de dominio y queda como el rol de acción
      destructiva del chrome, apuntando al mismo rojo. Las CARGAS, que eran su
      otro uso, ya no viven aquí: son su propia familia, más abajo. */
-  --fs-signal-axial: #1b75b0;
-  --fs-signal-moment: #b8412f;
-  --fs-signal-shear: #277654;
-  --fs-signal-deformed: #6a57c8;
-  --fs-signal-yield: #b44a7e;
-  --fs-signal-attention: #8a6110;
+  --fs-signal-axial: #0f95d1;
+  --fs-signal-moment: #ed4b46;
+  --fs-signal-shear: #468c09;
+  --fs-signal-deformed: #8b5cf6;
+  --fs-signal-yield: #d85ac9;
+  --fs-signal-attention: #d9720a;
 
   /* Registro de la marca madre: rojo pastel, separado del rojo técnico de
      momento para que el logo no parezca un resultado del solver. */
@@ -174,7 +173,7 @@
      `designSystem.test.ts` y mide las dos cosas: separación y 3:1 sobre el
      papel de su tema.
 
-     Los valores de Día están medidos sobre `#fdfdfb` y los de Noche sobre
+     Los valores de Día están medidos sobre `#fffefa` y los de Noche sobre
      carbón: un mismo hex no puede estar medido a la vez contra los dos. */
   --fs-load-point: #1a4fe0;
   --fs-load-distributed: #ee5116;
@@ -203,18 +202,18 @@
      familia dice a qué parte del sistema pertenece una herramienta; el estado
      dice cuánto se puede confiar en ella, que en un producto experimental es
      información de primer orden y no una etiqueta decorativa. */
-  --fs-family-nucleo: #3f4a50;
-  --fs-family-analisis: var(--fs-signal-axial);
-  --fs-family-modelo: var(--fs-signal-moment);
-  --fs-family-civil: var(--fs-signal-shear);
-  --fs-family-proyecto: var(--fs-signal-attention);
-  --fs-family-interop: var(--fs-signal-deformed);
-  --fs-family-aprendizaje: var(--fs-signal-yield);
+  --fs-family-nucleo: #1aa57a;
+  --fs-family-analisis: #ed4b46;
+  --fs-family-modelo: #7657d5;
+  --fs-family-civil: #468c09;
+  --fs-family-proyecto: #d9720a;
+  --fs-family-interop: #3a72e3;
+  --fs-family-aprendizaje: #c94a8f;
 
-  --fs-status-disponible: var(--fs-signal-shear);
-  --fs-status-experimental: var(--fs-signal-attention);
+  --fs-status-disponible: #277654;
+  --fs-status-experimental: #8a6110;
   --fs-status-planeado: #5c6a6f;
-  --fs-status-no-comprometido: #737d76;
+  --fs-status-no-comprometido: #a7b1a9;
 
   /* ------------------------------------------------------------------ */
   /* 2 · ROLES SEMÁNTICOS DE INTERFAZ — TEMA DÍA                         */
@@ -223,14 +222,14 @@
      pulsado. Todo lo demás son alias de estos cuatro. */
   --sc-color-bg-app: var(--fs-paper-50);
   --sc-color-bg-canvas: var(--fs-paper-25);
-  --sc-color-surface-1: var(--fs-paper-25);
-  --sc-color-surface-2: var(--fs-paper-50);
+  --sc-color-surface-1: var(--fs-paper-0);
+  --sc-color-surface-2: var(--fs-paper-100);
   --sc-color-surface-3: var(--fs-paper-100);
   --sc-color-surface-elevated: var(--fs-paper-0);
   --sc-color-surface-floating: var(--fs-paper-0);
-  --sc-color-surface-inset: var(--fs-paper-50);
+  --sc-color-surface-inset: var(--fs-paper-100);
   --sc-color-surface-pressed: var(--fs-paper-150);
-  --sc-color-surface-toolbar: var(--fs-paper-25);
+  --sc-color-surface-toolbar: var(--fs-paper-0);
   --sc-color-surface-input: var(--fs-paper-0);
 
   /* Rellenos suaves: la escala de "casi nada" con la que se agrupa sin dibujar
@@ -269,29 +268,26 @@
      desaparezca contra el lienzo blanco ni contra una línea de diagrama. */
   --sc-color-border-canvas-chrome: var(--fs-gray-400);
 
-  /* ---- ACCIÓN: la marca es la tinta -----------------------------------
-     No hay color de marca. La acción primaria es un plano de tinta plena con
-     la etiqueta en el papel. En Noche se invierte exactamente. Es la decisión
-     que define la interfaz de FusionStructure: no es decoración, es información de
-     sistema, sencillamente el contraste máximo disponible. */
-  --sc-color-action-primary: var(--fs-gray-950);
-  --sc-color-action-hover: var(--fs-gray-800);
-  --sc-color-action-pressed: var(--fs-gray-700);
-  --sc-color-action-foreground: var(--fs-gray-0);
-  --sc-color-action-edge: var(--fs-gray-950);
-  --sc-color-action-ink: var(--fs-gray-950);
-  --sc-color-action-ink-on-soft: var(--fs-gray-950);
+  /* ---- ACCIÓN: FStructure pertenece a la familia Análisis --------------
+     En este producto la acción primaria adopta el salmón de su marca. No se
+     presta a resultados: aparece sólo en controles que ejecutan una decisión.
+     La etiqueta es carbón porque el blanco no alcanza contraste sobre salmón. */
+  --sc-color-action-primary: var(--fs-family-analisis);
+  --sc-color-action-hover: color-mix(in srgb, var(--fs-family-analisis) 88%, var(--sc-color-text-primary));
+  --sc-color-action-pressed: color-mix(in srgb, var(--fs-family-analisis) 78%, var(--sc-color-text-primary));
+  --sc-color-action-foreground: #14171a;
+  --sc-color-action-edge: var(--fs-family-analisis);
+  --sc-color-action-ink: var(--fs-family-analisis);
+  --sc-color-action-ink-on-soft: var(--fs-family-analisis);
   --sc-color-action-subtle: var(--fs-gray-50);
-  --sc-color-brand: var(--fs-gray-950);
+  --sc-color-brand: var(--fs-family-analisis);
   --sc-color-brand-secondary: var(--fs-gray-700);
   --sc-color-brand-register: var(--fs-brand-register);
   --sc-color-accent-blue-soft: var(--fs-gray-50);
   --sc-color-accent-violet-soft: var(--fs-gray-50);
 
-  /* Foco y selección: también acromáticos. Un anillo de tinta con 2px de
-     separación se ve sobre el papel, sobre un plano de tinta y en modo de alto
-     contraste, y no introduce un sexto color en la pantalla. */
-  --sc-color-focus: var(--fs-gray-950);
+  /* Foco usa el registro del producto y siempre conserva separación física. */
+  --sc-color-focus: var(--fs-family-analisis);
   --sc-color-selection: var(--fs-gray-100);
   --sc-color-selection-stroke: var(--fs-gray-950);
   --sc-color-selection-outline: var(--fs-gray-950);
@@ -516,15 +512,12 @@
   --sc-focus-ring-width-compact: 2px;
   --sc-focus-ring-offset: 2px;
 
-  /* ---- RADIOS ---------------------------------------------------------
-     Revisión clay: data 6px · control 12px · card/panel 22px · modal 28px.
-     Los campos mantienen su densidad; las superficies reciben el radio que
-     acompaña al volumen suave. Decisión: docs/design/clay/decision.md. */
+  /* ---- RADIOS · escala literal del brandbook web --------------------- */
   --sc-radius-data: 6px;
   --sc-radius-control: 12px;
-  --sc-radius-card: 22px;
-  --sc-radius-panel: 22px;
-  --sc-radius-modal: 28px;
+  --sc-radius-card: 18px;
+  --sc-radius-panel: 24px;
+  --sc-radius-modal: 24px;
   --sc-radius-sheet: 18px;
   --sc-radius-pill: 999px;
 
@@ -538,50 +531,32 @@
   --sc-radius-hero: var(--sc-radius-panel);
 
   /* ------------------------------------------------------------------ */
-  /* 5 · MATERIA: un escalón de arcilla, y una sola luz                  */
+  /* 5 · MATERIA · copia semántica de `app/globals.css`                  */
   /* ------------------------------------------------------------------ */
-  /* El sistema vuelve a tener volumen, pero con una condición que el
-     claymorphism de origen no cumplía: la luz es UNA, del sistema, y no una
-     por pieza. Entra por arriba-izquierda; la sombra cae abajo-derecha y el
-     contacto claro queda arriba-izquierda. Ninguna superficie se ilumina sola,
-     ninguna capa tiñe: la sombra es tinta neutra y el realce es papel, porque
-     el color en este producto significa dominio y nunca profundidad.
+  --sc-clay-light: rgb(255 255 255 / 85%);
+  --sc-clay-dark: rgb(20 23 26 / 14%);
+  --sc-clay-dark-soft: rgb(20 23 26 / 8%);
+  --sc-clay-dark-strong: rgb(20 23 26 / 22%);
+  --sc-clay-veil: rgb(20 23 26 / 45%);
 
-     Es UN escalón, no una escalera de adorno: `raised` para lo que se apoya,
-     `lg` y su familia para lo que de verdad flota por encima del contenido y
-     puede taparlo. Un panel no sube por ser importante; sube porque tapa.
-
-     Lo que NO vuelve del claymorphism de origen: el marfil cálido, el acento
-     menta, la sombra con luz propia por pieza y los degradados de brillo.
-     `designSystem.test.ts` sigue montando guardia sobre todo eso. */
-  --sc-shadow-raised: 3px 5px 12px rgb(20 23 26 / .07), -2px -2px 7px rgb(255 255 255 / .7), inset 0 1px 0 rgb(255 255 255 / .75);
-  --sc-shadow-lifted: 5px 9px 22px rgb(20 23 26 / .1), -3px -3px 10px rgb(255 255 255 / .7), inset 0 1px 0 rgb(255 255 255 / .8);
-  /* El escalón más bajo es el que sostiene la tecla del riel contra su bandeja,
-     y en Día esas dos superficies se llevan 1,03:1 de contraste: la sombra es
-     LO ÚNICO que las separa. A .06 no separaba nada —en Noche la misma capa va
-     a .34, casi seis veces más—, y en un teléfono la banda de herramientas se
-     leía como un bloque plano. Sube al escalón en que la tecla se despega sin
-     que el riel entero empiece a flotar. */
-  --sc-shadow-xs: 2px 2px 6px rgb(20 23 26 / .13), -1px -1px 4px rgb(255 255 255 / .7);
+  --sc-shadow-raised: 2px 4px 7px -1px var(--sc-clay-dark), 1px 1px 2px var(--sc-clay-dark), inset 1.5px 1.5px 2px var(--sc-clay-light), inset -2px -2px 4px var(--sc-clay-dark-soft);
+  --sc-shadow-lifted: 5px 10px 16px -2px var(--sc-clay-dark-strong), 2px 3px 5px var(--sc-clay-dark), inset 2px 2px 3px var(--sc-clay-light);
+  --sc-shadow-xs: 1px 2px 4px -1px var(--sc-clay-dark), inset 1px 1px 1.5px var(--sc-clay-light), inset -1px -1px 2px var(--sc-clay-dark-soft);
   --sc-shadow-sm: var(--sc-shadow-raised);
-  --sc-shadow-md: var(--sc-shadow-lifted);
-  /* Una cavidad invierte la misma luz: se hunde por arriba-izquierda. */
-  --sc-shadow-inset: inset 2px 2px 6px rgb(20 23 26 / .09), inset -1px -1px 4px rgb(255 255 255 / .55);
-  --sc-shadow-pressed: inset 2px 3px 6px rgb(20 23 26 / .14);
+  --sc-shadow-md: var(--sc-shadow-raised);
+  --sc-shadow-inset: inset 2px 2.5px 5px var(--sc-clay-dark), inset -1.5px -1.5px 3px var(--sc-clay-light);
+  --sc-shadow-selected: inset 2px 2.5px 5px var(--sc-clay-dark), inset -1px -1px 2px var(--sc-clay-light), 0 0 0 1.5px var(--fs-family-analisis);
+  --sc-shadow-pressed: var(--sc-shadow-inset);
   --sc-shadow-action: var(--sc-shadow-raised);
-  --sc-shadow-action-hover: var(--sc-shadow-lifted);
-  --sc-shadow-action-pressed: inset 0 1px 3px rgb(0 0 0 / .22);
-  --sc-shadow-lg: 10px 13px 28px rgb(20 23 26 / .12), -4px -4px 14px rgb(255 255 255 / .7);
+  --sc-shadow-action-hover: 4px 8px 14px -2px var(--sc-clay-dark-strong), 1px 2px 4px var(--sc-clay-dark), inset 1.5px 1.5px 2px var(--sc-clay-light), inset -2px -2px 4px var(--sc-clay-dark-soft);
+  --sc-shadow-action-pressed: var(--sc-shadow-inset);
+  --sc-shadow-lg: 4px 8px 14px -2px var(--sc-clay-dark-strong), 1px 2px 4px var(--sc-clay-dark), inset 1.5px 1.5px 2px var(--sc-clay-light), inset -2px -2px 4px var(--sc-clay-dark-soft);
   --sc-shadow-floating: var(--sc-shadow-lg);
   --sc-shadow-popover: var(--sc-shadow-lg);
-  --sc-shadow-modal: 0 1px 2px rgb(10 10 10 / .06), 0 16px 40px rgb(10 10 10 / .12);
-  --sc-shadow-sheet: 0 -1px 2px rgb(10 10 10 / .05), 0 -12px 32px rgb(10 10 10 / .10);
-  /* `drop-shadow()` sólo admite una capa. */
-  --sc-shadow-drop: 0 6px 16px rgb(10 10 10 / .10);
-  /* El velo del brandbook: lo que apaga el fondo detrás de un modal. Es una
-     sombra de extensión enorme y sin difuminado, no una capa de profundidad;
-     por eso no la alcanza la regla de la luz única. */
-  --sc-shadow-veil: 0 0 0 2000px rgb(20 23 26 / .45);
+  --sc-shadow-modal: var(--sc-shadow-lifted);
+  --sc-shadow-sheet: 0 -6px 12px -2px var(--sc-clay-dark-strong), inset 1px 1px 2px var(--sc-clay-light);
+  --sc-shadow-drop: 0 6px 12px var(--sc-clay-dark-strong);
+  --sc-shadow-veil: 0 0 0 2000px var(--sc-clay-veil);
 
   /* Contrato público de materia: cuatro niveles, cada uno con su distancia.
      El filete de 1px no se va a ninguna parte —sigue siendo lo que delimita—;
@@ -599,10 +574,8 @@
   --sc-surface-fill: var(--sc-color-surface-1);
   --sc-surface-fill-action: var(--sc-color-action-primary);
 
-  /* Con volumen sí hay algo que hundir: un control pulsado baja un píxel. Uno
-     solo — a dos ya parece que se despega de la interfaz en vez de responder. */
-  --sc-press-transform: translateY(1px);
-  --sc-press-transform-flat: translateY(1px);
+  --sc-press-transform: translateY(1.5px);
+  --sc-press-transform-flat: translateY(1.5px);
 
   /* La luz es del sistema, no de la pieza: sigue sin haber anillo interior de
      brillo, ni glow, ni degradado. Una cosa es un escalón de contacto y otra
@@ -618,14 +591,12 @@
   /* ------------------------------------------------------------------ */
   /* 6 · TIPOGRAFÍA                                                      */
   /* ------------------------------------------------------------------ */
-  /* Dos familias, autoalojadas. Instrument Sans escribe; Geist Mono mide.
-     Ninguna cifra del producto se escribe con la de texto: una columna de
-     resultados sólo se puede barrer si los dígitos tienen el mismo ancho. */
-  --sc-font-ui: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
-  --sc-font-display: var(--sc-font-ui);
-  --sc-font-heading: var(--sc-font-ui);
+  /* Familias literales del brandbook web. */
+  --sc-font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sc-font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --sc-font-heading: var(--sc-font-display);
   --sc-font-sans: var(--sc-font-ui);
-  --sc-font-mono: "Geist Mono", ui-monospace, "Cascadia Mono", monospace;
+  --sc-font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", "Cascadia Code", monospace;
 
   --sc-font-weight-regular: 400;
   --sc-font-weight-medium: 500;
@@ -859,63 +830,61 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  /* CARBÓN. La rampa nocturna del brandbook: papel #171A1C, panel #252A2E,
-     elevado #30363B. Como en Día, la desviación entre canales se mantiene por
-     debajo de 10 para que el chrome no tenga hue propio. */
-  --sc-color-bg-app: #141719;
-  --sc-color-bg-canvas: #171a1c;
-  --sc-color-surface-1: #1c2023;
-  --sc-color-surface-2: #22262a;
-  --sc-color-surface-3: #292e31;
-  --sc-color-surface-elevated: #22262a;
-  --sc-color-surface-floating: #262b2e;
-  --sc-color-surface-inset: #191d1f;
-  --sc-color-surface-pressed: #323739;
-  --sc-color-surface-toolbar: #1c2023;
-  --sc-color-surface-input: #191d1f;
+  /* CARBÓN. Valores literales de la rampa Noche del brandbook web. */
+  --sc-color-bg-app: #14171a;
+  --sc-color-bg-canvas: #0e1113;
+  --sc-color-surface-1: #1b1f22;
+  --sc-color-surface-2: #0e1113;
+  --sc-color-surface-3: #252a2e;
+  --sc-color-surface-elevated: #1b1f22;
+  --sc-color-surface-floating: #252a2e;
+  --sc-color-surface-inset: #0e1113;
+  --sc-color-surface-pressed: #333a3e;
+  --sc-color-surface-toolbar: #1b1f22;
+  --sc-color-surface-input: #0e1113;
 
-  --sc-color-fill-primary: #323739;
-  --sc-color-fill-secondary: #292e31;
-  --sc-color-fill-tertiary: #22262a;
-  --sc-color-fill-quaternary: #22262a;
+  --sc-color-fill-primary: #333a3e;
+  --sc-color-fill-secondary: #252a2e;
+  --sc-color-fill-tertiary: #1b1f22;
+  --sc-color-fill-quaternary: #1b1f22;
 
-  --sc-color-text-primary: #f4f4f1;
-  --sc-color-text-secondary: #a7a9a6;
-  --sc-color-text-muted: #8d8f8c;
-  --sc-color-text-tertiary: #8d8f8c;
-  --sc-color-text-subtle: #74766f;
-  --sc-color-text-technical: #cdcec9;
-  --sc-color-text-unit: #8d8f8c;
-  --sc-color-text-disabled: #5b5e5c;
-  --sc-color-text-disabled-content: #a7a9a6;
-  --sc-color-text-inverse: #141719;
-  --sc-color-text-on-action: #141719;
-  --sc-color-text-link: #f4f4f1;
+  --sc-color-text-primary: #f2f4f3;
+  --sc-color-text-secondary: #8b9599;
+  --sc-color-text-muted: #5e6a6f;
+  --sc-color-text-tertiary: #5e6a6f;
+  --sc-color-text-subtle: #465055;
+  --sc-color-text-technical: #b4bdc0;
+  --sc-color-text-unit: #8b9599;
+  --sc-color-text-disabled: #5e6a6f;
+  --sc-color-text-disabled-content: #8b9599;
+  --sc-color-text-inverse: #0e1113;
+  --sc-color-text-on-action: #0e1113;
+  --sc-color-text-link: #f2f4f3;
 
-  --sc-color-border-soft: #262b2e;
-  --sc-color-border: #333a3d;
-  --sc-color-border-strong: #5f6669;
-  --sc-color-divider: #262b2e;
-  --sc-color-border-canvas-chrome: #5f6669;
+  --sc-color-border-soft: #252a2e;
+  --sc-color-border: #333a3e;
+  --sc-color-border-strong: #465055;
+  --sc-color-divider: #252a2e;
+  --sc-color-border-canvas-chrome: #465055;
 
-  /* La tinta se invierte entera: la acción primaria es papel sobre carbón. */
-  --sc-color-action-primary: #f4f4f1;
-  --sc-color-action-hover: #ffffff;
-  --sc-color-action-pressed: #d3d4d0;
-  --sc-color-action-foreground: #141719;
-  --sc-color-action-edge: #f4f4f1;
-  --sc-color-action-ink: #f4f4f1;
-  --sc-color-action-ink-on-soft: #f4f4f1;
-  --sc-color-action-subtle: #22262a;
-  --sc-color-brand: #f4f4f1;
-  --sc-color-brand-secondary: #a7a9a6;
-  --sc-color-accent-blue-soft: #22262a;
-  --sc-color-accent-violet-soft: #22262a;
+  /* El salmón se recalibra sobre carbón; la geometría no cambia. */
+  --sc-color-action-primary: var(--fs-family-analisis);
+  --sc-color-action-hover: color-mix(in srgb, var(--fs-family-analisis) 88%, var(--sc-color-text-primary));
+  --sc-color-action-pressed: color-mix(in srgb, var(--fs-family-analisis) 78%, var(--sc-color-bg-canvas));
+  --sc-color-action-foreground: #14171a;
+  --sc-color-action-edge: var(--fs-family-analisis);
+  --sc-color-action-ink: var(--fs-family-analisis);
+  --sc-color-action-ink-on-soft: var(--fs-family-analisis);
+  --sc-color-action-subtle: #1b1f22;
+  --sc-color-brand: var(--fs-family-analisis);
+  --sc-color-brand-secondary: #8b9599;
+  --sc-color-accent-blue-soft: #1b1f22;
+  --sc-color-accent-violet-soft: #1b1f22;
 
-  --sc-color-focus: #f4f4f1;
-  --sc-color-selection: #323739;
-  --sc-color-selection-stroke: #f4f4f1;
-  --sc-color-selection-outline: #f4f4f1;
+  --sc-color-focus: var(--fs-family-analisis);
+  --sc-color-selection: #333a3e;
+  --sc-color-selection-stroke: #f2f4f3;
+  --sc-color-selection-outline: #f2f4f3;
 
   /* LAS SEIS SEÑALES EN NOCHE, y la familia pastel de las cargas.
      Se recalibra la SEÑAL, no una tinta aparte: desde la adopción del par
@@ -926,7 +895,7 @@
   --fs-signal-axial: #63c5ff;
   --fs-signal-moment: #ff8e80;
   --fs-signal-shear: #55c990;
-  --fs-signal-deformed: #9b87ff;
+  --fs-signal-deformed: #a990ff;
   --fs-signal-yield: #ef7ab9;
   --fs-signal-attention: #f3c553;
   --fs-brand-register: #f0958e;
@@ -938,8 +907,16 @@
   --fs-load-distributed: #ff6f3c;
   --fs-load-moment: #1ddfae;
 
-  /* Los dos neutrales de familia y estado que no cuelgan de una señal. */
-  --fs-family-nucleo: #aeb9be;
+  /* Las familias conservan arquitectura y se recalibran sobre carbón. */
+  --fs-family-nucleo: #1aa57a;
+  --fs-family-analisis: #ff8e80;
+  --fs-family-modelo: #a990ff;
+  --fs-family-civil: #72cf4a;
+  --fs-family-proyecto: #f3c553;
+  --fs-family-interop: #72a1ff;
+  --fs-family-aprendizaje: #f07db5;
+  --fs-status-disponible: #55c990;
+  --fs-status-experimental: #f3c553;
   --fs-status-planeado: #8b9599;
   --fs-status-no-comprometido: #5e6a6f;
 
@@ -955,7 +932,7 @@
   --sc-color-canvas-grid: #212528;
   --sc-color-canvas-grid-strong: #2d3336;
   --sc-color-canvas-member: #f4f4f1;
-  --sc-color-canvas-node-fill: #171a1c;
+  --sc-color-canvas-node-fill: #0e1113;
   --sc-color-overlay-soft: rgb(8 10 11 / .46);
   --sc-color-overlay-sheet: rgb(8 10 11 / .58);
   --sc-color-overlay-strong: rgb(8 10 11 / .70);
@@ -992,18 +969,10 @@
      una carga: es tinta de chrome, y el gris tiene que cambiar de lado. */
   --sc-color-tool-cut: #a7a9a6;
 
-  /* MATERIA EN NOCHE. La sombra necesita más peso sobre un plano oscuro, y el
-     contacto claro deja de ser blanco: lo que recoge un canto de noche no es
-     una fuente, es ambiente. Gris de ambiente, no papel. */
-  --sc-shadow-raised: 3px 4px 10px rgb(0 0 0 / .4), -2px -2px 7px rgb(120 124 126 / .16);
-  --sc-shadow-lifted: 6px 8px 18px rgb(0 0 0 / .46), -3px -3px 10px rgb(120 124 126 / .2);
-  --sc-shadow-xs: 2px 2px 6px rgb(0 0 0 / .34), -1px -1px 4px rgb(120 124 126 / .12);
-  --sc-shadow-inset: inset 2px 2px 6px rgb(0 0 0 / .45), inset -1px -1px 4px rgb(120 124 126 / .14);
-  --sc-shadow-pressed: inset 2px 3px 6px rgb(0 0 0 / .5);
-  --sc-shadow-action-pressed: inset 0 1px 3px rgb(0 0 0 / .4);
-  --sc-shadow-lg: 10px 13px 28px rgb(0 0 0 / .52), -4px -4px 14px rgb(120 124 126 / .24);
-  --sc-shadow-modal: 0 1px 2px rgb(0 0 0 / .5), 0 16px 40px rgb(0 0 0 / .7);
-  --sc-shadow-veil: 0 0 0 2000px rgb(0 0 0 / .62);
-  --sc-shadow-sheet: 0 -1px 2px rgb(0 0 0 / .5), 0 -12px 32px rgb(0 0 0 / .6);
-  --sc-shadow-drop: 0 6px 16px rgb(0 0 0 / .6);
+  /* La geometría de la arcilla no cambia; sólo cambian sus materiales. */
+  --sc-clay-light: rgb(255 255 255 / 16%);
+  --sc-clay-dark: rgb(0 0 0 / 55%);
+  --sc-clay-dark-soft: rgb(0 0 0 / 35%);
+  --sc-clay-dark-strong: rgb(0 0 0 / 70%);
+  --sc-clay-veil: rgb(0 0 0 / 62%);
 }

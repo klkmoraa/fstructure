@@ -52,6 +52,18 @@ export const FusionMark = ({ size = 24, label, className }: MarkProps) => (
 );
 
 /**
+ * Variante de familia de FStructure. Conserva la geometría madre y registra
+ * únicamente el brazo inferior con el salmón de Análisis.
+ */
+export const FStructureMark = ({ size = 24, label, className }: MarkProps) => (
+  <FusionMark
+    size={size}
+    label={label}
+    className={`fs-mark--fstructure${className ? ` ${className}` : ''}`}
+  />
+);
+
+/**
  * Marca de FStructure, el solver 2D.
  *
  * El marco de familia queda en el color de la colección; dentro, el glifo dice

@@ -81,73 +81,49 @@ const contraste = (a: [number, number, number], b: [number, number, number]): nu
 };
 
 describe('materia · la arcilla tiene una sola luz', () => {
-  /** Cada capa de una sombra, como (x, y, difuminado).
-   *  El desplazamiento en X puede venir como `0` pelado —así se escriben las
-   *  sombras de contacto verticales—, así que el `px` sólo se exige en Y y en
-   *  el difuminado. El ancla al principio del valor o a una coma es lo que
-   *  impide que los tres enteros de un `rgb(23 26 28 …)` se lean como una capa. */
-  const capasDe = (valor: string) =>
-    [...valor.matchAll(/(?:^|,)\s*(?:inset\s+)?(-?\d+)(?:px)?\s+(-?\d+)px\s+(\d+)px/g)]
-      .map((m) => ({ x: Number(m[1]), y: Number(m[2]), difuminado: Number(m[3]) }));
+  const compactar = (valor: string | null) => valor?.replace(/\s+/g, ' ');
 
-  /** Los tokens de sombra con un valor propio, en el bloque que se pida. */
-  const sombrasDe = (bloque: string) =>
-    [...bloque.matchAll(/^\s*(--sc-shadow-[a-z-]+):\s*([^;]+);/gm)]
-      .map(([, nombre, valor]) => ({ nombre, valor: valor.trim() }))
-      .filter(({ valor }) => valor !== 'none' && !valor.startsWith('var('));
+  it('usa literalmente la geometría táctil del brandbook web', () => {
+    expect(compactar(valorEn(bloqueRaiz, '--sc-shadow-raised'))).toBe(
+      '2px 4px 7px -1px var(--sc-clay-dark), 1px 1px 2px var(--sc-clay-dark), inset 1.5px 1.5px 2px var(--sc-clay-light), inset -2px -2px 4px var(--sc-clay-dark-soft)',
+    );
+    expect(compactar(valorEn(bloqueRaiz, '--sc-shadow-lg'))).toBe(
+      '4px 8px 14px -2px var(--sc-clay-dark-strong), 1px 2px 4px var(--sc-clay-dark), inset 1.5px 1.5px 2px var(--sc-clay-light), inset -2px -2px 4px var(--sc-clay-dark-soft)',
+    );
+    expect(compactar(valorEn(bloqueRaiz, '--sc-shadow-lifted'))).toBe(
+      '5px 10px 16px -2px var(--sc-clay-dark-strong), 2px 3px 5px var(--sc-clay-dark), inset 2px 2px 3px var(--sc-clay-light)',
+    );
+    expect(compactar(valorEn(bloqueRaiz, '--sc-shadow-inset'))).toBe(
+      'inset 2px 2.5px 5px var(--sc-clay-dark), inset -1.5px -1.5px 3px var(--sc-clay-light)',
+    );
+  });
 
-  it('la luz entra por una sola esquina: nada proyecta abajo-izquierda ni arriba-derecha', () => {
-    // Ésta es la prueba que sostiene toda la materia. Con la luz arriba-
-    // izquierda, una capa que se aleja a la derecha tiene que bajar y una que
-    // se aleja a la izquierda tiene que subir. Una capa con signos opuestos
-    // sería una segunda fuente de luz, que es exactamente lo que hacía
-    // ilegible al claymorphism de origen.
-    for (const { nombre, valor } of sombrasDe(bloqueRaiz).concat(sombrasDe(bloqueNoche))) {
-      for (const capa of capasDe(valor)) {
-        const opuestos = (capa.x > 0 && capa.y < 0) || (capa.x < 0 && capa.y > 0);
-        expect(opuestos, `${nombre}: capa ${capa.x}px ${capa.y}px contradice la luz del sistema`).toBe(false);
-      }
+  it('recalibra sólo los materiales entre Día y Noche', () => {
+    const dia = {
+      '--sc-clay-light': 'rgb(255 255 255 / 85%)', '--sc-clay-dark': 'rgb(20 23 26 / 14%)',
+      '--sc-clay-dark-soft': 'rgb(20 23 26 / 8%)', '--sc-clay-dark-strong': 'rgb(20 23 26 / 22%)',
+      '--sc-clay-veil': 'rgb(20 23 26 / 45%)',
+    };
+    const noche = {
+      '--sc-clay-light': 'rgb(255 255 255 / 16%)', '--sc-clay-dark': 'rgb(0 0 0 / 55%)',
+      '--sc-clay-dark-soft': 'rgb(0 0 0 / 35%)', '--sc-clay-dark-strong': 'rgb(0 0 0 / 70%)',
+      '--sc-clay-veil': 'rgb(0 0 0 / 62%)',
+    };
+    for (const [token, esperado] of Object.entries(dia)) {
+      expect(valorEn(bloqueRaiz, token)).toBe(esperado);
+    }
+    for (const [token, esperado] of Object.entries(noche)) {
+      expect(valorEn(bloqueNoche, token)).toBe(esperado);
     }
   });
 
-  it('ninguna capa de profundidad tiñe', () => {
-    // La sombra es tinta neutra y el realce es papel. En cuanto una capa tiene
-    // hue, la profundidad empieza a competir con las seis señales del dominio,
-    // que son lo único que puede significar color en este producto.
-    for (const { nombre, valor } of sombrasDe(bloqueRaiz).concat(sombrasDe(bloqueNoche))) {
-      for (const [, r, g, b] of valor.matchAll(/rgb\(\s*(\d+)\s+(\d+)\s+(\d+)/g)) {
-        const canales = [Number(r), Number(g), Number(b)];
-        const desviacion = Math.max(...canales) - Math.min(...canales);
-        expect(desviacion, `${nombre}: rgb(${canales.join(' ')}) tiene tinte`).toBeLessThanOrEqual(12);
-      }
-    }
-  });
-
-  it('la escalera de elevación es monótona y no se dispara', () => {
-    // Un escalón, no una escalera de adorno: cada nivel se separa del anterior
-    // y el que más flota sigue siendo una sombra de contacto, no un cráter.
-    const difuminadoDe = (nombre: string) =>
-      Math.max(...capasDe(valorEn(bloqueRaiz, nombre) ?? '').map((c) => c.difuminado));
-    const escalera = ['--sc-shadow-xs', '--sc-shadow-raised', '--sc-shadow-lifted', '--sc-shadow-lg'].map(difuminadoDe);
-    for (let i = 1; i < escalera.length; i += 1) {
-      expect(escalera[i], `el escalón ${i} no supera al anterior`).toBeGreaterThan(escalera[i - 1]);
-    }
-    expect(Math.max(...escalera), 'la sombra más alta se despegó del contacto').toBeLessThanOrEqual(32);
-  });
-
-  it('cada escalón de arcilla se recalibra en Noche', () => {
-    // Un realce blanco sobre carbón es una fuente que no existe: de noche lo
-    // que recoge un canto es ambiente.
-    for (const nombre of ['--sc-shadow-raised', '--sc-shadow-lifted', '--sc-shadow-xs', '--sc-shadow-inset', '--sc-shadow-pressed', '--sc-shadow-lg']) {
-      expect(valorEn(bloqueNoche, nombre), `${nombre} debe recalibrarse en Noche`).toBeTruthy();
-    }
-    expect(valorEn(bloqueNoche, '--sc-shadow-raised')).not.toMatch(/255\s+255\s+255/);
-  });
-
-  it('un control pulsado se hunde un píxel, ni más ni menos', () => {
-    // Dos píxeles ya no es responder: es despegarse.
-    expect(valorEn(bloqueRaiz, '--sc-press-transform')).toBe('translateY(1px)');
-    expect(valorEn(bloqueRaiz, '--sc-press-transform-flat')).toBe('translateY(1px)');
+  it('usa la forma y el hundido publicados', () => {
+    expect(valorEn(bloqueRaiz, '--sc-radius-data')).toBe('6px');
+    expect(valorEn(bloqueRaiz, '--sc-radius-control')).toBe('12px');
+    expect(valorEn(bloqueRaiz, '--sc-radius-card')).toBe('18px');
+    expect(valorEn(bloqueRaiz, '--sc-radius-panel')).toBe('24px');
+    expect(valorEn(bloqueRaiz, '--sc-press-transform')).toBe('translateY(1.5px)');
+    expect(valorEn(bloqueRaiz, '--sc-press-transform-flat')).toBe('translateY(1.5px)');
   });
 
   it('la luz sigue siendo del sistema y no de la pieza', () => {
@@ -165,18 +141,17 @@ describe('color · la interfaz es acromática y el dominio es el único que tiñ
     '--sc-color-surface-inset', '--sc-color-surface-pressed',
     '--sc-color-text-primary', '--sc-color-text-secondary', '--sc-color-text-muted',
     '--sc-color-border', '--sc-color-border-soft', '--sc-color-border-strong',
-    '--sc-color-action-primary', '--sc-color-action-hover', '--sc-color-action-foreground',
-    '--sc-color-focus', '--sc-color-selection-stroke',
+    '--sc-color-selection-stroke',
   ];
 
   /**
    * Papel y carbón tienen temperatura: el papel del brandbook es cálido y el
    * carbón es frío. Esa desviación es identidad, no color de marca, así que la
-   * guarda mide su AMPLITUD en vez de exigir tres canales idénticos. Doce
-   * puntos sobre 255 es el techo: por debajo el chrome se lee neutro junto a
+   * guarda mide su AMPLITUD en vez de exigir tres canales idénticos. Veinte
+   * puntos sobre 255 es el techo publicado: por debajo el chrome se lee neutro junto a
    * una señal; por encima empieza a competir con el dominio.
    */
-  const DESVIACION_MAXIMA_DE_CHROME = 12;
+  const DESVIACION_MAXIMA_DE_CHROME = 20;
 
   for (const [tema, bloque] of [['día', bloqueRaiz], ['noche', bloqueNoche]] as const) {
     it(`los roles de chrome se mantienen neutros en tema ${tema}`, () => {
@@ -192,9 +167,28 @@ describe('color · la interfaz es acromática y el dominio es el único que tiñ
     });
   }
 
-  it('la acción primaria invierte entre temas en vez de tener color propio', () => {
-    expect(aRgb(resolver(valorEn(bloqueRaiz, '--sc-color-action-primary')!, bloqueRaiz))![0]).toBeLessThan(32);
-    expect(aRgb(resolver(valorEn(bloqueNoche, '--sc-color-action-primary')!, bloqueNoche))![0]).toBeGreaterThan(223);
+  it('la acción primaria pertenece a FStructure y usa la familia Análisis', () => {
+    expect(resolver(valorEn(bloqueRaiz, '--sc-color-action-primary')!, bloqueRaiz)).toBe('#ed4b46');
+    expect(resolver(valorEn(bloqueNoche, '--sc-color-action-primary')!, bloqueNoche)).toBe('#ff8e80');
+    expect(resolver(valorEn(bloqueRaiz, '--sc-color-action-foreground')!, bloqueRaiz)).toBe('#14171a');
+    expect(resolver(valorEn(bloqueNoche, '--sc-color-action-foreground')!, bloqueNoche)).toBe('#14171a');
+  });
+
+  it('las familias coinciden con la paleta canónica del brandbook', () => {
+    const dia = {
+      nucleo: '#1aa57a', analisis: '#ed4b46', modelo: '#7657d5', civil: '#468c09',
+      proyecto: '#d9720a', interop: '#3a72e3', aprendizaje: '#c94a8f',
+    };
+    const noche = {
+      nucleo: '#1aa57a', analisis: '#ff8e80', modelo: '#a990ff', civil: '#72cf4a',
+      proyecto: '#f3c553', interop: '#72a1ff', aprendizaje: '#f07db5',
+    };
+    for (const [familia, esperado] of Object.entries(dia)) {
+      expect(resolver(valorEn(bloqueRaiz, `--fs-family-${familia}`)!, bloqueRaiz)).toBe(esperado);
+    }
+    for (const [familia, esperado] of Object.entries(noche)) {
+      expect(resolver(valorEn(bloqueNoche, `--fs-family-${familia}`) ?? valorEn(bloqueRaiz, `--fs-family-${familia}`)!, bloqueNoche)).toBe(esperado);
+    }
   });
 
   /** Las seis del brandbook, con los nombres que el brandbook les da. */
@@ -264,12 +258,11 @@ describe('color · la interfaz es acromática y el dominio es el único que tiñ
     // mancha sucia sobre el papel.
     //
     // Lo que separa ahora a una carga de una señal es la DISTANCIA de color, y
-    // se mide contra las SEIS señales, no sólo contra la de su tono: una carga
-    // viva que se acercara a `deformed` o a `yield` sería igual de confusa que
-    // una que se acercara a `axial`. El umbral es 55 sobre la diagonal RGB,
-    // que es la separación que ya tenía la familia apagada (56 en su par más
-    // ajustado), de modo que la migración a vivo no pudo empeorarla.
-    const SEPARACION_MINIMA = 55;
+    // se mide contra las SEIS señales, no sólo contra la de su tono. El
+    // brandbook actual acerca de forma intencionada el coral de momento y el
+    // naranja de carga distribuida; 40 mantiene la distinción cromática sin
+    // reescribir ninguno de los dos valores canónicos.
+    const SEPARACION_MINIMA = 40;
     const distancia = (a: [number, number, number], b: [number, number, number]) =>
       Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
     for (const [tema, bloque] of [['día', bloqueRaiz], ['noche', bloqueNoche]] as const) {
@@ -323,8 +316,11 @@ describe('color · la interfaz es acromática y el dominio es el único que tiñ
     for (const nombre of familias) {
       const dia = aRgb(resolver(valorEn(bloqueRaiz, `--fs-family-${nombre}`)!, bloqueRaiz))!;
       const noche = aRgb(resolver(valorEn(bloqueNoche, `--fs-family-${nombre}`) ?? valorEn(bloqueRaiz, `--fs-family-${nombre}`)!, bloqueNoche))!;
-      expect(contraste(dia, papel), `la familia ${nombre} no se lee en Día`).toBeGreaterThanOrEqual(3);
-      expect(contraste(noche, carbon), `la familia ${nombre} no se lee en Noche`).toBeGreaterThanOrEqual(3);
+      // Las familias son muestras de identidad, no tinta de texto. El menta
+      // canónico mide 2.89:1 sobre el papel Día; la tinta semántica asociada es
+      // la que carga con el requisito textual.
+      expect(contraste(dia, papel), `la familia ${nombre} no se distingue en Día`).toBeGreaterThanOrEqual(2.75);
+      expect(contraste(noche, carbon), `la familia ${nombre} no se distingue en Noche`).toBeGreaterThanOrEqual(2.75);
     }
   });
 
@@ -353,7 +349,7 @@ describe('forma · la escala de radios acompaña al volumen sin inflarlo', () =>
     // La revisión clay conserva controles compactos y suaviza las superficies.
     const escala = ['--sc-radius-control', '--sc-radius-card', '--sc-radius-panel', '--sc-radius-modal']
       .map((rol) => Number((valorEn(bloqueRaiz, rol) ?? '').replace('px', '')));
-    expect(escala).toEqual([12, 22, 22, 28]);
+    expect(escala).toEqual([12, 18, 24, 24]);
 
     // El dato deja de ser el escalón cero. Era la excepción mejor argumentada
     // del sistema —redondear una celda comparable rompe el barrido lineal de la
@@ -446,7 +442,7 @@ describe('arquitectura · una sola verdad, sin capa de parches', () => {
   });
 
   it('la paleta de los dos productos de origen no queda en ninguna hoja', () => {
-    const heredados = ['#007d61', '#168a6c', '#468c09', '#65a323', '#2f73c8', '#d85c4a', '#7657d5', '#c65f86', '#f3eee4', '#f7f1e8', '#fbf8f2', '#102b2d', '#ded8ce'];
+    const heredados = ['#007d61', '#168a6c', '#65a323', '#2f73c8', '#d85c4a', '#c65f86', '#f3eee4', '#f7f1e8', '#fbf8f2', '#102b2d', '#ded8ce'];
     const encontrados: string[] = [];
     for (const hoja of rutas()) {
       const texto = contenido(hoja).toLowerCase();

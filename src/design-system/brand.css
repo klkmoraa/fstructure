@@ -12,6 +12,10 @@
    responde a la carga. */
 .fs-mark__register { fill: var(--sc-color-brand-register); }
 
+/* FStructure es la herramienta de Análisis: la geometría queda en tinta y sólo
+   el brazo permitido adopta el salmón de su familia. */
+.fs-mark--fstructure .fs-mark__register { fill: var(--fs-family-analisis); }
+
 /* La marca 2D conserva barra y deformada. Su marco de arcilla usa superficie
    y tinta neutras para no competir con las señales del modelo. */
 .fs-mark--solver2d .fs-mark__frame { fill: var(--sc-color-surface-1); stroke: var(--sc-color-text-muted); stroke-width: 1.5; }
