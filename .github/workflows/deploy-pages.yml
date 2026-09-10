@@ -6,20 +6,20 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -33,21 +33,22 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Publish static site to gh-pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          publish_dir="$(mktemp -d)"
+          trap 'git worktree remove --force "$publish_dir" >/dev/null 2>&1 || true' EXIT
+          git fetch origin gh-pages --depth=1
+          git worktree add --detach "$publish_dir" FETCH_HEAD
+          find "$publish_dir" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf -- {} +
+          cp -R dist/. "$publish_dir"/
+          touch "$publish_dir/.nojekyll"
+          git -C "$publish_dir" config user.name "github-actions[bot]"
+          git -C "$publish_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$publish_dir" add --all
+          if git -C "$publish_dir" diff --cached --quiet; then
+            exit 0
+          fi
+          git -C "$publish_dir" commit -m "deploy: ${GITHUB_SHA::12}"
+          git -C "$publish_dir" push origin HEAD:gh-pages
