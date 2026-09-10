@@ -28,6 +28,7 @@ export type StructuralTarget =
 
 type Units = ProjectModel['settings']['units'];
 type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
+type CanvasSettlement = Omit<PrescribedDisplacement, 'caseId'>;
 
 const arrowPath = (x1: number, y1: number, x2: number, y2: number, marker = 'arrow-load-point') => (
   <line x1={x1} y1={y1} x2={x2} y2={y2} markerEnd={`url(#${marker})`} />
@@ -75,6 +76,21 @@ const CanvasGeometryLayerImpl = ({
   const view = readCanvasViewSettings(project);
   const selectedNodeIds = selectionVisualState.nodeIds;
   const selectedMemberIds = selectionVisualState.memberIds;
+  const configuredSettlements: CanvasSettlement[] = [
+    ...(project.prescribedDisplacements ?? []),
+    ...project.nodes.flatMap((node) => Object.entries(node.support.prescribed ?? {}).flatMap(([component, value]) => (
+      typeof value === 'number'
+        ? [{ id: `support:${node.id}:${component}`, nodeId: node.id, component: component as CanvasSettlement['component'], value }]
+        : []
+    ))),
+  ];
+  const settlementCountByNode = new Map<string, number>();
+  const settlementLaneById = new Map<string, number>();
+  for (const settlement of configuredSettlements) {
+    const lane = settlementCountByNode.get(settlement.nodeId) ?? 0;
+    settlementCountByNode.set(settlement.nodeId, lane + 1);
+    settlementLaneById.set(settlement.id, lane);
+  }
   const memberLoadPresentation = resolveMemberLoadPresentation(project.memberLoads).sort((left, right) => {
     const leftRaised = selectionVisualState.memberLoadId === left.load.id
       || (candidatePreview?.kind === 'memberLoad' && candidatePreview.id === left.load.id);
@@ -342,7 +358,7 @@ const CanvasGeometryLayerImpl = ({
     return null;
   };
 
-  const renderSettlement = (settlement: PrescribedDisplacement, index: number) => {
+  const renderSettlement = (settlement: CanvasSettlement) => {
     const node = nodeMap.get(settlement.nodeId);
     if (!node) return null;
     const point = toScreen(node.x, node.y);
@@ -351,17 +367,21 @@ const CanvasGeometryLayerImpl = ({
       : settlement.component === 'ux'
         ? 0
         : 90;
-    const lateralOffset = index * 10;
+    const lane = settlementLaneById.get(settlement.id) ?? 0;
+    const lateralOffset = lane * 10;
+    const direction = settlement.value < 0 ? -1 : 1;
+    const directionName = direction < 0 ? 'negative' : 'positive';
 
     if (settlement.component === 'rz') {
       return <g
         key={settlement.id}
         className="support-settlement-symbol support-settlement-symbol--rotation"
         data-settlement-id={settlement.id}
+        data-settlement-direction={directionName}
+        data-settlement-lane={lane}
         transform={`translate(${point.x + lateralOffset} ${point.y - 24})`}
       >
-        <path d="M -11 0 A 11 11 0 1 1 8 -7" />
-        <path d="M 8 -7 L 4 -8 M 8 -7 L 7 -3" />
+        {direction > 0 ? <><path d="M -11 0 A 11 11 0 1 1 8 -7" /><path d="M 8 -7 L 4 -8 M 8 -7 L 7 -3" /></> : <><path d="M 11 0 A 11 11 0 1 0 -8 -7" /><path d="M -8 -7 L -4 -8 M -8 -7 L -7 -3" /></>}
         <text x="14" y="-9">Δθ</text>
       </g>;
     }
@@ -370,10 +390,12 @@ const CanvasGeometryLayerImpl = ({
       key={settlement.id}
       className="support-settlement-symbol"
       data-settlement-id={settlement.id}
+      data-settlement-direction={directionName}
+      data-settlement-lane={lane}
       transform={`translate(${point.x} ${point.y}) rotate(${-angleDeg}) translate(0 ${lateralOffset})`}
     >
-      <line x1="34" y1="0" x2="8" y2="0" />
-      <path d="M 8 0 L 14 -4 M 8 0 L 14 4" />
+      <line x1={direction > 0 ? 8 : 34} y1="0" x2={direction > 0 ? 34 : 8} y2="0" />
+      {direction > 0 ? <path d="M 34 0 L 28 -4 M 34 0 L 28 4" /> : <path d="M 8 0 L 14 -4 M 8 0 L 14 4" />}
       <text x="19" y="-7">Δ</text>
     </g>;
   };
@@ -618,7 +640,7 @@ const CanvasGeometryLayerImpl = ({
 
   return <>
     <g className="support-layer">{project.nodes.map(renderSupport)}</g>
-    <g className="support-settlement-layer">{(project.prescribedDisplacements ?? []).map(renderSettlement)}</g>
+    <g className="support-settlement-layer">{configuredSettlements.map(renderSettlement)}</g>
     <g className="node-link-layer">{(project.nodeLinks ?? []).map(renderNodeLink)}</g>
     {loadsLayerVisible && view.showLoads && resultTab !== 'influence' ? <g className="load-layer">{memberLoadPresentation.map(renderMemberLoad)}{project.nodalLoads.map(renderNodalLoad)}</g> : null}
     <g className="node-layer">

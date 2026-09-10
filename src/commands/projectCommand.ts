@@ -1,6 +1,7 @@
 import { placeGeneratedStructure } from '../data/generators/generatorPlacement';
 import { generateStructure } from '../data/generators/structureGenerators';
 import type { GeneratorParams } from '../data/generators/generatorTypes';
+import { prescribedComponentsForSupport } from '../data/supportSemantics';
 import {
   createMemberAtPoint,
   deleteStructuralSelection,
@@ -426,21 +427,6 @@ const applyMemberBulkChanges = (current: MemberModel, changes: MemberBulkChanges
   return updated;
 };
 
-/** Componentes de movimiento impuesto que cada tipo de apoyo puede restringir. */
-const prescribedComponentsFor = (support: SupportDefinition): ReadonlySet<string> => {
-  switch (support.type) {
-    case 'pin': return new Set(['ux', 'uy']);
-    case 'fixed': return new Set(['ux', 'uy', 'rz']);
-    case 'roller': return new Set(['normal']);
-    case 'custom': return new Set([
-      ...(support.restrainX ? ['ux'] : []),
-      ...(support.restrainY ? ['uy'] : []),
-      ...(support.restrainR ? ['rz'] : []),
-    ]);
-    case 'none': return new Set();
-  }
-};
-
 /**
  * Reconstruye el apoyo entero cuando cambia el tipo.
  *
@@ -518,10 +504,10 @@ const applyNodeBulkChanges = (current: NodeModel, changes: NodeBulkChanges): Nod
 
   // El movimiento impuesto que el apoyo resultante no puede restringir deja de
   // tener sentido físico; conservarlo haría fallar el análisis.
-  const allowed = prescribedComponentsFor(updated.support);
+  const allowed = prescribedComponentsForSupport(updated.support);
   if (updated.support.prescribed) {
     const kept = Object.entries(updated.support.prescribed)
-      .filter(([component, value]) => allowed.has(component) && value !== undefined);
+      .filter(([component, value]) => allowed.has(component as PrescribedDisplacement['component']) && value !== undefined);
     if (kept.length === 0) delete updated.support.prescribed;
     else updated.support.prescribed = Object.fromEntries(kept) as SupportDefinition['prescribed'];
   }
@@ -649,7 +635,7 @@ export const compileProjectCommand = (project: ProjectModel, command: ProjectCom
       next.prescribedDisplacements = next.prescribedDisplacements.filter((item) => {
         if (!seenNodes.has(item.nodeId)) return true;
         const support = supportById.get(item.nodeId);
-        return support ? prescribedComponentsFor(support).has(item.component) : true;
+        return support ? prescribedComponentsForSupport(support).has(item.component) : true;
       });
     }
   } else if (command.kind === 'member.delete') {

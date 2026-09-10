@@ -11,9 +11,11 @@ const nodes: NodeModel[] = [
     support: {
       type: 'fixed',
       spring: { kx: 10, ky: 20, kr: 30, kNormal: 40, angleDeg: 35 },
+      prescribed: { ux: 0.005 },
     },
   },
   { id: 'N2', x: 4, y: 0, support: { type: 'none' } },
+  { id: 'N3', x: 8, y: 0, support: { type: 'none', spring: { ky: 1000 } } },
 ];
 
 const project = {
@@ -24,7 +26,11 @@ const project = {
   nodalLoads: [],
   memberLoads: [],
   loadCases: [{ id: 'LC1', name: 'Carga 1' }],
-  prescribedDisplacements: [{ id: 'PD1', nodeId: 'N1', caseId: 'LC1', component: 'uy', value: -0.01 }],
+  prescribedDisplacements: [
+    { id: 'PD1', nodeId: 'N1', caseId: 'LC1', component: 'uy', value: -0.01 },
+    { id: 'PD2', nodeId: 'N2', caseId: 'LC1', component: 'ux', value: 0.01 },
+    { id: 'PD3', nodeId: 'N1', caseId: 'LC1', component: 'rz', value: -0.001 },
+  ],
   nodeLinks: [
     { id: 'LINK1', nodeI: 'N1', behavior: 'compression-only', stiffness: 1000, angleDeg: 0 },
     { id: 'LINK2', nodeI: 'N1', nodeJ: 'N2', behavior: 'friction', stiffness: 1000, angleDeg: 0, slipForce: 10 },
@@ -67,7 +73,13 @@ describe('CanvasGeometryLayer support presentation', () => {
     expect(container.querySelector('.support-spring--y')).not.toBeNull();
     expect(container.querySelector('.support-spring--normal')).not.toBeNull();
     expect(container.querySelector('.support-spring--arc')).not.toBeNull();
-    expect(container.querySelector('[data-settlement-id="PD1"]')).not.toBeNull();
+    const standaloneSpring = container.querySelector('[data-support-id="N3"]');
+    expect(standaloneSpring?.classList.contains('support-spring')).toBe(true);
+    expect(standaloneSpring?.classList.contains('support-roller')).toBe(false);
+    expect(container.querySelector('[data-settlement-id="PD1"]')?.getAttribute('data-settlement-direction')).toBe('negative');
+    expect(container.querySelector('[data-settlement-id="support:N1:ux"]')?.getAttribute('data-settlement-direction')).toBe('positive');
+    expect(container.querySelector('[data-settlement-id="PD2"]')?.getAttribute('data-settlement-lane')).toBe('0');
+    expect(container.querySelector('[data-settlement-id="PD3"]')?.getAttribute('data-settlement-lane')).toBe('1');
     expect(container.querySelector('[data-node-link-id="LINK1"]')).not.toBeNull();
     expect(container.querySelector('[data-node-link-id="LINK2"]')).not.toBeNull();
   });

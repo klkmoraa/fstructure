@@ -8,6 +8,7 @@ import { fromDisplay, toDisplay } from '../../foundation/units';
 import { exportSvgAsPng, exportSvgElement } from '../../utils/export';
 import { formatFixed } from '../../utils/numberFormat';
 import { copyModelSelection, ensureNodeAtPoint, pasteModelClipboard, structuralSelectionFromIds, toggleStructuralSelection, type ModelClipboard } from '../../data/modelOperations';
+import { discardIncompatiblePrescribedDisplacements } from '../../data/supportSemantics';
 import {
   buildIntersectionSnapCandidates,
   buildPerpendicularSnapCandidates,
@@ -105,6 +106,7 @@ import { StructuralEditOverlay } from './StructuralEditOverlay';
 import { CanvasStructuralEditPreviewLayer } from './CanvasStructuralEditPreviewLayer';
 import { CanvasStructureGeneratorLayer } from './CanvasStructureGeneratorLayer';
 import { SupportPlacementPopover, type SupportPlacementType } from './SupportPlacementPopover';
+import { supportForCanvasPlacement } from './supportPlacementModel';
 import type { StructureGenerationGhost } from '../../data/generators/generatorGhost';
 import { GlobalAxes, SmartLabelLayer } from './CanvasVisualOverlays';
 import { useStableCanvasEvent } from './useStableCanvasEvent';
@@ -1275,49 +1277,13 @@ export const StructuralCanvas = ({
     updateProject((draft) => {
       const node = draft.nodes.find((item) => item.id === pending.nodeId);
       if (!node) return draft;
-      const previous = node.support;
-      const shared = { spring: previous.spring, prescribed: previous.prescribed };
-      if (presetId === 'guide-horizontal') {
-        node.support = {
-          ...shared,
-          type: 'custom',
-          restrainX: false,
-          restrainY: true,
-          restrainR: true,
-        };
-      } else if (presetId === 'guide-vertical') {
-        node.support = {
-          ...shared,
-          type: 'custom',
-          restrainX: true,
-          restrainY: false,
-          restrainR: true,
-        };
-      } else if (presetId === 'spring') {
-        node.support = {
-          ...shared,
-          type: previous.type === 'none' ? 'none' : previous.type,
-          spring: {
-            ...previous.spring,
-            ky: previous.spring?.ky || 1000,
-          },
-        };
-      } else if (type === 'roller') {
-        node.support = {
-          ...shared,
-          type,
-          angleDeg: Number.isFinite(angleDeg) ? angleDeg : 90,
-        };
-      } else if (type === 'custom') {
-        node.support = {
-          ...shared,
-          type,
-          restrainX: previous.type === 'custom' ? previous.restrainX ?? false : false,
-          restrainY: previous.type === 'custom' ? previous.restrainY ?? false : false,
-          restrainR: previous.type === 'custom' ? previous.restrainR ?? false : false,
-        };
-      } else {
-        node.support = { ...shared, type };
+      node.support = supportForCanvasPlacement(node.support, type, angleDeg, presetId);
+      if (draft.prescribedDisplacements) {
+        draft.prescribedDisplacements = discardIncompatiblePrescribedDisplacements(
+          draft.prescribedDisplacements,
+          node.id,
+          node.support,
+        );
       }
       return draft;
     });
