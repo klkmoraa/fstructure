@@ -17,14 +17,30 @@
 
 /* Inicio ---------------------------------------------------------------- */
 
+/* La portada tiene un único plano de desplazamiento. Safari pierde con
+   facilidad el anclaje de varios elementos `sticky` cuando el propio flex
+   container que los contiene también desplaza todo su contenido; el header
+   debe ser una fila fija del marco y sólo el cuerpo debe hacer scroll. */
 .sc-home {
   border-color: var(--sc-color-border);
   border-radius: var(--sc-radius-panel);
   background: var(--sc-color-bg-app);
   box-shadow: var(--sc-shadow-lg);
+  overflow: hidden;
+}
+
+.sc-home-main {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .sc-home-console {
+  position: relative;
+  flex: 0 0 auto;
   min-height: var(--fstructure-header-height);
   padding: 0 clamp(16px, 3vw, 40px);
   border-block-end-color: var(--sc-color-border-soft);
@@ -90,7 +106,7 @@
 }
 
 .sc-home-topline {
-  top: var(--fstructure-header-height);
+  top: 0;
   min-height: 52px;
   padding-inline: clamp(16px, 3vw, 40px);
   border-block-end-color: var(--sc-color-border-soft);
@@ -752,7 +768,7 @@
   }
 
   .sc-home-topline {
-    top: var(--fstructure-header-height);
+    top: 0;
     padding: 7px 12px;
   }
 
@@ -993,4 +1009,152 @@
 .sc-home[data-compact-viewport] .solver2d-stage__object {
   width: min(118%, 520px) !important;
   transform: none;
+}
+
+/* Si WebKit conserva un layout viewport ancho, las media queries de la hoja de
+   feature pueden no entrar aunque la pantalla sea táctil. El atributo que
+   calcula WelcomeScreen completa aquí el contrato de la portada: no basta con
+   apilar el hero, todas las rejillas y la navegación deben compartir el mismo
+   ancho compacto. */
+.sc-home[data-compact-viewport] {
+  --home-frame-gap: 0px;
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sc-home[data-compact-viewport] .sc-home-console {
+  min-height: 64px;
+  padding: 9px 15px;
+  justify-content: space-between;
+}
+
+.sc-home[data-compact-viewport] .sc-home-wordmark > span,
+.sc-home[data-compact-viewport] .sc-home-nav--console {
+  display: none;
+}
+
+.sc-home[data-compact-viewport] .sc-home-console__menu {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-elevated);
+  box-shadow: var(--sc-shadow-xs);
+}
+
+.sc-home[data-compact-viewport] .sc-home-nav--menu {
+  position: fixed;
+  z-index: 39;
+  inset: 64px 0 auto;
+  max-height: calc(100vh - 64px);
+  max-height: calc(100dvh - 64px);
+  padding: 11px 14px 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  overflow: auto;
+  border-block-end: 1px solid var(--sc-color-border);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-lg);
+}
+
+.sc-home[data-compact-viewport] .sc-home-topline {
+  top: 0;
+  min-height: 52px;
+  padding: 8px 15px;
+}
+
+.sc-home[data-compact-viewport] .sc-home-topline > span {
+  display: none;
+}
+
+.sc-home[data-compact-viewport] .sc-home-search {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+}
+
+.sc-home[data-compact-viewport] .sc-home-topline-actions {
+  flex: 0 0 auto;
+}
+
+.sc-home[data-compact-viewport] .sc-home-topline select,
+.sc-home[data-compact-viewport] .sc-home-topline button {
+  min-width: 44px;
+  height: 44px;
+}
+
+.sc-home[data-compact-viewport] .sc-home-topline select {
+  min-width: 66px;
+}
+
+.sc-home[data-compact-viewport] .sc-home-content {
+  padding: 16px 14px 32px;
+  gap: 25px;
+}
+
+.sc-home[data-compact-viewport] .solver2d-home {
+  gap: 30px;
+  padding-inline: 0;
+  padding-bottom: 18px;
+}
+
+.sc-home[data-compact-viewport] .solver2d-open__actions {
+  display: flex;
+}
+
+.sc-home[data-compact-viewport] .solver2d-action {
+  min-width: 0;
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.sc-home[data-compact-viewport] .solver2d-paths {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 9px;
+}
+
+.sc-home[data-compact-viewport] .solver2d-path {
+  min-height: 122px;
+  padding: 13px;
+}
+
+.sc-home[data-compact-viewport] .solver2d-recents .project-hub {
+  padding: 8px;
+}
+
+.sc-home[data-compact-viewport] .solver2d-recents .project-hub__list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sc-home[data-compact-viewport] .solver2d-recents .project-hub__row {
+  grid-template-columns: 68px minmax(0, 1fr) auto;
+}
+
+.sc-home[data-compact-viewport] .solver2d-capabilities {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (max-width: 380px), (max-device-width: 380px) {
+  .sc-home[data-compact-viewport] .solver2d-open__actions {
+    display: grid;
+  }
+
+  .sc-home[data-compact-viewport] .solver2d-action {
+    width: 100%;
+    flex: none;
+  }
+
+  .sc-home[data-compact-viewport] .solver2d-paths {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

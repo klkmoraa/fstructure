@@ -94,7 +94,9 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
     const syncCompactViewport = () => {
       const visualWidth = window.visualViewport?.width ?? window.innerWidth;
       const screenWidth = window.screen?.width ?? window.innerWidth;
-      const compact = Math.min(window.innerWidth, visualWidth, screenWidth) <= 760;
+      const compactMedia = window.matchMedia?.('(max-width: 760px), (max-device-width: 760px)').matches ?? false;
+      const compactMobilePlatform = /Android.*Mobile|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const compact = compactMedia || compactMobilePlatform || Math.min(window.innerWidth, visualWidth, screenWidth) <= 760;
       homeRef.current?.toggleAttribute('data-compact-viewport', compact);
     };
     syncCompactViewport();
