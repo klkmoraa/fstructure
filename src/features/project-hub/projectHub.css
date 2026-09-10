@@ -39,7 +39,7 @@
 .project-hub__row {
   position: relative;
   display: grid;
-  grid-template-columns: 112px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(76px, 112px) minmax(0, 1fr) max-content;
   align-items: center;
   min-height: 102px;
   gap: 14px;
@@ -59,6 +59,7 @@
 }
 
 .project-hub__preview {
+  min-width: 0;
   align-self: stretch;
   min-height: 80px;
   overflow: hidden;
@@ -77,8 +78,17 @@
   transition: transform var(--sc-motion-reveal) var(--sc-ease-standard);
 }
 
-.project-hub__row:hover .project-hub__preview img,
+.project-hub__preview .three-structural-preview {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
 
+.project-hub__row:hover .project-hub__preview img,
+.project-hub__row:hover .project-hub__preview svg,
+.project-hub__row:hover .project-hub__preview .three-structural-preview {
+  transform: scale(1.08);
+}
 
 .project-hub__identity {
   min-width: 0;
@@ -87,10 +97,15 @@
   gap: 5px;
 }
 
-.project-hub__identity strong {
+.project-hub__identity strong,
+.project-hub__identity > span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.project-hub__identity strong {
   font-size: 15px;
   line-height: 1.2;
 }
@@ -98,6 +113,7 @@
 .project-hub__identity > span { color: var(--sc-color-text-secondary); font-size: 12.5px; }
 
 .project-hub__record-meta {
+  min-width: 0;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -147,8 +163,10 @@
 
 .project-hub__actions {
   position: relative;
+  min-width: 0;
   display: flex;
   align-items: center;
+  justify-self: end;
   gap: 7px;
 }
 .project-hub__actions > button,
@@ -310,16 +328,12 @@
 .project-hub--recent .project-hub__header { display: none; }
 .project-hub--recent .project-hub__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .project-hub--recent .project-hub__row {
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: minmax(68px, 92px) minmax(0, 1fr) max-content;
   min-height: 112px;
   padding: 9px;
 }
 .project-hub--recent .project-hub__actions {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  bottom: auto;
-  transform: translateY(-50%);
+  position: relative;
 }
 .project-hub--recent .project-hub__open {
   width: var(--sc-control-height-md);
@@ -354,23 +368,17 @@
   .project-hub { padding: 12px; }
   .project-hub__header { margin-bottom: 12px; }
   .project-hub__row {
-    grid-template-columns: 86px minmax(0, 1fr);
+    grid-template-columns: minmax(68px, 86px) minmax(0, 1fr) max-content;
     min-height: 106px;
     gap: 10px;
     padding: 9px;
   }
   .project-hub__preview { min-height: 82px; }
-  /* Recent cards keep two icon actions at the trailing edge. Reserve their
-     complete footprint so a long project name truncates before, never behind,
-     either control. */
-  .project-hub__identity { align-self: start; padding-top: 7px; padding-right: 34px; }
-  .project-hub--recent .project-hub__identity { padding-right: 98px; }
+  .project-hub__identity { align-self: start; padding-top: 7px; padding-right: 0; }
   .project-hub__actions {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    bottom: auto;
-    transform: translateY(-50%);
+    position: relative;
+    inset: auto;
+    transform: none;
   }
   .project-hub__open { min-height: 34px; padding: 0 10px; }
   .project-hub__menu > button { width: 34px; min-height: 34px; }
@@ -395,7 +403,15 @@
   .project-hub__identity form { grid-column: 1 / -1; grid-template-columns: 1fr auto; }
   .project-hub__identity form label { grid-column: 1 / -1; }
   .project-hub--recent { padding: 0; }
-  .project-hub--recent .project-hub__row { min-width: min(310px, 86vw); }
+  .project-hub--recent .project-hub__row {
+    grid-template-columns: minmax(60px, 68px) minmax(0, 1fr) max-content;
+    min-width: 100%;
+  }
+  .project-hub--recent .project-hub__actions {
+    position: relative;
+    inset: auto;
+    transform: none;
+  }
   .project-hub__recovery-actions button { min-height: 44px; }
 }
 

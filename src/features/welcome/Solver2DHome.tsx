@@ -3,6 +3,7 @@ import { ArrowRight, ArrowUpRight, FilePlus2, GraduationCap, LayoutTemplate, Pla
 import { useReducedMotion } from 'motion/react';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import type { ProjectModel, ThemeMode } from '../../types';
+import { ThreeStructuralImage } from '../structural-assets';
 import './solver2dHome.css';
 
 export interface Solver2DHomeProps {
@@ -125,12 +126,6 @@ export const Solver2DHome = ({
   const text = copy[language];
   const reducedMotion = useReducedMotion() ?? false;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
-  /* El objeto de bienvenida conserva la lectura clay blanca en ambos temas.
-     La escena vive sobre el fondo del tema, pero su material es la pieza de
-     referencia del módulo: cambiar la luz de la interfaz no debe convertirla
-     en una silueta gris ni hacer que Safari la descarte como fallback. */
-  const portalAsset = `${import.meta.env.BASE_URL}assets/welcome/portal-day.svg`;
-
   const paths = [
     // Una ruta de entrada no es un resultado del solver: lleva el color de la
     // familia del brandbook a la que pertenece lo que abre, no el de una señal
@@ -184,7 +179,7 @@ export const Solver2DHome = ({
       <div className="solver2d-hero__stage" style={{ '--reveal-step': 2 } as React.CSSProperties}>
         <div className={`solver2d-stage${reducedMotion ? ' is-static' : ''}`} data-theme={theme}>
           <div className="solver2d-stage__object">
-            <img className="three-structural-image" src={portalAsset} alt={text.stageAlt} width="900" height="600" decoding="async" />
+            <ThreeStructuralImage assetId="portal:single-bay" theme={theme} alt={text.stageAlt} eager render="three" />
           </div>
         </div>
       </div>

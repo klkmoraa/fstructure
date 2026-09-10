@@ -1266,15 +1266,27 @@
 }
 
 .sc-home[data-compact-viewport] .solver2d-recents .project-hub {
-  padding: 8px;
+  padding: 12px;
 }
 
 .sc-home[data-compact-viewport] .solver2d-recents .project-hub__list {
   grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+  min-width: 0;
+  padding-inline: 0;
 }
 
 .sc-home[data-compact-viewport] .solver2d-recents .project-hub__row {
-  grid-template-columns: 68px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(60px, 68px) minmax(0, 1fr) max-content;
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+.sc-home[data-compact-viewport] .solver2d-recents .project-hub__entry {
+  flex: 0 0 100%;
+  width: 100%;
+  min-width: 0;
 }
 
 .sc-home[data-compact-viewport] .solver2d-capabilities {

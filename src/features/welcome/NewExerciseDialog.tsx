@@ -178,7 +178,7 @@ export const NewExerciseDialog = ({
                   onKeyDown={(event) => onTemplateKeyDown(event, index)}
                 >
                   <span className="new-exercise-template-art" aria-hidden="true">
-                    <ThreeStructuralImage assetId={templateAssetIds[candidate.id]} theme={theme} render="vector" />
+                    <ThreeStructuralImage assetId={templateAssetIds[candidate.id]} theme={theme} alt={t(copy.name)} render="three" />
                   </span>
                   <span className="new-exercise-template-copy">
                     <strong>{t(copy.name)}</strong>
@@ -196,7 +196,7 @@ export const NewExerciseDialog = ({
           </div>
           <section className="new-exercise-settings" aria-labelledby="exercise-parameters-title">
             <div className="new-exercise-preview" aria-hidden="true">
-              <ThreeStructuralImage assetId={templateAssetIds[templateId]} theme={theme} eager render="vector" />
+              <ThreeStructuralImage assetId={templateAssetIds[templateId]} theme={theme} alt={t(templateCopyKeys[templateId].name)} eager render="three" />
             </div>
             <h3 id="exercise-parameters-title">{t('newExercise.parametersTitle')}</h3>
             {template.fields.length ? template.fields.map((field) => {

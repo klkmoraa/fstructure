@@ -247,6 +247,13 @@
   filter: drop-shadow(var(--sc-shadow-drop));
 }
 
+.solver2d-stage__object .three-structural-preview {
+  width: min(100%, 620px);
+  aspect-ratio: 3 / 2;
+  height: auto;
+  filter: drop-shadow(var(--sc-shadow-drop));
+}
+
 /* Flotación mínima: el objeto respira, no se pasea. Cinco píxeles de recorrido
    en un ciclo largo — lo suficiente para que la escena esté viva sin
    convertirse en una distracción encima de un botón. */
@@ -390,7 +397,7 @@
    rejilla de tarjetas: en Inicio lo que importa es reconocer un proyecto, no
    comparar columnas. */
 .solver2d-recents .project-hub {
-  padding: 10px;
+  padding: 12px clamp(14px, 2.5vw, 20px) 14px;
   border: 1px solid var(--sc-color-border-soft);
   border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-elevated);
@@ -401,7 +408,7 @@
 .solver2d-recents .project-hub__list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .solver2d-recents .project-hub__row {
   min-height: 76px;
-  grid-template-columns: 78px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(60px, 78px) minmax(0, 1fr) max-content;
   gap: 12px;
   padding: 8px 10px 8px 8px;
   display: grid;
@@ -411,7 +418,7 @@
 }
 .solver2d-recents .project-hub__row:hover { box-shadow: var(--sc-shadow-raised); }
 .solver2d-recents .project-hub__preview { min-height: 58px; border-radius: var(--sc-radius-control); }
-.solver2d-recents .project-hub__identity { gap: 3px; }
+.solver2d-recents .project-hub__identity { min-width: 0; gap: 3px; padding-right: 0; }
 .solver2d-recents .project-hub__identity strong { font-size: 12.5px; }
 .solver2d-recents .project-hub__identity > span { font-size: 10.5px; }
 .solver2d-recents .project-hub__record-meta { gap: 5px 8px; margin-top: 1px; }
@@ -521,7 +528,20 @@
   .solver2d-action { min-width: 0; flex: 1 1 0; justify-content: center; }
   .solver2d-path { min-height: 122px; padding: 13px; }
   .solver2d-recents .project-hub { padding: 8px; }
-  .solver2d-recents .project-hub__row { grid-template-columns: 68px minmax(0, 1fr) auto; }
+  .solver2d-recents .project-hub { padding-inline: 12px; }
+  .solver2d-recents .project-hub--recent .project-hub__list { padding-inline: 0; }
+  .solver2d-recents .project-hub__row { grid-template-columns: minmax(60px, 68px) minmax(0, 1fr) max-content; }
+  .solver2d-recents .project-hub--recent .project-hub__row {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  .solver2d-recents .project-hub--recent .project-hub__entry {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+  }
+  .solver2d-recents .project-hub--recent .project-hub__identity { padding-right: 0; }
 }
 
 @media (max-width: 380px), (max-device-width: 380px) {
