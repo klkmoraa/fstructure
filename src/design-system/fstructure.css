@@ -849,7 +849,20 @@
   }
 }
 
-@media (max-width: 1100px) {
+@media (min-width: 861px) and (max-width: 1100px) {
+  .solver2d-hero {
+    grid-template-columns: minmax(300px, .9fr) minmax(360px, 1.1fr);
+    min-height: 0;
+    gap: clamp(22px, 3vw, 36px);
+  }
+
+  .solver2d-hero__stage,
+  .solver2d-stage {
+    min-height: 310px;
+  }
+}
+
+@media (max-width: 860px) {
   .solver2d-hero {
     grid-template-columns: minmax(0, 1fr);
     min-height: 0;

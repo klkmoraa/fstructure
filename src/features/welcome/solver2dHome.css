@@ -493,13 +493,35 @@
 /* -------------------------------------------------------------- Respuesta */
 
 @media (max-width: 1100px) {
+  /* Una tableta grande sí paga dos zonas de trabajo. La antigua ruptura a
+     1100 px convertía el iPad Pro de 12.9" en una portada apilada, aunque
+     todavía quedaban más de 900 px útiles después de los márgenes. */
+  .solver2d-hero {
+    grid-template-columns: minmax(300px, .9fr) minmax(360px, 1.1fr);
+    gap: clamp(22px, 3vw, 36px);
+  }
+  .solver2d-hero__stage { width: 100%; min-width: 0; justify-self: stretch; }
+  .solver2d-hero__copy { justify-self: stretch; }
+  .solver2d-stage { min-height: 310px; }
+  .solver2d-stage__object { transform: translateY(-10px); }
+  .solver2d-capabilities { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 861px) and (max-width: 1180px) {
+  .solver2d-home { gap: 32px; }
+  .solver2d-hero { padding-block-start: 4px; padding-block-end: 30px; }
+  .solver2d-hero__copy { padding-block-start: 14px; }
+  .solver2d-hero__name { font-size: clamp(44px, 5vw, 56px); }
+  .solver2d-paths { gap: 8px; padding: 9px; }
+  .solver2d-path { min-height: 118px; padding: 13px; }
+}
+
+@media (max-width: 860px) {
   .solver2d-hero { grid-template-columns: minmax(0, 1fr); }
   /* Apilada, la escena va DESPUÉS del nombre y de la acción: su proporción es
      ancha, así que puesta arriba crecía con el ancho disponible y empujaba
      «Continuar» fuera de la primera pantalla. */
   .solver2d-hero__stage { width: 100%; max-width: 520px; justify-self: center; }
-  .solver2d-hero__copy { justify-self: stretch; }
-  .solver2d-capabilities { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 720px), (max-device-width: 720px), (hover: none) and (pointer: coarse) and (max-width: 1023px) {

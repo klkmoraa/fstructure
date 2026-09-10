@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { NodeModel, ProjectModel } from '../../types';
+import type { MemberLoad, MemberModel, NodeModel, ProjectModel } from '../../types';
 import { CanvasGeometryLayer } from './CanvasGeometryLayer';
 import { DEFAULT_EDITOR_LAYERS } from './editorLayers';
 
@@ -35,7 +35,7 @@ const project = {
     { id: 'LINK1', nodeI: 'N1', behavior: 'compression-only', stiffness: 1000, angleDeg: 0 },
     { id: 'LINK2', nodeI: 'N1', nodeJ: 'N2', behavior: 'friction', stiffness: 1000, angleDeg: 0, slipForce: 10 },
   ],
-  settings: { units: 'kN-m' },
+  settings: { units: 'kN-m', showLoads: true },
 } as unknown as ProjectModel;
 
 const props = {
@@ -65,6 +65,27 @@ const props = {
   onCutLeave: () => undefined,
 };
 
+const member = {
+  id: 'M1', i: 'N1', j: 'N2', type: 'frame',
+  material: { elasticModulus: 200_000_000, density: 7850 },
+  section: { area: 0.01, inertia: 8e-6 },
+} as unknown as MemberModel;
+
+const renderMemberLoads = (memberLoads: MemberLoad[]) => render(<svg><CanvasGeometryLayer
+  {...props}
+  project={{ ...project, members: [member], memberLoads } as ProjectModel}
+  memberMap={new Map([[member.id, member]])}
+/></svg>);
+
+const distributedLoad = (qyStart: number, qyEnd: number): MemberLoad => ({
+  id: 'ML1', memberId: member.id, caseId: 'LC1', type: 'distributed',
+  coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1,
+  qxStart: 0, qxEnd: 0, qyStart, qyEnd,
+});
+
+const arrowTailYs = (container: HTMLElement) => [...container.querySelectorAll<SVGLineElement>('.load-symbol--distributed line[marker-end]')]
+  .map((line) => Number(line.getAttribute('y1')));
+
 describe('CanvasGeometryLayer support presentation', () => {
   it('draws every configured spring plus the imposed movement and advanced links', () => {
     const { container } = render(<svg><CanvasGeometryLayer {...props} /></svg>);
@@ -82,5 +103,26 @@ describe('CanvasGeometryLayer support presentation', () => {
     expect(container.querySelector('[data-settlement-id="PD3"]')?.getAttribute('data-settlement-lane')).toBe('1');
     expect(container.querySelector('[data-node-link-id="LINK1"]')).not.toBeNull();
     expect(container.querySelector('[data-node-link-id="LINK2"]')).not.toBeNull();
+  });
+});
+
+describe('CanvasGeometryLayer distributed-load presentation', () => {
+  it('keeps the intermediate arrows on a downward triangular envelope that ends at zero', () => {
+    const { container } = renderMemberLoads([distributedLoad(-2000, 0)]);
+
+    expect(arrowTailYs(container)).toEqual([158, 189]);
+  });
+
+  it('keeps the intermediate arrows on an upward triangular envelope that starts at zero', () => {
+    const { container } = renderMemberLoads([distributedLoad(0, 2000)]);
+
+    expect(arrowTailYs(container)).toEqual([251, 282]);
+  });
+
+  it('splits an opposed distributed load into two signed triangular lobes', () => {
+    const { container } = renderMemberLoads([distributedLoad(2000, -2000)]);
+
+    expect(arrowTailYs(container)).toEqual([282, 158]);
+    expect(container.querySelectorAll('.distributed-envelope')).toHaveLength(2);
   });
 });

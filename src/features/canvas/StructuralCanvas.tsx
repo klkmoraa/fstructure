@@ -110,6 +110,7 @@ import { supportForCanvasPlacement } from './supportPlacementModel';
 import type { StructureGenerationGhost } from '../../data/generators/generatorGhost';
 import { GlobalAxes, SmartLabelLayer } from './CanvasVisualOverlays';
 import { useStableCanvasEvent } from './useStableCanvasEvent';
+import { resolveMemberLoadPresentation } from './loadPresentation';
 
 /**
  * El generador y su núcleo determinista sólo pesan cuando se abre: nadie paga su
@@ -423,6 +424,9 @@ export const StructuralCanvas = ({
 
   const nodeMap = useMemo(() => new Map(project.nodes.map((node) => [node.id, node])), [project.nodes]);
   const memberMap = useMemo(() => new Map(project.members.map((member) => [member.id, member])), [project.members]);
+  const memberLoadPresentationMap = useMemo(() => new Map(
+    resolveMemberLoadPresentation(project.memberLoads).map((presentation) => [presentation.load.id, presentation]),
+  ), [project.memberLoads]);
   const snapSegments = useMemo<SnapSegment[]>(() => project.members.flatMap((member) => {
     const start = nodeMap.get(member.i);
     const end = nodeMap.get(member.j);
@@ -2300,10 +2304,11 @@ export const StructuralCanvas = ({
         const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, px, py);
         const ux = gx / magnitude;
         const uy = -gy / magnitude;
+        const tailExtension = memberLoadPresentationMap.get(load.id)?.tailExtensionPx ?? 0;
         smartLabelCandidates.push({
           id: `member-point-load:${load.id}`,
           text: `${formatFixed(toDisplay(magnitude, units, 'force'), 2)} ${forceLabel}`,
-          anchor: { x: base.x - ux * 60, y: base.y - uy * 60 - 5 },
+          anchor: { x: base.x - ux * (60 + tailExtension), y: base.y - uy * (60 + tailExtension) - 5 },
           priority,
           tone,
           preferredOffset: { x: 0, y: 0 },
@@ -2323,16 +2328,22 @@ export const StructuralCanvas = ({
       } else {
         const base = stationOf((load.start + load.end) / 2);
         // The label states the mean intensity of the span, not the value at its midpoint.
-        const qx = ((load.qxStart ?? 0) + (load.qxEnd ?? load.qxStart ?? 0)) / 2;
-        const qy = ((load.qyStart ?? 0) + (load.qyEnd ?? load.qyStart ?? 0)) / 2;
+        const qxStart = load.qxStart ?? 0;
+        const qxEnd = load.qxEnd ?? load.qxStart ?? 0;
+        const qyStart = load.qyStart ?? 0;
+        const qyEnd = load.qyEnd ?? load.qyStart ?? 0;
+        const startMagnitude = Math.hypot(qxStart, qyStart);
+        const endMagnitude = Math.hypot(qxEnd, qyEnd);
+        const meanQx = (qxStart + qxEnd) / 2;
+        const meanQy = (qyStart + qyEnd) / 2;
+        const [qx, qy] = Math.hypot(meanQx, meanQy) > 1e-9
+          ? [meanQx, meanQy]
+          : startMagnitude >= endMagnitude ? [qxStart, qyStart] : [qxEnd, qyEnd];
         const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, qx, qy);
         const magnitude = Math.hypot(gx, gy) || 1;
         const ux = gx / magnitude;
         const uy = -gy / magnitude;
-        const maximum = Math.max(Math.abs(load.qyStart ?? 0), Math.abs(load.qyEnd ?? 0), Math.abs(load.qxStart ?? 0), Math.abs(load.qxEnd ?? 0), 1);
-        const arrowLength = 33 + 12 * (magnitude / maximum);
-        const startMagnitude = Math.hypot(load.qxStart ?? 0, load.qyStart ?? 0);
-        const endMagnitude = Math.hypot(load.qxEnd ?? load.qxStart ?? 0, load.qyEnd ?? load.qyStart ?? 0);
+        const arrowLength = 62 + (memberLoadPresentationMap.get(load.id)?.stackOffsetPx ?? 0);
         const average = (startMagnitude + endMagnitude) / 2;
         smartLabelCandidates.push({
           id: `distributed-load:${load.id}`,
@@ -2421,6 +2432,7 @@ export const StructuralCanvas = ({
     lengthLabel,
     loadsLayerVisible,
     memberMap,
+    memberLoadPresentationMap,
     momentLabel,
     nodeMap,
     nodeResultMap,

@@ -862,6 +862,13 @@
   .sc-home-classroom-cases button > svg:first-child { width: 82px; height: 110px; }
 }
 
+@media (min-width: 861px) and (max-width: 1180px) {
+  .sc-home-content {
+    padding-inline: clamp(22px, 3vw, 34px);
+    padding-block-start: 18px;
+  }
+}
+
 /* iOS Safari/webviews can retain a wider layout viewport on a touch device.
    Keep the compact home composition in that mode too; otherwise the desktop
    hero becomes a horizontal slice even though the physical screen is narrow.
