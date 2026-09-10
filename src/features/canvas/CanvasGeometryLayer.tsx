@@ -1,5 +1,5 @@
 import { memo, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import type { MemberModel, NodeModel, ProjectModel, SupportType } from '../../types';
+import type { MemberModel, NodeLink, NodeModel, PrescribedDisplacement, ProjectModel, SupportType } from '../../types';
 import type { CanvasSelectionVisualState } from './selectionVisuals';
 import type { EditorLayerState } from './editorLayers';
 import type { ResultTab } from '../../store/ProjectContext';
@@ -117,10 +117,23 @@ const CanvasGeometryLayerImpl = ({
       </>
     );
 
-    const renderAttachedSprings = (baseType: SupportType) => {
+    const renderAttachedSprings = (baseType: SupportType, baseRotation = 0) => {
       if (!hasAnySpring) return null;
+      /* Los resortes son propiedades globales del nudo. El giro de un rodillo
+         o de un apoyo visual no puede girarlos dos veces ni esconder una
+         dirección cartesiana: se neutraliza aquí y el resorte normal conserva
+         su ángulo físico propio. */
+      const verticalOffset = baseType === 'none'
+        ? 0
+        : baseType === 'fixed'
+          ? 10
+          : baseType === 'pin'
+            ? 26
+            : baseType === 'roller'
+              ? 30
+              : 20;
       return (
-        <g className="support-springs-group">
+        <g className="support-springs-group" transform={baseRotation === 0 ? undefined : `rotate(${-baseRotation})`}>
           {hasKx ? (
             <g className="support-spring support-spring--x">
               <line x1="0" y1="0" x2="-4" y2="0" strokeWidth="1.8" />
@@ -136,8 +149,8 @@ const CanvasGeometryLayerImpl = ({
             </g>
           ) : null}
 
-          {hasKy && baseType === 'none' ? (
-            <g className="support-spring support-spring--y">
+          {hasKy ? (
+            <g className="support-spring support-spring--y" transform={verticalOffset === 0 ? undefined : `translate(0 ${verticalOffset})`}>
               <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.8" />
               <path
                 d="M 0 4 L -5 7 L 5 10 L -5 13 L 5 16 L -5 19 L 0 22 L 0 25"
@@ -156,16 +169,18 @@ const CanvasGeometryLayerImpl = ({
               className="support-spring support-spring--normal"
               transform={`rotate(${(spring?.angleDeg ?? 90) - 90})`}
             >
-              <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.8" />
-              <path
-                d="M 0 4 L -5 7 L 5 10 L -5 13 L 5 16 L -5 19 L 0 22 L 0 25"
-                fill="none"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="support-spring-coil"
-              />
-              {renderGroundHatch(25, 14)}
+              <g transform={verticalOffset === 0 ? undefined : `translate(0 ${verticalOffset})`}>
+                <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.8" />
+                <path
+                  d="M 0 4 L -5 7 L 5 10 L -5 13 L 5 16 L -5 19 L 0 22 L 0 25"
+                  fill="none"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="support-spring-coil"
+                />
+                {renderGroundHatch(25, 14)}
+              </g>
             </g>
           ) : null}
 
@@ -212,7 +227,7 @@ const CanvasGeometryLayerImpl = ({
           <line x1="-18" y1="7" x2="18" y2="7" className="support-baseplate" strokeWidth="2.4" strokeLinecap="round" />
           {[-14, -8, -2, 4, 10, 16].map((x) => <line key={x} x1={x} y1="7" x2={x - 5} y2="14" className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />)}
           <line x1="0" y1="0" x2="0" y2="7" strokeWidth="2" />
-          {renderAttachedSprings('fixed')}
+          {renderAttachedSprings('fixed', rotation)}
           <circle cx="0" cy="0" r="2.2" className="support-pin-dot" />
         </g>
       );
@@ -226,7 +241,7 @@ const CanvasGeometryLayerImpl = ({
           <polygon points="0,0 -12,18 12,18" className="support-body-fill" strokeWidth="1.8" strokeLinejoin="round" />
           <line x1="-16" y1="18" x2="16" y2="18" className="support-baseplate" strokeWidth="2" strokeLinecap="round" />
           {[-12, -6, 0, 6, 12].map((x) => <line key={x} x1={x} y1="18" x2={x - 5} y2="24" className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />)}
-          {renderAttachedSprings('pin')}
+          {renderAttachedSprings('pin', rotation)}
           <circle cx="0" cy="0" r="2.4" className="support-pin-dot" />
         </g>
       );
@@ -243,7 +258,7 @@ const CanvasGeometryLayerImpl = ({
           <circle cx="5.5" cy="18.5" r="2.8" className="support-roller-wheel" strokeWidth="1.5" />
           <line x1="-17" y1="21.5" x2="17" y2="21.5" className="support-baseplate" strokeWidth="2" strokeLinecap="round" />
           {[-12, -6, 0, 6, 12].map((x) => <line key={x} x1={x} y1="21.5" x2={x - 5} y2="26.5" className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />)}
-          {renderAttachedSprings('roller')}
+          {renderAttachedSprings('roller', rotation)}
           <circle cx="0" cy="0" r="2.4" className="support-pin-dot" />
         </g>
       );
@@ -307,7 +322,7 @@ const CanvasGeometryLayerImpl = ({
             </>
           )}
 
-          {renderAttachedSprings('custom')}
+          {renderAttachedSprings('custom', rotation)}
           <circle cx="0" cy="0" r="2.4" className="support-pin-dot" />
         </g>
       );
@@ -318,13 +333,90 @@ const CanvasGeometryLayerImpl = ({
       return (
         <g key={node.id} className={`support-symbol support-spring${selected ? ' selected' : ''}`} transform={`translate(${p.x} ${p.y}) rotate(${rotation})`} data-support-id={node.id}>
           {selected ? <rect className="support-selection-frame" x="-28" y="-8" width="56" height="38" rx="7" /> : null}
-          {renderAttachedSprings('none')}
+          {renderAttachedSprings('none', rotation)}
           <circle cx="0" cy="0" r="2.4" className="support-pin-dot" />
         </g>
       );
     }
 
     return null;
+  };
+
+  const renderSettlement = (settlement: PrescribedDisplacement, index: number) => {
+    const node = nodeMap.get(settlement.nodeId);
+    if (!node) return null;
+    const point = toScreen(node.x, node.y);
+    const angleDeg = settlement.component === 'normal'
+      ? node.support.angleDeg ?? 90
+      : settlement.component === 'ux'
+        ? 0
+        : 90;
+    const lateralOffset = index * 10;
+
+    if (settlement.component === 'rz') {
+      return <g
+        key={settlement.id}
+        className="support-settlement-symbol support-settlement-symbol--rotation"
+        data-settlement-id={settlement.id}
+        transform={`translate(${point.x + lateralOffset} ${point.y - 24})`}
+      >
+        <path d="M -11 0 A 11 11 0 1 1 8 -7" />
+        <path d="M 8 -7 L 4 -8 M 8 -7 L 7 -3" />
+        <text x="14" y="-9">Δθ</text>
+      </g>;
+    }
+
+    return <g
+      key={settlement.id}
+      className="support-settlement-symbol"
+      data-settlement-id={settlement.id}
+      transform={`translate(${point.x} ${point.y}) rotate(${-angleDeg}) translate(0 ${lateralOffset})`}
+    >
+      <line x1="34" y1="0" x2="8" y2="0" />
+      <path d="M 8 0 L 14 -4 M 8 0 L 14 4" />
+      <text x="19" y="-7">Δ</text>
+    </g>;
+  };
+
+  const linkGlyph = (behavior: NodeLink['behavior']) => {
+    if (behavior === 'compression-only') return <path className="node-link-symbol__mark" d="M 9 -5 L 16 0 L 9 5 M 19 -6 V 6" />;
+    if (behavior === 'tension-only') return <path className="node-link-symbol__mark" d="M 16 -5 L 9 0 L 16 5 M 6 -6 V 6" />;
+    if (behavior === 'stop') return <path className="node-link-symbol__mark" d="M 7 -7 V 7 M 18 -7 V 7 M 10 0 H 15" />;
+    if (behavior === 'friction') return <path className="node-link-symbol__mark" d="M 7 -5 L 16 4 M 10 -8 L 19 1 M 4 -2 L 13 7" />;
+    return <path className="node-link-symbol__mark" d="M 5 0 L 8 -5 L 11 5 L 14 -5 L 17 5 L 20 0" />;
+  };
+
+  const renderNodeLink = (link: NodeLink) => {
+    const startNode = nodeMap.get(link.nodeI);
+    if (!startNode) return null;
+    const start = toScreen(startNode.x, startNode.y);
+    const endNode = link.nodeJ ? nodeMap.get(link.nodeJ) : undefined;
+    const angleDeg = link.angleDeg ?? 0;
+
+    if (endNode) {
+      const end = toScreen(endNode.x, endNode.y);
+      const midpoint = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+      return <g key={link.id} className={`node-link-symbol node-link--${link.behavior}`} data-node-link-id={link.id}>
+        <line className="node-link-symbol__span" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
+        <g transform={`translate(${midpoint.x} ${midpoint.y}) rotate(${-angleDeg})`}>
+          <rect x="3" y="-9" width="19" height="18" rx="3" className="node-link-symbol__plate" />
+          {linkGlyph(link.behavior)}
+        </g>
+      </g>;
+    }
+
+    return <g
+      key={link.id}
+      className={`node-link-symbol node-link--${link.behavior}`}
+      data-node-link-id={link.id}
+      transform={`translate(${start.x} ${start.y}) rotate(${-angleDeg})`}
+    >
+      <line x1="0" y1="0" x2="5" y2="0" className="node-link-symbol__span" />
+      <rect x="5" y="-9" width="19" height="18" rx="3" className="node-link-symbol__plate" />
+      {linkGlyph(link.behavior)}
+      <line x1="26" y1="-13" x2="26" y2="13" className="node-link-symbol__ground" />
+      {[-9, -3, 3, 9].map((y) => <line key={y} x1="26" y1={y} x2="31" y2={y + 4} className="node-link-symbol__hatch" />)}
+    </g>;
   };
 
   const renderNodalLoad = (load: ProjectModel['nodalLoads'][number]) => {
@@ -526,6 +618,8 @@ const CanvasGeometryLayerImpl = ({
 
   return <>
     <g className="support-layer">{project.nodes.map(renderSupport)}</g>
+    <g className="support-settlement-layer">{(project.prescribedDisplacements ?? []).map(renderSettlement)}</g>
+    <g className="node-link-layer">{(project.nodeLinks ?? []).map(renderNodeLink)}</g>
     {loadsLayerVisible && view.showLoads && resultTab !== 'influence' ? <g className="load-layer">{memberLoadPresentation.map(renderMemberLoad)}{project.nodalLoads.map(renderNodalLoad)}</g> : null}
     <g className="node-layer">
       {project.nodes.map((node) => {

@@ -67,6 +67,14 @@
 .support-symbol.selected .support-body-fill { fill: color-mix(in srgb, var(--selection) 20%, var(--surface)); stroke: var(--selection); }
 .support-symbol.selected .support-pin-dot, .support-symbol.selected .support-roller-wheel, .support-symbol.selected .support-baseplate, .support-symbol.selected .support-spring-coil, .support-symbol.selected .support-spring-arc, .support-symbol.selected .support-spring-spiral, .support-symbol.selected .support-guide-track, .support-symbol.selected .support-hatch { stroke: var(--selection); }
 .support-selection-frame { fill:color-mix(in srgb,var(--selection) 8%,transparent); stroke:var(--selection); stroke-width:1.5; stroke-dasharray:4 3; vector-effect:non-scaling-stroke; }
+.support-settlement-symbol { fill:none; stroke:var(--dimension); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; vector-effect:non-scaling-stroke; }
+.support-settlement-symbol text { fill:var(--dimension); stroke:var(--canvas-bg); stroke-width:3px; paint-order:stroke; font-size:11px; font-weight:800; }
+.node-link-symbol { --node-link-ink:var(--axis); fill:none; stroke:var(--node-link-ink); stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; vector-effect:non-scaling-stroke; }
+.node-link-symbol__span { stroke-dasharray:4 3; opacity:.9; }
+.node-link-symbol__plate { fill:color-mix(in srgb,var(--surface) 94%,var(--canvas-bg)); }
+.node-link-symbol__ground,.node-link-symbol__hatch { stroke-width:1.5; }
+.node-link--compression-only,.node-link--tension-only,.node-link--stop { --node-link-ink:var(--warning); }
+.node-link--friction { --node-link-ink:var(--accent); }
 .support-placement-section-title { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-top: 2px; }
 /* Una carga se pinta de UN color, y ese color lo elige su tipo.
    ---------------------------------------------------------------------------
