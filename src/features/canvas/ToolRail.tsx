@@ -435,14 +435,15 @@ export const ToolRail = () => {
       <div className="tool-group-actions">
         {groupTools.map((definition) => {
           const tipId = `tool-rail-tip-${definition.id}`;
-          // El dock permanece silencioso: sólo la herramienta activa se nombra.
+          // El dock permanece silencioso: sólo la herramienta activa se nombra en X2.
           const active = activeTool === definition.id;
+          const isButtonCompact = shellClass === 'X2' ? !active : true;
           return <RailTooltip key={definition.id} id={tipId} content={`${t(definition.labelKey)} (${definition.shortcut})`} placement="top">
             <RegisteredToolButton
               definition={definition}
               label={t(definition.labelKey)}
               active={active}
-              compact={!active}
+              compact={isButtonCompact}
               onSelect={selectTool}
               aria-describedby={tipId}
             />
@@ -476,23 +477,26 @@ export const ToolRail = () => {
     </section>;
   };
 
+  const isFloatingDock = shellClass === 'X2' || shellClass === 'M1';
+  const showActiveLabel = shellClass === 'X2';
+
   return (
     <>
       <aside
-        className={`toolbar tool-rail${compact ? ' is-compact' : ' is-floating-dock'}${desktopDockCollapsed ? ' is-dock-collapsed' : ''}${mobileMenu ? ' mobile-menu-open' : ''}`}
+        className={`toolbar tool-rail${isFloatingDock ? ' is-floating-dock' : ' is-compact'}${desktopDockCollapsed ? ' is-dock-collapsed' : ''}${mobileMenu ? ' mobile-menu-open' : ''}`}
         aria-label={t('toolbar.label')}
-        data-tool-rail={compact ? 'compact' : 'dock'}
+        data-tool-rail={isFloatingDock ? 'dock' : 'compact'}
         /* La hoja expande una sola etiqueta: la herramienta activa. */
-        data-tool-rail-labels={!compact && !desktopDockCollapsed ? 'active' : undefined}
+        data-tool-rail-labels={showActiveLabel && !desktopDockCollapsed ? 'active' : undefined}
       >
-        <div className="desktop-tool-list" data-desktop-dock-tools={shellClass === 'X2' ? 'true' : undefined}>
-          {shellClass === 'X2' ? desktopDockCollapsed && activeDefinition
+        <div className="desktop-tool-list" data-desktop-dock-tools={isFloatingDock ? 'true' : undefined}>
+          {isFloatingDock ? desktopDockCollapsed && activeDefinition
             ? <RailTooltip id="tool-rail-tip-active-tool" content={`${t(activeDefinition.labelKey)} (${activeDefinition.shortcut})`} placement="top">
               <RegisteredToolButton
                 definition={activeDefinition}
                 label={t(activeDefinition.labelKey)}
                 active
-                compact
+                compact={compact}
                 onSelect={selectTool}
                 aria-describedby="tool-rail-tip-active-tool"
               />

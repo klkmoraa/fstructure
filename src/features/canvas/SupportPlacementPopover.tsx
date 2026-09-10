@@ -10,16 +10,18 @@ export interface SupportPlacementPopoverProps {
   title: string;
   description: string;
   labels: Readonly<Record<SupportPlacementType, string>>;
+  presetLabels?: Readonly<Record<string, string>>;
   rollerAngleLabel: string;
   degreesLabel: string;
   cancelLabel: string;
   initialType?: SupportPlacementType;
   initialAngleDeg?: number;
-  onSelect: (type: SupportPlacementType, angleDeg: number) => void;
+  initialPresetId?: string;
+  onSelect: (type: SupportPlacementType, angleDeg: number, presetId?: string) => void;
   onCancel: () => void;
 }
 
-const OPTIONS: readonly SupportPlacementType[] = ['none', 'pin', 'roller', 'fixed', 'custom'];
+const BASIC_OPTIONS: readonly SupportPlacementType[] = ['none', 'pin', 'roller', 'fixed'];
 const POPOVER_WIDTH = 250;
 const POPOVER_HEIGHT = 244;
 
@@ -35,11 +37,13 @@ export const SupportPlacementPopover = ({
   title,
   description,
   labels,
+  presetLabels,
   rollerAngleLabel,
   degreesLabel,
   cancelLabel,
   initialType = 'pin',
   initialAngleDeg = 90,
+  initialPresetId,
   onSelect,
   onCancel,
 }: SupportPlacementPopoverProps) => {
@@ -47,6 +51,7 @@ export const SupportPlacementPopover = ({
   const descriptionId = useId();
   const firstOptionRef = useRef<HTMLButtonElement>(null);
   const [selectedType, setSelectedType] = useState<SupportPlacementType>(initialType);
+  const [selectedPreset, setSelectedPreset] = useState<string | undefined>(initialPresetId ?? initialType);
   const [angleText, setAngleText] = useState(String(initialAngleDeg));
   const left = Math.max(8, Math.min(anchor.x + 14, Math.max(8, viewport.width - POPOVER_WIDTH - 8)));
   const top = Math.max(8, Math.min(anchor.y + 14, Math.max(8, viewport.height - POPOVER_HEIGHT - 8)));
@@ -55,15 +60,21 @@ export const SupportPlacementPopover = ({
     firstOptionRef.current?.focus({ preventScroll: true });
   }, []);
 
-  const select = (type: SupportPlacementType) => {
+  const select = (type: SupportPlacementType, presetId?: string) => {
     setSelectedType(type);
+    setSelectedPreset(presetId ?? type);
     // An empty string is coerced to zero by Number(), which silently changes
     // the roller orientation when the user clears an incomplete edit. Accept
     // the decimal comma used by the Spanish UI, but fall back for blank or
     // otherwise invalid drafts.
     const normalizedAngle = angleText.trim().replace(',', '.');
     const parsedAngle = normalizedAngle === '' ? Number.NaN : Number(normalizedAngle);
-    onSelect(type, Number.isFinite(parsedAngle) ? parsedAngle : initialAngleDeg);
+    const finalAngle = Number.isFinite(parsedAngle) ? parsedAngle : initialAngleDeg;
+    if (presetId) {
+      onSelect(type, finalAngle, presetId);
+    } else {
+      onSelect(type, finalAngle);
+    }
   };
 
   return (
@@ -88,13 +99,13 @@ export const SupportPlacementPopover = ({
       </header>
       <p id={descriptionId}>{description}</p>
       <div className="support-placement-options" role="group" aria-label={title}>
-        {OPTIONS.map((type, index) => (
+        {BASIC_OPTIONS.map((type, index) => (
           <button
             key={type}
             ref={index === 0 ? firstOptionRef : undefined}
             type="button"
-            className={type === selectedType ? 'active' : ''}
-            aria-pressed={type === selectedType}
+            className={type === selectedType && selectedPreset === type ? 'active' : ''}
+            aria-pressed={type === selectedType && selectedPreset === type}
             data-support-placement-option={type}
             onClick={() => select(type)}
           >
@@ -102,6 +113,55 @@ export const SupportPlacementPopover = ({
           </button>
         ))}
       </div>
+
+      <div className="support-placement-section-title">
+        {presetLabels?.guidedCategory ?? 'Guiados'}
+      </div>
+      <div className="support-placement-options" role="group" aria-label={presetLabels?.guidedCategory ?? 'Guiados'}>
+        <button
+          type="button"
+          className={selectedPreset === 'guide-horizontal' ? 'active' : ''}
+          aria-pressed={selectedPreset === 'guide-horizontal'}
+          data-support-placement-option="guide-horizontal"
+          onClick={() => select('custom', 'guide-horizontal')}
+        >
+          {presetLabels?.['guide-horizontal'] ?? 'Guía horizontal'}
+        </button>
+        <button
+          type="button"
+          className={selectedPreset === 'guide-vertical' ? 'active' : ''}
+          aria-pressed={selectedPreset === 'guide-vertical'}
+          data-support-placement-option="guide-vertical"
+          onClick={() => select('custom', 'guide-vertical')}
+        >
+          {presetLabels?.['guide-vertical'] ?? 'Guía vertical'}
+        </button>
+      </div>
+
+      <div className="support-placement-section-title">
+        {presetLabels?.elasticCategory ?? 'Elásticos y avanzado'}
+      </div>
+      <div className="support-placement-options" role="group" aria-label={presetLabels?.elasticCategory ?? 'Elásticos y avanzado'}>
+        <button
+          type="button"
+          className={selectedPreset === 'spring' ? 'active' : ''}
+          aria-pressed={selectedPreset === 'spring'}
+          data-support-placement-option="spring"
+          onClick={() => select('none', 'spring')}
+        >
+          {presetLabels?.spring ?? 'Resorte'}
+        </button>
+        <button
+          type="button"
+          className={selectedType === 'custom' && selectedPreset === 'custom' ? 'active' : ''}
+          aria-pressed={selectedType === 'custom' && selectedPreset === 'custom'}
+          data-support-placement-option="custom"
+          onClick={() => select('custom', 'custom')}
+        >
+          {labels.custom}
+        </button>
+      </div>
+
       <label className="support-placement-angle">
         <span>{rollerAngleLabel}</span>
         <span className="support-placement-angle-control">

@@ -1,5 +1,4 @@
 import { lazy, useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
-import { SlidersHorizontal } from 'lucide-react';
 import { Inspector } from '../inspector/Inspector';
 import { ResultsPanel } from '../results/ResultsPanel';
 import { StructuralCanvas } from '../canvas/StructuralCanvas';
@@ -590,9 +589,7 @@ const WorkspaceBrokerContent = ({
       {broker.isRetained('analysisSetup') ? <Inspector surface="analysisSetup" className={analysisSetup.presentation === 'sheet' && analysisSetup.status === 'active' ? 'mobile-open' : ''} presentation={analysisSetup.presentation as 'dock' | 'inset' | 'sheet'} status={analysisSetup.status} onClose={() => closeSurface('analysisSetup')} mobileDetent={layout.inspectorDetent} onMobileDetentChange={(detent) => setPreference('inspectorDetent', detent)} onMobileDetentCycle={cycleInspectorDetent} activeTool={activeTool} onActiveToolChange={setActiveTool} /> : null}
       {broker.isRetained('view') ? <Inspector surface="view" className={view.presentation === 'sheet' && view.status === 'active' ? 'mobile-open' : ''} presentation={view.presentation as 'dock' | 'inset' | 'sheet'} status={view.status} onClose={() => closeSurface('view')} mobileDetent={layout.inspectorDetent} onMobileDetentChange={(detent) => setPreference('inspectorDetent', detent)} onMobileDetentCycle={cycleInspectorDetent} /> : null}
     </div>}
-    floatingActions={shellClass === 'K0' ? undefined : <div className="workspace-surface-launcher">
-      <button className="mobile-inspector-toggle" onClick={(event) => openDetail(event.currentTarget)} aria-label={t('inspector.open')} aria-expanded={detail.status === 'active'} aria-controls="workspace-detail"><SlidersHorizontal size={20} /></button>
-    </div>}
+    floatingActions={undefined}
     instrument={<Instrument />}
   /></DataSurfaceRetainedStateProvider>;
 };

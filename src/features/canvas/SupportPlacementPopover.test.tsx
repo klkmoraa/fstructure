@@ -72,4 +72,28 @@ describe('SupportPlacementPopover', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rodillo' }));
     expect(onSelect).toHaveBeenLastCalledWith('roller', 90);
   });
+
+  it('allows selecting guided and elastic support presets directly', () => {
+    const onSelect = vi.fn();
+    render(<SupportPlacementPopover
+      {...baseProps}
+      presetLabels={{
+        'guide-horizontal': 'Guía horizontal',
+        'guide-vertical': 'Guía vertical',
+        spring: 'Resorte elástico',
+      }}
+      initialAngleDeg={90}
+      onSelect={onSelect}
+      onCancel={vi.fn()}
+    />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guía horizontal' }));
+    expect(onSelect).toHaveBeenLastCalledWith('custom', 90, 'guide-horizontal');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Guía vertical' }));
+    expect(onSelect).toHaveBeenLastCalledWith('custom', 90, 'guide-vertical');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resorte elástico' }));
+    expect(onSelect).toHaveBeenLastCalledWith('none', 90, 'spring');
+  });
 });

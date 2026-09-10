@@ -1,5 +1,5 @@
 import { memo, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import type { MemberModel, NodeModel, ProjectModel } from '../../types';
+import type { MemberModel, NodeModel, ProjectModel, SupportType } from '../../types';
 import type { CanvasSelectionVisualState } from './selectionVisuals';
 import type { EditorLayerState } from './editorLayers';
 import type { ResultTab } from '../../store/ProjectContext';
@@ -84,9 +84,125 @@ const CanvasGeometryLayerImpl = ({
   });
 
   const renderSupport = (node: NodeModel) => {
-    if (node.support.type === 'none') return null;
+    const spring = node.support.spring;
+    const kx = spring?.kx ?? 0;
+    const ky = spring?.ky ?? 0;
+    const kr = spring?.kr ?? 0;
+    const kNormal = spring?.kNormal ?? 0;
+    const hasKx = kx > 0;
+    const hasKy = ky > 0;
+    const hasKr = kr > 0;
+    const hasKNormal = kNormal > 0;
+    const hasAnySpring = hasKx || hasKy || hasKr || hasKNormal;
+
+    if (node.support.type === 'none' && !hasAnySpring) return null;
     const p = toScreen(node.x, node.y);
     const selected = selectedNodeIds.includes(node.id);
+
+    const renderGroundHatch = (y: number, width = 18) => (
+      <>
+        <line x1={-width} y1={y} x2={width} y2={y} className="support-baseplate" strokeWidth="2" strokeLinecap="round" />
+        {[-14, -8, -2, 4, 10, 14].filter((x) => Math.abs(x) < width - 1).map((x) => (
+          <line key={x} x1={x} y1={y} x2={x - 4} y2={y + 5.5} className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />
+        ))}
+      </>
+    );
+
+    const renderVerticalGroundHatch = (x: number, height = 18, dir = 1) => (
+      <>
+        <line x1={x} y1={-height} x2={x} y2={height} className="support-baseplate" strokeWidth="2" strokeLinecap="round" />
+        {[-14, -8, -2, 4, 10, 14].filter((y) => Math.abs(y) < height - 1).map((y) => (
+          <line key={y} x1={x} y1={y} x2={x + dir * 5.5} y2={y + 4} className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />
+        ))}
+      </>
+    );
+
+    const renderAttachedSprings = (baseType: SupportType) => {
+      if (!hasAnySpring) return null;
+      return (
+        <g className="support-springs-group">
+          {hasKx ? (
+            <g className="support-spring support-spring--x">
+              <line x1="0" y1="0" x2="-4" y2="0" strokeWidth="1.8" />
+              <path
+                d="M -4 0 L -7 -5 L -10 5 L -13 -5 L -16 5 L -19 -5 L -22 0 L -25 0"
+                fill="none"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="support-spring-coil"
+              />
+              {renderVerticalGroundHatch(-25, 12, -1)}
+            </g>
+          ) : null}
+
+          {hasKy && baseType === 'none' ? (
+            <g className="support-spring support-spring--y">
+              <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.8" />
+              <path
+                d="M 0 4 L -5 7 L 5 10 L -5 13 L 5 16 L -5 19 L 0 22 L 0 25"
+                fill="none"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="support-spring-coil"
+              />
+              {renderGroundHatch(25, 14)}
+            </g>
+          ) : null}
+
+          {hasKNormal ? (
+            <g
+              className="support-spring support-spring--normal"
+              transform={`rotate(${(spring?.angleDeg ?? 90) - 90})`}
+            >
+              <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.8" />
+              <path
+                d="M 0 4 L -5 7 L 5 10 L -5 13 L 5 16 L -5 19 L 0 22 L 0 25"
+                fill="none"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="support-spring-coil"
+              />
+              {renderGroundHatch(25, 14)}
+            </g>
+          ) : null}
+
+          {hasKr ? (
+            baseType === 'none' && !hasKx && !hasKy && !hasKNormal ? (
+              <g className="support-spring support-spring--rotational">
+                <path
+                  d="M 0 2 c -4 0 -7 3 -7 6 s 3 6 6 6 s 5 -2 5 -4.5 s -2 -4 -4 -4 s -3.2 1.4 -3.2 3 L -3.2 20"
+                  fill="none"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  className="support-spring-spiral"
+                />
+                {renderGroundHatch(20, 14)}
+              </g>
+            ) : (
+              <g className="support-spring support-spring--arc">
+                <path
+                  d="M -9 -2 A 9 9 0 1 1 9 -2"
+                  fill="none"
+                  strokeWidth="1.8"
+                  strokeDasharray="3 2"
+                  className="support-spring-arc"
+                />
+                <path
+                  d="M 9 -2 L 12 -4"
+                  fill="none"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  className="support-spring-arc"
+                />
+              </g>
+            )
+          ) : null}
+        </g>
+      );
+    };
 
     if (node.support.type === 'fixed') {
       const rotation = node.support.angleDeg ?? 0;
@@ -94,8 +210,9 @@ const CanvasGeometryLayerImpl = ({
         <g key={node.id} className={`support-symbol support-fixed${selected ? ' selected' : ''}`} transform={`translate(${p.x} ${p.y}) rotate(${rotation})`} data-support-id={node.id}>
           {selected ? <rect className="support-selection-frame" x="-22" y="-4" width="44" height="22" rx="6" /> : null}
           <line x1="-18" y1="7" x2="18" y2="7" className="support-baseplate" strokeWidth="2.4" strokeLinecap="round" />
-          {[-14, -8, -2, 4, 10, 16].map((x) => <line key={x} x1={x} y1="7" x2={x - 5} y2="14" strokeWidth="1.4" strokeLinecap="round" />)}
+          {[-14, -8, -2, 4, 10, 16].map((x) => <line key={x} x1={x} y1="7" x2={x - 5} y2="14" className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />)}
           <line x1="0" y1="0" x2="0" y2="7" strokeWidth="2" />
+          {renderAttachedSprings('fixed')}
           <circle cx="0" cy="0" r="2.2" className="support-pin-dot" />
         </g>
       );
@@ -108,7 +225,8 @@ const CanvasGeometryLayerImpl = ({
           {selected ? <rect className="support-selection-frame" x="-20" y="-4" width="40" height="32" rx="7" /> : null}
           <polygon points="0,0 -12,18 12,18" className="support-body-fill" strokeWidth="1.8" strokeLinejoin="round" />
           <line x1="-16" y1="18" x2="16" y2="18" className="support-baseplate" strokeWidth="2" strokeLinecap="round" />
-          {[-12, -6, 0, 6, 12].map((x) => <line key={x} x1={x} y1="18" x2={x - 5} y2="24" strokeWidth="1.4" strokeLinecap="round" />)}
+          {[-12, -6, 0, 6, 12].map((x) => <line key={x} x1={x} y1="18" x2={x - 5} y2="24" className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />)}
+          {renderAttachedSprings('pin')}
           <circle cx="0" cy="0" r="2.4" className="support-pin-dot" />
         </g>
       );
@@ -124,7 +242,8 @@ const CanvasGeometryLayerImpl = ({
           <circle cx="-5.5" cy="18.5" r="2.8" className="support-roller-wheel" strokeWidth="1.5" />
           <circle cx="5.5" cy="18.5" r="2.8" className="support-roller-wheel" strokeWidth="1.5" />
           <line x1="-17" y1="21.5" x2="17" y2="21.5" className="support-baseplate" strokeWidth="2" strokeLinecap="round" />
-          {[-12, -6, 0, 6, 12].map((x) => <line key={x} x1={x} y1="21.5" x2={x - 5} y2="26.5" strokeWidth="1.4" strokeLinecap="round" />)}
+          {[-12, -6, 0, 6, 12].map((x) => <line key={x} x1={x} y1="21.5" x2={x - 5} y2="26.5" className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />)}
+          {renderAttachedSprings('roller')}
           <circle cx="0" cy="0" r="2.4" className="support-pin-dot" />
         </g>
       );
@@ -132,28 +251,74 @@ const CanvasGeometryLayerImpl = ({
 
     if (node.support.type === 'custom') {
       const rotation = node.support.angleDeg ?? 0;
-      const hasSpring = Boolean(
-        node.support.spring && (node.support.spring.kx || node.support.spring.ky || node.support.spring.kr || node.support.spring.kNormal),
-      );
+      const rx = Boolean(node.support.restrainX);
+      const ry = Boolean(node.support.restrainY);
+      const rr = Boolean(node.support.restrainR);
+
+      const isGuideHorizontal = !rx && ry && rr;
+      const isGuideVertical = rx && !ry && rr;
+      const isRotationalOnly = !rx && !ry && rr;
+
       return (
         <g key={node.id} className={`support-symbol support-custom${selected ? ' selected' : ''}`} transform={`translate(${p.x} ${p.y}) rotate(${rotation})`} data-support-id={node.id}>
-          {selected ? <rect className="support-selection-frame" x="-22" y="-6" width="44" height="38" rx="7" /> : null}
-          {hasSpring ? (
+          {selected ? <rect className="support-selection-frame" x="-24" y="-8" width="48" height="38" rx="7" /> : null}
+
+          {isGuideHorizontal ? (
+            <g className="support-guide support-guide--horizontal">
+              <line x1="0" y1="0" x2="0" y2="3" strokeWidth="2.4" />
+              <line x1="-20" y1="3" x2="20" y2="3" strokeWidth="1.4" strokeDasharray="3 2" className="support-guide-track" />
+              <rect x="-14" y="3" width="28" height="10" rx="2" className="support-body-fill" strokeWidth="1.8" />
+              {renderGroundHatch(13, 20)}
+            </g>
+          ) : isGuideVertical ? (
+            <g className="support-guide support-guide--vertical">
+              <line x1="0" y1="0" x2="3" y2="0" strokeWidth="2.4" />
+              <line x1="3" y1="-20" x2="3" y2="20" strokeWidth="1.4" strokeDasharray="3 2" className="support-guide-track" />
+              <rect x="3" y="-14" width="10" height="28" rx="2" className="support-body-fill" strokeWidth="1.8" />
+              {renderVerticalGroundHatch(13, 20, 1)}
+            </g>
+          ) : isRotationalOnly ? (
+            <g className="support-rotational-lock">
+              <rect x="-8" y="-8" width="16" height="16" rx="2.5" className="support-body-fill" strokeWidth="1.8" />
+              <line x1="0" y1="8" x2="0" y2="15" strokeWidth="2.4" />
+              {renderGroundHatch(15, 12)}
+            </g>
+          ) : rx && ry && rr ? (
             <>
-              {node.support.spring?.kr ? (
-                <path d="M -8 -2 A 8 8 0 1 1 8 -2" fill="none" strokeWidth="1.8" strokeDasharray="3 2" className="support-spring-arc" />
-              ) : null}
-              <path d="M 0 0 L 0 4 L -5 7 L 5 11 L -5 15 L 5 19 L 0 22 L 0 25" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="support-spring-coil" />
-              <line x1="-15" y1="25" x2="15" y2="25" className="support-baseplate" strokeWidth="2" strokeLinecap="round" />
-              {[-10, -4, 2, 8].map((x) => <line key={x} x1={x} y1="25" x2={x - 4} y2="30" strokeWidth="1.4" strokeLinecap="round" />)}
+              <line x1="-18" y1="7" x2="18" y2="7" className="support-baseplate" strokeWidth="2.4" strokeLinecap="round" />
+              {[-14, -8, -2, 4, 10, 16].map((x) => <line key={x} x1={x} y1="7" x2={x - 5} y2="14" className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />)}
+              <line x1="0" y1="0" x2="0" y2="7" strokeWidth="2" />
+            </>
+          ) : rx && ry && !rr ? (
+            <>
+              <polygon points="0,0 -12,18 12,18" className="support-body-fill" strokeWidth="1.8" strokeLinejoin="round" />
+              <line x1="-16" y1="18" x2="16" y2="18" className="support-baseplate" strokeWidth="2" strokeLinecap="round" />
+              {[-12, -6, 0, 6, 12].map((x) => <line key={x} x1={x} y1="18" x2={x - 5} y2="24" className="support-hatch" strokeWidth="1.4" strokeLinecap="round" />)}
             </>
           ) : (
             <>
-              <line x1="-16" y1="-8" x2="16" y2="-8" strokeWidth="1.8" strokeDasharray="3 2" />
-              <line x1="-16" y1="8" x2="16" y2="8" strokeWidth="1.8" strokeDasharray="3 2" />
-              <rect x="-10" y="-5" width="20" height="10" rx="3" className="support-body-fill" strokeWidth="1.8" />
+              {hasAnySpring ? null : (
+                <>
+                  <line x1="-16" y1="-8" x2="16" y2="-8" strokeWidth="1.8" strokeDasharray="3 2" className="support-guide-track" />
+                  <line x1="-16" y1="8" x2="16" y2="8" strokeWidth="1.8" strokeDasharray="3 2" className="support-guide-track" />
+                  <rect x="-10" y="-5" width="20" height="10" rx="3" className="support-body-fill" strokeWidth="1.8" />
+                </>
+              )}
             </>
           )}
+
+          {renderAttachedSprings('custom')}
+          <circle cx="0" cy="0" r="2.4" className="support-pin-dot" />
+        </g>
+      );
+    }
+
+    if (hasAnySpring) {
+      const rotation = node.support.angleDeg ?? 0;
+      return (
+        <g key={node.id} className={`support-symbol support-spring${selected ? ' selected' : ''}`} transform={`translate(${p.x} ${p.y}) rotate(${rotation})`} data-support-id={node.id}>
+          {selected ? <rect className="support-selection-frame" x="-28" y="-8" width="56" height="38" rx="7" /> : null}
+          {renderAttachedSprings('none')}
           <circle cx="0" cy="0" r="2.4" className="support-pin-dot" />
         </g>
       );

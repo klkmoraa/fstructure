@@ -298,6 +298,7 @@ export const StructuralCanvas = ({
     anchor: ScreenPoint;
     initialType: SupportPlacementType;
     initialAngleDeg: number;
+    initialPresetId?: string;
   } | null>(null);
   const [repeatRecipe, setRepeatRecipe] = useState<RepeatRecipe | null>(null);
   const [duplicateDraft, setDuplicateDraft] = useState<{ selection: Selection; x: string; y: string } | null>(null);
@@ -1258,16 +1259,17 @@ export const StructuralCanvas = ({
     window.requestAnimationFrame(() => onRequestInspector?.());
   };
 
-  const openSupportPlacement = useCallback((nodeId: string, client: ScreenPoint, initialType: SupportPlacementType = 'pin', initialAngleDeg = 90) => {
+  const openSupportPlacement = useCallback((nodeId: string, client: ScreenPoint, initialType: SupportPlacementType = 'pin', initialAngleDeg = 90, initialPresetId?: string) => {
     setSupportPlacement({
       nodeId,
       anchor: localScreenPoint(client.x, client.y),
       initialType,
       initialAngleDeg: Number.isFinite(initialAngleDeg) ? initialAngleDeg : 90,
+      initialPresetId,
     });
   }, [localScreenPoint]);
 
-  const applySupportPlacement = useCallback((type: SupportPlacementType, angleDeg: number) => {
+  const applySupportPlacement = useCallback((type: SupportPlacementType, angleDeg: number, presetId?: string) => {
     const pending = supportPlacement;
     if (!pending) return;
     updateProject((draft) => {
@@ -1275,7 +1277,32 @@ export const StructuralCanvas = ({
       if (!node) return draft;
       const previous = node.support;
       const shared = { spring: previous.spring, prescribed: previous.prescribed };
-      if (type === 'roller') {
+      if (presetId === 'guide-horizontal') {
+        node.support = {
+          ...shared,
+          type: 'custom',
+          restrainX: false,
+          restrainY: true,
+          restrainR: true,
+        };
+      } else if (presetId === 'guide-vertical') {
+        node.support = {
+          ...shared,
+          type: 'custom',
+          restrainX: true,
+          restrainY: false,
+          restrainR: true,
+        };
+      } else if (presetId === 'spring') {
+        node.support = {
+          ...shared,
+          type: previous.type === 'none' ? 'none' : previous.type,
+          spring: {
+            ...previous.spring,
+            ky: previous.spring?.ky || 1000,
+          },
+        };
+      } else if (type === 'roller') {
         node.support = {
           ...shared,
           type,
@@ -1297,8 +1324,9 @@ export const StructuralCanvas = ({
     setSelection({ kind: 'node', id: pending.nodeId });
     setSupportPlacement(null);
     setActiveTool('select');
+    onRequestInspector?.();
     window.requestAnimationFrame(() => svgRef.current?.focus({ preventScroll: true }));
-  }, [setActiveTool, setSelection, supportPlacement, updateProject]);
+  }, [onRequestInspector, setActiveTool, setSelection, supportPlacement, updateProject]);
 
   const cancelSupportPlacement = useCallback(() => {
     setSupportPlacement(null);
@@ -1350,7 +1378,15 @@ export const StructuralCanvas = ({
     }
     if (tool === 'support') {
       setSelection({ kind: 'node', id: node.id });
-      openSupportPlacement(node.id, client, node.support.type as SupportPlacementType, node.support.angleDeg ?? 90);
+      let presetId: string | undefined = node.support.type;
+      if (node.support.type === 'custom') {
+        if (!node.support.restrainX && node.support.restrainY && node.support.restrainR) presetId = 'guide-horizontal';
+        else if (node.support.restrainX && !node.support.restrainY && node.support.restrainR) presetId = 'guide-vertical';
+        else presetId = 'custom';
+      } else if (node.support.type === 'none' && node.support.spring && (node.support.spring.kx || node.support.spring.ky || node.support.spring.kr || node.support.spring.kNormal)) {
+        presetId = 'spring';
+      }
+      openSupportPlacement(node.id, client, node.support.type as SupportPlacementType, node.support.angleDeg ?? 90, presetId);
       return;
     }
     if (tool === 'pointLoad') {
@@ -2719,11 +2755,19 @@ export const StructuralCanvas = ({
           fixed: t('inspector.fixed'),
           custom: t('inspector.custom'),
         }}
+        presetLabels={{
+          'guide-horizontal': t('inspector.supportGuideHorizontal'),
+          'guide-vertical': t('inspector.supportGuideVertical'),
+          spring: t('inspector.supportFamily.elastic'),
+          guidedCategory: t('inspector.supportFamily.guided'),
+          elasticCategory: t('inspector.supportFamily.elastic'),
+        }}
         rollerAngleLabel={t('inspector.supportPhysicalNormal')}
         degreesLabel="°"
         cancelLabel={t('canvas.cancelPlacement')}
         initialType={supportPlacement.initialType}
         initialAngleDeg={supportPlacement.initialAngleDeg}
+        initialPresetId={supportPlacement.initialPresetId}
         onSelect={applySupportPlacement}
         onCancel={cancelSupportPlacement}
       /> : null}

@@ -312,125 +312,255 @@
 /* Mesa de trabajo ------------------------------------------------------- */
 
 @media (min-width: 1024px) {
-  .app-shell[data-shell-class='X2']:has(.console) {
+  .app-shell[data-shell-class='X2']:has(.console),
+  .app-shell[data-shell-class='M1']:has(.console) {
+    position: relative;
     display: grid;
-    grid-template-columns: var(--fstructure-rail-width) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: var(--fstructure-header-height) minmax(0, 1fr) var(--fstructure-status-height);
     grid-template-areas:
-      'topbar topbar'
-      'console workspace'
-      'footer footer';
-    gap: 1px;
-    background: var(--sc-color-border-soft);
+      'topbar'
+      'workspace'
+      'footer';
+    background: var(--sc-color-bg-app);
   }
 
   /* Aunque es fixed, el enlace de salto sigue participando en el auto-placement
      de CSS Grid. Anclarlo evita que el navegador cree una cuarta fila vacía. */
-  .app-shell[data-shell-class='X2'] > .app-shell-skip-link {
+  .app-shell[data-shell-class='X2'] > .app-shell-skip-link,
+  .app-shell[data-shell-class='M1'] > .app-shell-skip-link {
     grid-area: topbar;
   }
 
-  .app-shell[data-shell-class='X2'] > .console.console {
-    grid-area: console;
-    width: var(--fstructure-rail-width);
-    min-width: var(--fstructure-rail-width);
-    height: auto;
-    margin: 0;
-    padding: 12px 8px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border: 0;
-    background: var(--sc-color-surface-1);
+  .app-shell[data-shell-class='X2'] > .console.console,
+  .app-shell[data-shell-class='M1'] > .console.console {
+    display: contents;
   }
 
-  .app-shell[data-shell-class='X2'] > .console.console > .console__body {
-    width: 100%;
+  .app-shell[data-shell-class='X2'] > .console.console .console__body,
+  .app-shell[data-shell-class='M1'] > .console.console .console__body,
+  .app-shell[data-shell-class='X2'] > .console.console .console__tools,
+  .app-shell[data-shell-class='M1'] > .console.console .console__tools {
+    display: contents;
+  }
+
+  .app-shell[data-shell-class='X2'] > .console.console .console__foot,
+  .app-shell[data-shell-class='M1'] > .console.console .console__foot {
+    position: fixed;
+    z-index: 39;
+    right: 14px;
+    bottom: calc(var(--fstructure-status-height, 28px) + 14px);
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 6px;
-    overflow: hidden;
-    padding: 0;
+    width: auto;
   }
 
-  .app-shell[data-shell-class='X2'] > .console.console :is(.console__surfaces, .console__foot) {
-    width: 100%;
+  .app-shell[data-shell-class='X2'] > .console.console .console__foot > button,
+  .app-shell[data-shell-class='M1'] > .console.console .console__foot > button {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
     display: grid;
-    gap: 6px;
-  }
-
-  .app-shell[data-shell-class='X2'] > .console.console > .console__body > .console__tools {
-    min-height: 0;
-    display: block;
-    flex: 1;
-    overflow-y: auto;
-    scrollbar-width: none;
-  }
-
-  .app-shell[data-shell-class='X2'] .console__tools::-webkit-scrollbar {
-    display: none;
-  }
-
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock {
-    position: static;
-    width: 100%;
-    max-width: none;
-    height: auto;
-    max-height: none;
-    margin: 0;
-    padding: 0;
-    overflow: visible;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    transform: none;
-  }
-
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.desktop-tool-list, .tool-group-actions) {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-  }
-
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-group {
-    width: 100%;
-    padding: 4px 0;
-  }
-
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-group + .dock-group {
-    border-block-start: 1px solid var(--sc-color-border-soft);
-    border-inline-start: 0;
-  }
-
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-rail-tooltip-anchor {
-    width: 100%;
-  }
-
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger) {
-    width: 100%;
-    min-width: var(--fstructure-touch-target);
-    height: auto;
-    min-height: 48px;
-    padding: 6px 4px;
+    place-items: center;
     border: 1px solid var(--sc-color-border-soft);
     border-radius: var(--sc-radius-control);
     background: var(--sc-color-surface-1);
     box-shadow: var(--sc-shadow-xs);
+    color: var(--sc-color-text-secondary);
+    transition: all var(--sc-motion-fast) var(--sc-ease-standard);
   }
 
+  .app-shell[data-shell-class='X2'] > .console.console .console__foot > button:hover,
+  .app-shell[data-shell-class='M1'] > .console.console .console__foot > button:hover {
+    background: var(--sc-color-surface-2);
+    border-color: var(--sc-color-border-strong, var(--sc-color-border));
+    color: var(--sc-color-text-primary);
+  }
+
+  .app-shell[data-shell-class='X2'] > .console.console .console__foot .console__label,
+  .app-shell[data-shell-class='M1'] > .console.console .console__foot .console__label {
+    display: none;
+  }
+
+  /* Dock flotante centrado en la parte inferior del lienzo */
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock,
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock {
+    position: absolute;
+    z-index: 38;
+    left: 50%;
+    bottom: calc(var(--fstructure-status-height, 28px) + 14px);
+    width: max-content;
+    max-width: calc(100% - 40px);
+    height: auto;
+    margin: 0;
+    padding: 5px 6px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    overflow: visible;
+    border: 1px solid var(--sc-color-border-soft);
+    border-radius: var(--sc-radius-panel);
+    background: var(--sc-color-surface-1);
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.4),
+      0 2px 6px rgba(0, 0, 0, 0.2),
+      inset 1px 1.5px 2px var(--sc-clay-light),
+      inset -1px -1.5px 2px var(--sc-clay-dark-soft);
+    transform: translateX(-50%);
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.desktop-tool-list, .tool-group-actions),
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock :is(.desktop-tool-list, .tool-group-actions) {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.toolbar-spacer, .selection-tip, .mobile-tool-dock),
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock :is(.toolbar-spacer, .selection-tip, .mobile-tool-dock) {
+    display: none;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-group,
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .dock-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-group + .dock-group,
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .dock-group + .dock-group {
+    border-inline-start: 1px solid var(--sc-color-border-soft);
+    border-block-start: 0;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-group-heading,
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-group-heading {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-rail-tooltip-anchor,
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-rail-tooltip-anchor {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-rail-tooltip-anchor:has(.tool-button:not(.is-compact)) {
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  /* Todas las herramientas en reposo: exactamente 38px de alto y ancho, glifo centrado */
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger),
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger) {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    max-height: 38px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 1px solid transparent;
+    border-radius: var(--sc-radius-control);
+    background: transparent;
+    box-shadow: none;
+    color: var(--sc-color-text-secondary);
+    transition:
+      background-color var(--sc-motion-fast) var(--sc-ease-standard),
+      border-color var(--sc-motion-fast) var(--sc-ease-standard),
+      color var(--sc-motion-fast) var(--sc-ease-standard),
+      box-shadow var(--sc-motion-fast) var(--sc-ease-standard);
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger):hover:not(:disabled),
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger):hover:not(:disabled) {
+    background: var(--sc-color-surface-2);
+    border-color: var(--sc-color-border-soft);
+    color: var(--sc-color-text-primary);
+  }
+
+  /* Herramienta activa: píldora horizontal armónica que no cambia su altura (38px) ni se deforma */
   .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-button:not(.is-compact) {
-    grid-template-columns: 1fr;
+    width: auto;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    max-height: 38px;
+    padding: 0 11px 0 8px;
+    display: inline-grid;
+    grid-template-columns: 20px auto;
+    align-items: center;
+    gap: 7px;
+    border-radius: var(--sc-radius-control);
+    background: var(--sc-color-action-primary);
+    border-color: var(--sc-color-action-primary);
+    color: var(--sc-color-action-foreground);
+    box-shadow: var(--sc-shadow-selected);
   }
 
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-button:not(.is-compact) > span:not(.sc-tool-button__icon) {
-    display: none;
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-button:not(.is-compact) .sc-tool-button__icon {
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    color: var(--sc-color-action-foreground);
   }
 
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.dock-collapse-toggle, .dock-position-toggle) {
-    display: none;
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-button:not(.is-compact) .sc-tool-button__copy {
+    display: inline-block;
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-button:not(.is-compact) .sc-tool-button__copy strong {
+    font-size: var(--sc-font-size-caption);
+    font-weight: var(--sc-font-weight-bold);
+    letter-spacing: 0.01em;
+    color: var(--sc-color-action-foreground);
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-button:not(.is-compact) kbd {
+    display: none !important;
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-collapse-toggle,
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .dock-collapse-toggle {
+    width: 32px;
+    min-width: 32px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    margin-inline-start: 4px;
+    display: grid;
+    place-items: center;
+    border: 1px solid transparent;
+    border-radius: var(--sc-radius-control);
+    background: transparent;
+    color: var(--sc-color-text-muted);
+  }
+
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-collapse-toggle:hover,
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .dock-collapse-toggle:hover {
+    background: var(--sc-color-surface-2);
+    color: var(--sc-color-text-primary);
   }
 
   .app-shell[data-shell-class='X2'] > .workspace {
@@ -558,6 +688,8 @@
    legible en móvil y escritorio, sin la raya lateral heredada. */
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active),
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled),
+.app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active),
+.app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled),
 .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active, .is-active),
 .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active, .is-active):hover:not(:disabled) {
   --tool-color: var(--sc-color-action-foreground);
@@ -642,6 +774,7 @@
 }
 
 .workspace-topbar__model-group,
+.workspace-topbar__experience-group,
 .workspace-topbar__calculate-group {
   min-height: 40px;
   border-radius: var(--sc-radius-pill);
@@ -668,7 +801,8 @@
   box-shadow: var(--sc-shadow-inset);
 }
 
-.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active) {
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active),
+.app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active) {
   --tool-color: var(--sc-color-action-foreground);
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-action-primary);
@@ -853,6 +987,7 @@
    El Brandbook resuelve el gesto con `shadow-inset`; conservar el tamaño evita
    el rebote óptico que se sentía al tocar una herramienta en K0. */
 .app-shell.workspace-screen[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button,
+.app-shell.workspace-screen[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button,
 .app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button {
   transition:
     background-color var(--sc-motion-fast) var(--sc-ease-standard),
@@ -862,6 +997,7 @@
 }
 
 .app-shell.workspace-screen[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:active:not(:disabled),
+.app-shell.workspace-screen[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:active:not(:disabled),
 .app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button:active:not(:disabled) {
   transform: none;
   background: var(--sc-color-surface-inset);
@@ -869,6 +1005,7 @@
 }
 
 .app-shell.workspace-screen[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):active:not(:disabled),
+.app-shell.workspace-screen[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):active:not(:disabled),
 .app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active, .is-active):active:not(:disabled) {
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-action-primary);

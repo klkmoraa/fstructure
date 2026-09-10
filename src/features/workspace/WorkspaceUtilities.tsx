@@ -223,6 +223,10 @@ export const WorkspaceUtilities = ({
             onClick={() => setUnitPickerOpen((current) => !current)}
           >{selectedUnit.label}<ChevronDown size={15} aria-hidden="true" /></button>
           {unitPickerOpen ? <div className="workspace-utilities__unit-options" role="listbox" aria-label={t('units.label')}>
+            {isCustomUnitSystemId(project.settings.units) ? <div className="workspace-utilities__unit-custom-active" role="presentation">
+              <span>{selectedUnit.label}</span>
+              <Check size={14} aria-hidden="true" />
+            </div> : null}
             {unitOptions.map((unit) => <button
               key={unit.id}
               type="button"
