@@ -881,3 +881,116 @@
     transition-duration: .01ms;
   }
 }
+
+/* Safari puede conservar un viewport lógico de escritorio dentro de un iPhone
+   aunque el viewport meta esté declarado. Esta regla es deliberadamente el
+   último contrato de la portada: se basa en la capacidad táctil (y no en el
+   ancho que WebKit dice tener) y evita que la segunda columna quede fuera de
+   la pantalla física. `flex` sustituye por completo la retícula de dos
+   columnas, por lo que no queda ninguna pista implícita que pueda desbordar. */
+@media (hover: none) and (pointer: coarse), (max-device-width: 760px) {
+  .sc-home,
+  .sc-home-main,
+  .sc-home-content,
+  .solver2d-home,
+  .solver2d-hero,
+  .solver2d-hero__copy,
+  .solver2d-hero__stage {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .sc-home,
+  .sc-home-main,
+  .sc-home-content {
+    overflow-x: hidden;
+  }
+
+  .solver2d-hero {
+    width: 100% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 20px !important;
+    padding: 8px 0 28px !important;
+  }
+
+  .solver2d-hero__stage {
+    order: -1;
+    width: 100% !important;
+    justify-self: auto !important;
+  }
+
+  .solver2d-hero__copy {
+    width: 100%;
+    padding-top: 0 !important;
+  }
+
+  .solver2d-hero__name {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-wrap: anywhere;
+    font-size: clamp(42px, 13vw, 58px) !important;
+  }
+
+  .solver2d-stage {
+    min-height: 190px !important;
+    overflow: hidden;
+  }
+
+  .solver2d-stage__object {
+    width: min(118%, 520px) !important;
+    transform: none;
+  }
+}
+
+/* Mismo contrato para los webviews que reportan un ancho lógico ancho pero
+   conservan `screen.width` del teléfono. La marca la aplica WelcomeScreen con
+   useLayoutEffect para que no haya un fotograma de la portada cortada. */
+.sc-home[data-compact-viewport] {
+  overflow-x: hidden;
+}
+
+.sc-home[data-compact-viewport] :is(.sc-home-main, .sc-home-content, .solver2d-home, .solver2d-hero, .solver2d-hero__copy, .solver2d-hero__stage) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+.sc-home[data-compact-viewport] .solver2d-hero {
+  width: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 20px !important;
+  padding: 8px 0 28px !important;
+}
+
+.sc-home[data-compact-viewport] .solver2d-hero__stage {
+  order: -1;
+  width: 100% !important;
+  justify-self: auto !important;
+}
+
+.sc-home[data-compact-viewport] .solver2d-hero__copy {
+  width: 100%;
+  padding-top: 0 !important;
+}
+
+.sc-home[data-compact-viewport] .solver2d-hero__name {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-wrap: anywhere;
+  font-size: clamp(42px, 13vw, 58px) !important;
+}
+
+.sc-home[data-compact-viewport] .solver2d-stage {
+  min-height: 190px !important;
+  overflow: hidden;
+}
+
+.sc-home[data-compact-viewport] .solver2d-stage__object {
+  width: min(118%, 520px) !important;
+  transform: none;
+}

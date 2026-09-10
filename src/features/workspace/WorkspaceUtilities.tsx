@@ -1,5 +1,24 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Download, FileText, Layers3, Moon, MoreHorizontal, PanelRight, Sheet, Sun, X } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ClipboardList,
+  Download,
+  Eye,
+  FileText,
+  Moon,
+  MoreHorizontal,
+  MoveDown,
+  PanelRight,
+  RotateCcw,
+  Sheet,
+  Sigma,
+  SlidersHorizontal,
+  Sparkles,
+  Stethoscope,
+  Sun,
+  X,
+} from 'lucide-react';
 import { APP_VERSION } from '../../appVersion';
 import { useI18n } from '../../i18n/useI18n';
 import { useProjectAnalysis, useProjectModel, useWorkspaceUI } from '../../store/ProjectContext';
@@ -18,9 +37,10 @@ const LazyPdfPreviewDialog = lazy(() => import('../pdf-preview/PdfPreviewDialog'
 export const WorkspaceUtilities = ({ onOpenInspector }: { onOpenInspector: (trigger?: HTMLElement | null) => void }) => {
   const { project, updateProjectView } = useProjectModel();
   const { analysis, ensureEducationTrace, selectedCombinationId } = useProjectAnalysis();
-  const { theme, setTheme } = useWorkspaceUI();
+  const { theme, setTheme, setActiveTool } = useWorkspaceUI();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  const [unitPickerOpen, setUnitPickerOpen] = useState(false);
   const [preparingPdf, setPreparingPdf] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<PdfPreviewArtifact | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -31,12 +51,16 @@ export const WorkspaceUtilities = ({ onOpenInspector }: { onOpenInspector: (trig
     if (!open) return undefined;
     const closeOutside = (event: PointerEvent) => {
       const target = event.target;
-      if (target instanceof Node && !menuRef.current?.contains(target)) setOpen(false);
+      if (target instanceof Node && !menuRef.current?.contains(target)) {
+        setOpen(false);
+        setUnitPickerOpen(false);
+      }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
       setOpen(false);
+      setUnitPickerOpen(false);
       window.requestAnimationFrame(() => triggerRef.current?.focus({ preventScroll: true }));
     };
     document.addEventListener('pointerdown', closeOutside);
@@ -96,16 +120,35 @@ export const WorkspaceUtilities = ({ onOpenInspector }: { onOpenInspector: (trig
     await shareOrDownloadPortableBytes(artifact.bytes, artifact.filename, 'application/pdf', project.name);
   };
 
-  const updateUnits = (units: UnitSystemId) => updateProjectView((draft) => ({
-    ...draft,
-    settings: { ...draft.settings, units },
-  }));
+  const updateUnits = (units: UnitSystemId) => {
+    updateProjectView((draft) => ({ ...draft, settings: { ...draft.settings, units } }));
+    setUnitPickerOpen(false);
+  };
   const openSurface = (command: 'open-datasheet' | 'open-view-settings') => {
     emitWorkspaceCommand(command);
     setOpen(false);
   };
+  const openTool = (tool: 'pointLoad' | 'distributedLoad' | 'moment') => {
+    setActiveTool(tool);
+    setOpen(false);
+  };
+  const openCommand = (command: 'open-analysis-setup' | 'open-structural-bom' | 'open-model-doctor') => {
+    emitWorkspaceCommand(command);
+    setOpen(false);
+  };
+  const openAssistant = () => {
+    emitWorkspaceCommand('open-local-assistant', { trigger: triggerRef.current });
+    setOpen(false);
+  };
 
   const themeLabel = t(theme === 'dark' ? 'theme.light' : 'theme.dark');
+  const unitOptions: Array<{ id: UnitSystemId; label: string }> = [
+    { id: 'kN-m', label: 'kN · m' },
+    { id: 'N-mm', label: 'N · mm' },
+    { id: 'kgf-m', label: 'kgf · m' },
+    { id: 'kip-ft', label: 'kip · ft' },
+  ];
+  const selectedUnit = unitOptions.find((item) => item.id === project.settings.units) ?? unitOptions[0];
   return <div className="workspace-utilities" ref={menuRef}>
     <button
       ref={triggerRef}
@@ -122,29 +165,66 @@ export const WorkspaceUtilities = ({ onOpenInspector }: { onOpenInspector: (trig
         <div><strong>{t('topbar.utilities')}</strong><span>{t('workspace.utilitiesSubtitle')}</span></div>
         <button type="button" onClick={() => setOpen(false)} aria-label={t('toolbar.close')}><X size={17} aria-hidden="true" /></button>
       </header>
-      <div className="workspace-utilities__actions">
-        <button type="button" onClick={() => void openPdf()} disabled={preparingPdf}>
-          <FileText size={17} aria-hidden="true" /><span><strong>{preparingPdf ? t('workspace.utilityPdfPreparing') : t('portable.previewLabel')}</strong><small>{t('workspace.utilityPdfDescription')}</small></span>
-        </button>
-        <button type="button" onClick={() => openSurface('open-datasheet')}>
-          <Sheet size={17} aria-hidden="true" /><span><strong>{t('datasheet.title')}</strong><small>{t('workspace.utilityDatasheetDescription')}</small></span>
-        </button>
-        <button type="button" onClick={(event) => { onOpenInspector(event.currentTarget); setOpen(false); }}>
-          <PanelRight size={17} aria-hidden="true" /><span><strong>{t('inspector.open')}</strong><small>{t('workspace.utilityInspectorDescription')}</small></span>
-        </button>
-        <button type="button" onClick={() => openSurface('open-view-settings')}>
-          <Layers3 size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityLayers')}</strong><small>{t('workspace.utilityLayersDescription')}</small></span>
-        </button>
-      </div>
-      <label className="workspace-utilities__units">
+      <section className="workspace-utilities__section" aria-label={t('workspace.utilityModelSection')}>
+        <span className="workspace-utilities__section-label">{t('workspace.utilityModelSection')}</span>
+        <div className="workspace-utilities__actions">
+          <button className="workspace-utilities__action is-featured" type="button" onClick={() => void openPdf()} disabled={preparingPdf}>
+            <FileText size={18} aria-hidden="true" /><span><strong>{preparingPdf ? t('workspace.utilityPdfPreparing') : t('portable.previewLabel')}</strong><small>{t('workspace.utilityPdfDescription')}</small></span>
+          </button>
+          <button className="workspace-utilities__action" type="button" onClick={() => openSurface('open-datasheet')}>
+            <Sheet size={17} aria-hidden="true" /><span><strong>{t('datasheet.title')}</strong><small>{t('workspace.utilityDatasheetDescription')}</small></span>
+          </button>
+          <button className="workspace-utilities__action" type="button" onClick={() => openCommand('open-structural-bom')}>
+            <ClipboardList size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityBom')}</strong><small>{t('workspace.utilityBomDescription')}</small></span>
+          </button>
+          <button className="workspace-utilities__action" type="button" onClick={(event) => { onOpenInspector(event.currentTarget); setOpen(false); }}>
+            <PanelRight size={17} aria-hidden="true" /><span><strong>{t('inspector.open')}</strong><small>{t('workspace.utilityInspectorDescription')}</small></span>
+          </button>
+          <button className="workspace-utilities__action" type="button" onClick={() => openSurface('open-view-settings')}>
+            <Eye size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityLayers')}</strong><small>{t('workspace.utilityLayersDescription')}</small></span>
+          </button>
+          <button className="workspace-utilities__action" type="button" onClick={() => openCommand('open-model-doctor')}>
+            <Stethoscope size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityDoctor')}</strong><small>{t('workspace.utilityDoctorDescription')}</small></span>
+          </button>
+          <button className="workspace-utilities__action" type="button" onClick={openAssistant}>
+            <Sparkles size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityAssistant')}</strong><small>{t('workspace.utilityAssistantDescription')}</small></span>
+          </button>
+        </div>
+      </section>
+      <section className="workspace-utilities__section" aria-label={t('workspace.utilityLoadsSection')}>
+        <div className="workspace-utilities__section-heading">
+          <span className="workspace-utilities__section-label">{t('workspace.utilityLoadsSection')}</span>
+          <button type="button" className="workspace-utilities__setup" onClick={() => openCommand('open-analysis-setup')}>
+            <SlidersHorizontal size={15} aria-hidden="true" />{t('workspace.utilityLoadSetup')}
+          </button>
+        </div>
+        <div className="workspace-utilities__load-actions" aria-label={t('toolbar.loads')}>
+          <button type="button" onClick={() => openTool('pointLoad')}><MoveDown size={17} aria-hidden="true" /><span>{t('toolbar.pointLoad')}</span></button>
+          <button type="button" onClick={() => openTool('distributedLoad')}><Sigma size={17} aria-hidden="true" /><span>{t('toolbar.distributedLoad')}</span></button>
+          <button type="button" onClick={() => openTool('moment')}><RotateCcw size={17} aria-hidden="true" /><span>{t('toolbar.moment')}</span></button>
+        </div>
+      </section>
+      <div className="workspace-utilities__units">
         <span>{t('units.label')}</span>
-        <select value={project.settings.units} onChange={(event) => updateUnits(event.currentTarget.value as UnitSystemId)}>
-          <option value="kN-m">kN · m</option>
-          <option value="N-mm">N · mm</option>
-          <option value="kgf-m">kgf · m</option>
-          <option value="kip-ft">kip · ft</option>
-        </select>
-      </label>
+        <div className="workspace-utilities__unit-picker">
+          <button
+            type="button"
+            className="workspace-utilities__unit-trigger"
+            aria-haspopup="listbox"
+            aria-expanded={unitPickerOpen}
+            onClick={() => setUnitPickerOpen((current) => !current)}
+          >{selectedUnit.label}<ChevronDown size={15} aria-hidden="true" /></button>
+          {unitPickerOpen ? <div className="workspace-utilities__unit-options" role="listbox" aria-label={t('units.label')}>
+            {unitOptions.map((unit) => <button
+              key={unit.id}
+              type="button"
+              role="option"
+              aria-selected={unit.id === project.settings.units}
+              onClick={() => updateUnits(unit.id)}
+            ><span>{unit.label}</span>{unit.id === project.settings.units ? <Check size={15} aria-hidden="true" /> : null}</button>)}
+          </div> : null}
+        </div>
+      </div>
       <div className="workspace-utilities__footer">
         <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
           {theme === 'dark' ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />} {themeLabel}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
@@ -82,7 +82,29 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
   const [dxfOpen, setDxfOpen] = useState(false);
   const [exerciseOpen, setExerciseOpen] = useState(false);
   const [exerciseTemplate, setExerciseTemplate] = useState<ClassroomExerciseTemplateId>('blank');
+  const homeRef = useRef<HTMLElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  /* Algunos webviews de Safari ignoran el ancho visual para las media queries
+     durante el primer layout y renderizan la portada como si tuviera 980px.
+     El tamaño físico de `screen` sigue siendo correcto. Marcamos sólo esta
+     pantalla antes de pintar para que el contrato táctil del CSS no dependa de
+     esa lectura errónea de WebKit. */
+  useLayoutEffect(() => {
+    const syncCompactViewport = () => {
+      const visualWidth = window.visualViewport?.width ?? window.innerWidth;
+      const screenWidth = window.screen?.width ?? window.innerWidth;
+      const compact = Math.min(window.innerWidth, visualWidth, screenWidth) <= 760;
+      homeRef.current?.toggleAttribute('data-compact-viewport', compact);
+    };
+    syncCompactViewport();
+    window.addEventListener('resize', syncCompactViewport);
+    window.visualViewport?.addEventListener('resize', syncCompactViewport);
+    return () => {
+      window.removeEventListener('resize', syncCompactViewport);
+      window.visualViewport?.removeEventListener('resize', syncCompactViewport);
+    };
+  }, []);
 
   const navigate = (next: WelcomeView) => {
     setView(next);
@@ -148,7 +170,7 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
             </div></section>;
 
   return <>
-    <main className="sc-home" data-testid="solver2d-welcome">
+    <main ref={homeRef} className="sc-home" data-testid="solver2d-welcome">
       <header className="sc-home-console">
         <button type="button" className="sc-home-wordmark" onClick={() => navigate('home')} aria-label={text.backHome}><FStructureMark size={24} /><strong>{SOLVER_2D.name}</strong><span>{SOLVER_2D.product}</span></button>
         {renderNavigation()}
