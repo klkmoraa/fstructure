@@ -1,5 +1,5 @@
 import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, Undo2 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FStructureMark } from '../../design-system/brand';
 
 /**
@@ -56,6 +56,8 @@ export interface WorkspaceTopBarProps {
   onAnalyze: () => void;
   /** Alterna Resultados. Recibe el disparador para que el foco vuelva a él. */
   onOpenResults: (trigger: HTMLElement | null) => void;
+  /** Acciones secundarias del espacio: exportación, tema, unidades y hojas. */
+  utilities?: ReactNode;
 }
 
 /**
@@ -81,6 +83,7 @@ export const WorkspaceTopBar = ({
   onRedo,
   onAnalyze,
   onOpenResults,
+  utilities,
 }: WorkspaceTopBarProps) => {
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
   const [draftName, setDraftName] = useState(projectName);
@@ -199,6 +202,7 @@ export const WorkspaceTopBar = ({
           </button>
         </div>
       </div>
+      {utilities}
       <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
         <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>
           <Play size={17} fill="currentColor" aria-hidden="true" />

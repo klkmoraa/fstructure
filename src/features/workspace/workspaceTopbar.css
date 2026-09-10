@@ -375,6 +375,206 @@
   text-overflow: ellipsis;
 }
 
+/* Utilidades -------------------------------------------------------------
+   El inspector se reserva para el objeto elegido. Este panel es la casa de
+   operaciones del documento (PDF, hojas), de la vista y de las unidades, por
+   lo que nunca hay que abrir un panel de propiedades para encontrarlas. */
+.workspace-utilities {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.workspace-utilities__trigger.is-active {
+  border-color: var(--sc-color-border-strong);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--sc-color-text-primary);
+}
+
+.workspace-utilities__panel {
+  position: absolute;
+  z-index: calc(var(--sc-z-topbar, 30) + 4);
+  top: calc(100% + 9px);
+  right: 0;
+  width: min(342px, calc(100vw - 20px));
+  display: grid;
+  gap: 11px;
+  padding: 12px;
+  border: var(--sc-depth-raised-border);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-lg);
+  color: var(--sc-color-text-primary);
+}
+
+.workspace-utilities__panel > header {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workspace-utilities__panel > header > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.workspace-utilities__panel > header strong {
+  font-size: var(--sc-font-size-control);
+  font-weight: var(--sc-font-weight-bold);
+}
+
+.workspace-utilities__panel > header span,
+.workspace-utilities__actions small {
+  color: var(--sc-color-text-muted);
+  font-size: var(--sc-font-size-caption);
+  line-height: 1.3;
+}
+
+.workspace-utilities__panel > header > button {
+  width: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-elevated);
+  color: var(--sc-color-text-secondary);
+}
+
+.workspace-utilities__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.workspace-utilities__actions > button {
+  min-width: 0;
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+  color: var(--sc-color-text-secondary);
+  text-align: left;
+  transition: background-color var(--sc-motion-control) var(--sc-ease-standard), border-color var(--sc-motion-control) var(--sc-ease-standard), box-shadow var(--sc-motion-control) var(--sc-ease-standard), color var(--sc-motion-control) var(--sc-ease-standard);
+}
+
+.workspace-utilities__actions > button > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.workspace-utilities__actions strong {
+  overflow: hidden;
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-utilities__actions > button:hover:not(:disabled),
+.workspace-utilities__actions > button:focus-visible {
+  border-color: color-mix(in srgb, var(--sc-color-action-primary) 46%, var(--sc-color-border));
+  background: var(--sc-color-surface-elevated);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--sc-color-text-primary);
+}
+
+.workspace-utilities__actions > button:active:not(:disabled),
+.workspace-utilities__panel > header > button:active,
+.workspace-utilities__footer button:active {
+  box-shadow: var(--sc-shadow-pressed);
+  transform: none;
+}
+
+.workspace-utilities__actions > button:disabled { opacity: .56; }
+
+.workspace-utilities__units {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 8px 6px 11px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.workspace-utilities__units > span {
+  color: var(--sc-color-text-secondary);
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+.workspace-utilities__units select {
+  min-width: 112px;
+  min-height: 32px;
+  padding: 0 28px 0 9px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-elevated);
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+.workspace-utilities__footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workspace-utilities__footer button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-elevated);
+  color: var(--sc-color-text-secondary);
+  font: inherit;
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+.workspace-utilities__footer button:first-child { margin-right: auto; }
+.workspace-utilities__footer button:hover,
+.workspace-utilities__footer button:focus-visible,
+.workspace-utilities__panel > header > button:hover,
+.workspace-utilities__panel > header > button:focus-visible {
+  border-color: var(--sc-color-border);
+  background: var(--sc-color-surface-2);
+  color: var(--sc-color-text-primary);
+}
+
+.workspace-utilities__error {
+  margin: 0;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--sc-color-state-error) 36%, var(--sc-color-border));
+  border-radius: var(--sc-radius-sm);
+  background: color-mix(in srgb, var(--sc-color-state-error) 8%, var(--sc-color-surface-1));
+  color: var(--sc-color-state-error-foreground);
+  font-size: var(--sc-font-size-caption);
+  line-height: 1.35;
+}
+
 @media (max-width: 760px) {
   /* `viewport-fit=cover` means the physical top edge can sit under the status
      bar; keep the safe area in both the height contract and the padding. */
@@ -448,6 +648,16 @@
 
   .workspace-topbar__action-button.is-primary {
     min-width: 40px;
+  }
+
+  .workspace-utilities__panel {
+    position: fixed;
+    top: calc(var(--topbar-h) + 7px);
+    right: max(8px, env(safe-area-inset-right));
+    width: min(358px, calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    max-height: calc(100dvh - var(--topbar-h) - 18px - env(safe-area-inset-bottom));
+    overflow: auto;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
   }
 }
 
