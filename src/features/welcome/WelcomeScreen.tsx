@@ -40,7 +40,7 @@ const copy = {
     navigation: 'Navegación de FStructure', home: 'Inicio', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar',
     backHome: 'Volver a la bienvenida', menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', search: 'Buscar', searchPlaceholder: 'Buscar proyectos o accesos…', clearSearch: 'Borrar búsqueda', language: 'Idioma',
     projectsTitle: 'Tus proyectos', projectsBody: 'Abre, renombra, duplica o recupera el trabajo guardado en este dispositivo.',
-    templatesTitle: 'Elige una estructura de partida', templatesBody: 'Abre un modelo preparado y adáptalo a tu caso.',
+    templatesTitle: 'Elige una estructura de partida', templatesBody: 'Abre un modelo preparado y adáptalo a tu caso.', openTemplate: 'Abrir plantilla',
     classroomTitle: 'Aprende resolviendo una estructura', classroomBody: 'Elige un caso y entra al mismo editor con una guía activa.', classroomAction: 'Crear desde cero', classroomCases: 'Casos preparados',
     libraryTitle: 'Biblioteca personal', libraryBody: 'Secciones, miembros y vistas que guardaste para reutilizar.',
     importTitle: 'Trae un modelo', importBody: 'Revisa el archivo antes de modificar el proyecto abierto.', importPortable: 'Expediente o proyecto JSON', importPortableBody: 'Inspecciona el contenido antes de reemplazar el proyecto.', importDxf: 'Geometría DXF', importDxfBody: 'Vista previa de LINE y LWPOLYLINE 2D antes de agregarlas.',
@@ -49,7 +49,7 @@ const copy = {
     navigation: 'FStructure navigation', home: 'Home', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import',
     backHome: 'Back to welcome', menu: 'Open navigation', closeMenu: 'Close navigation', search: 'Search', searchPlaceholder: 'Search projects or shortcuts…', clearSearch: 'Clear search', language: 'Language',
     projectsTitle: 'Your projects', projectsBody: 'Open, rename, duplicate, or recover work saved on this device.',
-    templatesTitle: 'Choose a starting structure', templatesBody: 'Open a prepared model and adapt it to your case.',
+    templatesTitle: 'Choose a starting structure', templatesBody: 'Open a prepared model and adapt it to your case.', openTemplate: 'Open template',
     classroomTitle: 'Learn by solving a structure', classroomBody: 'Choose a case and enter the same editor with guidance active.', classroomAction: 'Start from scratch', classroomCases: 'Prepared cases',
     libraryTitle: 'Personal library', libraryBody: 'Sections, members, and views saved for reuse.',
     importTitle: 'Bring in a model', importBody: 'Review the file before changing the open project.', importPortable: 'Record or JSON project', importPortableBody: 'Inspect its content before replacing the project.', importDxf: 'DXF geometry', importDxfBody: 'Preview 2D LINE and LWPOLYLINE before adding them.',
@@ -159,7 +159,7 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
     : view === 'projects' ? <section className="sc-home-view" aria-label={text.projects}>{heading(text.projectsTitle, text.projectsBody)}<ProjectHub filter={searchQuery} onOpen={(record) => openProject(record.project, undefined, record.revision)} /></section>
       : view === 'templates' ? <section className="sc-home-view" aria-label={text.templates}>{heading(text.templatesTitle, text.templatesBody)}<div className="sc-home-template-grid">{visibleExamples.map((example) => {
         const presented = presentExample(example.name, example.description, t);
-        return <button key={example.name} type="button" onClick={() => openProject(example.build())}><ThreeStructuralImage assetId={assetForExample(example.name)} theme={theme} render="vector" /><strong>{presented.name}</strong><span>{presented.description}</span></button>;
+        return <button key={example.name} type="button" onClick={() => openProject(example.build())}><ThreeStructuralImage assetId={assetForExample(example.name)} theme={theme} render="three" /><strong>{presented.name}</strong><span>{presented.description}</span><span className="sc-home-template-card__action">{text.openTemplate}<ArrowRight size={14} aria-hidden="true" /></span></button>;
       })}</div></section>
         : view === 'library' ? <section className="sc-home-view" aria-label={text.library}>{heading(text.libraryTitle, text.libraryBody)}<PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} /></section>
           : view === 'classroom' ? <section className="sc-home-classroom" aria-label={text.classroom}>

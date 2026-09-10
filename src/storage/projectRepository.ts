@@ -3,11 +3,15 @@ import { normalizeProject } from '../data/migrate';
 import { PROJECT_STORAGE_KEY, type StorageLike } from '../data/projectStorage';
 import type { ProjectModel } from '../types';
 import { createId } from '../utils/id';
+import type { AnalysisRunRecord } from './analysisRuns';
+
+export type { AnalysisRunRecord, AnalysisRunSnapshot } from './analysisRuns';
 
 const DATABASE_NAME = 'structureCo.projects';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 const PROJECTS_STORE = 'projects';
 const RECOVERIES_STORE = 'recoveries';
+const ANALYSIS_RUNS_STORE = 'analysisRuns';
 const META_STORE = 'meta';
 /** Cross-tab notification only; project data remains in IndexedDB. */
 export const PROJECT_LIBRARY_CHANGE_KEY = 'structureCo.project-library.changed';
@@ -47,6 +51,9 @@ export interface ProjectRepository {
   renameProject(id: string, name: string): Promise<StoredProjectRecord>;
   duplicateProject(id: string, name: string): Promise<StoredProjectRecord>;
   deleteProject(id: string): Promise<void>;
+  listAnalysisRuns(projectId: string): Promise<AnalysisRunRecord[]>;
+  saveAnalysisRun(record: AnalysisRunRecord): Promise<AnalysisRunRecord>;
+  deleteAnalysisRun(id: string): Promise<void>;
   createRecovery(project: ProjectModel, reason: RecoveryRecord['reason'], label?: string): Promise<RecoveryRecord>;
   listRecoveries(projectId?: string): Promise<RecoveryRecord[]>;
   restoreRecovery(id: string): Promise<StoredProjectRecord>;
@@ -95,9 +102,18 @@ const recoveryRecord = async (project: ProjectModel, reason: RecoveryRecord['rea
   };
 };
 
+const validateAnalysisRunRecord = (record: AnalysisRunRecord): void => {
+  if (!record.id.trim()) throw new Error('La corrida necesita un identificador.');
+  if (!record.label.trim()) throw new Error('La corrida necesita un nombre.');
+  if (record.projectId !== record.snapshot.project.id) {
+    throw new Error('La corrida no coincide con el proyecto de su snapshot.');
+  }
+};
+
 export class InMemoryProjectRepository implements ProjectRepository {
   private readonly projects = new Map<string, StoredProjectRecord>();
   private readonly recoveries = new Map<string, RecoveryRecord>();
+  private readonly analysisRuns = new Map<string, AnalysisRunRecord>();
   private readonly meta = new Map<string, string>();
   private writeChain: Promise<void> = Promise.resolve();
 
@@ -151,6 +167,27 @@ export class InMemoryProjectRepository implements ProjectRepository {
 
   async deleteProject(id: string) {
     if (!this.projects.delete(id)) throw new Error(`No existe el proyecto ${id}.`);
+    for (const [runId, run] of this.analysisRuns) {
+      if (run.projectId === id) this.analysisRuns.delete(runId);
+    }
+  }
+
+  async listAnalysisRuns(projectId: string) {
+    return [...this.analysisRuns.values()]
+      .filter((record) => record.projectId === projectId)
+      .map((record) => structuredClone(record))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async saveAnalysisRun(record: AnalysisRunRecord) {
+    validateAnalysisRunRecord(record);
+    if (this.analysisRuns.has(record.id)) throw new Error(`La corrida ${record.id} ya existe y es inmutable.`);
+    this.analysisRuns.set(record.id, structuredClone(record));
+    return structuredClone(record);
+  }
+
+  async deleteAnalysisRun(id: string) {
+    if (!this.analysisRuns.delete(id)) throw new Error(`No existe la corrida ${id}.`);
   }
 
   async createRecovery(project: ProjectModel, reason: RecoveryRecord['reason'], label?: string) {
@@ -221,6 +258,7 @@ export class IndexedDbProjectRepository implements ProjectRepository {
         const database = request.result;
         if (!database.objectStoreNames.contains(PROJECTS_STORE)) database.createObjectStore(PROJECTS_STORE, { keyPath: 'id' });
         if (!database.objectStoreNames.contains(RECOVERIES_STORE)) database.createObjectStore(RECOVERIES_STORE, { keyPath: 'id' });
+        if (!database.objectStoreNames.contains(ANALYSIS_RUNS_STORE)) database.createObjectStore(ANALYSIS_RUNS_STORE, { keyPath: 'id' });
         if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE, { keyPath: 'key' });
       };
       request.onsuccess = () => resolve(request.result);
@@ -300,13 +338,55 @@ export class IndexedDbProjectRepository implements ProjectRepository {
 
   async deleteProject(id: string) {
     const database = await this.database();
-    const transaction = database.transaction(PROJECTS_STORE, 'readwrite');
+    const transaction = database.transaction([PROJECTS_STORE, ANALYSIS_RUNS_STORE], 'readwrite');
     const done = transactionDone(transaction);
-    const store = transaction.objectStore(PROJECTS_STORE);
-    const existing = await requestResult(store.get(id) as IDBRequest<StoredProjectRecord | undefined>);
+    const projectStore = transaction.objectStore(PROJECTS_STORE);
+    const runStore = transaction.objectStore(ANALYSIS_RUNS_STORE);
+    const existing = await requestResult(projectStore.get(id) as IDBRequest<StoredProjectRecord | undefined>);
     if (!existing) {
       await done;
       throw new Error(`No existe el proyecto ${id}.`);
+    }
+    const runs = await requestResult(runStore.getAll() as IDBRequest<AnalysisRunRecord[]>);
+    projectStore.delete(id);
+    for (const run of runs) if (run.projectId === id) runStore.delete(run.id);
+    await done;
+  }
+
+  async listAnalysisRuns(projectId: string) {
+    const database = await this.database();
+    const transaction = database.transaction(ANALYSIS_RUNS_STORE, 'readonly');
+    const done = transactionDone(transaction);
+    const records = await requestResult(transaction.objectStore(ANALYSIS_RUNS_STORE).getAll() as IDBRequest<AnalysisRunRecord[]>);
+    await done;
+    return records.filter((record) => record.projectId === projectId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async saveAnalysisRun(record: AnalysisRunRecord) {
+    validateAnalysisRunRecord(record);
+    const database = await this.database();
+    const transaction = database.transaction(ANALYSIS_RUNS_STORE, 'readwrite');
+    const done = transactionDone(transaction);
+    const store = transaction.objectStore(ANALYSIS_RUNS_STORE);
+    const existing = await requestResult(store.get(record.id) as IDBRequest<AnalysisRunRecord | undefined>);
+    if (existing) {
+      await done;
+      throw new Error(`La corrida ${record.id} ya existe y es inmutable.`);
+    }
+    store.add(structuredClone(record));
+    await done;
+    return structuredClone(record);
+  }
+
+  async deleteAnalysisRun(id: string) {
+    const database = await this.database();
+    const transaction = database.transaction(ANALYSIS_RUNS_STORE, 'readwrite');
+    const done = transactionDone(transaction);
+    const store = transaction.objectStore(ANALYSIS_RUNS_STORE);
+    const existing = await requestResult(store.get(id) as IDBRequest<AnalysisRunRecord | undefined>);
+    if (!existing) {
+      await done;
+      throw new Error(`No existe la corrida ${id}.`);
     }
     store.delete(id);
     await done;

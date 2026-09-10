@@ -166,7 +166,7 @@ export const renderPortalAssetDataUrl = async (assetId: PortalAssetId, theme: St
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = theme === 'day' ? 1.18 : 1.08;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
   const group = buildPortalGroup(assetId, theme);

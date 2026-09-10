@@ -1,5 +1,8 @@
 import { analysisSignature } from '../../engine/projectSignature';
 import type { AnalysisResult, ProjectModel } from '../../types';
+import type { AnalysisRunRecord, AnalysisRunSnapshot } from '../../storage/analysisRuns';
+
+export type RevisionSnapshot = AnalysisRunSnapshot;
 
 export type RevisionAnalysisState = 'fresh' | 'stale' | 'missing';
 export type RevisionChangeDomain = 'input' | 'state' | 'result';
@@ -21,21 +24,9 @@ export type RevisionComparisonWarningCode =
   | 'limited-reliability'
   | 'correlation-not-causality';
 
-export interface RevisionAnalysisBinding {
-  result: AnalysisResult;
-  projectSignature: string;
-  resultDigest: string;
-  scenarioId: string;
-}
+export type RevisionAnalysisBinding = NonNullable<AnalysisRunSnapshot['analysis']>;
 
-export interface RevisionSnapshot {
-  schemaVersion: 1;
-  kind: 'fusionstructure-revision-snapshot';
-  revisionId: string;
-  capturedAt: string;
-  project: ProjectModel;
-  analysis: RevisionAnalysisBinding | null;
-}
+export const revisionSnapshotFromAnalysisRun = (record: AnalysisRunRecord): RevisionSnapshot => structuredClone(record.snapshot);
 
 export interface RevisionChange {
   changeId: string;

@@ -22,6 +22,7 @@ import { NumericCertificateCard } from './NumericCertificateCard';
 import type { ResultRef } from './provenance';
 import { useModelStudies } from '../../engine/useModelStudies';
 import { StabilityStudiesCard } from './StabilityStudiesCard';
+import { ParametricStudyCard } from './ParametricStudyCard';
 
 const diagramTab: Record<DiagramQuantity, ResultTab> = { axial: 'axial', shear: 'shear', moment: 'moment' };
 const diagramSymbol: Record<DiagramQuantity, string> = { axial: 'N', shear: 'V', moment: 'M' };
@@ -123,6 +124,7 @@ export const ResultSummary = () => {
     <NumericQualityCard analysis={analysis} />
     <NumericCertificateCard {...certificate} />
     <StabilityStudiesCard studies={studies} />
+    <ParametricStudyCard />
     <NtcSteelDesignCard />
     {analysis.pDelta ? <section className="p-delta-summary" aria-label={t('pdelta.summaryTitle')}>
       <strong>{t('pdelta.summaryTitle')} <span className="experimental-badge">{t('pdelta.experimental')}</span></strong>

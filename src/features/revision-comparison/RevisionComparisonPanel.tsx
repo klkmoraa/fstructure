@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Camera, GitCompareArrows, LocateFixed, RotateCcw, Trash2, TriangleAlert } from 'lucide-react';
+import { Camera, GitCompareArrows, LocateFixed, RotateCcw, Save, Trash2, TriangleAlert } from 'lucide-react';
 import { Button } from '../../design-system/components/controls';
 import { Drawer } from '../../design-system/components/overlays';
 import type { TranslationKey } from '../../i18n/catalogs';
@@ -8,11 +8,15 @@ import { useProjectAnalysis, useProjectModel } from '../../store/ProjectContext'
 import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
 import type { Selection } from '../../types';
 import { formatMachineNumber } from '../../utils/numberFormat';
+import { resolveReliability } from '../../engine/reliability';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
 import type { SurfacePresentation } from '../workspace/surfacePresentation';
+import { createId } from '../../utils/id';
+import { getProjectRepository, type AnalysisRunRecord, type ProjectRepository } from '../../storage/projectRepository';
 import {
   buildRevisionComparison,
   captureRevisionSnapshot,
+  revisionSnapshotFromAnalysisRun,
   type RevisionChange,
   type RevisionChangeCategory,
   type RevisionChangeDomain,
@@ -34,6 +38,8 @@ export interface RevisionComparisonPanelProps {
   onRestore?: () => void;
   baseline: RevisionSnapshot | null;
   onBaselineChange: (snapshot: RevisionSnapshot | null) => void;
+  repository?: ProjectRepository | null;
+  captureSnapshot?: typeof captureRevisionSnapshot;
 }
 
 const warningKeys: Record<RevisionComparisonWarningCode, TranslationKey> = {
@@ -124,12 +130,20 @@ export const RevisionComparisonPanel = ({
   onRestore,
   baseline,
   onBaselineChange,
+  repository,
+  captureSnapshot = captureRevisionSnapshot,
 }: RevisionComparisonPanelProps) => {
   const { project } = useProjectModel();
   const { analysis, selectedCombinationId } = useProjectAnalysis();
   const { setSelection } = useWorkspaceUI();
-  const { t } = useI18n();
+  const { language, t } = useI18n();
+  const activeRepository = useMemo(() => repository ?? (typeof indexedDB === 'undefined' ? null : getProjectRepository()), [repository]);
   const [current, setCurrent] = useState<RevisionSnapshot | null>(null);
+  const [savedRuns, setSavedRuns] = useState<AnalysisRunRecord[]>([]);
+  const [runLabel, setRunLabel] = useState('');
+  const [runBusy, setRunBusy] = useState(false);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [runNotice, setRunNotice] = useState<string | null>(null);
   const [captureError, setCaptureError] = useState<string | null>(null);
   const [domain, setDomain] = useState<DomainFilter>('all');
   const [category, setCategory] = useState<CategoryFilter>('all');
@@ -139,11 +153,77 @@ export const RevisionComparisonPanel = ({
     let active = true;
     setCurrent(null);
     setCaptureError(null);
-    void captureRevisionSnapshot(project, analysis, selectedCombinationId)
+    void captureSnapshot(project, analysis, selectedCombinationId)
       .then((snapshot) => { if (active) setCurrent(snapshot); })
       .catch((error: unknown) => { if (active) setCaptureError(error instanceof Error ? error.message : 'capture-failed'); });
     return () => { active = false; };
-  }, [analysis, project, selectedCombinationId]);
+  }, [analysis, captureSnapshot, project, selectedCombinationId]);
+
+  useEffect(() => {
+    if (!open || !activeRepository) {
+      setSavedRuns([]);
+      return undefined;
+    }
+    let active = true;
+    setRunError(null);
+    setRunNotice(null);
+    void activeRepository.listAnalysisRuns(project.id)
+      .then((runs) => { if (active) setSavedRuns(runs); })
+      .catch(() => { if (active) setRunError(t('revision.runStorageFailed')); });
+    return () => { active = false; };
+  }, [activeRepository, open, project.id, t]);
+
+  const canSaveRun = current?.analysis
+    ? current.analysis.result.success && resolveReliability(current.analysis.result).usable
+    : false;
+
+  const saveRun = async () => {
+    const label = runLabel.trim();
+    if (!label) {
+      setRunError(t('revision.runNameRequired'));
+      setRunNotice(null);
+      return;
+    }
+    if (!current || !canSaveRun || !activeRepository) return;
+    setRunBusy(true);
+    setRunError(null);
+    setRunNotice(null);
+    try {
+      const record: AnalysisRunRecord = {
+        id: createId(),
+        projectId: project.id,
+        label,
+        createdAt: new Date().toISOString(),
+        snapshot: structuredClone(current),
+      };
+      await activeRepository.saveAnalysisRun(record);
+      setSavedRuns(await activeRepository.listAnalysisRuns(project.id));
+      setRunLabel('');
+      setRunNotice(t('revision.runSaved'));
+    } catch {
+      setRunError(t('revision.runStorageFailed'));
+    } finally {
+      setRunBusy(false);
+    }
+  };
+
+  const useSavedRun = (record: AnalysisRunRecord) => onBaselineChange(revisionSnapshotFromAnalysisRun(record));
+
+  const deleteSavedRun = async (record: AnalysisRunRecord) => {
+    if (!activeRepository) return;
+    setRunBusy(true);
+    setRunError(null);
+    setRunNotice(null);
+    try {
+      await activeRepository.deleteAnalysisRun(record.id);
+      setSavedRuns(await activeRepository.listAnalysisRuns(project.id));
+      setRunNotice(t('revision.runDeleted'));
+    } catch {
+      setRunError(t('revision.runStorageFailed'));
+    } finally {
+      setRunBusy(false);
+    }
+  };
 
   const comparison = useMemo(() => baseline && current ? buildRevisionComparison(baseline, current) : null, [baseline, current]);
   const visibleChanges = useMemo(() => comparison?.changes.filter((change) => {
@@ -191,6 +271,44 @@ export const RevisionComparisonPanel = ({
       data-input-changes={comparison?.summary.input.total ?? 0}
       data-result-changes={comparison?.summary.result.total ?? 0}
     >
+      <section className="revision-comparison__saved-runs" aria-labelledby="revision-saved-runs-title">
+        <header>
+          <div>
+            <h3 id="revision-saved-runs-title">{t('revision.savedRunsTitle')}</h3>
+            <p>{t('revision.savedRunsDescription')}</p>
+          </div>
+          <span className="revision-comparison__saved-runs-count">{savedRuns.length}</span>
+        </header>
+        <form className="revision-comparison__save-run" onSubmit={(event) => { event.preventDefault(); void saveRun(); }}>
+          <label>
+            <span>{t('revision.runNameLabel')}</span>
+            <input
+              value={runLabel}
+              onChange={(event) => setRunLabel(event.target.value)}
+              placeholder={t('revision.runNamePlaceholder')}
+              aria-label={t('revision.runNameLabel')}
+              disabled={runBusy || !activeRepository}
+            />
+          </label>
+          <Button type="submit" size="touch" disabled={runBusy || !activeRepository || !canSaveRun}>
+            <Save size={15} aria-hidden="true" />{t('revision.saveRun')}
+          </Button>
+        </form>
+        {runError ? <p className="revision-comparison__run-error" role="alert">{runError}</p> : null}
+        {runNotice ? <p className="revision-comparison__run-notice" role="status" aria-live="polite">{runNotice}</p> : null}
+        {savedRuns.length ? <ul className="revision-comparison__saved-run-list">
+          {savedRuns.map((record) => <li key={record.id}>
+            <div>
+              <strong>{record.label}</strong>
+              <time dateTime={record.createdAt}>{new Intl.DateTimeFormat(language === 'es' ? 'es-MX' : 'en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(record.createdAt))}</time>
+            </div>
+            <div className="revision-comparison__saved-run-actions">
+              <Button size="touch" variant="secondary" onClick={() => useSavedRun(record)} aria-label={t('revision.useRun', { label: record.label })}>{t('revision.useRunShort')}</Button>
+              <Button size="touch" variant="ghost" disabled={runBusy} onClick={() => void deleteSavedRun(record)} aria-label={t('revision.deleteRun', { label: record.label })}><Trash2 size={15} aria-hidden="true" />{t('revision.deleteRunShort')}</Button>
+            </div>
+          </li>)}
+        </ul> : <p className="revision-comparison__saved-runs-empty">{t('revision.savedRunsEmpty')}</p>}
+      </section>
       {!baseline ? <section className="revision-comparison__empty-state">
         <Camera size={28} aria-hidden="true" />
         <div><h3>{t('revision.noBaselineTitle')}</h3><p>{t('revision.noBaselineBody')}</p></div>

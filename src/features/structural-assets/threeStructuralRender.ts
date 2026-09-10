@@ -128,7 +128,7 @@ export const renderThreeStructuralAssetDataUrl = async (
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = theme === 'day' ? 1.16 : 1.06;
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
   const group = buildThreeStructuralGroup(assetId, theme);

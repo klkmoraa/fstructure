@@ -8,9 +8,10 @@ import type { ProjectModel } from '../types';
 import type { NumericCertificate } from '../engine/certificate';
 import type { BucklingResult } from '../engine/buckling';
 import type { ModalResult } from '../engine/modal';
+import type { ParametricStudyRequest, ParametricStudyResult } from '../engine/parametricStudy';
 
 export const WORKER_PROTOCOL_VERSION = 1 as const;
-export type WorkerDomain = 'analysis' | 'scenarios' | 'influence' | 'certificate' | 'studies';
+export type WorkerDomain = 'analysis' | 'scenarios' | 'influence' | 'certificate' | 'studies' | 'parametric';
 
 export interface WorkerRequestEnvelope<Domain extends WorkerDomain, Payload> {
   protocolVersion: typeof WORKER_PROTOCOL_VERSION;
@@ -69,3 +70,6 @@ export interface StudiesWorkerPayload { kind: StudyKind; project: ProjectModel; 
 export type StudiesWorkerResult =
   | { kind: 'buckling'; result: BucklingResult }
   | { kind: 'modal'; result: ModalResult };
+
+export type ParametricWorkerPayload = ParametricStudyRequest;
+export type ParametricWorkerResult = ParametricStudyResult;

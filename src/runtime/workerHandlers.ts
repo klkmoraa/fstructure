@@ -4,6 +4,7 @@ import { certifyResult } from '../engine/certificate';
 import { analyzeBuckling } from '../engine/buckling';
 import { analyzeModal } from '../engine/modal';
 import { handleAnalysisWorkerRequest } from '../engine/analysisWorkerProtocol';
+import { runParametricStudy } from '../engine/parametricStudy';
 import type { AnalysisResult, ProjectModel } from '../types';
 import {
   WORKER_PROTOCOL_VERSION,
@@ -14,6 +15,8 @@ import {
   type InfluenceWorkerResult,
   type StudiesWorkerPayload,
   type StudiesWorkerResult,
+  type ParametricWorkerPayload,
+  type ParametricWorkerResult,
   type WorkerDomain,
   type WorkerRequestEnvelope,
   type WorkerResponseEnvelope,
@@ -106,5 +109,22 @@ export const handleStudiesEnvelope = (
     return { protocolVersion: 1, type: 'success', domain: 'studies', requestId: request.requestId, result };
   } catch (error) {
     return domainError('studies', request.requestId, error, 'No se pudo completar el estudio del modelo.');
+  }
+};
+
+export const handleParametricEnvelope = (
+  request: WorkerRequestEnvelope<'parametric', ParametricWorkerPayload>,
+): WorkerResponseEnvelope<'parametric', ParametricWorkerResult> => {
+  if (request.protocolVersion !== WORKER_PROTOCOL_VERSION || request.domain !== 'parametric') return mismatch('parametric', request.requestId);
+  try {
+    return {
+      protocolVersion: 1,
+      type: 'success',
+      domain: 'parametric',
+      requestId: request.requestId,
+      result: runParametricStudy(request.payload),
+    };
+  } catch (error) {
+    return domainError('parametric', request.requestId, error, 'No se pudo completar el estudio paramétrico.');
   }
 };
