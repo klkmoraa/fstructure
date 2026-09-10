@@ -457,6 +457,7 @@ const WorkspaceBrokerContent = ({
         redo: t('history.redo'),
         analyze: t('analysis.run'),
         results: t('results.outputs'),
+        calculationExperience: t('inspector.calculationExperience'),
         actions: t('toolbar.primary'),
       }}
       onOpenHome={onOpenHome}
@@ -472,12 +473,13 @@ const WorkspaceBrokerContent = ({
       // con `aria-pressed`. Se usa el mismo comando que el riel de la consola,
       // que además devuelve el foco a quien lo pulsó.
       onOpenResults={(trigger) => emitWorkspaceCommand('toggle-results', { trigger })}
+      onOpenCalculationExperience={(trigger) => openSurface('analysisSetup', trigger)}
       utilities={<WorkspaceUtilities onOpenInspector={(trigger) => {
         // La utilidad abre una consulta contextual: en móvil empieza compacta
         // y el tirador del Inspector permite crecerla sólo si hace falta.
         setPreference('inspectorDetent', 'compact');
         openDetail(trigger);
-      }} />}
+      }} onOpenUnitsEditor={(trigger) => openSurface('view', trigger)} />}
     />}
     console={<Console
       layoutActions={{
@@ -503,8 +505,6 @@ const WorkspaceBrokerContent = ({
           }
           togglePreference('fullCanvas');
         },
-        onOpenAnalysisSetup: () => openSurface('analysisSetup'),
-        onOpenViewSettings: () => openSurface('view'),
       }}
     />}
     workspace={<>

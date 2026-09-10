@@ -406,6 +406,7 @@ export const esModeling = {
   'inspector.lengthUnit': 'Longitud',
   'inspector.applyCustomUnits': 'Aplicar perfil',
   'inspector.calculationExperience': 'Experiencia de cálculo',
+  'inspector.calculationExperienceDescription': 'Elige el nivel de acompañamiento para modelar, revisar y analizar.',
   'inspector.classroomEssentials': 'Solo lo esencial',
   'inspector.classroomEssentialsBody': 'Dibuja nodos, miembros, apoyos y cargas. La app asigna propiedades internas y muestra reacciones y N–V–M.',
   'inspector.classroomRigidityWarning': 'En estructuras hiperestáticas, el reparto sí depende de esas rigideces asumidas y se indicará como advertencia.',

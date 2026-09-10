@@ -406,6 +406,7 @@ export const enModeling = {
   'inspector.lengthUnit': 'Length',
   'inspector.applyCustomUnits': 'Apply profile',
   'inspector.calculationExperience': 'Calculation experience',
+  'inspector.calculationExperienceDescription': 'Choose how much guidance you want while modelling, reviewing, and analysing.',
   'inspector.classroomEssentials': 'Essentials only',
   'inspector.classroomEssentialsBody': 'Draw nodes, members, supports, and loads. The app assigns internal properties and shows reactions and N–V–M.',
   'inspector.classroomRigidityWarning': 'For statically indeterminate structures, the distribution depends on those assumed stiffnesses and will be shown as a warning.',

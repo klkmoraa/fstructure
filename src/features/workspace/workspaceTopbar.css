@@ -273,6 +273,7 @@
 /* Model history and results share one segmented surface; calculation remains
    visually decisive without changing the command it invokes. */
 .workspace-topbar__model-group,
+.workspace-topbar__experience-group,
 .workspace-topbar__calculate-group {
   min-height: 44px;
   display: flex;
@@ -283,6 +284,21 @@
   border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-inset);
   box-shadow: var(--sc-shadow-inset);
+}
+
+.workspace-topbar__experience-group {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--sc-color-action-primary) 28%, var(--sc-color-border-soft));
+  border-radius: var(--sc-radius-card);
+  background: color-mix(in srgb, var(--sc-color-action-primary) 7%, var(--sc-color-surface-inset));
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.workspace-topbar__experience-button {
+  color: var(--sc-color-action-primary);
 }
 
 .workspace-topbar__history-group,
@@ -602,10 +618,23 @@
   box-shadow: var(--sc-shadow-inset);
 }
 
-.workspace-utilities__units > span {
+.workspace-utilities__units-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-utilities__units-copy > span {
   color: var(--sc-color-text-secondary);
   font-size: var(--sc-font-size-caption);
   font-weight: var(--sc-font-weight-semibold);
+}
+
+.workspace-utilities__units-copy > small,
+.workspace-utilities__customize-units small {
+  color: var(--sc-color-text-muted);
+  font-size: 10px;
+  line-height: 1.25;
 }
 
 .workspace-utilities__unit-picker {
@@ -640,7 +669,8 @@
   z-index: 2;
   right: 0;
   bottom: calc(100% + 6px);
-  width: 148px;
+  width: 158px;
+  max-height: min(284px, calc(100dvh - var(--topbar-h, 62px) - 150px));
   display: grid;
   gap: 2px;
   padding: 5px;
@@ -648,6 +678,44 @@
   border-radius: var(--sc-radius-control);
   background: var(--sc-color-surface-1);
   box-shadow: var(--sc-shadow-lg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.workspace-utilities__customize-units {
+  grid-column: 1 / -1;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px dashed color-mix(in srgb, var(--sc-color-action-primary) 44%, var(--sc-color-border));
+  border-radius: var(--sc-radius-sm);
+  background: color-mix(in srgb, var(--sc-color-action-primary) 6%, var(--sc-color-surface-inset));
+  color: var(--sc-color-action-primary);
+  font: inherit;
+  text-align: left;
+}
+
+.workspace-utilities__customize-units > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.workspace-utilities__customize-units strong {
+  color: var(--sc-color-text-primary);
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-bold);
+}
+
+.workspace-utilities__customize-units:hover,
+.workspace-utilities__customize-units:focus-visible {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--sc-color-action-primary) 60%, var(--sc-color-border));
+  background: color-mix(in srgb, var(--sc-color-action-primary) 11%, var(--sc-color-surface-elevated));
+  box-shadow: var(--sc-shadow-raised);
 }
 
 .workspace-utilities__unit-options button {
@@ -700,6 +768,7 @@
 .workspace-utilities__footer button:first-child { margin-right: auto; }
 .workspace-utilities__footer button:hover,
 .workspace-utilities__footer button:focus-visible,
+.workspace-utilities__customize-units:focus-visible,
 .workspace-utilities__panel > header > button:hover,
 .workspace-utilities__panel > header > button:focus-visible {
   border-color: var(--sc-color-border);
@@ -778,6 +847,7 @@
   }
 
   .workspace-topbar__model-group,
+  .workspace-topbar__experience-group,
   .workspace-topbar__calculate-group {
     min-height: 44px;
     padding: 2px;

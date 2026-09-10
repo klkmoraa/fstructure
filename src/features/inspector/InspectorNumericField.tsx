@@ -24,6 +24,8 @@ export interface InspectorNumericFieldProps {
   language?: Language;
   emptyMessage?: string;
   invalidMessage?: string;
+  /** Las cargas pueden invertirse sin depender de que el teclado móvil exponga −. */
+  signed?: boolean;
 }
 
 const valuesAreEquivalent = (left: number, right: number) => (
@@ -47,6 +49,7 @@ export const InspectorNumericField = ({
   language = 'es',
   emptyMessage,
   invalidMessage,
+  signed = false,
 }: InspectorNumericFieldProps) => {
   const resolvedEmptyMessage = emptyMessage ?? (language === 'en'
     ? 'This field cannot be empty.'
@@ -125,6 +128,27 @@ export const InspectorNumericField = ({
     setError(undefined);
   };
 
+  const toggleSign = () => {
+    const draft = text.trim();
+    const nextText = draft.startsWith('-') ? draft.slice(1) : `-${draft || '0'}`;
+    const parsed = parseInspectorNumber(nextText);
+    const nextError = !parsed.ok
+      ? parsed.reason === 'empty' ? resolvedEmptyMessage : resolvedInvalidMessage
+      : validate?.(parsed.value);
+
+    if (!parsed.ok || nextError) {
+      setText(nextText);
+      setDirty(true);
+      setError(nextError ?? resolvedInvalidMessage);
+    } else {
+      setText(present(parsed.value));
+      setDirty(false);
+      setError(undefined);
+      if (!valuesAreEquivalent(parsed.value, value)) onCommit(parsed.value);
+    }
+
+  };
+
   const describedBy = [unitId, lockId, hintId, error ? errorId : undefined].filter(Boolean).join(' ') || undefined;
 
   return (
@@ -159,6 +183,17 @@ export const InspectorNumericField = ({
             onBlur={commitDraft}
             onKeyDown={handleKeyDown}
           />
+          {signed ? <button
+            type="button"
+            className="inspector-numeric-field__sign"
+            aria-label={language === 'en' ? 'Toggle sign' : 'Cambiar signo'}
+            title={language === 'en' ? 'Toggle sign' : 'Cambiar signo'}
+            disabled={isDisabled}
+            onMouseDown={(event) => {
+              if (document.activeElement === inputRef.current) event.preventDefault();
+            }}
+            onClick={toggleSign}
+          >±</button> : null}
           {unit ? <small id={unitId} className="inspector-numeric-field__unit">{unit}</small> : null}
         </div>
         {lockedReason ? <small id={lockId} className="field-help inspector-numeric-field__locked">{lockedReason}</small> : null}

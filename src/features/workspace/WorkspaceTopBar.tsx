@@ -1,4 +1,4 @@
-import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, Undo2 } from 'lucide-react';
+import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FStructureMark } from '../../design-system/brand';
 
@@ -37,6 +37,7 @@ export interface WorkspaceTopBarLabels {
   redo: string;
   analyze: string;
   results: string;
+  calculationExperience: string;
   actions: string;
 }
 
@@ -56,6 +57,8 @@ export interface WorkspaceTopBarProps {
   onAnalyze: () => void;
   /** Alterna Resultados. Recibe el disparador para que el foco vuelva a él. */
   onOpenResults: (trigger: HTMLElement | null) => void;
+  /** Abre el modo de trabajo, casos y combinaciones de cálculo. */
+  onOpenCalculationExperience?: (trigger: HTMLElement | null) => void;
   /** Acciones secundarias del espacio: exportación, tema, unidades y hojas. */
   utilities?: ReactNode;
 }
@@ -83,6 +86,7 @@ export const WorkspaceTopBar = ({
   onRedo,
   onAnalyze,
   onOpenResults,
+  onOpenCalculationExperience,
   utilities,
 }: WorkspaceTopBarProps) => {
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
@@ -202,6 +206,18 @@ export const WorkspaceTopBar = ({
           </button>
         </div>
       </div>
+      {onOpenCalculationExperience ? <div className="workspace-topbar__experience-group" data-workspace-group="calculation-experience">
+        <button
+          type="button"
+          className="workspace-topbar__action-button workspace-topbar__experience-button"
+          onClick={(event) => onOpenCalculationExperience(event.currentTarget)}
+          aria-label={labels.calculationExperience}
+          title={labels.calculationExperience}
+        >
+          <SlidersHorizontal size={17} aria-hidden="true" />
+          <span>{labels.calculationExperience}</span>
+        </button>
+      </div> : null}
       {utilities}
       <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
         <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>

@@ -22,6 +22,7 @@ const labels: WorkspaceTopBarLabels = {
   redo: 'Rehacer',
   analyze: 'Analizar',
   results: 'Resultados',
+  calculationExperience: 'Experiencia y cálculo',
   actions: 'Acciones del espacio de trabajo',
 };
 
@@ -165,6 +166,34 @@ describe('WorkspaceTopBar', () => {
     expect(control.getAttribute('aria-pressed')).toBe('true');
     await user.click(control);
     expect(onOpenResults).toHaveBeenCalledWith(control);
+  });
+
+  it('abre la experiencia y configuración de cálculo desde la barra superior', async () => {
+    const user = userEvent.setup();
+    const onOpenCalculationExperience = vi.fn();
+
+    render(
+      <WorkspaceTopBar
+        labels={labels}
+        projectName="Modelo"
+        storageState="ready"
+        analysisState="ready"
+        resultsOpen={false}
+        canUndo={false}
+        canRedo={false}
+        onOpenHome={vi.fn()}
+        onRenameProject={vi.fn()}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
+        onAnalyze={vi.fn()}
+        onOpenResults={vi.fn()}
+        onOpenCalculationExperience={onOpenCalculationExperience}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Experiencia y cálculo' }));
+
+    expect(onOpenCalculationExperience).toHaveBeenCalledOnce();
   });
 
   /**

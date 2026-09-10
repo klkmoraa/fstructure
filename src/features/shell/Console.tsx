@@ -1,8 +1,7 @@
-import { Eye, Maximize2, Minimize2, Moon, PanelRight, SlidersHorizontal, Sparkles, Sun } from 'lucide-react';
+import { Maximize2, Minimize2, Moon, PanelRight, Sun } from 'lucide-react';
 import { ToolRail } from '../canvas/ToolRail';
 import { useI18n } from '../../i18n/useI18n';
 import { useWorkspaceUI } from '../../store/ProjectContext';
-import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
 import './console.css';
 
 export interface ConsoleLayoutActions {
@@ -10,8 +9,6 @@ export interface ConsoleLayoutActions {
   fullCanvas: boolean;
   onToggleInspector: (trigger?: HTMLElement | null) => void;
   onToggleFullCanvas: () => void;
-  onOpenAnalysisSetup: () => void;
-  onOpenViewSettings: () => void;
 }
 
 /**
@@ -35,17 +32,6 @@ export const Console = ({ layoutActions }: {
 
   return <aside className="console" aria-label={t('toolbar.primary')}>
     <div className="console__body">
-      <div className="console__surfaces" role="group" aria-label={t('shell.surfaces')}>
-        <button type="button" onClick={layoutActions.onOpenAnalysisSetup} aria-label={t('inspector.analysisSetupLauncher')} title={t('inspector.analysisSetupLauncher')}>
-          <SlidersHorizontal size={18} /><Label>{t('inspector.analysisSetupLauncher')}</Label>
-        </button>
-        <button type="button" onClick={layoutActions.onOpenViewSettings} aria-label={t('inspector.viewTab')} title={t('inspector.viewTab')}>
-          <Eye size={18} /><Label>{t('inspector.viewTab')}</Label>
-        </button>
-        <button type="button" onClick={(event) => emitWorkspaceCommand('open-local-assistant', { trigger: event.currentTarget })} aria-label={t('assistant.localLabel')} title={t('assistant.localLabel')}>
-          <Sparkles size={18} /><Label>{t('assistant.localLabel')}</Label>
-        </button>
-      </div>
       <div className="console__tools"><ToolRail /></div>
     </div>
     <div className="console__foot">

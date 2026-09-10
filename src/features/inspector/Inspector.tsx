@@ -280,7 +280,11 @@ const AnalysisModePanel = () => {
   const { t } = useI18n();
   const setCalculationMode = (value: string) => updateProjectView((draft) => ({ ...draft, settings: { ...draft.settings, calculationMode: value as 'classroom' | 'complete' } }));
   return <section className="inspector-section calculation-mode-section">
-    <h3>{t('inspector.calculationExperience')}</h3>
+    <div className="calculation-mode-section__heading">
+      <span>{t('analysis.mode')}</span>
+      <h3>{t('inspector.calculationExperience')}</h3>
+      <p>{t('inspector.calculationExperienceDescription')}</p>
+    </div>
     <Segmented value={project.settings.calculationMode ?? 'complete'} options={[{ value: 'classroom', label: t('analysis.modeClassroom') }, { value: 'complete', label: t('analysis.modeComplete') }]} onChange={setCalculationMode} />
     {project.settings.calculationMode === 'classroom'
       ? <div className="classroom-mode-card"><strong>{t('inspector.classroomEssentials')}</strong><span>{t('inspector.classroomEssentialsBody')}</span><small>{t('inspector.classroomRigidityWarning')}</small></div>
@@ -541,13 +545,7 @@ const DisplayPanel = ({ includeCalculationMode = true }: { includeCalculationMod
   const base = (value: number, quantity: UnitQuantity) => fromDisplay(value, units, quantity);
   const setView = (patch: Partial<typeof view>) => updateProjectView((draft) => withCanvasViewSettings(draft, patch));
   return <>
-    {includeCalculationMode ? <section className="inspector-section calculation-mode-section">
-      <h3>{t('inspector.calculationExperience')}</h3>
-      <Segmented value={project.settings.calculationMode ?? 'complete'} options={[{ value: 'classroom', label: t('analysis.modeClassroom') }, { value: 'complete', label: t('analysis.modeComplete') }]} onChange={(value) => updateProjectView((draft) => ({ ...draft, settings: { ...draft.settings, calculationMode: value as 'classroom' | 'complete' } }))} />
-      {project.settings.calculationMode === 'classroom'
-        ? <div className="classroom-mode-card"><strong>{t('inspector.classroomEssentials')}</strong><span>{t('inspector.classroomEssentialsBody')}</span><small>{t('inspector.classroomRigidityWarning')}</small></div>
-        : <div className="inspector-note"><CircleHelp size={17} /> {t('inspector.completeModeDescription')}</div>}
-    </section> : null}
+    {includeCalculationMode ? <AnalysisModePanel /> : null}
     <UnitSystemEditor
       value={units}
       onChange={(value) => updateProjectView((draft) => ({

@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   MoveDown,
   PanelRight,
+  PencilRuler,
   RotateCcw,
   Sheet,
   Sigma,
@@ -22,7 +23,8 @@ import {
 import { APP_VERSION } from '../../appVersion';
 import { useI18n } from '../../i18n/useI18n';
 import { useProjectAnalysis, useProjectModel, useWorkspaceUI } from '../../store/ProjectContext';
-import type { UnitSystemId } from '../../foundation/units';
+import { isCustomUnitSystemId, type UnitSystemId } from '../../foundation/units';
+import { UNIT_SYSTEM_PROFILES, unitSystemLabel } from '../../engine/units';
 import type { CalculationReportOptions } from '../../utils/calculationPdf';
 import type { PdfPreviewArtifact } from '../pdf-preview/PdfPreviewDialog';
 import { emitWorkspaceCommand } from './workspaceCommands';
@@ -34,7 +36,13 @@ const LazyPdfPreviewDialog = lazy(() => import('../pdf-preview/PdfPreviewDialog'
  * belong to a selected element. Keeping them out of the Inspector means the
  * latter can remain a contextual editor instead of becoming a junk drawer.
  */
-export const WorkspaceUtilities = ({ onOpenInspector }: { onOpenInspector: (trigger?: HTMLElement | null) => void }) => {
+export const WorkspaceUtilities = ({
+  onOpenInspector,
+  onOpenUnitsEditor,
+}: {
+  onOpenInspector: (trigger?: HTMLElement | null) => void;
+  onOpenUnitsEditor?: (trigger?: HTMLElement | null) => void;
+}) => {
   const { project, updateProjectView } = useProjectModel();
   const { analysis, ensureEducationTrace, selectedCombinationId } = useProjectAnalysis();
   const { theme, setTheme, setActiveTool } = useWorkspaceUI();
@@ -142,13 +150,10 @@ export const WorkspaceUtilities = ({ onOpenInspector }: { onOpenInspector: (trig
   };
 
   const themeLabel = t(theme === 'dark' ? 'theme.light' : 'theme.dark');
-  const unitOptions: Array<{ id: UnitSystemId; label: string }> = [
-    { id: 'kN-m', label: 'kN · m' },
-    { id: 'N-mm', label: 'N · mm' },
-    { id: 'kgf-m', label: 'kgf · m' },
-    { id: 'kip-ft', label: 'kip · ft' },
-  ];
-  const selectedUnit = unitOptions.find((item) => item.id === project.settings.units) ?? unitOptions[0];
+  const unitOptions = UNIT_SYSTEM_PROFILES;
+  const selectedUnit = isCustomUnitSystemId(project.settings.units)
+    ? { id: project.settings.units, label: unitSystemLabel(project.settings.units) }
+    : unitOptions.find((item) => item.id === project.settings.units) ?? unitOptions[0];
   return <div className="workspace-utilities" ref={menuRef}>
     <button
       ref={triggerRef}
@@ -204,8 +209,11 @@ export const WorkspaceUtilities = ({ onOpenInspector }: { onOpenInspector: (trig
           <button type="button" onClick={() => openTool('moment')}><RotateCcw size={17} aria-hidden="true" /><span>{t('toolbar.moment')}</span></button>
         </div>
       </section>
-      <div className="workspace-utilities__units">
-        <span>{t('units.label')}</span>
+      <section className="workspace-utilities__units" aria-label={t('units.label')}>
+        <div className="workspace-utilities__units-copy">
+          <span>{t('units.label')}</span>
+          <small>{t('workspace.utilityUnitsDescription')}</small>
+        </div>
         <div className="workspace-utilities__unit-picker">
           <button
             type="button"
@@ -224,7 +232,19 @@ export const WorkspaceUtilities = ({ onOpenInspector }: { onOpenInspector: (trig
             ><span>{unit.label}</span>{unit.id === project.settings.units ? <Check size={15} aria-hidden="true" /> : null}</button>)}
           </div> : null}
         </div>
-      </div>
+        {onOpenUnitsEditor ? <button
+          type="button"
+          className="workspace-utilities__customize-units"
+          onClick={(event) => {
+            onOpenUnitsEditor(event.currentTarget);
+            setOpen(false);
+            setUnitPickerOpen(false);
+          }}
+        >
+          <PencilRuler size={16} aria-hidden="true" />
+          <span><strong>{t('workspace.utilityCustomizeUnits')}</strong><small>{t('workspace.utilityCustomizeUnitsDescription')}</small></span>
+        </button> : null}
+      </section>
       <div className="workspace-utilities__footer">
         <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
           {theme === 'dark' ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />} {themeLabel}

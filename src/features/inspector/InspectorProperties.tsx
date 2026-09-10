@@ -103,6 +103,7 @@ const PhysicalNumberField = ({
   validate,
   disabled,
   lockedReason,
+  signed = false,
 }: {
   label: string;
   value: number;
@@ -114,6 +115,7 @@ const PhysicalNumberField = ({
   validate?: (value: number) => string | undefined;
   disabled?: boolean;
   lockedReason?: string;
+  signed?: boolean;
 }) => {
   const { language } = useI18n();
   return (
@@ -126,6 +128,7 @@ const PhysicalNumberField = ({
       validate={validate}
       disabled={disabled}
       lockedReason={lockedReason}
+      signed={signed}
       language={language}
       onCommit={(displayValue) => onCommit(fromDisplay(displayValue, units, quantity))}
     />
@@ -737,9 +740,9 @@ export const InspectorProperties = () => {
       <InspectorPropertyGroup title={t('inspector.frequentProperties')} description={t('inspector.nodalLoadFrequentDescription')}>
         <SelectField label={t('inspector.case')} value={selectedNodalLoad.caseId} onChange={(value) => updateNodalLoad('caseId', value)}>{project.loadCases.map((loadCase) => <option key={loadCase.id} value={loadCase.id}>{loadCase.name}</option>)}</SelectField>
         <InspectorHelper>{t('inspector.loadCaseHelp')}</InspectorHelper>
-        <PhysicalNumberField label={t('inspector.horizontalFx')} value={selectedNodalLoad.fx} units={units} quantity="force" resetKey={`${selectionKey}:fx`} onCommit={(value) => updateNodalLoad('fx', value)} />
-        <PhysicalNumberField label={t('inspector.verticalFy')} value={selectedNodalLoad.fy} units={units} quantity="force" resetKey={`${selectionKey}:fy`} onCommit={(value) => updateNodalLoad('fy', value)} />
-        <PhysicalNumberField label={t('inspector.momentMz')} value={selectedNodalLoad.mz} units={units} quantity="moment" resetKey={`${selectionKey}:mz`} onCommit={(value) => updateNodalLoad('mz', value)} />
+        <PhysicalNumberField label={t('inspector.horizontalFx')} value={selectedNodalLoad.fx} units={units} quantity="force" resetKey={`${selectionKey}:fx`} signed onCommit={(value) => updateNodalLoad('fx', value)} />
+        <PhysicalNumberField label={t('inspector.verticalFy')} value={selectedNodalLoad.fy} units={units} quantity="force" resetKey={`${selectionKey}:fy`} signed onCommit={(value) => updateNodalLoad('fy', value)} />
+        <PhysicalNumberField label={t('inspector.momentMz')} value={selectedNodalLoad.mz} units={units} quantity="moment" resetKey={`${selectionKey}:mz`} signed onCommit={(value) => updateNodalLoad('mz', value)} />
         <InspectorHelper>{t('inspector.nodalLoadSignHelp')}</InspectorHelper>
       </InspectorPropertyGroup>
       <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived"><InspectorDerivedList rows={[{ label: 'ID', value: selectedNodalLoad.id }, { label: t('inspector.node'), value: selectedNodalLoad.nodeId }]} /></InspectorPropertyGroup>
@@ -770,8 +773,8 @@ export const InspectorProperties = () => {
             <InspectorNumericField label={t('inspector.from')} value={selectedMemberLoad.start * 100} unit="%" resetKey={`${selectionKey}:start-percent`} language={language} validate={(value) => value >= 0 && value <= 100 ? undefined : t('inspector.normalizedPositionValidation')} onCommit={(value) => updateMemberLoad('start', Math.max(0, Math.min(1, value / 100)))} />
             <InspectorNumericField label={t('inspector.to')} value={selectedMemberLoad.end * 100} unit="%" resetKey={`${selectionKey}:end-percent`} language={language} validate={(value) => value >= 0 && value <= 100 ? undefined : t('inspector.normalizedPositionValidation')} onCommit={(value) => updateMemberLoad('end', Math.max(0, Math.min(1, value / 100)))} />
           </>}
-          <PhysicalNumberField label="Carga al inicio" value={selectedMemberLoad.qyStart ?? 0} units={units} quantity="distributedForce" resetKey={`${selectionKey}:qy-start`} onCommit={(value) => updateMemberLoad('qyStart', value)} />
-          <PhysicalNumberField label="Carga al final" value={selectedMemberLoad.qyEnd ?? 0} units={units} quantity="distributedForce" resetKey={`${selectionKey}:qy-end`} onCommit={(value) => updateMemberLoad('qyEnd', value)} />
+          <PhysicalNumberField label="Carga al inicio" value={selectedMemberLoad.qyStart ?? 0} units={units} quantity="distributedForce" resetKey={`${selectionKey}:qy-start`} signed onCommit={(value) => updateMemberLoad('qyStart', value)} />
+          <PhysicalNumberField label="Carga al final" value={selectedMemberLoad.qyEnd ?? 0} units={units} quantity="distributedForce" resetKey={`${selectionKey}:qy-end`} signed onCommit={(value) => updateMemberLoad('qyEnd', value)} />
           {selectedLoadChain.length > 1 ? <details className="inspector-load-options"><summary>Más opciones</summary><div>
             <button type="button" className="inspector-load-option" onClick={extendDistributedLoad}>Extender al tramo recto · {formatPhysical(selectedLoadChainLength, units, 'length')}</button>
           </div></details> : null}
@@ -797,8 +800,8 @@ export const InspectorProperties = () => {
               }} />
             </>;
           })() : <>
-            <PhysicalNumberField label="Horizontal" value={selectedMemberLoad.px ?? 0} units={units} quantity="force" resetKey={`${selectionKey}:px`} onCommit={(value) => updatePointLoadVector(value, selectedMemberLoad.py ?? 0)} />
-            <PhysicalNumberField label="Vertical" value={selectedMemberLoad.py ?? 0} units={units} quantity="force" resetKey={`${selectionKey}:py`} onCommit={(value) => updatePointLoadVector(selectedMemberLoad.px ?? 0, value)} />
+            <PhysicalNumberField label="Horizontal" value={selectedMemberLoad.px ?? 0} units={units} quantity="force" resetKey={`${selectionKey}:px`} signed onCommit={(value) => updatePointLoadVector(value, selectedMemberLoad.py ?? 0)} />
+            <PhysicalNumberField label="Vertical" value={selectedMemberLoad.py ?? 0} units={units} quantity="force" resetKey={`${selectionKey}:py`} signed onCommit={(value) => updatePointLoadVector(selectedMemberLoad.px ?? 0, value)} />
           </>}
           {Math.abs(selectedMemberLoad.px ?? 0) > 1e-9 && Math.abs(selectedMemberLoad.py ?? 0) > 1e-9 ? <details className="inspector-load-options"><summary>Más opciones</summary><div>
             <button type="button" className="inspector-load-option" onClick={splitPointLoad}>Separar horizontal y vertical</button>
@@ -806,7 +809,7 @@ export const InspectorProperties = () => {
         </> : null}
         {selectedMemberLoad.type === 'moment' ? <>
           <InspectorNumericField label={t('inspector.position')} value={selectedMemberLoad.position ?? 0.5} unit="x/L" resetKey={`${selectionKey}:position`} language={language} validate={normalizedPosition} onCommit={(value) => updateMemberLoad('position', Math.max(0, Math.min(1, value)))} />
-          <PhysicalNumberField label="M" value={selectedMemberLoad.moment ?? 0} units={units} quantity="moment" resetKey={`${selectionKey}:moment`} onCommit={(value) => updateMemberLoad('moment', value)} />
+          <PhysicalNumberField label="M" value={selectedMemberLoad.moment ?? 0} units={units} quantity="moment" resetKey={`${selectionKey}:moment`} signed onCommit={(value) => updateMemberLoad('moment', value)} />
         </> : null}
       </InspectorPropertyGroup>
       <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived"><InspectorDerivedList rows={[{ label: 'ID', value: selectedMemberLoad.id }, { label: t('inspector.member'), value: selectedMemberLoad.memberId }]} /></InspectorPropertyGroup>
