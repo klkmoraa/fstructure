@@ -83,6 +83,12 @@ const distributedLoad = (qyStart: number, qyEnd: number): MemberLoad => ({
   qxStart: 0, qxEnd: 0, qyStart, qyEnd,
 });
 
+const pointLoad = (id: string, magnitude: number): MemberLoad => ({
+  id, memberId: member.id, caseId: 'LC1', type: 'point',
+  coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1,
+  position: 0.25, px: 0, py: -magnitude,
+});
+
 const arrowTailYs = (container: HTMLElement) => [...container.querySelectorAll<SVGLineElement>('.load-symbol--distributed line[marker-end]')]
   .map((line) => Number(line.getAttribute('y1')));
 
@@ -124,5 +130,39 @@ describe('CanvasGeometryLayer distributed-load presentation', () => {
 
     expect(arrowTailYs(container)).toEqual([282, 158]);
     expect(container.querySelectorAll('.distributed-envelope')).toHaveLength(2);
+  });
+});
+
+describe('CanvasGeometryLayer point-load collision presentation', () => {
+  it('draws coincident point loads as separate vertical levels without a lateral fan', () => {
+    const { container } = renderMemberLoads([
+      pointLoad('small', 10),
+      pointLoad('large', 30),
+      pointLoad('medium', 20),
+    ]);
+    const arrow = (id: string) => container.querySelector<SVGLineElement>(
+      `[data-structure-id="${id}"] line[marker-end]`,
+    );
+
+    expect([arrow('large')?.getAttribute('y1'), arrow('large')?.getAttribute('y2')]).toEqual(['168', '213']);
+    expect([arrow('medium')?.getAttribute('y1'), arrow('medium')?.getAttribute('y2')]).toEqual(['113', '158']);
+    expect([arrow('small')?.getAttribute('y1'), arrow('small')?.getAttribute('y2')]).toEqual(['58', '103']);
+    expect([arrow('large')?.getAttribute('x1'), arrow('medium')?.getAttribute('x1'), arrow('small')?.getAttribute('x1')])
+      .toEqual(['140', '140', '140']);
+
+    const guide = container.querySelector<SVGLineElement>('[data-point-stack-guide-for="small"]');
+    expect([guide?.getAttribute('y1'), guide?.getAttribute('y2')]).toEqual(['213', '103']);
+  });
+
+  it('places the complete point arrow beyond an overlapping distributed envelope', () => {
+    const { container } = renderMemberLoads([
+      distributedLoad(-10, -10),
+      pointLoad('point', 30),
+    ]);
+    const arrow = container.querySelector<SVGLineElement>('[data-structure-id="point"] line[marker-end]');
+    const guide = container.querySelector<SVGLineElement>('[data-point-stack-guide-for="point"]');
+
+    expect([arrow?.getAttribute('y1'), arrow?.getAttribute('y2')]).toEqual(['103', '148']);
+    expect([guide?.getAttribute('y1'), guide?.getAttribute('y2')]).toEqual(['213', '148']);
   });
 });

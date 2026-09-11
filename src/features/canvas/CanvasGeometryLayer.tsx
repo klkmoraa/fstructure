@@ -475,7 +475,7 @@ const CanvasGeometryLayerImpl = ({
   };
 
   const renderMemberLoad = (presentation: MemberLoadPresentation) => {
-    const { load, lane, tailExtensionPx, lateralOffsetPx, stackOffsetPx } = presentation;
+    const { load, lane, stackOffsetPx } = presentation;
     const target = memberMap.get(load.memberId);
     if (!target) return null;
     const ni = nodeMap.get(target.i)!; const nj = nodeMap.get(target.j)!;
@@ -498,13 +498,14 @@ const CanvasGeometryLayerImpl = ({
       const px = load.px ?? 0; const py = load.py ?? 0; const mag = Math.hypot(px, py) || 1;
       const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, px, py);
       const ux = gx / mag; const uy = -gy / mag;
-      const perpendicular = { x: -uy, y: ux };
+      const headOffset = presentation.pointHeadOffsetPx ?? 7;
+      const tailOffset = presentation.pointTailOffsetPx ?? 52;
       const start = {
-        x: base.x - ux * (52 + tailExtensionPx) + perpendicular.x * lateralOffsetPx,
-        y: base.y - uy * (52 + tailExtensionPx) + perpendicular.y * lateralOffsetPx,
+        x: base.x - ux * tailOffset,
+        y: base.y - uy * tailOffset,
       };
-      const end = { x: base.x - ux * 7, y: base.y - uy * 7 };
-      return <g key={load.id} className={`load-symbol load-symbol--point${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.pointLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(mag, units, 'force'), 2), unit: forceLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}<line className="load-hit" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />{arrowPath(start.x, start.y, end.x, end.y)}</g>;
+      const end = { x: base.x - ux * headOffset, y: base.y - uy * headOffset };
+      return <g key={load.id} className={`load-symbol load-symbol--point${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-point-stack-index={presentation.pointStackIndex} data-point-stack-count={presentation.pointStackCount} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.pointLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(mag, units, 'force'), 2), unit: forceLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}<line className="load-hit" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />{arrowPath(start.x, start.y, end.x, end.y)}</g>;
     }
     if (load.type === 'moment') {
       const base = stationOf(load.position ?? 0.5);
@@ -577,6 +578,32 @@ const CanvasGeometryLayerImpl = ({
       return `M ${points.map((point) => `${point.x} ${point.y}`).join(' L ')} Z`;
     });
     return <g key={load.id} className={`distributed-symbol load-symbol--distributed${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-load-stack-offset={stackOffsetPx} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.distributedLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(average, units, 'distributedForce'), 2), unit: distributedLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}<line className="load-hit" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} />{envelopePaths.map((path, index) => <path key={index} className="distributed-envelope" d={path} />)}{arrows}</g>;
+  };
+
+  const renderPointStackGuide = (presentation: MemberLoadPresentation) => {
+    const { load } = presentation;
+    if (load.type !== 'point' || !presentation.drawsPointGuide) return null;
+    const target = memberMap.get(load.memberId);
+    if (!target) return null;
+    const ni = nodeMap.get(target.i); const nj = nodeMap.get(target.j);
+    if (!ni || !nj) return null;
+    const axis = memberAxis(target, ni, nj);
+    const point = pointAtGrossRatio(axis, grossRatioFromFlexible(axis, load.position ?? 0.5));
+    const base = toScreen(point.x, point.y);
+    const px = load.px ?? 0; const py = load.py ?? 0; const magnitude = Math.hypot(px, py) || 1;
+    const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, px, py);
+    const ux = gx / magnitude; const uy = -gy / magnitude;
+    const guideStartOffset = 7;
+    const guideEndOffset = presentation.pointHeadOffsetPx ?? guideStartOffset;
+    return <line
+      key={`point-stack-guide:${load.id}`}
+      className="point-load-stack-guide"
+      data-point-stack-guide-for={load.id}
+      x1={base.x - ux * guideStartOffset}
+      y1={base.y - uy * guideStartOffset}
+      x2={base.x - ux * guideEndOffset}
+      y2={base.y - uy * guideEndOffset}
+    />;
   };
 
   if (slot === 'members') {
@@ -675,7 +702,7 @@ const CanvasGeometryLayerImpl = ({
     <g className="support-layer">{project.nodes.map(renderSupport)}</g>
     <g className="support-settlement-layer">{configuredSettlements.map(renderSettlement)}</g>
     <g className="node-link-layer">{(project.nodeLinks ?? []).map(renderNodeLink)}</g>
-    {loadsLayerVisible && view.showLoads && resultTab !== 'influence' ? <g className="load-layer">{memberLoadPresentation.map(renderMemberLoad)}{project.nodalLoads.map(renderNodalLoad)}</g> : null}
+    {loadsLayerVisible && view.showLoads && resultTab !== 'influence' ? <g className="load-layer">{memberLoadPresentation.map(renderPointStackGuide)}{memberLoadPresentation.map(renderMemberLoad)}{project.nodalLoads.map(renderNodalLoad)}</g> : null}
     <g className="node-layer">
       {project.nodes.map((node) => {
         const p = toScreen(node.x, node.y);

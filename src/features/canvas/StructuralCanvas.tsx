@@ -110,7 +110,7 @@ import { supportForCanvasPlacement } from './supportPlacementModel';
 import type { StructureGenerationGhost } from '../../data/generators/generatorGhost';
 import { GlobalAxes, SmartLabelLayer } from './CanvasVisualOverlays';
 import { useStableCanvasEvent } from './useStableCanvasEvent';
-import { resolveMemberLoadPresentation } from './loadPresentation';
+import { pointLoadLabelAnchor, resolveMemberLoadPresentation } from './loadPresentation';
 
 /**
  * El generador y su núcleo determinista sólo pesan cuando se abre: nadie paga su
@@ -2304,11 +2304,11 @@ export const StructuralCanvas = ({
         const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, px, py);
         const ux = gx / magnitude;
         const uy = -gy / magnitude;
-        const tailExtension = memberLoadPresentationMap.get(load.id)?.tailExtensionPx ?? 0;
+        const presentation = memberLoadPresentationMap.get(load.id);
         smartLabelCandidates.push({
           id: `member-point-load:${load.id}`,
           text: `${formatFixed(toDisplay(magnitude, units, 'force'), 2)} ${forceLabel}`,
-          anchor: { x: base.x - ux * (60 + tailExtension), y: base.y - uy * (60 + tailExtension) - 5 },
+          anchor: pointLoadLabelAnchor(base, { x: ux, y: uy }, presentation),
           priority,
           tone,
           preferredOffset: { x: 0, y: 0 },

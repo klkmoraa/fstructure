@@ -2174,6 +2174,7 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .support-symbol:hover { stroke: var(--accent); stroke-width: 2.4; }
 .support-symbol.selected { stroke: var(--selection); }
 .load-symbol { stroke: var(--load-ink); color: var(--load-ink); fill: none; stroke-width: 2.2; cursor: pointer; }
+.point-load-stack-guide { fill:none; stroke:color-mix(in srgb,var(--sc-color-load-point) 44%,transparent); stroke-width:1; stroke-dasharray:3 4; pointer-events:none; vector-effect:non-scaling-stroke; }
 .load-symbol text, .distributed-symbol text { fill: var(--load-ink); stroke: none; font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
 /* Una carga distribuida es una ACCIÓN aplicada, no un cortante. Pintarla con
    la señal del cortante la volvía indistinguible de un resultado interno en la
