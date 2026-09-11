@@ -56,9 +56,19 @@ const copy = {
   },
 } as const;
 
+const exampleAssets: Record<string, ThreeStructuralAssetId> = {
+  'Hibbeler · carga tributaria Fig. 2–11': 'beam:simply-supported',
+  'Práctica tipo Hibbeler · diagramas': 'beam:simply-supported',
+  'Práctica tipo Hibbeler · armadura': 'truss:warren',
+  'Pórtico de ejemplo': 'portal:single-bay',
+  'Viga simplemente apoyada': 'beam:simply-supported',
+  'Armadura triangular': 'truss:warren',
+};
+
 const assetForExample = (name: string): ThreeStructuralAssetId => {
+  if (exampleAssets[name]) return exampleAssets[name];
   if (/armadura|truss/i.test(name)) return 'truss:warren';
-  if (/viga|beam/i.test(name)) return 'beam:simply-supported';
+  if (/viga|beam|tributaria|diagrama/i.test(name)) return 'beam:simply-supported';
   return 'portal:single-bay';
 };
 
@@ -70,12 +80,21 @@ const assetForExercise: Record<ClassroomExerciseTemplateId, ThreeStructuralAsset
   'triangular-truss': 'truss:pratt',
 };
 
+const readInitialWelcomeView = (): WelcomeView => {
+  if (typeof window === 'undefined') return 'home';
+  const param = new URLSearchParams(window.location.search).get('view');
+  if (param === 'projects' || param === 'templates' || param === 'library' || param === 'classroom' || param === 'import') {
+    return param;
+  }
+  return 'home';
+};
+
 export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
   const { project, replaceProject, updateProjectView } = useProject();
   const { language, t } = useI18n();
   const { theme } = useWorkspaceUI();
   const text = copy[language];
-  const [view, setView] = useState<WelcomeView>('home');
+  const [view, setView] = useState<WelcomeView>(readInitialWelcomeView);
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -112,6 +131,15 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
     setView(next);
     setSearchQuery('');
     setMobileNavOpen(false);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (next === 'home') {
+        url.searchParams.delete('view');
+      } else {
+        url.searchParams.set('view', next);
+      }
+      window.history.replaceState(null, '', url);
+    }
   };
 
   const openProject = (next: typeof project, restoredAnalysis?: Parameters<typeof replaceProject>[1], revision?: number) => {
@@ -159,7 +187,7 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
     : view === 'projects' ? <section className="sc-home-view" aria-label={text.projects}>{heading(text.projectsTitle, text.projectsBody)}<ProjectHub filter={searchQuery} onOpen={(record) => openProject(record.project, undefined, record.revision)} /></section>
       : view === 'templates' ? <section className="sc-home-view" aria-label={text.templates}>{heading(text.templatesTitle, text.templatesBody)}<div className="sc-home-template-grid">{visibleExamples.map((example) => {
         const presented = presentExample(example.name, example.description, t);
-        return <button key={example.name} type="button" onClick={() => openProject(example.build())}><ThreeStructuralImage assetId={assetForExample(example.name)} theme={theme} render="three" /><strong>{presented.name}</strong><span>{presented.description}</span><span className="sc-home-template-card__action">{text.openTemplate}<ArrowRight size={14} aria-hidden="true" /></span></button>;
+        return <button key={example.name} type="button" onClick={() => openProject(example.build())}><ThreeStructuralImage assetId={assetForExample(example.name)} theme={theme} render="three" eager /><strong>{presented.name}</strong><span>{presented.description}</span><span className="sc-home-template-card__action">{text.openTemplate}<ArrowRight size={14} aria-hidden="true" /></span></button>;
       })}</div></section>
         : view === 'library' ? <section className="sc-home-view" aria-label={text.library}>{heading(text.libraryTitle, text.libraryBody)}<PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} /></section>
           : view === 'classroom' ? <section className="sc-home-classroom" aria-label={text.classroom}>

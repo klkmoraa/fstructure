@@ -37,9 +37,15 @@ const drainThreeRenderQueue = async () => {
   threeRenderQueueActive = false;
 };
 
-const enqueueThreeRender = (run: () => Promise<string>): Promise<string> => {
+const threeDataUrlCache = new Map<string, string>();
+
+const enqueueThreeRender = (run: () => Promise<string>, priority = false): Promise<string> => {
   const promise = new Promise<string>((resolve, reject) => {
-    threeRenderQueue.push({ run, resolve, reject });
+    if (priority) {
+      threeRenderQueue.unshift({ run, resolve, reject });
+    } else {
+      threeRenderQueue.push({ run, resolve, reject });
+    }
   });
   void drainThreeRenderQueue();
   return promise;
@@ -51,7 +57,7 @@ const scheduleIdle = (callback: () => void): (() => void) => {
     cancelIdleCallback?: (handle: number) => void;
   };
   if (idleWindow.requestIdleCallback) {
-    const handle = idleWindow.requestIdleCallback(callback, { timeout: 500 });
+    const handle = idleWindow.requestIdleCallback(callback, { timeout: 120 });
     return () => idleWindow.cancelIdleCallback?.(handle);
   }
   const handle = window.setTimeout(callback, 0);
@@ -59,54 +65,87 @@ const scheduleIdle = (callback: () => void): (() => void) => {
 };
 
 export function ThreeStructuralImage({ assetId, theme, alt = '', className = '', eager = false, render = 'prerendered' }: ThreeStructuralImageProps) {
+  const cacheKey = `${assetId}:${theme}`;
   const [failed, setFailed] = useState(false);
-  const [threeSrc, setThreeSrc] = useState<string | null>(null);
+  const [threeSrc, setThreeSrc] = useState<string | null>(() => threeDataUrlCache.get(cacheKey) ?? null);
 
   useEffect(() => {
     if (render !== 'three') return undefined;
+    const cached = threeDataUrlCache.get(cacheKey);
+    if (cached) {
+      setThreeSrc(cached);
+      return undefined;
+    }
     let active = true;
-    setThreeSrc(null);
     setFailed(false);
-    const cancelIdle = scheduleIdle(() => {
+
+    const executeRender = () => {
       void enqueueThreeRender(async () => {
-        return renderThreeStructuralAssetDataUrl(assetId, theme === 'dark' ? 'night' : 'day', 900, 600);
-      }).then((src) => {
+        const existing = threeDataUrlCache.get(cacheKey);
+        if (existing) return existing;
+        const rendered = await renderThreeStructuralAssetDataUrl(assetId, theme === 'dark' ? 'night' : 'day', 900, 600);
+        threeDataUrlCache.set(cacheKey, rendered);
+        return rendered;
+      }, eager).then((src) => {
         if (active) setThreeSrc(src);
       }).catch(() => {
         if (active) setFailed(true);
       });
-    });
+    };
+
+    if (eager) {
+      executeRender();
+      return () => {
+        active = false;
+      };
+    }
+
+    const cancelIdle = scheduleIdle(executeRender);
     return () => {
       active = false;
       cancelIdle();
     };
-  }, [assetId, render, theme]);
+  }, [assetId, cacheKey, eager, render, theme]);
 
-  if (render === 'vector' || failed) return <StructuralIllustration assetId={assetId} detail="hero" decorative={alt.length === 0} title={alt || undefined} motion="none" className={className} />;
+  if (render === 'vector') {
+    return <StructuralIllustration assetId={assetId} detail="hero" decorative={alt.length === 0} title={alt || undefined} motion="none" className={className} />;
+  }
 
-  if (render === 'three') return <span
-    aria-busy={!threeSrc}
-    className={`three-structural-preview ${className}`.trim()}
-    data-preview-state={threeSrc ? 'ready' : 'loading'}
-    data-structural-asset-id={assetId}
-    data-structural-render="three-runtime"
-    data-render-theme={theme === 'dark' ? 'night' : 'day'}
-  >
-    <StructuralIllustration assetId={assetId} detail="hero" decorative motion="none" className="three-structural-preview__fallback" />
-    {threeSrc ? <img
-      alt={alt}
-      className="three-structural-image three-structural-image--runtime"
+  if (render === 'three') {
+    return <span
+      aria-busy={!threeSrc && !failed}
+      className={`three-structural-preview ${className}`.trim()}
+      data-preview-state={threeSrc ? 'ready' : failed ? 'failed' : 'loading'}
       data-structural-asset-id={assetId}
-      data-structural-render="three-runtime-image"
+      data-structural-render="three-runtime"
       data-render-theme={theme === 'dark' ? 'night' : 'day'}
-      decoding="async"
-      draggable={false}
-      height="600"
-      loading={eager ? 'eager' : 'lazy'}
-      src={threeSrc}
-      width="900"
-    /> : null}
-  </span>;
+    >
+      <span className="three-structural-preview__placeholder" aria-hidden="true" />
+      {threeSrc ? <img
+        alt={alt}
+        className="three-structural-image three-structural-image--runtime"
+        data-structural-asset-id={assetId}
+        data-structural-render="three-runtime-image"
+        data-render-theme={theme === 'dark' ? 'night' : 'day'}
+        decoding="async"
+        draggable={false}
+        height="600"
+        loading={eager ? 'eager' : 'lazy'}
+        src={threeSrc}
+        width="900"
+      /> : null}
+    </span>;
+  }
+
+  if (failed) {
+    return <span
+      className={`three-structural-preview ${className}`.trim()}
+      data-preview-state="failed"
+      data-structural-asset-id={assetId}
+    >
+      <span className="three-structural-preview__placeholder" aria-hidden="true" />
+    </span>;
+  }
 
   return <img
     alt={alt}

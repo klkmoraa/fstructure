@@ -20,7 +20,7 @@ describe('ThreeStructuralImage', () => {
     expect(container.querySelector('svg[data-structural-asset-id="portal:single-bay"]')).toBeTruthy();
   });
 
-  it('keeps an immediate vector placeholder while the 3D render is queued', () => {
+  it('keeps a clean placeholder without rendering SVG while the 3D render is queued', () => {
     vi.useFakeTimers();
     const { container } = render(
       <ThreeStructuralImage
@@ -32,7 +32,8 @@ describe('ThreeStructuralImage', () => {
 
     expect(container.querySelector('[data-structural-render="three-runtime"]')).toBeTruthy();
     expect(container.querySelector('[data-preview-state="loading"]')).toBeTruthy();
-    expect(container.querySelector('svg[data-structural-asset-id="beam:simply-supported"]')).toBeTruthy();
+    expect(container.querySelector('.three-structural-preview__placeholder')).toBeTruthy();
+    expect(container.querySelector('svg')).toBeNull();
     expect(container.querySelector('img[data-structural-render="three-runtime-image"]')).toBeNull();
   });
 });
