@@ -17,49 +17,61 @@ const dummyProject: ProjectModel = {
 };
 
 describe('Solver2DHome component', () => {
-  it('renders a single quote notification toast per reload and allows dismiss', () => {
-    render(
-      <Solver2DHome
-        language="es"
-        theme="dark"
-        project={dummyProject}
-        onContinue={vi.fn()}
-        onCreateBlank={vi.fn()}
-        onOpenTemplates={vi.fn()}
-        onOpenClassroom={vi.fn()}
-        onOpenImport={vi.fn()}
-        onOpenProjects={vi.fn()}
-        recents={<div data-testid="recents-slot">Recientes</div>}
-      />,
-    );
+  it('waits 2s after load to appear, renders a single quote, and allows dismiss', () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <Solver2DHome
+          language="es"
+          theme="dark"
+          project={dummyProject}
+          onContinue={vi.fn()}
+          onCreateBlank={vi.fn()}
+          onOpenTemplates={vi.fn()}
+          onOpenClassroom={vi.fn()}
+          onOpenImport={vi.fn()}
+          onOpenProjects={vi.fn()}
+          recents={<div data-testid="recents-slot">Recientes</div>}
+        />,
+      );
 
-    // Toast element exists in document.body via createPortal
-    const toast = document.body.querySelector('.solver2d-quote-toast');
-    expect(toast).toBeTruthy();
+      // Not visible immediately on mount (waits 2 seconds)
+      expect(document.body.querySelector('.solver2d-quote-toast')).toBeNull();
 
-    const quoteText = document.body.querySelector('.solver2d-quote-toast__text');
-    expect(quoteText).toBeTruthy();
-    expect(quoteText?.textContent?.startsWith('“')).toBe(true);
-    expect(quoteText?.textContent?.endsWith('”')).toBe(true);
+      // Appears after 2000ms
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
 
-    const quoteAuthor = document.body.querySelector('.solver2d-quote-toast__author');
-    expect(quoteAuthor).toBeTruthy();
-    expect(quoteAuthor?.textContent?.startsWith('— ')).toBe(true);
+      const toast = document.body.querySelector('.solver2d-quote-toast');
+      expect(toast).toBeTruthy();
 
-    const initialText = quoteText?.textContent;
+      const quoteText = document.body.querySelector('.solver2d-quote-toast__text');
+      expect(quoteText).toBeTruthy();
+      expect(quoteText?.textContent?.startsWith('“')).toBe(true);
+      expect(quoteText?.textContent?.endsWith('”')).toBe(true);
 
-    // Clicking toast does NOT change the quote (fixed per page reload)
-    fireEvent.click(toast!);
-    const currentQuoteText = document.body.querySelector('.solver2d-quote-toast__text');
-    expect(currentQuoteText?.textContent).toBe(initialText);
+      const quoteAuthor = document.body.querySelector('.solver2d-quote-toast__author');
+      expect(quoteAuthor).toBeTruthy();
+      expect(quoteAuthor?.textContent?.startsWith('— ')).toBe(true);
 
-    // Close button dismisses the toast
-    const closeBtn = document.body.querySelector('.solver2d-quote-toast__close') as HTMLButtonElement;
-    expect(closeBtn).toBeTruthy();
-    fireEvent.click(closeBtn);
+      const initialText = quoteText?.textContent;
 
-    const dismissedToast = document.body.querySelector('.solver2d-quote-toast');
-    expect(dismissedToast).toBeNull();
+      // Clicking toast does NOT change the quote (fixed per page reload)
+      fireEvent.click(toast!);
+      const currentQuoteText = document.body.querySelector('.solver2d-quote-toast__text');
+      expect(currentQuoteText?.textContent).toBe(initialText);
+
+      // Close button dismisses the toast
+      const closeBtn = document.body.querySelector('.solver2d-quote-toast__close') as HTMLButtonElement;
+      expect(closeBtn).toBeTruthy();
+      fireEvent.click(closeBtn);
+
+      const dismissedToast = document.body.querySelector('.solver2d-quote-toast');
+      expect(dismissedToast).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('renders the creator credit at the bottom crediting Cristian Mora', () => {
@@ -90,29 +102,38 @@ describe('Solver2DHome component', () => {
   });
 
   it('renders correctly in English when language="en"', () => {
-    render(
-      <Solver2DHome
-        language="en"
-        theme="light"
-        project={dummyProject}
-        onContinue={vi.fn()}
-        onCreateBlank={vi.fn()}
-        onOpenTemplates={vi.fn()}
-        onOpenClassroom={vi.fn()}
-        onOpenImport={vi.fn()}
-        onOpenProjects={vi.fn()}
-        recents={<div data-testid="recents-slot">Recientes</div>}
-      />,
-    );
+    vi.useFakeTimers();
+    try {
+      render(
+        <Solver2DHome
+          language="en"
+          theme="light"
+          project={dummyProject}
+          onContinue={vi.fn()}
+          onCreateBlank={vi.fn()}
+          onOpenTemplates={vi.fn()}
+          onOpenClassroom={vi.fn()}
+          onOpenImport={vi.fn()}
+          onOpenProjects={vi.fn()}
+          recents={<div data-testid="recents-slot">Recientes</div>}
+        />,
+      );
 
-    expect(screen.getByText('Creator:')).toBeTruthy();
-    expect(screen.getByText('Cristian Mora')).toBeTruthy();
+      expect(screen.getByText('Creator:')).toBeTruthy();
+      expect(screen.getByText('Cristian Mora')).toBeTruthy();
 
-    const toast = document.body.querySelector('.solver2d-quote-toast');
-    expect(toast).toBeTruthy();
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      const toast = document.body.querySelector('.solver2d-quote-toast');
+      expect(toast).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it('automatically dismisses the quote toast after 7000ms without pausing', () => {
+  it('automatically dismisses the quote toast after 7000ms of visibility without pausing', () => {
     vi.useFakeTimers();
     try {
       render(
@@ -129,6 +150,13 @@ describe('Solver2DHome component', () => {
           recents={<div data-testid="recents-slot">Recientes</div>}
         />,
       );
+
+      expect(document.body.querySelector('.solver2d-quote-toast')).toBeNull();
+
+      // Appears after 2s
+      act(() => {
+        vi.advanceTimersByTime(2000);
+      });
 
       const toast = document.body.querySelector('.solver2d-quote-toast');
       expect(toast).toBeTruthy();

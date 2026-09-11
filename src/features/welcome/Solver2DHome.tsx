@@ -154,14 +154,21 @@ export const Solver2DHome = ({
     const index = Math.floor(Math.random() * ENGINEERING_QUOTES.length);
     return ENGINEERING_QUOTES[index] ?? ENGINEERING_QUOTES[0];
   });
-  const [quoteVisible, setQuoteVisible] = useState(true);
+  const [quoteVisible, setQuoteVisible] = useState(false);
+
+  useEffect(() => {
+    const delayTimer = window.setTimeout(() => {
+      setQuoteVisible(true);
+    }, 2000);
+    return () => window.clearTimeout(delayTimer);
+  }, []);
 
   useEffect(() => {
     if (!quoteVisible) return undefined;
-    const timer = window.setTimeout(() => {
+    const dismissTimer = window.setTimeout(() => {
       setQuoteVisible(false);
     }, 7000);
-    return () => window.clearTimeout(timer);
+    return () => window.clearTimeout(dismissTimer);
   }, [quoteVisible]);
 
   const paths = [
@@ -192,17 +199,17 @@ export const Solver2DHome = ({
           className="solver2d-quote-toast"
           role="status"
           aria-live="polite"
-          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 32, scale: 0.96 }}
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 40, scale: 0.90 }}
           animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
           exit={
             reducedMotion
               ? { opacity: 0 }
-              : { opacity: 0, y: 16, scale: 0.96, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } }
+              : { opacity: 0, y: 24, scale: 0.94, transition: { duration: 0.28, ease: [0.32, 0.72, 0, 1] } }
           }
           transition={
             reducedMotion
               ? { duration: 0.01 }
-              : { type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }
+              : { type: 'spring', stiffness: 350, damping: 25, mass: 0.8 }
           }
         >
           <div className="solver2d-quote-toast__body">
