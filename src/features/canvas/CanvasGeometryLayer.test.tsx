@@ -83,6 +83,13 @@ const distributedLoad = (qyStart: number, qyEnd: number): MemberLoad => ({
   qxStart: 0, qxEnd: 0, qyStart, qyEnd,
 });
 
+const distributedSpan = (id: string, start: number, end: number): MemberLoad => ({
+  ...distributedLoad(-10, -10),
+  id,
+  start,
+  end,
+});
+
 const pointLoad = (id: string, magnitude: number): MemberLoad => ({
   id, memberId: member.id, caseId: 'LC1', type: 'point',
   coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1,
@@ -113,6 +120,21 @@ describe('CanvasGeometryLayer support presentation', () => {
 });
 
 describe('CanvasGeometryLayer distributed-load presentation', () => {
+  it('draws overlapping distributed loads in complete non-overlapping bands', () => {
+    const { container } = renderMemberLoads([
+      distributedSpan('short', 0.2, 0.3),
+      distributedSpan('wide', 0, 1),
+      distributedSpan('medium', 0, 0.5),
+    ]);
+    const arrow = (id: string) => container.querySelector<SVGLineElement>(
+      `[data-structure-id="${id}"] line[marker-end]`,
+    );
+
+    expect([arrow('wide')?.getAttribute('y1'), arrow('wide')?.getAttribute('y2')]).toEqual(['158', '220']);
+    expect([arrow('medium')?.getAttribute('y1'), arrow('medium')?.getAttribute('y2')]).toEqual(['84', '146']);
+    expect([arrow('short')?.getAttribute('y1'), arrow('short')?.getAttribute('y2')]).toEqual(['10', '72']);
+  });
+
   it('keeps the intermediate arrows on a downward triangular envelope that ends at zero', () => {
     const { container } = renderMemberLoads([distributedLoad(-2000, 0)]);
 

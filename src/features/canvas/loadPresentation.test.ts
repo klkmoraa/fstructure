@@ -27,9 +27,8 @@ describe('member-load presentation', () => {
 
     const distributedPresentations = presentations.filter(({ load }) => load.type === 'distributed');
     expect(distributedPresentations.map(({ load }) => load.id)).toEqual(['wide', 'medium', 'short']);
-    expect(distributedPresentations.map((presentation) => (
-      presentation as typeof presentation & { stackOffsetPx?: number }
-    ).stackOffsetPx)).toEqual([0, 12, 24]);
+    expect(distributedPresentations.map(({ distributedBaseOffsetPx }) => distributedBaseOffsetPx))
+      .toEqual([0, 74, 148]);
   });
 
   it('reuses the inner distributed lane for loads on opposite sides of the member', () => {
@@ -37,7 +36,7 @@ describe('member-load presentation', () => {
     const downward = distributed('downward', 0, 1);
     const presentations = resolveMemberLoadPresentation([upward, downward]);
 
-    expect(presentations.map(({ stackOffsetPx }) => stackOffsetPx)).toEqual([0, 0]);
+    expect(presentations.map(({ distributedBaseOffsetPx }) => distributedBaseOffsetPx)).toEqual([0, 0]);
   });
 
   it('stacks coincident point loads upward from greatest to smallest magnitude', () => {
@@ -91,8 +90,8 @@ describe('member-load presentation', () => {
     ]);
     const byId = new Map(presentations.map((presentation) => [presentation.load.id, presentation]));
 
-    expect(byId.get('large')).toMatchObject({ pointHeadOffsetPx: 96, pointTailOffsetPx: 141 });
-    expect(byId.get('small')).toMatchObject({ pointHeadOffsetPx: 151, pointTailOffsetPx: 196, drawsPointGuide: true });
+    expect(byId.get('large')).toMatchObject({ pointHeadOffsetPx: 220, pointTailOffsetPx: 265 });
+    expect(byId.get('small')).toMatchObject({ pointHeadOffsetPx: 275, pointTailOffsetPx: 320, drawsPointGuide: true });
   });
 
   it('does not reserve distributed height where a triangular envelope is zero', () => {

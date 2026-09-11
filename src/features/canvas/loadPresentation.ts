@@ -2,6 +2,7 @@ import type { MemberLoad } from '../../types';
 
 export const DISTRIBUTED_LANE_SPACING_PX = 12;
 export const DISTRIBUTED_BASE_HEIGHT_PX = 62;
+export const DISTRIBUTED_LANE_STRIDE_PX = DISTRIBUTED_BASE_HEIGHT_PX + DISTRIBUTED_LANE_SPACING_PX;
 export const POINT_ARROW_HEAD_OFFSET_PX = 7;
 export const POINT_ARROW_LENGTH_PX = 45;
 export const POINT_STACK_GAP_PX = 10;
@@ -15,7 +16,7 @@ export interface MemberLoadPresentation {
   load: MemberLoad;
   lane: MemberLoadLane;
   paintOrder: 0 | 1 | 2;
-  stackOffsetPx: number;
+  distributedBaseOffsetPx?: number;
   pointStackIndex?: number;
   pointStackCount?: number;
   pointHeadOffsetPx?: number;
@@ -130,7 +131,7 @@ const distributedIntervalsOverlap = (left: MemberLoad, right: MemberLoad) => {
   return a.start <= b.end + STATION_TOLERANCE && b.start <= a.end + STATION_TOLERANCE;
 };
 
-const distributedHeightAt = (load: MemberLoad, station: number, lane: number) => {
+const distributedHeightAt = (load: MemberLoad, station: number, baseOffsetPx: number) => {
   const intervalLength = load.end - load.start;
   const ratio = Math.abs(intervalLength) <= STATION_TOLERANCE
     ? 0
@@ -144,7 +145,7 @@ const distributedHeightAt = (load: MemberLoad, station: number, lane: number) =>
     qyStart + (qyEnd - qyStart) * ratio,
   );
   const maximumMagnitude = Math.max(Math.hypot(qxStart, qyStart), Math.hypot(qxEnd, qyEnd), 1e-9);
-  return localMagnitude / maximumMagnitude * (DISTRIBUTED_BASE_HEIGHT_PX + lane * DISTRIBUTED_LANE_SPACING_PX);
+  return baseOffsetPx + localMagnitude / maximumMagnitude * DISTRIBUTED_BASE_HEIGHT_PX;
 };
 
 const distributedLaneMap = (loads: readonly MemberLoad[]) => {
@@ -186,11 +187,11 @@ export const resolveMemberLoadPresentation = (
           load,
           lane: 'inner',
           paintOrder,
-          stackOffsetPx: (distributedLanes.get(load) ?? 0) * DISTRIBUTED_LANE_SPACING_PX,
+          distributedBaseOffsetPx: (distributedLanes.get(load) ?? 0) * DISTRIBUTED_LANE_STRIDE_PX,
         };
       }
       if (load.type === 'moment') {
-        return { load, lane: 'moment-outer', paintOrder, stackOffsetPx: 0 };
+        return { load, lane: 'moment-outer', paintOrder };
       }
 
       const coincident = pointLoads
@@ -201,7 +202,11 @@ export const resolveMemberLoadPresentation = (
         if (!overlapsDistributed(load, [distributed])) return highest;
         return Math.max(
           highest,
-          distributedHeightAt(distributed, stationOf(load), distributedLanes.get(distributed) ?? 0),
+          distributedHeightAt(
+            distributed,
+            stationOf(load),
+            (distributedLanes.get(distributed) ?? 0) * DISTRIBUTED_LANE_STRIDE_PX,
+          ),
         );
       }, 0);
       const pointHeadBase = highestDistributedHeight > 1e-9
@@ -212,7 +217,6 @@ export const resolveMemberLoadPresentation = (
         load,
         lane: highestDistributedHeight > 1e-9 ? 'point-outer' : 'point',
         paintOrder,
-        stackOffsetPx: 0,
         pointStackIndex: index,
         pointStackCount: coincident.length,
         pointHeadOffsetPx,
