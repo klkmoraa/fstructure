@@ -1,1 +1,0 @@
-var e=``+new URL(`pdf.worker-TGcf_-kp.mjs`,import.meta.url).href;export{e as default};
