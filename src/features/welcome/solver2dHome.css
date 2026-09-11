@@ -290,10 +290,6 @@
   animation: solver2d-progress-7s 7s linear forwards;
 }
 
-.solver2d-quote-toast:hover .solver2d-quote-toast__bar {
-  animation-play-state: paused;
-}
-
 @keyframes solver2d-progress-7s {
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }

@@ -155,15 +155,14 @@ export const Solver2DHome = ({
     return ENGINEERING_QUOTES[index] ?? ENGINEERING_QUOTES[0];
   });
   const [quoteVisible, setQuoteVisible] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
-    if (!quoteVisible || isPaused) return undefined;
+    if (!quoteVisible) return undefined;
     const timer = window.setTimeout(() => {
       setQuoteVisible(false);
     }, 7000);
     return () => window.clearTimeout(timer);
-  }, [quoteVisible, isPaused]);
+  }, [quoteVisible]);
 
   const paths = [
     // Una ruta de entrada no es un resultado del solver: lleva el color de la
@@ -193,13 +192,13 @@ export const Solver2DHome = ({
           className="solver2d-quote-toast"
           role="status"
           aria-live="polite"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-          onTouchStart={() => setIsPaused(true)}
-          onTouchEnd={() => setIsPaused(false)}
           initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 32, scale: 0.96 }}
           animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.96 }}
+          exit={
+            reducedMotion
+              ? { opacity: 0 }
+              : { opacity: 0, y: 16, scale: 0.96, transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } }
+          }
           transition={
             reducedMotion
               ? { duration: 0.01 }
@@ -223,7 +222,10 @@ export const Solver2DHome = ({
             <X size={14} aria-hidden="true" />
           </button>
           <div className="solver2d-quote-toast__progress" aria-hidden="true">
-            <div className="solver2d-quote-toast__bar" />
+            <div
+              className="solver2d-quote-toast__bar"
+              onAnimationEnd={() => setQuoteVisible(false)}
+            />
           </div>
         </m.aside>
       ) : null}

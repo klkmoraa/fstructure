@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../data/defaultProject';
 import type { ProjectModel } from '../../types';
@@ -110,5 +110,43 @@ describe('Solver2DHome component', () => {
 
     const toast = document.body.querySelector('.solver2d-quote-toast');
     expect(toast).toBeTruthy();
+  });
+
+  it('automatically dismisses the quote toast after 7000ms without pausing', () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <Solver2DHome
+          language="es"
+          theme="dark"
+          project={dummyProject}
+          onContinue={vi.fn()}
+          onCreateBlank={vi.fn()}
+          onOpenTemplates={vi.fn()}
+          onOpenClassroom={vi.fn()}
+          onOpenImport={vi.fn()}
+          onOpenProjects={vi.fn()}
+          recents={<div data-testid="recents-slot">Recientes</div>}
+        />,
+      );
+
+      const toast = document.body.querySelector('.solver2d-quote-toast');
+      expect(toast).toBeTruthy();
+
+      // Mouse enter/leave does NOT pause or reset the timer
+      fireEvent.mouseEnter(toast!);
+      act(() => {
+        vi.advanceTimersByTime(3500);
+      });
+      fireEvent.mouseLeave(toast!);
+      act(() => {
+        vi.advanceTimersByTime(3500);
+        vi.runAllTimers();
+      });
+
+      expect(document.body.querySelector('.solver2d-quote-toast')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
