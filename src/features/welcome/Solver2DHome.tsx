@@ -229,9 +229,13 @@ export const Solver2DHome = ({
             <X size={14} aria-hidden="true" />
           </button>
           <div className="solver2d-quote-toast__progress" aria-hidden="true">
-            <div
+            <m.div
               className="solver2d-quote-toast__bar"
-              onAnimationEnd={() => setQuoteVisible(false)}
+              initial={reducedMotion ? { scaleX: 0 } : { scaleX: 1 }}
+              animate={{ scaleX: 0 }}
+              transition={reducedMotion ? { duration: 0.01 } : { duration: 7, ease: 'linear' }}
+              style={{ transformOrigin: 'left center' }}
+              onAnimationComplete={() => setQuoteVisible(false)}
             />
           </div>
         </m.aside>

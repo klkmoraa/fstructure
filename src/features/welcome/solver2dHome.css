@@ -187,7 +187,11 @@
   align-items: flex-start;
   gap: 12px;
   cursor: default;
-  user-select: text;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   overflow: hidden;
   will-change: transform, opacity;
   transition:
@@ -203,6 +207,18 @@
 
 .solver2d-quote-toast:hover {
   border-color: var(--sc-color-border-strong);
+}
+
+.solver2d-quote-toast__body,
+.solver2d-quote-toast__text,
+.solver2d-quote-toast__author,
+.solver2d-quote-toast__progress,
+.solver2d-quote-toast__bar {
+  pointer-events: none;
+}
+
+.solver2d-quote-toast__close {
+  pointer-events: auto;
 }
 
 .solver2d-quote-toast__body {
@@ -287,12 +303,6 @@
   background: var(--sc-color-family-analisis);
   width: 100%;
   transform-origin: left center;
-  animation: solver2d-progress-7s 7s linear forwards;
-}
-
-@keyframes solver2d-progress-7s {
-  from { transform: scaleX(1); }
-  to { transform: scaleX(0); }
 }
 
 @media (max-width: 768px) {
