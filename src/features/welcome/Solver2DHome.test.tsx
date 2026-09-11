@@ -18,7 +18,7 @@ const dummyProject: ProjectModel = {
 
 describe('Solver2DHome component', () => {
   it('renders a random quote notification toast with quotes and author, and allows dismiss/shuffle', () => {
-    const { container } = render(
+    render(
       <Solver2DHome
         language="es"
         theme="dark"
@@ -33,16 +33,16 @@ describe('Solver2DHome component', () => {
       />,
     );
 
-    // Toast element exists
-    const toast = container.querySelector('.solver2d-quote-toast');
+    // Toast element exists in document.body via createPortal
+    const toast = document.body.querySelector('.solver2d-quote-toast');
     expect(toast).toBeTruthy();
 
-    const quoteText = container.querySelector('.solver2d-quote-toast__text');
+    const quoteText = document.body.querySelector('.solver2d-quote-toast__text');
     expect(quoteText).toBeTruthy();
     expect(quoteText?.textContent?.startsWith('“')).toBe(true);
     expect(quoteText?.textContent?.endsWith('”')).toBe(true);
 
-    const quoteAuthor = container.querySelector('.solver2d-quote-toast__author');
+    const quoteAuthor = document.body.querySelector('.solver2d-quote-toast__author');
     expect(quoteAuthor).toBeTruthy();
     expect(quoteAuthor?.textContent?.startsWith('— ')).toBe(true);
 
@@ -50,15 +50,15 @@ describe('Solver2DHome component', () => {
 
     // Clicking toast changes the quote
     fireEvent.click(toast!);
-    const newQuoteText = container.querySelector('.solver2d-quote-toast__text');
+    const newQuoteText = document.body.querySelector('.solver2d-quote-toast__text');
     expect(newQuoteText?.textContent).not.toBe(initialText);
 
     // Close button dismisses the toast
-    const closeBtn = container.querySelector('.solver2d-quote-toast__close') as HTMLButtonElement;
+    const closeBtn = document.body.querySelector('.solver2d-quote-toast__close') as HTMLButtonElement;
     expect(closeBtn).toBeTruthy();
     fireEvent.click(closeBtn);
 
-    const dismissedToast = container.querySelector('.solver2d-quote-toast');
+    const dismissedToast = document.body.querySelector('.solver2d-quote-toast');
     expect(dismissedToast).toBeNull();
   });
 
@@ -90,7 +90,7 @@ describe('Solver2DHome component', () => {
   });
 
   it('renders correctly in English when language="en"', () => {
-    const { container } = render(
+    render(
       <Solver2DHome
         language="en"
         theme="light"
@@ -108,7 +108,7 @@ describe('Solver2DHome component', () => {
     expect(screen.getByText('Creator:')).toBeTruthy();
     expect(screen.getByText('Cristian Mora')).toBeTruthy();
 
-    const toast = container.querySelector('.solver2d-quote-toast');
+    const toast = document.body.querySelector('.solver2d-quote-toast');
     expect(toast).toBeTruthy();
   });
 });

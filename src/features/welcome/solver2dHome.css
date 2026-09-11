@@ -165,26 +165,28 @@
 
 /* --------------------------------------------------- Cita tipo notificación Apple
    Tarjeta flotante con física de resortes fluidos a 60/120 FPS.
-   Solo muestra la frase entre comillas y el autor. Desaparece en 15s. */
+   Solo muestra la frase entre comillas y el autor. Desaparece en 7s.
+   En desktop: flotante en la esquina inferior derecha.
+   En móvil: cápsula flotante centrada al fondo sobre safe-area, sin interferir con la barra de búsqueda superior. */
 
 .solver2d-quote-toast {
   position: fixed;
-  top: clamp(14px, 2.2vw, 24px);
-  right: clamp(14px, 2.2vw, 26px);
-  z-index: 1000;
-  max-width: min(400px, calc(100vw - 28px));
+  bottom: clamp(20px, 2.5vw, 32px);
+  right: clamp(20px, 2.5vw, 32px);
+  z-index: 9999;
+  max-width: min(420px, calc(100vw - 32px));
   width: 100%;
   padding: 16px 18px 20px;
-  border-radius: 20px;
+  border-radius: var(--sc-radius-panel);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 254, 0.82);
+  background: rgba(255, 255, 254, 0.88);
   backdrop-filter: blur(32px) saturate(200%);
   -webkit-backdrop-filter: blur(32px) saturate(200%);
   box-shadow:
     0 2px 4px -1px rgba(0, 0, 0, 0.02),
-    0 14px 34px -4px rgba(0, 0, 0, 0.1),
-    0 28px 60px -8px rgba(0, 0, 0, 0.06),
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.85);
+    0 14px 34px -4px rgba(0, 0, 0, 0.09),
+    0 28px 60px -8px rgba(0, 0, 0, 0.05),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.9);
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -200,7 +202,7 @@
 }
 
 [data-theme='dark'] .solver2d-quote-toast {
-  background: rgba(18, 21, 24, 0.82);
+  background: rgba(20, 24, 28, 0.86);
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow:
     0 2px 4px -1px rgba(0, 0, 0, 0.25),
@@ -211,18 +213,18 @@
 
 .solver2d-quote-toast:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 254, 0.94);
+  background: rgba(255, 255, 254, 0.96);
   border-color: rgba(0, 0, 0, 0.12);
   box-shadow:
     0 4px 8px -1px rgba(0, 0, 0, 0.04),
-    0 18px 42px -4px rgba(0, 0, 0, 0.14),
-    0 32px 70px -8px rgba(0, 0, 0, 0.08),
+    0 18px 42px -4px rgba(0, 0, 0, 0.13),
+    0 32px 70px -8px rgba(0, 0, 0, 0.07),
     inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95);
 }
 
 [data-theme='dark'] .solver2d-quote-toast:hover {
   transform: translateY(-2px);
-  background: rgba(26, 30, 34, 0.92);
+  background: rgba(26, 30, 34, 0.94);
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow:
     0 4px 8px -1px rgba(0, 0, 0, 0.35),
@@ -244,8 +246,8 @@
 .solver2d-quote-toast__text {
   margin: 0;
   color: var(--sc-color-text-primary);
-  font-size: 13px;
-  line-height: 1.54;
+  font-size: 13.5px;
+  line-height: 1.52;
   font-style: italic;
   font-weight: 450;
   letter-spacing: -0.012em;
@@ -254,13 +256,13 @@
 
 .solver2d-quote-toast__author {
   margin: 0;
-  color: var(--sc-color-text-secondary);
+  color: var(--sc-color-family-analisis, var(--sc-color-text-secondary));
   font-size: 11.5px;
-  font-weight: var(--sc-font-weight-bold);
+  font-weight: var(--sc-font-weight-semibold);
   font-style: normal;
   text-align: right;
   letter-spacing: -0.01em;
-  opacity: 0.88;
+  opacity: 0.92;
 }
 
 .solver2d-quote-toast__close {
@@ -328,12 +330,31 @@
   to { transform: scaleX(0); }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .solver2d-quote-toast {
-    top: 10px;
-    left: 10px;
-    right: 10px;
-    max-width: calc(100vw - 20px);
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    left: 14px;
+    right: 14px;
+    margin-inline: auto;
+    width: auto;
+    max-width: 440px;
+    padding: 14px 16px 18px;
+    border-radius: var(--sc-radius-card);
+  }
+
+  .solver2d-quote-toast__text {
+    font-size: 12.5px;
+    line-height: 1.48;
+  }
+
+  .solver2d-quote-toast__author {
+    font-size: 11px;
+  }
+
+  .solver2d-quote-toast__progress {
+    bottom: 5px;
+    left: 16px;
+    right: 16px;
   }
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowRight, ArrowUpRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
@@ -155,13 +156,15 @@ export const Solver2DHome = ({
   const [quoteVisible, setQuoteVisible] = useState(true);
   const activeQuote = ENGINEERING_QUOTES[quoteIndex] ?? ENGINEERING_QUOTES[0];
 
+  const [isPaused, setIsPaused] = useState(false);
+
   useEffect(() => {
-    if (!quoteVisible) return undefined;
+    if (!quoteVisible || isPaused) return undefined;
     const timer = window.setTimeout(() => {
       setQuoteVisible(false);
     }, 7000);
     return () => window.clearTimeout(timer);
-  }, [quoteVisible, quoteIndex]);
+  }, [quoteVisible, quoteIndex, isPaused]);
 
   const handleNextQuote = (event?: React.MouseEvent) => {
     event?.stopPropagation();
@@ -193,7 +196,7 @@ export const Solver2DHome = ({
     { id: 'learning', state: 'available', label: text.capLearning, body: text.capLearningBody },
   ] as const;
 
-  return <div className={`solver2d-home${reducedMotion ? ' is-static' : ''}`}>
+  const quoteToast = typeof document !== 'undefined' ? createPortal(
     <AnimatePresence>
       {quoteVisible ? (
         <m.aside
@@ -203,13 +206,17 @@ export const Solver2DHome = ({
           aria-live="polite"
           title={text.nextQuote}
           onClick={handleNextQuote}
-          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -26, scale: 0.93, filter: 'blur(8px)' }}
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+          onTouchStart={() => setIsPaused(true)}
+          onTouchEnd={() => setIsPaused(false)}
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 36, scale: 0.92, filter: 'blur(10px)' }}
           animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -18, scale: 0.95, filter: 'blur(6px)' }}
+          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.94, filter: 'blur(8px)' }}
           transition={
             reducedMotion
               ? { duration: 0.01 }
-              : { type: 'spring', stiffness: 380, damping: 28, mass: 0.75 }
+              : { type: 'spring', stiffness: 400, damping: 28, mass: 0.75 }
           }
         >
           <div className="solver2d-quote-toast__body">
@@ -236,7 +243,12 @@ export const Solver2DHome = ({
           </div>
         </m.aside>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
+  ) : null;
+
+  return <div className={`solver2d-home${reducedMotion ? ' is-static' : ''}`}>
+    {quoteToast}
 
     <section className="solver2d-hero" aria-labelledby="solver2d-hero-name">
       <div className="solver2d-hero__copy">
