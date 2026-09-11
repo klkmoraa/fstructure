@@ -159,7 +159,7 @@ export const Solver2DHome = ({
     if (!quoteVisible) return undefined;
     const timer = window.setTimeout(() => {
       setQuoteVisible(false);
-    }, 15000);
+    }, 7000);
     return () => window.clearTimeout(timer);
   }, [quoteVisible, quoteIndex]);
 
@@ -203,13 +203,13 @@ export const Solver2DHome = ({
           aria-live="polite"
           title={text.nextQuote}
           onClick={handleNextQuote}
-          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -24, scale: 0.94 }}
-          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -18, scale: 0.94 }}
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -26, scale: 0.93, filter: 'blur(8px)' }}
+          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -18, scale: 0.95, filter: 'blur(6px)' }}
           transition={
             reducedMotion
               ? { duration: 0.01 }
-              : { type: 'spring', stiffness: 360, damping: 26, mass: 0.85 }
+              : { type: 'spring', stiffness: 380, damping: 28, mass: 0.75 }
           }
         >
           <div className="solver2d-quote-toast__body">

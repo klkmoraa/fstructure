@@ -172,18 +172,19 @@
   top: clamp(14px, 2.2vw, 24px);
   right: clamp(14px, 2.2vw, 26px);
   z-index: 1000;
-  max-width: min(390px, calc(100vw - 28px));
+  max-width: min(400px, calc(100vw - 28px));
   width: 100%;
-  padding: 14px 16px 16px;
-  border-radius: 16px;
-  border: 1px solid var(--sc-color-border-soft);
-  background: rgba(255, 255, 254, 0.86);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  padding: 16px 18px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 254, 0.82);
+  backdrop-filter: blur(32px) saturate(200%);
+  -webkit-backdrop-filter: blur(32px) saturate(200%);
   box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.05),
-    0 16px 36px -4px rgba(0, 0, 0, 0.12),
-    0 0 0 1px rgba(255, 255, 255, 0.45) inset;
+    0 2px 4px -1px rgba(0, 0, 0, 0.02),
+    0 14px 34px -4px rgba(0, 0, 0, 0.1),
+    0 28px 60px -8px rgba(0, 0, 0, 0.06),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.85);
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -192,28 +193,45 @@
   overflow: hidden;
   will-change: transform, opacity, filter;
   transition:
+    transform var(--sc-motion-quick) var(--sc-ease-standard),
     background-color var(--sc-motion-quick) var(--sc-ease-standard),
     border-color var(--sc-motion-quick) var(--sc-ease-standard),
     box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
 }
 
 [data-theme='dark'] .solver2d-quote-toast {
-  background: rgba(20, 23, 26, 0.85);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(18, 21, 24, 0.82);
+  border-color: rgba(255, 255, 255, 0.12);
   box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.35),
-    0 16px 36px -4px rgba(0, 0, 0, 0.55),
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    0 2px 4px -1px rgba(0, 0, 0, 0.25),
+    0 16px 36px -4px rgba(0, 0, 0, 0.65),
+    0 32px 72px -8px rgba(0, 0, 0, 0.45),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.14);
 }
 
 .solver2d-quote-toast:hover {
+  transform: translateY(-2px);
   background: rgba(255, 255, 254, 0.94);
-  border-color: var(--sc-color-border);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 4px 8px -1px rgba(0, 0, 0, 0.04),
+    0 18px 42px -4px rgba(0, 0, 0, 0.14),
+    0 32px 70px -8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95);
 }
 
 [data-theme='dark'] .solver2d-quote-toast:hover {
+  transform: translateY(-2px);
   background: rgba(26, 30, 34, 0.92);
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 4px 8px -1px rgba(0, 0, 0, 0.35),
+    0 20px 44px -4px rgba(0, 0, 0, 0.75),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.solver2d-quote-toast:active {
+  transform: scale(0.985);
 }
 
 .solver2d-quote-toast__body {
@@ -226,22 +244,23 @@
 .solver2d-quote-toast__text {
   margin: 0;
   color: var(--sc-color-text-primary);
-  font-size: 12.5px;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.54;
   font-style: italic;
-  font-weight: var(--sc-font-weight-regular);
-  letter-spacing: -0.01em;
+  font-weight: 450;
+  letter-spacing: -0.012em;
   text-wrap: pretty;
 }
 
 .solver2d-quote-toast__author {
   margin: 0;
   color: var(--sc-color-text-secondary);
-  font-size: 11px;
-  font-weight: var(--sc-font-weight-semibold);
+  font-size: 11.5px;
+  font-weight: var(--sc-font-weight-bold);
   font-style: normal;
   text-align: right;
   letter-spacing: -0.01em;
+  opacity: 0.88;
 }
 
 .solver2d-quote-toast__close {
@@ -252,19 +271,21 @@
   place-items: center;
   border: none;
   border-radius: 999px;
-  background: transparent;
+  background: var(--sc-color-surface-2);
   color: var(--sc-color-text-muted);
   cursor: pointer;
   padding: 0;
   margin-top: -2px;
   margin-right: -4px;
   transition:
+    transform var(--sc-motion-instant) var(--sc-ease-standard),
     background-color var(--sc-motion-instant) var(--sc-ease-standard),
     color var(--sc-motion-instant) var(--sc-ease-standard);
 }
 
 .solver2d-quote-toast__close:hover {
-  background: var(--sc-color-surface-2);
+  transform: scale(1.1);
+  background: var(--sc-color-border-strong);
   color: var(--sc-color-text-primary);
 }
 
@@ -273,30 +294,36 @@
   outline-offset: var(--sc-focus-ring-offset);
 }
 
-/* Barra de progreso de 15 segundos (Apple Motion Graphics) */
+/* Barra de progreso de 7 segundos (Apple Motion Graphics) */
 .solver2d-quote-toast__progress {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  bottom: 6px;
+  left: 18px;
+  right: 18px;
   height: 2px;
-  background: var(--sc-color-border-soft);
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 999px;
   overflow: hidden;
+}
+
+[data-theme='dark'] .solver2d-quote-toast__progress {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .solver2d-quote-toast__bar {
   height: 100%;
-  background: var(--sc-color-family-analisis);
+  background: linear-gradient(90deg, var(--sc-color-family-analisis), #ff9078);
+  border-radius: 999px;
   width: 100%;
   transform-origin: left center;
-  animation: solver2d-progress-15s 15s linear forwards;
+  animation: solver2d-progress-7s 7s linear forwards;
 }
 
 .solver2d-quote-toast:hover .solver2d-quote-toast__bar {
   animation-play-state: paused;
 }
 
-@keyframes solver2d-progress-15s {
+@keyframes solver2d-progress-7s {
   from { transform: scaleX(1); }
   to { transform: scaleX(0); }
 }
