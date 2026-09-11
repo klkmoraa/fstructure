@@ -84,7 +84,6 @@ const copy = {
     capLearningBody: 'Cada resultado puede abrir su método, sus unidades y sus límites.',
     note: 'FStructure es experimental. Un resultado numérico puede ser incorrecto por un modelo, una unidad, una hipótesis o una propiedad mal elegida: no sustituye el criterio de una persona responsable ni una revisión independiente.',
     dismissQuote: 'Cerrar reflexión',
-    nextQuote: 'Toca para ver otra reflexión',
     creatorLabel: 'Creador:',
     about: 'Acerca de FStructure',
   },
@@ -130,7 +129,6 @@ const copy = {
     capLearningBody: 'Every result can open its method, its units, and its limits.',
     note: 'FStructure is experimental. A numeric result can be wrong because of a model, a unit, an assumption, or a badly chosen property: it does not replace the judgement of a responsible person or an independent review.',
     dismissQuote: 'Dismiss quote',
-    nextQuote: 'Tap to see another quote',
     creatorLabel: 'Creator:',
     about: 'About FStructure',
   },
@@ -152,10 +150,11 @@ export const Solver2DHome = ({
   const text = copy[language];
   const reducedMotion = useReducedMotion() ?? false;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
-  const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * ENGINEERING_QUOTES.length));
+  const [activeQuote] = useState(() => {
+    const index = Math.floor(Math.random() * ENGINEERING_QUOTES.length);
+    return ENGINEERING_QUOTES[index] ?? ENGINEERING_QUOTES[0];
+  });
   const [quoteVisible, setQuoteVisible] = useState(true);
-  const activeQuote = ENGINEERING_QUOTES[quoteIndex] ?? ENGINEERING_QUOTES[0];
-
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
@@ -164,17 +163,7 @@ export const Solver2DHome = ({
       setQuoteVisible(false);
     }, 7000);
     return () => window.clearTimeout(timer);
-  }, [quoteVisible, quoteIndex, isPaused]);
-
-  const handleNextQuote = (event?: React.MouseEvent) => {
-    event?.stopPropagation();
-    setQuoteIndex((prev) => {
-      let next = Math.floor(Math.random() * (ENGINEERING_QUOTES.length - 1));
-      if (next >= prev) next += 1;
-      return next;
-    });
-    setQuoteVisible(true);
-  };
+  }, [quoteVisible, isPaused]);
 
   const paths = [
     // Una ruta de entrada no es un resultado del solver: lleva el color de la
@@ -204,19 +193,17 @@ export const Solver2DHome = ({
           className="solver2d-quote-toast"
           role="status"
           aria-live="polite"
-          title={text.nextQuote}
-          onClick={handleNextQuote}
           onMouseEnter={() => setIsPaused(true)}
           onMouseLeave={() => setIsPaused(false)}
           onTouchStart={() => setIsPaused(true)}
           onTouchEnd={() => setIsPaused(false)}
-          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 36, scale: 0.92, filter: 'blur(10px)' }}
-          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.94, filter: 'blur(8px)' }}
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 32, scale: 0.96 }}
+          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.96 }}
           transition={
             reducedMotion
               ? { duration: 0.01 }
-              : { type: 'spring', stiffness: 400, damping: 28, mass: 0.75 }
+              : { type: 'spring', stiffness: 420, damping: 30, mass: 0.8 }
           }
         >
           <div className="solver2d-quote-toast__body">
@@ -230,13 +217,10 @@ export const Solver2DHome = ({
           <button
             type="button"
             className="solver2d-quote-toast__close"
-            onClick={(event) => {
-              event.stopPropagation();
-              setQuoteVisible(false);
-            }}
+            onClick={() => setQuoteVisible(false)}
             aria-label={text.dismissQuote}
           >
-            <X size={13} aria-hidden="true" />
+            <X size={14} aria-hidden="true" />
           </button>
           <div className="solver2d-quote-toast__progress" aria-hidden="true">
             <div className="solver2d-quote-toast__bar" />

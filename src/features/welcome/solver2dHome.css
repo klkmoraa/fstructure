@@ -163,11 +163,13 @@
   gap: 9px;
 }
 
-/* --------------------------------------------------- Cita tipo notificación Apple
-   Tarjeta flotante con física de resortes fluidos a 60/120 FPS.
-   Solo muestra la frase entre comillas y el autor. Desaparece en 7s.
+/* --------------------------------------------------- Cita tipo notificación
+   Tarjeta de reflexión sólida, táctil y limpia alineada a la identidad FStructure.
+   Sin glassmorphismo (sin desenfoques ni fondos translúcidos).
+   Solo muestra la frase entre comillas y el autor. Una sola por recarga de página.
+   Desaparece en 7s (pausable con hover o interacción).
    En desktop: flotante en la esquina inferior derecha.
-   En móvil: cápsula flotante centrada al fondo sobre safe-area, sin interferir con la barra de búsqueda superior. */
+   En móvil: cápsula flotante centrada al fondo sobre safe-area, nítida y legible. */
 
 .solver2d-quote-toast {
   position: fixed;
@@ -178,62 +180,29 @@
   width: 100%;
   padding: 16px 18px 20px;
   border-radius: var(--sc-radius-panel);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(255, 255, 254, 0.88);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
-  box-shadow:
-    0 2px 4px -1px rgba(0, 0, 0, 0.02),
-    0 14px 34px -4px rgba(0, 0, 0, 0.09),
-    0 28px 60px -8px rgba(0, 0, 0, 0.05),
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--sc-color-border);
+  background: var(--sc-color-surface-elevated);
+  box-shadow: var(--sc-shadow-lifted);
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  cursor: pointer;
-  user-select: none;
+  cursor: default;
+  user-select: text;
   overflow: hidden;
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity;
   transition:
-    transform var(--sc-motion-quick) var(--sc-ease-standard),
-    background-color var(--sc-motion-quick) var(--sc-ease-standard),
     border-color var(--sc-motion-quick) var(--sc-ease-standard),
     box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
 }
 
 [data-theme='dark'] .solver2d-quote-toast {
-  background: rgba(20, 24, 28, 0.86);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 2px 4px -1px rgba(0, 0, 0, 0.25),
-    0 16px 36px -4px rgba(0, 0, 0, 0.65),
-    0 32px 72px -8px rgba(0, 0, 0, 0.45),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.14);
+  background: var(--sc-color-surface-elevated);
+  border-color: var(--sc-color-border-strong);
+  box-shadow: var(--sc-shadow-lifted);
 }
 
 .solver2d-quote-toast:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 254, 0.96);
-  border-color: rgba(0, 0, 0, 0.12);
-  box-shadow:
-    0 4px 8px -1px rgba(0, 0, 0, 0.04),
-    0 18px 42px -4px rgba(0, 0, 0, 0.13),
-    0 32px 70px -8px rgba(0, 0, 0, 0.07),
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.95);
-}
-
-[data-theme='dark'] .solver2d-quote-toast:hover {
-  transform: translateY(-2px);
-  background: rgba(26, 30, 34, 0.94);
-  border-color: rgba(255, 255, 255, 0.18);
-  box-shadow:
-    0 4px 8px -1px rgba(0, 0, 0, 0.35),
-    0 20px 44px -4px rgba(0, 0, 0, 0.75),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.18);
-}
-
-.solver2d-quote-toast:active {
-  transform: scale(0.985);
+  border-color: var(--sc-color-border-strong);
 }
 
 .solver2d-quote-toast__body {
@@ -248,7 +217,7 @@
   color: var(--sc-color-text-primary);
   font-size: 13.5px;
   line-height: 1.52;
-  font-style: italic;
+  font-style: normal;
   font-weight: 450;
   letter-spacing: -0.012em;
   text-wrap: pretty;
@@ -267,13 +236,13 @@
 
 .solver2d-quote-toast__close {
   flex: none;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
-  border: none;
+  border: 1px solid var(--sc-color-border-soft);
   border-radius: 999px;
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-1);
   color: var(--sc-color-text-muted);
   cursor: pointer;
   padding: 0;
@@ -282,13 +251,19 @@
   transition:
     transform var(--sc-motion-instant) var(--sc-ease-standard),
     background-color var(--sc-motion-instant) var(--sc-ease-standard),
-    color var(--sc-motion-instant) var(--sc-ease-standard);
+    color var(--sc-motion-instant) var(--sc-ease-standard),
+    border-color var(--sc-motion-instant) var(--sc-ease-standard);
 }
 
 .solver2d-quote-toast__close:hover {
-  transform: scale(1.1);
-  background: var(--sc-color-border-strong);
+  transform: scale(1.08);
+  background: var(--sc-color-surface-2);
+  border-color: var(--sc-color-border-strong);
   color: var(--sc-color-text-primary);
+}
+
+.solver2d-quote-toast__close:active {
+  transform: scale(0.95);
 }
 
 .solver2d-quote-toast__close:focus-visible {
@@ -296,26 +271,20 @@
   outline-offset: var(--sc-focus-ring-offset);
 }
 
-/* Barra de progreso de 7 segundos (Apple Motion Graphics) */
+/* Barra de progreso de 7 segundos */
 .solver2d-quote-toast__progress {
   position: absolute;
-  bottom: 6px;
-  left: 18px;
-  right: 18px;
-  height: 2px;
-  background: rgba(0, 0, 0, 0.06);
-  border-radius: 999px;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background: var(--sc-color-surface-2);
   overflow: hidden;
-}
-
-[data-theme='dark'] .solver2d-quote-toast__progress {
-  background: rgba(255, 255, 255, 0.1);
 }
 
 .solver2d-quote-toast__bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--sc-color-family-analisis), #ff9078);
-  border-radius: 999px;
+  background: var(--sc-color-family-analisis);
   width: 100%;
   transform-origin: left center;
   animation: solver2d-progress-7s 7s linear forwards;
@@ -332,29 +301,42 @@
 
 @media (max-width: 768px) {
   .solver2d-quote-toast {
-    bottom: max(16px, env(safe-area-inset-bottom, 16px));
-    left: 14px;
-    right: 14px;
+    bottom: max(14px, env(safe-area-inset-bottom, 14px));
+    left: 12px;
+    right: 12px;
     margin-inline: auto;
-    width: auto;
+    width: calc(100% - 24px);
     max-width: 440px;
-    padding: 14px 16px 18px;
+    padding: 14px 14px 18px 16px;
     border-radius: var(--sc-radius-card);
+    border: 1px solid var(--sc-color-border-strong);
+    box-shadow: var(--sc-shadow-lifted);
+    gap: 10px;
+  }
+
+  .solver2d-quote-toast__body {
+    gap: 6px;
   }
 
   .solver2d-quote-toast__text {
-    font-size: 12.5px;
+    font-size: 13px;
     line-height: 1.48;
   }
 
   .solver2d-quote-toast__author {
     font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .solver2d-quote-toast__close {
+    width: 28px;
+    height: 28px;
+    margin-top: -1px;
+    margin-right: -2px;
   }
 
   .solver2d-quote-toast__progress {
-    bottom: 5px;
-    left: 16px;
-    right: 16px;
+    height: 2.5px;
   }
 }
 

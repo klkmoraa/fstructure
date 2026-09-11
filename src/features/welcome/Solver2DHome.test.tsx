@@ -17,7 +17,7 @@ const dummyProject: ProjectModel = {
 };
 
 describe('Solver2DHome component', () => {
-  it('renders a random quote notification toast with quotes and author, and allows dismiss/shuffle', () => {
+  it('renders a single quote notification toast per reload and allows dismiss', () => {
     render(
       <Solver2DHome
         language="es"
@@ -48,10 +48,10 @@ describe('Solver2DHome component', () => {
 
     const initialText = quoteText?.textContent;
 
-    // Clicking toast changes the quote
+    // Clicking toast does NOT change the quote (fixed per page reload)
     fireEvent.click(toast!);
-    const newQuoteText = document.body.querySelector('.solver2d-quote-toast__text');
-    expect(newQuoteText?.textContent).not.toBe(initialText);
+    const currentQuoteText = document.body.querySelector('.solver2d-quote-toast__text');
+    expect(currentQuoteText?.textContent).toBe(initialText);
 
     // Close button dismisses the toast
     const closeBtn = document.body.querySelector('.solver2d-quote-toast__close') as HTMLButtonElement;
