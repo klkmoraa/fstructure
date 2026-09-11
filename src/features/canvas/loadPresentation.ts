@@ -1,12 +1,12 @@
 import type { MemberLoad } from '../../types';
 
-export const DISTRIBUTED_LANE_SPACING_PX = 12;
+export const DISTRIBUTED_LANE_SPACING_PX = 1;
 export const DISTRIBUTED_BASE_HEIGHT_PX = 62;
 export const DISTRIBUTED_LANE_STRIDE_PX = DISTRIBUTED_BASE_HEIGHT_PX + DISTRIBUTED_LANE_SPACING_PX;
 export const POINT_ARROW_HEAD_OFFSET_PX = 7;
 export const POINT_ARROW_LENGTH_PX = 45;
-export const POINT_STACK_GAP_PX = 10;
-export const POINT_DISTRIBUTED_GAP_PX = 10;
+export const POINT_STACK_GAP_PX = 1;
+export const POINT_DISTRIBUTED_GAP_PX = 1;
 
 const STATION_TOLERANCE = 1e-6;
 
@@ -17,6 +17,9 @@ export interface MemberLoadPresentation {
   lane: MemberLoadLane;
   paintOrder: 0 | 1 | 2;
   distributedBaseOffsetPx?: number;
+  distributedStackTopOffsetPx?: number;
+  distributedLabelStation?: number;
+  distributedLabelOffsetPx?: number;
   pointStackIndex?: number;
   pointStackCount?: number;
   pointHeadOffsetPx?: number;
@@ -29,6 +32,25 @@ export const pointLoadLabelAnchor = (
   direction: { x: number; y: number },
   presentation?: MemberLoadPresentation,
 ) => {
+  const isStackedBelow = presentation?.pointStackCount
+    && presentation.pointStackCount > 1
+    && presentation.pointStackIndex !== undefined
+    && presentation.pointStackIndex < presentation.pointStackCount - 1;
+
+  if (isStackedBelow) {
+    const headOffset = presentation.pointHeadOffsetPx ?? 7;
+    const tailOffset = presentation.pointTailOffsetPx ?? 52;
+    const midOffset = (headOffset + tailOffset) / 2;
+    const nx = -direction.y;
+    const ny = direction.x;
+    const side = (presentation.pointStackIndex! % 2 === 0) ? -1 : 1;
+    const lateralDistance = 48;
+    return {
+      x: base.x - direction.x * midOffset + nx * (side * lateralDistance),
+      y: base.y - direction.y * midOffset + ny * (side * lateralDistance),
+    };
+  }
+
   const labelOffset = (presentation?.pointTailOffsetPx ?? 52) + 8;
   return {
     x: base.x - direction.x * labelOffset,
@@ -183,11 +205,59 @@ export const resolveMemberLoadPresentation = (
     .map((load) => {
       const paintOrder = typeOrder(load);
       if (load.type === 'distributed') {
+        const lane = distributedLanes.get(load) ?? 0;
+        const distributedBaseOffsetPx = lane * DISTRIBUTED_LANE_STRIDE_PX;
+        const overlapping = distributedLoads.filter((other) => distributedIntervalsOverlap(load, other));
+        const laneOrdered = [...overlapping].sort((a, b) => (distributedLanes.get(a) ?? 0) - (distributedLanes.get(b) ?? 0));
+        const laneIndex = laneOrdered.findIndex((candidate) => candidate.id === load.id && candidate.caseId === load.caseId);
+        const laneCount = laneOrdered.length;
+        const maxBaseOffsetPx = Math.max(...overlapping.map((other) => (distributedLanes.get(other) ?? 0) * DISTRIBUTED_LANE_STRIDE_PX));
+        const distributedStackTopOffsetPx = maxBaseOffsetPx + DISTRIBUTED_BASE_HEIGHT_PX;
+
+        const minStation = Math.min(load.start, load.end);
+        const maxStation = Math.max(load.start, load.end);
+        let distributedLabelStation = (minStation + maxStation) / 2;
+
+        if (laneCount > 1) {
+          const fraction = (laneIndex + 1) / (laneCount + 1);
+          distributedLabelStation = minStation + fraction * (maxStation - minStation);
+
+          const nearbyPoint = pointLoads.find((pt) =>
+            pt.memberId === load.memberId
+            && sharesVisualSide(load, pt)
+            && Math.abs(stationOf(pt) - distributedLabelStation) < 0.08,
+          );
+          if (nearbyPoint) {
+            const ptStation = stationOf(nearbyPoint);
+            const span = maxStation - minStation;
+            const shift = span * 0.12;
+            const candidateStation = distributedLabelStation >= ptStation ? distributedLabelStation + shift : distributedLabelStation - shift;
+            if (candidateStation >= minStation + 0.05 && candidateStation <= maxStation - 0.05) {
+              distributedLabelStation = candidateStation;
+            }
+          }
+        }
+
+        const highestAtStation = overlapping.reduce((highest, dist) => (
+          Math.max(
+            highest,
+            distributedHeightAt(
+              dist,
+              distributedLabelStation,
+              (distributedLanes.get(dist) ?? 0) * DISTRIBUTED_LANE_STRIDE_PX,
+            ),
+          )
+        ), 0);
+        const distributedLabelOffsetPx = Math.max(highestAtStation, distributedStackTopOffsetPx);
+
         return {
           load,
           lane: 'inner',
           paintOrder,
-          distributedBaseOffsetPx: (distributedLanes.get(load) ?? 0) * DISTRIBUTED_LANE_STRIDE_PX,
+          distributedBaseOffsetPx,
+          distributedStackTopOffsetPx,
+          distributedLabelStation,
+          distributedLabelOffsetPx,
         };
       }
       if (load.type === 'moment') {

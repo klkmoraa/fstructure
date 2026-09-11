@@ -131,8 +131,8 @@ describe('CanvasGeometryLayer distributed-load presentation', () => {
     );
 
     expect([arrow('wide')?.getAttribute('y1'), arrow('wide')?.getAttribute('y2')]).toEqual(['158', '220']);
-    expect([arrow('medium')?.getAttribute('y1'), arrow('medium')?.getAttribute('y2')]).toEqual(['84', '146']);
-    expect([arrow('short')?.getAttribute('y1'), arrow('short')?.getAttribute('y2')]).toEqual(['10', '72']);
+    expect([arrow('medium')?.getAttribute('y1'), arrow('medium')?.getAttribute('y2')]).toEqual(['95', '157']);
+    expect([arrow('short')?.getAttribute('y1'), arrow('short')?.getAttribute('y2')]).toEqual(['32', '94']);
   });
 
   it('keeps the intermediate arrows on a downward triangular envelope that ends at zero', () => {
@@ -167,13 +167,13 @@ describe('CanvasGeometryLayer point-load collision presentation', () => {
     );
 
     expect([arrow('large')?.getAttribute('y1'), arrow('large')?.getAttribute('y2')]).toEqual(['168', '213']);
-    expect([arrow('medium')?.getAttribute('y1'), arrow('medium')?.getAttribute('y2')]).toEqual(['113', '158']);
-    expect([arrow('small')?.getAttribute('y1'), arrow('small')?.getAttribute('y2')]).toEqual(['58', '103']);
+    expect([arrow('medium')?.getAttribute('y1'), arrow('medium')?.getAttribute('y2')]).toEqual(['122', '167']);
+    expect([arrow('small')?.getAttribute('y1'), arrow('small')?.getAttribute('y2')]).toEqual(['76', '121']);
     expect([arrow('large')?.getAttribute('x1'), arrow('medium')?.getAttribute('x1'), arrow('small')?.getAttribute('x1')])
       .toEqual(['140', '140', '140']);
 
     const guide = container.querySelector<SVGLineElement>('[data-point-stack-guide-for="small"]');
-    expect([guide?.getAttribute('y1'), guide?.getAttribute('y2')]).toEqual(['213', '103']);
+    expect([guide?.getAttribute('y1'), guide?.getAttribute('y2')]).toEqual(['213', '121']);
   });
 
   it('places the complete point arrow beyond an overlapping distributed envelope', () => {
@@ -184,7 +184,7 @@ describe('CanvasGeometryLayer point-load collision presentation', () => {
     const arrow = container.querySelector<SVGLineElement>('[data-structure-id="point"] line[marker-end]');
     const guide = container.querySelector<SVGLineElement>('[data-point-stack-guide-for="point"]');
 
-    expect([arrow?.getAttribute('y1'), arrow?.getAttribute('y2')]).toEqual(['103', '148']);
-    expect([guide?.getAttribute('y1'), guide?.getAttribute('y2')]).toEqual(['213', '148']);
+    expect([arrow?.getAttribute('y1'), arrow?.getAttribute('y2')]).toEqual(['112', '157']);
+    expect([guide?.getAttribute('y1'), guide?.getAttribute('y2')]).toEqual(['213', '157']);
   });
 });

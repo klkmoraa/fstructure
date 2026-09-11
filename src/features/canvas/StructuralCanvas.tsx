@@ -110,7 +110,7 @@ import { supportForCanvasPlacement } from './supportPlacementModel';
 import type { StructureGenerationGhost } from '../../data/generators/generatorGhost';
 import { GlobalAxes, SmartLabelLayer } from './CanvasVisualOverlays';
 import { useStableCanvasEvent } from './useStableCanvasEvent';
-import { pointLoadLabelAnchor, resolveMemberLoadPresentation } from './loadPresentation';
+import { DISTRIBUTED_BASE_HEIGHT_PX, pointLoadLabelAnchor, resolveMemberLoadPresentation } from './loadPresentation';
 
 /**
  * El generador y su núcleo determinista sólo pesan cuando se abre: nadie paga su
@@ -2326,7 +2326,9 @@ export const StructuralCanvas = ({
           forceVisible: selected,
         });
       } else {
-        const base = stationOf((load.start + load.end) / 2);
+        const presentation = memberLoadPresentationMap.get(load.id);
+        const labelStation = presentation?.distributedLabelStation ?? ((load.start + load.end) / 2);
+        const base = stationOf(labelStation);
         // The label states the mean intensity of the span, not the value at its midpoint.
         const qxStart = load.qxStart ?? 0;
         const qxEnd = load.qxEnd ?? load.qxStart ?? 0;
@@ -2343,7 +2345,8 @@ export const StructuralCanvas = ({
         const magnitude = Math.hypot(gx, gy) || 1;
         const ux = gx / magnitude;
         const uy = -gy / magnitude;
-        const arrowLength = 62 + (memberLoadPresentationMap.get(load.id)?.distributedBaseOffsetPx ?? 0);
+        const arrowLength = presentation?.distributedLabelOffsetPx
+          ?? (DISTRIBUTED_BASE_HEIGHT_PX + (presentation?.distributedBaseOffsetPx ?? 0));
         const average = (startMagnitude + endMagnitude) / 2;
         smartLabelCandidates.push({
           id: `distributed-load:${load.id}`,

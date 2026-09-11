@@ -28,7 +28,22 @@ describe('member-load presentation', () => {
     const distributedPresentations = presentations.filter(({ load }) => load.type === 'distributed');
     expect(distributedPresentations.map(({ load }) => load.id)).toEqual(['wide', 'medium', 'short']);
     expect(distributedPresentations.map(({ distributedBaseOffsetPx }) => distributedBaseOffsetPx))
-      .toEqual([0, 74, 148]);
+      .toEqual([0, 63, 126]);
+  });
+
+  it('staggers distributed label stations across the span when loads share an interval', () => {
+    const presentations = resolveMemberLoadPresentation([
+      distributed('d1', 0, 1),
+      distributed('d2', 0, 1),
+      distributed('d3', 0, 1),
+    ]);
+    const distributedPresentations = presentations.filter(({ load }) => load.type === 'distributed');
+    expect(distributedPresentations.map(({ distributedBaseOffsetPx }) => distributedBaseOffsetPx))
+      .toEqual([0, 63, 126]);
+    expect(distributedPresentations.map(({ distributedStackTopOffsetPx }) => distributedStackTopOffsetPx))
+      .toEqual([188, 188, 188]);
+    expect(distributedPresentations.map(({ distributedLabelStation }) => distributedLabelStation))
+      .toEqual([0.25, 0.5, 0.75]);
   });
 
   it('reuses the inner distributed lane for loads on opposite sides of the member', () => {
@@ -56,14 +71,14 @@ describe('member-load presentation', () => {
     expect(byId.get('medium')).toMatchObject({
       pointStackIndex: 1,
       pointStackCount: 3,
-      pointHeadOffsetPx: 62,
-      pointTailOffsetPx: 107,
+      pointHeadOffsetPx: 53,
+      pointTailOffsetPx: 98,
     });
     expect(byId.get('small')).toMatchObject({
       pointStackIndex: 2,
       pointStackCount: 3,
-      pointHeadOffsetPx: 117,
-      pointTailOffsetPx: 162,
+      pointHeadOffsetPx: 99,
+      pointTailOffsetPx: 144,
       drawsPointGuide: true,
     });
   });
@@ -90,8 +105,8 @@ describe('member-load presentation', () => {
     ]);
     const byId = new Map(presentations.map((presentation) => [presentation.load.id, presentation]));
 
-    expect(byId.get('large')).toMatchObject({ pointHeadOffsetPx: 220, pointTailOffsetPx: 265 });
-    expect(byId.get('small')).toMatchObject({ pointHeadOffsetPx: 275, pointTailOffsetPx: 320, drawsPointGuide: true });
+    expect(byId.get('large')).toMatchObject({ pointHeadOffsetPx: 189, pointTailOffsetPx: 234 });
+    expect(byId.get('small')).toMatchObject({ pointHeadOffsetPx: 235, pointTailOffsetPx: 280, drawsPointGuide: true });
   });
 
   it('does not reserve distributed height where a triangular envelope is zero', () => {
@@ -124,16 +139,25 @@ describe('member-load presentation', () => {
   });
 
   it('anchors each point label beyond the tail of its assigned stack level', () => {
-    const presentation = resolveMemberLoadPresentation([
+    const presentations = resolveMemberLoadPresentation([
       point('small', 10),
       point('large', 30),
       point('medium', 20),
-    ]).find(({ load }) => load.id === 'small');
+    ]);
+    const small = presentations.find(({ load }) => load.id === 'small');
+    const large = presentations.find(({ load }) => load.id === 'large');
 
     expect(pointLoadLabelAnchor(
       { x: 140, y: 220 },
       { x: 0, y: 1 },
-      presentation,
-    )).toEqual({ x: 140, y: 45 });
+      small,
+    )).toEqual({ x: 140, y: 63 });
+
+    const largeAnchor = pointLoadLabelAnchor(
+      { x: 140, y: 220 },
+      { x: 0, y: 1 },
+      large,
+    );
+    expect(largeAnchor.x).not.toBe(140);
   });
 });
