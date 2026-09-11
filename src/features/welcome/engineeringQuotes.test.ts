@@ -20,7 +20,7 @@ describe('engineeringQuotes dataset', () => {
     }
   });
 
-  it('ensures every quote has complete Spanish and English text and roles', () => {
+  it('ensures every quote has complete Spanish and English text and valid categories', () => {
     const validCategories = [
       'structural',
       'engineering',
@@ -36,8 +36,10 @@ describe('engineeringQuotes dataset', () => {
       expect(quote.author.trim().length).toBeGreaterThan(0);
       expect(quote.text.es.trim().length).toBeGreaterThan(10);
       expect(quote.text.en.trim().length).toBeGreaterThan(10);
-      expect(quote.role.es.trim().length).toBeGreaterThan(0);
-      expect(quote.role.en.trim().length).toBeGreaterThan(0);
+      if (quote.role) {
+        expect(quote.role.es.trim().length).toBeGreaterThan(0);
+        expect(quote.role.en.trim().length).toBeGreaterThan(0);
+      }
       expect(validCategories).toContain(quote.category);
     }
   });
@@ -77,8 +79,10 @@ describe('engineeringQuotes dataset', () => {
       expect(quote, `Expected quote by ${icon.name} to exist`).toBeDefined();
       expect(quote?.text.es).toContain(icon.snippet);
       expect(quote?.text.en.trim().length).toBeGreaterThan(10);
-      expect(quote?.role.es.trim().length).toBeGreaterThan(0);
-      expect(quote?.role.en.trim().length).toBeGreaterThan(0);
+      if (quote?.role) {
+        expect(quote.role.es.trim().length).toBeGreaterThan(0);
+        expect(quote.role.en.trim().length).toBeGreaterThan(0);
+      }
     }
   });
 
@@ -129,7 +133,7 @@ describe('engineeringQuotes dataset', () => {
 
     for (const item of innovators) {
       const quote = ENGINEERING_QUOTES.find(
-        (q) => q.author === item.name && (q.text.es.includes(item.snippet) || q.role.es.includes(item.snippet) || q.text.en.includes(item.snippet)),
+        (q) => q.author === item.name && (q.text.es.includes(item.snippet) || q.role?.es.includes(item.snippet) || q.text.en.includes(item.snippet)),
       );
       expect(quote, `Expected quote by ${item.name} to exist`).toBeDefined();
     }
@@ -159,7 +163,7 @@ describe('engineeringQuotes dataset', () => {
 
     for (const master of structuralMasters) {
       const quote = ENGINEERING_QUOTES.find(
-        (q) => q.author === master.name && (q.text.es.includes(master.snippet) || q.role.es.includes(master.snippet)),
+        (q) => q.author === master.name && (q.text.es.includes(master.snippet) || q.role?.es.includes(master.snippet)),
       );
       expect(quote, `Expected quote by ${master.name} with snippet "${master.snippet}" to exist`).toBeDefined();
     }

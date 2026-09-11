@@ -22,7 +22,7 @@ export interface EngineeringQuote {
     en: string;
   };
   author: string;
-  role: {
+  role?: {
     es: string;
     en: string;
   };
@@ -1774,10 +1774,6 @@ export const ENGINEERING_QUOTES: readonly EngineeringQuote[] = [
       en: 'With great power comes great responsibility. True heroism is doing the right thing even when no one is watching.',
     },
     author: 'Peter Parker',
-    role: {
-      es: 'Spider-Man · El Hombre Araña',
-      en: 'Spider-Man · The friendly neighborhood hero',
-    },
     source: 'Spider-Man',
     category: 'life',
   },
@@ -1788,10 +1784,6 @@ export const ENGINEERING_QUOTES: readonly EngineeringQuote[] = [
       en: 'It’s not about where you were born or what powers you have; it’s about what you choose to do with the gift you’ve been given to care for others.',
     },
     author: 'Clark Kent',
-    role: {
-      es: 'Superman / Kal-El · El Hombre de Acero',
-      en: 'Superman / Kal-El · The Man of Steel',
-    },
     source: 'Superman (DC Comics)',
     category: 'life',
   },
@@ -1802,10 +1794,6 @@ export const ENGINEERING_QUOTES: readonly EngineeringQuote[] = [
       en: 'It’s not who I am underneath, but what I do that defines me.',
     },
     author: 'Bruce Wayne',
-    role: {
-      es: 'Batman · El Caballero de la Noche',
-      en: 'Batman · The Dark Knight',
-    },
     source: 'Batman Begins (2005)',
     category: 'life',
   },
@@ -2866,10 +2854,6 @@ export const ENGINEERING_QUOTES: readonly EngineeringQuote[] = [
       en: "Sometimes you gotta run before you can walk. Progress and invention demand daring to take the leap.",
     },
     author: "Tony Stark",
-    role: {
-      es: "Iron Man · Vengador e innovador tecnológico",
-      en: "Iron Man · Avenger and tech innovator",
-    },
     source: "Iron Man (Marvel Studios, 2008)",
     category: 'engineering',
   },
@@ -2880,10 +2864,6 @@ export const ENGINEERING_QUOTES: readonly EngineeringQuote[] = [
       en: "The price of freedom is high, it always has been; but it’s a price I’m willing to pay to protect others.",
     },
     author: "Steve Rogers",
-    role: {
-      es: "Capitán América · El Primer Vengador",
-      en: "Captain America · The First Avenger",
-    },
     source: "Captain America: The Winter Soldier (2014)",
     category: 'life',
   },
