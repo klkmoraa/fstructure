@@ -1,10 +1,27 @@
-import type { ReactNode } from 'react';
-import { ArrowRight, ArrowUpRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload } from 'lucide-react';
-import { useReducedMotion } from 'motion/react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { ArrowRight, ArrowUpRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
+import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import type { ProjectModel, ThemeMode } from '../../types';
 import { ThreeStructuralImage } from '../structural-assets';
+import { ENGINEERING_QUOTES } from './engineeringQuotes';
 import './solver2dHome.css';
+
+const GitHubIcon = ({ size = 14 }: { size?: number }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden="true"
+  >
+    <path
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+    />
+  </svg>
+);
 
 export interface Solver2DHomeProps {
   language: 'es' | 'en';
@@ -65,6 +82,10 @@ const copy = {
     capLearning: 'Trazabilidad educativa',
     capLearningBody: 'Cada resultado puede abrir su método, sus unidades y sus límites.',
     note: 'FStructure es experimental. Un resultado numérico puede ser incorrecto por un modelo, una unidad, una hipótesis o una propiedad mal elegida: no sustituye el criterio de una persona responsable ni una revisión independiente.',
+    dismissQuote: 'Cerrar reflexión',
+    nextQuote: 'Toca para ver otra reflexión',
+    creatorLabel: 'Creador:',
+    about: 'Acerca de FStructure',
   },
   en: {
     role: '2D Solver',
@@ -107,6 +128,10 @@ const copy = {
     capLearning: 'Educational traceability',
     capLearningBody: 'Every result can open its method, its units, and its limits.',
     note: 'FStructure is experimental. A numeric result can be wrong because of a model, a unit, an assumption, or a badly chosen property: it does not replace the judgement of a responsible person or an independent review.',
+    dismissQuote: 'Dismiss quote',
+    nextQuote: 'Tap to see another quote',
+    creatorLabel: 'Creator:',
+    about: 'About FStructure',
   },
 } as const;
 
@@ -126,6 +151,28 @@ export const Solver2DHome = ({
   const text = copy[language];
   const reducedMotion = useReducedMotion() ?? false;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
+  const [quoteIndex, setQuoteIndex] = useState(() => Math.floor(Math.random() * ENGINEERING_QUOTES.length));
+  const [quoteVisible, setQuoteVisible] = useState(true);
+  const activeQuote = ENGINEERING_QUOTES[quoteIndex] ?? ENGINEERING_QUOTES[0];
+
+  useEffect(() => {
+    if (!quoteVisible) return undefined;
+    const timer = window.setTimeout(() => {
+      setQuoteVisible(false);
+    }, 15000);
+    return () => window.clearTimeout(timer);
+  }, [quoteVisible, quoteIndex]);
+
+  const handleNextQuote = (event?: React.MouseEvent) => {
+    event?.stopPropagation();
+    setQuoteIndex((prev) => {
+      let next = Math.floor(Math.random() * (ENGINEERING_QUOTES.length - 1));
+      if (next >= prev) next += 1;
+      return next;
+    });
+    setQuoteVisible(true);
+  };
+
   const paths = [
     // Una ruta de entrada no es un resultado del solver: lleva el color de la
     // familia del brandbook a la que pertenece lo que abre, no el de una señal
@@ -147,6 +194,50 @@ export const Solver2DHome = ({
   ] as const;
 
   return <div className={`solver2d-home${reducedMotion ? ' is-static' : ''}`}>
+    <AnimatePresence>
+      {quoteVisible ? (
+        <m.aside
+          key={activeQuote.id}
+          className="solver2d-quote-toast"
+          role="status"
+          aria-live="polite"
+          title={text.nextQuote}
+          onClick={handleNextQuote}
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -24, scale: 0.94 }}
+          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+          exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: -18, scale: 0.94 }}
+          transition={
+            reducedMotion
+              ? { duration: 0.01 }
+              : { type: 'spring', stiffness: 360, damping: 26, mass: 0.85 }
+          }
+        >
+          <div className="solver2d-quote-toast__body">
+            <blockquote className="solver2d-quote-toast__text">
+              “{activeQuote.text[language]}”
+            </blockquote>
+            <cite className="solver2d-quote-toast__author">
+              — {activeQuote.author}
+            </cite>
+          </div>
+          <button
+            type="button"
+            className="solver2d-quote-toast__close"
+            onClick={(event) => {
+              event.stopPropagation();
+              setQuoteVisible(false);
+            }}
+            aria-label={text.dismissQuote}
+          >
+            <X size={13} aria-hidden="true" />
+          </button>
+          <div className="solver2d-quote-toast__progress" aria-hidden="true">
+            <div className="solver2d-quote-toast__bar" />
+          </div>
+        </m.aside>
+      ) : null}
+    </AnimatePresence>
+
     <section className="solver2d-hero" aria-labelledby="solver2d-hero-name">
       <div className="solver2d-hero__copy">
         <span className="solver2d-hero__eyebrow" style={{ '--reveal-step': 0 } as React.CSSProperties}>{SOLVER_2D.product}<b>·</b>{text.role}</span>
@@ -230,5 +321,22 @@ export const Solver2DHome = ({
       </div>
       <p className="solver2d-note">{text.note}</p>
     </section>
+
+    <footer className="solver2d-footer" aria-label={text.about}>
+      <p className="solver2d-footer__credit">
+        <span className="solver2d-footer__label">{text.creatorLabel}</span>
+        <strong className="solver2d-footer__name">Cristian Mora</strong>
+      </p>
+      <a
+        href="https://github.com/klkmoraa/fstructure"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="solver2d-footer__github"
+      >
+        <GitHubIcon size={14} />
+        <span>github.com/klkmoraa/fstructure</span>
+        <ArrowUpRight size={13} aria-hidden="true" />
+      </a>
+    </footer>
   </div>;
 };

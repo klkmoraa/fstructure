@@ -163,6 +163,153 @@
   gap: 9px;
 }
 
+/* --------------------------------------------------- Cita tipo notificación Apple
+   Tarjeta flotante con física de resortes fluidos a 60/120 FPS.
+   Solo muestra la frase entre comillas y el autor. Desaparece en 15s. */
+
+.solver2d-quote-toast {
+  position: fixed;
+  top: clamp(14px, 2.2vw, 24px);
+  right: clamp(14px, 2.2vw, 26px);
+  z-index: 1000;
+  max-width: min(390px, calc(100vw - 28px));
+  width: 100%;
+  padding: 14px 16px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--sc-color-border-soft);
+  background: rgba(255, 255, 254, 0.86);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 16px 36px -4px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(255, 255, 255, 0.45) inset;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  will-change: transform, opacity, filter;
+  transition:
+    background-color var(--sc-motion-quick) var(--sc-ease-standard),
+    border-color var(--sc-motion-quick) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+[data-theme='dark'] .solver2d-quote-toast {
+  background: rgba(20, 23, 26, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.35),
+    0 16px 36px -4px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+}
+
+.solver2d-quote-toast:hover {
+  background: rgba(255, 255, 254, 0.94);
+  border-color: var(--sc-color-border);
+}
+
+[data-theme='dark'] .solver2d-quote-toast:hover {
+  background: rgba(26, 30, 34, 0.92);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.solver2d-quote-toast__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.solver2d-quote-toast__text {
+  margin: 0;
+  color: var(--sc-color-text-primary);
+  font-size: 12.5px;
+  line-height: 1.5;
+  font-style: italic;
+  font-weight: var(--sc-font-weight-regular);
+  letter-spacing: -0.01em;
+  text-wrap: pretty;
+}
+
+.solver2d-quote-toast__author {
+  margin: 0;
+  color: var(--sc-color-text-secondary);
+  font-size: 11px;
+  font-weight: var(--sc-font-weight-semibold);
+  font-style: normal;
+  text-align: right;
+  letter-spacing: -0.01em;
+}
+
+.solver2d-quote-toast__close {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sc-color-text-muted);
+  cursor: pointer;
+  padding: 0;
+  margin-top: -2px;
+  margin-right: -4px;
+  transition:
+    background-color var(--sc-motion-instant) var(--sc-ease-standard),
+    color var(--sc-motion-instant) var(--sc-ease-standard);
+}
+
+.solver2d-quote-toast__close:hover {
+  background: var(--sc-color-surface-2);
+  color: var(--sc-color-text-primary);
+}
+
+.solver2d-quote-toast__close:focus-visible {
+  outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
+  outline-offset: var(--sc-focus-ring-offset);
+}
+
+/* Barra de progreso de 15 segundos (Apple Motion Graphics) */
+.solver2d-quote-toast__progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--sc-color-border-soft);
+  overflow: hidden;
+}
+
+.solver2d-quote-toast__bar {
+  height: 100%;
+  background: var(--sc-color-family-analisis);
+  width: 100%;
+  transform-origin: left center;
+  animation: solver2d-progress-15s 15s linear forwards;
+}
+
+.solver2d-quote-toast:hover .solver2d-quote-toast__bar {
+  animation-play-state: paused;
+}
+
+@keyframes solver2d-progress-15s {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+@media (max-width: 640px) {
+  .solver2d-quote-toast {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    max-width: calc(100vw - 20px);
+  }
+}
+
 /* ------------------------------------------------------------------ Acción
    Una sola gramática de botón para toda la pantalla: reposo con filete y
    arcilla de contacto, hover un escalón arriba, pulsado hundido un píxel. El
@@ -488,6 +635,73 @@
   color: var(--sc-color-text-muted);
   font-size: var(--sc-font-size-caption);
   line-height: var(--sc-line-height-compact);
+}
+
+/* --------------------------------------------------------------- Colofón
+   Acerca de FStructure: concepción, autoría y rigor analítico.
+   Ubicado al fondo de la pantalla principal. */
+
+/* ---------------------------------------------------------------- Pie
+   Crédito de autoría al fondo de la pantalla principal. */
+
+.solver2d-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-top: 1px solid var(--sc-color-border-soft);
+  padding-top: clamp(18px, 2.5vw, 26px);
+  margin-top: 6px;
+}
+
+.solver2d-footer__credit {
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--sc-color-text-secondary);
+}
+
+.solver2d-footer__label {
+  color: var(--sc-color-text-muted);
+  font-size: 12px;
+}
+
+.solver2d-footer__name {
+  color: var(--sc-color-text-primary);
+  font-weight: var(--sc-font-weight-bold);
+  letter-spacing: var(--sc-tracking-tight);
+}
+
+.solver2d-footer__github {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-secondary);
+  font-family: var(--sc-font-mono);
+  font-size: 11px;
+  text-decoration: none;
+  transition:
+    background var(--sc-motion-quick) var(--sc-ease-standard),
+    border-color var(--sc-motion-quick) var(--sc-ease-standard),
+    color var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+.solver2d-footer__github:hover {
+  background: var(--sc-color-surface-2);
+  border-color: var(--sc-color-border-strong);
+  color: var(--sc-color-text-primary);
+}
+
+.solver2d-footer__github:focus-visible {
+  outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
+  outline-offset: var(--sc-focus-ring-offset);
 }
 
 /* -------------------------------------------------------------- Respuesta */
