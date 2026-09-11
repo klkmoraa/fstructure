@@ -2343,7 +2343,7 @@ export const StructuralCanvas = ({
         const magnitude = Math.hypot(gx, gy) || 1;
         const ux = gx / magnitude;
         const uy = -gy / magnitude;
-        const arrowLength = 62 + (memberLoadPresentationMap.get(load.id)?.stackOffsetPx ?? 0);
+        const arrowLength = 62 + (memberLoadPresentationMap.get(load.id)?.distributedBaseOffsetPx ?? 0);
         const average = (startMagnitude + endMagnitude) / 2;
         smartLabelCandidates.push({
           id: `distributed-load:${load.id}`,

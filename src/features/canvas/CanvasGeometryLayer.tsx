@@ -17,7 +17,11 @@ import { elasticIndexPaint } from '../results/elasticDemand';
 import type { TranslationKey } from '../../i18n/catalogs';
 import type { CandidateTarget } from './candidatePicker';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
-import { resolveMemberLoadPresentation, type MemberLoadPresentation } from './loadPresentation';
+import {
+  DISTRIBUTED_BASE_HEIGHT_PX,
+  resolveMemberLoadPresentation,
+  type MemberLoadPresentation,
+} from './loadPresentation';
 
 export type StructuralTarget =
   | { kind: 'background' }
@@ -475,7 +479,7 @@ const CanvasGeometryLayerImpl = ({
   };
 
   const renderMemberLoad = (presentation: MemberLoadPresentation) => {
-    const { load, lane, stackOffsetPx } = presentation;
+    const { load, lane } = presentation;
     const target = memberMap.get(load.memberId);
     if (!target) return null;
     const ni = nodeMap.get(target.i)!; const nj = nodeMap.get(target.j)!;
@@ -528,9 +532,10 @@ const CanvasGeometryLayerImpl = ({
     if (signedStart * signedEnd < 0) sampleStations.push(-signedStart / (signedEnd - signedStart));
     sampleStations.sort((left, right) => left - right);
     const uniqueStations = sampleStations.filter((station, index) => index === 0 || Math.abs(station - sampleStations[index - 1]) > 1e-9);
-    const maximumArrowLength = 62 + stackOffsetPx;
+    const maximumArrowLength = DISTRIBUTED_BASE_HEIGHT_PX;
+    const distributedBaseOffset = presentation.distributedBaseOffsetPx ?? 0;
     const samples = uniqueStations.map((t) => {
-      const base = stationOf(load.start + (load.end - load.start) * t);
+      const memberBase = stationOf(load.start + (load.end - load.start) * t);
       const { qx, qy } = distributedIntensityAt(load, t);
       const global = toGlobalVector(axis, load.coordinateSystem, qx, qy);
       const signedIntensity = global[primaryComponent];
@@ -538,13 +543,25 @@ const CanvasGeometryLayerImpl = ({
       // las flechas quedan verticales y la arista superior describe con una
       // sola recta la variación 0→q (triángulo) o q1→q2 (trapecio).
       const length = maximumArrowLength * (Math.abs(signedIntensity) / maximumIntensity);
-      const tail = { x: base.x, y: base.y + Math.sign(signedIntensity) * length };
-      return { t, base, tail, sign: Math.sign(signedIntensity) };
+      return { t, memberBase, length, sign: Math.sign(signedIntensity) };
     });
+    const bandGeometry = (sample: (typeof samples)[number], sign = sample.sign) => {
+      const base = {
+        x: sample.memberBase.x,
+        y: sample.memberBase.y + sign * distributedBaseOffset,
+      };
+      return {
+        base,
+        tail: { x: base.x, y: base.y + sign * sample.length },
+      };
+    };
     const arrows = samples
       .filter(({ sign }) => sign !== 0)
-      .map(({ t, base, tail }) => <line key={t} x1={tail.x} y1={tail.y} x2={base.x} y2={base.y} markerEnd="url(#arrow-load-distributed)" />);
-    const envelopeLobes: typeof samples[] = [];
+      .map((sample) => {
+        const { base, tail } = bandGeometry(sample);
+        return <line key={sample.t} x1={tail.x} y1={tail.y} x2={base.x} y2={base.y} markerEnd="url(#arrow-load-distributed)" />;
+      });
+    const envelopeLobes: Array<{ sign: number; samples: typeof samples }> = [];
     let currentLobe: typeof samples = [];
     let currentSign = 0;
     let zeroBoundary: (typeof samples)[number] | null = null;
@@ -553,7 +570,7 @@ const CanvasGeometryLayerImpl = ({
         zeroBoundary = sample;
         if (currentLobe.length) {
           currentLobe.push(sample);
-          envelopeLobes.push(currentLobe);
+          envelopeLobes.push({ sign: currentSign, samples: currentLobe });
           currentLobe = [];
           currentSign = 0;
         }
@@ -567,17 +584,18 @@ const CanvasGeometryLayerImpl = ({
         currentLobe.push(sample);
       }
     }
-    if (currentLobe.length) envelopeLobes.push(currentLobe);
+    if (currentLobe.length) envelopeLobes.push({ sign: currentSign, samples: currentLobe });
     const qStartMagnitude = Math.hypot(load.qxStart ?? 0, load.qyStart ?? 0);
     const qEndMagnitude = Math.hypot(load.qxEnd ?? load.qxStart ?? 0, load.qyEnd ?? load.qyStart ?? 0);
     const average = (qStartMagnitude + qEndMagnitude) / 2;
     const hitStart = stationOf(load.start);
     const hitEnd = stationOf(load.end);
     const envelopePaths = envelopeLobes.map((lobe) => {
-      const points = [...lobe.map(({ tail }) => tail), ...[...lobe].reverse().map(({ base }) => base)];
+      const geometry = lobe.samples.map((sample) => bandGeometry(sample, lobe.sign));
+      const points = [...geometry.map(({ tail }) => tail), ...[...geometry].reverse().map(({ base }) => base)];
       return `M ${points.map((point) => `${point.x} ${point.y}`).join(' L ')} Z`;
     });
-    return <g key={load.id} className={`distributed-symbol load-symbol--distributed${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-load-stack-offset={stackOffsetPx} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.distributedLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(average, units, 'distributedForce'), 2), unit: distributedLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}<line className="load-hit" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} />{envelopePaths.map((path, index) => <path key={index} className="distributed-envelope" d={path} />)}{arrows}</g>;
+    return <g key={load.id} className={`distributed-symbol load-symbol--distributed${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-load-stack-offset={distributedBaseOffset} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.distributedLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(average, units, 'distributedForce'), 2), unit: distributedLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}<line className="load-hit" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} />{envelopePaths.map((path, index) => <path key={index} className="distributed-envelope" d={path} />)}{arrows}</g>;
   };
 
   const renderPointStackGuide = (presentation: MemberLoadPresentation) => {
