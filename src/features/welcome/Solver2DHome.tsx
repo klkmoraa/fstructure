@@ -159,7 +159,7 @@ export const Solver2DHome = ({
   useEffect(() => {
     const delayTimer = window.setTimeout(() => {
       setQuoteVisible(true);
-    }, 2000);
+    }, 1000);
     return () => window.clearTimeout(delayTimer);
   }, []);
 
@@ -167,7 +167,7 @@ export const Solver2DHome = ({
     if (!quoteVisible) return undefined;
     const dismissTimer = window.setTimeout(() => {
       setQuoteVisible(false);
-    }, 7000);
+    }, 12000);
     return () => window.clearTimeout(dismissTimer);
   }, [quoteVisible]);
 
@@ -233,7 +233,7 @@ export const Solver2DHome = ({
               className="solver2d-quote-toast__bar"
               initial={reducedMotion ? { scaleX: 0 } : { scaleX: 1 }}
               animate={{ scaleX: 0 }}
-              transition={reducedMotion ? { duration: 0.01 } : { duration: 7, ease: 'linear' }}
+              transition={reducedMotion ? { duration: 0.01 } : { duration: 12, ease: 'linear' }}
               style={{ transformOrigin: 'left center' }}
               onAnimationComplete={() => setQuoteVisible(false)}
             />

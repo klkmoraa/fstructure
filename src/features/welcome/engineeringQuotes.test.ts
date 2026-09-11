@@ -82,6 +82,34 @@ describe('engineeringQuotes dataset', () => {
     }
   });
 
+  it('includes iconic quotes from movies, Dragon Ball, Suits, and pop culture requested by the user', () => {
+    const popCultureIcons = [
+      { name: 'Son Goku', snippet: 'Prefiero ser un mono sin cerebro' },
+      { name: 'Vegeta', snippet: 'romper mis propios límites' },
+      { name: 'Son Gohan', snippet: 'pelea con el corazón' },
+      { name: 'Piccolo', snippet: 'estratega' },
+      { name: 'Maestro Roshi', snippet: 'bases para tener una gran vida' },
+      { name: 'Forrest Gump', snippet: 'caja de bombones' },
+      { name: 'Rafiki', snippet: 'El pasado puede doler' },
+      { name: 'Mufasa', snippet: 'Recuerda siempre quién eres' },
+      { name: 'Harvey Specter', snippet: 'hago mi propia suerte' },
+      { name: 'Spider-Man', snippet: 'gran poder conlleva una gran responsabilidad' },
+      { name: 'Batman', snippet: 'lo que hago con mis acciones lo que me define' },
+      { name: 'Rocky Balboa', snippet: 'Nadie golpea tan fuerte como la vida' },
+      { name: 'Interstellar', snippet: 'dimensiones del tiempo y del espacio' },
+      { name: 'Kratos', snippet: 'sé mejor' },
+      { name: 'Arthur Morgan', snippet: 'hacer lo correcto' },
+    ];
+
+    for (const item of popCultureIcons) {
+      const quote = ENGINEERING_QUOTES.find(
+        (q) => q.author === item.name && q.text.es.includes(item.snippet),
+      );
+      expect(quote, `Expected quote by ${item.name} with snippet "${item.snippet}" to exist`).toBeDefined();
+      expect(quote?.text.en.trim().length).toBeGreaterThan(10);
+    }
+  });
+
   it('returns a valid quote from getRandomQuote()', () => {
     const quote = getRandomQuote();
     expect(quote).toBeDefined();

@@ -17,7 +17,7 @@ const dummyProject: ProjectModel = {
 };
 
 describe('Solver2DHome component', () => {
-  it('waits 2s after load to appear, renders a single quote, and allows dismiss', () => {
+  it('waits 1s after load to appear, renders a single quote, and allows dismiss', () => {
     vi.useFakeTimers();
     try {
       render(
@@ -35,12 +35,12 @@ describe('Solver2DHome component', () => {
         />,
       );
 
-      // Not visible immediately on mount (waits 2 seconds)
+      // Not visible immediately on mount (waits 1 second)
       expect(document.body.querySelector('.solver2d-quote-toast')).toBeNull();
 
-      // Appears after 2000ms
+      // Appears after 1000ms
       act(() => {
-        vi.advanceTimersByTime(2000);
+        vi.advanceTimersByTime(1000);
       });
 
       const toast = document.body.querySelector('.solver2d-quote-toast');
@@ -123,7 +123,7 @@ describe('Solver2DHome component', () => {
       expect(screen.getByText('Cristian Mora')).toBeTruthy();
 
       act(() => {
-        vi.advanceTimersByTime(2000);
+        vi.advanceTimersByTime(1000);
       });
 
       const toast = document.body.querySelector('.solver2d-quote-toast');
@@ -133,7 +133,7 @@ describe('Solver2DHome component', () => {
     }
   });
 
-  it('automatically dismisses the quote toast after 7000ms of visibility without pausing', () => {
+  it('automatically dismisses the quote toast after 12000ms of visibility without pausing', () => {
     vi.useFakeTimers();
     try {
       render(
@@ -153,9 +153,9 @@ describe('Solver2DHome component', () => {
 
       expect(document.body.querySelector('.solver2d-quote-toast')).toBeNull();
 
-      // Appears after 2s
+      // Appears after 1s
       act(() => {
-        vi.advanceTimersByTime(2000);
+        vi.advanceTimersByTime(1000);
       });
 
       const toast = document.body.querySelector('.solver2d-quote-toast');
@@ -164,11 +164,11 @@ describe('Solver2DHome component', () => {
       // Mouse enter/leave does NOT pause or reset the timer
       fireEvent.mouseEnter(toast!);
       act(() => {
-        vi.advanceTimersByTime(3500);
+        vi.advanceTimersByTime(6000);
       });
       fireEvent.mouseLeave(toast!);
       act(() => {
-        vi.advanceTimersByTime(3500);
+        vi.advanceTimersByTime(6000);
         vi.runAllTimers();
       });
 
