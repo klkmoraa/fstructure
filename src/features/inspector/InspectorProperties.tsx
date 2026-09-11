@@ -215,7 +215,63 @@ export const InspectorProperties = () => {
       if (key === 'x' || key === 'y') node[key] = Number(value);
       else if (key === 'internalHinge') node.internalHinge = Boolean(value);
       else if (key === 'supportPreset') {
-        node.support = applySupportPreset(node.support, value as SupportEntry);
+        const entry = value as SupportEntry;
+        if (entry.family === 'advanced') {
+          if (entry.id === 'settlement') {
+            if (node.support.type === 'none') {
+              node.support = { type: 'roller', angleDeg: 90 };
+            }
+            draft.prescribedDisplacements ??= [];
+            if (!draft.prescribedDisplacements.some((item) => item.nodeId === node.id)) {
+              let pdIndex = 1;
+              while (draft.prescribedDisplacements.some((item) => item.id === `PD${pdIndex}`)) pdIndex += 1;
+              const comp = node.support.type === 'roller' ? 'normal' : 'uy';
+              draft.prescribedDisplacements.push({
+                id: `PD${pdIndex}`,
+                nodeId: node.id,
+                caseId: draft.loadCases[0]?.id ?? 'LC1',
+                component: comp,
+                value: -0.01,
+              });
+            }
+          } else {
+            const behaviorMap: Record<string, NodeLink['behavior']> = {
+              'compression-only': 'compression-only',
+              'tension-only': 'tension-only',
+              'gap': 'stop',
+              'friction': 'friction',
+            };
+            const behavior = behaviorMap[entry.id];
+            if (behavior) {
+              node.support = { type: 'none' };
+              draft.nodeLinks ??= [];
+              const existing = draft.nodeLinks.find((l) => l.nodeI === node.id && !l.nodeJ);
+              if (existing) {
+                existing.behavior = behavior;
+                if (behavior === 'stop' && existing.clearance === undefined) existing.clearance = 0.01;
+                if (behavior === 'friction' && existing.slipForce === undefined) existing.slipForce = 10;
+              } else {
+                let linkIndex = 1;
+                while (draft.nodeLinks.some((l) => l.id === `LINK${linkIndex}`)) linkIndex += 1;
+                draft.nodeLinks.push({
+                  id: `LINK${linkIndex}`,
+                  nodeI: node.id,
+                  behavior,
+                  stiffness: 10_000,
+                  angleDeg: 90,
+                  ...(behavior === 'stop' ? { clearance: 0.01 } : {}),
+                  ...(behavior === 'friction' ? { slipForce: 10 } : {}),
+                });
+              }
+            }
+          }
+        } else {
+          // When switching to basic, guided, or elastic, clear grounded contact links on this node
+          if (draft.nodeLinks) {
+            draft.nodeLinks = draft.nodeLinks.filter((l) => !(l.nodeI === node.id && !l.nodeJ));
+          }
+          node.support = applySupportPreset(node.support, entry);
+        }
       } else if (key === 'supportType') {
         const type = value as SupportType;
         const spring = node.support.spring;
@@ -647,11 +703,16 @@ export const InspectorProperties = () => {
           units={units}
           classroomMode={classroomMode}
           settlementCount={selectedNodePrescribed.length}
+          activeNodeLink={selectedNodeLinks.find((link) => link.nodeI === selectedNode.id && !link.nodeJ)}
           onApplyPreset={(entry) => updateNode('supportPreset', entry)}
           onAngleChange={(value) => updateNode('supportAngle', value)}
           onVisualAngleChange={(value) => updateNode('supportVisualAngle', value)}
           onRestraintChange={(key, value) => updateNode(key, value)}
           onSpringChange={(key, value) => updateNode(`spring.${key}`, value)}
+          onUpdateNodeLink={(patch) => {
+            const link = selectedNodeLinks.find((item) => item.nodeI === selectedNode.id && !item.nodeJ);
+            if (link) updateNodeLink(link.id, patch);
+          }}
         />
       </InspectorPropertyGroup>
       <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived" description={t('inspector.derivedReadOnlyDescription')}>

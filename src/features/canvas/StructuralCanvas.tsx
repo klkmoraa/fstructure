@@ -1282,6 +1282,9 @@ export const StructuralCanvas = ({
       const node = draft.nodes.find((item) => item.id === pending.nodeId);
       if (!node) return draft;
       node.support = supportForCanvasPlacement(node.support, type, angleDeg, presetId);
+      if (draft.nodeLinks) {
+        draft.nodeLinks = draft.nodeLinks.filter((l) => !(l.nodeI === node.id && !l.nodeJ));
+      }
       if (draft.prescribedDisplacements) {
         draft.prescribedDisplacements = discardIncompatiblePrescribedDisplacements(
           draft.prescribedDisplacements,

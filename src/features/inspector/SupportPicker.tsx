@@ -1,9 +1,9 @@
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { Library } from 'lucide-react';
 import { Tabs } from '../../design-system/components/disclosure';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
-import type { SupportDefinition } from '../../types';
+import type { NodeLink, SupportDefinition } from '../../types';
 import type { UnitSystemId } from '../../foundation/units';
 import { formatFixed } from '../../utils/numberFormat';
 import { InspectorHelper, InspectorLockedState, PhysicalNumberField } from './InspectorPrimitives';
@@ -16,6 +16,7 @@ import {
   DEFAULT_SPRING_ANGLE_DEG,
   SUPPORT_PICKER_FAMILIES,
   VISUAL_ORIENTATION_STEPS,
+  activeSpringKeys,
   countSupportReactions,
   describeSupportDof,
   entriesOfFamily,
@@ -48,7 +49,7 @@ import {
  * vertical. El campo real del modelo lo enseña el panel de detalle, sin
  * traducir, porque es el nombre de la propiedad y no una etiqueta.
  *
- * EL PANEL DE DETALLE SIGUE AL FOCO, NO AL TIPO. Pulsar «Resorte Y» no cambia
+ * EL PANEL DE DETALLE SIGUE AL FOCO, NOT AL TIPO. Pulsar «Resorte Y» no cambia
  * la condición de borde —abre su campo—, así que el panel tiene que poder
  * hablar de un resorte mientras el nudo sigue siendo un articulado. Cuando el
  * foco apunta a un preset que ya no es el del nudo (porque alguien lo cambió
@@ -112,27 +113,40 @@ export const SupportPicker = ({
   units,
   classroomMode,
   settlementCount,
+  activeNodeLink,
   onApplyPreset,
   onAngleChange,
   onVisualAngleChange,
   onRestraintChange,
   onSpringChange,
+  onUpdateNodeLink,
 }: {
   support: SupportDefinition;
   selectionKey: string;
   units: UnitSystemId;
   classroomMode: boolean;
   settlementCount: number;
+  activeNodeLink?: NodeLink;
   onApplyPreset: (entry: SupportEntry) => void;
   onAngleChange: (angleDeg: number) => void;
   onVisualAngleChange: (angleDeg: number | null) => void;
   onRestraintChange: (key: 'restrainX' | 'restrainY' | 'restrainR', value: boolean) => void;
   onSpringChange: (key: SupportSpringKey | 'angleDeg', value: number) => void;
+  onUpdateNodeLink?: (patch: Partial<NodeLink>) => void;
 }) => {
   const { t, language } = useI18n();
   const detailId = useId();
 
-  const matched = matchSupportEntry(support);
+  const matched = useMemo(() => {
+    if (activeNodeLink) {
+      if (activeNodeLink.behavior === 'compression-only') return findSupportEntry('compression-only') ?? matchSupportEntry(support);
+      if (activeNodeLink.behavior === 'tension-only') return findSupportEntry('tension-only') ?? matchSupportEntry(support);
+      if (activeNodeLink.behavior === 'stop') return findSupportEntry('gap') ?? matchSupportEntry(support);
+      if (activeNodeLink.behavior === 'friction') return findSupportEntry('friction') ?? matchSupportEntry(support);
+    }
+    return matchSupportEntry(support);
+  }, [activeNodeLink, support]);
+
   const [family, setFamily] = useState<SupportFamily>(matched.family);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -155,13 +169,32 @@ export const SupportPicker = ({
 
   const select = (entry: SupportEntry) => {
     setFocusedId(entry.id);
-    if (entry.kind === 'preset') onApplyPreset(entry);
+    if (entry.kind !== 'connection' && entry.kind !== 'unavailable') {
+      onApplyPreset(entry);
+    }
   };
 
   const isActive = (entry: SupportEntry) => {
-    if (entry.kind === 'preset') return entry.id === matched.id;
-    if (entry.kind === 'spring') return isSpringEntryActive(support, entry);
-    if (entry.kind === 'settlement') return settlementCount > 0;
+    if (entry.family === 'advanced') {
+      if (entry.id === 'settlement') return settlementCount > 0;
+      if (activeNodeLink) {
+        if (entry.id === 'compression-only') return activeNodeLink.behavior === 'compression-only';
+        if (entry.id === 'tension-only') return activeNodeLink.behavior === 'tension-only';
+        if (entry.id === 'gap') return activeNodeLink.behavior === 'stop';
+        if (entry.id === 'friction') return activeNodeLink.behavior === 'friction';
+      }
+      return false;
+    }
+    if (activeNodeLink) return false;
+    if (entry.family === 'elastic' || entry.kind === 'spring') {
+      return isSpringEntryActive(support, entry);
+    }
+    if (entry.kind === 'preset') {
+      if (entry.id === 'free' && activeSpringKeys(support).length > 0) {
+        return false;
+      }
+      return entry.id === matched.id;
+    }
     return false;
   };
 
@@ -356,6 +389,68 @@ export const SupportPicker = ({
             </p>
             <p className="support-detail__note">{t('inspector.supportSettlementWhere')}</p>
           </div>
+        ) : null}
+
+        {focused.kind === 'advanced' ? (
+          classroomMode ? (
+            <InspectorLockedState title={t('inspector.springsLockedClassroom')}>
+              {t('inspector.springsLockedClassroomBody')}
+            </InspectorLockedState>
+          ) : (
+            <div className="support-detail__section">
+              <h4>{t('inspector.supportFamily.advanced')}</h4>
+              {activeNodeLink ? (
+                <>
+                  <PhysicalNumberField
+                    label="k"
+                    value={activeNodeLink.stiffness}
+                    units={units}
+                    quantity="translationalStiffness"
+                    resetKey={`${selectionKey}:${activeNodeLink.id}:k`}
+                    validate={nonNegative}
+                    onCommit={(value) => onUpdateNodeLink?.({ stiffness: Math.max(value, 1e-9) })}
+                  />
+                  <InspectorNumericField
+                    label={t('inspector.normal')}
+                    value={activeNodeLink.angleDeg ?? 90}
+                    unit="°"
+                    resetKey={`${selectionKey}:${activeNodeLink.id}:angle`}
+                    language={language}
+                    formatOptions={{ maximumFractionDigits: 2 }}
+                    onCommit={(value) => onUpdateNodeLink?.({ angleDeg: value })}
+                  />
+                  {activeNodeLink.behavior === 'stop' ? (
+                    <PhysicalNumberField
+                      label={language === 'es' ? 'Holgura' : 'Clearance'}
+                      value={activeNodeLink.clearance ?? 0}
+                      units={units}
+                      quantity="length"
+                      resetKey={`${selectionKey}:${activeNodeLink.id}:clearance`}
+                      validate={nonNegative}
+                      onCommit={(value) => onUpdateNodeLink?.({ clearance: Math.max(0, value) })}
+                    />
+                  ) : null}
+                  {activeNodeLink.behavior === 'friction' ? (
+                    <PhysicalNumberField
+                      label={language === 'es' ? 'Fuerza de deslizamiento' : 'Slip force'}
+                      value={activeNodeLink.slipForce ?? 10}
+                      units={units}
+                      quantity="force"
+                      resetKey={`${selectionKey}:${activeNodeLink.id}:slip`}
+                      validate={nonNegative}
+                      onCommit={(value) => onUpdateNodeLink?.({ slipForce: Math.max(value, 1e-9) })}
+                    />
+                  ) : null}
+                </>
+              ) : (
+                <p className="support-detail__note">
+                  {language === 'es'
+                    ? 'Haz clic en el mosaico para aplicar esta condición de contacto al nudo.'
+                    : 'Click the tile to apply this contact condition to the node.'}
+                </p>
+              )}
+            </div>
+          )
         ) : null}
 
         {focused.kind === 'unavailable' && focused.unavailableKey ? (

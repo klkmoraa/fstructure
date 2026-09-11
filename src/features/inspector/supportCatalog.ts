@@ -55,7 +55,7 @@ export type SupportFamily = 'basic' | 'guided' | 'elastic' | 'advanced' | 'conne
  * entrada así no tiene forma de aplicarse porque el modelo no tiene dónde
  * guardarla.
  */
-export type SupportEntryKind = 'preset' | 'spring' | 'settlement' | 'connection' | 'unavailable';
+export type SupportEntryKind = 'preset' | 'spring' | 'settlement' | 'advanced' | 'connection' | 'unavailable';
 
 /**
  * Qué significa girar el símbolo de esta entrada.
@@ -344,46 +344,42 @@ const ADVANCED_ENTRIES: readonly SupportEntry[] = [
   {
     id: 'compression-only',
     family: 'advanced',
-    kind: 'unavailable',
+    kind: 'advanced',
     glyph: 'compression-only',
     labelKey: 'inspector.supportCompressionOnly',
     metaKey: 'inspector.supportMetaCompressionOnly',
     descriptionKey: 'inspector.supportCompressionOnlyDescription',
     model: "nodeLinks.behavior = 'compression-only'",
-    unavailableKey: 'inspector.supportNeedsContactSolver',
   },
   {
     id: 'tension-only',
     family: 'advanced',
-    kind: 'unavailable',
+    kind: 'advanced',
     glyph: 'tension-only',
     labelKey: 'inspector.supportTensionOnly',
     metaKey: 'inspector.supportMetaTensionOnly',
     descriptionKey: 'inspector.supportTensionOnlyDescription',
     model: "nodeLinks.behavior = 'tension-only'",
-    unavailableKey: 'inspector.supportNeedsContactSolver',
   },
   {
     id: 'gap',
     family: 'advanced',
-    kind: 'unavailable',
+    kind: 'advanced',
     glyph: 'gap',
     labelKey: 'inspector.supportGap',
     metaKey: 'inspector.supportMetaGap',
     descriptionKey: 'inspector.supportGapDescription',
     model: "nodeLinks.behavior = 'stop'",
-    unavailableKey: 'inspector.supportNeedsContactSolver',
   },
   {
     id: 'friction',
     family: 'advanced',
-    kind: 'unavailable',
+    kind: 'advanced',
     glyph: 'friction',
     labelKey: 'inspector.supportFriction',
     metaKey: 'inspector.supportMetaFriction',
     descriptionKey: 'inspector.supportFrictionDescription',
     model: "nodeLinks.behavior = 'friction'",
-    unavailableKey: 'inspector.supportNeedsContactSolver',
   },
 ];
 
@@ -481,8 +477,46 @@ export const previewSupportOf = (entry: SupportEntry): SupportDefinition | null 
  * en cualquier otro caso arranca en su valor por omisión.
  */
 export const applySupportPreset = (current: SupportDefinition, entry: SupportEntry): SupportDefinition => {
-  const spring = current.spring;
+  // Selecting an elastic entry replaces previous support with spring stiffness
+  if (entry.family === 'elastic' || entry.kind === 'spring') {
+    const kx = entry.springKeys?.includes('kx') ? (current.spring?.kx || 1000) : undefined;
+    const ky = entry.springKeys?.includes('ky') ? (current.spring?.ky || 1000) : undefined;
+    const kr = entry.springKeys?.includes('kr') ? (current.spring?.kr || 1000) : undefined;
+    const kNormal = entry.springKeys?.includes('kNormal') ? (current.spring?.kNormal || 1000) : undefined;
+    const angleDeg = entry.springKeys?.includes('kNormal')
+      ? (current.spring?.angleDeg ?? current.angleDeg ?? DEFAULT_SPRING_ANGLE_DEG)
+      : undefined;
+
+    return {
+      type: 'none',
+      spring: {
+        ...(kx !== undefined ? { kx } : {}),
+        ...(ky !== undefined ? { ky } : {}),
+        ...(kr !== undefined ? { kr } : {}),
+        ...(kNormal !== undefined ? { kNormal } : {}),
+        ...(angleDeg !== undefined ? { angleDeg } : {}),
+      },
+    };
+  }
+
+  // Selecting "Libre" clears support and springs
+  if (entry.id === 'free') {
+    return { type: 'none' };
+  }
+
   if (entry.kind !== 'preset' || !entry.type) return current;
+
+  // Switching from a pure spring to a basic/guided support clears the spring
+  const isPureSpring = current.type === 'none' && Boolean(
+    current.spring && (
+      (current.spring.kx ?? 0) > 0 ||
+      (current.spring.ky ?? 0) > 0 ||
+      (current.spring.kr ?? 0) > 0 ||
+      (current.spring.kNormal ?? 0) > 0
+    )
+  );
+  const spring = isPureSpring ? undefined : current.spring;
+
   if (entry.type === 'roller') {
     const inherited = current.type === 'roller' ? current.angleDeg : undefined;
     return { type: 'roller', angleDeg: entry.angleDeg ?? inherited ?? DEFAULT_ROLLER_ANGLE_DEG, spring };
@@ -523,6 +557,17 @@ export const applySupportPreset = (current: SupportDefinition, entry: SupportEnt
  * corresponde es «Personalizado».
  */
 export const matchSupportEntry = (support: SupportDefinition): SupportEntry => {
+  if (support.type === 'none') {
+    const active = activeSpringKeys(support);
+    if (active.length > 1) {
+      return ELASTIC_ENTRIES.find((entry) => entry.id === 'spring-combined') ?? BASIC_ENTRIES[0];
+    }
+    if (active.length === 1) {
+      const match = ELASTIC_ENTRIES.find((entry) => entry.springKeys?.includes(active[0]));
+      if (match) return match;
+    }
+    return BASIC_ENTRIES[0];
+  }
   if (support.type === 'roller') {
     const angle = support.angleDeg ?? DEFAULT_ROLLER_ANGLE_DEG;
     return BASIC_ENTRIES.find((entry) => entry.type === 'roller' && entry.angleDeg === angle)
@@ -617,6 +662,7 @@ export const isSpringEntryActive = (support: SupportDefinition, entry: SupportEn
   /* El combinado sólo se da por activo cuando hay más de una rigidez: si no,
      la tarjeta que describe el estado es la del resorte suelto. */
   if (entry.id === 'spring-combined') return active.length > 1;
+  if (active.length > 1) return false;
   return entry.springKeys.every((key) => active.includes(key));
 };
 

@@ -156,7 +156,7 @@ const CanvasGeometryLayerImpl = ({
         <g className="support-springs-group" transform={baseRotation === 0 ? undefined : `rotate(${-baseRotation})`}>
           {hasKx ? (
             <g className="support-spring support-spring--x">
-              <line x1="0" y1="0" x2="-4" y2="0" strokeWidth="1.8" />
+              <line x1="0" y1="0" x2="-4" y2="0" strokeWidth="1.8" className="support-spring-coil" />
               <path
                 d="M -4 0 L -7 -5 L -10 5 L -13 -5 L -16 5 L -19 -5 L -22 0 L -25 0"
                 fill="none"
@@ -171,7 +171,7 @@ const CanvasGeometryLayerImpl = ({
 
           {hasKy ? (
             <g className="support-spring support-spring--y" transform={verticalOffset === 0 ? undefined : `translate(0 ${verticalOffset})`}>
-              <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.8" />
+              <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.8" className="support-spring-coil" />
               <path
                 d="M 0 4 L -5 7 L 5 10 L -5 13 L 5 16 L -5 19 L 0 22 L 0 25"
                 fill="none"
@@ -190,7 +190,7 @@ const CanvasGeometryLayerImpl = ({
               transform={`rotate(${(spring?.angleDeg ?? 90) - 90})`}
             >
               <g transform={verticalOffset === 0 ? undefined : `translate(0 ${verticalOffset})`}>
-                <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.8" />
+                <line x1="0" y1="0" x2="0" y2="4" strokeWidth="1.8" className="support-spring-coil" />
                 <path
                   d="M 0 4 L -5 7 L 5 10 L -5 13 L 5 16 L -5 19 L 0 22 L 0 25"
                   fill="none"
@@ -349,11 +349,10 @@ const CanvasGeometryLayerImpl = ({
     }
 
     if (hasAnySpring) {
-      const rotation = node.support.angleDeg ?? 0;
       return (
-        <g key={node.id} className={`support-symbol support-spring${selected ? ' selected' : ''}`} transform={`translate(${p.x} ${p.y}) rotate(${rotation})`} data-support-id={node.id}>
+        <g key={node.id} className={`support-symbol support-spring${selected ? ' selected' : ''}`} transform={`translate(${p.x} ${p.y})`} data-support-id={node.id}>
           {selected ? <rect className="support-selection-frame" x="-28" y="-8" width="56" height="38" rx="7" /> : null}
-          {renderAttachedSprings('none', rotation)}
+          {renderAttachedSprings('none', 0)}
           <circle cx="0" cy="0" r="2.4" className="support-pin-dot" />
         </g>
       );

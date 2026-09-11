@@ -10,7 +10,16 @@ export const supportForCanvasPlacement = (
   angleDeg: number,
   presetId?: string,
 ): SupportDefinition => {
-  const shared = { spring: previous.spring, prescribed: previous.prescribed };
+  const isPureSpring = previous.type === 'none' && Boolean(
+    previous.spring && (
+      (previous.spring.kx ?? 0) > 0 ||
+      (previous.spring.ky ?? 0) > 0 ||
+      (previous.spring.kr ?? 0) > 0 ||
+      (previous.spring.kNormal ?? 0) > 0
+    )
+  );
+  const spring = (type === 'none' || isPureSpring) && presetId !== 'spring' ? undefined : previous.spring;
+  const shared = { spring, prescribed: previous.prescribed };
   if (presetId === 'guide-horizontal') {
     return discardIncompatibleInlineSupportPrescribed({ ...shared, type: 'custom', restrainX: false, restrainY: true, restrainR: true });
   }
