@@ -6,16 +6,16 @@ import {
 } from './engineeringQuotes';
 
 describe('engineeringQuotes dataset', () => {
-  it('contains exactly 200 authentic quotes on engineering, simplicity, art, and life', () => {
-    expect(ENGINEERING_QUOTES.length).toBe(200);
+  it('contains exactly 320 authentic quotes on engineering, architecture, culture, and life', () => {
+    expect(ENGINEERING_QUOTES.length).toBe(320);
   });
 
-  it('has continuous unique IDs from 1 to 200', () => {
+  it('has continuous unique IDs from 1 to 320', () => {
     const ids = ENGINEERING_QUOTES.map((q) => q.id);
     const uniqueIds = new Set(ids);
-    expect(uniqueIds.size).toBe(200);
+    expect(uniqueIds.size).toBe(320);
 
-    for (let i = 1; i <= 200; i++) {
+    for (let i = 1; i <= 320; i++) {
       expect(uniqueIds.has(i)).toBe(true);
     }
   });
@@ -110,11 +110,63 @@ describe('engineeringQuotes dataset', () => {
     }
   });
 
+  it('includes iconic quotes from architects and business innovators requested by the user', () => {
+    const innovators = [
+      { name: 'Bjarke Ingels', snippet: 'sostenibilidad' },
+      { name: 'Rem Koolhaas', snippet: 'arquitectura es una mezcla peligrosa' },
+      { name: 'Shigeru Ban', snippet: 'tubos de cartón' },
+      { name: 'Francis Kéré', snippet: 'sabiduría climática local' },
+      { name: 'David Chipperfield', snippet: 'proteger el espacio cívico' },
+      { name: 'Alejandro Aravena', snippet: 'recursos escasos' },
+      { name: 'Elon Musk', snippet: 'primeros principios de la física' },
+      { name: 'Jeff Bezos', snippet: 'obsesiónate con servir al usuario' },
+      { name: 'Satya Nadella', snippet: 'learn-it-all' },
+      { name: 'Jensen Huang', snippet: 'computación acelerada' },
+    ];
+
+    for (const item of innovators) {
+      const quote = ENGINEERING_QUOTES.find(
+        (q) => q.author === item.name && (q.text.es.includes(item.snippet) || q.role.es.includes(item.snippet) || q.text.en.includes(item.snippet)),
+      );
+      expect(quote, `Expected quote by ${item.name} to exist`).toBeDefined();
+    }
+  });
+
+  it('includes iconic quotes from civil and structural engineering masters requested by the user', () => {
+    const structuralMasters = [
+      { name: 'David Billington', snippet: 'arte estructural' },
+      { name: 'Hardy Cross', snippet: 'La fuerza sigue a la rigidez' },
+      { name: 'Stephen Timoshenko', snippet: 'teoría de la elasticidad' },
+      { name: 'Karl von Terzaghi', snippet: 'suelo es un medio vivo' },
+      { name: 'Tsung-Ying Lin (T. Y. Lin)', snippet: 'pretensado' },
+      { name: 'Leslie Robertson', snippet: 'Torres Gemelas' },
+      { name: 'William Baker', snippet: 'Burj Khalifa' },
+      { name: 'Nathan Newmark', snippet: 'análisis dinámico' },
+      { name: 'Ray Clough', snippet: 'elementos finitos' },
+      { name: 'Olgierd Zienkiewicz', snippet: 'elementos finitos' },
+      { name: 'Thomas Paulay', snippet: 'diseño por capacidad' },
+      { name: 'Fritz Leonhardt', snippet: 'puente atirantado' },
+      { name: 'Jörg Schlaich', snippet: 'bielas y tirantes' },
+      { name: 'Christian Menn', snippet: 'Sunniberg' },
+      { name: 'Robert Maillart', snippet: 'hormigón armado' },
+      { name: 'Heinz Isler', snippet: 'cáscara de hormigón' },
+      { name: 'Frei Otto', snippet: 'estructuras tensadas' },
+      { name: 'Fazlur Khan', snippet: 'tubo tridimensional' },
+    ];
+
+    for (const master of structuralMasters) {
+      const quote = ENGINEERING_QUOTES.find(
+        (q) => q.author === master.name && (q.text.es.includes(master.snippet) || q.role.es.includes(master.snippet)),
+      );
+      expect(quote, `Expected quote by ${master.name} with snippet "${master.snippet}" to exist`).toBeDefined();
+    }
+  });
+
   it('returns a valid quote from getRandomQuote()', () => {
     const quote = getRandomQuote();
     expect(quote).toBeDefined();
     expect(quote.id).toBeGreaterThanOrEqual(1);
-    expect(quote.id).toBeLessThanOrEqual(200);
+    expect(quote.id).toBeLessThanOrEqual(320);
     expect(ENGINEERING_QUOTES).toContain(quote);
   });
 });

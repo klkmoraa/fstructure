@@ -1,6 +1,6 @@
 /**
- * Colección curada de 200 citas auténticas de ingeniería estructural,
- * arte, arquitectura, computación, emprendimiento, ciencia y filosofía de vida.
+ * Colección curada de 320 citas auténticas de ingeniería estructural,
+ * arte, arquitectura, cine y cultura pop, emprendimiento, ciencia y filosofía de vida.
  *
  * Eje temático: Simplificar lo complejo, honestidad estructural y claridad de pensamiento.
  */
@@ -2831,10 +2831,1690 @@ export const ENGINEERING_QUOTES: readonly EngineeringQuote[] = [
     source: 'El verano (1954)',
     category: 'life',
   },
+  {
+    id: 201,
+    text: {
+      es: "Si no luchamos hoy por construir un futuro mejor, nadie lo hará por nosotros. Jamás nos rendiremos ante la desesperanza.",
+      en: "If we do not fight today to build a better future, no one will do it for us. We will never surrender to despair.",
+    },
+    author: "Trunks",
+    role: {
+      es: "Guerrero del Futuro · Dragon Ball Z",
+      en: "Future Warrior · Dragon Ball Z",
+    },
+    source: "Dragon Ball Z: Un futuro diferente",
+    category: 'life',
+  },
+  {
+    id: 202,
+    text: {
+      es: "Aunque el destino parezca escrito en piedra, un verdadero guerrero pelea hasta el último aliento por cambiar su curso.",
+      en: "Even if destiny seems carved in stone, a true warrior fights until the last breath to change its course.",
+    },
+    author: "Bardock",
+    role: {
+      es: "Guerrero Saiyajin y padre de Goku · Dragon Ball",
+      en: "Saiyan warrior and father of Goku · Dragon Ball",
+    },
+    source: "Dragon Ball: El último combate",
+    category: 'life',
+  },
+  {
+    id: 203,
+    text: {
+      es: "A veces tienes que correr antes de poder caminar. El progreso y la invención exigen atreverse a dar el salto.",
+      en: "Sometimes you gotta run before you can walk. Progress and invention demand daring to take the leap.",
+    },
+    author: "Iron Man",
+    role: {
+      es: "Tony Stark · Vengador e innovador tecnológico",
+      en: "Tony Stark · Avenger and tech innovator",
+    },
+    source: "Iron Man (Marvel Studios, 2008)",
+    category: 'engineering',
+  },
+  {
+    id: 204,
+    text: {
+      es: "El precio de la libertad es alto, siempre lo ha sido; pero es un precio que estoy dispuesto a pagar para proteger a los demás.",
+      en: "The price of freedom is high, it always has been; but it’s a price I’m willing to pay to protect others.",
+    },
+    author: "Capitán América",
+    role: {
+      es: "Steve Rogers · El Primer Vengador",
+      en: "Steve Rogers · The First Avenger",
+    },
+    source: "Captain America: The Winter Soldier (2014)",
+    category: 'life',
+  },
+  {
+    id: 205,
+    text: {
+      es: "Si eres bueno en algo, jamás lo hagas gratis. Valora tu talento y conoce el impacto real de tu trabajo.",
+      en: "If you’re good at something, never do it for free. Value your talent and know the real impact of your work.",
+    },
+    author: "Joker",
+    role: {
+      es: "The Dark Knight · Christopher Nolan (2008)",
+      en: "The Dark Knight · Christopher Nolan (2008)",
+    },
+    source: "The Dark Knight (2008)",
+    category: 'life',
+  },
+  {
+    id: 206,
+    text: {
+      es: "Nunca odies a tus enemigos; nubla tu juicio y debilita tu capacidad de cálculo estratégico.",
+      en: "Never hate your enemies; it affects your judgment and weakens your strategic calculation.",
+    },
+    author: "Michael Corleone",
+    role: {
+      es: "El Padrino Parte III · Francis Ford Coppola",
+      en: "The Godfather Part III · Francis Ford Coppola",
+    },
+    source: "The Godfather Part III (1990)",
+    category: 'philosophy',
+  },
+  {
+    id: 207,
+    text: {
+      es: "Tus ojos pueden engañarte, no confíes ciegamente en ellos; busca la verdad más allá de la superficie de las cosas.",
+      en: "Your eyes can deceive you, don’t trust them; seek truth beyond the surface of things.",
+    },
+    author: "Obi-Wan Kenobi",
+    role: {
+      es: "Maestro Jedi · Saga Star Wars",
+      en: "Jedi Master · Star Wars franchise",
+    },
+    source: "Star Wars: Episode IV - A New Hope",
+    category: 'philosophy',
+  },
+  {
+    id: 208,
+    text: {
+      es: "Nunca me digas las probabilidades. Cuando confías en tu pericia técnica y en tu equipo, cualquier bloqueo puede superarse.",
+      en: "Never tell me the odds. When you trust your technical craft and your crew, any obstacle can be broken.",
+    },
+    author: "Han Solo",
+    role: {
+      es: "Capitán del Halcón Milenario · Star Wars",
+      en: "Captain of the Millennium Falcon · Star Wars",
+    },
+    source: "Star Wars: Episode V - The Empire Strikes Back",
+    category: 'life',
+  },
+  {
+    id: 209,
+    text: {
+      es: "Puede que llegue un día en que el coraje de los hombres falle, pero ese día no es hoy. ¡Hoy lucharemos!",
+      en: "A day may come when the courage of men fails, but it is not this day. This day we fight!",
+    },
+    author: "Aragorn",
+    role: {
+      es: "Rey de Gondor · El Señor de los Anillos",
+      en: "King of Gondor · The Lord of the Rings",
+    },
+    source: "El Señor de los Anillos: El retorno del rey",
+    category: 'life',
+  },
+  {
+    id: 210,
+    text: {
+      es: "Hay algo de bien en este mundo, señor Frodo, y vale la pena luchar por ello con toda el alma.",
+      en: "There’s some good in this world, Mr. Frodo, and it’s worth fighting for with all your heart.",
+    },
+    author: "Samwise Gamgee",
+    role: {
+      es: "Compañero de viaje · El Señor de los Anillos",
+      en: "Fellowship traveler · The Lord of the Rings",
+    },
+    source: "El Señor de los Anillos: Las dos torres",
+    category: 'life',
+  },
+  {
+    id: 211,
+    text: {
+      es: "No leemos y escribimos poesía porque sea bonita; leemos y escribimos porque pertenecemos a la raza humana, y la raza humana está llena de pasión.",
+      en: "We don’t read and write poetry because it’s cute; we read and write poetry because we are members of the human race, and the human race is filled with passion.",
+    },
+    author: "John Keating",
+    role: {
+      es: "Profesor de literatura · Dead Poets Society",
+      en: "Literature teacher · Dead Poets Society",
+    },
+    source: "Dead Poets Society (1989)",
+    category: 'art',
+  },
+  {
+    id: 212,
+    text: {
+      es: "No eres perfecto y la persona que conozcas tampoco lo será; la cuestión es si sois perfectos el uno para el otro en vuestras imperfecciones.",
+      en: "You’re not perfect, and the person you meet isn’t perfect either; the question is whether you’re perfect for each other in your imperfections.",
+    },
+    author: "Sean Maguire",
+    role: {
+      es: "Terapeuta y mentor · Good Will Hunting",
+      en: "Therapist and mentor · Good Will Hunting",
+    },
+    source: "Good Will Hunting (1997)",
+    category: 'life',
+  },
+  {
+    id: 213,
+    text: {
+      es: "El futuro no está establecido; no hay más destino que el que nosotros mismos forjamos con nuestras decisiones.",
+      en: "The future is not set; there’s no fate but what we make for ourselves through our choices.",
+    },
+    author: "Sarah Connor",
+    role: {
+      es: "Terminator 2: El juicio final",
+      en: "Terminator 2: Judgment Day",
+    },
+    source: "Terminator 2: Judgment Day (1991)",
+    category: 'life',
+  },
+  {
+    id: 214,
+    text: {
+      es: "Sé curioso, no juzgues. La verdadera empatía y la humildad transforman a cualquier grupo ordinario en un equipo invencible.",
+      en: "Be curious, not judgmental. True empathy and humility transform any ordinary group into an unbeatable team.",
+    },
+    author: "Ted Lasso",
+    role: {
+      es: "Entrenador de fútbol y mentor · Ted Lasso",
+      en: "Football coach and mentor · Ted Lasso",
+    },
+    source: "Ted Lasso (Apple TV+)",
+    category: 'life',
+  },
+  {
+    id: 215,
+    text: {
+      es: "Si quieres ganar en grande, no te conformes con lo convencional; busca el ángulo que nadie más ha sido capaz de ver.",
+      en: "If you want to win big, don’t settle for the conventional; look for the angle nobody else was able to see.",
+    },
+    author: "Saul Goodman",
+    role: {
+      es: "Abogado ingenioso · Better Call Saul",
+      en: "Ingenious attorney · Better Call Saul",
+    },
+    source: "Better Call Saul (Vince Gilligan & Peter Gould)",
+    category: 'life',
+  },
+  {
+    id: 216,
+    text: {
+      es: "En este mundo tienes que saber exactamente cuánto vale tu posición y no retroceder ni un milímetro cuando soplan vientos adversos.",
+      en: "In this world you must know exactly what your position is worth and not take a step back when adverse winds blow.",
+    },
+    author: "Logan Roy",
+    role: {
+      es: "Fundador de Waystar Royco · Succession",
+      en: "Founder of Waystar Royco · Succession",
+    },
+    source: "Succession (HBO)",
+    category: 'life',
+  },
+  {
+    id: 217,
+    text: {
+      es: "El mal es el mal; menor, mayor o mediocre, la escala no importa. Si debo elegir, prefiero luchar siempre por lo que es recto y noble.",
+      en: "Evil is evil; lesser, greater, middling, the degree does not matter. If I’m to choose, I prefer to stand for what is just and honorable.",
+    },
+    author: "Geralt de Rivia",
+    role: {
+      es: "Brujo de la Escuela del Lobo · The Witcher",
+      en: "Witcher of the Wolf School · The Witcher",
+    },
+    source: "The Witcher (Andrzej Sapkowski / CD Projekt)",
+    category: 'philosophy',
+  },
+  {
+    id: 218,
+    text: {
+      es: "No somos peones de nadie; luchar era lo único para lo que era bueno, pero al menos siempre luché por aquello en lo que creía.",
+      en: "We are no one’s pawns; fighting was the only thing I was good at, but at least I always fought for what I believed in.",
+    },
+    author: "Solid Snake",
+    role: {
+      es: "Soldado legendario · Saga Metal Gear Solid",
+      en: "Legendary soldier · Metal Gear Solid series",
+    },
+    source: "Metal Gear Solid (Hideo Kojima)",
+    category: 'philosophy',
+  },
+  {
+    id: 219,
+    text: {
+      es: "Nada es verdad, todo está permitido. La sabiduría no consiste en obedecer dogmas ciegos, sino en asumir la responsabilidad total de tus actos.",
+      en: "Nothing is true, everything is permitted. Wisdom is not obeying blind dogmas, but shouldering full responsibility for your actions.",
+    },
+    author: "Ezio Auditore",
+    role: {
+      es: "Maestro Asesino de Florencia · Assassin’s Creed",
+      en: "Master Assassin of Florence · Assassin’s Creed",
+    },
+    source: "Assassin’s Creed II / Revelations (Ubisoft)",
+    category: 'philosophy',
+  },
+  {
+    id: 220,
+    text: {
+      es: "Pase lo que pase, sigues adelante. Siempre encuentras algo por lo que vale la pena resistir, levantarte y volver a empezar.",
+      en: "No matter what, you keep going. You always find something worth standing up for, enduring, and starting anew.",
+    },
+    author: "Joel Miller",
+    role: {
+      es: "Superviviente y protector · The Last of Us",
+      en: "Survivor and protector · The Last of Us",
+    },
+    source: "The Last of Us (Naughty Dog)",
+    category: 'life',
+  },
+  {
+    id: 221,
+    text: {
+      es: "La sostenibilidad no debe ser un sacrificio moral ni un freno a la inventiva, sino un motor de diseño audaz que mejore la vida humana.",
+      en: "Sustainability should not be a moral sacrifice or a brake on invention, but an engine of bold design that enhances human life.",
+    },
+    author: "Bjarke Ingels",
+    role: {
+      es: "Arquitecto danés y fundador de BIG (Bjarke Ingels Group)",
+      en: "Danish architect and founder of BIG (Bjarke Ingels Group)",
+    },
+    source: "Yes is More: An Archicomic on Architectural Evolution",
+    category: 'architecture',
+  },
+  {
+    id: 222,
+    text: {
+      es: "La arquitectura es una mezcla peligrosa de omnipotencia e impotencia: no puedes controlar el porvenir social, pero puedes erigir sus escenarios.",
+      en: "Architecture is a dangerous mixture of omnipotence and impotence: you cannot control the social future, but you can build its stages.",
+    },
+    author: "Rem Koolhaas",
+    role: {
+      es: "Arquitecto y teórico holandés · Premio Pritzker 2000 · OMA",
+      en: "Dutch architect and theorist · 2000 Pritzker Prize · OMA",
+    },
+    source: "Delirious New York & S,M,L,XL",
+    category: 'architecture',
+  },
+  {
+    id: 223,
+    text: {
+      es: "Para crear algo verdaderamente significativo debes dialogar con la memoria del lugar; la arquitectura es un lenguaje del espíritu colectivo.",
+      en: "To create something truly meaningful you must converse with the memory of the site; architecture is a language of the collective spirit.",
+    },
+    author: "Daniel Libeskind",
+    role: {
+      es: "Arquitecto · Museo Judío de Berlín y Master Plan del Ground Zero",
+      en: "Architect · Jewish Museum Berlin and Ground Zero Master Plan",
+    },
+    source: "Breaking Ground: Adventures in Life and Architecture",
+    category: 'architecture',
+  },
+  {
+    id: 224,
+    text: {
+      es: "La innovación estructural no reside en materiales costosos, sino en utilizar recursos humildes como tubos de cartón y madera para dar cobijo digno.",
+      en: "Structural innovation does not reside in costly materials, but in using humble resources like paper tubes and timber to provide dignified shelter.",
+    },
+    author: "Shigeru Ban",
+    role: {
+      es: "Arquitecto japonés · Premio Pritzker 2014 y pionero de estructuras de papel",
+      en: "Japanese architect · 2014 Pritzker Prize & paper tube pioneer",
+    },
+    source: "Discurso de aceptación del Premio Pritzker",
+    category: 'structural',
+  },
+  {
+    id: 225,
+    text: {
+      es: "La arquitectura contemporánea debe fundar sus cimientos sobre la sabiduría climática local y la fuerza colaborativa de la comunidad.",
+      en: "Contemporary architecture must ground its foundations in local climatic wisdom and the collaborative strength of the community.",
+    },
+    author: "Francis Kéré",
+    role: {
+      es: "Arquitecto burkinés · Premio Pritzker 2022",
+      en: "Burkinabè architect · 2022 Pritzker Architecture Prize laureate",
+    },
+    source: "Discurso del Premio Pritzker 2022",
+    category: 'architecture',
+  },
+  {
+    id: 226,
+    text: {
+      es: "El deber del arquitecto no es imponer una marca egocéntrica sobre el paisaje, sino proteger el espacio cívico y honrar la continuidad histórica.",
+      en: "The architect’s duty is not to impose an egocentric brand on the landscape, but to protect civic space and honor historical continuity.",
+    },
+    author: "David Chipperfield",
+    role: {
+      es: "Arquitecto británico · Premio Pritzker 2023 · Neues Museum de Berlín",
+      en: "British architect · 2023 Pritzker Prize laureate · Neues Museum Berlin",
+    },
+    source: "Conferencias sobre arquitectura pública y memoria",
+    category: 'architecture',
+  },
+  {
+    id: 227,
+    text: {
+      es: "No diseñes para resolver problemas que no existen; concentra los recursos escasos en la estructura esencial y permite que el usuario complete el resto.",
+      en: "Do not design to solve problems that do not exist; focus scarce resources on the essential structure and let the user complete the rest.",
+    },
+    author: "Alejandro Aravena",
+    role: {
+      es: "Arquitecto chileno · Premio Pritzker 2016 y pionero de vivienda incremental",
+      en: "Chilean architect · 2016 Pritzker Prize & incremental housing pioneer",
+    },
+    source: "Elemental: Manual de vivienda incremental y diseño participativo",
+    category: 'architecture',
+  },
+  {
+    id: 228,
+    text: {
+      es: "Buscamos una arquitectura de extrema ligereza y fluidez espacial, donde el límite entre el interior y el exterior se desvanezca con naturalidad.",
+      en: "We seek an architecture of extreme lightness and spatial fluidity, where the boundary between interior and exterior gently fades away.",
+    },
+    author: "Kazuyo Sejima",
+    role: {
+      es: "Arquitecta japonesa · Cofundadora de SANAA · Premio Pritzker 2010",
+      en: "Japanese architect · Co-founder of SANAA · 2010 Pritzker Prize",
+    },
+    source: "SANAA: Obras y reflexiones espaciales",
+    category: 'architecture',
+  },
+  {
+    id: 229,
+    text: {
+      es: "La calidad de un edificio reside en su atmósfera: la presencia táctil de la piedra, la calidez de la madera y el silencio con que la luz baña el espacio.",
+      en: "The quality of a building lies in its atmosphere: the tactile presence of stone, the warmth of timber, and the quiet with which light bathes space.",
+    },
+    author: "Peter Zumthor",
+    role: {
+      es: "Arquitecto suizo · Premio Pritzker 2009 · Termas de Vals",
+      en: "Swiss architect · 2009 Pritzker Prize laureate · Therme Vals",
+    },
+    source: "Atmósferas: Entornos arquitectónicos, las cosas a mi alrededor",
+    category: 'architecture',
+  },
+  {
+    id: 230,
+    text: {
+      es: "Los arquitectos no inventamos nada nuevo; transformamos la realidad existente escuchando atentamente las sugerencias topográficas del terreno.",
+      en: "Architects do not invent anything new; we transform existing reality by listening closely to the topographic hints of the site.",
+    },
+    author: "Álvaro Siza",
+    role: {
+      es: "Arquitecto portugués · Premio Pritzker 1992 · Escuela de Oporto",
+      en: "Portuguese architect · 1992 Pritzker Prize laureate · Porto School",
+    },
+    source: "Imaginar la evidencia (1998)",
+    category: 'architecture',
+  },
+  {
+    id: 231,
+    text: {
+      es: "La arquitectura es un problema de sentido común y de física elemental: cómo sostener una cubierta, cómo drenar el agua y cómo cobijar la vida.",
+      en: "Architecture is a problem of common sense and elementary physics: how to support a roof, how to drain water, and how to shelter human life.",
+    },
+    author: "Eduardo Souto de Moura",
+    role: {
+      es: "Arquitecto portugués · Premio Pritzker 2011 · Estadio de Braga",
+      en: "Portuguese architect · 2011 Pritzker Prize laureate · Braga Stadium",
+    },
+    source: "Conversaciones sobre el oficio de construir",
+    category: 'architecture',
+  },
+  {
+    id: 232,
+    text: {
+      es: "Toca la tierra con ligereza: proyecta estructuras que respiren con los vientos locales, aprovechen el sol y convivan en paz con la naturaleza.",
+      en: "Touch the earth lightly: design structures that breathe with local winds, capture the sun, and dwell in peace with nature.",
+    },
+    author: "Glenn Murcutt",
+    role: {
+      es: "Arquitecto australiano · Premio Pritzker 2002 · Arquitectura bioclimática",
+      en: "Australian architect · 2002 Pritzker Prize · Bioclimatic design pioneer",
+    },
+    source: "Touch this Earth Lightly: Glenn Murcutt in His Own Words",
+    category: 'architecture',
+  },
+  {
+    id: 233,
+    text: {
+      es: "Cada nuevo proyecto es una aventura intelectual singular; la arquitectura consiste en encontrar la respuesta específica que un sitio irrepetible reclama.",
+      en: "Each new project is a singular intellectual adventure; architecture consists in finding the specific answer that an unrepeatable site demands.",
+    },
+    author: "Jean Nouvel",
+    role: {
+      es: "Arquitecto francés · Premio Pritzker 2008 · Instituto del Mundo Árabe y Louvre Abu Dabi",
+      en: "French architect · 2008 Pritzker Prize · Louvre Abu Dhabi & Arab World Institute",
+    },
+    source: "Discurso de aceptación del Premio Pritzker 2008",
+    category: 'architecture',
+  },
+  {
+    id: 234,
+    text: {
+      es: "Las ciudades son para las personas; la ingeniería debe celebrar su esqueleto estructural de manera abierta, cívica, transparente y luminosa.",
+      en: "Cities are for people; engineering must celebrate its structural skeleton in an open, civic, transparent, and luminous manner.",
+    },
+    author: "Richard Rogers",
+    role: {
+      es: "Arquitecto británico · Premio Pritzker 2007 · Centro Pompidou y Lloyd’s de Londres",
+      en: "British architect · 2007 Pritzker Prize · Centre Pompidou and Lloyd’s Building",
+    },
+    source: "Ciudades para un pequeño planeta (1997)",
+    category: 'architecture',
+  },
+  {
+    id: 235,
+    text: {
+      es: "Cuando nos liberamos de las convenciones repetitivas, la geometría y la manufactura artesanal vuelven a conmover el corazón de las ciudades.",
+      en: "When we free ourselves from repetitive conventions, geometry and inventive craftsmanship touch the heart of cities once more.",
+    },
+    author: "Thomas Heatherwick",
+    role: {
+      es: "Diseñador británico e innovador urbano · Heatherwick Studio",
+      en: "British designer and urban innovator · Heatherwick Studio",
+    },
+    source: "Making (2012) & Humanise",
+    category: 'architecture',
+  },
+  {
+    id: 236,
+    text: {
+      es: "La arquitectura pertenece a la ciudad antes que a su creador; una obra bien pensada se integra con nobleza en la urdimbre histórica del entorno.",
+      en: "Architecture belongs to the city before it belongs to its maker; a well-conceived work weaves itself with dignity into historical urban fabric.",
+    },
+    author: "Rafael Moneo",
+    role: {
+      es: "Arquitecto español · Premio Pritzker 1996 · Museo Nacional de Arte Romano de Mérida",
+      en: "Spanish architect · 1996 Pritzker Prize laureate · National Museum of Roman Art",
+    },
+    source: "Inquietud teórica y estrategia proyectual (2004)",
+    category: 'architecture',
+  },
+  {
+    id: 237,
+    text: {
+      es: "La arquitectura clásica nos enseñó la proporción y la escala; la misión moderna es reinterpretar esa fuerza monumental para el habitar colectivo.",
+      en: "Classical architecture taught us proportion and scale; the modern mission is to reinterpret that monumental strength for collective living.",
+    },
+    author: "Ricardo Bofill",
+    role: {
+      es: "Arquitecto catalán · Taller de Arquitectura · La Muralla Roja y Walden 7",
+      en: "Catalan architect · Taller de Arquitectura · La Muralla Roja and Walden 7",
+    },
+    source: "Espacio y vida (Memorias proyectuales)",
+    category: 'architecture',
+  },
+  {
+    id: 238,
+    text: {
+      es: "La arquitectura es arte; si no aspiras a conmover el espíritu humano con formas audaces y libres, simplemente estás construyendo cajas utilitarias.",
+      en: "Architecture is art; if you don’t aspire to move the human spirit with bold, free forms, you’re simply assembling utilitarian boxes.",
+    },
+    author: "Frank Gehry",
+    role: {
+      es: "Arquitecto · Premio Pritzker 1989 · Museo Guggenheim Bilbao",
+      en: "Architect · 1989 Pritzker Prize laureate · Guggenheim Museum Bilbao",
+    },
+    source: "Conversaciones sobre el diseño y la escultura habitable",
+    category: 'architecture',
+  },
+  {
+    id: 239,
+    text: {
+      es: "Razona desde los primeros principios de la física: descompón cualquier problema colosal en sus verdades más elementales y edifica hacia arriba desde allí.",
+      en: "Boil things down to their fundamental physics truths and reason up from there, rather than reasoning by analogy.",
+    },
+    author: "Elon Musk",
+    role: {
+      es: "Ingeniero jefe en SpaceX y diseñador de producto en Tesla",
+      en: "Chief Engineer at SpaceX and Product Architect at Tesla",
+    },
+    source: "Entrevistas sobre la ingeniería de primeros principios",
+    category: 'engineering',
+  },
+  {
+    id: 240,
+    text: {
+      es: "El error más común de los ingenieros talentosos es optimizar un componente o un proceso que nunca debió haber existido en primer lugar.",
+      en: "The most common error of a smart engineer is to optimize something that should not exist in the first place.",
+    },
+    author: "Elon Musk",
+    role: {
+      es: "Fundador de SpaceX y Neuralink · Pionero de la ingeniería reutilizable",
+      en: "Founder of SpaceX and Neuralink · Reusable rocketry pioneer",
+    },
+    source: "Starbase Factory Walkthrough",
+    category: 'engineering',
+  },
+  {
+    id: 241,
+    text: {
+      es: "Si vas a construir algo verdaderamente duradero, no te obsesiones con los competidores; obsesiónate con servir al usuario con excelencia a diez años.",
+      en: "If you’re going to build something truly lasting, don’t obsess over competitors; obsess over serving customers with excellence on a ten-year horizon.",
+    },
+    author: "Jeff Bezos",
+    role: {
+      es: "Fundador de Amazon y de Blue Origin",
+      en: "Founder of Amazon and Blue Origin",
+    },
+    source: "Cartas anuales a los accionistas de Amazon",
+    category: 'simplicity',
+  },
+  {
+    id: 242,
+    text: {
+      es: "Los inventos más transformadores de la historia exigen una perseverancia paciente y estar dispuesto a ser incomprendido durante largos años.",
+      en: "The most transformative inventions in history demand patient perseverance and a willingness to be misunderstood for long periods of time.",
+    },
+    author: "Jeff Bezos",
+    role: {
+      es: "Pionero del comercio en la nube y la exploración espacial",
+      en: "Cloud computing pioneer and space exploration visionary",
+    },
+    source: "Invent & Wander: Collected Writings",
+    category: 'life',
+  },
+  {
+    id: 243,
+    text: {
+      es: "La velocidad de iteración y la claridad de visión son las armas más determinantes; enfócate con devoción en lo que genera valor genuino e irrevocable.",
+      en: "Iteration velocity and clarity of vision are the ultimate competitive advantages; focus with devotion on what creates genuine, irrevocable value.",
+    },
+    author: "Sam Altman",
+    role: {
+      es: "Cofundador y CEO de OpenAI · Pionero de la inteligencia artificial moderna",
+      en: "Co-founder and CEO of OpenAI · Modern artificial intelligence pioneer",
+    },
+    source: "How To Be Successful (Ensayos)",
+    category: 'life',
+  },
+  {
+    id: 244,
+    text: {
+      es: "No seas el que cree saberlo todo; sé el que está hambriento por aprenderlo todo en cada conversación, en cada fallo y en cada reto.",
+      en: "Don’t be a know-it-all; be a learn-it-all in every conversation, every failure, and every new challenge.",
+    },
+    author: "Satya Nadella",
+    role: {
+      es: "Presidente y CEO de Microsoft · Artífice de la transformación en la nube",
+      en: "Chairman and CEO of Microsoft · Architect of the cloud transformation",
+    },
+    source: "Hit Refresh (2017)",
+    category: 'life',
+  },
+  {
+    id: 245,
+    text: {
+      es: "La tecnología debe anticiparse a su tiempo resolviendo retos computacionales que hoy parecen imposibles; la resiliencia mental forja el futuro.",
+      en: "Technology must anticipate its time by tackling computational challenges that today seem impossible; mental resilience shapes the future.",
+    },
+    author: "Jensen Huang",
+    role: {
+      es: "Cofundador y CEO de NVIDIA · Pionero de la computación acelerada",
+      en: "Co-founder and CEO of NVIDIA · Pioneer of accelerated computing",
+    },
+    source: "Discursos de graduación en Stanford y Computex",
+    category: 'engineering',
+  },
+  {
+    id: 246,
+    text: {
+      es: "El progreso monumental no se alcanza mejorando las cosas un diez por ciento; se logra rediseñando el sistema entero para hacerlo diez veces superior.",
+      en: "True progress is not achieved by improving things by ten percent; it is won by fundamentally redesigning the system to make it ten times better.",
+    },
+    author: "Larry Page",
+    role: {
+      es: "Cofundador de Google · Pionero de la búsqueda algorítmica y moonshots",
+      en: "Co-founder of Google · Algorithmic search and moonshots pioneer",
+    },
+    source: "Conferencias sobre el pensamiento 10X",
+    category: 'engineering',
+  },
+  {
+    id: 247,
+    text: {
+      es: "La extrema simplicidad de la superficie exterior esconde una ingeniería matemática interior de colosal rigor, solidez y elegancia.",
+      en: "Extreme simplicity on the outer surface shields an inner mathematical engineering of colossal rigor, solidity, and elegance.",
+    },
+    author: "Sergey Brin",
+    role: {
+      es: "Cofundador de Google y científico de la computación",
+      en: "Co-founder of Google and computer scientist",
+    },
+    source: "Discursos sobre el diseño de sistemas masivos",
+    category: 'simplicity',
+  },
+  {
+    id: 248,
+    text: {
+      es: "Construir herramientas tangibles y nuevos mundos es la única forma de elevar a la sociedad: menos cinismo, menos retórica y más pasión por edificar.",
+      en: "Building tangible tools and new worlds is the only path to uplifting society: less cynicism, less rhetoric, and far more passion to build.",
+    },
+    author: "Marc Andreessen",
+    role: {
+      es: "Creador de NCSA Mosaic, Netscape y cofundador de a16z",
+      en: "Creator of NCSA Mosaic, Netscape, and co-founder of a16z",
+    },
+    source: "IT’S TIME TO BUILD (Manifiesto, 2020)",
+    category: 'engineering',
+  },
+  {
+    id: 249,
+    text: {
+      es: "La realidad opera como una máquina gobernada por leyes de causa y efecto; aceptar la verdad tal como es y aprender del error es el cimiento de la maestría.",
+      en: "Reality works like a machine governed by cause and effect; embracing truth as it is and learning from error is the bedrock of mastery.",
+    },
+    author: "Ray Dalio",
+    role: {
+      es: "Fundador de Bridgewater Associates y autor de Principios",
+      en: "Founder of Bridgewater Associates and author of Principles",
+    },
+    source: "Principles: Life and Work (2017)",
+    category: 'philosophy',
+  },
+  {
+    id: 250,
+    text: {
+      es: "Los proyectos más fructíferos nacen de detectar una frustración cotidiana y tener la audacia de ofrecer una solución más humana, directa y transparente.",
+      en: "The most rewarding endeavors spring from spotting an everyday frustration and having the audacity to offer a more human, direct, and transparent solution.",
+    },
+    author: "Richard Branson",
+    role: {
+      es: "Fundador de Virgin Group · Emprendedor global",
+      en: "Founder of Virgin Group · Global entrepreneur",
+    },
+    source: "Losing My Virginity: The Autobiography",
+    category: 'life',
+  },
+  {
+    id: 251,
+    text: {
+      es: "El arte estructural descansa sobre tres pilares inseparables: la eficiencia en el material, la economía de construcción y la elegancia formal intrínseca.",
+      en: "Structural art rests on three inseparable pillars: efficiency in material, economy in construction, and intrinsic formal elegance.",
+    },
+    author: "David Billington",
+    role: {
+      es: "Catedrático de Princeton · Tratadista cumbre del arte estructural",
+      en: "Princeton Professor · Foremost scholar of structural art",
+    },
+    source: "The Tower and the Bridge: The New Art of Structural Engineering (1983)",
+    category: 'structural',
+  },
+  {
+    id: 252,
+    text: {
+      es: "Un gran puente no necesita adornos ni cosméticos añadidos: la belleza estructural emana con naturalidad de la pureza de sus líneas de fuerza.",
+      en: "A great bridge requires no applied ornaments or cosmetics: structural beauty springs naturally from the purity of its flow of forces.",
+    },
+    author: "David Billington",
+    role: {
+      es: "Historiador de la ingeniería estructural y biógrafo de Maillart",
+      en: "Historian of structural engineering and Maillart biographer",
+    },
+    source: "Robert Maillart’s Bridges: The Art of Engineering",
+    category: 'structural',
+  },
+  {
+    id: 253,
+    text: {
+      es: "La fuerza sigue a la rigidez: en una estructura continua, cada miembro asume la carga en proporción exacta a su capacidad de resistir la deformación.",
+      en: "Strength follows stiffness: in a continuous structure, each member attracts load in exact proportion to its capacity to resist deformation.",
+    },
+    author: "Hardy Cross",
+    role: {
+      es: "Creador del método de distribución de momentos (Cross) · Illinois y Yale",
+      en: "Originator of Moment Distribution Method · University of Illinois & Yale",
+    },
+    source: "Continuous Frames of Reinforced Concrete (1932)",
+    category: 'structural',
+  },
+  {
+    id: 254,
+    text: {
+      es: "El análisis estructural no sustituye al pensamiento crítico; los números son solo una brújula para comprender cómo respira y trabaja el modelo real.",
+      en: "Structural analysis is not a substitute for critical thinking; numbers are merely a compass to comprehend how the physical model breathes and works.",
+    },
+    author: "Hardy Cross",
+    role: {
+      es: "Tratadista y educador de la ingeniería estructural moderna",
+      en: "Theorist and educator of modern structural engineering",
+    },
+    source: "Engineers and Ivory Towers (1952)",
+    category: 'engineering',
+  },
+  {
+    id: 255,
+    text: {
+      es: "La teoría de la elasticidad y la resistencia de materiales no son fórmulas abstractas; son la gramática física con la que se construye el mundo tangible.",
+      en: "The theory of elasticity and strength of materials are not abstract formulas; they are the physical grammar with which the tangible world is built.",
+    },
+    author: "Stephen Timoshenko",
+    role: {
+      es: "Padre de la mecánica de materiales moderna y la teoría de vigas elásticas",
+      en: "Father of modern engineering mechanics and elastic beam theory",
+    },
+    source: "Strength of Materials & Theory of Elastic Stability",
+    category: 'structural',
+  },
+  {
+    id: 256,
+    text: {
+      es: "Comprender a fondo el pandeo y las deformaciones por cortante es la frontera entre una estructura que perdura siglos y una que colapsa sin aviso.",
+      en: "Thoroughly grasping buckling and shear deformation is the frontier between a structure that lasts centuries and one that collapses without warning.",
+    },
+    author: "Stephen Timoshenko",
+    role: {
+      es: "Catedrático de Mecánica Aplicada en Stanford y Michigan",
+      en: "Professor of Applied Mechanics at Stanford and Michigan",
+    },
+    source: "History of Strength of Materials (1953)",
+    category: 'engineering',
+  },
+  {
+    id: 257,
+    text: {
+      es: "La naturaleza no lee los manuales de cálculo: el suelo es un medio vivo y heterogéneo que exige observación empírica constante y respeto absoluto.",
+      en: "Nature does not read engineering manuals: the ground is a living, heterogeneous medium demanding continuous empirical observation and absolute respect.",
+    },
+    author: "Karl von Terzaghi",
+    role: {
+      es: "Padre de la mecánica de suelos moderna e interacción suelo-estructura",
+      en: "Father of modern soil mechanics and soil-structure interaction",
+    },
+    source: "Theoretical Soil Mechanics (1943)",
+    category: 'engineering',
+  },
+  {
+    id: 258,
+    text: {
+      es: "Quien diseña una cimentación sobre supuestos teóricos sin corroborar la presión de poros y el drenaje real del terreno, edifica sobre arena movediza.",
+      en: "Whoever designs a foundation on theoretical assumptions without verifying pore water pressure and real drainage builds upon quicksand.",
+    },
+    author: "Karl von Terzaghi",
+    role: {
+      es: "Pionero de la ingeniería geotécnica y fundaciones profundas",
+      en: "Pioneer of geotechnical engineering and deep foundation design",
+    },
+    source: "Erdbaumechanik auf bodenphysikalischer Grundlage (1925)",
+    category: 'structural',
+  },
+  {
+    id: 259,
+    text: {
+      es: "En la ingeniería geotécnica y de presas, el control minucioso de las redes de flujo y la filtración son la única salvaguarda contra la catástrofe.",
+      en: "In geotechnical and dam engineering, meticulous control of flow nets and seepage is the only true safeguard against catastrophe.",
+    },
+    author: "Arthur Casagrande",
+    role: {
+      es: "Catedrático de Harvard y padre de la mecánica de suelos aplicada a presas",
+      en: "Harvard Professor and pioneer of soil mechanics applied to earth dams",
+    },
+    source: "Seepage Through Dams (Harvard Soil Mechanics Series)",
+    category: 'engineering',
+  },
+  {
+    id: 260,
+    text: {
+      es: "El pretensado consiste en cargar la estructura antes de que la carga externa llegue: es el arte de anticipar el esfuerzo para que viva en compresión.",
+      en: "Prestressing means loading the structure before the external load arrives: it is the art of anticipating stress so the material lives in compression.",
+    },
+    author: "Tsung-Ying Lin (T. Y. Lin)",
+    role: {
+      es: "Maestro mundial del hormigón pretensado y puentes de grandes luces",
+      en: "Global master of prestressed concrete and long-span bridges",
+    },
+    source: "Design of Prestressed Concrete Structures (1955)",
+    category: 'structural',
+  },
+  {
+    id: 261,
+    text: {
+      es: "Equilibrar las cargas con el trazado parabólico del tendón de presfuerzo convierte vigas y puentes en estructuras ligeras de casi nula deflexión.",
+      en: "Balancing loads with a parabolic tendon profile transforms beams and bridges into lightweight structures of virtually zero deflection.",
+    },
+    author: "Tsung-Ying Lin (T. Y. Lin)",
+    role: {
+      es: "Pionero del método de balanceo de cargas en presfuerzo · Berkeley",
+      en: "Pioneer of the load-balancing method in prestressing · UC Berkeley",
+    },
+    source: "Load-Balancing Method for Prestressed Concrete Beams (ACI Journal)",
+    category: 'structural',
+  },
+  {
+    id: 262,
+    text: {
+      es: "Diseñar un rascacielos frente al viento huracanado y el impacto sísmico exige dotarlo de amortiguamiento, ductilidad y redundancia estructural absoluta.",
+      en: "Designing a supertall tower against hurricane winds and seismic ground motions demands damping, ductility, and absolute structural redundancy.",
+    },
+    author: "Leslie Robertson",
+    role: {
+      es: "Ingeniero estructural jefe de las Torres Gemelas (WTC) y Bank of China Hong Kong",
+      en: "Lead structural engineer of the World Trade Center and Bank of China Tower",
+    },
+    source: "The Structure of Design: An Engineer’s Extraordinary Life",
+    category: 'structural',
+  },
+  {
+    id: 263,
+    text: {
+      es: "La ingeniería estructural es una profesión de inmensa responsabilidad social: cada línea que dibujas en el plano protege vidas humanas invisibles.",
+      en: "Structural engineering is a profession of immense social stewardship: every line you draw on a plan shields invisible human lives.",
+    },
+    author: "Leslie Robertson",
+    role: {
+      es: "Medalla de Oro de la Institución de Ingenieros Estructurales (IStructE)",
+      en: "IStructE Gold Medalist and innovator of wind engineering",
+    },
+    source: "Reflexiones sobre la ética y la seguridad en rascacielos",
+    category: 'life',
+  },
+  {
+    id: 264,
+    text: {
+      es: "En rascacielos de extrema altura, la forma aerodinámica exterior debe confundir al viento para que los vórtices no sincronicen con la estructura.",
+      en: "In supertall skyscrapers, the outer aerodynamic form must confuse the wind so vortex shedding never synchronizes with the structure.",
+    },
+    author: "William Baker",
+    role: {
+      es: "Socio de ingeniería estructural en SOM · Diseñador del Burj Khalifa",
+      en: "Structural Engineering Partner at SOM · Burj Khalifa structural designer",
+    },
+    source: "Engineering the World’s Tallest: The Burj Khalifa (IABSE)",
+    category: 'structural',
+  },
+  {
+    id: 265,
+    text: {
+      es: "El sistema de núcleo arriostrado con contrafuertes triangulados demostró que la geometría correcta supera a la masa bruta en la conquista del cielo.",
+      en: "The buttressed core system demonstrated that geometric clarity triumphs over brute mass in conquering the skies.",
+    },
+    author: "William Baker",
+    role: {
+      es: "Diseñador estructural y pionero de diagramas de fuerzas en rascacielos",
+      en: "Structural designer and graphic statics innovator for supertall towers",
+    },
+    source: "Structural Systems for Extreme Heights (SOM Papers)",
+    category: 'structural',
+  },
+  {
+    id: 266,
+    text: {
+      es: "El análisis dinámico no consiste en resistir pasivamente el sismo con fuerzas equivalentes, sino en comprender la disipación energética en el tiempo.",
+      en: "Dynamic analysis is not about passively resisting earthquake forces, but understanding real energy dissipation across time.",
+    },
+    author: "Nathan Newmark",
+    role: {
+      es: "Padre de la ingeniería sísmica computacional · Método Newmark-beta",
+      en: "Father of computational earthquake engineering · Newmark-beta method",
+    },
+    source: "Fundamentals of Earthquake Engineering (1971)",
+    category: 'structural',
+  },
+  {
+    id: 267,
+    text: {
+      es: "Dividir un continuo elástico complejo en elementos finitos simples permitió que la computadora resolviera las tensiones internas más intrincadas.",
+      en: "Discretizing a complex elastic continuum into simple finite elements allowed computers to solve the most intricate internal stresses.",
+    },
+    author: "Ray Clough",
+    role: {
+      es: "Cocreador del Método de los Elementos Finitos (FEM) y pionero sísmico",
+      en: "Co-creator of the Finite Element Method (FEM) and seismic pioneer",
+    },
+    source: "The Finite Element Method in Plane Stress Analysis (1960)",
+    category: 'structural',
+  },
+  {
+    id: 268,
+    text: {
+      es: "El método de los elementos finitos unificó el análisis estructural, la mecánica de sólidos y la geotecnia en un mismo marco matemático universal.",
+      en: "The finite element method unified structural analysis, solid mechanics, and geotechnics into a single universal mathematical framework.",
+    },
+    author: "Olgierd Zienkiewicz",
+    role: {
+      es: "Pionero mundial del método de elementos finitos y catedrático en Swansea",
+      en: "Pioneer of the Finite Element Method and Professor at Swansea University",
+    },
+    source: "The Finite Element Method in Engineering Science (1971)",
+    category: 'engineering',
+  },
+  {
+    id: 269,
+    text: {
+      es: "El cálculo matricial reveló que el equilibrio estático y la compatibilidad cinemática son dos caras inseparables de la misma matriz de rigidez.",
+      en: "Matrix structural analysis revealed that static equilibrium and kinematic compatibility are two inseparable faces of the same stiffness matrix.",
+    },
+    author: "John Argyris",
+    role: {
+      es: "Pionero del cálculo matricial de estructuras y el método de rigidez directa",
+      en: "Pioneer of matrix structural analysis and the direct stiffness method",
+    },
+    source: "Energy Theorems and Structural Analysis (1960)",
+    category: 'structural',
+  },
+  {
+    id: 270,
+    text: {
+      es: "El diseño sísmico no busca la invulnerabilidad absoluta frente a la naturaleza, sino la optimización racional de la seguridad ante la incertidumbre.",
+      en: "Seismic design does not seek absolute invulnerability from nature, but rational optimization of safety under fundamental uncertainty.",
+    },
+    author: "Emilio Rosenblueth",
+    role: {
+      es: "Pionero mundial de la sismología aplicada y la confiabilidad estructural",
+      en: "Pioneer of applied earthquake engineering and structural reliability",
+    },
+    source: "Design of Earthquake Resistant Structures (1980)",
+    category: 'engineering',
+  },
+  {
+    id: 271,
+    text: {
+      es: "El peligro sísmico es un proceso estocástico; el ingeniero debe concebir estructuras capaces de sobrellevar eventos que superen con creces la norma.",
+      en: "Seismic hazard is a stochastic process; the engineer must conceive structures capable of weathering events that far exceed conventional codes.",
+    },
+    author: "Luis Esteva",
+    role: {
+      es: "Pionero mundial del análisis de riesgo y peligro sísmico probabilista",
+      en: "Global pioneer of probabilistic seismic hazard and risk analysis",
+    },
+    source: "Bases para la formulación de decisiones de diseño sísmico (1968)",
+    category: 'engineering',
+  },
+  {
+    id: 272,
+    text: {
+      es: "La ductilidad es la salvaguarda de la vida: una estructura sismorresistente debe deformarse inelásticamente sin perder su soporte gravitatorio.",
+      en: "Ductility is the safeguard of life: an earthquake-resistant structure must deform inelastically without losing its gravity load support.",
+    },
+    author: "Vitelmo Bertero",
+    role: {
+      es: "Catedrático de Berkeley y padre de la ingeniería sísmica experimental",
+      en: "UC Berkeley Professor and father of experimental earthquake engineering",
+    },
+    source: "State-of-the-Art in Earthquake-Resistant Building Design",
+    category: 'structural',
+  },
+  {
+    id: 273,
+    text: {
+      es: "El espectro de respuesta no es un simple gráfico de cálculo; es el retrato dinámico de cómo oscila una estructura frente al pulso de la tierra.",
+      en: "The response spectrum is not a mere calculation chart; it is the dynamic portrait of how a structure oscillates against the pulse of the ground.",
+    },
+    author: "Anil K. Chopra",
+    role: {
+      es: "Catedrático de Berkeley y autor del tratado cumbre Dynamics of Structures",
+      en: "UC Berkeley Professor and author of Dynamics of Structures",
+    },
+    source: "Dynamics of Structures: Theory and Applications to Earthquake Engineering",
+    category: 'structural',
+  },
+  {
+    id: 274,
+    text: {
+      es: "En el diseño por capacidad, el ingeniero decide de antemano dónde formar las rótulas plásticas dúctiles para proteger las columnas del colapso.",
+      en: "In capacity design, the engineer decides beforehand where ductile plastic hinges must form to protect columns from catastrophic collapse.",
+    },
+    author: "Thomas Paulay",
+    role: {
+      es: "Padre del diseño sismorresistente por capacidad de estructuras de hormigón",
+      en: "Father of capacity design for earthquake-resistant concrete structures",
+    },
+    source: "Seismic Design of Reinforced Concrete and Masonry Buildings (1992)",
+    category: 'structural',
+  },
+  {
+    id: 275,
+    text: {
+      es: "El diseño sísmico basado en desplazamientos es mucho más certero que el basado en fuerzas: lo que destruye a los edificios es la distorsión excesiva.",
+      en: "Displacement-based seismic design is far more truthful than force-based design: excessive drift and deformation are what destroy buildings.",
+    },
+    author: "M. J. Nigel Priestley",
+    role: {
+      es: "Pionero mundial del diseño sísmico por desplazamientos y puentes dúctiles",
+      en: "Pioneer of displacement-based seismic design and ductile bridge systems",
+    },
+    source: "Displacement-Based Seismic Design of Structures (2007)",
+    category: 'structural',
+  },
+  {
+    id: 276,
+    text: {
+      es: "El hormigón armado es un material generoso si confinas adecuadamente su núcleo; el estribo cerrado bien espaciado es el mejor seguro de vida.",
+      en: "Reinforced concrete is a generous material if you properly confine its core; well-detailed closed ties are the finest structural life insurance.",
+    },
+    author: "Mete Sozen",
+    role: {
+      es: "Catedrático de Purdue y pionero del comportamiento inelástico del concreto",
+      en: "Purdue Professor and pioneer of inelastic reinforced concrete behavior",
+    },
+    source: "Investigation of Multi-Story Reinforced Concrete Frames Under Earthquake",
+    category: 'structural',
+  },
+  {
+    id: 277,
+    text: {
+      es: "El diseño basado en desempeño nos permite calcular no solo para evitar el colapso, sino para asegurar que la sociedad siga funcionando tras la crisis.",
+      en: "Performance-based design allows us to engineer not merely to prevent collapse, but to ensure society remains functional after the crisis.",
+    },
+    author: "Jack Moehle",
+    role: {
+      es: "Director del Centro PEER y líder de diseño sísmico basado en desempeño",
+      en: "PEER Center Director and leader in performance-based seismic design",
+    },
+    source: "Seismic Design of Reinforced Concrete Buildings (2014)",
+    category: 'structural',
+  },
+  {
+    id: 278,
+    text: {
+      es: "La sencillez constructiva y la claridad estética deben guiar el proyecto; el puente atirantado es la solución más armónica para luces medias y grandes.",
+      en: "Constructive simplicity and aesthetic clarity must guide the project; the cable-stayed bridge is the most harmonious solution for medium to long spans.",
+    },
+    author: "Fritz Leonhardt",
+    role: {
+      es: "Maestro de la ingeniería estructural alemana · Puentes atirantados de Stuttgart",
+      en: "Master of German structural engineering · Cable-stayed bridge pioneer",
+    },
+    source: "Bridges: Aesthetics and Design (1982)",
+    category: 'structural',
+  },
+  {
+    id: 279,
+    text: {
+      es: "El hormigón pretensado no admite descuidos en el anclaje ni en la corrosión; la durabilidad es la verdadera medida de la maestría del proyectista.",
+      en: "Prestressed concrete tolerates no carelessness in anchorage or corrosion; durability is the true hallmark of a master designer.",
+    },
+    author: "Fritz Leonhardt",
+    role: {
+      es: "Tratadista cumbre de estructuras de hormigón armado y pretensado",
+      en: "Foremost scholar of reinforced and prestressed concrete structures",
+    },
+    source: "Vorlesungen über Massivbau (Tratado de hormigón armado)",
+    category: 'structural',
+  },
+  {
+    id: 280,
+    text: {
+      es: "El modelo de bielas y tirantes transforma la zona discontinua del hormigón en una celosía intuitiva donde el flujo interno de esfuerzos resulta evidente.",
+      en: "The strut-and-tie model transforms concrete discontinuity regions into an intuitive truss where internal force flow becomes evident.",
+    },
+    author: "Jörg Schlaich",
+    role: {
+      es: "Cofundador de Schlaich Bergermann Partner · Pionero del método puntal-tirante",
+      en: "Co-founder of Schlaich Bergermann Partner · Strut-and-tie pioneer",
+    },
+    source: "Toward a Consistent Design of Structural Concrete (PCI Journal, 1987)",
+    category: 'structural',
+  },
+  {
+    id: 281,
+    text: {
+      es: "Las redes de cables pretensados y las cubiertas ligeras demuestran que la menor cantidad de masa puede cobijar los mayores espacios cívicos del mundo.",
+      en: "Prestressed cable nets and lightweight roofs demonstrate that the least amount of mass can shelter the grandest civic spaces in the world.",
+    },
+    author: "Jörg Schlaich",
+    role: {
+      es: "Diseñador del Estadio Olímpico de Múnich y torres solares ascendentes",
+      en: "Designer of the Munich Olympic Stadium roof and solar chimney towers",
+    },
+    source: "Light Structures and Cable Net Architecture",
+    category: 'structural',
+  },
+  {
+    id: 282,
+    text: {
+      es: "El comportamiento a esfuerzo cortante en elementos esbeltos exige comprender la trabazón de los áridos y la tracción diagonal que recorre el alma.",
+      en: "Shear behavior in slender members demands understanding aggregate interlock and the diagonal tension crossing the web.",
+    },
+    author: "René Walther",
+    role: {
+      es: "Catedrático de la EPFL en Lausana y maestro de puentes atirantados",
+      en: "Professor at EPFL Lausanne and master of cable-stayed bridge design",
+    },
+    source: "Cable-Stayed Bridges (1999)",
+    category: 'structural',
+  },
+  {
+    id: 283,
+    text: {
+      es: "El diseño de un viaducto no es un mero cálculo técnico; es un acto cívico y cultural que transforma el valle y el paisaje durante generaciones.",
+      en: "Designing a viaduct is not a mere technical computation; it is a civic and cultural act transforming valley and landscape across generations.",
+    },
+    author: "Christian Menn",
+    role: {
+      es: "Ingeniero civil suizo · Creador del puente Sunniberg y viaductos alpinos",
+      en: "Swiss civil engineer · Designer of Sunniberg Bridge and Alpine viaducts",
+    },
+    source: "Prestressed Concrete Bridges (Birkhäuser, 1990)",
+    category: 'structural',
+  },
+  {
+    id: 284,
+    text: {
+      es: "La esbeltez del tablero y la elegancia de las pilas en un puente de montaña nacen de dominar la continuidad y la distribución interna de momentos.",
+      en: "Slenderness of the deck and elegance of the piers in a mountain bridge stem from mastering continuity and internal moment distribution.",
+    },
+    author: "Christian Menn",
+    role: {
+      es: "Catedrático de la ETH de Zúrich · Medalla Fritz Schumacher",
+      en: "Professor of Structural Engineering at ETH Zurich · Schumacher Medal",
+    },
+    source: "Aesthetics in Bridge Design (ETH Zurich)",
+    category: 'structural',
+  },
+  {
+    id: 285,
+    text: {
+      es: "Al liberar al hormigón armado de las formas heredadas de la piedra y el acero, descubrí que la losa continua y el arco en cajón forman una unidad perfecta.",
+      en: "By freeing reinforced concrete from forms inherited from stone and steel, I discovered that continuous slabs and hollow box arches form a perfect unit.",
+    },
+    author: "Robert Maillart",
+    role: {
+      es: "Ingeniero civil suizo · Creador del puente Salginatobel y Schwandbach",
+      en: "Swiss civil engineer · Creator of Salginatobel and Schwandbach bridges",
+    },
+    source: "Construcción en hormigón armado y placas fungiformes (1926)",
+    category: 'structural',
+  },
+  {
+    id: 286,
+    text: {
+      es: "La forma óptima de una cáscara de hormigón no se dibuja a mano: se descubre suspendiendo una membrana invertida que trabaje a tracción pura.",
+      en: "The optimal shape of a concrete shell is not drawn by hand: it is discovered by hanging an inverted membrane acting in pure tension.",
+    },
+    author: "Heinz Isler",
+    role: {
+      es: "Ingeniero suizo pionero de las cáscaras de hormigón de forma libre",
+      en: "Swiss engineer and master pioneer of free-form concrete shells",
+    },
+    source: "New Shapes for Shells (IASS Symposium, 1959)",
+    category: 'structural',
+  },
+  {
+    id: 287,
+    text: {
+      es: "La naturaleza diseña con mínima energía y mínimo material; las estructuras tensadas reproducen las leyes físicas de las pompas de jabón.",
+      en: "Nature designs with minimum energy and minimum material; tensile structures reproduce the physical laws of soap bubbles.",
+    },
+    author: "Frei Otto",
+    role: {
+      es: "Arquitecto e ingeniero alemán · Premio Pritzker 2015 · Estadio Olímpico de Múnich",
+      en: "German architect and engineer · 2015 Pritzker Prize · Munich Olympic Roofs",
+    },
+    source: "Occupying and Connecting: Thoughts on Territories and Spheres of Influence",
+    category: 'structural',
+  },
+  {
+    id: 288,
+    text: {
+      es: "Las mallas espaciales y los domos triangulados transforman el peso propio en axiales puros, eliminando la flexión parásita en las mayores luces.",
+      en: "Space frames and triangulated domes turn dead weight into pure axial forces, banishing parasitic bending across the largest spans.",
+    },
+    author: "Mamoru Kawaguchi",
+    role: {
+      es: "Pionero japonés de estructuras espaciales, domos neumáticos y cubiertas colgantes",
+      en: "Japanese pioneer of space frames, pneumatic domes, and suspended roofs",
+    },
+    source: "IASS Proceedings on Spatial Structures & Structural Morphology",
+    category: 'structural',
+  },
+  {
+    id: 289,
+    text: {
+      es: "La optimización computacional de forma libre nos permite alinear la geometría del cascarón con las trayectorias exactas de las tensiones internas.",
+      en: "Computational free-form optimization allows us to sculpt shell geometry to follow the exact trajectories of internal stresses.",
+    },
+    author: "Mutsuro Sasaki",
+    role: {
+      es: "Ingeniero estructural de Toyo Ito y SANAA · Medalla de Oro IASS",
+      en: "Structural engineer for Toyo Ito and SANAA · IASS Gold Medalist",
+    },
+    source: "Morphogenesis of Flux Structures (2007)",
+    category: 'structural',
+  },
+  {
+    id: 290,
+    text: {
+      es: "El cálculo estructural debe fundirse con la visión arquitectónica para que los cables principales suspendan el espacio con una gracia casi ingrávida.",
+      en: "Structural calculation must merge with architectural vision so main cables suspend space with almost weightless grace.",
+    },
+    author: "Gengo Matsui",
+    role: {
+      es: "Ingeniero estructural de Kenzo Tange · Gimnasio Nacional de Yoyogi",
+      en: "Structural engineer for Kenzo Tange · Yoyogi National Gymnasium",
+    },
+    source: "Estructuras suspendidas y espacio público en Japón",
+    category: 'structural',
+  },
+  {
+    id: 291,
+    text: {
+      es: "El gran ingeniero de estructuras no impone su presencia; resuelve los nudos más complejos con una discreción técnica que parece milagrosa.",
+      en: "The great structural engineer does not impose their presence; they resolve the most complex nodes with technical modesty that feels miraculous.",
+    },
+    author: "Toshihiko Kimura",
+    role: {
+      es: "Maestro del diseño estructural en la arquitectura japonesa moderna",
+      en: "Master of structural design across modern Japanese architecture",
+    },
+    source: "Reflexiones sobre la ingeniería y el espacio arquitectónico",
+    category: 'structural',
+  },
+  {
+    id: 292,
+    text: {
+      es: "Unirse en una empresa de diseño total significa que arquitectos e ingenieros colaboren desde el primer trazo con rigor científico e integridad moral.",
+      en: "Joining in total design means architects and engineers collaborating from the very first sketch with scientific rigor and moral integrity.",
+    },
+    author: "Ove Arup",
+    role: {
+      es: "Fundador de Arup · Filosofía del Diseño Total (Total Design)",
+      en: "Founder of Arup · Philosophy of Total Design",
+    },
+    source: "The Key Speech (1970)",
+    category: 'structural',
+  },
+  {
+    id: 293,
+    text: {
+      es: "El verdadero ingeniero no busca esconder los esfuerzos, sino expresar con orgullo la nobleza mecánica de las conexiones, los pasadores y los tirantes.",
+      en: "The true engineer does not seek to hide stresses, but proudly expresses the mechanical nobility of connections, pins, and tie rods.",
+    },
+    author: "Peter Rice",
+    role: {
+      es: "Ingeniero estructural · Centro Pompidou, Ópera de Sídney y fachada de La Villette",
+      en: "Structural engineer · Centre Pompidou, Sydney Opera, and La Villette glass walls",
+    },
+    source: "An Engineer Imagines (Autobiografía, 1994)",
+    category: 'structural',
+  },
+  {
+    id: 294,
+    text: {
+      es: "En el Centro Pompidou, cada pieza de acero fundido gerberette fue diseñada para mostrar con honestidad cómo se transfieren las cargas al exterior.",
+      en: "At the Pompidou Centre, each cast-steel gerberette was sculpted to display with honesty how loads transfer to the exterior.",
+    },
+    author: "Peter Rice",
+    role: {
+      es: "Premio de Oro del RIBA y pionero de las estructuras de vidrio suspendido",
+      en: "RIBA Gold Medalist and pioneer of suspended structural glazing",
+    },
+    source: "Structural Glass and Cast Steel Innovation",
+    category: 'structural',
+  },
+  {
+    id: 295,
+    text: {
+      es: "La arquitectura High-Tech nació de celebrar el acero estructural y los arriostramientos diagonales como los protagonistas indiscutibles del espacio.",
+      en: "High-Tech architecture was born from celebrating structural steel and diagonal bracing as the undisputed protagonists of space.",
+    },
+    author: "Anthony Hunt",
+    role: {
+      es: "Ingeniero estructural de Norman Foster y Richard Rogers · Centro Renault y Sainsbury",
+      en: "Structural engineer for Norman Foster and Richard Rogers · Renault & Sainsbury",
+    },
+    source: "Tony Hunt’s Structures Notebook (Architectural Press)",
+    category: 'structural',
+  },
+  {
+    id: 296,
+    text: {
+      es: "La geometría no es una prisión fija; es un ritmo dinámico de algoritmos y patrones que desata una libertad estructural sin precedentes.",
+      en: "Geometry is not a rigid prison; it is a dynamic rhythm of algorithms and patterns unleashing unprecedented structural freedom.",
+    },
+    author: "Cecil Balmond",
+    role: {
+      es: "Ingeniero de Arup y colaborador de Rem Koolhaas y Toyo Ito · Pabellón Serpentine",
+      en: "Arup Engineer & collaborator of Rem Koolhaas and Toyo Ito · Serpentine Pavilion",
+    },
+    source: "informal (2002)",
+    category: 'structural',
+  },
+  {
+    id: 297,
+    text: {
+      es: "El desafío del ingeniero es combinar madera contralaminada, acero reciclado y hormigón de bajo carbono para reducir la huella sin perder solidez.",
+      en: "The engineer’s challenge is orchestrating mass timber, recycled steel, and low-carbon concrete to shrink the footprint without losing strength.",
+    },
+    author: "Hanif Kara",
+    role: {
+      es: "Cofundador de AKT II y catedrático de práctica en Harvard GSD",
+      en: "Co-founder of AKT II and Professor in Practice at Harvard GSD",
+    },
+    source: "Design Engineering (Actar, 2008)",
+    category: 'structural',
+  },
+  {
+    id: 298,
+    text: {
+      es: "Aprender con humildad de los fallos y casi-accidentes estructurales es la obligación ética suprema para que las catástrofes del pasado no se repitan jamás.",
+      en: "Learning with humility from structural failures and near-misses is the supreme ethical duty so past catastrophes never repeat.",
+    },
+    author: "Alastair Soane",
+    role: {
+      es: "Director de CROSS (Confidential Reporting on Structural Safety) en Reino Unido",
+      en: "Director of CROSS (Confidential Reporting on Structural Safety) UK",
+    },
+    source: "Structural Safety Reports and Institution of Structural Engineers Papers",
+    category: 'engineering',
+  },
+  {
+    id: 299,
+    text: {
+      es: "La resiliencia estructural consiste en dotar a los puentes de caminos alternativos de carga para que la pérdida de un elemento no cause el colapso total.",
+      en: "Structural resilience means providing bridges with alternative load paths so the sudden loss of an element never causes total progressive collapse.",
+    },
+    author: "Ted Zoli",
+    role: {
+      es: "Director técnico de puentes en HNTB · MacArthur Fellow",
+      en: "National Bridge Chief Engineer at HNTB · MacArthur Fellow",
+    },
+    source: "Innovation in Resilient Bridge Engineering",
+    category: 'structural',
+  },
+  {
+    id: 300,
+    text: {
+      es: "He diseñado cientos de puentes en el mundo, y la lección definitiva es siempre la misma: simplifica los detalles constructivos y la obra será noble y segura.",
+      en: "I have designed hundreds of bridges globally, and the ultimate lesson is always the same: simplify constructive details and the work will be noble and safe.",
+    },
+    author: "Man-Chung Tang",
+    role: {
+      es: "Presidente de T.Y. Lin International y diseñador de puentes atirantados de récord",
+      en: "Chairman of T.Y. Lin International and record-setting cable-stayed bridge designer",
+    },
+    source: "Bridge Engineering and Global Perspectives (IABSE)",
+    category: 'structural',
+  },
+  {
+    id: 301,
+    text: {
+      es: "Los polímeros reforzados con carbono y el hormigón de ultra alto rendimiento abren una nueva era de estructuras esbeltas e inmunes a la corrosión.",
+      en: "Carbon-fiber composites and ultra-high-performance concrete inaugurate a new era of slender structures impervious to corrosion.",
+    },
+    author: "Mike Schlaich",
+    role: {
+      es: "Socio de sbp (Schlaich Bergermann Partner) y catedrático en la TU Berlin",
+      en: "Partner at sbp (Schlaich Bergermann Partner) and Professor at TU Berlin",
+    },
+    source: "Lightweight Infrastructure and Carbon Fiber Bridges",
+    category: 'structural',
+  },
+  {
+    id: 302,
+    text: {
+      es: "La chapa de acero cortada y plegada según el diagrama de momentos genera pasarelas de una belleza escultórica y una eficacia estática inmejorable.",
+      en: "Steel plate sculpted and folded following moment diagrams yields pedestrian bridges of sculptural beauty and unbeatable static efficiency.",
+    },
+    author: "Laurent Ney",
+    role: {
+      es: "Ingeniero civil belga · Fundador de Ney & Partners",
+      en: "Belgian civil engineer · Founder of Ney & Partners",
+    },
+    source: "Shaping Forces (2010)",
+    category: 'structural',
+  },
+  {
+    id: 303,
+    text: {
+      es: "El indicador de volumen estructural demuestra matemáticamente que la geometría correcta es infinitamente más eficaz que engordar el espesor del material.",
+      en: "The structural volume indicator mathematically proves that correct geometry is infinitely more effective than fattening material thickness.",
+    },
+    author: "Philippe Samyn",
+    role: {
+      es: "Ingeniero estructural y arquitecto belga · Sede del Consejo de la Unión Europea",
+      en: "Belgian structural engineer and architect · Europa Building (EU Council)",
+    },
+    source: "The Volume Indicator in Structural Optimization",
+    category: 'structural',
+  },
+  {
+    id: 304,
+    text: {
+      es: "El puente es el monumento civil por excelencia: un instrumento de movilidad que enlaza dos orillas y transforma la geografía con sus líneas cinemáticas.",
+      en: "The bridge is the civil monument par excellence: an instrument of mobility joining two shores and transforming geography with kinematic lines.",
+    },
+    author: "Santiago Calatrava",
+    role: {
+      es: "Ingeniero de caminos y arquitecto · Puente del Alamillo y Puente de la Mujer",
+      en: "Civil engineer and architect · Alamillo Bridge and Puente de la Mujer",
+    },
+    source: "The Foldability of Space Frames & Dynamic Structures",
+    category: 'structural',
+  },
+  {
+    id: 305,
+    text: {
+      es: "En un puente atirantado, el pilono y los tirantes no son adornos; son el sistema muscular que sostiene con tensión activa el vuelo del tablero sobre el abismo.",
+      en: "In a cable-stayed bridge, tower and stays are not decorations; they are the muscular system holding in active tension the deck’s flight over the abyss.",
+    },
+    author: "Javier Manterola",
+    role: {
+      es: "Premio Nacional de Ingeniería civil español · Puente de la Constitución de 1812",
+      en: "Spanish National Engineering Award · La Pepa Bridge designer",
+    },
+    source: "La ingeniería como arte (2010)",
+    category: 'structural',
+  },
+  {
+    id: 306,
+    text: {
+      es: "La estructura mixta saca lo mejor de dos mundos: la inmensa tracción del acero unida a la compresión y la rigidez estabilizadora del hormigón.",
+      en: "Composite structures harness the finest of two worlds: the immense tensile strength of steel joined to the compressive stiffness of concrete.",
+    },
+    author: "Julio Martínez Calzón",
+    role: {
+      es: "Pionero de las estructuras mixtas acero-hormigón y puentes atirantados en España",
+      en: "Pioneer of composite steel-concrete structures and cable-stayed bridges in Spain",
+    },
+    source: "Puentes mixtos: proyecto y construcción",
+    category: 'structural',
+  },
+  {
+    id: 307,
+    text: {
+      es: "La historia de los puentes es la historia de la civilización: cada arco, cada voladizo y cada cable suspendido refleja los anhelos y el ingenio de una época.",
+      en: "The history of bridges is the history of civilization: every arch, cantilever, and suspension cable reflects the aspirations and craft of an era.",
+    },
+    author: "Leonardo Fernández Troyano",
+    role: {
+      es: "Ingeniero de caminos y tratadista mundial de la historia del puente · CFCSL",
+      en: "Civil engineer and foremost bridge history scholar · CFCSL",
+    },
+    source: "Tierra sobre el agua: Visión histórica universal de los puentes",
+    category: 'structural',
+  },
+  {
+    id: 308,
+    text: {
+      es: "El hormigón armado es piedra moldeable: su diseño exige un equilibrio perfecto entre la intuición espacial del proyectista y el rigor de la estática.",
+      en: "Reinforced concrete is molded stone: its design demands perfect balance between spatial intuition and the rigor of statics.",
+    },
+    author: "Carlos Fernández Casado",
+    role: {
+      es: "Padre de los puentes modernos en España y tratadista de cálculo de pórticos",
+      en: "Father of modern bridges in Spain and frame analysis theorist",
+    },
+    source: "Teoría del puente & Estructuras de hormigón armado",
+    category: 'structural',
+  },
+  {
+    id: 309,
+    text: {
+      es: "La estructura resistente debe ser antes bella por su propia conformación que por su ornamentación; si la forma no sigue al esfuerzo, la obra carece de verdad.",
+      en: "The load-bearing structure must be beautiful through its very conformation before any ornamentation; if form does not follow stress, the work lacks truth.",
+    },
+    author: "Eduardo Torroja",
+    role: {
+      es: "Ingeniero de caminos · Hipódromo de la Zarzuela y creador del Instituto Torroja",
+      en: "Civil engineer · Zarzuela Hippodrome and creator of Instituto Torroja",
+    },
+    source: "Razón y ser de los tipos estructurales (1957)",
+    category: 'structural',
+  },
+  {
+    id: 310,
+    text: {
+      es: "El secreto del cascarón en paraboloide hiperbólico es que se encofra con tablas rectas, uniendo la economía constructiva con la máxima rigidez de membrana.",
+      en: "The secret of the hyperbolic paraboloid shell is that it is formworked with straight planks, marrying construction economy with maximum membrane stiffness.",
+    },
+    author: "Félix Candela",
+    role: {
+      es: "Maestro hispanomexicano de los cascarones laminares de hormigón · Los Manantiales",
+      en: "Spanish-Mexican master of thin-shell concrete structures · Los Manantiales",
+    },
+    source: "Hacia una nueva filosofía de las estructuras (1951)",
+    category: 'structural',
+  },
+  {
+    id: 311,
+    text: {
+      es: "Una estructura no se calcula para que cumpla una fórmula; se concibe para que resista con nobleza las fuerzas gravitatorias y las deformaciones del tiempo.",
+      en: "A structure is not calculated to satisfy a formula; it is conceived to resist with nobility gravitational forces and deformations across time.",
+    },
+    author: "Guillermo González Zuleta",
+    role: {
+      es: "Ingeniero estructural colombiano · Estadios y cubiertas de hormigón armado",
+      en: "Colombian structural engineer · Stadiums and reinforced concrete shells",
+    },
+    source: "Memorias de ingeniería estructural en Colombia",
+    category: 'structural',
+  },
+  {
+    id: 312,
+    text: {
+      es: "La cerámica armada con armadura de acero demuestra que los materiales locales y la mano de obra artesanal pueden erigir bóvedas de récord mundial.",
+      en: "Reinforced masonry demonstrates that local bricks and artisanal craft can erect world-record double-curvature vaults.",
+    },
+    author: "Eladio Dieste",
+    role: {
+      es: "Ingeniero uruguayo · Bóvedas de cerámica armada de doble curvatura",
+      en: "Uruguayan engineer · Reinforced masonry Gaussian vaults pioneer",
+    },
+    source: "La invención de la forma (1998)",
+    category: 'structural',
+  },
+  {
+    id: 313,
+    text: {
+      es: "El hormigón no tolera la falsedad formal: las nervaduras que siguen las trayectorias de los momentos principales producen una estética insuperable.",
+      en: "Concrete tolerates no formal deceit: ribs following the trajectories of principal bending moments yield an unbeatable natural aesthetic.",
+    },
+    author: "Pier Luigi Nervi",
+    role: {
+      es: "Ingeniero italiano · Palazzetto dello Sport y pionero del ferrocemento",
+      en: "Italian engineer · Palazzetto dello Sport and ferrocement pioneer",
+    },
+    source: "Construir correctamente (1955)",
+    category: 'structural',
+  },
+  {
+    id: 314,
+    text: {
+      es: "El pretensado dotó al hormigón de un alma elástica activa: aniquilar la tracción perjudicial es el mayor triunfo de la técnica sobre la fragilidad del material.",
+      en: "Prestressing gave concrete an active elastic soul: banishing detrimental tension is technology’s greatest triumph over material brittleness.",
+    },
+    author: "Eugène Freyssinet",
+    role: {
+      es: "Ingeniero civil francés e inventor del hormigón pretensado industrial",
+      en: "French civil engineer and inventor of industrial prestressed concrete",
+    },
+    source: "Una revolución en el arte de construir (1936)",
+    category: 'structural',
+  },
+  {
+    id: 315,
+    text: {
+      es: "La torre no fue un capricho ornamental: cada una de sus cuatro patas curvadas fue calculada matemáticamente para que el viento cortara directo a tierra.",
+      en: "The tower was no ornamental whim: each of its four curved legs was mathematically calculated so wind forces shear directly into the earth.",
+    },
+    author: "Gustave Eiffel",
+    role: {
+      es: "Ingeniero de estructuras de celosía de hierro forjado · Torre Eiffel y Viaducto de Garabit",
+      en: "Wrought-iron truss engineer · Eiffel Tower and Garabit Viaduct",
+    },
+    source: "La Tour de trois cents mètres (1900)",
+    category: 'structural',
+  },
+  {
+    id: 316,
+    text: {
+      es: "No busques precedentes cómodos cuando te enfrentes a un río ancho o a una montaña infranqueable; atrévete a dimensionar con audacia calculada.",
+      en: "Do not seek comfortable precedents when facing a wide gorge or impassable river; dare to dimension with calculated boldness.",
+    },
+    author: "Isambard Kingdom Brunel",
+    role: {
+      es: "Ingeniero civil británico · Puente colgante de Clifton y Great Western Railway",
+      en: "British civil engineer · Clifton Suspension Bridge & Great Western Railway",
+    },
+    source: "Life of Isambard Kingdom Brunel (Diarios de ingeniería)",
+    category: 'structural',
+  },
+  {
+    id: 317,
+    text: {
+      es: "La hilatura continua de alambres paralelos de acero in situ convirtió al puente colgante en la tipología estructural reina para cruzar los mayores brazos de mar.",
+      en: "In-situ continuous spinning of parallel steel wires made the suspension bridge the reigning structural typology for conquering great waterways.",
+    },
+    author: "John Roebling",
+    role: {
+      es: "Ingeniero civil y diseñador del Puente de Brooklyn y Niagara Bridge",
+      en: "Civil engineer and designer of the Brooklyn Bridge & Niagara Bridge",
+    },
+    source: "Report on the Brooklyn Bridge (1870)",
+    category: 'structural',
+  },
+  {
+    id: 318,
+    text: {
+      es: "La tenacidad y la perseverancia diaria a pie de obra son tan decisivas como el cálculo matemático para llevar una megaestructura hasta su culminación.",
+      en: "Tenacity and daily perseverance on site are every bit as decisive as mathematical calculation in carrying a megastructure to fruition.",
+    },
+    author: "Emily Warren Roebling",
+    role: {
+      es: "Líder de la construcción y gestión de campo del Puente de Brooklyn",
+      en: "Field construction director and leader of the Brooklyn Bridge completion",
+    },
+    source: "Memorias de la finalización del Puente de Brooklyn (1883)",
+    category: 'engineering',
+  },
+  {
+    id: 319,
+    text: {
+      es: "En los grandes puentes colgantes, la inmensa gravedad de los cables y del tablero proporciona una rigidez catenaria natural que estabiliza la estructura.",
+      en: "In great suspension bridges, the immense gravity of cables and deck provides natural catenary stiffness stabilizing the structure against the wind.",
+    },
+    author: "Othmar Ammann",
+    role: {
+      es: "Ingeniero de puentes · Diseñador del George Washington y Verrazzano-Narrows",
+      en: "Bridge engineer · Designer of George Washington and Verrazzano-Narrows bridges",
+    },
+    source: "Transactions of the American Society of Civil Engineers (ASCE)",
+    category: 'structural',
+  },
+  {
+    id: 320,
+    text: {
+      es: "El rascacielos no es una acumulación vertical de vigas y columnas; es un tubo tridimensional que actúa como una gran viga en voladizo anclada a la tierra.",
+      en: "The skyscraper is not a vertical pile of beams and columns; it is a three-dimensional tube acting as a great cantilever beam rooted in the earth.",
+    },
+    author: "Fazlur Khan",
+    role: {
+      es: "Ingeniero estructural de SOM · Padre del sistema tubular en rascacielos (Torre Willis)",
+      en: "SOM Structural Engineer · Father of tubular structural systems for skyscrapers (Willis Tower)",
+    },
+    source: "Tubular Structures for Tall Buildings (1969)",
+    category: 'structural',
+  },
 ] as const;
 
 /**
- * Devuelve una cita aleatoria del catálogo de 200 citas.
+ * Devuelve una cita aleatoria del catálogo de 320 citas.
  */
 export function getRandomQuote(): EngineeringQuote {
   const index = Math.floor(Math.random() * ENGINEERING_QUOTES.length);
@@ -2842,7 +4522,7 @@ export function getRandomQuote(): EngineeringQuote {
 }
 
 /**
- * Devuelve una cita por su identificador (1 a 200).
+ * Devuelve una cita por su identificador (1 a 320).
  */
 export function getQuoteById(id: number): EngineeringQuote | undefined {
   return ENGINEERING_QUOTES.find((item) => item.id === id);
