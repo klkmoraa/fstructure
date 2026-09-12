@@ -6,23 +6,48 @@
     <meta name="format-detection" content="telephone=no" />
     <meta name="description" content="FStructure · solver estructural 2D experimental" />
     <title>FStructure · Solver 2D</title>
-    <!-- Favicons (Adaptive Vector & PNGs) -->
-    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32-dark.png" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" media="(prefers-color-scheme: light)" />
-    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16-dark.png" media="(prefers-color-scheme: dark)" />
-    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" media="(prefers-color-scheme: light)" />
-    <link rel="shortcut icon" href="./favicon.ico" />
+    <script>
+      (function() {
+        var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var v = '3';
+        var manifest = isDark ? './site-dark.webmanifest?v=' + v : './site.webmanifest?v=' + v;
+        var touch512 = isDark ? './icon-512-dark.png?v=' + v : './icon-512.png?v=' + v;
+        var touch192 = isDark ? './icon-192-dark.png?v=' + v : './icon-192.png?v=' + v;
+        var touch180 = isDark ? './apple-touch-icon-dark.png?v=' + v : './apple-touch-icon.png?v=' + v;
+        var svgIcon  = isDark ? './favicon-dark.svg?v=' + v : './favicon-light.svg?v=' + v;
+        var png32    = isDark ? './favicon-32x32-dark.png?v=' + v : './favicon-32x32.png?v=' + v;
+        var themeClr = isDark ? '#14171a' : '#fffefa';
 
-    <!-- Apple Touch Icon (Dark/Light mode support for iOS Home Screen & macOS Safari Add to Dock) -->
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-dark.png" media="(prefers-color-scheme: dark)" />
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" media="(prefers-color-scheme: light)" />
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" id="dynamic-touch-icon" />
+        document.write('<link rel="manifest" href="' + manifest + '" id="app-manifest">');
+        document.write('<link rel="apple-touch-icon" sizes="512x512" href="' + touch512 + '" id="touch-icon-512">');
+        document.write('<link rel="apple-touch-icon" sizes="192x192" href="' + touch192 + '" id="touch-icon-192">');
+        document.write('<link rel="apple-touch-icon" sizes="180x180" href="' + touch180 + '" id="touch-icon-180">');
+        document.write('<link rel="apple-touch-icon" href="' + touch512 + '" id="touch-icon-default">');
+        document.write('<link rel="icon" type="image/svg+xml" href="' + svgIcon + '" id="dynamic-fav-svg">');
+        document.write('<link rel="icon" type="image/png" sizes="32x32" href="' + png32 + '" id="dynamic-fav-32">');
+        document.write('<meta name="theme-color" content="' + themeClr + '" id="dynamic-theme-color">');
+      })();
+    </script>
 
-    <!-- Web App Manifest (Light & Dark) -->
-    <link rel="manifest" href="./site.webmanifest" id="app-manifest" />
+    <!-- Static Fallbacks for Browsers and Media Queries -->
+    <link rel="manifest" href="./site-dark.webmanifest?v=3" media="(prefers-color-scheme: dark)" />
+    <link rel="manifest" href="./site.webmanifest?v=3" media="(prefers-color-scheme: light)" />
 
-    <!-- Apple Web App & Theme configuration -->
+    <link rel="apple-touch-icon" sizes="512x512" href="./icon-512-dark.png?v=3" media="(prefers-color-scheme: dark)" />
+    <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png?v=3" media="(prefers-color-scheme: light)" />
+    <link rel="apple-touch-icon" sizes="192x192" href="./icon-192-dark.png?v=3" media="(prefers-color-scheme: dark)" />
+    <link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png?v=3" media="(prefers-color-scheme: light)" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-dark.png?v=3" media="(prefers-color-scheme: dark)" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=3" media="(prefers-color-scheme: light)" />
+
+    <link rel="icon" type="image/svg+xml" href="./favicon-dark.svg?v=3" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="./favicon-light.svg?v=3" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg?v=3" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32-dark.png?v=3" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png?v=3" media="(prefers-color-scheme: light)" />
+    <link rel="shortcut icon" href="./favicon.ico?v=3" />
+
+    <!-- Apple Web App & Theme metadata -->
     <meta name="apple-mobile-web-app-title" content="FStructure" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -30,36 +55,42 @@
     <meta name="theme-color" content="#14171a" media="(prefers-color-scheme: dark)" />
 
     <script>
-      (function() {
-        function syncThemeAssets() {
-          var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-          var touchIcon = document.getElementById('dynamic-touch-icon');
-          if (touchIcon) {
-            touchIcon.href = isDark ? './apple-touch-icon-dark.png' : './apple-touch-icon.png';
-          }
-          var manifest = document.getElementById('app-manifest');
-          if (manifest) {
-            manifest.href = isDark ? './site-dark.webmanifest' : './site.webmanifest';
-          }
-        }
-        syncThemeAssets();
-        if (window.matchMedia) {
-          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeAssets);
-        }
-      })();
+      // Live listener if user changes color scheme while the tab is open
+      if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+          var dark = e.matches;
+          var v = '3';
+          var m = document.getElementById('app-manifest');
+          if (m) m.href = dark ? './site-dark.webmanifest?v=' + v : './site.webmanifest?v=' + v;
+          var t512 = document.getElementById('touch-icon-512');
+          if (t512) t512.href = dark ? './icon-512-dark.png?v=' + v : './icon-512.png?v=' + v;
+          var t192 = document.getElementById('touch-icon-192');
+          if (t192) t192.href = dark ? './icon-192-dark.png?v=' + v : './icon-192.png?v=' + v;
+          var t180 = document.getElementById('touch-icon-180');
+          if (t180) t180.href = dark ? './apple-touch-icon-dark.png?v=' + v : './apple-touch-icon.png?v=' + v;
+          var tDef = document.getElementById('touch-icon-default');
+          if (tDef) tDef.href = dark ? './icon-512-dark.png?v=' + v : './icon-512.png?v=' + v;
+          var svg = document.getElementById('dynamic-fav-svg');
+          if (svg) svg.href = dark ? './favicon-dark.svg?v=' + v : './favicon-light.svg?v=' + v;
+          var fav32 = document.getElementById('dynamic-fav-32');
+          if (fav32) fav32.href = dark ? './favicon-32x32-dark.png?v=' + v : './favicon-32x32.png?v=' + v;
+          var tc = document.getElementById('dynamic-theme-color');
+          if (tc) tc.content = dark ? '#14171a' : '#fffefa';
+        });
+      }
     </script>
-    <script type="module" crossorigin src="./assets/index-DDXsoAq-.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-CNC7AqOf.js">
-    <link rel="modulepreload" crossorigin href="./assets/jsx-runtime-CaR_m4Xc.js">
+    <script type="module" crossorigin src="./assets/index-B2qRJ6PL.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-B0Z9INg1.js">
+    <link rel="modulepreload" crossorigin href="./assets/jsx-runtime-Ciaf_P-h.js">
     <link rel="modulepreload" crossorigin href="./assets/analysisFailure-D47rauRO.js">
     <link rel="modulepreload" crossorigin href="./assets/defaultProject-BTWy5mID.js">
     <link rel="modulepreload" crossorigin href="./assets/units-Bu9sDGHU.js">
     <link rel="modulepreload" crossorigin href="./assets/projectStorage-B8P6_obE.js">
-    <link rel="modulepreload" crossorigin href="./assets/modelOperations-DUGwHu-A.js">
+    <link rel="modulepreload" crossorigin href="./assets/modelOperations-CTe3uxxg.js">
     <link rel="modulepreload" crossorigin href="./assets/preload-helper-HclGiUj8.js">
-    <link rel="modulepreload" crossorigin href="./assets/catalogs-C21WofgL.js">
-    <link rel="modulepreload" crossorigin href="./assets/x-Dsz2tPEZ.js">
-    <link rel="modulepreload" crossorigin href="./assets/circle-alert-D2tq3wb8.js">
+    <link rel="modulepreload" crossorigin href="./assets/catalogs-Dj9uMPFc.js">
+    <link rel="modulepreload" crossorigin href="./assets/x-CxI_4eK3.js">
+    <link rel="modulepreload" crossorigin href="./assets/circle-alert-CaFTtqp7.js">
     <link rel="modulepreload" crossorigin href="./assets/standardSections-B0piPV-d.js">
     <link rel="stylesheet" crossorigin href="./assets/index-BbxoDqHs.css">
   </head>
