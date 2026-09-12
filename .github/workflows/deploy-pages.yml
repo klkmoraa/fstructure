@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-publish:
+  quality:
+    name: Puerta de calidad
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,8 +31,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build application
-        run: npm run build
+      - name: Run quality gate
+        run: npm run check
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fstructure-dist
+          path: dist
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    name: Publicar en GitHub Pages
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: fstructure-dist
+          path: dist
 
       - name: Publish static site to gh-pages
         shell: bash
