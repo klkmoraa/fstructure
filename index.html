@@ -6,29 +6,60 @@
     <meta name="format-detection" content="telephone=no" />
     <meta name="description" content="FStructure · solver estructural 2D experimental" />
     <title>FStructure · Solver 2D</title>
+    <!-- Favicons (Adaptive Vector & PNGs) -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32-dark.png" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png" media="(prefers-color-scheme: light)" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16-dark.png" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png" media="(prefers-color-scheme: light)" />
     <link rel="shortcut icon" href="./favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
-    <link rel="manifest" href="./site.webmanifest" />
+
+    <!-- Apple Touch Icon (Dark/Light mode support for iOS Home Screen & macOS Safari Add to Dock) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-dark.png" media="(prefers-color-scheme: dark)" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" media="(prefers-color-scheme: light)" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" id="dynamic-touch-icon" />
+
+    <!-- Web App Manifest (Light & Dark) -->
+    <link rel="manifest" href="./site.webmanifest" id="app-manifest" />
+
+    <!-- Apple Web App & Theme configuration -->
     <meta name="apple-mobile-web-app-title" content="FStructure" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="theme-color" content="#fffefa" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#14171a" media="(prefers-color-scheme: dark)" />
-    <script type="module" crossorigin src="./assets/index-DDXsoAq-.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-CNC7AqOf.js">
-    <link rel="modulepreload" crossorigin href="./assets/jsx-runtime-CaR_m4Xc.js">
+
+    <script>
+      (function() {
+        function syncThemeAssets() {
+          var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var touchIcon = document.getElementById('dynamic-touch-icon');
+          if (touchIcon) {
+            touchIcon.href = isDark ? './apple-touch-icon-dark.png' : './apple-touch-icon.png';
+          }
+          var manifest = document.getElementById('app-manifest');
+          if (manifest) {
+            manifest.href = isDark ? './site-dark.webmanifest' : './site.webmanifest';
+          }
+        }
+        syncThemeAssets();
+        if (window.matchMedia) {
+          window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', syncThemeAssets);
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-B2qRJ6PL.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-B0Z9INg1.js">
+    <link rel="modulepreload" crossorigin href="./assets/jsx-runtime-Ciaf_P-h.js">
     <link rel="modulepreload" crossorigin href="./assets/analysisFailure-D47rauRO.js">
     <link rel="modulepreload" crossorigin href="./assets/defaultProject-BTWy5mID.js">
     <link rel="modulepreload" crossorigin href="./assets/units-Bu9sDGHU.js">
     <link rel="modulepreload" crossorigin href="./assets/projectStorage-B8P6_obE.js">
-    <link rel="modulepreload" crossorigin href="./assets/modelOperations-DUGwHu-A.js">
+    <link rel="modulepreload" crossorigin href="./assets/modelOperations-CTe3uxxg.js">
     <link rel="modulepreload" crossorigin href="./assets/preload-helper-HclGiUj8.js">
-    <link rel="modulepreload" crossorigin href="./assets/catalogs-C21WofgL.js">
-    <link rel="modulepreload" crossorigin href="./assets/x-Dsz2tPEZ.js">
-    <link rel="modulepreload" crossorigin href="./assets/circle-alert-D2tq3wb8.js">
+    <link rel="modulepreload" crossorigin href="./assets/catalogs-Dj9uMPFc.js">
+    <link rel="modulepreload" crossorigin href="./assets/x-CxI_4eK3.js">
+    <link rel="modulepreload" crossorigin href="./assets/circle-alert-CaFTtqp7.js">
     <link rel="modulepreload" crossorigin href="./assets/standardSections-B0piPV-d.js">
     <link rel="stylesheet" crossorigin href="./assets/index-BbxoDqHs.css">
   </head>
