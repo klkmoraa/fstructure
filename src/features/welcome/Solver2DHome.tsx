@@ -5,8 +5,23 @@ import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import type { ProjectModel, ThemeMode } from '../../types';
 import { ThreeStructuralImage } from '../structural-assets';
-import { ENGINEERING_QUOTES } from './engineeringQuotes';
+import type { EngineeringQuote } from './engineeringQuotes';
 import './solver2dHome.css';
+
+const DEFAULT_QUOTE: EngineeringQuote = {
+  id: 1,
+  text: {
+    es: 'Hacer algo simple es más difícil que hacerlo complejo: tienes que trabajar duro para aclarar tu pensamiento y lograr la sencillez. Pero al final vale la pena, porque cuando llegas allí, puedes mover montañas.',
+    en: "Simple can be harder than complex: You have to work hard to get your thinking clean to make it simple. But it's worth it in the end because once you get there, you can move mountains.",
+  },
+  author: 'Steve Jobs',
+  role: {
+    es: 'Cofundador de Apple · Pionero del diseño tecnológico',
+    en: 'Co-founder of Apple · Technology Design Pioneer',
+  },
+  source: 'BusinessWeek (1998)',
+  category: 'simplicity',
+};
 
 const GitHubIcon = ({ size = 14 }: { size?: number }) => (
   <svg
@@ -150,11 +165,14 @@ export const Solver2DHome = ({
   const text = copy[language];
   const reducedMotion = useReducedMotion() ?? false;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
-  const [activeQuote] = useState(() => {
-    const index = Math.floor(Math.random() * ENGINEERING_QUOTES.length);
-    return ENGINEERING_QUOTES[index] ?? ENGINEERING_QUOTES[0];
-  });
+  const [activeQuote, setActiveQuote] = useState<EngineeringQuote>(DEFAULT_QUOTE);
   const [quoteVisible, setQuoteVisible] = useState(false);
+
+  useEffect(() => {
+    void import('./engineeringQuotes').then((module) => {
+      setActiveQuote(module.getRandomQuote());
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const delayTimer = window.setTimeout(() => {

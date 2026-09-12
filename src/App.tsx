@@ -6,12 +6,7 @@ import { ProjectProvider, useProject } from './store/ProjectContext';
 import { ClassroomSessionProvider } from './store/ClassroomSessionContext';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 
-let WorkspaceShell = lazy(() => import('./features/workspace/WorkspaceShell'));
-
-if (import.meta.env.MODE === 'test') {
-  const testModule = await import('./features/workspace/WorkspaceShell');
-  WorkspaceShell = testModule.default as unknown as typeof WorkspaceShell;
-}
+const WorkspaceShell = lazy(() => import('./features/workspace/WorkspaceShell'));
 
 type AppSurface = 'welcome' | 'workspace2d';
 

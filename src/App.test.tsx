@@ -34,8 +34,8 @@ describe('standalone FStructure', () => {
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
 
-    expect(screen.getByLabelText('Inspector')).toBeTruthy();
-    expect(screen.getByLabelText('Panorama del modelo')).toBeTruthy();
+    expect(await screen.findByLabelText('Inspector')).toBeTruthy();
+    expect(await screen.findByLabelText('Panorama del modelo')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('surface')).toBe('workspace2d');
   });
 
@@ -44,10 +44,10 @@ describe('standalone FStructure', () => {
     window.history.replaceState(null, '', '/?surface=workspace2d');
     render(<App />);
 
-    expect(screen.getByLabelText('Inspector')).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Ir al inicio' }));
+    expect(await screen.findByLabelText('Inspector')).toBeTruthy();
+    await user.click(await screen.findByRole('button', { name: 'Ir al inicio' }));
 
-    expect(screen.getByTestId('solver2d-welcome')).toBeTruthy();
+    expect(await screen.findByTestId('solver2d-welcome')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('surface')).toBe('welcome');
   });
 });

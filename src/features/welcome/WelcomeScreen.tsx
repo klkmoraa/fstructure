@@ -17,7 +17,6 @@ import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { classroomExerciseTemplates, type ClassroomExerciseTemplateId } from '../../education/exerciseTemplates';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
-import { exportProjectJson } from '../../utils/export';
 import { ThreeStructuralImage, type ThreeStructuralAssetId } from '../structural-assets';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { presentExample } from './examplePresentation';
@@ -223,7 +222,10 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
       </div>
     </main>
 
-    {importOpen ? <Suspense fallback={null}><LazyPortableImportCenter open currentProjectName={project.name} onClose={() => setImportOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { setImportOpen(false); openProject(outcome.project, outcome.restoredAnalysis); }} /></Suspense> : null}
+    {importOpen ? <Suspense fallback={null}><LazyPortableImportCenter open currentProjectName={project.name} onClose={() => setImportOpen(false)} onSaveCurrent={async () => {
+      const { exportProjectJson } = await import('../../utils/export');
+      exportProjectJson(project);
+    }} onImported={(outcome) => { setImportOpen(false); openProject(outcome.project, outcome.restoredAnalysis); }} /></Suspense> : null}
     {dxfOpen ? <Suspense fallback={null}><LazyDxfImportDialog open={dxfOpen} onOpenChange={setDxfOpen} onImported={() => { setDxfOpen(false); onOpenWorkspace(); }} /></Suspense> : null}
     {exerciseOpen ? <Suspense fallback={null}><LazyNewExerciseDialog open={exerciseOpen} initialTemplateId={exerciseTemplate} onClose={() => setExerciseOpen(false)} onCreate={(next) => { setExerciseOpen(false); openProject(next); }} /></Suspense> : null}
   </>;
