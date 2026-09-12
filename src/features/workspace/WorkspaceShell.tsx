@@ -1,8 +1,10 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
 import { Inspector } from '../inspector/Inspector';
+import { ResultsPanel } from '../results/ResultsPanel';
 import { StructuralCanvas } from '../canvas/StructuralCanvas';
 import { Console } from '../shell/Console';
 import { Instrument } from '../shell/Instrument';
+import { ClassroomGuide } from '../classroom/ClassroomGuide';
 import { ToastNotification } from './ToastNotification';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
@@ -46,8 +48,6 @@ const LazyDatasheet = lazy(() => import('../datasheet/DatasheetPanel').then((mod
 const LazyStructuralBom = lazy(() => import('../bom/StructuralBomPanel').then((module) => ({ default: module.StructuralBomPanel })));
 const LazyRevisionComparison = lazy(() => import('../revision-comparison/RevisionComparisonPanel').then((module) => ({ default: module.RevisionComparisonPanel })));
 const LazyDenseResults = lazy(() => preloadDenseResultsSurface());
-const LazyResultsPanel = lazy(() => import('../results/ResultsPanel').then((module) => ({ default: module.ResultsPanel })));
-const LazyClassroomGuide = lazy(() => import('../classroom/ClassroomGuide').then((module) => ({ default: module.ClassroomGuide })));
 
 /**
  * Respaldo de foco para el cierre de una superficie: enfoca el primer lanzador
@@ -507,16 +507,16 @@ const WorkspaceBrokerContent = ({
       }}
     />}
     workspace={<>
-      {project.settings.calculationMode === 'classroom' ? <Suspense fallback={null}><LazyClassroomGuide className="classroom-workspace-journey" project={project} analysis={analysis} onChooseTool={setActiveTool} onAnalyze={() => {
+      {project.settings.calculationMode === 'classroom' ? <ClassroomGuide className="classroom-workspace-journey" project={project} analysis={analysis} onChooseTool={setActiveTool} onAnalyze={() => {
         emitWorkspaceCommand('analysis-requested');
         analyze();
-      }} /></Suspense> : null}
+      }} /> : null}
       <StructuralCanvas layers={editorLayers} dispatchLayers={dispatchEditorLayers} onRequestInspector={() => openDetail()} />
-      {broker.isRetained('results') ? <LazySurface><LazyResultsPanel
+      {broker.isRetained('results') ? <ResultsPanel
         presentation={results.presentation as 'dock' | 'inset' | 'sheet'}
         status={results.status}
         onOpenChange={setResultsOpen}
-      /></LazySurface> : null}
+      /> : null}
       <ToastNotification />
       {broker.isRetained('palette') ? <LazySurface><LazyCommandPalette
         open={palette.status === 'active'}

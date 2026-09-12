@@ -3,7 +3,6 @@ import type { ProjectModel } from '../types';
 import { analysisSignature } from './projectSignature';
 import type { ParametricParameter, ParametricStudyResult } from './parametricStudy';
 import { handleParametricEnvelope } from '../runtime/workerHandlers';
-import { startWorkerRequest, type WorkerRequestExecution } from '../runtime/workerExecution';
 import {
   WORKER_PROTOCOL_VERSION,
   type ParametricWorkerPayload,
@@ -31,8 +30,9 @@ export const useParametricStudy = (project: ProjectModel, combinationId?: string
   const [study, setStudy] = useState<ParametricStudyResult | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const executionRef = useRef<WorkerRequestExecution | null>(null);
+  const workerRef = useRef<Worker | null>(null);
   const requestRef = useRef(0);
+  const fallbackTimerRef = useRef<number | null>(null);
   const signature = useMemo(() => analysisSignature(project), [project]);
   const projectRef = useRef(project);
   const combinationRef = useRef(combinationId);
@@ -41,8 +41,12 @@ export const useParametricStudy = (project: ProjectModel, combinationId?: string
 
   const cancel = useCallback(() => {
     requestRef.current += 1;
-    executionRef.current?.cancel();
-    executionRef.current = null;
+    workerRef.current?.terminate();
+    workerRef.current = null;
+    if (fallbackTimerRef.current !== null) {
+      window.clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
   }, []);
 
   const clear = useCallback(() => {
@@ -80,23 +84,52 @@ export const useParametricStudy = (project: ProjectModel, combinationId?: string
       else setError(response.error.message);
       setBusy(false);
     };
-    const request: WorkerRequestEnvelope<'parametric', ParametricWorkerPayload> = {
-      protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'parametric', requestId, payload,
+    const fallback = () => {
+      fallbackTimerRef.current = window.setTimeout(() => {
+        fallbackTimerRef.current = null;
+        accept(handleParametricEnvelope({
+          protocolVersion: WORKER_PROTOCOL_VERSION,
+          type: 'run',
+          domain: 'parametric',
+          requestId,
+          payload,
+        }));
+      }, 0);
     };
-    const execution = startWorkerRequest({
-      createWorker: () => new Worker(new URL('../workers/parametric.worker.ts', import.meta.url), { type: 'module' }),
-      request,
-      isExpectedResponse: (response: WorkerResponseEnvelope<'parametric', ParametricWorkerResult>) => response.requestId === requestId,
-      onResponse: accept,
-      runFallback: () => handleParametricEnvelope(request),
-      onFallbackError: (error) => {
-        if (requestRef.current !== requestId) return;
-        setError(error instanceof Error ? error.message : 'No se pudo completar el estudio paramétrico.');
-        setBusy(false);
-      },
-    });
-    executionRef.current = execution;
-    execution.start();
+    if (typeof Worker === 'undefined') {
+      fallback();
+      return;
+    }
+    try {
+      const worker = new Worker(new URL('../workers/parametric.worker.ts', import.meta.url), { type: 'module' });
+      workerRef.current = worker;
+      let settled = false;
+      const fallbackOnce = () => {
+        if (settled || requestRef.current !== requestId) return;
+        settled = true;
+        worker.terminate();
+        if (workerRef.current === worker) workerRef.current = null;
+        fallback();
+      };
+      worker.onmessage = (event: MessageEvent<WorkerResponseEnvelope<'parametric', ParametricWorkerResult>>) => {
+        if (settled || event.data.requestId !== requestId || requestRef.current !== requestId) return;
+        settled = true;
+        worker.terminate();
+        if (workerRef.current === worker) workerRef.current = null;
+        accept(event.data);
+      };
+      worker.onerror = fallbackOnce;
+      const envelope: WorkerRequestEnvelope<'parametric', ParametricWorkerPayload> = {
+        protocolVersion: WORKER_PROTOCOL_VERSION,
+        type: 'run',
+        domain: 'parametric',
+        requestId,
+        payload,
+      };
+      worker.postMessage(envelope);
+    } catch {
+      fallback();
+    }
   }, [cancel]);
 
   return { study, busy, error, run, clear };

@@ -40,8 +40,3 @@ npm run test -- src/foundation/units.test.ts src/foundation/linearAlgebra.test.t
 Para una entrega, `npm run check` ejecuta primero el gate de arquitectura y su
 prueba, antes de la suite normal y el build. La validación y el Pull Request de
 un cambio local de Foundation pertenecen solamente a este repositorio.
-
-## Plataforma web y Service Worker
-
-FStructure soporta instalación web mediante Web App Manifest (`site.webmanifest`, `site-dark.webmanifest`) e iconos adaptativos para acceso directo standalone en escritorio y móviles. Actualmente **no cuenta con Service Worker activo** (`sw.js`); las actualizaciones se distribuyen de forma directa en cada despliegue a GitHub Pages sin almacenamiento en caché intermedio en el cliente, evitando desincronizaciones de bundle o bloqueos de versiones antiguas.
-

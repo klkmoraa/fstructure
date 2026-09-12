@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StructuralIllustration } from './StructuralIllustration';
-import type { ThreeStructuralAssetId } from './threeStructuralRender';
+import { renderThreeStructuralAssetDataUrl, type ThreeStructuralAssetId } from './threeStructuralRender';
 import { resolveStructuralAssetUrl } from './structuralAssetUrl';
 import './threeStructuralImage.css';
 
@@ -83,7 +83,6 @@ export function ThreeStructuralImage({ assetId, theme, alt = '', className = '',
       void enqueueThreeRender(async () => {
         const existing = threeDataUrlCache.get(cacheKey);
         if (existing) return existing;
-        const { renderThreeStructuralAssetDataUrl } = await import('./threeStructuralRender');
         const rendered = await renderThreeStructuralAssetDataUrl(assetId, theme === 'dark' ? 'night' : 'day', 900, 600);
         threeDataUrlCache.set(cacheKey, rendered);
         return rendered;

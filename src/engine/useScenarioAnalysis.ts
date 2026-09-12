@@ -3,15 +3,15 @@ import type { AnalysisScenario } from './envelope';
 import { analysisSignature } from './projectSignature';
 import type { ProjectModel } from '../types';
 import { handleScenarioEnvelope } from '../runtime/workerHandlers';
-import { startWorkerRequest, type WorkerRequestExecution } from '../runtime/workerExecution';
 import { WORKER_PROTOCOL_VERSION, type WorkerRequestEnvelope, type WorkerResponseEnvelope } from '../runtime/workerProtocol';
 
 export const useScenarioAnalysis = (project: ProjectModel) => {
   const [scenarios, setScenarios] = useState<AnalysisScenario[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const executionRef = useRef<WorkerRequestExecution | null>(null);
+  const workerRef = useRef<Worker | null>(null);
   const requestRef = useRef(0);
+  const fallbackTimerRef = useRef<number | null>(null);
   // Scenarios stay valid while only presentation settings change, so the reset
   // is keyed on what the solver actually reads, not on project identity.
   const signature = useMemo(() => analysisSignature(project), [project]);
@@ -20,8 +20,12 @@ export const useScenarioAnalysis = (project: ProjectModel) => {
 
   const cancelPending = useCallback(() => {
     requestRef.current += 1;
-    executionRef.current?.cancel();
-    executionRef.current = null;
+    workerRef.current?.terminate();
+    workerRef.current = null;
+    if (fallbackTimerRef.current !== null) {
+      window.clearTimeout(fallbackTimerRef.current);
+      fallbackTimerRef.current = null;
+    }
   }, []);
 
   const clear = useCallback(() => {
@@ -44,29 +48,48 @@ export const useScenarioAnalysis = (project: ProjectModel) => {
     const project = projectRef.current;
     setBusy(true);
     setError(null);
-    const request: WorkerRequestEnvelope<'scenarios', { project: ProjectModel }> = {
-      protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'scenarios', requestId, payload: { project },
-    };
-    const accept = (response: WorkerResponseEnvelope<'scenarios', AnalysisScenario[]>) => {
-      if (requestRef.current !== requestId) return;
-      if (response.type === 'success') setScenarios(response.result);
-      else setError(response.error.message);
-      setBusy(false);
-    };
-    const execution = startWorkerRequest({
-      createWorker: () => new Worker(new URL('../workers/scenarios.worker.ts', import.meta.url), { type: 'module' }),
-      request,
-      isExpectedResponse: (response: WorkerResponseEnvelope<'scenarios', AnalysisScenario[]>) => response.requestId === requestId,
-      onResponse: accept,
-      runFallback: () => handleScenarioEnvelope(request),
-      onFallbackError: (error) => {
+    const fallback = () => {
+      fallbackTimerRef.current = window.setTimeout(() => {
+        fallbackTimerRef.current = null;
         if (requestRef.current !== requestId) return;
-        setError(error instanceof Error ? error.message : 'No se pudieron comparar los escenarios.');
+        const response = handleScenarioEnvelope({ protocolVersion: 1, type: 'run', domain: 'scenarios', requestId, payload: { project } });
+        if (response.type === 'success') setScenarios(response.result);
+        else setError(response.error.message);
         setBusy(false);
-      },
-    });
-    executionRef.current = execution;
-    execution.start();
+      }, 0);
+    };
+    if (typeof Worker === 'undefined') {
+      fallback();
+      return;
+    }
+    try {
+      const worker = new Worker(new URL('../workers/scenarios.worker.ts', import.meta.url), { type: 'module' });
+      workerRef.current = worker;
+      let settled = false;
+      const fallbackOnce = () => {
+        if (settled || requestRef.current !== requestId) return;
+        settled = true;
+        worker.terminate();
+        if (workerRef.current === worker) workerRef.current = null;
+        fallback();
+      };
+      worker.onmessage = (event: MessageEvent<WorkerResponseEnvelope<'scenarios', AnalysisScenario[]>>) => {
+        if (settled || event.data.requestId !== requestId || requestRef.current !== requestId) return;
+        settled = true;
+        worker.terminate();
+        if (workerRef.current === worker) workerRef.current = null;
+        if (event.data.type === 'success') setScenarios(event.data.result);
+        else setError(event.data.error.message);
+        setBusy(false);
+      };
+      worker.onerror = fallbackOnce;
+      const request: WorkerRequestEnvelope<'scenarios', { project: ProjectModel }> = {
+        protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'scenarios', requestId, payload: { project },
+      };
+      worker.postMessage(request);
+    } catch {
+      fallback();
+    }
   }, [cancelPending]);
 
   return { scenarios, busy, error, run, clear };

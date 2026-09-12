@@ -1,12 +1,11 @@
-import { lazy, useCallback, useEffect, useState, Suspense } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { LazyMotion, MotionConfig } from 'motion/react';
 import './styles.css';
 import './design-system/material.css';
 import { ProjectProvider, useProject } from './store/ProjectContext';
 import { ClassroomSessionProvider } from './store/ClassroomSessionContext';
+import WorkspaceShell from './features/workspace/WorkspaceShell';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
-
-const WorkspaceShell = lazy(() => import('./features/workspace/WorkspaceShell'));
 
 type AppSurface = 'welcome' | 'workspace2d';
 
@@ -38,7 +37,7 @@ const FStructureSurface = () => {
 
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
     {surface === 'workspace2d'
-      ? <Suspense fallback={<div className="workspace-loading" role="status" aria-live="polite" />}><WorkspaceShell projectId={project.id} onOpenHome={() => navigate('welcome')} /></Suspense>
+      ? <WorkspaceShell projectId={project.id} onOpenHome={() => navigate('welcome')} />
       : <WelcomeScreen onOpenWorkspace={() => navigate('workspace2d')} />}
   </ClassroomSessionProvider>;
 };

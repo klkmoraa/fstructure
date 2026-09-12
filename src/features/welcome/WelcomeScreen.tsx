@@ -1,4 +1,4 @@
-import { lazy, Suspense, useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   BookOpen,
@@ -17,21 +17,17 @@ import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { classroomExerciseTemplates, type ClassroomExerciseTemplateId } from '../../education/exerciseTemplates';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
+import { exportProjectJson } from '../../utils/export';
+import { DxfImportDialog } from '../../import/dxf/DxfImportDialog';
+import { PortableImportCenter } from '../import-export/PortableImportCenter';
+import { PersonalLibraryView } from '../library/PersonalLibraryView';
+import { ProjectHub } from '../project-hub/ProjectHub';
 import { ThreeStructuralImage, type ThreeStructuralAssetId } from '../structural-assets';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
+import { NewExerciseDialog } from './NewExerciseDialog';
 import { presentExample } from './examplePresentation';
 import { Solver2DHome } from './Solver2DHome';
 import './totalHome.css';
-
-const LazyPortableImportCenter = lazy(() => import('../import-export/PortableImportCenter').then((m) => ({ default: m.PortableImportCenter })));
-const LazyDxfImportDialog = lazy(() => import('../../import/dxf/DxfImportDialog').then((m) => ({ default: m.DxfImportDialog })));
-const LazyNewExerciseDialog = lazy(() => import('./NewExerciseDialog').then((m) => ({ default: m.NewExerciseDialog })));
-const LazyPersonalLibraryView = lazy(() => import('../library/PersonalLibraryView').then((m) => ({ default: m.PersonalLibraryView })));
-const LazyProjectHub = lazy(() => import('../project-hub/ProjectHub').then((m) => ({ default: m.ProjectHub })));
-
-const preloadWorkspace = () => {
-  void import('../workspace/WorkspaceShell');
-};
 
 type WelcomeView = 'home' | 'projects' | 'templates' | 'library' | 'classroom' | 'import';
 
@@ -180,8 +176,7 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
     onOpenClassroom={() => navigate('classroom')}
     onOpenImport={() => setImportOpen(true)}
     onOpenProjects={() => navigate('projects')}
-    onPreloadWorkspace={preloadWorkspace}
-    recents={<Suspense fallback={null}><LazyProjectHub variant="recent" limit={3} filter={searchQuery} onOpen={(record) => openProject(record.project, undefined, record.revision)} /></Suspense>}
+    recents={<ProjectHub variant="recent" limit={3} filter={searchQuery} onOpen={(record) => openProject(record.project, undefined, record.revision)} />}
   />;
 
   const heading = (title: string, body: string) => <header><h2>{title}</h2><span>{body}</span></header>;
@@ -189,12 +184,12 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
   const visibleExamples = exampleProjects.filter((example) => `${example.name} ${example.description}`.toLocaleLowerCase(language).includes(normalizedSearch));
 
   const content = view === 'home' ? dashboard
-    : view === 'projects' ? <section className="sc-home-view" aria-label={text.projects}>{heading(text.projectsTitle, text.projectsBody)}<Suspense fallback={null}><LazyProjectHub filter={searchQuery} onOpen={(record) => openProject(record.project, undefined, record.revision)} /></Suspense></section>
+    : view === 'projects' ? <section className="sc-home-view" aria-label={text.projects}>{heading(text.projectsTitle, text.projectsBody)}<ProjectHub filter={searchQuery} onOpen={(record) => openProject(record.project, undefined, record.revision)} /></section>
       : view === 'templates' ? <section className="sc-home-view" aria-label={text.templates}>{heading(text.templatesTitle, text.templatesBody)}<div className="sc-home-template-grid">{visibleExamples.map((example) => {
         const presented = presentExample(example.name, example.description, t);
         return <button key={example.name} type="button" onClick={() => openProject(example.build())}><ThreeStructuralImage assetId={assetForExample(example.name)} theme={theme} render="three" eager /><strong>{presented.name}</strong><span>{presented.description}</span><span className="sc-home-template-card__action">{text.openTemplate}<ArrowRight size={14} aria-hidden="true" /></span></button>;
       })}</div></section>
-        : view === 'library' ? <section className="sc-home-view" aria-label={text.library}>{heading(text.libraryTitle, text.libraryBody)}<Suspense fallback={null}><LazyPersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} /></Suspense></section>
+        : view === 'library' ? <section className="sc-home-view" aria-label={text.library}>{heading(text.libraryTitle, text.libraryBody)}<PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} /></section>
           : view === 'classroom' ? <section className="sc-home-classroom" aria-label={text.classroom}>
             <div className="sc-home-classroom-hero"><div><h2>{text.classroomTitle}</h2><span>{text.classroomBody}</span><button type="button" className="sc-home-continue" onClick={() => openExercise()}>{text.classroomAction}<ArrowRight size={16} /></button></div><ThreeStructuralImage assetId="portal:two-story" theme={theme} alt={text.classroomTitle} eager render="three" /></div>
             <div className="sc-home-classroom-cases"><h3>{text.classroomCases}</h3><div>{classroomExerciseTemplates.filter((item) => item.id !== 'blank').map((item) => <button key={item.id} type="button" onClick={() => openExercise(item.id)}><ThreeStructuralImage assetId={assetForExercise[item.id]} theme={theme} alt={item.name} render="three" /><strong>{item.name}</strong><span>{item.description}</span><ArrowRight size={16} /></button>)}</div></div>
@@ -222,11 +217,8 @@ export const WelcomeScreen = ({ onOpenWorkspace }: WelcomeScreenProps) => {
       </div>
     </main>
 
-    {importOpen ? <Suspense fallback={null}><LazyPortableImportCenter open currentProjectName={project.name} onClose={() => setImportOpen(false)} onSaveCurrent={async () => {
-      const { exportProjectJson } = await import('../../utils/export');
-      exportProjectJson(project);
-    }} onImported={(outcome) => { setImportOpen(false); openProject(outcome.project, outcome.restoredAnalysis); }} /></Suspense> : null}
-    {dxfOpen ? <Suspense fallback={null}><LazyDxfImportDialog open={dxfOpen} onOpenChange={setDxfOpen} onImported={() => { setDxfOpen(false); onOpenWorkspace(); }} /></Suspense> : null}
-    {exerciseOpen ? <Suspense fallback={null}><LazyNewExerciseDialog open={exerciseOpen} initialTemplateId={exerciseTemplate} onClose={() => setExerciseOpen(false)} onCreate={(next) => { setExerciseOpen(false); openProject(next); }} /></Suspense> : null}
+    {importOpen ? <PortableImportCenter open currentProjectName={project.name} onClose={() => setImportOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { setImportOpen(false); openProject(outcome.project, outcome.restoredAnalysis); }} /> : null}
+    <DxfImportDialog open={dxfOpen} onOpenChange={setDxfOpen} onImported={() => { setDxfOpen(false); onOpenWorkspace(); }} />
+    <NewExerciseDialog open={exerciseOpen} initialTemplateId={exerciseTemplate} onClose={() => setExerciseOpen(false)} onCreate={(next) => { setExerciseOpen(false); openProject(next); }} />
   </>;
 };
