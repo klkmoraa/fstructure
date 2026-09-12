@@ -11,8 +11,9 @@ if (!fs.existsSync(publicDir)) {
   fs.mkdirSync(publicDir, { recursive: true });
 }
 
-// 1. Generate adaptive favicon.svg (Vector with prefers-color-scheme light/dark support)
-const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+// 1. Generate SVGs
+// Adaptive SVG
+const svgAdaptive = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
   <style>
     :root { color-scheme: light dark; }
     .fs-mark-body { fill: #14171a; }
@@ -29,8 +30,28 @@ const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
 </svg>
 `;
 
-fs.writeFileSync(path.join(publicDir, 'favicon.svg'), svgContent, 'utf-8');
-console.log('✓ Created public/favicon.svg');
+// Dark-explicit SVG (guaranteed white F without relying on SVG media queries)
+const svgDark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <g transform="translate(-0.5, 0)">
+    <path fill="#ffffff" d="M8 5h9v38H8z M17 5h24v5.5L17 14z" />
+    <path fill="#ed4b46" d="M17 21h17v5L17 30z" />
+  </g>
+</svg>
+`;
+
+// Light-explicit SVG
+const svgLight = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <g transform="translate(-0.5, 0)">
+    <path fill="#14171a" d="M8 5h9v38H8z M17 5h24v5.5L17 14z" />
+    <path fill="#ed4b46" d="M17 21h17v5L17 30z" />
+  </g>
+</svg>
+`;
+
+fs.writeFileSync(path.join(publicDir, 'favicon.svg'), svgAdaptive, 'utf-8');
+fs.writeFileSync(path.join(publicDir, 'favicon-dark.svg'), svgDark, 'utf-8');
+fs.writeFileSync(path.join(publicDir, 'favicon-light.svg'), svgLight, 'utf-8');
+console.log('✓ Created public/favicon.svg, favicon-dark.svg, favicon-light.svg');
 
 // 2. Generate site.webmanifest (Light Mode) and site-dark.webmanifest (Dark Mode)
 const manifestLight = {
@@ -39,22 +60,21 @@ const manifestLight = {
   description: 'FStructure · solver estructural 2D experimental',
   icons: [
     {
-      src: './icon-192.png',
-      sizes: '192x192',
-      type: 'image/png',
-      purpose: 'any'
-    },
-    {
       src: './icon-512.png',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'any'
     },
     {
-      src: './icon-maskable-192.png',
+      src: './icon-192.png',
       sizes: '192x192',
       type: 'image/png',
-      purpose: 'maskable'
+      purpose: 'any'
+    },
+    {
+      src: './apple-touch-icon.png',
+      sizes: '180x180',
+      type: 'image/png'
     },
     {
       src: './icon-maskable-512.png',
@@ -63,23 +83,10 @@ const manifestLight = {
       purpose: 'maskable'
     },
     {
-      src: './apple-touch-icon.png',
-      sizes: '180x180',
-      type: 'image/png'
-    },
-    {
-      src: './icon-192-dark.png',
+      src: './icon-maskable-192.png',
       sizes: '192x192',
       type: 'image/png',
-      purpose: 'any',
-      media: '(prefers-color-scheme: dark)'
-    },
-    {
-      src: './icon-512-dark.png',
-      sizes: '512x512',
-      type: 'image/png',
-      purpose: 'any',
-      media: '(prefers-color-scheme: dark)'
+      purpose: 'maskable'
     }
   ],
   start_url: './',
@@ -94,22 +101,21 @@ const manifestDark = {
   description: 'FStructure · solver estructural 2D experimental',
   icons: [
     {
-      src: './icon-192-dark.png',
-      sizes: '192x192',
-      type: 'image/png',
-      purpose: 'any'
-    },
-    {
       src: './icon-512-dark.png',
       sizes: '512x512',
       type: 'image/png',
       purpose: 'any'
     },
     {
-      src: './icon-maskable-192-dark.png',
+      src: './icon-192-dark.png',
       sizes: '192x192',
       type: 'image/png',
-      purpose: 'maskable'
+      purpose: 'any'
+    },
+    {
+      src: './apple-touch-icon-dark.png',
+      sizes: '180x180',
+      type: 'image/png'
     },
     {
       src: './icon-maskable-512-dark.png',
@@ -118,9 +124,10 @@ const manifestDark = {
       purpose: 'maskable'
     },
     {
-      src: './apple-touch-icon-dark.png',
-      sizes: '180x180',
-      type: 'image/png'
+      src: './icon-maskable-192-dark.png',
+      sizes: '192x192',
+      type: 'image/png',
+      purpose: 'maskable'
     }
   ],
   start_url: './',
