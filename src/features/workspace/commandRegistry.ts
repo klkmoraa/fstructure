@@ -46,7 +46,7 @@ import type { ResultTab } from '../../store/ProjectContext';
 import { TOOL_REGISTRY } from '../canvas/toolRegistry';
 import { SELECTION_QUERIES, countOf, toSelection } from '../canvas/selectByProperty';
 import type { EditorLayerAction, EditorLayerPresetId } from '../canvas/editorLayers';
-import { activateEvidenceLayer, EVIDENCE_LAYERS } from '../canvas/evidenceLayers';
+import { EVIDENCE_LAYERS } from '../canvas/evidenceLayers';
 import { emitWorkspaceCommand } from './workspaceCommands';
 import { readCanvasViewSettings, withCanvasViewSettings } from '../view/canvasViewSettings';
 import { exportProjectJson } from '../../utils/export';
@@ -352,7 +352,7 @@ const evidenceLayerCommands = (ctx: CommandContext): CommandListItem[] => EVIDEN
   icon: ChartNoAxesCombined,
   label: ctx.t('palette.toggleEvidenceLayer', { layer: ctx.t(evidence.labelKey) }),
   disabled: !ctx.hasAnalysis,
-  run: () => activateEvidenceLayer(evidence.id, { setResultTab: ctx.setResultTab, dispatchLayers: ctx.dispatchLayers }),
+  run: () => emitWorkspaceCommand('activate-evidence-layer', { layer: evidence.id }),
 }));
 
 const diagramStackCommand = (ctx: CommandContext): CommandListItem => ({

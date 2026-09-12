@@ -21,6 +21,7 @@ export const CanvasEvidenceRail = ({
   stackQuantities = STACK_QUANTITIES,
   onStackToggle,
   onStackQuantityToggle,
+  revealResultOverlay,
 }: {
   layers: EditorLayerState;
   dispatch: Dispatch<EditorLayerAction>;
@@ -32,6 +33,7 @@ export const CanvasEvidenceRail = ({
   stackQuantities?: readonly StackQuantity[];
   onStackToggle?: () => void;
   onStackQuantityToggle?: (quantity: StackQuantity) => void;
+  revealResultOverlay?: () => void;
 }) => {
   const { t } = useI18n();
   if (!visible) return null;
@@ -49,7 +51,7 @@ export const CanvasEvidenceRail = ({
          nombre accesible para que no dependa de la abreviatura. */
       aria-label={chipLabelKey ? t(labelKey) : undefined}
       data-evidence-layer={id}
-      onClick={() => applyEvidenceLayerChoice(id, { resultTab, layers }, { setResultTab, dispatchLayers: dispatch })}
+      onClick={() => applyEvidenceLayerChoice(id, { resultTab, layers }, { setResultTab, dispatchLayers: dispatch, revealResultOverlay })}
     >{t(chipLabelKey ?? labelKey)}</button>)}
     <button
       type="button"

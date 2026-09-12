@@ -34,6 +34,7 @@ export interface CanvasChromeProps {
   stackQuantities?: readonly StackQuantity[];
   onStackToggle?: () => void;
   onStackQuantityToggle?: (quantity: StackQuantity) => void;
+  revealResultOverlay?: () => void;
   /** La entrada por coordenadas se abre desde aquí, junto a la cámara. */
   coordinateEntryOpen: boolean;
   onToggleCoordinateEntry: () => void;
@@ -63,6 +64,7 @@ export const CanvasChrome = ({
   stackQuantities,
   onStackToggle,
   onStackQuantityToggle,
+  revealResultOverlay,
   coordinateEntryOpen,
   onToggleCoordinateEntry,
 }: CanvasChromeProps) => {
@@ -82,7 +84,7 @@ export const CanvasChrome = ({
       {placementInstruction ? <IconButton size="sm" label={t('canvas.cancelPlacement')} onClick={onCancelPlacement}><X size={14} /></IconButton> : null}
     </div>
     <CanvasLayers layers={layers} dispatch={dispatchLayers} />
-    <CanvasEvidenceRail layers={layers} dispatch={dispatchLayers} resultTab={resultTab} setResultTab={setResultTab} visible={analysisAvailable} stackActive={stackActive} stackAvailable={stackAvailable} stackQuantities={stackQuantities} onStackToggle={onStackToggle} onStackQuantityToggle={onStackQuantityToggle} />
+    <CanvasEvidenceRail layers={layers} dispatch={dispatchLayers} resultTab={resultTab} setResultTab={setResultTab} visible={analysisAvailable} stackActive={stackActive} stackAvailable={stackAvailable} stackQuantities={stackQuantities} onStackToggle={onStackToggle} onStackQuantityToggle={onStackQuantityToggle} revealResultOverlay={revealResultOverlay} />
     <div className="canvas-view-chips" role="status" aria-label={t('canvas.viewStatus')} data-canvas-chrome="view-status">
       <span className={snapEnabled ? 'active' : ''}>{snapEnabled ? t('canvas.snapOn') : t('canvas.snapOff')}</span>
       <span className={gridEnabled ? 'active' : ''}>{gridEnabled ? t('canvas.gridOn') : t('canvas.gridOff')}</span>

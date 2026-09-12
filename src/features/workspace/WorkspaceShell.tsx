@@ -12,6 +12,7 @@ import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { createPersistedEditorLayerState, editorLayerReducer, persistEditorLayerState } from '../canvas/editorLayers';
 import { activateEvidenceLayer } from '../canvas/evidenceLayers';
+import { withCanvasViewSettings } from '../view/canvasViewSettings';
 import { AppShellLayout } from './AppShellLayout';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { WorkspaceUtilities } from './WorkspaceUtilities';
@@ -95,7 +96,7 @@ const WorkspaceBrokerContent = ({
   const [revisionBaseline, setRevisionBaseline] = useState<RevisionSnapshot | null>(null);
   const [editorLayers, dispatchEditorLayers] = useReducer(editorLayerReducer, undefined, createPersistedEditorLayerState);
   const { t } = useI18n();
-  const { project, analysis, isAnalyzing, storageIssue, storageMessage, renameProject, setActiveTool, setResultTab, analyze, undo, redo, canUndo, canRedo } = useProject();
+  const { project, analysis, isAnalyzing, storageIssue, storageMessage, renameProject, setActiveTool, setResultTab, updateProjectView, analyze, undo, redo, canUndo, canRedo } = useProject();
   const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
   const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
   const localAssistantTriggerRef = useRef<HTMLElement | null>(null);
@@ -126,6 +127,12 @@ const WorkspaceBrokerContent = ({
   // puede pagar ancho por algo que se ve (ver `reservesInspectorColumn`).
   const inspectorShowsColumn = reservesInspectorColumn(detail, analysisSetup, view);
   const resultsWereOpenRef = useRef(results.open);
+
+  const revealResultOverlay = useCallback(() => {
+    updateProjectView((draft) => draft.settings.showResultOverlay === true
+      ? draft
+      : withCanvasViewSettings(draft, { showResultOverlay: true }));
+  }, [updateProjectView]);
 
   useEffect(() => persistEditorLayerState(editorLayers), [editorLayers]);
 
@@ -190,7 +197,7 @@ const WorkspaceBrokerContent = ({
          El shell es el único que tiene el reductor de capas, así que aquí es
          donde `resultTab` y la capa `results` se mueven juntos. */
       onWorkspaceCommand('activate-evidence-layer', ({ layer }) => {
-        activateEvidenceLayer(layer, { setResultTab, dispatchLayers: dispatchEditorLayers });
+        activateEvidenceLayer(layer, { setResultTab, dispatchLayers: dispatchEditorLayers, revealResultOverlay });
       }),
       onWorkspaceCommand('open-view-settings', () => openSurface('view')),
       /* Los lanzadores de Influencia previos se conservan, pero ahora llevan a
@@ -206,7 +213,7 @@ const WorkspaceBrokerContent = ({
       }),
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe());
-  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, openSurface, project.id, results.open, setResultTab]);
+  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, openSurface, project.id, results.open, revealResultOverlay, setResultTab]);
 
   useEffect(() => {
     setModelDoctorAcknowledgedIds(new Set());
@@ -229,10 +236,10 @@ const WorkspaceBrokerContent = ({
     */
   useEffect(() => {
     if (analysis?.success && analysis !== reportedAnalysisRef.current) {
-      activateEvidenceLayer('moment', { setResultTab, dispatchLayers: dispatchEditorLayers });
+      activateEvidenceLayer('moment', { setResultTab, dispatchLayers: dispatchEditorLayers, revealResultOverlay });
     }
     reportedAnalysisRef.current = analysis;
-  }, [analysis, setResultTab]);
+  }, [analysis, revealResultOverlay, setResultTab]);
 
   // Abrir Resultados no debe dejar al lado una ficha de edición completa.
   // La transición se produce una vez por apertura: si después la persona

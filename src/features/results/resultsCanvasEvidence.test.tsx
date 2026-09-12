@@ -8,7 +8,7 @@ import { ProjectProvider } from '../../store/ProjectContext';
 import { ResultsPanel } from './ResultsPanel';
 import { onWorkspaceCommand } from '../workspace/workspaceCommands';
 import { createEditorLayerState, editorLayerReducer, type EditorLayerState } from '../canvas/editorLayers';
-import { activateEvidenceLayer, isEvidenceLayerActive } from '../canvas/evidenceLayers';
+import { activateEvidenceLayer, applyEvidenceLayerChoice, isEvidenceLayerActive } from '../canvas/evidenceLayers';
 import type { ResultTab } from '../../store/WorkspaceUIContext';
 
 beforeEach(() => {
@@ -75,5 +75,20 @@ describe('elegir una magnitud en Resultados enciende esa capa en el lienzo', () 
 
     expect(resultTab).toBe('shear');
     expect(isEvidenceLayerActive('shear', resultTab, layers)).toBe(true);
+  });
+
+  it('al elegir una lectura vuelve visible su superposición de resultados', () => {
+    let layers: EditorLayerState = createEditorLayerState();
+    let resultTab: ResultTab = 'summary';
+    let overlayVisible = false;
+
+    applyEvidenceLayerChoice('moment', { resultTab, layers }, {
+      setResultTab: (tab) => { resultTab = tab; },
+      dispatchLayers: vi.fn((action) => { layers = editorLayerReducer(layers, action); }),
+      revealResultOverlay: () => { overlayVisible = true; },
+    });
+
+    expect(isEvidenceLayerActive('moment', resultTab, layers)).toBe(true);
+    expect(overlayVisible).toBe(true);
   });
 });

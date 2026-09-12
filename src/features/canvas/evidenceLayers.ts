@@ -54,7 +54,7 @@ export const isEvidenceLayerActive = (
 export const applyEvidenceLayerChoice = (
   id: EvidenceLayerId,
   current: { resultTab: ResultTab; layers: EditorLayerState },
-  actions: { setResultTab: (tab: ResultTab) => void; dispatchLayers: Dispatch<EditorLayerAction> },
+  actions: { setResultTab: (tab: ResultTab) => void; dispatchLayers: Dispatch<EditorLayerAction>; revealResultOverlay?: () => void },
 ): void => {
   if (id === 'heatmap') {
     actions.dispatchLayers({ type: 'toggle', layer: 'heatmap' });
@@ -69,6 +69,7 @@ export const applyEvidenceLayerChoice = (
   }
   actions.setResultTab(tab);
   if (!current.layers.results) actions.dispatchLayers({ type: 'set', layer: 'results', visible: true });
+  actions.revealResultOverlay?.();
 };
 
 /**
@@ -78,7 +79,7 @@ export const applyEvidenceLayerChoice = (
  */
 export const activateEvidenceLayer = (
   id: EvidenceLayerId,
-  actions: { setResultTab: (tab: ResultTab) => void; dispatchLayers: Dispatch<EditorLayerAction> },
+  actions: { setResultTab: (tab: ResultTab) => void; dispatchLayers: Dispatch<EditorLayerAction>; revealResultOverlay?: () => void },
 ): void => {
   if (id === 'heatmap') {
     actions.dispatchLayers({ type: 'set', layer: 'heatmap', visible: true });
@@ -88,4 +89,5 @@ export const activateEvidenceLayer = (
   if (!definition?.resultTab) return;
   actions.setResultTab(definition.resultTab);
   actions.dispatchLayers({ type: 'set', layer: 'results', visible: true });
+  actions.revealResultOverlay?.();
 };

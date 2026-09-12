@@ -73,7 +73,7 @@ import {
   type CandidateTarget,
 } from './candidatePicker';
 import { SurfacePresentationContext } from '../workspace/SurfacePresentationContext';
-import { readCanvasViewSettings } from '../view/canvasViewSettings';
+import { readCanvasViewSettings, withCanvasViewSettings } from '../view/canvasViewSettings';
 import { ELASTIC_SATURATION_RATIO, elasticDemandView, elasticIndexPaint } from '../results/elasticDemand';
 import { CoordinateEntry, type CoordinateOrigin, type CoordinatePreview } from './CoordinateEntry';
 import { resolveRepeatRecipe, type RepeatRecipe } from './repeatAction';
@@ -254,6 +254,7 @@ export const StructuralCanvas = ({
     executeProjectCommand,
     executePreparedStructuralEdit,
     updateProject,
+    updateProjectView,
     replaceProject,
     beginProjectTransaction,
     moveNodeTransient,
@@ -266,6 +267,10 @@ export const StructuralCanvas = ({
     modeShapeState,
   } = useProject();
   const view = readCanvasViewSettings(project);
+  const revealResultOverlay = useCallback(() => {
+    if (view.showResultOverlay) return;
+    updateProjectView((draft) => withCanvasViewSettings(draft, { showResultOverlay: true }));
+  }, [updateProjectView, view.showResultOverlay]);
   const { language, t } = useI18n();
   const { t: phase2T } = usePhase2I18n(language);
   /** The broker owns contextual-layer exclusivity; candidate identity stays local below. */
@@ -2839,6 +2844,7 @@ export const StructuralCanvas = ({
         stackQuantities={stackQuantities}
         onStackToggle={toggleStack}
         onStackQuantityToggle={toggleStackQuantityChoice}
+        revealResultOverlay={revealResultOverlay}
         coordinateEntryOpen={coordinateEntryOpen}
         onToggleCoordinateEntry={() => setCoordinateEntryOpen((current) => !current)}
       />
