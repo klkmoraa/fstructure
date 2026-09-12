@@ -11,6 +11,7 @@ import { WorkspaceUIContext, useWorkspaceUI, type WorkspaceUIContextValue, type 
 import type { PreparedTopologyRepair, ProjectCommand, ProjectCommandResult } from '../commands/projectCommand';
 import type { PreparedStructureGeneration } from '../commands/structureGeneration';
 import { WORKER_PROTOCOL_VERSION, type AnalysisWorkerPayload, type WorkerRequestEnvelope, type WorkerResponseEnvelope } from '../runtime/workerProtocol';
+import { startWorkerRequest, type WorkerRequestExecution } from '../runtime/workerExecution';
 import type { ProjectRepository } from '../storage/projectRepository';
 import { recordLocalMetric } from '../analytics/localMetrics';
 import type { PreparedStructuralEdit } from '../data/structuralEditing';
@@ -86,9 +87,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const analysisRef = useRef(analysis);
   const transactionStartRef = useRef<ProjectModel | null>(null);
   const transactionDescriptionRef = useRef('Editar proyecto');
-  const analysisTimerRef = useRef<number | null>(null);
   const analysisRevisionRef = useRef(0);
-  const analysisWorkerRef = useRef<Worker | null>(null);
+  const analysisExecutionRef = useRef<WorkerRequestExecution | null>(null);
+  const traceExecutionRef = useRef<WorkerRequestExecution | null>(null);
   const repositoryRef = useRef<ProjectRepository | null>(null);
   const repositoryRevisionRef = useRef<{ projectId: string; revision: number } | null>(null);
   const repositoryBlockedProjectIdRef = useRef<string | null>(null);
@@ -180,12 +181,10 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
   const invalidateAnalysis = useCallback(() => {
     analysisRevisionRef.current += 1;
-    if (analysisTimerRef.current !== null) {
-      window.clearTimeout(analysisTimerRef.current);
-      analysisTimerRef.current = null;
-    }
-    analysisWorkerRef.current?.terminate();
-    analysisWorkerRef.current = null;
+    analysisExecutionRef.current?.cancel();
+    analysisExecutionRef.current = null;
+    traceExecutionRef.current?.cancel();
+    traceExecutionRef.current = null;
     setIsAnalyzing(false);
     setAnalysis(null);
     setResultCursor(null);
@@ -218,8 +217,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   }, [publishAnalysisAffectingProject, recordHistory]);
 
   useEffect(() => () => {
-    if (analysisTimerRef.current !== null) window.clearTimeout(analysisTimerRef.current);
-    analysisWorkerRef.current?.terminate();
+    analysisExecutionRef.current?.cancel();
+    traceExecutionRef.current?.cancel();
   }, []);
 
   useEffect(() => {
@@ -287,9 +286,10 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   }, [project, persistenceRevision, transactionActive]);
 
   const analyze = useCallback(() => {
-    if (analysisTimerRef.current !== null) window.clearTimeout(analysisTimerRef.current);
-    analysisWorkerRef.current?.terminate();
-    analysisWorkerRef.current = null;
+    analysisExecutionRef.current?.cancel();
+    analysisExecutionRef.current = null;
+    traceExecutionRef.current?.cancel();
+    traceExecutionRef.current = null;
     const currentProject = projectRef.current;
     const source = structuredClone(currentProject);
     const topologyRepair = repairProjectTopology(source);
@@ -336,51 +336,37 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     // A run that never produced numbers still has to reach the user: leaving
     // `isAnalyzing` set would freeze the UI on "analysing" with no explanation.
     const fail = (message: string) => complete(unavailableAnalysis(message));
-    const runFallback = () => {
-      analysisTimerRef.current = window.setTimeout(() => {
-        analysisTimerRef.current = null;
-        // Interactive edits never need the education trace up front — the
-        // "Aprender" tab and PDF export fetch it on demand (AG-013).
-        void runFallbackAnalysis(source, selectedCombinationId, false)
-          .then(complete)
-          .catch((error: unknown) => fail(error instanceof Error ? error.message : 'No se pudo completar el análisis estructural.'));
-      }, 0);
+    const request: WorkerRequestEnvelope<'analysis', AnalysisWorkerPayload> = {
+      protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'analysis', requestId: requestRevision,
+      payload: { project: source, combinationId: selectedCombinationId || null, includeEducationTrace: false },
     };
-    if (typeof Worker === 'undefined') {
-      runFallback();
-      return;
-    }
-    try {
-      const worker = new Worker(new URL('../workers/analysis.worker.ts', import.meta.url), { type: 'module' });
-      analysisWorkerRef.current = worker;
-      let settled = false;
-      const fallbackOnce = () => {
-        if (settled || analysisRevisionRef.current !== requestRevision) return;
-        settled = true;
-        worker.terminate();
-        if (analysisWorkerRef.current === worker) analysisWorkerRef.current = null;
-        runFallback();
-      };
-      worker.onmessage = (event: MessageEvent<WorkerResponseEnvelope<'analysis', AnalysisResult> | AnalysisWorkerResponse>) => {
-        if (settled || event.data.requestId !== requestRevision) return;
-        settled = true;
-        worker.terminate();
-        if (analysisWorkerRef.current === worker) analysisWorkerRef.current = null;
-        // `analysis-error` is a decision taken by the same pure function the
-        // fallback would call, so recomputing it on the main thread would only
-        // block the UI to reach the identical failure and hide its message.
-        if (event.data.type === 'success' || event.data.type === 'analysis-result') complete(event.data.result);
-        else fail(event.data.type === 'error' ? event.data.error.message : event.data.message);
-      };
-      worker.onerror = fallbackOnce;
-      const request: WorkerRequestEnvelope<'analysis', AnalysisWorkerPayload> = {
-        protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'analysis', requestId: requestRevision,
-        payload: { project: source, combinationId: selectedCombinationId || null, includeEducationTrace: false },
-      };
-      worker.postMessage(request);
-    } catch {
-      runFallback();
-    }
+    const accept = (response: WorkerResponseEnvelope<'analysis', AnalysisResult> | AnalysisWorkerResponse) => {
+      if (analysisRevisionRef.current !== requestRevision) return;
+      // `analysis-error` is a decision taken by the same pure function the
+      // fallback would call, so recomputing it on the main thread would only
+      // block the UI to reach the identical failure and hide its message.
+      if (response.type === 'success' || response.type === 'analysis-result') complete(response.result);
+      else fail(response.type === 'error' ? response.error.message : response.message);
+    };
+    const execution = startWorkerRequest<WorkerRequestEnvelope<'analysis', AnalysisWorkerPayload>, WorkerResponseEnvelope<'analysis', AnalysisResult> | AnalysisWorkerResponse>({
+      createWorker: () => new Worker(new URL('../workers/analysis.worker.ts', import.meta.url), { type: 'module' }),
+      request,
+      isExpectedResponse: (response: WorkerResponseEnvelope<'analysis', AnalysisResult> | AnalysisWorkerResponse) => response.requestId === requestRevision,
+      onResponse: accept,
+      // This preserves the legacy fallback. It can be expensive on the main
+      // thread, but starts only after the worker has been terminated so the
+      // same analysis never runs twice concurrently.
+      runFallback: async (): Promise<WorkerResponseEnvelope<'analysis', AnalysisResult>> => ({
+        protocolVersion: WORKER_PROTOCOL_VERSION,
+        type: 'success',
+        domain: 'analysis',
+        requestId: requestRevision,
+        result: await runFallbackAnalysis(source, selectedCombinationId, false),
+      }),
+      onFallbackError: (error) => fail(error instanceof Error ? error.message : 'No se pudo completar el análisis estructural.'),
+    });
+    analysisExecutionRef.current = execution;
+    execution.start();
   }, [selectedCombinationId, setSelection]);
 
   // Standalone worker-or-fallback runner for `ensureEducationTrace`: unlike
@@ -389,38 +375,31 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   // extra result, on demand, to read its `educationTrace` off of.
   const runAnalysisWithTrace = useCallback((source: ProjectModel, combinationId: string): Promise<AnalysisResult> => {
     return new Promise((resolve, reject) => {
-      const runFallback = () => {
-        void runFallbackAnalysis(source, combinationId, true).then(resolve).catch(reject);
+      traceExecutionRef.current?.cancel();
+      const request: WorkerRequestEnvelope<'analysis', AnalysisWorkerPayload> = {
+        protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'analysis', requestId: 0,
+        payload: { project: source, combinationId: combinationId || null, includeEducationTrace: true },
       };
-      if (typeof Worker === 'undefined') {
-        runFallback();
-        return;
-      }
-      try {
-        const worker = new Worker(new URL('../workers/analysis.worker.ts', import.meta.url), { type: 'module' });
-        let settled = false;
-        const fallbackOnce = () => {
-          if (settled) return;
-          settled = true;
-          worker.terminate();
-          runFallback();
-        };
-        worker.onmessage = (event: MessageEvent<WorkerResponseEnvelope<'analysis', AnalysisResult> | AnalysisWorkerResponse>) => {
-          if (settled) return;
-          settled = true;
-          worker.terminate();
-          if (event.data.type === 'success' || event.data.type === 'analysis-result') resolve(event.data.result);
-          else reject(new Error(event.data.type === 'error' ? event.data.error.message : event.data.message));
-        };
-        worker.onerror = fallbackOnce;
-        const request: WorkerRequestEnvelope<'analysis', AnalysisWorkerPayload> = {
-          protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'analysis', requestId: 0,
-          payload: { project: source, combinationId: combinationId || null, includeEducationTrace: true },
-        };
-        worker.postMessage(request);
-      } catch {
-        runFallback();
-      }
+      const execution = startWorkerRequest<WorkerRequestEnvelope<'analysis', AnalysisWorkerPayload>, WorkerResponseEnvelope<'analysis', AnalysisResult> | AnalysisWorkerResponse>({
+        createWorker: () => new Worker(new URL('../workers/analysis.worker.ts', import.meta.url), { type: 'module' }),
+        request,
+        isExpectedResponse: (response: WorkerResponseEnvelope<'analysis', AnalysisResult> | AnalysisWorkerResponse) => response.requestId === 0,
+        onResponse: (response) => {
+          if (response.type === 'success' || response.type === 'analysis-result') resolve(response.result);
+          else reject(new Error(response.type === 'error' ? response.error.message : response.message));
+        },
+        runFallback: async (): Promise<WorkerResponseEnvelope<'analysis', AnalysisResult>> => ({
+          protocolVersion: WORKER_PROTOCOL_VERSION,
+          type: 'success',
+          domain: 'analysis',
+          requestId: 0,
+          result: await runFallbackAnalysis(source, combinationId, true),
+        }),
+        onFallbackError: (error) => reject(error),
+        onCancelled: () => reject(new Error('El cálculo de la traza educativa fue cancelado.')),
+      });
+      traceExecutionRef.current = execution;
+      execution.start();
     });
   }, []);
 

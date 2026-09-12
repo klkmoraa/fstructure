@@ -4,6 +4,7 @@ import type { BucklingResult } from './buckling';
 import type { ModalResult } from './modal';
 import { analysisSignature } from './projectSignature';
 import { handleStudiesEnvelope } from '../runtime/workerHandlers';
+import { startWorkerRequest, type WorkerRequestExecution } from '../runtime/workerExecution';
 import { WORKER_PROTOCOL_VERSION, type StudiesWorkerPayload, type StudiesWorkerResult, type StudyKind, type WorkerRequestEnvelope, type WorkerResponseEnvelope } from '../runtime/workerProtocol';
 
 export interface ModelStudiesState {
@@ -17,12 +18,12 @@ export const useModelStudies = (project: ProjectModel, combinationId?: string | 
   const [modal, setModal] = useState<ModalResult | null>(null);
   const [busy, setBusy] = useState<StudyKind | null>(null);
   const [error, setError] = useState<{ kind: StudyKind; message: string } | null>(null);
-  const worker = useRef<Worker | null>(null); const request = useRef(0);
+  const executionRef = useRef<WorkerRequestExecution | null>(null); const request = useRef(0);
   const signature = useMemo(() => analysisSignature(project), [project]);
   const projectRef = useRef(project); const combinationRef = useRef(combinationId); projectRef.current = project; combinationRef.current = combinationId;
-  const cancel = useCallback(() => { request.current += 1; worker.current?.terminate(); worker.current = null; }, []);
+  const cancel = useCallback(() => { request.current += 1; executionRef.current?.cancel(); executionRef.current = null; }, []);
   useEffect(() => { cancel(); setBuckling(null); setModal(null); setBusy(null); setError(null); return cancel; }, [cancel, signature]);
-  useEffect(() => { setBuckling(null); }, [combinationId]);
+  useEffect(() => { cancel(); setBuckling(null); setBusy(null); setError(null); }, [cancel, combinationId]);
   const run = useCallback((kind: StudyKind, options?: { modes?: number }) => {
     cancel(); const id = request.current; const payload: StudiesWorkerPayload = { kind, project: projectRef.current, combinationId: combinationRef.current ?? null, modes: options?.modes ?? 3 };
     setBusy(kind); setError(null);
@@ -32,15 +33,21 @@ export const useModelStudies = (project: ProjectModel, combinationId?: string | 
       else setError({ kind, message: response.error.message });
       setBusy(null);
     };
-    const fallback = () => window.setTimeout(() => accept(handleStudiesEnvelope({ protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'studies', requestId: id, payload })), 0);
-    if (typeof Worker === 'undefined') { fallback(); return; }
-    try {
-      const instance = new Worker(new URL('../workers/studies.worker.ts', import.meta.url), { type: 'module' }); worker.current = instance;
-      instance.onmessage = (event: MessageEvent<WorkerResponseEnvelope<'studies', StudiesWorkerResult>>) => { instance.terminate(); if (worker.current === instance) worker.current = null; accept(event.data); };
-      instance.onerror = () => { instance.terminate(); if (worker.current === instance) worker.current = null; fallback(); };
-      const envelope: WorkerRequestEnvelope<'studies', StudiesWorkerPayload> = { protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'studies', requestId: id, payload };
-      instance.postMessage(envelope);
-    } catch { fallback(); }
+    const envelope: WorkerRequestEnvelope<'studies', StudiesWorkerPayload> = { protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'studies', requestId: id, payload };
+    const execution = startWorkerRequest({
+      createWorker: () => new Worker(new URL('../workers/studies.worker.ts', import.meta.url), { type: 'module' }),
+      request: envelope,
+      isExpectedResponse: (response: WorkerResponseEnvelope<'studies', StudiesWorkerResult>) => response.requestId === id,
+      onResponse: accept,
+      runFallback: () => handleStudiesEnvelope(envelope),
+      onFallbackError: (error) => {
+        if (request.current !== id) return;
+        setError({ kind, message: error instanceof Error ? error.message : 'No se pudo completar el estudio del modelo.' });
+        setBusy(null);
+      },
+    });
+    executionRef.current = execution;
+    execution.start();
   }, [cancel]);
   return { buckling, modal, busy, error, run };
 };

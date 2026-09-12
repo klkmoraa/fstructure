@@ -3,6 +3,7 @@ import type { ProjectModel } from '../types';
 import type { NumericCertificate } from './certificate';
 import { analysisSignature } from './projectSignature';
 import { handleCertificateEnvelope } from '../runtime/workerHandlers';
+import { startWorkerRequest, type WorkerRequestExecution } from '../runtime/workerExecution';
 import {
   WORKER_PROTOCOL_VERSION,
   type CertificateWorkerPayload,
@@ -19,9 +20,8 @@ export const useNumericCertificate = (project: ProjectModel, combinationId?: str
   const [certificate, setCertificate] = useState<NumericCertificate | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const workerRef = useRef<Worker | null>(null);
+  const executionRef = useRef<WorkerRequestExecution | null>(null);
   const requestRef = useRef(0);
-  const fallbackTimerRef = useRef<number | null>(null);
   const signature = useMemo(() => analysisSignature(project), [project]);
   const projectRef = useRef(project);
   const combinationRef = useRef(combinationId);
@@ -30,12 +30,8 @@ export const useNumericCertificate = (project: ProjectModel, combinationId?: str
 
   const cancelPending = useCallback(() => {
     requestRef.current += 1;
-    workerRef.current?.terminate();
-    workerRef.current = null;
-    if (fallbackTimerRef.current !== null) {
-      window.clearTimeout(fallbackTimerRef.current);
-      fallbackTimerRef.current = null;
-    }
+    executionRef.current?.cancel();
+    executionRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -47,9 +43,11 @@ export const useNumericCertificate = (project: ProjectModel, combinationId?: str
   }, [cancelPending, signature]);
 
   useEffect(() => {
+    cancelPending();
     setCertificate(null);
+    setBusy(false);
     setError(null);
-  }, [combinationId]);
+  }, [cancelPending, combinationId]);
 
   const run = useCallback(() => {
     cancelPending();
@@ -66,52 +64,23 @@ export const useNumericCertificate = (project: ProjectModel, combinationId?: str
       else setError(response.error.message);
       setBusy(false);
     };
-    const fallback = () => {
-      fallbackTimerRef.current = window.setTimeout(() => {
-        fallbackTimerRef.current = null;
-        accept(handleCertificateEnvelope({
-          protocolVersion: WORKER_PROTOCOL_VERSION,
-          type: 'run',
-          domain: 'certificate',
-          requestId,
-          payload,
-        }));
-      }, 0);
+    const request: WorkerRequestEnvelope<'certificate', CertificateWorkerPayload> = {
+      protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'certificate', requestId, payload,
     };
-    if (typeof Worker === 'undefined') {
-      fallback();
-      return;
-    }
-    try {
-      const worker = new Worker(new URL('../workers/certificate.worker.ts', import.meta.url), { type: 'module' });
-      workerRef.current = worker;
-      let settled = false;
-      const fallbackOnce = () => {
-        if (settled || requestRef.current !== requestId) return;
-        settled = true;
-        worker.terminate();
-        if (workerRef.current === worker) workerRef.current = null;
-        fallback();
-      };
-      worker.onmessage = (event: MessageEvent<WorkerResponseEnvelope<'certificate', NumericCertificate>>) => {
-        if (settled || event.data.requestId !== requestId || requestRef.current !== requestId) return;
-        settled = true;
-        worker.terminate();
-        if (workerRef.current === worker) workerRef.current = null;
-        accept(event.data);
-      };
-      worker.onerror = fallbackOnce;
-      const request: WorkerRequestEnvelope<'certificate', CertificateWorkerPayload> = {
-        protocolVersion: WORKER_PROTOCOL_VERSION,
-        type: 'run',
-        domain: 'certificate',
-        requestId,
-        payload,
-      };
-      worker.postMessage(request);
-    } catch {
-      fallback();
-    }
+    const execution = startWorkerRequest({
+      createWorker: () => new Worker(new URL('../workers/certificate.worker.ts', import.meta.url), { type: 'module' }),
+      request,
+      isExpectedResponse: (response: WorkerResponseEnvelope<'certificate', NumericCertificate>) => response.requestId === requestId,
+      onResponse: accept,
+      runFallback: () => handleCertificateEnvelope(request),
+      onFallbackError: (error) => {
+        if (requestRef.current !== requestId) return;
+        setError(error instanceof Error ? error.message : 'No se pudo emitir el certificado numérico.');
+        setBusy(false);
+      },
+    });
+    executionRef.current = execution;
+    execution.start();
   }, [cancelPending]);
 
   return { certificate, busy, error, run };
