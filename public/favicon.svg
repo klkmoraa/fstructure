@@ -4,7 +4,7 @@
     .fs-mark-body { fill: #14171a; }
     .fs-mark-arm { fill: #ed4b46; }
     @media (prefers-color-scheme: dark) {
-      .fs-mark-body { fill: #f2f4f3; }
+      .fs-mark-body { fill: #ffffff; }
       .fs-mark-arm { fill: #ff8e80; }
     }
   </style>
