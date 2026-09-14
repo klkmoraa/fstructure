@@ -44,6 +44,9 @@ export interface ProjectModelContextValue {
    */
   updateProject: (updater: (project: ProjectModel) => ProjectModel, analyzeAfter?: boolean) => void;
 
+  /** Applies a reversible design-only edit while preserving the current structural analysis. */
+  updateProjectDesign: (updater: (project: ProjectModel) => ProjectModel) => void;
+
   /** Applies a purely visual preference change; it creates no history and keeps analysis valid. */
   updateProjectView: (updater: (project: ProjectModel) => ProjectModel) => void;
 

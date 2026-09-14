@@ -33,6 +33,7 @@ const runFallbackAnalysis = async (project: ProjectModel, combinationId: string,
 interface HistoryEntry {
   project: ProjectModel;
   description: string;
+  affectsAnalysis: boolean;
 }
 
 // Kept here as a literal so the optional IndexedDB module can remain lazy in
@@ -206,16 +207,22 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   }, [invalidateAnalysis, publishProject]);
 
   /** Stores one bounded undo checkpoint and discards its redo branch. */
-  const recordHistory = useCallback((previous: ProjectModel, description: string) => {
-    setPast((history) => [...history.slice(-49), { project: previous, description }]);
+  const recordHistory = useCallback((previous: ProjectModel, description: string, affectsAnalysis: boolean) => {
+    setPast((history) => [...history.slice(-49), { project: previous, description, affectsAnalysis }]);
     setFuture([]);
   }, []);
 
   /** The shared implementation for the two explicitly reversible edit routes. */
-  const commitReversibleProjectChange = useCallback((previous: ProjectModel, next: ProjectModel, description: string) => {
-    recordHistory(previous, description);
-    publishAnalysisAffectingProject(next);
-  }, [publishAnalysisAffectingProject, recordHistory]);
+  const commitReversibleProjectChange = useCallback((
+    previous: ProjectModel,
+    next: ProjectModel,
+    description: string,
+    affectsAnalysis = true,
+  ) => {
+    recordHistory(previous, description, affectsAnalysis);
+    if (affectsAnalysis) publishAnalysisAffectingProject(next);
+    else publishProject(next);
+  }, [publishAnalysisAffectingProject, publishProject, recordHistory]);
 
   useEffect(() => () => {
     if (analysisTimerRef.current !== null) window.clearTimeout(analysisTimerRef.current);
@@ -295,7 +302,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     const topologyRepair = repairProjectTopology(source);
     const topologyRepairCount = topologyRepair.mergedNodes.length + topologyRepair.splitMembers.length;
     if (topologyRepairCount > 0) {
-      setPast((history) => [...history.slice(-49), { project: currentProject, description: 'Reparar topología' }]);
+      setPast((history) => [...history.slice(-49), { project: currentProject, description: 'Reparar topología', affectsAnalysis: true }]);
       setFuture([]);
       projectRef.current = source;
       setProject(source);
@@ -476,6 +483,18 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [commitReversibleProjectChange, selectedCombinationId]);
 
+  const updateProjectDesign = useCallback((updater: (project: ProjectModel) => ProjectModel) => {
+    const current = projectRef.current;
+    const next = normalizeProject(updater(structuredClone(current)));
+    if (JSON.stringify(next) === JSON.stringify(current)) return;
+    const { designAssignments: _currentDesign, ...currentWithoutDesign } = current;
+    const { designAssignments: _nextDesign, ...nextWithoutDesign } = next;
+    if (JSON.stringify(nextWithoutDesign) !== JSON.stringify(currentWithoutDesign)) {
+      throw new Error('La ruta de diseño sólo puede modificar asignaciones de diseño.');
+    }
+    commitReversibleProjectChange(current, next, 'Editar diseño', false);
+  }, [commitReversibleProjectChange]);
+
   const executeProjectCommand = useCallback(async (command: ProjectCommand): Promise<ProjectCommandResult | undefined> => {
     const { applyProjectPatch, compileProjectCommand } = await import('../commands/projectCommand');
     const current = projectRef.current;
@@ -575,7 +594,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     const start = transactionStartRef.current;
     transactionStartRef.current = null;
     if (start && JSON.stringify(start) !== JSON.stringify(projectRef.current)) {
-      recordHistory(start, transactionDescriptionRef.current);
+      recordHistory(start, transactionDescriptionRef.current, true);
     }
     setTransactionActive(false);
     setPersistenceRevision((revision) => revision + 1);
@@ -593,7 +612,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
   const replaceProject = useCallback((next: ProjectModel, restoredAnalysis?: AnalysisResult, repositoryRevision?: number) => {
     const normalized = normalizeProject(next);
-    setPast((history) => [...history.slice(-49), { project, description: 'Abrir proyecto' }]);
+    setPast((history) => [...history.slice(-49), { project, description: 'Abrir proyecto', affectsAnalysis: true }]);
     setFuture([]);
     setProject(normalized);
     projectRef.current = normalized;
@@ -613,25 +632,25 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const undo = useCallback(() => {
     if (past.length === 0) return;
     const previous = past[past.length - 1];
-    setFuture((items) => [{ project, description: previous.description }, ...items].slice(0, 50));
+    setFuture((items) => [{ project, description: previous.description, affectsAnalysis: previous.affectsAnalysis }, ...items].slice(0, 50));
     setPast(past.slice(0, -1));
     setProject(previous.project);
     projectRef.current = previous.project;
-    invalidateAnalysis();
+    if (previous.affectsAnalysis) invalidateAnalysis();
     setSelection(null);
   }, [invalidateAnalysis, past, project, setSelection]);
 
   const redo = useCallback(() => {
     if (future.length === 0) return;
     const entry = future[0];
-    setPast((history) => [...history.slice(-49), { project, description: entry.description }]);
+    setPast((history) => [...history.slice(-49), { project, description: entry.description, affectsAnalysis: entry.affectsAnalysis }]);
     setFuture(future.slice(1));
     // History entries are already-valid in-memory snapshots. Re-normalizing
     // here can add optional keys with `undefined` and makes redo differ from
     // the exact state that was originally published and previewed.
     setProject(entry.project);
     projectRef.current = entry.project;
-    invalidateAnalysis();
+    if (entry.affectsAnalysis) invalidateAnalysis();
     setSelection(null);
   }, [future, invalidateAnalysis, project, setSelection]);
 
@@ -641,9 +660,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     canRedo: future.length > 0,
     storageIssue: storageState.issue,
     storageMessage: storageState.message,
-    renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient,
+    renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient,
     moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo,
-  }), [project, past.length, future.length, storageState.issue, storageState.message, renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient, moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo]);
+  }), [project, past.length, future.length, storageState.issue, storageState.message, renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient, moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo]);
 
   const analysisValue = useMemo<ProjectAnalysisContextValue>(() => ({
     analysis, isAnalyzing, selectedCombinationId, learningFocus, influenceCanvasState,
