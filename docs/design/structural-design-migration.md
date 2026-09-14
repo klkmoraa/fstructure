@@ -152,7 +152,7 @@ El bloque siguiente es datos, no una segunda explicación editorial. `src/design
     },
     {
       "sourcePath": "src/components/AppShell.tsx",
-      "sourceSha256": "e500d7fa0329a43c2ca8ade8d5266f854f96441a9bc4b708d804870b9a781d84",
+      "sourceSha256": "e500d7fa0329a43c2ca8ade8d5266f854f96441a9bc4b708b804870b9a781d84",
       "status": "excluded",
       "reason": "Shell paralelo; Solver2D ya posee broker y composición adaptativa."
     },
