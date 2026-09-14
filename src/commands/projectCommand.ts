@@ -14,6 +14,7 @@ import {
 import type {
   LoadCoordinateSystem,
   LoadLengthBasis,
+  MemberDesignAssignment,
   MemberInitialEffect,
   MemberLoad,
   MemberModel,
@@ -25,8 +26,8 @@ import type {
   SupportDefinition,
 } from '../types';
 
-type ProjectEntity = NodeModel | MemberModel | NodalLoad | MemberLoad | PrescribedDisplacement | MemberInitialEffect;
-export type ProjectEntityCollection = 'nodes' | 'members' | 'nodalLoads' | 'memberLoads' | 'prescribedDisplacements' | 'memberInitialEffects';
+type ProjectEntity = NodeModel | MemberModel | NodalLoad | MemberLoad | PrescribedDisplacement | MemberInitialEffect | MemberDesignAssignment;
+export type ProjectEntityCollection = 'nodes' | 'members' | 'nodalLoads' | 'memberLoads' | 'prescribedDisplacements' | 'memberInitialEffects' | 'designAssignments';
 
 export interface ProjectPatchOperation {
   collection: ProjectEntityCollection;
@@ -237,7 +238,7 @@ export interface PreparedTopologyRepair extends CompiledProjectCommand {
 }
 
 const COLLECTIONS: ProjectEntityCollection[] = [
-  'nodes', 'members', 'nodalLoads', 'memberLoads', 'prescribedDisplacements', 'memberInitialEffects',
+  'nodes', 'members', 'nodalLoads', 'memberLoads', 'prescribedDisplacements', 'memberInitialEffects', 'designAssignments',
 ];
 
 const entities = (project: ProjectModel, collection: ProjectEntityCollection): ProjectEntity[] => {
@@ -294,6 +295,7 @@ const validateProjectBoundary = (project: ProjectModel): void => {
   }
   for (const load of project.memberLoads) if (!memberIds.has(load.memberId)) throw new Error(`La carga ${load.id} referencia un miembro inexistente.`);
   for (const effect of project.memberInitialEffects ?? []) if (!memberIds.has(effect.memberId)) throw new Error(`El efecto ${effect.id} referencia un miembro inexistente.`);
+  for (const assignment of project.designAssignments ?? []) if (!memberIds.has(assignment.memberId)) throw new Error(`La asignación ${assignment.id} referencia un miembro inexistente.`);
 };
 
 const diffProjects = (before: ProjectModel, after: ProjectModel, description: string): ProjectPatch => {

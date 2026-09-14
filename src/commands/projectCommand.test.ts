@@ -36,4 +36,25 @@ describe('compileProjectCommand / applyProjectPatch', () => {
       changes: { E: 1 },
     })).toThrow(/No existe el miembro/);
   });
+
+  it('elimina y restaura la asignación de diseño junto con su miembro', () => {
+    const project = createDefaultProject();
+    project.designAssignments = [{
+      id: 'DESIGN-M2', memberId: 'M2', kind: 'reinforced-concrete-beam', standardId: 'ntc-cdmx-2023-concrete',
+      ultimateCombinationId: 'NTC-CDMX-2023-ORD', serviceCombinationId: 'COMB1', coverMm: 40,
+      longitudinalSteelYieldMpa: 420, stirrupSteelYieldMpa: 420,
+      preferredLongitudinalDiametersMm: [12, 16, 20, 25, 32], preferredStirrupDiametersMm: [8, 10, 12], stirrupLegs: 2,
+    }];
+    const compiled = compileProjectCommand(project, {
+      kind: 'member.delete',
+      description: 'Eliminar M2',
+      memberId: 'M2',
+    });
+
+    const deleted = applyProjectPatch(project, compiled.forward);
+    expect(deleted.designAssignments).toEqual([]);
+
+    const restored = applyProjectPatch(deleted, compiled.inverse);
+    expect(restored).toEqual(project);
+  });
 });
