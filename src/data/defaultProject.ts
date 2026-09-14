@@ -1,7 +1,16 @@
 import type { ProjectModel, ProjectSettings } from '../types';
 import { createId } from '../utils/id';
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
+
+export const DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN = {
+  coverMm: 40,
+  longitudinalSteelYieldMpa: 420,
+  stirrupSteelYieldMpa: 420,
+  preferredLongitudinalDiametersMm: [12, 16, 20, 25, 32],
+  preferredStirrupDiametersMm: [8, 10, 12],
+  stirrupLegs: 2,
+} as const;
 
 const CUSTOM_MEMBER_IDENTITY = { materialOrigin: 'custom', sectionOrigin: 'custom' } as const;
 
@@ -46,6 +55,7 @@ export const createBlankProject = (): ProjectModel => ({
   nodalMasses: [],
   generatedLoadSources: [],
   movingLoadCases: [],
+  designAssignments: [],
   settings: createDefaultSettings(),
 });
 
@@ -107,6 +117,7 @@ export const createDefaultProject = (): ProjectModel => ({
   nodalMasses: [],
   generatedLoadSources: [],
   movingLoadCases: [],
+  designAssignments: [],
   settings: createDefaultSettings(),
 });
 
