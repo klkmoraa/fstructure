@@ -7,6 +7,7 @@ import type { ConcreteBeamDesignInput, ConcreteDesignCheck } from './types';
 const SOURCE_URL = 'https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf';
 const SOURCE_SHA256 = '293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a';
 const IMPLEMENTED_CLAUSES = [
+  '2.2.1-2.2.7.3',
   '3.6.1',
   '3.8.2.1-3.8.2.2',
   '5.2.1.1.2',
@@ -43,9 +44,8 @@ const validInput = (): ConcreteBeamDesignInput => ({
     catalogId: 'concrete-28mpa',
     origin: 'catalog',
     density: 'normal',
+    coarseAggregate: 'basalt',
     compressiveStrengthMpa: 28,
-    elasticModulusMpa: 24_870.062324,
-    modulusOfRuptureMpa: 3.5,
   },
   reinforcement: {
     coverMm: 40,
@@ -84,6 +84,7 @@ const validInput = (): ConcreteBeamDesignInput => ({
       },
       governingMomentKnm: 80,
       grossElasticDeflectionMm: 7,
+      grossElasticModulusMpa: 24_870.062324,
       damagesNonstructuralElements: false,
     },
   },
@@ -198,9 +199,9 @@ describe('designReinforcedConcreteBeam', () => {
     const outcome = available();
 
     expect(outcome.service.grossInertiaMm4).toBeCloseTo(3_125_000_000, 2);
-    expect(outcome.service.crackedTransformedInertiaMm4).toBeCloseTo(851_644_165.338, 2);
-    expect(outcome.service.effectiveInertiaMm4).toBeCloseTo(942_810_717.447, 2);
-    expect(outcome.service.immediateDeflectionMm).toBeCloseTo(23.201900, 5);
+    expect(outcome.service.crackedTransformedInertiaMm4).toBeCloseTo(1_075_244_549.227, 2);
+    expect(outcome.service.effectiveInertiaMm4).toBeCloseTo(1_167_595_438.584, 2);
+    expect(outcome.service.immediateDeflectionMm).toBeCloseTo(25.158543, 5);
     expect(outcome.service.totalDeflectionLimitMm).toBeCloseTo(30, 8);
     expect(outcome.service.totalConclusion).toBe('not-evaluated');
     expect(check(outcome.checks, 'total-service-deflection').status).toBe('not-evaluated');
@@ -211,6 +212,55 @@ describe('designReinforcedConcreteBeam', () => {
       'long-term-deflection',
     ]);
     expect(outcome.scope).toBe('complete-within-v1');
+  });
+
+  it('acopla el peralte efectivo al diámetro de estribo realmente seleccionado', () => {
+    const input = validInput();
+    input.analysis.ultimate.positiveMomentKnm = 127.2;
+    input.analysis.ultimate.absoluteShearKn = 183.7;
+    const outcome = available(input);
+
+    expect(outcome.reinforcement.stirrups.diameterMm).toBe(10);
+    expect(outcome.reinforcement.bottom.effectiveDepthMm).toBe(
+      input.section.heightMm - input.reinforcement.coverMm - 10 - outcome.reinforcement.bottom.diameterMm / 2,
+    );
+    expect(outcome.flexure.positive.designStrengthKnm).toBeGreaterThanOrEqual(127.2);
+    expect(outcome.reinforcement.stirrups.designStrengthKn).toBeGreaterThanOrEqual(183.7);
+  });
+
+  it('deriva propiedades medias NTC explícitas para la revisión de servicio', () => {
+    const outcome = available();
+    const service = outcome.service as typeof outcome.service & {
+      meanFlexuralTensileStrengthMpa: number;
+      concreteElasticModulusMpa: number;
+      concretePropertyBasis: string;
+    };
+
+    expect(service.meanFlexuralTensileStrengthMpa).toBeCloseTo(0.63 * Math.sqrt(28), 8);
+    expect(service.concreteElasticModulusMpa).toBeCloseTo(3_500 * Math.sqrt(28), 8);
+    expect(service.concretePropertyBasis).toBe('ntc-table-2.2.1-class-1a-basalt');
+  });
+
+  it.each([
+    ['diámetro longitudinal cero', (input: ConcreteBeamDesignInput) => { input.reinforcement.preferredLongitudinalDiametersMm = [0, 16]; }],
+    ['diámetro de estribo negativo', (input: ConcreteBeamDesignInput) => { input.reinforcement.preferredStirrupDiametersMm = [-8]; }],
+    ['ramas fraccionarias', (input: ConcreteBeamDesignInput) => { input.reinforcement.stirrupLegs = 2.5; }],
+  ])('bloquea geometría inválida: %s', (_label, mutate) => {
+    const input = validInput();
+    mutate(input);
+    expect(designReinforcedConcreteBeam(input)).toMatchObject({ status: 'blocked', blockers: ['invalid-input'] });
+  });
+
+  it('bloquea cuatro ramas como configuración válida pero fuera del alcance V1', () => {
+    const input = validInput();
+    input.reinforcement.stirrupLegs = 4;
+    expect(designReinforcedConcreteBeam(input)).toMatchObject({ status: 'blocked', blockers: ['unsupported-v1-input'] });
+  });
+
+  it('bloquea compresión axial porque V1 no implementa interacción P-M', () => {
+    const input = validInput();
+    input.analysis.ultimate.compressionKn = 1;
+    expect(designReinforcedConcreteBeam(input)).toMatchObject({ status: 'blocked', blockers: ['unsupported-v1-input'] });
   });
 
   it('es determinista, pura y entrega un resultado profundamente inmutable', () => {

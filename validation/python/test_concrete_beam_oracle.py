@@ -1,6 +1,7 @@
 import json
 import math
 import unittest
+from copy import deepcopy
 from pathlib import Path
 
 from concrete_beam_oracle import design_reinforced_concrete_beam
@@ -10,6 +11,10 @@ FIXTURES = Path(__file__).parents[1] / "fixtures" / "concrete-beam"
 
 
 class ConcreteBeamOracleTest(unittest.TestCase):
+    def baseline_input(self):
+        fixture = json.loads((FIXTURES / "baseline.json").read_text(encoding="utf-8"))
+        return deepcopy(fixture["input"])
+
     def assert_projected_equal(self, actual, expected, path="result"):
         if isinstance(expected, dict):
             for key, value in expected.items():
@@ -35,6 +40,26 @@ class ConcreteBeamOracleTest(unittest.TestCase):
                 fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
                 actual = design_reinforced_concrete_beam(fixture["input"])
                 self.assert_projected_equal(actual, fixture["expected"])
+
+    def test_complete_configuration_uses_selected_stirrup_diameter(self):
+        data = self.baseline_input()
+        data["analysis"]["ultimate"]["positiveMomentKnm"] = 127.2
+        data["analysis"]["ultimate"]["absoluteShearKn"] = 183.7
+        actual = design_reinforced_concrete_beam(data)
+        self.assertEqual(actual["stirrupDiameterMm"], 10)
+        self.assertEqual(
+            actual["bottomEffectiveDepthMm"],
+            data["section"]["heightMm"] - data["reinforcement"]["coverMm"] - 10 - actual["bottomDiameterMm"] / 2,
+        )
+
+    def test_rejects_axial_force_and_invalid_reinforcement_geometry(self):
+        axial = self.baseline_input()
+        axial["analysis"]["ultimate"]["compressionKn"] = 1
+        self.assertEqual(design_reinforced_concrete_beam(axial)["blockers"], ["unsupported-v1-input"])
+
+        invalid = self.baseline_input()
+        invalid["reinforcement"]["preferredStirrupDiametersMm"] = [-8]
+        self.assertEqual(design_reinforced_concrete_beam(invalid)["blockers"], ["invalid-input"])
 
 
 if __name__ == "__main__":

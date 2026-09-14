@@ -284,6 +284,7 @@ describe('manifiesto de migración de Diseño Estructural', () => {
       implementationGate: 'open-for-verified-clauses-only',
     });
     expect(currentStandard.verifiedClauses.map(({ clauseId }) => clauseId)).toEqual([
+      '2.2.1-2.2.7.3',
       '3.6.1',
       '3.8.2.1-3.8.2.2',
       '5.2.1.1.2',

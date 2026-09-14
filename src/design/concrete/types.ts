@@ -34,9 +34,8 @@ export interface ConcreteBeamDesignInput {
     catalogId: string;
     origin: 'catalog' | 'custom';
     density: 'normal' | 'lightweight';
+    coarseAggregate: 'limestone' | 'basalt';
     compressiveStrengthMpa: number;
-    elasticModulusMpa: number;
-    modulusOfRuptureMpa: number;
   };
   reinforcement: {
     coverMm: number;
@@ -63,6 +62,8 @@ export interface ConcreteBeamDesignInput {
       combination: ConcreteCombinationReference;
       governingMomentKnm: number;
       grossElasticDeflectionMm: number;
+      /** Elastic modulus used by the solver for grossElasticDeflectionMm. */
+      grossElasticModulusMpa: number;
       damagesNonstructuralElements: boolean;
     };
   };
@@ -143,6 +144,9 @@ export interface ConcreteBeamDesignAvailable {
     };
   };
   readonly service: {
+    readonly meanFlexuralTensileStrengthMpa: number;
+    readonly concreteElasticModulusMpa: number;
+    readonly concretePropertyBasis: 'ntc-table-2.2.1-class-1a-limestone' | 'ntc-table-2.2.1-class-1a-basalt' | 'ntc-table-2.2.1-class-1b-limestone' | 'ntc-table-2.2.1-class-1b-basalt';
     readonly grossInertiaMm4: number;
     readonly crackedTransformedInertiaMm4: number;
     readonly effectiveInertiaMm4: number;

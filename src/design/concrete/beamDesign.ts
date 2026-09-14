@@ -1,4 +1,4 @@
-import { NTC_CONCRETE_2023, betaOne, equivalentBlockStrengthMpa } from './ntcConcrete2023';
+import { NTC_CONCRETE_2023, betaOne, classOneConcreteProperties, equivalentBlockStrengthMpa } from './ntcConcrete2023';
 import type {
   ConcreteBeamDesignAvailable,
   ConcreteBeamDesignInput,
@@ -27,6 +27,22 @@ interface StirrupCandidate {
   readonly preferenceIndex: number;
   readonly deficit: number;
   readonly excess: number;
+}
+
+interface CoupledConfiguration {
+  readonly positive: LongitudinalCandidate;
+  readonly negative: LongitudinalCandidate;
+  readonly stirrup: StirrupCandidate;
+  readonly depthMm: number;
+  readonly requiredRatio: number;
+  readonly minimumRatio: number;
+  readonly concreteNominalShearN: number;
+  readonly concreteDesignShearKn: number;
+  readonly shearDesignStrengthKn: number;
+  readonly maximumDimensionShearKn: number;
+  readonly maximumLongitudinalSpacingMm: number;
+  readonly maximumTransverseSpacingMm: number;
+  readonly transverseLegSpacingMm: number;
 }
 
 function deepFreeze<T>(value: T): T {
@@ -83,8 +99,6 @@ function firstGateFailure(input: ConcreteBeamDesignInput): ConcreteDesignBlocker
     input.section.widthMm,
     input.section.heightMm,
     input.concrete.compressiveStrengthMpa,
-    input.concrete.elasticModulusMpa,
-    input.concrete.modulusOfRuptureMpa,
     input.reinforcement.coverMm,
     input.reinforcement.maximumAggregateSizeMm,
     input.reinforcement.longitudinalYieldStrengthMpa,
@@ -98,12 +112,17 @@ function firstGateFailure(input: ConcreteBeamDesignInput): ConcreteDesignBlocker
     input.analysis.ultimate.compressionKn,
     input.analysis.service.governingMomentKnm,
     input.analysis.service.grossElasticDeflectionMm,
+    input.analysis.service.grossElasticModulusMpa,
     ...input.reinforcement.preferredLongitudinalDiametersMm,
     ...input.reinforcement.preferredStirrupDiametersMm,
   ];
   if (
     finiteValues.some((value) => !Number.isFinite(value))
-    || finiteValues.slice(0, 13).some((value) => value <= 0)
+    || finiteValues.slice(0, 11).some((value) => value <= 0)
+    || input.reinforcement.preferredLongitudinalDiametersMm.some((value) => value <= 0)
+    || input.reinforcement.preferredStirrupDiametersMm.some((value) => value <= 0)
+    || !Number.isInteger(input.reinforcement.stirrupLegs)
+    || input.reinforcement.stirrupLegs < 2
     || input.analysis.ultimate.positiveMomentKnm < 0
     || input.analysis.ultimate.negativeMomentKnm > 0
     || input.analysis.ultimate.absoluteShearKn < 0
@@ -114,12 +133,14 @@ function firstGateFailure(input: ConcreteBeamDesignInput): ConcreteDesignBlocker
   ) return 'invalid-input';
 
   const { widthMm: width, heightMm: height } = input.section;
-  const axialLimitKn = input.concrete.compressiveStrengthMpa * width * height / 10 / 1_000;
   if (
+    classOneConcreteProperties(input.concrete.compressiveStrengthMpa, input.concrete.coarseAggregate) === undefined
+    ||
     input.spanMm / height < 5
     || height / width > 6
     || height < 250
-    || input.analysis.ultimate.compressionKn >= axialLimitKn
+    || input.reinforcement.stirrupLegs !== 2
+    || input.analysis.ultimate.compressionKn !== 0
   ) return 'unsupported-v1-input';
   return undefined;
 }
@@ -243,25 +264,25 @@ function check(
 
 function selectStirrup(
   input: ConcreteBeamDesignInput,
+  diameter: number,
+  preferenceIndex: number,
   requiredRatio: number,
   maximumSpacingMm: number,
 ): StirrupCandidate | undefined {
   const candidates: StirrupCandidate[] = [];
   const increment = input.reinforcement.stirrupSpacingIncrementMm;
-  input.reinforcement.preferredStirrupDiametersMm.forEach((diameter, preferenceIndex) => {
-    const area = input.reinforcement.stirrupLegs * barArea(diameter);
-    for (let spacing = increment; spacing <= maximumSpacingMm + 1e-9; spacing += increment) {
-      const provided = area / spacing;
-      candidates.push({
-        diameterMm: diameter,
-        spacingMm: spacing,
-        providedAreaPerSpacingMm: provided,
-        preferenceIndex,
-        deficit: Math.max(0, requiredRatio - provided),
-        excess: Math.max(0, provided - requiredRatio),
-      });
-    }
-  });
+  const area = input.reinforcement.stirrupLegs * barArea(diameter);
+  for (let spacing = increment; spacing <= maximumSpacingMm + 1e-9; spacing += increment) {
+    const provided = area / spacing;
+    candidates.push({
+      diameterMm: diameter,
+      spacingMm: spacing,
+      providedAreaPerSpacingMm: provided,
+      preferenceIndex,
+      deficit: Math.max(0, requiredRatio - provided),
+      excess: Math.max(0, provided - requiredRatio),
+    });
+  }
   candidates.sort((left, right) =>
     left.deficit - right.deficit
     || left.excess - right.excess
@@ -269,6 +290,54 @@ function selectStirrup(
     || right.spacingMm - left.spacingMm,
   );
   return candidates[0];
+}
+
+function coupledConfiguration(
+  input: ConcreteBeamDesignInput,
+  stirrupDiameterMm: number,
+  preferenceIndex: number,
+): CoupledConfiguration | undefined {
+  const positive = selectLongitudinal(input, input.analysis.ultimate.positiveMomentKnm, stirrupDiameterMm);
+  const negative = selectLongitudinal(input, Math.abs(input.analysis.ultimate.negativeMomentKnm), stirrupDiameterMm);
+  if (positive === undefined || negative === undefined) return undefined;
+
+  const width = input.section.widthMm;
+  const fc = input.concrete.compressiveStrengthMpa;
+  const fyv = input.reinforcement.stirrupYieldStrengthMpa;
+  const depthMm = Math.min(positive.effectiveDepthMm, negative.effectiveDepthMm);
+  const shearDemandN = input.analysis.ultimate.absoluteShearKn * 1_000;
+  const concreteNominalShearN = 0.17 * Math.sqrt(fc) * width * depthMm;
+  const concreteDesignShearKn = NTC_CONCRETE_2023.shearResistanceFactor * concreteNominalShearN / 1_000;
+  const requiredNominalStirrupShearN = Math.max(0, shearDemandN / NTC_CONCRETE_2023.shearResistanceFactor - concreteNominalShearN);
+  const strengthRatio = requiredNominalStirrupShearN / (fyv * depthMm);
+  const minimumRatio = Math.max(0.062 * Math.sqrt(fc) * width / fyv, 0.35 * width / fyv);
+  const requiredRatio = Math.max(strengthRatio, minimumRatio);
+  const highShearThresholdN = 0.33 * Math.sqrt(fc) * width * depthMm;
+  const highShear = requiredNominalStirrupShearN > highShearThresholdN;
+  const maximumLongitudinalSpacingMm = highShear ? Math.min(depthMm / 4, 300) : Math.min(depthMm / 2, 600);
+  const maximumTransverseSpacingMm = highShear ? Math.min(depthMm / 2, 300) : Math.min(depthMm, 600);
+  const stirrup = selectStirrup(input, stirrupDiameterMm, preferenceIndex, requiredRatio, maximumLongitudinalSpacingMm);
+  if (stirrup === undefined) return undefined;
+  const stirrupNominalShearN = stirrup.providedAreaPerSpacingMm * fyv * depthMm;
+  const shearDesignStrengthKn = NTC_CONCRETE_2023.shearResistanceFactor * (concreteNominalShearN + stirrupNominalShearN) / 1_000;
+  const maximumDimensionShearKn = NTC_CONCRETE_2023.shearResistanceFactor
+    * (concreteNominalShearN + 0.66 * Math.sqrt(fc) * width * depthMm) / 1_000;
+  const transverseLegSpacingMm = width - 2 * (input.reinforcement.coverMm + stirrupDiameterMm / 2);
+  return {
+    positive,
+    negative,
+    stirrup,
+    depthMm,
+    requiredRatio,
+    minimumRatio,
+    concreteNominalShearN,
+    concreteDesignShearKn,
+    shearDesignStrengthKn,
+    maximumDimensionShearKn,
+    maximumLongitudinalSpacingMm,
+    maximumTransverseSpacingMm,
+    transverseLegSpacingMm,
+  };
 }
 
 function publicArrangement(candidate: LongitudinalCandidate): LongitudinalArrangement {
@@ -288,48 +357,39 @@ export function designReinforcedConcreteBeam(input: ConcreteBeamDesignInput): Co
   const gateFailure = firstGateFailure(input);
   if (gateFailure !== undefined) return blocked(input, gateFailure);
 
-  const stirrupDiameter = input.reinforcement.preferredStirrupDiametersMm[0]!;
-  const positive = selectLongitudinal(input, input.analysis.ultimate.positiveMomentKnm, stirrupDiameter);
-  const negative = selectLongitudinal(input, Math.abs(input.analysis.ultimate.negativeMomentKnm), stirrupDiameter);
-  if (positive === undefined || negative === undefined) return blocked(input, 'no-longitudinal-arrangement');
-
+  const configurations = input.reinforcement.preferredStirrupDiametersMm.flatMap((diameter, preferenceIndex) => {
+    const candidate = coupledConfiguration(input, diameter, preferenceIndex);
+    return candidate ? [candidate] : [];
+  });
+  if (configurations.length === 0) return blocked(input, 'no-longitudinal-arrangement');
+  configurations.sort((left, right) =>
+    left.stirrup.deficit - right.stirrup.deficit
+    || left.stirrup.excess - right.stirrup.excess
+    || left.stirrup.preferenceIndex - right.stirrup.preferenceIndex
+    || right.stirrup.spacingMm - left.stirrup.spacingMm,
+  );
+  const configuration = configurations[0]!;
+  const { positive, negative, stirrup } = configuration;
   const width = input.section.widthMm;
   const height = input.section.heightMm;
-  const fc = input.concrete.compressiveStrengthMpa;
-  const fyv = input.reinforcement.stirrupYieldStrengthMpa;
-  const depth = Math.min(positive.effectiveDepthMm, negative.effectiveDepthMm);
-  const shearDemandN = input.analysis.ultimate.absoluteShearKn * 1_000;
-  const concreteNominalShearN = 0.17 * Math.sqrt(fc) * width * depth;
-  const concreteDesignShearKn = NTC_CONCRETE_2023.shearResistanceFactor * concreteNominalShearN / 1_000;
-  const requiredNominalStirrupShearN = Math.max(0, shearDemandN / NTC_CONCRETE_2023.shearResistanceFactor - concreteNominalShearN);
-  const strengthRatio = requiredNominalStirrupShearN / (fyv * depth);
-  const minimumRatio = Math.max(0.062 * Math.sqrt(fc) * width / fyv, 0.35 * width / fyv);
-  const requiredRatio = Math.max(strengthRatio, minimumRatio);
-  const highShearThresholdN = 0.33 * Math.sqrt(fc) * width * depth;
-  const highShear = requiredNominalStirrupShearN > highShearThresholdN;
-  const maximumLongitudinalSpacing = highShear ? Math.min(depth / 4, 300) : Math.min(depth / 2, 600);
-  const maximumTransverseSpacing = highShear ? Math.min(depth / 2, 300) : Math.min(depth, 600);
-  const stirrup = selectStirrup(input, requiredRatio, maximumLongitudinalSpacing);
-  if (stirrup === undefined) return blocked(input, 'no-stirrup-arrangement');
-  const stirrupNominalShearN = stirrup.providedAreaPerSpacingMm * fyv * depth;
-  const shearDesignStrengthKn = NTC_CONCRETE_2023.shearResistanceFactor * (concreteNominalShearN + stirrupNominalShearN) / 1_000;
-  const maximumDimensionShearKn = NTC_CONCRETE_2023.shearResistanceFactor
-    * (concreteNominalShearN + 0.66 * Math.sqrt(fc) * width * depth) / 1_000;
-  const transverseLegSpacing = width - 2 * (input.reinforcement.coverMm + stirrup.diameterMm / 2);
+  const concreteProperties = classOneConcreteProperties(input.concrete.compressiveStrengthMpa, input.concrete.coarseAggregate)!;
 
   const selectedForService = input.analysis.service.governingMomentKnm >= 0 ? positive : negative;
   const grossInertia = width * height ** 3 / 12;
-  const modularRatio = input.reinforcement.steelElasticModulusMpa / input.concrete.elasticModulusMpa;
+  const modularRatio = input.reinforcement.steelElasticModulusMpa / concreteProperties.elasticModulusMpa;
   const transformedArea = modularRatio * selectedForService.areaMm2;
   const neutralAxis = (-transformedArea + Math.sqrt(transformedArea ** 2 + 2 * width * transformedArea * selectedForService.effectiveDepthMm)) / width;
   const crackedInertia = width * neutralAxis ** 3 / 3
     + transformedArea * (selectedForService.effectiveDepthMm - neutralAxis) ** 2;
-  const crackingMomentKnm = input.concrete.modulusOfRuptureMpa * grossInertia / (height / 2) / 1_000_000;
+  const crackingMomentKnm = concreteProperties.meanFlexuralTensileStrengthMpa * grossInertia / (height / 2) / 1_000_000;
   const serviceMoment = Math.abs(input.analysis.service.governingMomentKnm);
   const effectiveInertia = serviceMoment <= 2 * crackingMomentKnm / 3 || serviceMoment === 0
     ? grossInertia
     : crackedInertia / (1 - ((2 * crackingMomentKnm / 3 / serviceMoment) ** 2) * (1 - crackedInertia / grossInertia));
-  const immediateDeflection = input.analysis.service.grossElasticDeflectionMm * grossInertia / effectiveInertia;
+  const immediateDeflection = input.analysis.service.grossElasticDeflectionMm
+    * input.analysis.service.grossElasticModulusMpa
+    * grossInertia
+    / (concreteProperties.elasticModulusMpa * effectiveInertia);
   const totalDeflectionLimit = input.analysis.service.damagesNonstructuralElements
     ? 3 + input.spanMm / 480
     : 5 + input.spanMm / 240;
@@ -341,11 +401,11 @@ export function designReinforcedConcreteBeam(input: ConcreteBeamDesignInput): Co
     check('maximum-steel-positive', ['5.2.1.3.1', '6.3.5.1.1-6.3.5.2.1'], positive.areaMm2, positive.maximumAreaMm2, 'mm²', 'Acero máximo en lecho positivo.'),
     check('minimum-steel-negative', ['6.3.5.1.1-6.3.5.2.1'], negative.minimumAreaMm2, negative.areaMm2, 'mm²', 'Acero mínimo en lecho negativo.'),
     check('maximum-steel-negative', ['5.2.1.3.1', '6.3.5.1.1-6.3.5.2.1'], negative.areaMm2, negative.maximumAreaMm2, 'mm²', 'Acero máximo en lecho negativo.'),
-    check('shear-strength', ['5.5.3.1.1-5.5.3.1.2', '5.5.3.6.1-5.5.3.6.2'], input.analysis.ultimate.absoluteShearKn, shearDesignStrengthKn, 'kN', 'Resistencia combinada de concreto y estribos.'),
-    check('maximum-shear-dimension', ['5.5.2.2'], input.analysis.ultimate.absoluteShearKn, maximumDimensionShearKn, 'kN', 'Límite de esfuerzo cortante por dimensiones.'),
-    check('minimum-stirrup-ratio', ['6.3.5.4.1-6.3.5.4.4'], minimumRatio, stirrup.providedAreaPerSpacingMm, 'mm²/mm', 'Cuantía transversal normalizada Av/s.'),
-    check('stirrup-longitudinal-spacing', ['6.3.7.6.2.2'], stirrup.spacingMm, maximumLongitudinalSpacing, 'mm', 'Separación longitudinal de estribos.'),
-    check('stirrup-transverse-spacing', ['6.3.7.6.2.2'], transverseLegSpacing, maximumTransverseSpacing, 'mm', 'Separación transversal entre ramas.'),
+    check('shear-strength', ['5.5.3.1.1-5.5.3.1.2', '5.5.3.6.1-5.5.3.6.2'], input.analysis.ultimate.absoluteShearKn, configuration.shearDesignStrengthKn, 'kN', 'Resistencia combinada de concreto y estribos.'),
+    check('maximum-shear-dimension', ['5.5.2.2'], input.analysis.ultimate.absoluteShearKn, configuration.maximumDimensionShearKn, 'kN', 'Límite de esfuerzo cortante por dimensiones.'),
+    check('minimum-stirrup-ratio', ['6.3.5.4.1-6.3.5.4.4'], configuration.minimumRatio, stirrup.providedAreaPerSpacingMm, 'mm²/mm', 'Cuantía transversal normalizada Av/s.'),
+    check('stirrup-longitudinal-spacing', ['6.3.7.6.2.2'], stirrup.spacingMm, configuration.maximumLongitudinalSpacingMm, 'mm', 'Separación longitudinal de estribos.'),
+    check('stirrup-transverse-spacing', ['6.3.7.6.2.2'], configuration.transverseLegSpacingMm, configuration.maximumTransverseSpacingMm, 'mm', 'Separación transversal entre ramas.'),
     check('bar-clear-spacing-positive', ['14.2.1'], positive.minimumClearSpacingMm, positive.clearSpacingMm, 'mm', 'Separación libre del lecho positivo.'),
     check('bar-crack-spacing-positive', ['13.6.1-13.6.2.1'], positive.centerSpacingMm, positive.maximumCrackControlSpacingMm, 'mm', 'Separación máxima por agrietamiento del lecho positivo.'),
     check('bar-clear-spacing-negative', ['14.2.1'], negative.minimumClearSpacingMm, negative.clearSpacingMm, 'mm', 'Separación libre del lecho negativo.'),
@@ -384,16 +444,19 @@ export function designReinforcedConcreteBeam(input: ConcreteBeamDesignInput): Co
         diameterMm: stirrup.diameterMm,
         legs: input.reinforcement.stirrupLegs,
         spacingMm: stirrup.spacingMm,
-        requiredAreaPerSpacingMm: requiredRatio,
+        requiredAreaPerSpacingMm: configuration.requiredRatio,
         providedAreaPerSpacingMm: stirrup.providedAreaPerSpacingMm,
-        concreteDesignStrengthKn: concreteDesignShearKn,
-        designStrengthKn: shearDesignStrengthKn,
-        maximumLongitudinalSpacingMm: maximumLongitudinalSpacing,
-        transverseLegSpacingMm: transverseLegSpacing,
-        maximumTransverseLegSpacingMm: maximumTransverseSpacing,
+        concreteDesignStrengthKn: configuration.concreteDesignShearKn,
+        designStrengthKn: configuration.shearDesignStrengthKn,
+        maximumLongitudinalSpacingMm: configuration.maximumLongitudinalSpacingMm,
+        transverseLegSpacingMm: configuration.transverseLegSpacingMm,
+        maximumTransverseLegSpacingMm: configuration.maximumTransverseSpacingMm,
       },
     },
     service: {
+      meanFlexuralTensileStrengthMpa: concreteProperties.meanFlexuralTensileStrengthMpa,
+      concreteElasticModulusMpa: concreteProperties.elasticModulusMpa,
+      concretePropertyBasis: concreteProperties.basis,
       grossInertiaMm4: grossInertia,
       crackedTransformedInertiaMm4: crackedInertia,
       effectiveInertiaMm4: effectiveInertia,
@@ -402,7 +465,12 @@ export function designReinforcedConcreteBeam(input: ConcreteBeamDesignInput): Co
       totalConclusion: 'not-evaluated',
     },
     checks,
-    warnings: ['La conclusión reglamentaria total de servicio no se evalúa sin efectos de largo plazo.'],
+    warnings: [
+      ...input.reinforcement.preferredLongitudinalDiametersMm
+        .filter((diameter) => diameter < NTC_CONCRETE_2023.minimumLongitudinalBarDiameterMm)
+        .map((diameter) => `Ø${diameter} mm se conserva como preferencia, pero no se selecciona como barra No. 4 NTC.`),
+      'La conclusión reglamentaria total de servicio no se evalúa sin efectos de largo plazo.',
+    ],
     notEvaluated: [
       { id: 'refined-cracking', reason: 'V1 sólo evalúa la separación prescriptiva de barras.' },
       { id: 'creep', reason: 'V1 no modela fluencia.' },
