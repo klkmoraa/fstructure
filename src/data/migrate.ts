@@ -506,6 +506,11 @@ const normalizeDesignAssignments = (
     if (coverMm <= 0) fail(`${path}.coverMm`, 'debe ser mayor que cero.');
     if (longitudinalSteelYieldMpa <= 0) fail(`${path}.longitudinalSteelYieldMpa`, 'debe ser mayor que cero.');
     if (stirrupSteelYieldMpa <= 0) fail(`${path}.stirrupSteelYieldMpa`, 'debe ser mayor que cero.');
+    const stirrupLegs: 2 | 4 = raw.stirrupLegs === undefined
+      ? DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN.stirrupLegs
+      : raw.stirrupLegs === 2 || raw.stirrupLegs === 4
+        ? raw.stirrupLegs
+        : fail(`${path}.stirrupLegs`, 'valor no permitido; use 2 o 4.');
     return {
       id,
       memberId,
@@ -526,9 +531,7 @@ const normalizeDesignAssignments = (
         `${path}.preferredStirrupDiametersMm`,
         DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN.preferredStirrupDiametersMm,
       ),
-      stirrupLegs: raw.stirrupLegs === undefined
-        ? DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN.stirrupLegs
-        : Number(enumAt(String(raw.stirrupLegs), `${path}.stirrupLegs`, ['2', '4'] as const)) as 2 | 4,
+      stirrupLegs,
     };
   });
 };

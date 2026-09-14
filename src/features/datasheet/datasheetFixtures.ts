@@ -63,4 +63,5 @@ export const createDatasheetProject = (overrides: Partial<ProjectModel> = {}): P
     diagramSide: 'positive',
   },
   ...overrides,
+  designAssignments: overrides.designAssignments ?? [],
 });

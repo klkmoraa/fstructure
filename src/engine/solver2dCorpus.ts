@@ -69,6 +69,7 @@ const project = (name: string, nodes: ProjectModel['nodes'], members: ProjectMod
   movingLoadCases: [],
   settings: createDefaultSettings(),
   ...extra,
+  designAssignments: extra.designAssignments ?? [],
 });
 
 const frameBeam = (name: string, length: number, loads: ProjectModel['memberLoads'], release = true): ProjectModel => project(
