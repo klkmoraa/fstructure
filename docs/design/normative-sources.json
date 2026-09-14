@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-14",
+  "policy": {
+    "localNormativePdfsAllowed": false,
+    "redistribution": "link-only",
+    "clauseRule": "No clause, page, equation, factor or limit may be asserted until verified against the exact official document bytes recorded here."
+  },
+  "standards": [
+    {
+      "id": "ntc-cdmx-2023-concrete",
+      "jurisdiction": "Ciudad de México",
+      "edition": "2023",
+      "title": "Norma Técnica Complementaria para Diseño y Construcción de Estructuras de Concreto",
+      "status": "official-bundle-identified-clause-verification-pending",
+      "officialLandingPage": "https://www.isc.cdmx.gob.mx/directores-res/cursos-de-actualizacion-2022/normas-tecnicas-complementarias-2023",
+      "publicationNotice": {
+        "publisher": "Gaceta Oficial de la Ciudad de México",
+        "publicationDate": "2023-11-06",
+        "url": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/dc972b251726e01c75111932799419fc.pdf",
+        "sha256": "3902b700735b31cf97e5eeda6bb720f6f8093631773466f9798e65906d9c23f2",
+        "verification": "download-stream-hashed-2026-09-14"
+      },
+      "officialElectronicAnnex": {
+        "publisher": "Consejería Jurídica y de Servicios Legales de la Ciudad de México",
+        "url": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+        "sha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+        "verification": "download-stream-hashed-2026-09-14",
+        "scopeNote": "Official 2023 electronic annex bundle for the updated NTC set; the concrete document page range has not yet been verified."
+      },
+      "verifiedClauses": [],
+      "clauseVerificationStatus": "pending",
+      "localPdf": null,
+      "implementationGate": "blocked-until-concrete-pages-and-clauses-are-verified",
+      "notes": [
+        "The publication notice identifies concrete among the updated NTC and supersedes the prior concrete update when the 2023 update takes effect.",
+        "No concrete clause, page, equation, resistance factor or detailing limit is asserted by this registry.",
+        "The official landing page links both the update notice and the electronic annex; only metadata and hashes are versioned here."
+      ]
+    }
+  ]
+}
