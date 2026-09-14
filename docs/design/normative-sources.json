@@ -18,7 +18,7 @@
       "jurisdiction": "Ciudad de México",
       "edition": "2023",
       "title": "Norma Técnica Complementaria para Diseño y Construcción de Estructuras de Concreto",
-      "status": "official-bundle-identified-clause-verification-pending",
+      "status": "official-clauses-verified",
       "officialLandingPage": "https://www.isc.cdmx.gob.mx/directores-res/cursos-de-actualizacion-2022/normas-tecnicas-complementarias-2023",
       "publicationNotice": {
         "publisher": "Gaceta Oficial de la Ciudad de México",
@@ -32,16 +32,158 @@
         "url": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
         "sha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
         "verification": "download-stream-hashed-2026-09-14",
-        "scopeNote": "Official 2023 electronic annex bundle for the updated NTC set; the concrete document page range has not yet been verified."
+        "scopeNote": "Official 2023 electronic annex bundle. The concrete standard occupies PDF pages 745–1242; only the clauses listed below are open for implementation."
       },
-      "verifiedClauses": [],
-      "clauseVerificationStatus": "pending",
+      "verifiedClauses": [
+        {
+          "clauseId": "3.6.1",
+          "pages": [812],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 812, "excerpt": "La deformación unitaria del concreto en compresión cuando se alcanza la resistencia de la sección es 0.003", "excerptSha256": "c0f11b34bea44164894cebc6dfdbc3e80cbc716e04e57593734ee63023167a24", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "3.8.2.1-3.8.2.2",
+          "pages": [813, 814],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [
+            { "page": 813, "excerpt": "Los valores de FR serán los indicados en la tabla 3.8.2.1", "excerptSha256": "de2185ea02f09bf0dab3a0ecc1d78a88437be44f8d17b2ab104c341f34cce4a8", "verifiedAt": "2026-09-14" },
+            { "page": 814, "excerpt": "εt ≥ εty+0.003 Controlada por tensión 0.90", "excerptSha256": "b9b9ce41bedbece38227f75ce3c1ad715835fa934f08845a8ae3e38331417400", "verifiedAt": "2026-09-14" }
+          ]
+        },
+        {
+          "clauseId": "5.2.1.1.2",
+          "pages": [832],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 832, "excerpt": "Los requisitos de 5.2, 5.3 y 5.4 se aplicarán a elementos sujetos a flexión y flexocompresión con relación L/h ≥ 5", "excerptSha256": "179d77ca9fe75217674328f0f69bde6734d32f79344a4a4f12324ae4611c3d53", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "5.2.1.3.1",
+          "pages": [832],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 832, "excerpt": "El área de acero longitudinal, As, en secciones rectangulares sin acero de compresión correspondiente a la falla balanceada se calculará con la ec. 5.2.1.3.1", "excerptSha256": "1406c87932dd1c18c891889768bc86621b0c05ff4fb6777a355c614c279650c3", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "5.2.2.1.1.1",
+          "pages": [833],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 833, "excerpt": "La resistencia de diseño a flexión, MR, se calculará con las ecs. 5.2.2.1.1.1.a o 5.2.2.1.1.1.b que son equivalentes", "excerptSha256": "a75da7e042f40cc2d11ae153bd37830a91c852a27b65180c196cad673f600b4f", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "5.5.2.2",
+          "pages": [838],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 838, "excerpt": "Las dimensiones de la sección transversal deben seleccionarse para cumplir con la ec. 5.5.2.2", "excerptSha256": "20200fb57b49687146b299d2dbb06b652af5c714432ebc5d4ea0517cd25f7b88", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "5.5.3.1.1-5.5.3.1.2",
+          "pages": [838, 839],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [
+            { "page": 838, "excerpt": "La fuerza Pu se considerará positiva si es de compresión, negativa si es de tensión y nula en el caso de vigas.", "excerptSha256": "7711e21679104acbe184073234af83bcffe407bf498aa2cf04ac0aecb0301e8c", "verifiedAt": "2026-09-14" },
+            { "page": 839, "excerpt": "El valor de VcR no deberá tomarse mayor que FR 0.42 λ√fc′ bwd", "excerptSha256": "6aa999f31dc7fa232e8706ed5d3de190c5efd3d990316c60cb5fd0192ef0124f", "verifiedAt": "2026-09-14" }
+          ]
+        },
+        {
+          "clauseId": "5.5.3.6.1-5.5.3.6.2",
+          "pages": [841],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 841, "excerpt": "El valor de Av deberá ser la suma de las áreas efectivas de todas las ramas de los estribos", "excerptSha256": "068de02ac57e61c734a28e875d8bfd59ae6281bead48cff5a75cf5028af5ab9e", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "6.3.1.1-6.3.2.2",
+          "pages": [861],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 861, "excerpt": "La relación entre el peralte y el ancho de la sección transversal, h/bw no deberá exceder 6.", "excerptSha256": "37432f202fc04356bc68f475456edb3ea770c1f66de3faacd1dd66c54e1942d6", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "6.3.3.1.1",
+          "pages": [864],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 864, "excerpt": "En ningún caso las vigas no presforzadas tendrán un peralte menor que 250 mm.", "excerptSha256": "efbc9973c6c98d5f16c8ca4511b06e1aecb5a0d7d0cf48f76cfb8937f9f4537c", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "6.3.3.3.1",
+          "pages": [865],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 865, "excerpt": "Las vigas no presforzadas que satisfagan 6.3.1.1 serán consideradas como controladas por tensión", "excerptSha256": "50eb435567957a570682a20eb8a062ba8a3f9f13b55e6954e8092ee9caaa70e9", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "6.3.5.1.1-6.3.5.2.1",
+          "pages": [866],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 866, "excerpt": "Constará de al menos dos barras corridas del no. 4 en vigas", "excerptSha256": "bcf33c07a32ec1ba18662de917ec544fb9ea03c75f36bc7cb540a456edd654d6", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "6.3.5.4.1-6.3.5.4.4",
+          "pages": [867, 868],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [
+            { "page": 867, "excerpt": "En vigas no presforzadas, no será necesario suministrar un área mínima de refuerzo a cortante, Av,mín, en los casos de la tabla 6.3.5.4.1.", "excerptSha256": "9525b706b2d508e932fa8c70129c250e4400ac4ffabd346cef88079ec70b4f5a", "verifiedAt": "2026-09-14" },
+            { "page": 868, "excerpt": "Tabla 6.3.5.4.4 – Av,mín requerida", "excerptSha256": "2968981113d6d00b5a73005bc4af43d0ff29051e0d40937542a8f6d47d2a73e1", "verifiedAt": "2026-09-14" }
+          ]
+        },
+        {
+          "clauseId": "6.3.7.6.2.2",
+          "pages": [876],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 876, "excerpt": "La separación máxima de ramas del refuerzo transversal para cortante a lo largo y ancho del miembro deberá cumplir los requisitos de la tabla 6.3.7.6.2.2.", "excerptSha256": "dd2f5b0de455cb131c21f241d7ea87f98c697d12ae7261c7a74cd94b593812d5", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "13.4.1.1",
+          "pages": [1080],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1080, "excerpt": "considerando deflexiones a largo plazo", "excerptSha256": "ce83a277e37a72e99144806315c5109697c4be4e017f9af43ecf5bd66b665395", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "13.4.2.1-13.4.3.3",
+          "pages": [1081, 1082],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [
+            { "page": 1081, "excerpt": "La deflexión total será la suma de la inmediata, calculada según 13.4.3, más la diferida, determinada de acuerdo con 13.4.4.", "excerptSha256": "e8a41a3b37423792c7ade1d140438e8e42d91335a1b62d8f9c9293526e3f0a64", "verifiedAt": "2026-09-14" },
+            { "page": 1082, "excerpt": "El momento de agrietamiento se calculará con la ec. 13.4.3.3", "excerptSha256": "1ac0cc4a5e9c179fb0b92801469080d2b6f257f942c5c2eccbeba02ce7932d43", "verifiedAt": "2026-09-14" }
+          ]
+        },
+        {
+          "clauseId": "13.6.1-13.6.2.1",
+          "pages": [1084, 1085],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [
+            { "page": 1084, "excerpt": "El refuerzo adherido deberá estar distribuido para controlar el agrietamiento por flexión en las zonas a tensión", "excerptSha256": "8e11ec0df1b0e5fd2a6e77d939d8ae71caca9ee43efa2182773d7b2dbb6ad41a", "verifiedAt": "2026-09-14" },
+            { "page": 1085, "excerpt": "se permitirá considerar fs igual a (2/3)fy.", "excerptSha256": "b95d9bea7c4dc07e6253b8216c33426ecdeed0117c71e1b5a20949c30a8e5cc5", "verifiedAt": "2026-09-14" }
+          ]
+        },
+        {
+          "clauseId": "14.2.1",
+          "pages": [1091],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1091, "excerpt": "La separación mínima libre entre barras paralelas no presforzadas (excepto entre capas de barras en vigas y en columnas) no será menor que 25 mm, db, ni que 1.5tmag.", "excerptSha256": "55a8c0901ee9063b2901bfb16aea9a4a94ca6ce8170f55efe428664d6caa8e26", "verifiedAt": "2026-09-14" }]
+        }
+      ],
+      "clauseVerificationStatus": "verified",
       "localPdf": null,
-      "implementationGate": "blocked-until-concrete-pages-and-clauses-are-verified",
+      "implementationGate": "open-for-verified-clauses-only",
       "notes": [
         "The publication notice identifies concrete among the updated NTC and supersedes the prior concrete update when the 2023 update takes effect.",
-        "No concrete clause, page, equation, resistance factor or detailing limit is asserted by this registry.",
-        "The official landing page links both the update notice and the electronic annex; only metadata and hashes are versioned here."
+        "PDF page numbers refer to the 1972-page official electronic annex, not the printed page number inside the concrete standard.",
+        "Only metadata, short evidence excerpts and hashes are versioned; the official PDF is not redistributed."
       ]
     }
   ]

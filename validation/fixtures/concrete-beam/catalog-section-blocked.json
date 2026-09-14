@@ -1,0 +1,12 @@
+{
+  "name": "custom-section-is-blocked",
+  "input": {
+    "memberId": "B-CUSTOM",
+    "section": { "origin": "custom" }
+  },
+  "expected": {
+    "status": "blocked",
+    "scope": "incomplete",
+    "blockers": ["catalog-section-required"]
+  }
+}

@@ -271,12 +271,38 @@ describe('manifiesto de migración de Diseño Estructural', () => {
     expect(trackedPdfs).toEqual([]);
   });
 
-  it('mantiene el registro normativo pending bloqueado y exige evidencia reproducible para verificar', () => {
+  it('abre sólo las cláusulas verificadas y exige evidencia reproducible', () => {
     const registry = JSON.parse(readFileSync(NORMATIVE_REGISTRY_PATH, 'utf8')) as NormativeRegistry;
 
     expect(normativeRegistryErrors(registry)).toEqual([]);
 
-    const pendingStandard = registry.standards[0];
+    const currentStandard = registry.standards[0];
+    expect(currentStandard).toMatchObject({
+      id: 'ntc-cdmx-2023-concrete',
+      status: 'official-clauses-verified',
+      clauseVerificationStatus: 'verified',
+      implementationGate: 'open-for-verified-clauses-only',
+    });
+    expect(currentStandard.verifiedClauses.map(({ clauseId }) => clauseId)).toEqual([
+      '3.6.1',
+      '3.8.2.1-3.8.2.2',
+      '5.2.1.1.2',
+      '5.2.1.3.1',
+      '5.2.2.1.1.1',
+      '5.5.2.2',
+      '5.5.3.1.1-5.5.3.1.2',
+      '5.5.3.6.1-5.5.3.6.2',
+      '6.3.1.1-6.3.2.2',
+      '6.3.3.1.1',
+      '6.3.3.3.1',
+      '6.3.5.1.1-6.3.5.2.1',
+      '6.3.5.4.1-6.3.5.4.4',
+      '6.3.7.6.2.2',
+      '13.4.1.1',
+      '13.4.2.1-13.4.3.3',
+      '13.6.1-13.6.2.1',
+      '14.2.1',
+    ]);
     const policy = {
       ...registry.policy,
       verifiedClauseEvidenceSchema: {
@@ -289,9 +315,17 @@ describe('manifiesto de migración de Diseño Estructural', () => {
     const validClause: VerifiedClause = {
       clauseId: 'fixture-clause',
       pages: [7],
-      sourceUrl: pendingStandard.officialElectronicAnnex.url,
-      sourceSha256: pendingStandard.officialElectronicAnnex.sha256,
+      sourceUrl: currentStandard.officialElectronicAnnex.url,
+      sourceSha256: currentStandard.officialElectronicAnnex.sha256,
       evidence: [{ page: 7, excerpt, excerptSha256: sha256(Buffer.from(excerpt, 'utf8')), verifiedAt: '2026-09-14' }],
+    };
+
+    const pendingStandard: NormativeStandard = {
+      ...currentStandard,
+      status: 'official-bundle-identified-clause-verification-pending',
+      clauseVerificationStatus: 'pending',
+      implementationGate: 'blocked-until-concrete-pages-and-clauses-are-verified',
+      verifiedClauses: [],
     };
 
     const contradictoryStatus: NormativeRegistry = {
@@ -309,7 +343,7 @@ describe('manifiesto de migración de Diseño Estructural', () => {
     const invalidEvidence: NormativeRegistry = {
       policy,
       standards: [{
-        ...pendingStandard,
+        ...currentStandard,
         status: 'official-clauses-verified',
         clauseVerificationStatus: 'verified',
         implementationGate: 'open-for-verified-clauses-only',
@@ -317,13 +351,13 @@ describe('manifiesto de migración de Diseño Estructural', () => {
       }],
     };
     expect(normativeRegistryErrors(invalidEvidence)).toContain(
-      `${pendingStandard.id}: evidencia no coincide con una fuente oficial registrada`,
+      `${currentStandard.id}: evidencia no coincide con una fuente oficial registrada`,
     );
 
     const coherentVerified: NormativeRegistry = {
       policy,
       standards: [{
-        ...pendingStandard,
+        ...currentStandard,
         status: 'official-clauses-verified',
         clauseVerificationStatus: 'verified',
         implementationGate: 'open-for-verified-clauses-only',
