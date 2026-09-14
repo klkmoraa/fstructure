@@ -130,6 +130,7 @@ export const deleteStructuralSelection = (project: ProjectModel, selection: Stru
   project.memberLoads = project.memberLoads.filter((load) => !memberIds.has(load.memberId));
   project.prescribedDisplacements = (project.prescribedDisplacements ?? []).filter((item) => !nodeIds.has(item.nodeId));
   project.memberInitialEffects = (project.memberInitialEffects ?? []).filter((effect) => !memberIds.has(effect.memberId));
+  project.designAssignments = (project.designAssignments ?? []).filter((assignment) => !memberIds.has(assignment.memberId));
 };
 
 /** Creates a detached, serializable snapshot of the selected structural object. */
