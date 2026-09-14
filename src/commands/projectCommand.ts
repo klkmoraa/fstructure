@@ -272,6 +272,18 @@ export const projectCommandSnapshot = (value: unknown): string => JSON.stringify
 const same = (first: unknown, second: unknown): boolean => projectCommandSnapshot(first) === projectCommandSnapshot(second);
 const owns = (value: object, key: PropertyKey): boolean => Object.prototype.hasOwnProperty.call(value, key);
 
+const validateDesignDiameters = (assignmentId: string, field: 'preferredLongitudinalDiametersMm' | 'preferredStirrupDiametersMm', values: number[]): void => {
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error(`La asignación ${assignmentId}: ${field} no puede estar vacío.`);
+  }
+  if (values.some((value) => !Number.isFinite(value) || value <= 0)) {
+    throw new Error(`La asignación ${assignmentId}: ${field} debe contener diámetros positivos.`);
+  }
+  if (new Set(values).size !== values.length) {
+    throw new Error(`La asignación ${assignmentId}: ${field} no puede repetir diámetros.`);
+  }
+};
+
 const validateProjectBoundary = (project: ProjectModel): void => {
   const nodeIds = new Set<string>();
   for (const node of project.nodes) {
@@ -295,7 +307,27 @@ const validateProjectBoundary = (project: ProjectModel): void => {
   }
   for (const load of project.memberLoads) if (!memberIds.has(load.memberId)) throw new Error(`La carga ${load.id} referencia un miembro inexistente.`);
   for (const effect of project.memberInitialEffects ?? []) if (!memberIds.has(effect.memberId)) throw new Error(`El efecto ${effect.id} referencia un miembro inexistente.`);
-  for (const assignment of project.designAssignments ?? []) if (!memberIds.has(assignment.memberId)) throw new Error(`La asignación ${assignment.id} referencia un miembro inexistente.`);
+  const combinationIds = new Set(project.combinations.map((combination) => combination.id));
+  const assignedMemberIds = new Set<string>();
+  for (const assignment of project.designAssignments) {
+    if (!memberIds.has(assignment.memberId)) throw new Error(`La asignación ${assignment.id} referencia un miembro inexistente.`);
+    if (assignedMemberIds.has(assignment.memberId)) throw new Error(`El miembro ${assignment.memberId} ya tiene una asignación de diseño.`);
+    assignedMemberIds.add(assignment.memberId);
+    if (!combinationIds.has(assignment.ultimateCombinationId)) throw new Error(`La asignación ${assignment.id} referencia una combinación última inexistente.`);
+    if (!combinationIds.has(assignment.serviceCombinationId)) throw new Error(`La asignación ${assignment.id} referencia una combinación de servicio inexistente.`);
+    if (assignment.kind !== 'reinforced-concrete-beam') throw new Error(`La asignación ${assignment.id} tiene un kind no soportado.`);
+    if (assignment.standardId !== 'ntc-cdmx-2023-concrete') throw new Error(`La asignación ${assignment.id} tiene un standardId no soportado.`);
+    for (const field of ['coverMm', 'longitudinalSteelYieldMpa', 'stirrupSteelYieldMpa'] as const) {
+      if (!Number.isFinite(assignment[field]) || assignment[field] <= 0) {
+        throw new Error(`La asignación ${assignment.id}: ${field} debe ser positivo.`);
+      }
+    }
+    validateDesignDiameters(assignment.id, 'preferredLongitudinalDiametersMm', assignment.preferredLongitudinalDiametersMm);
+    validateDesignDiameters(assignment.id, 'preferredStirrupDiametersMm', assignment.preferredStirrupDiametersMm);
+    if (assignment.stirrupLegs !== 2 && assignment.stirrupLegs !== 4) {
+      throw new Error(`La asignación ${assignment.id}: stirrupLegs debe ser 2 o 4.`);
+    }
+  }
 };
 
 const diffProjects = (before: ProjectModel, after: ProjectModel, description: string): ProjectPatch => {

@@ -11,7 +11,7 @@ import { ProjectProvider, useProjectAnalysis, useProjectModel } from './ProjectC
 const Harness = () => {
   const { project, replaceProject, updateProject, updateProjectDesign, undo, redo } = useProjectModel();
   const { analysis } = useProjectAnalysis();
-  const assignmentCount = project.designAssignments?.length ?? 0;
+  const assignmentCount = project.designAssignments.length;
   const [designError, setDesignError] = useState('none');
 
   return <>

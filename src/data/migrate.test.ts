@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { MemberDesignAssignment, ProjectModel } from '../types';
 import { createBlankProject, createDefaultProject, CURRENT_SCHEMA_VERSION } from './defaultProject';
 import { normalizeProject } from './migrate';
+
+type DesignAssignmentsAreRequired = ProjectModel extends { designAssignments: MemberDesignAssignment[] } ? true : false;
+const designAssignmentsAreRequired: DesignAssignmentsAreRequired = true;
 
 const concreteBeamAssignment = (memberId = 'M2') => ({
   id: 'DESIGN-M2',
@@ -24,6 +28,10 @@ const concreteBeamAssignment = (memberId = 'M2') => ({
  * proyecto real en silencio o dejan pasar uno que no debería aceptarse.
  */
 describe('normalizeProject', () => {
+  it('declara designAssignments como parte requerida del modelo', () => {
+    expect(designAssignmentsAreRequired).toBe(true);
+  });
+
   it('crea proyectos nuevos con la colección de diseño inicializada', () => {
     expect(createBlankProject().designAssignments).toEqual([]);
     expect(createDefaultProject().designAssignments).toEqual([]);
@@ -66,6 +74,15 @@ describe('normalizeProject', () => {
     }];
 
     expect(normalizeProject(source).designAssignments).toEqual([concreteBeamAssignment()]);
+  });
+
+  it.each(['2', '4'])('rechaza stirrupLegs cuando llega como string "%s"', (stirrupLegs) => {
+    const source = createDefaultProject();
+    const assignment = concreteBeamAssignment();
+    Reflect.set(assignment, 'stirrupLegs', stirrupLegs);
+    source.designAssignments = [assignment];
+
+    expect(() => normalizeProject(source)).toThrow(/designAssignments\[0\]\.stirrupLegs/);
   });
 
   it('rechaza asignaciones con referencias rotas o una segunda asignación del mismo miembro', () => {

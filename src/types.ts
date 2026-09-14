@@ -380,8 +380,7 @@ export interface ProjectModel {
   generatedLoadSources?: GeneratedLoadSource[];
   /** Saved moving-load definitions for the influence-line workflow. */
   movingLoadCases?: MovingLoadCase[];
-  /** Optional only so legacy in-memory fixtures keep compiling; normalized projects always contain an array. */
-  designAssignments?: MemberDesignAssignment[];
+  designAssignments: MemberDesignAssignment[];
   settings: ProjectSettings;
   educationalCase?: {
     kind: 'attributed-example' | 'original-practice';
