@@ -4,7 +4,13 @@
   "policy": {
     "localNormativePdfsAllowed": false,
     "redistribution": "link-only",
-    "clauseRule": "No clause, page, equation, factor or limit may be asserted until verified against the exact official document bytes recorded here."
+    "clauseRule": "No clause, page, equation, factor or limit may be asserted until verified against the exact official document bytes recorded here.",
+    "verifiedClauseEvidenceSchema": {
+      "version": 1,
+      "clauseFields": ["clauseId", "pages", "sourceUrl", "sourceSha256", "evidence"],
+      "pageEvidenceFields": ["page", "excerpt", "excerptSha256", "verifiedAt"],
+      "sourceRule": "sourceUrl and sourceSha256 must match one registered official document; evidence must cover every declared page and hash the exact UTF-8 excerpt."
+    }
   },
   "standards": [
     {
