@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const MANIFEST_PATH = resolve(ROOT, 'docs/design/structural-design-migration.md');
+const NORMATIVE_REGISTRY_PATH = resolve(ROOT, 'docs/design/normative-sources.json');
 
 const EXPECTED_SOURCE_COMMIT = 'd80b45c011631e41384e7ad2f77ffad460e8cd5b';
 const EXPECTED_SOURCE_ARTIFACTS = new Map(
@@ -87,6 +88,50 @@ type MigrationManifest = {
   acceptedConcepts: AcceptedConcept[];
 };
 
+type OfficialDocument = {
+  url: string;
+  sha256: string;
+};
+
+type PageEvidence = {
+  page?: number;
+  excerpt?: string;
+  excerptSha256?: string;
+  verifiedAt?: string;
+};
+
+type VerifiedClause = {
+  clauseId?: string;
+  pages?: number[];
+  sourceUrl?: string;
+  sourceSha256?: string;
+  evidence?: PageEvidence[];
+};
+
+type NormativeStandard = {
+  id: string;
+  status: string;
+  publicationNotice: OfficialDocument;
+  officialElectronicAnnex: OfficialDocument;
+  verifiedClauses: VerifiedClause[];
+  clauseVerificationStatus: string;
+  implementationGate?: string;
+};
+
+type NormativeRegistry = {
+  policy: {
+    verifiedClauseEvidenceSchema?: {
+      version: number;
+      clauseFields: string[];
+      pageEvidenceFields: string[];
+    };
+  };
+  standards: NormativeStandard[];
+};
+
+const EXPECTED_CLAUSE_FIELDS = ['clauseId', 'pages', 'sourceUrl', 'sourceSha256', 'evidence'];
+const EXPECTED_PAGE_EVIDENCE_FIELDS = ['page', 'excerpt', 'excerptSha256', 'verifiedAt'];
+
 const readManifest = (): MigrationManifest => {
   const markdown = readFileSync(MANIFEST_PATH, 'utf8').replace(/\r\n/g, '\n');
   const embeddedJson = markdown.match(/```json migration-manifest\n([\s\S]*?)\n```/);
@@ -95,6 +140,77 @@ const readManifest = (): MigrationManifest => {
 };
 
 const sha256 = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
+
+const normativeRegistryErrors = (registry: NormativeRegistry): string[] => {
+  const errors: string[] = [];
+  const evidenceSchema = registry.policy.verifiedClauseEvidenceSchema;
+
+  if (evidenceSchema?.version !== 1) errors.push('policy: falta verifiedClauseEvidenceSchema v1');
+  if (JSON.stringify(evidenceSchema?.clauseFields) !== JSON.stringify(EXPECTED_CLAUSE_FIELDS)) {
+    errors.push('policy: campos de cláusula incompletos');
+  }
+  if (JSON.stringify(evidenceSchema?.pageEvidenceFields) !== JSON.stringify(EXPECTED_PAGE_EVIDENCE_FIELDS)) {
+    errors.push('policy: campos de evidencia por página incompletos');
+  }
+
+  for (const standard of registry.standards) {
+    const prefix = `${standard.id}:`;
+    const isPending = standard.clauseVerificationStatus === 'pending';
+    const isVerified = standard.clauseVerificationStatus === 'verified';
+    const statusSaysPending = standard.status.includes('pending');
+    const statusSaysVerified = standard.status.includes('verified');
+    const gateIsBlocked = standard.implementationGate?.startsWith('blocked-') === true;
+
+    if (!isPending && !isVerified) errors.push(`${prefix} clauseVerificationStatus inválido`);
+    if (!standard.implementationGate) errors.push(`${prefix} falta implementationGate`);
+
+    if (isPending) {
+      if (!statusSaysPending || statusSaysVerified) errors.push(`${prefix} estado pending incoherente`);
+      if (standard.verifiedClauses.length > 0) errors.push(`${prefix} pending no admite verifiedClauses`);
+      if (!gateIsBlocked) errors.push(`${prefix} pending requiere implementationGate bloqueado`);
+    }
+
+    if (isVerified) {
+      if (statusSaysPending || !statusSaysVerified) errors.push(`${prefix} estado verified incoherente`);
+      if (standard.verifiedClauses.length === 0) errors.push(`${prefix} verified requiere cláusulas verificadas`);
+      if (gateIsBlocked) errors.push(`${prefix} verified no puede conservar gate pending`);
+    }
+
+    const registeredSources = [standard.publicationNotice, standard.officialElectronicAnnex];
+
+    for (const clause of standard.verifiedClauses) {
+      if (!clause.clauseId?.trim()) errors.push(`${prefix} cláusula sin clauseId`);
+
+      const pages = clause.pages ?? [];
+      if (pages.length === 0 || pages.some((page) => !Number.isInteger(page) || page < 1) || new Set(pages).size !== pages.length) {
+        errors.push(`${prefix} cláusula con páginas inválidas`);
+      }
+
+      const sourceMatches = registeredSources.some(
+        ({ url, sha256: sourceSha256 }) => clause.sourceUrl === url && clause.sourceSha256 === sourceSha256,
+      );
+      if (!sourceMatches) errors.push(`${prefix} evidencia no coincide con una fuente oficial registrada`);
+
+      const evidence = clause.evidence ?? [];
+      const evidencePages = evidence.map(({ page }) => page).sort((a, b) => (a ?? 0) - (b ?? 0));
+      if (JSON.stringify(evidencePages) !== JSON.stringify([...pages].sort((a, b) => a - b))) {
+        errors.push(`${prefix} evidencia no cubre exactamente las páginas declaradas`);
+      }
+
+      for (const pageEvidence of evidence) {
+        if (!pageEvidence.excerpt?.trim()) errors.push(`${prefix} evidencia sin extracto`);
+        if (pageEvidence.excerpt && pageEvidence.excerptSha256 !== sha256(Buffer.from(pageEvidence.excerpt, 'utf8'))) {
+          errors.push(`${prefix} hash de extracto incoherente`);
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(pageEvidence.verifiedAt ?? '')) {
+          errors.push(`${prefix} fecha de verificación inválida`);
+        }
+      }
+    }
+  }
+
+  return errors;
+};
 
 const pngDimensions = (bytes: Buffer): { width: number; height: number } => {
   expect(bytes.subarray(1, 4).toString('ascii')).toBe('PNG');
@@ -153,5 +269,67 @@ describe('manifiesto de migración de Diseño Estructural', () => {
 
     expect(presentPdfs).toEqual([]);
     expect(trackedPdfs).toEqual([]);
+  });
+
+  it('mantiene el registro normativo pending bloqueado y exige evidencia reproducible para verificar', () => {
+    const registry = JSON.parse(readFileSync(NORMATIVE_REGISTRY_PATH, 'utf8')) as NormativeRegistry;
+
+    expect(normativeRegistryErrors(registry)).toEqual([]);
+
+    const pendingStandard = registry.standards[0];
+    const policy = {
+      ...registry.policy,
+      verifiedClauseEvidenceSchema: {
+        version: 1,
+        clauseFields: EXPECTED_CLAUSE_FIELDS,
+        pageEvidenceFields: EXPECTED_PAGE_EVIDENCE_FIELDS,
+      },
+    };
+    const excerpt = 'Extracto normativo de prueba';
+    const validClause: VerifiedClause = {
+      clauseId: 'fixture-clause',
+      pages: [7],
+      sourceUrl: pendingStandard.officialElectronicAnnex.url,
+      sourceSha256: pendingStandard.officialElectronicAnnex.sha256,
+      evidence: [{ page: 7, excerpt, excerptSha256: sha256(Buffer.from(excerpt, 'utf8')), verifiedAt: '2026-09-14' }],
+    };
+
+    const contradictoryStatus: NormativeRegistry = {
+      policy,
+      standards: [{ ...pendingStandard, clauseVerificationStatus: 'verified' }],
+    };
+    expect(normativeRegistryErrors(contradictoryStatus)).toContain(`${pendingStandard.id}: estado verified incoherente`);
+
+    const clauseWhilePending: NormativeRegistry = {
+      policy,
+      standards: [{ ...pendingStandard, verifiedClauses: [validClause] }],
+    };
+    expect(normativeRegistryErrors(clauseWhilePending)).toContain(`${pendingStandard.id}: pending no admite verifiedClauses`);
+
+    const invalidEvidence: NormativeRegistry = {
+      policy,
+      standards: [{
+        ...pendingStandard,
+        status: 'official-clauses-verified',
+        clauseVerificationStatus: 'verified',
+        implementationGate: 'open-for-verified-clauses-only',
+        verifiedClauses: [{ ...validClause, sourceSha256: '0'.repeat(64) }],
+      }],
+    };
+    expect(normativeRegistryErrors(invalidEvidence)).toContain(
+      `${pendingStandard.id}: evidencia no coincide con una fuente oficial registrada`,
+    );
+
+    const coherentVerified: NormativeRegistry = {
+      policy,
+      standards: [{
+        ...pendingStandard,
+        status: 'official-clauses-verified',
+        clauseVerificationStatus: 'verified',
+        implementationGate: 'open-for-verified-clauses-only',
+        verifiedClauses: [validClause],
+      }],
+    };
+    expect(normativeRegistryErrors(coherentVerified)).toEqual([]);
   });
 });
