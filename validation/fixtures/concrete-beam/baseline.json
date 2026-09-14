@@ -16,9 +16,8 @@
       "catalogId": "concrete-28mpa",
       "origin": "catalog",
       "density": "normal",
-      "compressiveStrengthMpa": 28,
-      "elasticModulusMpa": 24870.062324,
-      "modulusOfRuptureMpa": 3.5
+      "coarseAggregate": "basalt",
+      "compressiveStrengthMpa": 28
     },
     "reinforcement": {
       "coverMm": 40,
@@ -57,6 +56,7 @@
         },
         "governingMomentKnm": 80,
         "grossElasticDeflectionMm": 7,
+        "grossElasticModulusMpa": 24870.062324,
         "damagesNonstructuralElements": false
       }
     },
@@ -64,6 +64,7 @@
       "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
       "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
       "verifiedClauseIds": [
+        "2.2.1-2.2.7.3",
         "3.6.1",
         "3.8.2.1-3.8.2.2",
         "5.2.1.1.2",
@@ -93,8 +94,10 @@
     "negativeDesignStrengthKnm": 97.188909337,
     "bottomDiameterMm": 16,
     "bottomCount": 4,
+    "bottomEffectiveDepthMm": 444,
     "topDiameterMm": 16,
     "topCount": 3,
+    "topEffectiveDepthMm": 444,
     "rejectedLongitudinalDiametersMm": [12],
     "stirrupDiameterMm": 8,
     "stirrupSpacingMm": 200,
@@ -103,9 +106,12 @@
     "concreteDesignStrengthKn": 89.86558903161989,
     "shearDesignStrengthKn": 160.16689279659087,
     "grossInertiaMm4": 3125000000,
-    "crackedTransformedInertiaMm4": 851644165.338,
-    "effectiveInertiaMm4": 942810717.447,
-    "immediateDeflectionMm": 23.201900,
+    "meanFlexuralTensileStrengthMpa": 3.3336466519413843,
+    "concreteElasticModulusMpa": 18520.259177452135,
+    "concretePropertyBasis": "ntc-table-2.2.1-class-1a-basalt",
+    "crackedTransformedInertiaMm4": 1075244549.2269468,
+    "effectiveInertiaMm4": 1167595438.5840847,
+    "immediateDeflectionMm": 25.158542958692884,
     "totalDeflectionLimitMm": 30,
     "totalConclusion": "not-evaluated"
   }
