@@ -1,0 +1,41 @@
+import json
+import math
+import unittest
+from pathlib import Path
+
+from concrete_beam_oracle import design_reinforced_concrete_beam
+
+
+FIXTURES = Path(__file__).parents[1] / "fixtures" / "concrete-beam"
+
+
+class ConcreteBeamOracleTest(unittest.TestCase):
+    def assert_projected_equal(self, actual, expected, path="result"):
+        if isinstance(expected, dict):
+            for key, value in expected.items():
+                self.assertIn(key, actual, f"{path}.{key}")
+                self.assert_projected_equal(actual[key], value, f"{path}.{key}")
+        elif isinstance(expected, list):
+            self.assertEqual(len(actual), len(expected), path)
+            for index, value in enumerate(expected):
+                self.assert_projected_equal(actual[index], value, f"{path}[{index}]")
+        elif isinstance(expected, float):
+            self.assertTrue(
+                math.isclose(actual, expected, rel_tol=0, abs_tol=1e-3),
+                f"{path}: {actual!r} != {expected!r}",
+            )
+        else:
+            self.assertEqual(actual, expected, path)
+
+    def test_all_json_fixtures(self):
+        fixture_paths = sorted(FIXTURES.glob("*.json"))
+        self.assertGreaterEqual(len(fixture_paths), 2)
+        for fixture_path in fixture_paths:
+            with self.subTest(fixture=fixture_path.name):
+                fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+                actual = design_reinforced_concrete_beam(fixture["input"])
+                self.assert_projected_equal(actual, fixture["expected"])
+
+
+if __name__ == "__main__":
+    unittest.main()
