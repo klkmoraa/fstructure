@@ -340,6 +340,23 @@ export interface ProjectSettings {
   pDeltaConfig?: Partial<PDeltaConfig>;
 }
 
+export interface ReinforcedConcreteBeamAssignment {
+  id: string;
+  memberId: string;
+  kind: 'reinforced-concrete-beam';
+  standardId: 'ntc-cdmx-2023-concrete';
+  ultimateCombinationId: string;
+  serviceCombinationId: string;
+  coverMm: number;
+  longitudinalSteelYieldMpa: number;
+  stirrupSteelYieldMpa: number;
+  preferredLongitudinalDiametersMm: number[];
+  preferredStirrupDiametersMm: number[];
+  stirrupLegs: 2 | 4;
+}
+
+export type MemberDesignAssignment = ReinforcedConcreteBeamAssignment;
+
 export interface ProjectModel {
   schemaVersion: number;
   id: string;
@@ -363,6 +380,8 @@ export interface ProjectModel {
   generatedLoadSources?: GeneratedLoadSource[];
   /** Saved moving-load definitions for the influence-line workflow. */
   movingLoadCases?: MovingLoadCase[];
+  /** Optional only so legacy in-memory fixtures keep compiling; normalized projects always contain an array. */
+  designAssignments?: MemberDesignAssignment[];
   settings: ProjectSettings;
   educationalCase?: {
     kind: 'attributed-example' | 'original-practice';
