@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultProject } from '../data/defaultProject';
+import { linkSpace3DToShell } from '../features/workspace/adapters/space3dShellBridge';
 import { buildPlanar2DToSpace3DHandoff } from './planar2dToSpace3d';
 import { applyApprovedSpace3DSync, prepareSpace3DSyncReview, SPACE3D_SYNC_ADMISSION } from './space3dSync';
 
@@ -103,5 +104,40 @@ describe('revisión 3D → 2D', () => {
       ...candidate,
       prescribedDisplacements: [{ id: 'PD', nodeId: 'MISSING', caseId: candidate.loadCases[0].id, component: 'ux', value: 0 }],
     })).toThrow(/missing-reference/i);
+  });
+
+  it('exige una revisión local inmutable y valida identidad, ciclos y linaje antes de aplicar', () => {
+    const source = { ...createDefaultProject(), id: 'sync-review-boundary' };
+    const candidate = buildPlanar2DToSpace3DHandoff(source).candidateModel;
+    const edited = { ...candidate, nodes: candidate.nodes.map((node) => node.id === 'N2' ? { ...node, y: 2 } : node) };
+    const review = prepareSpace3DSyncReview(source, source, edited);
+    const approved = review.patches.filter((patch) => patch.entityId === 'N2').map((patch) => patch.patchId);
+
+    const reloaded = JSON.parse(JSON.stringify(review)) as typeof review;
+    expect(() => applyApprovedSpace3DSync(source, reloaded, approved)).toThrow(/local|capacidad|regener|prepar/i);
+
+    const cycle: { self?: unknown } = {};
+    cycle.self = cycle;
+    const cyclic = { ...review, patches: review.patches.map((patch) => patch.patchId === approved[0] ? { ...patch, before: cycle } : patch) };
+    expect(() => applyApprovedSpace3DSync(source, cyclic, approved)).toThrow(/cíclic|cyclic|cycle|review|revisión/i);
+
+    const addition = { ...candidate, nodes: [...candidate.nodes, {
+      id: 'N-NEW', x: 10, y: 0, z: 0,
+      restraints: { ux: false, uy: false, uz: false, rx: true, ry: true, rz: false },
+    }] };
+    const additionReview = prepareSpace3DSyncReview(source, source, addition);
+    const entityPatch = additionReview.patches.find((patch) => patch.entityId === 'N-NEW' && patch.field === '$entity');
+    expect(entityPatch).toBeDefined();
+    const mismatchedIdentity = {
+      ...additionReview,
+      patches: additionReview.patches.map((patch) => patch.patchId === entityPatch?.patchId
+        ? { ...patch, entityId: 'OTHER', after: { ...(patch.after as object), id: 'OTHER' } }
+        : patch),
+    };
+    expect(() => applyApprovedSpace3DSync(source, mismatchedIdentity, [entityPatch!.patchId])).toThrow(/revisión|patch|ID|identidad/i);
+
+    const linked = linkSpace3DToShell(source, 'source-v1', candidate);
+    expect(() => prepareSpace3DSyncReview({ ...linked, sourceProjectId: 'other-project' }, source)).toThrow(/linaje|pertenece|source|proyecto/i);
+    expect(() => prepareSpace3DSyncReview({ ...linked, sourceVersion: '' }, source)).toThrow(/versión|version|source/i);
   });
 });

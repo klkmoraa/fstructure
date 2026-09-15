@@ -343,7 +343,10 @@ export const validateSpace3DProject = (project: Space3DProjectV1): readonly Spac
   for (const raw of nodalMasses) {
     const entity = entityObject(collect, raw, 'nodal-mass'); const id = typeof entity.id === 'string' ? entity.id : '';
     unknownFields(collect, entity, MASS_FIELDS, 'nodal-mass', id); checkIdentity(collect, entity?.id, idsFor('nodal-mass'), 'nodal-mass'); validateEntityRef(entity, id, 'nodeId', nodeIds, 'nodal-mass');
-    optionalFiniteFields(collect, entity, MASS_FIELDS.slice(2, 10), 'nodal-mass', id); if (!isFiniteNumber(entity.mass)) collect.push('invalid-property', 'nodal-mass', id, 'mass');
+    if (!isNonNegativeFinite(entity.mass)) collect.push('invalid-property', 'nodal-mass', id, 'mass');
+    for (const field of ['rotationalInertia', 'massX', 'massY', 'massZ', 'inertiaX', 'inertiaY', 'inertiaZ'] as const) {
+      if (entity[field] !== undefined && !isNonNegativeFinite(entity[field])) collect.push('invalid-property', 'nodal-mass', id, field);
+    }
   }
   for (const raw of generatedLoadSources) {
     const entity = entityObject(collect, raw, 'generated-load-source'); const id = typeof entity.id === 'string' ? entity.id : '';
@@ -367,6 +370,15 @@ export const validateSpace3DProject = (project: Space3DProjectV1): readonly Spac
           : entity.kind === 'live-pattern' || entity.kind === 'member-chain' ? ['caseId']
             : entity.kind === 'prestress' ? ['caseId', 'force'] : [];
     for (const field of requiredFields) if (entity[field] === undefined) collect.push('invalid-property', 'generated-load-source', id, field);
+    if (entity.kind === 'tributary-surface') {
+      if (!isNonNegativeFinite(entity.pressure)) collect.push('invalid-property', 'generated-load-source', id, 'pressure');
+      if (!isNonNegativeFinite(entity.tributaryWidth)) collect.push('invalid-property', 'generated-load-source', id, 'tributaryWidth');
+    }
+    if (entity.kind === 'hydrostatic' || entity.kind === 'soil-pressure') {
+      if (!isNonNegativeFinite(entity.unitWeight)) collect.push('invalid-property', 'generated-load-source', id, 'unitWeight');
+      if (entity.pressureAtReference !== undefined && !isNonNegativeFinite(entity.pressureAtReference)) collect.push('invalid-property', 'generated-load-source', id, 'pressureAtReference');
+    }
+    if (entity.kind === 'elastic-foundation' && !isPositiveFinite(entity.stiffness)) collect.push('invalid-property', 'generated-load-source', id, 'stiffness');
     if ((entity.kind === 'live-pattern' || entity.kind === 'member-chain') && entity.qx === undefined && entity.qy === undefined && entity.qz === undefined) collect.push('invalid-property', 'generated-load-source', id, 'qx|qy|qz');
   }
   for (const raw of movingLoadCases) {
