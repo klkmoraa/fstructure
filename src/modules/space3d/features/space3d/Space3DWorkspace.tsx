@@ -22,7 +22,10 @@ import {
   type Space3DBridgeNote,
 } from '../../integrations/planar2dToSpace3d';
 import { loadSpace3DProject } from '../../space3d/data/storage';
-import { Dialog } from '../../design-system/components/overlays';
+// Space 3D contributes content to the canonical 2D shell; it does not carry a
+// second component library or token set. The relative path intentionally exits
+// the module boundary and uses the only production design system.
+import { Dialog } from '../../../../design-system/components/overlays';
 import { Space3DCanvas, type Space3DViewportFactory } from '../../space3d/view/Space3DCanvas';
 import { buildSpace3DSceneModel, type Space3DResultMode } from '../../space3d/view/sceneModel';
 import { SPACE3D_DEFAULT_LAYERS, type Space3DLayerVisibility } from '../../space3d/view/threeViewport';

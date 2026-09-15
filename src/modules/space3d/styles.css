@@ -1,9 +1,5 @@
-@import './design-system/tokens.css';
-@import './design-system/fonts.css';
-@import './design-system/material.css';
-@import './design-system/components/ui.css';
-
-:root { color-scheme: light dark; }
-html, body, #root { min-block-size: 100%; margin: 0; }
-body { min-block-size: 100dvh; background: var(--sc-color-bg-app); }
-button, input, select, textarea { font: inherit; }
+/*
+ * Historical Space 3D stylesheet retained for the migration corpus only.
+ * The canonical app loads the single root design system from `src/styles.css`
+ * and never imports this file.
+ */
