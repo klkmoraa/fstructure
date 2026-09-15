@@ -1,0 +1,378 @@
+{
+  "schemaVersion": 1,
+  "records": [
+    {
+      "source": "Solver3D/fusionstructure-space3d/LICENSE",
+      "destination": "docs/migration/legacy-space3d/LICENSE",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "94181d6a086b86acc07483934809603de0a6c7c56ce64fd6cfcf4fdd1938cb70",
+      "destinationSha256": "94181d6a086b86acc07483934809603de0a6c7c56ce64fd6cfcf4fdd1938cb70",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/migration/space3d-compatibility-manifest.json",
+      "destination": "docs/migration/legacy-space3d/migration/space3d-compatibility-manifest.json",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "ab77318e7aa87244bd9a059278580e5e62da0cdcbb0fc21eae46f5410b47e04c",
+      "destinationSha256": "ab77318e7aa87244bd9a059278580e5e62da0cdcbb0fc21eae46f5410b47e04c",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/compatibilityArtifactDigest.ts",
+      "destination": "docs/migration/legacy-space3d/src/compatibilityArtifactDigest.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "94c1748742153fc5f76dc56fa8c38e09fb4f32a06aca3b5038aa2a8e9072fd10",
+      "destinationSha256": "94c1748742153fc5f76dc56fa8c38e09fb4f32a06aca3b5038aa2a8e9072fd10",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/design-system/designSystem.test.ts",
+      "destination": "docs/migration/legacy-space3d/src/design-system/designSystem.test.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "ed7d2fa96d1c2dfd23c6271f9079033bea9a5943dc55f3955382479a7aeb723d",
+      "destinationSha256": "ed7d2fa96d1c2dfd23c6271f9079033bea9a5943dc55f3955382479a7aeb723d",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/features/space3d/Space3DEntryDialog.test.tsx",
+      "destination": "docs/migration/legacy-space3d/src/features/space3d/Space3DEntryDialog.test.tsx",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "22a7e6d68c3ef396a6b16ecee80ceb3008e102c810df5d401051071801881db0",
+      "destinationSha256": "22a7e6d68c3ef396a6b16ecee80ceb3008e102c810df5d401051071801881db0",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/features/space3d/space3dNumberFormat.test.ts",
+      "destination": "docs/migration/legacy-space3d/src/features/space3d/space3dNumberFormat.test.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "1daab40d52e813d7f52e693b9aca14baf708c10e106680ae52a44085e554c54a",
+      "destinationSha256": "1daab40d52e813d7f52e693b9aca14baf708c10e106680ae52a44085e554c54a",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/features/space3d/space3dWorkspaceModel.test.ts",
+      "destination": "docs/migration/legacy-space3d/src/features/space3d/space3dWorkspaceModel.test.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "7d8315398f616def56d01c73e3f92214e5df76662a9d1e8cd34893140584f4fc",
+      "destinationSha256": "7d8315398f616def56d01c73e3f92214e5df76662a9d1e8cd34893140584f4fc",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/foundation/linearAlgebra.test.ts",
+      "destination": "docs/migration/legacy-space3d/src/foundation/linearAlgebra.test.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "241dc158e666d94a0af800a89e3e70f5b45f35c1a8cba397d444775d86f0fec0",
+      "destinationSha256": "241dc158e666d94a0af800a89e3e70f5b45f35c1a8cba397d444775d86f0fec0",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/foundation/units.test.ts",
+      "destination": "docs/migration/legacy-space3d/src/foundation/units.test.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "0e16ccea3b715afdf1d6f5fa7beb5cda2b174f55a6b3f04515a024aa8f1e497a",
+      "destinationSha256": "0e16ccea3b715afdf1d6f5fa7beb5cda2b174f55a6b3f04515a024aa8f1e497a",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/compatibilityCorpus.test.ts",
+      "destination": "docs/migration/legacy-space3d/src/space3d/compatibilityCorpus.test.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "fddbfe4c822f11ef895d124087e4c7d37546caaecae0b93b471c613b7bb95573",
+      "destinationSha256": "fddbfe4c822f11ef895d124087e4c7d37546caaecae0b93b471c613b7bb95573",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/compatibilityCorpus.ts",
+      "destination": "docs/migration/legacy-space3d/src/space3d/compatibilityCorpus.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "fd79f5bdceffceb4e831824270be16f4c79efb75e105782005e4298378f8fac3",
+      "destinationSha256": "fd79f5bdceffceb4e831824270be16f4c79efb75e105782005e4298378f8fac3",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/data/codec.test.ts",
+      "destination": "docs/migration/legacy-space3d/src/space3d/data/codec.test.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "6556c944b7fb534b316637fedfd0200403974edc87cfd7379cfbe340bcea23a4",
+      "destinationSha256": "6556c944b7fb534b316637fedfd0200403974edc87cfd7379cfbe340bcea23a4",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/runtime/space3d.worker.ts",
+      "destination": "docs/migration/legacy-space3d/src/space3d/runtime/space3d.worker.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "b19d399bad01820ab3188c38dc5c127e73e0968bdceb6c1f88bbb8ab70484746",
+      "destinationSha256": "b19d399bad01820ab3188c38dc5c127e73e0968bdceb6c1f88bbb8ab70484746",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/view/labelTexture.test.ts",
+      "destination": "docs/migration/legacy-space3d/src/space3d/view/labelTexture.test.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "124cd6994dc2e591365893110a42a6ac5a2d835cb7c7bbd9971b43a00fa161da",
+      "destinationSha256": "124cd6994dc2e591365893110a42a6ac5a2d835cb7c7bbd9971b43a00fa161da",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/view/sceneModel.test.ts",
+      "destination": "docs/migration/legacy-space3d/src/space3d/view/sceneModel.test.ts",
+      "kind": "verbatim historical corpus",
+      "sourceSha256": "1d8a9d2448b8fcba2a438779c7eda458b3e74fd781e439cf6aa1504d9c25fea1",
+      "destinationSha256": "1d8a9d2448b8fcba2a438779c7eda458b3e74fd781e439cf6aa1504d9c25fea1",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/design-system/designSystem.test.ts",
+      "destination": "src/modules/space3d/design-system/designSystem.test.ts",
+      "kind": "executable migrated test",
+      "sourceSha256": "ed7d2fa96d1c2dfd23c6271f9079033bea9a5943dc55f3955382479a7aeb723d",
+      "destinationSha256": "eb756537ff0a79fd33ed218fbabcf627f68f1e473d0f81f12e43b2f9d025f60f",
+      "identical": false
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/features/space3d/space3dNumberFormat.test.ts",
+      "destination": "src/modules/space3d/features/space3d/space3dNumberFormat.test.ts",
+      "kind": "executable migrated test",
+      "sourceSha256": "1daab40d52e813d7f52e693b9aca14baf708c10e106680ae52a44085e554c54a",
+      "destinationSha256": "1daab40d52e813d7f52e693b9aca14baf708c10e106680ae52a44085e554c54a",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/features/space3d/space3dWorkspaceModel.test.ts",
+      "destination": "src/modules/space3d/features/space3d/space3dWorkspaceModel.test.ts",
+      "kind": "executable migrated test",
+      "sourceSha256": "7d8315398f616def56d01c73e3f92214e5df76662a9d1e8cd34893140584f4fc",
+      "destinationSha256": "7d8315398f616def56d01c73e3f92214e5df76662a9d1e8cd34893140584f4fc",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/foundation/linearAlgebra.test.ts",
+      "destination": "src/modules/space3d/foundation/linearAlgebra.test.ts",
+      "kind": "executable migrated test",
+      "sourceSha256": "241dc158e666d94a0af800a89e3e70f5b45f35c1a8cba397d444775d86f0fec0",
+      "destinationSha256": "241dc158e666d94a0af800a89e3e70f5b45f35c1a8cba397d444775d86f0fec0",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/foundation/units.test.ts",
+      "destination": "src/modules/space3d/foundation/units.test.ts",
+      "kind": "executable migrated test",
+      "sourceSha256": "0e16ccea3b715afdf1d6f5fa7beb5cda2b174f55a6b3f04515a024aa8f1e497a",
+      "destinationSha256": "0e16ccea3b715afdf1d6f5fa7beb5cda2b174f55a6b3f04515a024aa8f1e497a",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/compatibilityCorpus.test.ts",
+      "destination": "src/modules/space3d/space3d/compatibilityCorpus.test.ts",
+      "kind": "executable migrated test",
+      "sourceSha256": "fddbfe4c822f11ef895d124087e4c7d37546caaecae0b93b471c613b7bb95573",
+      "destinationSha256": "7779d7a20e16eeaf17978e843a61bd131e0004e314dadb8b58b54bdc643c023c",
+      "identical": false
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/data/codec.test.ts",
+      "destination": "src/modules/space3d/space3d/data/codec.test.ts",
+      "kind": "executable migrated test",
+      "sourceSha256": "6556c944b7fb534b316637fedfd0200403974edc87cfd7379cfbe340bcea23a4",
+      "destinationSha256": "6556c944b7fb534b316637fedfd0200403974edc87cfd7379cfbe340bcea23a4",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/view/labelTexture.test.ts",
+      "destination": "src/modules/space3d/space3d/view/labelTexture.test.ts",
+      "kind": "executable migrated test",
+      "sourceSha256": "124cd6994dc2e591365893110a42a6ac5a2d835cb7c7bbd9971b43a00fa161da",
+      "destinationSha256": "124cd6994dc2e591365893110a42a6ac5a2d835cb7c7bbd9971b43a00fa161da",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/view/sceneModel.test.ts",
+      "destination": "src/modules/space3d/space3d/view/sceneModel.test.ts",
+      "kind": "executable migrated test",
+      "sourceSha256": "1d8a9d2448b8fcba2a438779c7eda458b3e74fd781e439cf6aa1504d9c25fea1",
+      "destinationSha256": "1d8a9d2448b8fcba2a438779c7eda458b3e74fd781e439cf6aa1504d9c25fea1",
+      "identical": true
+    },
+    {
+      "source": "DiseñoEstructural/docs/references/normative/README.md",
+      "destination": "docs/references/normative/README.md",
+      "kind": "normative research reference",
+      "sourceSha256": "11cb1c56a1f6ef7ef97ee8e0ad65758ab4f91d9e1114c24c3cb0714f48706ca7",
+      "destinationSha256": "11cb1c56a1f6ef7ef97ee8e0ad65758ab4f91d9e1114c24c3cb0714f48706ca7",
+      "identical": true
+    },
+    {
+      "source": "DiseñoEstructural/docs/references/normative/ntc-acero-cdmx-2020.pdf",
+      "destination": "docs/references/normative/ntc-acero-cdmx-2020.pdf",
+      "kind": "normative research reference",
+      "sourceSha256": "5e36049f65ee38b7811898a5901c1b9b7c3b780dc8085454a9b8e1c79a1495f9",
+      "destinationSha256": "5e36049f65ee38b7811898a5901c1b9b7c3b780dc8085454a9b8e1c79a1495f9",
+      "identical": true
+    },
+    {
+      "source": "DiseñoEstructural/docs/references/normative/ntc-concreto-cdmx-2017.pdf",
+      "destination": "docs/references/normative/ntc-concreto-cdmx-2017.pdf",
+      "kind": "normative research reference",
+      "sourceSha256": "cccf4adc874d09d260f1b1a31b1e31a7e1dec02ec745427ad738c33c8a112731",
+      "destinationSha256": "cccf4adc874d09d260f1b1a31b1e31a7e1dec02ec745427ad738c33c8a112731",
+      "identical": true
+    },
+    {
+      "source": "DiseñoEstructural/docs/references/normative/ntc-sismo-cdmx-2020.pdf",
+      "destination": "docs/references/normative/ntc-sismo-cdmx-2020.pdf",
+      "kind": "normative research reference",
+      "sourceSha256": "d6df0ca3ca4c9f9facafd6dc13b7fe99f677c3bf0a81041d27d163b8b7517df7",
+      "destinationSha256": "d6df0ca3ca4c9f9facafd6dc13b7fe99f677c3bf0a81041d27d163b8b7517df7",
+      "identical": true
+    },
+    {
+      "source": "DiseñoEstructural/docs/references/normative/ntc-viento-cdmx-2017.pdf",
+      "destination": "docs/references/normative/ntc-viento-cdmx-2017.pdf",
+      "kind": "normative research reference",
+      "sourceSha256": "3fc936943df3bcf2d56ae148990a46887e1a6976307c5ca87dcb7c9a019674f0",
+      "destinationSha256": "3fc936943df3bcf2d56ae148990a46887e1a6976307c5ca87dcb7c9a019674f0",
+      "identical": true
+    },
+    {
+      "source": "Solver2D/fstructure/LICENSE",
+      "destination": "LICENSE",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "94181d6a086b86acc07483934809603de0a6c7c56ce64fd6cfcf4fdd1938cb70",
+      "destinationSha256": "94181d6a086b86acc07483934809603de0a6c7c56ce64fd6cfcf4fdd1938cb70",
+      "identical": true
+    },
+    {
+      "source": "Solver2D/fstructure/src/import/dxf/fixtures/non-planar-line.dxf",
+      "destination": "src/import/dxf/fixtures/non-planar-line.dxf",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "ec6412d47a3121c93904ac874c4fd4974ca6d699ccc4cec54b533c963401ef11",
+      "destinationSha256": "ec6412d47a3121c93904ac874c4fd4974ca6d699ccc4cec54b533c963401ef11",
+      "identical": true
+    },
+    {
+      "source": "Solver2D/fstructure/src/import/dxf/fixtures/line-units-missing.dxf",
+      "destination": "src/import/dxf/fixtures/line-units-missing.dxf",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "cd32c402866798dad47377f8f051db2da108502ed044ad04c82fd78240d9a42b",
+      "destinationSha256": "cd32c402866798dad47377f8f051db2da108502ed044ad04c82fd78240d9a42b",
+      "identical": true
+    },
+    {
+      "source": "Solver2D/fstructure/src/import/dxf/fixtures/line-mm-r2013.dxf",
+      "destination": "src/import/dxf/fixtures/line-mm-r2013.dxf",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "f5fcf7bb04a6742e056be4dabb48d40acc876f22115daeb9b4d6a3c5f0a1874e",
+      "destinationSha256": "f5fcf7bb04a6742e056be4dabb48d40acc876f22115daeb9b4d6a3c5f0a1874e",
+      "identical": true
+    },
+    {
+      "source": "Solver2D/fstructure/src/import/dxf/fixtures/mixed-line-circle.dxf",
+      "destination": "src/import/dxf/fixtures/mixed-line-circle.dxf",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "42bc406eba787990cc6a7bedbf0523a3a22464ef256a8d0c00c563dfa5f577ec",
+      "destinationSha256": "42bc406eba787990cc6a7bedbf0523a3a22464ef256a8d0c00c563dfa5f577ec",
+      "identical": true
+    },
+    {
+      "source": "Solver2D/fstructure/src/import/dxf/fixtures/closed-lwpolyline-m.dxf",
+      "destination": "src/import/dxf/fixtures/closed-lwpolyline-m.dxf",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "d287a37358c1115bdb987002237ea26625a395ab142934a9c5245b37a88e4092",
+      "destinationSha256": "d287a37358c1115bdb987002237ea26625a395ab142934a9c5245b37a88e4092",
+      "identical": true
+    },
+    {
+      "source": "Solver2D/fstructure/src/import/dxf/fixtures/block-insert.dxf",
+      "destination": "src/import/dxf/fixtures/block-insert.dxf",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "24e5505fefc152dad58f87f847320909ced3ffb7f06b7ad3ae84734e415114fc",
+      "destinationSha256": "24e5505fefc152dad58f87f847320909ced3ffb7f06b7ad3ae84734e415114fc",
+      "identical": true
+    },
+    {
+      "source": "Solver2D/fstructure/src/import/dxf/fixtures/classic-polyline.dxf",
+      "destination": "src/import/dxf/fixtures/classic-polyline.dxf",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "868c90e2e7d1f125bc0b17464855c44e7d38e0cda61e3db56f06848b17d29222",
+      "destinationSha256": "868c90e2e7d1f125bc0b17464855c44e7d38e0cda61e3db56f06848b17d29222",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/integrations/planar2dToSpace3d.fixtures.ts",
+      "destination": "src/modules/space3d/integrations/planar2dToSpace3d.fixtures.ts",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "a21bf8336c9c852c49f151514fe8f9cc73bf9b79be68757bfed8d1df15ee1b1a",
+      "destinationSha256": "a21bf8336c9c852c49f151514fe8f9cc73bf9b79be68757bfed8d1df15ee1b1a",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/engine/fixtures.ts",
+      "destination": "src/modules/space3d/space3d/engine/fixtures.ts",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "7da161c05f619ebf68de61be2fa2c50cdf168124288133ac76ba4de7ce810535",
+      "destinationSha256": "7da161c05f619ebf68de61be2fa2c50cdf168124288133ac76ba4de7ce810535",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/src/space3d/compatibilityCorpus.ts",
+      "destination": "src/modules/space3d/space3d/compatibilityCorpus.ts",
+      "kind": "already retained; deduplicated",
+      "sourceSha256": "fd79f5bdceffceb4e831824270be16f4c79efb75e105782005e4298378f8fac3",
+      "destinationSha256": "fd79f5bdceffceb4e831824270be16f4c79efb75e105782005e4298378f8fac3",
+      "identical": true
+    },
+    {
+      "source": "Solver3D/fusionstructure-space3d/LICENSE",
+      "destination": "src/modules/space3d/LICENSE",
+      "kind": "already retained MIT license",
+      "sourceSha256": "94181d6a086b86acc07483934809603de0a6c7c56ce64fd6cfcf4fdd1938cb70",
+      "destinationSha256": "94181d6a086b86acc07483934809603de0a6c7c56ce64fd6cfcf4fdd1938cb70",
+      "identical": true
+    },
+    {
+      "source": "Fusiones/validation/fixtures/concrete-beam/baseline.json",
+      "destination": "validation/fixtures/concrete-beam/baseline.json",
+      "kind": "already retained oracle/reference",
+      "sourceSha256": "acf68f05367e451049a28dbfee49c6c6196b8e61fca0b3038ce6538ce6d41f81",
+      "destinationSha256": "acf68f05367e451049a28dbfee49c6c6196b8e61fca0b3038ce6538ce6d41f81",
+      "identical": true
+    },
+    {
+      "source": "Fusiones/validation/fixtures/concrete-beam/catalog-section-blocked.json",
+      "destination": "validation/fixtures/concrete-beam/catalog-section-blocked.json",
+      "kind": "already retained oracle/reference",
+      "sourceSha256": "8661141fbb1606d134e25149037b878c6d94a08306f03edbd9bdf829685f982d",
+      "destinationSha256": "8661141fbb1606d134e25149037b878c6d94a08306f03edbd9bdf829685f982d",
+      "identical": true
+    },
+    {
+      "source": "Fusiones/validation/python/concrete_beam_oracle.py",
+      "destination": "validation/python/concrete_beam_oracle.py",
+      "kind": "already retained oracle/reference",
+      "sourceSha256": "b6de5d04448a77e753e90d6b2cb3b2b4067a2b5898dc3cdaa05fca71a9942786",
+      "destinationSha256": "b6de5d04448a77e753e90d6b2cb3b2b4067a2b5898dc3cdaa05fca71a9942786",
+      "identical": true
+    },
+    {
+      "source": "Fusiones/validation/python/test_concrete_beam_oracle.py",
+      "destination": "validation/python/test_concrete_beam_oracle.py",
+      "kind": "already retained oracle/reference",
+      "sourceSha256": "2116c798171605ad67f84747a5d865b671c4f80230fad4216205a63c81d4cd1c",
+      "destinationSha256": "2116c798171605ad67f84747a5d865b671c4f80230fad4216205a63c81d4cd1c",
+      "identical": true
+    },
+    {
+      "source": "Fusiones/docs/design/normative-sources.json",
+      "destination": "docs/design/normative-sources.json",
+      "kind": "already retained oracle/reference",
+      "sourceSha256": "3e2e6163e522cecb005ad94dc87d01fe84942c21f9628b1d6f09ebea64dea55c",
+      "destinationSha256": "3e2e6163e522cecb005ad94dc87d01fe84942c21f9628b1d6f09ebea64dea55c",
+      "identical": true
+    }
+  ],
+  "referenceOnlyTest": {
+    "path": "docs/migration/legacy-space3d/src/features/space3d/Space3DEntryDialog.test.tsx",
+    "reason": "The standalone entry dialog was intentionally omitted from Fusiones; do not restore duplicate UI in consolidation."
+  },
+  "excluded": "No illustrative Design prototype results, demoDesign.ts, UI or assets were migrated."
+}

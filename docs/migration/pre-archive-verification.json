@@ -1,0 +1,14 @@
+{
+  "originalCommit": "0d1ad6d804af781a19d2ec36ef8fef2cdf3958d5",
+  "sourceCommit": "77c5bf33c4e839995f62735ac8e51fa90c827fff",
+  "cloneCommit": "77c5bf33c4e839995f62735ac8e51fa90c827fff",
+  "tree": "38c47d9a3d3123af6d5817eb60a0db4c8d097353",
+  "branch": "feat/fusion-solvers",
+  "remote": "https://github.com/klkmoraa/fstructure.git",
+  "standaloneGitDirectory": true,
+  "alternates": false,
+  "objectsComparedWithoutSharedInodes": 338,
+  "buildFilesIdentical": 83,
+  "buildManifestSha256": "86ca8076b090de0900b410fb175851d6ea14f240c2dd69941cb3659c1f7dbab0",
+  "topLevelDSStoreSha256": "7003123b0456e4a30008d0abbd0d1351220d7f2a10efcb20274651a25ad35597"
+}

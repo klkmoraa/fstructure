@@ -1,0 +1,21 @@
+{
+  "rootEntries": [
+    "fstructure"
+  ],
+  "archiveFilesChecked": 2400,
+  "archiveFailures": [],
+  "postArchiveBuildFilesIdentical": 83,
+  "sourceBuildManifestSha256": "86ca8076b090de0900b410fb175851d6ea14f240c2dd69941cb3659c1f7dbab0",
+  "nodeVersion": "v24.19.0",
+  "canonicalGitFsckExit": 0,
+  "activeSpace3DTestFiles": 9,
+  "activeSpace3DTestsPassed": 81,
+  "migrationToolingTestsPassed": 6,
+  "verbatimHistoricalTestFiles": 10,
+  "referenceOnlyHistoricalTests": [
+    "Space3DEntryDialog.test.tsx"
+  ],
+  "corpusMappings": 46,
+  "originalDSStorePreserved": true,
+  "noPushExecuted": true
+}
