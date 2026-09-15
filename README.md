@@ -21,6 +21,22 @@ npm run dev
 La procedencia del corte y la separación de dominios están en
 [MIGRATION.md](MIGRATION.md).
 
+## Diseño de concreto reforzado
+
+La barra superior y Resultados incluyen **Diseño**, el primer flujo vertical
+experimental para una viga rectangular de concreto reforzado. Corre el solver
+para combinaciones última y de servicio explícitamente trazables, propone
+acero longitudinal/estribos y conserva evidencia NTC CDMX 2023 junto al
+resultado derivado. No es un cálculo certificado ni un plano de fabricación.
+
+El uso, precondiciones, evidencia, límites y ruta de ampliación están en
+[docs/design/concrete-beam-v1.md](docs/design/concrete-beam-v1.md). El gate de
+entrega ejecuta TypeScript, el oráculo Python independiente y sus fixtures:
+
+```text
+npm run check
+```
+
 ## Foundation local y flujo rápido
 
 Las unidades, el álgebra lineal y sus tipos numéricos se mantienen como código
