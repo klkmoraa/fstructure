@@ -67,6 +67,51 @@ describe.each(implementations)('$name bundle transaction conformance', ({ setup 
     expect((await reopen().openBundle('frame'))?.bundle.model2d).toEqual(JSON.parse(original));
   });
 
+  it('catches discarded normalization leaving required fields undefined after reopening', async () => {
+    const reopen = setup();
+    const input = bundle();
+    input.model2d.nodes = [{ id: 'N1', x: 5, y: 9, support: { type: 'fixed' } }];
+    Reflect.deleteProperty(input.model2d, 'settings');
+    Reflect.deleteProperty(input.model2d.nodes[0], 'x');
+    const saved = await reopen().saveBundle(input, 0);
+    expect(saved.bundle.model2d.nodes[0]).toEqual({ id: 'N1', x: 0, y: 9, support: { type: 'fixed' } });
+    const read = (await reopen().openBundle('p1'))!;
+    expect(read.bundle.model2d.settings.units).toBe('kN-m');
+    expect(read.bundle.model2d.settings.gridSize).toBe(1);
+    expect(read.bundle.model2d.nodes[0].x).toBe(0);
+    expect(read.checksum).toBe(await sha256(canonicalSerialize(read.bundle)));
+  });
+
+  it('catches normalization discarding supported optional engineering fields', async () => {
+    const reopen = setup();
+    const input = createUnifiedProjectBundle(createDefaultProject(), 'optional-v1');
+    input.model2d.settings.analysisMode = 'p-delta';
+    input.model2d.settings.solutionMethod = 'kani-frame';
+    input.model2d.members[0].G = 80_000_000;
+    input.model2d.members[0].shearArea = 0.004;
+    input.model2d.members[0].rotationalSpringI = 120;
+    const saved = await reopen().saveBundle(input, 0);
+    const read = (await reopen().openBundle(saved.id))!;
+    expect(read.bundle.model2d.settings).toMatchObject({ analysisMode: 'p-delta', solutionMethod: 'kani-frame' });
+    expect(read.bundle.model2d.members[0]).toMatchObject({ G: 80_000_000, shearArea: 0.004, rotationalSpringI: 120 });
+  });
+
+  it.each(['manifest', 'model2d', 'design'] as const)('catches a root %s accessor being materialized before validation', async (field) => {
+    const repository = setup()();
+    await repository.saveBundle(bundle(), 0);
+    const input = bundle('Accessor');
+    let readCount = 0;
+    const original = input[field];
+    Object.defineProperty(input, field, { enumerable: true, get() {
+      readCount++;
+      if (field === 'manifest' && readCount > 1) return { ...(original as object), schemaVersion: 999 };
+      return original;
+    } });
+    await expect(repository.saveBundle(input, 1)).rejects.toThrow();
+    expect(readCount).toBe(0);
+    expect((await repository.openBundle('p1'))?.bundle.model2d.name).toBe('Original');
+  });
+
   it('catches concurrent stale saves overwriting the winner or losing the rejected edit', async () => {
     const reopen = setup();
     await reopen().saveBundle(bundle(), 0);
@@ -246,7 +291,7 @@ describe('IndexedDB abort boundaries', () => {
     const original = [...storage.bytes];
     abortAfterBundleWrite();
     await expect(repository.migrateLegacy(storage)).rejects.toThrow();
-    expect(await new IndexedDbUnifiedBundleRepository(factory).snapshot()).toEqual({ bundles: [], recoveries: [], migrations: [] });
+    expect(await new IndexedDbUnifiedBundleRepository(factory).snapshot()).toEqual({ bundles: [], recoveries: [], migrations: [], integrityDiagnostics: [] });
     expect([...storage.bytes]).toEqual(original);
     IDBObjectStore.prototype.put = originalPut;
     await repository.migrateLegacy(storage);
@@ -300,7 +345,9 @@ it('catches tampered recovery bytes being offered as a verified recoverable impo
   const repository = new InMemoryUnifiedBundleRepository(database);
   await repository.migrateLegacy(new LegacyStorage([['structureco:space3d:v1', JSON.stringify(model3d('standalone'))]]));
   await database.transaction(true, (state) => { Object.assign([...state.recoveries.values()][0].space3d!, { name: 'Tampered' }); });
-  await expect(repository.snapshot()).rejects.toThrow(/integrity/);
+  const snapshot = await repository.snapshot();
+  expect(snapshot.recoveries).toEqual([]);
+  expect(snapshot.integrityDiagnostics).toEqual([expect.objectContaining({ store: 'recoveries', code: 'invalid-record', message: expect.stringMatching(/integrity/) })]);
 });
 
 it('catches noncanonical object ordering and verifies SHA-256 against the standard abc vector', async () => {

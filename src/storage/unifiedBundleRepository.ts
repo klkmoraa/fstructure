@@ -32,17 +32,27 @@ export interface MigrationRecord {
   diagnostic?: string;
   recoveryId?: string;
 }
-export interface BundleLibrarySnapshot {
+interface StoredLibrarySnapshot {
   bundles: StoredBundleRecord[];
   recoveries: BundleRecoveryRecord[];
   migrations: MigrationRecord[];
+}
+export interface BundleIntegrityDiagnostic {
+  store: 'bundles' | 'recoveries';
+  recordId: string;
+  code: 'invalid-record';
+  message: string;
+}
+/** Invalid records are excluded from usable arrays and identified without mutating storage. */
+export interface BundleLibrarySnapshot extends StoredLibrarySnapshot {
+  integrityDiagnostics: BundleIntegrityDiagnostic[];
 }
 export interface UnifiedBundleRepository {
   openBundle(id: string): Promise<StoredBundleRecord | null>;
   snapshot(): Promise<BundleLibrarySnapshot>;
   /** 0 means create; updates require the revision returned by openBundle. */
   saveBundle(bundle: UnifiedProjectBundleV1, expectedRevision: number): Promise<StoredBundleRecord>;
-  migrateLegacy(storage: LegacyBundleStorage): Promise<void>;
+  migrateLegacy(storage: LegacyBundleStorage): Promise<BundleLibrarySnapshot>;
 }
 export class BundleConflictError extends Error {
   readonly projectId: string;
@@ -55,7 +65,7 @@ export class BundleConflictError extends Error {
   }
 }
 
-type State = { [K in keyof BundleLibrarySnapshot]: Map<string, BundleLibrarySnapshot[K][number]> };
+type State = { [K in keyof StoredLibrarySnapshot]: Map<string, StoredLibrarySnapshot[K][number]> };
 const stores = ['bundles', 'recoveries', 'migrations'] as const;
 const emptyState = (): State => ({ bundles: new Map(), recoveries: new Map(), migrations: new Map() });
 interface BundleDatabase {
@@ -139,28 +149,50 @@ class IndexedDbBundleDatabase implements BundleDatabase {
 abstract class BundleRepository implements UnifiedBundleRepository {
   private readonly database: BundleDatabase;
   constructor(database: BundleDatabase) { this.database = database; }
+  private async validateStoredBundle(record: StoredBundleRecord): Promise<void> {
+    const validated = validateBundle(record.bundle);
+    if (record.id !== validated.manifest.projectId || !Number.isInteger(record.revision) || record.revision < 1 || canonicalSerialize(validated) !== canonicalSerialize(record.bundle) || await sha256(canonicalSerialize(record.bundle)) !== record.checksum) {
+      throw new Error(`Bundle ${record.id} failed stored integrity verification`);
+    }
+  }
+  private async validateRecovery(record: BundleRecoveryRecord): Promise<void> {
+    if (record.bundle) {
+      const validated = validateBundle(record.bundle);
+      if (record.projectId !== validated.manifest.projectId || record.space3d || canonicalSerialize(validated) !== canonicalSerialize(record.bundle)) throw new Error('Recovery identity failed integrity verification');
+    } else if (record.space3d) parseSpace3DDraft(canonicalSerialize(record.space3d));
+    else throw new Error('Recovery content failed integrity verification');
+    if (await sha256(canonicalSerialize(record.bundle ?? record.space3d)) !== record.checksum) throw new Error(`Recovery ${record.id} failed stored integrity verification`);
+  }
   async snapshot(): Promise<BundleLibrarySnapshot> {
-    const snapshot = await this.database.transaction(false, (state) => ({
+    const stored = await this.database.transaction(false, (state) => ({
       bundles: [...state.bundles.values()], recoveries: [...state.recoveries.values()], migrations: [...state.migrations.values()],
     }));
-    for (const record of snapshot.bundles) {
-      validateBundle(record.bundle);
-      if (record.id !== record.bundle.manifest.projectId || !Number.isInteger(record.revision) || record.revision < 1 || await sha256(canonicalSerialize(record.bundle)) !== record.checksum) {
-        throw new Error(`Bundle ${record.id} failed stored integrity verification`);
+    const snapshot: BundleLibrarySnapshot = { bundles: [], recoveries: [], migrations: stored.migrations, integrityDiagnostics: [] };
+    for (const record of stored.bundles) {
+      try {
+        await this.validateStoredBundle(record);
+        snapshot.bundles.push(record);
+      } catch (error) {
+        snapshot.integrityDiagnostics.push({ store: 'bundles', recordId: record.id, code: 'invalid-record', message: error instanceof Error ? error.message : String(error) });
       }
     }
-    for (const record of snapshot.recoveries) {
-      if (record.bundle) {
-        validateBundle(record.bundle);
-        if (record.projectId !== record.bundle.manifest.projectId || record.space3d) throw new Error('Recovery identity failed integrity verification');
-      } else if (record.space3d) parseSpace3DDraft(canonicalSerialize(record.space3d));
-      else throw new Error('Recovery content failed integrity verification');
-      if (await sha256(canonicalSerialize(record.bundle ?? record.space3d)) !== record.checksum) throw new Error(`Recovery ${record.id} failed stored integrity verification`);
+    for (const record of stored.recoveries) {
+      try {
+        await this.validateRecovery(record);
+        snapshot.recoveries.push(record);
+      } catch (error) {
+        snapshot.integrityDiagnostics.push({ store: 'recoveries', recordId: record.id, code: 'invalid-record', message: error instanceof Error ? error.message : String(error) });
+      }
     }
     return snapshot;
   }
   async openBundle(id: string): Promise<StoredBundleRecord | null> {
-    return (await this.snapshot()).bundles.find((record) => record.id === id) ?? null;
+    const record = await this.database.transaction(false, (state) => state.bundles.get(id) ?? null);
+    if (record) {
+      try { await this.validateStoredBundle(record); }
+      catch (error) { throw new Error(`Bundle ${id} integrity failure: ${error instanceof Error ? error.message : String(error)}`); }
+    }
+    return record;
   }
   async saveBundle(input: UnifiedProjectBundleV1, expectedRevision: number): Promise<StoredBundleRecord> {
     if (!Number.isInteger(expectedRevision) || expectedRevision < 0) throw new Error('An explicit nonnegative expected revision is required');
@@ -183,12 +215,22 @@ abstract class BundleRepository implements UnifiedBundleRepository {
     if (outcome.conflict) throw new BundleConflictError(id, recoveryId);
     return structuredClone(outcome.record);
   }
-  async migrateLegacy(storage: LegacyBundleStorage): Promise<void> {
-    const plans = await prepareLegacyImports(storage, (await this.snapshot()).bundles);
+  async migrateLegacy(storage: LegacyBundleStorage): Promise<BundleLibrarySnapshot> {
+    const snapshot = await this.snapshot();
+    const corruptIds = new Set(snapshot.integrityDiagnostics.filter((diagnostic) => diagnostic.store === 'bundles').map((diagnostic) => diagnostic.recordId));
+    const corruptRecoveryIds = new Set(snapshot.integrityDiagnostics.filter((diagnostic) => diagnostic.store === 'recoveries').map((diagnostic) => diagnostic.recordId));
+    const plans = await prepareLegacyImports(storage, snapshot.bundles);
     const timestamp = new Date().toISOString();
     await this.database.transaction(true, (state) => {
       for (const plan of plans) {
-        const pending = plan.sources.filter((source) => !state.migrations.get(source.id)?.complete);
+        const pending = plan.sources.filter((source) => {
+          const marker = state.migrations.get(source.id);
+          if (!marker?.complete) return true;
+          // A completed source remains usable if its committed destination is now corrupt.
+          // Updating the marker to the new recovery makes concurrent/repeated rescue idempotent.
+          return marker.status === 'imported' ? !!plan.bundle && corruptIds.has(plan.bundle.manifest.projectId)
+            : !!marker.recoveryId && corruptRecoveryIds.has(marker.recoveryId);
+        });
         if (pending.length === 0) continue;
         if (!plan.bundle && !plan.space3d) {
           for (const source of pending) state.migrations.set(source.id, source);
@@ -196,7 +238,7 @@ abstract class BundleRepository implements UnifiedBundleRepository {
         }
         const id = plan.bundle?.manifest.projectId ?? null;
         const current = id ? state.bundles.get(id) : undefined;
-        const canImport = plan.bundle && (!current || current.checksum === plan.checksum || current.checksum === plan.baseChecksum);
+        const canImport = plan.bundle && id !== null && !corruptIds.has(id) && (!current || current.checksum === plan.checksum || current.checksum === plan.baseChecksum);
         let recoveryId: string | undefined;
         if (canImport && plan.bundle && id) {
           if (current?.checksum !== plan.checksum) state.bundles.set(id, {
@@ -215,6 +257,7 @@ abstract class BundleRepository implements UnifiedBundleRepository {
         });
       }
     });
+    return this.snapshot();
   }
 }
 export class InMemoryUnifiedBundleRepository extends BundleRepository {
