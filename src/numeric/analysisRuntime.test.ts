@@ -6,9 +6,11 @@ import {
   AdaptiveAnalysisJobRuntime,
   AnalysisJobCancelledError,
   AnalysisJobStaleError,
+  AnalysisWorkerError,
   type AnalysisWorkerLike,
   type AnalysisWorkerResponse,
 } from './analysisRuntime';
+import { handleNumericWorkerRequest } from './numericWorker';
 
 interface Payload { readonly estimatedBytes: number }
 
@@ -42,8 +44,8 @@ class WorkerHarness implements AnalysisWorkerLike {
   removeEventListener(type: string, listener: (event: { data?: unknown; message?: string }) => void): void {
     this.listeners.get(type)?.delete(listener);
   }
-  emit(message: AnalysisWorkerResponse<number>): void {
-    for (const listener of this.listeners.get('message') ?? []) listener({ data: message });
+  emit(message: unknown, type = 'message'): void {
+    for (const listener of this.listeners.get(type) ?? []) listener({ data: message, message: 'clone failed' });
   }
 }
 
@@ -86,8 +88,15 @@ describe('adaptive analysis job runtime', () => {
       currentSourceVersion: () => 'source-v1',
     });
     const pending = runtime.run(request('job-1'), {
-      onProgress: (event) => phases.push(event.phase),
-      onSoftDeadline: () => { warnings += 1; },
+      onProgress: (event) => {
+        phases.push(event.phase);
+        if (event.phase === 'factorization') throw new Error('observer progress failed');
+      },
+      onSoftDeadline: () => {
+        warnings += 1;
+        throw new Error('observer deadline failed');
+      },
+      onPublish: () => { throw new Error('observer publish failed'); },
     });
     worker.emit(response('progress'));
     await vi.advanceTimersByTimeAsync(30_000);
@@ -99,6 +108,85 @@ describe('adaptive analysis job runtime', () => {
     expect(phases).toEqual(['admission', 'factorization', 'complete']);
     expect(worker.terminated).toBe(true);
     expect(worker.listeners.get('message')?.size ?? 0).toBe(0);
+  });
+
+  it('cleans up factory, setup, postMessage and messageerror failures', async () => {
+    const factoryFailure = new AdaptiveAnalysisJobRuntime<Payload, number>({
+      createWorker: () => { throw new Error('factory failed'); },
+      estimateBytes: (payload) => payload.estimatedBytes,
+      currentSourceVersion: () => 'source-v1',
+    });
+    await expect(factoryFailure.run(request('factory'))).rejects.toBeInstanceOf(AnalysisWorkerError);
+
+    const setupWorker = new WorkerHarness();
+    setupWorker.addEventListener = () => { throw new Error('listener setup failed'); };
+    const setupFailure = new AdaptiveAnalysisJobRuntime<Payload, number>({
+      createWorker: () => setupWorker,
+      estimateBytes: (payload) => payload.estimatedBytes,
+      currentSourceVersion: () => 'source-v1',
+    });
+    await expect(setupFailure.run(request('setup'))).rejects.toBeInstanceOf(AnalysisWorkerError);
+    expect(setupWorker.terminated).toBe(true);
+
+    const postWorker = new WorkerHarness();
+    postWorker.postMessage = () => { throw new Error('post failed'); };
+    const postFailure = new AdaptiveAnalysisJobRuntime<Payload, number>({
+      createWorker: () => postWorker,
+      estimateBytes: (payload) => payload.estimatedBytes,
+      currentSourceVersion: () => 'source-v1',
+    });
+    await expect(postFailure.run(request('post'))).rejects.toBeInstanceOf(AnalysisWorkerError);
+    expect(postWorker.terminated).toBe(true);
+    expect(postWorker.listeners.get('message')?.size ?? 0).toBe(0);
+
+    const cloneWorker = new WorkerHarness();
+    const cloneFailure = new AdaptiveAnalysisJobRuntime<Payload, number>({
+      createWorker: () => cloneWorker,
+      estimateBytes: (payload) => payload.estimatedBytes,
+      currentSourceVersion: () => 'source-v1',
+    });
+    const pending = cloneFailure.run(request('job-1'));
+    cloneWorker.emit(undefined, 'messageerror');
+    await expect(pending).rejects.toMatchObject({ code: 'MESSAGE_ERROR' });
+    expect(cloneWorker.terminated).toBe(true);
+  });
+
+  it('rejects incompatible protocols on both client and worker boundaries', async () => {
+    const worker = new WorkerHarness();
+    const runtime = new AdaptiveAnalysisJobRuntime<Payload, number>({
+      createWorker: () => worker,
+      estimateBytes: (payload) => payload.estimatedBytes,
+      currentSourceVersion: () => 'source-v1',
+    });
+    const pending = runtime.run(request('job-1'));
+    worker.emit({ ...response('success'), protocolVersion: 999 });
+    await expect(pending).rejects.toMatchObject({ code: 'PROTOCOL_MISMATCH' });
+    expect(worker.terminated).toBe(true);
+
+    const invalidQualityWorker = new WorkerHarness();
+    const invalidQualityRuntime = new AdaptiveAnalysisJobRuntime<Payload, number>({
+      createWorker: () => invalidQualityWorker,
+      estimateBytes: (payload) => payload.estimatedBytes,
+      currentSourceVersion: () => 'source-v1',
+    });
+    const invalidQuality = invalidQualityRuntime.run(request('job-1'));
+    invalidQualityWorker.emit(response('success', {
+      quality: { ...stableQuality, conditionEstimate: Number.NaN },
+    } as never));
+    await expect(invalidQuality).rejects.toMatchObject({ code: 'INVALID_QUALITY' });
+    expect(invalidQualityWorker.terminated).toBe(true);
+
+    const serverResponses: Array<AnalysisWorkerResponse<unknown>> = [];
+    await handleNumericWorkerRequest({
+      protocolVersion: 999,
+      type: 'run',
+      request: request('server'),
+    } as never, (message) => serverResponses.push(message));
+    expect(serverResponses).toMatchObject([{
+      type: 'error',
+      code: 'PROTOCOL_MISMATCH',
+      jobId: 'server',
+    }]);
   });
 
   it('cancels by terminating the worker and never publishes a late result', async () => {

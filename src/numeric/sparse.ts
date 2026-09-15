@@ -33,8 +33,8 @@ const validateCompressed = (
   majorCount: number,
   minorCount: number,
 ): void => {
-  if (!Number.isSafeInteger(rowCount) || !Number.isSafeInteger(columnCount) || rowCount < 0 || columnCount < 0) {
-    throw new SparseMatrixFormatError('Sparse matrix dimensions must be non-negative safe integers.');
+  if (!Number.isSafeInteger(rowCount) || !Number.isSafeInteger(columnCount) || rowCount <= 0 || columnCount <= 0) {
+    throw new SparseMatrixFormatError('Sparse matrix dimensions must be positive safe integers.');
   }
   if (pointers.length !== majorCount + 1 || pointers[0] !== 0 || pointers[pointers.length - 1] !== values.length) {
     throw new SparseMatrixFormatError('Compressed pointers do not span the value array.');
