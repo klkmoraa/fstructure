@@ -45,3 +45,11 @@ export type {
   Space3DStaticAssembly,
   Space3DStaticAssemblyElement,
 } from './engine/solver';
+
+export { analyzeSpace3DModal } from './engine/analysisModes';
+
+export type {
+  Space3DModalMode,
+  Space3DModalOptions,
+  Space3DModalResult,
+} from './engine/analysisModes';
