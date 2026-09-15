@@ -151,6 +151,104 @@ describe('adaptive analysis job runtime', () => {
     expect(cloneWorker.terminated).toBe(true);
   });
 
+  it('owns the lifecycle before admission observers reenter or dispose the runtime', async () => {
+    vi.useFakeTimers();
+    const outerWorker = new WorkerHarness();
+    const nestedWorker = new WorkerHarness();
+    let factoryCall = 0;
+    let nestedPending: Promise<unknown> | undefined;
+    const runtime = new AdaptiveAnalysisJobRuntime<Payload, number>({
+      createWorker: () => factoryCall++ === 0 ? outerWorker : nestedWorker,
+      estimateBytes: (payload) => payload.estimatedBytes,
+      currentSourceVersion: () => 'source-v1',
+    });
+    let outerState = 'pending';
+    const outerPending = runtime.run(request('outer'), {
+      onProgress: ({ phase }) => {
+        if (phase === 'admission') nestedPending = runtime.run(request('nested'));
+      },
+    });
+    void outerPending.then(
+      () => { outerState = 'resolved'; },
+      (error: Error) => { outerState = error.name; },
+    );
+    let nestedState = 'pending';
+    void nestedPending!.then(
+      () => { nestedState = 'resolved'; },
+      (error: Error) => { nestedState = error.name; },
+    );
+    nestedWorker.emit(response('success', { jobId: 'nested' }));
+    await Promise.resolve();
+
+    const reentrantSnapshot = {
+      outerState,
+      nestedState,
+      outerTerminated: outerWorker.terminated,
+      outerPosts: outerWorker.posted.length,
+      nestedPosts: nestedWorker.posted.length,
+    };
+    runtime.dispose();
+    expect(reentrantSnapshot).toEqual({
+      outerState: 'AnalysisJobCancelledError',
+      nestedState: 'resolved',
+      outerTerminated: true,
+      outerPosts: 0,
+      nestedPosts: 1,
+    });
+
+    const disposedWorker = new WorkerHarness();
+    let disposedRuntime: AdaptiveAnalysisJobRuntime<Payload, number>;
+    disposedRuntime = new AdaptiveAnalysisJobRuntime<Payload, number>({
+      createWorker: () => disposedWorker,
+      estimateBytes: (payload) => payload.estimatedBytes,
+      currentSourceVersion: () => 'source-v1',
+    });
+    let disposedState = 'pending';
+    const disposedPending = disposedRuntime.run(request('disposed'), {
+      onProgress: ({ phase }) => {
+        if (phase === 'admission') disposedRuntime.dispose();
+      },
+    });
+    void disposedPending.then(
+      () => { disposedState = 'resolved'; },
+      (error: Error) => { disposedState = error.name; },
+    );
+    await Promise.resolve();
+    const disposedSnapshot = {
+      disposedState,
+      terminated: disposedWorker.terminated,
+      posts: disposedWorker.posted.length,
+      listeners: disposedWorker.listeners.get('message')?.size ?? 0,
+    };
+    disposedRuntime.dispose();
+    expect(disposedSnapshot).toEqual({
+      disposedState: 'AnalysisJobCancelledError',
+      terminated: true,
+      posts: 0,
+      listeners: 0,
+    });
+  });
+
+  it('cleans up and rejects when source-version lookup throws during publication', async () => {
+    const worker = new WorkerHarness();
+    let sourceReads = 0;
+    const runtime = new AdaptiveAnalysisJobRuntime<Payload, number>({
+      createWorker: () => worker,
+      estimateBytes: (payload) => payload.estimatedBytes,
+      currentSourceVersion: () => {
+        sourceReads += 1;
+        if (sourceReads === 2) throw new Error('project store unavailable');
+        return 'source-v1';
+      },
+    });
+    const pending = runtime.run(request('job-1'));
+
+    expect(() => worker.emit(response('success'))).not.toThrow();
+    await expect(pending).rejects.toMatchObject({ code: 'SOURCE_VERSION_FAILURE' });
+    expect(worker.terminated).toBe(true);
+    expect(worker.listeners.get('message')?.size ?? 0).toBe(0);
+  });
+
   it('rejects incompatible protocols on both client and worker boundaries', async () => {
     const worker = new WorkerHarness();
     const runtime = new AdaptiveAnalysisJobRuntime<Payload, number>({

@@ -105,7 +105,7 @@ interface ActiveJob<TResult> {
   readonly callbacks: AnalysisRunCallbacks<TResult>;
   readonly resolve: (result: CompletedAnalysisJob<TResult>) => void;
   readonly reject: (error: Error) => void;
-  readonly timer: ReturnType<typeof setTimeout> | null;
+  timer: ReturnType<typeof setTimeout> | null;
   readonly detach: () => void;
 }
 
@@ -128,6 +128,7 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
   private readonly options: AdaptiveAnalysisJobRuntimeOptions<TPayload>;
   private active: ActiveJob<TResult> | null = null;
   private disposed = false;
+  private lifecycleVersion = 0;
 
   constructor(options: AdaptiveAnalysisJobRuntimeOptions<TPayload>) {
     this.options = options;
@@ -149,12 +150,21 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
     if (!admission.accepted) {
       return Promise.reject(new AnalysisAdmissionError(admission.estimatedBytes, admission.availableBytes));
     }
-    if (this.options.currentSourceVersion(request.targetId) !== request.sourceVersion) {
+    let currentSourceVersion: string | undefined;
+    try {
+      currentSourceVersion = this.options.currentSourceVersion(request.targetId);
+    } catch (cause) {
+      return Promise.reject(new AnalysisWorkerError(
+        'SOURCE_VERSION_FAILURE',
+        cause instanceof Error ? cause.message : 'Current source version could not be read.',
+      ));
+    }
+    if (currentSourceVersion !== request.sourceVersion) {
       return Promise.reject(new AnalysisJobStaleError());
     }
 
-    this.cancel();
-    this.notify(() => callbacks.onProgress?.({ phase: 'admission', completed: 1, total: 1 }));
+    const lifecycleVersion = ++this.lifecycleVersion;
+    this.cancelActive();
     let worker: AnalysisWorkerLike;
     try {
       worker = this.options.createWorker();
@@ -164,39 +174,57 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
         cause instanceof Error ? cause.message : 'Numerical worker could not be created.',
       ));
     }
+    if (this.disposed || lifecycleVersion !== this.lifecycleVersion) {
+      this.safely(() => worker.terminate());
+      return Promise.reject(new AnalysisJobCancelledError());
+    }
 
     return new Promise<CompletedAnalysisJob<TResult>>((resolve, reject) => {
-      const onMessage = (event: AnalysisWorkerEvent) => this.receive(event.data, request.jobId);
+      let owned: ActiveJob<TResult>;
+      const onMessage = (event: AnalysisWorkerEvent) => {
+        if (this.active !== owned) return;
+        this.receive(event.data, request.jobId);
+      };
       const onError = (event: AnalysisWorkerEvent) => {
-        if (this.active?.request.jobId !== request.jobId) return;
+        if (this.active !== owned) return;
         this.finishWithError(new AnalysisWorkerError('WORKER_FAILURE', event.message ?? 'Numerical worker failed.'));
       };
       const onMessageError = (event: AnalysisWorkerEvent) => {
-        if (this.active?.request.jobId !== request.jobId) return;
+        if (this.active !== owned) return;
         this.finishWithError(new AnalysisWorkerError('MESSAGE_ERROR', event.message ?? 'Numerical worker message could not be cloned.'));
       };
-      let timer: ReturnType<typeof setTimeout> | null = null;
       const detach = () => {
         this.safely(() => worker.removeEventListener('message', onMessage));
         this.safely(() => worker.removeEventListener('error', onError));
         this.safely(() => worker.removeEventListener('messageerror', onMessageError));
       };
-      const cleanupUnownedWorker = () => {
-        const timerToClear = timer;
-        if (timerToClear !== null) this.safely(() => clearTimeout(timerToClear));
-        detach();
-        this.safely(() => worker.terminate());
+      owned = {
+        request,
+        worker,
+        callbacks,
+        resolve,
+        reject,
+        timer: null,
+        detach,
       };
+      const stillOwned = () => this.active === owned
+        && lifecycleVersion === this.lifecycleVersion
+        && !this.disposed;
+      this.active = owned;
       try {
         worker.addEventListener('message', onMessage);
+        if (!stillOwned()) return;
         worker.addEventListener('error', onError);
+        if (!stillOwned()) return;
         worker.addEventListener('messageerror', onMessageError);
-        timer = setTimeout(() => {
-          if (this.active?.request.jobId === request.jobId) {
+        if (!stillOwned()) return;
+        owned.timer = setTimeout(() => {
+          if (this.active === owned) {
             this.notify(() => callbacks.onSoftDeadline?.(request));
           }
         }, Math.max(0, request.budget.softDeadlineMs));
-        this.active = { request, worker, callbacks, resolve, reject, timer, detach };
+        this.notify(() => callbacks.onProgress?.({ phase: 'admission', completed: 1, total: 1 }));
+        if (!stillOwned()) return;
         const envelope: AnalysisWorkerRunRequest<TPayload> = {
           protocolVersion: ANALYSIS_WORKER_PROTOCOL_VERSION,
           type: 'run',
@@ -204,25 +232,30 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
         };
         worker.postMessage(envelope);
       } catch (cause) {
-        if (this.active?.request.jobId === request.jobId) this.active = null;
-        cleanupUnownedWorker();
-        reject(new AnalysisWorkerError(
-          'WORKER_SETUP_FAILED',
-          cause instanceof Error ? cause.message : 'Numerical worker setup failed.',
-        ));
+        if (this.active === owned) {
+          this.takeActive();
+          reject(new AnalysisWorkerError(
+            'WORKER_SETUP_FAILED',
+            cause instanceof Error ? cause.message : 'Numerical worker setup failed.',
+          ));
+        }
       }
     });
   }
 
   cancel(): void {
-    if (!this.active) return;
+    this.lifecycleVersion += 1;
+    this.cancelActive();
+  }
+
+  private cancelActive(): void {
     const active = this.takeActive();
     active?.reject(new AnalysisJobCancelledError());
   }
 
   dispose(): void {
-    this.cancel();
     this.disposed = true;
+    this.cancel();
   }
 
   private receive(raw: unknown, expectedJobId: string): void {
@@ -253,7 +286,20 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
       this.finishWithError(new AnalysisWorkerError('INVALID_QUALITY', 'Numerical worker returned non-finite or invalid quality metrics.'));
       return;
     }
-    if (this.options.currentSourceVersion(active.request.targetId) !== active.request.sourceVersion) {
+    let currentSourceVersion: string | undefined;
+    try {
+      currentSourceVersion = this.options.currentSourceVersion(active.request.targetId);
+    } catch (cause) {
+      if (this.active === active) {
+        this.finishWithError(new AnalysisWorkerError(
+          'SOURCE_VERSION_FAILURE',
+          cause instanceof Error ? cause.message : 'Current source version could not be read.',
+        ));
+      }
+      return;
+    }
+    if (this.active !== active) return;
+    if (currentSourceVersion !== active.request.sourceVersion) {
       this.finishWithError(new AnalysisJobStaleError());
       return;
     }
