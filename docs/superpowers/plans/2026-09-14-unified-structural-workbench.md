@@ -13,8 +13,8 @@
 ## Global Constraints
 
 - Keep both numerical engines repository-local.
-- Mark 2D, Diseño and 3D as Experimental and FEM as Planeado.
-- Do not invent a FEM result or imply certification.
+- Mark all four tools as Experimental and keep unsupported FEM formulations fail-closed.
+- Do not invent a FEM result or imply certification; every published FEM field must come from the local linear solver.
 - Use only a production build and focused browser walkthrough for this integration.
 
 ---
