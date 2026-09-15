@@ -1,10 +1,22 @@
 import { expect, it } from 'vitest';
 import { createDefaultProject } from '../data/defaultProject';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
-import { InMemoryBundleDatabase, InMemoryUnifiedBundleRepository } from './unifiedBundleRepository';
+import { InMemoryBundleDatabase, InMemoryUnifiedBundleRepository, type StoredBundleRecord } from './unifiedBundleRepository';
 import { UnifiedProjectSession } from './unifiedProjectSession';
 import { buildPlanar2DToSpace3DHandoff } from '../integrations/planar2dToSpace3d';
-import type { JsonValue } from '../shared/project/unifiedProjectBundle';
+import type { JsonValue, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
+
+class FailOnceRepository extends InMemoryUnifiedBundleRepository {
+  private failNext = false;
+  failNextSave() { this.failNext = true; }
+  override async saveBundle(bundle: UnifiedProjectBundleV1, expectedRevision: number): Promise<StoredBundleRecord> {
+    if (this.failNext) {
+      this.failNext = false;
+      throw new Error('Disk unavailable');
+    }
+    return super.saveBundle(bundle, expectedRevision);
+  }
+}
 
 const storage = { length: 0, key: () => null, getItem: () => null };
 it('retains the canonical fallback revision when a requested project is absent', async () => {
@@ -67,6 +79,46 @@ it('serializes 3D and 2D edits through one revision owner without overwriting ei
   expect(saved?.bundle.manifest.sourceVersion).not.toBe('source-1');
   expect(saved?.bundle.model2d.name).toBe('Edited 2D');
   expect(saved?.revision).toBe(2);
+});
+
+it('persists a failed 3D working branch when a later 2D save succeeds', async () => {
+  const repo = new FailOnceRepository();
+  const project = createDefaultProject();
+  const session = new UnifiedProjectSession(repo);
+  await session.initialize(storage, project);
+  const model = JSON.parse(JSON.stringify(buildPlanar2DToSpace3DHandoff(project).candidateModel)) as JsonValue;
+  const branch = { sourceProjectId: project.id, sourceVersion: 'source-1', model };
+
+  repo.failNextSave();
+  await expect(session.saveSpace3D(project, branch)).rejects.toThrow('Disk unavailable');
+  expect(session.currentBundle(project.id)?.space3d).toEqual(branch);
+
+  const saved = await session.save2D({ ...project, name: 'Edited 2D' });
+  expect(saved.bundle.space3d).toEqual(branch);
+  expect(saved.bundle.model2d.name).toBe('Edited 2D');
+  expect(session.status.issue).toBe('save-failed');
+  expect((await repo.openBundle(project.id))?.bundle.space3d).toEqual(branch);
+});
+
+it('persists a failed FEM working branch when a later 2D save succeeds', async () => {
+  const repo = new FailOnceRepository();
+  const project = createDefaultProject();
+  const session = new UnifiedProjectSession(repo);
+  await session.initialize(storage, project);
+  const study = JSON.parse(JSON.stringify({
+    format: 'fstructure-fem-bundle', formatVersion: 1,
+    document: { kind: 'fem-document', schemaVersion: 1, id: 'study-1', name: 'Mesh 1' },
+  })) as JsonValue;
+
+  repo.failNextSave();
+  await expect(session.saveFem(project, study)).rejects.toThrow('Disk unavailable');
+  expect(session.currentBundle(project.id)?.fem).toEqual([study]);
+
+  const saved = await session.save2D({ ...project, name: 'Edited 2D' });
+  expect(saved.bundle.fem).toEqual([study]);
+  expect(saved.bundle.model2d.name).toBe('Edited 2D');
+  expect(session.status.issue).toBe('save-failed');
+  expect((await repo.openBundle(project.id))?.bundle.fem).toEqual([study]);
 });
 
 it('persists and upserts FEM study snapshots without overwriting the other tool branches', async () => {

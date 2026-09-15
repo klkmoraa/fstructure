@@ -113,7 +113,7 @@ export class UnifiedProjectSession {
     const write = this.chain.catch(() => undefined).then(async () => {
       if (this.blocked.has(detached.id)) throw new Error(this.status.message ?? 'Reopen the canonical project before saving.');
       const current = this.records.get(detached.id);
-      const bundle = current ? structuredClone(current.bundle) : createUnifiedProjectBundle(detached, working.manifest.sourceVersion);
+      const bundle = structuredClone(working);
       if (branch && current?.bundle.space3d && canonicalSerialize(current.bundle.space3d) === canonicalSerialize(branch)) {
         clearWorking(current.bundle);
         clearFailure();
