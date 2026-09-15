@@ -33,3 +33,15 @@ export type {
   Space3DMovingLoadCase,
   Space3DVector,
 } from './model/types';
+
+export {
+  analyzeSpace3DProject,
+  analyzeSpace3DStatic,
+  assembleSpace3DStaticModel,
+} from './engine/solver';
+
+export type {
+  Space3DStaticAnalysisOptions,
+  Space3DStaticAssembly,
+  Space3DStaticAssemblyElement,
+} from './engine/solver';
