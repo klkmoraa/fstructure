@@ -366,7 +366,9 @@ export type Space3DAnalysisIssueCode =
   | 'mechanism'
   | 'non-finite-solution'
   /** Task 6 persists these member families, but the legacy frame solver does not analyze them. */
-  | 'unsupported-member-type';
+  | 'unsupported-member-type'
+  /** A preserved semantic is not silently reinterpreted by the current solver. */
+  | 'unsupported-semantics';
 
 export interface Space3DAnalysisIssue {
   readonly code: Space3DAnalysisIssueCode;
