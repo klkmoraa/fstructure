@@ -80,14 +80,22 @@ function modelJson(value: unknown, ancestors = new Set<object>()): unknown {
 export function validateBundle(input: unknown): UnifiedProjectBundleV1 {
   const raw = object(input);
   exact(raw, ['manifest', 'model2d', 'space3d', 'design', 'fem']);
-  const manifest = object(raw.manifest);
+  // Inspect descriptors before reading any value: spread would execute root getters.
+  if (Object.getOwnPropertySymbols(raw).length || (Object.getPrototypeOf(raw) !== Object.prototype && Object.getPrototypeOf(raw) !== null)) throw new Error('Runtime bundle objects cannot be persisted');
+  const descriptors = Object.getOwnPropertyDescriptors(raw);
+  for (const descriptor of Object.values(descriptors)) {
+    if (!('value' in descriptor) || !descriptor.enumerable) throw new Error('Only enumerable bundle data properties are supported');
+  }
+  const detached = Object.fromEntries(Object.entries(descriptors).map(([key, descriptor]) => [key, key === 'model2d' ? modelJson(descriptor.value) : descriptor.value]));
+  const copy = JSON.parse(canonicalSerialize(detached)) as UnifiedProjectBundleV1;
+  const manifest = object(copy.manifest);
   exact(manifest, ['schemaVersion', 'projectId', 'sourceVersion', 'authoritativeModel']);
   if (manifest.schemaVersion !== 1 || manifest.authoritativeModel !== 'model2d') throw new Error('Unsupported manifest schema or authority');
   if (!nonempty(manifest.projectId) || !nonempty(manifest.sourceVersion)) throw new Error('Project identity and source version are required');
-  const model = object(raw.model2d);
+  const model = object(copy.model2d);
   if (model.id !== manifest.projectId || model.schemaVersion !== CURRENT_SCHEMA_VERSION) throw new Error('Unsupported model schema or mismatched project identity');
-  const copy = JSON.parse(canonicalSerialize({ ...raw, model2d: modelJson(model) })) as UnifiedProjectBundleV1;
-  normalizeProject(copy.model2d); // Validate values/references without discarding public fields.
+  // Persist the validated domain representation, including required defaults.
+  copy.model2d = JSON.parse(canonicalSerialize(modelJson(normalizeProject(copy.model2d))));
   if (!Array.isArray(copy.fem)) throw new Error('FEM must be a list of serializable branches');
   if (copy.space3d !== null) {
     const branch = object(copy.space3d);
