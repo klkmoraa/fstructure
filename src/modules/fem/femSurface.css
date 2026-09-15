@@ -14,6 +14,12 @@
 .fusion-fem__status { display: inline-flex; padding: 5px 9px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-control); color: var(--sc-color-text-secondary); font-size: 11px; }
 .fusion-fem h1 { margin: 16px 0 10px; font: 650 clamp(32px, 5vw, 62px)/.98 var(--sc-font-display); letter-spacing: -.045em; }
 .fusion-fem__intro p { max-width: 62ch; margin: 0; color: var(--sc-color-text-secondary); font-size: 15px; line-height: 1.65; }
+.fusion-fem__inspector { display: grid; gap: 5px; min-width: 180px; color: var(--sc-color-text-secondary); font-size: 12px; line-height: 1.35; }
+.fusion-fem__inspector strong { color: var(--sc-color-text-primary); font-size: 13px; }
+.fusion-fem__result { display: grid; gap: 5px; width: min(620px, 100%); padding: 13px 15px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1); font-size: 13px; }
+.fusion-fem__result span { color: var(--sc-color-text-secondary); font-size: 12px; }
+.fusion-fem__result.is-success { border-color: color-mix(in srgb, var(--sc-color-state-success) 50%, var(--sc-color-border)); }
+.fusion-fem__result.is-failure { border-color: color-mix(in srgb, var(--sc-color-state-error) 50%, var(--sc-color-border)); }
 
 .fusion-fem__roadmap {
   position: relative;

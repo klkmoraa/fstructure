@@ -179,14 +179,14 @@ export const WorkspaceUtilities = ({
         model3d: '3D model',
         fem: 'FEM',
         experimental: 'Experimental',
-        planned: 'Planned',
+        femStatus: 'Experimental',
       }
     : {
         section: 'Herramientas integradas',
         model3d: 'Modelo 3D',
         fem: 'FEM',
         experimental: 'Experimental',
-        planned: 'Planeado',
+        femStatus: 'Experimental',
       };
   const unitOptions = UNIT_SYSTEM_PROFILES;
   const selectedUnit = isCustomUnitSystemId(project.settings.units)
@@ -227,7 +227,7 @@ export const WorkspaceUtilities = ({
             onClick={() => openWorkspace('fem')}
           >
             <Sigma size={17} aria-hidden="true" />
-            <span><strong>{environmentCopy.fem}</strong><small>{environmentCopy.planned}</small></span>
+            <span><strong>{environmentCopy.fem}</strong><small>{environmentCopy.femStatus}</small></span>
           </button>
         </div>
       </section>

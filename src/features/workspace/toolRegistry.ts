@@ -1,6 +1,6 @@
 import type { ToolModuleDescriptor } from '../../shared/contracts';
 
-/** Capability names describe executable behavior; FEM currently has no engine. */
+/** Capability names describe executable behavior exposed by each lazy surface. */
 export const toolRegistry: readonly ToolModuleDescriptor[] = [
   {
     id: 'model2d', labelKey: 'navigation.model2d', maturity: 'experimental',
@@ -18,7 +18,8 @@ export const toolRegistry: readonly ToolModuleDescriptor[] = [
     load: () => import('./adapters/Space3DSurface').then((module) => module.default),
   },
   {
-    id: 'fem', labelKey: 'navigation.fem', maturity: 'experimental', capabilities: [],
+    id: 'fem', labelKey: 'navigation.fem', maturity: 'experimental',
+    capabilities: ['fem-linear-elasticity', 'fem-tri3-quad4', 'fem-gmsh41-import', 'fem-quality-fields'],
     load: () => import('../../modules/fem/FemSurface').then((module) => module.FemSurface),
   },
 ];
