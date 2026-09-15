@@ -4,14 +4,15 @@ import type {
   InfluenceLine,
   InfluenceTarget,
 } from '../engine/influence';
-import type { ProjectModel } from '../types';
+import type { ProjectModel, ReinforcedConcreteBeamAssignment } from '../types';
+import type { ConcreteBeamDesignOutcome } from '../design/concrete/types';
 import type { NumericCertificate } from '../engine/certificate';
 import type { BucklingResult } from '../engine/buckling';
 import type { ModalResult } from '../engine/modal';
 import type { ParametricStudyRequest, ParametricStudyResult } from '../engine/parametricStudy';
 
 export const WORKER_PROTOCOL_VERSION = 1 as const;
-export type WorkerDomain = 'analysis' | 'scenarios' | 'influence' | 'certificate' | 'studies' | 'parametric';
+export type WorkerDomain = 'analysis' | 'scenarios' | 'influence' | 'certificate' | 'studies' | 'parametric' | 'design';
 
 export interface WorkerRequestEnvelope<Domain extends WorkerDomain, Payload> {
   protocolVersion: typeof WORKER_PROTOCOL_VERSION;
@@ -73,3 +74,12 @@ export type StudiesWorkerResult =
 
 export type ParametricWorkerPayload = ParametricStudyRequest;
 export type ParametricWorkerResult = ParametricStudyResult;
+
+/** Immutable snapshot: derived design outcomes are never persisted in the project. */
+export interface ConcreteBeamDesignWorkerPayload {
+  project: ProjectModel;
+  memberId: string;
+  assignment: ReinforcedConcreteBeamAssignment;
+}
+
+export type ConcreteBeamDesignWorkerResult = ConcreteBeamDesignOutcome;
