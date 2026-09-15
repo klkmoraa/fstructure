@@ -34,6 +34,14 @@ import { Space3DEntityEditor, type Space3DEditorTarget } from './Space3DEntityEd
 import { Space3DResultsPanel, type Space3DResultsTab } from './Space3DResultsPanel';
 import { Space3DConsoleTools, type Space3DActiveTool } from './Space3DToolRail';
 import { Space3DModelSummary, type Space3DModelFocus } from './Space3DModelNav';
+import { Space3DAnalysisModeSelect } from './Space3DAnalysisModeSelect';
+import {
+  analyzeSpace3DBuckling,
+  analyzeSpace3DInfluence,
+  analyzeSpace3DModal,
+  analyzeSpace3DPDelta,
+} from '../../space3d/engine/analysisModes';
+import type { Space3DAnalysisMode } from './space3dWorkspaceModel';
 import { translate, type Language, type TranslationKey } from '../../i18n/catalogs';
 import { formatSpace3DNumber } from './space3dNumberFormat';
 import type { Space3DCommand } from '../../space3d/data/commands';
@@ -53,6 +61,14 @@ const VIEW_LABEL_KEYS: Record<Space3DViewPreset, TranslationKey> = {
 import { ShellContribution, useShellInspector } from '../../../../features/workspace/ShellToolSlots';
 import { useSharedToolState } from '../../../../store/SharedToolState';
 import type { ReactNode } from 'react';
+
+const ANALYSIS_MODE_LABEL_KEYS: Record<Space3DAnalysisMode, TranslationKey> = {
+  linear: 'space3d.analysisModeLinear',
+  pdelta: 'space3d.analysisModePDelta',
+  modal: 'space3d.analysisModeModal',
+  buckling: 'space3d.analysisModeBuckling',
+  influence: 'space3d.analysisModeInfluence',
+};
 
 function EmbeddedInspector({ embedded, expanded, children }: { embedded: boolean; expanded: boolean; children: ReactNode }) {
   return embedded ? <ShellContribution slot="inspector">{children}</ShellContribution>
@@ -180,6 +196,14 @@ const number = (value: number): string => formatSpace3DNumber(value);
 
 const countRestraints = (restraints: Space3DRestraints) => Object.values(restraints).filter(Boolean).length;
 
+type Space3DStudyState = 'idle' | 'running' | 'ready' | 'failed';
+
+interface Space3DStudyFeedback {
+  readonly mode: Space3DAnalysisMode;
+  readonly success: boolean;
+  readonly detail: string;
+}
+
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
   'language' | 'embedded' | 'onOpenHome' | 'onOpen2D' | 'createViewport' | 'handoff' | 'onProjectChange' | 'onRederive'> {
   readonly bridgeNotes: readonly Space3DBridgeNote[];
@@ -247,6 +271,9 @@ const WorkspaceBody = ({
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [resultMode, setResultMode] = useState<Space3DResultMode>('model');
   const [lastAnalyzedAt, setLastAnalyzedAt] = useState<number | null>(null);
+  const [analysisMode, setAnalysisMode] = useState<Space3DAnalysisMode>('linear');
+  const [studyState, setStudyState] = useState<Space3DStudyState>('idle');
+  const [studyFeedback, setStudyFeedback] = useState<Space3DStudyFeedback | null>(null);
   const hasContent = project.nodes.length > 0;
   // Doce clics en cada sentido: suficiente margen para explorar sin llegar a
   // una deformada ilegible por minúscula o a una que ya no cabe en pantalla.
@@ -270,6 +297,89 @@ const WorkspaceBody = ({
   }, [analysis, analysisState, analysisTargetId, automatic, project, resultMode, scaleFactor, selectedEntity]);
 
   const submit = useCallback((command: Space3DCommand) => execute(command).ok, [execute]);
+
+  /**
+   * El análisis lineal sigue pasando por el worker del store. Los estudios
+   * especializados ya tienen runners de dominio, así que se solicitan aquí
+   * con sus contratos reales y sólo publican un diagnóstico local: todavía no
+   * se mezclan con la capa de resultados lineales del canvas.
+   */
+  const runSelectedAnalysis = useCallback(async () => {
+    setStudyFeedback(null);
+    if (analysisMode === 'linear') {
+      setStudyState('idle');
+      await analyze();
+      return;
+    }
+
+    setStudyState('running');
+    // Da al navegador un ciclo para pintar el estado «en curso» antes del
+    // runner síncrono, sin inventar una progresión que el motor no publica.
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+
+    try {
+      const modeLabel = t(ANALYSIS_MODE_LABEL_KEYS[analysisMode]);
+      let success = false;
+      let detail = '';
+      if (analysisMode === 'pdelta') {
+        const result = analyzeSpace3DPDelta(project, analysisTargetId, { maxIterations: 20 });
+        success = result.success;
+        detail = success
+          ? `${t('space3d.studyCompleted', { mode: modeLabel })}: ${result.iterations} iteraciones · residuo ${number(result.residual)}`
+          : t('space3d.studyFailed', { mode: modeLabel, reason: result.reason });
+      } else if (analysisMode === 'modal') {
+        const result = analyzeSpace3DModal(project, { targetId: analysisTargetId, modes: 3 });
+        success = result.success;
+        detail = success
+          ? `${t('space3d.studyCompleted', { mode: modeLabel })}: ${result.modes.length} modos · f₁ ${number(result.modes[0]?.frequency ?? Number.NaN)} Hz`
+          : t('space3d.studyFailed', { mode: modeLabel, reason: result.reason });
+      } else if (analysisMode === 'buckling') {
+        const result = analyzeSpace3DBuckling(project, analysisTargetId, { modes: 1 });
+        success = result.success;
+        detail = success
+          ? `${t('space3d.studyCompleted', { mode: modeLabel })}: factor crítico ${number(result.criticalLoadFactor ?? Number.NaN)}`
+          : t('space3d.studyFailed', { mode: modeLabel, reason: result.reason });
+      } else {
+        const member = project.members[0];
+        const start = member ? project.nodes.find((node) => node.id === member.i) : undefined;
+        const finish = member ? project.nodes.find((node) => node.id === member.j) : undefined;
+        const length = start && finish
+          ? Math.hypot(finish.x - start.x, finish.y - start.y, finish.z - start.z)
+          : 0;
+        const result = analyzeSpace3DInfluence(project, {
+          targetId: analysisTargetId,
+          target: { kind: 'member', memberId: member?.id ?? '', position: length / 2, quantity: 'N', side: 'continuous' },
+          positions: [0, length / 2, length],
+          unitLoad: [0, -1, 0],
+        });
+        success = result.success;
+        detail = success
+          ? `${t('space3d.studyCompleted', { mode: modeLabel })}: ${result.points.length} posiciones · residuo máx. ${number(result.maxEquilibriumResidual)}`
+          : t('space3d.studyFailed', { mode: modeLabel, reason: result.reason });
+      }
+      setStudyFeedback({ mode: analysisMode, success, detail });
+      setStudyState(success ? 'ready' : 'failed');
+    } catch (error) {
+      const modeLabel = t(ANALYSIS_MODE_LABEL_KEYS[analysisMode]);
+      setStudyFeedback({
+        mode: analysisMode,
+        success: false,
+        detail: t('space3d.studyFailed', {
+          mode: modeLabel,
+          reason: error instanceof Error ? error.message : String(error),
+        }),
+      });
+      setStudyState('failed');
+    }
+  }, [analysisMode, analysisTargetId, analyze, project, t]);
+
+  // Un estudio sólo describe exactamente el proyecto y el objetivo con los
+  // que se ejecutó. El último resultado lineal se mantiene en el store y no se
+  // borra cuando se limpia este diagnóstico especializado.
+  useEffect(() => {
+    setStudyState('idle');
+    setStudyFeedback(null);
+  }, [analysisTargetId, project]);
 
   // El resultado listo no trae marca de tiempo propia (el dominio no la
   // modela): se anota aquí, en la superficie, sólo para mostrarla junto al
@@ -382,6 +492,7 @@ const WorkspaceBody = ({
     && !space3DMatchesPlanarHandoff(project, handoff);
 
   const running = analysisState === 'running';
+  const runningAny = running || studyState === 'running';
   const errorMessage = lastError ? t(ERROR_KEYS[lastError] ?? 'space3d.error.generic') : null;
 
   const canNewMember = project.nodes.length >= 2;
@@ -425,6 +536,16 @@ const WorkspaceBody = ({
       </optgroup> : null}
     </select>
   </label>;
+  const analysisModeSelect = <Space3DAnalysisModeSelect
+    t={t}
+    value={analysisMode}
+    disabled={runningAny}
+    onChange={(value) => {
+      setAnalysisMode(value);
+      setStudyState('idle');
+      setStudyFeedback(null);
+    }}
+  />;
 
   const projectSwitcher = <div className="space3d-project-switcher">
     <button
@@ -454,11 +575,11 @@ const WorkspaceBody = ({
         <button type="button" className="workspace-topbar__icon-button" onClick={undo} disabled={!canUndo} aria-label={t('space3d.undo')}><Undo2 size={17} /></button>
         <button type="button" className="workspace-topbar__icon-button" onClick={redo} disabled={!canRedo} aria-label={t('space3d.redo')}><Redo2 size={17} /></button>
       </ShellContribution>
-      <ShellContribution slot="action"><button type="button" className="workspace-topbar__action-button is-primary" onClick={() => { void analyze(); }} disabled={running || pendingNotes.length > 0}>
-        <Play size={17} /><span>{running ? t('space3d.analyzing') : t('space3d.analyze')}</span>
+      <ShellContribution slot="action"><button type="button" className="workspace-topbar__action-button is-primary" onClick={() => { void runSelectedAnalysis(); }} disabled={runningAny || pendingNotes.length > 0}>
+        <Play size={17} /><span>{runningAny ? t('space3d.analyzing') : t('space3d.analyze')}</span>
       </button></ShellContribution>
       <ShellContribution slot="status"><span role="status">{t(STATE_KEYS[analysisState])} · Experimental</span></ShellContribution>
-      <ShellContribution slot="inspector"><div className="space3d-inline-actions">{targetSelect}{projectSwitcher}
+      <ShellContribution slot="inspector"><div className="space3d-inline-actions">{analysisModeSelect}{targetSelect}{projectSwitcher}
         <button type="button" className="space3d-tool" onClick={cancelAnalysis} disabled={!running} aria-label={t('space3d.cancelAnalysis')}><CircleStop size={17} /></button>
       </div><div className="space3d-tray" role="group" aria-label={t('space3d.layers')}>
         {LAYER_TOGGLES.map(({ id, key, Icon }) => <button key={id} type="button" className="space3d-tool" aria-label={t(key)} aria-pressed={layers[id]} onClick={() => setLayers((current) => ({ ...current, [id]: !current[id] }))}><Icon size={17} /></button>)}
@@ -515,12 +636,12 @@ const WorkspaceBody = ({
       </div>
 
       <div className="space3d-tray space3d-tray--run" role="group" aria-label={t('space3d.analyze')}>
-        {targetSelect}
-        <button type="button" className="space3d-button space3d-button--primary" onClick={() => { void analyze(); }}
-          disabled={running || pendingNotes.length > 0}
+        {analysisModeSelect}{targetSelect}
+        <button type="button" className="space3d-button space3d-button--primary" onClick={() => { void runSelectedAnalysis(); }}
+          disabled={runningAny || pendingNotes.length > 0}
           title={pendingNotes.length > 0 ? t('space3d.bridgeBlocked', { count: pendingNotes.length }) : undefined}
         >
-          <Play size={16} aria-hidden="true" />{running ? t('space3d.analyzing') : t('space3d.analyze')}
+          <Play size={16} aria-hidden="true" />{runningAny ? t('space3d.analyzing') : t('space3d.analyze')}
         </button>
         <button type="button" className="space3d-tool" onClick={cancelAnalysis} disabled={!running} title={t('space3d.cancelAnalysis')}>
           <CircleStop size={16} aria-hidden="true" /><span className="space3d-visually-hidden">{t('space3d.cancelAnalysis')}</span>
@@ -574,6 +695,18 @@ const WorkspaceBody = ({
     </section> : null}
 
     {errorMessage ? <p className="space3d-notice space3d-notice--error" role="alert">{errorMessage}</p> : null}
+
+    {studyState === 'running' ? <p className="space3d-notice" role="status" data-testid="space3d-study-status">
+      {t('space3d.studyRunning')}
+    </p> : null}
+    {studyFeedback ? <div
+      className={`space3d-notice space3d-study-feedback ${studyFeedback.success ? 'space3d-notice--ok' : 'space3d-notice--error'}`}
+      role="status"
+      data-testid="space3d-study-status"
+    >
+      <strong>{studyFeedback.detail}</strong>
+      {studyFeedback.mode === 'linear' ? null : <small>{t('space3d.studyLinearPreserved')}</small>}
+    </div> : null}
 
     {/* El motivo del fallo se publica junto a la acción que lo provocó, no
         escondido tras una pestaña: quien pulsa «Analizar» tiene que ver por qué

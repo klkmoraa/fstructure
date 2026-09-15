@@ -3,6 +3,32 @@ import type { Space3DAnalysisState } from '../../space3d/store/Space3DProjectCon
 export type Space3DWorkspaceMode = 'select' | 'node' | 'member' | 'support' | 'load' | 'results';
 export type Space3DProductStatus = 'Disponible' | 'Experimental' | 'Planeado' | 'No comprometido';
 
+/**
+ * Estudios que se pueden solicitar desde la única bandeja de análisis 3D.
+ * Cada opción tiene un runner real; la superficie decide después qué parte
+ * del resultado puede publicar sin sustituir el análisis lineal compartido.
+ */
+export type Space3DAnalysisMode = 'linear' | 'pdelta' | 'modal' | 'buckling' | 'influence';
+
+export interface Space3DAnalysisModeDefinition {
+  readonly id: Space3DAnalysisMode;
+  readonly labelKey:
+    | 'space3d.analysisModeLinear'
+    | 'space3d.analysisModePDelta'
+    | 'space3d.analysisModeModal'
+    | 'space3d.analysisModeBuckling'
+    | 'space3d.analysisModeInfluence';
+  readonly status: Space3DProductStatus;
+}
+
+export const SPACE3D_ANALYSIS_MODES: readonly Space3DAnalysisModeDefinition[] = Object.freeze([
+  { id: 'linear', labelKey: 'space3d.analysisModeLinear', status: 'Disponible' },
+  { id: 'pdelta', labelKey: 'space3d.analysisModePDelta', status: 'Experimental' },
+  { id: 'modal', labelKey: 'space3d.analysisModeModal', status: 'Experimental' },
+  { id: 'buckling', labelKey: 'space3d.analysisModeBuckling', status: 'Experimental' },
+  { id: 'influence', labelKey: 'space3d.analysisModeInfluence', status: 'Experimental' },
+]);
+
 export interface Space3DWorkspaceModeDefinition {
   readonly id: Space3DWorkspaceMode;
   readonly label: string;
