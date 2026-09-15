@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { axialCantilever } from './fixtures';
-import { analyzeSpace3DModal } from './analysisModes';
+import { analyzeSpace3DBuckling, analyzeSpace3DPDelta, analyzeSpace3DModal } from './analysisModes';
 
 describe('Space3D modal study', () => {
   it('returns a positive frequency and six-component mode shape from member mass', () => {
@@ -26,5 +26,41 @@ describe('Space3D modal study', () => {
 
     expect(result.success).toBe(false);
     expect(result.reason).toContain('masa');
+  });
+});
+
+describe('Space3D stability studies', () => {
+  it('keeps a zero-compression P-Delta run equal to the linear reference', () => {
+    const project = axialCantilever({ P: 10 });
+    const result = analyzeSpace3DPDelta(project, 'CO1', { maxIterations: 3 });
+
+    expect(result.success).toBe(true);
+    expect(result.converged).toBe(true);
+    expect(result.analysis.nodeResults.find((node) => node.nodeId === 'J')?.displacement.ux).toBeCloseTo(1e-5, 12);
+  });
+
+  it('does not fabricate a critical factor when no member is in compression', () => {
+    const result = analyzeSpace3DBuckling(axialCantilever({ P: 10 }), 'CO1', { modes: 1 });
+
+    expect(result.success).toBe(false);
+    expect(result.reason).toContain('comprimido');
+  });
+
+  it('finds a positive elastic factor for a compressed frame reference', () => {
+    const result = analyzeSpace3DBuckling(axialCantilever({ P: -10 }), 'CO1', { modes: 1 });
+
+    expect(result.success).toBe(true);
+    expect(result.criticalLoadFactor).toBeGreaterThan(0);
+    expect(result.referenceAxialForces.M1).toBeCloseTo(-10, 8);
+  });
+
+  it('amplifies a transverse displacement when compression is present', () => {
+    const base = axialCantilever({ P: -100 });
+    const project = { ...base, nodalLoads: [{ ...base.nodalLoads[0], fy: 10 }] };
+    const linear = analyzeSpace3DPDelta(project, 'CO1', { maxIterations: 5 });
+
+    expect(linear.success).toBe(true);
+    expect(linear.analysis.nodeResults[1].displacement.uy).toBeGreaterThan(0);
+    expect(linear.analysis.nodeResults[1].displacement.uy).toBeGreaterThan(linear.linear.nodeResults[1].displacement.uy);
   });
 });
