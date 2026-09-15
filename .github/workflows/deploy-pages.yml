@@ -27,11 +27,16 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Build application
-        run: npm run build
+      - name: Quality gate
+        run: npm run check
 
       - name: Publish static site to gh-pages
         shell: bash
