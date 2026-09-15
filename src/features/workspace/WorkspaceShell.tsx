@@ -612,6 +612,7 @@ const WorkspaceBrokerContent = ({
         },
         onToggleFullCanvas: () => {
           if (!layout.fullCanvas) {
+            onOpenModel2D();
             closeSurface('detail');
             closeSurface('analysisSetup');
             closeSurface('view');

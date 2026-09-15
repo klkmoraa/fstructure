@@ -109,4 +109,40 @@ describe('standalone FStructure', () => {
     await waitFor(() => expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).toBe(project.id));
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('fem');
   });
+
+  it('preserves the requested project when switching tools during its repository lookup', async () => {
+    const active = { ...createDefaultProject(), id: 'project-a' };
+    const requested = { ...createDefaultProject(), id: 'project-b', name: 'Proyecto B' };
+    localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(active));
+    const repository = new projectStorage.InMemoryProjectRepository();
+    await repository.saveProject(requested);
+    const openProject = repository.openProject.bind(repository);
+    let releaseLookup!: () => void;
+    let lookupStarted!: () => void;
+    const pending = new Promise<void>((resolve) => { releaseLookup = resolve; });
+    const started = new Promise<void>((resolve) => { lookupStarted = resolve; });
+    vi.spyOn(repository, 'openProject').mockImplementation(async (id) => {
+      if (id === requested.id) {
+        lookupStarted();
+        await pending;
+      }
+      return openProject(id);
+    });
+    vi.spyOn(projectStorage, 'getProjectRepository').mockReturnValue(repository);
+    window.history.replaceState(null, '', '/?project=project-b&tool=model2d');
+    render(<App />);
+    await started;
+    try {
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Diseño' }));
+      expect(new URLSearchParams(window.location.search).get('project')).toBe('project-b');
+      expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
+      await act(async () => { releaseLookup(); });
+      await waitFor(() => expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).toBe('project-b'));
+      expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
+      expect(new URLSearchParams(window.location.search).get('project')).toBe('project-b');
+      expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
+    } finally {
+      releaseLookup();
+    }
+  });
 });
