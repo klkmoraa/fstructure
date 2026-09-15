@@ -113,8 +113,11 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
   useEffect(() => {
     if (!unified) return;
     let active = true;
+    let unsubscribe: (() => void) | undefined;
     void import('../storage/unifiedProjectSession').then(async ({ createUnifiedProjectSession }) => {
+      if (!active) return;
       const session = unifiedSessionRef.current ??= createUnifiedProjectSession();
+      unsubscribe = session.subscribeStatus(() => { if (active) setStorageState(session.status); });
       const requestedId = new URLSearchParams(window.location.search).get('project') ?? projectRef.current.id;
       const canonical = await session.initialize(localStorage, projectRef.current, requestedId);
       if (!active) return;
@@ -127,7 +130,7 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
       setStorageState({ issue: 'load-failed', message: error instanceof Error ? error.message : String(error) });
       setUnifiedReady(true);
     });
-    return () => { active = false; };
+    return () => { active = false; unsubscribe?.(); };
   }, [unified]);
 
   const setSelection = useCallback((next: Selection) => {
