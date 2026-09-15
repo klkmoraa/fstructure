@@ -224,34 +224,47 @@ export const validateFemDocument = (document: FemDocumentV1): readonly FemValida
   const issues: FemValidationIssue[] = [];
   if (!document || document.kind !== 'fem-document' || document.schemaVersion !== 1) issues.push(issue('invalid-value', 'document', '', 'schemaVersion'));
   if (!document || typeof document.id !== 'string' || !document.id) issues.push(issue('invalid-value', 'document', '', 'id'));
-  if (!document || !document.nodes?.length || !document.elements?.length) issues.push(issue('empty-model', 'document', document?.id ?? '', 'elements'));
+  const nodeList = Array.isArray(document?.nodes) ? document.nodes : [];
+  const elementList = Array.isArray(document?.elements) ? document.elements : [];
+  const loadList = Array.isArray(document?.loads) ? document.loads : [];
+  const restraintList = Array.isArray(document?.restraints) ? document.restraints : [];
+  if (!nodeList.length || !elementList.length) issues.push(issue('empty-model', 'document', document?.id ?? '', 'elements'));
+  if (document && !Array.isArray(document.nodes)) issues.push(issue('invalid-value', 'document', document.id ?? '', 'nodes'));
+  if (document && !Array.isArray(document.elements)) issues.push(issue('invalid-value', 'document', document.id ?? '', 'elements'));
+  if (document && !Array.isArray(document.loads)) issues.push(issue('invalid-value', 'document', document.id ?? '', 'loads'));
+  if (document && !Array.isArray(document.restraints)) issues.push(issue('invalid-value', 'document', document.id ?? '', 'restraints'));
   if (!document || !['plane-stress', 'plane-strain'].includes(document.analysis)) issues.push(issue('unsupported-analysis', 'document', document?.id ?? '', 'analysis'));
   if (!document?.material || !finite(document.material.E) || document.material.E <= 0) issues.push(issue('invalid-value', 'document', document?.id ?? '', 'material.E'));
   if (!document?.material || !finite(document.material.nu) || document.material.nu <= -1 || document.material.nu >= 0.5) issues.push(issue('invalid-value', 'document', document?.id ?? '', 'material.nu'));
   const nodes = new Set<string>();
-  for (const node of document?.nodes ?? []) {
+  for (const node of nodeList) {
+    if (!node || typeof node !== 'object') { issues.push(issue('invalid-value', 'node', '', '$entity')); continue; }
     if (nodes.has(node.id)) issues.push(issue('duplicate-id', 'node', node.id, 'id'));
     nodes.add(node.id);
     if (!node.id || !finite(node.x) || !finite(node.y) || (node.z !== undefined && !finite(node.z))) issues.push(issue('invalid-value', 'node', node.id ?? '', 'coordinate'));
   }
   const elements = new Set<string>();
-  for (const element of document?.elements ?? []) {
+  for (const element of elementList) {
+    if (!element || typeof element !== 'object') { issues.push(issue('invalid-value', 'element', '', '$entity')); continue; }
     if (elements.has(element.id)) issues.push(issue('duplicate-id', 'element', element.id, 'id'));
     elements.add(element.id);
     if (!SUPPORTED_ELEMENT_TYPES.has(element.type)) issues.push(issue('unsupported-element', 'element', element.id, 'type'));
     const expected = element.type === 'TRI3' ? TRI3_NODE_COUNT : element.type === 'QUAD4' ? QUAD4_NODE_COUNT : 0;
+    if (!Array.isArray(element.nodeIds)) { issues.push(issue('invalid-value', 'element', element.id, 'nodeIds')); continue; }
     if (expected > 0 && element.nodeIds.length !== expected) issues.push(issue('invalid-value', 'element', element.id, 'nodeIds'));
-    if (element.nodeIds.some((id) => !nodes.has(id))) issues.push(issue('missing-reference', 'element', element.id, 'nodeIds'));
+    if (element.nodeIds.some((id: unknown) => typeof id !== 'string' || !nodes.has(id))) issues.push(issue('missing-reference', 'element', element.id, 'nodeIds'));
   }
   const loadIds = new Set<string>();
-  for (const load of document?.loads ?? []) {
+  for (const load of loadList) {
+    if (!load || typeof load !== 'object') { issues.push(issue('invalid-value', 'load', '', '$entity')); continue; }
     if (loadIds.has(load.id)) issues.push(issue('duplicate-id', 'load', load.id, 'id'));
     loadIds.add(load.id);
     if (!nodes.has(load.nodeId)) issues.push(issue('missing-reference', 'load', load.id, 'nodeId'));
     if (!finite(load.fx) || !finite(load.fy) || (load.fz !== undefined && !finite(load.fz))) issues.push(issue('invalid-value', 'load', load.id, 'components'));
     if ((load.fz ?? 0) !== 0) issues.push(issue('unsupported-load', 'load', load.id, 'fz'));
   }
-  for (const restraint of document?.restraints ?? []) {
+  for (const restraint of restraintList) {
+    if (!restraint || typeof restraint !== 'object') { issues.push(issue('invalid-value', 'restraint', '', '$entity')); continue; }
     if (!nodes.has(restraint.nodeId)) issues.push(issue('missing-reference', 'restraint', restraint.nodeId, 'nodeId'));
     if (restraint.uz) issues.push(issue('unsupported-load', 'restraint', restraint.nodeId, 'uz'));
   }
