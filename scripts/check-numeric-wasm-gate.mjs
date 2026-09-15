@@ -13,6 +13,9 @@ const wasm = join(
 );
 const cargo = process.env.CARGO ?? join(homedir(), '.cargo/bin/cargo');
 const wasmBindgen = process.env.WASM_BINDGEN ?? join(homedir(), '.cargo/bin/wasm-bindgen');
+const expectedWasmBindgenVersion = 'wasm-bindgen 0.2.128';
+const expectedRustcPrefix = 'rustc 1.98.1 ';
+const expectedCargoPrefix = 'cargo 1.98.1 ';
 const temporaryRoot = mkdtempSync(join(tmpdir(), 'fstructure-wasm-gate-'));
 const nodePackage = join(temporaryRoot, 'node');
 const webPackage = join(temporaryRoot, 'web');
@@ -28,6 +31,12 @@ try {
   const rustcVersion = run(join(homedir(), '.cargo/bin/rustc'), ['--version']);
   const cargoVersion = run(cargo, ['--version']);
   const wasmBindgenVersion = run(wasmBindgen, ['--version']);
+  if (!rustcVersion.startsWith(expectedRustcPrefix) || !cargoVersion.startsWith(expectedCargoPrefix)) {
+    throw new Error(`rust-toolchain.toml requires Rust/Cargo 1.98.1; received ${rustcVersion} / ${cargoVersion}`);
+  }
+  if (wasmBindgenVersion !== expectedWasmBindgenVersion) {
+    throw new Error(`expected ${expectedWasmBindgenVersion}, received ${wasmBindgenVersion}`);
+  }
   run(cargo, [
     'build',
     '--locked',
@@ -66,12 +75,12 @@ try {
     throw new Error(`faer WASM returned ${packed.length} values; expected ${expected.length + 3}`);
   }
   const solution = packed.slice(0, expected.length);
-  const [conditionEstimate, linearResidual, equilibriumResidual] = packed.slice(expected.length);
+  const [conditionEstimate, linearResidual, algebraicEquilibriumResidual] = packed.slice(expected.length);
   if (solution.some((value, index) => Math.abs(value - expected[index]) > 1e-12)) {
     throw new Error(`faer WASM result ${solution.join(',')} does not match ${expected.join(',')}`);
   }
-  if (![conditionEstimate, linearResidual, equilibriumResidual].every(Number.isFinite)
-    || linearResidual > 1e-12 || equilibriumResidual > 1e-12) {
+  if (![conditionEstimate, linearResidual, algebraicEquilibriumResidual].every(Number.isFinite)
+    || linearResidual > 1e-12 || algebraicEquilibriumResidual > 1e-12) {
     throw new Error(`faer WASM quality is not reliable: ${packed.slice(expected.length).join(',')}`);
   }
 
@@ -80,7 +89,7 @@ try {
     status: 'passed',
     target: 'wasm32-unknown-unknown',
     solution,
-    quality: { conditionEstimate, linearResidual, equilibriumResidual },
+    algebraicQuality: { conditionEstimate, linearResidual, algebraicEquilibriumResidual },
     tolerance: 1e-12,
     rustcVersion,
     cargoVersion,

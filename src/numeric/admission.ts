@@ -32,9 +32,14 @@ export interface SparseLinearSystemShape {
 }
 
 /**
- * Conservative pre-allocation estimate for CSC input, sparse factors,
- * permutations and solve work vectors. The estimate is arithmetic only: it
- * never creates a matrix or a typed array.
+ * Pessimistic pre-allocation bound. It includes two JS/structured-clone input
+ * copies, typed-array/WASM transit, Rust triplets, faer sparse input,
+ * permutations/work vectors and worst-case dense LU fill. This can reject a
+ * sparse model that a future symbolic estimator would admit, but it cannot
+ * silently assume that fill remains proportional to input nnz.
+ *
+ * The estimate is arithmetic-only and uses bigint to detect overflow before
+ * any matrix, typed array or worker is allocated.
  */
 export const estimateSparseLinearSystemBytes = ({
   dimension,
@@ -42,15 +47,25 @@ export const estimateSparseLinearSystemBytes = ({
   rhsCount = 1,
 }: SparseLinearSystemShape): number => {
   if (![dimension, nonZeros, rhsCount].every(Number.isSafeInteger)
-    || dimension < 0 || nonZeros < 0 || rhsCount < 1) return Number.POSITIVE_INFINITY;
+    || dimension <= 0 || nonZeros < 0 || rhsCount < 1) return Number.POSITIVE_INFINITY;
 
-  const matrix = nonZeros * (Float64Array.BYTES_PER_ELEMENT + Uint32Array.BYTES_PER_ELEMENT)
-    + (dimension + 1) * Uint32Array.BYTES_PER_ELEMENT;
-  const factorReserve = nonZeros * 16;
-  const workVectors = dimension * (rhsCount + 2) * Float64Array.BYTES_PER_ELEMENT;
-  const permutation = dimension * Uint32Array.BYTES_PER_ELEMENT;
-  const total = matrix + factorReserve + workVectors + permutation + 8;
-  return Number.isSafeInteger(total) ? total : Number.POSITIVE_INFINITY;
+  const n = BigInt(dimension);
+  const nnz = BigInt(nonZeros);
+  const rhs = BigInt(rhsCount);
+  const jsAndClone = 2n * ((2n * nnz + n + 1n + n * rhs) * 16n);
+  const typedAndWasmTransit = 2n * (nnz * 12n + (n + 1n) * 4n + n * rhs * 8n);
+  const rustTriplets = nnz * 24n;
+  const faerSparseInput = nnz * 24n + (n + 1n) * 16n;
+  const potentialDenseFill = n * n * 48n;
+  const solveWorkspace = n * (rhs + 8n) * 8n;
+  const total = 8n * BigInt(MEBIBYTE)
+    + jsAndClone
+    + typedAndWasmTransit
+    + rustTriplets
+    + faerSparseInput
+    + potentialDenseFill
+    + solveWorkspace;
+  return total <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(total) : Number.POSITIVE_INFINITY;
 };
 
 export type AnalysisAdmission =

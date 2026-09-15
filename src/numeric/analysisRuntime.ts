@@ -105,15 +105,24 @@ interface ActiveJob<TResult> {
   readonly callbacks: AnalysisRunCallbacks<TResult>;
   readonly resolve: (result: CompletedAnalysisJob<TResult>) => void;
   readonly reject: (error: Error) => void;
-  readonly timer: ReturnType<typeof setTimeout>;
+  readonly timer: ReturnType<typeof setTimeout> | null;
   readonly detach: () => void;
 }
 
 export interface AdaptiveAnalysisJobRuntimeOptions<TPayload> {
   readonly createWorker: () => AnalysisWorkerLike;
+  readonly validatePayload?: (payload: TPayload) => void;
   readonly estimateBytes: (payload: TPayload) => number;
   readonly currentSourceVersion: (targetId: string) => string | undefined;
 }
+
+const isFiniteAnalysisQuality = (quality: unknown): quality is AnalysisQuality => {
+  if (typeof quality !== 'object' || quality === null) return false;
+  const candidate = quality as Partial<AnalysisQuality>;
+  return [candidate.conditionEstimate, candidate.linearResidual, candidate.equilibriumResidual]
+    .every((value) => typeof value === 'number' && Number.isFinite(value) && value >= 0)
+    && ['stable', 'limited', 'unreliable', 'failed'].includes(String(candidate.level));
+};
 
 export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
   private readonly options: AdaptiveAnalysisJobRuntimeOptions<TPayload>;
@@ -129,7 +138,13 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
     callbacks: AnalysisRunCallbacks<TResult> = {},
   ): Promise<CompletedAnalysisJob<TResult>> {
     if (this.disposed) return Promise.reject(new AnalysisJobCancelledError());
-    const estimatedBytes = this.options.estimateBytes(request.payload);
+    let estimatedBytes: number;
+    try {
+      this.options.validatePayload?.(request.payload);
+      estimatedBytes = this.options.estimateBytes(request.payload);
+    } catch (cause) {
+      return Promise.reject(cause instanceof Error ? cause : new Error('Analysis payload validation failed.'));
+    }
     const admission = assessAnalysisAdmission(estimatedBytes, request.budget);
     if (!admission.accepted) {
       return Promise.reject(new AnalysisAdmissionError(admission.estimatedBytes, admission.availableBytes));
@@ -139,8 +154,16 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
     }
 
     this.cancel();
-    callbacks.onProgress?.({ phase: 'admission', completed: 1, total: 1 });
-    const worker = this.options.createWorker();
+    this.notify(() => callbacks.onProgress?.({ phase: 'admission', completed: 1, total: 1 }));
+    let worker: AnalysisWorkerLike;
+    try {
+      worker = this.options.createWorker();
+    } catch (cause) {
+      return Promise.reject(new AnalysisWorkerError(
+        'WORKER_SETUP_FAILED',
+        cause instanceof Error ? cause.message : 'Numerical worker could not be created.',
+      ));
+    }
 
     return new Promise<CompletedAnalysisJob<TResult>>((resolve, reject) => {
       const onMessage = (event: AnalysisWorkerEvent) => this.receive(event.data, request.jobId);
@@ -148,29 +171,46 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
         if (this.active?.request.jobId !== request.jobId) return;
         this.finishWithError(new AnalysisWorkerError('WORKER_FAILURE', event.message ?? 'Numerical worker failed.'));
       };
-      worker.addEventListener('message', onMessage);
-      worker.addEventListener('error', onError);
-      const timer = setTimeout(() => {
-        if (this.active?.request.jobId === request.jobId) callbacks.onSoftDeadline?.(request);
-      }, Math.max(0, request.budget.softDeadlineMs));
-      this.active = {
-        request,
-        worker,
-        callbacks,
-        resolve,
-        reject,
-        timer,
-        detach: () => {
-          worker.removeEventListener('message', onMessage);
-          worker.removeEventListener('error', onError);
-        },
+      const onMessageError = (event: AnalysisWorkerEvent) => {
+        if (this.active?.request.jobId !== request.jobId) return;
+        this.finishWithError(new AnalysisWorkerError('MESSAGE_ERROR', event.message ?? 'Numerical worker message could not be cloned.'));
       };
-      const envelope: AnalysisWorkerRunRequest<TPayload> = {
-        protocolVersion: ANALYSIS_WORKER_PROTOCOL_VERSION,
-        type: 'run',
-        request,
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const detach = () => {
+        this.safely(() => worker.removeEventListener('message', onMessage));
+        this.safely(() => worker.removeEventListener('error', onError));
+        this.safely(() => worker.removeEventListener('messageerror', onMessageError));
       };
-      worker.postMessage(envelope);
+      const cleanupUnownedWorker = () => {
+        const timerToClear = timer;
+        if (timerToClear !== null) this.safely(() => clearTimeout(timerToClear));
+        detach();
+        this.safely(() => worker.terminate());
+      };
+      try {
+        worker.addEventListener('message', onMessage);
+        worker.addEventListener('error', onError);
+        worker.addEventListener('messageerror', onMessageError);
+        timer = setTimeout(() => {
+          if (this.active?.request.jobId === request.jobId) {
+            this.notify(() => callbacks.onSoftDeadline?.(request));
+          }
+        }, Math.max(0, request.budget.softDeadlineMs));
+        this.active = { request, worker, callbacks, resolve, reject, timer, detach };
+        const envelope: AnalysisWorkerRunRequest<TPayload> = {
+          protocolVersion: ANALYSIS_WORKER_PROTOCOL_VERSION,
+          type: 'run',
+          request,
+        };
+        worker.postMessage(envelope);
+      } catch (cause) {
+        if (this.active?.request.jobId === request.jobId) this.active = null;
+        cleanupUnownedWorker();
+        reject(new AnalysisWorkerError(
+          'WORKER_SETUP_FAILED',
+          cause instanceof Error ? cause.message : 'Numerical worker setup failed.',
+        ));
+      }
     });
   }
 
@@ -197,11 +237,11 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
       || response.sourceVersion !== active.request.sourceVersion
       || response.targetId !== active.request.targetId) return;
     if (response.type === 'progress') {
-      active.callbacks.onProgress?.({
+      this.notify(() => active.callbacks.onProgress?.({
         phase: response.phase as AnalysisPhase,
         completed: Number(response.completed),
         total: Number(response.total),
-      });
+      }));
       return;
     }
     if (response.type === 'error') {
@@ -209,6 +249,10 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
       return;
     }
     if (response.type !== 'success') return;
+    if (!isFiniteAnalysisQuality(response.quality)) {
+      this.finishWithError(new AnalysisWorkerError('INVALID_QUALITY', 'Numerical worker returned non-finite or invalid quality metrics.'));
+      return;
+    }
     if (this.options.currentSourceVersion(active.request.targetId) !== active.request.sourceVersion) {
       this.finishWithError(new AnalysisJobStaleError());
       return;
@@ -218,17 +262,13 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
       sourceVersion: active.request.sourceVersion,
       targetId: active.request.targetId,
       result: response.result as TResult,
-      quality: response.quality as AnalysisQuality,
+      quality: response.quality,
     };
     const finished = this.takeActive();
     if (!finished) return;
-    try {
-      finished.callbacks.onProgress?.({ phase: 'complete', completed: 1, total: 1 });
-      finished.callbacks.onPublish?.(completed);
-      finished.resolve(completed);
-    } catch (cause) {
-      finished.reject(cause instanceof Error ? cause : new Error('Analysis result publisher failed.'));
-    }
+    this.notify(() => finished.callbacks.onProgress?.({ phase: 'complete', completed: 1, total: 1 }));
+    this.notify(() => finished.callbacks.onPublish?.(completed));
+    finished.resolve(completed);
   }
 
   private finishWithError(error: Error): void {
@@ -240,9 +280,18 @@ export class AdaptiveAnalysisJobRuntime<TPayload, TResult> {
     const active = this.active;
     this.active = null;
     if (!active) return null;
-    clearTimeout(active.timer);
-    active.detach();
-    active.worker.terminate();
+    const timerToClear = active.timer;
+    if (timerToClear !== null) this.safely(() => clearTimeout(timerToClear));
+    this.safely(active.detach);
+    this.safely(() => active.worker.terminate());
     return active;
+  }
+
+  private safely(action: () => void): void {
+    try { action(); } catch { /* lifecycle cleanup is best-effort and must continue */ }
+  }
+
+  private notify(action: () => void): void {
+    this.safely(action);
   }
 }

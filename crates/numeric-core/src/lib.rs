@@ -9,6 +9,8 @@ pub enum MatrixError {
     InvalidIndices,
     InvalidValues,
     DimensionMismatch,
+    NonFiniteRightHandSide,
+    NonFiniteResult,
     FactorizationFailed,
 }
 
@@ -148,6 +150,7 @@ pub struct FaerSolveResult {
     pub solution: Vec<f64>,
     pub condition_estimate: f64,
     pub relative_residual: f64,
+    pub algebraic_equilibrium_residual: f64,
 }
 
 #[cfg(feature = "faer-backend")]
@@ -160,6 +163,9 @@ pub fn solve_csc_with_faer_metrics(
 
     if matrix.row_count != matrix.column_count || rhs.len() != matrix.row_count {
         return Err(MatrixError::DimensionMismatch);
+    }
+    if rhs.iter().any(|value| !value.is_finite()) {
+        return Err(MatrixError::NonFiniteRightHandSide);
     }
     let mut triplets = Vec::with_capacity(matrix.values.len());
     for column in 0..matrix.column_count {
@@ -181,6 +187,9 @@ pub fn solve_csc_with_faer_metrics(
     let right_hand_side = faer::col::Col::from_fn(rhs.len(), |row| rhs[row]);
     let solved = factor.solve(&right_hand_side);
     let solution: Vec<f64> = (0..rhs.len()).map(|row| solved[row]).collect();
+    if solution.iter().any(|value| !value.is_finite()) {
+        return Err(MatrixError::NonFiniteResult);
+    }
 
     let matrix_one_norm = (0..matrix.column_count)
         .map(|column| {
@@ -227,11 +236,22 @@ pub fn solve_csc_with_faer_metrics(
     let solution_max = solution.iter().copied().map(f64::abs).fold(0.0f64, f64::max);
     let rhs_max = rhs.iter().copied().map(f64::abs).fold(0.0f64, f64::max);
     let scale = (matrix_max * solution_max + rhs_max).max(f64::MIN_POSITIVE);
+    let algebraic_equilibrium_scale = rhs_max.max(f64::MIN_POSITIVE);
+    let condition_estimate = matrix_one_norm * inverse_one_norm;
+    let relative_residual = residual_max / scale;
+    let algebraic_equilibrium_residual = residual_max / algebraic_equilibrium_scale;
+    if !condition_estimate.is_finite()
+        || !relative_residual.is_finite()
+        || !algebraic_equilibrium_residual.is_finite()
+    {
+        return Err(MatrixError::NonFiniteResult);
+    }
 
     Ok(FaerSolveResult {
         solution,
-        condition_estimate: matrix_one_norm * inverse_one_norm,
-        relative_residual: residual_max / scale,
+        condition_estimate,
+        relative_residual,
+        algebraic_equilibrium_residual,
     })
 }
 
@@ -266,7 +286,7 @@ mod wasm {
         let mut packed = solved.solution;
         packed.push(solved.condition_estimate);
         packed.push(solved.relative_residual);
-        packed.push(solved.relative_residual);
+        packed.push(solved.algebraic_equilibrium_residual);
         Ok(packed.into_boxed_slice())
     }
 }

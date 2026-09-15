@@ -6,6 +6,7 @@ import {
   createAutomaticAnalysisBudget,
   estimateSparseLinearSystemBytes,
 } from './admission';
+import { validateSparseAnalysisPayload, type SparseLinearAnalysisPayload } from './numericWorker';
 
 describe('adaptive analysis admission', () => {
   it('uses 20% of announced memory within the device clamps and a 256 MiB fallback', () => {
@@ -27,11 +28,42 @@ describe('adaptive analysis admission', () => {
       rhsCount: 1,
     });
 
-    expect(small).toBe(304);
+    expect(small).toBe(8 * MEBIBYTE + 1_968);
     expect(Number.isFinite(veryLargeButSparse)).toBe(true);
+    expect(veryLargeButSparse).toBeGreaterThan(4_000_000_000_000_000);
+    expect(estimateSparseLinearSystemBytes({
+      dimension: Number.MAX_SAFE_INTEGER,
+      nonZeros: Number.MAX_SAFE_INTEGER,
+      rhsCount: 1,
+    })).toBe(Number.POSITIVE_INFINITY);
     expect(assessAnalysisAdmission(small, { maxEstimatedBytes: small, softDeadlineMs: 30_000 }))
       .toEqual({ accepted: true, estimatedBytes: small, availableBytes: small });
     expect(assessAnalysisAdmission(small + 1, { maxEstimatedBytes: small, softDeadlineMs: 30_000 }))
       .toEqual({ accepted: false, estimatedBytes: small + 1, availableBytes: small, reason: 'memory-budget' });
+  });
+
+  it('validates the complete CSC payload on the main thread before worker creation', () => {
+    const valid: SparseLinearAnalysisPayload = {
+      kind: 'sparse-linear-system',
+      matrix: {
+        rowCount: 2,
+        columnCount: 2,
+        columnPointers: [0, 1, 2],
+        rowIndices: [0, 1],
+        values: [2, 3],
+      },
+      rhs: [4, 9],
+    };
+    expect(() => validateSparseAnalysisPayload(valid)).not.toThrow();
+    expect(() => validateSparseAnalysisPayload({
+      ...valid,
+      matrix: { ...valid.matrix, rowCount: 0, columnCount: 0, columnPointers: [0], rowIndices: [], values: [] },
+      rhs: [],
+    })).toThrow(/positive/);
+    expect(() => validateSparseAnalysisPayload({
+      ...valid,
+      matrix: { ...valid.matrix, columnPointers: [0, 1], rowIndices: [0], values: [2] },
+    })).toThrow(/pointers/);
+    expect(() => validateSparseAnalysisPayload({ ...valid, rhs: [4, Number.NaN] })).toThrow(/finite/);
   });
 });

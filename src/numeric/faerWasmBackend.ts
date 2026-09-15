@@ -9,6 +9,9 @@ export interface FaerWasmSolveResult {
   readonly solution: number[];
   readonly backend: 'faer-wasm';
   readonly quality: ReturnType<typeof createAnalysisQuality>;
+  readonly qualityEvidence: {
+    readonly equilibrium: 'algebraic-only';
+  };
 }
 
 let initialized = false;
@@ -40,6 +43,9 @@ export const solveCscWithFaerWasm = async (
   if (matrix.rowCount !== matrix.columnCount || rhs.length !== matrix.rowCount) {
     throw new Error('Sparse linear system dimensions are incompatible.');
   }
+  if (rhs.some((value) => !Number.isFinite(value))) {
+    throw new Error('Sparse right-hand side must contain only finite values.');
+  }
   await initialize(moduleBytes);
   const packed = Array.from(solveCsc(
     matrix.rowCount,
@@ -48,14 +54,38 @@ export const solveCscWithFaerWasm = async (
     Float64Array.from(matrix.values),
     Float64Array.from(rhs),
   ));
-  if (packed.length !== matrix.rowCount + 3) {
+  return decodeFaerWasmResult(matrix.rowCount, packed);
+};
+
+/** Validates every value crossing from WebAssembly before it can be published. */
+export const decodeFaerWasmResult = (
+  dimension: number,
+  packed: readonly number[],
+): FaerWasmSolveResult => {
+  if (!Number.isSafeInteger(dimension) || dimension <= 0 || packed.length !== dimension + 3) {
     throw new Error('faer WASM returned an incompatible result envelope.');
   }
-  const solution = packed.slice(0, matrix.rowCount);
-  const [conditionEstimate, linearResidual, equilibriumResidual] = packed.slice(matrix.rowCount);
+  const solution = packed.slice(0, dimension);
+  if (solution.some((value) => !Number.isFinite(value))) {
+    throw new Error('faer WASM returned a non-finite solution.');
+  }
+  const [conditionEstimate, linearResidual, algebraicEquilibriumResidual] = packed.slice(dimension);
+  if (![conditionEstimate, linearResidual, algebraicEquilibriumResidual]
+    .every((value) => Number.isFinite(value) && value >= 0)) {
+    throw new Error('faer WASM returned non-finite or invalid metrics.');
+  }
+  const algebraicQuality = createAnalysisQuality(
+    conditionEstimate,
+    linearResidual,
+    algebraicEquilibriumResidual,
+  );
   return {
     solution,
     backend: 'faer-wasm',
-    quality: createAnalysisQuality(conditionEstimate, linearResidual, equilibriumResidual),
+    quality: {
+      ...algebraicQuality,
+      level: algebraicQuality.level === 'stable' ? 'limited' : algebraicQuality.level,
+    },
+    qualityEvidence: { equilibrium: 'algebraic-only' },
   };
 };
