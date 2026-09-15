@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
-import { COMPATIBILITY_ARTIFACT_DIGEST_ALGORITHM, digestCompatibilityArtifact } from '../compatibilityArtifactDigest';
 import { analyzeSpace3DProject } from './engine/solver';
 import { buildSpaceFrameElement } from './engine/element';
 import { buildMemberOrientation } from './engine/orientation';
@@ -22,44 +19,9 @@ import {
   space3dCorpus,
   unsupportedSpace3DCapabilities,
   space3dCorpusAssertionMatches,
-  SPACE3D_CORPUS_ALGORITHM_ID,
-  SPACE3D_CORPUS_ENGINE_ID,
-  SPACE3D_CORPUS_SCHEMA,
-  SPACE3D_CORPUS_TOLERANCES,
-  SPACE3D_RUNTIME_CONTRACT,
 } from './compatibilityCorpus';
 
 describe('direct Space3D compatibility corpus', () => {
-  it('keeps post-baseline manifest and artifact digests stable', () => {
-    // Original release digests certify the preserved corpus; behavior below runs the integrated engine.
-    const root = resolve(import.meta.dirname, '../../../../docs/migration/legacy-space3d');
-    const manifest = JSON.parse(readFileSync(resolve(root, 'migration', 'space3d-compatibility-manifest.json'), 'utf8')) as { schemaVersion: number; corpusId: string; baseline: string; task2Cut: string; units: string; coordinateConvention: string; schema: string; engineId: string; algorithmId: string; tolerances: typeof SPACE3D_CORPUS_TOLERANCES; caseCount: number; availableCaseCount: number; unsupportedCaseCount: number; cases: Array<{ id: string; status: string; capability: string; oracle: string }>; runtimeContract: typeof SPACE3D_RUNTIME_CONTRACT; claims: { maturity: string; normativeOrCertificationClaim: boolean; solverAlgorithmModified: boolean; unsupportedCapabilitiesFaked: boolean }; artifacts: Array<{ path: string; digestAlgorithm: string; sha256: string }> };
-    expect(manifest.schemaVersion).toBe(1);
-    expect(manifest.corpusId).toBe('fusionstructure-direct-space3d/v1');
-    expect(manifest.baseline).toBe('5955722');
-    expect(manifest.task2Cut).toBe('94aa5cb');
-    expect(manifest.caseCount).toBe(space3dCorpus.length);
-    expect(manifest.availableCaseCount).toBe(availableSpace3DCorpus.length);
-    expect(manifest.unsupportedCaseCount).toBe(unsupportedSpace3DCapabilities.length);
-    expect(manifest.units).toContain('kN-m');
-    expect(manifest.coordinateConvention).toContain('[ux,uy,uz,rx,ry,rz]');
-    expect(manifest.schema).toBe(SPACE3D_CORPUS_SCHEMA);
-    expect(manifest.engineId).toBe(SPACE3D_CORPUS_ENGINE_ID);
-    expect(manifest.algorithmId).toBe(SPACE3D_CORPUS_ALGORITHM_ID);
-    expect(manifest.tolerances).toEqual(SPACE3D_CORPUS_TOLERANCES);
-    expect(manifest.cases).toHaveLength(space3dCorpus.length);
-    for (const fixture of space3dCorpus) {
-      expect(manifest.cases.find((item) => item.id === fixture.id)).toEqual({ id: fixture.id, status: fixture.status, capability: fixture.capability, oracle: fixture.oracle });
-    }
-    expect(manifest.runtimeContract).toEqual(SPACE3D_RUNTIME_CONTRACT);
-    expect(manifest.claims).toEqual({ maturity: 'experimental', normativeOrCertificationClaim: false, solverAlgorithmModified: false, unsupportedCapabilitiesFaked: false });
-    for (const artifact of manifest.artifacts) {
-      expect(artifact.digestAlgorithm, artifact.path).toBe(COMPATIBILITY_ARTIFACT_DIGEST_ALGORITHM);
-      const digest = digestCompatibilityArtifact(readFileSync(resolve(root, artifact.path)));
-      expect(digest, artifact.path).toBe(artifact.sha256);
-    }
-  });
-
   it('executes every case against literal independent assertions and invariants', () => {
     expect(space3dCorpus.length).toBeGreaterThanOrEqual(9);
     for (const fixture of availableSpace3DCorpus) {

@@ -17,8 +17,8 @@ Consolidar `/Users/crismora/Desktop/FStructure` en una sola web app llamada `fst
 - Ningún cambio de 3D sobrescribe 2D silenciosamente. Sólo parches compatibles y aprobados regresan como una transacción deshacible; lo fuera del plano permanece en 3D.
 - Diseño consume exclusivamente snapshots versionados y fiables de 2D/3D. NTC CDMX 2023 y AISC 360-22 sólo se habilitan con evidencia pública verificable; ACI 318-25 y ASCE/SEI 7-22 permanecen registrados pero bloqueados hasta contar con fuentes completas autorizadas.
 - FEM es lineal estático. Se excluyen no linealidad, contacto, dinámica e historia de tiempo. 3D excluye plasticidad material, grandes desplazamientos e historia de tiempo.
-- No se añaden backend remoto, IFC, colaboración en nube ni push a repos remotos.
-- Al final `/Users/crismora/Desktop/FStructure` contiene únicamente `fstructure`; las fuentes anteriores se conservan recuperables en `/Users/crismora/Desktop/FStructure-legacy-20260914`.
+- No se añaden backend remoto, IFC ni colaboración en nube. El propietario autorizó posteriormente publicar esta rama mediante un pull request.
+- Al final `/Users/crismora/Desktop/FStructure` contiene únicamente `fstructure`; por instrucción posterior del propietario se retiraron las copias legacy.
 
 ## Contratos obligatorios
 
@@ -69,8 +69,8 @@ interface SyncPatchV1 {
 
 - Crear un manifiesto reproducible SHA-256 de `Fusiones`, `Solver2D`, `Solver3D`, `DiseñoEstructural`, `FEM-Estructural` y `Aprendizaje-y-Evidencia`, incluyendo commit, rama, remoto, estado y hashes de archivos relevantes.
 - Crear `/Users/crismora/Desktop/FStructure/fstructure` como repositorio Git autónomo desde el commit exacto de `Fusiones`, preservando rama, historial y el remoto GitHub original. Verificar igualdad del árbol Git y del build antes de archivar.
-- Migrar al repositorio canónico los diez tests exclusivos de Space3D, fixtures/oráculos útiles, licencias MIT y documentación normativa que no esté duplicada. No migrar resultados ilustrativos del prototipo de Diseño.
-- Mover las carpetas preexistentes a `/Users/crismora/Desktop/FStructure-legacy-20260914` sin borrar datos ni repos remotos. Verificar que en `/Users/crismora/Desktop/FStructure` sólo quede `fstructure`.
+- Integrar en el repositorio canónico los tests ejecutables, fixtures/oráculos útiles, licencias MIT y documentación normativa que no esté duplicada. No conservar una segunda copia legacy del módulo ni migrar resultados ilustrativos del prototipo de Diseño.
+- Verificar que en `/Users/crismora/Desktop/FStructure` sólo quede `fstructure`; las carpetas anteriores se retiraron después por instrucción explícita del propietario.
 - Documentar toda operación y evidencia en `docs/migration/`.
 
 ## Task 2: Definir contratos, bundle, registro de herramientas y URL canónica
