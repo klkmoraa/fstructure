@@ -1011,3 +1011,28 @@
     animation-duration: 0.01ms !important;
   }
 }
+
+/* The persistent tool choices reuse the existing action geometry and treatments. */
+.workspace-topbar__tool-switcher { flex-shrink: 0; }
+.workspace-topbar__tool-switcher .workspace-topbar__action-button { min-width: 44px; }
+.workspace-topbar__tool-switcher .workspace-topbar__action-button span {
+  position: static; width: auto; height: auto; overflow: visible; clip: auto;
+}
+.workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__project { flex-basis: 220px; }
+@media (max-width: 700px) {
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) { gap: 4px; padding: 6px; align-items: flex-start; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__project-group { flex: 0 0 38px; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__brand { min-width: 38px; width: 38px; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__project { display: none; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__actions {
+    flex: 1; min-width: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px;
+  }
+  .workspace-topbar__tool-switcher { margin-right: auto; padding: 0; }
+  .workspace-topbar__tool-switcher .workspace-topbar__action-button { padding-inline: 6px; min-height: 44px; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) [data-workspace-group="model"] { order: 4; margin-right: auto; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) [data-workspace-group="calculation-experience"] { order: 5; }
+  .shell-tool-slot--controls { order: 4; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__status { display: none; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__icon-button,
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__action-button { min-height: 44px; }
+}

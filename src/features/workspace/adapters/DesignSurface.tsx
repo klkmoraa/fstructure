@@ -5,7 +5,7 @@ import { DesignSurfaceContext } from './surfaceContexts';
 export default function DesignSurface() {
   const shellProps = useContext(DesignSurfaceContext);
   const [open, setOpen] = useState(true);
-  return <ConcreteBeamDesignSurface {...(shellProps ?? {
+  return <ConcreteBeamDesignSurface nativeTool {...(shellProps ?? {
     open, status: open ? 'active' : 'closed', presentation: 'fullscreen', onOpenChange: setOpen,
   })} />;
 }

@@ -1,6 +1,8 @@
 import { Box, ChartNoAxesCombined, Check, CloudOff, DraftingCompass, PenLine, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FStructureMark } from '../../design-system/brand';
+import type { ToolId } from '../../shared/contracts';
+import { ToolSwitcher } from './ToolSwitcher';
 
 /**
  * Recuperar el respaldo con éxito no es un fallo de guardado.
@@ -45,6 +47,11 @@ export interface WorkspaceTopBarLabels {
 }
 
 export interface WorkspaceTopBarProps {
+  tool?: ToolId;
+  onToolChange?: (tool: ToolId) => void;
+  contextualControls?: ReactNode;
+  primaryAction?: ReactNode;
+  toolStatus?: ReactNode;
   projectName: string;
   storageState: WorkspaceStorageState;
   storageMessage?: string | null;
@@ -84,6 +91,7 @@ export interface WorkspaceTopBarProps {
  * funcione con teclado, touch y lector de pantalla.
  */
 export const WorkspaceTopBar = ({
+  tool = 'model2d', onToolChange, contextualControls, primaryAction, toolStatus,
   projectName,
   storageState,
   storageMessage,
@@ -179,7 +187,7 @@ export const WorkspaceTopBar = ({
         </div>
       </form> : null}
 
-      {contextActive ? <div className="workspace-topbar__status" aria-label={labels.project}>
+      <div className="workspace-topbar__status" aria-label={labels.project}>
         {showStorageStatus ?
         <span
           className={'workspace-topbar__status-chip' + (storageFailed ? ' is-error' : '') + (storageRecovered ? ' is-notice' : '')}
@@ -195,7 +203,7 @@ export const WorkspaceTopBar = ({
             {storageMessage ? <small>{storageMessage}</small> : null}
           </span>
         </span> : null}
-        <span
+        {contextActive ? <span
           className={'workspace-topbar__status-chip' + (analysisRunning ? ' is-running' : '') + (analysisFailed ? ' is-error' : '')}
           role="status"
           data-analysis-state={analysisState}
@@ -203,11 +211,12 @@ export const WorkspaceTopBar = ({
         >
           {analysisRunning ? <Play size={15} fill="currentColor" aria-hidden="true" /> : <ChartNoAxesCombined size={15} aria-hidden="true" />}
           <span><strong>{analysisLabel}</strong></span>
-        </span>
-      </div> : null}
+        </span> : toolStatus}
+      </div>
     </div>
 
     <nav className="workspace-topbar__actions" aria-label={labels.actions}>
+      {onToolChange ? <ToolSwitcher tool={tool} onChange={onToolChange} /> : null}
       {contextActive ? <div className="workspace-topbar__model-group" data-workspace-group="model">
         <div className="workspace-topbar__history-group">
           <button type="button" className="workspace-topbar__icon-button" onClick={onUndo} disabled={!canUndo} aria-label={labels.undo} title={labels.undo}>
@@ -223,12 +232,12 @@ export const WorkspaceTopBar = ({
             <span>{labels.results}</span>
           </button>
         </div>
-        <div className="workspace-topbar__results-group" data-workspace-group="design">
+        {!onToolChange ? <div className="workspace-topbar__results-group" data-workspace-group="design">
           <button type="button" className={'workspace-topbar__action-button' + (designOpen ? ' is-active' : '')} onClick={(event) => onOpenDesign(event.currentTarget)} aria-label={labels.design} aria-pressed={designOpen}>
             <DraftingCompass size={17} aria-hidden="true" />
             <span>{labels.design}</span>
           </button>
-        </div>
+        </div> : null}
       </div> : null}
       {contextActive && onOpenCalculationExperience ? <div className="workspace-topbar__experience-group" data-workspace-group="calculation-experience">
         <button
@@ -242,7 +251,7 @@ export const WorkspaceTopBar = ({
           <span>{labels.calculationExperience}</span>
         </button>
       </div> : null}
-      {onOpenSpace3D ? <div className="workspace-topbar__mode-group" data-workspace-group="workspace-mode">
+      {!onToolChange && onOpenSpace3D ? <div className="workspace-topbar__mode-group" data-workspace-group="workspace-mode">
         <button
           type="button"
           className={'workspace-topbar__action-button' + (space3DActive && !returnTo2D ? ' is-active' : '')}
@@ -256,6 +265,8 @@ export const WorkspaceTopBar = ({
         </button>
       </div> : null}
       {utilities}
+      {contextualControls}
+      {primaryAction}
       {contextActive ? <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
         <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>
           <Play size={17} fill="currentColor" aria-hidden="true" />

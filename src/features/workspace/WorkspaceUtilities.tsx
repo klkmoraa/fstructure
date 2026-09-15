@@ -29,10 +29,11 @@ import { UNIT_SYSTEM_PROFILES, unitSystemLabel } from '../../engine/units';
 import type { CalculationReportOptions } from '../../utils/calculationPdf';
 import type { PdfPreviewArtifact } from '../pdf-preview/PdfPreviewDialog';
 import { emitWorkspaceCommand } from './workspaceCommands';
+import type { ToolId } from '../../shared/contracts';
 
 const LazyPdfPreviewDialog = lazy(() => import('../pdf-preview/PdfPreviewDialog').then((module) => ({ default: module.PdfPreviewDialog })));
 
-export type WorkspaceEnvironment = 'model2d' | 'space3d' | 'fem';
+export type WorkspaceEnvironment = ToolId;
 
 /**
  * One compact, always-reachable home for the workspace controls that do not

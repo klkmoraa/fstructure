@@ -1,5 +1,6 @@
 import { Grid3X3, Layers3, Sigma, Waypoints } from 'lucide-react';
 import './femSurface.css';
+import { ShellContribution } from '../../features/workspace/ShellToolSlots';
 
 const roadmap = [
   { label: 'Modelo', description: 'Geometría, materiales y condiciones de borde', Icon: Waypoints },
@@ -11,6 +12,9 @@ const roadmap = [
 /** Punto de entrada del futuro módulo FEM. No ejecuta análisis. */
 export function FemSurface() {
   return <section className="fusion-fem" aria-labelledby="fem-title">
+    <ShellContribution slot="action"><button type="button" className="workspace-topbar__action-button is-primary" disabled>Analizar FEM</button></ShellContribution>
+    <ShellContribution slot="status"><span role="status">Experimental · Motor no disponible</span></ShellContribution>
+    <ShellContribution slot="inspector"><p>El motor FEM todavía no está implementado.</p></ShellContribution>
     <header className="fusion-fem__intro">
       <span className="fusion-fem__status">Planeado</span>
       <h1 id="fem-title">Elementos finitos</h1>

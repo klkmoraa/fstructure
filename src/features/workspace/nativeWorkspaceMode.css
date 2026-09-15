@@ -38,3 +38,46 @@
 .native-workspace-mode .workspace-loading {
   height: 100%;
 }
+
+.native-workspace-mode .concrete-design-surface {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+}
+
+.shell-tool-slot:empty { display: none; }
+.shell-tool-slot--controls { display: flex; gap: 4px; align-items: center; }
+.shell-tool-inspector:has(.shell-tool-slot:empty) { display: none; }
+.shell-tool-inspector { width: min(320px, 30vw); min-height: 0; overflow: auto; }
+.app-shell[data-shell-class]:has(.native-workspace-mode):has(.shell-tool-inspector [data-shell-slot="inspector"] > *) .workspace {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr);
+}
+.shell-tool-inspector { grid-column: 2; grid-row: 1; }
+.shell-tool-slot--mobile { display: contents; }
+.shell-mobile-sheet {
+  margin: auto 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 75dvh;
+  padding: 12px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-control) var(--sc-radius-control) 0 0;
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  overflow: auto;
+}
+.shell-mobile-sheet::backdrop { background: rgb(0 0 0 / 25%); }
+.space3d-screen[data-embedded] { display: flex; flex-direction: column; }
+.space3d-screen[data-embedded] .space3d-layout { flex: 1; min-height: 0; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "toolrail stage"; }
+.shell-tool-inspector .space3d-model-summary-panel,
+.shell-tool-inspector .space3d-rail { display: block; position: static; width: auto; }
+.shell-storage-notice { margin: 0; padding: 4px 12px; font-size: var(--sc-font-size-caption); color: var(--sc-color-text-primary); background: var(--sc-color-surface-1); }
+.shell-mobile-sheet button { min-height: 44px; }
+@media (prefers-reduced-motion: reduce) {
+  .shell-mobile-sheet, .workspace-topbar * { animation: none !important; transition: none !important; scroll-behavior: auto; }
+}

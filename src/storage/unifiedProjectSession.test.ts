@@ -1,0 +1,70 @@
+import { expect, it } from 'vitest';
+import { createDefaultProject } from '../data/defaultProject';
+import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
+import { InMemoryBundleDatabase, InMemoryUnifiedBundleRepository } from './unifiedBundleRepository';
+import { UnifiedProjectSession } from './unifiedProjectSession';
+import { buildPlanar2DToSpace3DHandoff } from '../integrations/planar2dToSpace3d';
+import type { JsonValue } from '../shared/project/unifiedProjectBundle';
+
+const storage = { length: 0, key: () => null, getItem: () => null };
+it('retains the canonical fallback revision when a requested project is absent', async () => {
+  const repo = new InMemoryUnifiedBundleRepository();
+  const project = createDefaultProject();
+  await repo.saveBundle(createUnifiedProjectBundle({ ...project, name: 'Canonical fallback' }, 'v1'), 0);
+  const session = new UnifiedProjectSession(repo);
+  const opened = await session.initialize(storage, project, 'missing');
+  expect(opened.name).toBe('Canonical fallback');
+  await session.save2D({ ...opened, name: 'edited' });
+  expect((await repo.snapshot()).recoveries).toHaveLength(0);
+});
+it('opens canonical data, serializes edits, and preserves independent tool branches', async () => {
+  const repo = new InMemoryUnifiedBundleRepository();
+  const project = createDefaultProject();
+  const bundle = createUnifiedProjectBundle(project, 'v1');
+  bundle.design = { retained: 'design' }; bundle.fem = [{ retained: 'fem' }];
+  await repo.saveBundle(bundle, 0);
+  const session = new UnifiedProjectSession(repo);
+  const opened = await session.initialize(storage, { ...project, name: 'stale legacy' });
+  expect(opened.name).toBe(project.name);
+  await Promise.all([session.save2D({ ...opened, name: 'first' }), session.save2D({ ...opened, name: 'second' })]);
+  const saved = await repo.openBundle(project.id);
+  expect(saved?.bundle.model2d.name).toBe('second');
+  expect(saved?.bundle.design).toEqual({ retained: 'design' });
+  expect(saved?.bundle.fem).toEqual([{ retained: 'fem' }]);
+  expect(saved?.revision).toBe(3);
+});
+it('keeps a rejected edit in recovery and blocks stale saves until explicitly reopened', async () => {
+  const database = new InMemoryBundleDatabase();
+  const repo = new InMemoryUnifiedBundleRepository(database);
+  const other = new InMemoryUnifiedBundleRepository(database);
+  const project = createDefaultProject();
+  await repo.saveBundle(createUnifiedProjectBundle(project, 'v1'), 0);
+  const session = new UnifiedProjectSession(repo);
+  await session.initialize(storage, project);
+  await other.saveBundle(createUnifiedProjectBundle({ ...project, name: 'remote' }, 'v2'), 1);
+  await expect(session.save2D({ ...project, name: 'local' })).rejects.toThrow(/changed/);
+  expect(session.status.issue).toBe('conflict');
+  expect(session.status.message).toContain('recovery');
+  await expect(session.save2D(project)).rejects.toThrow();
+  expect((await repo.snapshot()).recoveries).toHaveLength(1);
+  await session.open(project.id);
+  await session.save2D({ ...project, name: 'reviewed' });
+  expect((await repo.openBundle(project.id))?.bundle.model2d.name).toBe('reviewed');
+});
+
+it('serializes 3D and 2D edits through one revision owner without overwriting either branch', async () => {
+  const repo = new InMemoryUnifiedBundleRepository();
+  const project = createDefaultProject();
+  const session = new UnifiedProjectSession(repo);
+  await session.initialize(storage, project);
+  const model = JSON.parse(JSON.stringify(buildPlanar2DToSpace3DHandoff(project).candidateModel)) as JsonValue;
+  const fresh = await session.saveSpace3D(project, { sourceProjectId: project.id, sourceVersion: 'source-1', model });
+  expect(fresh.bundle.space3d?.sourceVersion).toBe(fresh.bundle.manifest.sourceVersion);
+  await session.save2D({ ...project, name: 'Edited 2D' });
+  const saved = await repo.openBundle(project.id);
+  expect(saved?.bundle.space3d?.model).toEqual(model);
+  expect(saved?.bundle.space3d?.sourceVersion).toBe('source-1');
+  expect(saved?.bundle.manifest.sourceVersion).not.toBe('source-1');
+  expect(saved?.bundle.model2d.name).toBe('Edited 2D');
+  expect(saved?.revision).toBe(2);
+});

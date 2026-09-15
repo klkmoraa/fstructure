@@ -14,7 +14,7 @@ const loadMotionFeatures = () => import('./design-system/motionFeatures')
   .then(({ default: features }) => features);
 
 const FStructureSurface = () => {
-  const { project, analysis, replaceProject } = useProject();
+  const { project, analysis, replaceProject, openUnifiedProject } = useProject();
   const { route, navigate } = useProjectNavigation(project.id);
   const openTool = useCallback((tool: ToolId) => {
     navigate({ surface: 'workspace', projectId: route.projectId, tool });
@@ -25,6 +25,11 @@ const FStructureSurface = () => {
     let cancelled = false;
     const resolveProject = async () => {
       try {
+        if (openUnifiedProject) {
+          if (await openUnifiedProject(route.projectId, () => !cancelled)) return;
+          if (!cancelled) navigate({ ...route, projectId: project.id }, 'replace');
+          return;
+        }
         const { getProjectRepository } = await import('./storage/projectRepository');
         const record = await getProjectRepository().openProject(route.projectId);
         if (cancelled) return;
@@ -39,7 +44,7 @@ const FStructureSurface = () => {
     };
     void resolveProject();
     return () => { cancelled = true; };
-  }, [route, project.id, replaceProject, navigate]);
+  }, [route, project.id, replaceProject, openUnifiedProject, navigate]);
 
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
     {route.surface === 'welcome'
@@ -59,7 +64,7 @@ const FStructureSurface = () => {
 
 const App = () => <LazyMotion features={loadMotionFeatures} strict>
   <MotionConfig reducedMotion="user">
-    <ProjectProvider><FStructureSurface /></ProjectProvider>
+    <ProjectProvider unified><FStructureSurface /></ProjectProvider>
   </MotionConfig>
 </LazyMotion>;
 

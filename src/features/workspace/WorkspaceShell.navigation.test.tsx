@@ -2,6 +2,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it } from 'vitest';
+import { IDBFactory } from 'fake-indexeddb';
 import App from '../../App';
 import { createDefaultProject } from '../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../data/projectStorage';
@@ -16,23 +17,50 @@ class TestResizeObserver {
 Object.defineProperty(globalThis, 'ResizeObserver', { value: TestResizeObserver, configurable: true });
 
 beforeEach(() => {
+  globalThis.indexedDB = new IDBFactory();
   localStorage.clear();
   sessionStorage.clear();
   window.history.replaceState(null, '', '/?surface=workspace2d');
   localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createDefaultProject()));
   localStorage.setItem(WORKSPACE_LAYOUT_STORAGE_KEY, JSON.stringify({ inspectorCollapsed: false }));
 });
+
+it('preserves the mounted 2D canvas while opening contextual results and switches to honest FEM', async () => {
+  const user = userEvent.setup();
+  render(<App />);
+  const canvas = await screen.findByRole('application');
+  await user.click(screen.getByRole('button', { name: 'Resultados' }));
+  expect(screen.getByRole('application')).toBe(canvas);
+  await user.click(screen.getByRole('tab', { name: 'FEM' }));
+  expect(await screen.findByRole('heading', { name: 'Elementos finitos' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Analizar FEM' }).hasAttribute('disabled')).toBe(true);
+  expect(screen.queryByRole('application')).toBeNull();
+  expect(document.querySelectorAll('[data-workspace-topbar]')).toHaveLength(1);
+  expect(new URLSearchParams(window.location.search).get('tool')).toBe('fem');
+});
 afterEach(cleanup);
 
-it('closes Design through the canonical route when entering full canvas and preserves history/reload behavior', async () => {
+it('opens Design as a native tool and exposes the four persistent destinations', async () => {
+  const user = userEvent.setup();
+  render(<App />);
+  expect(await screen.findAllByRole('tab', { name: /^(2D|Diseño|3D|FEM)$/ })).toHaveLength(4);
+  const topbar = document.querySelector('[data-workspace-topbar]');
+  await user.click(screen.getByRole('tab', { name: 'Diseño' }));
+  expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
+  expect(screen.queryByRole('application')).toBeNull();
+  expect(document.querySelectorAll('[data-workspace-topbar]')).toHaveLength(1);
+  expect(document.querySelector('[data-workspace-topbar]')).toBe(topbar);
+});
+
+it('switches native Design through canonical history and restores 2D canvas ownership on reload', async () => {
   const user = userEvent.setup();
   const view = render(<App />);
-  await user.click(screen.getByRole('button', { name: 'Diseño' }));
+  await user.click(await screen.findByRole('tab', { name: 'Diseño' }));
   expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
   const historyLength = window.history.length;
   const projectId = new URLSearchParams(window.location.search).get('project');
 
-  await user.click(screen.getByRole('button', { name: 'Mesa de trabajo completa' }));
+  await user.click(screen.getByRole('tab', { name: '2D' }));
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
   expect(new URLSearchParams(window.location.search).get('project')).toBe(projectId);
   expect(window.history.length).toBe(historyLength + 1);
@@ -48,7 +76,7 @@ it('closes Design through the canonical route when entering full canvas and pres
   view.unmount();
   render(<App />);
   expect(await screen.findByRole('application')).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Salir de mesa completa' })).toBeTruthy();
+  expect(screen.getAllByRole('application')).toHaveLength(1);
   expect(screen.queryByLabelText('Cerrar Diseño')).toBeNull();
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
 });

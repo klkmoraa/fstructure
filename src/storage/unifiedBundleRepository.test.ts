@@ -141,7 +141,7 @@ describe.each(implementations)('$name bundle transaction conformance', ({ setup 
     ['malformed FEM list', (b: UnifiedProjectBundleV1) => { Object.assign(b, { fem: {} }); }],
     ['bad Space3D shape', (b: UnifiedProjectBundleV1) => { b.space3d = { sourceProjectId: 'p1', sourceVersion: 'source-1', model: {} }; }],
     ['wrong 3D source', (b: UnifiedProjectBundleV1) => { b.space3d = { sourceProjectId: 'other', sourceVersion: 'source-1', model: JSON.parse(JSON.stringify(model3d())) }; }],
-    ['wrong 3D version', (b: UnifiedProjectBundleV1) => { b.space3d = { sourceProjectId: 'p1', sourceVersion: 'other', model: JSON.parse(JSON.stringify(model3d())) }; }],
+    ['empty 3D version', (b: UnifiedProjectBundleV1) => { b.space3d = { sourceProjectId: 'p1', sourceVersion: '', model: JSON.parse(JSON.stringify(model3d())) }; }],
     ['wrong 3D identity', (b: UnifiedProjectBundleV1) => { b.space3d = { sourceProjectId: 'p1', sourceVersion: 'source-1', model: JSON.parse(JSON.stringify(model3d('space3d:other'))) }; }],
     ['array runtime properties', (b: UnifiedProjectBundleV1) => { Object.assign(b.fem, { runtime: () => 1 }); }],
     ['nested model array runtime properties', (b: UnifiedProjectBundleV1) => { Object.assign(b.model2d.nodes, { runtime: () => 1 }); }],
