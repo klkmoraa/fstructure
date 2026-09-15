@@ -31,6 +31,8 @@ import type {
 const KILOGRAM_TO_MEGAGRAM = 1e-3;
 const DOF_PER_NODE = 6;
 
+const vectorNorm = (values: readonly number[]): number => Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
+
 export interface Space3DModalOptions extends Space3DStaticAnalysisOptions {
   readonly targetId?: string;
   readonly modes?: number;
@@ -184,10 +186,10 @@ export const analyzeSpace3DModal = (
         ? (bilinear(mass.M, full, vector) ** 2) / modalMass / totalByComponent[index]
         : 0;
     });
-    const peak = Math.max(...project.nodes.map((node) => {
-      const base = project.nodes.findIndex((candidate) => candidate.id === node.id) * DOF_PER_NODE;
-      return Math.max(Math.abs(full[base]), Math.abs(full[base + 1]), Math.abs(full[base + 2]));
-    }), 0);
+    const peak = project.nodes.reduce((maximum, _node, nodeIndex) => {
+      const base = nodeIndex * DOF_PER_NODE;
+      return Math.max(maximum, Math.abs(full[base]), Math.abs(full[base + 1]), Math.abs(full[base + 2]));
+    }, 0);
     const scale = peak > 0 ? 1 / peak : 1;
     return Object.freeze({
       angularFrequency: Math.sqrt(omegaSquared),
@@ -477,8 +479,8 @@ export const analyzeSpace3DPDelta = (
     stiffness = assembly.stiffness.map((row, i) => row.map((value, j) => value - geometric[i][j]));
     try {
       const next = solveWithStiffness(stiffness, assembly.loadVector, assembly.freeDofs);
-      const difference = Math.hypot(...next.displacement.map((value, index) => value - displacement[index]));
-      const scale = Math.max(1, Math.hypot(...next.displacement));
+      const difference = vectorNorm(next.displacement.map((value, index) => value - displacement[index]));
+      const scale = Math.max(1, vectorNorm(next.displacement));
       displacement = next.displacement;
       solved = { relativeResidual: next.relativeResidual, conditionEstimate: next.conditionEstimate };
       if (difference <= tolerance * scale) { converged = true; break; }
@@ -523,7 +525,7 @@ export const analyzeSpace3DBuckling = (
   const modes = eigen.values.map((criticalLoadFactor, index) => {
     const full = new Array<number>(assembly.totalDofs).fill(0);
     freeDofs.forEach((global, reduced) => { full[global] = eigen.vectors[index][reduced]; });
-    const peak = Math.max(...project.nodes.map((_, nodeIndex) => Math.max(Math.abs(full[nodeIndex * DOF_PER_NODE]), Math.abs(full[nodeIndex * DOF_PER_NODE + 1]), Math.abs(full[nodeIndex * DOF_PER_NODE + 2]))), 0);
+    const peak = project.nodes.reduce((maximum, _, nodeIndex) => Math.max(maximum, Math.abs(full[nodeIndex * DOF_PER_NODE]), Math.abs(full[nodeIndex * DOF_PER_NODE + 1]), Math.abs(full[nodeIndex * DOF_PER_NODE + 2])), 0);
     const scale = peak > 0 ? 1 / peak : 1;
     return Object.freeze({
       criticalLoadFactor,
@@ -549,5 +551,131 @@ export const analyzeSpace3DBuckling = (
     freeDegreesOfFreedom: freeDofs.length,
     issues: Object.freeze([]),
     reason: eigen.reason,
+  });
+};
+
+export type Space3DInfluenceQuantity = 'N' | 'Vy' | 'Vz' | 'T' | 'My' | 'Mz';
+
+export interface Space3DInfluenceTarget {
+  readonly kind: 'member';
+  readonly memberId: string;
+  /** Cut coordinate on the deformable member, measured from end i. */
+  readonly position: number;
+  readonly quantity: Space3DInfluenceQuantity;
+  readonly side: 'left' | 'right' | 'continuous';
+}
+
+export interface Space3DInfluenceOptions extends Space3DStaticAnalysisOptions {
+  readonly targetId: string;
+  readonly target: Space3DInfluenceTarget;
+  /** Positions of the moving unit load on the same member path. */
+  readonly positions: readonly number[];
+  /** Explicit global direction; V1's unsigned `V/M/R` fields are not inferred. */
+  readonly unitLoad: Space3DVector;
+}
+
+export interface Space3DInfluencePoint {
+  readonly position: number;
+  readonly value: number;
+  readonly equilibriumResidual: number;
+  readonly analysis: Space3DAnalysisResult;
+}
+
+export interface Space3DInfluenceResult {
+  readonly success: boolean;
+  readonly targetId: string;
+  readonly target: Space3DInfluenceTarget;
+  readonly points: readonly Space3DInfluencePoint[];
+  readonly maxEquilibriumResidual: number;
+  readonly issues: readonly Space3DAnalysisIssue[];
+  readonly reason: string;
+}
+
+const influenceFailure = (
+  targetId: string,
+  target: Space3DInfluenceTarget,
+  reason: string,
+  issues: readonly Space3DAnalysisIssue[] = [],
+): Space3DInfluenceResult => Object.freeze({
+  success: false,
+  targetId,
+  target,
+  points: Object.freeze([]),
+  maxEquilibriumResidual: Number.NaN,
+  issues: Object.freeze([...issues]),
+  reason,
+});
+
+const evaluateInfluenceQuantity = (
+  result: Space3DAnalysisResult,
+  target: Space3DInfluenceTarget,
+  length: number,
+): number => {
+  const member = result.memberResults.find((candidate) => candidate.memberId === target.memberId);
+  if (!member) return Number.NaN;
+  const ratio = length > 0 ? Math.max(0, Math.min(1, target.position / length)) : 0;
+  const start = member.start[target.quantity];
+  const end = member.end[target.quantity];
+  if (target.side === 'left') return start + ratio * (end - start);
+  if (target.side === 'right') return end - (1 - ratio) * (end - start);
+  return (start + end) / 2;
+};
+
+/**
+ * Respuesta de influencia para una carga unitaria espacial explícita. La carga
+ * móvil se proyecta a los dos extremos mediante funciones lineales; cada punto
+ * vuelve a resolver el mismo K y publica el residual de equilibrio. Las
+ * posiciones no se limitan artificialmente, pero deben pertenecer al miembro.
+ */
+export const analyzeSpace3DInfluence = (
+  project: Space3DProjectV1,
+  options: Space3DInfluenceOptions,
+): Space3DInfluenceResult => {
+  const { target, targetId } = options;
+  const assembly = assembleSpace3DStaticModel(project, targetId, options);
+  if (!assembly.valid) return influenceFailure(targetId, target, 'El ensamblaje espacial no es admisible para influencia.', assembly.issues);
+  const element = assembly.elements.find((candidate) => candidate.memberId === target.memberId);
+  if (!element) return influenceFailure(targetId, target, 'El miembro objetivo no existe en la asamblea.', [{ code: 'missing-reference', entityKind: 'member', entityId: target.memberId, field: 'memberId' }]);
+  if (!Number.isFinite(target.position) || target.position < 0 || target.position > element.length) {
+    return influenceFailure(targetId, target, 'La posición del corte está fuera del tramo deformable.', [{ code: 'invalid-property', entityKind: 'member', entityId: target.memberId, field: 'position' }]);
+  }
+  if (!options.unitLoad.every((component) => Number.isFinite(component)) || Math.hypot(...options.unitLoad) === 0) {
+    return influenceFailure(targetId, target, 'La dirección de la carga unitaria debe ser finita y no nula.', [{ code: 'invalid-property', entityKind: 'project', entityId: project.id, field: 'unitLoad' }]);
+  }
+  const nodeIndex = new Map(project.nodes.map((node, index) => [node.id, index]));
+  const startIndex = nodeIndex.get(element.nodeI);
+  const endIndex = nodeIndex.get(element.nodeJ);
+  if (startIndex === undefined || endIndex === undefined) return influenceFailure(targetId, target, 'La asamblea no tiene extremos del miembro objetivo.');
+  const points: Space3DInfluencePoint[] = [];
+  try {
+    for (const position of options.positions) {
+      if (!Number.isFinite(position) || position < 0 || position > element.length) {
+        return influenceFailure(targetId, target, 'Una posición de carga móvil está fuera del tramo deformable.', [{ code: 'invalid-property', entityKind: 'member', entityId: target.memberId, field: 'positions' }]);
+      }
+      const ratio = element.length > 0 ? position / element.length : 0;
+      const loadVector = new Array<number>(assembly.totalDofs).fill(0);
+      const startBase = startIndex * DOF_PER_NODE;
+      const endBase = endIndex * DOF_PER_NODE;
+      loadVector[startBase] += options.unitLoad[0] * (1 - ratio);
+      loadVector[startBase + 1] += options.unitLoad[1] * (1 - ratio);
+      loadVector[startBase + 2] += options.unitLoad[2] * (1 - ratio);
+      loadVector[endBase] += options.unitLoad[0] * ratio;
+      loadVector[endBase + 1] += options.unitLoad[1] * ratio;
+      loadVector[endBase + 2] += options.unitLoad[2] * ratio;
+      const solved = solveWithStiffness(assembly.stiffness, loadVector, assembly.freeDofs);
+      const analysis = resultFromDisplacement(project, assembly, assembly.stiffness, loadVector, solved.displacement, solved.relativeResidual, solved.conditionEstimate);
+      points.push(Object.freeze({ position, value: evaluateInfluenceQuantity(analysis, target, element.length), equilibriumResidual: analysis.diagnostics.equilibrium.normalized, analysis }));
+    }
+  } catch (cause) {
+    return influenceFailure(targetId, target, cause instanceof Error ? `La influencia no pudo resolver el punto móvil: ${cause.message}` : 'La influencia no pudo resolver el punto móvil.');
+  }
+  return Object.freeze({
+    success: true,
+    targetId,
+    target,
+    points: Object.freeze(points),
+    maxEquilibriumResidual: Math.max(...points.map((point) => point.equilibriumResidual), 0),
+    issues: Object.freeze([]),
+    reason: `Se resolvieron ${points.length} posiciones con carga unitaria explícita.`,
   });
 };
