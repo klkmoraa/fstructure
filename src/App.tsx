@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect } from 'react';
 import { LazyMotion, MotionConfig } from 'motion/react';
 import './styles.css';
 import './design-system/material.css';
@@ -6,76 +6,53 @@ import { ProjectProvider, useProject } from './store/ProjectContext';
 import { ClassroomSessionProvider } from './store/ClassroomSessionContext';
 import WorkspaceShell from './features/workspace/WorkspaceShell';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
-import { FemSurface } from './modules/fem/FemSurface';
-import { buildPlanar2DToSpace3DHandoff } from './integrations/planar2dToSpace3d';
-
-const Space3DWorkspace = lazy(() => import('./modules/space3d/features/space3d/Space3DWorkspace'));
-type AppSurface = 'welcome' | 'workspace2d';
-const LEGACY_WORKSPACE_SURFACES = new Set(['design', 'workspace3d', 'fem']);
+import { FemTool, Space3DTool } from './features/workspace/toolSurfaces';
+import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
+import type { ToolId } from './shared/contracts';
 
 const loadMotionFeatures = () => import('./design-system/motionFeatures')
   .then(({ default: features }) => features);
 
-const readSurface = (): AppSurface => {
-  const value = new URLSearchParams(window.location.search).get('surface');
-  if (value === 'workspace2d' || LEGACY_WORKSPACE_SURFACES.has(value ?? '')) return 'workspace2d';
-  return 'welcome';
-};
-
-const canonicalizeSurfaceUrl = (surface: AppSurface): void => {
-  const url = new URL(window.location.href);
-  if (url.searchParams.get('surface') === surface && !url.hash) return;
-  url.searchParams.set('surface', surface);
-  url.hash = '';
-  window.history.replaceState(null, '', url);
-};
-
 const FStructureSurface = () => {
-  const { project, analysis } = useProject();
-  const [surface, setSurface] = useState<AppSurface>(readSurface);
-  const surfaceRef = useRef(surface);
-  const navigate = useCallback((next: AppSurface) => {
-    if (surfaceRef.current === next) return;
-    const url = new URL(window.location.href);
-    url.searchParams.set('surface', next);
-    url.hash = '';
-    window.history.pushState(null, '', url);
-    surfaceRef.current = next;
-    setSurface(next);
-  }, []);
+  const { project, analysis, replaceProject } = useProject();
+  const { route, navigate } = useProjectNavigation(project.id);
+  const openTool = useCallback((tool: ToolId) => {
+    navigate({ surface: 'workspace', projectId: project.id, tool });
+  }, [navigate, project.id]);
 
   useEffect(() => {
-    const onPopState = () => {
-      const next = readSurface();
-      canonicalizeSurfaceUrl(next);
-      surfaceRef.current = next;
-      setSurface(next);
+    if (route.projectId === project.id) return;
+    let cancelled = false;
+    const resolveProject = async () => {
+      try {
+        const { getProjectRepository } = await import('./storage/projectRepository');
+        const record = await getProjectRepository().openProject(route.projectId);
+        if (cancelled) return;
+        if (record) {
+          replaceProject(record.project, undefined, record.revision);
+          return;
+        }
+      } catch {
+        // Missing/unavailable local storage must not relabel the active model.
+      }
+      if (!cancelled) navigate({ ...route, projectId: project.id }, 'replace');
     };
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  const handoff = useMemo(() => buildPlanar2DToSpace3DHandoff(project), [project]);
-
-  useEffect(() => {
-    const canonicalSurface = readSurface();
-    canonicalizeSurfaceUrl(canonicalSurface);
-  }, []);
+    void resolveProject();
+    return () => { cancelled = true; };
+  }, [route, project.id, replaceProject, navigate]);
 
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
-    {surface === 'welcome'
-      ? <WelcomeScreen onOpenWorkspace={() => navigate('workspace2d')} />
+    {route.surface === 'welcome'
+      ? <WelcomeScreen onOpenWorkspace={() => navigate({ surface: 'workspace', projectId: project.id, tool: 'model2d' })} />
       : <WorkspaceShell
           projectId={project.id}
+          tool={route.tool}
+          onToolChange={openTool}
           space3dContent={<Suspense fallback={<div className="workspace-loading" role="status">Cargando módulo…</div>}>
-            <Space3DWorkspace
-              language={project.settings.language}
-              embedded
-              handoff={handoff}
-            />
+            <Space3DTool />
           </Suspense>}
-          femContent={<FemSurface />}
-          onOpenHome={() => navigate('welcome')}
+          femContent={<Suspense fallback={<div className="workspace-loading" role="status">Cargando módulo…</div>}><FemTool /></Suspense>}
+          onOpenHome={() => navigate({ surface: 'welcome', projectId: project.id, tool: 'model2d' })}
         />}
   </ClassroomSessionProvider>;
 };

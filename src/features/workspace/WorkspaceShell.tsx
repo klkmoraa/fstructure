@@ -1,8 +1,9 @@
 import { lazy, useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Inspector } from '../inspector/Inspector';
 import { ResultsPanel } from '../results/ResultsPanel';
-import { ConcreteBeamDesignSurface } from '../design/ConcreteBeamDesignSurface';
-import { StructuralCanvas } from '../canvas/StructuralCanvas';
+import { DesignTool, Model2DTool } from './toolSurfaces';
+import { DesignSurfaceContext, Model2DSurfaceContext } from './adapters/surfaceContexts';
+import type { ToolId } from '../../shared/contracts';
 import { Console } from '../shell/Console';
 import { Instrument } from '../shell/Instrument';
 import { ClassroomGuide } from '../classroom/ClassroomGuide';
@@ -86,6 +87,8 @@ export type WorkspaceSlot = ReactNode | ((context: WorkspaceSlotContext) => Reac
 type WorkspaceShellProps = {
   onOpenHome: () => void;
   projectId: string;
+  tool?: ToolId;
+  onToolChange?: (tool: ToolId) => void;
   /** Contenido que ocupa el escenario central al abrir el módulo espacial. */
   space3dContent?: WorkspaceSlot;
   /** Contenido que ocupa el escenario central al abrir el módulo FEM. */
@@ -104,6 +107,8 @@ const WorkspaceBrokerContent = ({
   projectId,
   space3dContent,
   femContent,
+  tool,
+  onToolChange,
   activeWorkspace,
   onOpenModel2D,
   onOpenSpace3D,
@@ -235,15 +240,20 @@ const WorkspaceBrokerContent = ({
       }),
       onWorkspaceCommand('open-design', (payload) => {
         closeSurface('results');
-        openModel2DSurface('design', payload?.trigger);
+        if (onToolChange) onToolChange('design');
+        else onOpenModel2D();
+        openSurface('design', payload?.trigger);
       }),
       onWorkspaceCommand('toggle-design', (payload) => {
         if (design.open) {
           closeSurface('design');
+          onToolChange?.('model2d');
         }
         else {
           closeSurface('results');
-          openModel2DSurface('design', payload?.trigger);
+          if (onToolChange) onToolChange('design');
+          else onOpenModel2D();
+          openSurface('design', payload?.trigger);
         }
       }),
       onWorkspaceCommand('analysis-requested', () => {
@@ -275,7 +285,7 @@ const WorkspaceBrokerContent = ({
       }),
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe());
-  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, design.open, doctor.status, onOpenModel2D, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
+  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, design.open, doctor.status, onOpenModel2D, onToolChange, openSurface, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
 
   useEffect(() => {
     setModelDoctorAcknowledgedIds(new Set());
@@ -284,6 +294,12 @@ const WorkspaceBrokerContent = ({
     (['generator', 'dense', 'datasheet', 'bom', 'comparison', 'doctor', 'palette', 'design'] as const).forEach((surface) => closeSurface(surface));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
+
+  // Apply the durable tool after the project-change reset has cleared transients.
+  useEffect(() => {
+    if (tool === 'design') openSurface('design');
+    else if (tool !== undefined) closeSurface('design');
+  }, [tool, projectId, openSurface, closeSurface]);
 
   /**
     * Al terminar una corrida válida el resultado se publica EN EL LIENZO, no en
@@ -616,18 +632,23 @@ const WorkspaceBrokerContent = ({
         emitWorkspaceCommand('analysis-requested');
         analyze();
       }} /> : null}
-      <StructuralCanvas layers={editorLayers} dispatchLayers={dispatchEditorLayers} onRequestInspector={() => openDetail()} />
+      <Model2DSurfaceContext value={{ layers: editorLayers, dispatchLayers: dispatchEditorLayers, onRequestInspector: () => openDetail() }}>
+        <LazySurface><Model2DTool /></LazySurface>
+      </Model2DSurfaceContext>
       {broker.isRetained('results') ? <ResultsPanel
         presentation={results.presentation as 'dock' | 'inset' | 'sheet'}
         status={results.status}
         onOpenChange={setResultsOpen}
       /> : null}
-      {broker.isRetained('design') ? <ConcreteBeamDesignSurface
-        open={design.status === 'active'}
-        presentation={design.presentation as 'dock' | 'drawer' | 'fullscreen'}
-        status={design.status}
-        onOpenChange={setDesignOpen}
-      /> : null}
+      {broker.isRetained('design') ? <DesignSurfaceContext value={{
+        open: design.status === 'active',
+        presentation: design.presentation as 'dock' | 'drawer' | 'fullscreen',
+        status: design.status,
+        onOpenChange: (open) => {
+          setDesignOpen(open);
+          if (!open) onToolChange?.('model2d');
+        },
+      }}><LazySurface><DesignTool /></LazySurface></DesignSurfaceContext> : null}
       <ToastNotification />
       {broker.isRetained('palette') ? <LazySurface><LazyCommandPalette
         open={palette.status === 'active'}
@@ -742,11 +763,22 @@ const WorkspaceSurface = (props: WorkspaceSurfaceProps) => {
 };
 
 export const WorkspaceShell = (props: WorkspaceShellProps) => {
-  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceId>('model2d');
+  const [localWorkspace, setActiveWorkspace] = useState<WorkspaceId>('model2d');
+  const activeWorkspace: WorkspaceId = props.tool === undefined ? localWorkspace : props.tool === 'design' ? 'model2d' : props.tool;
   useEffect(() => setActiveWorkspace('model2d'), [props.projectId]);
-  const onOpenModel2D = useCallback(() => setActiveWorkspace('model2d'), []);
-  const onOpenSpace3D = useCallback(() => setActiveWorkspace((current) => current === 'space3d' ? 'model2d' : 'space3d'), []);
-  const onOpenFem = useCallback(() => setActiveWorkspace((current) => current === 'fem' ? 'model2d' : 'fem'), []);
+  const onToolChange = props.onToolChange;
+  const onOpenModel2D = useCallback(() => {
+    if (onToolChange) onToolChange('model2d');
+    else setActiveWorkspace('model2d');
+  }, [onToolChange]);
+  const onOpenSpace3D = useCallback(() => {
+    if (onToolChange) onToolChange(activeWorkspace === 'space3d' ? 'model2d' : 'space3d');
+    else setActiveWorkspace((current) => current === 'space3d' ? 'model2d' : 'space3d');
+  }, [activeWorkspace, onToolChange]);
+  const onOpenFem = useCallback(() => {
+    if (onToolChange) onToolChange(activeWorkspace === 'fem' ? 'model2d' : 'fem');
+    else setActiveWorkspace((current) => current === 'fem' ? 'model2d' : 'fem');
+  }, [activeWorkspace, onToolChange]);
 
   return <ShellCompositionProvider>
     <WorkspaceSurface
