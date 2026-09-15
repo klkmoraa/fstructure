@@ -625,19 +625,27 @@ const normalizeGeneratedLoadSources = (input: unknown, memberIds: Set<string>, c
     const caseId = stringAt(raw.caseId, `${path}.caseId`);
     if (!caseIds.has(caseId)) fail(`${path}.caseId`, `el caso "${caseId}" no existe.`);
     if (kind === 'tributary-surface') {
+      const pressure = finiteAt(raw.pressure, `${path}.pressure`);
+      if (pressure < 0) fail(`${path}.pressure`, 'no puede ser negativa.');
       const tributaryWidth = finiteAt(raw.tributaryWidth, `${path}.tributaryWidth`);
       if (tributaryWidth < 0) fail(`${path}.tributaryWidth`, 'no puede ser negativa.');
-      return { id, kind, caseId, memberIds: selectedMemberIds, pressure: finiteAt(raw.pressure, `${path}.pressure`), tributaryWidth, direction: enumAt(raw.direction, `${path}.direction`, ['global-x', 'global-y'] as const), label };
+      return { id, kind, caseId, memberIds: selectedMemberIds, pressure, tributaryWidth, direction: enumAt(raw.direction, `${path}.direction`, ['global-x', 'global-y'] as const), label };
     }
-    if (kind === 'hydrostatic' || kind === 'soil-pressure') return {
-      id, kind, caseId, memberIds: selectedMemberIds,
-      referenceY: finiteAt(raw.referenceY, `${path}.referenceY`),
-      unitWeight: finiteAt(raw.unitWeight, `${path}.unitWeight`),
-      pressureAtReference: optionalFiniteAt(raw.pressureAtReference, `${path}.pressureAtReference`),
-      direction: enumAt(raw.direction, `${path}.direction`, ['global-x', 'global-y'] as const),
-      sign: raw.sign === undefined ? undefined : enumAt(String(raw.sign), `${path}.sign`, ['1', '-1'] as const) === '1' ? 1 : -1,
-      label,
-    };
+    if (kind === 'hydrostatic' || kind === 'soil-pressure') {
+      const unitWeight = finiteAt(raw.unitWeight, `${path}.unitWeight`);
+      if (unitWeight < 0) fail(`${path}.unitWeight`, 'no puede ser negativa.');
+      const pressureAtReference = optionalFiniteAt(raw.pressureAtReference, `${path}.pressureAtReference`);
+      if (pressureAtReference !== undefined && pressureAtReference < 0) fail(`${path}.pressureAtReference`, 'no puede ser negativa.');
+      return {
+        id, kind, caseId, memberIds: selectedMemberIds,
+        referenceY: finiteAt(raw.referenceY, `${path}.referenceY`),
+        unitWeight,
+        pressureAtReference,
+        direction: enumAt(raw.direction, `${path}.direction`, ['global-x', 'global-y'] as const),
+        sign: raw.sign === undefined ? undefined : enumAt(String(raw.sign), `${path}.sign`, ['1', '-1'] as const) === '1' ? 1 : -1,
+        label,
+      };
+    }
     if (kind === 'live-pattern' || kind === 'member-chain') return {
       id, kind, caseId, memberIds: selectedMemberIds, qx: optionalFiniteAt(raw.qx, `${path}.qx`), qy: finiteAt(raw.qy, `${path}.qy`),
       coordinateSystem: raw.coordinateSystem === undefined ? undefined : enumAt(raw.coordinateSystem, `${path}.coordinateSystem`, ['global', 'local'] as const),

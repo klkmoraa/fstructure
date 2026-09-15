@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultProject } from '../data/defaultProject';
+import { normalizeProject } from '../data/migrate';
 import { linkSpace3DToShell } from '../features/workspace/adapters/space3dShellBridge';
 import { buildPlanar2DToSpace3DHandoff } from './planar2dToSpace3d';
-import { applyApprovedSpace3DSync, prepareSpace3DSyncReview, SPACE3D_SYNC_ADMISSION } from './space3dSync';
+import { applyApprovedSpace3DSync, prepareSpace3DSyncReview, Space3DSyncInputError, SPACE3D_SYNC_ADMISSION } from './space3dSync';
 
 describe('revisión 3D → 2D', () => {
   it('agrupa cambios exactos, de revisión, fuera del plano y conflictos por campo', () => {
@@ -139,5 +140,115 @@ describe('revisión 3D → 2D', () => {
     const linked = linkSpace3DToShell(source, 'source-v1', candidate);
     expect(() => prepareSpace3DSyncReview({ ...linked, sourceProjectId: 'other-project' }, source)).toThrow(/linaje|pertenece|source|proyecto/i);
     expect(() => prepareSpace3DSyncReview({ ...linked, sourceVersion: '' }, source)).toThrow(/versión|version|source/i);
+  });
+
+  it('rechaza datos no confiables antes de materializar getters, clonar o serializar', () => {
+    const source = { ...createDefaultProject(), id: 'sync-input-boundary' };
+    const candidate = buildPlanar2DToSpace3DHandoff(source).candidateModel;
+    const cases: Array<[string, () => void]> = [];
+    const withGetter = <T extends object>(value: T, key: keyof T & string, onRead: () => never): T => {
+      Object.defineProperty(value, key, { configurable: true, enumerable: true, get: onRead });
+      return value;
+    };
+
+    let sourceReads = 0;
+    cases.push(['source', () => prepareSpace3DSyncReview(withGetter({ ...source }, 'name', () => { sourceReads += 1; throw new Error('getter executed'); }), source, candidate)]);
+    let currentReads = 0;
+    cases.push(['current', () => prepareSpace3DSyncReview(source, withGetter({ ...source }, 'name', () => { currentReads += 1; throw new Error('getter executed'); }), candidate)]);
+    let editedReads = 0;
+    cases.push(['edited', () => prepareSpace3DSyncReview(source, source, withGetter({ ...candidate }, 'name', () => { editedReads += 1; throw new Error('getter executed'); }))]);
+    const linked = linkSpace3DToShell(source, 'source-v1', candidate);
+    let branchReads = 0;
+    cases.push(['linked branch', () => prepareSpace3DSyncReview(withGetter(linked, 'model', () => { branchReads += 1; throw new Error('getter executed'); }), source)]);
+
+    for (const [label, invoke] of cases) {
+      expect(invoke, label).toThrow(/dato|accesor|serializable|prototype|plain/i);
+    }
+    expect(sourceReads).toBe(0);
+    expect(currentReads).toBe(0);
+    expect(editedReads).toBe(0);
+    expect(branchReads).toBe(0);
+
+    const symbolKey = Symbol('untrusted');
+    expect(() => prepareSpace3DSyncReview(Object.assign({ ...source }, { [symbolKey]: 1 }), source, candidate)).toThrow(/símbol|symbol/i);
+    const customPrototype = Object.assign(Object.create({ injected: true }), source);
+    expect(() => prepareSpace3DSyncReview(customPrototype, source, candidate)).toThrow(/prototype|plano|plain/i);
+    const forbiddenKey = { ...source, constructor: 1 };
+    expect(() => prepareSpace3DSyncReview(forbiddenKey, source, candidate)).toThrow(/permitido|forbidden|constructor/i);
+    const cyclic = { ...source } as typeof source & { cycle?: unknown };
+    cyclic.cycle = cyclic;
+    expect(() => prepareSpace3DSyncReview(cyclic, source, candidate)).toThrow(/cíclic|cyclic|cycle/i);
+
+    for (const invalid of [null, undefined, 1, 'source']) {
+      expect(() => prepareSpace3DSyncReview(invalid as never, source, candidate)).toThrow(Space3DSyncInputError);
+      expect(() => prepareSpace3DSyncReview(source, invalid as never, candidate)).toThrow(Space3DSyncInputError);
+    }
+    expect(() => prepareSpace3DSyncReview(source, source, null as never)).toThrow(Space3DSyncInputError);
+  });
+
+  it('convierte proxies revocados en errores de entrada y no ejecuta get traps', () => {
+    const source = { ...createDefaultProject(), id: 'sync-proxy-boundary' };
+    const candidate = buildPlanar2DToSpace3DHandoff(source).candidateModel;
+    const revoked = Proxy.revocable({ ...source }, {});
+    revoked.revoke();
+    expect(() => prepareSpace3DSyncReview(revoked.proxy as never, source, candidate)).toThrow(Space3DSyncInputError);
+
+    let reads = 0;
+    const getForbidden = { get: () => { reads += 1; throw new Error('get trap executed'); } };
+    const sourceProxy = new Proxy({ ...source }, getForbidden);
+    const currentProxy = new Proxy({ ...source }, getForbidden);
+    const editedProxy = new Proxy({ ...candidate }, getForbidden);
+    expect(() => prepareSpace3DSyncReview(sourceProxy, currentProxy, editedProxy)).not.toThrow();
+    expect(reads).toBe(0);
+  });
+
+  it('rechaza current inseguro y el overload legacy sin modelo editado como errores de entrada', () => {
+    const source = { ...createDefaultProject(), id: 'sync-apply-input-boundary' };
+    const candidate = buildPlanar2DToSpace3DHandoff(source).candidateModel;
+    const edited = { ...candidate, nodes: candidate.nodes.map((node) => node.id === 'N2' ? { ...node, y: 2 } : node) };
+    const review = prepareSpace3DSyncReview(source, source, edited);
+    let reads = 0;
+    const currentWithGetter = { ...source };
+    Object.defineProperty(currentWithGetter, 'id', {
+      configurable: true,
+      enumerable: true,
+      get: () => { reads += 1; throw new Error('current getter executed'); },
+    });
+    expect(() => applyApprovedSpace3DSync(currentWithGetter, review, [])).toThrow(Space3DSyncInputError);
+    expect(reads).toBe(0);
+
+    const revoked = Proxy.revocable({ ...source }, {});
+    revoked.revoke();
+    expect(() => applyApprovedSpace3DSync(revoked.proxy as never, review, [])).toThrow(Space3DSyncInputError);
+
+    expect(() => prepareSpace3DSyncReview(source as never, source)).toThrow(Space3DSyncInputError);
+    expect(() => prepareSpace3DSyncReview(source as never, source, undefined as never)).toThrow(Space3DSyncInputError);
+  });
+
+  it('no permite que una revisión aprobada persista magnitudes físicas negativas', () => {
+    const source = { ...createDefaultProject(), id: 'sync-magnitude-boundary' };
+    const baseSource = {
+      ...source,
+      nodes: [{ id: 'N1', x: 0, y: 0, support: { type: 'none' as const } }, { id: 'N2', x: 1, y: 0, support: { type: 'none' as const } }],
+      members: [{ id: 'M1', i: 'N1', j: 'N2', type: 'frame' as const, E: 1, A: 1, I: 1 }],
+      nodalLoads: [],
+      memberLoads: [],
+      loadCases: [{ id: 'LC1', name: 'LC1', category: 'permanent' as const, active: true }],
+    };
+    for (const field of ['pressure', 'unitWeight', 'pressureAtReference'] as const) {
+      const generatedLoadSources = field === 'pressure'
+        ? [{ id: 'GL1', kind: 'tributary-surface' as const, caseId: 'LC1', memberIds: ['M1'], pressure: 1, tributaryWidth: 1, direction: 'global-y' as const }]
+        : [{ id: 'GL1', kind: 'hydrostatic' as const, caseId: 'LC1', memberIds: ['M1'], referenceY: 0, unitWeight: 1, pressureAtReference: 1, direction: 'global-x' as const }];
+      const planar = { ...baseSource, combinations: [], generatedLoadSources };
+      const validCandidate = buildPlanar2DToSpace3DHandoff(planar).candidateModel;
+      const generated = validCandidate.generatedLoadSources.map((item) => ({ ...item, [field]: -1 }));
+      const edited = { ...validCandidate, generatedLoadSources: generated };
+      const review = prepareSpace3DSyncReview(planar, planar, edited);
+      const patch = review.patches.find((item) => item.entityKind === 'generated-load-source' && item.entityId === 'GL1' && item.field === field);
+      expect(patch, field).toBeDefined();
+      expect(() => applyApprovedSpace3DSync(planar, review, [patch!.patchId])).toThrow(/negativ|non.?negative|generatedLoadSources/i);
+    }
+
+    expect(() => normalizeProject({ ...baseSource, combinations: [], generatedLoadSources: [{ id: 'GL1', kind: 'tributary-surface', caseId: 'LC1', memberIds: ['M1'], pressure: -1, tributaryWidth: 1, direction: 'global-y' }] })).toThrow(/generatedLoadSources|pressure|negativ/i);
   });
 });

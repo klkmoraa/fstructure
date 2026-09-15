@@ -339,32 +339,50 @@ export function prepareSpace3DSyncReview(
   current: ProjectModel,
   editedInput?: Space3DProjectV2,
 ): Space3DSyncReviewV1 {
-  const linked = 'model' in sourceOrBranch;
+  // These arguments cross the integration boundary as untrusted runtime data.
+  // Materialize every input from descriptors before inspecting any field:
+  // structuredClone/JSON.stringify and ordinary property reads would execute
+  // an accessor, and a Proxy can otherwise escape as a native TypeError.
+  const sourceOrBranchCopy = materializeSyncData<
+    ProjectModel | LinkedSpace3DBranchV1
+  >(sourceOrBranch, 'sourceOrBranch', 'object');
+  const currentCopy = materializeSyncData<ProjectModel>(current, 'current', 'object');
+  const editedCopy = materializeSyncData<Space3DProjectV2 | undefined>(
+    editedInput,
+    'edited',
+    editedInput === undefined ? 'any' : 'object',
+  );
+
+  const linked = Object.hasOwn(sourceOrBranchCopy, 'model');
+  const branch = sourceOrBranchCopy as LinkedSpace3DBranchV1;
+  const legacySource = sourceOrBranchCopy as ProjectModel;
   if (linked) {
-    if (typeof sourceOrBranch.sourceProjectId !== 'string' || sourceOrBranch.sourceProjectId.trim() === '') {
+    if (typeof branch.sourceProjectId !== 'string' || branch.sourceProjectId.trim() === '') {
       throw new Error('La rama 3D tiene un sourceProjectId vacío o inválido.');
     }
-    if (typeof sourceOrBranch.sourceVersion !== 'string' || sourceOrBranch.sourceVersion.trim() === '') {
+    if (typeof branch.sourceVersion !== 'string' || branch.sourceVersion.trim() === '') {
       throw new Error('La rama 3D tiene un sourceVersion vacío o inválido.');
     }
-    if (sourceOrBranch.baselineStatus !== 'exact' || !sourceOrBranch.sourceModel2D) {
+    if (branch.baselineStatus !== 'exact' || !branch.sourceModel2D) {
       throw new Error('La rama 3D no conserva una base 2D exacta; es necesario volver a derivar (rederive).');
     }
-    if (typeof sourceOrBranch.sourceModel2D !== 'object' || Array.isArray(sourceOrBranch.sourceModel2D)
-      || sourceOrBranch.sourceModel2D.id !== sourceOrBranch.sourceProjectId) {
+    if (typeof branch.sourceModel2D !== 'object' || Array.isArray(branch.sourceModel2D)
+      || branch.sourceModel2D.id !== branch.sourceProjectId) {
       throw new Error('La base 2D no coincide con sourceProjectId; la rama 3D no pertenece al mismo linaje.');
     }
-    if (current.id !== sourceOrBranch.sourceProjectId) {
+    if (currentCopy.id !== branch.sourceProjectId) {
       throw new Error('La rama 3D no pertenece al proyecto 2D actual.');
     }
   }
-  const source = structuredClone(linked ? sourceOrBranch.sourceModel2D! : sourceOrBranch);
+  const source = linked ? branch.sourceModel2D! : legacySource;
   // Validate without replacing the exact snapshot: normalization may omit
   // optional fields and would turn representation-only differences into sync patches.
   normalizeProject(source);
-  if (!linked && !editedInput) throw new Error('Falta el modelo 3D editado.');
-  const edited = parseSpace3DDraft(JSON.stringify(linked ? sourceOrBranch.model : editedInput));
-  if (source.id !== current.id || edited.id !== `space3d:${source.id}`) {
+  if (!linked && editedCopy === undefined) throw new Space3DSyncInputError('Falta el modelo 3D editado.');
+  const editedJson = JSON.stringify(linked ? branch.model : editedCopy);
+  if (typeof editedJson !== 'string') throw new Space3DSyncInputError('edited debe contener un modelo JSON.');
+  const edited = parseSpace3DDraft(editedJson);
+  if (source.id !== currentCopy.id || edited.id !== `space3d:${source.id}`) {
     throw new Error('La rama 3D no pertenece al proyecto 2D actual.');
   }
   const spatialCollections: readonly [string, readonly { readonly id: string }[]][] = [
@@ -387,9 +405,9 @@ export function prepareSpace3DSyncReview(
   const unsupportedIds = new Set(unsupported.map((patch) => patch.patchId));
   // A non-planar reference can otherwise look like a normal 2D deletion after
   // projection. Unsupported full-entity patches own that identity instead.
-  const representable = representablePatches(source, current, projected).filter((patch) => !unsupportedIds.has(patch.patchId));
+  const representable = representablePatches(source, currentCopy, projected).filter((patch) => !unsupportedIds.has(patch.patchId));
   const representableIds = new Set(representable.map((patch) => patch.patchId));
-  const patches = [...representable, ...directRepresentablePatches(source, current, base, edited, representableIds), ...unsupported];
+  const patches = [...representable, ...directRepresentablePatches(source, currentCopy, base, edited, representableIds), ...unsupported];
   return registerReviewCapability({ sourceProjectId: source.id, patches, structuralSeal: structuralSealFor(source.id, patches) });
 }
 
@@ -421,32 +439,100 @@ const UNSUPPORTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   'moving-load-case': ['$entity'],
 };
 const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
-const assertPlainData = (value: unknown, path: string, ancestors = new WeakSet<object>()): void => {
-  if (value === null || value === undefined || ['string', 'boolean'].includes(typeof value) || (typeof value === 'number' && Number.isFinite(value))) return;
-  if (typeof value !== 'object') throw new Error(`${path} contiene un valor no serializable.`);
-  if (ancestors.has(value)) throw new Error(`${path} contiene una referencia cíclica.`);
+export class Space3DSyncInputError extends Error {
+  readonly code = 'invalid-input' as const;
+
+  constructor(detail: string) {
+    super(`space3d-sync: ${detail}`);
+    this.name = 'Space3DSyncInputError';
+  }
+}
+
+const invalidPlainData = (path: string, detail: string): never => {
+  throw new Space3DSyncInputError(`${path} ${detail}`);
+};
+
+type MaterializeRoot = 'any' | 'object' | 'array';
+
+const materializeSyncDataValue = (value: unknown, path: string, ancestors: WeakSet<object>): unknown => {
+  if (value === null || value === undefined || ['string', 'boolean'].includes(typeof value) || (typeof value === 'number' && Number.isFinite(value))) return value;
+  if (typeof value !== 'object') invalidPlainData(path, 'contiene un valor no serializable.');
+  if (ancestors.has(value)) invalidPlainData(path, 'contiene una referencia cíclica.');
   ancestors.add(value);
   try {
-    if (Array.isArray(value)) {
-      if (Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length) throw new Error(`${path} debe ser una lista JSON sin prototype personalizado.`);
-      const keys = Reflect.ownKeys(value);
-      if (keys.length !== value.length + 1 || keys.some((key) => key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9]\d*)$/.test(key)))) throw new Error(`${path} debe ser una lista JSON densa.`);
-      for (let index = 0; index < value.length; index += 1) {
-        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-        if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) throw new Error(`${path}[${index}] debe ser un dato JSON enumerable.`);
-        assertPlainData(descriptor.value, `${path}[${index}]`, ancestors);
-      }
-      return;
-    }
+    // Every reflective operation is kept inside materializeSyncData's error
+    // boundary. In particular, Array.isArray(revokedProxy) throws natively.
+    const isArray = Array.isArray(value);
     const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) throw new Error(`${path} debe ser un objeto plano sin prototype personalizado.`);
-    if (Object.getOwnPropertySymbols(value).length) throw new Error(`${path} contiene símbolos.`);
-    for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
-      if (FORBIDDEN_KEYS.has(key) || !('value' in descriptor) || !descriptor.enumerable) throw new Error(`${path}.${key} no es un campo de datos permitido.`);
-      assertPlainData(descriptor.value, `${path}.${key}`, ancestors);
+    const descriptors = Object.getOwnPropertyDescriptors(value) as Record<PropertyKey, PropertyDescriptor>;
+    const keys = Reflect.ownKeys(descriptors);
+    if (isArray) {
+      if (prototype !== Array.prototype) invalidPlainData(path, 'debe ser una lista JSON sin prototype personalizado.');
+      const lengthDescriptor = descriptors.length;
+      if (!lengthDescriptor) invalidPlainData(path, 'debe ser una lista JSON densa.');
+      if (!('value' in lengthDescriptor)) invalidPlainData(path, 'debe ser una lista JSON densa.');
+      if (lengthDescriptor.enumerable) invalidPlainData(path, 'debe ser una lista JSON densa.');
+      const lengthValue = lengthDescriptor.value;
+      if (typeof lengthValue !== 'number' || !Number.isInteger(lengthValue) || lengthValue < 0 || lengthValue > 0xffff_ffff) {
+        invalidPlainData(path, 'debe ser una lista JSON densa.');
+      }
+      const length = lengthValue;
+      const indices = keys.filter((key): key is string => key !== 'length' && typeof key === 'string');
+      if (indices.length !== length || keys.length !== length + 1
+        || keys.some((key) => key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9]\d*)$/.test(key)))) {
+        invalidPlainData(path, 'debe ser una lista JSON densa.');
+      }
+      const sortedIndices = indices.map(Number).sort((left, right) => left - right);
+      if (sortedIndices.some((index, position) => index !== position)) invalidPlainData(path, 'debe ser una lista JSON densa.');
+      const result: unknown[] = new Array(length);
+      for (const key of indices) {
+        const descriptor = descriptors[key];
+        if (!descriptor) invalidPlainData(`${path}[${key}]`, 'debe ser un dato JSON enumerable.');
+        if (!('value' in descriptor) || !descriptor.enumerable) invalidPlainData(`${path}[${key}]`, 'debe ser un dato JSON enumerable.');
+        Object.defineProperty(result, key, {
+          configurable: true,
+          enumerable: true,
+          writable: true,
+          value: materializeSyncDataValue(descriptor.value, `${path}[${key}]`, ancestors),
+        });
+      }
+      return result;
     }
+    if (prototype !== Object.prototype && prototype !== null) invalidPlainData(path, 'debe ser un objeto plano sin prototype personalizado.');
+    const result = Object.create(prototype) as Record<string, unknown>;
+    for (const key of keys) {
+      if (typeof key !== 'string') invalidPlainData(path, 'contiene símbolos.');
+      const stringKey = key as string;
+      const descriptor = descriptors[stringKey];
+      if (FORBIDDEN_KEYS.has(stringKey)) invalidPlainData(path, `.${stringKey} no es un campo de datos permitido.`);
+      if (!descriptor) invalidPlainData(path, `.${stringKey} no es un campo de datos permitido.`);
+      if (!('value' in descriptor) || !descriptor.enumerable) invalidPlainData(path, `.${stringKey} no es un campo de datos permitido.`);
+      Object.defineProperty(result, stringKey, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: materializeSyncDataValue(descriptor.value, `${path}.${stringKey}`, ancestors),
+      });
+    }
+    return result;
   } finally {
     ancestors.delete(value);
+  }
+};
+
+const materializeSyncData = <T>(value: unknown, path: string, expectedRoot: MaterializeRoot = 'any'): T => {
+  try {
+    const copy = materializeSyncDataValue(value, path, new WeakSet<object>());
+    if (expectedRoot === 'object' && (copy === null || typeof copy !== 'object' || Array.isArray(copy))) {
+      invalidPlainData(path, 'debe ser un objeto JSON plano.');
+    }
+    if (expectedRoot === 'array' && !Array.isArray(copy)) invalidPlainData(path, 'debe ser una lista JSON densa.');
+    return copy as T;
+  } catch (error) {
+    if (error instanceof Space3DSyncInputError) throw error;
+    // A revoked Proxy or a hostile reflection trap must not escape as a native
+    // TypeError. Keep the boundary deterministic and domain-owned.
+    throw new Space3DSyncInputError(`${path} no contiene datos JSON inspeccionables.`);
   }
 };
 const isEntityRecord = (value: unknown): value is Record<string, unknown> =>
@@ -457,7 +543,6 @@ const exactObjectKeys = (value: object, required: readonly string[], optional: r
   if (required.some((key) => !Object.hasOwn(value, key)) || keys.some((key) => !required.includes(key) && !optional.includes(key))) throw new Error(`${path} tiene campos fuera del contrato.`);
 };
 const validateReviewEnvelope = (review: Space3DSyncReviewV1): void => {
-  assertPlainData(review, 'review');
   exactObjectKeys(review, ['sourceProjectId', 'patches', 'structuralSeal'], [], 'review');
   if (typeof review.sourceProjectId !== 'string' || review.sourceProjectId.trim() === '' || !Array.isArray(review.patches) || typeof review.structuralSeal !== 'string' || !/^structural-v1:[0-9a-f]{8}$/.test(review.structuralSeal)) throw new Error('La revisión tiene un contrato inválido.');
   const seen = new Set<string>();
@@ -494,14 +579,15 @@ const validateReviewEnvelope = (review: Space3DSyncReviewV1): void => {
   if (review.structuralSeal !== structuralSealFor(review.sourceProjectId, review.patches)) throw new Error('El sello estructural de la revisión fue alterado.');
 };
 
-const requireReviewCapability = (review: Space3DSyncReviewV1): void => {
+const requireReviewCapability = (review: unknown): ReviewCapability => {
+  if (review === null || typeof review !== 'object') {
+    throw new Space3DSyncInputError('review debe ser un objeto JSON plano.');
+  }
   const capability = reviewCapabilities.get(review);
   if (!capability) {
-    throw new Error('La revisión no tiene una capacidad local de este proceso; debe regenerarse antes de aplicar.');
+    throw new Error('La revisión no tiene una capacidad local de este proceso o fue alterada; debe regenerarse antes de aplicar.');
   }
-  if (capability.canonical !== stableSerialize(review) || capability.structuralSeal !== review.structuralSeal) {
-    throw new Error('La revisión local fue alterada; debe regenerarse antes de aplicar.');
-  }
+  return capability;
 };
 
 const requireUniqueIds = (project: ProjectModel, collection: SyncCollection): void => {
@@ -517,15 +603,22 @@ export const applyApprovedSpace3DSync = (
   review: Space3DSyncReviewV1,
   approvedPatchIds: readonly string[],
 ): ProjectModel => {
-  validateReviewEnvelope(review);
-  requireReviewCapability(review);
-  if (current.id !== review.sourceProjectId) throw new Error('La revisión no pertenece al proyecto 2D actual.');
-  assertPlainData(approvedPatchIds, 'approvedPatchIds');
-  if (!Array.isArray(approvedPatchIds) || approvedPatchIds.some((id) => typeof id !== 'string' || id.trim() === '')) throw new Error('La aprobación contiene IDs inválidos.');
-  if (new Set(approvedPatchIds).size !== approvedPatchIds.length) throw new Error('La aprobación contiene IDs de parche duplicados.');
-  const byId = new Map(review.patches.map((patch) => [patch.patchId, patch]));
-  if (byId.size !== review.patches.length) throw new Error('La revisión contiene IDs de parche duplicados.');
-  const selected = approvedPatchIds.map((id) => {
+  // The exact review object is the process-local capability. Check its WeakMap
+  // membership before materializing it; cloning first would lose authorization.
+  const capability = requireReviewCapability(review);
+  const currentCopy = materializeSyncData<ProjectModel>(current, 'current', 'object');
+  const reviewCopy = materializeSyncData<Space3DSyncReviewV1>(review, 'review', 'object');
+  const approvedPatchIdsCopy = materializeSyncData<readonly string[]>(approvedPatchIds, 'approvedPatchIds', 'array');
+  validateReviewEnvelope(reviewCopy);
+  if (capability.canonical !== stableSerialize(reviewCopy) || capability.structuralSeal !== reviewCopy.structuralSeal) {
+    throw new Error('La revisión local fue alterada; debe regenerarse antes de aplicar.');
+  }
+  if (currentCopy.id !== reviewCopy.sourceProjectId) throw new Error('La revisión no pertenece al proyecto 2D actual.');
+  if (approvedPatchIdsCopy.some((id) => typeof id !== 'string' || id.trim() === '')) throw new Error('La aprobación contiene IDs inválidos.');
+  if (new Set(approvedPatchIdsCopy).size !== approvedPatchIdsCopy.length) throw new Error('La aprobación contiene IDs de parche duplicados.');
+  const byId = new Map(reviewCopy.patches.map((patch) => [patch.patchId, patch]));
+  if (byId.size !== reviewCopy.patches.length) throw new Error('La revisión contiene IDs de parche duplicados.');
+  const selected = approvedPatchIdsCopy.map((id) => {
     const patch = byId.get(id);
     if (!patch) throw new Error(`Parche aprobado desconocido: ${id}.`);
     if (patch.compatibility === 'unsupported') throw new Error(`El parche ${id} es unsupported y no puede aprobarse.`);
@@ -536,19 +629,19 @@ export const applyApprovedSpace3DSync = (
   for (const patch of selected) {
     if (patch.state === 'conflict') throw new Error(`Falló la precondición para ${patch.entityKind}/${patch.entityId}/${patch.field}.`);
     if (patch.entityKind === 'project') {
-      if (!same(current.name, patch.before)) throw new Error('Falló la precondición para project/name.');
+      if (!same(currentCopy.name, patch.before)) throw new Error('Falló la precondición para project/name.');
       continue;
     }
     const collection = patch.targetCollection;
     if (!collection) throw new Error(`El parche ${patch.patchId} no declara destino 2D.`);
-    const entity = row(current, collection, patch.entityId);
+    const entity = row(currentCopy, collection, patch.entityId);
     if (patch.field !== '$entity' && !entity) throw new Error(`Falló la precondición para ${collection}/${patch.entityId}/${patch.field}.`);
     const actual = patch.field === '$entity' ? entity : entity?.[patch.field];
     if (!same(actual, patch.before)) throw new Error(`Falló la precondición para ${collection}/${patch.entityId}/${patch.field}.`);
     if (patch.field === '$entity' && patch.before === null && patch.after === null) throw new Error(`El parche ${patch.patchId} no describe una operación válida.`);
   }
 
-  const next = structuredClone(current);
+  const next = structuredClone(currentCopy);
   for (const patch of selected) {
     if (patch.entityKind === 'project') {
       next.name = String(patch.after);
