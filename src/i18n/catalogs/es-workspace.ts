@@ -1,4 +1,7 @@
 export const esWorkspace = {
+  'navigation.model2d': 'Modelo 2D',
+  'navigation.fem': 'Elementos finitos',
+  'design.title': 'Diseño',
   'select.paletteEntry': '{query} · {count}',
   'select.membersSimilar': 'Barras similares a la selección',
   'select.membersFrame': 'Barras de pórtico',
