@@ -19,6 +19,11 @@ const montar = (status: SurfaceStatus) => {
 };
 
 describe('banda que el panel de Resultados publica en el shell', () => {
+  it('ofrece un acceso compacto a Diseño desde Resultados', () => {
+    const { container } = render(<ProjectProvider><div className="app-shell"><ResultsPanel status="active" defaultDesktopExpanded /></div></ProjectProvider>);
+    expect(container.querySelector('[data-result-design-launcher]')).not.toBeNull();
+  });
+
   it('la publica mientras está activo', () => {
     expect(montar('active').style.getPropertyValue('--results-band')).toMatch(/px$/);
   });

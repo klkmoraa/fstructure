@@ -59,3 +59,12 @@ describe('comando de tema', () => {
     expect(command.aliases).toContain('theme');
   });
 });
+
+describe('comando de Diseño', () => {
+  it('expone el workbench de concreto reforzado a la paleta', () => {
+    const command = buildCommands(contextoDe('light', () => undefined)).find((item) => item.id === 'design:concrete-beam');
+    expect(command).toBeTruthy();
+    expect(command?.label).toBe('Diseño');
+    expect(command?.aliases).toContain('concreto');
+  });
+});

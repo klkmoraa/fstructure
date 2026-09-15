@@ -1,4 +1,4 @@
-import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
+import { ChartNoAxesCombined, Check, CloudOff, DraftingCompass, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FStructureMark } from '../../design-system/brand';
 
@@ -37,6 +37,7 @@ export interface WorkspaceTopBarLabels {
   redo: string;
   analyze: string;
   results: string;
+  design: string;
   calculationExperience: string;
   actions: string;
 }
@@ -47,6 +48,7 @@ export interface WorkspaceTopBarProps {
   storageMessage?: string | null;
   analysisState: WorkspaceAnalysisState;
   resultsOpen: boolean;
+  designOpen?: boolean;
   canUndo: boolean;
   canRedo: boolean;
   labels: WorkspaceTopBarLabels;
@@ -57,6 +59,8 @@ export interface WorkspaceTopBarProps {
   onAnalyze: () => void;
   /** Alterna Resultados. Recibe el disparador para que el foco vuelva a él. */
   onOpenResults: (trigger: HTMLElement | null) => void;
+  /** Alterna Diseño. Recibe el disparador para conservar el retorno de foco. */
+  onOpenDesign?: (trigger: HTMLElement | null) => void;
   /** Abre el modo de trabajo, casos y combinaciones de cálculo. */
   onOpenCalculationExperience?: (trigger: HTMLElement | null) => void;
   /** Acciones secundarias del espacio: exportación, tema, unidades y hojas. */
@@ -77,6 +81,7 @@ export const WorkspaceTopBar = ({
   storageMessage,
   analysisState,
   resultsOpen,
+  designOpen = false,
   canUndo,
   canRedo,
   labels,
@@ -86,6 +91,7 @@ export const WorkspaceTopBar = ({
   onRedo,
   onAnalyze,
   onOpenResults,
+  onOpenDesign = () => undefined,
   onOpenCalculationExperience,
   utilities,
 }: WorkspaceTopBarProps) => {
@@ -203,6 +209,12 @@ export const WorkspaceTopBar = ({
           <button type="button" className={'workspace-topbar__action-button' + (resultsOpen ? ' is-active' : '')} onClick={(event) => onOpenResults(event.currentTarget)} aria-label={labels.results} aria-pressed={resultsOpen}>
             <ChartNoAxesCombined size={17} aria-hidden="true" />
             <span>{labels.results}</span>
+          </button>
+        </div>
+        <div className="workspace-topbar__results-group" data-workspace-group="design">
+          <button type="button" className={'workspace-topbar__action-button' + (designOpen ? ' is-active' : '')} onClick={(event) => onOpenDesign(event.currentTarget)} aria-label={labels.design} aria-pressed={designOpen}>
+            <DraftingCompass size={17} aria-hidden="true" />
+            <span>{labels.design}</span>
           </button>
         </div>
       </div>
