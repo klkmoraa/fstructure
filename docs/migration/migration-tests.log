@@ -1,0 +1,14 @@
+✔ every migrated or deduplicated artifact matches its recorded SHA-256 (25.107041ms)
+✔ preserves ten original tests and nine executable mappings with one explicit obsolete contract (0.2245ms)
+✔ captures deterministic SHA-256 content and excludes generated dependencies (1.913ms)
+✔ detects changed and missing files (0.589ms)
+✔ hashes symlink targets without following external directories (0.386542ms)
+✔ rejects paths outside the verification root (1.000209ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 72.410917

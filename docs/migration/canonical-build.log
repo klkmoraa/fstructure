@@ -1,0 +1,79 @@
+$ tsc -b && vite build
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 2856 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                        7.06 kB │ gzip:   1.60 kB
+dist/assets/space3d.worker-aq3BMFnH.js                22.90 kB
+dist/assets/scenarios.worker-B83MTkxh.js             104.33 kB
+dist/assets/certificate.worker-dyxfXniN.js           112.91 kB
+dist/assets/influence.worker-3FfewGMP.js             115.02 kB
+dist/assets/analysis.worker-B3CD6mtG.js              116.61 kB
+dist/assets/studies.worker-CdDkFBYu.js               118.64 kB
+dist/assets/parametric.worker-okdInWPT.js            120.31 kB
+dist/assets/design.worker-1ik6TLiu.js                154.52 kB
+dist/assets/pdf.worker-TGcf_-kp.mjs                2,228.48 kB
+dist/assets/LocalCommandAssistant-BIXh2T05.css         1.24 kB │ gzip:   0.39 kB
+dist/assets/PdfPreviewDialog-1K5z6Hwb.css              3.85 kB │ gzip:   1.12 kB
+dist/assets/StructuralBomPanel-2jHJdnFh.css            5.08 kB │ gzip:   1.28 kB
+dist/assets/RevisionComparisonPanel-DNtHLukD.css       8.30 kB │ gzip:   1.58 kB
+dist/assets/ModelDoctor-CH-6YJkp.css                  11.29 kB │ gzip:   2.06 kB
+dist/assets/DatasheetPanel-CTddmaBA.css               16.64 kB │ gzip:   2.74 kB
+dist/assets/Space3DWorkspace-CQ0bQ5bk.css             49.10 kB │ gzip:   7.16 kB
+dist/assets/index-BnKmEhrc.css                       785.58 kB │ gzip: 247.41 kB
+dist/assets/pdf.worker-C3IXC8Hy.js                     0.08 kB │ gzip:   0.10 kB
+dist/assets/chevron-down-DRbhwPqX.js                   0.15 kB │ gzip:   0.15 kB
+dist/assets/chevron-left-DjP_ixPR.js                   0.15 kB │ gzip:   0.15 kB
+dist/assets/weight-C8RfgtFi.js                         0.28 kB │ gzip:   0.23 kB
+dist/assets/circle-alert-DJ3Ol_mO.js                   0.30 kB │ gzip:   0.21 kB
+dist/assets/triangle-alert-5qtFmbNd.js                 0.49 kB │ gzip:   0.31 kB
+dist/assets/portableDownload-DMOb3G0I.js               0.60 kB │ gzip:   0.40 kB
+dist/assets/rolldown-runtime-B0Z9INg1.js               0.90 kB │ gzip:   0.51 kB
+dist/assets/preload-helper-HclGiUj8.js                 1.21 kB │ gzip:   0.67 kB
+dist/assets/structureGeneration-DGZ4sp0o.js            2.38 kB │ gzip:   0.99 kB
+dist/assets/x-CxI_4eK3.js                              3.27 kB │ gzip:   1.59 kB
+dist/assets/units-Bu9sDGHU.js                          3.31 kB │ gzip:   1.37 kB
+dist/assets/analysisFailure-D47rauRO.js                4.50 kB │ gzip:   1.78 kB
+dist/assets/PdfPreviewDialog-CsMxQHHA.js               5.67 kB │ gzip:   2.14 kB
+dist/assets/StructuralBomPanel-BwiGf4Hb.js             5.92 kB │ gzip:   1.81 kB
+dist/assets/modelDoctorDiagnostics-D6LFwvBG.js         6.40 kB │ gzip:   2.64 kB
+dist/assets/CommandPalette-CDbZ5bWm.js                 6.65 kB │ gzip:   2.48 kB
+dist/assets/jsx-runtime-Ciaf_P-h.js                    7.89 kB │ gzip:   2.99 kB
+dist/assets/defaultProject-BVliey6o.js                 9.46 kB │ gzip:   2.90 kB
+dist/assets/modelOperations-CfRKIv4P.js               11.35 kB │ gzip:   3.69 kB
+dist/assets/LocalCommandAssistant-By9ORZPv.js         12.55 kB │ gzip:   4.32 kB
+dist/assets/StructureGeneratorSurface-Jkw366ca.js     19.42 kB │ gzip:   6.47 kB
+dist/assets/standardSections-B0piPV-d.js              20.10 kB │ gzip:   4.52 kB
+dist/assets/RevisionComparisonPanel-CaLKY3XZ.js       23.13 kB │ gzip:   7.07 kB
+dist/assets/projectStorage-BoOm9FTn.js                23.33 kB │ gzip:   7.10 kB
+dist/assets/InfluenceLineView-D5mnBjtx.js             23.97 kB │ gzip:   6.94 kB
+dist/assets/DenseResultsSurface-CAt-zENd.js           27.18 kB │ gzip:   7.33 kB
+dist/assets/ModelDoctor-CW0ENTw4.js                   30.76 kB │ gzip:   8.83 kB
+dist/assets/browser-DrrqFCw_.js                       31.76 kB │ gzip:  12.19 kB
+dist/assets/DatasheetPanel-DMFDKD9R.js                50.53 kB │ gzip:  14.33 kB
+dist/assets/motionFeatures-Dm_matuk.js                84.24 kB │ gzip:  27.64 kB
+dist/assets/catalogEn-QvIdUV0c.js                    132.35 kB │ gzip:  37.10 kB
+dist/assets/catalogs-Dj9uMPFc.js                     139.07 kB │ gzip:  40.61 kB
+dist/assets/Space3DWorkspace-tzkRh6eE.js             270.95 kB │ gzip:  77.41 kB
+dist/assets/es-BwlxjNw3.js                           428.21 kB │ gzip: 178.34 kB
+dist/assets/pdf-WMLLqnkL.js                          430.95 kB │ gzip: 129.05 kB
+dist/assets/pdf-AuGYZRgX.js                          487.97 kB │ gzip: 148.28 kB
+dist/assets/index-CMI0iZFA.js                      2,160.00 kB │ gzip: 620.84 kB
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/data/structuralEditing.ts is dynamically imported by src/store/ProjectContext.tsx but also statically imported by src/commands/structureGeneration.ts, src/data/generators/generatorSpacing.ts, src/data/generators/generatorValidation.ts, src/features/canvas/CanvasStructuralEditPreviewLayer.tsx, src/features/canvas/StructuralCanvas.tsx, ..., dynamic import will not move module into another chunk.
+
+[plugin builtin:vite-reporter]
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/commands/projectCommand.ts is dynamically imported by src/store/ProjectContext.tsx but also statically imported by src/ai/localCommandProposal.ts, src/commands/structureGeneration.ts, src/features/bulk-edit/bulkEditCommand.ts, src/features/bulk-edit/bulkEditProjection.ts, src/features/canvas/duplicatePreview.ts, ..., dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/engine/pDelta.ts is dynamically imported by src/features/workspace/WorkspaceUtilities.tsx, src/store/ProjectContext.tsx but also statically imported by src/engine/analysisWorkerProtocol.ts, src/engine/parametricStudy.ts, src/runtime/workerHandlers.ts, dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/storage/projectRepository.ts is dynamically imported by src/store/ProjectContext.tsx but also statically imported by src/features/ai/LocalCommandAssistant.tsx, src/features/project-hub/ProjectHub.tsx, src/features/revision-comparison/RevisionComparisonPanel.tsx, src/import/dxf/DxfImportDialog.tsx, dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/utils/calculationPdf.ts is dynamically imported by src/features/workspace/WorkspaceUtilities.tsx but also statically imported by src/utils/portableBundle.ts, dynamic import will not move module into another chunk.
+
+✓ built in 998ms
