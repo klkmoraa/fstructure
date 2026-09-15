@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { axialCantilever } from './fixtures';
-import { analyzeSpace3DBuckling, analyzeSpace3DPDelta, analyzeSpace3DModal } from './analysisModes';
+import { analyzeSpace3DBuckling, analyzeSpace3DInfluence, analyzeSpace3DPDelta, analyzeSpace3DModal } from './analysisModes';
 
 describe('Space3D modal study', () => {
   it('returns a positive frequency and six-component mode shape from member mass', () => {
@@ -62,5 +62,19 @@ describe('Space3D stability studies', () => {
     expect(linear.success).toBe(true);
     expect(linear.analysis.nodeResults[1].displacement.uy).toBeGreaterThan(0);
     expect(linear.analysis.nodeResults[1].displacement.uy).toBeGreaterThan(linear.linear.nodeResults[1].displacement.uy);
+  });
+
+  it('requires an explicit spatial unit-load direction for influence responses', () => {
+    const result = analyzeSpace3DInfluence(axialCantilever({ P: 0 }), {
+      targetId: 'CO1',
+      target: { kind: 'member', memberId: 'M1', position: 1, quantity: 'N', side: 'continuous' },
+      positions: [0, 1, 2],
+      unitLoad: [1, 0, 0],
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.points).toHaveLength(3);
+    expect(result.points.every((point) => Number.isFinite(point.value))).toBe(true);
+    expect(result.maxEquilibriumResidual).toBeLessThanOrEqual(1e-8);
   });
 });

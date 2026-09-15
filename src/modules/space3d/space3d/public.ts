@@ -65,3 +65,13 @@ export type {
   Space3DPDeltaOptions,
   Space3DPDeltaResult,
 } from './engine/analysisModes';
+
+export { analyzeSpace3DInfluence } from './engine/analysisModes';
+
+export type {
+  Space3DInfluenceOptions,
+  Space3DInfluencePoint,
+  Space3DInfluenceQuantity,
+  Space3DInfluenceResult,
+  Space3DInfluenceTarget,
+} from './engine/analysisModes';
