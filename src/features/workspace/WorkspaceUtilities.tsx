@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import {
+  Box,
   Check,
   ChevronDown,
   ClipboardList,
@@ -31,22 +32,32 @@ import { emitWorkspaceCommand } from './workspaceCommands';
 
 const LazyPdfPreviewDialog = lazy(() => import('../pdf-preview/PdfPreviewDialog').then((module) => ({ default: module.PdfPreviewDialog })));
 
+export type WorkspaceEnvironment = 'model2d' | 'space3d' | 'fem';
+
 /**
  * One compact, always-reachable home for the workspace controls that do not
  * belong to a selected element. Keeping them out of the Inspector means the
  * latter can remain a contextual editor instead of becoming a junk drawer.
  */
 export const WorkspaceUtilities = ({
+  activeWorkspace,
+  onOpenModel2D,
+  onOpenSpace3D,
+  onOpenFem,
   onOpenInspector,
   onOpenUnitsEditor,
 }: {
+  activeWorkspace: WorkspaceEnvironment;
+  onOpenModel2D: () => void;
+  onOpenSpace3D: () => void;
+  onOpenFem: () => void;
   onOpenInspector: (trigger?: HTMLElement | null) => void;
   onOpenUnitsEditor?: (trigger?: HTMLElement | null) => void;
 }) => {
   const { project, updateProjectView } = useProjectModel();
   const { analysis, ensureEducationTrace, selectedCombinationId } = useProjectAnalysis();
   const { theme, setTheme, setActiveTool } = useWorkspaceUI();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [open, setOpen] = useState(false);
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
   const [preparingPdf, setPreparingPdf] = useState(false);
@@ -133,23 +144,49 @@ export const WorkspaceUtilities = ({
     setUnitPickerOpen(false);
   };
   const openSurface = (command: 'open-datasheet' | 'open-view-settings') => {
+    onOpenModel2D();
     emitWorkspaceCommand(command);
     setOpen(false);
   };
   const openTool = (tool: 'pointLoad' | 'distributedLoad' | 'moment') => {
+    onOpenModel2D();
     setActiveTool(tool);
     setOpen(false);
   };
   const openCommand = (command: 'open-analysis-setup' | 'open-structural-bom' | 'open-model-doctor') => {
+    onOpenModel2D();
     emitWorkspaceCommand(command);
     setOpen(false);
   };
   const openAssistant = () => {
+    onOpenModel2D();
     emitWorkspaceCommand('open-local-assistant', { trigger: triggerRef.current });
     setOpen(false);
   };
+  const openWorkspace = (workspace: WorkspaceEnvironment) => {
+    setOpen(false);
+    setUnitPickerOpen(false);
+    if (workspace === 'model2d') onOpenModel2D();
+    else if (workspace === 'space3d') onOpenSpace3D();
+    else onOpenFem();
+  };
 
   const themeLabel = t(theme === 'dark' ? 'theme.light' : 'theme.dark');
+  const environmentCopy = language === 'en'
+    ? {
+        section: 'Integrated tools',
+        model3d: '3D model',
+        fem: 'FEM',
+        experimental: 'Experimental',
+        planned: 'Planned',
+      }
+    : {
+        section: 'Herramientas integradas',
+        model3d: 'Modelo 3D',
+        fem: 'FEM',
+        experimental: 'Experimental',
+        planned: 'Planeado',
+      };
   const unitOptions = UNIT_SYSTEM_PROFILES;
   const selectedUnit = isCustomUnitSystemId(project.settings.units)
     ? { id: project.settings.units, label: unitSystemLabel(project.settings.units) }
@@ -170,6 +207,29 @@ export const WorkspaceUtilities = ({
         <div><strong>{t('topbar.utilities')}</strong><span>{t('workspace.utilitiesSubtitle')}</span></div>
         <button type="button" onClick={() => setOpen(false)} aria-label={t('toolbar.close')}><X size={17} aria-hidden="true" /></button>
       </header>
+      <section className="workspace-utilities__section workspace-utilities__workspace-section" aria-label={environmentCopy.section}>
+        <span className="workspace-utilities__section-label">{environmentCopy.section}</span>
+        <div className="workspace-utilities__workspace-actions">
+          <button
+            type="button"
+            className={'workspace-utilities__workspace-action' + (activeWorkspace === 'space3d' ? ' is-active' : '')}
+            aria-pressed={activeWorkspace === 'space3d'}
+            onClick={() => openWorkspace('space3d')}
+          >
+            <Box size={17} aria-hidden="true" />
+            <span><strong>{environmentCopy.model3d}</strong><small>{environmentCopy.experimental}</small></span>
+          </button>
+          <button
+            type="button"
+            className={'workspace-utilities__workspace-action' + (activeWorkspace === 'fem' ? ' is-active' : '')}
+            aria-pressed={activeWorkspace === 'fem'}
+            onClick={() => openWorkspace('fem')}
+          >
+            <Sigma size={17} aria-hidden="true" />
+            <span><strong>{environmentCopy.fem}</strong><small>{environmentCopy.planned}</small></span>
+          </button>
+        </div>
+      </section>
       <section className="workspace-utilities__section" aria-label={t('workspace.utilityModelSection')}>
         <span className="workspace-utilities__section-label">{t('workspace.utilityModelSection')}</span>
         <div className="workspace-utilities__actions">
@@ -182,7 +242,7 @@ export const WorkspaceUtilities = ({
           <button className="workspace-utilities__action" type="button" onClick={() => openCommand('open-structural-bom')}>
             <ClipboardList size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityBom')}</strong><small>{t('workspace.utilityBomDescription')}</small></span>
           </button>
-          <button className="workspace-utilities__action" type="button" onClick={(event) => { onOpenInspector(event.currentTarget); setOpen(false); }}>
+          <button className="workspace-utilities__action" type="button" onClick={(event) => { onOpenModel2D(); onOpenInspector(event.currentTarget); setOpen(false); }}>
             <PanelRight size={17} aria-hidden="true" /><span><strong>{t('inspector.open')}</strong><small>{t('workspace.utilityInspectorDescription')}</small></span>
           </button>
           <button className="workspace-utilities__action" type="button" onClick={() => openSurface('open-view-settings')}>
@@ -240,6 +300,7 @@ export const WorkspaceUtilities = ({
           type="button"
           className="workspace-utilities__customize-units"
           onClick={(event) => {
+            onOpenModel2D();
             onOpenUnitsEditor(event.currentTarget);
             setOpen(false);
             setUnitPickerOpen(false);
@@ -253,8 +314,8 @@ export const WorkspaceUtilities = ({
         <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
           {theme === 'dark' ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />} {themeLabel}
         </button>
-        <button type="button" onClick={() => { emitWorkspaceCommand('export-svg'); setOpen(false); }}><Download size={16} aria-hidden="true" /> SVG</button>
-        <button type="button" onClick={() => { emitWorkspaceCommand('export-png'); setOpen(false); }}><Download size={16} aria-hidden="true" /> PNG</button>
+        <button type="button" onClick={() => { onOpenModel2D(); emitWorkspaceCommand('export-svg'); setOpen(false); }}><Download size={16} aria-hidden="true" /> SVG</button>
+        <button type="button" onClick={() => { onOpenModel2D(); emitWorkspaceCommand('export-png'); setOpen(false); }}><Download size={16} aria-hidden="true" /> PNG</button>
       </div>
       {exportError ? <p className="workspace-utilities__error" role="alert">{exportError}</p> : null}
     </section> : null}

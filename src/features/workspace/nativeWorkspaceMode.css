@@ -1,0 +1,40 @@
+/* 3D y FEM son modos del escenario central del mismo AppShellLayout. */
+.native-workspace-mode {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--canvas-bg);
+}
+
+/* M1 reserva una columna para la consola 2D. En los modos nativos la consola
+   pertenece al propio módulo, así que el escenario ocupa la retícula completa. */
+.app-shell:has(.native-workspace-mode) .workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app-shell:has(.native-workspace-mode) .center-stage {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.native-workspace-mode > * {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.native-workspace-mode .space3d-screen {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.native-workspace-mode .fusion-fem {
+  min-height: 100%;
+}
+
+.native-workspace-mode .workspace-loading {
+  height: 100%;
+}
