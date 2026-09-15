@@ -68,3 +68,28 @@ it('serializes 3D and 2D edits through one revision owner without overwriting ei
   expect(saved?.bundle.model2d.name).toBe('Edited 2D');
   expect(saved?.revision).toBe(2);
 });
+
+it('persists and upserts FEM study snapshots without overwriting the other tool branches', async () => {
+  const repo = new InMemoryUnifiedBundleRepository();
+  const project = createDefaultProject();
+  const session = new UnifiedProjectSession(repo);
+  await session.initialize(storage, project);
+  const first = JSON.parse(JSON.stringify({
+    format: 'fstructure-fem-bundle', formatVersion: 1,
+    document: { kind: 'fem-document', schemaVersion: 1, id: 'study-1', name: 'Mesh 1' },
+  })) as JsonValue;
+  const second = JSON.parse(JSON.stringify({
+    format: 'fstructure-fem-bundle', formatVersion: 1,
+    document: { kind: 'fem-document', schemaVersion: 1, id: 'study-1', name: 'Mesh 1 revised' },
+    analysis: { success: true },
+  })) as JsonValue;
+
+  await session.saveFem(project, first);
+  await session.saveFem(project, second);
+
+  const saved = await repo.openBundle(project.id);
+  expect(saved?.bundle.fem).toEqual([second]);
+  expect(saved?.bundle.space3d).toBeNull();
+  expect(saved?.bundle.design).toEqual({});
+  expect(saved?.revision).toBe(2);
+});

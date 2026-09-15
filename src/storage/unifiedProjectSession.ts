@@ -1,10 +1,30 @@
 import type { ProjectModel } from '../types';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
-import type { LinkedSpace3DBranchV1, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
+import type { JsonValue, LinkedSpace3DBranchV1, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
 import { canonicalSerialize } from './bundleValidation';
 import { BundleConflictError, IndexedDbUnifiedBundleRepository, type LegacyBundleStorage, type StoredBundleRecord, type UnifiedBundleRepository } from './unifiedBundleRepository';
 
 export type UnifiedStorageStatus = { issue: 'conflict' | 'load-failed' | 'save-failed' | 'recovered' | null; message: string | null };
+
+/** FEM studies are versioned JSON snapshots. Match by document id so rerunning
+ * a study updates its existing branch instead of creating an unbounded trail
+ * of identical records in the project bundle. */
+const femStudyDocumentId = (study: JsonValue): string | null => {
+  if (!study || typeof study !== 'object' || Array.isArray(study)) return null;
+  const document = study.document;
+  if (!document || typeof document !== 'object' || Array.isArray(document)) return null;
+  const id = document.id;
+  return typeof id === 'string' && id.trim() ? id : null;
+};
+
+const upsertFemStudy = (studies: readonly JsonValue[], study: JsonValue): JsonValue[] => {
+  const detached = structuredClone(study);
+  const id = femStudyDocumentId(detached);
+  if (!id) return [...studies.map((item) => structuredClone(item)), detached];
+  const existing = studies.findIndex((item) => femStudyDocumentId(item) === id);
+  if (existing < 0) return [...studies.map((item) => structuredClone(item)), detached];
+  return studies.map((item, index) => index === existing ? detached : structuredClone(item));
+};
 
 /** One revision owner and ordered writes per mounted editor. Never writes legacy storage. */
 export class UnifiedProjectSession {
@@ -15,7 +35,7 @@ export class UnifiedProjectSession {
   private chain: Promise<unknown> = Promise.resolve();
   private initialization?: Promise<ProjectModel>;
   private storageStatus: UnifiedStorageStatus = { issue: null, message: null };
-  private failedWrite?: { projectId: string; space3d: boolean };
+  private failedWrite?: { projectId: string; space3d: boolean; fem: boolean };
   private statusListeners = new Set<() => void>();
   get status() { return this.storageStatus; }
   private set status(value: UnifiedStorageStatus) {
@@ -64,11 +84,16 @@ export class UnifiedProjectSession {
   saveSpace3D(project: ProjectModel, branch: LinkedSpace3DBranchV1): Promise<StoredBundleRecord> {
     return this.save(project, structuredClone(branch));
   }
-  private save(project: ProjectModel, branch?: LinkedSpace3DBranchV1): Promise<StoredBundleRecord> {
+  /** Persists one FEM document/result snapshot inside the unified project bundle. */
+  saveFem(project: ProjectModel, study: JsonValue): Promise<StoredBundleRecord> {
+    return this.save(project, undefined, structuredClone(study));
+  }
+  private save(project: ProjectModel, branch?: LinkedSpace3DBranchV1, femStudy?: JsonValue): Promise<StoredBundleRecord> {
     const detached = structuredClone(project);
     if (this.blocked.has(detached.id)) return Promise.reject(new Error(this.status.message ?? 'Reopen the canonical project before saving.'));
     const working = this.currentBundle(detached.id) ?? createUnifiedProjectBundle(detached, branch?.sourceVersion ?? crypto.randomUUID());
     if (branch) working.space3d = branch;
+    else if (femStudy !== undefined) working.fem = upsertFemStudy(working.fem, femStudy);
     else {
       if (JSON.stringify(working.model2d) !== JSON.stringify(detached)) working.manifest.sourceVersion = crypto.randomUUID();
       working.model2d = detached;
@@ -79,7 +104,8 @@ export class UnifiedProjectSession {
       if (this.working.get(detached.id) === working && canonicalSerialize(committed) === canonicalSerialize(working)) this.working.delete(detached.id);
     };
     const clearFailure = () => {
-      if (this.status.issue === 'save-failed' && this.failedWrite?.projectId === detached.id && this.failedWrite.space3d === Boolean(branch)) {
+      if (this.status.issue === 'save-failed' && this.failedWrite?.projectId === detached.id
+        && this.failedWrite.space3d === Boolean(branch) && this.failedWrite.fem === (femStudy !== undefined)) {
         this.failedWrite = undefined;
         this.status = { issue: null, message: null };
       }
@@ -94,6 +120,7 @@ export class UnifiedProjectSession {
         return structuredClone(current);
       }
       if (branch) bundle.space3d = branch;
+      else if (femStudy !== undefined) bundle.fem = upsertFemStudy(bundle.fem, femStudy);
       else {
         bundle.manifest.sourceVersion = working.manifest.sourceVersion;
         bundle.model2d = detached;
@@ -106,7 +133,7 @@ export class UnifiedProjectSession {
         return record;
       } catch (error) {
         if (error instanceof BundleConflictError) this.blocked.add(detached.id);
-        else this.failedWrite = { projectId: detached.id, space3d: Boolean(branch) };
+        else this.failedWrite = { projectId: detached.id, space3d: Boolean(branch), fem: femStudy !== undefined };
         this.status = { issue: error instanceof BundleConflictError ? 'conflict' : 'save-failed', message: error instanceof Error ? error.message : String(error) };
         throw error;
       }
