@@ -75,6 +75,8 @@ export const createBlankSpace3DProject = (): Space3DProjectV1 => ({
   nodalLoads: [],
   loadCases: [{ id: 'LC1', name: 'LC1' }],
   loadCombinations: [],
+  prescribedDisplacements: [], memberLoads: [], memberInitialEffects: [], nodeLinks: [],
+  multiPointConstraints: [], nodalMasses: [], generatedLoadSources: [], movingLoadCases: [],
 });
 
 /**
@@ -103,4 +105,6 @@ export const createSpace3DPortalExample = (): Space3DProjectV1 => ({
   nodalLoads: [load('L1', 'N4', { fy: -40, fz: -15 })],
   loadCases: [{ id: 'LC1', name: 'LC1' }],
   loadCombinations: [{ id: 'CO1', name: 'CO1', terms: [{ caseId: 'LC1', factor: 1 }] }],
+  prescribedDisplacements: [], memberLoads: [], memberInitialEffects: [], nodeLinks: [],
+  multiPointConstraints: [], nodalMasses: [], generatedLoadSources: [], movingLoadCases: [],
 });

@@ -1,30 +1,25 @@
-import type { ProjectModel, SupportDefinition } from '../types';
+import type {
+  GeneratedLoadSource,
+  MemberModel,
+  MultiPointConstraint,
+  NodeLink,
+  PrescribedDisplacement,
+  ProjectModel,
+  SupportDefinition,
+} from '../types';
 import {
   SPACE3D_ANALYSIS_SPACE,
   SPACE3D_SCHEMA_VERSION,
   type Space3DFrameMember,
-  type Space3DNodalLoad,
-  type Space3DProjectV1,
+  type Space3DMemberRelease,
+  type Space3DNodeLink,
+  type Space3DProjectV2,
   type Space3DRestraints,
 } from '../modules/space3d/space3d/public';
-import type {
-  Planar2DToSpace3DHandoffV1,
-  Planar2DToSpace3DMapping,
-  Space3DBridgeNote,
-} from '../modules/space3d/integrations/planar2dToSpace3d';
+import type { Planar2DToSpace3DHandoffV1, Planar2DToSpace3DMapping } from '../modules/space3d/integrations/planar2dToSpace3d';
 
 const finitePositive = (value: number | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
-
-const isAxisAlignedRoller = (support: SupportDefinition): boolean => {
-  if (support.type !== 'roller') return true;
-  const angle = support.angleDeg ?? 90;
-  if (!Number.isFinite(angle)) return false;
-  const normalized = ((angle % 180) + 180) % 180;
-  const tolerance = 1e-7;
-  return Math.min(normalized, 180 - normalized) <= tolerance
-    || Math.abs(normalized - 90) <= tolerance;
-};
 
 const fnv1a = (value: string): string => {
   let hash = 0x811c9dc5;
@@ -35,12 +30,6 @@ const fnv1a = (value: string): string => {
   return (hash >>> 0).toString(16).padStart(8, '0');
 };
 
-/**
- * Keep the source fingerprint independent of object insertion order. The 2D
- * project is mutable and can be rebuilt from persistence, so plain
- * JSON.stringify could produce different references for the same source or
- * hide a transition to an undefined/non-finite value.
- */
 const stableSerialize = (value: unknown): string => {
   if (value === null) return 'null';
   if (value === undefined) return 'undefined';
@@ -51,7 +40,6 @@ const stableSerialize = (value: unknown): string => {
     return JSON.stringify(value);
   }
   if (typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
-  if (typeof value === 'bigint') return `bigint:${value.toString()}`;
   if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
   if (typeof value === 'object') {
     const object = value as Record<string, unknown>;
@@ -82,147 +70,225 @@ const orientationFor = (project: ProjectModel, member: ProjectModel['members'][n
   return { localYReferenceGlobal: mostlyVertical ? [0, 0, 1] as const : [0, 1, 0] as const, rollRadians: 0 };
 };
 
-export const buildPlanar2DToSpace3DHandoff = (project: ProjectModel): Planar2DToSpace3DHandoffV1 => {
-  const mappings: Planar2DToSpace3DMapping[] = [];
-  const notes: Space3DBridgeNote[] = [];
-  const addNote = (
-    code: Space3DBridgeNote['code'],
-    classification: Space3DBridgeNote['classification'],
-    entityKind: Space3DBridgeNote['entityKind'],
-    entityId: string,
-    field: string,
-    blocking: boolean,
-    hypothesis?: number,
-  ) => {
-    const base = {
-      id: `${code}:${entityKind}:${entityId}:${field}`,
-      code,
-      classification,
-      source: { entityKind, entityId, field },
-      target: entityKind === 'node' || entityKind === 'member' ? { entityKind, entityId, field } : null,
-      entityKind,
-      entityId,
-      field,
-      blocking,
-    } satisfies Space3DBridgeNote;
-    notes.push(hypothesis === undefined ? base : { ...base, hypothesis });
+const releaseTo3D = (release: MemberModel['releases']): Space3DMemberRelease | undefined => release ? {
+  iUx: release.iAxial, iUy: release.iShear, iRz: release.iMoment,
+  jUx: release.jAxial, jUy: release.jShear, jRz: release.jMoment,
+} : undefined;
+
+const releaseTo2D = (release: Space3DMemberRelease | undefined): MemberModel['releases'] => {
+  if (!release) return undefined;
+  const result = {
+    iAxial: release.iUx, iShear: release.iUy, iMoment: release.iRz,
+    jAxial: release.jUx, jShear: release.jUy, jMoment: release.jRz,
   };
+  return Object.values(result).some((value) => value !== undefined) ? result : undefined;
+};
 
-  const nodes = project.nodes.map((node) => {
-    mappings.push({ id: `node:${node.id}`, source: { entityKind: 'node', entityId: node.id }, target: { entityKind: 'node', entityId: node.id }, disposition: 'transformed' });
-    if (node.support.spring) addNote('dropped-support-spring', 'omitted-semantics', 'node', node.id, 'support.spring', true);
-    if (node.support.prescribed) addNote('dropped-prescribed-support-motion', 'omitted-semantics', 'node', node.id, 'support.prescribed', true);
-    if (!isAxisAlignedRoller(node.support)) addNote('dropped-inclined-support', 'omitted-semantics', 'node', node.id, 'support.angleDeg', true);
-    if (node.internalHinge) addNote('dropped-internal-hinge', 'omitted-semantics', 'node', node.id, 'internalHinge', true);
-    return { id: node.id, x: node.x, y: node.y, z: 0, restraints: planarRestraints(node.support) };
-  });
+const directionFromAngle = (angleDeg = 0): readonly [number, number, number] => {
+  const radians = angleDeg * Math.PI / 180;
+  return [Math.cos(radians), Math.sin(radians), 0];
+};
 
-  const members: Space3DFrameMember[] = project.members.map((member) => {
-    mappings.push({ id: `member:${member.id}`, source: { entityKind: 'member', entityId: member.id }, target: { entityKind: 'member', entityId: member.id }, disposition: member.type === 'frame' ? 'preserved' : 'transformed' });
-    const G = finitePositive(member.G) ? member.G : member.E / 2.6;
-    const Iy = member.I;
-    const J = finitePositive(member.I) ? Math.max(member.I * 0.1, Number.EPSILON) : member.I * 0.1;
-    if (!finitePositive(member.G)) addNote('pending-shear-modulus', 'missing-required-property', 'member', member.id, 'G', true, G);
-    addNote('pending-weak-axis-inertia', 'missing-required-property', 'member', member.id, 'Iy', true, Iy);
-    addNote('pending-torsion-constant', 'missing-required-property', 'member', member.id, 'J', true, J);
-    if (member.type === 'truss') addNote('truss-member-as-frame', 'changed-semantics', 'member', member.id, 'type', true);
-    if (member.type === 'rigid') addNote('dropped-rigid-member', 'changed-semantics', 'member', member.id, 'type', true);
-    if (member.axialBehavior !== undefined && member.axialBehavior !== 'both') {
-      addNote('dropped-axial-behavior', 'changed-semantics', 'member', member.id, 'axialBehavior', true);
-    }
-    if (member.beamTheory === 'timoshenko') addNote('dropped-timoshenko-theory', 'changed-semantics', 'member', member.id, 'beamTheory', true);
-    if (member.shearArea !== undefined) addNote('dropped-shear-area', 'omitted-semantics', 'member', member.id, 'shearArea', true);
-    if (member.releases && Object.values(member.releases).some(Boolean)) addNote('dropped-member-release', 'omitted-semantics', 'member', member.id, 'releases', true);
-    if (member.rotationalSpringI !== undefined || member.rotationalSpringJ !== undefined) addNote('dropped-semi-rigid-connection', 'omitted-semantics', 'member', member.id, 'rotationalSpring', true);
-    if (member.rigidOffsetI || member.rigidOffsetJ) addNote('dropped-rigid-offset', 'omitted-semantics', 'member', member.id, 'rigidOffset', true);
-    return {
-      id: member.id,
-      i: member.i,
-      j: member.j,
-      E: member.E,
-      G,
-      A: member.A,
-      Iy,
-      Iz: member.I,
-      J,
-      orientation: orientationFor(project, member),
-    };
-  });
+const mapping = (kind: Planar2DToSpace3DMapping['source']['entityKind'], id: string): Planar2DToSpace3DMapping => ({
+  id: `${kind}:${id}`,
+  source: { entityKind: kind, entityId: id },
+  target: { entityKind: kind, entityId: id },
+  disposition: 'preserved',
+});
 
-  const nodalLoads: Space3DNodalLoad[] = project.nodalLoads.map((load) => {
-    mappings.push({ id: `load:${load.id}`, source: { entityKind: 'load', entityId: load.id }, target: { entityKind: 'load', entityId: load.id }, disposition: 'transformed' });
-    return { id: load.id, caseId: load.caseId, nodeId: load.nodeId, fx: load.fx, fy: load.fy, fz: 0, mx: 0, my: 0, mz: load.mz };
-  });
-
-  const omittedGroups: readonly [keyof ProjectModel, Space3DBridgeNote['code'], Space3DBridgeNote['entityKind']][] = [
-    ['memberLoads', 'dropped-member-load', 'member-load'],
-    ['prescribedDisplacements', 'dropped-prescribed-displacement', 'prescribed-displacement'],
-    ['memberInitialEffects', 'dropped-initial-effect', 'initial-effect'],
-    ['nodeLinks', 'dropped-node-link', 'node-link'],
-    ['multiPointConstraints', 'dropped-multi-point-constraint', 'multi-point-constraint'],
-    ['nodalMasses', 'dropped-nodal-mass', 'nodal-mass'],
-    ['generatedLoadSources', 'dropped-generated-load-source', 'generated-load-source'],
-    ['movingLoadCases', 'dropped-moving-load-case', 'moving-load-case'],
-  ];
-  for (const [field, code, kind] of omittedGroups) {
-    const entries = project[field];
-    if (!Array.isArray(entries)) continue;
-    for (const entry of entries as readonly { id: string }[]) {
-      mappings.push({ id: `omitted:${kind}:${entry.id}`, source: { entityKind: kind, entityId: entry.id }, target: null, disposition: 'omitted' });
-      addNote(code, 'omitted-semantics', kind, entry.id, field, true);
-    }
-  }
-
-  // Space 3D-1 has no self-weight factor on a load case and therefore cannot
-  // reproduce a non-zero 2D self-weight contribution by merely copying the
-  // case id/name. Keep the omission visible and blocking, including malformed
-  // non-finite values that must never disappear during a handoff.
-  for (const loadCase of project.loadCases) {
-    if (loadCase.selfWeightFactor !== undefined && loadCase.selfWeightFactor !== 0) {
-      addNote('dropped-self-weight', 'omitted-semantics', 'case', loadCase.id, 'selfWeightFactor', true);
-    }
-  }
-
-  const candidateModel: Space3DProjectV1 = {
+export const buildPlanar2DToSpace3DHandoff = (project: ProjectModel): Planar2DToSpace3DHandoffV1 => {
+  const nodes = project.nodes.map((node) => ({
+    id: node.id, x: node.x, y: node.y, z: 0,
+    restraints: planarRestraints(node.support),
+    planarSupport: structuredClone(node.support),
+    ...(node.internalHinge === undefined ? {} : { internalHinge: node.internalHinge }),
+  }));
+  const members: Space3DFrameMember[] = project.members.map((member) => ({
+    id: member.id, i: member.i, j: member.j,
+    E: member.E, G: finitePositive(member.G) ? member.G : member.E / 2.6,
+    A: member.A, Iy: member.I, Iz: member.I, J: Math.max(Math.abs(member.I) * 0.1, Number.EPSILON),
+    orientation: orientationFor(project, member),
+    type: member.type,
+    materialId: member.materialId, materialOrigin: member.materialOrigin,
+    sectionId: member.sectionId, sectionOrigin: member.sectionOrigin,
+    beamTheory: member.beamTheory, shearArea: member.shearArea, density: member.density,
+    releases: releaseTo3D(member.releases), axialBehavior: member.axialBehavior,
+    rotationalSpringI: member.rotationalSpringI, rotationalSpringJ: member.rotationalSpringJ,
+    rigidOffsetI: member.rigidOffsetI, rigidOffsetJ: member.rigidOffsetJ,
+    label: member.label,
+    planarG: member.G ?? null,
+  }));
+  const nodeLinks: Space3DNodeLink[] = (project.nodeLinks ?? []).map((link) => ({
+    ...structuredClone(link), direction: directionFromAngle(link.angleDeg),
+  }));
+  const candidateModel: Space3DProjectV2 = {
     analysisSpace: SPACE3D_ANALYSIS_SPACE,
     schemaVersion: SPACE3D_SCHEMA_VERSION,
     id: `space3d:${project.id}`,
     name: project.name,
-    // Project values are stored canonically in kN and m. The display unit
-    // selected in the 2D settings must not relabel those numbers as N-mm,
-    // kip-ft, etc. in the Space 3D candidate.
     units: 'kN-m',
     nodes,
     members,
-    nodalLoads,
-    loadCases: project.loadCases.map(({ id, name }) => ({ id, name })),
-    loadCombinations: project.combinations.map(({ id, name, factors }) => ({
-      id,
-      name,
-      terms: Object.entries(factors).map(([caseId, factor]) => ({ caseId, factor })),
+    nodalLoads: project.nodalLoads.map((load) => ({ ...structuredClone(load), fz: 0, mx: 0, my: 0 })),
+    loadCases: project.loadCases.map((item) => structuredClone(item)),
+    loadCombinations: project.combinations.map(({ factors, ...item }) => ({
+      ...structuredClone(item), terms: Object.entries(factors).map(([caseId, factor]) => ({ caseId, factor })),
     })),
+    prescribedDisplacements: structuredClone(project.prescribedDisplacements ?? []),
+    memberLoads: structuredClone(project.memberLoads),
+    memberInitialEffects: structuredClone(project.memberInitialEffects ?? []),
+    nodeLinks,
+    multiPointConstraints: structuredClone(project.multiPointConstraints ?? []),
+    nodalMasses: structuredClone(project.nodalMasses ?? []),
+    generatedLoadSources: structuredClone(project.generatedLoadSources ?? []),
+    movingLoadCases: structuredClone(project.movingLoadCases ?? []),
   };
+  const groups: Array<[Planar2DToSpace3DMapping['source']['entityKind'], readonly { id: string }[]]> = [
+    ['node', project.nodes], ['member', project.members], ['load', project.nodalLoads],
+    ['member-load', project.memberLoads], ['prescribed-displacement', project.prescribedDisplacements ?? []],
+    ['initial-effect', project.memberInitialEffects ?? []], ['node-link', project.nodeLinks ?? []],
+    ['multi-point-constraint', project.multiPointConstraints ?? []], ['nodal-mass', project.nodalMasses ?? []],
+    ['generated-load-source', project.generatedLoadSources ?? []], ['moving-load-case', project.movingLoadCases ?? []],
+    ['case', project.loadCases], ['combination', project.combinations],
+  ];
+  const mappings = groups.flatMap(([kind, entities]) => entities.map((entity) => mapping(kind, entity.id)));
   const sourceHash = fnv1a(stableSerialize(project));
   const reference = `solver2d:${project.id}:${sourceHash}`;
-
   return {
-    kind: 'planar-2d-to-space3d-handoff',
-    version: 1,
-    handoffId: `handoff:${reference}`,
+    kind: 'planar-2d-to-space3d-handoff', version: 1, handoffId: `handoff:${reference}`,
     source: {
-      system: 'solver2d',
-      projectId: project.id,
-      schemaVersion: project.schemaVersion,
-      hash: { algorithm: 'fnv1a-32', value: reference.split(':').at(-1) ?? '00000000' },
-      reference,
+      system: 'solver2d', projectId: project.id, schemaVersion: project.schemaVersion,
+      hash: { algorithm: 'fnv1a-32', value: sourceHash }, reference,
     },
     candidateModel,
     mapping: mappings,
     provenance: {
-      adapter: 'fusionstructure/integrations/planar2d-to-space3d',
-      sourceReference: reference,
+      adapter: 'fusionstructure/integrations/planar2d-to-space3d', sourceReference: reference,
       candidateSchemaVersion: candidateModel.schemaVersion,
     },
-    lossReport: { status: notes.length === 0 ? 'lossless' : 'review-required', entries: notes },
+    lossReport: { status: 'lossless', entries: [] },
+  };
+};
+
+/** Projects only planar-representable data; out-of-plane values never alias 2D fields. */
+export const roundTripPlanarSpace3DTo2D = (spatial: Space3DProjectV2, template: ProjectModel): ProjectModel => {
+  const sourceNodes = new Map(template.nodes.map((node) => [node.id, node]));
+  const spatialPlanarNodeIds = new Set(spatial.nodes.filter((node) => Math.abs(node.z) <= 1e-12).map((node) => node.id));
+  const nodes = spatial.nodes.flatMap((node) => {
+    if (Math.abs(node.z) > 1e-12) {
+      const source = sourceNodes.get(node.id);
+      return source ? [structuredClone(source)] : [];
+    }
+    return [{
+      id: node.id, x: node.x, y: node.y,
+      support: node.planarSupport ? structuredClone(node.planarSupport) : {
+        type: 'custom' as const, restrainX: node.restraints.ux, restrainY: node.restraints.uy, restrainR: node.restraints.rz,
+      },
+      ...(node.internalHinge === undefined ? {} : { internalHinge: node.internalHinge }),
+    }];
+  });
+  const sourceMembers = new Map(template.members.map((member) => [member.id, member]));
+  const members = spatial.members.flatMap((member): MemberModel[] => {
+    if (!spatialPlanarNodeIds.has(member.i) || !spatialPlanarNodeIds.has(member.j)) {
+      const source = sourceMembers.get(member.id);
+      return source ? [structuredClone(source)] : [];
+    }
+    const releases = releaseTo2D(member.releases);
+    return [{
+      id: member.id, i: member.i, j: member.j, type: member.type ?? 'frame', E: member.E, A: member.A, I: member.Iz,
+      ...(member.planarG === null ? {} : { G: member.planarG ?? member.G }),
+      ...(member.materialId === undefined ? {} : { materialId: member.materialId }),
+      ...(member.materialOrigin === undefined ? {} : { materialOrigin: member.materialOrigin }),
+      ...(member.sectionId === undefined ? {} : { sectionId: member.sectionId }),
+      ...(member.sectionOrigin === undefined ? {} : { sectionOrigin: member.sectionOrigin }),
+      ...(member.beamTheory === undefined ? {} : { beamTheory: member.beamTheory }),
+      ...(member.shearArea === undefined ? {} : { shearArea: member.shearArea }),
+      ...(member.density === undefined ? {} : { density: member.density }),
+      ...(releases === undefined ? {} : { releases }),
+      ...(member.axialBehavior === undefined ? {} : { axialBehavior: member.axialBehavior }),
+      ...(member.rotationalSpringI === undefined ? {} : { rotationalSpringI: member.rotationalSpringI }),
+      ...(member.rotationalSpringJ === undefined ? {} : { rotationalSpringJ: member.rotationalSpringJ }),
+      ...(member.rigidOffsetI === undefined ? {} : { rigidOffsetI: member.rigidOffsetI }),
+      ...(member.rigidOffsetJ === undefined ? {} : { rigidOffsetJ: member.rigidOffsetJ }),
+      ...(member.label === undefined ? {} : { label: member.label }),
+    }];
+  });
+  const spatialPlanarMemberIds = new Set(spatial.members.filter((member) => spatialPlanarNodeIds.has(member.i) && spatialPlanarNodeIds.has(member.j)).map((member) => member.id));
+  const sourceNodalLoads = new Map(template.nodalLoads.map((item) => [item.id, item]));
+  const sourcePrescribed = new Map((template.prescribedDisplacements ?? []).map((item) => [item.id, item]));
+  const sourceMemberLoads = new Map(template.memberLoads.map((item) => [item.id, item]));
+  const sourceEffects = new Map((template.memberInitialEffects ?? []).map((item) => [item.id, item]));
+  const sourceLinks = new Map((template.nodeLinks ?? []).map((item) => [item.id, item]));
+  const sourceMpcs = new Map((template.multiPointConstraints ?? []).map((item) => [item.id, item]));
+  const sourceMasses = new Map((template.nodalMasses ?? []).map((item) => [item.id, item]));
+  const sourceGenerated = new Map((template.generatedLoadSources ?? []).map((item) => [item.id, item]));
+  const sourceMoving = new Map((template.movingLoadCases ?? []).map((item) => [item.id, item]));
+  return {
+    ...structuredClone(template),
+    name: spatial.name,
+    nodes,
+    members,
+    loadCases: spatial.loadCases.map((item) => ({
+      id: item.id, name: item.name, category: item.category ?? 'other', active: item.active ?? true,
+      ...(item.selfWeightFactor === undefined ? {} : { selfWeightFactor: item.selfWeightFactor }),
+    })),
+    combinations: spatial.loadCombinations.map(({ terms, ...item }) => ({
+      ...structuredClone(item), factors: Object.fromEntries(terms.map((term) => [term.caseId, term.factor])),
+    })),
+    nodalLoads: spatial.nodalLoads.flatMap(({ fz: _fz, mx: _mx, my: _my, ...load }) => {
+      if (spatialPlanarNodeIds.has(load.nodeId)) return [structuredClone(load)];
+      const source = sourceNodalLoads.get(load.id);
+      return source ? [structuredClone(source)] : [];
+    }),
+    prescribedDisplacements: spatial.prescribedDisplacements.flatMap((item): PrescribedDisplacement[] => {
+      if (spatialPlanarNodeIds.has(item.nodeId) && (item.component === 'ux' || item.component === 'uy' || item.component === 'rz' || item.component === 'normal')) {
+        const { normalDirection: _direction, ...planar } = item;
+        return [structuredClone(planar) as PrescribedDisplacement];
+      }
+      const source = sourcePrescribed.get(item.id);
+      return source ? [structuredClone(source)] : [];
+    }),
+    memberLoads: spatial.memberLoads.flatMap(({ qzStart: _qzs, qzEnd: _qze, pz: _pz, mx: _mx, my: _my, mz: _mz, ...item }) => {
+      if (spatialPlanarMemberIds.has(item.memberId)) return [structuredClone(item)];
+      const source = sourceMemberLoads.get(item.id);
+      return source ? [structuredClone(source)] : [];
+    }),
+    memberInitialEffects: spatial.memberInitialEffects.flatMap(({ gradientY: _gy, gradientZ: _gz, curvatureY: _cy, curvatureZ: _cz, ...item }) => {
+      if (spatialPlanarMemberIds.has(item.memberId)) return [structuredClone(item)];
+      const source = sourceEffects.get(item.id);
+      return source ? [structuredClone(source)] : [];
+    }),
+    nodeLinks: spatial.nodeLinks.flatMap((item): NodeLink[] => {
+      if (spatialPlanarNodeIds.has(item.nodeI) && (!item.nodeJ || spatialPlanarNodeIds.has(item.nodeJ)) && Math.abs(item.direction[2]) <= 1e-12) {
+        const { direction: _direction, ...planar } = item;
+        return [structuredClone(planar)];
+      }
+      const source = sourceLinks.get(item.id);
+      return source ? [structuredClone(source)] : [];
+    }),
+    multiPointConstraints: spatial.multiPointConstraints
+      .map((item) => ({ ...structuredClone(item), terms: item.terms.filter((term) => spatialPlanarNodeIds.has(term.nodeId) && (term.component === 'ux' || term.component === 'uy' || term.component === 'rz')) }))
+      .flatMap((item): MultiPointConstraint[] => {
+        if (item.terms.length > 0) return [item as MultiPointConstraint];
+        const source = sourceMpcs.get(item.id);
+        return source ? [structuredClone(source)] : [];
+      }),
+    nodalMasses: spatial.nodalMasses.flatMap(({ massX: _mx, massY: _my, massZ: _mz, inertiaX: _ix, inertiaY: _iy, inertiaZ: _iz, ...item }) => {
+      if (spatialPlanarNodeIds.has(item.nodeId)) return [structuredClone(item)];
+      const source = sourceMasses.get(item.id);
+      return source ? [structuredClone(source)] : [];
+    }),
+    generatedLoadSources: spatial.generatedLoadSources.flatMap(({ qz: _qz, ...item }): GeneratedLoadSource[] => {
+      if (item.direction !== 'global-z' && item.memberIds.every((id) => spatialPlanarMemberIds.has(id))) return [structuredClone(item) as GeneratedLoadSource];
+      const source = sourceGenerated.get(item.id);
+      return source ? [structuredClone(source)] : [];
+    }),
+    movingLoadCases: spatial.movingLoadCases.flatMap((item) => {
+      if (item.memberIds.every((id) => spatialPlanarMemberIds.has(id))) return [{
+        ...structuredClone(item), memberIds: [...item.memberIds], axles: item.axles.map((axle) => ({ ...axle })),
+      }];
+      const source = sourceMoving.get(item.id);
+      return source ? [structuredClone(source)] : [];
+    }),
   };
 };

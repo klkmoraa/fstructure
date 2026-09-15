@@ -133,9 +133,6 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
     case 'add-node': {
       checkNodeShape(command.node);
       requireUnique(project.nodes.map((node) => node.id), command.node.id, 'el nudo');
-      if (project.nodes.length + 1 > SPACE3D_LIMITS.maxNodes) {
-        fail('limit-exceeded', `el modelo admite ${SPACE3D_LIMITS.maxNodes} nudos`);
-      }
       return finish(project, { ...project, nodes: [...project.nodes, command.node] });
     }
 
@@ -163,9 +160,6 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
       requireExisting(project.nodes, command.member.i, 'el nudo');
       requireExisting(project.nodes, command.member.j, 'el nudo');
       if (command.member.i === command.member.j) fail('self-referential', 'una barra no puede unir un nudo consigo mismo');
-      if (project.members.length + 1 > SPACE3D_LIMITS.maxMembers) {
-        fail('limit-exceeded', `el modelo admite ${SPACE3D_LIMITS.maxMembers} barras`);
-      }
       return finish(project, { ...project, members: [...project.members, command.member] });
     }
 

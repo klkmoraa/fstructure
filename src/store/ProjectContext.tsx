@@ -595,6 +595,15 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
     return { applied: true, ...created };
   }, [commitReversibleProjectChange]);
 
+  const executeApprovedSpace3DSync = useCallback(async (review: import('../integrations/space3dSync').Space3DSyncReviewV1, approvedPatchIds: readonly string[]) => {
+    const { applyApprovedSpace3DSync } = await import('../integrations/space3dSync');
+    const current = projectRef.current;
+    const next = applyApprovedSpace3DSync(current, review, approvedPatchIds);
+    if (JSON.stringify(next) === JSON.stringify(current)) return { applied: false };
+    commitReversibleProjectChange(current, next, 'Sincronizar cambios aprobados desde 3D');
+    return { applied: true };
+  }, [commitReversibleProjectChange]);
+
   const updateProjectView = useCallback((updater: (project: ProjectModel) => ProjectModel) => {
     const current = projectRef.current;
     const next = updater(structuredClone(current));
@@ -739,9 +748,9 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
     canRedo: future.length > 0,
     storageIssue: storageState.issue,
     storageMessage: storageState.message,
-    renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient,
+    renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, executeApprovedSpace3DSync, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient,
     moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo,
-  }), [unified, openUnifiedProject, project, past.length, future.length, storageState.issue, storageState.message, renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient, moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo]);
+  }), [unified, openUnifiedProject, project, past.length, future.length, storageState.issue, storageState.message, renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, executeApprovedSpace3DSync, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient, moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo]);
 
   const analysisValue = useMemo<ProjectAnalysisContextValue>(() => ({
     analysis, isAnalyzing, selectedCombinationId, learningFocus, influenceCanvasState,

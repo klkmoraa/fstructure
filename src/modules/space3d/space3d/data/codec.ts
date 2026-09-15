@@ -14,7 +14,7 @@ import { validateSpace3DProject } from '../model/validation';
 import { isUnitSystemId } from '../../foundation/units';
 import {
   SPACE3D_ANALYSIS_SPACE,
-  SPACE3D_LIMITS,
+  SPACE3D_LEGACY_SCHEMA_VERSION,
   SPACE3D_SCHEMA_VERSION,
   type Space3DFrameMember,
   type Space3DLoadCase,
@@ -59,14 +59,31 @@ const object = (value: unknown, path: string): Raw => {
   return value as Raw;
 };
 
-/** Allowlist exacta: sobra un campo ⇒ se rechaza; falta uno ⇒ se rechaza. */
-const exactKeys = (source: Raw, allowed: readonly string[], path: string): void => {
+/** Allowlist exacta: sobra un campo ⇒ se rechaza; falta uno requerido ⇒ se rechaza. */
+const exactKeys = (source: Raw, required: readonly string[], path: string, optional: readonly string[] = []): void => {
   for (const key of Object.keys(source)) {
-    if (!allowed.includes(key)) fail('unknown-field', `${path}.${key}`);
+    if (!required.includes(key) && !optional.includes(key)) fail('unknown-field', `${path}.${key}`);
   }
-  for (const key of allowed) {
+  for (const key of required) {
     if (!Object.hasOwn(source, key)) fail('missing-field', `${path}.${key}`);
   }
+};
+
+const assertFiniteJson = (value: unknown, path: string): void => {
+  if (typeof value === 'number' && !Number.isFinite(value)) fail('not-a-number', path);
+  if (Array.isArray(value)) value.forEach((item, index) => assertFiniteJson(item, `${path}[${index}]`));
+  else if (typeof value === 'object' && value !== null) {
+    for (const [key, item] of Object.entries(value)) assertFiniteJson(item, `${path}.${key}`);
+  }
+};
+
+const optionalFields = (source: Raw, fields: readonly string[], path: string): Raw => {
+  const result: Raw = {};
+  for (const field of fields) if (Object.hasOwn(source, field)) {
+    assertFiniteJson(source[field], `${path}.${field}`);
+    result[field] = structuredClone(source[field]);
+  }
+  return result;
 };
 
 const num = (source: Raw, key: string, path: string): number => {
@@ -116,20 +133,26 @@ const readRestraints = (value: unknown, path: string): Space3DRestraints => {
 const readNode = (value: unknown, index: number): Space3DNode => {
   const path = `nodes[${index}]`;
   const source = object(value, path);
-  exactKeys(source, ['id', 'x', 'y', 'z', 'restraints'], path);
+  const optional = ['planarSupport', 'internalHinge'];
+  exactKeys(source, ['id', 'x', 'y', 'z', 'restraints'], path, optional);
   return {
     id: text(source, 'id', path),
     x: num(source, 'x', path),
     y: num(source, 'y', path),
     z: num(source, 'z', path),
     restraints: readRestraints(source.restraints, `${path}.restraints`),
+    ...optionalFields(source, optional, path),
   };
 };
 
 const readMember = (value: unknown, index: number): Space3DFrameMember => {
   const path = `members[${index}]`;
   const source = object(value, path);
-  exactKeys(source, ['id', 'i', 'j', 'E', 'G', 'A', 'Iy', 'Iz', 'J', 'orientation'], path);
+  const optional = [
+    'type', 'materialId', 'materialOrigin', 'sectionId', 'sectionOrigin', 'beamTheory', 'shearArea', 'density',
+    'releases', 'axialBehavior', 'rotationalSpringI', 'rotationalSpringJ', 'rigidOffsetI', 'rigidOffsetJ', 'label', 'planarG',
+  ];
+  exactKeys(source, ['id', 'i', 'j', 'E', 'G', 'A', 'Iy', 'Iz', 'J', 'orientation'], path, optional);
   const orientationPath = `${path}.orientation`;
   const orientation = object(source.orientation, orientationPath);
   exactKeys(orientation, ['localYReferenceGlobal', 'rollRadians'], orientationPath);
@@ -147,6 +170,7 @@ const readMember = (value: unknown, index: number): Space3DFrameMember => {
       localYReferenceGlobal: vector(orientation.localYReferenceGlobal, `${orientationPath}.localYReferenceGlobal`),
       rollRadians: num(orientation, 'rollRadians', orientationPath),
     },
+    ...optionalFields(source, optional, path),
   };
 };
 
@@ -166,14 +190,16 @@ const readLoad = (value: unknown, index: number): Space3DNodalLoad => {
 const readCase = (value: unknown, index: number): Space3DLoadCase => {
   const path = `loadCases[${index}]`;
   const source = object(value, path);
-  exactKeys(source, ['id', 'name'], path);
-  return { id: text(source, 'id', path), name: text(source, 'name', path) };
+  const optional = ['category', 'active', 'selfWeightFactor'];
+  exactKeys(source, ['id', 'name'], path, optional);
+  return { id: text(source, 'id', path), name: text(source, 'name', path), ...optionalFields(source, optional, path) };
 };
 
 const readCombination = (value: unknown, index: number): Space3DLoadCombination => {
   const path = `loadCombinations[${index}]`;
   const source = object(value, path);
-  exactKeys(source, ['id', 'name', 'terms'], path);
+  const optional = ['source', 'sourceUrl', 'jurisdiction', 'edition', 'stateLimit', 'reviewedAt'];
+  exactKeys(source, ['id', 'name', 'terms'], path, optional);
   return {
     id: text(source, 'id', path),
     name: text(source, 'name', path),
@@ -183,6 +209,7 @@ const readCombination = (value: unknown, index: number): Space3DLoadCombination 
       exactKeys(raw, ['caseId', 'factor'], termPath);
       return { caseId: text(raw, 'caseId', termPath), factor: num(raw, 'factor', termPath) };
     }),
+    ...optionalFields(source, optional, path),
   };
 };
 
@@ -214,11 +241,14 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
   if (source.analysisSpace !== SPACE3D_ANALYSIS_SPACE) {
     fail('analysis-space', `se esperaba «${SPACE3D_ANALYSIS_SPACE}» y llegó «${String(source.analysisSpace)}»`);
   }
-  if (source.schemaVersion !== SPACE3D_SCHEMA_VERSION) {
-    fail('schema-version', `se esperaba ${SPACE3D_SCHEMA_VERSION} y llegó ${String(source.schemaVersion)}`);
+  if (source.schemaVersion !== SPACE3D_SCHEMA_VERSION && source.schemaVersion !== SPACE3D_LEGACY_SCHEMA_VERSION) {
+    fail('schema-version', `se esperaba ${SPACE3D_LEGACY_SCHEMA_VERSION} o ${SPACE3D_SCHEMA_VERSION} y llegó ${String(source.schemaVersion)}`);
   }
 
-  exactKeys(source, ['analysisSpace', 'schemaVersion', 'id', 'name', 'units', 'nodes', 'members', 'nodalLoads', 'loadCases', 'loadCombinations'], 'project');
+  const legacy = source.schemaVersion === SPACE3D_LEGACY_SCHEMA_VERSION;
+  const coreFields = ['analysisSpace', 'schemaVersion', 'id', 'name', 'units', 'nodes', 'members', 'nodalLoads', 'loadCases', 'loadCombinations'];
+  const semanticFields = ['prescribedDisplacements', 'memberLoads', 'memberInitialEffects', 'nodeLinks', 'multiPointConstraints', 'nodalMasses', 'generatedLoadSources', 'movingLoadCases'];
+  exactKeys(source, legacy ? coreFields : [...coreFields, ...semanticFields], 'project');
 
   const units = text(source, 'units', 'project');
   if (!isUnitSystemId(units)) fail('not-a-string', `project.units «${units}»`);
@@ -229,12 +259,21 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
     id: text(source, 'id', 'project'),
     name: text(source, 'name', 'project'),
     units: units as Space3DProjectV1['units'],
-    nodes: list(source, 'nodes', 'project', SPACE3D_LIMITS.maxNodes).map(readNode),
-    members: list(source, 'members', 'project', SPACE3D_LIMITS.maxMembers).map(readMember),
+    nodes: list(source, 'nodes', 'project').map(readNode),
+    members: list(source, 'members', 'project').map(readMember),
     nodalLoads: list(source, 'nodalLoads', 'project').map(readLoad),
     loadCases: list(source, 'loadCases', 'project').map(readCase),
     loadCombinations: list(source, 'loadCombinations', 'project').map(readCombination),
+    prescribedDisplacements: (legacy ? [] : list(source, 'prescribedDisplacements', 'project')) as unknown as Space3DProjectV1['prescribedDisplacements'],
+    memberLoads: (legacy ? [] : list(source, 'memberLoads', 'project')) as unknown as Space3DProjectV1['memberLoads'],
+    memberInitialEffects: (legacy ? [] : list(source, 'memberInitialEffects', 'project')) as unknown as Space3DProjectV1['memberInitialEffects'],
+    nodeLinks: (legacy ? [] : list(source, 'nodeLinks', 'project')) as unknown as Space3DProjectV1['nodeLinks'],
+    multiPointConstraints: (legacy ? [] : list(source, 'multiPointConstraints', 'project')) as unknown as Space3DProjectV1['multiPointConstraints'],
+    nodalMasses: (legacy ? [] : list(source, 'nodalMasses', 'project')) as unknown as Space3DProjectV1['nodalMasses'],
+    generatedLoadSources: (legacy ? [] : list(source, 'generatedLoadSources', 'project')) as unknown as Space3DProjectV1['generatedLoadSources'],
+    movingLoadCases: (legacy ? [] : list(source, 'movingLoadCases', 'project')) as unknown as Space3DProjectV1['movingLoadCases'],
   };
+  for (const field of semanticFields) assertFiniteJson(project[field as keyof typeof project], `project.${field}`);
 
   if (requireAdmissibleModel) {
     const issues = validateSpace3DProject(project);
@@ -251,34 +290,4 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
 export const parseSpace3DDraft = (json: string): Space3DProjectV1 =>
   parseSpace3DProject(json, { requireAdmissibleModel: false });
 
-export const serializeSpace3DProject = (project: Space3DProjectV1): string => JSON.stringify({
-  analysisSpace: project.analysisSpace,
-  schemaVersion: project.schemaVersion,
-  id: project.id,
-  name: project.name,
-  units: project.units,
-  nodes: project.nodes.map((node) => ({
-    id: node.id, x: node.x, y: node.y, z: node.z,
-    restraints: {
-      ux: node.restraints.ux, uy: node.restraints.uy, uz: node.restraints.uz,
-      rx: node.restraints.rx, ry: node.restraints.ry, rz: node.restraints.rz,
-    },
-  })),
-  members: project.members.map((member) => ({
-    id: member.id, i: member.i, j: member.j,
-    E: member.E, G: member.G, A: member.A, Iy: member.Iy, Iz: member.Iz, J: member.J,
-    orientation: {
-      localYReferenceGlobal: [...member.orientation.localYReferenceGlobal],
-      rollRadians: member.orientation.rollRadians,
-    },
-  })),
-  nodalLoads: project.nodalLoads.map((load) => ({
-    id: load.id, caseId: load.caseId, nodeId: load.nodeId,
-    fx: load.fx, fy: load.fy, fz: load.fz, mx: load.mx, my: load.my, mz: load.mz,
-  })),
-  loadCases: project.loadCases.map((item) => ({ id: item.id, name: item.name })),
-  loadCombinations: project.loadCombinations.map((item) => ({
-    id: item.id, name: item.name,
-    terms: item.terms.map((term) => ({ caseId: term.caseId, factor: term.factor })),
-  })),
-}, null, 2);
+export const serializeSpace3DProject = (project: Space3DProjectV1): string => JSON.stringify(project, null, 2);

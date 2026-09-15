@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useProjectModel } from '../../../store/ProjectModelContext';
 import { buildPlanar2DToSpace3DHandoff } from '../../../integrations/planar2dToSpace3d';
 import Space3DWorkspace from '../../../modules/space3d/features/space3d/Space3DWorkspace';
@@ -25,8 +25,14 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
   const [branch] = useState(() => session?.currentBundle(project.id)?.space3d ?? null);
   const [sourceVersion, setSourceVersion] = useState(() => branch?.sourceVersion ?? session?.currentBundle(project.id)?.manifest.sourceVersion ?? crypto.randomUUID());
   const lineage = useRef(sourceVersion);
+  const createdBranch = useRef(false);
   const stale = Boolean(branch && sourceVersion !== session?.currentBundle(project.id)?.manifest.sourceVersion);
   const canonicalProject = useMemo(() => branch ? parseSpace3DDraft(JSON.stringify(branch.model)) : undefined, [branch]);
+  useEffect(() => {
+    if (!session || branch || createdBranch.current) return;
+    createdBranch.current = true;
+    void session.saveSpace3D(project, linkSpace3DToShell(project.id, lineage.current, handoff.candidateModel)).catch(() => undefined);
+  }, [branch, handoff.candidateModel, project, session]);
   const save = useCallback((model: Space3DProjectV1) => {
     if (!session) { setFailure('Almacenamiento unificado no disponible; cambios 3D sólo en memoria.'); return; }
     // The session publishes failures to the persistent shell, even after this adapter unmounts.

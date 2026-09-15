@@ -23,15 +23,23 @@ import {
 import { buildMemberOrientation, memberLength } from '../engine/orientation';
 import { isUnitSystemId } from '../../foundation/units';
 
-const PROJECT_FIELDS = ['analysisSpace', 'schemaVersion', 'id', 'name', 'units', 'nodes', 'members', 'nodalLoads', 'loadCases', 'loadCombinations'];
-const NODE_FIELDS = ['id', 'x', 'y', 'z', 'restraints'];
+const PROJECT_FIELDS = [
+  'analysisSpace', 'schemaVersion', 'id', 'name', 'units', 'nodes', 'members', 'nodalLoads', 'loadCases', 'loadCombinations',
+  'prescribedDisplacements', 'memberLoads', 'memberInitialEffects', 'nodeLinks', 'multiPointConstraints', 'nodalMasses',
+  'generatedLoadSources', 'movingLoadCases',
+];
+const NODE_FIELDS = ['id', 'x', 'y', 'z', 'restraints', 'planarSupport', 'internalHinge'];
 const RESTRAINT_FIELDS = ['ux', 'uy', 'uz', 'rx', 'ry', 'rz'];
-const MEMBER_FIELDS = ['id', 'i', 'j', 'E', 'G', 'A', 'Iy', 'Iz', 'J', 'orientation'];
+const MEMBER_FIELDS = [
+  'id', 'i', 'j', 'E', 'G', 'A', 'Iy', 'Iz', 'J', 'orientation', 'type', 'materialId', 'materialOrigin', 'sectionId',
+  'sectionOrigin', 'beamTheory', 'shearArea', 'density', 'releases', 'axialBehavior', 'rotationalSpringI', 'rotationalSpringJ',
+  'rigidOffsetI', 'rigidOffsetJ', 'label', 'planarG',
+];
 const ORIENTATION_FIELDS = ['localYReferenceGlobal', 'rollRadians'];
 const LOAD_FIELDS = ['id', 'caseId', 'nodeId', 'fx', 'fy', 'fz', 'mx', 'my', 'mz'];
 const LOAD_COMPONENT_FIELDS = ['fx', 'fy', 'fz', 'mx', 'my', 'mz'];
-const CASE_FIELDS = ['id', 'name'];
-const COMBINATION_FIELDS = ['id', 'name', 'terms'];
+const CASE_FIELDS = ['id', 'name', 'category', 'active', 'selfWeightFactor'];
+const COMBINATION_FIELDS = ['id', 'name', 'terms', 'source', 'sourceUrl', 'jurisdiction', 'edition', 'stateLimit', 'reviewedAt'];
 const TERM_FIELDS = ['caseId', 'factor'];
 const MEMBER_PROPERTY_FIELDS = ['A', 'E', 'G', 'Iy', 'Iz', 'J'] as const;
 
@@ -111,9 +119,6 @@ export const validateSpace3DProject = (project: Space3DProjectV1): readonly Spac
   if (!Array.isArray(project.nodalLoads)) collect.push('invalid-property', 'project', '', 'nodalLoads');
   if (!Array.isArray(project.loadCases)) collect.push('invalid-property', 'project', '', 'loadCases');
   if (!Array.isArray(project.loadCombinations)) collect.push('invalid-property', 'project', '', 'loadCombinations');
-
-  if (nodes.length > SPACE3D_LIMITS.maxNodes) collect.push('limit-exceeded', 'project', '', 'nodes');
-  if (members.length > SPACE3D_LIMITS.maxMembers) collect.push('limit-exceeded', 'project', '', 'members');
 
   const nodeIds = new Set<string>();
   const nodeById = new Map<string, { x: number; y: number; z: number }>();
