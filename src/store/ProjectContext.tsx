@@ -14,6 +14,9 @@ import { WORKER_PROTOCOL_VERSION, type AnalysisWorkerPayload, type WorkerRequest
 import type { ProjectRepository } from '../storage/projectRepository';
 import { recordLocalMetric } from '../analytics/localMetrics';
 import type { PreparedStructuralEdit } from '../data/structuralEditing';
+import type { UnifiedProjectSession } from '../storage/unifiedProjectSession';
+import { createSolverSnapshot, type SolverSnapshot } from '../shared/project/toolSnapshot';
+import { SharedToolStateProvider } from './SharedToolState';
 
 // oxlint-disable-next-line react/only-export-components
 export { useProjectModel } from './ProjectModelContext';
@@ -57,12 +60,17 @@ const readPreferredTheme = (): ThemeMode => {
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
-export const ProjectProvider = ({ children }: { children: ReactNode }) => {
-  const [initial] = useState(() => loadProjectFromStorage(localStorage));
+export const ProjectProvider = ({ children, unified = false }: { children: ReactNode; unified?: boolean }) => {
+  const [initial] = useState(() => loadProjectFromStorage(unified
+    ? { getItem: (key) => localStorage.getItem(key), setItem: () => undefined }
+    : localStorage));
+  const unifiedSessionRef = useRef<UnifiedProjectSession | null>(null);
+  const [unifiedReady, setUnifiedReady] = useState(!unified);
   const [project, setProject] = useState<ProjectModel>(initial.project);
   const [past, setPast] = useState<HistoryEntry[]>([]);
   const [future, setFuture] = useState<HistoryEntry[]>([]);
-  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+  const [analysis, setAnalysisState] = useState<AnalysisResult | null>(null);
+  const [solverSnapshot, setSolverSnapshot] = useState<SolverSnapshot | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [selection, setSelectionState] = useState<Selection>(null);
   const [theme, setTheme] = useState<ThemeMode>(readPreferredTheme);
@@ -89,12 +97,38 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const transactionDescriptionRef = useRef('Editar proyecto');
   const analysisTimerRef = useRef<number | null>(null);
   const analysisRevisionRef = useRef(0);
+  const sourceSessionRef = useRef(crypto.randomUUID());
   const analysisWorkerRef = useRef<Worker | null>(null);
   const repositoryRef = useRef<ProjectRepository | null>(null);
   const repositoryRevisionRef = useRef<{ projectId: string; revision: number } | null>(null);
   const repositoryBlockedProjectIdRef = useRef<string | null>(null);
   const repositorySaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const projectChecksumRef = useRef<((project: ProjectModel) => Promise<string>) | null>(null);
+
+  const setAnalysis = useCallback((result: AnalysisResult | null) => {
+    setAnalysisState(result);
+    setSolverSnapshot(result ? createSolverSnapshot(projectRef.current, `${sourceSessionRef.current}:${analysisRevisionRef.current}`, result) : null);
+  }, []);
+
+  useEffect(() => {
+    if (!unified) return;
+    let active = true;
+    void import('../storage/unifiedProjectSession').then(async ({ createUnifiedProjectSession }) => {
+      const session = unifiedSessionRef.current ??= createUnifiedProjectSession();
+      const requestedId = new URLSearchParams(window.location.search).get('project') ?? projectRef.current.id;
+      const canonical = await session.initialize(localStorage, projectRef.current, requestedId);
+      if (!active) return;
+      projectRef.current = canonical;
+      setProject(canonical);
+      setStorageState(session.status);
+      setUnifiedReady(true);
+    }).catch((error: unknown) => {
+      if (!active) return;
+      setStorageState({ issue: 'load-failed', message: error instanceof Error ? error.message : String(error) });
+      setUnifiedReady(true);
+    });
+    return () => { active = false; };
+  }, [unified]);
 
   const setSelection = useCallback((next: Selection) => {
     selectionRef.current = next;
@@ -106,7 +140,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => { analysisRef.current = analysis; }, [analysis]);
 
   useEffect(() => {
-    if (typeof indexedDB === 'undefined') return undefined;
+    if (unified || typeof indexedDB === 'undefined') return undefined;
     let active = true;
     void import('../storage/projectRepository').then(async ({ getProjectRepository, migrateLegacyProject, projectChecksum }) => {
       const repository = getProjectRepository();
@@ -130,9 +164,10 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       });
     });
     return () => { active = false; };
-  }, []);
+  }, [unified]);
 
   useEffect(() => {
+    if (unified) return;
     const onLibraryChange = (event: StorageEvent) => {
       if (event.key !== PROJECT_LIBRARY_CHANGE_KEY || !event.newValue) return;
       try {
@@ -177,7 +212,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     };
     window.addEventListener('storage', onLibraryChange);
     return () => window.removeEventListener('storage', onLibraryChange);
-  }, []);
+  }, [unified]);
 
   const invalidateAnalysis = useCallback(() => {
     analysisRevisionRef.current += 1;
@@ -235,8 +270,23 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   }, [theme]);
 
   useEffect(() => {
-    if (transactionActive) return;
+    if (transactionActive || !unifiedReady) return;
     const handle = window.setTimeout(() => {
+      if (unified) {
+        const session = unifiedSessionRef.current;
+        if (!session) return;
+        void session.save2D(project).then(async (record) => {
+          setStorageState(session.status);
+          // Compatibility library surfaces read this mirror. Only the bundle owns revisions.
+          const { getProjectRepository } = await import('../storage/projectRepository');
+          const mirror = getProjectRepository();
+          const previous = await mirror.openProject(record.id);
+          await mirror.saveProject(record.bundle.model2d, previous?.revision);
+        }).catch((error: unknown) => setStorageState(session.status.issue ? session.status : {
+          issue: 'repository-degraded', message: `Bundle guardado; espejo de biblioteca no disponible: ${String(error)}`,
+        }));
+        return;
+      }
       try {
         const repository = repositoryRef.current;
         const persistCompatible = (next: ProjectModel) => {
@@ -291,7 +341,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       }
     }, 250);
     return () => window.clearTimeout(handle);
-  }, [project, persistenceRevision, transactionActive]);
+  }, [project, persistenceRevision, transactionActive, unified, unifiedReady]);
 
   const analyze = useCallback(() => {
     if (analysisTimerRef.current !== null) window.clearTimeout(analysisTimerRef.current);
@@ -611,23 +661,48 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   }, [publishAnalysisAffectingProject]);
 
   const replaceProject = useCallback((next: ProjectModel, restoredAnalysis?: AnalysisResult, repositoryRevision?: number) => {
-    const normalized = normalizeProject(next);
-    setPast((history) => [...history.slice(-49), { project, description: 'Abrir proyecto', affectsAnalysis: true }]);
-    setFuture([]);
-    setProject(normalized);
-    projectRef.current = normalized;
-    repositoryRevisionRef.current = repositoryRevision === undefined ? null : { projectId: normalized.id, revision: repositoryRevision };
-    if (repositoryRevision !== undefined) repositoryBlockedProjectIdRef.current = null;
-    invalidateAnalysis();
-    if (restoredAnalysis) {
-      setAnalysis(restoredAnalysis);
-      setResultTab(restoredAnalysis.success ? 'summary' : 'issues');
+    const apply = (candidate: ProjectModel) => {
+      const normalized = normalizeProject(candidate);
+      setPast((history) => [...history.slice(-49), { project, description: 'Abrir proyecto', affectsAnalysis: true }]);
+      setFuture([]);
+      setProject(normalized);
+      projectRef.current = normalized;
+      repositoryRevisionRef.current = repositoryRevision === undefined ? null : { projectId: normalized.id, revision: repositoryRevision };
+      if (repositoryRevision !== undefined) repositoryBlockedProjectIdRef.current = null;
+      invalidateAnalysis();
+      if (restoredAnalysis) {
+        setAnalysis(restoredAnalysis);
+        setResultTab(restoredAnalysis.success ? 'summary' : 'issues');
+      }
+      setActiveTool('select');
+      setSelectedCombinationIdState((current) => normalized.combinations.some((item) => item.id === current) ? current : '');
+      setSelection(null);
+      setResultCursor(null);
+    };
+    const session = unifiedSessionRef.current;
+    if (unified && repositoryRevision !== undefined && session) {
+      void session.open(next.id).then((canonical) => {
+        apply(canonical ?? next);
+        setStorageState(session.status);
+      }).catch(() => setStorageState(session.status));
+    } else apply(next);
+  }, [unified, invalidateAnalysis, project, setSelection]);
+
+  const openUnifiedProject = useCallback(async (id: string, isCurrent: () => boolean = () => true) => {
+    const session = unifiedSessionRef.current;
+    if (!session) return false;
+    try {
+      const canonical = await session.open(id);
+      if (!canonical) return false;
+      if (!isCurrent()) return false;
+      replaceProject(canonical);
+      setStorageState(session.status);
+      return true;
+    } catch {
+      setStorageState(session.status);
+      return false;
     }
-    setActiveTool('select');
-    setSelectedCombinationIdState((current) => normalized.combinations.some((item) => item.id === current) ? current : '');
-    setSelection(null);
-    setResultCursor(null);
-  }, [invalidateAnalysis, project, setSelection]);
+  }, [replaceProject]);
 
   const undo = useCallback(() => {
     if (past.length === 0) return;
@@ -655,6 +730,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   }, [future, invalidateAnalysis, project, setSelection]);
 
   const modelValue = useMemo<ProjectModelContextValue>(() => ({
+    openUnifiedProject: unified ? openUnifiedProject : undefined,
     project,
     canUndo: past.length > 0,
     canRedo: future.length > 0,
@@ -662,7 +738,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     storageMessage: storageState.message,
     renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient,
     moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo,
-  }), [project, past.length, future.length, storageState.issue, storageState.message, renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient, moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo]);
+  }), [unified, openUnifiedProject, project, past.length, future.length, storageState.issue, storageState.message, renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient, moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo]);
 
   const analysisValue = useMemo<ProjectAnalysisContextValue>(() => ({
     analysis, isAnalyzing, selectedCombinationId, learningFocus, influenceCanvasState,
@@ -679,7 +755,9 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     <ProjectModelContext.Provider value={modelValue}>
       <ProjectAnalysisContext.Provider value={analysisValue}>
         <WorkspaceUIContext.Provider value={uiValue}>
-          {children}
+          <SharedToolStateProvider projectId={project.id} selection2d={selection} snapshot={solverSnapshot} session={unifiedSessionRef.current}>
+            {unifiedReady ? children : <div role="status">Abriendo proyecto local…</div>}
+          </SharedToolStateProvider>
         </WorkspaceUIContext.Provider>
       </ProjectAnalysisContext.Provider>
     </ProjectModelContext.Provider>

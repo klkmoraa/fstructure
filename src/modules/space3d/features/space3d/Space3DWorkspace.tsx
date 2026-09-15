@@ -47,7 +47,18 @@ const VIEW_LABEL_KEYS: Record<Space3DViewPreset, TranslationKey> = {
   isometric: 'space3d.viewIsometric',
 };
 
+import { ShellContribution, useShellInspector } from '../../../../features/workspace/ShellToolSlots';
+import { useSharedToolState } from '../../../../store/SharedToolState';
+import type { ReactNode } from 'react';
+
+function EmbeddedInspector({ embedded, expanded, children }: { embedded: boolean; expanded: boolean; children: ReactNode }) {
+  return embedded ? <ShellContribution slot="inspector">{children}</ShellContribution>
+    : <div className="space3d-sheet" data-expanded={expanded || undefined}>{children}</div>;
+}
+
 export interface Space3DWorkspaceProps {
+  readonly canonicalProject?: Space3DProjectV1;
+  readonly onProjectChange?: (project: Space3DProjectV1) => void;
   readonly language: Language;
   /** Render the 3D surface inside the global workbench shell. */
   readonly embedded?: boolean;
@@ -163,13 +174,13 @@ const number = (value: number): string => formatSpace3DNumber(value);
 const countRestraints = (restraints: Space3DRestraints) => Object.values(restraints).filter(Boolean).length;
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'language' | 'embedded' | 'onOpenHome' | 'onOpen2D' | 'createViewport' | 'handoff'> {
+  'language' | 'embedded' | 'onOpenHome' | 'onOpen2D' | 'createViewport' | 'handoff' | 'onProjectChange'> {
   readonly bridgeNotes: readonly Space3DBridgeNote[];
   readonly derived: Space3DProjectV1 | null;
 }
 
 const WorkspaceBody = ({
-  language, embedded = false, onOpenHome, onOpen2D, createViewport, handoff, bridgeNotes, derived,
+  language, embedded = false, onOpenHome, onOpen2D, createViewport, handoff, bridgeNotes, derived, onProjectChange,
 }: WorkspaceBodyProps) => {
   const t = useCallback(
     (key: TranslationKey, variables?: Record<string, string | number>) => translate(language, key, variables),
@@ -181,6 +192,14 @@ const WorkspaceBody = ({
     execute, undo, redo, analyze, cancelAnalysis, select, importPortable, exportPortable, loadExample, resetToBlank,
     replaceProject, setAnalysisTargetId,
   } = useSpace3DProject();
+  const shared = useSharedToolState();
+  const publishSelection = shared?.publish3DSelection;
+  useEffect(() => { onProjectChange?.(project); }, [project, onProjectChange]);
+  useEffect(() => {
+    if (!embedded || !handoff || !publishSelection) return;
+    publishSelection(selectedEntity && (selectedEntity.kind === 'node' || selectedEntity.kind === 'member')
+      ? [{ projectId: handoff.source.projectId, tool: 'space3d', kind: selectedEntity.kind, id: selectedEntity.id }] : []);
+  }, [embedded, handoff, publishSelection, selectedEntity]);
 
   const [layers, setLayers] = useState<Space3DLayerVisibility>(SPACE3D_DEFAULT_LAYERS);
   const [rail, setRail] = useState<'model' | 'results'>('model');
@@ -204,7 +223,12 @@ const WorkspaceBody = ({
   const [activeView, setActiveView] = useState<Space3DViewPreset>('isometric');
   const [modelNavFocus, setModelNavFocus] = useState<Space3DModelFocus>('node');
   const [propertiesOpen, setPropertiesOpen] = useState(false);
-  const [sheetExpanded, setSheetExpanded] = useState(false);
+  const [sheetExpanded, setLocalSheetExpanded] = useState(false);
+  const shellInspector = useShellInspector();
+  const setSheetExpanded = (value: boolean | ((current: boolean) => boolean)) => {
+    setLocalSheetExpanded(value);
+    if (embedded && shellInspector?.mobile && value !== false && document.activeElement instanceof HTMLElement) shellInspector.show(document.activeElement);
+  };
   const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
@@ -412,6 +436,21 @@ const WorkspaceBody = ({
   </div>;
 
   return <div className="space3d-screen" data-space3d-layout="canvas-command-dock" data-embedded={embedded || undefined}>
+    {embedded ? <>
+      <ShellContribution slot="controls">
+        <button type="button" className="workspace-topbar__icon-button" onClick={undo} disabled={!canUndo} aria-label={t('space3d.undo')}><Undo2 size={17} /></button>
+        <button type="button" className="workspace-topbar__icon-button" onClick={redo} disabled={!canRedo} aria-label={t('space3d.redo')}><Redo2 size={17} /></button>
+      </ShellContribution>
+      <ShellContribution slot="action"><button type="button" className="workspace-topbar__action-button is-primary" onClick={() => { void analyze(); }} disabled={running || pendingNotes.length > 0}>
+        <Play size={17} /><span>{running ? t('space3d.analyzing') : t('space3d.analyze')}</span>
+      </button></ShellContribution>
+      <ShellContribution slot="status"><span role="status">{t(STATE_KEYS[analysisState])} · Experimental</span></ShellContribution>
+      <ShellContribution slot="inspector"><div className="space3d-inline-actions">{targetSelect}{projectSwitcher}
+        <button type="button" className="space3d-tool" onClick={cancelAnalysis} disabled={!running} aria-label={t('space3d.cancelAnalysis')}><CircleStop size={17} /></button>
+      </div><div className="space3d-tray" role="group" aria-label={t('space3d.layers')}>
+        {LAYER_TOGGLES.map(({ id, key, Icon }) => <button key={id} type="button" className="space3d-tool" aria-label={t(key)} aria-pressed={layers[id]} onClick={() => setLayers((current) => ({ ...current, [id]: !current[id] }))}><Icon size={17} /></button>)}
+      </div></ShellContribution>
+    </> : null}
     {embedded ? null : <aside className="space3d-console" aria-label={t('space3d.title')}>
       <div className="space3d-identity">
         <strong className="space3d-wordmark">FS</strong>
@@ -429,7 +468,7 @@ const WorkspaceBody = ({
 
     <p className="space3d-experimental" role="note">{t('space3d.experimentalNotice')}</p>
 
-    <div className={`space3d-toolbar${embedded ? ' space3d-toolbar--embedded' : ''}`} data-mobile-open={mobileToolsOpen || undefined}>
+    {!embedded ? <div className="space3d-toolbar" data-mobile-open={mobileToolsOpen || undefined}>
       {embedded ? <div className="space3d-toolbar-project">{projectSwitcher}</div> : null}
       <button
         type="button"
@@ -477,7 +516,7 @@ const WorkspaceBody = ({
           {t('space3d.bridgeNextRequirement', { requirement: t(BRIDGE_KEYS[nextBridgeRequirement.code] ?? 'space3d.error.generic') })}
         </p> : null}
       </div>
-    </div>
+    </div> : null}
 
     <div className="space3d-diagnostics">
     {handoff ? <section className={`space3d-bridge${pendingNotes.length === 0 ? ' space3d-bridge--resolved' : ''}`} aria-label={t('space3d.bridgeTitle')}>
@@ -625,8 +664,8 @@ const WorkspaceBody = ({
         <p className="space3d-help">{t('space3d.interactionHelp')}</p>
       </section>
 
-      <div className="space3d-sheet" data-expanded={sheetExpanded || undefined}>
-        <button
+      <EmbeddedInspector embedded={embedded} expanded={sheetExpanded}>
+        {!embedded ? <button
           type="button"
           className="space3d-sheet-handle"
           onClick={() => setSheetExpanded((current) => !current)}
@@ -634,7 +673,7 @@ const WorkspaceBody = ({
         >
           <span className="space3d-sheet-handle-bar" aria-hidden="true" />
           <span className="space3d-visually-hidden">{sheetExpanded ? t('space3d.mobileSheetCollapse') : t('space3d.mobileSheetExpand')}</span>
-        </button>
+        </button> : null}
 
         <aside className="space3d-model-summary-panel space3d-model-nav-panel">
           <Space3DModelSummary
@@ -754,8 +793,8 @@ const WorkspaceBody = ({
             onSelectMember={(id) => selectEntity({ kind: 'member', id })}
           />
         </div>}
-      </aside>
-      </div>
+        </aside>
+      </EmbeddedInspector>
     </div>
 
     {transfer ? <div className="space3d-transfer" role="group" aria-label={transfer === 'import' ? t('space3d.import') : t('space3d.export')}>
@@ -823,15 +862,16 @@ const WorkspaceBody = ({
  * sigue correspondiendole; solo cuando no existe se deriva uno nuevo. Asi,
  * volver al 2D y entrar otra vez no duplica nada ni descarta el trabajo 3D.
  */
-const Space3DWorkspace = ({ storage, client, handoff, ...rest }: Space3DWorkspaceProps) => {
+const Space3DWorkspace = ({ storage, client, handoff, canonicalProject, ...rest }: Space3DWorkspaceProps) => {
   const namespace = handoff ? `src:${handoff.source.projectId}` : undefined;
   const initialProject = useMemo(() => {
+    if (canonicalProject) return canonicalProject;
     if (!handoff) return undefined;
     const stored = loadSpace3DProject(storage ?? undefined, namespace);
     return stored && stored.id === handoff.candidateModel.id ? stored : handoff.candidateModel;
     // El proyecto inicial se resuelve una vez por origen; despues manda el store.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [handoff, namespace]);
+  }, [canonicalProject, handoff, namespace]);
 
   return (
     <Space3DProjectProvider storage={storage} client={client} namespace={namespace} initialProject={initialProject}>

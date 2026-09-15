@@ -2,7 +2,9 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import * as projectStorage from './storage/projectRepository';
+import { IDBFactory } from 'fake-indexeddb';
+import { IndexedDbUnifiedBundleRepository } from './storage/unifiedBundleRepository';
+import { createUnifiedProjectBundle } from './shared/project/unifiedProjectBundle';
 import { createDefaultProject } from './data/defaultProject';
 import { PROJECT_STORAGE_KEY } from './data/projectStorage';
 import { WORKSPACE_LAYOUT_STORAGE_KEY } from './features/workspace/useWorkspaceLayoutPreferences';
@@ -17,6 +19,7 @@ class TestResizeObserver {
 Object.defineProperty(globalThis, 'ResizeObserver', { value: TestResizeObserver, configurable: true });
 
 beforeEach(() => {
+  globalThis.indexedDB = new IDBFactory();
   localStorage.clear();
   sessionStorage.clear();
   window.history.replaceState(null, '', '/');
@@ -30,12 +33,12 @@ describe('standalone FStructure', () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect(screen.getByTestId('solver2d-welcome')).toBeTruthy();
+    expect(await screen.findByTestId('solver2d-welcome')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Del trazo al diagrama.' })).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
 
-    expect(screen.getByLabelText('Inspector')).toBeTruthy();
+    expect(await screen.findByLabelText('Inspector')).toBeTruthy();
     expect(screen.getByLabelText('Panorama del modelo')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
     expect(new URLSearchParams(window.location.search).get('project')).toBeTruthy();
@@ -47,7 +50,7 @@ describe('standalone FStructure', () => {
     window.history.replaceState(null, '', '/?surface=workspace2d');
     render(<App />);
 
-    expect(screen.getByLabelText('Inspector')).toBeTruthy();
+    expect(await screen.findByLabelText('Inspector')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Ir al inicio' }));
 
     expect(screen.getByTestId('solver2d-welcome')).toBeTruthy();
@@ -82,7 +85,7 @@ describe('standalone FStructure', () => {
     const user = userEvent.setup();
     render(<App />);
     const length = window.history.length;
-    await user.click(screen.getByRole('button', { name: 'Diseño' }));
+    await user.click(await screen.findByRole('tab', { name: 'Diseño' }));
     expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
     expect(window.history.length).toBe(length + 1);
@@ -95,10 +98,8 @@ describe('standalone FStructure', () => {
 
   it('opens an existing requested project and retains its identity and selected tool after reload', async () => {
     const project = { ...createDefaultProject(), id: 'project B / ñ', name: 'Proyecto B' };
-    const repository = new projectStorage.InMemoryProjectRepository();
-    await repository.saveProject(project);
-    // Only replace the unavailable browser database boundary with the real memory repository.
-    vi.spyOn(projectStorage, 'getProjectRepository').mockReturnValue(repository);
+    const repository = new IndexedDbUnifiedBundleRepository();
+    await repository.saveBundle(createUnifiedProjectBundle(project, 'v1'), 0);
     window.history.replaceState(null, '', `/?project=${encodeURIComponent(project.id)}&tool=fem`);
     const view = render(<App />);
     await waitFor(() => expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).toBe(project.id));
@@ -114,26 +115,30 @@ describe('standalone FStructure', () => {
     const active = { ...createDefaultProject(), id: 'project-a' };
     const requested = { ...createDefaultProject(), id: 'project-b', name: 'Proyecto B' };
     localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(active));
-    const repository = new projectStorage.InMemoryProjectRepository();
-    await repository.saveProject(requested);
-    const openProject = repository.openProject.bind(repository);
+    const repository = new IndexedDbUnifiedBundleRepository();
+    await repository.saveBundle(createUnifiedProjectBundle(requested, 'v1'), 0);
+    const openProject = IndexedDbUnifiedBundleRepository.prototype.openBundle;
     let releaseLookup!: () => void;
     let lookupStarted!: () => void;
     const pending = new Promise<void>((resolve) => { releaseLookup = resolve; });
     const started = new Promise<void>((resolve) => { lookupStarted = resolve; });
-    vi.spyOn(repository, 'openProject').mockImplementation(async (id) => {
+    vi.spyOn(IndexedDbUnifiedBundleRepository.prototype, 'openBundle').mockImplementation(async function (this: IndexedDbUnifiedBundleRepository, id) {
       if (id === requested.id) {
         lookupStarted();
         await pending;
       }
-      return openProject(id);
+      return openProject.call(this, id);
     });
-    vi.spyOn(projectStorage, 'getProjectRepository').mockReturnValue(repository);
-    window.history.replaceState(null, '', '/?project=project-b&tool=model2d');
+    window.history.replaceState(null, '', '/?project=project-a&tool=model2d');
     render(<App />);
+    await screen.findByRole('application');
+    act(() => {
+      window.history.pushState(null, '', '/?project=project-b&tool=model2d');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
     await started;
     try {
-      await userEvent.setup().click(screen.getByRole('button', { name: 'Diseño' }));
+      await userEvent.setup().click(screen.getByRole('tab', { name: 'Diseño' }));
       expect(new URLSearchParams(window.location.search).get('project')).toBe('project-b');
       expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
       await act(async () => { releaseLookup(); });

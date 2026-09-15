@@ -44,6 +44,7 @@ import type { AnalysisResult } from '../../types';
 import type { RevisionSnapshot } from '../revision-comparison/revisionComparison';
 import { DataSurfaceRetainedStateProvider } from './DataSurfaceRetainedState';
 import { LazySurface } from './LazySurface';
+import { ShellToolSlotsProvider, ShellSlotHost, ShellInspectorHost, ShellInspectorTrigger, ShellMobileSurface } from './ShellToolSlots';
 
 const LazyCommandPalette = lazy(() => import('./CommandPalette').then((module) => ({ default: module.CommandPalette })));
 const LazyLocalCommandAssistant = lazy(() => import('../ai/LocalCommandAssistant').then((module) => ({ default: module.LocalCommandAssistant })));
@@ -80,7 +81,6 @@ const renderWorkspaceSlot = (slot: WorkspaceSlot | undefined, context: Workspace
   typeof slot === 'function' ? slot(context) : slot
 );
 
-export type WorkspaceId = 'model2d' | 'space3d' | 'fem';
 export type WorkspaceSlotContext = { onOpenModel2D: () => void };
 export type WorkspaceSlot = ReactNode | ((context: WorkspaceSlotContext) => ReactNode);
 
@@ -116,7 +116,7 @@ const WorkspaceBrokerContent = ({
   shellRef,
   layoutController,
 }: WorkspaceShellProps & {
-  activeWorkspace: WorkspaceId;
+  activeWorkspace: ToolId;
   onOpenModel2D: () => void;
   onOpenSpace3D: () => void;
   onOpenFem: () => void;
@@ -156,7 +156,6 @@ const WorkspaceBrokerContent = ({
   const analysisSetup = broker.stateFor('analysisSetup');
   const view = broker.stateFor('view');
   const results = broker.stateFor('results');
-  const design = broker.stateFor('design');
   const dense = broker.stateFor('dense');
   const [denseView, setDenseView] = useState<DenseResultView>('reactions');
   const datasheet = broker.stateFor('datasheet');
@@ -238,23 +237,13 @@ const WorkspaceBrokerContent = ({
           openModel2DSurface('results', payload?.trigger);
         }
       }),
-      onWorkspaceCommand('open-design', (payload) => {
+      onWorkspaceCommand('open-design', () => {
         closeSurface('results');
-        if (onToolChange) onToolChange('design');
-        else onOpenModel2D();
-        openSurface('design', payload?.trigger);
+        onToolChange?.('design');
       }),
-      onWorkspaceCommand('toggle-design', (payload) => {
-        if (design.open) {
-          closeSurface('design');
-          onToolChange?.('model2d');
-        }
-        else {
-          closeSurface('results');
-          if (onToolChange) onToolChange('design');
-          else onOpenModel2D();
-          openSurface('design', payload?.trigger);
-        }
+      onWorkspaceCommand('toggle-design', () => {
+        closeSurface('results');
+        onToolChange?.(activeWorkspace === 'design' ? 'model2d' : 'design');
       }),
       onWorkspaceCommand('analysis-requested', () => {
         onOpenModel2D();
@@ -285,7 +274,7 @@ const WorkspaceBrokerContent = ({
       }),
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe());
-  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, design.open, doctor.status, onOpenModel2D, onToolChange, openSurface, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
+  }, [activeWorkspace, analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, onOpenModel2D, onToolChange, openSurface, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
 
   useEffect(() => {
     setModelDoctorAcknowledgedIds(new Set());
@@ -295,11 +284,10 @@ const WorkspaceBrokerContent = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
-  // Apply the durable tool after the project-change reset has cleared transients.
+  // Native Design owns its stage; the broker only owns transient 2D surfaces.
   useEffect(() => {
-    if (tool === 'design') openSurface('design');
-    else if (tool !== undefined) closeSurface('design');
-  }, [tool, projectId, openSurface, closeSurface]);
+    closeSurface('design');
+  }, [tool, projectId, closeSurface]);
 
   /**
     * Al terminar una corrida válida el resultado se publica EN EL LIENZO, no en
@@ -439,12 +427,6 @@ const WorkspaceBrokerContent = ({
       focusStableLauncherIfUnclaimed('.utility-more-button');
     }
   }, [closeSurface, openModel2DSurface]);
-  const setDesignOpen = useCallback((open: boolean, trigger?: HTMLElement | null) => {
-    if (open) {
-      closeSurface('results');
-      openModel2DSurface('design', trigger);
-    } else closeSurface('design');
-  }, [closeSurface, openModel2DSurface]);
   const openDetail = useCallback((trigger?: HTMLElement | null) => {
     onOpenModel2D();
     setPreference('inspectorCollapsed', false);
@@ -498,7 +480,9 @@ const WorkspaceBrokerContent = ({
   const restoreComparison = useCallback(() => setSurfaceExtent('comparison', 'default'), [setSurfaceExtent]);
   const peekDoctor = useCallback(() => setSurfaceExtent('doctor', 'peek'), [setSurfaceExtent]);
   const restoreDoctor = useCallback(() => setSurfaceExtent('doctor', 'default'), [setSurfaceExtent]);
-  const nativeWorkspaceContent = activeWorkspace === 'space3d'
+  const nativeWorkspaceContent = activeWorkspace === 'design'
+    ? <DesignSurfaceContext value={{ open: true, presentation: 'fullscreen', status: 'active', onOpenChange: () => onOpenModel2D() }}><LazySurface><DesignTool /></LazySurface></DesignSurfaceContext>
+    : activeWorkspace === 'space3d'
     ? renderWorkspaceSlot(space3dContent, { onOpenModel2D })
     : activeWorkspace === 'fem'
       ? renderWorkspaceSlot(femContent, { onOpenModel2D })
@@ -512,8 +496,13 @@ const WorkspaceBrokerContent = ({
     inspectorCollapsed={!isModel2D || !inspectorShowsColumn}
     inspectorCompact={isModel2D && detail.open && layout.inspectorCompact}
     inspectorWidth={layout.inspectorWidth}
-    fullCanvas={layout.fullCanvas}
+    fullCanvas={isModel2D && layout.fullCanvas}
     topbar={<WorkspaceTopBar
+      tool={activeWorkspace}
+      onToolChange={onToolChange}
+      contextualControls={<><ShellSlotHost slot="controls" />{!isModel2D ? <ShellInspectorTrigger /> : null}</>}
+      primaryAction={<ShellSlotHost slot="action" />}
+      toolStatus={<ShellSlotHost slot="status" />}
       projectName={project.name}
       storageState={!storageIssue ? 'ready' : storageIssue === 'recovered' ? 'recovered' : 'issue'}
       storageMessage={storageMessage}
@@ -526,15 +515,15 @@ const WorkspaceBrokerContent = ({
           ? (analysis.success ? 'resolved' : 'failed')
           : 'ready'}
       resultsOpen={results.open}
-      designOpen={design.open}
+      designOpen={activeWorkspace === 'design'}
       canUndo={canUndo}
       canRedo={canRedo}
       labels={{
         solverName: activeWorkspace === 'space3d'
           ? language === 'en' ? '3D model · Experimental' : 'Modelo 3D · Experimental'
           : activeWorkspace === 'fem'
-            ? 'FEM · ' + (language === 'en' ? 'Planned' : 'Planeado')
-            : SOLVER_2D.name,
+            ? 'FEM · Experimental'
+            : activeWorkspace === 'design' ? 'Diseño · Experimental' : SOLVER_2D.name,
         project: t('topbar.currentProject'),
         home: t('navigation.home'),
         editProject: t('project.name'),
@@ -636,20 +625,11 @@ const WorkspaceBrokerContent = ({
       <Model2DSurfaceContext value={{ layers: editorLayers, dispatchLayers: dispatchEditorLayers, onRequestInspector: () => openDetail() }}>
         <LazySurface><Model2DTool /></LazySurface>
       </Model2DSurfaceContext>
-      {broker.isRetained('results') ? <ResultsPanel
+      {broker.isRetained('results') ? <ShellMobileSurface><ResultsPanel
         presentation={results.presentation as 'dock' | 'inset' | 'sheet'}
         status={results.status}
         onOpenChange={setResultsOpen}
-      /> : null}
-      {broker.isRetained('design') ? <DesignSurfaceContext value={{
-        open: design.status === 'active',
-        presentation: design.presentation as 'dock' | 'drawer' | 'fullscreen',
-        status: design.status,
-        onOpenChange: (open) => {
-          setDesignOpen(open);
-          if (!open) onToolChange?.('model2d');
-        },
-      }}><LazySurface><DesignTool /></LazySurface></DesignSurfaceContext> : null}
+      /></ShellMobileSurface> : null}
       <ToastNotification />
       {broker.isRetained('palette') ? <LazySurface><LazyCommandPalette
         open={palette.status === 'active'}
@@ -721,22 +701,22 @@ const WorkspaceBrokerContent = ({
       data-workspace-mode={activeWorkspace}
       aria-label={activeWorkspace === 'space3d'
         ? language === 'en' ? '3D model' : 'Modelo 3D'
-        : language === 'en' ? 'Finite elements' : 'Elementos finitos'}
+        : activeWorkspace === 'design' ? 'Diseño' : language === 'en' ? 'Finite elements' : 'Elementos finitos'}
     >
       {nativeWorkspaceContent}
     </section>}
-    inspector={isModel2D ? <div className="workspace-surfaces" data-workspace-right-slot>
+    inspector={isModel2D ? <ShellMobileSurface><div className="workspace-surfaces" data-workspace-right-slot>
       {broker.isRetained('detail') ? <Inspector surface="detail" className={detail.presentation === 'sheet' && detail.status === 'active' ? 'mobile-open' : ''} desktopWidth={layout.inspectorWidth} presentation={detail.presentation as 'dock' | 'inset' | 'sheet'} status={detail.status} onClose={closeDetail} compact={detail.presentation !== 'sheet' && layout.inspectorCompact} onExpand={() => setPreference('inspectorCompact', false)} onDesktopWidthChange={(width) => setPreference('inspectorWidth', width)} mobileDetent={layout.inspectorDetent} onMobileDetentChange={(detent) => setPreference('inspectorDetent', detent)} onMobileDetentCycle={cycleInspectorDetent} /> : null}
       {broker.isRetained('analysisSetup') ? <Inspector surface="analysisSetup" className={analysisSetup.presentation === 'sheet' && analysisSetup.status === 'active' ? 'mobile-open' : ''} presentation={analysisSetup.presentation as 'dock' | 'inset' | 'sheet'} status={analysisSetup.status} onClose={() => closeSurface('analysisSetup')} mobileDetent={layout.inspectorDetent} onMobileDetentChange={(detent) => setPreference('inspectorDetent', detent)} onMobileDetentCycle={cycleInspectorDetent} activeTool={activeTool} onActiveToolChange={setActiveTool} /> : null}
       {broker.isRetained('view') ? <Inspector surface="view" className={view.presentation === 'sheet' && view.status === 'active' ? 'mobile-open' : ''} presentation={view.presentation as 'dock' | 'inset' | 'sheet'} status={view.status} onClose={() => closeSurface('view')} mobileDetent={layout.inspectorDetent} onMobileDetentChange={(detent) => setPreference('inspectorDetent', detent)} onMobileDetentCycle={cycleInspectorDetent} /> : null}
-    </div> : null}
-    floatingActions={undefined}
-    instrument={isModel2D ? <Instrument /> : undefined}
+    </div></ShellMobileSurface> : <ShellInspectorHost />}
+    floatingActions={<ShellSlotHost slot="mobile" />}
+    instrument={<>{storageIssue ? <p className="shell-storage-notice" role="status">{storageMessage}</p> : null}{isModel2D ? <Instrument /> : undefined}</>}
   /></DataSurfaceRetainedStateProvider>;
 };
 
 type WorkspaceSurfaceProps = WorkspaceShellProps & {
-  activeWorkspace: WorkspaceId;
+  activeWorkspace: ToolId;
   onOpenModel2D: () => void;
   onOpenSpace3D: () => void;
   onOpenFem: () => void;
@@ -758,16 +738,16 @@ const WorkspaceSurface = (props: WorkspaceSurfaceProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <SurfacePresentationProvider shellClass={shellClass} initialOpen={initialOpen} backgroundRef={shellRef}>
+  return <ShellToolSlotsProvider tool={props.activeWorkspace} mobile={shellClass === 'K0'}><SurfacePresentationProvider shellClass={shellClass} initialOpen={initialOpen} backgroundRef={shellRef}>
     <WorkspaceBrokerContent {...props} shellRef={shellRef} layoutController={layoutController} />
-  </SurfacePresentationProvider>;
+  </SurfacePresentationProvider></ShellToolSlotsProvider>;
 };
 
 export const WorkspaceShell = (props: WorkspaceShellProps) => {
-  const [localWorkspace, setActiveWorkspace] = useState<WorkspaceId>('model2d');
-  const activeWorkspace: WorkspaceId = props.tool === undefined ? localWorkspace : props.tool === 'design' ? 'model2d' : props.tool;
+  const [localWorkspace, setActiveWorkspace] = useState<ToolId>('model2d');
+  const activeWorkspace: ToolId = props.tool ?? localWorkspace;
   useEffect(() => setActiveWorkspace('model2d'), [props.projectId]);
-  const onToolChange = props.onToolChange;
+  const onToolChange = props.onToolChange ?? setActiveWorkspace;
   const onOpenModel2D = useCallback(() => {
     if (onToolChange) onToolChange('model2d');
     else setActiveWorkspace('model2d');
@@ -784,6 +764,7 @@ export const WorkspaceShell = (props: WorkspaceShellProps) => {
   return <ShellCompositionProvider>
     <WorkspaceSurface
       {...props}
+      onToolChange={onToolChange}
       activeWorkspace={activeWorkspace}
       onOpenModel2D={onOpenModel2D}
       onOpenSpace3D={onOpenSpace3D}

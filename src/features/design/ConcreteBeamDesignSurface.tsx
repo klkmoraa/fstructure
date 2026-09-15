@@ -8,8 +8,10 @@ import type { ReinforcedConcreteBeamAssignment } from '../../types';
 import type { SurfacePresentation, SurfaceStatus } from '../workspace/surfacePresentation';
 import { createId } from '../../utils/id';
 import './concreteBeamDesignSurface.css';
+import { ShellContribution } from '../workspace/ShellToolSlots';
 
 export interface ConcreteBeamDesignSurfaceProps {
+  nativeTool?: boolean;
   open: boolean;
   presentation: Extract<SurfacePresentation, 'dock' | 'drawer' | 'fullscreen'>;
   status: SurfaceStatus;
@@ -51,7 +53,7 @@ const copy = {
 
 const arrangement = (count: number, diameter: number) => `${count} Ø${diameter} mm`;
 
-export const ConcreteBeamDesignSurface = ({ open, presentation, status, onOpenChange }: ConcreteBeamDesignSurfaceProps) => {
+export const ConcreteBeamDesignSurface = ({ open, presentation, status, onOpenChange, nativeTool = false }: ConcreteBeamDesignSurfaceProps) => {
   const { project, selection, updateProjectDesign } = useProject();
   const { language } = useI18n();
   const text = copy[language];
@@ -116,6 +118,14 @@ export const ConcreteBeamDesignSurface = ({ open, presentation, status, onOpenCh
     hidden={!open || status !== 'active'}
     aria-label={text.title}
   >
+    {nativeTool ? <>
+      <ShellContribution slot="action"><button type="button" className="workspace-topbar__action-button is-primary"
+        disabled={busy || (!assignment && !canCreate)} onClick={assignment ? run : createAssignment}>
+        <Play size={17} aria-hidden="true" /><span>{busy ? text.calculating : assignment ? text.calculate : text.create}</span>
+      </button></ShellContribution>
+      <ShellContribution slot="status"><span role="status">{text.subtitle}</span></ShellContribution>
+      <ShellContribution slot="inspector"><p>{!member ? text.empty : text.notDrawing}</p></ShellContribution>
+    </> : null}
     <header className="concrete-design-surface__header">
       <div><DraftingCompass size={20} aria-hidden="true" /><span><strong>{text.title}</strong><small>{text.subtitle}</small></span></div>
       <button type="button" onClick={() => onOpenChange(false)} aria-label={text.close}><X size={18} aria-hidden="true" /></button>
@@ -132,7 +142,7 @@ export const ConcreteBeamDesignSurface = ({ open, presentation, status, onOpenCh
           <label>{text.ultimate}<select value={assignment.ultimateCombinationId} onChange={(event) => update({ ultimateCombinationId: event.currentTarget.value })}>{ultimateCombinations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label>{text.service}<select value={assignment.serviceCombinationId} onChange={(event) => update({ serviceCombinationId: event.currentTarget.value })}>{serviceCombinations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         </div>
-        <button type="button" className="concrete-design-surface__primary" onClick={run} disabled={busy}>{busy ? <LoaderCircle size={16} className="is-spinning" aria-hidden="true" /> : <Play size={16} fill="currentColor" aria-hidden="true" />}{busy ? text.calculating : text.calculate}</button>
+        {!nativeTool ? <button type="button" className="concrete-design-surface__primary" onClick={run} disabled={busy}>{busy ? <LoaderCircle size={16} className="is-spinning" aria-hidden="true" /> : <Play size={16} fill="currentColor" aria-hidden="true" />}{busy ? text.calculating : text.calculate}</button> : null}
         {error ? <p className="concrete-design-surface__error" role="alert">{error}</p> : null}
       </section>
 

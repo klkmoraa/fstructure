@@ -12,6 +12,7 @@ export interface UnifiedProjectManifestV1 {
 
 export interface LinkedSpace3DBranchV1<T extends JsonValue = JsonValue> {
   sourceProjectId: string;
+  /** Derivation provenance. Inequality with the manifest means stale, not corrupt. */
   sourceVersion: string;
   model: T;
 }

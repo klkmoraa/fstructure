@@ -100,7 +100,8 @@ export function validateBundle(input: unknown): UnifiedProjectBundleV1 {
   if (copy.space3d !== null) {
     const branch = object(copy.space3d);
     exact(branch, ['sourceProjectId', 'sourceVersion', 'model']);
-    if (branch.sourceProjectId !== manifest.projectId || branch.sourceVersion !== manifest.sourceVersion) throw new Error('Space3D source link does not match the manifest');
+    // A 2D edit must retain the original provenance of its now-stale 3D branch.
+    if (branch.sourceProjectId !== manifest.projectId || typeof branch.sourceVersion !== 'string' || !branch.sourceVersion.trim()) throw new Error('Space3D source link does not match the manifest');
     const space3d = parseSpace3DDraft(canonicalSerialize(branch.model));
     if (space3d.id !== `space3d:${manifest.projectId}`) throw new Error('Space3D identity does not match project lineage');
   }
