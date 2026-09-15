@@ -8,6 +8,8 @@
     "architecture:check": "node scripts/check-local-foundation-dependencies.mjs",
     "architecture:test": "node --test scripts/check-local-foundation-dependencies.test.mjs",
     "icons:generate": "node scripts/generate-brand-icons.mjs",
+    "numeric:rust:test": "cargo test --locked --manifest-path crates/numeric-core/Cargo.toml --features faer-backend --test faer_sparse_gate",
+    "numeric:wasm:gate": "node scripts/check-numeric-wasm-gate.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
