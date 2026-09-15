@@ -53,3 +53,15 @@ export type {
   Space3DModalOptions,
   Space3DModalResult,
 } from './engine/analysisModes';
+
+export {
+  analyzeSpace3DBuckling,
+  analyzeSpace3DPDelta,
+} from './engine/analysisModes';
+
+export type {
+  Space3DBucklingMode,
+  Space3DBucklingResult,
+  Space3DPDeltaOptions,
+  Space3DPDeltaResult,
+} from './engine/analysisModes';
