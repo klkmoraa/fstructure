@@ -365,6 +365,7 @@ export type Space3DAnalysisIssueCode =
   | 'no-free-dof'
   | 'mechanism'
   | 'non-finite-solution'
+  | 'memory-budget'
   /** Task 6 persists these member families, but the legacy frame solver does not analyze them. */
   | 'unsupported-member-type'
   /** A preserved semantic is not silently reinterpreted by the current solver. */

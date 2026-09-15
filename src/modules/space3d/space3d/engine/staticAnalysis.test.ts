@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { axialCantilever } from './fixtures';
 import { assembleSpace3DStaticModel, analyzeSpace3DStatic } from './solver';
+import { handleSpace3DWorkerRequest, SPACE3D_PROTOCOL_VERSION } from '../runtime/protocol';
 
 describe('Space3D canonical static assembly', () => {
   it('assembles a six-DOF map, stiffness and target load before solving', () => {
@@ -31,6 +32,39 @@ describe('Space3D canonical static assembly', () => {
       rz: 0,
     });
     expect(result.diagnostics.equilibrium.normalized).toBeLessThanOrEqual(1e-8);
+  });
+
+  it('rejects before dense matrix allocation when the memory budget is exhausted', () => {
+    const project = axialCantilever({ P: 10 });
+    const assembly = assembleSpace3DStaticModel(project, 'CO1', {
+      budget: { maxEstimatedBytes: 1, softDeadlineMs: 30_000 },
+    });
+
+    expect(assembly.valid).toBe(false);
+    expect(assembly.issues).toContainEqual({ code: 'memory-budget', entityKind: 'project', entityId: project.id, field: 'budget' });
+    expect(assembly.stiffness).toEqual([]);
+    expect(assembly.loadVector).toEqual([]);
+  });
+
+  it('propagates the memory admission through the linear worker entry', () => {
+    const response = handleSpace3DWorkerRequest({
+      protocolVersion: SPACE3D_PROTOCOL_VERSION,
+      type: 'run',
+      requestId: 1,
+      project: axialCantilever({ P: 10 }),
+      targetId: 'CO1',
+      budget: { maxEstimatedBytes: 1, softDeadlineMs: 30_000 },
+    });
+
+    expect(response).toMatchObject({
+      type: 'success',
+      result: {
+        success: false,
+        issues: [expect.objectContaining({ code: 'memory-budget' })],
+        nodeResults: [],
+        memberResults: [],
+      },
+    });
   });
 
   it('fails closed when a persisted semantic has no static implementation yet', () => {
