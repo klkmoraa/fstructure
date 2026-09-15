@@ -4,7 +4,7 @@ import unittest
 from copy import deepcopy
 from pathlib import Path
 
-from concrete_beam_oracle import design_reinforced_concrete_beam
+from validation.python.concrete_beam_oracle import design_reinforced_concrete_beam
 
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "concrete-beam"
