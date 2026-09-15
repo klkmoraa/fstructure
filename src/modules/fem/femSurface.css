@@ -1,0 +1,38 @@
+.fusion-fem {
+  box-sizing: border-box;
+  display: grid;
+  align-content: center;
+  gap: 34px;
+  width: min(920px, calc(100% - 40px));
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 48px 0;
+  color: var(--sc-color-text-primary);
+}
+
+.fusion-fem__intro { max-width: 630px; }
+.fusion-fem__status { display: inline-flex; padding: 5px 9px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-control); color: var(--sc-color-text-secondary); font-size: 11px; }
+.fusion-fem h1 { margin: 16px 0 10px; font: 650 clamp(32px, 5vw, 62px)/.98 var(--sc-font-display); letter-spacing: -.045em; }
+.fusion-fem__intro p { max-width: 62ch; margin: 0; color: var(--sc-color-text-secondary); font-size: 15px; line-height: 1.65; }
+
+.fusion-fem__roadmap {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fusion-fem__roadmap::before { content: ''; position: absolute; top: 20px; left: 10%; right: 10%; height: 1px; background: var(--sc-color-border); }
+.fusion-fem__roadmap li { position: relative; display: grid; justify-items: center; gap: 10px; padding: 0 12px; text-align: center; }
+.fusion-fem__roadmap li > span { z-index: 1; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--sc-color-border); border-radius: 50%; background: var(--sc-color-surface-1); }
+.fusion-fem__roadmap li > div { display: grid; gap: 4px; }
+.fusion-fem__roadmap strong { font-size: 13px; }
+.fusion-fem__roadmap small { color: var(--sc-color-text-muted); font-size: 10px; line-height: 1.35; }
+@media (max-width: 640px) {
+  .fusion-fem { width: min(100% - 28px, 520px); align-content: start; gap: 28px; padding-block: 34px; }
+  .fusion-fem__roadmap { grid-template-columns: 1fr; gap: 18px; }
+  .fusion-fem__roadmap::before { top: 20px; bottom: 20px; left: 19px; right: auto; width: 1px; height: auto; }
+  .fusion-fem__roadmap li { grid-template-columns: 40px 1fr; justify-items: start; align-items: center; text-align: left; }
+}
