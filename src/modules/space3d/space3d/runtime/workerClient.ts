@@ -12,6 +12,8 @@
  * se descarta en vez de resolver una promesa que ya no corresponde al modelo.
  */
 import { SPACE3D_PROTOCOL_VERSION, handleSpace3DWorkerRequest, type Space3DWorkerRequest, type Space3DWorkerResponse } from './protocol';
+import { createBrowserAnalysisBudget } from '../../../../numeric/admission';
+import type { AnalysisBudget } from '../../../../shared/contracts';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../model/types';
 
 /**
@@ -107,7 +109,7 @@ export class Space3DWorkerClient {
     this.createWorker = createWorker;
   }
 
-  run(project: Space3DProjectV1, targetId: string): Promise<Space3DAnalysisResult> {
+  run(project: Space3DProjectV1, targetId: string, budget: AnalysisBudget = createBrowserAnalysisBudget()): Promise<Space3DAnalysisResult> {
     if (this.disposed) return Promise.reject(new Space3DAnalysisCancelledError());
     this.cancel();
 
@@ -123,6 +125,7 @@ export class Space3DWorkerClient {
         requestId,
         project,
         targetId,
+        budget,
       });
     });
   }

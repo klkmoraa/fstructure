@@ -77,4 +77,27 @@ describe('Space3D stability studies', () => {
     expect(result.points.every((point) => Number.isFinite(point.value))).toBe(true);
     expect(result.maxEquilibriumResidual).toBeLessThanOrEqual(1e-8);
   });
+
+  it('rejects every dense study before allocation when the memory budget is exhausted', () => {
+    const project = axialCantilever({ P: -10 });
+    const budget = { maxEstimatedBytes: 1, softDeadlineMs: 30_000 };
+    const influence = analyzeSpace3DInfluence(project, {
+      targetId: 'CO1',
+      target: { kind: 'member', memberId: 'M1', position: 1, quantity: 'N', side: 'continuous' },
+      positions: [0, 1, 2],
+      unitLoad: [1, 0, 0],
+      budget,
+    });
+    const results = [
+      analyzeSpace3DPDelta(project, 'CO1', { budget }),
+      analyzeSpace3DModal(project, { targetId: 'CO1', modes: 1, budget }),
+      analyzeSpace3DBuckling(project, 'CO1', { modes: 1, budget }),
+      influence,
+    ];
+
+    for (const result of results) {
+      expect(result.success).toBe(false);
+      expect(result.issues).toContainEqual(expect.objectContaining({ code: 'memory-budget' }));
+    }
+  });
 });

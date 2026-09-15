@@ -18,6 +18,12 @@ import {
   type Matrix,
   zeros,
 } from '../../foundation/linearAlgebra';
+import {
+  assessAnalysisAdmission,
+  createBrowserAnalysisBudget,
+  estimateSparseLinearSystemBytes,
+} from '../../../../numeric/admission';
+import type { AnalysisBudget } from '../../../../shared/contracts';
 import { buildSpaceFrameElement } from './element';
 import type { Space3DElement } from './element';
 import { validateSpace3DProject } from '../model/validation';
@@ -321,6 +327,7 @@ export const emptySpace3DAnalysisResult = (targetId: string): Space3DAnalysisRes
 export interface Space3DStaticAnalysisOptions {
   readonly backend?: 'auto' | 'dense' | 'sparse';
   readonly includeAssemblyTrace?: boolean;
+  readonly budget?: AnalysisBudget;
 }
 
 export interface Space3DStaticAssemblyElement {
@@ -426,8 +433,9 @@ const emptyStaticAssembly = (
   totalDofs = 0,
   nodeDofIndices: ReadonlyMap<string, readonly number[]> = new Map(),
 ): Space3DStaticAssembly => {
-  const stiffness = zeros(totalDofs, totalDofs);
-  const loadVector = new Array<number>(totalDofs).fill(0);
+  // Failed admission must not allocate a matrix merely to return a failure.
+  const stiffness: Matrix = [];
+  const loadVector: readonly number[] = [];
   return Object.freeze({
     valid: false,
     targetId,
@@ -444,6 +452,19 @@ const emptyStaticAssembly = (
     issues: Object.freeze([...issues]),
     backend,
   });
+};
+
+/**
+ * Dense Space 3D paths need the same adaptive budget as the sparse runtime.
+ * Passing n² as the non-zero count reuses the conservative arithmetic-only
+ * estimate (including dense fill and solve workspace) without imposing an
+ * entity-count ceiling on the model.
+ */
+const estimateSpace3DAnalysisBytes = (dofCount: number): number => {
+  if (!Number.isSafeInteger(dofCount) || dofCount <= 0) return Number.POSITIVE_INFINITY;
+  const maxSafeDimension = Math.floor(Math.sqrt(Number.MAX_SAFE_INTEGER));
+  const denseEntries = dofCount <= maxSafeDimension ? dofCount * dofCount : Number.MAX_SAFE_INTEGER;
+  return estimateSparseLinearSystemBytes({ dimension: dofCount, nonZeros: denseEntries });
 };
 
 /**
@@ -478,6 +499,19 @@ export const assembleSpace3DStaticModel = (
   if (unsupportedMembers.length > 0 || semantics.length > 0) {
     const memberIssues = unsupportedMembers.map((member) => issue('unsupported-member-type', 'member', member.id, 'type'));
     return emptyStaticAssembly(targetId, target.kind, [...memberIssues, ...semantics], backend, totalDofs, nodeDofIndices);
+  }
+
+  const budget = options.budget ?? createBrowserAnalysisBudget();
+  const admission = assessAnalysisAdmission(estimateSpace3DAnalysisBytes(totalDofs), budget);
+  if (!admission.accepted) {
+    return emptyStaticAssembly(
+      targetId,
+      target.kind,
+      [issue('memory-budget', 'project', project.id, 'budget')],
+      backend,
+      totalDofs,
+      nodeDofIndices,
+    );
   }
 
   const nodeIndex = new Map(project.nodes.map((node, index) => [node.id, index]));
