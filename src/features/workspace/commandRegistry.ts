@@ -28,6 +28,7 @@ import {
   Moon,
   ClipboardList,
   Download,
+  DraftingCompass,
   Grid3x3,
   GitCompareArrows,
   Layers3,
@@ -158,6 +159,19 @@ const STATIC_COMMANDS: readonly CommandDefinition[] = [
     route: () => 'Análisis › Model Doctor',
     deferredOpen: true,
     run: () => emitWorkspaceCommand('open-model-doctor'),
+  },
+  {
+    id: 'design:concrete-beam',
+    category: 'analysis',
+    icon: DraftingCompass,
+    label: (ctx) => ctx.project.settings.language === 'en' ? 'Design' : 'Diseño',
+    hint: (ctx) => ctx.project.settings.language === 'en'
+      ? 'Reinforced concrete beam workbench'
+      : 'Workbench para viga de concreto reforzado',
+    aliases: () => ['diseño', 'design', 'concreto', 'concrete', 'refuerzo', 'reinforcement', 'ntc'],
+    route: (ctx) => ctx.project.settings.language === 'en' ? 'Analysis › Design' : 'Análisis › Diseño',
+    deferredOpen: true,
+    run: () => emitWorkspaceCommand('open-design', {}),
   },
   {
     id: 'tool:datasheet',

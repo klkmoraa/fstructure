@@ -22,6 +22,7 @@ const labels: WorkspaceTopBarLabels = {
   redo: 'Rehacer',
   analyze: 'Analizar',
   results: 'Resultados',
+  design: 'Diseño',
   calculationExperience: 'Experiencia y cálculo',
   actions: 'Acciones del espacio de trabajo',
 };
@@ -29,6 +30,31 @@ const labels: WorkspaceTopBarLabels = {
 afterEach(() => cleanup());
 
 describe('WorkspaceTopBar', () => {
+  it('mantiene Diseño como un control persistente e informa su estado al shell', async () => {
+    const user = userEvent.setup();
+    const onOpenDesign = vi.fn();
+    render(<WorkspaceTopBar
+      labels={labels}
+      projectName="Modelo"
+      storageState="ready"
+      analysisState="ready"
+      resultsOpen={false}
+      designOpen={true}
+      canUndo={false}
+      canRedo={false}
+      onOpenHome={vi.fn()}
+      onRenameProject={vi.fn()}
+      onUndo={vi.fn()}
+      onRedo={vi.fn()}
+      onAnalyze={vi.fn()}
+      onOpenResults={vi.fn()}
+      onOpenDesign={onOpenDesign}
+    />);
+    const control = screen.getByRole('button', { name: 'Diseño' });
+    expect(control.getAttribute('aria-pressed')).toBe('true');
+    await user.click(control);
+    expect(onOpenDesign).toHaveBeenCalledWith(control);
+  });
   it('keeps project and analysis status visible without opening another surface', () => {
     render(
       <WorkspaceTopBar

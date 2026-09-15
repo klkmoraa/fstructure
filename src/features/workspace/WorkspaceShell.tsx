@@ -1,6 +1,7 @@
 import { lazy, useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
 import { Inspector } from '../inspector/Inspector';
 import { ResultsPanel } from '../results/ResultsPanel';
+import { ConcreteBeamDesignSurface } from '../design/ConcreteBeamDesignSurface';
 import { StructuralCanvas } from '../canvas/StructuralCanvas';
 import { Console } from '../shell/Console';
 import { Instrument } from '../shell/Instrument';
@@ -95,7 +96,7 @@ const WorkspaceBrokerContent = ({
   const [dataSurfaceStateEpoch, setDataSurfaceStateEpoch] = useState(0);
   const [revisionBaseline, setRevisionBaseline] = useState<RevisionSnapshot | null>(null);
   const [editorLayers, dispatchEditorLayers] = useReducer(editorLayerReducer, undefined, createPersistedEditorLayerState);
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { project, analysis, isAnalyzing, storageIssue, storageMessage, renameProject, setActiveTool, setResultTab, updateProjectView, analyze, undo, redo, canUndo, canRedo } = useProject();
   const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
   const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
@@ -112,6 +113,7 @@ const WorkspaceBrokerContent = ({
   const analysisSetup = broker.stateFor('analysisSetup');
   const view = broker.stateFor('view');
   const results = broker.stateFor('results');
+  const design = broker.stateFor('design');
   const dense = broker.stateFor('dense');
   const [denseView, setDenseView] = useState<DenseResultView>('reactions');
   const datasheet = broker.stateFor('datasheet');
@@ -181,10 +183,27 @@ const WorkspaceBrokerContent = ({
       onWorkspaceCommand('open-datasheet', () => openSurface('datasheet')),
       onWorkspaceCommand('open-structural-bom', () => openSurface('bom')),
       onWorkspaceCommand('open-revision-comparison', () => openSurface('comparison')),
-      onWorkspaceCommand('open-results', (payload) => openSurface('results', payload?.trigger)),
+      onWorkspaceCommand('open-results', (payload) => {
+        closeSurface('design');
+        openSurface('results', payload?.trigger);
+      }),
       onWorkspaceCommand('toggle-results', (payload) => {
         if (results.open) closeSurface('results');
-        else openSurface('results', payload?.trigger);
+        else {
+          closeSurface('design');
+          openSurface('results', payload?.trigger);
+        }
+      }),
+      onWorkspaceCommand('open-design', (payload) => {
+        closeSurface('results');
+        openSurface('design', payload?.trigger);
+      }),
+      onWorkspaceCommand('toggle-design', (payload) => {
+        if (design.open) closeSurface('design');
+        else {
+          closeSurface('results');
+          openSurface('design', payload?.trigger);
+        }
       }),
       onWorkspaceCommand('analysis-requested', () => {
         const id = modelDoctorNotificationIdRef.current + 1;
@@ -213,13 +232,13 @@ const WorkspaceBrokerContent = ({
       }),
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe());
-  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, openSurface, project.id, results.open, revealResultOverlay, setResultTab]);
+  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, design.open, doctor.status, openSurface, project.id, results.open, revealResultOverlay, setResultTab]);
 
   useEffect(() => {
     setModelDoctorAcknowledgedIds(new Set());
     pendingModelDoctorNotificationIdRef.current = null;
     setPendingModelDoctorNotification(null);
-    (['generator', 'dense', 'datasheet', 'bom', 'comparison', 'doctor', 'palette'] as const).forEach((surface) => closeSurface(surface));
+    (['generator', 'dense', 'datasheet', 'bom', 'comparison', 'doctor', 'palette', 'design'] as const).forEach((surface) => closeSurface(surface));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
@@ -347,7 +366,10 @@ const WorkspaceBrokerContent = ({
   }, [shellRef]);
 
   const setResultsOpen = useCallback((open: boolean, trigger?: HTMLElement | null) => {
-    if (open) openSurface('results', trigger);
+    if (open) {
+      closeSurface('design');
+      openSurface('results', trigger);
+    }
     else {
       closeSurface('results');
       setDataSurfaceStateEpoch((epoch) => epoch + 1);
@@ -357,6 +379,12 @@ const WorkspaceBrokerContent = ({
       // bróker sí pudo devolver el foco al botón que abrió Resultados.
       focusStableLauncherIfUnclaimed('.utility-more-button');
     }
+  }, [closeSurface, openSurface]);
+  const setDesignOpen = useCallback((open: boolean, trigger?: HTMLElement | null) => {
+    if (open) {
+      closeSurface('results');
+      openSurface('design', trigger);
+    } else closeSurface('design');
   }, [closeSurface, openSurface]);
   const openDetail = useCallback((trigger?: HTMLElement | null) => {
     setPreference('inspectorCollapsed', false);
@@ -433,6 +461,7 @@ const WorkspaceBrokerContent = ({
           ? (analysis.success ? 'resolved' : 'failed')
           : 'ready'}
       resultsOpen={results.open}
+      designOpen={design.open}
       canUndo={canUndo}
       canRedo={canRedo}
       labels={{
@@ -463,6 +492,7 @@ const WorkspaceBrokerContent = ({
         redo: t('history.redo'),
         analyze: t('analysis.run'),
         results: t('results.outputs'),
+        design: language === 'en' ? 'Design' : 'Diseño',
         calculationExperience: t('inspector.calculationExperience'),
         actions: t('toolbar.primary'),
       }}
@@ -479,6 +509,7 @@ const WorkspaceBrokerContent = ({
       // con `aria-pressed`. Se usa el mismo comando que el riel de la consola,
       // que además devuelve el foco a quien lo pulsó.
       onOpenResults={(trigger) => emitWorkspaceCommand('toggle-results', { trigger })}
+      onOpenDesign={(trigger) => emitWorkspaceCommand('toggle-design', { trigger })}
       onOpenCalculationExperience={(trigger) => openSurface('analysisSetup', trigger)}
       utilities={<WorkspaceUtilities onOpenInspector={(trigger) => {
         // La utilidad abre una consulta contextual: en móvil empieza compacta
@@ -504,6 +535,7 @@ const WorkspaceBrokerContent = ({
             closeSurface('analysisSetup');
             closeSurface('view');
             closeSurface('results');
+            closeSurface('design');
           } else if (!layout.inspectorCollapsed) {
             // Results stays non-resident even leaving full-canvas (CRI-100);
             // only the inspector, which the user had open, comes back.
@@ -523,6 +555,12 @@ const WorkspaceBrokerContent = ({
         presentation={results.presentation as 'dock' | 'inset' | 'sheet'}
         status={results.status}
         onOpenChange={setResultsOpen}
+      /> : null}
+      {broker.isRetained('design') ? <ConcreteBeamDesignSurface
+        open={design.status === 'active'}
+        presentation={design.presentation as 'dock' | 'drawer' | 'fullscreen'}
+        status={design.status}
+        onOpenChange={setDesignOpen}
       /> : null}
       <ToastNotification />
       {broker.isRetained('palette') ? <LazySurface><LazyCommandPalette
