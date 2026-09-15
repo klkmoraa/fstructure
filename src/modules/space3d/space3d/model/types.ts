@@ -364,7 +364,9 @@ export type Space3DAnalysisIssueCode =
   | 'unknown-target'
   | 'no-free-dof'
   | 'mechanism'
-  | 'non-finite-solution';
+  | 'non-finite-solution'
+  /** Task 6 persists these member families, but the legacy frame solver does not analyze them. */
+  | 'unsupported-member-type';
 
 export interface Space3DAnalysisIssue {
   readonly code: Space3DAnalysisIssueCode;

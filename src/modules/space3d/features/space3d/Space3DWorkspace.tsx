@@ -97,6 +97,7 @@ const ANALYSIS_ISSUE_KEYS: Record<string, TranslationKey> = {
   'empty-model': 'space3d.error.emptyModel',
   'unknown-target': 'space3d.error.unknownTarget',
   'non-finite-solution': 'space3d.error.analysisFailed',
+  'unsupported-member-type': 'space3d.error.unsupportedMemberType',
   'missing-reference': 'space3d.error.missingEntity',
   'invalid-property': 'space3d.error.invalidValue',
   'invalid-coordinate': 'space3d.error.invalidValue',

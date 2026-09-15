@@ -482,6 +482,7 @@ export const enWorkspace = {
   'space3d.error.emptyModel': 'The model has no nodes or members.',
   'space3d.error.unknownTarget': 'The analysis target does not exist.',
   'space3d.error.analysisFailed': 'The analysis ended unexpectedly.',
+  'space3d.error.unsupportedMemberType': 'This member type is not supported by the current 3D solver.',
   'space3d.error.generic': 'The operation could not be completed.',
   'space3d.transferExportLabel': 'Exported project (JSON)',
   'space3d.transferImportLabel': 'Project to import (JSON)',

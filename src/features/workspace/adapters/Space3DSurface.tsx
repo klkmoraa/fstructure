@@ -25,18 +25,24 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
   const [branch] = useState(() => session?.currentBundle(project.id)?.space3d ?? null);
   const [sourceVersion, setSourceVersion] = useState(() => branch?.sourceVersion ?? session?.currentBundle(project.id)?.manifest.sourceVersion ?? crypto.randomUUID());
   const lineage = useRef(sourceVersion);
+  const sourceModel2D = useRef<ProjectModel | null>(branch?.baselineStatus === 'exact' && branch.sourceModel2D ? structuredClone(branch.sourceModel2D) : null);
   const createdBranch = useRef(false);
   const stale = Boolean(branch && sourceVersion !== session?.currentBundle(project.id)?.manifest.sourceVersion);
   const canonicalProject = useMemo(() => branch ? parseSpace3DDraft(JSON.stringify(branch.model)) : undefined, [branch]);
   useEffect(() => {
     if (!session || branch || createdBranch.current) return;
     createdBranch.current = true;
-    void session.saveSpace3D(project, linkSpace3DToShell(project.id, lineage.current, handoff.candidateModel)).catch(() => undefined);
+    sourceModel2D.current = structuredClone(project);
+    void session.saveSpace3D(project, linkSpace3DToShell(sourceModel2D.current, lineage.current, handoff.candidateModel)).catch(() => undefined);
   }, [branch, handoff.candidateModel, project, session]);
   const save = useCallback((model: Space3DProjectV1) => {
     if (!session) { setFailure('Almacenamiento unificado no disponible; cambios 3D sólo en memoria.'); return; }
     // The session publishes failures to the persistent shell, even after this adapter unmounts.
-    void session.saveSpace3D(project, linkSpace3DToShell(project.id, lineage.current, model)).catch(() => undefined);
+    const baseline = sourceModel2D.current;
+    const linked = baseline
+      ? linkSpace3DToShell(baseline, lineage.current, model)
+      : linkSpace3DToShell(project.id, lineage.current, model);
+    void session.saveSpace3D(project, linked).catch(() => undefined);
   }, [session, project]);
   const rederive = useCallback(async () => {
     if (!session) return;
@@ -46,6 +52,7 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
       source = (await session.save2D(project)).bundle;
     }
     lineage.current = source.manifest.sourceVersion;
+    sourceModel2D.current = structuredClone(source.model2d);
     setSourceVersion(lineage.current);
   }, [session, project]);
   return <>

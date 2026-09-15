@@ -99,11 +99,20 @@ export function validateBundle(input: unknown): UnifiedProjectBundleV1 {
   if (!Array.isArray(copy.fem)) throw new Error('FEM must be a list of serializable branches');
   if (copy.space3d !== null) {
     const branch = object(copy.space3d);
-    exact(branch, ['sourceProjectId', 'sourceVersion', 'model']);
+    const branchKeys = Object.keys(branch);
+    const legacy = branchKeys.length === 3 && ['sourceProjectId', 'sourceVersion', 'model'].every((key) => Object.hasOwn(branch, key));
+    const linked = branchKeys.length === 5 && ['sourceProjectId', 'sourceVersion', 'sourceModel2D', 'baselineStatus', 'model'].every((key) => Object.hasOwn(branch, key));
+    if (!legacy && !linked) throw new Error('Unsupported Space3D branch fields');
     // A 2D edit must retain the original provenance of its now-stale 3D branch.
     if (branch.sourceProjectId !== manifest.projectId || typeof branch.sourceVersion !== 'string' || !branch.sourceVersion.trim()) throw new Error('Space3D source link does not match the manifest');
     const space3d = parseSpace3DDraft(canonicalSerialize(branch.model));
     if (space3d.id !== `space3d:${manifest.projectId}`) throw new Error('Space3D identity does not match project lineage');
+    if (linked) {
+      if (branch.baselineStatus !== 'exact') throw new Error('Unsupported Space3D baseline status');
+      const baseline = normalizeProject(branch.sourceModel2D);
+      if (baseline.id !== manifest.projectId) throw new Error('Space3D baseline identity does not match project lineage');
+      branch.sourceModel2D = JSON.parse(canonicalSerialize(modelJson(baseline)));
+    }
   }
   return copy;
 }

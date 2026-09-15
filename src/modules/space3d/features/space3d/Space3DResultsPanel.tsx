@@ -41,6 +41,7 @@ const ISSUE_KEYS: Record<string, TranslationKey> = {
   'empty-model': 'space3d.error.emptyModel',
   'unknown-target': 'space3d.error.unknownTarget',
   'non-finite-solution': 'space3d.error.analysisFailed',
+  'unsupported-member-type': 'space3d.error.unsupportedMemberType',
   'duplicate-id': 'space3d.error.duplicateId',
   'empty-id': 'space3d.error.emptyId',
   'missing-reference': 'space3d.error.missingEntity',
