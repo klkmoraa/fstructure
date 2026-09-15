@@ -136,6 +136,14 @@ export const analyzeSpace3DProject = (project: Space3DProjectV1, targetId: strin
   const target = resolveSpace3DTarget(project, targetId);
   if (!target) return failed(targetId, 'unknown', [issue('unknown-target', 'project', targetId)]);
 
+  // V2 deliberately keeps truss and rigid members lossless, but this legacy
+  // engine only assembles frame stiffness. Reject them before assembly rather
+  // than silently treating a different physical model as a frame (Task 7).
+  const unsupportedMembers = project.members.filter((member) => member.type === 'truss' || member.type === 'rigid');
+  if (unsupportedMembers.length > 0) {
+    return failed(targetId, target.kind, unsupportedMembers.map((member) => issue('unsupported-member-type', 'member', member.id, 'type')));
+  }
+
   if (project.nodes.length === 0 || project.members.length === 0) {
     return failed(targetId, target.kind, [issue('empty-model', 'project', '')]);
   }

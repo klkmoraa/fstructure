@@ -106,7 +106,7 @@ export const buildPlanar2DToSpace3DHandoff = (project: ProjectModel): Planar2DTo
   const members: Space3DFrameMember[] = project.members.map((member) => ({
     id: member.id, i: member.i, j: member.j,
     E: member.E, G: finitePositive(member.G) ? member.G : member.E / 2.6,
-    A: member.A, Iy: member.I, Iz: member.I, J: Math.max(Math.abs(member.I) * 0.1, Number.EPSILON),
+    A: member.A, Iy: member.I, Iz: member.I, J: member.type === 'truss' ? 0 : Math.max(Math.abs(member.I) * 0.1, Number.EPSILON),
     orientation: orientationFor(project, member),
     type: member.type,
     materialId: member.materialId, materialOrigin: member.materialOrigin,

@@ -3,6 +3,8 @@ import { normalizeProject } from '../data/migrate';
 import type { SyncPatchV1 } from '../shared/contracts';
 import type { ProjectModel } from '../types';
 import type { Space3DProjectV2 } from '../modules/space3d/space3d/public';
+import { parseSpace3DDraft } from '../modules/space3d/space3d/data/codec';
+import type { LinkedSpace3DBranchV1 } from '../shared/project/unifiedProjectBundle';
 import { buildPlanar2DToSpace3DHandoff, roundTripPlanarSpace3DTo2D } from './planar2dToSpace3d';
 
 type SyncCollection = 'nodes' | 'members' | 'loadCases' | 'combinations' | 'nodalLoads'
@@ -18,7 +20,11 @@ export interface Space3DSyncPatchV1 extends SyncPatchV1 {
 export interface Space3DSyncReviewV1 {
   readonly sourceProjectId: string;
   readonly patches: readonly Space3DSyncPatchV1[];
+  /** Deterministic structural checksum; detects stale/tampered review DTOs but is not a cryptographic signature. */
+  readonly structuralSeal: string;
 }
+
+export const SPACE3D_SYNC_ADMISSION = Object.freeze({ maxEntityCount: null, strategy: 'runtime-budget' as const });
 
 const COLLECTIONS: readonly { collection: SyncCollection; entityKind: string }[] = [
   { collection: 'nodes', entityKind: 'node' },
@@ -38,6 +44,22 @@ const COLLECTIONS: readonly { collection: SyncCollection; entityKind: string }[]
 
 const same = (left: unknown, right: unknown): boolean => projectCommandSnapshot(left) === projectCommandSnapshot(right);
 const patchIdFor = (entityKind: string, entityId: string, field: string): string => JSON.stringify([entityKind, entityId, field]);
+
+const stableSerialize = (value: unknown): string => {
+  if (value === undefined) return 'undefined';
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number') return Number.isFinite(value) ? JSON.stringify(value) : `invalid:${String(value)}`;
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+  if (typeof value === 'object') return `{${Object.keys(value as Record<string, unknown>).sort().map((key) => `${JSON.stringify(key)}:${stableSerialize((value as Record<string, unknown>)[key])}`).join(',')}}`;
+  return `invalid:${typeof value}`;
+};
+const fnv1a = (value: string): string => {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) { hash ^= value.charCodeAt(index); hash = Math.imul(hash, 0x01000193); }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+};
+const structuralSealFor = (sourceProjectId: string, patches: readonly Space3DSyncPatchV1[]): string =>
+  `structural-v1:${fnv1a(stableSerialize({ sourceProjectId, patches }))}`;
 const rows = (project: ProjectModel, collection: SyncCollection): readonly Record<string, unknown>[] =>
   ((project[collection] ?? []) as readonly unknown[]) as readonly Record<string, unknown>[];
 const row = (project: ProjectModel, collection: SyncCollection, id: string): Record<string, unknown> | null =>
@@ -144,10 +166,36 @@ const unsupportedPatch = (entityKind: string, entityId: string, field: string, b
 const unsupportedPatches = (base: Space3DProjectV2, edited: Space3DProjectV2): Space3DSyncPatchV1[] => {
   const patches: Space3DSyncPatchV1[] = [];
   const baseNodes = new Map(base.nodes.map((node) => [node.id, node]));
+  const editedNodes = new Map(edited.nodes.map((node) => [node.id, node]));
+  const outOfPlaneNodeIds = new Set(edited.nodes.filter((node) => Math.abs(node.z) > 1e-12).map((node) => node.id));
+  const baseMembers = new Map(base.members.map((member) => [member.id, member]));
+  const outOfPlaneMemberIds = new Set(edited.members.filter((member) => {
+    const start = editedNodes.get(member.i); const end = editedNodes.get(member.j);
+    return Boolean(start && end && (outOfPlaneNodeIds.has(start.id) || outOfPlaneNodeIds.has(end.id)));
+  }).map((member) => member.id));
+  const addReferenceUnsupported = <T extends { readonly id: string }>(
+    kind: string,
+    previousItems: readonly T[],
+    nextItems: readonly T[],
+    outOfPlane: (item: T) => boolean,
+  ) => {
+    const previousById = new Map(previousItems.map((item) => [item.id, item]));
+    for (const item of nextItems) {
+      const previous = previousById.get(item.id);
+      // A geometry change is already represented by its node/member patch. If
+      // the semantic record itself changed while attached to that geometry,
+      // retain the full record as explicitly unsupported instead of projecting
+      // only whichever planar fields happen to survive.
+      if (outOfPlane(item) && (!previous || !same(previous, item))) {
+        patches.push(unsupportedPatch(kind, item.id, '$entity', previous ?? null, item));
+      }
+    }
+  };
   for (const node of edited.nodes) {
     const previous = baseNodes.get(node.id);
     if (!previous) {
       if (Math.abs(node.z) > 1e-12) patches.push(unsupportedPatch('node', node.id, '$entity', null, node));
+      for (const dof of ['uz', 'rx', 'ry'] as const) if (node.restraints[dof] !== true) patches.push(unsupportedPatch('node', node.id, `restraints.${dof}`, undefined, node.restraints[dof]));
       continue;
     }
     for (const field of ['z'] as const) if (!same(previous[field], node[field])) patches.push(unsupportedPatch('node', node.id, field, previous[field], node[field]));
@@ -155,13 +203,20 @@ const unsupportedPatches = (base: Space3DProjectV2, edited: Space3DProjectV2): S
       if (!same(previous.restraints[dof], node.restraints[dof])) patches.push(unsupportedPatch('node', node.id, `restraints.${dof}`, previous.restraints[dof], node.restraints[dof]));
     }
   }
-  const baseMembers = new Map(base.members.map((member) => [member.id, member]));
   for (const member of edited.members) {
     const previous = baseMembers.get(member.id);
+    const start = editedNodes.get(member.i); const end = editedNodes.get(member.j);
+    if (start && end && (outOfPlaneNodeIds.has(start.id) || outOfPlaneNodeIds.has(end.id)) && (!previous || !same(previous, member))) {
+      patches.push(unsupportedPatch('member', member.id, '$entity', previous ?? null, member));
+    }
     if (!previous) {
-      const nodes = new Map(edited.nodes.map((node) => [node.id, node]));
-      if (Math.abs(nodes.get(member.i)?.z ?? 0) > 1e-12 || Math.abs(nodes.get(member.j)?.z ?? 0) > 1e-12) {
-        patches.push(unsupportedPatch('member', member.id, '$entity', null, member));
+      const mostlyVertical = Boolean(start && end && Math.abs(end.y - start.y) > Math.abs(end.x - start.x));
+      const planarOrientation = { localYReferenceGlobal: mostlyVertical ? [0, 0, 1] : [0, 1, 0], rollRadians: 0 };
+      if (!same(member.orientation, planarOrientation)) patches.push(unsupportedPatch('member', member.id, 'orientation', undefined, member.orientation));
+      if (member.Iy !== 0) patches.push(unsupportedPatch('member', member.id, 'Iy', undefined, member.Iy));
+      if (member.J !== 0) patches.push(unsupportedPatch('member', member.id, 'J', undefined, member.J));
+      for (const field of ['iUz', 'iRx', 'iRy', 'jUz', 'jRx', 'jRy'] as const) {
+        if (member.releases?.[field] !== undefined) patches.push(unsupportedPatch('member', member.id, `releases.${field}`, undefined, member.releases[field]));
       }
       continue;
     }
@@ -175,11 +230,19 @@ const unsupportedPatches = (base: Space3DProjectV2, edited: Space3DProjectV2): S
   const baseLoads = new Map(base.nodalLoads.map((load) => [load.id, load]));
   for (const load of edited.nodalLoads) {
     const previous = baseLoads.get(load.id);
-    if (!previous) continue;
     for (const field of ['fz', 'mx', 'my'] as const) {
-      if (!same(previous[field], load[field])) patches.push(unsupportedPatch('nodal-load', load.id, field, previous[field], load[field]));
+      if (!same(previous?.[field] ?? 0, load[field]) && load[field] !== 0) patches.push(unsupportedPatch('nodal-load', load.id, field, previous?.[field], load[field]));
     }
   }
+  addReferenceUnsupported('nodal-load', base.nodalLoads, edited.nodalLoads, (load) => outOfPlaneNodeIds.has(load.nodeId));
+  addReferenceUnsupported('prescribed-displacement', base.prescribedDisplacements, edited.prescribedDisplacements, (item) => outOfPlaneNodeIds.has(item.nodeId));
+  addReferenceUnsupported('member-load', base.memberLoads, edited.memberLoads, (item) => outOfPlaneMemberIds.has(item.memberId));
+  addReferenceUnsupported('initial-effect', base.memberInitialEffects, edited.memberInitialEffects, (item) => outOfPlaneMemberIds.has(item.memberId));
+  addReferenceUnsupported('node-link', base.nodeLinks, edited.nodeLinks, (item) => outOfPlaneNodeIds.has(item.nodeI) || (item.nodeJ !== undefined && outOfPlaneNodeIds.has(item.nodeJ)));
+  addReferenceUnsupported('multi-point-constraint', base.multiPointConstraints, edited.multiPointConstraints, (item) => item.terms.some((term) => outOfPlaneNodeIds.has(term.nodeId)));
+  addReferenceUnsupported('nodal-mass', base.nodalMasses, edited.nodalMasses, (item) => outOfPlaneNodeIds.has(item.nodeId));
+  addReferenceUnsupported('generated-load-source', base.generatedLoadSources, edited.generatedLoadSources, (item) => item.memberIds.some((memberId) => outOfPlaneMemberIds.has(memberId)));
+  addReferenceUnsupported('moving-load-case', base.movingLoadCases, edited.movingLoadCases, (item) => item.memberIds.some((memberId) => outOfPlaneMemberIds.has(memberId)) || outOfPlaneMemberIds.has(item.targetMemberId) || (item.startNodeId !== undefined && outOfPlaneNodeIds.has(item.startNodeId)));
   const compareUnsupportedFields = <T extends { readonly id: string }>(
     kind: string,
     previousItems: readonly T[],
@@ -219,18 +282,35 @@ const unsupportedPatches = (base: Space3DProjectV2, edited: Space3DProjectV2): S
   }
   const basePrescribed = new Map(base.prescribedDisplacements.map((item) => [item.id, item]));
   for (const item of edited.prescribedDisplacements) {
-    if (item.component !== 'uz' && item.component !== 'rx' && item.component !== 'ry') continue;
-    patches.push(unsupportedPatch('prescribed-displacement', item.id, 'component', basePrescribed.get(item.id)?.component, item.component));
+    const previous = basePrescribed.get(item.id);
+    if (item.component === 'uz' || item.component === 'rx' || item.component === 'ry') {
+      if (!same(previous?.component, item.component)) patches.push(unsupportedPatch('prescribed-displacement', item.id, 'component', previous?.component, item.component));
+    }
+    if (!same(previous?.normalDirection, item.normalDirection) && item.normalDirection !== undefined) {
+      patches.push(unsupportedPatch('prescribed-displacement', item.id, 'normalDirection', previous?.normalDirection, item.normalDirection));
+    }
   }
   return patches;
 };
 
 /** Creates a field review against the source branch and the current 2D authority. */
-export const prepareSpace3DSyncReview = (
-  source: ProjectModel,
+export function prepareSpace3DSyncReview(source: ProjectModel, current: ProjectModel, edited: Space3DProjectV2): Space3DSyncReviewV1;
+export function prepareSpace3DSyncReview(branch: LinkedSpace3DBranchV1, current: ProjectModel): Space3DSyncReviewV1;
+export function prepareSpace3DSyncReview(
+  sourceOrBranch: ProjectModel | LinkedSpace3DBranchV1,
   current: ProjectModel,
-  edited: Space3DProjectV2,
-): Space3DSyncReviewV1 => {
+  editedInput?: Space3DProjectV2,
+): Space3DSyncReviewV1 {
+  const linked = 'model' in sourceOrBranch;
+  if (linked && (sourceOrBranch.baselineStatus !== 'exact' || !sourceOrBranch.sourceModel2D)) {
+    throw new Error('La rama 3D no conserva una base 2D exacta; es necesario volver a derivar (rederive).');
+  }
+  const source = structuredClone(linked ? sourceOrBranch.sourceModel2D! : sourceOrBranch);
+  // Validate without replacing the exact snapshot: normalization may omit
+  // optional fields and would turn representation-only differences into sync patches.
+  normalizeProject(source);
+  if (!linked && !editedInput) throw new Error('Falta el modelo 3D editado.');
+  const edited = parseSpace3DDraft(JSON.stringify(linked ? sourceOrBranch.model : editedInput));
   if (source.id !== current.id || edited.id !== `space3d:${source.id}`) {
     throw new Error('La rama 3D no pertenece al proyecto 2D actual.');
   }
@@ -250,12 +330,96 @@ export const prepareSpace3DSyncReview = (
   }
   const projected = roundTripPlanarSpace3DTo2D(edited, source);
   const base = buildPlanar2DToSpace3DHandoff(source).candidateModel;
-  const representable = representablePatches(source, current, projected);
+  const unsupported = unsupportedPatches(base, edited);
+  const unsupportedIds = new Set(unsupported.map((patch) => patch.patchId));
+  // A non-planar reference can otherwise look like a normal 2D deletion after
+  // projection. Unsupported full-entity patches own that identity instead.
+  const representable = representablePatches(source, current, projected).filter((patch) => !unsupportedIds.has(patch.patchId));
   const representableIds = new Set(representable.map((patch) => patch.patchId));
-  return {
-    sourceProjectId: source.id,
-    patches: [...representable, ...directRepresentablePatches(source, current, base, edited, representableIds), ...unsupportedPatches(base, edited)],
-  };
+  const patches = [...representable, ...directRepresentablePatches(source, current, base, edited, representableIds), ...unsupported];
+  return { sourceProjectId: source.id, patches, structuralSeal: structuralSealFor(source.id, patches) };
+}
+
+const REPRESENTABLE_FIELDS: Record<SyncCollection, readonly string[]> = {
+  nodes: ['$entity', 'x', 'y', 'support', 'internalHinge'],
+  members: ['$entity', 'i', 'j', 'type', 'materialId', 'materialOrigin', 'sectionId', 'sectionOrigin', 'E', 'A', 'I', 'beamTheory', 'G', 'shearArea', 'density', 'releases', 'axialBehavior', 'rotationalSpringI', 'rotationalSpringJ', 'rigidOffsetI', 'rigidOffsetJ', 'label'],
+  loadCases: ['$entity', 'name', 'category', 'active', 'selfWeightFactor'],
+  combinations: ['$entity', 'name', 'factors', 'source', 'sourceUrl', 'jurisdiction', 'edition', 'stateLimit', 'reviewedAt'],
+  nodalLoads: ['$entity', 'nodeId', 'caseId', 'fx', 'fy', 'mz'],
+  prescribedDisplacements: ['$entity', 'nodeId', 'caseId', 'component', 'value'],
+  memberLoads: ['$entity', 'memberId', 'caseId', 'type', 'coordinateSystem', 'lengthBasis', 'start', 'end', 'qxStart', 'qxEnd', 'qyStart', 'qyEnd', 'px', 'py', 'moment', 'position'],
+  memberInitialEffects: ['$entity', 'memberId', 'caseId', 'type', 'alpha', 'deltaT', 'gradient', 'axialStrain', 'curvature'],
+  nodeLinks: ['$entity', 'nodeI', 'nodeJ', 'behavior', 'angleDeg', 'stiffness', 'clearance', 'slipForce', 'label'],
+  multiPointConstraints: ['$entity', 'terms', 'value', 'label'],
+  nodalMasses: ['$entity', 'nodeId', 'mass', 'rotationalInertia', 'label'],
+  generatedLoadSources: ['$entity', 'kind', 'caseId', 'memberIds', 'pressure', 'tributaryWidth', 'direction', 'referenceY', 'unitWeight', 'pressureAtReference', 'sign', 'stiffness', 'qx', 'qy', 'coordinateSystem', 'lengthBasis', 'pattern', 'force', 'eccentricity', 'label'],
+  movingLoadCases: ['$entity', 'name', 'memberIds', 'targetMemberId', 'targetPosition', 'quantity', 'startNodeId', 'impactFactor', 'axles'],
+};
+const COLLECTION_KIND = new Map(COLLECTIONS.map(({ collection, entityKind }) => [collection, entityKind]));
+const UNSUPPORTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  node: ['$entity', 'z', 'restraints.uz', 'restraints.rx', 'restraints.ry'],
+  member: ['$entity', 'Iy', 'J', 'orientation', 'releases.iUz', 'releases.iRx', 'releases.iRy', 'releases.jUz', 'releases.jRx', 'releases.jRy'],
+  'nodal-load': ['$entity', 'fz', 'mx', 'my'],
+  'member-load': ['$entity', 'qzStart', 'qzEnd', 'pz', 'mx', 'my', 'mz'],
+  'initial-effect': ['$entity', 'gradientY', 'gradientZ', 'curvatureY', 'curvatureZ'],
+  'node-link': ['$entity', 'direction.z'], 'multi-point-constraint': ['$entity', 'outOfPlaneTerms'],
+  'nodal-mass': ['$entity', 'massX', 'massY', 'massZ', 'inertiaX', 'inertiaY', 'inertiaZ'],
+  'generated-load-source': ['$entity', 'direction', 'qz'], 'prescribed-displacement': ['$entity', 'component', 'normalDirection'],
+  'moving-load-case': ['$entity'],
+};
+const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const assertPlainData = (value: unknown, path: string): void => {
+  if (value === null || value === undefined || ['string', 'boolean'].includes(typeof value) || (typeof value === 'number' && Number.isFinite(value))) return;
+  if (Array.isArray(value)) {
+    if (Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length) throw new Error(`${path} debe ser una lista JSON sin prototype personalizado.`);
+    const keys = Reflect.ownKeys(value);
+    if (keys.length !== value.length + 1 || keys.some((key) => key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9]\d*)$/.test(key)))) throw new Error(`${path} debe ser una lista JSON densa.`);
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) throw new Error(`${path}[${index}] debe ser un dato JSON enumerable.`);
+      assertPlainData(descriptor.value, `${path}[${index}]`);
+    }
+    return;
+  }
+  if (typeof value !== 'object') throw new Error(`${path} contiene un valor no serializable.`);
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) throw new Error(`${path} debe ser un objeto plano sin prototype personalizado.`);
+  if (Object.getOwnPropertySymbols(value).length) throw new Error(`${path} contiene símbolos.`);
+  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
+    if (FORBIDDEN_KEYS.has(key) || !('value' in descriptor) || !descriptor.enumerable) throw new Error(`${path}.${key} no es un campo de datos permitido.`);
+    assertPlainData(descriptor.value, `${path}.${key}`);
+  }
+};
+const exactObjectKeys = (value: object, required: readonly string[], optional: readonly string[], path: string) => {
+  const keys = Object.keys(value);
+  if (required.some((key) => !Object.hasOwn(value, key)) || keys.some((key) => !required.includes(key) && !optional.includes(key))) throw new Error(`${path} tiene campos fuera del contrato.`);
+};
+const validateReviewEnvelope = (review: Space3DSyncReviewV1): void => {
+  assertPlainData(review, 'review');
+  exactObjectKeys(review, ['sourceProjectId', 'patches', 'structuralSeal'], [], 'review');
+  if (typeof review.sourceProjectId !== 'string' || review.sourceProjectId.trim() === '' || !Array.isArray(review.patches) || typeof review.structuralSeal !== 'string' || !/^structural-v1:[0-9a-f]{8}$/.test(review.structuralSeal)) throw new Error('La revisión tiene un contrato inválido.');
+  const seen = new Set<string>();
+  for (const patch of review.patches) {
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch)) throw new Error('La revisión contiene un parche inválido.');
+    exactObjectKeys(patch, ['patchId', 'entityKind', 'entityId', 'field', 'before', 'after', 'compatibility', 'state'], ['targetCollection'], 'review.patch');
+    if (typeof patch.entityKind !== 'string' || typeof patch.entityId !== 'string' || patch.entityId.trim() === '' || typeof patch.field !== 'string' || patch.field.trim() === '' || typeof patch.patchId !== 'string' || patch.patchId.trim() === '') throw new Error('La revisión contiene un parche inválido.');
+    if (patch.patchId !== patchIdFor(patch.entityKind, patch.entityId, patch.field) || seen.has(patch.patchId)) throw new Error('La revisión contiene IDs de parche alterados o duplicados.');
+    seen.add(patch.patchId);
+    const hasTargetCollection = Object.hasOwn(patch, 'targetCollection');
+    if (patch.compatibility === 'unsupported') {
+      if (patch.state !== 'unsupported' || hasTargetCollection || !UNSUPPORTED_FIELDS[patch.entityKind]?.includes(patch.field)) throw new Error('La revisión contiene una tupla unsupported fuera del contrato.');
+    } else {
+      if (patch.compatibility !== 'exact' && patch.compatibility !== 'requires-review') throw new Error('La revisión contiene compatibilidad inválida.');
+      if (patch.state !== 'ready' && patch.state !== 'conflict') throw new Error('La revisión contiene estado inválido.');
+      if (patch.entityKind === 'project') {
+        if (hasTargetCollection || patch.field !== 'name' || patch.entityId !== review.sourceProjectId) throw new Error('La revisión contiene una tupla de proyecto inválida.');
+      } else {
+        const collection = patch.targetCollection as SyncCollection | undefined;
+        if (!hasTargetCollection || !collection || COLLECTION_KIND.get(collection) !== patch.entityKind || !REPRESENTABLE_FIELDS[collection].includes(patch.field)) throw new Error('La revisión contiene una tupla 2D fuera del contrato.');
+      }
+    }
+  }
+  if (review.structuralSeal !== structuralSealFor(review.sourceProjectId, review.patches)) throw new Error('El sello estructural de la revisión fue alterado.');
 };
 
 const requireUniqueIds = (project: ProjectModel, collection: SyncCollection): void => {
@@ -271,15 +435,20 @@ export const applyApprovedSpace3DSync = (
   review: Space3DSyncReviewV1,
   approvedPatchIds: readonly string[],
 ): ProjectModel => {
+  validateReviewEnvelope(review);
   if (current.id !== review.sourceProjectId) throw new Error('La revisión no pertenece al proyecto 2D actual.');
+  assertPlainData(approvedPatchIds, 'approvedPatchIds');
+  if (!Array.isArray(approvedPatchIds) || approvedPatchIds.some((id) => typeof id !== 'string' || id.trim() === '')) throw new Error('La aprobación contiene IDs inválidos.');
   if (new Set(approvedPatchIds).size !== approvedPatchIds.length) throw new Error('La aprobación contiene IDs de parche duplicados.');
   const byId = new Map(review.patches.map((patch) => [patch.patchId, patch]));
   if (byId.size !== review.patches.length) throw new Error('La revisión contiene IDs de parche duplicados.');
   const selected = approvedPatchIds.map((id) => {
     const patch = byId.get(id);
     if (!patch) throw new Error(`Parche aprobado desconocido: ${id}.`);
+    if (patch.compatibility === 'unsupported') throw new Error(`El parche ${id} es unsupported y no puede aprobarse.`);
+    if (patch.state !== 'ready') throw new Error(`Falló la precondición para ${patch.entityKind}/${patch.entityId}/${patch.field}.`);
     return patch;
-  }).filter((patch) => patch.compatibility !== 'unsupported');
+  });
 
   for (const patch of selected) {
     if (patch.state === 'conflict') throw new Error(`Falló la precondición para ${patch.entityKind}/${patch.entityId}/${patch.field}.`);
@@ -290,8 +459,10 @@ export const applyApprovedSpace3DSync = (
     const collection = patch.targetCollection;
     if (!collection) throw new Error(`El parche ${patch.patchId} no declara destino 2D.`);
     const entity = row(current, collection, patch.entityId);
+    if (patch.field !== '$entity' && !entity) throw new Error(`Falló la precondición para ${collection}/${patch.entityId}/${patch.field}.`);
     const actual = patch.field === '$entity' ? entity : entity?.[patch.field];
     if (!same(actual, patch.before)) throw new Error(`Falló la precondición para ${collection}/${patch.entityId}/${patch.field}.`);
+    if (patch.field === '$entity' && patch.before === null && patch.after === null) throw new Error(`El parche ${patch.patchId} no describe una operación válida.`);
   }
 
   const next = structuredClone(current);
@@ -304,7 +475,10 @@ export const applyApprovedSpace3DSync = (
     const collectionRows = [...rows(next, collection)] as Record<string, unknown>[];
     const index = collectionRows.findIndex((entity) => entity.id === patch.entityId);
     if (patch.field === '$entity') {
-      if (patch.after === null) collectionRows.splice(index, 1);
+      if (patch.after === null) {
+        if (index < 0) throw new Error(`El parche ${patch.patchId} no encuentra la entidad que debe eliminar.`);
+        collectionRows.splice(index, 1);
+      }
       else if (index < 0) collectionRows.push(structuredClone(patch.after) as Record<string, unknown>);
       else collectionRows[index] = structuredClone(patch.after) as Record<string, unknown>;
     } else {

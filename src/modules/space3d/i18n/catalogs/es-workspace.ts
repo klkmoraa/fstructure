@@ -482,6 +482,7 @@ export const esWorkspace = {
   'space3d.error.emptyModel': 'El modelo no tiene nudos ni barras.',
   'space3d.error.unknownTarget': 'El objetivo de análisis no existe.',
   'space3d.error.analysisFailed': 'El análisis terminó de forma inesperada.',
+  'space3d.error.unsupportedMemberType': 'El solver 3D actual no admite este tipo de barra.',
   'space3d.error.generic': 'No se pudo completar la operación.',
   'space3d.transferExportLabel': 'Proyecto exportado (JSON)',
   'space3d.transferImportLabel': 'Proyecto a importar (JSON)',

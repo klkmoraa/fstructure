@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { createBlankProject, createDefaultProject } from '../data/defaultProject';
+import { parseSpace3DDraft, parseSpace3DProject } from '../modules/space3d/space3d/data/codec';
+import { validateSpace3DProject } from '../modules/space3d/space3d/model/validation';
+import { analyzeSpace3DProject } from '../modules/space3d/space3d/engine/solver';
+import { linkSpace3DToShell } from '../features/workspace/adapters/space3dShellBridge';
+import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
+import { validateBundle } from '../storage/bundleValidation';
 import type { ProjectModel } from '../types';
 import { buildPlanar2DToSpace3DHandoff, roundTripPlanarSpace3DTo2D } from './planar2dToSpace3d';
+import { prepareSpace3DSyncReview } from './space3dSync';
 
 const kitchenSinkProject = (): ProjectModel => ({
   ...createDefaultProject(),
@@ -106,11 +113,94 @@ describe('planar 2D → spatial V2', () => {
     expect(handoff.candidateModel.memberLoads).toHaveLength(3);
     expect(handoff.candidateModel.generatedLoadSources).toHaveLength(7);
     expect(structuralProjection(roundTripPlanarSpace3DTo2D(handoff.candidateModel, source))).toEqual(structuralProjection(source));
+
+    const trussIssues = validateSpace3DProject(handoff.candidateModel)
+      .filter((issue) => issue.entityKind === 'member' && issue.entityId === 'TRUSS');
+    expect(trussIssues).toEqual([]);
+    expect(handoff.candidateModel.members.find((member) => member.id === 'TRUSS')).toMatchObject({ Iy: 0, Iz: 0, J: 0 });
+    expect(() => parseSpace3DProject(JSON.stringify(handoff.candidateModel))).not.toThrow();
+    const analysis = analyzeSpace3DProject(handoff.candidateModel, 'DL');
+    expect(analysis.success).toBe(false);
+    expect(analysis.issues.filter((issue) => issue.code === 'unsupported-member-type').map((issue) => issue.entityId)).toEqual(['TRUSS', 'RIGID']);
   });
 
   it('crea una rama espacial vacía cuando el 2D no contiene estructura', () => {
     const handoff = buildPlanar2DToSpace3DHandoff({ ...createBlankProject(), id: 'empty' });
     expect(handoff.lossReport.status).toBe('lossless');
     expect({ nodes: handoff.candidateModel.nodes, members: handoff.candidateModel.members, loads: handoff.candidateModel.nodalLoads }).toEqual({ nodes: [], members: [], loads: [] });
+  });
+
+  it('valida estrictamente las colecciones V2 y conserva una base 2D exacta sólo en ramas nuevas', () => {
+    const source = kitchenSinkProject();
+    const candidate = buildPlanar2DToSpace3DHandoff(source).candidateModel;
+    const semanticCollections = [
+      'prescribedDisplacements', 'memberLoads', 'memberInitialEffects', 'nodeLinks',
+      'multiPointConstraints', 'nodalMasses', 'generatedLoadSources', 'movingLoadCases',
+    ] as const;
+    for (const collection of semanticCollections) {
+      expect(() => parseSpace3DDraft(JSON.stringify({ ...candidate, [collection]: [{}] })), collection).toThrow();
+    }
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      memberLoads: [{ ...candidate.memberLoads[0], type: 'volumetric' }],
+    }))).toThrow();
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      prescribedDisplacements: [{ ...candidate.prescribedDisplacements[0], nodeId: 'NO-EXISTE' }],
+    }))).toThrow(/missing-reference/);
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      multiPointConstraints: [{ ...candidate.multiPointConstraints[0], terms: [] }],
+    }))).toThrow(/invalid-model/);
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      generatedLoadSources: [{ ...candidate.generatedLoadSources[0], memberIds: [] }],
+    }))).toThrow(/invalid-model/);
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      movingLoadCases: [{ ...candidate.movingLoadCases[0], memberIds: ['FRAME'], targetMemberId: 'TRUSS' }],
+    }))).toThrow(/invalid-model/);
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      nodeLinks: [{ ...candidate.nodeLinks[0], nodeJ: candidate.nodeLinks[0].nodeI }],
+    }))).toThrow(/invalid-model/);
+    const reversedMemberLoad = parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      memberLoads: [{ ...candidate.memberLoads[0], start: 0.9, end: 0.1, qyStart: -3, qyEnd: -4 }],
+    })).memberLoads[0];
+    expect(reversedMemberLoad).toMatchObject({ start: 0.1, end: 0.9, qyStart: -4, qyEnd: -3 });
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      memberLoads: [{ ...candidate.memberLoads[0], start: -0.1 }],
+    }))).toThrow(/invalid-model/);
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      memberLoads: [{ ...candidate.memberLoads[1], position: 1.1 }],
+    }))).toThrow(/invalid-model/);
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      movingLoadCases: [{ ...candidate.movingLoadCases[0], memberIds: [] }],
+    }))).toThrow(/invalid-model/);
+    expect(() => parseSpace3DDraft(JSON.stringify({
+      ...candidate,
+      movingLoadCases: [{ ...candidate.movingLoadCases[0], axles: [] }],
+    }))).toThrow(/invalid-model/);
+
+    const linked = linkSpace3DToShell(source, 'source-v1', candidate);
+    const capturedX = source.nodes[0].x;
+    source.nodes[0].x = 999;
+    expect(linked.sourceModel2D?.nodes[0].x).toBe(capturedX);
+    expect(() => prepareSpace3DSyncReview(linked, { ...source, nodes: source.nodes.map((node) => ({ ...node })) })).not.toThrow();
+
+    const legacy = linkSpace3DToShell(source.id, 'legacy-v1', candidate);
+    const legacyBundle = createUnifiedProjectBundle(source, 'current-v2');
+    legacyBundle.space3d = legacy;
+    const reloadedLegacy = validateBundle(JSON.parse(JSON.stringify(legacyBundle))).space3d!;
+    expect(() => prepareSpace3DSyncReview(reloadedLegacy, source)).toThrow(/volver a derivar|rederive/i);
+
+    const rederivedBundle = { ...legacyBundle, space3d: linkSpace3DToShell(source, 'current-v2', candidate) };
+    const reloadedExact = validateBundle(JSON.parse(JSON.stringify(rederivedBundle))).space3d!;
+    expect(reloadedExact.baselineStatus).toBe('exact');
+    expect(() => prepareSpace3DSyncReview(reloadedExact, source)).not.toThrow();
   });
 });

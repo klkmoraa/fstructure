@@ -14,6 +14,10 @@ export interface LinkedSpace3DBranchV1<T extends JsonValue = JsonValue> {
   sourceProjectId: string;
   /** Derivation provenance. Inequality with the manifest means stale, not corrupt. */
   sourceVersion: string;
+  /** Exact detached 2D source used to derive the spatial branch. Absent on legacy Task 4 branches. */
+  sourceModel2D?: ProjectModel;
+  /** Only `exact` authorizes a three-way comparison. Missing means re-derive is required. */
+  baselineStatus?: 'exact';
   model: T;
 }
 

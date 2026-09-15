@@ -24,7 +24,6 @@ import { createId } from '../utils/id';
 import { isUnitSystemId } from '../foundation/units';
 
 type JsonObject = Record<string, unknown>;
-const MAX_COLLECTION_ITEMS = 50_000;
 const MAX_TEXT_LENGTH = 20_000;
 
 const isObject = (value: unknown): value is JsonObject =>
@@ -40,7 +39,6 @@ const objectAt = (value: unknown, path: string): JsonObject =>
 const arrayAt = (value: unknown, path: string, fallback: unknown[] = []): unknown[] => {
   if (value === undefined) return fallback;
   if (!Array.isArray(value)) return fail(path, 'se esperaba una lista.');
-  if (value.length > MAX_COLLECTION_ITEMS) return fail(path, `excede el límite de ${MAX_COLLECTION_ITEMS} elementos.`);
   return value;
 };
 
