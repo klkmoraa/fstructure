@@ -55,7 +55,7 @@ describe('WorkspaceUtilities', () => {
     expect(screen.getByRole('region', { name: 'Herramientas integradas' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Modelo 2D/ })).toBeNull();
     expect(screen.getByRole('button', { name: /Modelo 3D.*Experimental/ }).getAttribute('aria-pressed')).toBe('false');
-    expect(screen.getByRole('button', { name: /FEM.*Planeado/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /FEM.*Experimental/ })).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: /Modelo 3D.*Experimental/ }));
 

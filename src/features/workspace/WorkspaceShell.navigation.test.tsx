@@ -33,7 +33,7 @@ it('preserves the mounted 2D canvas while opening contextual results and switche
   expect(screen.getByRole('application')).toBe(canvas);
   await user.click(screen.getByRole('tab', { name: 'FEM' }));
   expect(await screen.findByRole('heading', { name: 'Elementos finitos' })).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Analizar FEM' }).hasAttribute('disabled')).toBe(true);
+  expect(screen.getByRole('button', { name: 'Analizar FEM' }).hasAttribute('disabled')).toBe(false);
   expect(screen.queryByRole('application')).toBeNull();
   expect(document.querySelectorAll('[data-workspace-topbar]')).toHaveLength(1);
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('fem');
