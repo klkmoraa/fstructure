@@ -17,8 +17,8 @@ const FStructureSurface = () => {
   const { project, analysis, replaceProject } = useProject();
   const { route, navigate } = useProjectNavigation(project.id);
   const openTool = useCallback((tool: ToolId) => {
-    navigate({ surface: 'workspace', projectId: project.id, tool });
-  }, [navigate, project.id]);
+    navigate({ surface: 'workspace', projectId: route.projectId, tool });
+  }, [navigate, route.projectId]);
 
   useEffect(() => {
     if (route.projectId === project.id) return;
@@ -43,7 +43,7 @@ const FStructureSurface = () => {
 
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
     {route.surface === 'welcome'
-      ? <WelcomeScreen onOpenWorkspace={() => navigate({ surface: 'workspace', projectId: project.id, tool: 'model2d' })} />
+      ? <WelcomeScreen onOpenWorkspace={() => openTool('model2d')} />
       : <WorkspaceShell
           projectId={project.id}
           tool={route.tool}
