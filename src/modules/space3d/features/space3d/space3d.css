@@ -511,6 +511,33 @@
   font-weight: var(--sc-font-weight-medium);
 }
 
+/* El modo comparte la misma bandeja y gramática visual que el caso de carga. */
+.space3d-analysis-mode {
+  display: inline-flex;
+  align-items: center;
+  min-inline-size: 0;
+}
+
+.space3d-analysis-mode select {
+  min-block-size: var(--sc-control-height-md);
+  max-inline-size: 168px;
+  padding-inline: var(--sc-space-3);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-input);
+  box-shadow: var(--sc-shadow-pressed);
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-ui);
+  font-size: var(--sc-font-size-control);
+  font-weight: var(--sc-font-weight-medium);
+}
+
+.space3d-study-feedback small {
+  display: block;
+  margin-block-start: var(--sc-space-1);
+  color: var(--sc-color-text-secondary);
+}
+
 /* Controles de la deformada, junto al dibujo que gobiernan. */
 .space3d-scale {
   display: flex;
