@@ -82,6 +82,8 @@ const cantilever = (
   nodalLoads: [load],
   loadCases: [{ id: 'LC1', name: 'LC1' }],
   loadCombinations: [{ id: 'CO1', name: 'CO1', terms: [{ caseId: 'LC1', factor: 1 }] }],
+  prescribedDisplacements: [], memberLoads: [], memberInitialEffects: [], nodeLinks: [],
+  multiPointConstraints: [], nodalMasses: [], generatedLoadSources: [], movingLoadCases: [],
 });
 
 /** Barra traccionada: `ux(J) = P·L / (E·A)`. */

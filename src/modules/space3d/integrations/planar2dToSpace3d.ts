@@ -5,7 +5,7 @@
  * governance/host repository. Keeping the consumer contract here means the
  * extracted product never imports the 2D model or store.
  */
-import type { Space3DEntityKind, Space3DProjectV1 } from '../space3d/public';
+import type { Space3DEntityKind, Space3DProjectV2 } from '../space3d/public';
 
 export const PLANAR_2D_TO_SPACE3D_HANDOFF_VERSION = 1 as const;
 
@@ -72,7 +72,7 @@ export interface Planar2DToSpace3DHandoffV1 {
   readonly version: typeof PLANAR_2D_TO_SPACE3D_HANDOFF_VERSION;
   readonly handoffId: string;
   readonly source: Planar2DSourceReference;
-  readonly candidateModel: Space3DProjectV1;
+  readonly candidateModel: Space3DProjectV2;
   readonly mapping: readonly Planar2DToSpace3DMapping[];
   readonly provenance: {
     readonly adapter: 'fusionstructure/integrations/planar2d-to-space3d';
@@ -94,7 +94,7 @@ export interface Planar2DToSpace3DHandoffCancellationV1 {
 export interface Planar2DSourceSnapshot {
   readonly id: string;
   readonly name: string;
-  readonly candidateModel: Space3DProjectV1;
+  readonly candidateModel: Space3DProjectV2;
   readonly lossReport: Planar2DToSpace3DLossReport;
 }
 
@@ -157,7 +157,7 @@ const stableSerialize = (value: unknown): string => {
 
 export const unresolvedSpace3DBridgeNotes = (
   notes: readonly Space3DBridgeNote[],
-  project: Space3DProjectV1,
+  project: Space3DProjectV2,
   acknowledged: ReadonlySet<string>,
 ): readonly Space3DBridgeNote[] => notes.filter((item) => {
   if (!item.blocking) return false;
@@ -177,7 +177,7 @@ export const unresolvedSpace3DBridgeNotes = (
   return true;
 });
 
-export const space3DMatchesPlanarHandoff = (project: Space3DProjectV1, handoff: Planar2DToSpace3DHandoffV1): boolean => {
+export const space3DMatchesPlanarHandoff = (project: Space3DProjectV2, handoff: Planar2DToSpace3DHandoffV1): boolean => {
   const candidate = handoff.candidateModel;
   // A stored 3D copy must match every candidate datum. Comparing only node
   // coordinates and member connectivity allowed stale supports, properties,
