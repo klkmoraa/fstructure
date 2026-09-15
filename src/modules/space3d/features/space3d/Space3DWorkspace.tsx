@@ -9,7 +9,7 @@
  * El módulo trae su propio `Space3DProjectProvider`: es la superficie completa
  * y lo único que la aplicación necesita cargar de forma diferida.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronDown, ChevronLeft, CircleStop, Download, Grid3x3, Home, Layers, Minus,
   PenLine, Play, Plus, Redo2, RotateCcw, SlidersHorizontal, Sparkles, Spline, Tag, Trash2, Undo2, Upload, Weight,
@@ -59,6 +59,8 @@ function EmbeddedInspector({ embedded, expanded, children }: { embedded: boolean
 export interface Space3DWorkspaceProps {
   readonly canonicalProject?: Space3DProjectV1;
   readonly onProjectChange?: (project: Space3DProjectV1) => void;
+  /** Explicit source acceptance, completed before replacing tool-owned geometry. */
+  readonly onRederive?: () => Promise<void> | void;
   readonly language: Language;
   /** Render the 3D surface inside the global workbench shell. */
   readonly embedded?: boolean;
@@ -174,13 +176,13 @@ const number = (value: number): string => formatSpace3DNumber(value);
 const countRestraints = (restraints: Space3DRestraints) => Object.values(restraints).filter(Boolean).length;
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'language' | 'embedded' | 'onOpenHome' | 'onOpen2D' | 'createViewport' | 'handoff' | 'onProjectChange'> {
+  'language' | 'embedded' | 'onOpenHome' | 'onOpen2D' | 'createViewport' | 'handoff' | 'onProjectChange' | 'onRederive'> {
   readonly bridgeNotes: readonly Space3DBridgeNote[];
   readonly derived: Space3DProjectV1 | null;
 }
 
 const WorkspaceBody = ({
-  language, embedded = false, onOpenHome, onOpen2D, createViewport, handoff, bridgeNotes, derived, onProjectChange,
+  language, embedded = false, onOpenHome, onOpen2D, createViewport, handoff, bridgeNotes, derived, onProjectChange, onRederive,
 }: WorkspaceBodyProps) => {
   const t = useCallback(
     (key: TranslationKey, variables?: Record<string, string | number>) => translate(language, key, variables),
@@ -194,7 +196,13 @@ const WorkspaceBody = ({
   } = useSpace3DProject();
   const shared = useSharedToolState();
   const publishSelection = shared?.publish3DSelection;
-  useEffect(() => { onProjectChange?.(project); }, [project, onProjectChange]);
+  const publishedProject = useRef(project);
+  useEffect(() => {
+    // Hydration (including StrictMode replay) and callback changes are not edits.
+    if (publishedProject.current === project) return;
+    publishedProject.current = project;
+    onProjectChange?.(project);
+  }, [project, onProjectChange]);
   useEffect(() => {
     if (!embedded || !handoff || !publishSelection) return;
     publishSelection(selectedEntity && (selectedEntity.kind === 'node' || selectedEntity.kind === 'member')
@@ -524,7 +532,10 @@ const WorkspaceBody = ({
         <strong>{t('space3d.sourceProject', { name: handoff.candidateModel.name })}</strong>
         {diverged ? <span className="space3d-state space3d-state--warn">{t('space3d.bridgeDiverged')}</span> : null}
         {diverged && derived
-          ? <button type="button" className="space3d-button" title={t('space3d.rederiveWarning')} onClick={() => replaceProject(derived)}>
+          ? <button type="button" className="space3d-button" title={t('space3d.rederiveWarning')} onClick={() => {
+            // A failed canonical source save is reported by the shared session; keep this geometry.
+            void Promise.resolve().then(() => onRederive?.()).then(() => replaceProject(derived)).catch(() => undefined);
+          }}>
             {t('space3d.rederive')}
           </button>
           : null}
@@ -874,7 +885,7 @@ const Space3DWorkspace = ({ storage, client, handoff, canonicalProject, ...rest 
   }, [canonicalProject, handoff, namespace]);
 
   return (
-    <Space3DProjectProvider storage={storage} client={client} namespace={namespace} initialProject={initialProject}>
+    <Space3DProjectProvider key={namespace} storage={storage} client={client} namespace={namespace} initialProject={initialProject}>
       <WorkspaceBody
         {...rest}
         handoff={handoff}
