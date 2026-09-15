@@ -14,4 +14,6 @@ module `src/modules/space3d`, including its model, store, worker and UI under
 its MIT license. The application keeps the extracted 2D workspace as its only
 shell at `?surface=workspace2d`; its direct 3D control replaces the central
 work area in that same shell through an explicit, versioned 2D→3D handoff.
-FEM remains a repository-local native mode contract without a solver.
+FEM is now a repository-local native mode with a linear TRI3/QUAD4 plane
+stress/strain solver, strict Gmsh 4.1 ASCII import, versioned snapshots and
+JSON/VTK export. Unsupported MITC4/TET4 physics remains fail-closed.
