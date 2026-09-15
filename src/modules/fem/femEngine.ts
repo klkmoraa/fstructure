@@ -225,12 +225,12 @@ const quadPoint = (nodes: readonly FemNode[], xi: number, eta: number): { B: Mat
 const orientation = (a: FemNode, b: FemNode, c: FemNode): number =>
   (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 
-const onSegment = (a: FemNode, b: FemNode, c: FemNode, tolerance: number): boolean =>
-  Math.abs(orientation(a, b, c)) <= tolerance
-  && c.x >= Math.min(a.x, b.x) - tolerance
-  && c.x <= Math.max(a.x, b.x) + tolerance
-  && c.y >= Math.min(a.y, b.y) - tolerance
-  && c.y <= Math.max(a.y, b.y) + tolerance;
+const onSegment = (a: FemNode, b: FemNode, c: FemNode, orientationTolerance: number, coordinateTolerance: number): boolean =>
+  Math.abs(orientation(a, b, c)) <= orientationTolerance
+  && c.x >= Math.min(a.x, b.x) - coordinateTolerance
+  && c.x <= Math.max(a.x, b.x) + coordinateTolerance
+  && c.y >= Math.min(a.y, b.y) - coordinateTolerance
+  && c.y <= Math.max(a.y, b.y) + coordinateTolerance;
 
 const segmentsIntersect = (a: FemNode, b: FemNode, c: FemNode, d: FemNode): boolean => {
   const scale = Math.max(
@@ -239,14 +239,15 @@ const segmentsIntersect = (a: FemNode, b: FemNode, c: FemNode, d: FemNode): bool
     Math.hypot(a.x - c.x, a.y - c.y), Math.hypot(b.x - d.x, b.y - d.y), Number.MIN_VALUE,
   );
   const tolerance = scale * scale * 1e-12;
+  const coordinateTolerance = scale * 1e-12;
   const abc = orientation(a, b, c);
   const abd = orientation(a, b, d);
   const cda = orientation(c, d, a);
   const cdb = orientation(c, d, b);
   if (((abc > tolerance && abd < -tolerance) || (abc < -tolerance && abd > tolerance))
     && ((cda > tolerance && cdb < -tolerance) || (cda < -tolerance && cdb > tolerance))) return true;
-  return onSegment(a, b, c, tolerance) || onSegment(a, b, d, tolerance)
-    || onSegment(c, d, a, tolerance) || onSegment(c, d, b, tolerance);
+  return onSegment(a, b, c, tolerance, coordinateTolerance) || onSegment(a, b, d, tolerance, coordinateTolerance)
+    || onSegment(c, d, a, tolerance, coordinateTolerance) || onSegment(c, d, b, tolerance, coordinateTolerance);
 };
 
 const quadIsSimple = (nodes: readonly FemNode[]): boolean =>
