@@ -60,6 +60,44 @@ const fnv1a = (value: string): string => {
 };
 const structuralSealFor = (sourceProjectId: string, patches: readonly Space3DSyncPatchV1[]): string =>
   `structural-v1:${fnv1a(stableSerialize({ sourceProjectId, patches }))}`;
+
+interface ReviewCapability {
+  readonly canonical: string;
+  readonly structuralSeal: string;
+}
+
+/**
+ * A review is an in-process capability, not a portable authorization token.
+ * The public seal remains a corruption diagnostic, while this registry binds
+ * application to the exact review object produced by this module instance.
+ */
+const reviewCapabilities = new WeakMap<object, ReviewCapability>();
+
+const deepFreeze = <T>(value: T, ancestors = new WeakSet<object>()): T => {
+  if (value === null || typeof value !== 'object') return value;
+  const objectValue = value as object;
+  if (ancestors.has(objectValue)) return value;
+  ancestors.add(objectValue);
+  if (Array.isArray(value)) {
+    for (const item of value) deepFreeze(item, ancestors);
+  } else {
+    for (const key of Reflect.ownKeys(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (descriptor && 'value' in descriptor) deepFreeze(descriptor.value, ancestors);
+    }
+  }
+  ancestors.delete(objectValue);
+  return Object.freeze(value);
+};
+
+const registerReviewCapability = (review: Space3DSyncReviewV1): Space3DSyncReviewV1 => {
+  const immutable = deepFreeze(review);
+  reviewCapabilities.set(immutable, Object.freeze({
+    canonical: stableSerialize(immutable),
+    structuralSeal: immutable.structuralSeal,
+  }));
+  return immutable;
+};
 const rows = (project: ProjectModel, collection: SyncCollection): readonly Record<string, unknown>[] =>
   ((project[collection] ?? []) as readonly unknown[]) as readonly Record<string, unknown>[];
 const row = (project: ProjectModel, collection: SyncCollection, id: string): Record<string, unknown> | null =>
@@ -302,8 +340,23 @@ export function prepareSpace3DSyncReview(
   editedInput?: Space3DProjectV2,
 ): Space3DSyncReviewV1 {
   const linked = 'model' in sourceOrBranch;
-  if (linked && (sourceOrBranch.baselineStatus !== 'exact' || !sourceOrBranch.sourceModel2D)) {
-    throw new Error('La rama 3D no conserva una base 2D exacta; es necesario volver a derivar (rederive).');
+  if (linked) {
+    if (typeof sourceOrBranch.sourceProjectId !== 'string' || sourceOrBranch.sourceProjectId.trim() === '') {
+      throw new Error('La rama 3D tiene un sourceProjectId vacío o inválido.');
+    }
+    if (typeof sourceOrBranch.sourceVersion !== 'string' || sourceOrBranch.sourceVersion.trim() === '') {
+      throw new Error('La rama 3D tiene un sourceVersion vacío o inválido.');
+    }
+    if (sourceOrBranch.baselineStatus !== 'exact' || !sourceOrBranch.sourceModel2D) {
+      throw new Error('La rama 3D no conserva una base 2D exacta; es necesario volver a derivar (rederive).');
+    }
+    if (typeof sourceOrBranch.sourceModel2D !== 'object' || Array.isArray(sourceOrBranch.sourceModel2D)
+      || sourceOrBranch.sourceModel2D.id !== sourceOrBranch.sourceProjectId) {
+      throw new Error('La base 2D no coincide con sourceProjectId; la rama 3D no pertenece al mismo linaje.');
+    }
+    if (current.id !== sourceOrBranch.sourceProjectId) {
+      throw new Error('La rama 3D no pertenece al proyecto 2D actual.');
+    }
   }
   const source = structuredClone(linked ? sourceOrBranch.sourceModel2D! : sourceOrBranch);
   // Validate without replacing the exact snapshot: normalization may omit
@@ -337,7 +390,7 @@ export function prepareSpace3DSyncReview(
   const representable = representablePatches(source, current, projected).filter((patch) => !unsupportedIds.has(patch.patchId));
   const representableIds = new Set(representable.map((patch) => patch.patchId));
   const patches = [...representable, ...directRepresentablePatches(source, current, base, edited, representableIds), ...unsupported];
-  return { sourceProjectId: source.id, patches, structuralSeal: structuralSealFor(source.id, patches) };
+  return registerReviewCapability({ sourceProjectId: source.id, patches, structuralSeal: structuralSealFor(source.id, patches) });
 }
 
 const REPRESENTABLE_FIELDS: Record<SyncCollection, readonly string[]> = {
@@ -368,28 +421,37 @@ const UNSUPPORTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   'moving-load-case': ['$entity'],
 };
 const FORBIDDEN_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
-const assertPlainData = (value: unknown, path: string): void => {
+const assertPlainData = (value: unknown, path: string, ancestors = new WeakSet<object>()): void => {
   if (value === null || value === undefined || ['string', 'boolean'].includes(typeof value) || (typeof value === 'number' && Number.isFinite(value))) return;
-  if (Array.isArray(value)) {
-    if (Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length) throw new Error(`${path} debe ser una lista JSON sin prototype personalizado.`);
-    const keys = Reflect.ownKeys(value);
-    if (keys.length !== value.length + 1 || keys.some((key) => key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9]\d*)$/.test(key)))) throw new Error(`${path} debe ser una lista JSON densa.`);
-    for (let index = 0; index < value.length; index += 1) {
-      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-      if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) throw new Error(`${path}[${index}] debe ser un dato JSON enumerable.`);
-      assertPlainData(descriptor.value, `${path}[${index}]`);
-    }
-    return;
-  }
   if (typeof value !== 'object') throw new Error(`${path} contiene un valor no serializable.`);
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) throw new Error(`${path} debe ser un objeto plano sin prototype personalizado.`);
-  if (Object.getOwnPropertySymbols(value).length) throw new Error(`${path} contiene símbolos.`);
-  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
-    if (FORBIDDEN_KEYS.has(key) || !('value' in descriptor) || !descriptor.enumerable) throw new Error(`${path}.${key} no es un campo de datos permitido.`);
-    assertPlainData(descriptor.value, `${path}.${key}`);
+  if (ancestors.has(value)) throw new Error(`${path} contiene una referencia cíclica.`);
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) {
+      if (Object.getPrototypeOf(value) !== Array.prototype || Object.getOwnPropertySymbols(value).length) throw new Error(`${path} debe ser una lista JSON sin prototype personalizado.`);
+      const keys = Reflect.ownKeys(value);
+      if (keys.length !== value.length + 1 || keys.some((key) => key !== 'length' && (typeof key !== 'string' || !/^(0|[1-9]\d*)$/.test(key)))) throw new Error(`${path} debe ser una lista JSON densa.`);
+      for (let index = 0; index < value.length; index += 1) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) throw new Error(`${path}[${index}] debe ser un dato JSON enumerable.`);
+        assertPlainData(descriptor.value, `${path}[${index}]`, ancestors);
+      }
+      return;
+    }
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) throw new Error(`${path} debe ser un objeto plano sin prototype personalizado.`);
+    if (Object.getOwnPropertySymbols(value).length) throw new Error(`${path} contiene símbolos.`);
+    for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
+      if (FORBIDDEN_KEYS.has(key) || !('value' in descriptor) || !descriptor.enumerable) throw new Error(`${path}.${key} no es un campo de datos permitido.`);
+      assertPlainData(descriptor.value, `${path}.${key}`, ancestors);
+    }
+  } finally {
+    ancestors.delete(value);
   }
 };
+const isEntityRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
 const exactObjectKeys = (value: object, required: readonly string[], optional: readonly string[], path: string) => {
   const keys = Object.keys(value);
   if (required.some((key) => !Object.hasOwn(value, key)) || keys.some((key) => !required.includes(key) && !optional.includes(key))) throw new Error(`${path} tiene campos fuera del contrato.`);
@@ -405,6 +467,16 @@ const validateReviewEnvelope = (review: Space3DSyncReviewV1): void => {
     if (typeof patch.entityKind !== 'string' || typeof patch.entityId !== 'string' || patch.entityId.trim() === '' || typeof patch.field !== 'string' || patch.field.trim() === '' || typeof patch.patchId !== 'string' || patch.patchId.trim() === '') throw new Error('La revisión contiene un parche inválido.');
     if (patch.patchId !== patchIdFor(patch.entityKind, patch.entityId, patch.field) || seen.has(patch.patchId)) throw new Error('La revisión contiene IDs de parche alterados o duplicados.');
     seen.add(patch.patchId);
+    if (patch.field === '$entity') {
+      const beforeIsRecord = isEntityRecord(patch.before);
+      const afterIsRecord = isEntityRecord(patch.after);
+      if ((patch.before !== null && !beforeIsRecord) || (patch.after !== null && !afterIsRecord)
+        || (patch.before === null && patch.after === null)
+        || (beforeIsRecord && (patch.before as Record<string, unknown>).id !== patch.entityId)
+        || (afterIsRecord && (patch.after as Record<string, unknown>).id !== patch.entityId)) {
+        throw new Error('La revisión contiene una operación $entity con identidad antes/después inválida.');
+      }
+    }
     const hasTargetCollection = Object.hasOwn(patch, 'targetCollection');
     if (patch.compatibility === 'unsupported') {
       if (patch.state !== 'unsupported' || hasTargetCollection || !UNSUPPORTED_FIELDS[patch.entityKind]?.includes(patch.field)) throw new Error('La revisión contiene una tupla unsupported fuera del contrato.');
@@ -422,6 +494,16 @@ const validateReviewEnvelope = (review: Space3DSyncReviewV1): void => {
   if (review.structuralSeal !== structuralSealFor(review.sourceProjectId, review.patches)) throw new Error('El sello estructural de la revisión fue alterado.');
 };
 
+const requireReviewCapability = (review: Space3DSyncReviewV1): void => {
+  const capability = reviewCapabilities.get(review);
+  if (!capability) {
+    throw new Error('La revisión no tiene una capacidad local de este proceso; debe regenerarse antes de aplicar.');
+  }
+  if (capability.canonical !== stableSerialize(review) || capability.structuralSeal !== review.structuralSeal) {
+    throw new Error('La revisión local fue alterada; debe regenerarse antes de aplicar.');
+  }
+};
+
 const requireUniqueIds = (project: ProjectModel, collection: SyncCollection): void => {
   const ids = rows(project, collection).map((entity) => entity.id);
   if (ids.some((id) => typeof id !== 'string' || id === '') || new Set(ids).size !== ids.length) {
@@ -436,6 +518,7 @@ export const applyApprovedSpace3DSync = (
   approvedPatchIds: readonly string[],
 ): ProjectModel => {
   validateReviewEnvelope(review);
+  requireReviewCapability(review);
   if (current.id !== review.sourceProjectId) throw new Error('La revisión no pertenece al proyecto 2D actual.');
   assertPlainData(approvedPatchIds, 'approvedPatchIds');
   if (!Array.isArray(approvedPatchIds) || approvedPatchIds.some((id) => typeof id !== 'string' || id.trim() === '')) throw new Error('La aprobación contiene IDs inválidos.');

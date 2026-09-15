@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createBlankProject, createDefaultProject } from '../data/defaultProject';
 import { parseSpace3DDraft, parseSpace3DProject } from '../modules/space3d/space3d/data/codec';
+import { applySpace3DCommand } from '../modules/space3d/space3d/data/commands';
 import { validateSpace3DProject } from '../modules/space3d/space3d/model/validation';
 import { analyzeSpace3DProject } from '../modules/space3d/space3d/engine/solver';
 import { linkSpace3DToShell } from '../features/workspace/adapters/space3dShellBridge';
@@ -202,5 +203,27 @@ describe('planar 2D → spatial V2', () => {
     const reloadedExact = validateBundle(JSON.parse(JSON.stringify(rederivedBundle))).space3d!;
     expect(reloadedExact.baselineStatus).toBe('exact');
     expect(() => prepareSpace3DSyncReview(reloadedExact, source)).not.toThrow();
+  });
+
+  it('rechaza magnitudes físicas negativas al admitir el modelo y permite editar una armadura axial', () => {
+    const source = kitchenSinkProject();
+    const candidate = buildPlanar2DToSpace3DHandoff(source).candidateModel;
+    const negativeCases = [
+      ['nodalMasses', { ...candidate.nodalMasses[0], mass: -1 }],
+      ['nodalMasses', { ...candidate.nodalMasses[0], rotationalInertia: -1 }],
+      ['generatedLoadSources', { ...candidate.generatedLoadSources[0], tributaryWidth: -1 }],
+      ['generatedLoadSources', { ...candidate.generatedLoadSources[1], unitWeight: -1 }],
+      ['generatedLoadSources', { ...candidate.generatedLoadSources[3], stiffness: -1 }],
+    ] as const;
+    for (const [collection, entity] of negativeCases) {
+      const malformed = { ...candidate, [collection]: [entity] };
+      expect(() => parseSpace3DProject(JSON.stringify(malformed))).toThrow(/invalid-model/);
+      expect(() => parseSpace3DDraft(JSON.stringify(malformed))).not.toThrow();
+    }
+
+    const truss = candidate.members.find((member) => member.id === 'TRUSS')!;
+    expect(() => applySpace3DCommand(candidate, {
+      kind: 'update-member', memberId: truss.id, changes: { A: truss.A * 1.1 },
+    })).not.toThrow();
   });
 });

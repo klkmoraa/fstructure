@@ -94,7 +94,17 @@ const checkNodeShape = (node: Space3DNode) => {
 
 const checkMemberShape = (member: Space3DFrameMember) => {
   requireId(member.id, 'la barra');
-  for (const field of POSITIVE_MEMBER_FIELDS) requirePositive(member[field], `barra ${member.id}.${field}`);
+  if (member.type === 'truss') {
+    for (const field of ['E', 'A'] as const) requirePositive(member[field], `barra ${member.id}.${field}`);
+    // A truss has no flexural or torsional stiffness. Keep the values finite
+    // and non-negative so a zero remains a valid, lossless axial member.
+    for (const field of ['G', 'Iy', 'Iz', 'J'] as const) {
+      requireFinite(member[field], `barra ${member.id}.${field}`);
+      if (member[field] < 0) fail('invalid-value', `barra ${member.id}.${field} no puede ser negativa`);
+    }
+  } else {
+    for (const field of POSITIVE_MEMBER_FIELDS) requirePositive(member[field], `barra ${member.id}.${field}`);
+  }
   requireFinite(member.orientation?.rollRadians, `barra ${member.id}.rollRadians`);
   const reference = member.orientation?.localYReferenceGlobal;
   if (!Array.isArray(reference) || reference.length !== 3) fail('invalid-value', `barra ${member.id}: referencia de orientación inválida`);
