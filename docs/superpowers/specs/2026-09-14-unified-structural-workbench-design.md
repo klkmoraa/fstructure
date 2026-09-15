@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-FusionStructure debe sentirse como una sola aplicación mientras el usuario modela en 2D, diseña elementos, abre el modelo espacial o consulta el futuro espacio FEM.
+FusionStructure debe sentirse como una sola aplicación mientras el usuario modela en 2D, diseña elementos, abre el modelo espacial o consulta FEM lineal experimental.
 
 ## Arquitectura
 
@@ -16,7 +16,7 @@ El adaptador host `src/integrations/planar2dToSpace3d.ts` proyecta el modelo 2D 
 - La barra existente de Modelo 2D conserva su diseño y contiene el control directo **3D**. No existe selector de cuatro pantallas ni cabecera adicional.
 - Diseño abre la superficie nativa sobre el modelo 2D activo.
 - Modelo 3D sustituye el escenario central con la copia espacial asociada al proyecto y conserva el marco de Modelo 2D.
-- FEM sustituye ese mismo escenario como modo `Planeado` y no fabrica resultados.
+- FEM sustituye ese mismo escenario como modo `Experimental`, resuelve elasticidad lineal 2D TRI3/QUAD4 y publica sus diagnósticos sin presentarse como certificación.
 - Crear y renombrar el proyecto conserva el flujo existente de Modelo 2D.
 
 ## Dirección visual
@@ -25,7 +25,7 @@ Se reutiliza la fundación visual existente: papel `#f4f5f6`, superficie `#fffff
 
 ## Límites
 
-Los motores 2D y 3D conservan dominios, historial y resultados independientes. La transferencia 2D→3D es explícita y versionada; no existe sincronización bidireccional. FEM no tiene solver en esta entrega.
+Los motores 2D y 3D conservan dominios, historial y resultados independientes. La transferencia 2D→3D es explícita y versionada; no existe sincronización bidireccional. FEM mantiene documentos, mallas y snapshots propios dentro del bundle unificado.
 
 ## Verificación
 

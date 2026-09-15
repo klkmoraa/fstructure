@@ -18,7 +18,7 @@ describe('public tool registry', () => {
       'fem-linear-elasticity', 'fem-tri3-quad4', 'fem-gmsh41-import', 'fem-quality-fields',
     ]);
     const Fem = await toolRegistry[3].load();
-    render(<Fem />);
+    render(<ProjectProvider><Fem /></ProjectProvider>);
     expect(screen.getByRole('heading', { name: 'Elementos finitos' })).toBeTruthy();
     cleanup();
     const Design = await toolRegistry[1].load();

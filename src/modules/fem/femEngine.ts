@@ -14,6 +14,12 @@ import {
   zeros,
   type Matrix,
 } from '../../foundation/linearAlgebra';
+import {
+  assessAnalysisAdmission,
+  createBrowserAnalysisBudget,
+  estimateSparseLinearSystemBytes,
+} from '../../numeric/admission';
+import type { AnalysisBudget } from '../../shared/contracts';
 
 export type FemElementType = 'TRI3' | 'QUAD4' | 'MITC4' | 'TET4';
 export type FemAnalysisKind = 'plane-stress' | 'plane-strain' | 'shell' | 'solid';
@@ -67,7 +73,7 @@ export interface FemDocumentV1 {
 }
 
 export interface FemValidationIssue {
-  readonly code: 'invalid-value' | 'duplicate-id' | 'missing-reference' | 'unsupported-element' | 'unsupported-analysis' | 'unsupported-load' | 'degenerate-element' | 'empty-model';
+  readonly code: 'invalid-value' | 'duplicate-id' | 'missing-reference' | 'unsupported-element' | 'unsupported-analysis' | 'unsupported-load' | 'degenerate-element' | 'empty-model' | 'memory-budget';
   readonly entity: 'document' | 'node' | 'element' | 'load' | 'restraint';
   readonly id: string;
   readonly field: string;
@@ -85,6 +91,7 @@ export interface FemStressResult {
   readonly type: FemElementType;
   readonly strain: readonly [number, number, number];
   readonly stress: readonly [number, number, number];
+  readonly outOfPlaneStress?: number;
   readonly principal: readonly [number, number];
   readonly vonMises: number;
 }
@@ -98,7 +105,7 @@ export interface FemMeshQuality {
 
 export interface FemEquilibriumAudit {
   readonly force: readonly [number, number, number];
-  readonly normalized: number;
+  readonly normalized: number | null;
 }
 
 export interface FemAnalysisResult {
@@ -109,8 +116,8 @@ export interface FemAnalysisResult {
   readonly stresses: readonly FemStressResult[];
   readonly meshQuality: FemMeshQuality;
   readonly equilibrium: FemEquilibriumAudit;
-  readonly relativeResidual: number;
-  readonly conditionEstimate: number;
+  readonly relativeResidual: number | null;
+  readonly conditionEstimate: number | null;
   readonly issues: readonly FemValidationIssue[];
   readonly reason: string;
 }
@@ -197,7 +204,12 @@ const quadPoint = (nodes: readonly FemNode[], xi: number, eta: number): { B: Mat
     j21 += dXi[i] * nodes[i].y; j22 += dEta[i] * nodes[i].y;
   }
   const detJ = j11 * j22 - j12 * j21;
-  if (!(Math.abs(detJ) > 1e-14)) return null;
+  const edgeScale = Math.max(
+    ...nodes.map((node, index) => Math.hypot(node.x - nodes[(index + 1) % QUAD4_NODE_COUNT].x, node.y - nodes[(index + 1) % QUAD4_NODE_COUNT].y)),
+    Number.MIN_VALUE,
+  );
+  const detTolerance = edgeScale * edgeScale * 1e-12;
+  if (!Number.isFinite(detJ) || Math.abs(detJ) <= detTolerance) return null;
   const B = zeros(3, 8);
   for (let i = 0; i < QUAD4_NODE_COUNT; i += 1) {
     const dX = (j22 * dXi[i] - j12 * dEta[i]) / detJ;
@@ -210,7 +222,40 @@ const quadPoint = (nodes: readonly FemNode[], xi: number, eta: number): { B: Mat
   return { B, detJ };
 };
 
+const orientation = (a: FemNode, b: FemNode, c: FemNode): number =>
+  (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+
+const onSegment = (a: FemNode, b: FemNode, c: FemNode, tolerance: number): boolean =>
+  Math.abs(orientation(a, b, c)) <= tolerance
+  && c.x >= Math.min(a.x, b.x) - tolerance
+  && c.x <= Math.max(a.x, b.x) + tolerance
+  && c.y >= Math.min(a.y, b.y) - tolerance
+  && c.y <= Math.max(a.y, b.y) + tolerance;
+
+const segmentsIntersect = (a: FemNode, b: FemNode, c: FemNode, d: FemNode): boolean => {
+  const scale = Math.max(
+    Math.hypot(a.x - b.x, a.y - b.y), Math.hypot(b.x - c.x, b.y - c.y),
+    Math.hypot(c.x - d.x, c.y - d.y), Math.hypot(d.x - a.x, d.y - a.y),
+    Math.hypot(a.x - c.x, a.y - c.y), Math.hypot(b.x - d.x, b.y - d.y), Number.MIN_VALUE,
+  );
+  const tolerance = scale * scale * 1e-12;
+  const abc = orientation(a, b, c);
+  const abd = orientation(a, b, d);
+  const cda = orientation(c, d, a);
+  const cdb = orientation(c, d, b);
+  if (((abc > tolerance && abd < -tolerance) || (abc < -tolerance && abd > tolerance))
+    && ((cda > tolerance && cdb < -tolerance) || (cda < -tolerance && cdb > tolerance))) return true;
+  return onSegment(a, b, c, tolerance) || onSegment(a, b, d, tolerance)
+    || onSegment(c, d, a, tolerance) || onSegment(c, d, b, tolerance);
+};
+
+const quadIsSimple = (nodes: readonly FemNode[]): boolean =>
+  nodes.length === QUAD4_NODE_COUNT
+  && !segmentsIntersect(nodes[0], nodes[1], nodes[2], nodes[3])
+  && !segmentsIntersect(nodes[1], nodes[2], nodes[3], nodes[0]);
+
 const quadAreaAndAspect = (nodes: readonly FemNode[]): { area: number; aspectRatio: number } => {
+  if (!quadIsSimple(nodes)) return { area: 0, aspectRatio: Number.POSITIVE_INFINITY };
   const first = triangleGeometry([nodes[0], nodes[1], nodes[2]]);
   const second = triangleGeometry([nodes[0], nodes[2], nodes[3]]);
   const area = (first?.area ?? 0) + (second?.area ?? 0);
@@ -236,6 +281,7 @@ export const validateFemDocument = (document: FemDocumentV1): readonly FemValida
   if (!document || !['plane-stress', 'plane-strain'].includes(document.analysis)) issues.push(issue('unsupported-analysis', 'document', document?.id ?? '', 'analysis'));
   if (!document?.material || !finite(document.material.E) || document.material.E <= 0) issues.push(issue('invalid-value', 'document', document?.id ?? '', 'material.E'));
   if (!document?.material || !finite(document.material.nu) || document.material.nu <= -1 || document.material.nu >= 0.5) issues.push(issue('invalid-value', 'document', document?.id ?? '', 'material.nu'));
+  if (document?.material?.thickness !== undefined && (!finite(document.material.thickness) || document.material.thickness <= 0)) issues.push(issue('invalid-value', 'document', document?.id ?? '', 'material.thickness'));
   const nodes = new Set<string>();
   for (const node of nodeList) {
     if (!node || typeof node !== 'object') { issues.push(issue('invalid-value', 'node', '', '$entity')); continue; }
@@ -280,20 +326,33 @@ export const createTri3PatchFixture = (): FemDocumentV1 => ({
   restraints: [{ nodeId: '1', ux: true, uy: true }, { nodeId: '3', ux: true, uy: true }],
 });
 
-const emptyResult = (documentId: string, issues: readonly FemValidationIssue[], reason: string): FemAnalysisResult => Object.freeze({
+const emptyResult = (documentId: string, issues: readonly FemValidationIssue[], reason: string, degenerateElementIds: readonly string[] = []): FemAnalysisResult => Object.freeze({
   success: false, documentId, displacements: Object.freeze([]), reactions: Object.freeze([]), stresses: Object.freeze([]),
-  meshQuality: Object.freeze({ valid: false, minArea: 0, maxAspectRatio: 0, degenerateElementIds: Object.freeze([]) }),
-  equilibrium: Object.freeze({ force: Object.freeze([0, 0, 0] as readonly [number, number, number]), normalized: Number.NaN }),
-  relativeResidual: Number.NaN, conditionEstimate: Number.NaN, issues: Object.freeze([...issues]), reason,
+  meshQuality: Object.freeze({ valid: false, minArea: 0, maxAspectRatio: 0, degenerateElementIds: Object.freeze([...degenerateElementIds]) }),
+  equilibrium: Object.freeze({ force: Object.freeze([0, 0, 0] as readonly [number, number, number]), normalized: null }),
+  relativeResidual: null, conditionEstimate: null, issues: Object.freeze([...issues]), reason,
 });
 
-const principalAndVonMises = (sx: number, sy: number, txy: number): { principal: readonly [number, number]; vonMises: number } => {
+const principalAndVonMises = (sx: number, sy: number, txy: number, sz = 0): { principal: readonly [number, number]; vonMises: number } => {
   const center = (sx + sy) / 2;
   const radius = Math.hypot((sx - sy) / 2, txy);
-  return { principal: [center + radius, center - radius], vonMises: Math.sqrt(sx * sx - sx * sy + sy * sy + 3 * txy * txy) };
+  const principalValues = [center + radius, center - radius, sz];
+  const vonMisesSquared = ((sx - sy) ** 2 + (sy - sz) ** 2 + (sz - sx) ** 2) / 2 + 3 * txy * txy;
+  return { principal: [Math.max(...principalValues), Math.min(...principalValues)], vonMises: Math.sqrt(Math.max(0, vonMisesSquared)) };
 };
 
-export const analyzeFemDocument = (document: FemDocumentV1): FemAnalysisResult => {
+export interface FemAnalysisOptions {
+  readonly budget?: AnalysisBudget;
+}
+
+const estimateFemAnalysisBytes = (ndof: number): number => {
+  if (!Number.isSafeInteger(ndof) || ndof <= 0) return Number.POSITIVE_INFINITY;
+  const maxSafeDimension = Math.floor(Math.sqrt(Number.MAX_SAFE_INTEGER));
+  const denseEntries = ndof <= maxSafeDimension ? ndof * ndof : Number.MAX_SAFE_INTEGER;
+  return estimateSparseLinearSystemBytes({ dimension: ndof, nonZeros: denseEntries });
+};
+
+export const analyzeFemDocument = (document: FemDocumentV1, options: FemAnalysisOptions = {}): FemAnalysisResult => {
   const issues = validateFemDocument(document);
   if (issues.length > 0) return emptyResult(document?.id ?? '', issues, 'El documento FEM no es admisible.');
   const nodesById = nodeMap(document);
@@ -302,6 +361,9 @@ export const analyzeFemDocument = (document: FemDocumentV1): FemAnalysisResult =
   const D = constitutiveMatrix(material, document.analysis);
   const nodeIndex = new Map(document.nodes.map((node, index) => [node.id, index]));
   const ndof = document.nodes.length * 2;
+  const budget = options.budget ?? createBrowserAnalysisBudget();
+  const admission = assessAnalysisAdmission(estimateFemAnalysisBytes(ndof), budget);
+  if (!admission.accepted) return emptyResult(document.id, [issue('memory-budget', 'document', document.id, 'budget')], `El análisis requiere aproximadamente ${(admission.estimatedBytes / (1024 * 1024)).toFixed(1)} MiB; el presupuesto local es ${(admission.availableBytes / (1024 * 1024)).toFixed(1)} MiB.`);
   const K = zeros(ndof, ndof);
   const elementData: Array<{ element: FemElement; nodes: FemNode[]; B: Matrix; weight: number; area: number; aspectRatio: number }> = [];
   let minArea = Number.POSITIVE_INFINITY;
@@ -322,21 +384,26 @@ export const analyzeFemDocument = (document: FemDocumentV1): FemAnalysisResult =
       const gauss = 1 / Math.sqrt(3);
       let centerB: Matrix | null = null;
       let area = 0;
+      let invalidJacobian = !quadIsSimple(elementNodes);
+      let orientationSign: number | null = null;
       for (const xi of [-gauss, gauss]) for (const eta of [-gauss, gauss]) {
         const point = quadPoint(elementNodes, xi, eta);
-        if (!point) continue;
+        if (!point) { invalidJacobian = true; continue; }
+        const sign = Math.sign(point.detJ);
+        if (orientationSign === null) orientationSign = sign;
+        else if (sign !== orientationSign) invalidJacobian = true;
         addElementMatrix(local, multiplyBDB(point.B, D, thickness, Math.abs(point.detJ)), Array.from({ length: 8 }, (_, index) => index));
-        centerB = centerB ?? point.B;
         area += Math.abs(point.detJ);
       }
+      centerB = quadPoint(elementNodes, 0, 0)?.B ?? null;
       const quality = quadAreaAndAspect(elementNodes);
-      if (!(area > 0) || !centerB) { degenerateElementIds.push(element.id); continue; }
+      if (invalidJacobian || !(area > 0) || !centerB || !(quality.area > 0)) { degenerateElementIds.push(element.id); continue; }
       addElementMatrix(K, local, elementNodes.flatMap((node) => { const base = nodeIndex.get(node.id)! * 2; return [base, base + 1]; }));
       elementData.push({ element, nodes: elementNodes, B: centerB, weight: thickness, area: quality.area, aspectRatio: quality.aspectRatio });
       minArea = Math.min(minArea, quality.area); maxAspectRatio = Math.max(maxAspectRatio, quality.aspectRatio);
     }
   }
-  if (degenerateElementIds.length > 0) return emptyResult(document.id, degenerateElementIds.map((id) => issue('degenerate-element', 'element', id, 'geometry')), 'La malla contiene elementos degenerados.');
+  if (degenerateElementIds.length > 0) return emptyResult(document.id, degenerateElementIds.map((id) => issue('degenerate-element', 'element', id, 'geometry')), 'La malla contiene elementos degenerados.', degenerateElementIds);
   const F = Array.from({ length: ndof }, () => 0);
   for (const load of document.loads) {
     const index = nodeIndex.get(load.nodeId);
@@ -352,28 +419,39 @@ export const analyzeFemDocument = (document: FemDocumentV1): FemAnalysisResult =
     if (restraint.uy) restrained.add(index * 2 + 1);
   }
   const free = Array.from({ length: ndof }, (_, index) => index).filter((index) => !restrained.has(index));
-  if (!free.length) return emptyResult(document.id, [issue('invalid-value', 'document', document.id, 'restraints')], 'No quedan grados de libertad libres.');
-  let solved: ReturnType<typeof solveLinearSystem>;
-  try {
-    solved = solveLinearSystem(submatrix(K, free, free), free.map((index) => F[index]));
-  } catch (error) {
-    return emptyResult(document.id, [issue('invalid-value', 'document', document.id, 'stiffness')], error instanceof Error ? error.message : 'La rigidez FEM es singular.');
+  let solved: Pick<ReturnType<typeof solveLinearSystem>, 'x' | 'relativeResidual' | 'conditionEstimate'>;
+  if (!free.length) solved = { x: [], relativeResidual: 0, conditionEstimate: 1 };
+  else {
+    try {
+      solved = solveLinearSystem(submatrix(K, free, free), free.map((index) => F[index]));
+    } catch (error) {
+      return emptyResult(document.id, [issue('invalid-value', 'document', document.id, 'stiffness')], error instanceof Error ? error.message : 'La rigidez FEM es singular.');
+    }
+  }
+  if (!solved.x.every(Number.isFinite) || !Number.isFinite(solved.relativeResidual) || !Number.isFinite(solved.conditionEstimate)) {
+    return emptyResult(document.id, [issue('invalid-value', 'document', document.id, 'stiffness')], 'El análisis produjo valores numéricos no finitos.');
   }
   const U = Array.from({ length: ndof }, () => 0);
   free.forEach((global, index) => { U[global] = solved.x[index]; });
   const reactionsVector = multiplyMatrixVector(K, U).map((value, index) => restrained.has(index) ? value - F[index] : 0);
+  if (!U.every(Number.isFinite) || !reactionsVector.every(Number.isFinite)) return emptyResult(document.id, [issue('invalid-value', 'document', document.id, 'response')], 'El análisis produjo una respuesta no finita.');
   const displacements = document.nodes.map((node, index) => Object.freeze({ nodeId: node.id, ux: U[index * 2], uy: U[index * 2 + 1], uz: 0 }));
   const reactions = document.nodes.map((node, index) => Object.freeze({ nodeId: node.id, ux: reactionsVector[index * 2], uy: reactionsVector[index * 2 + 1], uz: 0 }));
   const stresses = elementData.map(({ element, nodes: elementNodes, B }) => {
     const localU = elementNodes.flatMap((node) => { const base = nodeIndex.get(node.id)! * 2; return [U[base], U[base + 1]]; });
     const strainVector = multiplyMatrixVector(B, localU);
     const stressVector = multiplyMatrixVector(D, strainVector);
-    const invariants = principalAndVonMises(stressVector[0], stressVector[1], stressVector[2]);
-    return Object.freeze({ elementId: element.id, type: element.type, strain: [strainVector[0], strainVector[1], strainVector[2]] as const, stress: [stressVector[0], stressVector[1], stressVector[2]] as const, principal: invariants.principal, vonMises: invariants.vonMises });
+    const outOfPlaneStress = document.analysis === 'plane-strain' ? material.nu * (stressVector[0] + stressVector[1]) : 0;
+    const invariants = principalAndVonMises(stressVector[0], stressVector[1], stressVector[2], outOfPlaneStress);
+    return Object.freeze({ elementId: element.id, type: element.type, strain: [strainVector[0], strainVector[1], strainVector[2]] as const, stress: [stressVector[0], stressVector[1], stressVector[2]] as const, outOfPlaneStress, principal: invariants.principal, vonMises: invariants.vonMises });
   });
+  if (stresses.some((stress) => [...stress.strain, ...stress.stress, stress.outOfPlaneStress ?? 0, ...stress.principal, stress.vonMises].some((value) => !Number.isFinite(value)))) {
+    return emptyResult(document.id, [issue('invalid-value', 'document', document.id, 'stress')], 'El análisis produjo tensiones no finitas.');
+  }
   let fx = 0; let fy = 0; let fz = 0; let scale = 1;
   for (const load of document.loads) { fx += load.fx; fy += load.fy; fz += load.fz ?? 0; scale = Math.max(scale, Math.abs(load.fx), Math.abs(load.fy), Math.abs(load.fz ?? 0)); }
   reactions.forEach((reaction) => { fx += reaction.ux; fy += reaction.uy; fz += reaction.uz; scale = Math.max(scale, Math.abs(reaction.ux), Math.abs(reaction.uy), Math.abs(reaction.uz)); });
+  if (![fx, fy, fz, scale].every(Number.isFinite)) return emptyResult(document.id, [issue('invalid-value', 'document', document.id, 'equilibrium')], 'El análisis produjo un equilibrio no finito.');
   return Object.freeze({
     success: true,
     documentId: document.id,
@@ -399,6 +477,7 @@ const sectionTokens = (source: string, name: string): string[] => {
 export const parseGmsh41 = (source: string): FemDocumentV1 => {
   const meshFormat = sectionTokens(source, 'MeshFormat');
   if (meshFormat[0] !== '4.1') throw new Error(`Versión Gmsh no compatible: ${meshFormat[0] ?? 'vacía'}.`);
+  if (meshFormat[1] !== '0') throw new Error('Sólo se admite Gmsh 4.1 ASCII.');
   const nodeTokens = sectionTokens(source, 'Nodes');
   let cursor = 0;
   const blockCount = Number(nodeTokens[cursor++]);
@@ -423,7 +502,15 @@ export const parseGmsh41 = (source: string): FemDocumentV1 => {
   const elementCount = Number(elementTokens[cursor++]);
   cursor += 2;
   const elements: FemElement[] = [];
-  const typeMap: Record<number, { type: FemElementType; nodes: number }> = { 2: { type: 'TRI3', nodes: 3 }, 3: { type: 'QUAD4', nodes: 4 }, 4: { type: 'TET4', nodes: 4 }, 118: { type: 'MITC4', nodes: 4 } };
+  const typeMap: Record<number, { type?: FemElementType; nodes: number }> = {
+    1: { nodes: 2 }, // boundary line
+    2: { type: 'TRI3', nodes: 3 },
+    3: { type: 'QUAD4', nodes: 4 },
+    4: { type: 'TET4', nodes: 4 },
+    8: { nodes: 3 }, // second-order boundary line
+    15: { nodes: 1 }, // point entity
+  };
+  let recordsRead = 0;
   for (let block = 0; block < elementBlockCount; block += 1) {
     cursor += 2;
     const elementType = Number(elementTokens[cursor++]);
@@ -433,10 +520,12 @@ export const parseGmsh41 = (source: string): FemDocumentV1 => {
     for (let index = 0; index < count; index += 1) {
       const id = elementTokens[cursor++];
       const nodeIds = elementTokens.slice(cursor, cursor + descriptor.nodes); cursor += descriptor.nodes;
-      elements.push({ id, type: descriptor.type, nodeIds });
+      if (nodeIds.length !== descriptor.nodes) throw new Error(`Registro Gmsh incompleto para el elemento ${id ?? '(sin id)'}.`);
+      if (descriptor.type) elements.push({ id, type: descriptor.type, nodeIds });
     }
+    recordsRead += count;
   }
-  if (elements.length !== elementCount) throw new Error('La cabecera Gmsh no coincide con el número de elementos.');
+  if (recordsRead !== elementCount) throw new Error('La cabecera Gmsh no coincide con el número de elementos.');
   return {
     kind: 'fem-document', schemaVersion: 1, id: 'gmsh-import', name: 'Gmsh 4.1', analysis: 'plane-stress',
     material: { id: 'imported-material', E: 1, nu: 0.3, thickness: 1 }, nodes, elements, loads: [], restraints: [],
@@ -444,15 +533,23 @@ export const parseGmsh41 = (source: string): FemDocumentV1 => {
 };
 
 /** Open, dependency-free FEM interchange payload for local files and snapshots. */
-export const serializeFemBundle = (document: FemDocumentV1, analysis?: FemAnalysisResult): string =>
-  JSON.stringify({ format: 'fstructure-fem-bundle', formatVersion: 1, document, ...(analysis ? { analysis } : {}) } satisfies FemOpenBundleV1, null, 2);
+export const serializeFemBundle = (document: FemDocumentV1, analysis?: FemAnalysisResult): string => {
+  const payload = { format: 'fstructure-fem-bundle', formatVersion: 1, document, ...(analysis ? { analysis } : {}) } satisfies FemOpenBundleV1;
+  return JSON.stringify(payload, (_key, value) => typeof value === 'number' && !Number.isFinite(value) ? null : value, 2);
+};
 
 const vtkCellType: Record<FemElementType, number> = { TRI3: 5, QUAD4: 9, MITC4: 9, TET4: 10 };
 
 /** Legacy ASCII VTK export; unsupported physics can still be inspected geometrically. */
 export const exportFemVtk = (document: FemDocumentV1, analysis?: FemAnalysisResult): string => {
   const nodeIndex = new Map(document.nodes.map((node, index) => [node.id, index]));
-  const cells = document.elements.map((element) => element.nodeIds.map((id) => nodeIndex.get(id)).filter((index): index is number => index !== undefined));
+  const expectedNodeCount: Record<FemElementType, number> = { TRI3: 3, QUAD4: 4, MITC4: 4, TET4: 4 };
+  const cells = document.elements.map((element) => {
+    if (element.nodeIds.length !== expectedNodeCount[element.type] || element.nodeIds.some((id) => !nodeIndex.has(id))) {
+      throw new Error(`No se puede exportar el elemento FEM ${element.id}: conectividad incompleta.`);
+    }
+    return element.nodeIds.map((id) => nodeIndex.get(id) as number);
+  });
   const lines = [
     '# vtk DataFile Version 3.0',
     `FStructure FEM ${document.id}`,
