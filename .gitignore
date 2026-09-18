@@ -16,8 +16,8 @@ __pycache__/
 # Local Netlify folder
 .netlify
 
-# Tooling interno de agentes/skills (no forma parte del producto)
-.agents/
+# Tooling local no versionado. Las skills compartidas bajo `.agents/skills/`
+# sí forman parte de la guía persistente del repositorio.
 .claude/
 .superpowers/
 .playwright/

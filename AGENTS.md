@@ -1,71 +1,138 @@
-# FusionStructure — reglas persistentes
+# FStructure — guía persistente para agentes
 
-Este archivo define cómo trabajar en este repositorio. FusionStructure es experimental: ninguna carpeta, módulo, solver, esquema, worker, persistencia o superficie visual debe tratarse como definitiva.
+## Producto y alcance
 
-## Autoridad
+FStructure es una aplicación web local-first y experimental de modelado y análisis estructural. Una sola app React/Vite integra Modelo 2D, Diseño, Modelo 3D y FEM. No es software certificado ni sustituye una revisión profesional. Estas reglas cubren todo el repositorio; no se permiten `AGENTS.md` anidados ni adaptadores equivalentes.
 
-Cuando exista una discrepancia, el orden es:
+## Invariantes
 
-1. código ejecutable y pruebas;
-2. puertas automatizadas;
-3. documentación canónica;
-4. historial de Git;
-5. planes, ideas o conversaciones anteriores.
+- Mantener una sola app, una sola entrada Vite y un solo sistema de diseño raíz.
+- `model2d` es la autoridad del bundle unificado; 3D, Diseño y FEM son ramas o resultados derivados con procedencia explícita.
+- Conservar unidades internas, signos, ejes, grados de libertad, precisión y conversiones de forma explícita. No redondear entradas del solver para presentación.
+- No aceptar `NaN`, infinitos, objetos de runtime, ciclos, archivos sobredimensionados ni rutas inseguras en persistencia/importación.
+- No perder datos silenciosamente. Migraciones, guardado, undo/redo e import/export deben fallar de forma visible y recuperable.
+- Los workers usan contratos versionados y datos serializables. No transferir estado React, objetos DOM ni instancias de clases.
+- Mantener el proyecto local-first. Cualquier transmisión de un modelo o expediente requiere una acción y destino comprensibles para la persona usuaria.
+- `src/foundation` es la Foundation canónica del producto. No añadir paquetes ni imports de productos hermanos.
+- Diferenciar en UI y documentación `Disponible`, `Experimental`, `Planeado` y `No comprometido`.
 
-Un plan no demuestra que algo esté implementado. La implementación y sus pruebas sí aportan evidencia, aunque una puerta verde tampoco convierte una función experimental en software profesional certificado.
+## Fuentes de verdad
 
-## Sin áreas protegidas
+Ante contradicciones, usar este orden:
 
-No existe una política de archivos protegidos en este repositorio. Cualquier parte puede rediseñarse, reescribirse, reemplazarse o eliminarse cuando el cambio esté justificado y se actualicen sus referencias, migraciones, pruebas y documentación.
+1. código ejecutable y formatos persistidos actuales;
+2. pruebas y gates reproducibles;
+3. `AGENTS.md` y contratos documentados vigentes;
+4. `fix/features/README.md` para estado de mejoras;
+5. README y documentación especializada;
+6. planes, historial y conversaciones.
 
-Esta regla es técnica y de proceso. No significa que desaparezcan la licencia MIT, los derechos de autor o las licencias de dependencias y estándares externos.
+Una prueba verde demuestra sólo lo que ejecuta. Un plan o una pantalla pulida no demuestran una capacidad.
 
-## Calidad mínima
+## Antes de modificar
 
-La validación por defecto debe ser proporcional al cambio y consumir el mínimo tiempo posible.
+1. Ejecutar `git status --short` y preservar cambios ajenos.
+2. Leer este archivo, `README.md` y los archivos de dominio afectados.
+3. Si el trabajo es una mejora, seguir el protocolo de backlog de abajo.
+4. Identificar entidad, unidades, persistencia, undo/redo, worker, exportación y pruebas afectadas.
+5. Cargar sólo las skills aplicables desde `.agents/skills/`; sus referencias se leen bajo demanda.
+6. Preferir una verificación focalizada antes del gate completo.
 
-- No ejecutar `npm run check`, la suite completa ni pruebas no relacionadas por rutina.
-- Para UI, estilos, copy, composición y refactors sin impacto de dominio: usar únicamente la comprobación más barata que detecte errores del cambio, normalmente build o typecheck y, cuando aporte valor, una revisión visual puntual.
-- Para solver, matemáticas, unidades, cargas, combinaciones, análisis, import/export estructural o resultados: ejecutar sólo las pruebas focalizadas directamente relacionadas y añadir un caso pequeño de referencia cuando cambie el comportamiento numérico.
-- Para persistencia, migraciones, undo/redo o formato de proyecto: ejecutar sólo las pruebas focalizadas del flujo tocado y comprobar que un proyecto existente puede abrirse/guardarse sin pérdida.
-- Ejecutar la suite completa únicamente si el usuario la pide expresamente, si se prepara una release importante o si un cambio transversal hace imposible aislar una verificación menor.
-- No crear pruebas nuevas para cambios puramente visuales salvo que exista una regresión concreta que valga la pena fijar.
-- Indicar brevemente qué se verificó y qué no; no presentar como validado aquello que no se ejecutó.
+## Entorno y comandos reales
 
-La ausencia de una prueba no es evidencia de que la función funcione, pero tampoco justifica ejecutar pruebas irrelevantes.
+- Runtime: Node 24 (`.nvmrc`), npm con `package-lock.json`, Rust 1.98.1 (`rust-toolchain.toml`) y Python 3 para el oráculo.
+- Instalar: `npm ci`.
+- Desarrollo: `npm run dev`.
+- Typecheck: `npm run typecheck`.
+- Lint: `npm run lint`.
+- Pruebas TS/React: `npm test -- <ruta-de-test>`; suite: `npm test`.
+- Arquitectura: `npm run architecture:check && npm run architecture:test`.
+- Diseño estructural: `npm run design:delivery:test && npm run design:oracle`.
+- Núcleo numérico: `npm run numeric:wasm:gate && npm run numeric:rust:test`.
+- Build: `npm run build`; gate general: `npm run check`.
 
-## Dirección de producto
+No sustituir `npm ci` por una instalación que cambie el lockfile. Si un comando no puede ejecutarse por el entorno, registrar el fallo exacto y no presentarlo como validado.
 
-El producto se organiza alrededor de un proyecto común. Las futuras superficies deben poder relacionarse con:
+## Mapa de arquitectura
 
-- identidad, contexto, ubicación, unidades y fases;
-- modelo físico y modelo analítico;
-- entradas, hipótesis, resultados y procedencia;
-- documentos, revisiones, incidencias y aprobaciones;
-- cantidades, costos, recursos y programa;
-- campo, seguridad, cambios y expediente final;
-- educación, ejemplos y explicaciones.
+- `src/App.tsx`, `src/features/workspace/`: shell, rutas por query string y superficies.
+- `src/types.ts`, `src/data/`, `src/commands/`: modelo 2D, migraciones y mutaciones reversibles.
+- `src/store/`: estado React, historial, selección, análisis y coordinación de persistencia.
+- `src/engine/`, `src/analysis-methods/`, `src/foundation/`: solver, estudios, unidades y álgebra numérica.
+- `src/workers/`, `src/runtime/`, `src/numeric/`, `crates/numeric-core/`: aislamiento, protocolos y backend WASM/Rust.
+- `src/storage/`, `src/shared/project/`: repositorios IndexedDB, bundles, checksums, versiones y recuperación.
+- `src/import/`, `src/utils/portable*`, `src/utils/pdf/`: DXF, expedientes, JSON, PDF y exportaciones.
+- `src/design/`: cálculo de diseño y evidencia normativa.
+- `src/modules/space3d/`, `src/modules/fem/`: dominios 3D y FEM detrás de adaptadores explícitos.
+- `src/design-system/`, `src/features/`: componentes, canvas, accesibilidad y experiencia de usuario.
 
-Una feature nueva debe declarar qué entidad del proyecto modifica, qué validaciones necesita, cómo se deshace, cómo se guarda, cómo se exporta y cómo se prueba.
+Las reglas de negocio viven fuera de la UI. Las superficies consumen comandos/DTO; no escriben formatos persistidos ad hoc.
 
-## Trabajo experimental
+## Implementación y datos
 
-- Diferenciar siempre `Disponible`, `Experimental`, `Planeado` y `No comprometido`.
-- No esconder limitaciones detrás de una interfaz pulida.
-- No describir el producto como patentado, certificado, protegido o listo para obra si no existe evidencia específica.
-- Mantener las unidades y las conversiones explícitas.
-- Tratar resultados derivados como resultados versionados, no como datos de entrada.
-- Preferir formatos abiertos y adaptadores aislados.
-- Evitar que la interfaz sea la única fuente de reglas de negocio.
+- TypeScript estricto; evitar `any`, casts que oculten validación y mutaciones compartidas.
+- Usar metros, kN y las unidades base documentadas en los tipos; convertir sólo en fronteras.
+- Los resultados derivados deben llevar identidad/procedencia y se invalidan al cambiar entradas relevantes.
+- Toda mutación del proyecto debe declarar si afecta análisis y participar en undo/redo o explicar por qué no.
+- Validar datos no confiables antes de normalizarlos o descomprimirlos; mantener presupuestos de archivo.
+- Mantener adaptadores 2D↔3D/FEM explícitos. No crear sincronización implícita ni asumir equivalencia de grados de libertad.
+- Preferir formatos abiertos. DWG/IFC y física no implementada deben rechazarse de forma explícita, no simularse.
+- Preservar navegación por teclado, nombres accesibles, foco visible, reducción de movimiento y controles táctiles.
+- No introducir telemetría o red sin consentimiento, documentación y prueba del modo offline/local.
 
-## Foundation local
+## Estrategia de pruebas
 
-- `src/foundation` es propiedad local y exclusiva de este repositorio: aquí viven las unidades, el álgebra lineal, los tipos numéricos y sus pruebas.
-- No agregar `@fusionstructure/foundation` ni imports o dependencias hacia productos hermanos, incluidos sus subpaths internos. Los consumidores de este producto usan las fuentes locales de `src/foundation`.
-- Un cambio local de Foundation requiere únicamente la verificación mínima y focalizada de este repositorio. No requiere una publicación, prueba o PR coordinados en un producto hermano.
+- UI/copy/estilos: typecheck o build y revisión visual focalizada; teclado y un viewport móvil si cambia interacción.
+- Comandos/modelo/undo: prueba unitaria del comando, ida/vuelta y estado de historial.
+- Solver/unidades/diseño: caso pequeño con solución de referencia, tolerancia explícita y prueba del fallo.
+- Persistencia/migración: abrir, guardar, reabrir, conflicto y recuperación sin pérdida.
+- Import/export: fixture válido, corrupto, sobredimensionado y round trip cuando el formato lo permita.
+- Worker/protocolo: éxito, error, versión incompatible y cancelación/respuesta obsoleta.
+- Cambio transversal o release: `npm run check`, arquitectura, WASM/Rust y prueba visual de las cuatro superficies.
 
-## Flujo de cierre
+El gate completo puede ser costoso; ejecútalo cuando el alcance sea transversal, cuando cierre una tarea que lo exige o cuando el usuario lo solicite. Documenta qué sí y qué no se ejecutó.
 
-El usuario autorizó actualizar el repositorio en esta sesión. Para cambios posteriores, no hacer push ni abrir un Pull Request salvo que se solicite explícitamente en esa sesión.
+## Git, revisión y terminado
 
-Si el cambio toca una superficie crítica, dejar una nota de decisión o una prueba reproducible. Si una verificación falla, reportar el fallo exacto y no presentarlo como éxito.
+- No hacer commit, push, ramas, PR ni release salvo solicitud explícita de esa sesión.
+- No descartar, reescribir ni formatear cambios ajenos. Evitar comandos destructivos.
+- Revisar corrección, unidades, estabilidad numérica, pérdida de datos, accesibilidad, privacidad, bundle y compatibilidad.
+- Un cambio está terminado sólo con alcance cumplido, verificaciones relevantes verdes, documentación/fixtures actualizados y limitaciones declaradas.
+- No cerrar una mejora con pruebas fallidas o evidencia pendiente. El responsable y la evidencia de cierre se registran en el backlog, no en este archivo.
+
+## Skills
+
+- Leer `.agents/skills/fstructure-workflows/SKILL.md` para cambios de modelo, solver, persistencia, undo/redo, workers o interoperabilidad.
+- Leer `.agents/skills/security-best-practices/SKILL.md` sólo ante una revisión de seguridad explícita o trabajo secure-by-default; cargar únicamente sus referencias JavaScript/React aplicables.
+- Leer `.agents/skills/accessibility-review/SKILL.md` al auditar o cambiar interacción, foco, semántica, contraste o responsive.
+- Leer `.agents/skills/design-system/SKILL.md` al auditar, documentar o extender tokens y componentes compartidos.
+- Leer `.agents/skills/testing-strategy/SKILL.md` para diseñar una estrategia nueva, cobertura o un plan transversal; conservar la matriz específica de FStructure como autoridad.
+- Leer `.agents/skills/documentation/SKILL.md` para README, arquitectura, runbooks u onboarding, sin duplicar fuentes de verdad.
+- Consultar `.agents/skills/CATALOG.md` para procedencia, licencia y fuentes descartadas.
+- Si Superpowers está disponible globalmente, usar sus procesos de brainstorming, depuración, TDD, revisión y verificación cuando apliquen. No copiarlo al repositorio ni permitir que sustituya estas reglas o el alcance del backlog.
+
+## Flujo del backlog
+
+Frase activadora: **“Vamos a trabajar en las mejoras”.**
+
+Al recibirla:
+
+1. leer `AGENTS.md`, `fix/features/README.md` y `fix/features/00-auditoria-base.md`;
+2. elegir en el índice la tarea `[ ]` de mayor prioridad que no esté bloqueada ni en curso, respetando dependencias y el orden listado;
+3. cambiarla a `[>]` tanto en el índice como en su archivo y registrar fecha/responsable;
+4. implementar solamente el alcance descrito;
+5. ejecutar la estrategia de pruebas de esa tarea;
+6. cambiarla a `[x]` sólo si cumple todos los criterios y registrar evidencia reproducible;
+7. si aparece trabajo adicional, crear una tarea relacionada sin ampliar silenciosamente el alcance.
+
+Órdenes especiales:
+
+- **“Vamos con ID-001”**: trabajar exactamente en ese ID; si está bloqueado, explicar la dependencia.
+- **“Revisa el avance de las mejoras”**: informar desde el índice y la evidencia, sin implementar.
+- **“Cierra la mejora en curso”**: cerrar sólo si todos sus criterios tienen evidencia suficiente.
+
+`fix/features/README.md` es la única fuente de estado. Los archivos por categoría contienen el detalle y deben conservar la misma marca. Al añadir, dividir o cerrar tareas, actualizar ambos en el mismo cambio.
+
+## Mantenimiento
+
+Actualizar este archivo sólo cuando cambien comandos, fronteras, invariantes o el protocolo de trabajo. Mantenerlo compacto: la evidencia histórica y las instrucciones de dominio extensas pertenecen al backlog, documentación o skills.
