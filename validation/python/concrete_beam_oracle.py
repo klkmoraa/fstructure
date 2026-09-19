@@ -22,8 +22,13 @@ def _bar_area(diameter_mm: float) -> float:
     return math.pi * diameter_mm**2 / 4
 
 
+BETA_ONE_PLATEAU_LIMIT_MPA = 28
+
+
 def _beta_one(fc_mpa: float) -> float:
-    return 0.85 if fc_mpa <= 30 else max(0.65, 1.05 - fc_mpa / 140)
+    """Regime change at 28 MPa: ``1.05 - fc/140`` equals 0.85 exactly there, so
+    28 is the only threshold that keeps the piecewise function continuous."""
+    return 0.85 if fc_mpa <= BETA_ONE_PLATEAU_LIMIT_MPA else max(0.65, 1.05 - fc_mpa / 140)
 
 
 def _required_flexural_area(
@@ -95,6 +100,7 @@ def _select_longitudinal(data: dict[str, Any], demand_knm: float, stirrup_diamet
                 "deficit": max(0.0, target - area),
                 "excess": max(0.0, area - target),
                 "preference": preference,
+                "maximum": maximum,
             })
 
     if not candidates:
@@ -265,6 +271,10 @@ def design_reinforced_concrete_beam(data: dict[str, Any]) -> dict[str, Any]:
         "negativeRequiredAreaMm2": negative["required"],
         "positiveDesignStrengthKnm": positive["strength"],
         "negativeDesignStrengthKnm": negative["strength"],
+        # Límite de acero por área balanceada: es la única salida sensible a
+        # beta1, así que sin ella los fixtures no contrastan ese coeficiente.
+        "positiveMaximumAreaMm2": positive["maximum"],
+        "negativeMaximumAreaMm2": negative["maximum"],
         "bottomDiameterMm": positive["diameter"],
         "bottomCount": positive["count"],
         "bottomEffectiveDepthMm": positive["depth"],

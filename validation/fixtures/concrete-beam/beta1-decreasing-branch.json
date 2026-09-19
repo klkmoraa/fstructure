@@ -1,5 +1,5 @@
 {
-  "name": "rectangular-low-ductility-baseline",
+  "name": "beta1-decreasing-branch-30mpa",
   "input": {
     "standardId": "ntc-cdmx-2023-concrete",
     "memberId": "B1",
@@ -13,11 +13,11 @@
       "heightMm": 500
     },
     "concrete": {
-      "catalogId": "concrete-28mpa",
+      "catalogId": "concrete-30mpa",
       "origin": "catalog",
       "density": "normal",
       "coarseAggregate": "basalt",
-      "compressiveStrengthMpa": 28
+      "compressiveStrengthMpa": 30
     },
     "reinforcement": {
       "coverMm": 40,
@@ -101,16 +101,16 @@
   },
   "expected": {
     "status": "available",
-    "positiveRequiredAreaMm2": 752.512290766,
-    "negativeRequiredAreaMm2": 492.751116909,
-    "positiveDesignStrengthKnm": 127.787448994,
-    "negativeDesignStrengthKnm": 97.188909337,
+    "positiveRequiredAreaMm2": 749.7554650599916,
+    "negativeRequiredAreaMm2": 491.60936535024297,
+    "positiveDesignStrengthKnm": 128.26685269304687,
+    "negativeDesignStrengthKnm": 97.45857399522839,
     "bottomDiameterMm": 16,
     "bottomCount": 4,
-    "bottomEffectiveDepthMm": 444,
+    "bottomEffectiveDepthMm": 444.0,
     "topDiameterMm": 16,
     "topCount": 3,
-    "topEffectiveDepthMm": 444,
+    "topEffectiveDepthMm": 444.0,
     "rejectedLongitudinalDiametersMm": [
       12
     ],
@@ -118,18 +118,18 @@
     "stirrupSpacingMm": 200,
     "requiredAreaPerSpacingMm": 0.25,
     "providedAreaPerSpacingMm": 0.5026548245743669,
-    "concreteDesignStrengthKn": 89.86558903161989,
-    "shearDesignStrengthKn": 160.16689279659087,
-    "grossInertiaMm4": 3125000000,
-    "meanFlexuralTensileStrengthMpa": 3.3336466519413843,
-    "concreteElasticModulusMpa": 18520.259177452135,
+    "concreteDesignStrengthKn": 93.01972194110238,
+    "shearDesignStrengthKn": 163.32102570607333,
+    "grossInertiaMm4": 3125000000.0,
+    "meanFlexuralTensileStrengthMpa": 3.4506521122825466,
+    "concreteElasticModulusMpa": 19170.289512680814,
     "concretePropertyBasis": "ntc-table-2.2.1-class-1a-basalt",
-    "crackedTransformedInertiaMm4": 1075244549.2269468,
-    "effectiveInertiaMm4": 1167595438.5840847,
-    "immediateDeflectionMm": 25.158542958692884,
-    "totalDeflectionLimitMm": 30,
+    "crackedTransformedInertiaMm4": 1046767498.9080691,
+    "effectiveInertiaMm4": 1145162024.4477487,
+    "immediateDeflectionMm": 24.78159904196249,
+    "totalDeflectionLimitMm": 30.0,
     "totalConclusion": "not-evaluated",
-    "positiveMaximumAreaMm2": 3396.6,
-    "negativeMaximumAreaMm2": 3396.6
+    "positiveMaximumAreaMm2": 3578.0510204081634,
+    "negativeMaximumAreaMm2": 3578.0510204081634
   }
 }

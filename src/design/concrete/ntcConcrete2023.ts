@@ -28,8 +28,20 @@ export const NTC_CONCRETE_2023 = Object.freeze({
   ]),
 });
 
+/**
+ * El cambio de régimen ocurre en 28 MPa, no en 30.
+ *
+ * La rama continua `1.05 - f'c/140` es la forma algebraica de
+ * `0.85 - 0.05 (f'c - 28) / 7`, y vale exactamente 0.85 en f'c = 28: la función
+ * a trozos sólo es continua si el umbral es 28. Un corte en 30 dejaba una meseta
+ * en 28 < f'c <= 30 que sobreestimaba beta1 (y con él el área balanceada y
+ * `As_max`) hasta un 1.7 % del lado inseguro, justo en f'c = 30 MPa, que es una
+ * resistencia de diseño de uso corriente.
+ */
+export const BETA_ONE_PLATEAU_LIMIT_MPA = 28;
+
 export function betaOne(compressiveStrengthMpa: number): number {
-  return compressiveStrengthMpa <= 30
+  return compressiveStrengthMpa <= BETA_ONE_PLATEAU_LIMIT_MPA
     ? 0.85
     : Math.max(0.65, 1.05 - compressiveStrengthMpa / 140);
 }
