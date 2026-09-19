@@ -1,7 +1,7 @@
 import type { ProjectModel } from '../types';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
 import type { JsonValue, LinkedSpace3DBranchV1, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
-import { canonicalSerialize } from './bundleValidation';
+import { canonicalJsonKey } from './bundleValidation';
 import { BundleConflictError, IndexedDbUnifiedBundleRepository, type LegacyBundleStorage, type StoredBundleRecord, type UnifiedBundleRepository } from './unifiedBundleRepository';
 
 export type UnifiedStorageStatus = { issue: 'conflict' | 'load-failed' | 'save-failed' | 'recovered' | null; message: string | null };
@@ -101,7 +101,7 @@ export class UnifiedProjectSession {
     this.working.set(detached.id, working);
     const clearWorking = (committed: UnifiedProjectBundleV1) => {
       // An unrelated successful write must not discard another branch's failed working copy.
-      if (this.working.get(detached.id) === working && canonicalSerialize(committed) === canonicalSerialize(working)) this.working.delete(detached.id);
+      if (this.working.get(detached.id) === working && canonicalJsonKey(committed) === canonicalJsonKey(working)) this.working.delete(detached.id);
     };
     const clearFailure = () => {
       if (this.status.issue === 'save-failed' && this.failedWrite?.projectId === detached.id
@@ -114,7 +114,7 @@ export class UnifiedProjectSession {
       if (this.blocked.has(detached.id)) throw new Error(this.status.message ?? 'Reopen the canonical project before saving.');
       const current = this.records.get(detached.id);
       const bundle = structuredClone(working);
-      if (branch && current?.bundle.space3d && canonicalSerialize(current.bundle.space3d) === canonicalSerialize(branch)) {
+      if (branch && current?.bundle.space3d && canonicalJsonKey(current.bundle.space3d) === canonicalJsonKey(branch)) {
         clearWorking(current.bundle);
         clearFailure();
         return structuredClone(current);

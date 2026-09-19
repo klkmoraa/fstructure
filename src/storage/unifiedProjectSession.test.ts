@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { createDefaultProject } from '../data/defaultProject';
+import { normalizeProject } from '../data/migrate';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
 import { InMemoryBundleDatabase, InMemoryUnifiedBundleRepository, type StoredBundleRecord } from './unifiedBundleRepository';
 import { UnifiedProjectSession } from './unifiedProjectSession';
@@ -144,4 +145,28 @@ it('persists and upserts FEM study snapshots without overwriting the other tool 
   expect(saved?.bundle.space3d).toBeNull();
   expect(saved?.bundle.design).toEqual({});
   expect(saved?.revision).toBe(2);
+});
+
+it('guarda proyectos normalizados que traen propiedades opcionales en undefined', async () => {
+  // `normalizeProject` materializa claves opcionales como `support.angleDeg` con
+  // valor `undefined`. La persistencia las omite, así que la comparación de la
+  // copia de trabajo debe omitirlas también: antes abortaba todo guardado real.
+  const project = normalizeProject(createDefaultProject());
+  expect(project.nodes.some((node) => node.support && 'angleDeg' in node.support && node.support.angleDeg === undefined)).toBe(true);
+
+  const repo = new InMemoryUnifiedBundleRepository();
+  const session = new UnifiedProjectSession(repo);
+  await session.initialize(storage, project);
+
+  await expect(session.save2D(project)).resolves.toBeDefined();
+  await expect(session.saveFem(project, { document: { id: 'study-1' } } as JsonValue)).resolves.toBeDefined();
+  const handoff = buildPlanar2DToSpace3DHandoff(project);
+  await expect(session.saveSpace3D(project, {
+    sourceProjectId: project.id, sourceVersion: 'v1', sourceModel2D: structuredClone(project),
+    baselineStatus: 'exact', model: handoff.candidateModel as unknown as JsonValue,
+  })).resolves.toBeDefined();
+
+  expect(session.status).toEqual({ issue: null, message: null });
+  const saved = await repo.openBundle(project.id);
+  expect(saved?.bundle.model2d.id).toBe(project.id);
 });

@@ -56,7 +56,12 @@ function exact(value: Record<string, unknown>, keys: string[]) {
 }
 function nonempty(value: unknown): value is string { return typeof value === 'string' && value.trim().length > 0; }
 
-/** Domain normalizers may emit optional undefined properties; omit those only in model2d. */
+/**
+ * Domain normalizers may emit optional undefined properties; omit them wherever
+ * a persisted branch embeds a domain model (`model2d`, y el `sourceModel2D` de
+ * la rama 3D). Sigue siendo estricto: getters, símbolos, ciclos y objetos de
+ * runtime se rechazan más adelante en `canonicalSerialize`.
+ */
 function modelJson(value: unknown, ancestors = new Set<object>()): unknown {
   if (!value || typeof value !== 'object') return value;
   if (ancestors.has(value)) throw new Error('Cyclic model cannot be persisted');
@@ -77,6 +82,20 @@ function modelJson(value: unknown, ancestors = new Set<object>()): unknown {
   return result;
 }
 
+/**
+ * Clave de comparación estable para bundles y ramas aún en memoria.
+ *
+ * `canonicalSerialize` rechaza `undefined` a propósito: nada con ese valor debe
+ * llegar a IndexedDB. Pero los normalizadores de dominio sí emiten propiedades
+ * opcionales en `undefined` (p. ej. `support.angleDeg`), y la persistencia las
+ * omite vía `modelJson` antes de escribir. Comparar la copia de trabajo cruda
+ * contra lo ya comprometido exige la misma omisión; de lo contrario un proyecto
+ * normal aborta el guardado.
+ */
+export function canonicalJsonKey(value: unknown): string {
+  return canonicalSerialize(modelJson(value));
+}
+
 export function validateBundle(input: unknown): UnifiedProjectBundleV1 {
   const raw = object(input);
   exact(raw, ['manifest', 'model2d', 'space3d', 'design', 'fem']);
@@ -86,7 +105,7 @@ export function validateBundle(input: unknown): UnifiedProjectBundleV1 {
   for (const descriptor of Object.values(descriptors)) {
     if (!('value' in descriptor) || !descriptor.enumerable) throw new Error('Only enumerable bundle data properties are supported');
   }
-  const detached = Object.fromEntries(Object.entries(descriptors).map(([key, descriptor]) => [key, key === 'model2d' ? modelJson(descriptor.value) : descriptor.value]));
+  const detached = Object.fromEntries(Object.entries(descriptors).map(([key, descriptor]) => [key, modelJson(descriptor.value)]));
   const copy = JSON.parse(canonicalSerialize(detached)) as UnifiedProjectBundleV1;
   const manifest = object(copy.manifest);
   exact(manifest, ['schemaVersion', 'projectId', 'sourceVersion', 'authoritativeModel']);
