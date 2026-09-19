@@ -366,7 +366,7 @@ export const analyzeFemDocument = (document: FemDocumentV1, options: FemAnalysis
   const admission = assessAnalysisAdmission(estimateFemAnalysisBytes(ndof), budget);
   if (!admission.accepted) return emptyResult(document.id, [issue('memory-budget', 'document', document.id, 'budget')], `El análisis requiere aproximadamente ${(admission.estimatedBytes / (1024 * 1024)).toFixed(1)} MiB; el presupuesto local es ${(admission.availableBytes / (1024 * 1024)).toFixed(1)} MiB.`);
   const K = zeros(ndof, ndof);
-  const elementData: Array<{ element: FemElement; nodes: FemNode[]; B: Matrix; weight: number; area: number; aspectRatio: number }> = [];
+  const elementData: Array<{ element: FemElement; nodes: FemNode[]; B: Matrix; area: number; aspectRatio: number }> = [];
   let minArea = Number.POSITIVE_INFINITY;
   let maxAspectRatio = 0;
   const degenerateElementIds: string[] = [];
@@ -378,7 +378,7 @@ export const analyzeFemDocument = (document: FemDocumentV1, options: FemAnalysis
       if (!geometry) { degenerateElementIds.push(element.id); continue; }
       const local = multiplyBDB(geometry.B, D, thickness, geometry.area);
       addElementMatrix(K, local, elementNodes.flatMap((node) => { const base = nodeIndex.get(node.id)! * 2; return [base, base + 1]; }));
-      elementData.push({ element, nodes: elementNodes, B: geometry.B, weight: geometry.area, area: geometry.area, aspectRatio: geometry.aspectRatio });
+      elementData.push({ element, nodes: elementNodes, B: geometry.B, area: geometry.area, aspectRatio: geometry.aspectRatio });
       minArea = Math.min(minArea, geometry.area); maxAspectRatio = Math.max(maxAspectRatio, geometry.aspectRatio);
     } else if (element.type === 'QUAD4') {
       const local = zeros(8, 8);
@@ -400,7 +400,7 @@ export const analyzeFemDocument = (document: FemDocumentV1, options: FemAnalysis
       const quality = quadAreaAndAspect(elementNodes);
       if (invalidJacobian || !(area > 0) || !centerB || !(quality.area > 0)) { degenerateElementIds.push(element.id); continue; }
       addElementMatrix(K, local, elementNodes.flatMap((node) => { const base = nodeIndex.get(node.id)! * 2; return [base, base + 1]; }));
-      elementData.push({ element, nodes: elementNodes, B: centerB, weight: thickness, area: quality.area, aspectRatio: quality.aspectRatio });
+      elementData.push({ element, nodes: elementNodes, B: centerB, area: quality.area, aspectRatio: quality.aspectRatio });
       minArea = Math.min(minArea, quality.area); maxAspectRatio = Math.max(maxAspectRatio, quality.aspectRatio);
     }
   }
@@ -449,7 +449,10 @@ export const analyzeFemDocument = (document: FemDocumentV1, options: FemAnalysis
   if (stresses.some((stress) => [...stress.strain, ...stress.stress, stress.outOfPlaneStress ?? 0, ...stress.principal, stress.vonMises].some((value) => !Number.isFinite(value)))) {
     return emptyResult(document.id, [issue('invalid-value', 'document', document.id, 'stress')], 'El análisis produjo tensiones no finitas.');
   }
-  let fx = 0; let fy = 0; let fz = 0; let scale = 1;
+  // `scale` es la mayor magnitud en juego, no un mínimo de 1: arrancarlo en 1
+  // volvía la métrica absoluta en modelos de carga pequeña, donde cualquier
+  // desequilibrio quedaba dividido por 1 y pasaba el umbral sin ser relativo.
+  let fx = 0; let fy = 0; let fz = 0; let scale = 0;
   for (const load of document.loads) { fx += load.fx; fy += load.fy; fz += load.fz ?? 0; scale = Math.max(scale, Math.abs(load.fx), Math.abs(load.fy), Math.abs(load.fz ?? 0)); }
   reactions.forEach((reaction) => { fx += reaction.ux; fy += reaction.uy; fz += reaction.uz; scale = Math.max(scale, Math.abs(reaction.ux), Math.abs(reaction.uy), Math.abs(reaction.uz)); });
   if (![fx, fy, fz, scale].every(Number.isFinite)) return emptyResult(document.id, [issue('invalid-value', 'document', document.id, 'equilibrium')], 'El análisis produjo un equilibrio no finito.');
@@ -460,7 +463,7 @@ export const analyzeFemDocument = (document: FemDocumentV1, options: FemAnalysis
     reactions: Object.freeze(reactions),
     stresses: Object.freeze(stresses),
     meshQuality: Object.freeze({ valid: minArea > 0, minArea: Number.isFinite(minArea) ? minArea : 0, maxAspectRatio, degenerateElementIds: Object.freeze([]) }),
-    equilibrium: Object.freeze({ force: Object.freeze([fx, fy, fz] as readonly [number, number, number]), normalized: Math.max(Math.abs(fx), Math.abs(fy), Math.abs(fz)) / scale }),
+    equilibrium: Object.freeze({ force: Object.freeze([fx, fy, fz] as readonly [number, number, number]), normalized: scale > 0 ? Math.max(Math.abs(fx), Math.abs(fy), Math.abs(fz)) / scale : 0 }),
     relativeResidual: solved.relativeResidual,
     conditionEstimate: solved.conditionEstimate,
     issues: Object.freeze([]),
