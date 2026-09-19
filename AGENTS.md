@@ -40,15 +40,14 @@ Una prueba verde demuestra sólo lo que ejecuta. Un plan o una pantalla pulida n
 
 ## Entorno y comandos reales
 
-- Runtime: Node 24 (`.nvmrc`), npm con `package-lock.json`, Rust 1.98.1 (`rust-toolchain.toml`) y Python 3 para el oráculo.
+- Runtime: Node 24 (`.nvmrc`), npm con `package-lock.json` y Python 3 para el oráculo de diseño.
 - Instalar: `npm ci`.
 - Desarrollo: `npm run dev`.
 - Typecheck: `npm run typecheck`.
 - Lint: `npm run lint`.
 - Pruebas TS/React: `npm test -- <ruta-de-test>`; suite: `npm test`.
-- Arquitectura: `npm run architecture:check && npm run architecture:test`.
+- Arquitectura: `npm run architecture:check && npm run architecture:test`; ambos forman parte de `npm run check`.
 - Diseño estructural: `npm run design:delivery:test && npm run design:oracle`.
-- Núcleo numérico: `npm run numeric:wasm:gate && npm run numeric:rust:test`.
 - Build: `npm run build`; gate general: `npm run check`.
 
 No sustituir `npm ci` por una instalación que cambie el lockfile. Si un comando no puede ejecutarse por el entorno, registrar el fallo exacto y no presentarlo como validado.
@@ -59,7 +58,7 @@ No sustituir `npm ci` por una instalación que cambie el lockfile. Si un comando
 - `src/types.ts`, `src/data/`, `src/commands/`: modelo 2D, migraciones y mutaciones reversibles.
 - `src/store/`: estado React, historial, selección, análisis y coordinación de persistencia.
 - `src/engine/`, `src/analysis-methods/`, `src/foundation/`: solver, estudios, unidades y álgebra numérica.
-- `src/workers/`, `src/runtime/`, `src/numeric/`, `crates/numeric-core/`: aislamiento, protocolos y backend WASM/Rust.
+- `src/workers/`, `src/runtime/`, `src/numeric/`: aislamiento, protocolos versionados y presupuesto de memoria del análisis.
 - `src/storage/`, `src/shared/project/`: repositorios IndexedDB, bundles, checksums, versiones y recuperación.
 - `src/import/`, `src/utils/portable*`, `src/utils/pdf/`: DXF, expedientes, JSON, PDF y exportaciones.
 - `src/design/`: cálculo de diseño y evidencia normativa.
@@ -88,7 +87,7 @@ Las reglas de negocio viven fuera de la UI. Las superficies consumen comandos/DT
 - Persistencia/migración: abrir, guardar, reabrir, conflicto y recuperación sin pérdida.
 - Import/export: fixture válido, corrupto, sobredimensionado y round trip cuando el formato lo permita.
 - Worker/protocolo: éxito, error, versión incompatible y cancelación/respuesta obsoleta.
-- Cambio transversal o release: `npm run check`, arquitectura, WASM/Rust y prueba visual de las cuatro superficies.
+- Cambio transversal o release: `npm run check` (incluye lint, typecheck, arquitectura, suite, oráculo y build) y prueba visual de las cuatro superficies.
 
 El gate completo puede ser costoso; ejecútalo cuando el alcance sea transversal, cuando cierre una tarea que lo exige o cuando el usuario lo solicite. Documenta qué sí y qué no se ejecutó.
 
