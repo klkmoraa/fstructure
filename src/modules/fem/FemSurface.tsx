@@ -14,7 +14,7 @@ import {
   validateFemDocument,
   type FemAnalysisResult,
   type FemDocumentV1,
-} from './femEngine';
+} from './public';
 
 const roadmap = [
   { label: 'Modelo', description: 'Geometría, materiales y condiciones de borde', Icon: Waypoints },
