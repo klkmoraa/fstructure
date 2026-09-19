@@ -18,7 +18,7 @@
  *   · Inercias: `Iz` gobierna la flexión en el plano `x–y` (desplazamiento
  *     local `v`, giro `rz`) y `Iy` la del plano `x–z` (`w`, `ry`).
  */
-import type { UnitSystemId } from '../../foundation/units';
+import type { UnitSystemId } from '../../../../foundation/units';
 
 export const SPACE3D_LEGACY_SCHEMA_VERSION = 1 as const;
 export const SPACE3D_SCHEMA_VERSION = 2 as const;

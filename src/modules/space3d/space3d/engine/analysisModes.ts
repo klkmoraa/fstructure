@@ -10,7 +10,7 @@ import {
   zeros,
   transpose,
   type Matrix,
-} from '../../foundation/linearAlgebra';
+} from '../../../../foundation/linearAlgebra';
 import {
   analyzeSpace3DStatic,
   assembleSpace3DStaticModel,
