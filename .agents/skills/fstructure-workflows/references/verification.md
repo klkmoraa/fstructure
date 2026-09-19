@@ -11,6 +11,6 @@
 | Exportación | parsear/verificar el artefacto generado | PDF/visual: inspección de páginas/captura |
 | UI/accesibilidad | test de interacción + teclado + nombres | cambia layout: escritorio y móvil, claro y oscuro |
 | 2D↔3D/FEM | adaptador, pérdidas y procedencia | cambia DOF/unidades: corpus diferencial |
-| Cambio transversal | `npm run check` y `npm run architecture:check` | toca numérico: `numeric:wasm:gate` y `numeric:rust:test` |
+| Cambio transversal | `npm run check`, que ya incluye lint, typecheck, arquitectura, suite, oráculo y build | — |
 
 No cerrar una tarea porque el build pasa si su contrato es numérico, persistente o visual. Registrar el comando exacto, código de salida y casos no ejecutados.
