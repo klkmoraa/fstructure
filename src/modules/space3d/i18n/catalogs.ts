@@ -1,5 +1,5 @@
 import { esWorkspace } from './catalogs/es-workspace';
-import { esAnalysis } from './catalogs/es-analysis';
+import { esAnalysis } from '../../../i18n/catalogs/es-analysis';
 import { esModeling } from './catalogs/es-modeling';
 import { esResults } from './catalogs/es-results';
 import { esInterchange } from './catalogs/es-interchange';

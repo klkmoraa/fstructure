@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +19,45 @@ const filesUnder = (directory, predicate, ignored = new Set(['node_modules', '.g
 };
 
 const isInside = (path, directory) => path === directory || path.startsWith(`${directory}/`);
+
+/**
+ * Copias byte a byte que sí pueden coexistir, con su razón.
+ *
+ * `catalogs.ts` y `catalogEn.ts` tienen texto idéntico pero importan catálogos
+ * hermanos que difieren entre el árbol canónico y el del módulo, así que
+ * resuelven a contenidos distintos: unificarlos cambiaría traducciones. Toda
+ * entrada nueva aquí exige una razón equivalente y explícita.
+ */
+const ALLOWED_IDENTICAL_COPIES = new Map([
+  ['src/i18n/catalogs.ts|src/modules/space3d/i18n/catalogs.ts', 'índice idéntico que resuelve a catálogos hermanos distintos'],
+  ['src/i18n/catalogEn.ts|src/modules/space3d/i18n/catalogEn.ts', 'índice idéntico que resuelve a catálogos hermanos distintos'],
+]);
+
+/**
+ * Reporta archivos de producción duplicados byte a byte.
+ *
+ * La duplicación de Foundation y de un segundo sistema de diseño pasó el gate
+ * anterior porque sólo se prohibía importar el árbol anidado, no que existiera.
+ * Dos fuentes idénticas divergen en silencio: la que se edita deja a la otra
+ * atrás sin que nada falle.
+ */
+export const findDuplicateSourceViolations = (root) => {
+  const resolvedRoot = resolve(root);
+  const sourceRoot = join(resolvedRoot, 'src');
+  const byDigest = new Map();
+  for (const path of filesUnder(sourceRoot, (name) => isProductionTypeScript(name) || isStylesheet(name))) {
+    const digest = createHash('sha256').update(readFileSync(path)).digest('hex');
+    byDigest.set(digest, [...(byDigest.get(digest) ?? []), relative(resolvedRoot, path)]);
+  }
+  const violations = [];
+  for (const paths of byDigest.values()) {
+    if (paths.length < 2) continue;
+    const sorted = [...paths].sort();
+    if (ALLOWED_IDENTICAL_COPIES.has(sorted.join('|'))) continue;
+    violations.push(`${sorted.join(' == ')} (duplicate source)`);
+  }
+  return violations.sort();
+};
 
 /** Reports production imports that revive a second shell/design system or Vite entry. */
 export const findSingleAppArchitectureViolations = (root) => {
@@ -51,7 +91,7 @@ export const findSingleAppArchitectureViolations = (root) => {
 
   const viteEntries = filesUnder(resolvedRoot, (name) => /^vite\.config\.[cm]?[jt]sx?$/.test(name));
   if (viteEntries.length > 1) violations.push(`multiple Vite entries: ${viteEntries.map((path) => relative(resolvedRoot, path)).sort().join(', ')}`);
-  return violations;
+  return [...violations, ...findDuplicateSourceViolations(resolvedRoot)];
 };
 
 export const runSingleAppArchitectureGate = (root) => {

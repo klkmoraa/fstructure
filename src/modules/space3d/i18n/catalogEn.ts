@@ -1,6 +1,6 @@
 import type { Catalog } from './catalogs';
 import { enWorkspace } from './catalogs/en-workspace';
-import { enAnalysis } from './catalogs/en-analysis';
+import { enAnalysis } from '../../../i18n/catalogs/en-analysis';
 import { enModeling } from './catalogs/en-modeling';
 import { enResults } from './catalogs/en-results';
 import { enInterchange } from './catalogs/en-interchange';
