@@ -2,11 +2,11 @@
 
 <a id="id-004"></a>
 
-## [ ] ID-004 — Ejecutar gates WASM y Rust en CI
+## [x] ID-004 — Ejecutar gates WASM y Rust en CI
 
 - Categoría: distribución / CI / numérico
 - Prioridad: alta
-- Estado: abierta
+- Estado: cerrada por obsolescencia parcial
 - Problema demostrado: CI ejecuta `npm run check`, pero ese script no incluye `numeric:wasm:gate`, `numeric:rust:test` ni el `architecture:test` completo.
 - Evidencia: los tres gates pasan al ejecutarse por separado; workflow y scripts muestran que no forman parte del camino obligatorio de Pages.
 - Impacto: una regresión del backend numérico o de arquitectura puede publicarse aunque el check web sea verde.
@@ -15,15 +15,15 @@
 - Dependencias: ninguna.
 - Tareas relacionadas: ID-003, ID-015, ID-016.
 - Criterios de aceptación:
-  - [ ] CI ejecuta WASM, Rust y arquitectura en cada cambio que pueda afectarlos.
-  - [ ] Las versiones de Node/Rust y el hash/artefacto numérico relevante quedan registrados.
-  - [ ] Un fallo impide despliegue y muestra el comando local equivalente.
-  - [ ] Las cachés no sustituyen compilación/verificación de fuentes modificadas.
+  - [x] CI ejecuta WASM, Rust y arquitectura en cada cambio que pueda afectarlos. *(arquitectura sí; WASM y Rust dejaron de existir)*
+  - [x] Las versiones de Node/Rust y el hash/artefacto numérico relevante quedan registrados. *(Node vía `.nvmrc`; ya no hay artefacto numérico)*
+  - [x] Un fallo impide despliegue y muestra el comando local equivalente.
+  - [x] Las cachés no sustituyen compilación/verificación de fuentes modificadas.
 - Estrategia de pruebas: probar workflow en PR con ejecución verde y fallo controlado temporal; comparar salida con comandos locales documentados.
 - Riesgos: aumentar mucho el tiempo de CI, caché obsoleta o diferencias entre artefacto probado y publicado.
-- Evidencia de cierre: pendiente.
-- Responsable: sin asignar.
-- Fechas: creada 2026-09-18; inicio —; cierre —.
+- Evidencia de cierre: la mitad numérica de esta tarea perdió su objeto. `crates/numeric-core`, `analysisRuntime`, `numericWorker`, `faerWasmBackend`, `sparse`, el worker y el binario `.wasm` de 382 KB no los importaba ningún módulo de la aplicación, su puerta nunca formó parte de `npm run check` y exigía un toolchain de Rust fijado que no estaba instalado, así que la procedencia del binario versionado no se comprobaba en ninguna corrida. Se retiraron con autorización del titular, junto a `rust-toolchain.toml` y los scripts `numeric:*`; se conserva `src/numeric/admission.ts`, que sí está integrado en el motor FEM y el solver 3D. La mitad viva sí se cumplió: `architecture:check` y `architecture:test` se incorporaron a `npm run check`, y ese comando ahora corre en cada pull request, no sólo tras el merge a `main`. Si el backend numérico se reincorpora, esta tarea no se reabre: el historial de la rama conserva el crate y corresponde una tarea nueva con ID propio.
+- Responsable: auditoría del PR #8 (sesión Claude Code).
+- Fechas: creada 2026-09-18; inicio 2026-09-19; cierre 2026-09-19.
 
 <a id="id-010"></a>
 
@@ -52,11 +52,11 @@
 
 <a id="id-015"></a>
 
-## [ ] ID-015 — Reducir permisos del despliegue de Pages
+## [>] ID-015 — Reducir permisos del despliegue de Pages
 
 - Categoría: CI / seguridad
 - Prioridad: media
-- Estado: abierta
+- Estado: en curso
 - Problema demostrado: `.github/workflows/deploy-pages.yml` concede `contents: write` para publicar en la rama `gh-pages`.
 - Evidencia: permiso y acción de publicación visibles en el workflow actual.
 - Impacto: el token del job tiene capacidad de escritura más amplia que un despliegue moderno con artefacto y entorno Pages.
@@ -65,15 +65,15 @@
 - Dependencias: ninguna.
 - Tareas relacionadas: ID-004, ID-016.
 - Criterios de aceptación:
-  - [ ] Cada permiso del workflow se justifica y se limita al job que lo requiere.
+  - [x] Cada permiso del workflow se justifica y se limita al job que lo requiere.
   - [ ] El despliegue usa el mecanismo mínimo compatible con Pages y conserva historial/auditoría.
-  - [ ] Pull requests no confiables no obtienen un token con escritura.
+  - [x] Pull requests no confiables no obtienen un token con escritura.
   - [ ] El sitio publicado conserva base path, assets y navegación.
 - Estrategia de pruebas: revisión estática del workflow, ejecución en rama protegida/entorno de prueba y smoke del artefacto publicado.
 - Riesgos: interrumpir Pages, perder dominio/configuración o asumir permisos inexistentes en forks.
-- Evidencia de cierre: pendiente.
-- Responsable: sin asignar.
-- Fechas: creada 2026-09-18; inicio —; cierre —.
+- Evidencia de cierre: pendiente. Hecho: el workflow se dividió en `quality` y `publish`; el permiso por defecto bajó a `contents: read` y `contents: write` se concede sólo al job que publica, que además está condicionado a `github.event_name != 'pull_request' && github.ref == 'refs/heads/main'`, de modo que ningún pull request obtiene token de escritura. La concurrencia se agrupa por referencia para que la verificación de una rama no cancele el despliegue de `main`. Falta: evaluar la migración al flujo oficial de Pages con artefacto y entorno en lugar de la rama `gh-pages`, y comprobar en un despliegue real que el sitio conserva base path, assets y navegación. Esos dos criterios no se pueden verificar sin publicar.
+- Responsable: auditoría del PR #8 (sesión Claude Code).
+- Fechas: creada 2026-09-18; inicio 2026-09-19; cierre —.
 
 <a id="id-016"></a>
 
