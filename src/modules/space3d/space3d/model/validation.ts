@@ -21,7 +21,7 @@ import {
   type Space3DVector,
 } from './types';
 import { buildMemberOrientation, memberLength } from '../engine/orientation';
-import { isUnitSystemId } from '../../foundation/units';
+import { isUnitSystemId } from '../../../../foundation/units';
 
 const PROJECT_FIELDS = [
   'analysisSpace', 'schemaVersion', 'id', 'name', 'units', 'nodes', 'members', 'nodalLoads', 'loadCases', 'loadCombinations',

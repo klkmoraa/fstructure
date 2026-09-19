@@ -17,7 +17,7 @@ import {
   subvector,
   type Matrix,
   zeros,
-} from '../../foundation/linearAlgebra';
+} from '../../../../foundation/linearAlgebra';
 import {
   assessAnalysisAdmission,
   createBrowserAnalysisBudget,

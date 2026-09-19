@@ -11,7 +11,7 @@
  * lector exige `typeof value === 'number' && Number.isFinite(value)`.
  */
 import { validateSpace3DProject } from '../model/validation';
-import { isUnitSystemId } from '../../foundation/units';
+import { isUnitSystemId } from '../../../../foundation/units';
 import {
   SPACE3D_ANALYSIS_SPACE,
   SPACE3D_LEGACY_SCHEMA_VERSION,
@@ -75,14 +75,6 @@ const exactKeys = (source: Raw, required: readonly string[], path: string, optio
   }
   for (const key of required) {
     if (!Object.hasOwn(source, key)) fail('missing-field', `${path}.${key}`);
-  }
-};
-
-const assertFiniteJson = (value: unknown, path: string): void => {
-  if (typeof value === 'number' && !Number.isFinite(value)) fail('not-a-number', path);
-  if (Array.isArray(value)) value.forEach((item, index) => assertFiniteJson(item, `${path}[${index}]`));
-  else if (typeof value === 'object' && value !== null) {
-    for (const [key, item] of Object.entries(value)) assertFiniteJson(item, `${path}.${key}`);
   }
 };
 
