@@ -2,11 +2,11 @@
 
 <a id="id-011"></a>
 
-## [ ] ID-011 — Eliminar la duplicación de Foundation en Space 3D
+## [x] ID-011 — Eliminar la duplicación de Foundation en Space 3D
 
 - Categoría: arquitectura
 - Prioridad: media
-- Estado: abierta
+- Estado: cerrada
 - Problema demostrado: `linearAlgebra.ts`, `units.ts` y sus pruebas existen tanto en `src/foundation/` como en `src/modules/space3d/foundation/` con hashes idénticos.
 - Evidencia: `shasum` devuelve `06660d…` para ambas copias de álgebra, `588999…` para unidades y hashes iguales para sus tests.
 - Impacto: dos fuentes de verdad pueden divergir y duplican revisión, mantenimiento y ejecución de pruebas.
@@ -15,15 +15,15 @@
 - Dependencias: ID-003.
 - Tareas relacionadas: ID-012, ID-017.
 - Criterios de aceptación:
-  - [ ] Hay una sola implementación y una sola suite autoritativa para cada contrato compartido.
-  - [ ] Space 3D consume la frontera pública acordada sin imports circulares.
-  - [ ] Un gate impide volver a crear copias activas.
-  - [ ] Pruebas de unidades, álgebra, arquitectura y producto pasan sin cambios numéricos.
+  - [x] Hay una sola implementación y una sola suite autoritativa para cada contrato compartido.
+  - [x] Space 3D consume la frontera pública acordada sin imports circulares.
+  - [x] Un gate impide volver a crear copias activas.
+  - [x] Pruebas de unidades, álgebra, arquitectura y producto pasan sin cambios numéricos.
 - Estrategia de pruebas: comparar corpus antes/después, ejecutar suites de Foundation y Space 3D, `architecture:check`, `architecture:test` y el gate general.
 - Riesgos: introducir ciclos, exponer internals o confundir unidades homónimas con contratos distintos.
-- Evidencia de cierre: pendiente.
-- Responsable: sin asignar.
-- Fechas: creada 2026-09-18; inicio —; cierre —.
+- Evidencia de cierre: `src/foundation` queda como autoridad única. Se repuntaron los seis consumidores de `src/modules/space3d/space3d/{model,engine,data}` y se retiraron las copias de `linearAlgebra.ts`, `units.ts` y sus pruebas; el módulo canónico conserva las suyas. Se retiró además el segundo sistema de diseño completo bajo `src/modules/space3d/design-system/`, que no importaba nadie, y se unificaron los catálogos i18n `en-analysis`/`es-analysis`, que son hojas sin imports. El gate nuevo `findDuplicateSourceViolations` en `scripts/check-single-app-architecture.mjs` rechaza cualquier archivo de producción duplicado byte a byte y se verificó reintroduciendo una copia de `linearAlgebra.ts`. Quedan dos copias idénticas permitidas con razón explícita: `catalogs.ts` y `catalogEn.ts` tienen texto igual pero importan catálogos hermanos que difieren, así que resuelven a contenidos distintos y unificarlos cambiaría traducciones. `architecture:check` y `architecture:test` se incorporaron a `npm run check`, que antes no los ejecutaba. Sin cambios numéricos: suite completa verde.
+- Responsable: auditoría del PR #8 (sesión Claude Code).
+- Fechas: creada 2026-09-18; inicio 2026-09-19; cierre 2026-09-19.
 
 <a id="id-012"></a>
 
@@ -70,6 +70,8 @@
   - [ ] Los módulos retirados no tienen consumidores ni contrato documental vigente.
   - [ ] Build, pruebas y typecheck continúan verdes.
 - Estrategia de pruebas: inventario machine-readable de warnings, búsqueda de referencias, eliminación en lotes pequeños y ejecución de checks focalizados/general.
+- Avance parcial (2026-09-19, sin cerrar la tarea): se retiró el código muerto que introdujo el PR #8 — duplicados de i18n, `compatibilityArtifactDigest`, los fixtures del puente planar-2D, `styles.css` del módulo, el helper `assertFiniteJson` del códec y el campo `weight` del motor FEM. `src/modules/fem/public.ts` estaba muerto porque la superficie importaba directo del motor: se enrutó por el barril en vez de borrarlo. Queda abierto todo el código muerto anterior al PR (`reportlabEnhancer`, `structural-assets/studio`, `isometricPortal`, `platform/pwa*`, `engine/cut`, entre otros) y las advertencias de lint, que siguen en ~40.
+- Nota de método: un primer análisis de alcanzabilidad dio 16.653 líneas huérfanas y estaba equivocado; el patrón que buscaba `import … from '…'` absorbía los `import './x.css'` sin `from` y daba por muertos archivos que sí se cargan, entre ellos `src/styles.css` y toda la cadena de tokens. Contando también las pruebas como punto de entrada, la cifra real es 2.750 líneas. Quien retome esta tarea debe medir así.
 - Riesgos: eliminar rutas cargadas dinámicamente, confundir API pública con código muerto o degradar señal con excepciones amplias.
 - Evidencia de cierre: pendiente.
 - Responsable: sin asignar.
