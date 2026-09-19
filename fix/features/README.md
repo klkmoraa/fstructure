@@ -10,7 +10,7 @@ Marcas: `[ ]` abierta · `[>]` en curso · `[!]` bloqueada · `[x]` cerrada.
 | ---: | :---: | --- | --- | --- | --- | --- | --- |
 | 1 | [x] | ID-001 | crítica | Integridad de datos | Reparar el round trip del bundle unificado | — | [Datos y archivos](01-integridad-datos-archivos.md#id-001) |
 | 2 | [x] | ID-002 | alta | Integridad de datos / documentación | Resolver la contradicción de PDFs normativos | — | [Datos y archivos](01-integridad-datos-archivos.md#id-002) |
-| 3 | [>] | ID-003 | alta | Pruebas y calidad | Recuperar un gate general completamente verde | ID-001, ID-002 | [Pruebas](06-pruebas-calidad.md#id-003) |
+| 3 | [x] | ID-003 | alta | Pruebas y calidad | Recuperar un gate general completamente verde | ID-001, ID-002 | [Pruebas](06-pruebas-calidad.md#id-003) |
 | 4 | [x] | ID-004 | alta | Distribución / CI | Ejecutar gates WASM y Rust en CI | — | [Distribución](09-distribucion-ci-documentacion.md#id-004) |
 | 5 | [ ] | ID-005 | alta | Pruebas y calidad | Añadir smoke E2E de las cuatro superficies | ID-003 | [Pruebas](06-pruebas-calidad.md#id-005) |
 | 6 | [ ] | ID-006 | alta | Rendimiento | Reducir el bundle inicial y las importaciones ineficaces | ID-003 | [Rendimiento](04-rendimiento.md#id-006) |
@@ -30,7 +30,7 @@ Marcas: `[ ]` abierta · `[>]` en curso · `[!]` bloqueada · `[x]` cerrada.
 
 ## Estado a 2026-09-19
 
-Cerradas ID-001, ID-002, ID-004 y ID-011. En curso ID-003 e ID-015, ambas con lo que falta anotado en su detalle.
+Cerradas ID-001, ID-002, ID-003, ID-004 e ID-011. En curso ID-015, con lo que falta anotado en su detalle.
 
 ID-004 se cierra por obsolescencia parcial y no se reabre: la tubería WASM/Rust que debía entrar a CI se retiró del repositorio por no tener consumidores, y la mitad vigente de la tarea, el gate de arquitectura, ya forma parte de `npm run check`. Si el backend numérico vuelve, corresponde una tarea nueva con ID propio.
 

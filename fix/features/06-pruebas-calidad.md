@@ -2,11 +2,11 @@
 
 <a id="id-003"></a>
 
-## [>] ID-003 — Recuperar un gate general completamente verde
+## [x] ID-003 — Recuperar un gate general completamente verde
 
 - Categoría: pruebas y calidad
 - Prioridad: alta
-- Estado: en curso
+- Estado: cerrada
 - Problema demostrado: el script `check` se detiene en Vitest con dos fallos; 95/97 archivos y 585/587 casos pasan.
 - Evidencia: fallos confirmados en `shellSolverDifferential.test.ts` y `structuralDesignMigration.test.ts`; typecheck, lint y tests anteriores se ejecutan, pero los pasos posteriores del script no llegan a correr.
 - Impacto: no existe una señal única de integración confiable para aceptar cambios.
@@ -15,16 +15,17 @@
 - Dependencias: ID-001, ID-002.
 - Tareas relacionadas: ID-004, ID-005, ID-017.
 - Criterios de aceptación:
-  - [ ] `npm run check` termina con código 0 en un checkout limpio y runtime soportado.
+  - [x] `npm run check` termina con código 0 en un checkout limpio y runtime soportado.
   - [x] No hay tests omitidos o snapshots actualizados sin revisión de intención.
   - [x] CI usa el mismo comando y conserva logs suficientes para diagnosticar fallos.
   - [x] La evidencia registra versiones de Node, package manager y commit.
 - Estrategia de pruebas: reparar primero cada regresión aislada, luego ejecutar `npm run check` completo dos veces, una en local y otra en CI.
 - Riesgos: enmascarar los fallos, depender de orden/estado local o aceptar flakiness como éxito.
 - Evidencia de cierre: pendiente por runtime. `npm run check` termina con código 0 de principio a fin: lint sin errores, typecheck limpio, `architecture:check` y `architecture:test` (18+2 casos) —que antes no formaban parte del script—, `check-design-delivery-gate`, Vitest 96/96 archivos y 563/563 casos, el oráculo de Python 3/3 y el build. Los dos fallos de origen quedaron resueltos en ID-001 e ID-002, sin omitir pruebas ni relajar assertions; al contrario, la suite ganó verificaciones contra solución cerrada. Entorno de la corrida: npm 10.9.7, commit 75ec8d5.
-- Falta para cerrar: la corrida se hizo con Node v22.22.2 y `.nvmrc` declara Node 24, así que no es todavía el runtime soportado; y falta la segunda ejecución, la de CI, que ahora sí se dispara en pull requests. Cerrar sólo con ambas.
+- Segunda corrida, la de CI: el job `quality` de la ejecución 35421893229 termina en `success` sobre el commit 57bc812 del pull request #8, en checkout limpio con `npm ci`. Resuelve la salvedad de runtime de la corrida local, que se hizo con Node v22.22.2: el workflow fija la versión con `node-version-file: .nvmrc` y `.nvmrc` declara Node 24, de modo que CI ejecuta el runtime soportado. En la misma ejecución el job `publish` queda en `skipped`, que es el comportamiento correcto para un evento `pull_request` y confirma que ningún PR obtiene token de escritura.
+- Nota: es el primer check run de este pull request. Antes del arreglo de ID-004 el workflow sólo disparaba en `push` a `main`, así que `npm run check` no se habría ejecutado hasta después del merge.
 - Responsable: auditoría del PR #8 (sesión Claude Code).
-- Fechas: creada 2026-09-18; inicio 2026-09-19; cierre —.
+- Fechas: creada 2026-09-18; inicio 2026-09-19; cierre 2026-09-19.
 
 <a id="id-005"></a>
 
