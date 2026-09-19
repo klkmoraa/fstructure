@@ -15,7 +15,7 @@
     "preview": "vite preview",
     "design:delivery:test": "node --test scripts/check-design-delivery-gate.test.mjs",
     "design:oracle": "python3 -m unittest validation/python/test_concrete_beam_oracle.py",
-    "check": "oxlint && tsc -b --noEmit && node scripts/check-local-foundation-dependencies.mjs && node --test scripts/check-local-foundation-dependencies.test.mjs && node --test scripts/check-design-delivery-gate.test.mjs && vitest run --maxWorkers=1 --pool=threads --no-file-parallelism && python3 -m unittest validation/python/test_concrete_beam_oracle.py && tsc -b && vite build",
+    "check": "oxlint && tsc -b --noEmit && npm run architecture:check && npm run architecture:test && node --test scripts/check-design-delivery-gate.test.mjs && vitest run --maxWorkers=1 --pool=threads --no-file-parallelism && python3 -m unittest validation/python/test_concrete_beam_oracle.py && tsc -b && vite build",
     "test": "vitest run --maxWorkers=1 --pool=threads --no-file-parallelism"
   },
   "dependencies": {
