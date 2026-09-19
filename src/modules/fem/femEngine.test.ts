@@ -33,6 +33,20 @@ describe('FEM document and TRI3 engine', () => {
     expect(document.elements[0]).toMatchObject({ type: 'TRI3', nodeIds: ['1', '2', '3'] });
   });
 
+  it('lee bloques Gmsh paramétricos, cuyas coordenadas van intercaladas por nodo', () => {
+    // Bloque de superficie con parametric=1: cada nodo trae `x y z u v`. Leer
+    // las coordenadas de corrido desalineaba el bloque y devolvía geometría
+    // equivocada sin lanzar error.
+    const document = parseGmsh41(`$MeshFormat\n4.1 0 8\n$EndMeshFormat\n$Nodes\n1 3 1 3\n2 1 1 3\n1\n2\n3\n0 0 0 0.1 0.2\n1 0 0 0.3 0.4\n0 1 0 0.5 0.6\n$EndNodes\n$Elements\n1 1 1 1\n2 1 2 1\n1 1 2 3\n$EndElements\n`);
+
+    expect(document.nodes).toEqual([
+      { id: '1', x: 0, y: 0, z: 0 },
+      { id: '2', x: 1, y: 0, z: 0 },
+      { id: '3', x: 0, y: 1, z: 0 },
+    ]);
+    expect(document.elements[0]).toMatchObject({ type: 'TRI3', nodeIds: ['1', '2', '3'] });
+  });
+
   it('consumes supported Gmsh boundary records without promoting them to FEM elements', () => {
     const document = parseGmsh41(`$MeshFormat\n4.1 0 8\n$EndMeshFormat\n$Nodes\n1 3 1 3\n2 1 0 3\n1\n2\n3\n0 0 0 1 0 0 0 1 0\n$EndNodes\n$Elements\n2 2 1 2\n1 1 1 1\n101 1 2\n2 1 2 1\n201 1 2 3\n$EndElements\n`);
 

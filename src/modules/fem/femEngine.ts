@@ -491,10 +491,17 @@ export const parseGmsh41 = (source: string): FemDocumentV1 => {
     const parametric = Number(nodeTokens[cursor++]);
     const count = Number(nodeTokens[cursor++]);
     const tags = nodeTokens.slice(cursor, cursor + count); cursor += count;
-    const coordinates = nodeTokens.slice(cursor, cursor + count * 3).map(Number); cursor += count * 3;
-    for (let index = 0; index < count; index += 1) nodes.push({ id: tags[index], x: coordinates[index * 3], y: coordinates[index * 3 + 1], z: coordinates[index * 3 + 2] });
-    // Parametric blocks include one extra coordinate per entity dimension.
-    if (parametric) cursor += count * entityDim;
+    // En Gmsh 4.1 los valores paramétricos van intercalados por nodo
+    // (`x y z <u> <v> <w>`), no agrupados al final del bloque: leer las
+    // coordenadas de corrido y saltar el resto después desalineaba el bloque
+    // entero y devolvía geometría equivocada en vez de fallar.
+    const stride = 3 + (parametric ? entityDim : 0);
+    if (!Number.isInteger(stride) || stride < 3) throw new Error('Bloque de nodos Gmsh con dimensión paramétrica no válida.');
+    const coordinates = nodeTokens.slice(cursor, cursor + count * stride).map(Number); cursor += count * stride;
+    if (coordinates.length !== count * stride) throw new Error('Bloque de nodos Gmsh incompleto.');
+    for (let index = 0; index < count; index += 1) {
+      nodes.push({ id: tags[index], x: coordinates[index * stride], y: coordinates[index * stride + 1], z: coordinates[index * stride + 2] });
+    }
   }
   if (nodes.length !== nodeCount) throw new Error('La cabecera Gmsh no coincide con el número de nodos.');
   const elementTokens = sectionTokens(source, 'Elements');
