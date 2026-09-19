@@ -1,0 +1,1 @@
+import{a as e}from"./rolldown-runtime-CNC7AqOf.js";import{n as t}from"./jsx-runtime-CaR_m4Xc.js";var n=e(t(),1),r=(0,n.createContext)(null),i=()=>{let e=(0,n.useContext)(r);if(!e)throw Error(`useProjectModel debe utilizarse dentro de ProjectProvider.`);return e};export{i as n,r as t};
