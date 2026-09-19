@@ -1,9 +1,34 @@
+# FusionStructure — app integrada
+
+En esta carpeta se ejecutan Modelo 2D, Diseño estructural, Modelo 3D y FEM dentro de una sola app React/Vite. Todo permanece marcado **Experimental** y trabaja local-first.
+
+```sh
+npm install
+npm run dev
+# Compilación de producción, incluida comprobación de TypeScript:
+npm run build
+```
+
+La aplicación tiene una única ruta de trabajo y enlaces compatibles con GitHub Pages: `?project=<id>&tool=<tool>`. `WorkspaceShell` y `AppShellLayout` conservan el diseño original de Modelo 2D: una sola barra y una sola mesa. El selector **2D / Diseño / 3D / FEM** adapta esa mesa al módulo activo; no abre otra aplicación ni otro design system.
+
+- **2D + Diseño (Experimental):** integración existente del [PR #7](https://github.com/klkmoraa/fstructure/pull/7), commit `288bedd`. Diseño trabaja sobre el proyecto 2D actual.
+- **3D (Experimental):** fuentes locales de `fusionstructure-space3d` en `src/modules/space3d`. El adaptador host crea una copia espacial versionada del proyecto 2D y conserva el trabajo 3D asociado a ese ID. Las pérdidas o aproximaciones aparecen antes del análisis.
+- **FEM (Experimental):** `src/modules/fem/FemSurface.tsx` conecta el motor local `src/modules/fem/femEngine.ts`. Resuelve elasticidad lineal 2D con TRI3/QUAD4 (esfuerzo y deformación plana), publica desplazamientos, reacciones, tensiones, principales, von Mises, calidad y equilibrio, e importa mallas Gmsh 4.1 ASCII. Los estudios quedan en el bundle local y pueden exportarse como JSON/VTK. MITC4/TET4 se admiten en el codec pero se rechazan hasta disponer de su formulación física.
+
+La integración comparte aplicación y proyecto visible dentro de la misma mesa de trabajo. 2D y 3D conservan historiales y resultados propios; el paso 2D→3D es una transferencia explícita y no una sincronización bidireccional. Se mantienen los formatos de exportación de cada motor. Las fuentes 3D conservan su licencia MIT.
+
+La primera entrega FEM usa documentos serializables propios y no tiene topes fijos de nodos o elementos; la admisión de memoria pertenece al runtime común. Cualquier intercambio con 2D/3D debe pasar por un adaptador explícito de unidades y grados de libertad.
+
+---
+
 # FStructure
 
 Aplicación y motor estructural 2D de FusionStructure. La aplicación se publica
 en https://klkmoraa.github.io/fstructure/. El proyecto conserva el
 modelo, comandos, análisis, educación, exportaciones y persistencia propios de
-la superficie planar; Space 3D vive en un repositorio hermano.
+la superficie planar. El módulo Space 3D está incorporado en este repositorio;
+su origen histórico se conserva como repositorio hermano y su licencia MIT se
+mantiene junto al código importado.
 
 ## Estado
 
@@ -20,6 +45,22 @@ npm run dev
 
 La procedencia del corte y la separación de dominios están en
 [MIGRATION.md](MIGRATION.md).
+
+## Diseño de concreto reforzado
+
+La barra superior y Resultados incluyen **Diseño**, el primer flujo vertical
+experimental para una viga rectangular de concreto reforzado. Corre el solver
+para combinaciones última y de servicio explícitamente trazables, propone
+acero longitudinal/estribos y conserva evidencia NTC CDMX 2023 junto al
+resultado derivado. No es un cálculo certificado ni un plano de fabricación.
+
+El uso, precondiciones, evidencia, límites y ruta de ampliación están en
+[docs/design/concrete-beam-v1.md](docs/design/concrete-beam-v1.md). El gate de
+entrega ejecuta TypeScript, el oráculo Python independiente y sus fixtures:
+
+```text
+npm run check
+```
 
 ## Foundation local y flujo rápido
 

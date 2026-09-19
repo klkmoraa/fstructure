@@ -1,5 +1,6 @@
-node_modules/
+node_modules
 dist/
+crates/**/target/
 qa-artifacts/
 /capturas/
 /reports/evidence/
@@ -15,8 +16,8 @@ __pycache__/
 # Local Netlify folder
 .netlify
 
-# Tooling interno de agentes/skills (no forma parte del producto)
-.agents/
+# Tooling local no versionado. Las skills compartidas bajo `.agents/skills/`
+# sí forman parte de la guía persistente del repositorio.
 .claude/
 .superpowers/
 .playwright/
@@ -62,3 +63,8 @@ structureCo-documentacion-integral-*/
 # murió sin poder restaurar, y la siguiente la usará para reparar el catálogo.
 src/i18n/.catalogs.audit-backup
 src/i18n/.catalogs.audit-lock
+
+# Normas externas: el repositorio guarda enlaces, cláusulas y extractos
+# verificados, nunca el documento. Lo fija la prueba
+# `impide incorporar PDFs normativos al repositorio único`.
+*.pdf

@@ -1,6 +1,8 @@
-import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
+import { Box, ChartNoAxesCombined, Check, CloudOff, DraftingCompass, PenLine, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FStructureMark } from '../../design-system/brand';
+import type { ToolId } from '../../shared/contracts';
+import { ToolSwitcher } from './ToolSwitcher';
 
 /**
  * Recuperar el respaldo con éxito no es un fallo de guardado.
@@ -37,16 +39,25 @@ export interface WorkspaceTopBarLabels {
   redo: string;
   analyze: string;
   results: string;
+  design: string;
   calculationExperience: string;
+  model3d?: string;
+  model2d?: string;
   actions: string;
 }
 
 export interface WorkspaceTopBarProps {
+  tool?: ToolId;
+  onToolChange?: (tool: ToolId) => void;
+  contextualControls?: ReactNode;
+  primaryAction?: ReactNode;
+  toolStatus?: ReactNode;
   projectName: string;
   storageState: WorkspaceStorageState;
   storageMessage?: string | null;
   analysisState: WorkspaceAnalysisState;
   resultsOpen: boolean;
+  designOpen?: boolean;
   canUndo: boolean;
   canRedo: boolean;
   labels: WorkspaceTopBarLabels;
@@ -57,10 +68,18 @@ export interface WorkspaceTopBarProps {
   onAnalyze: () => void;
   /** Alterna Resultados. Recibe el disparador para que el foco vuelva a él. */
   onOpenResults: (trigger: HTMLElement | null) => void;
+  /** Alterna Diseño. Recibe el disparador para conservar el retorno de foco. */
+  onOpenDesign?: (trigger: HTMLElement | null) => void;
   /** Abre el modo de trabajo, casos y combinaciones de cálculo. */
   onOpenCalculationExperience?: (trigger: HTMLElement | null) => void;
+  /** Alterna el modo 3D dentro de la misma mesa de trabajo. */
+  onOpenSpace3D?: () => void;
+  space3DActive?: boolean;
+  returnTo2D?: boolean;
   /** Acciones secundarias del espacio: exportación, tema, unidades y hojas. */
   utilities?: ReactNode;
+  /** Oculta los comandos 2D cuando el escenario pertenece a otro módulo. */
+  contextActive?: boolean;
 }
 
 /**
@@ -72,11 +91,13 @@ export interface WorkspaceTopBarProps {
  * funcione con teclado, touch y lector de pantalla.
  */
 export const WorkspaceTopBar = ({
+  tool = 'model2d', onToolChange, contextualControls, primaryAction, toolStatus,
   projectName,
   storageState,
   storageMessage,
   analysisState,
   resultsOpen,
+  designOpen = false,
   canUndo,
   canRedo,
   labels,
@@ -86,8 +107,13 @@ export const WorkspaceTopBar = ({
   onRedo,
   onAnalyze,
   onOpenResults,
+  onOpenDesign = () => undefined,
   onOpenCalculationExperience,
+  onOpenSpace3D,
+  space3DActive = false,
+  returnTo2D = false,
   utilities,
+  contextActive = true,
 }: WorkspaceTopBarProps) => {
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
   const [draftName, setDraftName] = useState(projectName);
@@ -177,7 +203,7 @@ export const WorkspaceTopBar = ({
             {storageMessage ? <small>{storageMessage}</small> : null}
           </span>
         </span> : null}
-        <span
+        {contextActive ? <span
           className={'workspace-topbar__status-chip' + (analysisRunning ? ' is-running' : '') + (analysisFailed ? ' is-error' : '')}
           role="status"
           data-analysis-state={analysisState}
@@ -185,12 +211,13 @@ export const WorkspaceTopBar = ({
         >
           {analysisRunning ? <Play size={15} fill="currentColor" aria-hidden="true" /> : <ChartNoAxesCombined size={15} aria-hidden="true" />}
           <span><strong>{analysisLabel}</strong></span>
-        </span>
+        </span> : toolStatus}
       </div>
     </div>
 
     <nav className="workspace-topbar__actions" aria-label={labels.actions}>
-      <div className="workspace-topbar__model-group" data-workspace-group="model">
+      {onToolChange ? <ToolSwitcher tool={tool} onChange={onToolChange} /> : null}
+      {contextActive ? <div className="workspace-topbar__model-group" data-workspace-group="model">
         <div className="workspace-topbar__history-group">
           <button type="button" className="workspace-topbar__icon-button" onClick={onUndo} disabled={!canUndo} aria-label={labels.undo} title={labels.undo}>
             <Undo2 size={17} aria-hidden="true" />
@@ -205,8 +232,14 @@ export const WorkspaceTopBar = ({
             <span>{labels.results}</span>
           </button>
         </div>
-      </div>
-      {onOpenCalculationExperience ? <div className="workspace-topbar__experience-group" data-workspace-group="calculation-experience">
+        {!onToolChange ? <div className="workspace-topbar__results-group" data-workspace-group="design">
+          <button type="button" className={'workspace-topbar__action-button' + (designOpen ? ' is-active' : '')} onClick={(event) => onOpenDesign(event.currentTarget)} aria-label={labels.design} aria-pressed={designOpen}>
+            <DraftingCompass size={17} aria-hidden="true" />
+            <span>{labels.design}</span>
+          </button>
+        </div> : null}
+      </div> : null}
+      {contextActive && onOpenCalculationExperience ? <div className="workspace-topbar__experience-group" data-workspace-group="calculation-experience">
         <button
           type="button"
           className="workspace-topbar__action-button workspace-topbar__experience-button"
@@ -218,13 +251,28 @@ export const WorkspaceTopBar = ({
           <span>{labels.calculationExperience}</span>
         </button>
       </div> : null}
+      {!onToolChange && onOpenSpace3D ? <div className="workspace-topbar__mode-group" data-workspace-group="workspace-mode">
+        <button
+          type="button"
+          className={'workspace-topbar__action-button' + (space3DActive && !returnTo2D ? ' is-active' : '')}
+          onClick={onOpenSpace3D}
+          aria-label={returnTo2D ? labels.model2d ?? 'Modelo 2D' : labels.model3d ?? 'Modelo 3D'}
+          aria-pressed={returnTo2D ? undefined : space3DActive}
+          title={returnTo2D ? labels.model2d ?? 'Modelo 2D' : labels.model3d ?? 'Modelo 3D'}
+        >
+          {returnTo2D ? <PenLine size={17} aria-hidden="true" /> : <Box size={17} aria-hidden="true" />}
+          <span>{returnTo2D ? labels.model2d ?? '2D' : labels.model3d ?? '3D'}</span>
+        </button>
+      </div> : null}
       {utilities}
-      <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
+      {contextualControls}
+      {primaryAction}
+      {contextActive ? <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
         <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>
           <Play size={17} fill="currentColor" aria-hidden="true" />
           <span>{analysisRunning ? labels.analysisRunning : labels.analyze}</span>
         </button>
-      </div>
+      </div> : null}
     </nav>
   </header>;
 };

@@ -1,4 +1,7 @@
 export const enWorkspace = {
+  'navigation.model2d': '2D model',
+  'navigation.fem': 'Finite elements',
+  'design.title': 'Design',
   'select.paletteEntry': '{query} · {count}',
   'select.membersSimilar': 'Members similar to selection',
   'select.membersFrame': 'Frame members',

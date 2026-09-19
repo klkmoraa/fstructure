@@ -1,19 +1,22 @@
-name: Deploy GitHub Pages
+name: Quality gate and GitHub Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
+# La puerta de calidad sólo lee. El permiso de escritura se concede
+# exclusivamente al trabajo que publica, y sólo en main.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-publish:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,11 +30,41 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Build application
-        run: npm run build
+      - name: Quality gate
+        run: npm run check
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  publish:
+    needs: quality
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
 
       - name: Publish static site to gh-pages
         shell: bash

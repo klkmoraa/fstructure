@@ -1,0 +1,135 @@
+{
+  "name": "beta1-decreasing-branch-30mpa",
+  "input": {
+    "standardId": "ntc-cdmx-2023-concrete",
+    "memberId": "B1",
+    "analysisId": "analysis-ultimate-service-001",
+    "spanMm": 6000,
+    "section": {
+      "catalogId": "rect-concrete-300x500",
+      "origin": "catalog",
+      "shape": "rectangular",
+      "widthMm": 300,
+      "heightMm": 500
+    },
+    "concrete": {
+      "catalogId": "concrete-30mpa",
+      "origin": "catalog",
+      "density": "normal",
+      "coarseAggregate": "basalt",
+      "compressiveStrengthMpa": 30
+    },
+    "reinforcement": {
+      "coverMm": 40,
+      "maximumAggregateSizeMm": 19,
+      "longitudinalYieldStrengthMpa": 420,
+      "stirrupYieldStrengthMpa": 420,
+      "steelElasticModulusMpa": 200000,
+      "preferredLongitudinalDiametersMm": [
+        12,
+        16,
+        20,
+        25,
+        32
+      ],
+      "preferredStirrupDiametersMm": [
+        8,
+        10,
+        12
+      ],
+      "stirrupLegs": 2,
+      "stirrupSpacingIncrementMm": 25
+    },
+    "system": {
+      "ductility": "low",
+      "prestressed": false
+    },
+    "analysis": {
+      "reliability": "reliable",
+      "ultimate": {
+        "combination": {
+          "id": "ULS-NTC-01",
+          "stateLimit": "ultimate",
+          "jurisdiction": "Ciudad de México",
+          "edition": "2023",
+          "sourceUrl": "https://example.test/ntc-load-combinations"
+        },
+        "positiveMomentKnm": 120,
+        "negativeMomentKnm": -80,
+        "absoluteShearKn": 100,
+        "compressionKn": 0
+      },
+      "service": {
+        "combination": {
+          "id": "SLS-NTC-01",
+          "stateLimit": "service",
+          "jurisdiction": "Ciudad de México",
+          "edition": "2023",
+          "sourceUrl": "https://example.test/ntc-load-combinations"
+        },
+        "governingMomentKnm": 80,
+        "grossElasticDeflectionMm": 7,
+        "grossElasticModulusMpa": 24870.062324,
+        "damagesNonstructuralElements": false
+      }
+    },
+    "normativeEvidence": {
+      "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+      "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+      "verifiedClauseIds": [
+        "2.2.1-2.2.7.3",
+        "3.6.1",
+        "3.8.2.1-3.8.2.2",
+        "5.2.1.1.2",
+        "5.2.1.3.1",
+        "5.2.2.1.1.1",
+        "5.5.2.2",
+        "5.5.3.1.1-5.5.3.1.2",
+        "5.5.3.6.1-5.5.3.6.2",
+        "6.3.1.1-6.3.2.2",
+        "6.3.3.1.1",
+        "6.3.3.3.1",
+        "6.3.5.1.1-6.3.5.2.1",
+        "6.3.5.4.1-6.3.5.4.4",
+        "6.3.7.6.2.2",
+        "13.4.1.1",
+        "13.4.2.1-13.4.3.3",
+        "13.6.1-13.6.2.1",
+        "14.2.1"
+      ]
+    }
+  },
+  "expected": {
+    "status": "available",
+    "positiveRequiredAreaMm2": 749.7554650599916,
+    "negativeRequiredAreaMm2": 491.60936535024297,
+    "positiveDesignStrengthKnm": 128.26685269304687,
+    "negativeDesignStrengthKnm": 97.45857399522839,
+    "bottomDiameterMm": 16,
+    "bottomCount": 4,
+    "bottomEffectiveDepthMm": 444.0,
+    "topDiameterMm": 16,
+    "topCount": 3,
+    "topEffectiveDepthMm": 444.0,
+    "rejectedLongitudinalDiametersMm": [
+      12
+    ],
+    "stirrupDiameterMm": 8,
+    "stirrupSpacingMm": 200,
+    "requiredAreaPerSpacingMm": 0.25,
+    "providedAreaPerSpacingMm": 0.5026548245743669,
+    "concreteDesignStrengthKn": 93.01972194110238,
+    "shearDesignStrengthKn": 163.32102570607333,
+    "grossInertiaMm4": 3125000000.0,
+    "meanFlexuralTensileStrengthMpa": 3.4506521122825466,
+    "concreteElasticModulusMpa": 19170.289512680814,
+    "concretePropertyBasis": "ntc-table-2.2.1-class-1a-basalt",
+    "crackedTransformedInertiaMm4": 1046767498.9080691,
+    "effectiveInertiaMm4": 1145162024.4477487,
+    "immediateDeflectionMm": 24.78159904196249,
+    "totalDeflectionLimitMm": 30.0,
+    "totalConclusion": "not-evaluated",
+    "positiveMaximumAreaMm2": 3578.0510204081634,
+    "negativeMaximumAreaMm2": 3578.0510204081634
+  }
+}

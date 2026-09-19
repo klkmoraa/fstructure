@@ -264,6 +264,7 @@
 }
 
 .workspace-topbar__actions {
+  min-width: 0;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -274,6 +275,7 @@
    visually decisive without changing the command it invokes. */
 .workspace-topbar__model-group,
 .workspace-topbar__experience-group,
+.workspace-topbar__mode-group,
 .workspace-topbar__calculate-group {
   min-height: 44px;
   display: flex;
@@ -284,6 +286,10 @@
   border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-inset);
   box-shadow: var(--sc-shadow-inset);
+}
+
+.workspace-topbar__mode-group .workspace-topbar__action-button {
+  min-width: 58px;
 }
 
 .workspace-topbar__experience-group {
@@ -437,6 +443,67 @@
   letter-spacing: var(--sc-tracking-eyebrow);
   line-height: 1;
   text-transform: uppercase;
+}
+
+.workspace-utilities__workspace-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.workspace-utilities__workspace-action {
+  min-width: 0;
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+  color: var(--sc-color-text-secondary);
+  font: inherit;
+  text-align: left;
+  transition: background-color var(--sc-motion-control) var(--sc-ease-standard), border-color var(--sc-motion-control) var(--sc-ease-standard), box-shadow var(--sc-motion-control) var(--sc-ease-standard), color var(--sc-motion-control) var(--sc-ease-standard);
+}
+
+.workspace-utilities__workspace-action > span {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.workspace-utilities__workspace-action strong {
+  overflow: hidden;
+  color: var(--sc-color-text-primary);
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-bold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-utilities__workspace-action small {
+  overflow: hidden;
+  color: var(--sc-color-text-muted);
+  font-size: 10px;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-utilities__workspace-action:hover,
+.workspace-utilities__workspace-action:focus-visible,
+.workspace-utilities__workspace-action.is-active {
+  border-color: color-mix(in srgb, var(--sc-color-action-primary) 46%, var(--sc-color-border));
+  background: color-mix(in srgb, var(--sc-color-action-primary) 10%, var(--sc-color-surface-elevated));
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--sc-color-text-primary);
+}
+
+.workspace-utilities__workspace-action.is-active {
+  border-color: color-mix(in srgb, var(--sc-color-action-primary) 58%, var(--sc-color-border));
 }
 
 .workspace-utilities__section-heading {
@@ -943,4 +1010,29 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+/* The persistent tool choices reuse the existing action geometry and treatments. */
+.workspace-topbar__tool-switcher { flex-shrink: 0; }
+.workspace-topbar__tool-switcher .workspace-topbar__action-button { min-width: 44px; }
+.workspace-topbar__tool-switcher .workspace-topbar__action-button span {
+  position: static; width: auto; height: auto; overflow: visible; clip: auto;
+}
+.workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__project { flex-basis: 220px; }
+@media (max-width: 700px) {
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) { gap: 4px; padding: 6px; align-items: flex-start; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__project-group { flex: 0 0 38px; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__brand { min-width: 38px; width: 38px; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__project { display: none; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__actions {
+    flex: 1; min-width: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px;
+  }
+  .workspace-topbar__tool-switcher { margin-right: auto; padding: 0; }
+  .workspace-topbar__tool-switcher .workspace-topbar__action-button { padding-inline: 6px; min-height: 44px; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) [data-workspace-group="model"] { order: 4; margin-right: auto; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) [data-workspace-group="calculation-experience"] { order: 5; }
+  .shell-tool-slot--controls { order: 4; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__status { display: none; }
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__icon-button,
+  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__action-button { min-height: 44px; }
 }

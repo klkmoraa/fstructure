@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
-import { AlertCircle, ChevronUp, CircleDotDashed, GripHorizontal, LoaderCircle, X } from 'lucide-react';
+import { AlertCircle, ChevronUp, CircleDotDashed, DraftingCompass, GripHorizontal, LoaderCircle, X } from 'lucide-react';
 import { useProject, type ResultTab } from '../../store/ProjectContext';
 import { evaluateDeformationAt, evaluateDiagramAt, segmentBezierControls } from '../../engine/diagram';
 import { resolveReliability } from '../../engine/reliability';
@@ -92,7 +92,7 @@ export interface ResultsPanelProps {
 
 export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenChange, defaultDesktopExpanded = false }: ResultsPanelProps) => {
   const { project, analysis, resultTab, setResultTab, analyze, selection, isAnalyzing, selectedCombinationId, setInfluenceCanvasState } = useProject();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const isMobile = presentation === 'sheet';
   const [height, setHeight] = useState(() => isMobile ? Math.min(330, window.innerHeight * 0.4) : 285);
   const [drag, setDrag] = useState<{ y: number; height: number } | null>(null);
@@ -451,6 +451,12 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
         })}</div>
       </nav>
       <div id="results-content" className="results-body" role="tabpanel" aria-labelledby={`result-tab-${activeTab.id}`} aria-busy={isAnalyzing}>
+        <button
+          type="button"
+          className="result-design-launcher"
+          data-result-design-launcher
+          onClick={(event) => emitWorkspaceCommand('open-design', { trigger: event.currentTarget })}
+        ><DraftingCompass size={17} aria-hidden="true" /><span><strong>{language === 'en' ? 'Concrete beam design' : 'Diseño de viga de concreto'}</strong><small>{language === 'en' ? 'Open the NTC workbench' : 'Abrir workbench NTC'}</small></span></button>
         {!analysis ? <EmptyResults onAnalyze={() => {
           emitWorkspaceCommand('analysis-requested');
           analyze();

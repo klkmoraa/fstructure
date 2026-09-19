@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultProject } from './defaultProject';
-import { mergeCoincidentNodes, repairProjectTopology, splitMemberAt } from './modelOperations';
+import { deleteStructuralSelection, mergeCoincidentNodes, repairProjectTopology, splitMemberAt } from './modelOperations';
 
 /**
  * Pruebas mínimas de las tres operaciones que reescriben la topología del
@@ -60,5 +60,30 @@ describe('repairProjectTopology', () => {
     const project = createDefaultProject();
     const report = repairProjectTopology(project);
     expect(report).toEqual({ mergedNodes: [], splitMembers: [], skippedCoincidentPairs: [] });
+  });
+});
+
+describe('deleteStructuralSelection', () => {
+  it('poda la asignación de diseño del miembro eliminado en cascada', () => {
+    const project = createDefaultProject();
+    project.designAssignments = [{
+      id: 'DESIGN-M2',
+      memberId: 'M2',
+      kind: 'reinforced-concrete-beam',
+      standardId: 'ntc-cdmx-2023-concrete',
+      ultimateCombinationId: 'NTC-CDMX-2023-ORD',
+      serviceCombinationId: 'COMB1',
+      coverMm: 40,
+      longitudinalSteelYieldMpa: 420,
+      stirrupSteelYieldMpa: 420,
+      preferredLongitudinalDiametersMm: [12, 16, 20, 25, 32],
+      preferredStirrupDiametersMm: [8, 10, 12],
+      stirrupLegs: 2,
+    }];
+
+    deleteStructuralSelection(project, { kind: 'node', id: 'N3' });
+
+    expect(project.members.some((member) => member.id === 'M2')).toBe(false);
+    expect(project.designAssignments).toEqual([]);
   });
 });
