@@ -33,6 +33,7 @@ export const esWorkspace = {
   'examples.triangularTrussName': 'Armadura triangular',
   'examples.triangularTrussDescription': 'Armadura isostática con barras en tensión y compresión.',
   'navigation.home': 'Ir al inicio',
+  'navigation.workspaceMenu': 'Abrir navegación del proyecto',
   'project.name': 'Nombre del proyecto',
   'topbar.currentProject': 'Proyecto actual',
   'topbar.saveProject': 'Guardar',

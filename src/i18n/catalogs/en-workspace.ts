@@ -33,6 +33,7 @@ export const enWorkspace = {
   'examples.triangularTrussName': 'Triangular truss',
   'examples.triangularTrussDescription': 'Statically determinate truss with members in tension and compression.',
   'navigation.home': 'Go to start',
+  'navigation.workspaceMenu': 'Open project navigation',
   'project.name': 'Project name',
   'topbar.currentProject': 'Current project',
   'topbar.saveProject': 'Save',

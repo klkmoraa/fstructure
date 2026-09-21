@@ -8,6 +8,7 @@ const labels: WorkspaceTopBarLabels = {
   solverName: 'FStructure',
   project: 'Proyecto actual',
   home: 'Ir al inicio',
+  workspaceMenu: 'Abrir navegación del proyecto',
   editProject: 'Nombre del proyecto',
   saveProject: 'Guardar',
   cancel: 'Cancelar',
@@ -30,6 +31,35 @@ const labels: WorkspaceTopBarLabels = {
 afterEach(() => cleanup());
 
 describe('WorkspaceTopBar', () => {
+  it('opens surface navigation from the brand and closes it after changing surface', async () => {
+    const user = userEvent.setup();
+    const onToolChange = vi.fn();
+    render(<WorkspaceTopBar
+      labels={labels}
+      tool="model2d"
+      onToolChange={onToolChange}
+      projectName="Modelo"
+      storageState="ready"
+      analysisState="ready"
+      resultsOpen={false}
+      canUndo={false}
+      canRedo={false}
+      onOpenHome={vi.fn()}
+      onRenameProject={vi.fn()}
+      onUndo={vi.fn()}
+      onRedo={vi.fn()}
+      onAnalyze={vi.fn()}
+      onOpenResults={vi.fn()}
+    />);
+
+    await user.click(screen.getByRole('button', { name: labels.workspaceMenu }));
+    expect(screen.getAllByRole('menuitem').map((node) => node.textContent)).toEqual(['Ir al inicio', 'Diseño', '3D', 'FEM']);
+    await user.click(screen.getByRole('menuitem', { name: 'Diseño' }));
+
+    expect(onToolChange).toHaveBeenCalledWith('design');
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
   it('mantiene Diseño como un control persistente e informa su estado al shell', async () => {
     const user = userEvent.setup();
     const onOpenDesign = vi.fn();

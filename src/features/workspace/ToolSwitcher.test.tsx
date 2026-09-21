@@ -9,20 +9,18 @@ import { ToolSwitcher } from './ToolSwitcher';
 afterEach(cleanup);
 function Harness() {
   const [tool, setTool] = useState<ToolId>('model2d');
-  return <><ToolSwitcher tool={tool} onChange={setTool} /><output>{tool}</output></>;
+  return <><ToolSwitcher tool={tool} homeLabel="Inicio" onHome={() => undefined} onChange={setTool} /><output>{tool}</output></>;
 }
-it('offers all four tools and uses manual arrow/Home/End activation with Enter and Space', async () => {
+it('offers Inicio and the three other surfaces with menu keyboard navigation', async () => {
   const user = userEvent.setup();
   render(<Harness />);
-  expect(screen.getAllByRole('tab').map((node) => node.textContent)).toEqual(['2D', 'Diseño', '3D', 'FEM']);
+  expect(screen.getAllByRole('menuitem').map((node) => node.textContent)).toEqual(['Inicio', 'Diseño', '3D', 'FEM']);
   await user.tab();
-  await user.keyboard('{ArrowRight}');
-  expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Diseño' }));
+  await user.keyboard('{ArrowDown}');
+  expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Diseño' }));
   expect(screen.getByRole('status').textContent).toBe('model2d');
-  await user.keyboard('{Enter}');
+  await user.keyboard('{End}');
+  expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'FEM' }));
+  await user.keyboard('{Home}{ArrowDown}{Enter}');
   expect(screen.getByRole('status').textContent).toBe('design');
-  await user.keyboard('{End} ');
-  expect(screen.getByRole('status').textContent).toBe('fem');
-  await user.keyboard('{Home}{ArrowLeft}{ArrowRight}{Enter}');
-  expect(screen.getByRole('status').textContent).toBe('model2d');
 });

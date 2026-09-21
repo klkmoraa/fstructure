@@ -25,6 +25,7 @@ export interface WorkspaceTopBarLabels {
   solverName: string;
   project: string;
   home: string;
+  workspaceMenu?: string;
   editProject: string;
   saveProject: string;
   cancel: string;
@@ -116,8 +117,11 @@ export const WorkspaceTopBar = ({
   contextActive = true,
 }: WorkspaceTopBarProps) => {
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
+  const [surfaceMenuOpen, setSurfaceMenuOpen] = useState(false);
   const [draftName, setDraftName] = useState(projectName);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const brandButtonRef = useRef<HTMLButtonElement>(null);
+  const surfaceMenuRef = useRef<HTMLDivElement>(null);
   const storageFailed = storageState === 'issue';
   const storageRecovered = storageState === 'recovered';
   const storageLabel = storageFailed
@@ -142,6 +146,28 @@ export const WorkspaceTopBar = ({
     if (projectEditorOpen) nameInputRef.current?.focus({ preventScroll: true });
   }, [projectEditorOpen]);
 
+  useEffect(() => {
+    if (!surfaceMenuOpen) return;
+    surfaceMenuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (surfaceMenuRef.current?.contains(target) || brandButtonRef.current?.contains(target)) return;
+      setSurfaceMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setSurfaceMenuOpen(false);
+      brandButtonRef.current?.focus({ preventScroll: true });
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [surfaceMenuOpen]);
+
   const saveProjectName = () => {
     const nextName = draftName.trim();
     if (nextName) onRenameProject(nextName);
@@ -151,14 +177,26 @@ export const WorkspaceTopBar = ({
   return <header className="workspace-topbar" data-workspace-topbar>
     <div className="workspace-topbar__project-group" data-workspace-group="project">
       <button
+        ref={brandButtonRef}
         type="button"
-        className="workspace-topbar__brand"
-        onClick={onOpenHome}
-        aria-label={labels.home}
-        title={labels.home}
+        className={'workspace-topbar__brand' + (surfaceMenuOpen ? ' is-open' : '')}
+        onClick={() => onToolChange ? setSurfaceMenuOpen((open) => !open) : onOpenHome()}
+        aria-label={onToolChange ? labels.workspaceMenu ?? 'Abrir navegación del proyecto' : labels.home}
+        aria-haspopup={onToolChange ? 'menu' : undefined}
+        aria-expanded={onToolChange ? surfaceMenuOpen : undefined}
+        aria-controls={onToolChange && surfaceMenuOpen ? 'workspace-surface-menu' : undefined}
+        title={onToolChange ? labels.workspaceMenu ?? 'Abrir navegación del proyecto' : labels.home}
       >
         <FStructureMark size={26} />
       </button>
+      {onToolChange && surfaceMenuOpen ? <div ref={surfaceMenuRef}><ToolSwitcher
+        tool={tool}
+        homeLabel={labels.home}
+        menuLabel={labels.workspaceMenu}
+        onChange={onToolChange}
+        onHome={onOpenHome}
+        onRequestClose={() => setSurfaceMenuOpen(false)}
+      /></div> : null}
       <button
         type="button"
         className="workspace-topbar__project"
@@ -216,7 +254,6 @@ export const WorkspaceTopBar = ({
     </div>
 
     <nav className="workspace-topbar__actions" aria-label={labels.actions}>
-      {onToolChange ? <ToolSwitcher tool={tool} onChange={onToolChange} /> : null}
       {contextActive ? <div className="workspace-topbar__model-group" data-workspace-group="model">
         <div className="workspace-topbar__history-group">
           <button type="button" className="workspace-topbar__icon-button" onClick={onUndo} disabled={!canUndo} aria-label={labels.undo} title={labels.undo}>

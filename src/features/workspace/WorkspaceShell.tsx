@@ -526,6 +526,7 @@ const WorkspaceBrokerContent = ({
             : activeWorkspace === 'design' ? 'Diseño · Experimental' : SOLVER_2D.name,
         project: t('topbar.currentProject'),
         home: t('navigation.home'),
+        workspaceMenu: t('navigation.workspaceMenu'),
         editProject: t('project.name'),
         saveProject: t('topbar.saveProject'),
         cancel: t('topbar.cancelProject'),

@@ -45,6 +45,58 @@
   box-shadow: var(--sc-shadow-lifted);
 }
 
+.workspace-topbar__brand.is-open {
+  border-color: color-mix(in srgb, var(--sc-color-action-primary) 58%, var(--sc-color-border));
+  background: color-mix(in srgb, var(--sc-color-action-primary) 10%, var(--sc-color-surface-1));
+  color: var(--sc-color-text-primary);
+}
+
+.workspace-topbar__surface-menu {
+  position: absolute;
+  z-index: calc(var(--sc-z-topbar, 30) + 4);
+  top: calc(100% + 7px);
+  left: 0;
+  width: min(252px, calc(100vw - 20px));
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+  border: var(--sc-depth-floating-border);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-lg);
+}
+
+.workspace-topbar__surface-menu-item {
+  min-width: 0;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: inherit;
+  font-size: var(--sc-font-size-control);
+  font-weight: var(--sc-font-weight-semibold);
+  text-align: left;
+}
+
+.workspace-topbar__surface-menu-item:hover,
+.workspace-topbar__surface-menu-item:focus-visible {
+  border-color: color-mix(in srgb, var(--sc-color-action-primary) 42%, var(--sc-color-border));
+  background: color-mix(in srgb, var(--sc-color-action-primary) 9%, var(--sc-color-surface-elevated));
+  color: var(--sc-color-text-primary);
+  outline: none;
+}
+
+.workspace-topbar__surface-menu-icon {
+  justify-self: center;
+  color: var(--sc-color-action-primary);
+}
+
 .workspace-topbar__project {
   min-width: 0;
   flex: 0 1 420px;
@@ -1012,27 +1064,8 @@
   }
 }
 
-/* The persistent tool choices reuse the existing action geometry and treatments. */
-.workspace-topbar__tool-switcher { flex-shrink: 0; }
-.workspace-topbar__tool-switcher .workspace-topbar__action-button { min-width: 44px; }
-.workspace-topbar__tool-switcher .workspace-topbar__action-button span {
-  position: static; width: auto; height: auto; overflow: visible; clip: auto;
-}
-.workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__project { flex-basis: 220px; }
-@media (max-width: 700px) {
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) { gap: 4px; padding: 6px; align-items: flex-start; }
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__project-group { flex: 0 0 38px; }
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__brand { min-width: 38px; width: 38px; }
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__project { display: none; }
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__actions {
-    flex: 1; min-width: 0; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px;
+@media (max-width: 760px) {
+  .workspace-topbar__surface-menu {
+    width: min(252px, calc(100vw - 16px));
   }
-  .workspace-topbar__tool-switcher { margin-right: auto; padding: 0; }
-  .workspace-topbar__tool-switcher .workspace-topbar__action-button { padding-inline: 6px; min-height: 44px; }
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) [data-workspace-group="model"] { order: 4; margin-right: auto; }
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) [data-workspace-group="calculation-experience"] { order: 5; }
-  .shell-tool-slot--controls { order: 4; }
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__status { display: none; }
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__icon-button,
-  .workspace-topbar:has(.workspace-topbar__tool-switcher) .workspace-topbar__action-button { min-height: 44px; }
 }
