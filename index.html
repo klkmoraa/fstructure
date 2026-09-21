@@ -29,6 +29,56 @@
       })();
     </script>
 
+    <script>
+      // Recover once when a cached Pages document references hashed assets
+      // removed by a newer deployment.
+      (function() {
+        var retryKey = 'fstructure.asset-retry';
+        var retryParam = '__fs_reload';
+        var params = new URLSearchParams(window.location.search);
+        var isRetry = params.has(retryParam);
+
+        function clearRetry() {
+          try { sessionStorage.removeItem(retryKey); } catch (_) {}
+        }
+
+        function recoverFromStaleAsset() {
+          if (isRetry) return;
+          try {
+            if (sessionStorage.getItem(retryKey) === '1') return;
+            sessionStorage.setItem(retryKey, '1');
+          } catch (_) {}
+          var retryUrl = new URL(window.location.href);
+          retryUrl.searchParams.set(retryParam, Date.now().toString());
+          window.location.replace(retryUrl.toString());
+        }
+
+        window.addEventListener('vite:preloadError', function(event) {
+          event.preventDefault();
+          recoverFromStaleAsset();
+        });
+
+        window.addEventListener('error', function(event) {
+          var target = event.target;
+          if (!target || !target.tagName) return;
+          var tag = target.tagName.toUpperCase();
+          var rel = typeof target.rel === 'string' ? target.rel : '';
+          if (tag === 'SCRIPT' || (tag === 'LINK' && (rel === 'stylesheet' || rel === 'modulepreload'))) {
+            recoverFromStaleAsset();
+          }
+        }, true);
+
+        if (isRetry) {
+          var cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete(retryParam);
+          window.history.replaceState(window.history.state, '', cleanUrl.toString());
+          window.addEventListener('load', clearRetry, { once: true });
+        } else {
+          clearRetry();
+        }
+      })();
+    </script>
+
     <!-- Static Fallbacks for Browsers and Media Queries -->
     <link rel="manifest" href="./site-dark.webmanifest?v=3" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href="./site.webmanifest?v=3" media="(prefers-color-scheme: light)" />
