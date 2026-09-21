@@ -25,13 +25,18 @@ beforeEach(() => {
   localStorage.setItem(WORKSPACE_LAYOUT_STORAGE_KEY, JSON.stringify({ inspectorCollapsed: false }));
 });
 
+const chooseSurface = async (user: ReturnType<typeof userEvent.setup>, label: string) => {
+  await user.click(await screen.findByRole('button', { name: 'Abrir navegación del proyecto' }));
+  await user.click(screen.getByRole('menuitem', { name: label }));
+};
+
 it('preserves the mounted 2D canvas while opening contextual results and switches to honest FEM', async () => {
   const user = userEvent.setup();
   render(<App />);
   const canvas = await screen.findByRole('application');
   await user.click(screen.getByRole('button', { name: 'Resultados' }));
   expect(screen.getByRole('application')).toBe(canvas);
-  await user.click(screen.getByRole('tab', { name: 'FEM' }));
+  await chooseSurface(user, 'FEM');
   expect(await screen.findByRole('heading', { name: 'Elementos finitos' })).toBeTruthy();
   const femAction = screen.getByRole('button', { name: 'Analizar FEM' });
   expect(femAction.hasAttribute('disabled')).toBe(false);
@@ -43,12 +48,12 @@ it('preserves the mounted 2D canvas while opening contextual results and switche
 });
 afterEach(cleanup);
 
-it('opens Design as a native tool and exposes the four persistent destinations', async () => {
+it('opens Design as a native tool from the compact surface menu', async () => {
   const user = userEvent.setup();
   render(<App />);
-  expect(await screen.findAllByRole('tab', { name: /^(2D|Diseño|3D|FEM)$/ })).toHaveLength(4);
+  await screen.findByRole('button', { name: 'Abrir navegación del proyecto' });
   const topbar = document.querySelector('[data-workspace-topbar]');
-  await user.click(screen.getByRole('tab', { name: 'Diseño' }));
+  await chooseSurface(user, 'Diseño');
   expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
   expect(screen.queryByRole('application')).toBeNull();
   expect(document.querySelectorAll('[data-workspace-topbar]')).toHaveLength(1);
@@ -58,12 +63,12 @@ it('opens Design as a native tool and exposes the four persistent destinations',
 it('switches native Design through canonical history and restores 2D canvas ownership on reload', async () => {
   const user = userEvent.setup();
   const view = render(<App />);
-  await user.click(await screen.findByRole('tab', { name: 'Diseño' }));
+  await chooseSurface(user, 'Diseño');
   expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
   const historyLength = window.history.length;
   const projectId = new URLSearchParams(window.location.search).get('project');
 
-  await user.click(screen.getByRole('tab', { name: '2D' }));
+  await chooseSurface(user, '2D');
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
   expect(new URLSearchParams(window.location.search).get('project')).toBe(projectId);
   expect(window.history.length).toBe(historyLength + 1);

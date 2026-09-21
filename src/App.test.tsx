@@ -28,6 +28,11 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
+const chooseSurface = async (user: ReturnType<typeof userEvent.setup>, label: string) => {
+  await user.click(await screen.findByRole('button', { name: 'Abrir navegación del proyecto' }));
+  await user.click(screen.getByRole('menuitem', { name: label }));
+};
+
 describe('standalone FStructure', () => {
   it('abre la bienvenida y permite continuar al workspace', async () => {
     const user = userEvent.setup();
@@ -51,7 +56,7 @@ describe('standalone FStructure', () => {
     render(<App />);
 
     expect(await screen.findByLabelText('Inspector')).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Ir al inicio' }));
+    await chooseSurface(user, 'Ir al inicio');
 
     expect(screen.getByTestId('solver2d-welcome')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('surface')).toBe('welcome');
@@ -85,7 +90,7 @@ describe('standalone FStructure', () => {
     const user = userEvent.setup();
     render(<App />);
     const length = window.history.length;
-    await user.click(await screen.findByRole('tab', { name: 'Diseño' }));
+    await chooseSurface(user, 'Diseño');
     expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
     expect(window.history.length).toBe(length + 1);
@@ -138,7 +143,7 @@ describe('standalone FStructure', () => {
     });
     await started;
     try {
-      await userEvent.setup().click(screen.getByRole('tab', { name: 'Diseño' }));
+      await chooseSurface(userEvent.setup(), 'Diseño');
       expect(new URLSearchParams(window.location.search).get('project')).toBe('project-b');
       expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
       await act(async () => { releaseLookup(); });
