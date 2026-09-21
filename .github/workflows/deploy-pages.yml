@@ -71,11 +71,41 @@ jobs:
         run: |
           set -euo pipefail
           publish_dir="$(mktemp -d)"
-          trap 'git worktree remove --force "$publish_dir" >/dev/null 2>&1 || true' EXIT
           git fetch origin gh-pages --depth=1
           git worktree add --detach "$publish_dir" FETCH_HEAD
+          previous_assets="$(mktemp -d)"
+          trap 'git worktree remove --force "$publish_dir" >/dev/null 2>&1 || true; rm -rf "$previous_assets"' EXIT
+
+          # Keep exactly one previous asset generation. Cached/open clients may
+          # still request those hashed chunks while switching to the new build.
+          if [ -f "$publish_dir/.asset-manifest" ]; then
+            while IFS= read -r rel; do
+              case "$rel" in
+                assets/*)
+                  if [ -f "$publish_dir/$rel" ]; then
+                    mkdir -p "$previous_assets/$(dirname "$rel")"
+                    cp "$publish_dir/$rel" "$previous_assets/$rel"
+                  fi
+                  ;;
+              esac
+            done < "$publish_dir/.asset-manifest"
+          elif [ -d "$publish_dir/assets" ]; then
+            mkdir -p "$previous_assets/assets"
+            cp -R "$publish_dir/assets/." "$previous_assets/assets/"
+          fi
+
           find "$publish_dir" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf -- {} +
+          if [ -d "$previous_assets/assets" ]; then
+            mkdir -p "$publish_dir/assets"
+            cp -R "$previous_assets/assets/." "$publish_dir/assets/"
+          fi
+
           cp -R dist/. "$publish_dir"/
+          if [ -d dist/assets ]; then
+            find dist/assets -type f -printf 'assets/%P\n' | LC_ALL=C sort > "$publish_dir/.asset-manifest"
+          else
+            : > "$publish_dir/.asset-manifest"
+          fi
           touch "$publish_dir/.nojekyll"
           git -C "$publish_dir" config user.name "github-actions[bot]"
           git -C "$publish_dir" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
