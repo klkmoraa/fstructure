@@ -342,8 +342,16 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
               type="button"
               className="space3d-button"
               onClick={() => {
-                const b = numeric(calcB) ?? 0.3;
-                const h = numeric(calcH) ?? 0.4;
+                const b = numeric(calcB);
+                const h = numeric(calcH);
+                if (b === null || h === null || b <= 0 || h <= 0) {
+                  setErrors((current) => ({ ...current, sectionCalculator: 'b y h deben ser números finitos mayores que cero.' }));
+                  return;
+                }
+                setErrors((current) => {
+                  const { sectionCalculator: _ignored, ...rest } = current;
+                  return rest;
+                });
                 const res = calculateRectangularSection(b, h);
                 setDraft((curr) => ({
                   ...curr,
@@ -367,7 +375,15 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
               type="button"
               className="space3d-button"
               onClick={() => {
-                const d = numeric(calcDia) ?? 0.25;
+                const d = numeric(calcDia);
+                if (d === null || d <= 0) {
+                  setErrors((current) => ({ ...current, sectionCalculator: 'El diámetro debe ser un número finito mayor que cero.' }));
+                  return;
+                }
+                setErrors((current) => {
+                  const { sectionCalculator: _ignored, ...rest } = current;
+                  return rest;
+                });
                 const res = calculateCircularSection(d);
                 setDraft((curr) => ({
                   ...curr,
@@ -382,6 +398,9 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
             </button>
           </div>
         </div>
+        {errors.sectionCalculator ? (
+          <p className="space3d-field-error" role="alert">{errors.sectionCalculator}</p>
+        ) : null}
       </details>
 
       <fieldset className="space3d-fieldset">
