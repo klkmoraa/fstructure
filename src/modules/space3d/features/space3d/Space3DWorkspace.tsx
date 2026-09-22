@@ -284,6 +284,7 @@ const WorkspaceBody = ({
   // Doce clics en cada sentido: suficiente margen para explorar sin llegar a
   // una deformada ilegible por minúscula o a una que ya no cabe en pantalla.
   const effectiveScaleFactor = scaleFactor ?? 1;
+  const currentAnalysis = analysisState === 'ready' && analysis?.success === true ? analysis : null;
 
   const automatic = useMemo(() => buildSpace3DSceneModel({
     project, analysis, analysisState, selection: selectedEntity, targetId: analysisTargetId, resultMode,
@@ -416,7 +417,7 @@ const WorkspaceBody = ({
             A: defaultMember?.A ?? 0.01,
             Iy: defaultMember?.Iy ?? 1e-4,
             Iz: defaultMember?.Iz ?? 1e-4,
-            J: defaultMember?.J ?? 2e-4,
+            J: defaultMember?.J ?? 4e-7,
             orientation: {
               localYReferenceGlobal: refVec,
               rollRadians: 0,
@@ -510,6 +511,7 @@ const WorkspaceBody = ({
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+      if (generativeOpen || pendingReplace !== null || transfer !== null) return;
 
       if (event.key === 'Escape') {
         if (connectingFromNodeId) {
@@ -570,7 +572,7 @@ const WorkspaceBody = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [clearToolSelection, connectingFromNodeId, editorTarget, openNew, project.nodes.length, remove]);
+  }, [clearToolSelection, connectingFromNodeId, editorTarget, generativeOpen, openNew, pendingReplace, project.nodes.length, remove, transfer]);
 
   // El puente solo bloquea lo que no pudo mapear con autoridad. En cuanto el
   // usuario completa un numero o reconoce una diferencia, deja de bloquear.
@@ -907,7 +909,7 @@ const WorkspaceBody = ({
           <Space3DSelectionHUD
             selection={selectedEntity}
             project={project}
-            analysis={analysis}
+            analysis={currentAnalysis}
             onDeselect={() => clearToolSelection()}
             onOpenEditor={() => {
               setRail('model');
@@ -920,10 +922,10 @@ const WorkspaceBody = ({
             onStartConnectMember={(nodeId) => {
               setConnectingFromNodeId(nodeId);
             }}
-            onAddLoadToNode={(_nodeId) => {
+            onAddLoadToNode={(nodeId) => {
               select(null);
               setRail('model');
-              setEditorTarget({ kind: 'load', id: null });
+              setEditorTarget({ kind: 'load', id: null, initialNodeId: nodeId });
               setModelNavFocus('load');
               setSheetExpanded(true);
             }}
@@ -933,7 +935,7 @@ const WorkspaceBody = ({
         {resultMode !== 'model' && !sheetExpanded ? (
           <Space3DResultsLegend
             resultMode={resultMode}
-            analysis={analysis}
+            analysis={currentAnalysis}
             project={project}
             onSelectCritical={(kind, id) => selectEntity({ kind, id })}
             t={t}
