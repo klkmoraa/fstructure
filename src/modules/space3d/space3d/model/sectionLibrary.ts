@@ -17,8 +17,8 @@ export interface Space3DMaterialPreset {
   readonly E: number;
   /** Módulo de elasticidad transversal en kPa (kN/m²) */
   readonly G: number;
-  /** Densidad o peso específico en kN/m³ */
-  readonly density: number;
+  /** Densidad de masa en kg/m³. Es la unidad consumida por el análisis modal. */
+  readonly massDensityKgPerM3: number;
 }
 
 export interface Space3DSectionProperties {
@@ -33,12 +33,12 @@ export interface Space3DSectionProperties {
 }
 
 export const SPACE3D_MATERIALS: readonly Space3DMaterialPreset[] = Object.freeze([
-  { id: 'steel-a36', name: 'Acero A36 / S275', category: 'steel', E: 200_000_000, G: 77_000_000, density: 78.5 },
-  { id: 'steel-gr50', name: 'Acero Grado 50 / S355', category: 'steel', E: 210_000_000, G: 81_000_000, density: 78.5 },
-  { id: 'concrete-fc25', name: 'Concreto f\'c 25 MPa', category: 'concrete', E: 23_500_000, G: 9_800_000, density: 24.0 },
-  { id: 'concrete-fc30', name: 'Concreto f\'c 30 MPa', category: 'concrete', E: 26_500_000, G: 11_000_000, density: 24.0 },
-  { id: 'timber-c24', name: 'Madera Estructural C24', category: 'timber', E: 11_000_000, G: 690_000, density: 4.2 },
-  { id: 'aluminum-6061', name: 'Aluminio 6061-T6', category: 'aluminum', E: 69_000_000, G: 26_000_000, density: 27.0 },
+  { id: 'steel-a36', name: 'Acero ASTM A36 (preset elástico)', category: 'steel', E: 200_000_000, G: 77_000_000, massDensityKgPerM3: 7850 },
+  { id: 'steel-gr50', name: 'Acero Grado 50 (preset elástico)', category: 'steel', E: 210_000_000, G: 81_000_000, massDensityKgPerM3: 7850 },
+  { id: 'concrete-fc25', name: 'Concreto f\'c 25 MPa', category: 'concrete', E: 23_500_000, G: 9_800_000, massDensityKgPerM3: 2400 },
+  { id: 'concrete-fc30', name: 'Concreto f\'c 30 MPa', category: 'concrete', E: 26_500_000, G: 11_000_000, massDensityKgPerM3: 2400 },
+  { id: 'timber-c24', name: 'Madera Estructural C24', category: 'timber', E: 11_000_000, G: 690_000, massDensityKgPerM3: 420 },
+  { id: 'aluminum-6061', name: 'Aluminio 6061-T6', category: 'aluminum', E: 69_000_000, G: 26_000_000, massDensityKgPerM3: 2700 },
 ]);
 
 export const SPACE3D_SECTION_CATALOG: readonly Space3DSectionProperties[] = Object.freeze([
