@@ -462,6 +462,7 @@ export const esWorkspace = {
   'space3d.generatorTitle': 'Generador de estructuras 3D',
   'space3d.generatorPreview': 'Vista previa',
   'space3d.generatorDesc': 'Crea modelos paramétricos 3D compatibles con el cálculo estático disponible.',
+  'space3d.generatorAssumption': 'Las propiedades elásticas y la orientación local se generan como supuestos de modelado. Verifica sección, ejes locales y roll antes de usar resultados para diseño.',
   'space3d.promptUnrecognized': 'No se reconoció un arquetipo estructural con suficiente evidencia; no se cambiaron los parámetros.',
   'space3d.trussUnsupported': 'La celosía axial todavía no está soportada por el solver 3D.',
   'space3d.generatorShort': 'Generar 3D',
