@@ -8,6 +8,7 @@ import { ArrowRight, Edit3, Spline, Trash2, Weight, X } from 'lucide-react';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../../space3d/model/types';
 import type { Space3DSelection } from '../../space3d/store/Space3DProjectContext';
 import { formatSpace3DNumber } from './space3dNumberFormat';
+import { deriveSpace3DMemberAxialAction } from '../../space3d/view/resultSemantics';
 import type { TranslationKey } from '../../i18n/catalogs';
 
 export interface Space3DSelectionHUDProps {
@@ -146,6 +147,7 @@ export const Space3DSelectionHUD = ({
       : 0;
 
     const memberResult = analysis?.memberResults.find((item) => item.memberId === member.id);
+    const axialAction = memberResult ? deriveSpace3DMemberAxialAction(memberResult) : null;
 
     return (
       <div className="space3d-hud-card" role="region" aria-label={`Barra ${member.id}`}>
@@ -174,8 +176,8 @@ export const Space3DSelectionHUD = ({
           <div className="space3d-hud-results space3d-hud-results--member">
             <div className="space3d-hud-result-item">
               <span>Axial N:</span>
-              <strong className={memberResult.start.N >= 0 ? 'space3d-val-tension' : 'space3d-val-compression'}>
-                {num(memberResult.start.N)} kN
+              <strong className={(axialAction ?? 0) >= 0 ? 'space3d-val-tension' : 'space3d-val-compression'}>
+                {num(axialAction ?? 0)} kN
               </strong>
             </div>
             <div className="space3d-hud-result-item">
