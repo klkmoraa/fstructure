@@ -15,6 +15,8 @@ describe('sectionLibrary', () => {
     for (const mat of SPACE3D_MATERIALS) {
       expect(mat.E).toBeGreaterThan(0);
       expect(mat.G).toBeGreaterThan(0);
+      expect(mat.massDensityKgPerM3).toBeGreaterThan(100);
+      expect(mat.massDensityKgPerM3).toBeLessThan(10_000);
     }
 
     expect(SPACE3D_SECTION_CATALOG.length).toBeGreaterThan(10);
