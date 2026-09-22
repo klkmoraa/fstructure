@@ -105,6 +105,16 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
   const [loadNodeId, setLoadNodeId] = useState(initialLoadNodeId);
   const [loadCaseId, setLoadCaseId] = useState(load?.caseId ?? project.loadCases[0]?.id ?? '');
   const [catalogCategory, setCatalogCategory] = useState<'all' | 'steel' | 'concrete' | 'timber' | 'aluminum'>('all');
+  const [selectedSectionId, setSelectedSectionId] = useState(
+    member?.sectionOrigin === 'catalog' && SPACE3D_SECTION_CATALOG.some((section) => section.name === member.sectionId)
+      ? member.sectionId ?? ''
+      : '',
+  );
+  const [selectedMaterialId, setSelectedMaterialId] = useState(
+    member?.materialOrigin === 'catalog' && SPACE3D_MATERIALS.some((material) => material.id === member.materialId)
+      ? member.materialId ?? ''
+      : '',
+  );
   const [calcB, setCalcB] = useState('0.30');
   const [calcH, setCalcH] = useState('0.40');
   const [calcDia, setCalcDia] = useState('0.25');
@@ -124,6 +134,10 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const availableSections = useMemo(() => getSectionsByCategory(catalogCategory), [catalogCategory]);
+  const selectedSectionPreset = SPACE3D_SECTION_CATALOG.find((section) => section.name === selectedSectionId);
+  const sectionOptions = selectedSectionPreset && !availableSections.some((section) => section.name === selectedSectionPreset.name)
+    ? [selectedSectionPreset, ...availableSections]
+    : availableSections;
 
   const key = `${target.kind}:${target.id ?? 'new'}:${target.kind === 'load' ? target.initialNodeId ?? '' : ''}`;
   useEffect(() => {
@@ -133,6 +147,16 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
     setEndJ(member?.j ?? project.nodes[1]?.id ?? '');
     setLoadNodeId(initialLoadNodeId);
     setLoadCaseId(load?.caseId ?? project.loadCases[0]?.id ?? '');
+    setSelectedSectionId(
+      member?.sectionOrigin === 'catalog' && SPACE3D_SECTION_CATALOG.some((section) => section.name === member.sectionId)
+        ? member.sectionId ?? ''
+        : '',
+    );
+    setSelectedMaterialId(
+      member?.materialOrigin === 'catalog' && SPACE3D_MATERIALS.some((material) => material.id === member.materialId)
+        ? member.materialId ?? ''
+        : '',
+    );
     setMemberMetadata({
       materialId: member?.materialId,
       materialOrigin: member?.materialOrigin,
@@ -170,6 +194,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
           setDraft((current) => ({ ...current, [name]: event.target.value }));
           if (target.kind === 'member' && PROPERTY_KEYS.includes(name as typeof PROPERTY_KEYS[number])) {
             if (name === 'E' || name === 'G') {
+              setSelectedMaterialId('');
               setMemberMetadata((current) => ({
                 ...current,
                 materialId: undefined,
@@ -177,6 +202,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                 density: undefined,
               }));
             } else {
+              setSelectedSectionId('');
               setMemberMetadata((current) => ({
                 ...current,
                 sectionId: undefined,
