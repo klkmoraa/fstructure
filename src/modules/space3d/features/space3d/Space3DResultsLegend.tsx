@@ -9,6 +9,7 @@ import { Activity, ChevronDown, ChevronUp, Crosshair } from 'lucide-react';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../../space3d/model/types';
 import type { Space3DResultMode } from '../../space3d/view/sceneModel';
 import { formatSpace3DNumber } from './space3dNumberFormat';
+import { deriveSpace3DMemberAxialAction } from '../../space3d/view/resultSemantics';
 import type { TranslationKey } from '../../i18n/catalogs';
 
 export interface Space3DResultsLegendProps {
@@ -33,17 +34,18 @@ export const Space3DResultsLegend = ({
     if (resultMode === 'axial') {
       let minN = Infinity;
       let maxN = -Infinity;
+      let maxAbsN = -Infinity;
       let maxMember = '';
 
       for (const res of analysis.memberResults) {
-        const nStart = res.start.N;
-        const nEnd = res.end.N;
-        const peak = Math.max(Math.abs(nStart), Math.abs(nEnd));
-        if (nStart < minN) minN = nStart;
-        if (nEnd < minN) minN = nEnd;
-        if (nStart > maxN) maxN = nStart;
-        if (nEnd > maxN) maxN = nEnd;
-        if (peak >= Math.max(Math.abs(minN), Math.abs(maxN))) maxMember = res.memberId;
+        const axial = deriveSpace3DMemberAxialAction(res);
+        if (axial < minN) minN = axial;
+        if (axial > maxN) maxN = axial;
+        const absAxial = Math.abs(axial);
+        if (absAxial > maxAbsN) {
+          maxAbsN = absAxial;
+          maxMember = res.memberId;
+        }
       }
 
       return {
