@@ -8,7 +8,11 @@ import { ArrowRight, Edit3, Spline, Trash2, Weight, X } from 'lucide-react';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../../space3d/model/types';
 import type { Space3DSelection } from '../../space3d/store/Space3DProjectContext';
 import { formatSpace3DNumber } from './space3dNumberFormat';
-import { deriveSpace3DMemberAxialAction } from '../../space3d/view/resultSemantics';
+import {
+  deriveSpace3DMemberAxialAction,
+  deriveSpace3DMemberMomentMagnitude,
+  deriveSpace3DMemberShearMagnitude,
+} from '../../space3d/view/resultSemantics';
 import type { TranslationKey } from '../../i18n/catalogs';
 
 export interface Space3DSelectionHUDProps {
@@ -41,12 +45,15 @@ export const Space3DSelectionHUD = ({
     if (!node) return null;
 
     const restraintCount = Object.values(node.restraints).filter(Boolean).length;
+    const isPinned =
+      node.restraints.ux && node.restraints.uy && node.restraints.uz
+      && !node.restraints.rx && !node.restraints.ry && !node.restraints.rz;
     const supportLabel = restraintCount === 6
       ? (t('space3d.supportFixed' as TranslationKey) || 'Empotrado')
-      : restraintCount >= 3
+      : isPinned
         ? (t('space3d.supportPinned' as TranslationKey) || 'Articulado')
         : restraintCount > 0
-          ? `${restraintCount} GDL`
+          ? Object.entries(node.restraints).filter(([, active]) => active).map(([dof]) => dof).join(' · ')
           : (t('space3d.supportFree' as TranslationKey) || 'Libre');
 
     // Nodal displacement if analysis is available
@@ -148,6 +155,8 @@ export const Space3DSelectionHUD = ({
 
     const memberResult = analysis?.memberResults.find((item) => item.memberId === member.id);
     const axialAction = memberResult ? deriveSpace3DMemberAxialAction(memberResult) : null;
+    const shearMagnitude = memberResult ? deriveSpace3DMemberShearMagnitude(memberResult) : null;
+    const momentMagnitude = memberResult ? deriveSpace3DMemberMomentMagnitude(memberResult) : null;
 
     return (
       <div className="space3d-hud-card" role="region" aria-label={`Barra ${member.id}`}>
@@ -181,12 +190,12 @@ export const Space3DSelectionHUD = ({
               </strong>
             </div>
             <div className="space3d-hud-result-item">
-              <span>Momento Mz:</span>
-              <strong>{num(Math.max(Math.abs(memberResult.start.Mz), Math.abs(memberResult.end.Mz)))} kN·m</strong>
+              <span>Momento |M|:</span>
+              <strong>{num(momentMagnitude ?? 0)} kN·m</strong>
             </div>
             <div className="space3d-hud-result-item">
-              <span>Cortante Vy:</span>
-              <strong>{num(memberResult.start.Vy)} kN</strong>
+              <span>Cortante |V|:</span>
+              <strong>{num(shearMagnitude ?? 0)} kN</strong>
             </div>
           </div>
         )}
