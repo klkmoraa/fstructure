@@ -2305,6 +2305,7 @@
   inline-size: 100%;
 }
 
+.space3d-legend-grad--deformed { background: var(--sc-color-technical-deformed); }
 .space3d-legend-grad--axial { background: var(--sc-color-technical-axial); }
 .space3d-legend-grad--shear { background: var(--sc-color-technical-shear); }
 .space3d-legend-grad--moment { background: var(--sc-color-technical-moment); }
