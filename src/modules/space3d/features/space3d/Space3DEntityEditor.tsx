@@ -108,6 +108,19 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
   const [calcB, setCalcB] = useState('0.30');
   const [calcH, setCalcH] = useState('0.40');
   const [calcDia, setCalcDia] = useState('0.25');
+  const [memberMetadata, setMemberMetadata] = useState<{
+    materialId?: string;
+    materialOrigin?: Space3DFrameMember['materialOrigin'];
+    sectionId?: string;
+    sectionOrigin?: Space3DFrameMember['sectionOrigin'];
+    density?: number;
+  }>({
+    materialId: member?.materialId,
+    materialOrigin: member?.materialOrigin,
+    sectionId: member?.sectionId,
+    sectionOrigin: member?.sectionOrigin,
+    density: member?.density,
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const availableSections = useMemo(() => getSectionsByCategory(catalogCategory), [catalogCategory]);
@@ -120,6 +133,13 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
     setEndJ(member?.j ?? project.nodes[1]?.id ?? '');
     setLoadNodeId(initialLoadNodeId);
     setLoadCaseId(load?.caseId ?? project.loadCases[0]?.id ?? '');
+    setMemberMetadata({
+      materialId: member?.materialId,
+      materialOrigin: member?.materialOrigin,
+      sectionId: member?.sectionId,
+      sectionOrigin: member?.sectionOrigin,
+      density: member?.density,
+    });
     setErrors({});
     // Un cambio de entidad recarga el borrador entero; el resto de dependencias
     // son el propio proyecto, que no debe pisar lo que el usuario está tecleando.
@@ -146,7 +166,25 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         aria-describedby={unitId}
         value={draft[name] ?? ''}
         aria-invalid={invalid ? true : undefined}
-        onChange={(event) => setDraft((current) => ({ ...current, [name]: event.target.value }))}
+        onChange={(event) => {
+          setDraft((current) => ({ ...current, [name]: event.target.value }));
+          if (target.kind === 'member' && PROPERTY_KEYS.includes(name as typeof PROPERTY_KEYS[number])) {
+            if (name === 'E' || name === 'G') {
+              setMemberMetadata((current) => ({
+                ...current,
+                materialId: undefined,
+                materialOrigin: 'custom',
+                density: undefined,
+              }));
+            } else {
+              setMemberMetadata((current) => ({
+                ...current,
+                sectionId: undefined,
+                sectionOrigin: 'custom',
+              }));
+            }
+          }
+        }}
       />
       {invalid ? <small role="alert">{t(positive ? 'space3d.requiredPositive' : 'space3d.requiredNumber')}</small> : null}
     </div>;
@@ -226,6 +264,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
       const changes = {
         i: endI, j: endJ,
         E: values.E, G: values.G, A: values.A, Iy: values.Iy, Iz: values.Iz, J: values.J,
+        ...memberMetadata,
         orientation,
       };
       const ok = target.id
@@ -285,6 +324,13 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                   J: String(sec.J),
                   ...(mat ? { E: String(mat.E), G: String(mat.G) } : {}),
                 }));
+                setMemberMetadata({
+                  sectionId: sec.name,
+                  sectionOrigin: 'catalog',
+                  materialId: sec.materialId,
+                  materialOrigin: 'catalog',
+                  density: mat?.massDensityKgPerM3,
+                });
               }}
             >
               <option value="" disabled>Seleccionar perfil…</option>
@@ -305,6 +351,14 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                   ...current,
                   E: String(mat.E),
                   G: String(mat.G),
+                }));
+                setMemberMetadata((current) => ({
+                  ...current,
+                  materialId: mat.id,
+                  materialOrigin: 'catalog',
+                  density: mat.massDensityKgPerM3,
+                  sectionId: undefined,
+                  sectionOrigin: 'custom',
                 }));
               }}
             >
