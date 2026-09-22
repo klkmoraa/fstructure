@@ -59,7 +59,7 @@ export const Space3DResultsLegend = ({
         max: Number.isFinite(maxN) ? maxN : 0,
         criticalId: maxMember,
         criticalKind: 'member' as const,
-        convention: 'Tracción (+) · Compresión (−) · grosor ∝ |N|',
+        convention: t('space3d.legendConventionAxial'),
         gradientClass: 'space3d-legend-grad--axial',
       };
     }
@@ -83,7 +83,7 @@ export const Space3DResultsLegend = ({
         max: maxV,
         criticalId: maxMember,
         criticalKind: 'member' as const,
-        convention: '|V| = √(Vy² + Vz²) · grosor ∝ |V|',
+        convention: t('space3d.legendConventionShear'),
         gradientClass: 'space3d-legend-grad--shear',
       };
     }
@@ -107,7 +107,7 @@ export const Space3DResultsLegend = ({
         max: maxM,
         criticalId: maxMember,
         criticalKind: 'member' as const,
-        convention: '|M| = √(My² + Mz²) · grosor ∝ |M|',
+        convention: t('space3d.legendConventionMoment'),
         gradientClass: 'space3d-legend-grad--moment',
       };
     }
@@ -131,7 +131,7 @@ export const Space3DResultsLegend = ({
         max: maxR,
         criticalId: maxNode,
         criticalKind: 'node' as const,
-        convention: '|R| = √(Rx² + Ry² + Rz²) · longitud ∝ |R|',
+        convention: t('space3d.legendConventionReactions'),
         gradientClass: 'space3d-legend-grad--reactions',
       };
     }
@@ -153,7 +153,7 @@ export const Space3DResultsLegend = ({
         <button
           type="button"
           className="space3d-legend-toggle"
-          aria-label={minimized ? 'Expandir leyenda' : 'Minimizar leyenda'}
+          aria-label={minimized ? t('space3d.legendExpand') : t('space3d.legendMinimize')}
           aria-expanded={!minimized}
           onClick={() => setMinimized((curr) => !curr)}
         >
@@ -181,7 +181,7 @@ export const Space3DResultsLegend = ({
                   e.stopPropagation();
                   onSelectCritical?.(stats.criticalKind, stats.criticalId);
                 }}
-                title={`Seleccionar elemento crítico ${stats.criticalId}`}
+                title={t('space3d.legendSelectCritical', { id: stats.criticalId })}
               >
                 <Crosshair size={12} aria-hidden="true" />
                 <span>{t('space3d.criticalElement' as TranslationKey) || 'Crítico'}: <b>{stats.criticalId}</b></span>
