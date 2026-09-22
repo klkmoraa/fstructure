@@ -948,7 +948,10 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
   if (storiesMatch) params.storiesY = Number(storiesMatch[1]);
 
   // Vanos / Bays
-  const baysMatch = prompt.match(/(\d+)\s*(?:vanos?|bays?|tramos?|crujias?|crujías)/i);
+  // "paneles"/"panels" es como se enuncia el número de tramos de un puente o
+  // una celosía; sin ellos, una sugerencia que pide 5 paneles genera los que
+  // hubiera en el control.
+  const baysMatch = prompt.match(/(\d+)\s*(?:vanos?|bays?|tramos?|crujias?|crujías|paneles?|panels?)/i);
   if (baysMatch) {
     const b = Number(baysMatch[1]);
     params.baysX = b;
