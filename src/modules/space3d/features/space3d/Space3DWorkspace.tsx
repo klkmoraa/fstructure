@@ -38,7 +38,7 @@ import { Space3DAnalysisModeSelect } from './Space3DAnalysisModeSelect';
 import { Space3DGenerativeModal } from './Space3DGenerativeModal';
 import { Space3DSelectionHUD } from './Space3DSelectionHUD';
 import { Space3DResultsLegend } from './Space3DResultsLegend';
-import { chooseReferenceVector } from '../../space3d/engine/space3dGenerative';
+import { buildConnectingMember } from './connectMember';
 import {
   analyzeSpace3DBuckling,
   analyzeSpace3DInfluence,
@@ -405,39 +405,9 @@ const WorkspaceBody = ({
       const fromNode = project.nodes.find((n) => n.id === connectingFromNodeId);
       const toNode = project.nodes.find((n) => n.id === selection.id);
       if (fromNode && toNode) {
-        const usedMemberIds = project.members.map((m) => m.id);
-        let idx = project.members.length + 1;
-        while (usedMemberIds.includes(`M${idx}`)) idx += 1;
-        const newMemberId = `M${idx}`;
-        const refVec = chooseReferenceVector(fromNode, toNode);
-        const defaultMember = project.members[0];
-        const ok = execute({
-          kind: 'add-member',
-          member: {
-            id: newMemberId,
-            i: connectingFromNodeId,
-            j: selection.id,
-            E: defaultMember?.E ?? 200e6,
-            G: defaultMember?.G ?? 77e6,
-            A: defaultMember?.A ?? 0.01,
-            Iy: defaultMember?.Iy ?? 1e-4,
-            Iz: defaultMember?.Iz ?? 1e-4,
-            J: defaultMember?.J ?? 4e-7,
-            // La masa y la procedencia viajan con la rigidez: sin `density` la
-            // barra nueva no pesa en el análisis modal, y sin los
-            // identificadores el modelo afirmaría una sección que no es la que
-            // calcula. Se copian sólo si la barra de referencia los declara.
-            ...(defaultMember?.density !== undefined ? { density: defaultMember.density } : {}),
-            ...(defaultMember?.materialId !== undefined ? { materialId: defaultMember.materialId } : {}),
-            ...(defaultMember?.materialOrigin !== undefined ? { materialOrigin: defaultMember.materialOrigin } : {}),
-            ...(defaultMember?.sectionId !== undefined ? { sectionId: defaultMember.sectionId } : {}),
-            ...(defaultMember?.sectionOrigin !== undefined ? { sectionOrigin: defaultMember.sectionOrigin } : {}),
-            orientation: {
-              localYReferenceGlobal: refVec,
-              rollRadians: 0,
-            },
-          },
-        }).ok;
+        const member = buildConnectingMember(project, fromNode, toNode);
+        const newMemberId = member.id;
+        const ok = execute({ kind: 'add-member', member }).ok;
         if (ok) {
           setConnectingFromNodeId(null);
           select({ kind: 'member', id: newMemberId });
