@@ -26,7 +26,7 @@ it('renders generative modal with archetype controls and emits generated project
   expect(screen.getByText('Pórtico 3D')).toBeDefined();
   expect(screen.getByText('Celosía 3D')).toBeDefined();
   expect(screen.getByText('Torre 3D')).toBeDefined();
-  expect(screen.getByText('Cúpula 3D')).toBeDefined();
+  expect(screen.getByText(/cúpula reticular 3d/i)).toBeDefined();
   expect(screen.getByText('Puente 3D')).toBeDefined();
   expect(screen.getByText('Nave Ind.')).toBeDefined();
 
