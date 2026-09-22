@@ -15,6 +15,7 @@ import {
 } from '../model/types';
 import { fixedSpace3DRestraints, freeSpace3DRestraints } from '../model/types';
 import { validateSpace3DProject } from '../model/validation';
+import { assessAnalysisAdmission, createAutomaticAnalysisBudget, estimateSparseLinearSystemBytes } from '../../../../numeric/admission';
 
 const buildProjectSkeleton = (
   id: string,
@@ -149,6 +150,35 @@ const DEFAULT_IY = 4.5e-5;     // m⁴
 const DEFAULT_IZ = 1.36e-4;    // m⁴
 const DEFAULT_J = 4e-7;        // m⁴
 
+const GENERATOR_ANALYSIS_BUDGET = createAutomaticAnalysisBudget();
+
+const finiteGeneratorValue = (value: number, label: string): number => {
+  if (!Number.isFinite(value)) throw new RangeError(`${label} debe ser un número finito`);
+  return value;
+};
+
+const assertGenerationCapacity = (nodeCount: number, memberCount: number): void => {
+  if (!Number.isSafeInteger(nodeCount) || !Number.isSafeInteger(memberCount) || nodeCount <= 0 || memberCount < 0) {
+    throw new RangeError('La geometría solicitada excede el rango seguro del generador');
+  }
+  const dimension = nodeCount * 6;
+  const nonZeros = memberCount * 144 + nodeCount * 36;
+  const estimatedBytes = estimateSparseLinearSystemBytes({ dimension, nonZeros, rhsCount: 1 });
+  const admission = assessAnalysisAdmission(estimatedBytes, GENERATOR_ANALYSIS_BUDGET);
+  if (!admission.accepted) {
+    throw new RangeError(`La geometría solicitada excede el presupuesto de análisis seguro (${nodeCount} nudos, ${memberCount} barras)`);
+  }
+};
+
+const validateGeneratedProject = (project: Space3DProjectV1): Space3DProjectV1 => {
+  const issues = validateSpace3DProject(project);
+  if (issues.length > 0) {
+    const first = issues[0];
+    throw new Error(`Proyecto generado inválido: ${first.entityKind}:${first.entityId}:${first.code}:${first.field}`);
+  }
+  return project;
+};
+
 const pinnedRestraints = (): Space3DRestraints => ({
   ux: true, uy: true, uz: true, rx: false, ry: false, rz: false,
 });
@@ -157,12 +187,17 @@ const pinnedRestraints = (): Space3DRestraints => ({
  * Genera un pórtico tridimensional regular (edificio espacial) de múltiples vanos y niveles.
  */
 export function generateSpace3DFrame(options: Space3DFrameGeneratorOptions): Space3DProjectV1 {
-  const baysX = Math.max(1, Math.round(options.baysX));
-  const baysZ = Math.max(1, Math.round(options.baysZ));
-  const storiesY = Math.max(1, Math.round(options.storiesY));
-  const widthX = Math.max(0.5, options.bayWidthX);
-  const heightY = Math.max(0.5, options.storyHeightY);
-  const depthZ = Math.max(0.5, options.bayDepthZ);
+  const baysX = Math.max(1, Math.round(finiteGeneratorValue(options.baysX, 'baysX')));
+  const baysZ = Math.max(1, Math.round(finiteGeneratorValue(options.baysZ, 'baysZ')));
+  const storiesY = Math.max(1, Math.round(finiteGeneratorValue(options.storiesY, 'storiesY')));
+  const widthX = Math.max(0.5, finiteGeneratorValue(options.bayWidthX, 'bayWidthX'));
+  const heightY = Math.max(0.5, finiteGeneratorValue(options.storyHeightY, 'storyHeightY'));
+  const depthZ = Math.max(0.5, finiteGeneratorValue(options.bayDepthZ, 'bayDepthZ'));
+  const nodeCount = (baysX + 1) * (storiesY + 1) * (baysZ + 1);
+  const memberCount = storiesY * (baysX + 1) * (baysZ + 1)
+    + storiesY * baysX * (baysZ + 1)
+    + storiesY * baysZ * (baysX + 1);
+  assertGenerationCapacity(nodeCount, memberCount);
 
   const E = options.E ?? DEFAULT_E;
   const G = options.G ?? DEFAULT_G;
@@ -277,19 +312,19 @@ export function generateSpace3DFrame(options: Space3DFrameGeneratorOptions): Spa
     loads,
   );
 
-  validateSpace3DProject(project);
-  return project;
+  return validateGeneratedProject(project);
 }
 
 /**
  * Genera una cercha espacial tridimensional (Space Truss tipo Warren o Pratt).
  */
 export function generateSpace3DTruss(options: Space3DTrussGeneratorOptions): Space3DProjectV1 {
-  const panels = Math.max(2, Math.round(options.panels));
-  const span = Math.max(1, options.spanX);
-  const height = Math.max(0.5, options.heightY);
-  const width = Math.max(0.5, options.widthZ);
+  const panels = Math.max(2, Math.round(finiteGeneratorValue(options.panels, 'panels')));
+  const span = Math.max(1, finiteGeneratorValue(options.spanX, 'spanX'));
+  const height = Math.max(0.5, finiteGeneratorValue(options.heightY, 'heightY'));
+  const width = Math.max(0.5, finiteGeneratorValue(options.widthZ, 'widthZ'));
   const panelLength = span / panels;
+  assertGenerationCapacity(4 * (panels + 1), 13 * panels + 5);
 
   const E = options.E ?? DEFAULT_E;
   const G = DEFAULT_G;
@@ -407,18 +442,18 @@ export function generateSpace3DTruss(options: Space3DTrussGeneratorOptions): Spa
     loads,
   );
 
-  validateSpace3DProject(project);
-  return project;
+  return validateGeneratedProject(project);
 }
 
 /**
  * Genera una torre de celosía 3D piramidal/cónica (como torre de transmisión o soporte).
  */
 export function generateSpace3DTower(options: Space3DTowerGeneratorOptions): Space3DProjectV1 {
-  const tiers = Math.max(2, Math.round(options.tiers));
-  const height = Math.max(2, options.totalHeight);
-  const baseW = Math.max(1, options.baseWidth);
-  const topW = Math.max(0.5, options.topWidth);
+  const tiers = Math.max(2, Math.round(finiteGeneratorValue(options.tiers, 'tiers')));
+  const height = Math.max(2, finiteGeneratorValue(options.totalHeight, 'totalHeight'));
+  const baseW = Math.max(1, finiteGeneratorValue(options.baseWidth, 'baseWidth'));
+  const topW = Math.max(0.5, finiteGeneratorValue(options.topWidth, 'topWidth'));
+  assertGenerationCapacity(4 * (tiers + 1), 16 * tiers);
 
   const tierHeight = height / tiers;
   const nodes: Space3DNode[] = [];
@@ -516,18 +551,18 @@ export function generateSpace3DTower(options: Space3DTowerGeneratorOptions): Spa
     loads,
   );
 
-  validateSpace3DProject(project);
-  return project;
+  return validateGeneratedProject(project);
 }
 
 /**
  * Genera una cúpula / domo espacial reticular (Ribbed Dome).
  */
 export function generateSpace3DDome(options: Space3DDomeGeneratorOptions): Space3DProjectV1 {
-  const sectors = Math.max(4, Math.round(options.sectors));
-  const rings = Math.max(2, Math.round(options.rings));
-  const radius = Math.max(1, options.radius);
-  const height = Math.max(0.5, options.height);
+  const sectors = Math.max(4, Math.round(finiteGeneratorValue(options.sectors, 'sectors')));
+  const rings = Math.max(2, Math.round(finiteGeneratorValue(options.rings, 'rings')));
+  const radius = Math.max(1, finiteGeneratorValue(options.radius, 'radius'));
+  const height = Math.max(0.5, finiteGeneratorValue(options.height, 'height'));
+  assertGenerationCapacity(1 + sectors * rings, sectors * (3 * rings - 1));
 
   const nodes: Space3DNode[] = [];
   const members: Space3DFrameMember[] = [];
@@ -637,8 +672,7 @@ export function generateSpace3DDome(options: Space3DDomeGeneratorOptions): Space
     loads,
   );
 
-  validateSpace3DProject(project);
-  return project;
+  return validateGeneratedProject(project);
 }
 
 // ============================================================================
@@ -667,12 +701,13 @@ export interface Space3DBridgeGeneratorOptions {
 }
 
 export function generateSpace3DBridge(options: Space3DBridgeGeneratorOptions): Space3DProjectV1 {
-  const spanX = Math.max(6, options.spanX);
-  const widthZ = Math.max(2, options.widthZ);
-  const heightY = Math.max(1.5, options.heightY);
-  const panels = Math.max(2, Math.floor(options.panels));
+  const spanX = Math.max(6, finiteGeneratorValue(options.spanX, 'spanX'));
+  const widthZ = Math.max(2, finiteGeneratorValue(options.widthZ, 'widthZ'));
+  const heightY = Math.max(1.5, finiteGeneratorValue(options.heightY, 'heightY'));
+  const panels = Math.max(2, Math.floor(finiteGeneratorValue(options.panels, 'panels')));
   const dx = spanX / panels;
   const halfW = widthZ / 2;
+  assertGenerationCapacity(4 * (panels + 1), 13 * panels + 4);
 
   const DEFAULT_E = options.E ?? 200_000_000;
   const DEFAULT_G = options.G ?? 77_000_000;
@@ -789,8 +824,7 @@ export function generateSpace3DBridge(options: Space3DBridgeGeneratorOptions): S
     loads,
   );
 
-  validateSpace3DProject(project);
-  return project;
+  return validateGeneratedProject(project);
 }
 
 // ============================================================================
@@ -825,12 +859,14 @@ export interface Space3DIndustrialShedOptions {
 }
 
 export function generateSpace3DIndustrialShed(options: Space3DIndustrialShedOptions): Space3DProjectV1 {
-  const spanX = Math.max(6, options.spanX);
-  const eaveHeightY = Math.max(3, options.eaveHeightY);
-  const ridgeHeightY = Math.max(eaveHeightY + 0.5, options.ridgeHeightY);
-  const baysZ = Math.max(1, Math.floor(options.baysZ));
-  const baySpacingZ = Math.max(3, options.baySpacingZ);
+  const spanX = Math.max(6, finiteGeneratorValue(options.spanX, 'spanX'));
+  const eaveHeightY = Math.max(3, finiteGeneratorValue(options.eaveHeightY, 'eaveHeightY'));
+  const ridgeHeightY = Math.max(eaveHeightY + 0.5, finiteGeneratorValue(options.ridgeHeightY, 'ridgeHeightY'));
+  const baysZ = Math.max(1, Math.floor(finiteGeneratorValue(options.baysZ, 'baysZ')));
+  const baySpacingZ = Math.max(3, finiteGeneratorValue(options.baySpacingZ, 'baySpacingZ'));
   const baseSupport = options.baseSupport ?? 'fixed';
+  const bracedBayCount = baysZ === 1 ? 1 : 2;
+  assertGenerationCapacity(5 * (baysZ + 1), 4 * (baysZ + 1) + 3 * baysZ + 8 * bracedBayCount);
 
   const DEFAULT_E = options.E ?? 200_000_000;
   const DEFAULT_G = options.G ?? 77_000_000;
@@ -956,8 +992,7 @@ export function generateSpace3DIndustrialShed(options: Space3DIndustrialShedOpti
     loads,
   );
 
-  validateSpace3DProject(project);
-  return project;
+  return validateGeneratedProject(project);
 }
 
 // ============================================================================
