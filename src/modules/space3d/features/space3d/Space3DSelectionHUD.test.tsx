@@ -65,3 +65,31 @@ it('renders member details and triggers delete callback in HUD', async () => {
   await user.click(screen.getByRole('button', { name: /eliminar/i }));
   expect(onDelete).toHaveBeenCalledTimes(1);
 });
+
+it('does not label an arbitrary three-DOF restraint as pinned', () => {
+  const base = generateSpace3DFrame({
+    baysX: 1, bayWidthX: 4, storiesY: 1, storyHeightY: 3, baysZ: 1, bayDepthZ: 4, baseSupport: 'fixed',
+  });
+  const node = base.nodes[0];
+  const project = {
+    ...base,
+    nodes: base.nodes.map((item) => item.id === node.id
+      ? { ...item, restraints: { ux: true, uy: false, uz: false, rx: true, ry: true, rz: false } }
+      : item),
+  };
+
+  render(
+    <Space3DSelectionHUD
+      selection={{ kind: 'node', id: node.id }}
+      project={project}
+      analysis={null}
+      onDeselect={vi.fn()}
+      onOpenEditor={vi.fn()}
+      onDelete={vi.fn()}
+      t={(key, vars) => translate('es', key, vars)}
+    />,
+  );
+
+  expect(screen.queryByText(translate('es', 'space3d.supportPinned'))).toBeNull();
+  expect(screen.getByText('ux · rx · ry')).toBeDefined();
+});
