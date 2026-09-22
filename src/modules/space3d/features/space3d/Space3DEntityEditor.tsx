@@ -417,15 +417,15 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
       </div>
 
       <details className="space3d-fieldset" style={{ padding: '8px' }}>
-        <summary style={{ fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>Calculadora geométrica de sección (b × h / circular)</summary>
+        <summary style={{ fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>{t('space3d.sectionCalculatorTitle')}</summary>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'end' }}>
             <div className="space3d-field">
-              <label className="space3d-field-label" htmlFor="calc-b">Rectangular b (m)</label>
+              <label className="space3d-field-label" htmlFor="calc-b">{t('space3d.sectionRectB')}</label>
               <input id="calc-b" type="number" step="0.05" value={calcB} onChange={(e) => setCalcB(e.target.value)} />
             </div>
             <div className="space3d-field">
-              <label className="space3d-field-label" htmlFor="calc-h">h (m)</label>
+              <label className="space3d-field-label" htmlFor="calc-h">{t('space3d.sectionRectH')}</label>
               <input id="calc-h" type="number" step="0.05" value={calcH} onChange={(e) => setCalcH(e.target.value)} />
             </div>
             <button
@@ -435,7 +435,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                 const b = numeric(calcB);
                 const h = numeric(calcH);
                 if (b === null || h === null || b <= 0 || h <= 0) {
-                  setErrors((current) => ({ ...current, sectionCalculator: 'b y h deben ser números finitos mayores que cero.' }));
+                  setErrors((current) => ({ ...current, sectionCalculator: t('space3d.sectionCalculatorRectError') }));
                   return;
                 }
                 setErrors((current) => {
@@ -443,6 +443,8 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                   return rest;
                 });
                 const res = calculateRectangularSection(b, h);
+                setSelectedSectionId('');
+                setMemberMetadata((current) => ({ ...current, sectionId: undefined, sectionOrigin: 'custom' }));
                 setDraft((curr) => ({
                   ...curr,
                   A: String(res.A),
@@ -452,13 +454,13 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                 }));
               }}
             >
-              Aplicar Rect.
+              {t('space3d.sectionApplyRect')}
             </button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', alignItems: 'end' }}>
             <div className="space3d-field">
-              <label className="space3d-field-label" htmlFor="calc-dia">Circular Ø (m)</label>
+              <label className="space3d-field-label" htmlFor="calc-dia">{t('space3d.sectionCircularDiameter')}</label>
               <input id="calc-dia" type="number" step="0.05" value={calcDia} onChange={(e) => setCalcDia(e.target.value)} />
             </div>
             <button
@@ -467,7 +469,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
               onClick={() => {
                 const d = numeric(calcDia);
                 if (d === null || d <= 0) {
-                  setErrors((current) => ({ ...current, sectionCalculator: 'El diámetro debe ser un número finito mayor que cero.' }));
+                  setErrors((current) => ({ ...current, sectionCalculator: t('space3d.sectionCalculatorCircleError') }));
                   return;
                 }
                 setErrors((current) => {
@@ -475,6 +477,8 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                   return rest;
                 });
                 const res = calculateCircularSection(d);
+                setSelectedSectionId('');
+                setMemberMetadata((current) => ({ ...current, sectionId: undefined, sectionOrigin: 'custom' }));
                 setDraft((curr) => ({
                   ...curr,
                   A: String(res.A),
@@ -484,7 +488,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                 }));
               }}
             >
-              Aplicar Circular
+              {t('space3d.sectionApplyCircular')}
             </button>
           </div>
         </div>
