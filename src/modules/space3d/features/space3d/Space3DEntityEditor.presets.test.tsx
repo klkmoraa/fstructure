@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, expect, it, vi } from 'vitest';
 import { translate } from '../../i18n/catalogs';
+import type { Space3DCommand } from '../../space3d/data/commands';
 import { generateSpace3DFrame } from '../../space3d/engine/space3dGenerative';
 import { Space3DEntityEditor } from './Space3DEntityEditor';
 
@@ -12,7 +13,7 @@ const renderMemberEditor = () => {
   const project = generateSpace3DFrame({
     baysX: 1, bayWidthX: 4, storiesY: 1, storyHeightY: 3, baysZ: 1, bayDepthZ: 4,
   });
-  const onSubmit = vi.fn(() => true);
+  const onSubmit = vi.fn((_command: Space3DCommand) => true);
   render(
     <Space3DEntityEditor
       project={project}
@@ -37,7 +38,7 @@ it('keeps a selected catalog section visible and persists its provenance', async
   expect(material.value).toBe('steel-a36');
 
   await user.click(screen.getByRole('button', { name: /guardar barra/i }));
-  const command = onSubmit.mock.calls[0][0];
+  const command = onSubmit.mock.calls[0]![0];
   expect(command.kind).toBe('update-member');
   expect(command.changes.sectionId).toBe('IPE 300');
   expect(command.changes.sectionOrigin).toBe('catalog');
@@ -57,7 +58,7 @@ it('clears catalog section identity after applying custom geometry', async () =>
   expect(section.value).toBe('');
 
   await user.click(screen.getByRole('button', { name: /guardar barra/i }));
-  const command = onSubmit.mock.calls[0][0];
+  const command = onSubmit.mock.calls[0]![0];
   expect(command.changes.sectionId).toBeUndefined();
   expect(command.changes.sectionOrigin).toBe('custom');
   expect(command.changes.materialId).toBe('steel-a36');
