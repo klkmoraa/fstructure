@@ -71,3 +71,25 @@ it('interprets natural language prompt and switches archetype', async () => {
     expect(towerTab.getAttribute('aria-pressed')).toBe('true');
   });
 });
+
+it('keeps unsupported truss disabled and ignores unrecognized prompts', async () => {
+  const user = userEvent.setup();
+  render(
+    <Space3DGenerativeModal
+      open={true}
+      onClose={vi.fn()}
+      onApply={vi.fn()}
+      t={(key, vars) => translate('es', key, vars)}
+    />,
+  );
+
+  const truss = screen.getByRole('button', { name: /celosía 3d/i }) as HTMLButtonElement;
+  expect(truss.disabled).toBe(true);
+
+  const prompt = screen.getByPlaceholderText(/describe tu estructura/i);
+  await user.type(prompt, 'algo de 5 metros');
+  await user.keyboard('{Enter}');
+
+  expect(screen.getByRole('status').textContent).toMatch(/no se reconoció/i);
+  expect(screen.getByRole('button', { name: /pórtico 3d/i }).getAttribute('aria-pressed')).toBe('true');
+});
