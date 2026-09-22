@@ -98,11 +98,14 @@ export const Space3DConsoleTools = ({
         type="button"
         className="space3d-rail-button space3d-rail-button--generative"
         onClick={onOpenGenerative}
-        title={t('space3d.generatorTitle' as TranslationKey) || 'Generador 3D'}
-        aria-label={t('space3d.generatorTitle' as TranslationKey) || 'Generador 3D'}
+        // WCAG 2.5.3: el nombre accesible debe contener el texto visible, o quien
+        // dicta "pulsa Generar 3D" con control por voz no activa el botón. La
+        // descripción larga queda en `title`, que se expone como descripción.
+        aria-label={t('space3d.generatorShort')}
+        title={t('space3d.generatorTitle')}
       >
         <Sparkles size={19} aria-hidden="true" />
-        <span aria-hidden="true">{t('space3d.generatorShort' as TranslationKey) || 'Generar'}</span>
+        <span aria-hidden="true">{t('space3d.generatorShort')}</span>
       </button>
     ) : null}
     <button
