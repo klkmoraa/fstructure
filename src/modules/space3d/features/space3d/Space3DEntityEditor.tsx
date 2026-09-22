@@ -25,7 +25,7 @@ import type { TranslationKey } from '../../i18n/catalogs';
 export type Space3DEditorTarget =
   | { readonly kind: 'node'; readonly id: string | null }
   | { readonly kind: 'member'; readonly id: string | null }
-  | { readonly kind: 'load'; readonly id: string | null };
+  | { readonly kind: 'load'; readonly id: string | null; readonly initialNodeId?: string };
 
 export interface Space3DEntityEditorProps {
   readonly project: Space3DProjectV1;
@@ -101,7 +101,8 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
   const [restraints, setRestraints] = useState<Space3DRestraints>(node?.restraints ?? freeSpace3DRestraints());
   const [endI, setEndI] = useState(member?.i ?? project.nodes[0]?.id ?? '');
   const [endJ, setEndJ] = useState(member?.j ?? project.nodes[1]?.id ?? '');
-  const [loadNodeId, setLoadNodeId] = useState(load?.nodeId ?? project.nodes[0]?.id ?? '');
+  const initialLoadNodeId = load?.nodeId ?? (target.kind === 'load' ? target.initialNodeId : undefined) ?? project.nodes[0]?.id ?? '';
+  const [loadNodeId, setLoadNodeId] = useState(initialLoadNodeId);
   const [loadCaseId, setLoadCaseId] = useState(load?.caseId ?? project.loadCases[0]?.id ?? '');
   const [catalogCategory, setCatalogCategory] = useState<'all' | 'steel' | 'concrete' | 'timber' | 'aluminum'>('all');
   const [calcB, setCalcB] = useState('0.30');
@@ -111,13 +112,13 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
 
   const availableSections = useMemo(() => getSectionsByCategory(catalogCategory), [catalogCategory]);
 
-  const key = `${target.kind}:${target.id ?? 'new'}`;
+  const key = `${target.kind}:${target.id ?? 'new'}:${target.kind === 'load' ? target.initialNodeId ?? '' : ''}`;
   useEffect(() => {
     setDraft(initialDraft);
     setRestraints(node?.restraints ?? freeSpace3DRestraints());
     setEndI(member?.i ?? project.nodes[0]?.id ?? '');
     setEndJ(member?.j ?? project.nodes[1]?.id ?? '');
-    setLoadNodeId(load?.nodeId ?? project.nodes[0]?.id ?? '');
+    setLoadNodeId(initialLoadNodeId);
     setLoadCaseId(load?.caseId ?? project.loadCases[0]?.id ?? '');
     setErrors({});
     // Un cambio de entidad recarga el borrador entero; el resto de dependencias
