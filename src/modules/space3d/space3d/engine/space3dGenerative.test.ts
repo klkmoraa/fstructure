@@ -127,6 +127,39 @@ describe('space3dGenerative', () => {
     expect(result.issues).toHaveLength(0);
   });
 
+  it('rejects pathological generated shapes before allocating model arrays', () => {
+    expect(() => generateSpace3DFrame({
+      baysX: 100_000_000,
+      bayWidthX: 4,
+      storiesY: 2,
+      storyHeightY: 3,
+      baysZ: 2,
+      bayDepthZ: 4,
+    })).toThrow(/presupuesto|rango seguro/i);
+  });
+
+  it('rejects non-finite generator parameters', () => {
+    expect(() => generateSpace3DFrame({
+      baysX: Number.POSITIVE_INFINITY,
+      bayWidthX: 4,
+      storiesY: 1,
+      storyHeightY: 3,
+      baysZ: 1,
+      bayDepthZ: 4,
+    })).toThrow(/finito/i);
+  });
+
+  it('fails closed when generated coordinates violate the model contract', () => {
+    expect(() => generateSpace3DFrame({
+      baysX: 1,
+      bayWidthX: 2_000_000_000,
+      storiesY: 1,
+      storyHeightY: 3,
+      baysZ: 1,
+      bayDepthZ: 4,
+    })).toThrow(/proyecto generado inválido/i);
+  });
+
   describe('parseNaturalLanguageStructuralPrompt', () => {
     it('parses building frame prompts', () => {
       const parsed = parseNaturalLanguageStructuralPrompt('Edificio de 3 pisos con 2 vanos y carga de 25 kN');
