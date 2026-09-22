@@ -194,10 +194,10 @@ export function generateSpace3DFrame(options: Space3DFrameGeneratorOptions): Spa
   const heightY = Math.max(0.5, finiteGeneratorValue(options.storyHeightY, 'storyHeightY'));
   const depthZ = Math.max(0.5, finiteGeneratorValue(options.bayDepthZ, 'bayDepthZ'));
   const nodeCount = (baysX + 1) * (storiesY + 1) * (baysZ + 1);
-  const memberCount = storiesY * (baysX + 1) * (baysZ + 1)
+  const estimatedMemberCount = storiesY * (baysX + 1) * (baysZ + 1)
     + storiesY * baysX * (baysZ + 1)
     + storiesY * baysZ * (baysX + 1);
-  assertGenerationCapacity(nodeCount, memberCount);
+  assertGenerationCapacity(nodeCount, estimatedMemberCount);
 
   const E = options.E ?? DEFAULT_E;
   const G = options.G ?? DEFAULT_G;
