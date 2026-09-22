@@ -12,6 +12,7 @@
 import { buildMemberOrientation } from '../engine/orientation';
 import { resolveSpace3DTarget } from '../engine/solver';
 import { Space3DGeometryError, type Space3DAnalysisResult, type Space3DOrientationBasis, type Space3DProjectV1, type Space3DVector } from '../model/types';
+import { deriveSpace3DMemberAxialAction } from './resultSemantics';
 import type { Space3DAnalysisState, Space3DSelection } from '../store/Space3DProjectContext';
 
 export type Space3DResultMode = 'model' | 'deformed' | 'axial' | 'shear' | 'moment' | 'reactions';
@@ -161,8 +162,9 @@ export const buildSpace3DSceneModel = (input: Space3DSceneInput): Space3DSceneMo
   const resultKind = resultMode === 'axial' || resultMode === 'shear' || resultMode === 'moment' ? resultMode : null;
   const resultIsCurrent = analysisState === 'ready' && analysis?.success === true;
   const rawMemberResults = new Map((resultIsCurrent && resultKind ? analysis.memberResults : []).map((item) => {
+    const axialAction = deriveSpace3DMemberAxialAction(item);
     const values = resultKind === 'axial'
-      ? [item.start.N, item.end.N]
+      ? [axialAction, axialAction]
       : resultKind === 'shear'
         ? [Math.hypot(item.start.Vy, item.start.Vz), Math.hypot(item.end.Vy, item.end.Vz)]
         : [Math.hypot(item.start.My, item.start.Mz), Math.hypot(item.end.My, item.end.Mz)];
