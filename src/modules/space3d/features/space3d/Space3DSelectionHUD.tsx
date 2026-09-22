@@ -60,7 +60,7 @@ export const Space3DSelectionHUD = ({
     const nodeResult = analysis?.nodeResults.find((item) => item.nodeId === node.id);
 
     return (
-      <div className="space3d-hud-card" role="region" aria-label={`Nudo ${node.id}`}>
+      <div className="space3d-hud-card" role="region" aria-label={`${t('space3d.node')} ${node.id}`}>
         <div className="space3d-hud-header">
           <div className="space3d-hud-title-group">
             <span className="space3d-hud-badge space3d-hud-badge--node">N</span>
@@ -86,12 +86,12 @@ export const Space3DSelectionHUD = ({
         {nodeResult && (
           <div className="space3d-hud-results">
             <div className="space3d-hud-result-item">
-              <span>uy (flecha):</span>
+              <span>{t('space3d.hudDeflectionY')}:</span>
               <strong>{num(nodeResult.displacement.uy * 1000)} mm</strong>
             </div>
             {restraintCount > 0 && (
               <div className="space3d-hud-result-item">
-                <span>Ry (reacción):</span>
+                <span>{t('space3d.hudReactionY')}:</span>
                 <strong>{num(nodeResult.reaction.uy)} kN</strong>
               </div>
             )}
@@ -104,10 +104,10 @@ export const Space3DSelectionHUD = ({
               type="button"
               className="space3d-hud-action-btn space3d-hud-action-btn--primary"
               onClick={() => onStartConnectMember(node.id)}
-              title="Conectar con otro nudo para crear barra"
+              title={t('space3d.hudConnectMemberTitle')}
             >
               <Spline size={14} aria-hidden="true" />
-              <span>Conectar barra</span>
+              <span>{t('space3d.hudConnectMember')}</span>
             </button>
           )}
           {onAddLoadToNode && (
@@ -115,10 +115,10 @@ export const Space3DSelectionHUD = ({
               type="button"
               className="space3d-hud-action-btn"
               onClick={() => onAddLoadToNode(node.id)}
-              title="Añadir carga en este nudo"
+              title={t('space3d.hudAddLoadTitle')}
             >
               <Weight size={14} aria-hidden="true" />
-              <span>Carga</span>
+              <span>{t('space3d.hudAddLoad')}</span>
             </button>
           )}
           <button
@@ -128,7 +128,7 @@ export const Space3DSelectionHUD = ({
             title={t('space3d.saveNode')}
           >
             <Edit3 size={14} aria-hidden="true" />
-            <span>Editar</span>
+            <span>{t('space3d.hudEdit')}</span>
           </button>
           <button
             type="button"
@@ -159,7 +159,7 @@ export const Space3DSelectionHUD = ({
     const momentMagnitude = memberResult ? deriveSpace3DMemberMomentMagnitude(memberResult) : null;
 
     return (
-      <div className="space3d-hud-card" role="region" aria-label={`Barra ${member.id}`}>
+      <div className="space3d-hud-card" role="region" aria-label={`${t('space3d.member')} ${member.id}`}>
         <div className="space3d-hud-header">
           <div className="space3d-hud-title-group">
             <span className="space3d-hud-badge space3d-hud-badge--member">M</span>
@@ -184,17 +184,17 @@ export const Space3DSelectionHUD = ({
         {memberResult && (
           <div className="space3d-hud-results space3d-hud-results--member">
             <div className="space3d-hud-result-item">
-              <span>Axial N:</span>
+              <span>{t('space3d.hudAxial')}:</span>
               <strong className={(axialAction ?? 0) >= 0 ? 'space3d-val-tension' : 'space3d-val-compression'}>
                 {num(axialAction ?? 0)} kN
               </strong>
             </div>
             <div className="space3d-hud-result-item">
-              <span>Momento |M|:</span>
+              <span>{t('space3d.hudMomentMagnitude')}:</span>
               <strong>{num(momentMagnitude ?? 0)} kN·m</strong>
             </div>
             <div className="space3d-hud-result-item">
-              <span>Cortante |V|:</span>
+              <span>{t('space3d.hudShearMagnitude')}:</span>
               <strong>{num(shearMagnitude ?? 0)} kN</strong>
             </div>
           </div>
@@ -207,7 +207,7 @@ export const Space3DSelectionHUD = ({
             onClick={onOpenEditor}
           >
             <Edit3 size={14} aria-hidden="true" />
-            <span>Editar sección</span>
+            <span>{t('space3d.hudEditSection')}</span>
           </button>
           <button
             type="button"
@@ -227,7 +227,7 @@ export const Space3DSelectionHUD = ({
   if (!load) return null;
 
   return (
-    <div className="space3d-hud-card" role="region" aria-label={`Carga ${load.id}`}>
+    <div className="space3d-hud-card" role="region" aria-label={`${t('space3d.load')} ${load.id}`}>
       <div className="space3d-hud-header">
         <div className="space3d-hud-title-group">
           <span className="space3d-hud-badge space3d-hud-badge--load">L</span>
@@ -257,7 +257,7 @@ export const Space3DSelectionHUD = ({
           onClick={onOpenEditor}
         >
           <Edit3 size={14} aria-hidden="true" />
-          <span>Editar carga</span>
+          <span>{t('space3d.hudEditLoad')}</span>
         </button>
         <button
           type="button"
