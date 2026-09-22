@@ -189,5 +189,34 @@ describe('space3dGenerative', () => {
       expect(parsed.archetype).toBe('industrial-shed');
       expect(parsed.params.span).toBe(16);
     });
+
+    it('separates bridge span from deck width', () => {
+      const parsed = parseNaturalLanguageStructuralPrompt('Puente espacial de 30m de luz y 4m de ancho');
+      expect(parsed.params.span).toBe(30);
+      expect(parsed.params.width).toBe(4);
+    });
+
+    it('parses shed AxB dimensions and decimal commas', () => {
+      const shed = parseNaturalLanguageStructuralPrompt('Nave industrial 12x24m');
+      expect(shed.params.span).toBe(12);
+      expect(shed.params.lengthZ).toBe(24);
+
+      const dome = parseNaturalLanguageStructuralPrompt('Cúpula de 8,5 metros de radio y 4m de altura');
+      expect(dome.params.radius).toBe(8.5);
+    });
+
+    it('treats residential towers as frames and captures bay size', () => {
+      const parsed = parseNaturalLanguageStructuralPrompt('Torre residencial de 6 pisos con 2 vanos de 5m');
+      expect(parsed.archetype).toBe('frame');
+      expect(parsed.params.storiesY).toBe(6);
+      expect(parsed.params.baysX).toBe(2);
+      expect(parsed.params.baySize).toBe(5);
+    });
+
+    it('marks prompts without archetype evidence as unrecognized', () => {
+      const parsed = parseNaturalLanguageStructuralPrompt('algo de 5 metros');
+      expect(parsed.recognized).toBe(false);
+      expect(parsed.confidence).toBeLessThan(0.5);
+    });
   });
 });
