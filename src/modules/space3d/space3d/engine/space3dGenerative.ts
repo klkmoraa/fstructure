@@ -886,12 +886,15 @@ export function generateSpace3DIndustrialShed(options: Space3DIndustrialShedOpti
 }
 
 // ============================================================================
-// Parser de Lenguaje Natural (Generative AI Structural Prompt)
+// Parser determinista de descripción estructural
 // ============================================================================
 
 export interface ParsedStructuralPrompt {
   readonly archetype: 'frame' | 'truss' | 'tower' | 'dome' | 'bridge' | 'industrial-shed';
   readonly params: Record<string, number | string>;
+  /** Hay evidencia textual explícita del arquetipo, no sólo el fallback. */
+  readonly recognized: boolean;
+  /** Heurística de cobertura del parser; no es una probabilidad estadística. */
   readonly confidence: number;
   readonly summary: string;
 }
@@ -901,27 +904,42 @@ export interface ParsedStructuralPrompt {
  * y extrae los parámetros estructurales óptimos para generar la geometría.
  */
 export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedStructuralPrompt {
-  const prompt = rawPrompt.toLowerCase().trim();
+  // El parser es determinista y local. Normalizar coma decimal evita que
+  // "4,5 m" se interprete como 45 o se descarte.
+  const prompt = rawPrompt.toLowerCase().trim().replace(/(\d),(\d)/g, '$1.$2');
 
-  // 1. Detectar Arquetipo
+  // 1. Detectar arquetipo con evidencia explícita.
   let archetype: ParsedStructuralPrompt['archetype'] = 'frame';
+  let recognized = false;
 
-  if (/(puente|bridge|viaducto|viaduct|pasarela)/i.test(prompt)) {
+  if (/(torre residencial|residential tower|edificio|building|portico|pórtico|frame|estructura aporticada)/i.test(prompt)) {
+    archetype = 'frame';
+    recognized = true;
+  } else if (/(puente|bridge|viaducto|viaduct|pasarela)/i.test(prompt)) {
     archetype = 'bridge';
-  } else if (/(nave|galpon|bodega|shed|warehouse|industrial|tinglado)/i.test(prompt)) {
+    recognized = true;
+  } else if (/(nave|galpon|galpón|bodega|shed|warehouse|industrial|tinglado)/i.test(prompt)) {
     archetype = 'industrial-shed';
-  } else if (/(torre|tower|antena|mastil|pilono|transmission)/i.test(prompt)) {
+    recognized = true;
+  } else if (/(torre|tower|antena|mastil|mástil|pilono|pílono|transmission)/i.test(prompt)) {
     archetype = 'tower';
+    recognized = true;
   } else if (/(cupula|cúpula|dome|geodesic|geodésica|boveda|bóveda|esfera)/i.test(prompt)) {
     archetype = 'dome';
+    recognized = true;
   } else if (/(cercha|truss|reticulado|celosia|celosía|armadura)/i.test(prompt)) {
     archetype = 'truss';
-  } else if (/(edificio|building|portico|pórtico|frame|torre residencial|estructura aporticada)/i.test(prompt)) {
-    archetype = 'frame';
+    recognized = true;
   }
 
-  // 2. Extraer parámetros numéricos con expresiones regulares inteligentes
+  // 2. Extraer parámetros numéricos sin inventar dimensiones ausentes.
   const params: Record<string, number | string> = {};
+
+  const dimensionsMatch = prompt.match(/(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)?/i);
+  if (dimensionsMatch && archetype === 'industrial-shed') {
+    params.span = Number(dimensionsMatch[1]);
+    params.lengthZ = Number(dimensionsMatch[2]);
+  }
 
   // Pisos / Niveles / Stories
   const storiesMatch = prompt.match(/(\d+)\s*(?:pisos?|niveles?|stories|floors?|niv)/i);
@@ -942,18 +960,30 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
     || (archetype === 'tower' ? prompt.match(/(?:de|=)?\s*(\d+(?:\.\d+)?)\s*(?:m|metros?)\b/i) : null);
   if (heightMatch) params.height = Number(heightMatch[1]);
 
-  // Longitud / Luz / Span
-  const spanMatch = prompt.match(/(?:luz|span|longitud|length|ancho|width)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i)
-    || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?)\s*(?:de\s+luz|de\s+largo|de\s+longitud|span)/i)
-    || ((archetype === 'bridge' || archetype === 'truss' || archetype === 'industrial-shed') && !params.height ? prompt.match(/(?:de|=)?\s*(\d+(?:\.\d+)?)\s*(?:m|metros?)\b/i) : null);
+  // Longitud / Luz / Span. "ancho/width" se extrae aparte para no confundir
+  // la luz longitudinal de un puente con el ancho de tablero.
+  const spanMatch = prompt.match(/(?:luz|span|longitud|length)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i)
+    || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\s*(?:de\s+luz|de\s+largo|de\s+longitud|span)/i)
+    || ((archetype === 'bridge' || archetype === 'truss' || archetype === 'industrial-shed')
+      && !params.height && !params.span
+      ? prompt.match(/(?:de|=)?\s*(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\b/i)
+      : null);
   if (spanMatch) params.span = Number(spanMatch[1]);
 
-  // Radio / Radius
-  const radiusMatch = prompt.match(/(?:radio|radius|r)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i);
+  const widthMatch = prompt.match(/(?:ancho|width)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i)
+    || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\s*(?:de\s+ancho|wide)/i);
+  if (widthMatch) params.width = Number(widthMatch[1]);
+
+  const baySizeMatch = prompt.match(/\d+\s*(?:vanos?|bays?)\s*(?:de|of)\s*(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)/i);
+  if (baySizeMatch) params.baySize = Number(baySizeMatch[1]);
+
+  // Radio / Radius, en ambos órdenes: "radio 8 m" y "8 m de radio".
+  const radiusMatch = prompt.match(/(?:radio|radius|r)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i)
+    || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\s*(?:de\s+radio|radius)/i);
   if (radiusMatch) params.radius = Number(radiusMatch[1]);
 
   // Carga / Load (kN)
-  const loadMatch = prompt.match(/(?:carga|load|fuerza|peso)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*(?:kn|kilonewtons?)?/i)
+  const loadMatch = prompt.match(/(?:carga|load|fuerza|peso|viento|wind)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*(?:kn|kilonewtons?)?/i)
     || prompt.match(/(\d+(?:\.\d+)?)\s*(?:kn)\b/i);
   if (loadMatch) params.load = Number(loadMatch[1]);
 
@@ -973,10 +1003,16 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
   if (params.radius) summaryParts.push(`Radio: ${params.radius}m`);
   if (params.load) summaryParts.push(`Carga: ${params.load} kN`);
 
+  const evidenceCount = Object.keys(params).length;
+  const confidence = recognized
+    ? (evidenceCount > 0 ? 0.9 : 0.6)
+    : (evidenceCount > 0 ? 0.4 : 0.15);
+
   return {
     archetype,
     params,
-    confidence: Object.keys(params).length > 0 ? 0.95 : 0.7,
+    recognized,
+    confidence,
     summary: summaryParts.join(' · '),
   };
 }
