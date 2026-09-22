@@ -401,18 +401,39 @@ describe('movimiento · la escala del brandbook, con un trabajo por duración', 
     expect(ms('--sc-motion-slow') || ms('--sc-motion-reveal')).toBeLessThanOrEqual(ms('--sc-motion-reveal'));
   });
 
-  it('ninguna hoja declara una duración literal fuera de la escala', () => {
-    const permitidas = new Set(['0', '90', '140', '200', '280', '520', '1400']);
+  it('ninguna hoja declara una duración literal fuera de la escala, ni en ms ni en s', () => {
+    const permitidasMs = new Set([0, 90, 140, 200, 280, 520, 1400]);
     const infractoras: string[] = [];
     for (const hoja of rutas()) {
       if (hoja.endsWith('tokens.css')) continue;
-      // El `(?<![\d.])` deja fuera el interruptor de movimiento reducido
-      // (`0.01ms`, `0.001ms`): eso no es una duración, es un apagado.
-      for (const m of contenido(hoja).matchAll(/(?:transition|animation)(?:-duration)?:[^;]*?(?<![\d.])(\d+)ms/g)) {
-        if (!permitidas.has(m[1])) infractoras.push(`${hoja}: ${m[0].trim()}`);
+      for (const declaracion of contenido(hoja).matchAll(/(?:transition|animation)(?:-duration)?:\s*([^;]+)/g)) {
+        for (const m of declaracion[1].matchAll(/(?<![\d.])(\d*\.?\d+)(ms|s)\b/g)) {
+          const literal = Number(m[1]);
+          const ms = m[2] === 's' ? literal * 1000 : literal;
+          // Los valores sub-milisegundo se usan únicamente para apagar motion
+          // bajo prefers-reduced-motion; no son una séptima duración visual.
+          if (ms > 0 && ms < 1) continue;
+          if (!permitidasMs.has(ms)) infractoras.push(`${hoja}: ${declaracion[0].trim()} → ${m[0]}`);
+        }
       }
     }
     expect(infractoras).toEqual([]);
+  });
+});
+
+describe('tokens · ninguna feature inventa variables --sc-*', () => {
+  it('todo var(--sc-*) usado por CSS existe en design-system/tokens.css', () => {
+    const declarados = new Set(
+      [...tokens.matchAll(/(--sc-[a-z0-9-]+)\s*:/gi)].map((m) => m[1]),
+    );
+    const infractoras = new Set<string>();
+    for (const hoja of rutas()) {
+      if (hoja.endsWith('tokens.css')) continue;
+      for (const m of contenido(hoja).matchAll(/var\((--sc-[a-z0-9-]+)/gi)) {
+        if (!declarados.has(m[1])) infractoras.add(`${hoja}: ${m[1]}`);
+      }
+    }
+    expect([...infractoras].sort()).toEqual([]);
   });
 });
 
