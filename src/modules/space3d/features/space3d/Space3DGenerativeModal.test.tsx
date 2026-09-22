@@ -7,7 +7,7 @@ import { Space3DGenerativeModal } from './Space3DGenerativeModal';
 
 afterEach(cleanup);
 
-it('renders generative modal with archetype tabs and emits generated project on apply', async () => {
+it('renders generative modal with archetype controls and emits generated project on apply', async () => {
   const user = userEvent.setup();
   const onApply = vi.fn();
   const onClose = vi.fn();
@@ -21,7 +21,7 @@ it('renders generative modal with archetype tabs and emits generated project on 
     />,
   );
 
-  // Checks title and archetype tabs
+  // Checks title and archetype controls
   expect(screen.getByText(/generador de estructuras 3d/i)).toBeDefined();
   expect(screen.getByText('Pórtico 3D')).toBeDefined();
   expect(screen.getByText('Celosía 3D')).toBeDefined();
@@ -30,10 +30,10 @@ it('renders generative modal with archetype tabs and emits generated project on 
   expect(screen.getByText('Puente 3D')).toBeDefined();
   expect(screen.getByText('Nave Ind.')).toBeDefined();
 
-  // Switch to Bridge tab
-  const bridgeTab = screen.getByRole('tab', { name: /puente 3d/i });
+  // Switch to Bridge
+  const bridgeTab = screen.getByRole('button', { name: /puente 3d/i });
   await user.click(bridgeTab);
-  expect(bridgeTab.getAttribute('aria-selected')).toBe('true');
+  expect(bridgeTab.getAttribute('aria-pressed')).toBe('true');
 
   // Click apply button
   const applyButton = screen.getByRole('button', { name: /generar estructura/i });
@@ -65,9 +65,9 @@ it('interprets natural language prompt and switches archetype', async () => {
   const towerChip = screen.getByRole('button', { name: /torre antena 18m/i });
   await user.click(towerChip);
 
-  // The tower tab should be active
+  // The tower control should be active
   await waitFor(() => {
-    const towerTab = screen.getByRole('tab', { name: /torre 3d/i });
-    expect(towerTab.getAttribute('aria-selected')).toBe('true');
+    const towerTab = screen.getByRole('button', { name: /torre 3d/i });
+    expect(towerTab.getAttribute('aria-pressed')).toBe('true');
   });
 });
