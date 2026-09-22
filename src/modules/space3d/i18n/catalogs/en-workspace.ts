@@ -602,6 +602,8 @@ export const enWorkspace = {
   'space3d.confirmReplaceBodyExample': 'The current model will be replaced by the space frame example. You can undo it with Undo.',
   'space3d.confirmReplaceTitleBlank': 'Empty the project?',
   'space3d.confirmReplaceBodyBlank': 'The current model will be replaced by an empty project. You can undo it with Undo.',
+  'space3d.confirmReplaceTitleGenerated': 'Replace with the generated structure?',
+  'space3d.confirmReplaceBodyGenerated': 'The current model will be replaced by the generated structure. You can undo it with Undo.',
   'space3d.confirmReplaceCancel': 'Cancel',
   'space3d.confirmReplaceConfirm': 'Replace',
   'space3d.toolSelect': 'Select',
