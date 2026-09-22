@@ -320,133 +320,14 @@ export function generateSpace3DFrame(options: Space3DFrameGeneratorOptions): Spa
 }
 
 /**
- * Genera una cercha espacial tridimensional (Space Truss tipo Warren o Pratt).
+ * El dominio persiste miembros `truss`, pero el solver actual rechaza esa
+ * familia porque todavía no implementa su ensamblaje axial. No se sustituye
+ * silenciosamente por frames: hacerlo cambiaría el problema físico analizado.
  */
-export function generateSpace3DTruss(options: Space3DTrussGeneratorOptions): Space3DProjectV1 {
-  const panels = Math.max(2, Math.round(finiteGeneratorValue(options.panels, 'panels')));
-  const span = Math.max(1, finiteGeneratorValue(options.spanX, 'spanX'));
-  const height = Math.max(0.5, finiteGeneratorValue(options.heightY, 'heightY'));
-  const width = Math.max(0.5, finiteGeneratorValue(options.widthZ, 'widthZ'));
-  const panelLength = span / panels;
-  assertGenerationCapacity(4 * (panels + 1), 13 * panels + 5);
-
-  const E = options.E ?? DEFAULT_E;
-  const G = DEFAULT_G;
-  const A = options.A ?? DEFAULT_A;
-  const Iy = DEFAULT_IY;
-  const Iz = DEFAULT_IZ;
-  const J = DEFAULT_J;
-
-  const nodes: Space3DNode[] = [];
-  const members: Space3DFrameMember[] = [];
-  let memberCount = 1;
-
-  // Nudos cordón inferior (y = 0) a lo largo de z = 0 y z = width
-  for (let p = 0; p <= panels; p += 1) {
-    const x = p * panelLength;
-    // Apoyo en extremos: nudo 0 fijo/articulado, nudo final móvil en X
-    const isSupportLeft = p === 0;
-    const isSupportRight = p === panels;
-    const restraintsZ0: Space3DRestraints = isSupportLeft
-      ? { ux: true, uy: true, uz: true, rx: false, ry: false, rz: false }
-      : isSupportRight
-        ? { ux: false, uy: true, uz: true, rx: false, ry: false, rz: false }
-        : freeSpace3DRestraints();
-
-    const restraintsZ1: Space3DRestraints = isSupportLeft
-      ? { ux: true, uy: true, uz: true, rx: false, ry: false, rz: false }
-      : isSupportRight
-        ? { ux: false, uy: true, uz: true, rx: false, ry: false, rz: false }
-        : freeSpace3DRestraints();
-
-    nodes.push({ id: `BOT_A_${p}`, x, y: 0, z: 0, restraints: restraintsZ0 });
-    nodes.push({ id: `BOT_B_${p}`, x, y: 0, z: width, restraints: restraintsZ1 });
-  }
-
-  // Nudos cordón superior (y = height) a lo largo de z = 0 y z = width
-  for (let p = 0; p <= panels; p += 1) {
-    const x = p * panelLength;
-    nodes.push({ id: `TOP_A_${p}`, x, y: height, z: 0, restraints: freeSpace3DRestraints() });
-    nodes.push({ id: `TOP_B_${p}`, x, y: height, z: width, restraints: freeSpace3DRestraints() });
-  }
-
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-  const addBar = (i: string, j: string) => {
-    const ni = nodeMap.get(i)!;
-    const nj = nodeMap.get(j)!;
-    members.push({
-      id: `M${memberCount++}`,
-      i,
-      j,
-      type: 'frame',
-      E, G, A, Iy, Iz, J,
-      orientation: { localYReferenceGlobal: chooseReferenceVector(ni, nj), rollRadians: 0 },
-    });
-  };
-
-  // Cordones longitudinales
-  for (let p = 0; p < panels; p += 1) {
-    addBar(`BOT_A_${p}`, `BOT_A_${p + 1}`);
-    addBar(`BOT_B_${p}`, `BOT_B_${p + 1}`);
-    addBar(`TOP_A_${p}`, `TOP_A_${p + 1}`);
-    addBar(`TOP_B_${p}`, `TOP_B_${p + 1}`);
-  }
-
-  // Montantes verticales y travesaños transversales en cada sección
-  for (let p = 0; p <= panels; p += 1) {
-    addBar(`BOT_A_${p}`, `TOP_A_${p}`);
-    addBar(`BOT_B_${p}`, `TOP_B_${p}`);
-    addBar(`BOT_A_${p}`, `BOT_B_${p}`);
-    addBar(`TOP_A_${p}`, `TOP_B_${p}`);
-    // Diagonal transversal en cruz para arriostrar el plano Z-Y
-    addBar(`BOT_A_${p}`, `TOP_B_${p}`);
-  }
-
-  // Diagonales longitudinales laterales (plano X-Y) y diagonales horizontales (plano X-Z)
-  for (let p = 0; p < panels; p += 1) {
-    if (p % 2 === 0) {
-      addBar(`BOT_A_${p}`, `TOP_A_${p + 1}`);
-      addBar(`BOT_B_${p}`, `TOP_B_${p + 1}`);
-      addBar(`BOT_A_${p}`, `BOT_B_${p + 1}`);
-      addBar(`TOP_A_${p}`, `TOP_B_${p + 1}`);
-    } else {
-      addBar(`TOP_A_${p}`, `BOT_A_${p + 1}`);
-      addBar(`TOP_B_${p}`, `BOT_B_${p + 1}`);
-      addBar(`BOT_B_${p}`, `BOT_A_${p + 1}`);
-      addBar(`TOP_B_${p}`, `TOP_A_${p + 1}`);
-    }
-  }
-
-  // Cargas en nudos superiores
-  const loads: Space3DNodalLoad[] = [];
-  const loadVal = options.loadAtTopNodes ?? 20;
-  if (loadVal > 0) {
-    let loadCount = 1;
-    for (let p = 1; p < panels; p += 1) {
-      loads.push({
-        id: `L${loadCount++}`,
-        nodeId: `TOP_A_${p}`,
-        caseId: 'LC1',
-        fx: 0, fy: -loadVal, fz: 0, mx: 0, my: 0, mz: 0,
-      });
-      loads.push({
-        id: `L${loadCount++}`,
-        nodeId: `TOP_B_${p}`,
-        caseId: 'LC1',
-        fx: 0, fy: -loadVal, fz: 0, mx: 0, my: 0, mz: 0,
-      });
-    }
-  }
-
-  const project = buildProjectSkeleton(
-    options.id ?? `space3d-truss-${Date.now()}`,
-    options.name ?? `Celosía Espacial 3D (L=${span}m, H=${height}m)`,
-    nodes,
-    members,
-    loads,
+export function generateSpace3DTruss(_options: Space3DTrussGeneratorOptions): Space3DProjectV1 {
+  throw new Error(
+    'La cercha espacial axial todavía no está soportada por el solver 3D. Usa un pórtico/reticulado de frames o implementa primero el elemento truss.',
   );
-
-  return validateGeneratedProject(project);
 }
 
 /**
