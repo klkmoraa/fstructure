@@ -695,10 +695,21 @@
   --sc-motion-distance-factor: 0.5;
   --sc-motion-dock-scale: 1;
 
-  /* Fuera de la escala de interacción a propósito: un bucle decorativo e
-     infinito no compite con ninguna respuesta del producto, así que no puede
-     tomar prestado un escalón de 90–1400 ms. Se nombra para que sea una
-     decisión revisable y no un literal suelto en una hoja de feature. */
+  /* EJE AMBIENTAL, separado de la escala anterior a propósito.
+
+     La regla del brandbook es un trabajo por duración, y los seis trabajos son
+     respuestas: acusar recibo, responder al dedo, cambiar de plano, traer
+     contenido, dibujar un resultado, acompañar una espera. Un bucle decorativo
+     e infinito no responde a nada, así que no tiene ninguno de esos seis
+     trabajos y no puede tomar prestado su escalón: forzar una respiración de
+     cinco píxeles a 1400 ms la convertiría en el paseo que el diseño de la
+     bienvenida evita a propósito encima de un botón.
+
+     Por eso se declara aparte y se nombra, en vez de esconder un literal en una
+     hoja de feature. La frontera no es sólo este comentario: `designSystem`
+     comprueba que estos tokens sólo aparezcan en una `animation` infinita, para
+     que el eje ambiental no se convierta en una séptima duración de
+     interacción por la puerta de atrás. */
   --sc-motion-ambient-loop: 7000ms;
   --sc-motion-ambient-delay: 1100ms;
 

@@ -435,6 +435,46 @@ describe('movimiento · la escala del brandbook, con un trabajo por duración', 
   });
 });
 
+describe('movimiento · el eje ambiental no se cuela en la interacción', () => {
+  /** Declaración CSS que contiene un índice dado. */
+  const declaracionEn = (css: string, indice: number): string => {
+    let inicio = indice;
+    while (inicio > 0 && !'{;}'.includes(css[inicio - 1])) inicio -= 1;
+    let fin = indice;
+    while (fin < css.length && !'{;}'.includes(css[fin])) fin += 1;
+    return css.slice(inicio, fin).trim();
+  };
+
+  it('los tokens ambientales sólo aparecen en una animación infinita', () => {
+    const infractoras: string[] = [];
+    for (const hoja of rutas()) {
+      if (hoja.endsWith('tokens.css')) continue;
+      const css = contenido(hoja);
+      for (const uso of css.matchAll(/var\(--sc-motion-ambient-[a-z-]+\)/g)) {
+        const declaracion = declaracionEn(css, uso.index!);
+        const esAnimacionInfinita = /^animation(-duration|-delay)?\s*:/.test(declaracion)
+          && /\binfinite\b/.test(declaracion);
+        if (!esAnimacionInfinita) infractoras.push(`${hoja}: ${declaracion}`);
+      }
+    }
+    expect(infractoras).toEqual([]);
+  });
+
+  it('el eje ambiental no redefine ni deriva de la escala de interacción', () => {
+    const ambientales = [...tokens.matchAll(/(--sc-motion-ambient-[a-z-]+)\s*:\s*([^;]+);/g)];
+    expect(ambientales.length).toBeGreaterThan(0);
+    for (const [, nombre, valor] of ambientales) {
+      // Derivar de un escalón sería tomarle prestado su trabajo.
+      expect(valor, nombre).not.toMatch(/var\(--sc-motion-(instant|quick|bridge|reveal|trace|pulse)\)/);
+      // La regla de magnitud vale para la duración del bucle, que es lo que
+      // podría hacerse pasar por una interacción. Un `-delay` no es un
+      // movimiento: sólo decide cuándo arranca uno que ya es infinito.
+      if (!nombre.endsWith('-loop')) continue;
+      expect(Number(valor.replace(/ms\s*$/, '')), nombre).toBeGreaterThan(1400);
+    }
+  });
+});
+
 describe('tokens · ninguna feature inventa variables --sc-*', () => {
   /**
    * Una propiedad `--sc-*` es legítima por tres vías, y sólo por esas tres:
