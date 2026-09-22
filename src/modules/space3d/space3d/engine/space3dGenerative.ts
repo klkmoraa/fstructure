@@ -957,8 +957,11 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
   }
 
   // Altura / Height
-  const heightMatch = prompt.match(/(?:altura|alto|height|h)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i)
-    || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?)\s*(?:de\s+alto|de\s+altura|high)/i)
+  // `\b` es obligatorio en las abreviaturas de una letra: sin él, la `h` de
+  // "with 30 kN" o la `r` de una palabra cualquiera capturan el número vecino y
+  // fabrican una altura/radio que el usuario nunca escribió.
+  const heightMatch = prompt.match(/(?:altura|alto|height|\bh)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i)
+    || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\s*(?:de\s+alto|de\s+altura|high|tall|height)/i)
     || (archetype === 'tower' ? prompt.match(/(?:de|=)?\s*(\d+(?:\.\d+)?)\s*(?:m|metros?)\b/i) : null);
   if (heightMatch) params.height = Number(heightMatch[1]);
 
@@ -980,7 +983,7 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
   if (baySizeMatch) params.baySize = Number(baySizeMatch[1]);
 
   // Radio / Radius, en ambos órdenes: "radio 8 m" y "8 m de radio".
-  const radiusMatch = prompt.match(/(?:radio|radius|r)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i)
+  const radiusMatch = prompt.match(/(?:radio|radius|\br)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i)
     || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\s*(?:de\s+radio|radius)/i);
   if (radiusMatch) params.radius = Number(radiusMatch[1]);
 

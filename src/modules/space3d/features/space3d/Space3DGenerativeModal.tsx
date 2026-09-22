@@ -36,6 +36,23 @@ export type Space3DArchetype =
   | 'bridge'
   | 'industrial-shed';
 
+/**
+ * Sugerencias de arranque. Etiqueta y prompt viven en el catálogo para que el
+ * texto que se inyecta en el parser esté en el idioma que la persona lee; el
+ * parser reconoce ambos idiomas.
+ */
+export const PROMPT_SUGGESTIONS: ReadonlyArray<{
+  readonly id: Space3DArchetype;
+  readonly labelKey: TranslationKey;
+  readonly promptKey: TranslationKey;
+}> = [
+  { id: 'frame', labelKey: 'space3d.promptSuggestionFrameLabel', promptKey: 'space3d.promptSuggestionFramePrompt' },
+  { id: 'tower', labelKey: 'space3d.promptSuggestionTowerLabel', promptKey: 'space3d.promptSuggestionTowerPrompt' },
+  { id: 'dome', labelKey: 'space3d.promptSuggestionDomeLabel', promptKey: 'space3d.promptSuggestionDomePrompt' },
+  { id: 'bridge', labelKey: 'space3d.promptSuggestionBridgeLabel', promptKey: 'space3d.promptSuggestionBridgePrompt' },
+  { id: 'industrial-shed', labelKey: 'space3d.promptSuggestionShedLabel', promptKey: 'space3d.promptSuggestionShedPrompt' },
+];
+
 const clampFinite = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
@@ -387,31 +404,30 @@ export const Space3DGenerativeModal = ({
               type="button"
               className="space3d-prompt-submit-btn"
               onClick={() => handleApplyPrompt()}
-              title="Interpretar y aplicar parámetros"
+              title={t('space3d.interpretPromptHint')}
             >
               <span>{t('space3d.interpretPrompt' as TranslationKey) || 'Interpretar'}</span>
             </button>
           </div>
 
           {/* Chips de sugerencias rápidas */}
-          <div className="space3d-prompt-suggestions" role="group" aria-label="Sugerencias de estructuras">
-            {[
-              { label: 'Pórtico 3 Pisos', prompt: 'Edificio 3 pisos 2 vanos de 5m carga 25 kN' },
-              { label: 'Torre Antena 18m', prompt: 'Torre de 18 metros con viento de 30 kN' },
-              { label: 'Cúpula Reticular', prompt: 'Cúpula de 8 metros de radio y 4m de altura' },
-              { label: 'Puente 20m', prompt: 'Puente espacial de 20 metros con 5 paneles' },
-              { label: 'Nave Industrial', prompt: 'Nave industrial de 16m de luz y 4 vanos' },
-            ].map((chip) => (
+          <div
+            className="space3d-prompt-suggestions"
+            role="group"
+            aria-label={t('space3d.promptSuggestionsLabel')}
+          >
+            {PROMPT_SUGGESTIONS.map((chip) => (
               <button
-                key={chip.label}
+                key={chip.id}
                 type="button"
                 className="space3d-prompt-chip"
                 onClick={() => {
-                  setPromptText(chip.prompt);
-                  handleApplyPrompt(chip.prompt);
+                  const prompt = t(chip.promptKey);
+                  setPromptText(prompt);
+                  handleApplyPrompt(prompt);
                 }}
               >
-                {chip.label}
+                {t(chip.labelKey)}
               </button>
             ))}
           </div>
@@ -425,7 +441,7 @@ export const Space3DGenerativeModal = ({
         </div>
 
         {/* Selector de Arquetipo */}
-        <div className="space3d-generative-tabs" role="group" aria-label="Arquetipo estructural">
+        <div className="space3d-generative-tabs" role="group" aria-label={t('space3d.archetypeGroupLabel')}>
           <button
             type="button"
             aria-pressed={archetype === 'frame'}

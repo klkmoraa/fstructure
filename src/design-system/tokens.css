@@ -695,6 +695,13 @@
   --sc-motion-distance-factor: 0.5;
   --sc-motion-dock-scale: 1;
 
+  /* Fuera de la escala de interacción a propósito: un bucle decorativo e
+     infinito no compite con ninguna respuesta del producto, así que no puede
+     tomar prestado un escalón de 90–1400 ms. Se nombra para que sea una
+     decisión revisable y no un literal suelto en una hoja de feature. */
+  --sc-motion-ambient-loop: 7000ms;
+  --sc-motion-ambient-delay: 1100ms;
+
   /* Las tres curvas del brandbook. `standard` sale rápido y frena largo, para
      que lo que aparece se lea como una consecuencia y no como un salto;
      `exit` acelera al irse, porque lo que se va no necesita ser leído; `firm`

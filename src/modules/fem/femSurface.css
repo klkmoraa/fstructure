@@ -23,7 +23,7 @@
 .fusion-fem__secondary-action:hover { border-color: var(--sc-color-text-secondary); }
 .fusion-fem__file-action input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
 .fusion-fem__file-action:focus-within,
-.fusion-fem__secondary-action:focus-visible { outline: 2px solid var(--sc-color-accent); outline-offset: 2px; }
+.fusion-fem__secondary-action:focus-visible { outline: var(--sc-focus-ring-width-compact) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
 .fusion-fem__feedback { margin: -22px 0 0; color: var(--sc-color-text-secondary); font-size: 12px; }
 .fusion-fem__result { display: grid; gap: 5px; width: min(620px, 100%); padding: 13px 15px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1); font-size: 13px; }
 .fusion-fem__result span { color: var(--sc-color-text-secondary); font-size: 12px; }

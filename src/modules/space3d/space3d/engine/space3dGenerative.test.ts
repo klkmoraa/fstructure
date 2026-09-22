@@ -218,5 +218,44 @@ describe('space3dGenerative', () => {
       expect(parsed.recognized).toBe(false);
       expect(parsed.confidence).toBeLessThan(0.5);
     });
+
+    // Regresión: la abreviatura `h` sin frontera de palabra capturaba el número
+    // que sigue a "with", inventando una altura y bloqueando la luz del puente.
+    it('does not read a height out of the English word "with"', () => {
+      const frame = parseNaturalLanguageStructuralPrompt('3 floors building with 2 bays of 5m and 25 kN load');
+      expect(frame.archetype).toBe('frame');
+      expect(frame.params.height).toBeUndefined();
+      expect(frame.params.storiesY).toBe(3);
+      expect(frame.params.baysX).toBe(2);
+      expect(frame.params.baySize).toBe(5);
+      expect(frame.params.load).toBe(25);
+
+      const tower = parseNaturalLanguageStructuralPrompt('18 m antenna tower with 30 kN wind');
+      expect(tower.archetype).toBe('tower');
+      expect(tower.params.height).toBe(18);
+      expect(tower.params.load).toBe(30);
+
+      const bridge = parseNaturalLanguageStructuralPrompt('20 m space bridge with 5 panels');
+      expect(bridge.archetype).toBe('bridge');
+      expect(bridge.params.height).toBeUndefined();
+      expect(bridge.params.span).toBe(20);
+    });
+
+    it('reads English postfix height and radius', () => {
+      const dome = parseNaturalLanguageStructuralPrompt('Reticular dome with 8 m radius and 4 m height');
+      expect(dome.archetype).toBe('dome');
+      expect(dome.params.radius).toBe(8);
+      expect(dome.params.height).toBe(4);
+    });
+
+    it('keeps Spanish prompts unchanged after the word-boundary fix', () => {
+      const tower = parseNaturalLanguageStructuralPrompt('Torre de 18 metros con viento de 30 kN');
+      expect(tower.params.height).toBe(18);
+      expect(tower.params.load).toBe(30);
+
+      const bridge = parseNaturalLanguageStructuralPrompt('Puente espacial de 20 metros con 5 paneles');
+      expect(bridge.params.span).toBe(20);
+      expect(bridge.params.height).toBeUndefined();
+    });
   });
 });

@@ -26,6 +26,20 @@ const renderMemberEditor = () => {
   return { project, onSubmit };
 };
 
+/**
+ * `onSubmit` recibe la unión `Space3DCommand`; `expect(...).toBe` no la estrecha.
+ * Este helper afirma la variante y devuelve el comando ya tipado.
+ */
+const expectMemberUpdate = (
+  command: Space3DCommand,
+): Extract<Space3DCommand, { kind: 'update-member' }> => {
+  expect(command.kind).toBe('update-member');
+  if (command.kind !== 'update-member') {
+    throw new Error(`Se esperaba update-member y se recibió ${command.kind}`);
+  }
+  return command;
+};
+
 it('keeps a selected catalog section visible and persists its provenance', async () => {
   const user = userEvent.setup();
   const { onSubmit } = renderMemberEditor();
@@ -38,8 +52,7 @@ it('keeps a selected catalog section visible and persists its provenance', async
   expect(material.value).toBe('steel-a36');
 
   await user.click(screen.getByRole('button', { name: /guardar barra/i }));
-  const command = onSubmit.mock.calls[0]![0];
-  expect(command.kind).toBe('update-member');
+  const command = expectMemberUpdate(onSubmit.mock.calls[0]![0]);
   expect(command.changes.sectionId).toBe('IPE 300');
   expect(command.changes.sectionOrigin).toBe('catalog');
   expect(command.changes.materialId).toBe('steel-a36');
@@ -58,7 +71,7 @@ it('clears catalog section identity after applying custom geometry', async () =>
   expect(section.value).toBe('');
 
   await user.click(screen.getByRole('button', { name: /guardar barra/i }));
-  const command = onSubmit.mock.calls[0]![0];
+  const command = expectMemberUpdate(onSubmit.mock.calls[0]![0]);
   expect(command.changes.sectionId).toBeUndefined();
   expect(command.changes.sectionOrigin).toBe('custom');
   expect(command.changes.materialId).toBe('steel-a36');

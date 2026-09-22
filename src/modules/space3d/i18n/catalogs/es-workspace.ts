@@ -487,6 +487,7 @@ export const esWorkspace = {
   'space3d.archetypeShed': 'Nave Ind.',
   'space3d.promptPlaceholder': 'Describe tu estructura: ej. "Edificio 3 pisos 2 vanos de 5m" o "Torre 18m"',
   'space3d.interpretPrompt': 'Interpretar',
+  'space3d.interpretPromptHint': 'Interpretar la descripción y aplicar los parámetros',
   'space3d.previewWireframe': 'Previsualización Isométrica',
   'space3d.previewNote': 'Estructura lista para cálculo matricial 3D de 6 GDL por nudo.',
   'space3d.criticalElement': 'Crítico',

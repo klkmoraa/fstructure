@@ -46,6 +46,20 @@ const rutas = (): string[] => {
 };
 const contenido = (ruta: string): string => leer(`${SRC}/${ruta.replace(/^src\//, '')}`);
 
+/** Fuentes TS/TSX del producto, para comprobar lo que el runtime publica al CSS. */
+const rutasTs = (): string[] => {
+  const salida: string[] = [];
+  const recorrer = (dir: string) => {
+    for (const entrada of readdirSync(dir).sort()) {
+      const ruta = `${dir}/${entrada}`;
+      if (statSync(ruta).isDirectory()) recorrer(ruta);
+      else if (/\.tsx?$/.test(entrada)) salida.push(ruta);
+    }
+  };
+  recorrer(SRC);
+  return salida;
+};
+
 /** Valor declarado de un token dentro de un bloque concreto. */
 const valorEn = (bloque: string, nombre: string): string | null => {
   const m = bloque.match(new RegExp(`^\\s*${nombre}:\\s*([^;]+);`, 'm'));
@@ -422,15 +436,43 @@ describe('movimiento · la escala del brandbook, con un trabajo por duración', 
 });
 
 describe('tokens · ninguna feature inventa variables --sc-*', () => {
-  it('todo var(--sc-*) usado por CSS existe en design-system/tokens.css', () => {
-    const declarados = new Set(
-      [...tokens.matchAll(/(--sc-[a-z0-9-]+)\s*:/gi)].map((m) => m[1]),
+  /**
+   * Una propiedad `--sc-*` es legítima por tres vías, y sólo por esas tres:
+   * la declara `tokens.css`, la declara la propia hoja que la usa (variable de
+   * componente, como `--sc-banner-color`), o la publica el runtime sobre un
+   * elemento. La tercera vía no es visible desde el CSS, así que se declara
+   * aquí de forma explícita y se comprueba contra el código que la escribe.
+   */
+  const PUBLICADAS_EN_RUNTIME = [
+    '--sc-visual-viewport-height',
+    '--sc-visual-viewport-top',
+    '--sc-visual-viewport-bottom',
+  ] as const;
+
+  it('cada propiedad publicada en runtime tiene un setProperty que la escribe', () => {
+    const fuentes = rutasTs().map((ruta) => leer(ruta)).join('\n');
+    const huerfanas = PUBLICADAS_EN_RUNTIME.filter(
+      (propiedad) => !fuentes.includes(`setProperty('${propiedad}'`)
+        && !fuentes.includes(`setProperty("${propiedad}"`),
     );
+    expect(huerfanas).toEqual([]);
+  });
+
+  it('todo var(--sc-*) usado por CSS existe en tokens, en su hoja o en runtime', () => {
+    const globales = new Set<string>([
+      ...[...tokens.matchAll(/(--sc-[a-z0-9-]+)\s*:/gi)].map((m) => m[1]),
+      ...PUBLICADAS_EN_RUNTIME,
+    ]);
     const infractoras = new Set<string>();
     for (const hoja of rutas()) {
       if (hoja.endsWith('tokens.css')) continue;
-      for (const m of contenido(hoja).matchAll(/var\((--sc-[a-z0-9-]+)/gi)) {
-        if (!declarados.has(m[1])) infractoras.add(`${hoja}: ${m[1]}`);
+      const css = contenido(hoja);
+      // Una hoja puede definir sus propias variables de componente.
+      const locales = new Set(
+        [...css.matchAll(/(--sc-[a-z0-9-]+)\s*:/gi)].map((m) => m[1]),
+      );
+      for (const m of css.matchAll(/var\((--sc-[a-z0-9-]+)/gi)) {
+        if (!globales.has(m[1]) && !locales.has(m[1])) infractoras.add(`${hoja}: ${m[1]}`);
       }
     }
     expect([...infractoras].sort()).toEqual([]);

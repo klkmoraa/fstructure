@@ -468,7 +468,7 @@
   cursor: pointer;
 }
 
-.space3d-model-nav-properties svg { transition: transform 0.15s ease; }
+.space3d-model-nav-properties svg { transition: transform var(--sc-motion-quick) var(--sc-ease-standard); }
 .space3d-model-nav-properties svg.is-open { transform: rotate(90deg); }
 
 .space3d-model-nav-properties-body { margin-block-start: var(--sc-space-2); grid-template-columns: 1fr; }
@@ -2341,6 +2341,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  min-block-size: var(--sc-size-target-pointer);
   gap: 6px;
   padding: var(--sc-space-3) var(--sc-space-2);
   border: 1px solid var(--sc-color-border-soft);
@@ -2620,6 +2622,10 @@
 }
 
 .space3d-prompt-chip {
+  /* WCAG 2.5.8: el chip es un destino táctil, no sólo una etiqueta. */
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--sc-size-target-pointer);
   padding: 3px 8px;
   border-radius: var(--sc-radius-pill);
   border: 1px solid var(--sc-color-border-soft);
