@@ -252,12 +252,20 @@ export const Space3DGenerativeModal = ({
     if (!textToParse.trim()) return;
 
     const parsed = parseNaturalLanguageStructuralPrompt(textToParse);
+    if (!parsed.recognized) {
+      setPromptFeedback(t('space3d.promptUnrecognized' as TranslationKey));
+      return;
+    }
+    if (parsed.archetype === 'truss') {
+      setPromptFeedback(t('space3d.trussUnsupported' as TranslationKey));
+      return;
+    }
     setArchetype(parsed.archetype);
 
     if (parsed.archetype === 'frame') {
-      if (parsed.params.storiesY) setFrameStoriesY(clampFinite(Number(parsed.params.storiesY), 1, 12));
-      if (parsed.params.baysX) setFrameBaysX(clampFinite(Number(parsed.params.baysX), 1, 10));
-      if (parsed.params.span) setFrameBayWidthX(clampFinite(Number(parsed.params.span), 1, 30));
+      if (parsed.params.storiesY) setFrameStoriesY(clampFinite(Number(parsed.params.storiesY), 1, 6));
+      if (parsed.params.baysX) setFrameBaysX(clampFinite(Number(parsed.params.baysX), 1, 5));
+      if (parsed.params.span) setFrameBayWidthX(clampFinite(Number(parsed.params.baySize ?? parsed.params.span), 1, 30));
       if (parsed.params.height) setFrameStoryHeightY(clampFinite(Number(parsed.params.height), 1, 10));
       if (parsed.params.load) setFrameRoofLoad(clampFinite(Number(parsed.params.load), 0, 500));
       if (parsed.params.baseSupport === 'fixed' || parsed.params.baseSupport === 'pinned') {
@@ -272,6 +280,7 @@ export const Space3DGenerativeModal = ({
       if (parsed.params.load) setDomeLoad(clampFinite(Number(parsed.params.load), 0, 200));
     } else if (parsed.archetype === 'bridge') {
       if (parsed.params.span) setBridgeSpanX(clampFinite(Number(parsed.params.span), 6, 60));
+      if (parsed.params.width) setBridgeWidthZ(clampFinite(Number(parsed.params.width), 2, 15));
       if (parsed.params.height) setBridgeHeightY(clampFinite(Number(parsed.params.height), 1.5, 12));
       if (parsed.params.load) setBridgeDeckLoad(clampFinite(Number(parsed.params.load), 0, 400));
       if (parsed.params.bays) setBridgePanels(clampFinite(Number(parsed.params.bays), 2, 15));
@@ -279,7 +288,13 @@ export const Space3DGenerativeModal = ({
       if (parsed.params.span) setShedSpanX(clampFinite(Number(parsed.params.span), 6, 40));
       if (parsed.params.height) setShedRidgeHeightY(clampFinite(Number(parsed.params.height), shedEaveHeightY + 0.5, 18));
       if (parsed.params.load) setShedRoofLoad(clampFinite(Number(parsed.params.load), 0, 200));
-      if (parsed.params.baysZ) setShedBaysZ(clampFinite(Number(parsed.params.baysZ), 1, 10));
+      const parsedBaysZ = parsed.params.baysZ
+        ? clampFinite(Number(parsed.params.baysZ), 1, 10)
+        : shedBaysZ;
+      if (parsed.params.baysZ) setShedBaysZ(parsedBaysZ);
+      if (parsed.params.lengthZ) {
+        setShedBaySpacingZ(clampFinite(Number(parsed.params.lengthZ) / parsedBaysZ, 3, 12));
+      }
     } else if (parsed.archetype === 'truss') {
       if (parsed.params.span) setTrussSpanX(clampFinite(Number(parsed.params.span), 4, 50));
       if (parsed.params.height) setTrussHeightY(clampFinite(Number(parsed.params.height), 0.5, 10));
@@ -336,7 +351,7 @@ export const Space3DGenerativeModal = ({
       open={open}
       onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}
       title={t('space3d.generatorTitle' as TranslationKey) || 'Generador de Estructuras 3D'}
-      description={t('space3d.generatorDesc' as TranslationKey) || 'Genera geometrías paramétricas completas listas para cálculo estático y dinámico.'}
+      description={t('space3d.generatorDesc' as TranslationKey) || 'Genera geometrías paramétricas completas para cálculo estático 3D.'}
       footer={
         <div className="space3d-inline-actions" style={{ width: '100%', justifyContent: 'space-between' }}>
           <button type="button" className="space3d-button" onClick={onClose}>
@@ -383,7 +398,7 @@ export const Space3DGenerativeModal = ({
             {[
               { label: 'Pórtico 3 Pisos', prompt: 'Edificio 3 pisos 2 vanos de 5m carga 25 kN' },
               { label: 'Torre Antena 18m', prompt: 'Torre de 18 metros con viento de 30 kN' },
-              { label: 'Cúpula Geodésica', prompt: 'Cúpula de 8 metros de radio y 4m de altura' },
+              { label: 'Cúpula Reticular', prompt: 'Cúpula de 8 metros de radio y 4m de altura' },
               { label: 'Puente 20m', prompt: 'Puente espacial de 20 metros con 5 paneles' },
               { label: 'Nave Industrial', prompt: 'Nave industrial de 16m de luz y 4 vanos' },
             ].map((chip) => (
@@ -422,9 +437,10 @@ export const Space3DGenerativeModal = ({
           </button>
           <button
             type="button"
-            aria-pressed={archetype === 'truss'}
-            className={`space3d-archetype-tab ${archetype === 'truss' ? 'is-active' : ''}`}
-            onClick={() => setArchetype('truss')}
+            aria-pressed={false}
+            className="space3d-archetype-tab"
+            disabled
+            title={t('space3d.trussUnsupported' as TranslationKey)}
           >
             <Box size={18} aria-hidden="true" />
             <span>{t('space3d.archetypeTruss' as TranslationKey) || 'Celosía 3D'}</span>
@@ -480,9 +496,9 @@ export const Space3DGenerativeModal = ({
                     id="gen-frame-bx"
                     type="number"
                     min={1}
-                    max={10}
+                    max={5}
                     value={frameBaysX}
-                    onChange={(e) => setFrameBaysX(clampFinite(Number(e.target.value), 1, 10))}
+                    onChange={(e) => setFrameBaysX(clampFinite(Number(e.target.value), 1, 5))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -507,9 +523,9 @@ export const Space3DGenerativeModal = ({
                     id="gen-frame-sy"
                     type="number"
                     min={1}
-                    max={12}
+                    max={6}
                     value={frameStoriesY}
-                    onChange={(e) => setFrameStoriesY(clampFinite(Number(e.target.value), 1, 12))}
+                    onChange={(e) => setFrameStoriesY(clampFinite(Number(e.target.value), 1, 6))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -534,9 +550,9 @@ export const Space3DGenerativeModal = ({
                     id="gen-frame-bz"
                     type="number"
                     min={1}
-                    max={10}
+                    max={5}
                     value={frameBaysZ}
-                    onChange={(e) => setFrameBaysZ(clampFinite(Number(e.target.value), 1, 10))}
+                    onChange={(e) => setFrameBaysZ(clampFinite(Number(e.target.value), 1, 5))}
                   />
                 </div>
                 <div className="space3d-field">
