@@ -506,6 +506,8 @@ export const enWorkspace = {
   'space3d.legendShear': 'Resultant Shear Force V [kN]',
   'space3d.legendMoment': 'Resultant Bending Moment M [kN·m]',
   'space3d.legendReactions': 'Support Reactions R [kN]',
+  'space3d.legendDeformed': 'Resultant displacement |u| [mm]',
+  'space3d.legendConventionDeformed': '|u| = √(ux² + uy² + uz²) · deformed shape is amplified for visualization only',
   'space3d.hudConnectMember': 'Connect member',
   'space3d.hudConnectMemberTitle': 'Connect to another node to create a member',
   'space3d.hudAddLoad': 'Load',
