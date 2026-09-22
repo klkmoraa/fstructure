@@ -1,9 +1,9 @@
 /**
- * Modal generador de estructuras espaciales 3D paramétricas con Generative AI.
+ * Modal generador de estructuras espaciales 3D paramétricas.
  *
- * Generative UI: permite configurar y generar instantáneamente edificios,
- * cerchas espaciales, torres, cúpulas, puentes reticulados y naves industriales,
- * con prompt en lenguaje natural y previsualización isométrica en tiempo real.
+ * Usa un parser determinista y local para interpretar descripciones breves; no
+ * envía prompts ni depende de un modelo generativo externo. La previsualización
+ * isométrica permite revisar la geometría antes de reemplazar el proyecto.
  */
 import { useId, useMemo, useState } from 'react';
 import {
@@ -1017,6 +1017,9 @@ export const Space3DGenerativeModal = ({
                   <span>{previewModel.name}</span>
                   <span className="space3d-preview-note">
                     {t('space3d.previewNote' as TranslationKey) || 'Estructura lista para cálculo matricial 3D de 6 GDL por nudo.'}
+                  </span>
+                  <span className="space3d-preview-note">
+                    {t('space3d.generatorAssumption')}
                   </span>
                 </div>
               </>
