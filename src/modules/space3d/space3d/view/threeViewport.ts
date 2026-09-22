@@ -763,12 +763,20 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
     get controlsTarget() { return controls.target; },
     setModel(next) {
       if (disposed) return;
-      const boundsChanged = next.bounds.span !== model.bounds.span;
+      // El centro importa tanto como la extensión: un modelo del mismo tamaño
+      // colocado lejos del origen deja la cámara apuntando al vacío.
+      const boundsChanged = next.bounds.span !== model.bounds.span
+        || next.bounds.center[0] !== model.bounds.center[0]
+        || next.bounds.center[1] !== model.bounds.center[1]
+        || next.bounds.center[2] !== model.bounds.center[2];
       model = next;
       buildModel();
       if (boundsChanged) {
         clearGroup('grid');
         buildStatic();
+        // Reencuadrar sobre el cuerpo nuevo. Una selección o un cambio de tema
+        // no mueven los límites, así que no roban el encuadre de la persona.
+        setView(activeView);
       }
       requestRender();
     },
@@ -828,11 +836,17 @@ const disposeObject = (root: Object3D) => {
     const holder = object as Object3D & {
       geometry?: BufferGeometry;
       material?: Material | Material[];
+      isInstancedMesh?: boolean;
+      dispose?: () => void;
     };
     holder.geometry?.dispose();
     const material = holder.material;
     if (Array.isArray(material)) material.forEach(disposeMaterial);
     else if (material) disposeMaterial(material);
+    // `instanceMatrix` e `instanceColor` los posee el propio InstancedMesh y
+    // sólo los libera su `dispose()`. Sin esta llamada cada reconstrucción de
+    // escena —selección, modo de resultado, tema— deja sus búferes en la GPU.
+    if (holder.isInstancedMesh) holder.dispose?.();
   });
 };
 

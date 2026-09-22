@@ -280,43 +280,43 @@ export const Space3DGenerativeModal = ({
     setArchetype(parsed.archetype);
 
     if (parsed.archetype === 'frame') {
-      if (parsed.params.storiesY) setFrameStoriesY(clampFinite(Number(parsed.params.storiesY), 1, 6));
-      if (parsed.params.baysX) setFrameBaysX(clampFinite(Number(parsed.params.baysX), 1, 5));
-      if (parsed.params.baySize || parsed.params.span) setFrameBayWidthX(clampFinite(Number(parsed.params.baySize ?? parsed.params.span), 1, 30));
-      if (parsed.params.height) setFrameStoryHeightY(clampFinite(Number(parsed.params.height), 1, 10));
-      if (parsed.params.load) setFrameRoofLoad(clampFinite(Number(parsed.params.load), 0, 500));
+      if (parsed.params.storiesY !== undefined) setFrameStoriesY(clampFinite(Number(parsed.params.storiesY), 1, 6));
+      if (parsed.params.baysX !== undefined) setFrameBaysX(clampFinite(Number(parsed.params.baysX), 1, 5));
+      if ((parsed.params.baySize ?? parsed.params.span) !== undefined) setFrameBayWidthX(clampFinite(Number(parsed.params.baySize ?? parsed.params.span), 1, 30));
+      if (parsed.params.height !== undefined) setFrameStoryHeightY(clampFinite(Number(parsed.params.height), 1, 10));
+      if (parsed.params.load !== undefined) setFrameRoofLoad(clampFinite(Number(parsed.params.load), 0, 500));
       if (parsed.params.baseSupport === 'fixed' || parsed.params.baseSupport === 'pinned') {
         setFrameBaseSupport(parsed.params.baseSupport);
       }
     } else if (parsed.archetype === 'tower') {
-      if (parsed.params.height) setTowerHeight(clampFinite(Number(parsed.params.height), 4, 80));
-      if (parsed.params.load) setTowerWindLoad(clampFinite(Number(parsed.params.load), 0, 300));
+      if (parsed.params.height !== undefined) setTowerHeight(clampFinite(Number(parsed.params.height), 4, 80));
+      if (parsed.params.load !== undefined) setTowerWindLoad(clampFinite(Number(parsed.params.load), 0, 300));
     } else if (parsed.archetype === 'dome') {
-      if (parsed.params.radius) setDomeRadius(clampFinite(Number(parsed.params.radius), 2, 40));
-      if (parsed.params.height) setDomeHeight(clampFinite(Number(parsed.params.height), 1, 30));
-      if (parsed.params.load) setDomeLoad(clampFinite(Number(parsed.params.load), 0, 200));
+      if (parsed.params.radius !== undefined) setDomeRadius(clampFinite(Number(parsed.params.radius), 2, 40));
+      if (parsed.params.height !== undefined) setDomeHeight(clampFinite(Number(parsed.params.height), 1, 30));
+      if (parsed.params.load !== undefined) setDomeLoad(clampFinite(Number(parsed.params.load), 0, 200));
     } else if (parsed.archetype === 'bridge') {
-      if (parsed.params.span) setBridgeSpanX(clampFinite(Number(parsed.params.span), 6, 60));
-      if (parsed.params.width) setBridgeWidthZ(clampFinite(Number(parsed.params.width), 2, 15));
-      if (parsed.params.height) setBridgeHeightY(clampFinite(Number(parsed.params.height), 1.5, 12));
-      if (parsed.params.load) setBridgeDeckLoad(clampFinite(Number(parsed.params.load), 0, 400));
-      if (parsed.params.bays) setBridgePanels(clampFinite(Number(parsed.params.bays), 2, 15));
+      if (parsed.params.span !== undefined) setBridgeSpanX(clampFinite(Number(parsed.params.span), 6, 60));
+      if (parsed.params.width !== undefined) setBridgeWidthZ(clampFinite(Number(parsed.params.width), 2, 15));
+      if (parsed.params.height !== undefined) setBridgeHeightY(clampFinite(Number(parsed.params.height), 1.5, 12));
+      if (parsed.params.load !== undefined) setBridgeDeckLoad(clampFinite(Number(parsed.params.load), 0, 400));
+      if (parsed.params.bays !== undefined) setBridgePanels(clampFinite(Number(parsed.params.bays), 2, 15));
     } else if (parsed.archetype === 'industrial-shed') {
-      if (parsed.params.span) setShedSpanX(clampFinite(Number(parsed.params.span), 6, 40));
-      if (parsed.params.height) setShedRidgeHeightY(clampFinite(Number(parsed.params.height), shedEaveHeightY + 0.5, 18));
-      if (parsed.params.load) setShedRoofLoad(clampFinite(Number(parsed.params.load), 0, 200));
-      const parsedBaysZ = parsed.params.baysZ
+      if (parsed.params.span !== undefined) setShedSpanX(clampFinite(Number(parsed.params.span), 6, 40));
+      if (parsed.params.height !== undefined) setShedRidgeHeightY(clampFinite(Number(parsed.params.height), shedEaveHeightY + 0.5, 18));
+      if (parsed.params.load !== undefined) setShedRoofLoad(clampFinite(Number(parsed.params.load), 0, 200));
+      const parsedBaysZ = parsed.params.baysZ !== undefined
         ? clampFinite(Number(parsed.params.baysZ), 1, 10)
         : shedBaysZ;
-      if (parsed.params.baysZ) setShedBaysZ(parsedBaysZ);
-      if (parsed.params.lengthZ) {
+      if (parsed.params.baysZ !== undefined) setShedBaysZ(parsedBaysZ);
+      if (parsed.params.lengthZ !== undefined) {
         setShedBaySpacingZ(clampFinite(Number(parsed.params.lengthZ) / parsedBaysZ, 3, 12));
       }
     } else if (parsed.archetype === 'truss') {
-      if (parsed.params.span) setTrussSpanX(clampFinite(Number(parsed.params.span), 4, 50));
-      if (parsed.params.height) setTrussHeightY(clampFinite(Number(parsed.params.height), 0.5, 10));
-      if (parsed.params.load) setTrussLoad(clampFinite(Number(parsed.params.load), 0, 500));
-      if (parsed.params.bays) setTrussPanels(clampFinite(Number(parsed.params.bays), 2, 20));
+      if (parsed.params.span !== undefined) setTrussSpanX(clampFinite(Number(parsed.params.span), 4, 50));
+      if (parsed.params.height !== undefined) setTrussHeightY(clampFinite(Number(parsed.params.height), 0.5, 10));
+      if (parsed.params.load !== undefined) setTrussLoad(clampFinite(Number(parsed.params.load), 0, 500));
+      if (parsed.params.bays !== undefined) setTrussPanels(clampFinite(Number(parsed.params.bays), 2, 20));
     }
 
     setPromptFeedback(parsed.summary);
@@ -390,6 +390,7 @@ export const Space3DGenerativeModal = ({
               id={promptInputId}
               type="text"
               className="space3d-prompt-input"
+              aria-label={t('space3d.promptLabel')}
               placeholder={t('space3d.promptPlaceholder' as TranslationKey) || 'Describe tu estructura: ej. "Edificio 3 pisos 2 vanos de 5m" o "Torre 18m"'}
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
@@ -997,7 +998,7 @@ export const Space3DGenerativeModal = ({
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-shed-wind">
-                    {t('space3d.towerWindLoad' as TranslationKey) || 'Viento barlovento (kN)'}
+                    {t('space3d.shedWindLoadPerEave')}
                   </label>
                   <input
                     id="gen-shed-wind"

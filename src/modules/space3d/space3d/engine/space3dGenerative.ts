@@ -289,7 +289,7 @@ export function generateSpace3DFrame(options: Space3DFrameGeneratorOptions): Spa
   }
 
   const loads: Space3DNodalLoad[] = [];
-  const gravityLoad = options.gravityLoadPerNode ?? 25; // 25 kN por defecto hacia abajo
+  const gravityLoad = finiteGeneratorValue(options.gravityLoadPerNode ?? 25, 'gravityLoadPerNode');
   if (gravityLoad > 0) {
     let loadCount = 1;
     // Aplicar a los nudos del último piso (cubierta)
@@ -412,7 +412,7 @@ export function generateSpace3DTower(options: Space3DTowerGeneratorOptions): Spa
   }
 
   const loads: Space3DNodalLoad[] = [];
-  const wind = options.topWindLoad ?? 15;
+  const wind = finiteGeneratorValue(options.topWindLoad ?? 15, 'topWindLoad');
   if (wind > 0) {
     // Aplicar fuerza lateral en las 4 esquinas de la cúspide
     for (let c = 0; c < 4; c += 1) {
@@ -529,7 +529,7 @@ export function generateSpace3DDome(options: Space3DDomeGeneratorOptions): Space
   }
 
   const loads: Space3DNodalLoad[] = [];
-  const vLoad = options.verticalLoad ?? 10;
+  const vLoad = finiteGeneratorValue(options.verticalLoad ?? 10, 'verticalLoad');
   if (vLoad > 0) {
     // Carga vertical en el ápice y en los anillos intermedios
     loads.push({
@@ -683,7 +683,7 @@ export function generateSpace3DBridge(options: Space3DBridgeGeneratorOptions): S
   addBar(`TOP_A_${panels}`, `TOP_B_${panels}`);
 
   const loads: Space3DNodalLoad[] = [];
-  const deckLoad = options.deckLoad ?? 25;
+  const deckLoad = finiteGeneratorValue(options.deckLoad ?? 25, 'deckLoad');
   if (deckLoad > 0) {
     let loadCount = 1;
     for (let p = 1; p < panels; p += 1) {
@@ -833,8 +833,8 @@ export function generateSpace3DIndustrialShed(options: Space3DIndustrialShedOpti
   }
 
   const loads: Space3DNodalLoad[] = [];
-  const roofLoad = options.roofLoad ?? 18;
-  const windLoadX = options.windLoadX ?? 12;
+  const roofLoad = finiteGeneratorValue(options.roofLoad ?? 18, 'roofLoad');
+  const windLoadX = finiteGeneratorValue(options.windLoadX ?? 12, 'windLoadX');
 
   let loadCount = 1;
   for (let bz = 0; bz <= baysZ; bz += 1) {
@@ -914,14 +914,17 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
   let archetype: ParsedStructuralPrompt['archetype'] = 'frame';
   let recognized = false;
 
-  if (/(torre residencial|residential tower|edificio|building|portico|pórtico|frame|estructura aporticada)/i.test(prompt)) {
-    archetype = 'frame';
-    recognized = true;
-  } else if (/(puente|bridge|viaducto|viaduct|pasarela)/i.test(prompt)) {
+  // El orden es la regla de desempate: lo específico antes que lo genérico.
+  // "edificio industrial" nombra una nave, no un pórtico, así que la rama
+  // industrial debe probarse antes que `edificio`/`building`.
+  if (/(puente|bridge|viaducto|viaduct|pasarela)/i.test(prompt)) {
     archetype = 'bridge';
     recognized = true;
   } else if (/(nave|galpon|galpón|bodega|shed|warehouse|industrial|tinglado)/i.test(prompt)) {
     archetype = 'industrial-shed';
+    recognized = true;
+  } else if (/(torre residencial|residential tower|edificio|building|portico|pórtico|frame|estructura aporticada)/i.test(prompt)) {
+    archetype = 'frame';
     recognized = true;
   } else if (/(torre|tower|antena|mastil|mástil|pilono|pílono|transmission)/i.test(prompt)) {
     archetype = 'tower';
@@ -955,7 +958,9 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
   if (baysMatch) {
     const b = Number(baysMatch[1]);
     params.baysX = b;
-    params.baysZ = Math.max(1, Math.min(b, 4));
+    // No inventar un tope aquí: el parser reporta lo que la persona escribió y
+    // cada control aplica su propio presupuesto al enrutar el valor.
+    params.baysZ = b;
     params.bays = b;
   }
 

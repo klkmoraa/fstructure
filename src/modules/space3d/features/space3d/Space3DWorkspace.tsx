@@ -423,6 +423,15 @@ const WorkspaceBody = ({
             Iy: defaultMember?.Iy ?? 1e-4,
             Iz: defaultMember?.Iz ?? 1e-4,
             J: defaultMember?.J ?? 4e-7,
+            // La masa y la procedencia viajan con la rigidez: sin `density` la
+            // barra nueva no pesa en el análisis modal, y sin los
+            // identificadores el modelo afirmaría una sección que no es la que
+            // calcula. Se copian sólo si la barra de referencia los declara.
+            ...(defaultMember?.density !== undefined ? { density: defaultMember.density } : {}),
+            ...(defaultMember?.materialId !== undefined ? { materialId: defaultMember.materialId } : {}),
+            ...(defaultMember?.materialOrigin !== undefined ? { materialOrigin: defaultMember.materialOrigin } : {}),
+            ...(defaultMember?.sectionId !== undefined ? { sectionId: defaultMember.sectionId } : {}),
+            ...(defaultMember?.sectionOrigin !== undefined ? { sectionOrigin: defaultMember.sectionOrigin } : {}),
             orientation: {
               localYReferenceGlobal: refVec,
               rollRadians: 0,
@@ -928,6 +937,7 @@ const WorkspaceBody = ({
             loads: t('space3d.loads'),
           }}
         />
+        <div className="space3d-bottom-stack">
         {selectedEntity && !sheetExpanded ? (
           <Space3DSelectionHUD
             selection={selectedEntity}
@@ -964,6 +974,7 @@ const WorkspaceBody = ({
             t={t}
           />
         ) : null}
+        </div>
         {scene.deformed && resultMode === 'deformed' ? <div className="space3d-scale" role="group" aria-label={t('space3d.layerDeformed')}>
           <span role="status" aria-live="polite">
             {t('space3d.deformationScale', { scale: formatSpace3DNumber(scene.deformed.scale, { significantDigits: 4 }) })}

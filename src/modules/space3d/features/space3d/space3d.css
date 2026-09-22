@@ -2047,6 +2047,11 @@
 }
 
 /* --- HUD Flotante sobre el Lienzo 3D ------------------------------------ */
+.space3d-bottom-stack {
+  /* En escritorio cada panel se posiciona solo; la pila no debe crear caja. */
+  display: contents;
+}
+
 .space3d-hud-card {
   position: absolute;
   inset-block-start: var(--sc-space-4);
@@ -2739,23 +2744,36 @@
     grid-template-columns: 1fr;
   }
 
-  .space3d-hud-card {
+  /* En pantalla estrecha los dos paneles compartían inset, ancho y z-index, y
+     la leyenda —posterior en el DOM— tapaba las acciones del HUD. Se apilan en
+     una columna anclada al dock: la leyenda arriba y el HUD pegado al pulgar,
+     sin que ninguna de las dos alturas tenga que adivinarse. */
+  .space3d-bottom-stack {
     position: fixed;
-    inset-block-start: auto;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: var(--sc-space-2);
     inset-block-end: calc(var(--space3d-dock-h, 88px) + 8px);
     inset-inline: var(--sc-space-3);
-    inline-size: calc(100% - var(--sc-space-6));
+    z-index: 45;
+    max-block-size: calc(100dvh - var(--space3d-dock-h, 88px) - var(--sc-space-8));
+    pointer-events: none;
+  }
+
+  .space3d-bottom-stack > * {
+    pointer-events: auto;
+  }
+
+  .space3d-hud-card {
+    position: static;
+    inline-size: auto;
     max-block-size: 42dvh;
     overflow-y: auto;
-    z-index: 45;
   }
 
   .space3d-results-legend {
-    position: fixed;
-    inset-block-end: calc(var(--space3d-dock-h, 88px) + 8px);
-    inset-inline-start: var(--sc-space-3);
-    inline-size: calc(100% - var(--sc-space-6));
-    z-index: 45;
+    position: static;
+    inline-size: auto;
   }
 }
 

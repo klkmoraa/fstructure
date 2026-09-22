@@ -162,6 +162,27 @@ describe('space3dGenerative', () => {
     })).toThrow(/proyecto generado inválido/i);
   });
 
+  // AGENTS.md: no aceptar NaN ni infinitos. Una carga no finita tratada como
+  // "carga desactivada" devolvía un proyecto válido al que le faltaba en
+  // silencio la carga pedida.
+  it('rejects non-finite optional loads instead of dropping them', () => {
+    expect(() => generateSpace3DFrame({
+      baysX: 1, bayWidthX: 4, storiesY: 1, storyHeightY: 3, baysZ: 1, bayDepthZ: 4,
+      gravityLoadPerNode: Number.NaN,
+    })).toThrow(RangeError);
+
+    expect(() => generateSpace3DFrame({
+      baysX: 1, bayWidthX: 4, storiesY: 1, storyHeightY: 3, baysZ: 1, bayDepthZ: 4,
+      gravityLoadPerNode: Number.NEGATIVE_INFINITY,
+    })).toThrow(RangeError);
+
+    // Cero sigue siendo una desactivación legítima, no un error.
+    expect(() => generateSpace3DFrame({
+      baysX: 1, bayWidthX: 4, storiesY: 1, storyHeightY: 3, baysZ: 1, bayDepthZ: 4,
+      gravityLoadPerNode: 0,
+    })).not.toThrow();
+  });
+
   describe('parseNaturalLanguageStructuralPrompt', () => {
     it('parses building frame prompts', () => {
       const parsed = parseNaturalLanguageStructuralPrompt('Edificio de 3 pisos con 2 vanos y carga de 25 kN');
@@ -246,6 +267,25 @@ describe('space3dGenerative', () => {
       expect(dome.archetype).toBe('dome');
       expect(dome.params.radius).toBe(8);
       expect(dome.params.height).toBe(4);
+    });
+
+    it('prefers industrial vocabulary over the generic building word', () => {
+      for (const prompt of ['edificio industrial de 6 vanos', 'industrial building with 6 bays']) {
+        const parsed = parseNaturalLanguageStructuralPrompt(prompt);
+        expect(parsed.archetype, prompt).toBe('industrial-shed');
+        expect(parsed.params.baysX, prompt).toBe(6);
+      }
+
+      // Sin vocabulario industrial, "edificio" sigue siendo un pórtico.
+      expect(parseNaturalLanguageStructuralPrompt('edificio de 6 vanos').archetype).toBe('frame');
+      // Y un puente sigue ganando a la nave aunque diga "industrial".
+      expect(parseNaturalLanguageStructuralPrompt('puente industrial de 20 m').archetype).toBe('bridge');
+    });
+
+    it('reports the requested bay count without an invented cap', () => {
+      const parsed = parseNaturalLanguageStructuralPrompt('nave industrial de 16m con 8 vanos');
+      expect(parsed.params.baysX).toBe(8);
+      expect(parsed.params.baysZ).toBe(8);
     });
 
     it('keeps Spanish prompts unchanged after the word-boundary fix', () => {
