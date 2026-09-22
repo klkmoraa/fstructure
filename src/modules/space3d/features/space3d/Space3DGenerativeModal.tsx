@@ -265,7 +265,7 @@ export const Space3DGenerativeModal = ({
     if (parsed.archetype === 'frame') {
       if (parsed.params.storiesY) setFrameStoriesY(clampFinite(Number(parsed.params.storiesY), 1, 6));
       if (parsed.params.baysX) setFrameBaysX(clampFinite(Number(parsed.params.baysX), 1, 5));
-      if (parsed.params.span) setFrameBayWidthX(clampFinite(Number(parsed.params.baySize ?? parsed.params.span), 1, 30));
+      if (parsed.params.baySize || parsed.params.span) setFrameBayWidthX(clampFinite(Number(parsed.params.baySize ?? parsed.params.span), 1, 30));
       if (parsed.params.height) setFrameStoryHeightY(clampFinite(Number(parsed.params.height), 1, 10));
       if (parsed.params.load) setFrameRoofLoad(clampFinite(Number(parsed.params.load), 0, 500));
       if (parsed.params.baseSupport === 'fixed' || parsed.params.baseSupport === 'pinned') {
