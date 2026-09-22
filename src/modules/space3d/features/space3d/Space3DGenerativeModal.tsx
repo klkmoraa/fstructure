@@ -36,6 +36,11 @@ export type Space3DArchetype =
   | 'bridge'
   | 'industrial-shed';
 
+const clampFinite = (value: number, min: number, max: number): number => {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+};
+
 export interface Space3DGenerativeModalProps {
   readonly open: boolean;
   readonly onClose: () => void;
@@ -250,101 +255,63 @@ export const Space3DGenerativeModal = ({
     setArchetype(parsed.archetype);
 
     if (parsed.archetype === 'frame') {
-      if (parsed.params.storiesY) setFrameStoriesY(Number(parsed.params.storiesY));
-      if (parsed.params.baysX) setFrameBaysX(Number(parsed.params.baysX));
-      if (parsed.params.span) setFrameBayWidthX(Number(parsed.params.span));
-      if (parsed.params.height) setFrameStoryHeightY(Number(parsed.params.height));
-      if (parsed.params.load) setFrameRoofLoad(Number(parsed.params.load));
+      if (parsed.params.storiesY) setFrameStoriesY(clampFinite(Number(parsed.params.storiesY), 1, 12));
+      if (parsed.params.baysX) setFrameBaysX(clampFinite(Number(parsed.params.baysX), 1, 10));
+      if (parsed.params.span) setFrameBayWidthX(clampFinite(Number(parsed.params.span), 1, 30));
+      if (parsed.params.height) setFrameStoryHeightY(clampFinite(Number(parsed.params.height), 1, 10));
+      if (parsed.params.load) setFrameRoofLoad(clampFinite(Number(parsed.params.load), 0, 500));
       if (parsed.params.baseSupport === 'fixed' || parsed.params.baseSupport === 'pinned') {
         setFrameBaseSupport(parsed.params.baseSupport);
       }
     } else if (parsed.archetype === 'tower') {
-      if (parsed.params.height) setTowerHeight(Number(parsed.params.height));
-      if (parsed.params.load) setTowerWindLoad(Number(parsed.params.load));
+      if (parsed.params.height) setTowerHeight(clampFinite(Number(parsed.params.height), 4, 80));
+      if (parsed.params.load) setTowerWindLoad(clampFinite(Number(parsed.params.load), 0, 300));
     } else if (parsed.archetype === 'dome') {
-      if (parsed.params.radius) setDomeRadius(Number(parsed.params.radius));
-      if (parsed.params.height) setDomeHeight(Number(parsed.params.height));
-      if (parsed.params.load) setDomeLoad(Number(parsed.params.load));
+      if (parsed.params.radius) setDomeRadius(clampFinite(Number(parsed.params.radius), 2, 40));
+      if (parsed.params.height) setDomeHeight(clampFinite(Number(parsed.params.height), 1, 30));
+      if (parsed.params.load) setDomeLoad(clampFinite(Number(parsed.params.load), 0, 200));
     } else if (parsed.archetype === 'bridge') {
-      if (parsed.params.span) setBridgeSpanX(Number(parsed.params.span));
-      if (parsed.params.height) setBridgeHeightY(Number(parsed.params.height));
-      if (parsed.params.load) setBridgeDeckLoad(Number(parsed.params.load));
+      if (parsed.params.span) setBridgeSpanX(clampFinite(Number(parsed.params.span), 6, 60));
+      if (parsed.params.height) setBridgeHeightY(clampFinite(Number(parsed.params.height), 1.5, 12));
+      if (parsed.params.load) setBridgeDeckLoad(clampFinite(Number(parsed.params.load), 0, 400));
+      if (parsed.params.bays) setBridgePanels(clampFinite(Number(parsed.params.bays), 2, 15));
     } else if (parsed.archetype === 'industrial-shed') {
-      if (parsed.params.span) setShedSpanX(Number(parsed.params.span));
-      if (parsed.params.height) setShedRidgeHeightY(Number(parsed.params.height));
-      if (parsed.params.load) setShedRoofLoad(Number(parsed.params.load));
+      if (parsed.params.span) setShedSpanX(clampFinite(Number(parsed.params.span), 6, 40));
+      if (parsed.params.height) setShedRidgeHeightY(clampFinite(Number(parsed.params.height), shedEaveHeightY + 0.5, 18));
+      if (parsed.params.load) setShedRoofLoad(clampFinite(Number(parsed.params.load), 0, 200));
+      if (parsed.params.baysZ) setShedBaysZ(clampFinite(Number(parsed.params.baysZ), 1, 10));
     } else if (parsed.archetype === 'truss') {
-      if (parsed.params.span) setTrussSpanX(Number(parsed.params.span));
-      if (parsed.params.height) setTrussHeightY(Number(parsed.params.height));
-      if (parsed.params.load) setTrussLoad(Number(parsed.params.load));
+      if (parsed.params.span) setTrussSpanX(clampFinite(Number(parsed.params.span), 4, 50));
+      if (parsed.params.height) setTrussHeightY(clampFinite(Number(parsed.params.height), 0.5, 10));
+      if (parsed.params.load) setTrussLoad(clampFinite(Number(parsed.params.load), 0, 500));
+      if (parsed.params.bays) setTrussPanels(clampFinite(Number(parsed.params.bays), 2, 20));
     }
 
     setPromptFeedback(parsed.summary);
   };
 
-  const previewModel = useMemo<Space3DProjectV1>(() => {
+  const previewState = useMemo<{ project: Space3DProjectV1 | null; error: string | null }>(() => {
     try {
-      if (archetype === 'frame') {
-        return generateSpace3DFrame({
-          baysX: frameBaysX,
-          bayWidthX: frameBayWidthX,
-          storiesY: frameStoriesY,
-          storyHeightY: frameStoryHeightY,
-          baysZ: frameBaysZ,
-          bayDepthZ: frameBayDepthZ,
-          baseSupport: frameBaseSupport,
-          gravityLoadPerNode: frameRoofLoad,
-        });
-      }
-      if (archetype === 'truss') {
-        return generateSpace3DTruss({
-          spanX: trussSpanX,
-          heightY: trussHeightY,
-          widthZ: trussWidthZ,
-          panels: trussPanels,
-          loadAtTopNodes: trussLoad,
-        });
-      }
-      if (archetype === 'tower') {
-        return generateSpace3DTower({
-          totalHeight: towerHeight,
-          baseWidth: towerBaseWidth,
-          topWidth: towerTopWidth,
-          tiers: towerTiers,
-          topWindLoad: towerWindLoad,
-        });
-      }
-      if (archetype === 'dome') {
-        return generateSpace3DDome({
-          radius: domeRadius,
-          height: domeHeight,
-          sectors: domeSectors,
-          rings: domeRings,
-          verticalLoad: domeLoad,
-        });
-      }
-      if (archetype === 'bridge') {
-        return generateSpace3DBridge({
-          spanX: bridgeSpanX,
-          widthZ: bridgeWidthZ,
-          heightY: bridgeHeightY,
-          panels: bridgePanels,
-          deckLoad: bridgeDeckLoad,
-        });
-      }
-      return generateSpace3DIndustrialShed({
-        spanX: shedSpanX,
-        eaveHeightY: shedEaveHeightY,
-        ridgeHeightY: shedRidgeHeightY,
-        baysZ: shedBaysZ,
-        baySpacingZ: shedBaySpacingZ,
-        roofLoad: shedRoofLoad,
-        windLoadX: shedWindLoadX,
-      });
-    } catch {
-      return generateSpace3DFrame({
-        baysX: 1, bayWidthX: 4, storiesY: 1, storyHeightY: 3, baysZ: 1, bayDepthZ: 4, baseSupport: 'fixed',
-      });
+      const project = archetype === 'frame'
+        ? generateSpace3DFrame({
+          baysX: frameBaysX, bayWidthX: frameBayWidthX, storiesY: frameStoriesY, storyHeightY: frameStoryHeightY,
+          baysZ: frameBaysZ, bayDepthZ: frameBayDepthZ, baseSupport: frameBaseSupport, gravityLoadPerNode: frameRoofLoad,
+        })
+        : archetype === 'truss'
+          ? generateSpace3DTruss({ spanX: trussSpanX, heightY: trussHeightY, widthZ: trussWidthZ, panels: trussPanels, loadAtTopNodes: trussLoad })
+          : archetype === 'tower'
+            ? generateSpace3DTower({ totalHeight: towerHeight, baseWidth: towerBaseWidth, topWidth: towerTopWidth, tiers: towerTiers, topWindLoad: towerWindLoad })
+            : archetype === 'dome'
+              ? generateSpace3DDome({ radius: domeRadius, height: domeHeight, sectors: domeSectors, rings: domeRings, verticalLoad: domeLoad })
+              : archetype === 'bridge'
+                ? generateSpace3DBridge({ spanX: bridgeSpanX, widthZ: bridgeWidthZ, heightY: bridgeHeightY, panels: bridgePanels, deckLoad: bridgeDeckLoad })
+                : generateSpace3DIndustrialShed({
+                  spanX: shedSpanX, eaveHeightY: shedEaveHeightY, ridgeHeightY: shedRidgeHeightY, baysZ: shedBaysZ,
+                  baySpacingZ: shedBaySpacingZ, roofLoad: shedRoofLoad, windLoadX: shedWindLoadX,
+                });
+      return { project, error: null };
+    } catch (error) {
+      return { project: null, error: error instanceof Error ? error.message : String(error) };
     }
   }, [
     archetype,
@@ -356,7 +323,10 @@ export const Space3DGenerativeModal = ({
     shedSpanX, shedEaveHeightY, shedRidgeHeightY, shedBaysZ, shedBaySpacingZ, shedRoofLoad, shedWindLoadX,
   ]);
 
+  const previewModel = previewState.project;
+
   const handleApply = () => {
+    if (!previewModel) return;
     onApply(previewModel);
     onClose();
   };
@@ -372,7 +342,7 @@ export const Space3DGenerativeModal = ({
           <button type="button" className="space3d-button" onClick={onClose}>
             {t('space3d.cancelEdit')}
           </button>
-          <button type="button" className="space3d-button space3d-button--primary" onClick={handleApply}>
+          <button type="button" className="space3d-button space3d-button--primary" onClick={handleApply} disabled={!previewModel}>
             <Sparkles size={16} aria-hidden="true" />
             <span>{t('space3d.generateAndApply' as TranslationKey) || 'Generar Estructura'}</span>
           </button>
@@ -518,7 +488,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={10}
                     value={frameBaysX}
-                    onChange={(e) => setFrameBaysX(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setFrameBaysX(clampFinite(Number(e.target.value), 1, 10))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -532,7 +502,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={30}
                     value={frameBayWidthX}
-                    onChange={(e) => setFrameBayWidthX(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setFrameBayWidthX(clampFinite(Number(e.target.value), 1, 30))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -545,7 +515,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={12}
                     value={frameStoriesY}
-                    onChange={(e) => setFrameStoriesY(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setFrameStoriesY(clampFinite(Number(e.target.value), 1, 12))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -559,7 +529,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={10}
                     value={frameStoryHeightY}
-                    onChange={(e) => setFrameStoryHeightY(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setFrameStoryHeightY(clampFinite(Number(e.target.value), 1, 10))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -572,7 +542,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={10}
                     value={frameBaysZ}
-                    onChange={(e) => setFrameBaysZ(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setFrameBaysZ(clampFinite(Number(e.target.value), 1, 10))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -586,7 +556,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={30}
                     value={frameBayDepthZ}
-                    onChange={(e) => setFrameBayDepthZ(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setFrameBayDepthZ(clampFinite(Number(e.target.value), 1, 30))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -613,7 +583,7 @@ export const Space3DGenerativeModal = ({
                     min={0}
                     max={500}
                     value={frameRoofLoad}
-                    onChange={(e) => setFrameRoofLoad(Math.max(0, Number(e.target.value)))}
+                    onChange={(e) => setFrameRoofLoad(clampFinite(Number(e.target.value), 0, 500))}
                   />
                 </div>
               </div>
@@ -632,7 +602,7 @@ export const Space3DGenerativeModal = ({
                     min={4}
                     max={50}
                     value={trussSpanX}
-                    onChange={(e) => setTrussSpanX(Math.max(4, Number(e.target.value)))}
+                    onChange={(e) => setTrussSpanX(clampFinite(Number(e.target.value), 4, 50))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -646,7 +616,7 @@ export const Space3DGenerativeModal = ({
                     min={0.5}
                     max={10}
                     value={trussHeightY}
-                    onChange={(e) => setTrussHeightY(Math.max(0.5, Number(e.target.value)))}
+                    onChange={(e) => setTrussHeightY(clampFinite(Number(e.target.value), 0.5, 10))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -660,7 +630,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={20}
                     value={trussWidthZ}
-                    onChange={(e) => setTrussWidthZ(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setTrussWidthZ(clampFinite(Number(e.target.value), 1, 20))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -673,7 +643,7 @@ export const Space3DGenerativeModal = ({
                     min={2}
                     max={20}
                     value={trussPanels}
-                    onChange={(e) => setTrussPanels(Math.max(2, Number(e.target.value)))}
+                    onChange={(e) => setTrussPanels(clampFinite(Number(e.target.value), 2, 20))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -687,7 +657,7 @@ export const Space3DGenerativeModal = ({
                     min={0}
                     max={500}
                     value={trussLoad}
-                    onChange={(e) => setTrussLoad(Math.max(0, Number(e.target.value)))}
+                    onChange={(e) => setTrussLoad(clampFinite(Number(e.target.value), 0, 500))}
                   />
                 </div>
               </div>
@@ -706,7 +676,7 @@ export const Space3DGenerativeModal = ({
                     min={4}
                     max={80}
                     value={towerHeight}
-                    onChange={(e) => setTowerHeight(Math.max(4, Number(e.target.value)))}
+                    onChange={(e) => setTowerHeight(clampFinite(Number(e.target.value), 4, 80))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -720,7 +690,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={25}
                     value={towerBaseWidth}
-                    onChange={(e) => setTowerBaseWidth(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setTowerBaseWidth(clampFinite(Number(e.target.value), 1, 25))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -734,7 +704,7 @@ export const Space3DGenerativeModal = ({
                     min={0.5}
                     max={15}
                     value={towerTopWidth}
-                    onChange={(e) => setTowerTopWidth(Math.max(0.5, Number(e.target.value)))}
+                    onChange={(e) => setTowerTopWidth(clampFinite(Number(e.target.value), 0.5, 15))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -747,7 +717,7 @@ export const Space3DGenerativeModal = ({
                     min={2}
                     max={15}
                     value={towerTiers}
-                    onChange={(e) => setTowerTiers(Math.max(2, Number(e.target.value)))}
+                    onChange={(e) => setTowerTiers(clampFinite(Number(e.target.value), 2, 15))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -761,7 +731,7 @@ export const Space3DGenerativeModal = ({
                     min={0}
                     max={300}
                     value={towerWindLoad}
-                    onChange={(e) => setTowerWindLoad(Math.max(0, Number(e.target.value)))}
+                    onChange={(e) => setTowerWindLoad(clampFinite(Number(e.target.value), 0, 300))}
                   />
                 </div>
               </div>
@@ -780,7 +750,7 @@ export const Space3DGenerativeModal = ({
                     min={2}
                     max={40}
                     value={domeRadius}
-                    onChange={(e) => setDomeRadius(Math.max(2, Number(e.target.value)))}
+                    onChange={(e) => setDomeRadius(clampFinite(Number(e.target.value), 2, 40))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -794,7 +764,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={30}
                     value={domeHeight}
-                    onChange={(e) => setDomeHeight(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setDomeHeight(clampFinite(Number(e.target.value), 1, 30))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -807,7 +777,7 @@ export const Space3DGenerativeModal = ({
                     min={4}
                     max={24}
                     value={domeSectors}
-                    onChange={(e) => setDomeSectors(Math.max(4, Number(e.target.value)))}
+                    onChange={(e) => setDomeSectors(clampFinite(Number(e.target.value), 4, 24))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -820,7 +790,7 @@ export const Space3DGenerativeModal = ({
                     min={2}
                     max={10}
                     value={domeRings}
-                    onChange={(e) => setDomeRings(Math.max(2, Number(e.target.value)))}
+                    onChange={(e) => setDomeRings(clampFinite(Number(e.target.value), 2, 10))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -834,7 +804,7 @@ export const Space3DGenerativeModal = ({
                     min={0}
                     max={200}
                     value={domeLoad}
-                    onChange={(e) => setDomeLoad(Math.max(0, Number(e.target.value)))}
+                    onChange={(e) => setDomeLoad(clampFinite(Number(e.target.value), 0, 200))}
                   />
                 </div>
               </div>
@@ -853,7 +823,7 @@ export const Space3DGenerativeModal = ({
                     min={6}
                     max={60}
                     value={bridgeSpanX}
-                    onChange={(e) => setBridgeSpanX(Math.max(6, Number(e.target.value)))}
+                    onChange={(e) => setBridgeSpanX(clampFinite(Number(e.target.value), 6, 60))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -867,7 +837,7 @@ export const Space3DGenerativeModal = ({
                     min={2}
                     max={15}
                     value={bridgeWidthZ}
-                    onChange={(e) => setBridgeWidthZ(Math.max(2, Number(e.target.value)))}
+                    onChange={(e) => setBridgeWidthZ(clampFinite(Number(e.target.value), 2, 15))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -881,7 +851,7 @@ export const Space3DGenerativeModal = ({
                     min={1.5}
                     max={12}
                     value={bridgeHeightY}
-                    onChange={(e) => setBridgeHeightY(Math.max(1.5, Number(e.target.value)))}
+                    onChange={(e) => setBridgeHeightY(clampFinite(Number(e.target.value), 1.5, 12))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -894,7 +864,7 @@ export const Space3DGenerativeModal = ({
                     min={2}
                     max={15}
                     value={bridgePanels}
-                    onChange={(e) => setBridgePanels(Math.max(2, Number(e.target.value)))}
+                    onChange={(e) => setBridgePanels(clampFinite(Number(e.target.value), 2, 15))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -908,7 +878,7 @@ export const Space3DGenerativeModal = ({
                     min={0}
                     max={400}
                     value={bridgeDeckLoad}
-                    onChange={(e) => setBridgeDeckLoad(Math.max(0, Number(e.target.value)))}
+                    onChange={(e) => setBridgeDeckLoad(clampFinite(Number(e.target.value), 0, 400))}
                   />
                 </div>
               </div>
@@ -927,7 +897,7 @@ export const Space3DGenerativeModal = ({
                     min={6}
                     max={40}
                     value={shedSpanX}
-                    onChange={(e) => setShedSpanX(Math.max(6, Number(e.target.value)))}
+                    onChange={(e) => setShedSpanX(clampFinite(Number(e.target.value), 6, 40))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -941,7 +911,7 @@ export const Space3DGenerativeModal = ({
                     min={3}
                     max={12}
                     value={shedEaveHeightY}
-                    onChange={(e) => setShedEaveHeightY(Math.max(3, Number(e.target.value)))}
+                    onChange={(e) => setShedEaveHeightY(clampFinite(Number(e.target.value), 3, 12))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -955,7 +925,7 @@ export const Space3DGenerativeModal = ({
                     min={shedEaveHeightY + 0.5}
                     max={18}
                     value={shedRidgeHeightY}
-                    onChange={(e) => setShedRidgeHeightY(Math.max(shedEaveHeightY + 0.5, Number(e.target.value)))}
+                    onChange={(e) => setShedRidgeHeightY(clampFinite(Number(e.target.value), shedEaveHeightY + 0.5, 18))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -968,7 +938,7 @@ export const Space3DGenerativeModal = ({
                     min={1}
                     max={10}
                     value={shedBaysZ}
-                    onChange={(e) => setShedBaysZ(Math.max(1, Number(e.target.value)))}
+                    onChange={(e) => setShedBaysZ(clampFinite(Number(e.target.value), 1, 10))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -982,7 +952,7 @@ export const Space3DGenerativeModal = ({
                     min={3}
                     max={12}
                     value={shedBaySpacingZ}
-                    onChange={(e) => setShedBaySpacingZ(Math.max(3, Number(e.target.value)))}
+                    onChange={(e) => setShedBaySpacingZ(clampFinite(Number(e.target.value), 3, 12))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -996,7 +966,7 @@ export const Space3DGenerativeModal = ({
                     min={0}
                     max={200}
                     value={shedRoofLoad}
-                    onChange={(e) => setShedRoofLoad(Math.max(0, Number(e.target.value)))}
+                    onChange={(e) => setShedRoofLoad(clampFinite(Number(e.target.value), 0, 200))}
                   />
                 </div>
                 <div className="space3d-field">
@@ -1010,7 +980,7 @@ export const Space3DGenerativeModal = ({
                     min={0}
                     max={200}
                     value={shedWindLoadX}
-                    onChange={(e) => setShedWindLoadX(Math.max(0, Number(e.target.value)))}
+                    onChange={(e) => setShedWindLoadX(clampFinite(Number(e.target.value), 0, 200))}
                   />
                 </div>
               </div>
@@ -1024,33 +994,27 @@ export const Space3DGenerativeModal = ({
               <span>{t('space3d.previewWireframe' as TranslationKey) || 'Previsualización Isométrica'}</span>
             </div>
 
-            <Space3DWireframePreview project={previewModel} />
-
-            <div className="space3d-preview-stats">
-              <div className="space3d-stat-pill">
-                <span>{t('space3d.nodes')}</span>
-                <strong>{previewModel.nodes.length}</strong>
+            {previewModel ? (
+              <>
+                <Space3DWireframePreview project={previewModel} />
+                <div className="space3d-preview-stats">
+                  <div className="space3d-stat-pill"><span>{t('space3d.nodes')}</span><strong>{previewModel.nodes.length}</strong></div>
+                  <div className="space3d-stat-pill"><span>{t('space3d.members')}</span><strong>{previewModel.members.length}</strong></div>
+                  <div className="space3d-stat-pill"><span>{t('space3d.loads')}</span><strong>{previewModel.nodalLoads.length}</strong></div>
+                  <div className="space3d-stat-pill"><span>{t('space3d.dofCount')}</span><strong>{previewModel.nodes.length * 6}</strong></div>
+                </div>
+                <div className="space3d-preview-info">
+                  <span>{previewModel.name}</span>
+                  <span className="space3d-preview-note">
+                    {t('space3d.previewNote' as TranslationKey) || 'Estructura lista para cálculo matricial 3D de 6 GDL por nudo.'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="space3d-notice" role="alert">
+                {previewState.error ?? 'No se pudo generar una previsualización segura.'}
               </div>
-              <div className="space3d-stat-pill">
-                <span>{t('space3d.members')}</span>
-                <strong>{previewModel.members.length}</strong>
-              </div>
-              <div className="space3d-stat-pill">
-                <span>{t('space3d.loads')}</span>
-                <strong>{previewModel.nodalLoads.length}</strong>
-              </div>
-              <div className="space3d-stat-pill">
-                <span>{t('space3d.dofCount')}</span>
-                <strong>{previewModel.nodes.length * 6}</strong>
-              </div>
-            </div>
-
-            <div className="space3d-preview-info">
-              <span>{previewModel.name}</span>
-              <span className="space3d-preview-note">
-                {t('space3d.previewNote' as TranslationKey) || 'Estructura lista para cálculo matricial 3D de 6 GDL por nudo.'}
-              </span>
-            </div>
+            )}
           </div>
         </div>
       </div>
