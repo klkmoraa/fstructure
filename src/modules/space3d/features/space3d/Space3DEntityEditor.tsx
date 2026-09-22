@@ -12,6 +12,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { fixedSpace3DRestraints, freeSpace3DRestraints, type Space3DFrameMember, type Space3DNodalLoad, type Space3DNode, type Space3DProjectV1, type Space3DRestraints } from '../../space3d/model/types';
+import {
+  SPACE3D_MATERIALS,
+  SPACE3D_SECTION_CATALOG,
+  calculateCircularSection,
+  calculateRectangularSection,
+  getSectionsByCategory,
+} from '../../space3d/model/sectionLibrary';
 import type { Space3DCommand } from '../../space3d/data/commands';
 import type { TranslationKey } from '../../i18n/catalogs';
 
@@ -96,7 +103,13 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
   const [endJ, setEndJ] = useState(member?.j ?? project.nodes[1]?.id ?? '');
   const [loadNodeId, setLoadNodeId] = useState(load?.nodeId ?? project.nodes[0]?.id ?? '');
   const [loadCaseId, setLoadCaseId] = useState(load?.caseId ?? project.loadCases[0]?.id ?? '');
+  const [catalogCategory, setCatalogCategory] = useState<'all' | 'steel' | 'concrete' | 'timber' | 'aluminum'>('all');
+  const [calcB, setCalcB] = useState('0.30');
+  const [calcH, setCalcH] = useState('0.40');
+  const [calcDia, setCalcDia] = useState('0.25');
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const availableSections = useMemo(() => getSectionsByCategory(catalogCategory), [catalogCategory]);
 
   const key = `${target.kind}:${target.id ?? 'new'}`;
   useEffect(() => {
@@ -239,6 +252,70 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         </label>
       </div>
 
+      <div className="space3d-section-picker">
+        <div className="space3d-section-categories" role="group" aria-label="Filtrar por material">
+          {(['all', 'steel', 'concrete', 'timber', 'aluminum'] as const).map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              className={`space3d-cat-chip ${catalogCategory === cat ? 'is-active' : ''}`}
+              onClick={() => setCatalogCategory(cat)}
+            >
+              {cat === 'all' ? 'Todos' : cat === 'steel' ? 'Acero' : cat === 'concrete' ? 'Concreto' : cat === 'timber' ? 'Madera' : 'Aluminio'}
+            </button>
+          ))}
+        </div>
+
+        <div className="space3d-field-grid">
+          <label className="space3d-field">
+            <span className="space3d-field-label">Perfil estándar ({availableSections.length})</span>
+            <select
+              defaultValue=""
+              value=""
+              onChange={(e) => {
+                const sec = SPACE3D_SECTION_CATALOG.find((s) => s.name === e.target.value);
+                if (!sec) return;
+                const mat = SPACE3D_MATERIALS.find((m) => m.id === sec.materialId);
+                setDraft((current) => ({
+                  ...current,
+                  A: String(sec.A),
+                  Iy: String(sec.Iy),
+                  Iz: String(sec.Iz),
+                  J: String(sec.J),
+                  ...(mat ? { E: String(mat.E), G: String(mat.G) } : {}),
+                }));
+              }}
+            >
+              <option value="" disabled>Seleccionar perfil…</option>
+              {availableSections.map((sec) => (
+                <option key={sec.name} value={sec.name}>{sec.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space3d-field">
+            <span className="space3d-field-label">Material de referencia</span>
+            <select
+              defaultValue=""
+              value=""
+              onChange={(e) => {
+                const mat = SPACE3D_MATERIALS.find((m) => m.id === e.target.value);
+                if (!mat) return;
+                setDraft((current) => ({
+                  ...current,
+                  E: String(mat.E),
+                  G: String(mat.G),
+                }));
+              }}
+            >
+              <option value="" disabled>Cambiar material…</option>
+              {SPACE3D_MATERIALS.map((mat) => (
+                <option key={mat.id} value={mat.id}>{mat.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
       <div className="space3d-field-grid">
         {field('E', t('space3d.propertyE'), t('space3d.unitStress'), true)}
         {field('G', t('space3d.propertyG'), t('space3d.unitStress'), true)}
@@ -247,6 +324,64 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         {field('Iz', t('space3d.propertyIz'), t('space3d.unitInertia'), true)}
         {field('J', t('space3d.propertyJ'), t('space3d.unitInertia'), true)}
       </div>
+
+      <details className="space3d-fieldset" style={{ padding: '8px' }}>
+        <summary style={{ fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>Calculadora geométrica de sección (b × h / circular)</summary>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'end' }}>
+            <div className="space3d-field">
+              <label className="space3d-field-label" htmlFor="calc-b">Rectangular b (m)</label>
+              <input id="calc-b" type="number" step="0.05" value={calcB} onChange={(e) => setCalcB(e.target.value)} />
+            </div>
+            <div className="space3d-field">
+              <label className="space3d-field-label" htmlFor="calc-h">h (m)</label>
+              <input id="calc-h" type="number" step="0.05" value={calcH} onChange={(e) => setCalcH(e.target.value)} />
+            </div>
+            <button
+              type="button"
+              className="space3d-button"
+              onClick={() => {
+                const b = numeric(calcB) ?? 0.3;
+                const h = numeric(calcH) ?? 0.4;
+                const res = calculateRectangularSection(b, h);
+                setDraft((curr) => ({
+                  ...curr,
+                  A: String(res.A),
+                  Iy: String(res.Iy),
+                  Iz: String(res.Iz),
+                  J: String(res.J),
+                }));
+              }}
+            >
+              Aplicar Rect.
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', alignItems: 'end' }}>
+            <div className="space3d-field">
+              <label className="space3d-field-label" htmlFor="calc-dia">Circular Ø (m)</label>
+              <input id="calc-dia" type="number" step="0.05" value={calcDia} onChange={(e) => setCalcDia(e.target.value)} />
+            </div>
+            <button
+              type="button"
+              className="space3d-button"
+              onClick={() => {
+                const d = numeric(calcDia) ?? 0.25;
+                const res = calculateCircularSection(d);
+                setDraft((curr) => ({
+                  ...curr,
+                  A: String(res.A),
+                  Iy: String(res.Iy),
+                  Iz: String(res.Iz),
+                  J: String(res.J),
+                }));
+              }}
+            >
+              Aplicar Circular
+            </button>
+          </div>
+        </div>
+      </details>
 
       <fieldset className="space3d-fieldset">
         <legend>{t('space3d.orientationReference')}</legend>

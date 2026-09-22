@@ -35,6 +35,10 @@ import { Space3DResultsPanel, type Space3DResultsTab } from './Space3DResultsPan
 import { Space3DConsoleTools, type Space3DActiveTool } from './Space3DToolRail';
 import { Space3DModelSummary, type Space3DModelFocus } from './Space3DModelNav';
 import { Space3DAnalysisModeSelect } from './Space3DAnalysisModeSelect';
+import { Space3DGenerativeModal } from './Space3DGenerativeModal';
+import { Space3DSelectionHUD } from './Space3DSelectionHUD';
+import { Space3DResultsLegend } from './Space3DResultsLegend';
+import { chooseReferenceVector } from '../../space3d/engine/space3dGenerative';
 import {
   analyzeSpace3DBuckling,
   analyzeSpace3DInfluence,
@@ -274,6 +278,8 @@ const WorkspaceBody = ({
   const [analysisMode, setAnalysisMode] = useState<Space3DAnalysisMode>('linear');
   const [studyState, setStudyState] = useState<Space3DStudyState>('idle');
   const [studyFeedback, setStudyFeedback] = useState<Space3DStudyFeedback | null>(null);
+  const [generativeOpen, setGenerativeOpen] = useState(false);
+  const [connectingFromNodeId, setConnectingFromNodeId] = useState<string | null>(null);
   const hasContent = project.nodes.length > 0;
   // Doce clics en cada sentido: suficiente margen para explorar sin llegar a
   // una deformada ilegible por minúscula o a una que ya no cabe en pantalla.
@@ -389,6 +395,44 @@ const WorkspaceBody = ({
   }, [analysisState]);
 
   const selectEntity = useCallback((selection: Space3DSelection | null) => {
+    if (connectingFromNodeId && selection?.kind === 'node' && selection.id !== connectingFromNodeId) {
+      const fromNode = project.nodes.find((n) => n.id === connectingFromNodeId);
+      const toNode = project.nodes.find((n) => n.id === selection.id);
+      if (fromNode && toNode) {
+        const usedMemberIds = project.members.map((m) => m.id);
+        let idx = project.members.length + 1;
+        while (usedMemberIds.includes(`M${idx}`)) idx += 1;
+        const newMemberId = `M${idx}`;
+        const refVec = chooseReferenceVector(fromNode, toNode);
+        const defaultMember = project.members[0];
+        const ok = execute({
+          kind: 'add-member',
+          member: {
+            id: newMemberId,
+            i: connectingFromNodeId,
+            j: selection.id,
+            E: defaultMember?.E ?? 200e6,
+            G: defaultMember?.G ?? 77e6,
+            A: defaultMember?.A ?? 0.01,
+            Iy: defaultMember?.Iy ?? 1e-4,
+            Iz: defaultMember?.Iz ?? 1e-4,
+            J: defaultMember?.J ?? 2e-4,
+            orientation: {
+              localYReferenceGlobal: refVec,
+              rollRadians: 0,
+            },
+          },
+        }).ok;
+        if (ok) {
+          setConnectingFromNodeId(null);
+          select({ kind: 'member', id: newMemberId });
+          setEditorTarget({ kind: 'member', id: newMemberId });
+          setRail('model');
+          setSheetExpanded(true);
+          return;
+        }
+      }
+    }
     select(selection);
     setEditorTarget(selection ? { kind: selection.kind, id: selection.id } : null);
     if (selection) {
@@ -397,20 +441,21 @@ const WorkspaceBody = ({
       // editor se abre fuera de la vista y parece que el toque no hizo nada.
       setSheetExpanded(true);
     } else setSheetExpanded(false);
-  }, [select]);
+  }, [connectingFromNodeId, execute, project.members, project.nodes, select]);
 
-  const openNew = (kind: Space3DEditorTarget['kind']) => {
+  const openNew = useCallback((kind: Space3DEditorTarget['kind']) => {
     select(null);
     setRail('model');
     setEditorTarget({ kind, id: null });
     setModelNavFocus(kind);
     setSheetExpanded(true);
-  };
+  }, [select]);
 
-  const clearToolSelection = () => {
+  const clearToolSelection = useCallback(() => {
     select(null);
     setEditorTarget(null);
-  };
+    setConnectingFromNodeId(null);
+  }, [select]);
 
   const selectedNodeId = selectedEntity?.kind === 'node' ? selectedEntity.id : null;
   const editSelectedSupports = () => {
@@ -447,7 +492,7 @@ const WorkspaceBody = ({
     setPendingReplace(null);
   };
 
-  const remove = (target: Space3DEditorTarget) => {
+  const remove = useCallback((target: Space3DEditorTarget) => {
     if (!target.id) return;
     const command: Space3DCommand = target.kind === 'node'
       ? { kind: 'delete-node', nodeId: target.id }
@@ -458,7 +503,74 @@ const WorkspaceBody = ({
       select(null);
       setEditorTarget(null);
     }
-  };
+  }, [execute, select]);
+
+  // Accesos rápidos por teclado para modelado fluido
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+
+      if (event.key === 'Escape') {
+        if (connectingFromNodeId) {
+          setConnectingFromNodeId(null);
+          event.preventDefault();
+          return;
+        }
+        if (editorTarget || selectedEntity) {
+          clearToolSelection();
+          event.preventDefault();
+          return;
+        }
+      }
+
+      if (isInput) return;
+
+      const entityToDelete = editorTarget?.id ? editorTarget : selectedEntity ? { kind: selectedEntity.kind, id: selectedEntity.id } : null;
+      if ((event.key === 'Delete' || event.key === 'Backspace') && entityToDelete?.id) {
+        event.preventDefault();
+        remove(entityToDelete);
+        return;
+      }
+
+      if ((event.key === 'g' || event.key === 'G') && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        setGenerativeOpen(true);
+        return;
+      }
+
+      if ((event.key === 'v' || event.key === 'V') && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        clearToolSelection();
+        return;
+      }
+
+      if ((event.key === 'n' || event.key === 'N') && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        openNew('node');
+        return;
+      }
+
+      if ((event.key === 'b' || event.key === 'B') && !event.ctrlKey && !event.metaKey) {
+        if (project.nodes.length >= 2) {
+          event.preventDefault();
+          openNew('member');
+        }
+        return;
+      }
+
+      if ((event.key === 'c' || event.key === 'C') && !event.ctrlKey && !event.metaKey) {
+        if (project.nodes.length > 0) {
+          event.preventDefault();
+          openNew('load');
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [clearToolSelection, connectingFromNodeId, editorTarget, openNew, project.nodes.length, remove]);
 
   // El puente solo bloquea lo que no pudo mapear con autoridad. En cuanto el
   // usuario completa un numero o reconoce una diferencia, deja de bloquear.
@@ -562,6 +674,7 @@ const WorkspaceBody = ({
       <ChevronDown size={14} aria-hidden="true" />
     </button>
     {projectMenuOpen ? <div className="space3d-popover space3d-project-menu" role="menu">
+      <button type="button" role="menuitem" onClick={() => { setGenerativeOpen(true); setProjectMenuOpen(false); }}><Sparkles size={15} />{t('space3d.generatorTitle' as TranslationKey) || 'Generador 3D'}</button>
       <button type="button" role="menuitem" onClick={() => { requestReplace('example'); setProjectMenuOpen(false); }}><Sparkles size={15} />{t('space3d.loadExample')}</button>
       <button type="button" role="menuitem" onClick={() => { requestReplace('blank'); setProjectMenuOpen(false); }}><RotateCcw size={15} />{t('space3d.resetBlank')}</button>
       <button type="button" role="menuitem" onClick={() => { setTransfer('import'); setProjectMenuOpen(false); }}><Upload size={15} />{t('space3d.import')}</button>
@@ -732,6 +845,7 @@ const WorkspaceBody = ({
         onNewMember={() => openNew('member')}
         onNewLoad={() => openNew('load')}
         onEditSupport={editSelectedSupports}
+        onOpenGenerative={() => setGenerativeOpen(true)}
         canNewMember={canNewMember}
         canNewLoad={canNewLoad}
         canEditSupport={canEditSupport}
@@ -752,6 +866,18 @@ const WorkspaceBody = ({
       </div> : null}
 
       <section className="space3d-stage" aria-label={t('space3d.canvasLabel')}>
+        {connectingFromNodeId ? (
+          <div className="space3d-connecting-banner" role="status">
+            <span>{t('space3d.connectingInstruction' as TranslationKey, { id: connectingFromNodeId }) || `Selecciona el nudo destino para crear la barra desde ${connectingFromNodeId}`}</span>
+            <button
+              type="button"
+              className="space3d-button space3d-button--ghost"
+              onClick={() => setConnectingFromNodeId(null)}
+            >
+              {t('space3d.cancelEdit')}
+            </button>
+          </div>
+        ) : null}
         <Space3DCanvas
           model={scene}
           layers={{ ...layers, deformed: layers.deformed && resultMode === 'deformed' }}
@@ -777,6 +903,42 @@ const WorkspaceBody = ({
             loads: t('space3d.loads'),
           }}
         />
+        {selectedEntity && !sheetExpanded ? (
+          <Space3DSelectionHUD
+            selection={selectedEntity}
+            project={project}
+            analysis={analysis}
+            onDeselect={() => clearToolSelection()}
+            onOpenEditor={() => {
+              setRail('model');
+              setSheetExpanded(true);
+            }}
+            onDelete={() => {
+              const target = editorTarget?.id ? editorTarget : selectedEntity ? { kind: selectedEntity.kind, id: selectedEntity.id } : null;
+              if (target) remove(target);
+            }}
+            onStartConnectMember={(nodeId) => {
+              setConnectingFromNodeId(nodeId);
+            }}
+            onAddLoadToNode={(_nodeId) => {
+              select(null);
+              setRail('model');
+              setEditorTarget({ kind: 'load', id: null });
+              setModelNavFocus('load');
+              setSheetExpanded(true);
+            }}
+            t={t}
+          />
+        ) : null}
+        {resultMode !== 'model' && !sheetExpanded ? (
+          <Space3DResultsLegend
+            resultMode={resultMode}
+            analysis={analysis}
+            project={project}
+            onSelectCritical={(kind, id) => selectEntity({ kind, id })}
+            t={t}
+          />
+        ) : null}
         {scene.deformed && resultMode === 'deformed' ? <div className="space3d-scale" role="group" aria-label={t('space3d.layerDeformed')}>
           <span role="status" aria-live="polite">
             {t('space3d.deformationScale', { scale: formatSpace3DNumber(scene.deformed.scale, { significantDigits: 4 }) })}
@@ -988,6 +1150,17 @@ const WorkspaceBody = ({
         </button>
       </>}
     >{null}</Dialog>
+
+    <Space3DGenerativeModal
+      open={generativeOpen}
+      onClose={() => setGenerativeOpen(false)}
+      onApply={(newProject) => {
+        replaceProject(newProject);
+        setGenerativeOpen(false);
+        setEditorTarget(null);
+      }}
+      t={t}
+    />
 
     <footer className="space3d-status" aria-label={t('space3d.title')}>
       <span className={`space3d-state space3d-state--${STATE_TONES[analysisState]}`}>{t(STATE_KEYS[analysisState])}</span>

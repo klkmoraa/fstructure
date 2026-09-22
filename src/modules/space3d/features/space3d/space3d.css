@@ -291,6 +291,7 @@
 }
 
 .space3d-stage {
+  position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: var(--sc-space-2);
@@ -2009,3 +2010,764 @@
     max-inline-size: none;
   }
 }
+
+/* ==========================================================================
+   Space 3D Superpowers & Generative UI Extensions
+   ========================================================================== */
+
+/* --- Banner de conexión interactiva entre nudos -------------------------- */
+.space3d-connecting-banner {
+  position: absolute;
+  inset-block-start: var(--sc-space-3);
+  inset-inline: var(--sc-space-3);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-3);
+  padding: var(--sc-space-2) var(--sc-space-4);
+  background: var(--sc-color-brand-primary, #3b82f6);
+  color: #ffffff;
+  border-radius: var(--sc-radius-md);
+  font-family: var(--sc-font-ui);
+  font-size: var(--sc-font-size-body);
+  font-weight: var(--sc-font-weight-medium);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  animation: space3d-slide-down 0.2s ease-out;
+}
+
+@keyframes space3d-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes space3d-fade-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- HUD Flotante sobre el Lienzo 3D ------------------------------------ */
+.space3d-hud-card {
+  position: absolute;
+  inset-block-start: var(--sc-space-4);
+  inset-inline-end: var(--sc-space-4);
+  z-index: 15;
+  inline-size: min(320px, calc(100% - var(--sc-space-8)));
+  background: rgba(var(--sc-color-surface-overlay-rgb, 20, 24, 33), 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-lg);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  padding: var(--sc-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-2-5, 10px);
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-ui);
+  animation: space3d-fade-in 0.15s ease-out;
+}
+
+.space3d-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-2);
+}
+
+.space3d-hud-title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+}
+
+.space3d-hud-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: var(--sc-radius-xs);
+  font-size: 11px;
+  font-weight: var(--sc-font-weight-bold);
+  font-family: var(--sc-font-mono);
+}
+
+.space3d-hud-badge--node {
+  background: var(--sc-color-accent-blue-subtle, rgba(59, 130, 246, 0.2));
+  color: var(--sc-color-accent-blue, #60a5fa);
+  border: 1px solid rgba(96, 165, 250, 0.4);
+}
+
+.space3d-hud-badge--member {
+  background: var(--sc-color-accent-emerald-subtle, rgba(16, 185, 129, 0.2));
+  color: var(--sc-color-accent-emerald, #34d399);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.space3d-hud-badge--load {
+  background: var(--sc-color-accent-amber-subtle, rgba(245, 158, 11, 0.2));
+  color: var(--sc-color-accent-amber, #fbbf24);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.space3d-hud-id {
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-body);
+  font-weight: var(--sc-font-weight-bold);
+}
+
+.space3d-hud-chip {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: var(--sc-radius-pill, 9999px);
+  background: var(--sc-color-surface-chip, rgba(255, 255, 255, 0.08));
+  color: var(--sc-color-text-secondary);
+}
+
+.space3d-hud-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 26px;
+  block-size: 26px;
+  border-radius: var(--sc-radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.space3d-hud-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--sc-color-text-primary);
+}
+
+.space3d-hud-coordinates,
+.space3d-hud-props {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sc-space-2);
+  font-family: var(--sc-font-mono);
+  font-size: 12px;
+  color: var(--sc-color-text-secondary);
+  padding: var(--sc-space-1-5, 6px) var(--sc-space-2);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--sc-radius-sm);
+}
+
+.space3d-hud-results {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sc-space-2);
+  padding: var(--sc-space-2);
+  background: rgba(59, 130, 246, 0.08);
+  border-inline-start: 2px solid var(--sc-color-brand-primary, #3b82f6);
+  border-radius: var(--sc-radius-xs);
+  font-size: 12px;
+}
+
+.space3d-hud-result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.space3d-hud-result-item span {
+  font-size: 11px;
+  color: var(--sc-color-text-secondary);
+}
+
+.space3d-hud-result-item strong {
+  font-family: var(--sc-font-mono);
+  font-size: 12px;
+  color: var(--sc-color-text-primary);
+}
+
+.space3d-hud-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sc-space-2);
+  margin-block-start: var(--sc-space-1);
+}
+
+.space3d-hud-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: var(--sc-radius-sm);
+  border: 1px solid var(--sc-color-border-soft);
+  background: var(--sc-color-surface-card);
+  color: var(--sc-color-text-primary);
+  font-size: 12px;
+  font-weight: var(--sc-font-weight-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-block-size: 30px;
+}
+
+.space3d-hud-action-btn:hover {
+  background: var(--sc-color-surface-hover);
+  border-color: var(--sc-color-border-hover);
+}
+
+.space3d-hud-action-btn--primary {
+  background: var(--sc-color-brand-primary, #3b82f6);
+  border-color: var(--sc-color-brand-primary, #3b82f6);
+  color: #ffffff;
+}
+
+.space3d-hud-action-btn--primary:hover {
+  background: var(--sc-color-brand-primary-hover, #2563eb);
+}
+
+.space3d-hud-action-btn--danger {
+  color: var(--sc-color-state-error, #ef4444);
+}
+
+.space3d-hud-action-btn--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: var(--sc-color-state-error, #ef4444);
+}
+
+.space3d-val-tension {
+  color: var(--sc-color-brand-primary, #3b82f6);
+}
+
+.space3d-val-compression {
+  color: var(--sc-color-state-error, #ef4444);
+}
+
+/* --- Escala de Colores y Leyenda de Resultados -------------------------- */
+.space3d-results-legend {
+  position: absolute;
+  inset-block-end: var(--sc-space-12, 48px);
+  inset-inline-start: var(--sc-space-4);
+  z-index: 15;
+  inline-size: min(290px, calc(100% - var(--sc-space-8)));
+  background: rgba(var(--sc-color-surface-overlay-rgb, 20, 24, 33), 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-md);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  padding: var(--sc-space-2-5, 10px) var(--sc-space-3);
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-ui);
+}
+
+.space3d-results-legend--minimized {
+  inline-size: auto;
+  min-inline-size: 160px;
+}
+
+.space3d-legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-2);
+}
+
+.space3d-legend-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: var(--sc-font-weight-medium);
+}
+
+.space3d-legend-icon {
+  color: var(--sc-color-brand-primary, #3b82f6);
+}
+
+.space3d-legend-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border: none;
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  cursor: pointer;
+}
+
+.space3d-legend-bar-wrapper {
+  margin-block: var(--sc-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.space3d-legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--sc-font-mono);
+  font-size: 11px;
+  color: var(--sc-color-text-secondary);
+}
+
+.space3d-legend-bar {
+  block-size: 10px;
+  border-radius: var(--sc-radius-pill, 9999px);
+  inline-size: 100%;
+}
+
+.space3d-legend-grad--axial {
+  background: linear-gradient(to right, #3b82f6, #94a3b8, #ef4444);
+}
+
+.space3d-legend-grad--shear {
+  background: linear-gradient(to right, #10b981, #f59e0b, #ef4444);
+}
+
+.space3d-legend-grad--moment {
+  background: linear-gradient(to right, #6366f1, #ec4899, #f43f5e);
+}
+
+.space3d-legend-grad--reactions {
+  background: linear-gradient(to right, #06b6d4, #3b82f6, #8b5cf6);
+}
+
+.space3d-legend-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--sc-color-text-secondary);
+}
+
+/* --- Modal Generador Paramétrico 3D ------------------------------------ */
+.space3d-generative-dialog {
+  max-inline-size: 760px;
+  inline-size: 95vw;
+}
+
+.space3d-generative-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-4);
+  padding: var(--sc-space-2) 0;
+}
+
+.space3d-generative-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sc-space-2);
+}
+
+.space3d-archetype-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sc-space-3) var(--sc-space-2);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-color-surface-card);
+  color: var(--sc-color-text-secondary);
+  font-size: 12px;
+  font-weight: var(--sc-font-weight-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.space3d-archetype-tab:hover {
+  background: var(--sc-color-surface-hover);
+  color: var(--sc-color-text-primary);
+}
+
+.space3d-archetype-tab.is-active {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: var(--sc-color-brand-primary, #3b82f6);
+  color: var(--sc-color-text-primary);
+}
+
+.space3d-generative-columns {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: var(--sc-space-4);
+}
+
+.space3d-generative-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-3);
+  max-block-size: 380px;
+  overflow-y: auto;
+  padding-inline-end: var(--sc-space-2);
+}
+
+.space3d-generative-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-2);
+}
+
+.space3d-generative-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-color-text-secondary);
+  font-weight: var(--sc-font-weight-bold);
+}
+
+.space3d-generative-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sc-space-2);
+}
+
+.space3d-generative-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.space3d-generative-field input,
+.space3d-generative-field select {
+  inline-size: 100%;
+  min-block-size: var(--sc-control-height-md);
+  padding: var(--sc-space-1-5) var(--sc-space-2);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-input);
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-mono);
+  font-size: 13px;
+}
+
+.space3d-field-hint {
+  font-size: 11px;
+  color: var(--sc-color-text-muted);
+}
+
+.space3d-generative-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-3);
+  padding: var(--sc-space-3);
+  background: var(--sc-color-surface-subtle);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-md);
+}
+
+.space3d-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: var(--sc-font-weight-bold);
+  color: var(--sc-color-text-primary);
+}
+
+.space3d-preview-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sc-space-2);
+}
+
+.space3d-stat-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sc-space-2);
+  background: var(--sc-color-surface-card);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-sm);
+}
+
+.space3d-stat-pill span {
+  font-size: 11px;
+  color: var(--sc-color-text-secondary);
+}
+
+.space3d-stat-pill strong {
+  font-family: var(--sc-font-mono);
+  font-size: 16px;
+  color: var(--sc-color-text-primary);
+}
+
+.space3d-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--sc-color-text-secondary);
+}
+
+.space3d-preview-note {
+  font-size: 11px;
+  color: var(--sc-color-text-muted);
+  font-style: italic;
+}
+
+/* --- Selector de Secciones y Catálogo en Inspector --------------------- */
+.space3d-section-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-2);
+  padding: var(--sc-space-2);
+  background: var(--sc-color-surface-subtle);
+  border-radius: var(--sc-radius-sm);
+  border: 1px solid var(--sc-color-border-soft);
+  margin-block: var(--sc-space-2);
+}
+
+.space3d-catalog-select {
+  inline-size: 100%;
+  min-block-size: var(--sc-control-height-md);
+  padding: var(--sc-space-1-5) var(--sc-space-2);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-input);
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-ui);
+  font-size: 12px;
+}
+
+.space3d-field-badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 1px 5px;
+  border-radius: var(--sc-radius-xs);
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--sc-color-brand-primary, #3b82f6);
+  font-weight: var(--sc-font-weight-bold);
+}
+
+.space3d-parametric-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-2);
+  margin-block-start: var(--sc-space-1);
+}
+
+.space3d-parametric-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  color: var(--sc-color-brand-primary, #3b82f6);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.space3d-parametric-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sc-space-2);
+}
+
+.space3d-rail-button--generative {
+  color: var(--sc-color-accent-amber, #f59e0b);
+}
+
+/* --- Prompt Inteligente en Generador 3D ---------------------------------- */
+.space3d-generative-prompt-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sc-space-2);
+  padding: var(--sc-space-2-5) var(--sc-space-3);
+  background: var(--sc-color-surface-card);
+  border: 1px solid var(--sc-color-brand-primary, #3b82f6);
+  border-radius: var(--sc-radius-md);
+  margin-block-end: var(--sc-space-3);
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.08);
+}
+
+.space3d-prompt-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+}
+
+.space3d-prompt-icon {
+  color: var(--sc-color-brand-primary, #3b82f6);
+  flex-shrink: 0;
+}
+
+.space3d-prompt-input {
+  flex: 1;
+  min-block-size: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-input);
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-ui);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.space3d-prompt-input:focus {
+  border-color: var(--sc-color-brand-primary, #3b82f6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.space3d-prompt-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 36px;
+  padding: 0 14px;
+  border-radius: var(--sc-radius-sm);
+  border: none;
+  background: var(--sc-color-brand-primary, #3b82f6);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: var(--sc-font-weight-medium);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+
+.space3d-prompt-submit-btn:hover {
+  background: var(--sc-color-brand-primary-hover, #2563eb);
+}
+
+.space3d-prompt-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.space3d-prompt-chip {
+  padding: 3px 8px;
+  border-radius: var(--sc-radius-pill, 9999px);
+  border: 1px solid var(--sc-color-border-soft);
+  background: var(--sc-color-surface-subtle);
+  color: var(--sc-color-text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.space3d-prompt-chip:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--sc-color-brand-primary, #3b82f6);
+  border-color: var(--sc-color-brand-primary, #3b82f6);
+}
+
+.space3d-prompt-feedback {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--sc-color-brand-primary, #3b82f6);
+  padding: 2px 4px;
+  font-weight: var(--sc-font-weight-medium);
+}
+
+/* --- Previsualización Isométrica SVG ------------------------------------ */
+.space3d-wireframe-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  inline-size: 100%;
+}
+
+.space3d-wireframe-svg {
+  inline-size: 100%;
+  max-inline-size: 280px;
+  block-size: auto;
+  aspect-ratio: 280 / 170;
+  border-radius: var(--sc-radius-md);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--sc-color-border-soft);
+}
+
+.space3d-wireframe-dims {
+  font-family: var(--sc-font-mono);
+  font-size: 11px;
+  color: var(--sc-color-text-secondary);
+}
+
+/* --- Botón Elemento Crítico en Leyenda ---------------------------------- */
+.space3d-legend-critical-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: var(--sc-radius-sm);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--sc-color-state-error, #ef4444);
+  font-size: 11px;
+  font-family: var(--sc-font-mono);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.space3d-legend-critical-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: var(--sc-color-state-error, #ef4444);
+}
+
+/* --- Filtros de Categoría de Secciones en Inspector --------------------- */
+.space3d-section-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-block-end: 6px;
+}
+
+.space3d-cat-chip {
+  padding: 3px 8px;
+  border-radius: var(--sc-radius-xs);
+  border: 1px solid var(--sc-color-border-soft);
+  background: var(--sc-color-surface-card);
+  color: var(--sc-color-text-secondary);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.space3d-cat-chip:hover {
+  color: var(--sc-color-text-primary);
+  background: var(--sc-color-surface-hover);
+}
+
+.space3d-cat-chip.is-active {
+  background: var(--sc-color-brand-primary, #3b82f6);
+  border-color: var(--sc-color-brand-primary, #3b82f6);
+  color: #ffffff;
+}
+
+/* --- Adaptaciones Móviles para HUD y Generador ------------------------ */
+@media (max-width: 599px) {
+  .space3d-generative-tabs {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .space3d-generative-columns {
+    grid-template-columns: 1fr;
+  }
+
+  .space3d-hud-card {
+    position: fixed;
+    inset-block-start: auto;
+    inset-block-end: calc(var(--space3d-dock-h, 88px) + 8px);
+    inset-inline: var(--sc-space-3);
+    inline-size: calc(100% - var(--sc-space-6));
+    max-block-size: 42dvh;
+    overflow-y: auto;
+    z-index: 45;
+  }
+
+  .space3d-results-legend {
+    position: fixed;
+    inset-block-end: calc(var(--space3d-dock-h, 88px) + 8px);
+    inset-inline-start: var(--sc-space-3);
+    inline-size: calc(100% - var(--sc-space-6));
+    z-index: 45;
+  }
+}
+
