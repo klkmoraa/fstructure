@@ -93,3 +93,24 @@ it('keeps unsupported truss disabled and ignores unrecognized prompts', async ()
   expect(screen.getByRole('status').textContent).toMatch(/no se reconoció/i);
   expect(screen.getByRole('button', { name: /pórtico 3d/i }).getAttribute('aria-pressed')).toBe('true');
 });
+
+it('applies parsed bay size to frame geometry', async () => {
+  const user = userEvent.setup();
+  const onApply = vi.fn();
+
+  render(
+    <Space3DGenerativeModal
+      open={true}
+      onClose={vi.fn()}
+      onApply={onApply}
+      t={(key, vars) => translate('es', key, vars)}
+    />,
+  );
+
+  await user.click(screen.getByRole('button', { name: /pórtico 3 pisos/i }));
+  await user.click(screen.getByRole('button', { name: /generar estructura/i }));
+
+  const generated = onApply.mock.calls[0][0];
+  const maxX = Math.max(...generated.nodes.map((node: { x: number }) => node.x));
+  expect(maxX).toBe(10);
+});
