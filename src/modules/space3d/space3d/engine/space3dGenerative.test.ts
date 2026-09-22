@@ -35,21 +35,14 @@ describe('space3dGenerative', () => {
     expect(result.nodeResults.length).toBe(frame.nodes.length);
   });
 
-  it('generates a valid solvable 3D space truss', () => {
-    const truss = generateSpace3DTruss({
+  it('rejects the unsupported axial truss archetype instead of analyzing it as a frame', () => {
+    expect(() => generateSpace3DTruss({
       spanX: 12,
       heightY: 2.5,
       widthZ: 3,
       panels: 4,
       loadAtTopNodes: 15,
-    });
-
-    expect(truss.nodes.length).toBeGreaterThan(10);
-    expect(truss.members.length).toBeGreaterThan(20);
-
-    const result = analyzeSpace3DStatic(truss, 'LC1');
-    expect(result.success).toBe(true);
-    expect(result.issues).toHaveLength(0);
+    })).toThrow(/no está soportada|truss/i);
   });
 
   it('generates a valid solvable 3D lattice tower', () => {
@@ -122,9 +115,18 @@ describe('space3dGenerative', () => {
     expect(shed.members.length).toBeGreaterThan(20);
     expect(shed.nodalLoads.length).toBeGreaterThan(0);
 
-    const result = analyzeSpace3DStatic(shed, 'LC1');
-    expect(result.success).toBe(true);
-    expect(result.issues).toHaveLength(0);
+    expect(shed.loadCases.map((loadCase) => loadCase.id)).toEqual(['ROOF', 'WIND_X']);
+    expect(shed.loadCombinations).toHaveLength(0);
+    expect(shed.nodalLoads.some((load) => load.caseId === 'ROOF')).toBe(true);
+    expect(shed.nodalLoads.some((load) => load.caseId === 'WIND_X')).toBe(true);
+
+    const roofResult = analyzeSpace3DStatic(shed, 'ROOF');
+    expect(roofResult.success).toBe(true);
+    expect(roofResult.issues).toHaveLength(0);
+
+    const windResult = analyzeSpace3DStatic(shed, 'WIND_X');
+    expect(windResult.success).toBe(true);
+    expect(windResult.issues).toHaveLength(0);
   });
 
   it('rejects pathological generated shapes before allocating model arrays', () => {
