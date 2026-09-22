@@ -80,7 +80,7 @@ export const Space3DCanvas = ({
   const viewportRef = useRef<Space3DViewport | null>(null);
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
-  const pointerDownPos = useRef<{ x: number; y: number; time: number } | null>(null);
+  const pointerDownPos = useRef<{ x: number; y: number; pointerId: number } | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [unavailable, setUnavailable] = useState(false);
@@ -228,21 +228,22 @@ export const Space3DCanvas = ({
           // la selección sin puntero se hace desde la lista de entidades.
           tabIndex={0}
           onPointerDown={(event) => {
-            pointerDownPos.current = { x: event.clientX, y: event.clientY, time: Date.now() };
+            pointerDownPos.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
           }}
           onPointerUp={(event) => {
-            if (!selectRef.current || !pointerDownPos.current) return;
-            const dx = event.clientX - pointerDownPos.current.x;
-            const dy = event.clientY - pointerDownPos.current.y;
-            const dt = Date.now() - pointerDownPos.current.time;
+            const start = pointerDownPos.current;
+            if (!selectRef.current || !start || start.pointerId !== event.pointerId) return;
             pointerDownPos.current = null;
-            // Si el puntero se movió más de 6px o la pulsación duró más de 300ms, fue órbita/paneo/zoom, no un clic/tap
-            if (Math.hypot(dx, dy) > 6 || dt > 300) return;
+            const dx = event.clientX - start.x;
+            const dy = event.clientY - start.y;
+            // Orbit/pan is movement, not duration. A stationary slow press remains
+            // a valid touch selection for users with reduced motor dexterity.
+            if (Math.hypot(dx, dy) > 6) return;
             const rect = event.currentTarget.getBoundingClientRect();
             selectRef.current(viewportRef.current?.pickAt(event.clientX - rect.left, event.clientY - rect.top) ?? null);
           }}
-          onPointerCancel={() => {
-            pointerDownPos.current = null;
+          onPointerCancel={(event) => {
+            if (pointerDownPos.current?.pointerId === event.pointerId) pointerDownPos.current = null;
           }}
         />}
     </div>
