@@ -8,6 +8,8 @@ import {
   SPACE3D_ANALYSIS_SPACE,
   SPACE3D_SCHEMA_VERSION,
   type Space3DFrameMember,
+  type Space3DLoadCase,
+  type Space3DLoadCombination,
   type Space3DNodalLoad,
   type Space3DNode,
   type Space3DProjectV1,
@@ -23,6 +25,8 @@ const buildProjectSkeleton = (
   nodes: Space3DNode[],
   members: Space3DFrameMember[],
   nodalLoads: Space3DNodalLoad[],
+  loadCases: readonly Space3DLoadCase[] = [{ id: 'LC1', name: 'Carga principal', category: 'other' }],
+  loadCombinations: readonly Space3DLoadCombination[] = [],
 ): Space3DProjectV1 => ({
   analysisSpace: SPACE3D_ANALYSIS_SPACE,
   schemaVersion: SPACE3D_SCHEMA_VERSION,
@@ -32,8 +36,8 @@ const buildProjectSkeleton = (
   nodes,
   members,
   nodalLoads,
-  loadCases: [{ id: 'LC1', name: 'Carga Principal' }],
-  loadCombinations: [{ id: 'COMB1', name: 'Diseño 1.4', terms: [{ caseId: 'LC1', factor: 1.4 }] }],
+  loadCases,
+  loadCombinations,
   prescribedDisplacements: [],
   memberLoads: [],
   memberInitialEffects: [],
@@ -956,19 +960,19 @@ export function generateSpace3DIndustrialShed(options: Space3DIndustrialShedOpti
       loads.push({
         id: `L_ROOF_${loadCount++}`,
         nodeId: `RIDGE_${bz}`,
-        caseId: 'LC1',
+        caseId: 'ROOF',
         fx: 0, fy: -roofLoad, fz: 0, mx: 0, my: 0, mz: 0,
       });
       loads.push({
         id: `L_ROOF_${loadCount++}`,
         nodeId: `EAVE_L_${bz}`,
-        caseId: 'LC1',
+        caseId: 'ROOF',
         fx: 0, fy: -roofLoad * 0.5, fz: 0, mx: 0, my: 0, mz: 0,
       });
       loads.push({
         id: `L_ROOF_${loadCount++}`,
         nodeId: `EAVE_R_${bz}`,
-        caseId: 'LC1',
+        caseId: 'ROOF',
         fx: 0, fy: -roofLoad * 0.5, fz: 0, mx: 0, my: 0, mz: 0,
       });
     }
@@ -978,7 +982,7 @@ export function generateSpace3DIndustrialShed(options: Space3DIndustrialShedOpti
       loads.push({
         id: `L_WIND_${loadCount++}`,
         nodeId: `EAVE_L_${bz}`,
-        caseId: 'LC1',
+        caseId: 'WIND_X',
         fx: windLoadX, fy: 0, fz: 0, mx: 0, my: 0, mz: 0,
       });
     }
@@ -990,6 +994,11 @@ export function generateSpace3DIndustrialShed(options: Space3DIndustrialShedOpti
     nodes,
     members,
     loads,
+    [
+      { id: 'ROOF', name: 'Cubierta gravitatoria', category: 'permanent' },
+      { id: 'WIND_X', name: 'Viento +X', category: 'variable' },
+    ],
+    [],
   );
 
   return validateGeneratedProject(project);
