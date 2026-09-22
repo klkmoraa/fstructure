@@ -319,7 +319,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
       </div>
 
       <div className="space3d-section-picker">
-        <div className="space3d-section-categories" role="group" aria-label="Filtrar por material">
+        <div className="space3d-section-categories" role="group" aria-label={t('space3d.sectionFilterMaterial')}>
           {(['all', 'steel', 'concrete', 'timber', 'aluminum'] as const).map((cat) => (
             <button
               key={cat}
@@ -327,21 +327,30 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
               className={`space3d-cat-chip ${catalogCategory === cat ? 'is-active' : ''}`}
               onClick={() => setCatalogCategory(cat)}
             >
-              {cat === 'all' ? 'Todos' : cat === 'steel' ? 'Acero' : cat === 'concrete' ? 'Concreto' : cat === 'timber' ? 'Madera' : 'Aluminio'}
+              {t(cat === 'all'
+                ? 'space3d.sectionCategoryAll'
+                : cat === 'steel'
+                  ? 'space3d.sectionCategorySteel'
+                  : cat === 'concrete'
+                    ? 'space3d.sectionCategoryConcrete'
+                    : cat === 'timber'
+                      ? 'space3d.sectionCategoryTimber'
+                      : 'space3d.sectionCategoryAluminum')}
             </button>
           ))}
         </div>
 
         <div className="space3d-field-grid">
           <label className="space3d-field">
-            <span className="space3d-field-label">Perfil estándar ({availableSections.length})</span>
+            <span className="space3d-field-label">{t('space3d.sectionStandard')} ({availableSections.length})</span>
             <select
-              defaultValue=""
-              value=""
+              value={selectedSectionId}
               onChange={(e) => {
                 const sec = SPACE3D_SECTION_CATALOG.find((s) => s.name === e.target.value);
                 if (!sec) return;
                 const mat = SPACE3D_MATERIALS.find((m) => m.id === sec.materialId);
+                setSelectedSectionId(sec.name);
+                setSelectedMaterialId(sec.materialId);
                 setDraft((current) => ({
                   ...current,
                   A: String(sec.A),
@@ -359,20 +368,21 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                 });
               }}
             >
-              <option value="" disabled>Seleccionar perfil…</option>
-              {availableSections.map((sec) => (
+              <option value="" disabled>{t('space3d.sectionSelect')}</option>
+              {sectionOptions.map((sec) => (
                 <option key={sec.name} value={sec.name}>{sec.name}</option>
               ))}
             </select>
           </label>
           <label className="space3d-field">
-            <span className="space3d-field-label">Material de referencia</span>
+            <span className="space3d-field-label">{t('space3d.materialReference')}</span>
             <select
-              defaultValue=""
-              value=""
+              value={selectedMaterialId}
               onChange={(e) => {
                 const mat = SPACE3D_MATERIALS.find((m) => m.id === e.target.value);
                 if (!mat) return;
+                setSelectedMaterialId(mat.id);
+                setSelectedSectionId('');
                 setDraft((current) => ({
                   ...current,
                   E: String(mat.E),
@@ -388,7 +398,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
                 }));
               }}
             >
-              <option value="" disabled>Cambiar material…</option>
+              <option value="" disabled>{t('space3d.materialChange')}</option>
               {SPACE3D_MATERIALS.map((mat) => (
                 <option key={mat.id} value={mat.id}>{mat.name}</option>
               ))}
