@@ -9,7 +9,11 @@ import { Activity, ChevronDown, ChevronUp, Crosshair } from 'lucide-react';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../../space3d/model/types';
 import type { Space3DResultMode } from '../../space3d/view/sceneModel';
 import { formatSpace3DNumber } from './space3dNumberFormat';
-import { deriveSpace3DMemberAxialAction } from '../../space3d/view/resultSemantics';
+import {
+  deriveSpace3DMemberAxialAction,
+  deriveSpace3DMemberMomentMagnitude,
+  deriveSpace3DMemberShearMagnitude,
+} from '../../space3d/view/resultSemantics';
 import type { TranslationKey } from '../../i18n/catalogs';
 
 export interface Space3DResultsLegendProps {
@@ -55,7 +59,7 @@ export const Space3DResultsLegend = ({
         max: Number.isFinite(maxN) ? maxN : 0,
         criticalId: maxMember,
         criticalKind: 'member' as const,
-        convention: 'Tracción (+) · Compresión (−)',
+        convention: 'Tracción (+) · Compresión (−) · grosor ∝ |N|',
         gradientClass: 'space3d-legend-grad--axial',
       };
     }
@@ -65,9 +69,7 @@ export const Space3DResultsLegend = ({
       let maxMember = '';
 
       for (const res of analysis.memberResults) {
-        const vStart = Math.hypot(res.start.Vy, res.start.Vz);
-        const vEnd = Math.hypot(res.end.Vy, res.end.Vz);
-        const peak = Math.max(vStart, vEnd);
+        const peak = deriveSpace3DMemberShearMagnitude(res);
         if (peak > maxV) {
           maxV = peak;
           maxMember = res.memberId;
@@ -81,7 +83,7 @@ export const Space3DResultsLegend = ({
         max: maxV,
         criticalId: maxMember,
         criticalKind: 'member' as const,
-        convention: '|V| = √(Vy² + Vz²)',
+        convention: '|V| = √(Vy² + Vz²) · grosor ∝ |V|',
         gradientClass: 'space3d-legend-grad--shear',
       };
     }
@@ -91,9 +93,7 @@ export const Space3DResultsLegend = ({
       let maxMember = '';
 
       for (const res of analysis.memberResults) {
-        const mStart = Math.hypot(res.start.My, res.start.Mz);
-        const mEnd = Math.hypot(res.end.My, res.end.Mz);
-        const peak = Math.max(mStart, mEnd);
+        const peak = deriveSpace3DMemberMomentMagnitude(res);
         if (peak > maxM) {
           maxM = peak;
           maxMember = res.memberId;
@@ -107,7 +107,7 @@ export const Space3DResultsLegend = ({
         max: maxM,
         criticalId: maxMember,
         criticalKind: 'member' as const,
-        convention: '|M| = √(My² + Mz²)',
+        convention: '|M| = √(My² + Mz²) · grosor ∝ |M|',
         gradientClass: 'space3d-legend-grad--moment',
       };
     }
@@ -131,7 +131,7 @@ export const Space3DResultsLegend = ({
         max: maxR,
         criticalId: maxNode,
         criticalKind: 'node' as const,
-        convention: '|R| = √(Rx² + Ry² + Rz²)',
+        convention: '|R| = √(Rx² + Ry² + Rz²) · longitud ∝ |R|',
         gradientClass: 'space3d-legend-grad--reactions',
       };
     }
@@ -145,7 +145,7 @@ export const Space3DResultsLegend = ({
 
   return (
     <div className={`space3d-results-legend ${minimized ? 'space3d-results-legend--minimized' : ''}`} role="region" aria-label={stats.title}>
-      <header className="space3d-legend-header" onClick={() => setMinimized((curr) => !curr)}>
+      <header className="space3d-legend-header">
         <div className="space3d-legend-title-group">
           <Activity size={14} className="space3d-legend-icon" aria-hidden="true" />
           <span>{stats.title}</span>
@@ -155,6 +155,7 @@ export const Space3DResultsLegend = ({
           className="space3d-legend-toggle"
           aria-label={minimized ? 'Expandir leyenda' : 'Minimizar leyenda'}
           aria-expanded={!minimized}
+          onClick={() => setMinimized((curr) => !curr)}
         >
           {minimized ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
         </button>
