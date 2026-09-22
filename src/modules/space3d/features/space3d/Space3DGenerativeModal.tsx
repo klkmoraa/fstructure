@@ -410,11 +410,10 @@ export const Space3DGenerativeModal = ({
         </div>
 
         {/* Selector de Arquetipo */}
-        <div className="space3d-generative-tabs" role="tablist" aria-label="Arquetipo estructural">
+        <div className="space3d-generative-tabs" role="group" aria-label="Arquetipo estructural">
           <button
             type="button"
-            role="tab"
-            aria-selected={archetype === 'frame'}
+            aria-pressed={archetype === 'frame'}
             className={`space3d-archetype-tab ${archetype === 'frame' ? 'is-active' : ''}`}
             onClick={() => setArchetype('frame')}
           >
@@ -423,8 +422,7 @@ export const Space3DGenerativeModal = ({
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={archetype === 'truss'}
+            aria-pressed={archetype === 'truss'}
             className={`space3d-archetype-tab ${archetype === 'truss' ? 'is-active' : ''}`}
             onClick={() => setArchetype('truss')}
           >
@@ -433,8 +431,7 @@ export const Space3DGenerativeModal = ({
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={archetype === 'tower'}
+            aria-pressed={archetype === 'tower'}
             className={`space3d-archetype-tab ${archetype === 'tower' ? 'is-active' : ''}`}
             onClick={() => setArchetype('tower')}
           >
@@ -443,8 +440,7 @@ export const Space3DGenerativeModal = ({
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={archetype === 'dome'}
+            aria-pressed={archetype === 'dome'}
             className={`space3d-archetype-tab ${archetype === 'dome' ? 'is-active' : ''}`}
             onClick={() => setArchetype('dome')}
           >
@@ -453,8 +449,7 @@ export const Space3DGenerativeModal = ({
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={archetype === 'bridge'}
+            aria-pressed={archetype === 'bridge'}
             className={`space3d-archetype-tab ${archetype === 'bridge' ? 'is-active' : ''}`}
             onClick={() => setArchetype('bridge')}
           >
@@ -463,8 +458,7 @@ export const Space3DGenerativeModal = ({
           </button>
           <button
             type="button"
-            role="tab"
-            aria-selected={archetype === 'industrial-shed'}
+            aria-pressed={archetype === 'industrial-shed'}
             className={`space3d-archetype-tab ${archetype === 'industrial-shed' ? 'is-active' : ''}`}
             onClick={() => setArchetype('industrial-shed')}
           >
