@@ -35,6 +35,34 @@ export const Space3DResultsLegend = ({
   const stats = useMemo(() => {
     if (!analysis || !analysis.success) return null;
 
+    if (resultMode === 'deformed') {
+      let maxDisplacement = 0;
+      let maxNode = '';
+
+      for (const res of analysis.nodeResults) {
+        const displacement = Math.hypot(
+          res.displacement.ux,
+          res.displacement.uy,
+          res.displacement.uz,
+        );
+        if (displacement > maxDisplacement) {
+          maxDisplacement = displacement;
+          maxNode = res.nodeId;
+        }
+      }
+
+      return {
+        title: t('space3d.legendDeformed'),
+        unit: 'mm',
+        min: 0,
+        max: maxDisplacement * 1000,
+        criticalId: maxNode,
+        criticalKind: 'node' as const,
+        convention: t('space3d.legendConventionDeformed'),
+        gradientClass: 'space3d-legend-grad--deformed',
+      };
+    }
+
     if (resultMode === 'axial') {
       let minN = Infinity;
       let maxN = -Infinity;
