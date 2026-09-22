@@ -506,6 +506,8 @@ export const esWorkspace = {
   'space3d.legendShear': 'Fuerza Cortante Resultante V [kN]',
   'space3d.legendMoment': 'Momento Flector Resultante M [kN·m]',
   'space3d.legendReactions': 'Reacciones en Apoyos R [kN]',
+  'space3d.legendDeformed': 'Desplazamiento resultante |u| [mm]',
+  'space3d.legendConventionDeformed': '|u| = √(ux² + uy² + uz²) · deformada amplificada sólo para visualización',
   'space3d.hudConnectMember': 'Conectar barra',
   'space3d.hudConnectMemberTitle': 'Conectar con otro nudo para crear barra',
   'space3d.hudAddLoad': 'Carga',
