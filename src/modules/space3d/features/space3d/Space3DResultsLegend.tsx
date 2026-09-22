@@ -6,6 +6,7 @@
  */
 import { useMemo, useState } from 'react';
 import { Activity, ChevronDown, ChevronUp, Crosshair } from 'lucide-react';
+import { Button, IconButton } from '../../../../design-system/components/controls';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../../space3d/model/types';
 import type { Space3DResultMode } from '../../space3d/view/sceneModel';
 import { formatSpace3DNumber } from './space3dNumberFormat';
@@ -178,15 +179,15 @@ export const Space3DResultsLegend = ({
           <Activity size={14} className="space3d-legend-icon" aria-hidden="true" />
           <span>{stats.title}</span>
         </div>
-        <button
-          type="button"
+        <IconButton
+          size="sm"
           className="space3d-legend-toggle"
-          aria-label={minimized ? t('space3d.legendExpand') : t('space3d.legendMinimize')}
+          label={minimized ? t('space3d.legendExpand') : t('space3d.legendMinimize')}
           aria-expanded={!minimized}
           onClick={() => setMinimized((curr) => !curr)}
         >
           {minimized ? <ChevronUp size={14} aria-hidden="true" /> : <ChevronDown size={14} aria-hidden="true" />}
-        </button>
+        </IconButton>
       </header>
 
       {!minimized && (
@@ -202,18 +203,16 @@ export const Space3DResultsLegend = ({
           <div className="space3d-legend-meta">
             <small className="space3d-legend-convention">{stats.convention}</small>
             {stats.criticalId ? (
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="ghost"
                 className="space3d-legend-critical-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectCritical?.(stats.criticalKind, stats.criticalId);
-                }}
+                leadingIcon={<Crosshair size={12} />}
+                onClick={() => onSelectCritical?.(stats.criticalKind, stats.criticalId)}
                 title={t('space3d.legendSelectCritical', { id: stats.criticalId })}
               >
-                <Crosshair size={12} aria-hidden="true" />
-                <span>{t('space3d.criticalElement' as TranslationKey) || 'Crítico'}: <b>{stats.criticalId}</b></span>
-              </button>
+                {t('space3d.criticalElement' as TranslationKey) || 'Crítico'}: <b>{stats.criticalId}</b>
+              </Button>
             ) : null}
           </div>
         </div>
