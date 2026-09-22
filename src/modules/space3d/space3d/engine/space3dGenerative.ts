@@ -1,8 +1,10 @@
 /**
  * Motor generador de estructuras espaciales 3D paramétricas.
  *
- * Funciones puras que producen proyectos válidos `Space3DProjectV1` listos para
- * ser analizados por el solver espacial. No dependen de React ni de Three.js.
+ * No depende de React ni de Three.js. La geometría y las cargas dependen sólo
+ * de las opciones de entrada; la identidad del proyecto usa un timestamp cuando
+ * el caller no suministra `id`, por lo que la función completa no se describe
+ * como pura.
  */
 import {
   SPACE3D_ANALYSIS_SPACE,
