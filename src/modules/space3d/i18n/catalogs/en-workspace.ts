@@ -462,6 +462,7 @@ export const enWorkspace = {
   'space3d.generatorTitle': '3D Structure Generator',
   'space3d.generatorPreview': 'Live Preview',
   'space3d.generatorDesc': 'Create parametric 3D models compatible with the currently supported static analysis.',
+  'space3d.generatorAssumption': 'Elastic properties and local orientation are generated as modeling assumptions. Verify section, local axes, and roll before using results for design.',
   'space3d.promptUnrecognized': 'No structural archetype was recognized with enough evidence; parameters were left unchanged.',
   'space3d.trussUnsupported': 'Axial truss analysis is not yet supported by the 3D solver.',
   'space3d.generatorShort': 'Generate 3D',
