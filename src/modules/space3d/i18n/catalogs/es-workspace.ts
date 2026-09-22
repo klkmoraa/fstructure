@@ -602,6 +602,8 @@ export const esWorkspace = {
   'space3d.confirmReplaceBodyExample': 'Se reemplazará el modelo actual por el ejemplo de pórtico espacial. Podrás deshacerlo con Deshacer.',
   'space3d.confirmReplaceTitleBlank': '¿Vaciar el proyecto?',
   'space3d.confirmReplaceBodyBlank': 'Se reemplazará el modelo actual por un proyecto vacío. Podrás deshacerlo con Deshacer.',
+  'space3d.confirmReplaceTitleGenerated': '¿Reemplazar por la estructura generada?',
+  'space3d.confirmReplaceBodyGenerated': 'Se reemplazará el modelo actual por la estructura generada. Podrás deshacerlo con Deshacer.',
   'space3d.confirmReplaceCancel': 'Cancelar',
   'space3d.confirmReplaceConfirm': 'Reemplazar',
   'space3d.toolSelect': 'Seleccionar',
