@@ -55,6 +55,11 @@ import type { Space3DWorkerClient } from '../../space3d/runtime/workerClient';
 import { getSpace3DMoreCommands } from './space3dWorkspaceModel';
 import './space3d.css';
 
+type PendingReplace =
+  | { readonly kind: 'example' }
+  | { readonly kind: 'blank' }
+  | { readonly kind: 'generated'; readonly project: Space3DProjectV1 };
+
 const VIEW_LABEL_KEYS: Record<Space3DViewPreset, TranslationKey> = {
   front: 'space3d.viewFront',
   top: 'space3d.viewTop',
@@ -260,7 +265,7 @@ const WorkspaceBody = ({
    * recuperables con Deshacer, pero eso no es obvio para quien no lo sabe: se
    * confirma antes de actuar, salvo que no haya nada que perder.
    */
-  const [pendingReplace, setPendingReplace] = useState<'example' | 'blank' | null>(null);
+  const [pendingReplace, setPendingReplace] = useState<PendingReplace | null>(null);
   const [activeView, setActiveView] = useState<Space3DViewPreset>('isometric');
   const [modelNavFocus, setModelNavFocus] = useState<Space3DModelFocus>('node');
   const [propertiesOpen, setPropertiesOpen] = useState(false);
@@ -438,10 +443,9 @@ const WorkspaceBody = ({
     setEditorTarget(selection ? { kind: selection.kind, id: selection.id } : null);
     if (selection) {
       setModelNavFocus(selection.kind);
-      // En móvil, la bandeja inferior puede estar contraída: sin esto, el
-      // editor se abre fuera de la vista y parece que el toque no hizo nada.
-      setSheetExpanded(true);
-    } else setSheetExpanded(false);
+    } else {
+      setSheetExpanded(false);
+    }
   }, [connectingFromNodeId, execute, project.members, project.nodes, select]);
 
   const openNew = useCallback((kind: Space3DEditorTarget['kind']) => {
@@ -462,6 +466,8 @@ const WorkspaceBody = ({
   const editSelectedSupports = () => {
     if (!selectedNodeId) return;
     selectEntity({ kind: 'node', id: selectedNodeId });
+    setRail('model');
+    setSheetExpanded(true);
   };
 
   const activeTool: Space3DActiveTool = rail === 'results'
@@ -482,13 +488,30 @@ const WorkspaceBody = ({
 
   /** Reemplaza directamente si no hay nada que perder; si lo hay, pide confirmación. */
   const requestReplace = (target: 'example' | 'blank') => {
-    if (hasContent) { setPendingReplace(target); return; }
+    if (hasContent) {
+      setPendingReplace({ kind: target });
+      return;
+    }
     if (target === 'example') loadExample(); else resetToBlank();
     setEditorTarget(null);
   };
 
+  const requestGeneratedReplace = (generatedProject: Space3DProjectV1) => {
+    if (hasContent) {
+      setPendingReplace({ kind: 'generated', project: generatedProject });
+      setGenerativeOpen(false);
+      return;
+    }
+    replaceProject(generatedProject);
+    setGenerativeOpen(false);
+    setEditorTarget(null);
+  };
+
   const confirmReplace = () => {
-    if (pendingReplace === 'example') loadExample(); else if (pendingReplace === 'blank') resetToBlank();
+    if (!pendingReplace) return;
+    if (pendingReplace.kind === 'example') loadExample();
+    else if (pendingReplace.kind === 'blank') resetToBlank();
+    else replaceProject(pendingReplace.project);
     setEditorTarget(null);
     setPendingReplace(null);
   };
@@ -1141,8 +1164,16 @@ const WorkspaceBody = ({
     <Dialog
       open={pendingReplace !== null}
       onOpenChange={(open) => { if (!open) setPendingReplace(null); }}
-      title={pendingReplace === 'example' ? t('space3d.confirmReplaceTitleExample') : t('space3d.confirmReplaceTitleBlank')}
-      description={pendingReplace === 'example' ? t('space3d.confirmReplaceBodyExample') : t('space3d.confirmReplaceBodyBlank')}
+      title={pendingReplace?.kind === 'example'
+        ? t('space3d.confirmReplaceTitleExample')
+        : pendingReplace?.kind === 'generated'
+          ? t('space3d.confirmReplaceTitleGenerated')
+          : t('space3d.confirmReplaceTitleBlank')}
+      description={pendingReplace?.kind === 'example'
+        ? t('space3d.confirmReplaceBodyExample')
+        : pendingReplace?.kind === 'generated'
+          ? t('space3d.confirmReplaceBodyGenerated')
+          : t('space3d.confirmReplaceBodyBlank')}
       footer={<>
         <button type="button" className="space3d-button" onClick={() => setPendingReplace(null)}>
           {t('space3d.confirmReplaceCancel')}
@@ -1156,11 +1187,7 @@ const WorkspaceBody = ({
     <Space3DGenerativeModal
       open={generativeOpen}
       onClose={() => setGenerativeOpen(false)}
-      onApply={(newProject) => {
-        replaceProject(newProject);
-        setGenerativeOpen(false);
-        setEditorTarget(null);
-      }}
+      onApply={requestGeneratedReplace}
       t={t}
     />
 
