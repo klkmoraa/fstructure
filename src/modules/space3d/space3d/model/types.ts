@@ -116,6 +116,7 @@ export interface Space3DFrameMember {
   readonly sectionOrigin?: 'catalog' | 'custom' | 'imported' | 'legacy';
   readonly beamTheory?: 'euler-bernoulli' | 'timoshenko';
   readonly shearArea?: number;
+  /** Densidad de masa del material, kg/m³. */
   readonly density?: number;
   readonly releases?: Space3DMemberRelease;
   readonly axialBehavior?: 'both' | 'tension-only' | 'compression-only';

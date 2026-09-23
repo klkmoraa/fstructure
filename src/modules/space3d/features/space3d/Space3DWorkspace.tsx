@@ -35,6 +35,10 @@ import { Space3DResultsPanel, type Space3DResultsTab } from './Space3DResultsPan
 import { Space3DConsoleTools, type Space3DActiveTool } from './Space3DToolRail';
 import { Space3DModelSummary, type Space3DModelFocus } from './Space3DModelNav';
 import { Space3DAnalysisModeSelect } from './Space3DAnalysisModeSelect';
+import { Space3DGenerativeModal } from './Space3DGenerativeModal';
+import { Space3DSelectionHUD } from './Space3DSelectionHUD';
+import { Space3DResultsLegend } from './Space3DResultsLegend';
+import { buildConnectingMember } from './connectMember';
 import {
   analyzeSpace3DBuckling,
   analyzeSpace3DInfluence,
@@ -50,6 +54,11 @@ import type { Space3DStorageLike } from '../../space3d/data/storage';
 import type { Space3DWorkerClient } from '../../space3d/runtime/workerClient';
 import { getSpace3DMoreCommands } from './space3dWorkspaceModel';
 import './space3d.css';
+
+type PendingReplace =
+  | { readonly kind: 'example' }
+  | { readonly kind: 'blank' }
+  | { readonly kind: 'generated'; readonly project: Space3DProjectV1 };
 
 const VIEW_LABEL_KEYS: Record<Space3DViewPreset, TranslationKey> = {
   front: 'space3d.viewFront',
@@ -256,7 +265,11 @@ const WorkspaceBody = ({
    * recuperables con Deshacer, pero eso no es obvio para quien no lo sabe: se
    * confirma antes de actuar, salvo que no haya nada que perder.
    */
-  const [pendingReplace, setPendingReplace] = useState<'example' | 'blank' | null>(null);
+  const [pendingReplace, setPendingReplace] = useState<PendingReplace | null>(null);
+  // Sube cada vez que el proyecto ENTERO se sustituye; el lienzo reencuadra sólo
+  // entonces. Una edición normal no lo toca y conserva la cámara de la persona.
+  const [viewFitToken, setViewFitToken] = useState(0);
+  const refitView = () => setViewFitToken((token) => token + 1);
   const [activeView, setActiveView] = useState<Space3DViewPreset>('isometric');
   const [modelNavFocus, setModelNavFocus] = useState<Space3DModelFocus>('node');
   const [propertiesOpen, setPropertiesOpen] = useState(false);
@@ -274,10 +287,13 @@ const WorkspaceBody = ({
   const [analysisMode, setAnalysisMode] = useState<Space3DAnalysisMode>('linear');
   const [studyState, setStudyState] = useState<Space3DStudyState>('idle');
   const [studyFeedback, setStudyFeedback] = useState<Space3DStudyFeedback | null>(null);
+  const [generativeOpen, setGenerativeOpen] = useState(false);
+  const [connectingFromNodeId, setConnectingFromNodeId] = useState<string | null>(null);
   const hasContent = project.nodes.length > 0;
   // Doce clics en cada sentido: suficiente margen para explorar sin llegar a
   // una deformada ilegible por minúscula o a una que ya no cabe en pantalla.
   const effectiveScaleFactor = scaleFactor ?? 1;
+  const currentAnalysis = analysisState === 'ready' && analysis?.success === true ? analysis : null;
 
   const automatic = useMemo(() => buildSpace3DSceneModel({
     project, analysis, analysisState, selection: selectedEntity, targetId: analysisTargetId, resultMode,
@@ -389,33 +405,52 @@ const WorkspaceBody = ({
   }, [analysisState]);
 
   const selectEntity = useCallback((selection: Space3DSelection | null) => {
+    if (connectingFromNodeId && selection?.kind === 'node' && selection.id !== connectingFromNodeId) {
+      const fromNode = project.nodes.find((n) => n.id === connectingFromNodeId);
+      const toNode = project.nodes.find((n) => n.id === selection.id);
+      if (fromNode && toNode) {
+        const member = buildConnectingMember(project, fromNode, toNode);
+        const newMemberId = member.id;
+        const ok = execute({ kind: 'add-member', member }).ok;
+        if (ok) {
+          setConnectingFromNodeId(null);
+          select({ kind: 'member', id: newMemberId });
+          setEditorTarget({ kind: 'member', id: newMemberId });
+          setRail('model');
+          setSheetExpanded(true);
+          return;
+        }
+      }
+    }
     select(selection);
     setEditorTarget(selection ? { kind: selection.kind, id: selection.id } : null);
     if (selection) {
       setModelNavFocus(selection.kind);
-      // En móvil, la bandeja inferior puede estar contraída: sin esto, el
-      // editor se abre fuera de la vista y parece que el toque no hizo nada.
-      setSheetExpanded(true);
-    } else setSheetExpanded(false);
-  }, [select]);
+    } else {
+      setSheetExpanded(false);
+    }
+  }, [connectingFromNodeId, execute, project.members, project.nodes, select]);
 
-  const openNew = (kind: Space3DEditorTarget['kind']) => {
+  const openNew = useCallback((kind: Space3DEditorTarget['kind']) => {
     select(null);
     setRail('model');
     setEditorTarget({ kind, id: null });
     setModelNavFocus(kind);
     setSheetExpanded(true);
-  };
+  }, [select]);
 
-  const clearToolSelection = () => {
+  const clearToolSelection = useCallback(() => {
     select(null);
     setEditorTarget(null);
-  };
+    setConnectingFromNodeId(null);
+  }, [select]);
 
   const selectedNodeId = selectedEntity?.kind === 'node' ? selectedEntity.id : null;
   const editSelectedSupports = () => {
     if (!selectedNodeId) return;
     selectEntity({ kind: 'node', id: selectedNodeId });
+    setRail('model');
+    setSheetExpanded(true);
   };
 
   const activeTool: Space3DActiveTool = rail === 'results'
@@ -436,18 +471,38 @@ const WorkspaceBody = ({
 
   /** Reemplaza directamente si no hay nada que perder; si lo hay, pide confirmación. */
   const requestReplace = (target: 'example' | 'blank') => {
-    if (hasContent) { setPendingReplace(target); return; }
+    if (hasContent) {
+      setPendingReplace({ kind: target });
+      return;
+    }
     if (target === 'example') loadExample(); else resetToBlank();
+    refitView();
+    setEditorTarget(null);
+  };
+
+  const requestGeneratedReplace = (generatedProject: Space3DProjectV1) => {
+    if (hasContent) {
+      setPendingReplace({ kind: 'generated', project: generatedProject });
+      setGenerativeOpen(false);
+      return;
+    }
+    replaceProject(generatedProject);
+    refitView();
+    setGenerativeOpen(false);
     setEditorTarget(null);
   };
 
   const confirmReplace = () => {
-    if (pendingReplace === 'example') loadExample(); else if (pendingReplace === 'blank') resetToBlank();
+    if (!pendingReplace) return;
+    if (pendingReplace.kind === 'example') loadExample();
+    else if (pendingReplace.kind === 'blank') resetToBlank();
+    else replaceProject(pendingReplace.project);
+    refitView();
     setEditorTarget(null);
     setPendingReplace(null);
   };
 
-  const remove = (target: Space3DEditorTarget) => {
+  const remove = useCallback((target: Space3DEditorTarget) => {
     if (!target.id) return;
     const command: Space3DCommand = target.kind === 'node'
       ? { kind: 'delete-node', nodeId: target.id }
@@ -458,7 +513,89 @@ const WorkspaceBody = ({
       select(null);
       setEditorTarget(null);
     }
-  };
+  }, [execute, select]);
+
+  // Accesos rápidos por teclado para modelado fluido
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Otro componente ya consumió la tecla —un desplegable, la paleta de
+      // comandos, un menú—: la superficie no vuelve a actuar sobre ella.
+      if (event.defaultPrevented) return;
+      const target = event.target as HTMLElement | null;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+      // Un control con foco es dueño de sus teclas. Sin esto, Retroceso sobre el
+      // botón Cancelar del editor borraba la barra o la carga seleccionada (un
+      // nudo con consumidores ya lo protege `node-in-use`). El lienzo
+      // (`role="img"`) no cuenta como control.
+      const isControl = Boolean(target?.closest?.(
+        'button, a[href], [role="button"], [role="menuitem"], [role="option"], [role="tab"], '
+        + '[role="checkbox"], [role="radio"], [role="switch"], [role="combobox"], [role="slider"], [role="spinbutton"]',
+      ));
+      if (generativeOpen || pendingReplace !== null || transfer !== null) return;
+
+      if (event.key === 'Escape') {
+        // En un campo, Escape es del campo: cerrar el editor desde ahí tiraba
+        // el borrador que la persona estaba escribiendo.
+        if (isInput) return;
+        if (connectingFromNodeId) {
+          setConnectingFromNodeId(null);
+          event.preventDefault();
+          return;
+        }
+        if (editorTarget || selectedEntity) {
+          clearToolSelection();
+          event.preventDefault();
+          return;
+        }
+      }
+
+      if (isInput || isControl) return;
+
+      const entityToDelete = editorTarget?.id ? editorTarget : selectedEntity ? { kind: selectedEntity.kind, id: selectedEntity.id } : null;
+      if ((event.key === 'Delete' || event.key === 'Backspace') && entityToDelete?.id) {
+        event.preventDefault();
+        remove(entityToDelete);
+        return;
+      }
+
+      if ((event.key === 'g' || event.key === 'G') && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        setGenerativeOpen(true);
+        return;
+      }
+
+      if ((event.key === 'v' || event.key === 'V') && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        clearToolSelection();
+        return;
+      }
+
+      if ((event.key === 'n' || event.key === 'N') && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        openNew('node');
+        return;
+      }
+
+      if ((event.key === 'b' || event.key === 'B') && !event.ctrlKey && !event.metaKey) {
+        if (project.nodes.length >= 2) {
+          event.preventDefault();
+          openNew('member');
+        }
+        return;
+      }
+
+      if ((event.key === 'c' || event.key === 'C') && !event.ctrlKey && !event.metaKey) {
+        if (project.nodes.length > 0) {
+          event.preventDefault();
+          openNew('load');
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [clearToolSelection, connectingFromNodeId, editorTarget, generativeOpen, openNew, pendingReplace, project.nodes.length, remove, transfer]);
 
   // El puente solo bloquea lo que no pudo mapear con autoridad. En cuanto el
   // usuario completa un numero o reconoce una diferencia, deja de bloquear.
@@ -562,6 +699,7 @@ const WorkspaceBody = ({
       <ChevronDown size={14} aria-hidden="true" />
     </button>
     {projectMenuOpen ? <div className="space3d-popover space3d-project-menu" role="menu">
+      <button type="button" role="menuitem" onClick={() => { setGenerativeOpen(true); setProjectMenuOpen(false); }}><Sparkles size={15} />{t('space3d.generatorTitle' as TranslationKey) || 'Generador 3D'}</button>
       <button type="button" role="menuitem" onClick={() => { requestReplace('example'); setProjectMenuOpen(false); }}><Sparkles size={15} />{t('space3d.loadExample')}</button>
       <button type="button" role="menuitem" onClick={() => { requestReplace('blank'); setProjectMenuOpen(false); }}><RotateCcw size={15} />{t('space3d.resetBlank')}</button>
       <button type="button" role="menuitem" onClick={() => { setTransfer('import'); setProjectMenuOpen(false); }}><Upload size={15} />{t('space3d.import')}</button>
@@ -660,7 +798,7 @@ const WorkspaceBody = ({
         {diverged && derived
           ? <button type="button" className="space3d-button" title={t('space3d.rederiveWarning')} onClick={() => {
             // A failed canonical source save is reported by the shared session; keep this geometry.
-            void Promise.resolve().then(() => onRederive?.()).then(() => replaceProject(derived)).catch(() => undefined);
+            void Promise.resolve().then(() => onRederive?.()).then(() => { replaceProject(derived); refitView(); }).catch(() => undefined);
           }}>
             {t('space3d.rederive')}
           </button>
@@ -732,6 +870,7 @@ const WorkspaceBody = ({
         onNewMember={() => openNew('member')}
         onNewLoad={() => openNew('load')}
         onEditSupport={editSelectedSupports}
+        onOpenGenerative={() => setGenerativeOpen(true)}
         canNewMember={canNewMember}
         canNewLoad={canNewLoad}
         canEditSupport={canEditSupport}
@@ -752,6 +891,18 @@ const WorkspaceBody = ({
       </div> : null}
 
       <section className="space3d-stage" aria-label={t('space3d.canvasLabel')}>
+        {connectingFromNodeId ? (
+          <div className="space3d-connecting-banner" role="status">
+            <span>{t('space3d.connectingInstruction' as TranslationKey, { id: connectingFromNodeId }) || `Selecciona el nudo destino para crear la barra desde ${connectingFromNodeId}`}</span>
+            <button
+              type="button"
+              className="space3d-button space3d-button--ghost"
+              onClick={() => setConnectingFromNodeId(null)}
+            >
+              {t('space3d.cancelEdit')}
+            </button>
+          </div>
+        ) : null}
         <Space3DCanvas
           model={scene}
           layers={{ ...layers, deformed: layers.deformed && resultMode === 'deformed' }}
@@ -760,6 +911,7 @@ const WorkspaceBody = ({
           viewLabels={viewLabels}
           activeView={activeView}
           onViewChange={setActiveView}
+          refitToken={viewFitToken}
           zoomInLabel={t('space3d.zoomIn')}
           zoomOutLabel={t('space3d.zoomOut')}
           resetLabel={t('space3d.resetView')}
@@ -777,6 +929,48 @@ const WorkspaceBody = ({
             loads: t('space3d.loads'),
           }}
         />
+        {/* La hoja sólo tapa el lienzo en el layout compacto; en escritorio es una
+            columna fija al lado. Por eso la ocultación la decide el CSS por
+            breakpoint, no esta condición: antes, "Editar" o "Nuevo nodo" ponían
+            `sheetExpanded` en escritorio y HUD y leyenda desaparecían sin motivo. */}
+        <div className="space3d-bottom-stack" data-sheet-expanded={sheetExpanded || undefined}>
+        {selectedEntity ? (
+          <Space3DSelectionHUD
+            selection={selectedEntity}
+            project={project}
+            analysis={currentAnalysis}
+            onDeselect={() => clearToolSelection()}
+            onOpenEditor={() => {
+              setRail('model');
+              setSheetExpanded(true);
+            }}
+            onDelete={() => {
+              const target = editorTarget?.id ? editorTarget : selectedEntity ? { kind: selectedEntity.kind, id: selectedEntity.id } : null;
+              if (target) remove(target);
+            }}
+            onStartConnectMember={(nodeId) => {
+              setConnectingFromNodeId(nodeId);
+            }}
+            onAddLoadToNode={(nodeId) => {
+              select(null);
+              setRail('model');
+              setEditorTarget({ kind: 'load', id: null, initialNodeId: nodeId });
+              setModelNavFocus('load');
+              setSheetExpanded(true);
+            }}
+            t={t}
+          />
+        ) : null}
+        {resultMode !== 'model' ? (
+          <Space3DResultsLegend
+            resultMode={resultMode}
+            analysis={currentAnalysis}
+            project={project}
+            onSelectCritical={(kind, id) => selectEntity({ kind, id })}
+            t={t}
+          />
+        ) : null}
+        </div>
         {scene.deformed && resultMode === 'deformed' ? <div className="space3d-scale" role="group" aria-label={t('space3d.layerDeformed')}>
           <span role="status" aria-live="polite">
             {t('space3d.deformationScale', { scale: formatSpace3DNumber(scene.deformed.scale, { significantDigits: 4 }) })}
@@ -964,6 +1158,7 @@ const WorkspaceBody = ({
           className="space3d-button space3d-button--primary"
           onClick={() => {
             if (importPortable(importText).ok) {
+              refitView();
               setTransfer(null);
               setImportText('');
               setEditorTarget(null);
@@ -977,8 +1172,16 @@ const WorkspaceBody = ({
     <Dialog
       open={pendingReplace !== null}
       onOpenChange={(open) => { if (!open) setPendingReplace(null); }}
-      title={pendingReplace === 'example' ? t('space3d.confirmReplaceTitleExample') : t('space3d.confirmReplaceTitleBlank')}
-      description={pendingReplace === 'example' ? t('space3d.confirmReplaceBodyExample') : t('space3d.confirmReplaceBodyBlank')}
+      title={pendingReplace?.kind === 'example'
+        ? t('space3d.confirmReplaceTitleExample')
+        : pendingReplace?.kind === 'generated'
+          ? t('space3d.confirmReplaceTitleGenerated')
+          : t('space3d.confirmReplaceTitleBlank')}
+      description={pendingReplace?.kind === 'example'
+        ? t('space3d.confirmReplaceBodyExample')
+        : pendingReplace?.kind === 'generated'
+          ? t('space3d.confirmReplaceBodyGenerated')
+          : t('space3d.confirmReplaceBodyBlank')}
       footer={<>
         <button type="button" className="space3d-button" onClick={() => setPendingReplace(null)}>
           {t('space3d.confirmReplaceCancel')}
@@ -988,6 +1191,13 @@ const WorkspaceBody = ({
         </button>
       </>}
     >{null}</Dialog>
+
+    <Space3DGenerativeModal
+      open={generativeOpen}
+      onClose={() => setGenerativeOpen(false)}
+      onApply={requestGeneratedReplace}
+      t={t}
+    />
 
     <footer className="space3d-status" aria-label={t('space3d.title')}>
       <span className={`space3d-state space3d-state--${STATE_TONES[analysisState]}`}>{t(STATE_KEYS[analysisState])}</span>

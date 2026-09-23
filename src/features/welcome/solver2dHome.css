@@ -443,7 +443,7 @@
 @media (prefers-reduced-motion: no-preference) {
   .solver2d-stage:not(.is-static) .solver2d-stage__object .three-structural-image,
   .solver2d-stage:not(.is-static) .solver2d-stage__object svg {
-    animation: solver2d-float 7s var(--sc-ease-standard) 1.1s infinite;
+    animation: solver2d-float var(--sc-motion-ambient-loop) var(--sc-ease-standard) var(--sc-motion-ambient-delay) infinite;
   }
 }
 

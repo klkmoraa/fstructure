@@ -46,6 +46,20 @@ const rutas = (): string[] => {
 };
 const contenido = (ruta: string): string => leer(`${SRC}/${ruta.replace(/^src\//, '')}`);
 
+/** Fuentes TS/TSX del producto, para comprobar lo que el runtime publica al CSS. */
+const rutasTs = (): string[] => {
+  const salida: string[] = [];
+  const recorrer = (dir: string) => {
+    for (const entrada of readdirSync(dir).sort()) {
+      const ruta = `${dir}/${entrada}`;
+      if (statSync(ruta).isDirectory()) recorrer(ruta);
+      else if (/\.tsx?$/.test(entrada)) salida.push(ruta);
+    }
+  };
+  recorrer(SRC);
+  return salida;
+};
+
 /** Valor declarado de un token dentro de un bloque concreto. */
 const valorEn = (bloque: string, nombre: string): string | null => {
   const m = bloque.match(new RegExp(`^\\s*${nombre}:\\s*([^;]+);`, 'm'));
@@ -401,18 +415,107 @@ describe('movimiento · la escala del brandbook, con un trabajo por duración', 
     expect(ms('--sc-motion-slow') || ms('--sc-motion-reveal')).toBeLessThanOrEqual(ms('--sc-motion-reveal'));
   });
 
-  it('ninguna hoja declara una duración literal fuera de la escala', () => {
-    const permitidas = new Set(['0', '90', '140', '200', '280', '520', '1400']);
+  it('ninguna hoja declara una duración literal fuera de la escala, ni en ms ni en s', () => {
+    const permitidasMs = new Set([0, 90, 140, 200, 280, 520, 1400]);
     const infractoras: string[] = [];
     for (const hoja of rutas()) {
       if (hoja.endsWith('tokens.css')) continue;
-      // El `(?<![\d.])` deja fuera el interruptor de movimiento reducido
-      // (`0.01ms`, `0.001ms`): eso no es una duración, es un apagado.
-      for (const m of contenido(hoja).matchAll(/(?:transition|animation)(?:-duration)?:[^;]*?(?<![\d.])(\d+)ms/g)) {
-        if (!permitidas.has(m[1])) infractoras.push(`${hoja}: ${m[0].trim()}`);
+      for (const declaracion of contenido(hoja).matchAll(/(?:transition|animation)(?:-duration)?:\s*([^;]+)/g)) {
+        for (const m of declaracion[1].matchAll(/(?<![\d.])(\d*\.?\d+)(ms|s)\b/g)) {
+          const literal = Number(m[1]);
+          const ms = m[2] === 's' ? literal * 1000 : literal;
+          // Los valores sub-milisegundo se usan únicamente para apagar motion
+          // bajo prefers-reduced-motion; no son una séptima duración visual.
+          if (ms > 0 && ms < 1) continue;
+          if (!permitidasMs.has(ms)) infractoras.push(`${hoja}: ${declaracion[0].trim()} → ${m[0]}`);
+        }
       }
     }
     expect(infractoras).toEqual([]);
+  });
+});
+
+describe('movimiento · el eje ambiental no se cuela en la interacción', () => {
+  /** Declaración CSS que contiene un índice dado. */
+  const declaracionEn = (css: string, indice: number): string => {
+    let inicio = indice;
+    while (inicio > 0 && !'{;}'.includes(css[inicio - 1])) inicio -= 1;
+    let fin = indice;
+    while (fin < css.length && !'{;}'.includes(css[fin])) fin += 1;
+    return css.slice(inicio, fin).trim();
+  };
+
+  it('los tokens ambientales sólo aparecen en una animación infinita', () => {
+    const infractoras: string[] = [];
+    for (const hoja of rutas()) {
+      if (hoja.endsWith('tokens.css')) continue;
+      const css = contenido(hoja);
+      for (const uso of css.matchAll(/var\(--sc-motion-ambient-[a-z-]+\)/g)) {
+        const declaracion = declaracionEn(css, uso.index!);
+        const esAnimacionInfinita = /^animation(-duration|-delay)?\s*:/.test(declaracion)
+          && /\binfinite\b/.test(declaracion);
+        if (!esAnimacionInfinita) infractoras.push(`${hoja}: ${declaracion}`);
+      }
+    }
+    expect(infractoras).toEqual([]);
+  });
+
+  it('el eje ambiental no redefine ni deriva de la escala de interacción', () => {
+    const ambientales = [...tokens.matchAll(/(--sc-motion-ambient-[a-z-]+)\s*:\s*([^;]+);/g)];
+    expect(ambientales.length).toBeGreaterThan(0);
+    for (const [, nombre, valor] of ambientales) {
+      // Derivar de un escalón sería tomarle prestado su trabajo.
+      expect(valor, nombre).not.toMatch(/var\(--sc-motion-(instant|quick|bridge|reveal|trace|pulse)\)/);
+      // La regla de magnitud vale para la duración del bucle, que es lo que
+      // podría hacerse pasar por una interacción. Un `-delay` no es un
+      // movimiento: sólo decide cuándo arranca uno que ya es infinito.
+      if (!nombre.endsWith('-loop')) continue;
+      expect(Number(valor.replace(/ms\s*$/, '')), nombre).toBeGreaterThan(1400);
+    }
+  });
+});
+
+describe('tokens · ninguna feature inventa variables --sc-*', () => {
+  /**
+   * Una propiedad `--sc-*` es legítima por tres vías, y sólo por esas tres:
+   * la declara `tokens.css`, la declara la propia hoja que la usa (variable de
+   * componente, como `--sc-banner-color`), o la publica el runtime sobre un
+   * elemento. La tercera vía no es visible desde el CSS, así que se declara
+   * aquí de forma explícita y se comprueba contra el código que la escribe.
+   */
+  const PUBLICADAS_EN_RUNTIME = [
+    '--sc-visual-viewport-height',
+    '--sc-visual-viewport-top',
+    '--sc-visual-viewport-bottom',
+  ] as const;
+
+  it('cada propiedad publicada en runtime tiene un setProperty que la escribe', () => {
+    const fuentes = rutasTs().map((ruta) => leer(ruta)).join('\n');
+    const huerfanas = PUBLICADAS_EN_RUNTIME.filter(
+      (propiedad) => !fuentes.includes(`setProperty('${propiedad}'`)
+        && !fuentes.includes(`setProperty("${propiedad}"`),
+    );
+    expect(huerfanas).toEqual([]);
+  });
+
+  it('todo var(--sc-*) usado por CSS existe en tokens, en su hoja o en runtime', () => {
+    const globales = new Set<string>([
+      ...[...tokens.matchAll(/(--sc-[a-z0-9-]+)\s*:/gi)].map((m) => m[1]),
+      ...PUBLICADAS_EN_RUNTIME,
+    ]);
+    const infractoras = new Set<string>();
+    for (const hoja of rutas()) {
+      if (hoja.endsWith('tokens.css')) continue;
+      const css = contenido(hoja);
+      // Una hoja puede definir sus propias variables de componente.
+      const locales = new Set(
+        [...css.matchAll(/(--sc-[a-z0-9-]+)\s*:/gi)].map((m) => m[1]),
+      );
+      for (const m of css.matchAll(/var\((--sc-[a-z0-9-]+)/gi)) {
+        if (!globales.has(m[1]) && !locales.has(m[1])) infractoras.add(`${hoja}: ${m[1]}`);
+      }
+    }
+    expect([...infractoras].sort()).toEqual([]);
   });
 });
 

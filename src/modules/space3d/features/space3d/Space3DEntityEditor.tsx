@@ -12,13 +12,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import { fixedSpace3DRestraints, freeSpace3DRestraints, type Space3DFrameMember, type Space3DNodalLoad, type Space3DNode, type Space3DProjectV1, type Space3DRestraints } from '../../space3d/model/types';
+import {
+  SPACE3D_MATERIALS,
+  SPACE3D_SECTION_CATALOG,
+  calculateCircularSection,
+  calculateRectangularSection,
+  getSectionsByCategory,
+} from '../../space3d/model/sectionLibrary';
 import type { Space3DCommand } from '../../space3d/data/commands';
 import type { TranslationKey } from '../../i18n/catalogs';
 
 export type Space3DEditorTarget =
   | { readonly kind: 'node'; readonly id: string | null }
   | { readonly kind: 'member'; readonly id: string | null }
-  | { readonly kind: 'load'; readonly id: string | null };
+  | { readonly kind: 'load'; readonly id: string | null; readonly initialNodeId?: string };
 
 export interface Space3DEntityEditorProps {
   readonly project: Space3DProjectV1;
@@ -94,18 +101,69 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
   const [restraints, setRestraints] = useState<Space3DRestraints>(node?.restraints ?? freeSpace3DRestraints());
   const [endI, setEndI] = useState(member?.i ?? project.nodes[0]?.id ?? '');
   const [endJ, setEndJ] = useState(member?.j ?? project.nodes[1]?.id ?? '');
-  const [loadNodeId, setLoadNodeId] = useState(load?.nodeId ?? project.nodes[0]?.id ?? '');
+  const initialLoadNodeId = load?.nodeId ?? (target.kind === 'load' ? target.initialNodeId : undefined) ?? project.nodes[0]?.id ?? '';
+  const [loadNodeId, setLoadNodeId] = useState(initialLoadNodeId);
   const [loadCaseId, setLoadCaseId] = useState(load?.caseId ?? project.loadCases[0]?.id ?? '');
+  const [catalogCategory, setCatalogCategory] = useState<'all' | 'steel' | 'concrete' | 'timber' | 'aluminum'>('all');
+  const [selectedSectionId, setSelectedSectionId] = useState(
+    member?.sectionOrigin === 'catalog' && SPACE3D_SECTION_CATALOG.some((section) => section.name === member.sectionId)
+      ? member.sectionId ?? ''
+      : '',
+  );
+  const [selectedMaterialId, setSelectedMaterialId] = useState(
+    member?.materialOrigin === 'catalog' && SPACE3D_MATERIALS.some((material) => material.id === member.materialId)
+      ? member.materialId ?? ''
+      : '',
+  );
+  const [calcB, setCalcB] = useState('0.30');
+  const [calcH, setCalcH] = useState('0.40');
+  const [calcDia, setCalcDia] = useState('0.25');
+  const [memberMetadata, setMemberMetadata] = useState<{
+    materialId?: string;
+    materialOrigin?: Space3DFrameMember['materialOrigin'];
+    sectionId?: string;
+    sectionOrigin?: Space3DFrameMember['sectionOrigin'];
+    density?: number;
+  }>({
+    materialId: member?.materialId,
+    materialOrigin: member?.materialOrigin,
+    sectionId: member?.sectionId,
+    sectionOrigin: member?.sectionOrigin,
+    density: member?.density,
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const key = `${target.kind}:${target.id ?? 'new'}`;
+  const availableSections = useMemo(() => getSectionsByCategory(catalogCategory), [catalogCategory]);
+  const selectedSectionPreset = SPACE3D_SECTION_CATALOG.find((section) => section.name === selectedSectionId);
+  const sectionOptions = selectedSectionPreset && !availableSections.some((section) => section.name === selectedSectionPreset.name)
+    ? [selectedSectionPreset, ...availableSections]
+    : availableSections;
+
+  const key = `${target.kind}:${target.id ?? 'new'}:${target.kind === 'load' ? target.initialNodeId ?? '' : ''}`;
   useEffect(() => {
     setDraft(initialDraft);
     setRestraints(node?.restraints ?? freeSpace3DRestraints());
     setEndI(member?.i ?? project.nodes[0]?.id ?? '');
     setEndJ(member?.j ?? project.nodes[1]?.id ?? '');
-    setLoadNodeId(load?.nodeId ?? project.nodes[0]?.id ?? '');
+    setLoadNodeId(initialLoadNodeId);
     setLoadCaseId(load?.caseId ?? project.loadCases[0]?.id ?? '');
+    setSelectedSectionId(
+      member?.sectionOrigin === 'catalog' && SPACE3D_SECTION_CATALOG.some((section) => section.name === member.sectionId)
+        ? member.sectionId ?? ''
+        : '',
+    );
+    setSelectedMaterialId(
+      member?.materialOrigin === 'catalog' && SPACE3D_MATERIALS.some((material) => material.id === member.materialId)
+        ? member.materialId ?? ''
+        : '',
+    );
+    setMemberMetadata({
+      materialId: member?.materialId,
+      materialOrigin: member?.materialOrigin,
+      sectionId: member?.sectionId,
+      sectionOrigin: member?.sectionOrigin,
+      density: member?.density,
+    });
     setErrors({});
     // Un cambio de entidad recarga el borrador entero; el resto de dependencias
     // son el propio proyecto, que no debe pisar lo que el usuario está tecleando.
@@ -132,7 +190,30 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         aria-describedby={unitId}
         value={draft[name] ?? ''}
         aria-invalid={invalid ? true : undefined}
-        onChange={(event) => setDraft((current) => ({ ...current, [name]: event.target.value }))}
+        onChange={(event) => {
+          setDraft((current) => ({ ...current, [name]: event.target.value }));
+          if (target.kind === 'member' && PROPERTY_KEYS.includes(name as typeof PROPERTY_KEYS[number])) {
+            if (name === 'E' || name === 'G') {
+              // Cambiar la rigidez rompe la identidad de catálogo —el modelo ya no
+              // puede afirmar que es acero A36—, pero no dice nada de la masa. La
+              // densidad se conserva: borrarla dejaba la barra fuera del ensamblaje
+              // modal, y este editor no tiene campo para volver a escribirla.
+              setSelectedMaterialId('');
+              setMemberMetadata((current) => ({
+                ...current,
+                materialId: undefined,
+                materialOrigin: 'custom',
+              }));
+            } else {
+              setSelectedSectionId('');
+              setMemberMetadata((current) => ({
+                ...current,
+                sectionId: undefined,
+                sectionOrigin: 'custom',
+              }));
+            }
+          }
+        }}
       />
       {invalid ? <small role="alert">{t(positive ? 'space3d.requiredPositive' : 'space3d.requiredNumber')}</small> : null}
     </div>;
@@ -212,6 +293,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
       const changes = {
         i: endI, j: endJ,
         E: values.E, G: values.G, A: values.A, Iy: values.Iy, Iz: values.Iz, J: values.J,
+        ...memberMetadata,
         orientation,
       };
       const ok = target.id
@@ -239,6 +321,98 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         </label>
       </div>
 
+      <div className="space3d-section-picker">
+        <div className="space3d-section-categories" role="group" aria-label={t('space3d.sectionFilterMaterial')}>
+          {(['all', 'steel', 'concrete', 'timber', 'aluminum'] as const).map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              className={`space3d-cat-chip ${catalogCategory === cat ? 'is-active' : ''}`}
+              // El filtro es excluyente: sin estado expuesto, un lector de pantalla
+              // oía cinco botones iguales y no sabía cuál gobierna la lista.
+              aria-pressed={catalogCategory === cat}
+              onClick={() => setCatalogCategory(cat)}
+            >
+              {t(cat === 'all'
+                ? 'space3d.sectionCategoryAll'
+                : cat === 'steel'
+                  ? 'space3d.sectionCategorySteel'
+                  : cat === 'concrete'
+                    ? 'space3d.sectionCategoryConcrete'
+                    : cat === 'timber'
+                      ? 'space3d.sectionCategoryTimber'
+                      : 'space3d.sectionCategoryAluminum')}
+            </button>
+          ))}
+        </div>
+
+        <div className="space3d-field-grid">
+          <label className="space3d-field">
+            <span className="space3d-field-label">{t('space3d.sectionStandard')} ({availableSections.length})</span>
+            <select
+              value={selectedSectionId}
+              onChange={(e) => {
+                const sec = SPACE3D_SECTION_CATALOG.find((s) => s.name === e.target.value);
+                if (!sec) return;
+                const mat = SPACE3D_MATERIALS.find((m) => m.id === sec.materialId);
+                setSelectedSectionId(sec.name);
+                setSelectedMaterialId(sec.materialId);
+                setDraft((current) => ({
+                  ...current,
+                  A: String(sec.A),
+                  Iy: String(sec.Iy),
+                  Iz: String(sec.Iz),
+                  J: String(sec.J),
+                  ...(mat ? { E: String(mat.E), G: String(mat.G) } : {}),
+                }));
+                setMemberMetadata({
+                  sectionId: sec.name,
+                  sectionOrigin: 'catalog',
+                  materialId: sec.materialId,
+                  materialOrigin: 'catalog',
+                  density: mat?.massDensityKgPerM3,
+                });
+              }}
+            >
+              <option value="" disabled>{t('space3d.sectionSelect')}</option>
+              {sectionOptions.map((sec) => (
+                <option key={sec.name} value={sec.name}>{sec.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space3d-field">
+            <span className="space3d-field-label">{t('space3d.materialReference')}</span>
+            <select
+              value={selectedMaterialId}
+              onChange={(e) => {
+                const mat = SPACE3D_MATERIALS.find((m) => m.id === e.target.value);
+                if (!mat) return;
+                setSelectedMaterialId(mat.id);
+                setSelectedSectionId('');
+                setDraft((current) => ({
+                  ...current,
+                  E: String(mat.E),
+                  G: String(mat.G),
+                }));
+                setMemberMetadata((current) => ({
+                  ...current,
+                  materialId: mat.id,
+                  materialOrigin: 'catalog',
+                  density: mat.massDensityKgPerM3,
+                  sectionId: undefined,
+                  sectionOrigin: 'custom',
+                }));
+              }}
+            >
+              <option value="" disabled>{t('space3d.materialChange')}</option>
+              {SPACE3D_MATERIALS.map((mat) => (
+                <option key={mat.id} value={mat.id}>{mat.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
       <div className="space3d-field-grid">
         {field('E', t('space3d.propertyE'), t('space3d.unitStress'), true)}
         {field('G', t('space3d.propertyG'), t('space3d.unitStress'), true)}
@@ -247,6 +421,87 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         {field('Iz', t('space3d.propertyIz'), t('space3d.unitInertia'), true)}
         {field('J', t('space3d.propertyJ'), t('space3d.unitInertia'), true)}
       </div>
+
+      <details className="space3d-fieldset" style={{ padding: '8px' }}>
+        <summary style={{ fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>{t('space3d.sectionCalculatorTitle')}</summary>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'end' }}>
+            <div className="space3d-field">
+              <label className="space3d-field-label" htmlFor="calc-b">{t('space3d.sectionRectB')}</label>
+              <input id="calc-b" type="number" step="0.05" value={calcB} onChange={(e) => setCalcB(e.target.value)} />
+            </div>
+            <div className="space3d-field">
+              <label className="space3d-field-label" htmlFor="calc-h">{t('space3d.sectionRectH')}</label>
+              <input id="calc-h" type="number" step="0.05" value={calcH} onChange={(e) => setCalcH(e.target.value)} />
+            </div>
+            <button
+              type="button"
+              className="space3d-button"
+              onClick={() => {
+                const b = numeric(calcB);
+                const h = numeric(calcH);
+                if (b === null || h === null || b <= 0 || h <= 0) {
+                  setErrors((current) => ({ ...current, sectionCalculator: t('space3d.sectionCalculatorRectError') }));
+                  return;
+                }
+                setErrors((current) => {
+                  const { sectionCalculator: _ignored, ...rest } = current;
+                  return rest;
+                });
+                const res = calculateRectangularSection(b, h);
+                setSelectedSectionId('');
+                setMemberMetadata((current) => ({ ...current, sectionId: undefined, sectionOrigin: 'custom' }));
+                setDraft((curr) => ({
+                  ...curr,
+                  A: String(res.A),
+                  Iy: String(res.Iy),
+                  Iz: String(res.Iz),
+                  J: String(res.J),
+                }));
+              }}
+            >
+              {t('space3d.sectionApplyRect')}
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', alignItems: 'end' }}>
+            <div className="space3d-field">
+              <label className="space3d-field-label" htmlFor="calc-dia">{t('space3d.sectionCircularDiameter')}</label>
+              <input id="calc-dia" type="number" step="0.05" value={calcDia} onChange={(e) => setCalcDia(e.target.value)} />
+            </div>
+            <button
+              type="button"
+              className="space3d-button"
+              onClick={() => {
+                const d = numeric(calcDia);
+                if (d === null || d <= 0) {
+                  setErrors((current) => ({ ...current, sectionCalculator: t('space3d.sectionCalculatorCircleError') }));
+                  return;
+                }
+                setErrors((current) => {
+                  const { sectionCalculator: _ignored, ...rest } = current;
+                  return rest;
+                });
+                const res = calculateCircularSection(d);
+                setSelectedSectionId('');
+                setMemberMetadata((current) => ({ ...current, sectionId: undefined, sectionOrigin: 'custom' }));
+                setDraft((curr) => ({
+                  ...curr,
+                  A: String(res.A),
+                  Iy: String(res.Iy),
+                  Iz: String(res.Iz),
+                  J: String(res.J),
+                }));
+              }}
+            >
+              {t('space3d.sectionApplyCircular')}
+            </button>
+          </div>
+        </div>
+        {errors.sectionCalculator ? (
+          <p className="space3d-field-error" role="alert">{errors.sectionCalculator}</p>
+        ) : null}
+      </details>
 
       <fieldset className="space3d-fieldset">
         <legend>{t('space3d.orientationReference')}</legend>

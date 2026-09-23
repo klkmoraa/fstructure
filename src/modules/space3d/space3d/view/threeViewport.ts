@@ -19,8 +19,8 @@
 // impide al bundler descartar lo que no se usa.
 import {
   ArrowHelper, BoxGeometry, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, Float32BufferAttribute,
-  GridHelper, Group, LineBasicMaterial, LineDashedMaterial, LineSegments, MathUtils, Mesh,
-  MeshBasicMaterial, PerspectiveCamera, Points, PointsMaterial, Raycaster, Scene, SphereGeometry, Sprite,
+  GridHelper, Group, InstancedMesh, LineBasicMaterial, LineDashedMaterial, LineSegments, MathUtils, Matrix4, Mesh,
+  MeshBasicMaterial, PerspectiveCamera, Points, PointsMaterial, Quaternion, Raycaster, Scene, SphereGeometry, Sprite,
   SpriteMaterial, Vector2, Vector3, WebGLRenderer,
   type Camera, type Material, type Object3D,
 } from 'three';
@@ -446,31 +446,56 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
 
     // El trazo analítico gana un espesor de pantalla legible, pero no pretende
     // representar la sección física: el radio depende del encuadre, no de A/I/J.
+    //
+    // La envolvente visual es instanciada: el picking ya usa `memberLines`, por
+    // lo que crear una geometría/material/mesh por barra sólo multiplicaba
+    // objetos GPU/JS sin añadir semántica de interacción.
     const memberRadius = Math.max(span * 0.012, 0.035);
-    for (const member of model.members) {
-      const start = new Vector3(...member.start);
-      const end = new Vector3(...member.end);
-      const direction = end.clone().sub(start);
-      const resultColor = member.result?.mode === 'axial' ? palette.axial
-        : member.result?.mode === 'shear' ? palette.shear
-          : member.result?.mode === 'moment' ? palette.moment : null;
-      const color = member.selected ? palette.memberSelected : resultColor ?? palette.member;
-      const radius = memberRadius * (member.result ? 0.9 + 0.55 * member.result.relative : 1);
-      const geometry = new CylinderGeometry(radius, radius, direction.length(), 8, 1);
-      const mesh = new Mesh(geometry, new MeshBasicMaterial({ color }));
-      mesh.position.copy(start).add(end).multiplyScalar(0.5);
-      mesh.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
-      mesh.name = `member-${member.id}`;
-      groups.get('members')!.add(mesh);
-      if (member.selected) {
-        const halo = new Mesh(
-          new CylinderGeometry(radius * 2.25, radius * 2.25, member.length, 8, 1),
-          new MeshBasicMaterial({ color: palette.memberSelected, transparent: true, opacity: 0.16, depthWrite: false }),
-        );
-        halo.position.copy(mesh.position);
-        halo.quaternion.copy(mesh.quaternion);
-        groups.get('members')!.add(halo);
-      }
+    if (model.members.length > 0) {
+      const memberGeometryVisual = new CylinderGeometry(1, 1, 1, 8, 1);
+      const memberMaterialVisual = new MeshBasicMaterial({ color: 0xffffff });
+      const memberInstances = new InstancedMesh(memberGeometryVisual, memberMaterialVisual, model.members.length);
+      memberInstances.name = 'member-instances';
+      const yAxis = new Vector3(0, 1, 0);
+      const matrix = new Matrix4();
+      const quaternion = new Quaternion();
+      const position = new Vector3();
+      const scale = new Vector3();
+
+      model.members.forEach((member, index) => {
+        const start = new Vector3(...member.start);
+        const end = new Vector3(...member.end);
+        const direction = end.clone().sub(start);
+        const length = direction.length();
+        const resultColor = member.result?.mode === 'axial' ? palette.axial
+          : member.result?.mode === 'shear' ? palette.shear
+            : member.result?.mode === 'moment' ? palette.moment : null;
+        const color = member.selected ? palette.memberSelected : resultColor ?? palette.member;
+        const radius = memberRadius * (member.result ? 0.9 + 0.55 * member.result.relative : 1);
+
+        position.copy(start).add(end).multiplyScalar(0.5);
+        quaternion.setFromUnitVectors(yAxis, direction.normalize());
+        scale.set(radius, length, radius);
+        matrix.compose(position, quaternion, scale);
+        memberInstances.setMatrixAt(index, matrix);
+        memberInstances.setColorAt(index, color);
+
+        // Sólo la selección lleva un objeto adicional: como máximo unas pocas
+        // barras, nunca una malla nueva por cada barra del modelo.
+        if (member.selected) {
+          const halo = new Mesh(
+            new CylinderGeometry(radius * 2.25, radius * 2.25, member.length, 8, 1),
+            new MeshBasicMaterial({ color: palette.memberSelected, transparent: true, opacity: 0.16, depthWrite: false }),
+          );
+          halo.position.copy(position);
+          halo.quaternion.copy(quaternion);
+          halo.name = `member-halo-${member.id}`;
+          groups.get('members')!.add(halo);
+        }
+      });
+      memberInstances.instanceMatrix.needsUpdate = true;
+      if (memberInstances.instanceColor) memberInstances.instanceColor.needsUpdate = true;
+      groups.get('members')!.add(memberInstances);
     }
 
     nodeIds = model.nodes.map((node) => node.id);
@@ -487,13 +512,27 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
     groups.get('nodes')!.add(nodePoints);
 
     const nodeRadius = Math.max(span * 0.012, 0.04);
-    for (const node of model.nodes) {
-      const sphere = new Mesh(
-        new SphereGeometry(node.selected ? nodeRadius * 1.45 : nodeRadius, 12, 8),
-        new MeshBasicMaterial({ color: node.selected ? palette.nodeSelected : palette.node }),
-      );
-      sphere.position.set(...node.position);
-      groups.get('nodes')!.add(sphere);
+    if (model.nodes.length > 0) {
+      const nodeGeometryVisual = new SphereGeometry(1, 12, 8);
+      const nodeMaterialVisual = new MeshBasicMaterial({ color: 0xffffff });
+      const nodeInstances = new InstancedMesh(nodeGeometryVisual, nodeMaterialVisual, model.nodes.length);
+      nodeInstances.name = 'node-instances';
+      const matrix = new Matrix4();
+      const quaternion = new Quaternion();
+      const position = new Vector3();
+      const scale = new Vector3();
+
+      model.nodes.forEach((node, index) => {
+        const radius = node.selected ? nodeRadius * 1.45 : nodeRadius;
+        position.set(...node.position);
+        scale.setScalar(radius);
+        matrix.compose(position, quaternion.identity(), scale);
+        nodeInstances.setMatrixAt(index, matrix);
+        nodeInstances.setColorAt(index, node.selected ? palette.nodeSelected : palette.node);
+      });
+      nodeInstances.instanceMatrix.needsUpdate = true;
+      if (nodeInstances.instanceColor) nodeInstances.instanceColor.needsUpdate = true;
+      groups.get('nodes')!.add(nodeInstances);
     }
 
     // Apoyo: un prisma bajo el nudo, orientado al suelo. Un empotramiento se
@@ -724,10 +763,14 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
     get controlsTarget() { return controls.target; },
     setModel(next) {
       if (disposed) return;
-      const boundsChanged = next.bounds.span !== model.bounds.span;
+      // `setModel` corre en CADA edición, así que no toca la cámara: añadir un
+      // nudo fuera del encuadre, mover uno del borde o deshacer cambiaría los
+      // límites y devolvería a la persona a la vista predefinida. El reencuadre
+      // tras sustituir el proyecto entero lo pide quien aloja el lienzo.
+      const spanChanged = next.bounds.span !== model.bounds.span;
       model = next;
       buildModel();
-      if (boundsChanged) {
+      if (spanChanged) {
         clearGroup('grid');
         buildStatic();
       }
@@ -789,11 +832,17 @@ const disposeObject = (root: Object3D) => {
     const holder = object as Object3D & {
       geometry?: BufferGeometry;
       material?: Material | Material[];
+      isInstancedMesh?: boolean;
+      dispose?: () => void;
     };
     holder.geometry?.dispose();
     const material = holder.material;
     if (Array.isArray(material)) material.forEach(disposeMaterial);
     else if (material) disposeMaterial(material);
+    // `instanceMatrix` e `instanceColor` los posee el propio InstancedMesh y
+    // sólo los libera su `dispose()`. Sin esta llamada cada reconstrucción de
+    // escena —selección, modo de resultado, tema— deja sus búferes en la GPU.
+    if (holder.isInstancedMesh) holder.dispose?.();
   });
 };
 

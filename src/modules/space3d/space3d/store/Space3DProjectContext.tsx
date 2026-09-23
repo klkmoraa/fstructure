@@ -110,7 +110,7 @@ export const Space3DProjectProvider = ({ children, storage, client, initialProje
   }));
   const [analysis, setAnalysis] = useState<Space3DAnalysisResult | null>(null);
   const [analysisState, setAnalysisState] = useState<Space3DAnalysisState>('idle');
-  const [analysisTargetId, setTargetId] = useState(() => defaultTargetId(history.present));
+  const [storedTargetId, setTargetId] = useState(() => defaultTargetId(history.present));
   const [selectedEntity, setSelectedEntity] = useState<Space3DSelection | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [lastErrorMessage, setLastErrorMessage] = useState<string | null>(null);
@@ -149,6 +149,13 @@ export const Space3DProjectProvider = ({ children, storage, client, initialProje
   }, []);
 
   const project = history.present;
+  // El historial guarda proyectos, no el objetivo. Deshacer una sustitución vuelve
+  // a un proyecto donde el caso guardado puede no existir —"ROOF" sobre un pórtico
+  // con "LC1"— y el siguiente análisis fallaba con `unknown-target`. Derivar el
+  // objetivo efectivo en cada render impide que deshacer, rehacer, importar o un
+  // comando lo dejen apuntando a un caso inexistente, y rehacer recupera el
+  // guardado en cuanto vuelve a existir.
+  const analysisTargetId = targetExists(project, storedTargetId) ? storedTargetId : defaultTargetId(project);
 
   useEffect(() => {
     saveSpace3DProject(project, storageRef.current ?? undefined, namespace);

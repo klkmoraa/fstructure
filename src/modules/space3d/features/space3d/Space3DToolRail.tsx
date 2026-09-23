@@ -7,7 +7,7 @@
  * crear una entidad nueva, porque en S3D-1 el apoyo es un atributo del nudo.
  */
 import {
-  BarChart3, CircleDot, Ellipsis, MousePointer2, Spline, Triangle, Weight,
+  BarChart3, CircleDot, Ellipsis, MousePointer2, Sparkles, Spline, Triangle, Weight,
 } from 'lucide-react';
 import type { TranslationKey } from '../../i18n/catalogs';
 
@@ -21,6 +21,7 @@ export interface Space3DConsoleToolsProps {
   readonly onNewMember: () => void;
   readonly onNewLoad: () => void;
   readonly onEditSupport: () => void;
+  readonly onOpenGenerative?: () => void;
   readonly canNewMember: boolean;
   readonly canNewLoad: boolean;
   readonly canEditSupport: boolean;
@@ -31,7 +32,7 @@ export interface Space3DConsoleToolsProps {
 }
 
 export const Space3DConsoleTools = ({
-  t, activeTool, onSelectTool, onNewNode, onNewMember, onNewLoad, onEditSupport,
+  t, activeTool, onSelectTool, onNewNode, onNewMember, onNewLoad, onEditSupport, onOpenGenerative,
   canNewMember, canNewLoad, canEditSupport, canShowResults, onShowResults, onMore, moreOpen,
 }: Space3DConsoleToolsProps) => <nav className="space3d-console-tools space3d-rail-vertical" aria-label={t('space3d.toolRailLabel')}>
   <div className="space3d-rail-vertical-group" role="group" aria-label={t('space3d.toolRailLabel')}>
@@ -92,6 +93,21 @@ export const Space3DConsoleTools = ({
       <Triangle size={19} aria-hidden="true" />
       <span aria-hidden="true">{t('space3d.supports')}</span>
     </button>
+    {onOpenGenerative ? (
+      <button
+        type="button"
+        className="space3d-rail-button space3d-rail-button--generative"
+        onClick={onOpenGenerative}
+        // WCAG 2.5.3: el nombre accesible debe contener el texto visible, o quien
+        // dicta "pulsa Generar 3D" con control por voz no activa el botón. La
+        // descripción larga queda en `title`, que se expone como descripción.
+        aria-label={t('space3d.generatorShort')}
+        title={t('space3d.generatorTitle')}
+      >
+        <Sparkles size={19} aria-hidden="true" />
+        <span aria-hidden="true">{t('space3d.generatorShort')}</span>
+      </button>
+    ) : null}
     <button
       type="button"
       className="space3d-rail-button"
