@@ -282,6 +282,25 @@ describe('space3dGenerative', () => {
       expect(parseNaturalLanguageStructuralPrompt('puente industrial de 20 m').archetype).toBe('bridge');
     });
 
+    // Arreglar la altura fantasma no bastaba: con una altura REAL la guarda
+    // `!params.height` seguía apagando el respaldo y la luz se perdía igual.
+    it('keeps the span when the prompt also states a real height', () => {
+      expect(parseNaturalLanguageStructuralPrompt('Puente de 30 m, altura 5 m').params).toMatchObject({ span: 30, height: 5 });
+      expect(parseNaturalLanguageStructuralPrompt('Bridge 30 m, 4 m high').params).toMatchObject({ span: 30, height: 4 });
+      expect(parseNaturalLanguageStructuralPrompt('Nave industrial de 20 m, altura 7 m').params).toMatchObject({ span: 20, height: 7 });
+      // El orden inverso también: la altura primero no debe robarse la luz.
+      expect(parseNaturalLanguageStructuralPrompt('Nave de 7 m de altura y 20 m').params).toMatchObject({ span: 20, height: 7 });
+    });
+
+    // "3-story building with 5m bays" es el ejemplo que la propia app muestra en
+    // su placeholder en inglés, y no se extraía nada de él.
+    it('reads hyphenated and British storey forms and a leading bay size', () => {
+      expect(parseNaturalLanguageStructuralPrompt('3-story building with 5m bays').params).toMatchObject({ storiesY: 3, baySize: 5 });
+      expect(parseNaturalLanguageStructuralPrompt('3 storey frame').params.storiesY).toBe(3);
+      expect(parseNaturalLanguageStructuralPrompt('4 storeys').params.storiesY).toBe(4);
+      expect(parseNaturalLanguageStructuralPrompt('3-bay frame').params.baysX).toBe(3);
+    });
+
     it('reports the requested bay count without an invented cap', () => {
       const parsed = parseNaturalLanguageStructuralPrompt('nave industrial de 16m con 8 vanos');
       expect(parsed.params.baysX).toBe(8);

@@ -171,9 +171,11 @@ describe('Space 3D viewport display geometry', () => {
     viewport.dispose();
   });
 
-  // Reemplazar el proyecto reconstruía la geometría sin tocar la cámara: un
-  // modelo lejos del origen quedaba fuera de encuadre.
-  it('refits the camera when the model moves, and only then', () => {
+  // `setModel` corre en cada edición. Si reencuadrara al cambiar los límites,
+  // añadir un nudo fuera del encuadre o deshacer devolvería a la persona a la
+  // vista predefinida. El reencuadre tras sustituir el proyecto lo pide el
+  // lienzo con `refitToken`; aquí se fija que la edición no mueve la cámara.
+  it('keeps the camera framing when an edit moves the model bounds', () => {
     const viewport = createSpace3DViewport({
       canvas: makeCanvas(),
       model: makeModel(8),
@@ -181,19 +183,17 @@ describe('Space 3D viewport display geometry', () => {
       createControls: () => fakeControls(),
     });
 
-    const targetX = () => viewport.controlsTarget.x;
-    const initialTarget = targetX();
+    const framedTarget = viewport.controlsTarget.clone();
+    const framedCamera = viewport.camera.position.clone();
 
-    // Un modelo del mismo tamaño pero desplazado debe traer la cámara con él.
+    // Mismo tamaño, 500 m más allá: los límites cambian por completo.
     viewport.setModel(makeModel(8, 500));
-    const movedTarget = targetX();
-    expect(movedTarget).toBeGreaterThan(initialTarget + 400);
-    expect(viewport.camera.position.x).toBeGreaterThan(400);
+    expect(viewport.controlsTarget.distanceTo(framedTarget)).toBeCloseTo(0, 9);
+    expect(viewport.camera.position.distanceTo(framedCamera)).toBeCloseTo(0, 9);
 
-    // Una reconstrucción que no mueve los límites no roba el encuadre.
-    const restyled = { ...makeModel(8, 500) };
-    viewport.setModel(restyled);
-    expect(targetX()).toBeCloseTo(movedTarget, 6);
+    // Pedido explícitamente, el encuadre sí sigue al modelo nuevo.
+    viewport.setView('isometric');
+    expect(viewport.controlsTarget.x).toBeGreaterThan(framedTarget.x + 400);
 
     viewport.dispose();
   });

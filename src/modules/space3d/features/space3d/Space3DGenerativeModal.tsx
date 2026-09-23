@@ -58,6 +58,57 @@ const clampFinite = (value: number, min: number, max: number): number => {
   return Math.min(max, Math.max(min, value));
 };
 
+/**
+ * Campo numérico acotado.
+ *
+ * Acotar en cada pulsación impedía escribir cualquier valor cuyo primer dígito
+ * cae por debajo del mínimo: en la altura de la torre (mínimo 4), borrar el
+ * campo lo saltaba a 4 y teclear "15" terminaba en 80. Aquí el texto se edita
+ * libre; la vista previa sigue en vivo mientras lo escrito es válido y está en
+ * rango, y sólo al confirmar (Enter o salir del campo) se acota. Un campo vacío
+ * o ilegible devuelve el valor vigente en vez de inventar el mínimo.
+ */
+const BoundedNumberInput = ({
+  value, min, max, onCommit, ...rest
+}: {
+  readonly id: string;
+  readonly step?: number;
+  readonly value: number;
+  readonly min: number;
+  readonly max: number;
+  readonly onCommit: (value: number) => void;
+}) => {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft === null) return;
+    const parsed = Number(draft);
+    if (draft.trim() !== '' && Number.isFinite(parsed)) onCommit(clampFinite(parsed, min, max));
+    setDraft(null);
+  };
+  return (
+    <input
+      {...rest}
+      type="number"
+      min={min}
+      max={max}
+      value={draft ?? String(value)}
+      onChange={(event) => {
+        const raw = event.target.value;
+        setDraft(raw);
+        const parsed = Number(raw);
+        if (raw.trim() !== '' && Number.isFinite(parsed) && parsed >= min && parsed <= max) onCommit(parsed);
+      }}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commit();
+        }
+      }}
+    />
+  );
+};
+
 export interface Space3DGenerativeModalProps {
   readonly open: boolean;
   readonly onClose: () => void;
@@ -256,6 +307,13 @@ export const Space3DGenerativeModal = ({
   const [shedSpanX, setShedSpanX] = useState(14.0);
   const [shedEaveHeightY, setShedEaveHeightY] = useState(4.5);
   const [shedRidgeHeightY, setShedRidgeHeightY] = useState(6.5);
+  const [shedBaseSupport, setShedBaseSupport] = useState<'fixed' | 'pinned'>('fixed');
+  // La cumbrera no puede quedar bajo el alero: el generador la elevaría en
+  // silencio a alero + 0,5 m y el campo seguiría mostrando otra altura.
+  const updateShedEave = (value: number) => {
+    setShedEaveHeightY(value);
+    setShedRidgeHeightY((ridge) => Math.max(ridge, value + 0.5));
+  };
   const [shedBaysZ, setShedBaysZ] = useState(3);
   const [shedBaySpacingZ, setShedBaySpacingZ] = useState(5.0);
   const [shedRoofLoad, setShedRoofLoad] = useState(15);
@@ -280,16 +338,36 @@ export const Space3DGenerativeModal = ({
     setArchetype(parsed.archetype);
 
     if (parsed.archetype === 'frame') {
-      if (parsed.params.storiesY !== undefined) setFrameStoriesY(clampFinite(Number(parsed.params.storiesY), 1, 6));
-      if (parsed.params.baysX !== undefined) setFrameBaysX(clampFinite(Number(parsed.params.baysX), 1, 5));
-      if ((parsed.params.baySize ?? parsed.params.span) !== undefined) setFrameBayWidthX(clampFinite(Number(parsed.params.baySize ?? parsed.params.span), 1, 30));
-      if (parsed.params.height !== undefined) setFrameStoryHeightY(clampFinite(Number(parsed.params.height), 1, 10));
+      const stories = parsed.params.storiesY !== undefined
+        ? clampFinite(Number(parsed.params.storiesY), 1, 6)
+        : frameStoriesY;
+      const bays = parsed.params.baysX !== undefined
+        ? clampFinite(Number(parsed.params.baysX), 1, 5)
+        : frameBaysX;
+      if (parsed.params.storiesY !== undefined) setFrameStoriesY(stories);
+      if (parsed.params.baysX !== undefined) setFrameBaysX(bays);
+      // `baySize` ya es por vano ("2 vanos de 5 m"); `span` es la luz total y se
+      // reparte. Aplicar la luz total a cada vano multiplicaba el ancho pedido.
+      if (parsed.params.baySize !== undefined) {
+        setFrameBayWidthX(clampFinite(Number(parsed.params.baySize), 1, 30));
+      } else if (parsed.params.span !== undefined) {
+        setFrameBayWidthX(clampFinite(Number(parsed.params.span) / bays, 1, 30));
+      }
+      // La altura leída es la del edificio, como en torre, cúpula, puente y nave,
+      // y como la muestra el resumen. El control es altura de planta: aplicarla
+      // entera convertía "3 pisos y 9 m de altura" en un edificio de 27 m.
+      if (parsed.params.height !== undefined) {
+        setFrameStoryHeightY(clampFinite(Number(parsed.params.height) / stories, 1, 10));
+      }
       if (parsed.params.load !== undefined) setFrameRoofLoad(clampFinite(Number(parsed.params.load), 0, 500));
       if (parsed.params.baseSupport === 'fixed' || parsed.params.baseSupport === 'pinned') {
         setFrameBaseSupport(parsed.params.baseSupport);
       }
     } else if (parsed.archetype === 'tower') {
       if (parsed.params.height !== undefined) setTowerHeight(clampFinite(Number(parsed.params.height), 4, 80));
+      // "Torre de 18 m con 6 tramos": el parser lo lee como tramos y el resumen
+      // lo anuncia, así que no puede descartarse en silencio.
+      if (parsed.params.bays !== undefined) setTowerTiers(clampFinite(Number(parsed.params.bays), 2, 15));
       if (parsed.params.load !== undefined) setTowerWindLoad(clampFinite(Number(parsed.params.load), 0, 300));
     } else if (parsed.archetype === 'dome') {
       if (parsed.params.radius !== undefined) setDomeRadius(clampFinite(Number(parsed.params.radius), 2, 40));
@@ -302,6 +380,11 @@ export const Space3DGenerativeModal = ({
       if (parsed.params.load !== undefined) setBridgeDeckLoad(clampFinite(Number(parsed.params.load), 0, 400));
       if (parsed.params.bays !== undefined) setBridgePanels(clampFinite(Number(parsed.params.bays), 2, 15));
     } else if (parsed.archetype === 'industrial-shed') {
+      // El generador de la nave admite articulado; asumir empotrado cambiaba
+      // en silencio los GDL restringidos que la persona había pedido.
+      if (parsed.params.baseSupport === 'fixed' || parsed.params.baseSupport === 'pinned') {
+        setShedBaseSupport(parsed.params.baseSupport);
+      }
       if (parsed.params.span !== undefined) setShedSpanX(clampFinite(Number(parsed.params.span), 6, 40));
       if (parsed.params.height !== undefined) setShedRidgeHeightY(clampFinite(Number(parsed.params.height), shedEaveHeightY + 0.5, 18));
       if (parsed.params.load !== undefined) setShedRoofLoad(clampFinite(Number(parsed.params.load), 0, 200));
@@ -319,7 +402,13 @@ export const Space3DGenerativeModal = ({
       if (parsed.params.bays !== undefined) setTrussPanels(clampFinite(Number(parsed.params.bays), 2, 20));
     }
 
-    setPromptFeedback(parsed.summary);
+    // Torre, cúpula y puente generan sus apoyos propios y no admiten otro tipo.
+    // Si la descripción pidió uno, se dice en vez de descartarlo en silencio.
+    const supportIgnored = parsed.params.baseSupport !== undefined
+      && (parsed.archetype === 'tower' || parsed.archetype === 'dome' || parsed.archetype === 'bridge');
+    setPromptFeedback(supportIgnored
+      ? `${parsed.summary} · ${t('space3d.promptSupportNotApplied')}`
+      : parsed.summary);
   };
 
   const previewState = useMemo<{ project: Space3DProjectV1 | null; error: string | null }>(() => {
@@ -340,6 +429,7 @@ export const Space3DGenerativeModal = ({
                 : generateSpace3DIndustrialShed({
                   spanX: shedSpanX, eaveHeightY: shedEaveHeightY, ridgeHeightY: shedRidgeHeightY, baysZ: shedBaysZ,
                   baySpacingZ: shedBaySpacingZ, roofLoad: shedRoofLoad, windLoadX: shedWindLoadX,
+                  baseSupport: shedBaseSupport,
                 });
       return { project, error: null };
     } catch (error) {
@@ -352,7 +442,7 @@ export const Space3DGenerativeModal = ({
     towerHeight, towerBaseWidth, towerTopWidth, towerTiers, towerWindLoad,
     domeRadius, domeHeight, domeSectors, domeRings, domeLoad,
     bridgeSpanX, bridgeWidthZ, bridgeHeightY, bridgePanels, bridgeDeckLoad,
-    shedSpanX, shedEaveHeightY, shedRidgeHeightY, shedBaysZ, shedBaySpacingZ, shedRoofLoad, shedWindLoadX,
+    shedSpanX, shedEaveHeightY, shedRidgeHeightY, shedBaysZ, shedBaySpacingZ, shedRoofLoad, shedWindLoadX, shedBaseSupport,
   ]);
 
   const previewModel = previewState.project;
@@ -509,81 +599,75 @@ export const Space3DGenerativeModal = ({
                   <label className="space3d-field-label" htmlFor="gen-frame-bx">
                     {t('space3d.frameBaysX' as TranslationKey) || 'Vanos en X'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-frame-bx"
-                    type="number"
                     min={1}
                     max={5}
                     value={frameBaysX}
-                    onChange={(e) => setFrameBaysX(clampFinite(Number(e.target.value), 1, 5))}
+                    onCommit={setFrameBaysX}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-frame-wx">
                     {t('space3d.frameBayWidthX' as TranslationKey) || 'Ancho vano X (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-frame-wx"
-                    type="number"
                     step={0.5}
                     min={1}
                     max={30}
                     value={frameBayWidthX}
-                    onChange={(e) => setFrameBayWidthX(clampFinite(Number(e.target.value), 1, 30))}
+                    onCommit={setFrameBayWidthX}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-frame-sy">
                     {t('space3d.frameStoriesY' as TranslationKey) || 'Niveles en Y'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-frame-sy"
-                    type="number"
                     min={1}
                     max={6}
                     value={frameStoriesY}
-                    onChange={(e) => setFrameStoriesY(clampFinite(Number(e.target.value), 1, 6))}
+                    onCommit={setFrameStoriesY}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-frame-hy">
                     {t('space3d.frameStoryHeightY' as TranslationKey) || 'Altura entrepiso (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-frame-hy"
-                    type="number"
                     step={0.2}
                     min={1}
                     max={10}
                     value={frameStoryHeightY}
-                    onChange={(e) => setFrameStoryHeightY(clampFinite(Number(e.target.value), 1, 10))}
+                    onCommit={setFrameStoryHeightY}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-frame-bz">
                     {t('space3d.frameBaysZ' as TranslationKey) || 'Vanos en Z'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-frame-bz"
-                    type="number"
                     min={1}
                     max={5}
                     value={frameBaysZ}
-                    onChange={(e) => setFrameBaysZ(clampFinite(Number(e.target.value), 1, 5))}
+                    onCommit={setFrameBaysZ}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-frame-wz">
                     {t('space3d.frameBayDepthZ' as TranslationKey) || 'Profundidad vano Z (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-frame-wz"
-                    type="number"
                     step={0.5}
                     min={1}
                     max={30}
                     value={frameBayDepthZ}
-                    onChange={(e) => setFrameBayDepthZ(clampFinite(Number(e.target.value), 1, 30))}
+                    onCommit={setFrameBayDepthZ}
                   />
                 </div>
                 <div className="space3d-field">
@@ -603,14 +687,13 @@ export const Space3DGenerativeModal = ({
                   <label className="space3d-field-label" htmlFor="gen-frame-load">
                     {t('space3d.roofLoadPerNode' as TranslationKey) || 'Carga gravitatoria techo (kN)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-frame-load"
-                    type="number"
                     step={5}
                     min={0}
                     max={500}
                     value={frameRoofLoad}
-                    onChange={(e) => setFrameRoofLoad(clampFinite(Number(e.target.value), 0, 500))}
+                    onCommit={setFrameRoofLoad}
                   />
                 </div>
               </div>
@@ -622,69 +705,64 @@ export const Space3DGenerativeModal = ({
                   <label className="space3d-field-label" htmlFor="gen-truss-span">
                     {t('space3d.trussSpanX' as TranslationKey) || 'Luz total X (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-truss-span"
-                    type="number"
                     step={1}
                     min={4}
                     max={50}
                     value={trussSpanX}
-                    onChange={(e) => setTrussSpanX(clampFinite(Number(e.target.value), 4, 50))}
+                    onCommit={setTrussSpanX}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-truss-h">
                     {t('space3d.trussHeightY' as TranslationKey) || 'Peralte / Altura Y (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-truss-h"
-                    type="number"
                     step={0.2}
                     min={0.5}
                     max={10}
                     value={trussHeightY}
-                    onChange={(e) => setTrussHeightY(clampFinite(Number(e.target.value), 0.5, 10))}
+                    onCommit={setTrussHeightY}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-truss-w">
                     {t('space3d.trussWidthZ' as TranslationKey) || 'Ancho transversal Z (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-truss-w"
-                    type="number"
                     step={0.5}
                     min={1}
                     max={20}
                     value={trussWidthZ}
-                    onChange={(e) => setTrussWidthZ(clampFinite(Number(e.target.value), 1, 20))}
+                    onCommit={setTrussWidthZ}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-truss-panels">
                     {t('space3d.trussPanels' as TranslationKey) || 'Número de paneles'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-truss-panels"
-                    type="number"
                     min={2}
                     max={20}
                     value={trussPanels}
-                    onChange={(e) => setTrussPanels(clampFinite(Number(e.target.value), 2, 20))}
+                    onCommit={setTrussPanels}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-truss-load">
                     {t('space3d.trussLoad' as TranslationKey) || 'Carga en nudos superiores (kN)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-truss-load"
-                    type="number"
                     step={5}
                     min={0}
                     max={500}
                     value={trussLoad}
-                    onChange={(e) => setTrussLoad(clampFinite(Number(e.target.value), 0, 500))}
+                    onCommit={setTrussLoad}
                   />
                 </div>
               </div>
@@ -696,69 +774,64 @@ export const Space3DGenerativeModal = ({
                   <label className="space3d-field-label" htmlFor="gen-tower-h">
                     {t('space3d.towerHeight' as TranslationKey) || 'Altura total (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-tower-h"
-                    type="number"
                     step={1}
                     min={4}
                     max={80}
                     value={towerHeight}
-                    onChange={(e) => setTowerHeight(clampFinite(Number(e.target.value), 4, 80))}
+                    onCommit={setTowerHeight}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-tower-bw">
                     {t('space3d.towerBaseWidth' as TranslationKey) || 'Ancho en la base (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-tower-bw"
-                    type="number"
                     step={0.5}
                     min={1}
                     max={25}
                     value={towerBaseWidth}
-                    onChange={(e) => setTowerBaseWidth(clampFinite(Number(e.target.value), 1, 25))}
+                    onCommit={setTowerBaseWidth}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-tower-tw">
                     {t('space3d.towerTopWidth' as TranslationKey) || 'Ancho en la cúspide (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-tower-tw"
-                    type="number"
                     step={0.5}
                     min={0.5}
                     max={15}
                     value={towerTopWidth}
-                    onChange={(e) => setTowerTopWidth(clampFinite(Number(e.target.value), 0.5, 15))}
+                    onCommit={setTowerTopWidth}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-tower-tiers">
                     {t('space3d.towerTiers' as TranslationKey) || 'Tramos / Niveles'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-tower-tiers"
-                    type="number"
                     min={2}
                     max={15}
                     value={towerTiers}
-                    onChange={(e) => setTowerTiers(clampFinite(Number(e.target.value), 2, 15))}
+                    onCommit={setTowerTiers}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-tower-wind">
                     {t('space3d.towerWindLoad' as TranslationKey) || 'Carga lateral de viento (kN)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-tower-wind"
-                    type="number"
                     step={5}
                     min={0}
                     max={300}
                     value={towerWindLoad}
-                    onChange={(e) => setTowerWindLoad(clampFinite(Number(e.target.value), 0, 300))}
+                    onCommit={setTowerWindLoad}
                   />
                 </div>
               </div>
@@ -770,68 +843,63 @@ export const Space3DGenerativeModal = ({
                   <label className="space3d-field-label" htmlFor="gen-dome-r">
                     {t('space3d.domeRadius' as TranslationKey) || 'Radio en la base (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-dome-r"
-                    type="number"
                     step={0.5}
                     min={2}
                     max={40}
                     value={domeRadius}
-                    onChange={(e) => setDomeRadius(clampFinite(Number(e.target.value), 2, 40))}
+                    onCommit={setDomeRadius}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-dome-h">
                     {t('space3d.domeHeight' as TranslationKey) || 'Flecha / Altura (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-dome-h"
-                    type="number"
                     step={0.5}
                     min={1}
                     max={30}
                     value={domeHeight}
-                    onChange={(e) => setDomeHeight(clampFinite(Number(e.target.value), 1, 30))}
+                    onCommit={setDomeHeight}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-dome-sec">
                     {t('space3d.domeSectors' as TranslationKey) || 'Sectores angulares'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-dome-sec"
-                    type="number"
                     min={4}
                     max={24}
                     value={domeSectors}
-                    onChange={(e) => setDomeSectors(clampFinite(Number(e.target.value), 4, 24))}
+                    onCommit={setDomeSectors}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-dome-rings">
                     {t('space3d.domeRings' as TranslationKey) || 'Anillos concéntricos'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-dome-rings"
-                    type="number"
                     min={2}
                     max={10}
                     value={domeRings}
-                    onChange={(e) => setDomeRings(clampFinite(Number(e.target.value), 2, 10))}
+                    onCommit={setDomeRings}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-dome-load">
                     {t('space3d.domeLoad' as TranslationKey) || 'Carga vertical por nudo (kN)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-dome-load"
-                    type="number"
                     step={2}
                     min={0}
                     max={200}
                     value={domeLoad}
-                    onChange={(e) => setDomeLoad(clampFinite(Number(e.target.value), 0, 200))}
+                    onCommit={setDomeLoad}
                   />
                 </div>
               </div>
@@ -843,69 +911,64 @@ export const Space3DGenerativeModal = ({
                   <label className="space3d-field-label" htmlFor="gen-bridge-span">
                     {t('space3d.bridgeSpan' as TranslationKey) || 'Luz libre X (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-bridge-span"
-                    type="number"
                     step={1}
                     min={6}
                     max={60}
                     value={bridgeSpanX}
-                    onChange={(e) => setBridgeSpanX(clampFinite(Number(e.target.value), 6, 60))}
+                    onCommit={setBridgeSpanX}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-bridge-w">
                     {t('space3d.bridgeWidth' as TranslationKey) || 'Ancho calzada Z (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-bridge-w"
-                    type="number"
                     step={0.5}
                     min={2}
                     max={15}
                     value={bridgeWidthZ}
-                    onChange={(e) => setBridgeWidthZ(clampFinite(Number(e.target.value), 2, 15))}
+                    onCommit={setBridgeWidthZ}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-bridge-h">
                     {t('space3d.bridgeHeight' as TranslationKey) || 'Altura cercha Y (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-bridge-h"
-                    type="number"
                     step={0.5}
                     min={1.5}
                     max={12}
                     value={bridgeHeightY}
-                    onChange={(e) => setBridgeHeightY(clampFinite(Number(e.target.value), 1.5, 12))}
+                    onCommit={setBridgeHeightY}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-bridge-panels">
                     {t('space3d.bridgePanels' as TranslationKey) || 'Paneles longitudinales'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-bridge-panels"
-                    type="number"
                     min={2}
                     max={15}
                     value={bridgePanels}
-                    onChange={(e) => setBridgePanels(clampFinite(Number(e.target.value), 2, 15))}
+                    onCommit={setBridgePanels}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-bridge-load">
                     {t('space3d.bridgeLoad' as TranslationKey) || 'Carga tablero por nudo (kN)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-bridge-load"
-                    type="number"
                     step={5}
                     min={0}
                     max={400}
                     value={bridgeDeckLoad}
-                    onChange={(e) => setBridgeDeckLoad(clampFinite(Number(e.target.value), 0, 400))}
+                    onCommit={setBridgeDeckLoad}
                   />
                 </div>
               </div>
@@ -917,98 +980,104 @@ export const Space3DGenerativeModal = ({
                   <label className="space3d-field-label" htmlFor="gen-shed-span">
                     {t('space3d.shedSpan' as TranslationKey) || 'Luz libre pórtico X (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-shed-span"
-                    type="number"
                     step={1}
                     min={6}
                     max={40}
                     value={shedSpanX}
-                    onChange={(e) => setShedSpanX(clampFinite(Number(e.target.value), 6, 40))}
+                    onCommit={setShedSpanX}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-shed-eave">
                     {t('space3d.shedEaveHeight' as TranslationKey) || 'Altura alero Y (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-shed-eave"
-                    type="number"
                     step={0.5}
                     min={3}
                     max={12}
                     value={shedEaveHeightY}
-                    onChange={(e) => setShedEaveHeightY(clampFinite(Number(e.target.value), 3, 12))}
+                    onCommit={updateShedEave}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-shed-ridge">
                     {t('space3d.shedRidgeHeight' as TranslationKey) || 'Altura cumbrera Y (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-shed-ridge"
-                    type="number"
                     step={0.5}
                     min={shedEaveHeightY + 0.5}
                     max={18}
                     value={shedRidgeHeightY}
-                    onChange={(e) => setShedRidgeHeightY(clampFinite(Number(e.target.value), shedEaveHeightY + 0.5, 18))}
+                    onCommit={setShedRidgeHeightY}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-shed-bays">
                     {t('space3d.shedBays' as TranslationKey) || 'Vanos longitudinales Z'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-shed-bays"
-                    type="number"
                     min={1}
                     max={10}
                     value={shedBaysZ}
-                    onChange={(e) => setShedBaysZ(clampFinite(Number(e.target.value), 1, 10))}
+                    onCommit={setShedBaysZ}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-shed-spacing">
                     {t('space3d.shedSpacing' as TranslationKey) || 'Distancia entre pórticos (m)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-shed-spacing"
-                    type="number"
                     step={0.5}
                     min={3}
                     max={12}
                     value={shedBaySpacingZ}
-                    onChange={(e) => setShedBaySpacingZ(clampFinite(Number(e.target.value), 3, 12))}
+                    onCommit={setShedBaySpacingZ}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-shed-load">
                     {t('space3d.shedRoofLoad' as TranslationKey) || 'Carga techo (kN)'}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-shed-load"
-                    type="number"
                     step={5}
                     min={0}
                     max={200}
                     value={shedRoofLoad}
-                    onChange={(e) => setShedRoofLoad(clampFinite(Number(e.target.value), 0, 200))}
+                    onCommit={setShedRoofLoad}
                   />
                 </div>
                 <div className="space3d-field">
                   <label className="space3d-field-label" htmlFor="gen-shed-wind">
                     {t('space3d.shedWindLoadPerEave')}
                   </label>
-                  <input
+                  <BoundedNumberInput
                     id="gen-shed-wind"
-                    type="number"
                     step={2}
                     min={0}
                     max={200}
                     value={shedWindLoadX}
-                    onChange={(e) => setShedWindLoadX(clampFinite(Number(e.target.value), 0, 200))}
+                    onCommit={setShedWindLoadX}
                   />
+                </div>
+                <div className="space3d-field">
+                  <label className="space3d-field-label" htmlFor="gen-shed-sup">
+                    {t('space3d.supportType' as TranslationKey) || 'Apoyos base'}
+                  </label>
+                  <select
+                    id="gen-shed-sup"
+                    value={shedBaseSupport}
+                    onChange={(e) => setShedBaseSupport(e.target.value as 'fixed' | 'pinned')}
+                  >
+                    <option value="fixed">{t('space3d.supportFixed' as TranslationKey) || 'Empotrados (6 GDL)'}</option>
+                    <option value="pinned">{t('space3d.supportPinned' as TranslationKey) || 'Articulados (3 GDL)'}</option>
+                  </select>
                 </div>
               </div>
             )}

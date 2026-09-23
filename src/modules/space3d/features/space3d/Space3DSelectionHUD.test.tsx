@@ -93,3 +93,31 @@ it('does not label an arbitrary three-DOF restraint as pinned', () => {
   expect(screen.queryByText(translate('es', 'space3d.supportPinned'))).toBeNull();
   expect(screen.getByText('ux · rx · ry')).toBeDefined();
 });
+
+// Una carga de momento puro tiene Fx = Fy = Fz = 0. Si el HUD sólo mostraba
+// fuerzas, la presentaba como si no tuviera acción alguna.
+it('shows the moment components of a pure-moment nodal load', () => {
+  const base = generateSpace3DFrame({ baysX: 1, bayWidthX: 4, storiesY: 1, storyHeightY: 3, baysZ: 1, bayDepthZ: 4 });
+  const load = {
+    id: 'MOM', nodeId: base.nodes[0].id, caseId: base.loadCases[0].id,
+    fx: 0, fy: 0, fz: 0, mx: 0, my: 12.5, mz: -3,
+  };
+  const project = { ...base, nodalLoads: [load] };
+  render(
+    <Space3DSelectionHUD
+      selection={{ kind: 'load', id: 'MOM' }}
+      project={project}
+      analysis={null}
+      onDeselect={vi.fn()}
+      onOpenEditor={vi.fn()}
+      onDelete={vi.fn()}
+      onStartConnectMember={vi.fn()}
+      onAddLoadToNode={vi.fn()}
+      t={(key, vars) => translate('es', key, vars)}
+    />,
+  );
+  const card = screen.getByRole('region', { name: /MOM/ });
+  expect(card.textContent).toMatch(/My:\s*12\.5/);
+  expect(card.textContent).toMatch(/Mz:\s*-3/);
+  expect(card.textContent).toContain('kN·m');
+});

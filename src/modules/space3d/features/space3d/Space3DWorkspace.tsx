@@ -266,6 +266,10 @@ const WorkspaceBody = ({
    * confirma antes de actuar, salvo que no haya nada que perder.
    */
   const [pendingReplace, setPendingReplace] = useState<PendingReplace | null>(null);
+  // Sube cada vez que el proyecto ENTERO se sustituye; el lienzo reencuadra sólo
+  // entonces. Una edición normal no lo toca y conserva la cámara de la persona.
+  const [viewFitToken, setViewFitToken] = useState(0);
+  const refitView = () => setViewFitToken((token) => token + 1);
   const [activeView, setActiveView] = useState<Space3DViewPreset>('isometric');
   const [modelNavFocus, setModelNavFocus] = useState<Space3DModelFocus>('node');
   const [propertiesOpen, setPropertiesOpen] = useState(false);
@@ -472,6 +476,7 @@ const WorkspaceBody = ({
       return;
     }
     if (target === 'example') loadExample(); else resetToBlank();
+    refitView();
     setEditorTarget(null);
   };
 
@@ -482,6 +487,7 @@ const WorkspaceBody = ({
       return;
     }
     replaceProject(generatedProject);
+    refitView();
     setGenerativeOpen(false);
     setEditorTarget(null);
   };
@@ -491,6 +497,7 @@ const WorkspaceBody = ({
     if (pendingReplace.kind === 'example') loadExample();
     else if (pendingReplace.kind === 'blank') resetToBlank();
     else replaceProject(pendingReplace.project);
+    refitView();
     setEditorTarget(null);
     setPendingReplace(null);
   };
@@ -511,11 +518,25 @@ const WorkspaceBody = ({
   // Accesos rápidos por teclado para modelado fluido
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Otro componente ya consumió la tecla —un desplegable, la paleta de
+      // comandos, un menú—: la superficie no vuelve a actuar sobre ella.
+      if (event.defaultPrevented) return;
       const target = event.target as HTMLElement | null;
       const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable);
+      // Un control con foco es dueño de sus teclas. Sin esto, Retroceso sobre el
+      // botón Cancelar del editor borraba la barra o la carga seleccionada (un
+      // nudo con consumidores ya lo protege `node-in-use`). El lienzo
+      // (`role="img"`) no cuenta como control.
+      const isControl = Boolean(target?.closest?.(
+        'button, a[href], [role="button"], [role="menuitem"], [role="option"], [role="tab"], '
+        + '[role="checkbox"], [role="radio"], [role="switch"], [role="combobox"], [role="slider"], [role="spinbutton"]',
+      ));
       if (generativeOpen || pendingReplace !== null || transfer !== null) return;
 
       if (event.key === 'Escape') {
+        // En un campo, Escape es del campo: cerrar el editor desde ahí tiraba
+        // el borrador que la persona estaba escribiendo.
+        if (isInput) return;
         if (connectingFromNodeId) {
           setConnectingFromNodeId(null);
           event.preventDefault();
@@ -528,7 +549,7 @@ const WorkspaceBody = ({
         }
       }
 
-      if (isInput) return;
+      if (isInput || isControl) return;
 
       const entityToDelete = editorTarget?.id ? editorTarget : selectedEntity ? { kind: selectedEntity.kind, id: selectedEntity.id } : null;
       if ((event.key === 'Delete' || event.key === 'Backspace') && entityToDelete?.id) {
@@ -777,7 +798,7 @@ const WorkspaceBody = ({
         {diverged && derived
           ? <button type="button" className="space3d-button" title={t('space3d.rederiveWarning')} onClick={() => {
             // A failed canonical source save is reported by the shared session; keep this geometry.
-            void Promise.resolve().then(() => onRederive?.()).then(() => replaceProject(derived)).catch(() => undefined);
+            void Promise.resolve().then(() => onRederive?.()).then(() => { replaceProject(derived); refitView(); }).catch(() => undefined);
           }}>
             {t('space3d.rederive')}
           </button>
@@ -890,6 +911,7 @@ const WorkspaceBody = ({
           viewLabels={viewLabels}
           activeView={activeView}
           onViewChange={setActiveView}
+          refitToken={viewFitToken}
           zoomInLabel={t('space3d.zoomIn')}
           zoomOutLabel={t('space3d.zoomOut')}
           resetLabel={t('space3d.resetView')}
@@ -907,8 +929,12 @@ const WorkspaceBody = ({
             loads: t('space3d.loads'),
           }}
         />
-        <div className="space3d-bottom-stack">
-        {selectedEntity && !sheetExpanded ? (
+        {/* La hoja sólo tapa el lienzo en el layout compacto; en escritorio es una
+            columna fija al lado. Por eso la ocultación la decide el CSS por
+            breakpoint, no esta condición: antes, "Editar" o "Nuevo nodo" ponían
+            `sheetExpanded` en escritorio y HUD y leyenda desaparecían sin motivo. */}
+        <div className="space3d-bottom-stack" data-sheet-expanded={sheetExpanded || undefined}>
+        {selectedEntity ? (
           <Space3DSelectionHUD
             selection={selectedEntity}
             project={project}
@@ -935,7 +961,7 @@ const WorkspaceBody = ({
             t={t}
           />
         ) : null}
-        {resultMode !== 'model' && !sheetExpanded ? (
+        {resultMode !== 'model' ? (
           <Space3DResultsLegend
             resultMode={resultMode}
             analysis={currentAnalysis}
@@ -1132,6 +1158,7 @@ const WorkspaceBody = ({
           className="space3d-button space3d-button--primary"
           onClick={() => {
             if (importPortable(importText).ok) {
+              refitView();
               setTransfer(null);
               setImportText('');
               setEditorTarget(null);

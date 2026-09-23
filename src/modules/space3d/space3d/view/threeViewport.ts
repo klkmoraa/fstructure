@@ -763,20 +763,16 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
     get controlsTarget() { return controls.target; },
     setModel(next) {
       if (disposed) return;
-      // El centro importa tanto como la extensión: un modelo del mismo tamaño
-      // colocado lejos del origen deja la cámara apuntando al vacío.
-      const boundsChanged = next.bounds.span !== model.bounds.span
-        || next.bounds.center[0] !== model.bounds.center[0]
-        || next.bounds.center[1] !== model.bounds.center[1]
-        || next.bounds.center[2] !== model.bounds.center[2];
+      // `setModel` corre en CADA edición, así que no toca la cámara: añadir un
+      // nudo fuera del encuadre, mover uno del borde o deshacer cambiaría los
+      // límites y devolvería a la persona a la vista predefinida. El reencuadre
+      // tras sustituir el proyecto entero lo pide quien aloja el lienzo.
+      const spanChanged = next.bounds.span !== model.bounds.span;
       model = next;
       buildModel();
-      if (boundsChanged) {
+      if (spanChanged) {
         clearGroup('grid');
         buildStatic();
-        // Reencuadrar sobre el cuerpo nuevo. Una selección o un cambio de tema
-        // no mueven los límites, así que no roban el encuadre de la persona.
-        setView(activeView);
       }
       requestRender();
     },

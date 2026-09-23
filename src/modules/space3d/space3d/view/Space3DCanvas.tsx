@@ -41,6 +41,12 @@ export interface Space3DCanvasProps {
   /** Preset activo, controlado por quien aloja el lienzo (comparte estado con la lista de Vistas del panel lateral). */
   readonly activeView?: Space3DViewPreset;
   readonly onViewChange?: (preset: Space3DViewPreset) => void;
+  /**
+   * Cambia cuando el proyecto entero se sustituye (estructura generada,
+   * ejemplo, proyecto vacío). Sólo entonces se reencuadra: una edición normal
+   * conserva la cámara que la persona dejó.
+   */
+  readonly refitToken?: number;
   readonly zoomInLabel?: string;
   readonly zoomOutLabel?: string;
   readonly resetLabel?: string;
@@ -68,6 +74,7 @@ export const Space3DCanvas = ({
   viewLabels = DEFAULT_VIEW_LABELS,
   activeView = 'isometric',
   onViewChange,
+  refitToken = 0,
   zoomInLabel = 'Acercar',
   zoomOutLabel = 'Alejar',
   resetLabel = 'Restablecer vista',
@@ -150,6 +157,17 @@ export const Space3DCanvas = ({
   useEffect(() => {
     viewportRef.current?.setView(activeView);
   }, [activeView]);
+
+  // Declarado tras el efecto de `model`: en un mismo commit React los ejecuta en
+  // orden, así que `setView` ya calcula el encuadre sobre los límites nuevos.
+  const refitRef = useRef(refitToken);
+  useEffect(() => {
+    if (refitRef.current === refitToken) return;
+    refitRef.current = refitToken;
+    viewportRef.current?.setView(activeView);
+    // Sólo el token decide; `activeView` ya tiene su propio efecto.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [refitToken]);
 
   useEffect(() => {
     const onFullscreenChange = () => setIsFullscreen(document.fullscreenElement === stageRef.current);

@@ -254,6 +254,13 @@ export const Space3DSelectionHUD = ({
         <span>Fy: <b>{num(load.fy)}</b></span>
         <span>Fz: <b>{num(load.fz)}</b> kN</span>
       </div>
+      {/* Una carga de momento puro tiene las tres fuerzas a cero: sin esta fila el
+          resumen la presentaba como si no tuviera acción alguna. */}
+      <div className="space3d-hud-coordinates">
+        <span>Mx: <b>{num(load.mx)}</b></span>
+        <span>My: <b>{num(load.my)}</b></span>
+        <span>Mz: <b>{num(load.mz)}</b> kN·m</span>
+      </div>
 
       <div className="space3d-hud-actions">
         <Button

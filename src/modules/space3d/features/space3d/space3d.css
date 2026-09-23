@@ -2052,6 +2052,15 @@
   display: contents;
 }
 
+/* Bajo 960 px la hoja de propiedades se superpone al lienzo al expandirse, así
+   que HUD y leyenda se retiran para no apilarse encima. En escritorio la hoja
+   es una columna propia y ambos siguen visibles. */
+@media (max-width: 959px) {
+  .space3d-bottom-stack[data-sheet-expanded] {
+    display: none;
+  }
+}
+
 .space3d-hud-card {
   position: absolute;
   inset-block-start: var(--sc-space-4);

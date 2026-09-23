@@ -947,14 +947,16 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
   }
 
   // Pisos / Niveles / Stories
-  const storiesMatch = prompt.match(/(\d+)\s*(?:pisos?|niveles?|stories|floors?|niv)/i);
+  // El guion y las variantes británicas importan: el propio ejemplo que la app
+  // muestra en inglés es "3-story building", y sin ellas no se extraía nada.
+  const storiesMatch = prompt.match(/(\d+)\s*-?\s*(?:pisos?|niveles?|stor(?:y|ey|ies|eys)|floors?|niv)/i);
   if (storiesMatch) params.storiesY = Number(storiesMatch[1]);
 
   // Vanos / Bays
   // "paneles"/"panels" es como se enuncia el número de tramos de un puente o
   // una celosía; sin ellos, una sugerencia que pide 5 paneles genera los que
   // hubiera en el control.
-  const baysMatch = prompt.match(/(\d+)\s*(?:vanos?|bays?|tramos?|crujias?|crujías|paneles?|panels?)/i);
+  const baysMatch = prompt.match(/(\d+)\s*-?\s*(?:vanos?|bays?|tramos?|crujias?|crujías|paneles?|panels?)/i);
   if (baysMatch) {
     const b = Number(baysMatch[1]);
     params.baysX = b;
@@ -975,11 +977,20 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
 
   // Longitud / Luz / Span. "ancho/width" se extrae aparte para no confundir
   // la luz longitudinal de un puente con el ancho de tablero.
+  //
+  // El respaldo toma el primer "N m" suelto. Antes se apagaba en cuanto había
+  // CUALQUIER altura, para no leer la altura como luz; eso perdía la luz de
+  // "Puente de 30 m, altura 5 m". Ahora sólo se descarta el tramo exacto que la
+  // altura ya consumió, y el resto de la frase sigue disponible.
+  const withoutHeight = heightMatch?.index !== undefined
+    ? prompt.slice(0, heightMatch.index)
+      + ' '.repeat(heightMatch[0].length)
+      + prompt.slice(heightMatch.index + heightMatch[0].length)
+    : prompt;
   const spanMatch = prompt.match(/(?:luz|span|longitud|length)\s*(?:de|=)?\s*(\d+(?:\.\d+)?)\s*m?/i)
     || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\s*(?:de\s+luz|de\s+largo|de\s+longitud|span)/i)
-    || ((archetype === 'bridge' || archetype === 'truss' || archetype === 'industrial-shed')
-      && !params.height && !params.span
-      ? prompt.match(/(?:de|=)?\s*(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\b/i)
+    || ((archetype === 'bridge' || archetype === 'truss' || archetype === 'industrial-shed') && !params.span
+      ? withoutHeight.match(/(?:de|=)?\s*(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\b/i)
       : null);
   if (spanMatch) params.span = Number(spanMatch[1]);
 
@@ -987,7 +998,9 @@ export function parseNaturalLanguageStructuralPrompt(rawPrompt: string): ParsedS
     || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\s*(?:de\s+ancho|wide)/i);
   if (widthMatch) params.width = Number(widthMatch[1]);
 
-  const baySizeMatch = prompt.match(/\d+\s*(?:vanos?|bays?)\s*(?:de|of)\s*(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)/i);
+  const baySizeMatch = prompt.match(/\d+\s*(?:vanos?|bays?)\s*(?:de|of)\s*(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)/i)
+    // Forma inglesa con el tamaño delante: "with 5m bays".
+    || prompt.match(/(\d+(?:\.\d+)?)\s*(?:m|metros?|meters?)\s*(?:vanos?|bays?)\b/i);
   if (baySizeMatch) params.baySize = Number(baySizeMatch[1]);
 
   // Radio / Radius, en ambos órdenes: "radio 8 m" y "8 m de radio".

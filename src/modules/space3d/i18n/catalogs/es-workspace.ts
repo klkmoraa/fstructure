@@ -485,6 +485,7 @@ export const esWorkspace = {
   'space3d.archetypeDome': 'Cúpula reticular 3D',
   'space3d.archetypeBridge': 'Puente 3D',
   'space3d.archetypeShed': 'Nave Ind.',
+  'space3d.promptSupportNotApplied': 'Este arquetipo usa sus apoyos predefinidos: el tipo de apoyo indicado no se aplicó.',
   'space3d.promptLabel': 'Descripción de la estructura a generar',
   'space3d.promptPlaceholder': 'Describe tu estructura: ej. "Edificio 3 pisos 2 vanos de 5m" o "Torre 18m"',
   'space3d.interpretPrompt': 'Interpretar',

@@ -103,4 +103,12 @@ describe('space3d · pila inferior en pantalla estrecha', () => {
     // el contenedor no debe crear caja ni desplazarlos.
     expect(base.get('.space3d-bottom-stack')).toMatch(/display:\s*contents/);
   });
+
+  it('hides the stack for an expanded sheet only in the compact layout', () => {
+    const compact = parseRules(mediaBody('@media (max-width: 959px)'));
+    expect(compact.get('.space3d-bottom-stack[data-sheet-expanded]')).toMatch(/display:\s*none/);
+    // Fuera de la media query el atributo no oculta nada: en escritorio la hoja
+    // es una columna propia y HUD y leyenda deben seguir a la vista.
+    expect(base.get('.space3d-bottom-stack[data-sheet-expanded]')).toBeUndefined();
+  });
 });

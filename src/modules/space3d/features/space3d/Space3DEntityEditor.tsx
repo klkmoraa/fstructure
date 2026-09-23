@@ -194,12 +194,15 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
           setDraft((current) => ({ ...current, [name]: event.target.value }));
           if (target.kind === 'member' && PROPERTY_KEYS.includes(name as typeof PROPERTY_KEYS[number])) {
             if (name === 'E' || name === 'G') {
+              // Cambiar la rigidez rompe la identidad de catálogo —el modelo ya no
+              // puede afirmar que es acero A36—, pero no dice nada de la masa. La
+              // densidad se conserva: borrarla dejaba la barra fuera del ensamblaje
+              // modal, y este editor no tiene campo para volver a escribirla.
               setSelectedMaterialId('');
               setMemberMetadata((current) => ({
                 ...current,
                 materialId: undefined,
                 materialOrigin: 'custom',
-                density: undefined,
               }));
             } else {
               setSelectedSectionId('');
@@ -325,6 +328,9 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
               key={cat}
               type="button"
               className={`space3d-cat-chip ${catalogCategory === cat ? 'is-active' : ''}`}
+              // El filtro es excluyente: sin estado expuesto, un lector de pantalla
+              // oía cinco botones iguales y no sabía cuál gobierna la lista.
+              aria-pressed={catalogCategory === cat}
               onClick={() => setCatalogCategory(cat)}
             >
               {t(cat === 'all'

@@ -473,6 +473,7 @@ export const enWorkspace = {
   'space3d.archetypeDome': '3D Ribbed Dome',
   'space3d.archetypeBridge': '3D Space Bridge',
   'space3d.archetypeShed': 'Industrial Shed',
+  'space3d.promptSupportNotApplied': 'This archetype uses its own supports: the requested support type was not applied.',
   'space3d.promptLabel': 'Description of the structure to generate',
   'space3d.promptPlaceholder': 'Describe your structure: e.g. "3-story building with 5m bays" or "20m Tower"',
   'space3d.interpretPrompt': 'Interpret',
