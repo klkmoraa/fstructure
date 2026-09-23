@@ -12,6 +12,24 @@ import { SPACE3D_VIEW_PRESETS, type Space3DViewPreset } from './cameraModel';
 import { createSpace3DViewport, type Space3DLayerVisibility, type Space3DViewport } from './threeViewport';
 import type { Space3DSceneModel } from './sceneModel';
 import type { Space3DSelection } from '../store/Space3DProjectContext';
+import type { Space3DVector } from '../model/types';
+
+/**
+ * Modelado directo: el plano donde cae el clic, el origen de la barra en curso
+ * y cómo ajustar y describir un punto. Lo decide quien aloja el lienzo.
+ */
+export interface Space3DCanvasDraft {
+  readonly plane: { readonly axis: 'x' | 'y' | 'z'; readonly offset: number; readonly step: number } | null;
+  readonly from: Space3DVector | null;
+  readonly snap: (point: Space3DVector) => Space3DVector;
+  readonly describe: (point: Space3DVector, nodeId: string | null) => string;
+}
+
+export interface Space3DCanvasPick {
+  readonly selection: Space3DSelection | null;
+  /** Punto ajustado del plano de trabajo; `null` si el clic no lo cortó. */
+  readonly point: Space3DVector | null;
+}
 
 export interface Space3DCanvasCopy {
   readonly label: string;
@@ -52,8 +70,12 @@ export interface Space3DCanvasProps {
   readonly resetLabel?: string;
   readonly fullscreenEnterLabel?: string;
   readonly fullscreenExitLabel?: string;
+  readonly viewSelectLabel?: string;
   /** Controles adicionales inyectados por quien aloja el lienzo (p.ej. capas). */
   readonly trailingControls?: ReactNode;
+  readonly draft?: Space3DCanvasDraft | null;
+  /** Con `draft`, el clic se entrega aquí en lugar de a `onSelect`. */
+  readonly onDraftPick?: (pick: Space3DCanvasPick) => void;
 }
 
 const DEFAULT_VIEW_LABELS: Record<Space3DViewPreset, string> = {
@@ -78,9 +100,12 @@ export const Space3DCanvas = ({
   zoomInLabel = 'Acercar',
   zoomOutLabel = 'Alejar',
   resetLabel = 'Restablecer vista',
+  viewSelectLabel = 'Vista',
   fullscreenEnterLabel = 'Pantalla completa',
   fullscreenExitLabel = 'Salir de pantalla completa',
   trailingControls,
+  draft = null,
+  onDraftPick,
 }: Space3DCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -88,6 +113,26 @@ export const Space3DCanvas = ({
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
   const pointerDownPos = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const draftPickRef = useRef(onDraftPick);
+  draftPickRef.current = onDraftPick;
+  const [hover, setHover] = useState<{ x: number; y: number; label: string } | null>(null);
+
+  /** Lo que un clic en este píxel produciría: el nudo bajo el cursor manda sobre el plano. */
+  const resolvePick = (offsetX: number, offsetY: number): Space3DCanvasPick & { cursor: Space3DVector | null } => {
+    const viewport = viewportRef.current;
+    const current = draftRef.current;
+    const selection = viewport?.pickAt(offsetX, offsetY) ?? null;
+    if (selection?.kind === 'node') {
+      const node = modelRef.current.nodes.find((item) => item.id === selection.id);
+      return { selection, point: node?.position ?? null, cursor: node?.position ?? null };
+    }
+    if (!current?.plane || !viewport?.pickPlane) return { selection, point: null, cursor: null };
+    const hit = viewport.pickPlane(offsetX, offsetY, current.plane.axis, current.plane.offset);
+    const point = hit ? current.snap(hit) : null;
+    return { selection, point, cursor: point };
+  };
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [unavailable, setUnavailable] = useState(false);
@@ -141,6 +186,14 @@ export const Space3DCanvas = ({
 
   const modelRef = useRef(model);
   const layersRef = useRef(layers);
+
+  const planeKey = draft?.plane ? `${draft.plane.axis}:${draft.plane.offset}:${draft.plane.step}` : '';
+  const fromKey = draft?.from ? draft.from.join(',') : '';
+  useEffect(() => {
+    const current = draftRef.current;
+    viewportRef.current?.setDraft?.(current ? { plane: current.plane, cursor: null, from: null } : null);
+    if (!current) setHover(null);
+  }, [planeKey, fromKey, draft === null]);
 
   useEffect(() => {
     modelRef.current = model;
@@ -200,7 +253,7 @@ export const Space3DCanvas = ({
     <div className="space3d-canvas-stage" ref={stageRef} data-fullscreen={isFullscreen || undefined}>
       <div className="space3d-canvas-topbar">
         <label className="space3d-view-select">
-          <span className="space3d-visually-hidden">{resetLabel}</span>
+          <span className="space3d-visually-hidden">{viewSelectLabel}</span>
           <select
             value={activeView}
             onChange={(event) => onViewChange?.(event.target.value as Space3DViewPreset)}
@@ -245,12 +298,29 @@ export const Space3DCanvas = ({
           // Enfocable para que la órbita por teclado de OrbitControls funcione;
           // la selección sin puntero se hace desde la lista de entidades.
           tabIndex={0}
+          data-drafting={draft ? true : undefined}
           onPointerDown={(event) => {
             pointerDownPos.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
           }}
+          onPointerMove={(event) => {
+            const current = draftRef.current;
+            if (!current || event.buttons !== 0) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            const pick = resolvePick(x, y);
+            viewportRef.current?.setDraft?.({ plane: current.plane, cursor: pick.cursor, from: current.from });
+            const nodeId = pick.selection?.kind === 'node' ? pick.selection.id : null;
+            setHover(pick.cursor ? { x, y, label: current.describe(pick.cursor, nodeId) } : null);
+          }}
+          onPointerLeave={() => {
+            const current = draftRef.current;
+            if (current) viewportRef.current?.setDraft?.({ plane: current.plane, cursor: null, from: null });
+            setHover(null);
+          }}
           onPointerUp={(event) => {
             const start = pointerDownPos.current;
-            if (!selectRef.current || !start || start.pointerId !== event.pointerId) return;
+            if ((!selectRef.current && !draftPickRef.current) || !start || start.pointerId !== event.pointerId) return;
             pointerDownPos.current = null;
             const dx = event.clientX - start.x;
             const dy = event.clientY - start.y;
@@ -258,13 +328,20 @@ export const Space3DCanvas = ({
             // a valid touch selection for users with reduced motor dexterity.
             if (Math.hypot(dx, dy) > 6) return;
             const rect = event.currentTarget.getBoundingClientRect();
-            selectRef.current(viewportRef.current?.pickAt(event.clientX - rect.left, event.clientY - rect.top) ?? null);
+            if (draftRef.current && draftPickRef.current) {
+              const { selection, point } = resolvePick(event.clientX - rect.left, event.clientY - rect.top);
+              draftPickRef.current({ selection, point });
+              return;
+            }
+            selectRef.current?.(viewportRef.current?.pickAt(event.clientX - rect.left, event.clientY - rect.top) ?? null);
           }}
           onPointerCancel={(event) => {
             if (pointerDownPos.current?.pointerId === event.pointerId) pointerDownPos.current = null;
           }}
         />}
     </div>
+
+    {hover ? <div className="space3d-cursor-chip" aria-hidden="true" style={{ left: hover.x, top: hover.y }}>{hover.label}</div> : null}
 
     <div className="space3d-canvas-controls">
       {summary}

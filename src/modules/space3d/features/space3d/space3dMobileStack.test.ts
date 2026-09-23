@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 /**
  * jsdom no calcula layout, así que el solape no se puede observar renderizando.
  * Lo que sí se puede fijar es la condición que lo producía: dos hermanos
- * `position: fixed` con el mismo inset inferior, el mismo ancho y el mismo
+ * posicionados con el mismo inset inferior, el mismo ancho y el mismo
  * `z-index`, donde el posterior en el DOM tapaba las acciones del anterior.
  */
 const css = readFileSync(
@@ -78,13 +78,13 @@ const mediaBody = (query: string): string => {
 };
 
 describe('space3d · pila inferior en pantalla estrecha', () => {
-  const narrow = parseRules(mediaBody('@media (max-width: 599px)'));
+  const narrow = parseRules(mediaBody('@media (max-width: 700px)'));
   const base = parseRules(css);
 
   it('anchors the bottom panels through a single stack container', () => {
     const stack = narrow.get('.space3d-bottom-stack');
     expect(stack, 'la pila debe existir en la media query estrecha').not.toBeNull();
-    expect(stack).toMatch(/position:\s*fixed/);
+    expect(stack).toMatch(/position:\s*absolute/);
     expect(stack).toMatch(/flex-direction:\s*column-reverse/);
   });
 
@@ -92,8 +92,8 @@ describe('space3d · pila inferior en pantalla estrecha', () => {
     for (const selector of ['.space3d-hud-card', '.space3d-results-legend']) {
       const declarations = narrow.get(selector);
       expect(declarations, `${selector} debe declararse en la media query`).not.toBeNull();
-      // Si vuelven a ser `fixed` recuperan el inset compartido y el solape.
-      expect(declarations, selector).not.toMatch(/position:\s*fixed/);
+      // Si vuelven a posicionarse por su cuenta recuperan el inset compartido y el solape.
+      expect(declarations, selector).not.toMatch(/position:\s*(fixed|absolute)/);
       expect(declarations, selector).toMatch(/position:\s*static/);
     }
   });
@@ -105,7 +105,7 @@ describe('space3d · pila inferior en pantalla estrecha', () => {
   });
 
   it('hides the stack for an expanded sheet only in the compact layout', () => {
-    const compact = parseRules(mediaBody('@media (max-width: 959px)'));
+    const compact = parseRules(mediaBody('@media (max-width: 1023px)'));
     expect(compact.get('.space3d-bottom-stack[data-sheet-expanded]')).toMatch(/display:\s*none/);
     // Fuera de la media query el atributo no oculta nada: en escritorio la hoja
     // es una columna propia y HUD y leyenda deben seguir a la vista.

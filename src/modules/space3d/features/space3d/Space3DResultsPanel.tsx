@@ -1,17 +1,23 @@
 /**
  * Resultados de Space 3D.
  *
- * Los seis componentes se muestran siempre juntos y con su unidad: en un marco
- * espacial no hay un «valor principal», y ocultar tres de ellos es lo que hace
- * que un usuario confunda un giro con un desplazamiento.
+ * Primero la lectura que una persona busca —dónde se mueve más la estructura,
+ * qué barra trabaja más, qué apoyo recibe más—; después las tablas completas.
+ * En las tablas los seis componentes van siempre juntos y con su unidad: en un
+ * marco espacial no hay un «valor principal», y ocultar tres de ellos hace que
+ * se confunda un giro con un desplazamiento.
  *
  * Un resultado obsoleto se etiqueta y se conserva; uno fallido muestra los
- * códigos de issue. En ningún caso se borra el modelo del usuario.
+ * códigos de issue. En ningún caso se borra el modelo.
  */
-import { AlertTriangle, ChevronDown, CircleCheck, CircleSlash, Clock } from 'lucide-react';
+import { useMemo } from 'react';
 import type { Space3DAnalysisIssue, Space3DAnalysisResult } from '../../space3d/model/types';
 import type { Space3DAnalysisState } from '../../space3d/store/Space3DProjectContext';
 import { formatSpace3DNumber } from './space3dNumberFormat';
+import {
+  deriveSpace3DMemberAxialAction,
+  deriveSpace3DMemberMomentMagnitude,
+} from '../../space3d/view/resultSemantics';
 import type { TranslationKey } from '../../i18n/catalogs';
 
 export type Space3DResultsTab = 'summary' | 'nodes' | 'members' | 'diagnostics';
@@ -56,19 +62,10 @@ const ISSUE_KEYS: Record<string, TranslationKey> = {
   'limit-exceeded': 'space3d.error.limitExceeded',
 };
 
-const STATE_META: Record<Space3DAnalysisState, { key: TranslationKey; tone: string; Icon: typeof CircleCheck }> = {
-  idle: { key: 'space3d.stateIdle', tone: 'neutral', Icon: Clock },
-  running: { key: 'space3d.stateRunning', tone: 'loading', Icon: Clock },
-  ready: { key: 'space3d.stateReady', tone: 'ok', Icon: CircleCheck },
-  stale: { key: 'space3d.stateStale', tone: 'warn', Icon: AlertTriangle },
-  failed: { key: 'space3d.stateFailed', tone: 'error', Icon: CircleSlash },
-  cancelled: { key: 'space3d.stateCancelled', tone: 'neutral', Icon: CircleSlash },
-};
+const DOFS = ['ux', 'uy', 'uz', 'rx', 'ry', 'rz'] as const;
 
 /**
- * La política de la superficie vive junto al módulo 3D para que el futuro
- * repositorio Space3D no dependa del formateador de la aplicación 2D. Los
- * desplazamientos espaciales son del orden de 1e-5 m, así que la notación
+ * Los desplazamientos espaciales son del orden de 1e-5 m: la notación
  * científica evita una columna de ceros.
  */
 const engineering = (value: number, digits = 6): string =>
@@ -77,14 +74,44 @@ const engineering = (value: number, digits = 6): string =>
 /** Acciones de extremo: cuatro cifras bastan y mantienen la columna estrecha. */
 const action = (value: number): string => formatSpace3DNumber(value, { significantDigits: 4 });
 
+interface Headline {
+  readonly key: TranslationKey;
+  readonly value: string;
+  readonly unit: string;
+  readonly kind: 'node' | 'member';
+  readonly id: string;
+  readonly tone: 'deformed' | 'axial' | 'moment' | 'reaction';
+}
+
+const peak = <T,>(items: readonly T[], measure: (item: T) => number): { item: T; value: number } | null => {
+  let best: { item: T; value: number } | null = null;
+  for (const item of items) {
+    const value = measure(item);
+    if (Number.isFinite(value) && (!best || Math.abs(value) > Math.abs(best.value))) best = { item, value };
+  }
+  return best;
+};
+
 export const Space3DResultsPanel = ({
   analysis, analysisState, tab, onTabChange, deformationScale, maxDisplacement, t, onSelectNode, onSelectMember,
 }: Space3DResultsPanelProps) => {
-  const meta = STATE_META[analysisState];
-  const StateIcon = meta.Icon;
+  const usable = analysis?.success ? analysis : null;
+
+  const headlines = useMemo<readonly Headline[]>(() => {
+    if (!usable) return [];
+    const list: Headline[] = [];
+    const displacement = peak(usable.nodeResults, (item) => Math.hypot(item.displacement.ux, item.displacement.uy, item.displacement.uz));
+    if (displacement) list.push({ key: 'space3d.headlineDisplacement', value: action(displacement.value * 1000), unit: 'mm', kind: 'node', id: displacement.item.nodeId, tone: 'deformed' });
+    const axial = peak(usable.memberResults, deriveSpace3DMemberAxialAction);
+    if (axial) list.push({ key: 'space3d.headlineAxial', value: action(axial.value), unit: t('space3d.unitForce'), kind: 'member', id: axial.item.memberId, tone: 'axial' });
+    const moment = peak(usable.memberResults, deriveSpace3DMemberMomentMagnitude);
+    if (moment) list.push({ key: 'space3d.headlineMoment', value: action(moment.value), unit: t('space3d.unitMoment'), kind: 'member', id: moment.item.memberId, tone: 'moment' });
+    const reaction = peak(usable.nodeResults, (item) => Math.hypot(item.reaction.ux, item.reaction.uy, item.reaction.uz));
+    if (reaction && reaction.value !== 0) list.push({ key: 'space3d.headlineReaction', value: action(reaction.value), unit: t('space3d.unitForce'), kind: 'node', id: reaction.item.nodeId, tone: 'reaction' });
+    return list;
+  }, [t, usable]);
 
   const banner = () => {
-    if (analysisState === 'ready') return <p className="space3d-notice space3d-notice--ok" role="status">{t('space3d.readyNotice')}</p>;
     if (analysisState === 'stale') return <p className="space3d-notice space3d-notice--warn" role="status">{t('space3d.staleNotice')}</p>;
     if (analysisState === 'failed') return <p className="space3d-notice space3d-notice--error" role="alert">{t('space3d.failedNotice')}</p>;
     if (analysisState === 'idle' || analysisState === 'cancelled') return <p className="space3d-notice">{t('space3d.idleNotice')}</p>;
@@ -93,30 +120,33 @@ export const Space3DResultsPanel = ({
 
   const issueList = (issues: readonly Space3DAnalysisIssue[]) => <ul className="space3d-issues">
     {issues.map((issue, index) => <li key={`${issue.code}-${issue.entityId}-${index}`}>
-      <code>{issue.code}</code>
       <span>{t(ISSUE_KEYS[issue.code] ?? 'space3d.error.generic')}</span>
       {issue.entityId ? <em>{issue.entityKind} {issue.entityId}{issue.field ? `.${issue.field}` : ''}</em> : null}
+      <code>{issue.code}</code>
     </li>)}
   </ul>;
 
   return <section className="space3d-results" aria-label={t('space3d.tabResults')}>
-    <header className="space3d-results-head">
-      <span className={`space3d-state space3d-state--${meta.tone}`} data-testid="space3d-analysis-state-label">
-        <StateIcon size={15} aria-hidden="true" />{t(meta.key)}
-      </span>
-      {deformationScale !== null && analysisState === 'ready'
-        ? <span className="space3d-chip">{t('space3d.deformationScale', { scale: engineering(deformationScale, 4) })}</span>
-        : null}
-    </header>
-
     {banner()}
 
-    <label className="space3d-view-select space3d-results-select">
-      <span className="space3d-field-label">{t('space3d.resultsTablesLabel')}</span>
+    {headlines.length > 0 ? <section aria-label={t('space3d.analysisHeadline')}>
+      <h3 className="space3d-subheading">{t('space3d.analysisHeadline')}</h3>
+      <ul className="space3d-headlines">
+        {headlines.map((item) => <li key={item.key} data-tone={item.tone}>
+          <button type="button" className="space3d-headline" onClick={() => (item.kind === 'node' ? onSelectNode : onSelectMember)(item.id)}>
+            <span className="space3d-headline-label">{t(item.key)}</span>
+            <span className="space3d-headline-value">{item.value}<small>{item.unit}</small></span>
+            <span className="space3d-headline-where">{t('space3d.headlineAt', { id: item.id })}</span>
+          </button>
+        </li>)}
+      </ul>
+    </section> : null}
+
+    <label className="space3d-field space3d-results-select">
+      <span className="space3d-field-label">{t('space3d.detailTables')}</span>
       <select value={tab} onChange={(event) => onTabChange(event.target.value as Space3DResultsTab)}>
         {TABS.map((entry) => <option key={entry.id} value={entry.id}>{t(entry.key)}</option>)}
       </select>
-      <ChevronDown size={14} aria-hidden="true" />
     </label>
 
     {tab === 'summary' ? <dl className="space3d-metrics">
@@ -130,14 +160,17 @@ export const Space3DResultsPanel = ({
         <dt>{t('space3d.maxDisplacement')}</dt>
         <dd>{maxDisplacement === null ? '—' : `${engineering(maxDisplacement)} ${t('space3d.unitLength')}`}</dd>
       </div>
+      {deformationScale !== null && analysisState === 'ready'
+        ? <div><dt>{t('space3d.layerDeformed')}</dt><dd>{t('space3d.deformationScale', { scale: engineering(deformationScale, 4) })}</dd></div>
+        : null}
     </dl> : null}
 
     {tab === 'nodes' ? <div className="space3d-table-scroll">
-      <table className="space3d-table" aria-label={`${t('space3d.displacement')} · ${t('space3d.reaction')}`}>
+      <table className="space3d-table" aria-label={`${t('space3d.displacement')}, ${t('space3d.reaction')}`}>
         <thead>
           <tr>
             <th scope="col">{t('space3d.node')}</th>
-            {(['ux', 'uy', 'uz', 'rx', 'ry', 'rz'] as const).map((dof) => <th key={dof} scope="col">{dof}</th>)}
+            {DOFS.map((dof) => <th key={dof} scope="col">{dof}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -147,11 +180,11 @@ export const Space3DResultsPanel = ({
                 <button type="button" className="space3d-linkish" onClick={() => onSelectNode(item.nodeId)}>{item.nodeId}</button>
                 <em>{t('space3d.displacement')}</em>
               </th>
-              {(['ux', 'uy', 'uz', 'rx', 'ry', 'rz'] as const).map((dof) => <td key={dof}>{engineering(item.displacement[dof])}</td>)}
+              {DOFS.map((dof) => <td key={dof}>{engineering(item.displacement[dof])}</td>)}
             </tr>,
             <tr key={`${item.nodeId}-r`} className="space3d-row-secondary">
               <th scope="row"><span aria-hidden="true">{item.nodeId}</span><em>{t('space3d.reaction')}</em></th>
-              {(['ux', 'uy', 'uz', 'rx', 'ry', 'rz'] as const).map((dof) => <td key={dof}>{engineering(item.reaction[dof], 4)}</td>)}
+              {DOFS.map((dof) => <td key={dof}>{engineering(item.reaction[dof], 4)}</td>)}
             </tr>,
           ])}
         </tbody>
@@ -195,16 +228,16 @@ export const Space3DResultsPanel = ({
       </table>
     </div> : null}
 
-    {tab === 'diagnostics' ? <div className="space3d-diagnostics">
+    {tab === 'diagnostics' ? <div className="space3d-results-diagnostics">
       {analysis && analysis.issues.length > 0 ? issueList(analysis.issues) : <p className="space3d-notice">{t('space3d.noDiagnostics')}</p>}
       {analysis?.success ? <dl className="space3d-metrics">
         <div>
           <dt>{t('space3d.equilibriumForce')}</dt>
-          <dd>{analysis.diagnostics.equilibrium.force.map((value) => engineering(value, 4)).join(' · ')}</dd>
+          <dd>{analysis.diagnostics.equilibrium.force.map((value) => engineering(value, 4)).join(', ')}</dd>
         </div>
         <div>
           <dt>{t('space3d.equilibriumMoment')}</dt>
-          <dd>{analysis.diagnostics.equilibrium.moment.map((value) => engineering(value, 4)).join(' · ')}</dd>
+          <dd>{analysis.diagnostics.equilibrium.moment.map((value) => engineering(value, 4)).join(', ')}</dd>
         </div>
       </dl> : null}
     </div> : null}

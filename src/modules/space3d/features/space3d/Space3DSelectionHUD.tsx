@@ -9,6 +9,8 @@ import { Button, IconButton } from '../../../../design-system/components/control
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../../space3d/model/types';
 import type { Space3DSelection } from '../../space3d/store/Space3DProjectContext';
 import { formatSpace3DNumber } from './space3dNumberFormat';
+import { SPACE3D_SUPPORT_LABEL_KEYS, space3DSupportKind } from './space3dSupportKind';
+import { MemberGlyph, NodeGlyph, PointLoadGlyph } from '../../../../design-system/icons/structural';
 import {
   deriveSpace3DMemberAxialAction,
   deriveSpace3DMemberMomentMagnitude,
@@ -46,16 +48,11 @@ export const Space3DSelectionHUD = ({
     if (!node) return null;
 
     const restraintCount = Object.values(node.restraints).filter(Boolean).length;
-    const isPinned =
-      node.restraints.ux && node.restraints.uy && node.restraints.uz
-      && !node.restraints.rx && !node.restraints.ry && !node.restraints.rz;
-    const supportLabel = restraintCount === 6
-      ? (t('space3d.supportFixed' as TranslationKey) || 'Empotrado')
-      : isPinned
-        ? (t('space3d.supportPinned' as TranslationKey) || 'Articulado')
-        : restraintCount > 0
-          ? Object.entries(node.restraints).filter(([, active]) => active).map(([dof]) => dof).join(' · ')
-          : (t('space3d.supportFree' as TranslationKey) || 'Libre');
+    const supportKind = space3DSupportKind(node.restraints);
+    // Un apoyo mixto no tiene nombre corto: se dice exactamente qué restringe.
+    const supportLabel = supportKind === 'custom'
+      ? Object.entries(node.restraints).filter(([, active]) => active).map(([dof]) => dof).join(' · ')
+      : t(SPACE3D_SUPPORT_LABEL_KEYS[supportKind]);
 
     // Nodal displacement if analysis is available
     const nodeResult = analysis?.nodeResults.find((item) => item.nodeId === node.id);
@@ -64,7 +61,7 @@ export const Space3DSelectionHUD = ({
       <div className="space3d-hud-card" role="region" aria-label={`${t('space3d.node')} ${node.id}`}>
         <div className="space3d-hud-header">
           <div className="space3d-hud-title-group">
-            <span className="space3d-hud-badge space3d-hud-badge--node">N</span>
+            <span className="space3d-hud-badge space3d-hud-badge--node" aria-hidden="true"><NodeGlyph size={16} /></span>
             <strong className="space3d-hud-id">{node.id}</strong>
             <span className="space3d-hud-chip">{supportLabel}</span>
           </div>
@@ -165,7 +162,7 @@ export const Space3DSelectionHUD = ({
       <div className="space3d-hud-card" role="region" aria-label={`${t('space3d.member')} ${member.id}`}>
         <div className="space3d-hud-header">
           <div className="space3d-hud-title-group">
-            <span className="space3d-hud-badge space3d-hud-badge--member">M</span>
+            <span className="space3d-hud-badge space3d-hud-badge--member" aria-hidden="true"><MemberGlyph size={16} /></span>
             <strong className="space3d-hud-id">{member.id}</strong>
             <span className="space3d-hud-chip">{member.i} <ArrowRight size={10} aria-hidden="true" /> {member.j}</span>
           </div>
@@ -235,7 +232,7 @@ export const Space3DSelectionHUD = ({
     <div className="space3d-hud-card" role="region" aria-label={`${t('space3d.load')} ${load.id}`}>
       <div className="space3d-hud-header">
         <div className="space3d-hud-title-group">
-          <span className="space3d-hud-badge space3d-hud-badge--load">L</span>
+          <span className="space3d-hud-badge space3d-hud-badge--load" aria-hidden="true"><PointLoadGlyph size={16} /></span>
           <strong className="space3d-hud-id">{load.id}</strong>
           <span className="space3d-hud-chip">{load.nodeId}</span>
         </div>

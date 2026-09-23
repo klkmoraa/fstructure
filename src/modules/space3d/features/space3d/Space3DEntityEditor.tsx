@@ -9,8 +9,8 @@
  * punto de pantalla es una recta, no un punto, y adivinar la profundidad
  * produciría geometría que el usuario no ha decidido.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { Check, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeft, Check, Trash2 } from 'lucide-react';
 import { fixedSpace3DRestraints, freeSpace3DRestraints, type Space3DFrameMember, type Space3DNodalLoad, type Space3DNode, type Space3DProjectV1, type Space3DRestraints } from '../../space3d/model/types';
 import {
   SPACE3D_MATERIALS,
@@ -21,6 +21,7 @@ import {
 } from '../../space3d/model/sectionLibrary';
 import type { Space3DCommand } from '../../space3d/data/commands';
 import type { TranslationKey } from '../../i18n/catalogs';
+import { SPACE3D_SUPPORT_RESTRAINTS, space3DSupportKind, type Space3DSupportKind } from './space3dSupportKind';
 
 export type Space3DEditorTarget =
   | { readonly kind: 'node'; readonly id: string | null }
@@ -34,11 +35,21 @@ export interface Space3DEntityEditorProps {
   readonly onSubmit: (command: Space3DCommand) => boolean;
   readonly onCancel: () => void;
   readonly onDelete?: (target: Space3DEditorTarget) => void;
+  /** Lleva el foco al botón de volver: sólo cuando el editor se abrió desde una lista. */
+  readonly focusOnOpen?: boolean;
 }
 
 type Draft = Record<string, string>;
 
-const DOF_KEYS = ['ux', 'uy', 'uz', 'rx', 'ry', 'rz'] as const;
+const TRANSLATION_DOFS = ['ux', 'uy', 'uz'] as const;
+const ROTATION_DOFS = ['rx', 'ry', 'rz'] as const;
+const DOF_AXIS = { ux: 'X', uy: 'Y', uz: 'Z', rx: 'X', ry: 'Y', rz: 'Z' } as const;
+const SUPPORT_PRESETS: readonly { readonly id: Space3DSupportKind; readonly label: TranslationKey; readonly hint: TranslationKey }[] = [
+  { id: 'free', label: 'space3d.supportPresetFree', hint: 'space3d.supportPresetFreeHint' },
+  { id: 'pinned', label: 'space3d.supportPresetPinned', hint: 'space3d.supportPresetPinnedHint' },
+  { id: 'fixed', label: 'space3d.supportPresetFixed', hint: 'space3d.supportPresetFixedHint' },
+  { id: 'custom', label: 'space3d.supportPresetCustom', hint: 'space3d.supportPresetCustomHint' },
+];
 const LOAD_KEYS = ['fx', 'fy', 'fz', 'mx', 'my', 'mz'] as const;
 const PROPERTY_KEYS = ['E', 'G', 'A', 'Iy', 'Iz', 'J'] as const;
 
@@ -86,7 +97,7 @@ const loadDraft = (load: Space3DNodalLoad | undefined): Draft => ({
   mz: String(load?.mz ?? 0),
 });
 
-export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, onDelete }: Space3DEntityEditorProps) => {
+export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, onDelete, focusOnOpen = false }: Space3DEntityEditorProps) => {
   const node = target.kind === 'node' ? project.nodes.find((item) => item.id === target.id) : undefined;
   const member = target.kind === 'member' ? project.members.find((item) => item.id === target.id) : undefined;
   const load = target.kind === 'load' ? project.nodalLoads.find((item) => item.id === target.id) : undefined;
@@ -132,6 +143,8 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
     density: member?.density,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [customSupport, setCustomSupport] = useState(false);
+  const backRef = useRef<HTMLButtonElement>(null);
 
   const availableSections = useMemo(() => getSectionsByCategory(catalogCategory), [catalogCategory]);
   const selectedSectionPreset = SPACE3D_SECTION_CATALOG.find((section) => section.name === selectedSectionId);
@@ -165,10 +178,35 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
       density: member?.density,
     });
     setErrors({});
+    setCustomSupport(false);
     // Un cambio de entidad recarga el borrador entero; el resto de dependencias
     // son el propio proyecto, que no debe pisar lo que el usuario está tecleando.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+
+  useEffect(() => {
+    if (focusOnOpen) backRef.current?.focus({ preventScroll: true });
+  }, [focusOnOpen, key]);
+
+  const header = (kindKey: TranslationKey, id: string) => <header className="space3d-editor-head">
+    <button type="button" ref={backRef} className="space3d-editor-back" onClick={onCancel}>
+      <ArrowLeft size={16} aria-hidden="true" />{t('space3d.backToModel')}
+    </button>
+    <h3>
+      <span>{target.id ? t(kindKey) : t(kindKey === 'space3d.node' ? 'space3d.newNode' : kindKey === 'space3d.member' ? 'space3d.newMember' : 'space3d.newLoad')}</span>
+      <code>{id}</code>
+    </h3>
+  </header>;
+
+  const footer = (saveKey: TranslationKey) => <footer className="space3d-editor-actions">
+    <button type="submit" className="space3d-button space3d-button--primary"><Check size={16} aria-hidden="true" />{t(saveKey)}</button>
+    <button type="button" className="space3d-button" onClick={onCancel}>{t('space3d.cancelEdit')}</button>
+    {target.id && onDelete
+      ? <button type="button" className="space3d-button space3d-button--danger" onClick={() => onDelete(target)}>
+        <Trash2 size={16} aria-hidden="true" />{t('space3d.deleteEntity')}
+      </button>
+      : null}
+  </footer>;
 
   /**
    * La unidad va fuera del `<label>` y se enlaza con `aria-describedby`: si
@@ -243,41 +281,56 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
       if (ok) onCancel();
     };
 
-    return <form className="space3d-editor" onSubmit={(event) => { event.preventDefault(); submit(); }}>
-      <header className="space3d-editor-head">
-        <h3>{t('space3d.node')} <code>{id}</code></h3>
-      </header>
-      <div className="space3d-field-grid">
-        {field('x', t('space3d.fieldX'), t('space3d.unitLength'))}
-        {field('y', t('space3d.fieldY'), t('space3d.unitLength'))}
-        {field('z', t('space3d.fieldZ'), t('space3d.unitLength'))}
-      </div>
+    const supportKind = customSupport ? 'custom' : space3DSupportKind(restraints);
+    const dofChip = (dof: keyof Space3DRestraints) => <label key={dof} className="space3d-check">
+      <input
+        type="checkbox"
+        aria-label={t(`space3d.dofName.${dof}` as TranslationKey)}
+        checked={restraints[dof]}
+        onChange={(event) => {
+          setCustomSupport(true);
+          setRestraints((current) => ({ ...current, [dof]: event.target.checked }));
+        }}
+      />
+      <span aria-hidden="true">{DOF_AXIS[dof]}</span>
+    </label>;
 
+    return <form className="space3d-editor" onSubmit={(event) => { event.preventDefault(); submit(); }}>
+      {header('space3d.node', id)}
       <fieldset className="space3d-fieldset">
-        <legend>{t('space3d.restraints')}</legend>
-        <div className="space3d-dof-grid">
-          {DOF_KEYS.map((dof) => <label key={dof} className="space3d-check">
-            <input
-              type="checkbox"
-              checked={restraints[dof]}
-              onChange={(event) => setRestraints((current) => ({ ...current, [dof]: event.target.checked }))}
-            />
-            <span>{dof}</span>
-          </label>)}
-        </div>
-        <div className="space3d-inline-actions">
-          <button type="button" className="space3d-button space3d-button--ghost" onClick={() => setRestraints(fixedSpace3DRestraints())}>{t('space3d.fixAll')}</button>
-          <button type="button" className="space3d-button space3d-button--ghost" onClick={() => setRestraints(freeSpace3DRestraints())}>{t('space3d.freeAll')}</button>
+        <legend>{t('space3d.coordinatesLegend')}</legend>
+        <div className="space3d-field-grid space3d-field-grid--3">
+          {field('x', t('space3d.fieldX'), t('space3d.unitLength'))}
+          {field('y', t('space3d.fieldY'), t('space3d.unitLength'))}
+          {field('z', t('space3d.fieldZ'), t('space3d.unitLength'))}
         </div>
       </fieldset>
 
-      <footer className="space3d-editor-actions">
-        <button type="submit" className="space3d-button space3d-button--primary"><Check size={16} aria-hidden="true" />{t('space3d.saveNode')}</button>
-        <button type="button" className="space3d-button" onClick={onCancel}><X size={16} aria-hidden="true" />{t('space3d.cancelEdit')}</button>
-        {target.id && onDelete
-          ? <button type="button" className="space3d-button space3d-button--danger" onClick={() => onDelete(target)}>{t('space3d.deleteEntity')}</button>
-          : null}
-      </footer>
+      <fieldset className="space3d-fieldset">
+        <legend>{t('space3d.restraints')}</legend>
+        <div className="space3d-support-presets" role="radiogroup" aria-label={t('space3d.supportPresetLabel')}>
+          {SUPPORT_PRESETS.map((preset) => <label key={preset.id} className="space3d-support-preset" data-checked={supportKind === preset.id || undefined}>
+            <input
+              type="radio"
+              name={`space3d-support-${id}`}
+              checked={supportKind === preset.id}
+              onChange={() => {
+                if (preset.id === 'custom') { setCustomSupport(true); return; }
+                setCustomSupport(false);
+                setRestraints(preset.id === 'fixed' ? fixedSpace3DRestraints() : preset.id === 'free' ? freeSpace3DRestraints() : SPACE3D_SUPPORT_RESTRAINTS.pinned);
+              }}
+            />
+            <span>{t(preset.label)}</span>
+          </label>)}
+        </div>
+        <p className="space3d-field-hint">{t(SUPPORT_PRESETS.find((preset) => preset.id === supportKind)!.hint)}</p>
+        <div className="space3d-dof-rows">
+          <div className="space3d-dof-row"><span>{t('space3d.blockTranslation')}</span><div>{TRANSLATION_DOFS.map(dofChip)}</div></div>
+          <div className="space3d-dof-row"><span>{t('space3d.blockRotation')}</span><div>{ROTATION_DOFS.map(dofChip)}</div></div>
+        </div>
+      </fieldset>
+
+      {footer('space3d.saveNode')}
     </form>;
   }
 
@@ -303,9 +356,9 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
     };
 
     return <form className="space3d-editor" onSubmit={(event) => { event.preventDefault(); submit(); }}>
-      <header className="space3d-editor-head">
-        <h3>{t('space3d.member')} <code>{id}</code></h3>
-      </header>
+      {header('space3d.member', id)}
+      <fieldset className="space3d-fieldset">
+      <legend>{t('space3d.memberEnds')}</legend>
       <div className="space3d-field-grid">
         <label className="space3d-field">
           <span className="space3d-field-label">{t('space3d.endI')}</span>
@@ -320,7 +373,10 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
           </select>
         </label>
       </div>
+      </fieldset>
 
+      <fieldset className="space3d-fieldset">
+      <legend>{t('space3d.memberSection')}</legend>
       <div className="space3d-section-picker">
         <div className="space3d-section-categories" role="group" aria-label={t('space3d.sectionFilterMaterial')}>
           {(['all', 'steel', 'concrete', 'timber', 'aluminum'] as const).map((cat) => (
@@ -413,6 +469,10 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         </div>
       </div>
 
+      </fieldset>
+
+      <fieldset className="space3d-fieldset">
+      <legend>{t('space3d.memberStiffness')}</legend>
       <div className="space3d-field-grid">
         {field('E', t('space3d.propertyE'), t('space3d.unitStress'), true)}
         {field('G', t('space3d.propertyG'), t('space3d.unitStress'), true)}
@@ -421,11 +481,12 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         {field('Iz', t('space3d.propertyIz'), t('space3d.unitInertia'), true)}
         {field('J', t('space3d.propertyJ'), t('space3d.unitInertia'), true)}
       </div>
+      </fieldset>
 
-      <details className="space3d-fieldset" style={{ padding: '8px' }}>
-        <summary style={{ fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>{t('space3d.sectionCalculatorTitle')}</summary>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'end' }}>
+      <details className="space3d-disclosure">
+        <summary>{t('space3d.sectionCalculatorTitle')}</summary>
+        <div className="space3d-disclosure-body">
+          <div className="space3d-calc-row space3d-calc-row--rect">
             <div className="space3d-field">
               <label className="space3d-field-label" htmlFor="calc-b">{t('space3d.sectionRectB')}</label>
               <input id="calc-b" type="number" step="0.05" value={calcB} onChange={(e) => setCalcB(e.target.value)} />
@@ -464,7 +525,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
             </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '8px', alignItems: 'end' }}>
+          <div className="space3d-calc-row">
             <div className="space3d-field">
               <label className="space3d-field-label" htmlFor="calc-dia">{t('space3d.sectionCircularDiameter')}</label>
               <input id="calc-dia" type="number" step="0.05" value={calcDia} onChange={(e) => setCalcDia(e.target.value)} />
@@ -503,23 +564,20 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         ) : null}
       </details>
 
-      <fieldset className="space3d-fieldset">
-        <legend>{t('space3d.orientationReference')}</legend>
-        <div className="space3d-field-grid">
-          {field('refX', t('space3d.fieldX'))}
-          {field('refY', t('space3d.fieldY'))}
-          {field('refZ', t('space3d.fieldZ'))}
-          {field('roll', t('space3d.roll'), t('space3d.unitAngle'))}
+      <details className="space3d-disclosure" open={Object.keys(errors).some((name) => ['refX', 'refY', 'refZ', 'roll'].includes(name)) || undefined}>
+        <summary>{t('space3d.memberOrientation')}</summary>
+        <div className="space3d-disclosure-body">
+          <p className="space3d-field-hint">{t('space3d.memberOrientationHint')}</p>
+          <div className="space3d-field-grid">
+            {field('refX', t('space3d.fieldX'))}
+            {field('refY', t('space3d.fieldY'))}
+            {field('refZ', t('space3d.fieldZ'))}
+            {field('roll', t('space3d.roll'), t('space3d.unitAngle'))}
+          </div>
         </div>
-      </fieldset>
+      </details>
 
-      <footer className="space3d-editor-actions">
-        <button type="submit" className="space3d-button space3d-button--primary"><Check size={16} aria-hidden="true" />{t('space3d.saveMember')}</button>
-        <button type="button" className="space3d-button" onClick={onCancel}><X size={16} aria-hidden="true" />{t('space3d.cancelEdit')}</button>
-        {target.id && onDelete
-          ? <button type="button" className="space3d-button space3d-button--danger" onClick={() => onDelete(target)}>{t('space3d.deleteEntity')}</button>
-          : null}
-      </footer>
+      {footer('space3d.saveMember')}
     </form>;
   }
 
@@ -538,9 +596,9 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
   };
 
   return <form className="space3d-editor" onSubmit={(event) => { event.preventDefault(); submit(); }}>
-    <header className="space3d-editor-head">
-      <h3>{t('space3d.load')} <code>{id}</code></h3>
-    </header>
+    {header('space3d.load', id)}
+    <fieldset className="space3d-fieldset">
+    <legend>{t('space3d.loadPlacement')}</legend>
     <div className="space3d-field-grid">
       <label className="space3d-field">
         <span className="space3d-field-label">{t('space3d.node')}</span>
@@ -555,20 +613,24 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         </select>
       </label>
     </div>
-    <div className="space3d-field-grid">
-      {field('fx', t('space3d.fieldFx'), t('space3d.unitForce'))}
-      {field('fy', t('space3d.fieldFy'), t('space3d.unitForce'))}
-      {field('fz', t('space3d.fieldFz'), t('space3d.unitForce'))}
-      {field('mx', t('space3d.fieldMx'), t('space3d.unitMoment'))}
-      {field('my', t('space3d.fieldMy'), t('space3d.unitMoment'))}
-      {field('mz', t('space3d.fieldMz'), t('space3d.unitMoment'))}
-    </div>
-    <footer className="space3d-editor-actions">
-      <button type="submit" className="space3d-button space3d-button--primary"><Check size={16} aria-hidden="true" />{t('space3d.saveLoad')}</button>
-      <button type="button" className="space3d-button" onClick={onCancel}><X size={16} aria-hidden="true" />{t('space3d.cancelEdit')}</button>
-      {target.id && onDelete
-        ? <button type="button" className="space3d-button space3d-button--danger" onClick={() => onDelete(target)}>{t('space3d.deleteEntity')}</button>
-        : null}
-    </footer>
+    </fieldset>
+    <fieldset className="space3d-fieldset">
+      <legend>{t('space3d.loadForces')}</legend>
+      <div className="space3d-field-grid space3d-field-grid--3">
+        {field('fx', t('space3d.fieldFx'), t('space3d.unitForce'))}
+        {field('fy', t('space3d.fieldFy'), t('space3d.unitForce'))}
+        {field('fz', t('space3d.fieldFz'), t('space3d.unitForce'))}
+      </div>
+      <p className="space3d-field-hint">{t('space3d.loadSignHint')}</p>
+    </fieldset>
+    <fieldset className="space3d-fieldset">
+      <legend>{t('space3d.loadMoments')}</legend>
+      <div className="space3d-field-grid space3d-field-grid--3">
+        {field('mx', t('space3d.fieldMx'), t('space3d.unitMoment'))}
+        {field('my', t('space3d.fieldMy'), t('space3d.unitMoment'))}
+        {field('mz', t('space3d.fieldMz'), t('space3d.unitMoment'))}
+      </div>
+    </fieldset>
+    {footer('space3d.saveLoad')}
   </form>;
 };

@@ -72,10 +72,9 @@
   overflow: auto;
 }
 .shell-mobile-sheet::backdrop { background: rgb(0 0 0 / 25%); }
-.space3d-screen[data-embedded] { display: flex; flex-direction: column; }
-.space3d-screen[data-embedded] .space3d-layout { flex: 1; min-height: 0; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "toolrail stage"; }
-.shell-tool-inspector .space3d-model-summary-panel,
-.shell-tool-inspector .space3d-rail { display: block; position: static; width: auto; }
+.shell-tool-inspector:has(.space3d-inspector) { width: min(344px, 34vw); background: var(--sc-color-surface-1); border-left: var(--sc-border-width) solid var(--sc-color-divider); }
+.shell-tool-inspector .space3d-source-notice,
+.shell-mobile-sheet .space3d-source-notice { margin: var(--sc-space-3) var(--sc-space-4) 0; padding: var(--sc-space-2) var(--sc-space-3); border-radius: var(--sc-radius-md); background: color-mix(in srgb, var(--sc-color-state-warning) 14%, var(--sc-color-surface-1)); font-size: var(--sc-font-size-caption); }
 .shell-storage-notice { margin: 0; padding: 4px 12px; font-size: var(--sc-font-size-caption); color: var(--sc-color-text-primary); background: var(--sc-color-surface-1); }
 .shell-mobile-sheet button { min-height: 44px; }
 @media (prefers-reduced-motion: reduce) {

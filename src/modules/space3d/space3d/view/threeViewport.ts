@@ -20,7 +20,7 @@
 import {
   ArrowHelper, BoxGeometry, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, Float32BufferAttribute,
   GridHelper, Group, InstancedMesh, LineBasicMaterial, LineDashedMaterial, LineSegments, MathUtils, Matrix4, Mesh,
-  MeshBasicMaterial, PerspectiveCamera, Points, PointsMaterial, Quaternion, Raycaster, Scene, SphereGeometry, Sprite,
+  MeshBasicMaterial, PerspectiveCamera, Plane, Points, PointsMaterial, Quaternion, Raycaster, Scene, SphereGeometry, Sprite,
   SpriteMaterial, Vector2, Vector3, WebGLRenderer,
   type Camera, type Material, type Object3D,
 } from 'three';
@@ -79,6 +79,13 @@ export interface Space3DViewportOptions {
   readonly createControls?: (camera: PerspectiveCamera, canvas: HTMLCanvasElement) => Space3DControlsLike;
 }
 
+/** Ayudas del modelado directo: plano de trabajo, punto bajo el cursor y barra en curso. */
+export interface Space3DDraftOverlay {
+  readonly plane: { readonly axis: 'x' | 'y' | 'z'; readonly offset: number; readonly step: number } | null;
+  readonly cursor: readonly [number, number, number] | null;
+  readonly from: readonly [number, number, number] | null;
+}
+
 export interface Space3DViewport {
   readonly scene: Scene;
   readonly camera: PerspectiveCamera;
@@ -91,6 +98,9 @@ export interface Space3DViewport {
   render(): void;
   requestRender(): void;
   pickAt(offsetX: number, offsetY: number): Space3DSelection | null;
+  /** Punto donde el rayo del puntero corta el plano de trabajo, o `null` si el plano se ve de canto. */
+  pickPlane?(offsetX: number, offsetY: number, axis: 'x' | 'y' | 'z', offset: number): [number, number, number] | null;
+  setDraft?(draft: Space3DDraftOverlay | null): void;
   dispose(): void;
 }
 
@@ -132,6 +142,7 @@ const TOKEN_COLORS = {
   axisY: ['--sc-color-action-ink', '#468c09'],
   axisZ: ['--sc-color-brand-secondary', '#0f95d1'],
   label: ['--sc-color-text-secondary', '#607068'],
+  draft: ['--sc-color-action-primary', '#ff8e80'],
 } as const;
 
 type ColorRole = keyof typeof TOKEN_COLORS;
@@ -734,6 +745,93 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
     return null;
   };
 
+  const toPointer = (offsetX: number, offsetY: number): boolean => {
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width || canvas.clientWidth || 1;
+    const height = rect.height || canvas.clientHeight || 1;
+    pointer.set((offsetX / width) * 2 - 1, -(offsetY / height) * 2 + 1);
+    return Math.abs(pointer.x) <= 1 && Math.abs(pointer.y) <= 1;
+  };
+
+  const NORMALS = { x: new Vector3(1, 0, 0), y: new Vector3(0, 1, 0), z: new Vector3(0, 0, 1) } as const;
+  const workPlane = new Plane();
+  const planeHit = new Vector3();
+
+  const pickPlane = (offsetX: number, offsetY: number, axis: 'x' | 'y' | 'z', offset: number): [number, number, number] | null => {
+    if (disposed || !toPointer(offsetX, offsetY)) return null;
+    camera.updateMatrixWorld(true);
+    raycaster.setFromCamera(pointer, camera);
+    const normal = NORMALS[axis];
+    // Un plano visto casi de canto convierte un píxel en kilómetros: se rechaza
+    // en lugar de colocar un nudo lejísimos del modelo.
+    if (Math.abs(raycaster.ray.direction.dot(normal)) < 0.08) return null;
+    workPlane.set(normal, -offset);
+    const hit = raycaster.ray.intersectPlane(workPlane, planeHit);
+    if (!hit) return null;
+    return [hit.x, hit.y, hit.z];
+  };
+
+  const draftGroup = new Group();
+  draftGroup.name = 'draft';
+  draftGroup.renderOrder = 10;
+  scene.add(draftGroup);
+  let draftPlaneKey = '';
+  let draftGrid: GridHelper | null = null;
+  let draftCursor: Mesh | null = null;
+  let draftLine: LineSegments | null = null;
+
+  const setDraft = (draft: Space3DDraftOverlay | null) => {
+    if (disposed) return;
+    const plane = draft?.plane ?? null;
+    const span = Math.max(model.bounds.span, 1);
+    const key = plane ? `${plane.axis}:${plane.offset}:${plane.step}:${span}` : '';
+    if (key !== draftPlaneKey) {
+      draftPlaneKey = key;
+      if (draftGrid) { draftGroup.remove(draftGrid); disposeObject(draftGrid); draftGrid = null; }
+      if (plane) {
+        const divisions = Math.min(200, Math.max(4, Math.ceil(Math.max(span * 2, 12) / plane.step / 2) * 2));
+        const size = divisions * plane.step;
+        const grid = new GridHelper(size, divisions, palette.draft, palette.draft);
+        const material = grid.material as Material;
+        material.transparent = true;
+        material.opacity = 0.22;
+        material.depthWrite = false;
+        const snapCenter = (value: number) => Math.round(value / plane.step) * plane.step;
+        const [cx, cy, cz] = model.bounds.center;
+        if (plane.axis === 'y') grid.position.set(snapCenter(cx), plane.offset, snapCenter(cz));
+        else if (plane.axis === 'z') { grid.rotation.x = Math.PI / 2; grid.position.set(snapCenter(cx), snapCenter(cy), plane.offset); }
+        else { grid.rotation.z = Math.PI / 2; grid.position.set(plane.offset, snapCenter(cy), snapCenter(cz)); }
+        draftGroup.add(grid);
+        draftGrid = grid;
+      }
+    }
+
+    const cursor = draft?.cursor ?? null;
+    if (cursor) {
+      if (!draftCursor) {
+        draftCursor = new Mesh(new SphereGeometry(1, 16, 12), new MeshBasicMaterial({ color: palette.draft, depthTest: false, transparent: true, opacity: 0.9 }));
+        draftGroup.add(draftCursor);
+      }
+      draftCursor.scale.setScalar(Math.max(span * 0.012, 0.05));
+      draftCursor.position.set(cursor[0], cursor[1], cursor[2]);
+      draftCursor.visible = true;
+    } else if (draftCursor) {
+      draftCursor.visible = false;
+    }
+
+    if (draftLine) { draftGroup.remove(draftLine); disposeObject(draftLine); draftLine = null; }
+    const from = draft?.from ?? null;
+    if (from && cursor) {
+      const line = new LineSegments(lineGeometry([...from, ...cursor]), new LineDashedMaterial({
+        color: palette.draft, dashSize: Math.max(span * 0.02, 0.08), gapSize: Math.max(span * 0.012, 0.05), depthTest: false,
+      }));
+      line.computeLineDistances();
+      draftGroup.add(line);
+      draftLine = line;
+    }
+    requestRender();
+  };
+
   const onControlsChange = () => requestRender();
   controls.addEventListener('change', onControlsChange);
 
@@ -749,6 +847,7 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
   const onThemeChange = () => {
     if (disposed) return;
     palette = readPalette();
+    draftPlaneKey = '';
     clearGroup('grid');
     buildStatic();
     buildModel();
@@ -788,6 +887,8 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
     render() { render(); },
     requestRender,
     pickAt,
+    pickPlane,
+    setDraft,
     dispose() {
       if (disposed) return;
       disposed = true;

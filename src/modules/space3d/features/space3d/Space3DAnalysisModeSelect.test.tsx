@@ -12,7 +12,9 @@ it('exposes all supported 3D study modes in the existing contextual control', as
   const onChange = vi.fn();
   render(<Space3DAnalysisModeSelect value="linear" onChange={onChange} t={(key) => translate('es', key)} />);
 
-  const select = screen.getByRole('combobox', { name: 'Modo de análisis 3D' });
+  const select = screen.getByRole('combobox', { name: 'Tipo de análisis' });
+  expect(select.getAttribute('aria-describedby')).toBeTruthy();
+  expect(screen.getByText('Respuesta elástica bajo las cargas del caso elegido.')).toBeTruthy();
   expect([...select.querySelectorAll('option')].map((option) => option.value)).toEqual([
     'linear', 'pdelta', 'modal', 'buckling', 'influence',
   ]);

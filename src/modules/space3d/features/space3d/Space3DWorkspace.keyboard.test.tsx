@@ -30,7 +30,8 @@ const renderWorkspace = () => render(
   />,
 );
 
-const memberButtons = () => within(screen.getByRole('table', { name: 'Barras' })).getAllByRole('button');
+const memberButtons = () => within(screen.getByRole('list', { name: 'Barras' })).getAllByRole('button');
+const nodeButtons = () => within(screen.getByRole('list', { name: 'Nudos' })).getAllByRole('button');
 
 describe('Space3DWorkspace · atajos de teclado', () => {
   it('does not delete the selection when Backspace lands on a focused button', async () => {
@@ -38,12 +39,13 @@ describe('Space3DWorkspace · atajos de teclado', () => {
     renderWorkspace();
     const before = memberButtons().length;
 
-    // Seleccionar desde la tabla deja el foco en el botón del identificador.
-    const target = memberButtons()[0]!;
-    await user.click(target);
-    expect(document.activeElement).toBe(target);
+    // Elegir una fila abre su formulario y deja el foco en «Volver al modelo».
+    await user.click(memberButtons()[0]!);
+    const back = screen.getByRole('button', { name: 'Volver al modelo' });
+    expect(document.activeElement).toBe(back);
 
     await user.keyboard('{Backspace}');
+    await user.click(back);
     expect(memberButtons()).toHaveLength(before);
   });
 
@@ -65,21 +67,21 @@ describe('Space3DWorkspace · atajos de teclado', () => {
     const user = userEvent.setup();
     renderWorkspace();
 
-    await user.click(within(screen.getByRole('table', { name: 'Nudos' })).getAllByRole('button')[0]!);
-    const x = screen.getByLabelText('X') as HTMLInputElement;
+    await user.click(nodeButtons()[0]!);
+    const x = screen.getByRole('textbox', { name: 'X' }) as HTMLInputElement;
     await user.clear(x);
     await user.type(x, '12.5');
 
     await user.keyboard('{Escape}');
-    expect(screen.getByRole('button', { name: /guardar nodo/i })).toBeTruthy();
-    expect((screen.getByLabelText('X') as HTMLInputElement).value).toBe('12.5');
+    expect(screen.getByRole('button', { name: /guardar nudo/i })).toBeTruthy();
+    expect((screen.getByRole('textbox', { name: 'X' }) as HTMLInputElement).value).toBe('12.5');
   });
 
   it('ignores an Escape another widget already handled', async () => {
     const user = userEvent.setup();
     renderWorkspace();
-    await user.click(within(screen.getByRole('table', { name: 'Nudos' })).getAllByRole('button')[0]!);
-    expect(screen.getByRole('button', { name: /guardar nodo/i })).toBeTruthy();
+    await user.click(nodeButtons()[0]!);
+    expect(screen.getByRole('button', { name: /guardar nudo/i })).toBeTruthy();
 
     // Un desplegable o la paleta de comandos consume Escape antes que la superficie.
     const consume = (event: Event) => event.preventDefault();
@@ -87,8 +89,9 @@ describe('Space3DWorkspace · atajos de teclado', () => {
     fireEvent.keyDown(document.body, { key: 'Escape' });
     document.body.removeEventListener('keydown', consume);
 
-    expect(screen.getByRole('button', { name: /guardar nodo/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /guardar nudo/i })).toBeTruthy();
   });
+
 });
 
 // `sheetExpanded` es estado de la hoja móvil, pero "Editar" lo activa en todos

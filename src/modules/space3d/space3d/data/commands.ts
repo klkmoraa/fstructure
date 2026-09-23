@@ -32,7 +32,12 @@ export type Space3DCommand =
   | { readonly kind: 'set-restraints'; readonly nodeId: string; readonly restraints: Space3DRestraints }
   | { readonly kind: 'add-nodal-load'; readonly load: Space3DNodalLoad }
   | { readonly kind: 'update-nodal-load'; readonly loadId: string; readonly changes: Partial<Omit<Space3DNodalLoad, 'id'>> }
-  | { readonly kind: 'delete-nodal-load'; readonly loadId: string };
+  | { readonly kind: 'delete-nodal-load'; readonly loadId: string }
+  /**
+   * Varias ediciones como un solo paso: se aplican en orden y, si una falla,
+   * no se aplica ninguna. Deshacer revierte el lote entero.
+   */
+  | { readonly kind: 'batch'; readonly commands: readonly Space3DCommand[] };
 
 export type Space3DCommandErrorCode =
   | 'empty-id'
@@ -217,6 +222,11 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
     case 'delete-nodal-load': {
       requireExisting(project.nodalLoads, command.loadId, 'la carga');
       return finish(project, { ...project, nodalLoads: project.nodalLoads.filter((load) => load.id !== command.loadId) });
+    }
+
+    case 'batch': {
+      if (!Array.isArray(command.commands) || command.commands.length === 0) fail('invalid-value', 'el lote está vacío');
+      return command.commands.reduce<Space3DProjectV1>((current, item) => applySpace3DCommand(current, item), project);
     }
   }
 };

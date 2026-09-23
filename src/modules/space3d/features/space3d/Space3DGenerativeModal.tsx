@@ -457,6 +457,9 @@ export const Space3DGenerativeModal = ({
     <Dialog
       open={open}
       onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}
+      // Se abre para describir la estructura: el cursor empieza en ese campo y
+      // no en «Cerrar», que además recibía lo que ya se estaba escribiendo.
+      initialFocus={(container) => container.querySelector<HTMLElement>('.space3d-prompt-input')}
       title={t('space3d.generatorTitle' as TranslationKey) || 'Generador de Estructuras 3D'}
       description={t('space3d.generatorDesc' as TranslationKey) || 'Genera geometrías paramétricas completas para cálculo estático 3D.'}
       footer={

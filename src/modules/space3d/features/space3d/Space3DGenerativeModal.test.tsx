@@ -114,3 +114,11 @@ it('applies parsed bay size to frame geometry', async () => {
   const maxX = Math.max(...generated.nodes.map((node: { x: number }) => node.x));
   expect(maxX).toBe(10);
 });
+
+// Se abre para describir la estructura. Si el foco inicial iba a «Cerrar» un
+// fotograma después, lo que la persona ya tecleaba acababa en ese botón.
+it('puts the initial focus on the description field', async () => {
+  render(<Space3DGenerativeModal open onClose={vi.fn()} onApply={vi.fn()} t={(key, vars) => translate('es', key, vars)} />);
+  const input = screen.getByLabelText('Descripción de la estructura a generar');
+  await waitFor(() => expect(document.activeElement).toBe(input));
+});

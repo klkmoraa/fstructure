@@ -56,7 +56,7 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
     setSourceVersion(lineage.current);
   }, [session, project]);
   return <>
-    {stale ? <ShellContribution slot="inspector"><p role="status">El modelo 2D cambió desde esta derivación. La rama 3D conserva su versión de origen; revisa las diferencias antes de sincronizar.</p></ShellContribution> : null}
+    {stale ? <ShellContribution slot="inspector"><p role="status" className="space3d-source-notice">El modelo 2D cambió desde esta derivación. La rama 3D conserva su versión de origen; revisa las diferencias antes de sincronizar.</p></ShellContribution> : null}
     {failure ? <ShellContribution slot="status"><span role="status">{failure}</span></ShellContribution> : null}
     <Space3DWorkspace language={project.settings.language} embedded handoff={handoff} storage={embeddedStorage}
       canonicalProject={canonicalProject} onProjectChange={save} onRederive={rederive} />

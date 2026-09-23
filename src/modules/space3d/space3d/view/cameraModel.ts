@@ -26,6 +26,12 @@ export interface Space3DCameraPlacement {
 
 const FOV_DEGREES = 45;
 const MARGIN = 0.88;
+/**
+ * Radio mínimo del encuadre, m. Con uno o dos nudos la caja mide un metro y la
+ * cámara se pegaba a ellos: la cuadrícula de trabajo llenaba el lienzo con
+ * celdas enormes y no quedaba sitio para dibujar el siguiente nudo.
+ */
+const MIN_FRAME_RADIUS = 5;
 
 /** Direcciones unitarias de cada preset, en la convención global Y-arriba. */
 const DIRECTIONS: Record<Space3DViewPreset, { readonly offset: Space3DVector; readonly up: Space3DVector }> = {
@@ -45,7 +51,7 @@ export const computeSpace3DCameraPlacement = (
     Math.abs(bounds.max[2] - bounds.min[2]),
   ];
   const diagonal = Math.hypot(...extents);
-  const radius = Math.max(diagonal / 2, Number.isFinite(bounds.span) && bounds.span > 0 ? bounds.span / 2 : 3, 1);
+  const radius = Math.max(diagonal / 2, Number.isFinite(bounds.span) && bounds.span > 0 ? bounds.span / 2 : 3, MIN_FRAME_RADIUS);
 
   const halfFov = (FOV_DEGREES * Math.PI / 180) / 2;
   const distance = Math.max(radius / Math.sin(halfFov) * MARGIN, 2);

@@ -103,7 +103,7 @@ it('keeps the density when the elastic modulus is edited', async () => {
 it('exposes which section category filter is active', async () => {
   const user = userEvent.setup();
   renderMemberEditor();
-  const group = screen.getByRole('group', { name: /material/i });
+  const group = screen.getByRole('group', { name: 'Filtrar por material' });
   const chips = within(group).getAllByRole('button');
   expect(chips.filter((chip) => chip.getAttribute('aria-pressed') === 'true')).toHaveLength(1);
 

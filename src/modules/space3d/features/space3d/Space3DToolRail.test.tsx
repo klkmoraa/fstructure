@@ -6,7 +6,7 @@ import { Space3DConsoleTools } from './Space3DToolRail';
 
 afterEach(cleanup);
 
-const renderRail = (language: Language) => render(
+const renderRail = (language: Language, canEditSupport = true) => render(
   <Space3DConsoleTools
     t={(key, vars) => translate(language, key, vars)}
     activeTool="select"
@@ -18,11 +18,7 @@ const renderRail = (language: Language) => render(
     onOpenGenerative={vi.fn()}
     canNewMember
     canNewLoad
-    canEditSupport
-    canShowResults={false}
-    onShowResults={vi.fn()}
-    onMore={vi.fn()}
-    moreOpen={false}
+    canEditSupport={canEditSupport}
   />,
 );
 
@@ -50,5 +46,21 @@ describe('Space3D rail · generador 3D', () => {
     renderRail('es');
     const button = screen.getByRole('button', { name: /generar 3d/i });
     expect(button.getAttribute('title')).toBe('Generador de estructuras 3D');
+  });
+});
+
+describe('Space3D rail · herramientas deshabilitadas', () => {
+  it('explains what is missing instead of leaving a silent disabled icon', () => {
+    renderRail('es', false);
+    const support = screen.getByRole('button', { name: 'Nuevo apoyo' });
+    expect(support).toHaveProperty('disabled', true);
+    expect(support.getAttribute('title')).toBe('Coloca un nudo antes de poner apoyos');
+  });
+
+  it('shows each shortcut and exposes it to assistive technology', () => {
+    renderRail('es');
+    const node = screen.getByRole('button', { name: 'Nuevo nudo' });
+    expect(node.getAttribute('aria-keyshortcuts')).toBe('N');
+    expect(node.querySelector('kbd')?.textContent).toBe('N');
   });
 });

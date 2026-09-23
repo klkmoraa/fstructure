@@ -127,6 +127,8 @@ interface ModalSurfaceProps {
   className?: string;
   /** Explicit launcher used when another surface transfers focus during lazy loading. */
   returnFocusTo?: HTMLElement | null;
+  /** Element that receives focus on open; defaults to the first focusable control. */
+  initialFocus?: (container: HTMLElement) => HTMLElement | null;
   /** The broker owns focus return for retained workspace surfaces. */
   restoreFocus?: boolean;
   surfaceId?: string;
@@ -155,6 +157,7 @@ const ModalSurface = ({
   side = 'right',
   className = '',
   returnFocusTo,
+  initialFocus,
   restoreFocus = true,
   surfaceId,
   onSurfaceReady,
@@ -170,6 +173,7 @@ const ModalSurface = ({
     open,
     containerRef: surfaceRef,
     onEscape: () => onOpenChange(false),
+    initialFocus,
     restoreFocus,
     returnFocusTo,
     trapFocus: !peeked,
