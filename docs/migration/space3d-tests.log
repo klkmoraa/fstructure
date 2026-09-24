@@ -1,8 +1,0 @@
-
- RUN  v4.1.11 /Users/crismora/Desktop/FStructure/fstructure
-
-
- Test Files  9 passed (9)
-      Tests  81 passed (81)
-   Start at  23:14:37
-   Duration  2.12s (transform 326ms, setup 401ms, import 722ms, tests 186ms, environment 1ms)

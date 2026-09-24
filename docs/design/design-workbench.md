@@ -1,6 +1,6 @@
 # Taller de diseño de elementos — experimental
 
-La superficie **Diseño** abre un taller independiente con cuatro pestañas: Viga, Columna, Zapata y la viga ligada al Modelo 2D ([concrete-beam-v1.md](concrete-beam-v1.md)). Es una herramienta de revisión y aprendizaje; no certifica un diseño ni sustituye a la persona responsable del proyecto.
+La herramienta **Diseño** (FS-A04) abre un taller aislado con tres elementos: Viga, Columna y Zapata. No lee el Modelo 2D: cada elemento se captura en el propio taller. Es una herramienta de revisión y aprendizaje; no certifica un diseño ni sustituye a la persona responsable del proyecto.
 
 ## Normas disponibles
 

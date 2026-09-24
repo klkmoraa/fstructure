@@ -162,7 +162,7 @@ describe('space3dGenerative', () => {
     })).toThrow(/proyecto generado inválido/i);
   });
 
-  // AGENTS.md: no aceptar NaN ni infinitos. Una carga no finita tratada como
+  // Los datos no aceptan NaN ni infinitos. Una carga no finita tratada como
   // "carga desactivada" devolvía un proyecto válido al que le faltaba en
   // silencio la carga pedida.
   it('rejects non-finite optional loads instead of dropping them', () => {
