@@ -1,6 +1,8 @@
-import { useState, type ReactNode } from 'react';
-import { ArrowRight, ArrowUpRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload } from 'lucide-react';
-import { useReducedMotion } from 'motion/react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { ArrowRight, ArrowUpRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
+import { AnimatePresence, m, useReducedMotion } from 'motion/react';
+import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import type { ProjectModel, ThemeMode } from '../../types';
 import { ThreeStructuralImage } from '../structural-assets';
 import { ENGINEERING_QUOTES } from './engineeringQuotes';
@@ -42,7 +44,7 @@ interface Solver2DHomeProps {
 const copy = {
   es: {
     role: 'Solver 2D',
-    lead: 'Coloca nudos, barras, apoyos y cargas. Después lee reacciones y diagramas con sus unidades.',
+    lead: 'Modela, analiza y comprende estructuras.',
     leadStrong: 'Del trazo al diagrama.',
     open: 'Proyecto abierto',
     continue: 'Continuar',
@@ -81,12 +83,13 @@ const copy = {
     capLearning: 'Trazabilidad educativa',
     capLearningBody: 'Cada resultado puede abrir su método, sus unidades y sus límites.',
     note: 'FStructure es experimental. Un resultado numérico puede ser incorrecto por un modelo, una unidad, una hipótesis o una propiedad mal elegida: no sustituye el criterio de una persona responsable ni una revisión independiente.',
+    dismissQuote: 'Cerrar reflexión',
     creatorLabel: 'Creador:',
     about: 'Acerca de FStructure',
   },
   en: {
     role: '2D Solver',
-    lead: 'Place nodes, members, supports, and loads. Then read reactions and diagrams with their units.',
+    lead: 'Model, analyse, and understand structures.',
     leadStrong: 'From line to diagram.',
     open: 'Open project',
     continue: 'Continue',
@@ -125,6 +128,7 @@ const copy = {
     capLearning: 'Educational traceability',
     capLearningBody: 'Every result can open its method, its units, and its limits.',
     note: 'FStructure is experimental. A numeric result can be wrong because of a model, a unit, an assumption, or a badly chosen property: it does not replace the judgement of a responsible person or an independent review.',
+    dismissQuote: 'Dismiss quote',
     creatorLabel: 'Creator:',
     about: 'About FStructure',
   },
@@ -150,6 +154,22 @@ export const Solver2DHome = ({
     const index = Math.floor(Math.random() * ENGINEERING_QUOTES.length);
     return ENGINEERING_QUOTES[index] ?? ENGINEERING_QUOTES[0];
   });
+  const [quoteVisible, setQuoteVisible] = useState(false);
+
+  useEffect(() => {
+    const delayTimer = window.setTimeout(() => {
+      setQuoteVisible(true);
+    }, 1000);
+    return () => window.clearTimeout(delayTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!quoteVisible) return undefined;
+    const dismissTimer = window.setTimeout(() => {
+      setQuoteVisible(false);
+    }, 12000);
+    return () => window.clearTimeout(dismissTimer);
+  }, [quoteVisible]);
 
   const paths = [
     // Una ruta de entrada no es un resultado del solver: lleva el color de la
@@ -171,11 +191,65 @@ export const Solver2DHome = ({
     { id: 'learning', state: 'available', label: text.capLearning, body: text.capLearningBody },
   ] as const;
 
+  const quoteToast = typeof document !== 'undefined' ? createPortal(
+    <AnimatePresence>
+      {quoteVisible ? (
+        <m.aside
+          key={activeQuote.id}
+          className="solver2d-quote-toast"
+          role="status"
+          aria-live="polite"
+          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 40, scale: 0.90 }}
+          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
+          exit={
+            reducedMotion
+              ? { opacity: 0 }
+              : { opacity: 0, y: 24, scale: 0.94, transition: { duration: 0.28, ease: [0.32, 0.72, 0, 1] } }
+          }
+          transition={
+            reducedMotion
+              ? { duration: 0.01 }
+              : { type: 'spring', stiffness: 350, damping: 25, mass: 0.8 }
+          }
+        >
+          <div className="solver2d-quote-toast__body">
+            <blockquote className="solver2d-quote-toast__text">
+              “{activeQuote.text[language]}”
+            </blockquote>
+            <cite className="solver2d-quote-toast__author">
+              — {activeQuote.author}
+            </cite>
+          </div>
+          <button
+            type="button"
+            className="solver2d-quote-toast__close"
+            onClick={() => setQuoteVisible(false)}
+            aria-label={text.dismissQuote}
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
+          <div className="solver2d-quote-toast__progress" aria-hidden="true">
+            <m.div
+              className="solver2d-quote-toast__bar"
+              initial={reducedMotion ? { scaleX: 0 } : { scaleX: 1 }}
+              animate={{ scaleX: 0 }}
+              transition={reducedMotion ? { duration: 0.01 } : { duration: 12, ease: 'linear' }}
+              style={{ transformOrigin: 'left center' }}
+              onAnimationComplete={() => setQuoteVisible(false)}
+            />
+          </div>
+        </m.aside>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
+  ) : null;
+
   return <div className={`solver2d-home${reducedMotion ? ' is-static' : ''}`}>
+    {quoteToast}
 
     <section className="solver2d-hero" aria-labelledby="solver2d-hero-name">
       <div className="solver2d-hero__copy">
-        <span className="solver2d-hero__eyebrow" style={{ '--reveal-step': 0 } as React.CSSProperties}>FS-A01<b>·</b>{text.role}</span>
+        <span className="solver2d-hero__eyebrow" style={{ '--reveal-step': 0 } as React.CSSProperties}>{SOLVER_2D.product}<b>·</b>{text.role}</span>
         <h1 id="solver2d-hero-name" className="solver2d-hero__name" style={{ '--reveal-step': 1 } as React.CSSProperties}>{text.leadStrong}</h1>
         <p className="solver2d-hero__lead" style={{ '--reveal-step': 2 } as React.CSSProperties}>{text.lead}</p>
 
@@ -256,8 +330,6 @@ export const Solver2DHome = ({
       </div>
       <p className="solver2d-note">{text.note}</p>
     </section>
-
-    <blockquote className="solver2d-quote-inline">“{activeQuote.text[language]}” <cite>— {activeQuote.author}</cite></blockquote>
 
     <footer className="solver2d-footer" aria-label={text.about}>
       <p className="solver2d-footer__credit">

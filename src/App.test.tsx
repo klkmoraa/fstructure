@@ -48,7 +48,7 @@ describe('standalone FStructure', () => {
     render(<App />);
     for (const [tool, testId, heading] of [
       ['Solver 3D', 'space3d-welcome', 'Del nudo al espacio.'],
-      ['Elementos finitos', 'fem-welcome', 'De la malla al resultado.'],
+      ['Elementos finitos', 'fem-welcome', 'De la malla al campo.'],
       ['Diseño', 'design-welcome', 'Del esfuerzo al armado.'],
       ['FStructure', 'solver2d-welcome', 'Del trazo al diagrama.'],
     ] as const) {
@@ -66,7 +66,7 @@ describe('standalone FStructure', () => {
     render(<App />);
 
     expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1, name: 'Elige tu herramienta.' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Make complexity legible.' })).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Herramientas' }).querySelectorAll('button')).toHaveLength(4);
 
     await user.click(screen.getByRole('button', { name: /^Continuar.*en FStructure/ }));

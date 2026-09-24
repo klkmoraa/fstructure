@@ -23,7 +23,7 @@ const content = (onElement: (element: Element) => void, codeControl: ToolHomeCon
     en: 'Design reinforced concrete beams, columns, and footings with the code you choose.',
   },
   stageAlt: { es: 'Viga de concreto en arcilla con la jaula de armado expuesta', en: 'Clay concrete beam with its reinforcement cage exposed' },
-  startBody: { es: 'Selecciona la norma y después el elemento que quieres revisar.', en: 'Select the code, then the element you want to check.' },
+  startBody: { es: 'Elige el elemento; la norma se aplica a los tres.', en: 'Choose the element; the code applies to all three.' },
   pathsControl: codeControl,
   paths: [
     { id: 'beam', icon: RectangleHorizontal, label: { es: 'Viga continua', en: 'Continuous beam' },
@@ -70,7 +70,7 @@ export default function DesignHome({ onOpenWorkspace, onOpenSuite }: { onOpenWor
 
   const summary = [
     { value: ELEMENT_LABEL[storedElement][language], label: en ? 'last element' : 'último elemento' },
-    { value: designCode(code).name, label: en ? 'selected code' : 'norma elegida' },
+    { value: designCode(code).name, label: en ? 'code' : 'norma' },
   ];
   const openElement = (element: Element) => {
     setToolIntent({ tool: 'design', kind: 'element', element, code });

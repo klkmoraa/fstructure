@@ -11,14 +11,14 @@ import { readStoredFemStudy } from './FemSurface';
 const MAX_GMSH_BYTES = 16 * 1024 * 1024;
 
 const content = (hasStudy: boolean, onAnalyze: () => void, onImport: (file: File) => void): ToolHomeContent => ({
-  title: { es: 'De la malla al resultado.', en: 'From mesh to result.' },
+  title: { es: 'De la malla al campo.', en: 'From mesh to field.' },
   lead: {
-    es: 'Importa una malla 2D de Gmsh o prueba el parche TRI3. Revisa desplazamientos, tensiones, calidad y equilibrio.',
-    en: 'Import a 2D Gmsh mesh or try the TRI3 patch. Review displacements, stresses, quality, and equilibrium.',
+    es: 'Resuelve placas y muros con elasticidad lineal 2D, y revisa tensiones, calidad y equilibrio.',
+    en: 'Solve plates and walls with linear 2D elasticity, then check stresses, quality, and equilibrium.',
   },
   continueLabel: hasStudy ? { es: 'Continuar estudio', en: 'Continue study' } : { es: 'Abrir ejemplo', en: 'Open example' },
   stageAlt: { es: 'Placa perforada en arcilla con su malla triangular, empotrada y cargada', en: 'Perforated clay plate with its triangular mesh, fixed and loaded' },
-  startBody: { es: 'Prueba el análisis o trae tu propia malla.', en: 'Try the analysis or bring your own mesh.' },
+  startBody: { es: 'Dos entradas a la mesa FEM.', en: 'Two ways into the FEM workbench.' },
   paths: [
     { id: 'analyze', icon: FlaskConical, label: hasStudy ? { es: 'Analizar el estudio actual', en: 'Analyse the current study' } : { es: 'Analizar el caso de prueba', en: 'Analyse the test case' },
       body: hasStudy ? { es: 'Ejecuta el análisis sobre la malla guardada en este proyecto.', en: 'Run the analysis on the mesh saved in this project.' } : { es: 'Ejecuta un parche TRI3 de tres nudos con solución conocida.', en: 'Run a three-node TRI3 patch with a known solution.' },

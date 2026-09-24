@@ -11,14 +11,14 @@ import { parseSpace3DDraft } from './space3d/data/codec';
 const content = (onIntent: (kind: 'generate' | 'example' | 'first-node') => void, onNewProject: () => void): ToolHomeContent => ({
   title: { es: 'Del nudo al espacio.', en: 'From node to space.' },
   lead: {
-    es: 'Coloca nudos y barras en 3D, define apoyos y cargas, y analiza el modelo cuando esté listo.',
-    en: 'Place nodes and members in 3D, define supports and loads, and analyze the model when it is ready.',
+    es: 'Modela marcos espaciales y resuélvelos con seis grados de libertad por nudo.',
+    en: 'Model space frames and solve them with six degrees of freedom per node.',
   },
   stageAlt: { es: 'Marco espacial de dos niveles en arcilla, con arriostramiento en cruz', en: 'Two-storey clay space frame with cross bracing' },
-  startBody: { es: 'Empieza con un nudo, explora un ejemplo o genera una estructura.', en: 'Start with a node, explore an example, or generate a structure.' },
+  startBody: { es: 'Cuatro entradas a la mesa 3D.', en: 'Four ways into the 3D workbench.' },
   paths: [
     { id: 'first-node', icon: Spline, label: { es: 'Colocar un nudo', en: 'Place a node' },
-      body: { es: 'Activa Nudo y define sus coordenadas X, Y y Z en el modelo actual.', en: 'Activate Node and set its X, Y, and Z coordinates in the current model.' },
+      body: { es: 'Escribe sus coordenadas X, Y, Z en el modelo abierto.', en: 'Type its X, Y, Z coordinates in the open model.' },
       action: () => onIntent('first-node') },
     { id: 'example', icon: Box, label: { es: 'Abrir el ejemplo', en: 'Open the example' },
       body: { es: 'Un pórtico espacial con apoyos y cargas, listo para analizar.', en: 'A space portal with supports and loads, ready to analyse.' },
