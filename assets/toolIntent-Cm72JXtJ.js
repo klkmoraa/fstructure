@@ -1,0 +1,1 @@
+var e=null,t=t=>{e=t};function n(t){let n=e;return e=null,n&&n.tool===t?n:null}function r(t){return e&&e.tool===t?e:null}export{t as n,n as r,r as t};
