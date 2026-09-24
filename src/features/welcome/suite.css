@@ -11,6 +11,13 @@
  * por una herramienta. Con movimiento reducido el cambio es inmediato.
  */
 
+/* La raíz recorta (#root: overflow clip) para las mesas; el Inicio es más alto que
+   la pantalla en móvil y necesita desplazarse. */
+#root:has(> .fs-suite) {
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
 .fs-suite {
   --s-bg: #f7f6f1;
   --s-paper: #fffefa;
