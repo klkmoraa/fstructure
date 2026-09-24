@@ -118,3 +118,7 @@
 .sc-home.tool-home[data-compact-viewport] .solver2d-hero__stage { order: 0; min-height: 0; }
 .sc-home.tool-home[data-compact-viewport] .solver2d-stage { min-height: 200px; height: 200px; }
 .sc-home.tool-home[data-compact-viewport] .solver2d-stage__object { width: min(78%, 280px) !important; transform: none; }
+
+@media (max-width: 720px) {
+  .sc-home.tool-home[data-tool='fem'] .solver2d-paths.tool-home__paths { grid-template-columns: minmax(0, 1fr); }
+}

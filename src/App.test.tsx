@@ -48,7 +48,7 @@ describe('standalone FStructure', () => {
     render(<App />);
     for (const [tool, testId, heading] of [
       ['Solver 3D', 'space3d-welcome', 'Del nudo al espacio.'],
-      ['Elementos finitos', 'fem-welcome', 'De la malla al campo.'],
+      ['Elementos finitos', 'fem-welcome', 'De la malla al resultado.'],
       ['Diseño', 'design-welcome', 'Del esfuerzo al armado.'],
       ['FStructure', 'solver2d-welcome', 'Del trazo al diagrama.'],
     ] as const) {

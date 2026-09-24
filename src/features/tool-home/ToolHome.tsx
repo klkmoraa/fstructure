@@ -26,6 +26,7 @@ export type ToolHomePath = {
 export interface ToolHomeContent {
   title: Localized;
   lead: Localized;
+  continueLabel?: Localized;
   stageAlt: Localized;
   startBody: Localized;
   paths: readonly ToolHomePath[];
@@ -154,7 +155,7 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite 
                   <p className="solver2d-open__counts">{summary.map((item) => <span key={item.label}><b>{item.value}</b> {item.label}</span>)}</p>
                 </div>
                 <div className="solver2d-open__actions">
-                  <button type="button" className="solver2d-action solver2d-action--primary" onClick={onOpenWorkspace}><Play size={16} fill="currentColor" />{text.continue}</button>
+                  <button type="button" className="solver2d-action solver2d-action--primary" onClick={onOpenWorkspace}><Play size={16} fill="currentColor" />{content.continueLabel?.[language] ?? text.continue}</button>
                   <button type="button" className="solver2d-action" onClick={createProject}><FilePlus2 size={16} />{text.create}</button>
                 </div>
               </div>

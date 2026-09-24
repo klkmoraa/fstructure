@@ -36,7 +36,7 @@ const openFromHome = async (user: ReturnType<typeof userEvent.setup>, tool: stri
   await user.click(await screen.findByRole('button', { name: 'Volver a FusionStructure' }));
   await screen.findByTestId('suite-welcome');
   await user.click(screen.getByRole('button', { name: new RegExp(`^Abrir ${tool} ·`) }));
-  await user.click(await screen.findByRole('button', { name: 'Continuar' }));
+  await user.click(await screen.findByRole('button', { name: tool === 'Elementos finitos' ? 'Abrir ejemplo' : 'Continuar' }));
 };
 
 it('abre FEM en su propia mesa: sin lienzo, consola ni utilidades del Modelo 2D', async () => {
