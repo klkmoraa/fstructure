@@ -1,0 +1,229 @@
+/*
+ * Cromo del lienzo 2D: última palabra sobre la posición y el tamaño de los
+ * controles que flotan en la mesa. Las capas anteriores (phase1, phase2,
+ * fstructure, mobileCanvasDensity, results) se pisaban entre sí y dejaban
+ * piezas encimadas o cortadas; aquí se fija una sola geometría:
+ *
+ *   escritorio  zoom y utilidades en una fila, dentro de la esquina inferior
+ *               derecha del lienzo, sin tocarse.
+ *   móvil       barra inferior plana (herramientas + inspector con la misma
+ *               tecla), zoom y entrada de coordenadas en una columna compacta
+ *               a la derecha, y hojas con los mismos márgenes que el lienzo.
+ *
+ * Los selectores llevan `.workspace-screen` para ganar por especificidad sin
+ * `!important`, sin depender del orden de carga de los chunks.
+ */
+
+.app-shell.workspace-screen {
+  --chrome-gap: 8px;
+  --chrome-key: 36px;
+}
+
+/* ─── Escritorio y tableta (X2, M1) ─── */
+@media (min-width: 1024px) {
+  /* Utilidades (panel, pantalla completa, tema): dentro del lienzo, no sobre su borde. */
+  .app-shell.workspace-screen[data-shell-class] > .console.console .console__foot {
+    right: calc(21px + var(--chrome-gap));
+    bottom: calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px);
+    gap: 4px;
+    padding: 0;
+    border: 0;
+  }
+  .app-shell.workspace-screen[data-shell-class] > .console.console .console__foot > button {
+    width: var(--chrome-key);
+    min-width: var(--chrome-key);
+    height: var(--chrome-key);
+    min-height: var(--chrome-key);
+  }
+
+  /* Zoom: justo encima de las utilidades, alineado a su derecha; así nunca
+     alcanza la barra de herramientas centrada, ni en pantallas de 1024 px. */
+  .app-shell.workspace-screen[data-shell-class] .canvas-host .canvas-controls {
+    left: auto;
+    right: var(--chrome-gap);
+    bottom: calc(var(--chrome-gap) * 2 + var(--chrome-key));
+    flex-direction: row;
+  }
+
+  /* Barra de herramientas: dentro del lienzo, no montada sobre su borde. */
+  .app-shell.workspace-screen[data-shell-class] .tool-rail.is-floating-dock {
+    bottom: calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px);
+  }
+
+  /* Con la bandeja de resultados abajo, barra y utilidades suben sobre ella
+     (el lienzo ya se acorta solo, y con él el zoom). */
+  .app-shell.workspace-screen[data-shell-class]:has(.results-panel.desktop-collapsed) .tool-rail.is-floating-dock {
+    bottom: calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px + 64px);
+  }
+  .app-shell.workspace-screen[data-shell-class]:has(.results-panel.desktop-collapsed) > .console.console .console__foot {
+    bottom: calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px + 64px);
+  }
+  .app-shell.workspace-screen[data-shell-class] .canvas-host .canvas-controls :is(button, .sc-icon-button) {
+    width: var(--chrome-key);
+    min-width: var(--chrome-key);
+    height: var(--chrome-key);
+    min-height: var(--chrome-key);
+  }
+
+  /* «Repetir · R» sube por encima del zoom en vez de taparlo. */
+  .app-shell.workspace-screen[data-shell-class] .canvas-host .repeat-action-control {
+    right: var(--chrome-gap);
+    bottom: calc(var(--chrome-gap) * 3 + var(--chrome-key) * 2 + 2px);
+  }
+
+  /* La leyenda del resultado cabe entera («M · Momento  Curva exacta…»). */
+  .app-shell.workspace-screen[data-shell-class] .canvas-host .canvas-result-legend {
+    width: max-content;
+    max-width: min(380px, calc(100% - 32px));
+  }
+}
+
+/* ─── Móvil (K0) ─── */
+@media (max-width: 1023px) {
+  /* Barra inferior: una franja plana; ninguna pieza con caja propia que se corte. */
+  .app-shell.workspace-screen[data-shell-class='K0'] > .console {
+    align-items: center;
+    border-top: 1px solid var(--sc-color-border-soft);
+    background: var(--sc-color-surface-1);
+    box-shadow: none;
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .console .toolbar,
+  .app-shell.workspace-screen[data-shell-class='K0'] .console .tool-rail {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock {
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button {
+    min-height: 44px;
+    height: 44px;
+    border-radius: var(--sc-radius-control);
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button:not(.active, .is-active) {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+  /* La barra de dominio de 2 px es del riel vertical de escritorio; en la tecla
+     roja del móvil sólo se veía como una raya oscura. */
+  .app-shell.workspace-screen[data-shell-class='K0'] .tool-rail .tool-button::before { content: none; }
+
+  /* Inspector: la misma tecla que las herramientas, separada por un filete. */
+  .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot {
+    align-self: center;
+    align-items: center;
+    height: 32px;
+    padding: 0 6px 0 4px;
+    border: 0;
+    background: transparent;
+    box-shadow: inset 1px 0 0 var(--sc-color-border-soft);
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot > button {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    min-height: 44px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: var(--sc-radius-control);
+    background: transparent;
+    box-shadow: none;
+    color: var(--sc-color-text-secondary);
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot > button:is([aria-pressed='true'], [aria-expanded='true'], .active, .is-active) {
+    background: var(--sc-color-surface-2);
+    color: var(--sc-color-action-primary);
+  }
+
+  /* Zoom y coordenadas: una columna compacta en la esquina inferior derecha. */
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-controls {
+    left: auto;
+    right: var(--chrome-gap);
+    bottom: var(--chrome-gap);
+    flex-direction: column;
+    border-radius: var(--sc-radius-card);
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-controls :is(button, .sc-icon-button) {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-controls button + button {
+    border-left: 0;
+    border-top: 1px solid var(--sc-color-border-soft);
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-controls button svg { width: 18px; height: 18px; }
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-coordinate-launcher {
+    left: auto;
+    right: var(--chrome-gap);
+    bottom: calc(var(--chrome-gap) * 2 + 40px * 3);
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-coordinate-trigger {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--sc-radius-card);
+  }
+
+  /* Hojas (inspector y resultados): con los mismos márgenes que el lienzo. */
+  .app-shell.workspace-screen[data-shell-class='K0'] :is(.inspector-panel, .results-panel)[data-surface-presentation='sheet'] {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    border: 1px solid var(--sc-color-border-soft);
+    border-radius: var(--sc-radius-sheet, 20px);
+    clip-path: none;
+    overflow: hidden;
+    box-shadow: var(--sc-shadow-sheet);
+  }
+  /* Cabecera opaca de lado a lado: el contenido se esconde debajo sin cortarse a medias. */
+  .app-shell.workspace-screen[data-shell-class='K0'] .inspector-sheet-controls {
+    position: relative;
+    justify-content: center;
+    min-height: 36px;
+    padding: 0;
+    border-bottom: 1px solid var(--sc-color-border-soft);
+    background: var(--sc-color-surface-1);
+  }
+  /* Asa: la barra corta de siempre, con área de toque amplia. */
+  .app-shell.workspace-screen[data-shell-class='K0'] .inspector-sheet-handle {
+    width: 88px;
+    height: 32px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .inspector-sheet-handle svg { display: none; }
+  .app-shell.workspace-screen[data-shell-class='K0'] .inspector-sheet-handle::before {
+    content: '';
+    width: 40px;
+    height: 5px;
+    border-radius: var(--sc-radius-pill);
+    background: var(--sc-color-border-strong, var(--sc-color-border));
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .inspector-sheet-controls .mobile-inspector-close {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    width: 32px;
+    height: 32px;
+    margin-top: -16px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .inspector-panel[data-surface-presentation='sheet']::before { content: none; }
+}

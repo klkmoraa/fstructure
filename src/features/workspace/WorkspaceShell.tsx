@@ -36,6 +36,7 @@ import './workspaceTopbar.css';
    el empaquetador resuelve el duplicado. */
 import './commandPalette.css';
 import '../canvas/mobileCanvasDensity.css';
+import './canvasChrome.css';
 import { emitWorkspaceCommand, onWorkspaceCommand } from './workspaceCommands';
 import { isOwnHistoryScope } from './commandRegistry';
 import type { AnalysisResult } from '../../types';
