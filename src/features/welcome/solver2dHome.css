@@ -163,189 +163,6 @@
   gap: 9px;
 }
 
-/* --------------------------------------------------- Cita tipo notificación
-   Tarjeta de reflexión sólida, táctil y limpia alineada a la identidad FStructure.
-   Sin glassmorphismo (sin desenfoques ni fondos translúcidos).
-   Solo muestra la frase entre comillas y el autor. Una sola por recarga de página.
-   Desaparece en 7s (pausable con hover o interacción).
-   En desktop: flotante en la esquina inferior derecha.
-   En móvil: cápsula flotante centrada al fondo sobre safe-area, nítida y legible. */
-
-.solver2d-quote-toast {
-  position: fixed;
-  bottom: clamp(20px, 2.5vw, 32px);
-  right: clamp(20px, 2.5vw, 32px);
-  z-index: 9999;
-  max-width: min(420px, calc(100vw - 32px));
-  width: 100%;
-  padding: 16px 18px 20px;
-  border-radius: var(--sc-radius-panel);
-  border: 1px solid var(--sc-color-border);
-  background: var(--sc-color-surface-elevated);
-  box-shadow: var(--sc-shadow-lifted);
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  cursor: default;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-  overflow: hidden;
-  will-change: transform, opacity;
-  transition:
-    border-color var(--sc-motion-quick) var(--sc-ease-standard),
-    box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
-}
-
-[data-theme='dark'] .solver2d-quote-toast {
-  background: var(--sc-color-surface-elevated);
-  border-color: var(--sc-color-border-strong);
-  box-shadow: var(--sc-shadow-lifted);
-}
-
-.solver2d-quote-toast:hover {
-  border-color: var(--sc-color-border-strong);
-}
-
-.solver2d-quote-toast__body,
-.solver2d-quote-toast__text,
-.solver2d-quote-toast__author,
-.solver2d-quote-toast__progress,
-.solver2d-quote-toast__bar {
-  pointer-events: none;
-}
-
-.solver2d-quote-toast__close {
-  pointer-events: auto;
-}
-
-.solver2d-quote-toast__body {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  gap: 8px;
-}
-
-.solver2d-quote-toast__text {
-  margin: 0;
-  color: var(--sc-color-text-primary);
-  font-size: 13.5px;
-  line-height: 1.52;
-  font-style: normal;
-  font-weight: 450;
-  letter-spacing: -0.012em;
-  text-wrap: pretty;
-}
-
-.solver2d-quote-toast__author {
-  margin: 0;
-  color: var(--sc-color-family-analisis, var(--sc-color-text-secondary));
-  font-size: 11.5px;
-  font-weight: var(--sc-font-weight-semibold);
-  font-style: normal;
-  text-align: right;
-  letter-spacing: -0.01em;
-  opacity: 0.92;
-}
-
-.solver2d-quote-toast__close {
-  flex: none;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--sc-color-border-soft);
-  border-radius: 999px;
-  background: var(--sc-color-surface-1);
-  color: var(--sc-color-text-muted);
-  cursor: pointer;
-  padding: 0;
-  margin-top: -2px;
-  margin-right: -4px;
-  transition:
-    transform var(--sc-motion-instant) var(--sc-ease-standard),
-    background-color var(--sc-motion-instant) var(--sc-ease-standard),
-    color var(--sc-motion-instant) var(--sc-ease-standard),
-    border-color var(--sc-motion-instant) var(--sc-ease-standard);
-}
-
-.solver2d-quote-toast__close:hover {
-  transform: scale(1.08);
-  background: var(--sc-color-surface-2);
-  border-color: var(--sc-color-border-strong);
-  color: var(--sc-color-text-primary);
-}
-
-.solver2d-quote-toast__close:active {
-  transform: scale(0.95);
-}
-
-.solver2d-quote-toast__close:focus-visible {
-  outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
-  outline-offset: var(--sc-focus-ring-offset);
-}
-
-/* Barra de progreso de 7 segundos */
-.solver2d-quote-toast__progress {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2.5px;
-  background: var(--sc-color-surface-2);
-  overflow: hidden;
-}
-
-.solver2d-quote-toast__bar {
-  height: 100%;
-  background: var(--sc-color-family-analisis);
-  width: 100%;
-  transform-origin: left center;
-}
-
-@media (max-width: 768px) {
-  .solver2d-quote-toast {
-    bottom: max(14px, env(safe-area-inset-bottom, 14px));
-    left: 12px;
-    right: 12px;
-    margin-inline: auto;
-    width: calc(100% - 24px);
-    max-width: 440px;
-    padding: 14px 14px 18px 16px;
-    border-radius: var(--sc-radius-card);
-    border: 1px solid var(--sc-color-border-strong);
-    box-shadow: var(--sc-shadow-lifted);
-    gap: 10px;
-  }
-
-  .solver2d-quote-toast__body {
-    gap: 6px;
-  }
-
-  .solver2d-quote-toast__text {
-    font-size: 13px;
-    line-height: 1.48;
-  }
-
-  .solver2d-quote-toast__author {
-    font-size: 11px;
-    margin-top: 2px;
-  }
-
-  .solver2d-quote-toast__close {
-    width: 28px;
-    height: 28px;
-    margin-top: -1px;
-    margin-right: -2px;
-  }
-
-  .solver2d-quote-toast__progress {
-    height: 2.5px;
-  }
-}
-
 /* ------------------------------------------------------------------ Acción
    Una sola gramática de botón para toda la pantalla: reposo con filete y
    arcilla de contacto, hover un escalón arriba, pulsado hundido un píxel. El
@@ -818,4 +635,55 @@
   .solver2d-paths { grid-template-columns: minmax(0, 1fr); }
   .solver2d-path { min-height: 0; }
   .solver2d-open__actions { display: grid; }
+}
+
+/* FS-A01: la portada conserva su escena y su cita, pero las decisiones de
+   entrada quedan antes que la ilustración en una pantalla estrecha. Estas
+   reglas no cambian las bienvenidas de Solver 3D, FEM ni Diseño. */
+.sc-home:not(.tool-home) .solver2d-hero {
+  min-height: 360px;
+  padding-block: 8px 30px;
+}
+
+.sc-home:not(.tool-home) .solver2d-hero__eyebrow {
+  display: inline-flex;
+  color: var(--sc-color-text-secondary);
+  letter-spacing: .04em;
+  text-transform: none;
+}
+
+.sc-home:not(.tool-home) .solver2d-hero__stage,
+.sc-home:not(.tool-home) .solver2d-stage { min-height: 360px; }
+
+.sc-home:not(.tool-home) .solver2d-stage {
+  background-color: var(--sc-color-surface-inset);
+  background-image: linear-gradient(to right, color-mix(in srgb, var(--sc-color-border-soft) 55%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in srgb, var(--sc-color-border-soft) 55%, transparent) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+@media (max-width: 760px), (max-device-width: 760px), (hover: none) and (pointer: coarse) and (max-width: 1023px) {
+  .sc-home:not(.tool-home) .solver2d-hero { min-height: 0; padding-block: 0 24px; }
+  .sc-home:not(.tool-home) .solver2d-hero__stage { order: 0; min-height: 0; }
+  .sc-home:not(.tool-home) .solver2d-stage { min-height: 210px; height: 210px; }
+  .sc-home:not(.tool-home) .solver2d-hero__name { font-size: clamp(38px, 10.5vw, 54px); }
+}
+
+.sc-home[data-compact-viewport]:not(.tool-home) .solver2d-hero__stage { order: 0; min-height: 0; }
+.sc-home[data-compact-viewport]:not(.tool-home) .solver2d-stage { min-height: 210px; height: 210px; }
+
+.sc-home:not(.tool-home) .solver2d-quote-inline {
+  display: block;
+  max-width: 70ch;
+  margin: 0;
+  padding: 6px 0 6px 16px;
+  border-left: 2px solid var(--sc-color-family-analisis);
+  color: var(--sc-color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.sc-home:not(.tool-home) .solver2d-quote-inline cite {
+  display: block;
+  margin-top: 5px;
+  color: var(--sc-color-text-muted);
+  font-style: normal;
 }
