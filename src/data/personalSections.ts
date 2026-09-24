@@ -1,5 +1,5 @@
-export const PERSONAL_SECTIONS_STORAGE_KEY = 'structureCo.personal-sections.v1';
-export const PERSONAL_SECTIONS_SCHEMA_VERSION = 1 as const;
+const PERSONAL_SECTIONS_STORAGE_KEY = 'structureCo.personal-sections.v1';
+const PERSONAL_SECTIONS_SCHEMA_VERSION = 1 as const;
 export const SECTION_FORMULA_VERSION = 'section-properties-v1' as const;
 
 const MIN_DIMENSION = 0.001;
@@ -36,7 +36,7 @@ export interface PersonalParametricSection {
   readonly updatedAt: string;
 }
 
-export interface PersonalSectionDraft {
+interface PersonalSectionDraft {
   readonly name: string;
   readonly definition: ParametricSectionDefinition;
 }
@@ -309,7 +309,7 @@ const decodeSection = (value: unknown): PersonalParametricSection => {
 export const encodePersonalSections = (sections: readonly PersonalParametricSection[]): string =>
   JSON.stringify({ schemaVersion: PERSONAL_SECTIONS_SCHEMA_VERSION, sections }, null, 2);
 
-export const decodePersonalSections = (serialized: string): PersonalParametricSection[] => {
+const decodePersonalSections = (serialized: string): PersonalParametricSection[] => {
   const payload = JSON.parse(serialized) as unknown;
   if (!isRecord(payload) || payload.schemaVersion !== PERSONAL_SECTIONS_SCHEMA_VERSION || !Array.isArray(payload.sections)) {
     throw new Error('Expediente de secciones no soportado.');

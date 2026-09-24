@@ -11,13 +11,13 @@ import {
   type WorkerResponseEnvelope,
 } from '../runtime/workerProtocol';
 
-export interface ParametricStudyOptions {
+interface ParametricStudyOptions {
   memberId: string;
   parameter: ParametricParameter;
   factors: readonly number[];
 }
 
-export interface ParametricStudyState {
+interface ParametricStudyState {
   study: ParametricStudyResult | null;
   busy: boolean;
   error: string | null;

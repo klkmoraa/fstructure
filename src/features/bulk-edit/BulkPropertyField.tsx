@@ -29,10 +29,10 @@ import type { AggregatedValue, BulkChangeIntent, BulkPropertyState, BulkStagedCh
  */
 
 /** Centinelas de los controles: no son valores del modelo. */
-export const BULK_UNTOUCHED_OPTION = '__untouched__';
-export const BULK_CLEAR_OPTION = '__clear__';
+const BULK_UNTOUCHED_OPTION = '__untouched__';
+const BULK_CLEAR_OPTION = '__clear__';
 
-export interface BulkPropertyFieldProps {
+interface BulkPropertyFieldProps {
   state: BulkPropertyState;
   change: BulkChangeIntent;
   units: UnitSystemId;

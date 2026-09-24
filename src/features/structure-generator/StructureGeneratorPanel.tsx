@@ -53,7 +53,7 @@ import './structureGenerator.css';
  * cambio que deba poder ocurrir por rozar un botón mientras se teclea.
  */
 
-export interface StructureGeneratorPanelProps {
+interface StructureGeneratorPanelProps {
   form: GeneratorFormState;
   onFormChange: (form: GeneratorFormState) => void;
   errors: GeneratorFormErrors;

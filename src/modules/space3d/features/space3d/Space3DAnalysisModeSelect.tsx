@@ -5,7 +5,7 @@ import {
   type Space3DAnalysisMode,
 } from './space3dWorkspaceModel';
 
-export interface Space3DAnalysisModeSelectProps {
+interface Space3DAnalysisModeSelectProps {
   readonly value: Space3DAnalysisMode;
   readonly onChange: (value: Space3DAnalysisMode) => void;
   readonly disabled?: boolean;

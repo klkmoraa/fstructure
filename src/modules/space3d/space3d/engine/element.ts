@@ -11,7 +11,7 @@ import { multiply, transpose, zeros, type Matrix } from '../../../../foundation/
 import { buildMemberOrientation, memberLength } from './orientation';
 import type { Space3DFrameMember, Space3DNode, Space3DOrientationBasis } from '../model/types';
 
-export interface Space3DSectionProperties {
+interface Space3DSectionProperties {
   readonly E: number;
   readonly G: number;
   readonly A: number;
@@ -59,7 +59,7 @@ const addBendingBlock = (
   k[d][a] += m; k[d][b] += r2; k[d][c] += -m; k[d][d] += r4;
 };
 
-export const spaceFrameLocalStiffness = (properties: Space3DSectionProperties, length: number): Matrix => {
+const spaceFrameLocalStiffness = (properties: Space3DSectionProperties, length: number): Matrix => {
   const { E, G, A, Iy, Iz, J } = properties;
   const L = length;
   const k = zeros(12, 12);
@@ -76,7 +76,7 @@ export const spaceFrameLocalStiffness = (properties: Space3DSectionProperties, l
  * Matriz de transformación 12×12: cuatro copias del bloque 3×3 cuyas filas son
  * los ejes locales expresados en global, de modo que `uLocal = T · uGlobal`.
  */
-export const spaceFrameTransformation = (basis: Space3DOrientationBasis): Matrix => {
+const spaceFrameTransformation = (basis: Space3DOrientationBasis): Matrix => {
   const T = zeros(12, 12);
   const rows = [basis.x, basis.y, basis.z];
   for (let block = 0; block < 4; block += 1) {

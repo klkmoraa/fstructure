@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { translate } from '../../i18n/catalogs';
 import { formatSpace3DNumber } from './space3dNumberFormat';
 import { generateSpace3DFrame } from '../../space3d/engine/space3dGenerative';
-import { analyzeSpace3DStatic } from '../../space3d/engine/solver';
+import { analyzeSpace3DProject } from '../../space3d/engine/solver';
 import { Space3DResultsLegend } from './Space3DResultsLegend';
 
 afterEach(cleanup);
@@ -22,7 +22,7 @@ it('shows maximum displacement and navigates to its critical node', async () => 
     baseSupport: 'fixed',
     gravityLoadPerNode: 20,
   });
-  const analysis = analyzeSpace3DStatic(project, 'LC1');
+  const analysis = analyzeSpace3DProject(project, 'LC1');
   expect(analysis.success).toBe(true);
 
   const onSelectCritical = vi.fn();

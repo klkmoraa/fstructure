@@ -12,7 +12,7 @@ const deepFreeze = <T>(value: T): Readonly<T> => {
   return value;
 };
 
-export const NTC_STEEL_2023_TENSION_LIBRARY = deepFreeze({
+const NTC_STEEL_2023_TENSION_LIBRARY = deepFreeze({
   schemaVersion: 1,
   id: 'ntc-cdmx-2023-steel-tension-gross-yielding',
   revision: '2026-08-24.1',
@@ -52,7 +52,7 @@ export const NTC_STEEL_2023_TENSION_LIBRARY = deepFreeze({
   ],
 } as const);
 
-export interface GrossSectionYieldingInput {
+interface GrossSectionYieldingInput {
   readonly memberId: string;
   readonly materialId: string;
   readonly sectionId: string;
@@ -70,7 +70,7 @@ const finitePositive = (value: number, name: string): number => {
   return value;
 };
 
-export const evaluateGrossSectionYielding = (input: GrossSectionYieldingInput): DesignResult => {
+const evaluateGrossSectionYielding = (input: GrossSectionYieldingInput): DesignResult => {
   const demand = finitePositive(input.demand, 'Pu');
   const yieldStrength = finitePositive(input.yieldStrength, 'Fy');
   const grossArea = finitePositive(input.grossArea, 'A');
@@ -154,11 +154,11 @@ export type NtcSteelDesignBlocker =
   | 'pure-axial-demand-required'
   | 'positive-tension-required';
 
-export type NtcSteelDesignOutcome =
+type NtcSteelDesignOutcome =
   | { readonly status: 'available'; readonly result: DesignResult }
   | { readonly status: 'unavailable'; readonly memberId: string; readonly blockers: readonly NtcSteelDesignBlocker[] };
 
-export interface NtcSteelDesignRequest {
+interface NtcSteelDesignRequest {
   readonly project: ProjectModel;
   readonly analysis: AnalysisResult | null | undefined;
   readonly combinationId: string;
@@ -184,7 +184,7 @@ const areaMatchesCatalog = (member: MemberModel, area: number): boolean => {
   return Math.abs(member.A - area) <= Math.max(1e-12, area * 1e-9);
 };
 
-export const designNtcSteelTensionMember = (request: NtcSteelDesignRequest): NtcSteelDesignOutcome => {
+const designNtcSteelTensionMember = (request: NtcSteelDesignRequest): NtcSteelDesignOutcome => {
   const { project, analysis, combinationId, memberId } = request;
   if (!analysis?.success) return unavailable(memberId, 'reliable-analysis-required');
   const reliability = resolveReliability(analysis);
@@ -234,7 +234,7 @@ export const designNtcSteelTensionMember = (request: NtcSteelDesignRequest): Ntc
   };
 };
 
-export type NtcSteelDesignSummary =
+type NtcSteelDesignSummary =
   | {
     readonly status: 'available';
     readonly statusConclusion: 'incomplete';

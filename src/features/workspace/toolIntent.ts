@@ -6,7 +6,7 @@
  * aquí la intención y la mesa la toma —y la borra— al montarse. Vive sólo en
  * memoria: una recarga abre la mesa sin intención, que es lo seguro.
  */
-export type ToolIntent =
+type ToolIntent =
   | { tool: 'space3d'; kind: 'generate' | 'example' | 'first-node' }
   | { tool: 'fem'; kind: 'analyze' }
   | { tool: 'fem'; kind: 'import-gmsh'; fileName: string; text: string }

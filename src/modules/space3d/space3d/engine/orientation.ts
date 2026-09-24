@@ -11,23 +11,23 @@
  */
 import { SPACE3D_LIMITS, Space3DGeometryError, type Space3DMemberOrientation, type Space3DOrientationBasis, type Space3DVector } from '../model/types';
 
-export const dot = (a: Space3DVector, b: Space3DVector): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const dot = (a: Space3DVector, b: Space3DVector): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
-export const cross = (a: Space3DVector, b: Space3DVector): Space3DVector => [
+const cross = (a: Space3DVector, b: Space3DVector): Space3DVector => [
   a[1] * b[2] - a[2] * b[1],
   a[2] * b[0] - a[0] * b[2],
   a[0] * b[1] - a[1] * b[0],
 ];
 
-export const norm = (a: Space3DVector): number => Math.hypot(a[0], a[1], a[2]);
+const norm = (a: Space3DVector): number => Math.hypot(a[0], a[1], a[2]);
 
-export const subtract = (a: Space3DVector, b: Space3DVector): Space3DVector => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const subtract = (a: Space3DVector, b: Space3DVector): Space3DVector => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 
-export const add = (a: Space3DVector, b: Space3DVector): Space3DVector => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const add = (a: Space3DVector, b: Space3DVector): Space3DVector => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 
-export const scale = (a: Space3DVector, factor: number): Space3DVector => [a[0] * factor, a[1] * factor, a[2] * factor];
+const scale = (a: Space3DVector, factor: number): Space3DVector => [a[0] * factor, a[1] * factor, a[2] * factor];
 
-export const normalize = (a: Space3DVector, failureCode: string): Space3DVector => {
+const normalize = (a: Space3DVector, failureCode: string): Space3DVector => {
   const length = norm(a);
   if (!Number.isFinite(length) || length <= SPACE3D_LIMITS.minMemberLength) {
     throw new Space3DGeometryError(failureCode);

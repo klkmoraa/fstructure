@@ -114,17 +114,13 @@
     padding:4px 6px;
     border-radius:var(--sc-radius-card);
   }
-  .canvas-layer-icon,
   .canvas-layer-row .sc-layer-toggle__icon {
     width:30px;
     height:30px;
     border-radius:var(--sc-radius-card);
   }
-  .canvas-layer-copy,
   .canvas-layer-row .sc-layer-toggle__copy { gap:0; }
-  .canvas-layer-copy strong,
   .canvas-layer-row .sc-layer-toggle__copy strong { font-size:11px; }
-  .canvas-layer-copy small,
   .canvas-layer-row .sc-layer-toggle__copy small { display:none; }
   .canvas-layer-reset { min-height:36px; margin:0 5px 5px; font-size:11px; }
 

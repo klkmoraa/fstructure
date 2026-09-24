@@ -109,7 +109,7 @@ export interface AxisMagnification {
   readonly unstable: boolean;
 }
 
-export interface ColumnShear {
+interface ColumnShear {
   readonly demandKn: number;
   readonly effectiveDepthMm: number;
   readonly legs: number;
@@ -168,7 +168,7 @@ export interface ColumnDesignResult {
   readonly status: 'pass' | 'fail' | 'warning';
 }
 
-export interface ColumnDesignError { readonly ok: false; readonly errors: readonly string[] }
+interface ColumnDesignError { readonly ok: false; readonly errors: readonly string[] }
 
 const PHI_TENSION = 0.9;
 const TOLERANCE = 1e-9;

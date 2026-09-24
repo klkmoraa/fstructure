@@ -15,7 +15,7 @@ import type { Space3DSceneBounds } from './sceneModel';
 export const SPACE3D_VIEW_PRESETS = Object.freeze(['front', 'top', 'side', 'isometric'] as const);
 export type Space3DViewPreset = (typeof SPACE3D_VIEW_PRESETS)[number];
 
-export interface Space3DCameraPlacement {
+interface Space3DCameraPlacement {
   readonly position: Space3DVector;
   readonly target: Space3DVector;
   readonly up: Space3DVector;

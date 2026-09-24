@@ -8,7 +8,7 @@ import type { LoadCombination, ProjectModel } from '../types';
 import { splitMemberAt } from '../data/modelOperations';
 import { analyzeProject } from './solver';
 
-export type CertificateCheckId = 'global-equilibrium' | 'linearity' | 'maxwell-betti' | 'h-refinement';
+type CertificateCheckId = 'global-equilibrium' | 'linearity' | 'maxwell-betti' | 'h-refinement';
 export type CertificateStatus = 'passed' | 'observed' | 'not-applicable' | 'failed';
 
 export interface CertificateCheck {
@@ -29,7 +29,7 @@ export interface NumericCertificate {
   extraSolves: number;
 }
 
-export interface CertificateOptions {
+interface CertificateOptions {
   skip?: readonly CertificateCheckId[];
   /** Deriva relativa que merece atención al refinar; por defecto, 5 %. */
   refinementObservationThreshold?: number;

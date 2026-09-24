@@ -4,9 +4,9 @@
  * ownership boundary.  Unknown ids deliberately remain in storage: they may
  * belong to a newer surface or an older extension.
  */
-export const INSPECTOR_EXPANDED_STORAGE_KEY = 'structureCo.inspector.expanded.v1';
+const INSPECTOR_EXPANDED_STORAGE_KEY = 'structureCo.inspector.expanded.v1';
 
-export type InspectorSurfacePreferenceOwner = 'detail' | 'analysisSetup' | 'view';
+type InspectorSurfacePreferenceOwner = 'detail' | 'analysisSetup' | 'view';
 
 const OWNED_SECTION_IDS: Readonly<Record<InspectorSurfacePreferenceOwner, readonly string[]>> = {
   detail: ['advanced-node', 'advanced-member', 'advanced-nodal-load', 'advanced-member-load'],

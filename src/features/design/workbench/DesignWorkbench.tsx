@@ -22,8 +22,6 @@ const ELEMENTS: { id: ElementKind; label: string; icon: ReactNode }[] = [
 
 const isElementKind = (value: unknown): value is ElementKind => ELEMENTS.some((item) => item.id === value);
 
-export type DesignElementKind = ElementKind;
-
 export function DesignWorkbench({ nativeTool = true, onClose, startElement, startCode }: {
   nativeTool?: boolean;
   onClose?: () => void;

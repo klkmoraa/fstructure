@@ -16,8 +16,10 @@
     "lint:design": "node scripts/lint-design.mjs",
     "architecture:check": "node scripts/check-local-foundation-dependencies.mjs && node scripts/check-single-app-architecture.mjs",
     "architecture:test": "node --test scripts/check-local-foundation-dependencies.test.mjs scripts/check-single-app-architecture.test.mjs",
-    "design:oracle": "python3 -m unittest validation/python/test_concrete_beam_oracle.py",
-    "icons:generate": "node scripts/generate-brand-icons.mjs"
+    "design:oracle": "python3 -m unittest validation/python/test_elements_oracle.py",
+    "icons:generate": "node scripts/generate-brand-icons.mjs",
+    "scenes:render": "node scripts/render-suite-scenes.mjs",
+    "deadcode": "npx -y knip@5"
   },
   "dependencies": {
     "fflate": "^0.8.3",
@@ -30,7 +32,6 @@
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "@openai/sites-vite-plugin": "^0.2.0",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.6",
     "@types/node": "^24.13.2",

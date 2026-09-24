@@ -18,7 +18,7 @@ type Units = ProjectModel['settings']['units'];
 type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
 
 /** Presentation-only overlay of solved diagrams, deformed shapes and reaction arrows. Never mutates the model. */
-export interface CanvasResultLayerProps {
+interface CanvasResultLayerProps {
   /** `diagrams` paints under the geometry (fills/curves); `annotations` paints over it (reactions, influence path). */
   slot: 'diagrams' | 'annotations';
   project: ProjectModel;

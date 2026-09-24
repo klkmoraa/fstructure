@@ -7,7 +7,7 @@ import type { AnalysisResult, ProjectModel, Tool } from '../../types';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
 
-export interface ClassroomGuideProps {
+interface ClassroomGuideProps {
   project: ProjectModel;
   analysis?: AnalysisResult | null;
   progress?: ClassroomJourney;

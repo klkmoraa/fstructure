@@ -30,11 +30,11 @@ export interface Space3DSelection {
   readonly id: string;
 }
 
-export type Space3DExecuteResult =
+type Space3DExecuteResult =
   | { readonly ok: true }
   | { readonly ok: false; readonly code: string; readonly message: string };
 
-export interface Space3DProjectContextValue {
+interface Space3DProjectContextValue {
   readonly project: Space3DProjectV1;
   readonly analysis: Space3DAnalysisResult | null;
   readonly analysisState: Space3DAnalysisState;
@@ -90,7 +90,7 @@ const push = (history: History, next: Space3DProjectV1): History => ({
   future: [],
 });
 
-export interface Space3DProjectProviderProps {
+interface Space3DProjectProviderProps {
   readonly children: ReactNode;
   readonly storage?: Space3DStorageLike | null;
   readonly client?: Space3DWorkerClient;

@@ -39,16 +39,6 @@
   height: 100%;
 }
 
-.native-workspace-mode .concrete-design-surface {
-  position: relative;
-  inset: auto;
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  max-height: none;
-  border-radius: 0;
-}
-
 .shell-tool-slot:empty { display: none; }
 .shell-tool-slot--controls { display: flex; gap: 4px; align-items: center; }
 .shell-tool-inspector:has(.shell-tool-slot:empty) { display: none; }

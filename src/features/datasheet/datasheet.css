@@ -390,14 +390,6 @@
   text-transform: uppercase;
 }
 
-.datasheet-card__lead {
-  margin: 0 0 var(--sc-space-2);
-  color: var(--sc-color-text-primary);
-  font-size: var(--sc-font-size-body);
-  font-weight: var(--sc-font-weight-medium);
-  line-height: var(--sc-line-height-compact);
-}
-
 .datasheet-card__empty,
 .datasheet-card__note {
   margin: var(--sc-space-2) 0 0;
@@ -457,20 +449,12 @@
   letter-spacing: var(--sc-tracking-eyebrow);
 }
 
-.datasheet-context__note {
-  margin: 0;
-  color: var(--sc-color-text-muted);
-  font-size: var(--sc-font-size-caption);
-  line-height: var(--sc-line-height-compact);
-}
-
 /* ------------------------------------------------------------------ */
 /* Previews                                                            */
 /* ------------------------------------------------------------------ */
 
 .datasheet-node-preview,
-.datasheet-support-preview,
-.datasheet-section-preview {
+.datasheet-support-preview {
   display: block;
   width: 100%;
   height: auto;
@@ -501,17 +485,6 @@
 .datasheet-support-glyph circle,
 .datasheet-support-glyph polygon {
   fill: var(--sc-color-bg-canvas);
-}
-
-.datasheet-section-preview .section-shape {
-  fill: var(--sc-color-structure-member);
-  stroke: var(--sc-color-structure-member);
-  stroke-width: 1;
-}
-
-.datasheet-section-preview .section-shape-void {
-  fill: var(--sc-color-bg-canvas);
-  stroke: none;
 }
 
 .datasheet-node-preview__ghost {

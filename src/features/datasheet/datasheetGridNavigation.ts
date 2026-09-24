@@ -16,12 +16,12 @@ export interface GridPosition {
   column: number;
 }
 
-export interface GridBounds {
+interface GridBounds {
   rows: number;
   columns: number;
 }
 
-export type GridNavigationKey =
+type GridNavigationKey =
   | 'ArrowUp'
   | 'ArrowDown'
   | 'ArrowLeft'
@@ -31,13 +31,13 @@ export type GridNavigationKey =
   | 'PageUp'
   | 'PageDown';
 
-export interface GridNavigationModifiers {
+interface GridNavigationModifiers {
   /** `Ctrl` en Windows y Linux, `Cmd` en macOS: ambos llevan al extremo. */
   extendToEdge?: boolean;
 }
 
 /** Filas que recorren `AvPág` y `RePág`; una pantalla aproximada de datasheet. */
-export const GRID_PAGE_ROWS = 10;
+const GRID_PAGE_ROWS = 10;
 
 export const isGridNavigationKey = (key: string): key is GridNavigationKey =>
   key === 'ArrowUp' || key === 'ArrowDown' || key === 'ArrowLeft' || key === 'ArrowRight'

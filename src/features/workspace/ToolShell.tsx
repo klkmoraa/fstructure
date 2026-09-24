@@ -19,7 +19,7 @@ import './workspaceTopbar.css';
 import './nativeWorkspaceMode.css';
 
 /** Herramientas que viven fuera del Modelo 2D, cada una en su propia mesa. */
-export type IsolatedToolId = Exclude<ToolId, 'model2d'>;
+type IsolatedToolId = Exclude<ToolId, 'model2d'>;
 
 type ToolShellProps = {
   tool: IsolatedToolId;
@@ -154,7 +154,7 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
  * de teclado, ni su bróker de superficies. La marca de la barra vuelve al Inicio,
  * que es el único lugar donde se elige otra herramienta.
  */
-export const ToolShell = (props: ToolShellProps) => <ShellCompositionProvider>
+const ToolShell = (props: ToolShellProps) => <ShellCompositionProvider>
   <ToolSurface {...props} />
 </ShellCompositionProvider>;
 

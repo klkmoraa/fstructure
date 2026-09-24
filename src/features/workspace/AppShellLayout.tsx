@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode, Ref } from 'react';
 import { isToolRailCompact, type ShellClass } from './shellComposition';
 
-export interface AppShellLayoutProps {
+interface AppShellLayoutProps {
   projectId: string;
   skipLabel: string;
   console: ReactNode;

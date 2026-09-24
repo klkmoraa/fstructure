@@ -31,7 +31,7 @@ export interface Space3DSuccessResponse {
   readonly result: Space3DAnalysisResult;
 }
 
-export type Space3DWorkerErrorCode = 'PROTOCOL_MISMATCH' | 'UNSUPPORTED_REQUEST' | 'WORKER_FAILURE';
+type Space3DWorkerErrorCode = 'PROTOCOL_MISMATCH' | 'UNSUPPORTED_REQUEST' | 'WORKER_FAILURE';
 
 export interface Space3DErrorResponse {
   readonly protocolVersion: typeof SPACE3D_PROTOCOL_VERSION;

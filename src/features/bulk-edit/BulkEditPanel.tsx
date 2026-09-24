@@ -88,7 +88,7 @@ export interface BulkEditApplyRequest {
   aggregate: BulkSelectionAggregate;
 }
 
-export interface BulkEditPanelProps {
+interface BulkEditPanelProps {
   selection: BulkSelectionInput;
   units: UnitSystemId;
   language: Language;

@@ -111,7 +111,7 @@ export interface FootingDesignResult {
   readonly status: 'pass' | 'fail' | 'warning';
 }
 
-export interface FootingDesignError { readonly ok: false; readonly errors: readonly string[] }
+interface FootingDesignError { readonly ok: false; readonly errors: readonly string[] }
 
 /** Factor de efecto de tamaño λs = √(2/(1 + 0.004d)) ≤ 1.0 con d en mm (NTC ec. 5.5.3.2.1.b). */
 export const sizeFactor = (effectiveDepthMm: number): number => Math.min(1, Math.sqrt(2 / (1 + 0.004 * effectiveDepthMm)));

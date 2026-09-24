@@ -1,7 +1,7 @@
 import { classOneConcreteProperties } from '../concrete/ntcConcrete2023';
 import {
   LOAD_FACTORS,
-  STEEL_ELASTIC_MODULUS_MPA,
+  
   betaOne,
   complementary,
   e060,
@@ -529,13 +529,10 @@ const E060: DesignCode = {
   },
 };
 
-export const DESIGN_CODES: Readonly<Record<DesignCodeId, DesignCode>> = Object.freeze({
+const DESIGN_CODES: Readonly<Record<DesignCodeId, DesignCode>> = Object.freeze({
   'ntc-2023': NTC_2023,
   'nsr-10': NSR_10,
   e060: E060,
 });
 
 export const designCode = (id: DesignCodeId): DesignCode => DESIGN_CODES[id];
-
-/** Deformación de fluencia con Es = 200 000 MPa. */
-export const yieldStrainOf = (fyMpa: number) => fyMpa / STEEL_ELASTIC_MODULUS_MPA;

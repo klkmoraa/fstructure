@@ -9,19 +9,13 @@
 import { axialCantilever, bendingCantilever, freeFloatingMember, torsionCantilever } from './engine/fixtures';
 import { buildSpaceFrameElement } from './engine/element';
 import type { Space3DAnalysisResult, Space3DProjectV1, Space3DVector } from './model/types';
-import { SPACE3D_PROTOCOL_VERSION } from './runtime/protocol';
 
-export const SPACE3D_CORPUS_SCHEMA = 'fusionstructure-space3d-result/v1' as const;
-export const SPACE3D_CORPUS_ENGINE_ID = 'fusionstructure-space3d' as const;
-export const SPACE3D_CORPUS_ALGORITHM_ID = 'space-frame-euler-bernoulli-linear-v1' as const;
-export const SPACE3D_CORPUS_TOLERANCES = Object.freeze({ absolute: 1e-9, relative: 1e-8, nearZero: 1e-10, equilibriumNormalized: 1e-7 });
-export const SPACE3D_RUNTIME_CONTRACT = Object.freeze({
-  workerProtocolVersion: SPACE3D_PROTOCOL_VERSION,
-  supported: ['run', 'structured errors', 'requestId stale-response rejection', 'worker-module message seam through explicit scope harness', 'DedicatedWorkerGlobalScope-only production auto-install', 'real terminate cancellation', 'inline fallback message delivery'] as const,
-  unsupported: ['progress events', 'cooperative cancellation inside a numerical loop', 'automatic pre-v1 storage migration; pre-v1 payloads are rejected fail-closed', 'browser DedicatedWorkerGlobalScope execution in Vitest'] as const,
-});
+const SPACE3D_CORPUS_SCHEMA = 'fusionstructure-space3d-result/v1' as const;
+const SPACE3D_CORPUS_ENGINE_ID = 'fusionstructure-space3d' as const;
+const SPACE3D_CORPUS_ALGORITHM_ID = 'space-frame-euler-bernoulli-linear-v1' as const;
+const SPACE3D_CORPUS_TOLERANCES = Object.freeze({ absolute: 1e-9, relative: 1e-8, nearZero: 1e-10, equilibriumNormalized: 1e-7 });
 
-export interface Space3DCorpusAssertion {
+interface Space3DCorpusAssertion {
   readonly id: string;
   readonly target: string;
   readonly expected: number | boolean | string;
@@ -30,7 +24,7 @@ export interface Space3DCorpusAssertion {
   readonly nearZeroTolerance: number;
 }
 
-export type Space3DRigidBodyModeId =
+type Space3DRigidBodyModeId =
   | 'translation-x'
   | 'translation-y'
   | 'translation-z'
@@ -38,7 +32,7 @@ export type Space3DRigidBodyModeId =
   | 'rotation-y'
   | 'rotation-z';
 
-export interface Space3DRigidBodyModeProof {
+interface Space3DRigidBodyModeProof {
   readonly id: Space3DRigidBodyModeId;
   /** Vector global de 12 GDL, `[u_i, r_i, u_j, r_j]`. */
   readonly globalDisplacement: readonly number[];
@@ -47,7 +41,7 @@ export interface Space3DRigidBodyModeProof {
   readonly maxResidual: number;
 }
 
-export type Space3DCorpusInvariant =
+type Space3DCorpusInvariant =
   | { readonly id: string; readonly kind: 'equilibrium'; readonly max: number }
   | { readonly id: string; readonly kind: 'success'; readonly expected: boolean }
   | { readonly id: string; readonly kind: 'deterministic-issues'; readonly expectedCodes: readonly string[] }
@@ -59,7 +53,7 @@ export type Space3DCorpusInvariant =
     readonly maxResidual: number;
   };
 
-export interface Space3DCorpusCase {
+interface Space3DCorpusCase {
   readonly id: string;
   readonly status: 'available' | 'unsupported';
   readonly capability: string;

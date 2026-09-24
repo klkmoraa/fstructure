@@ -18,7 +18,7 @@ import {
 } from '../../space3d/view/resultSemantics';
 import type { TranslationKey } from '../../i18n/catalogs';
 
-export interface Space3DSelectionHUDProps {
+interface Space3DSelectionHUDProps {
   readonly selection: Space3DSelection;
   readonly project: Space3DProjectV1;
   readonly analysis: Space3DAnalysisResult | null;

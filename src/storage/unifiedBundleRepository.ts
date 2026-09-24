@@ -37,7 +37,7 @@ interface StoredLibrarySnapshot {
   recoveries: BundleRecoveryRecord[];
   migrations: MigrationRecord[];
 }
-export interface BundleIntegrityDiagnostic {
+interface BundleIntegrityDiagnostic {
   store: 'bundles' | 'recoveries';
   recordId: string;
   code: 'invalid-record';

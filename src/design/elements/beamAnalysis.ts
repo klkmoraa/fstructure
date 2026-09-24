@@ -17,7 +17,7 @@ export interface BeamSpanLoads {
   readonly pointAtM: number;
 }
 
-export interface BeamAnalysisInput {
+interface BeamAnalysisInput {
   readonly spans: readonly BeamSpanLoads[];
   readonly leftEnd: BeamEnd;
   readonly rightEnd: BeamEnd;
@@ -52,7 +52,7 @@ export interface BeamAnalysis {
   readonly solverRuns: number;
 }
 
-export type BeamAnalysisOutcome = { readonly ok: true; readonly analysis: BeamAnalysis } | { readonly ok: false; readonly error: string };
+type BeamAnalysisOutcome = { readonly ok: true; readonly analysis: BeamAnalysis } | { readonly ok: false; readonly error: string };
 
 const STATIONS_PER_SPAN = 96;
 
@@ -65,7 +65,7 @@ const supportFor = (end: BeamEnd, restrainsX: boolean): SupportDefinition => {
 const hasPoint = (span: BeamSpanLoads) => span.pointDeadKn !== 0 || span.pointLiveKn !== 0;
 
 /** Modelo 2D temporal: nodos en los apoyos, un miembro por claro y un caso por patrón de carga. */
-export function buildBeamProject(input: BeamAnalysisInput): ProjectModel {
+function buildBeamProject(input: BeamAnalysisInput): ProjectModel {
   const base = createDefaultProject();
   const xs = [0];
   input.spans.forEach((span) => xs.push(xs[xs.length - 1]! + span.lengthM));

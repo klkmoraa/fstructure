@@ -22,7 +22,7 @@ export interface ScenarioExclusion {
   reason: string;
 }
 
-export interface ScenarioSelection {
+interface ScenarioSelection {
   included: AnalysisScenario[];
   excluded: ScenarioExclusion[];
 }
@@ -37,20 +37,20 @@ export interface EnvelopeCoverage {
   level: ReliabilityLevel;
 }
 
-export interface EnvelopeBranch {
+interface EnvelopeBranch {
   scenarioId: string;
   scenarioName: string;
   coefficients: [number, number, number, number];
 }
 
-export interface EnvelopeSegment {
+interface EnvelopeSegment {
   x0: number;
   x1: number;
   minimum: EnvelopeBranch;
   maximum: EnvelopeBranch;
 }
 
-export interface EnvelopeExtreme {
+interface EnvelopeExtreme {
   x: number;
   value: number;
   scenarioId: string;
@@ -59,7 +59,7 @@ export interface EnvelopeExtreme {
   side: 'left' | 'right' | 'continuous';
 }
 
-export interface DiagramEnvelope extends EnvelopeCoverage {
+interface DiagramEnvelope extends EnvelopeCoverage {
   memberId: string;
   quantity: DiagramQuantity;
   segments: EnvelopeSegment[];
@@ -97,8 +97,6 @@ const coverageOf = (selection: ScenarioSelection): EnvelopeCoverage => ({
     ? worstLevel(...selection.included.map((scenario) => scenario.status))
     : 'failed',
 });
-
-export const envelopeCoverage = coverageOf;
 
 const coefficientsOf = (segment: DiagramSegment, quantity: DiagramQuantity): [number, number, number, number] => {
   const source = segment[quantity];

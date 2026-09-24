@@ -23,19 +23,19 @@ export interface SmartLabelCandidate {
   forceVisible?: boolean;
 }
 
-export interface SmartLabelRect {
+interface SmartLabelRect {
   x: number;
   y: number;
   width: number;
   height: number;
 }
 
-export interface PlacedSmartLabel extends SmartLabelCandidate {
+interface PlacedSmartLabel extends SmartLabelCandidate {
   rect: SmartLabelRect;
   leader: boolean;
 }
 
-export type SmartLabelDetail = 'essential' | 'standard' | 'detailed';
+type SmartLabelDetail = 'essential' | 'standard' | 'detailed';
 
 const LABEL_HEIGHT = 22;
 const LABEL_GAP = 8;

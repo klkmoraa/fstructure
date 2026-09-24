@@ -322,8 +322,7 @@
 .bulk-changes__row dt { color: var(--sc-color-text-secondary); font-size: var(--sc-font-size-label); }
 .bulk-changes__row dd { margin: 0; display: grid; gap: 1px; min-width: 0; }
 .bulk-changes__row dd small { color: var(--sc-color-text-muted); font-size: var(--sc-font-size-label); }
-.bulk-changes__row.is-unchanged dt,
-.bulk-changes__unchanged { color: var(--sc-color-text-muted); }
+.bulk-changes__row.is-unchanged dt { color: var(--sc-color-text-muted); }
 
 .bulk-changes__transition { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sc-space-1); }
 

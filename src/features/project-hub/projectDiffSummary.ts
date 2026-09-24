@@ -2,7 +2,7 @@ import type { DiffChange, DiffChangeKind, DiffEntityKind, ProjectDiff } from '..
 import { formatSignificant } from '../../utils/numberFormat';
 
 /** Orden de lectura del modelo: geometría, barras, cargas y ajustes. */
-export const DIFF_ENTITY_ORDER: readonly DiffEntityKind[] = [
+const DIFF_ENTITY_ORDER: readonly DiffEntityKind[] = [
   'node', 'member', 'nodalLoad', 'memberLoad', 'prescribedDisplacement',
   'memberInitialEffect', 'loadCase', 'combination', 'settings',
 ];
@@ -12,7 +12,7 @@ export const diffCounts = (diff: ProjectDiff): Array<{ change: DiffChangeKind; c
     .map((change) => ({ change, count: diff.summary[change] }))
     .filter((entry) => entry.count > 0);
 
-export interface DiffGroup { kind: DiffEntityKind; changes: DiffChange[]; }
+interface DiffGroup { kind: DiffEntityKind; changes: DiffChange[]; }
 
 /** Agrupa sin recalcular el diff y estabiliza el orden visible por entidad e id. */
 export const groupChangesByKind = (diff: ProjectDiff): DiffGroup[] => {
@@ -26,7 +26,7 @@ export const groupChangesByKind = (diff: ProjectDiff): DiffGroup[] => {
   }));
 };
 
-export interface DiffValueLabels { absent: string; yes: string; no: string; }
+interface DiffValueLabels { absent: string; yes: string; no: string; }
 const MAX_TEXT_LENGTH = 48;
 
 /** Convierte valores sólo para lectura: no deduce magnitudes ni escribe al modelo. */

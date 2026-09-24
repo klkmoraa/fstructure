@@ -28,13 +28,13 @@ import { unitLabel } from '../../engine/units';
 import { toDisplay } from '../../foundation/units';
 import { memberAxis } from '../../graphics/structureGeometry';
 import { clearNumber, number } from './pdfFormat';
-import { asWorkedEquation, type EquationInput } from './pdfEquation';
+import {  type EquationInput } from './pdfEquation';
 import type { ReportContext } from './reportContext';
 import type {
   DiagramQuantity,
   DiagramSegment,
   MemberLoad,
-  MemberResult,
+  
   ProjectModel,
 } from '../../types';
 
@@ -679,7 +679,7 @@ const deformationBlocks = (context: ReportContext): SubstitutionBlock[] => {
 // Equilibrium
 // ---------------------------------------------------------------------------------------
 
-export interface EquilibriumSum {
+interface EquilibriumSum {
   /** `ΣF_x`, `ΣF_y`, `ΣM_O`. */
   readonly symbol: string;
   /** The sum written out with every term, or just the closing value when it cannot be. */
@@ -797,7 +797,7 @@ export const agrees = (left: number, right: number, scale = 1): boolean =>
   Math.abs(left - right) <= 1e-6 * Math.max(1, Math.abs(scale));
 
 /** One bar crossing the boundary of a free body, and the end of it that stays inside. */
-export interface SeveredBar {
+interface SeveredBar {
   readonly memberId: string;
   /** Node of the bar that belongs to the retained portion. */
   readonly nodeId: string;
@@ -925,80 +925,4 @@ export const stepSubstitutions = (context: ReportContext, stepId: string): Subst
     case 'verification': return verificationBlocks(context);
     default: return [];
   }
-};
-
-/**
- * First substituted relation of a step, for surfaces with room for exactly one.
- *
- * Flattened back to a single line: a caller with room for one relation has no room for a
- * three-row aligned block.
- */
-export const leadSubstitution = (context: ReportContext, stepId: string): string | undefined => {
-  const first = stepSubstitutions(context, stepId).flatMap((block) => block.equations)[0];
-  if (first === undefined) return undefined;
-  const worked = asWorkedEquation(first);
-  const tail = [worked.substituted, worked.result].filter((part) => part !== undefined).join(' = ');
-  return tail ? `${worked.lhs} = ${tail}${worked.result !== undefined && worked.unit ? ` ${worked.unit}` : ''}` : worked.lhs;
-};
-
-/** Dimensions of a diagram quantity as force^a · length^b. */
-const quantityDimension = (quantity: DiagramQuantity): readonly [number, number] => quantity === 'moment' ? [1, 1] : [1, 0];
-
-/**
- * The slope of a diagram, evaluated rather than stated: `dV/ds = −12 kN/m` is this member's
- * own load, not the differential relation that would produce it on any member.
- */
-export const quantitySlopeEquation = (
-  context: ReportContext,
-  quantity: DiagramQuantity,
-  result: MemberResult,
-): string | undefined => {
-  const segment = result.diagramSegments[0];
-  if (!segment) return undefined;
-  const { project } = context;
-  const coefficients = quantity === 'axial' ? segment.axial : quantity === 'shear' ? segment.shear : segment.moment;
-  const symbol = quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M';
-  const [forcePower, lengthPower] = quantityDimension(quantity);
-  const slope = coefficients[1] ?? 0;
-  const curvature = coefficients[2] ?? 0;
-  const reference = scaleOf(coefficients);
-  const linear = `${dim(project, slope, forcePower, lengthPower - 1, reference)} ${dimensionalUnit(project, forcePower, lengthPower - 1)}`;
-  if (Math.abs(curvature) <= reference * 1e-10) return `d${symbol}/ds = ${linear}`;
-  const second = dim(project, curvature, forcePower, lengthPower - 2, reference);
-  const negative = second.startsWith('−') || second.startsWith('-');
-  return `d${symbol}/ds = ${linear} ${negative ? '-' : '+'} 2 · ${negative ? second.slice(1) : second} s`;
-};
-
-/**
- * How this member's diagram was actually built: the value it starts from, the slope it
- * follows and where it closes or crosses zero — each one a figure from this analysis.
- */
-export const quantityConstructionSteps = (
-  context: ReportContext,
-  quantity: DiagramQuantity,
-  result: MemberResult,
-): string[] => {
-  const segment = result.diagramSegments[0];
-  if (!segment) return [];
-  const { project } = context;
-  const coefficients = quantity === 'axial' ? segment.axial : quantity === 'shear' ? segment.shear : segment.moment;
-  const symbol = quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M';
-  const [forcePower, lengthPower] = quantityDimension(quantity);
-  const unit = dimensionalUnit(project, forcePower, lengthPower);
-  const lengthUnit = unitLabel(project.settings.units, 'length');
-  const reference = scaleOf(coefficients);
-  const span = segment.x1 - segment.x0;
-  const steps = [
-    `Se parte de ${symbol}(0) = ${dim(project, coefficients[0] ?? 0, forcePower, lengthPower, reference)} ${unit}.`,
-    `Se avanza con ${quantitySlopeEquation(context, quantity, result) ?? ''}.`,
-    `Cierra en ${symbol}(${dim(project, span, 0, 1)} ${lengthUnit}) = ${dim(project, polynomialAt(coefficients, span), forcePower, lengthPower, reference)} ${unit}.`,
-  ];
-  const [v0, v1] = [segment.shear[0] ?? 0, segment.shear[1] ?? 0];
-  if (quantity === 'moment' && Math.abs(v1) > scaleOf(segment.shear) * 1e-10) {
-    const station = -v0 / v1;
-    if (station > 0 && station < span) {
-      steps[2] = `V = 0 en s = ${dim(project, station, 0, 1)} ${lengthUnit}, donde M = ${dim(project, polynomialAt(segment.moment, station), 1, 1)} ${unit}.`;
-    }
-  }
-  return steps;
 };

@@ -1,7 +1,7 @@
 import { lazy, type ComponentType } from 'react';
 import type { ToolId } from '../../shared/contracts';
 
-export type ToolHomeComponent = ComponentType<{ onOpenWorkspace: () => void; onOpenSuite: () => void }>;
+type ToolHomeComponent = ComponentType<{ onOpenWorkspace: () => void; onOpenSuite: () => void }>;
 
 /**
  * Bienvenida propia de cada herramienta aislada. Cada una vive en el

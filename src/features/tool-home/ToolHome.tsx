@@ -35,7 +35,7 @@ export interface ToolHomeContent {
   note: Localized;
 }
 
-export interface ToolHomeProps {
+interface ToolHomeProps {
   tool: Exclude<ToolId, 'model2d'>;
   content: ToolHomeContent;
   /** Resumen del trabajo de esta herramienta en el proyecto abierto. */

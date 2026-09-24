@@ -1,4 +1,4 @@
-export const downloadPortableBytes =(bytes: Uint8Array, filename: string, mimeType: string): void => {
+const downloadPortableBytes =(bytes: Uint8Array, filename: string, mimeType: string): void => {
   const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: mimeType }));
   const anchor = document.createElement('a');
   anchor.href = url;

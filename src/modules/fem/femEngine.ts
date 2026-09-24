@@ -122,7 +122,7 @@ export interface FemAnalysisResult {
   readonly reason: string;
 }
 
-export interface FemOpenBundleV1 {
+interface FemOpenBundleV1 {
   readonly format: 'fstructure-fem-bundle';
   readonly formatVersion: 1;
   readonly document: FemDocumentV1;
@@ -342,7 +342,7 @@ const principalAndVonMises = (sx: number, sy: number, txy: number, sz = 0): { pr
   return { principal: [Math.max(...principalValues), Math.min(...principalValues)], vonMises: Math.sqrt(Math.max(0, vonMisesSquared)) };
 };
 
-export interface FemAnalysisOptions {
+interface FemAnalysisOptions {
   readonly budget?: AnalysisBudget;
 }
 

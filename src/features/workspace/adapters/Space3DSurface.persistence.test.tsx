@@ -11,7 +11,7 @@ import { createDefaultProject } from '../../../data/defaultProject';
 import { createUnifiedProjectBundle } from '../../../shared/project/unifiedProjectBundle';
 import { IndexedDbUnifiedBundleRepository } from '../../../storage/unifiedBundleRepository';
 import type { UnifiedProjectSession } from '../../../storage/unifiedProjectSession';
-import { buildPlanar2DToSpace3DHandoff } from '../../../integrations/planar2dToSpace3d';
+import { createSpace3DPortalExample } from '../../../modules/space3d/space3d/model/defaultProject';
 import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
 import { translate } from '../../../modules/space3d/i18n/catalogs';
 import { ShellToolSlotsProvider, ShellSlotHost } from '../ShellToolSlots';
@@ -44,8 +44,8 @@ function Harness() {
 async function seed(id: string, x: number, stale = false) {
   const repo = new IndexedDbUnifiedBundleRepository();
   const project = { ...createDefaultProject(), id };
-  const candidate = buildPlanar2DToSpace3DHandoff(project).candidateModel;
-  const model = { ...candidate, nodes: candidate.nodes.map((node, i) => i ? node : { ...node, x }) };
+  const candidate = createSpace3DPortalExample();
+  const model = { ...candidate, id: `space3d:${id}`, nodes: candidate.nodes.map((node, i) => i ? node : { ...node, x }) };
   const bundle = createUnifiedProjectBundle(project, `${id}-current`);
   bundle.space3d = linkSpace3DToShell(id, stale ? `${id}-old` : `${id}-current`, model);
   await repo.saveBundle(bundle, 0);
@@ -109,7 +109,7 @@ it('abre aislado: sin rama 3D no deriva el modelo del 2D ni lo menciona', async 
   expect(project.nodes.length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: new RegExp(`^${t('space3d.nodes')}`) }).textContent).toBe(`${t('space3d.nodes')}0`);
   expect(screen.queryByText(/2D/)).toBeNull();
-  expect(screen.queryByRole('button', { name: t('space3d.rederive') })).toBeNull();
+  expect(screen.queryByRole('button', { name: /derivar/i })).toBeNull();
   await addNode();
   await act(() => session.open('A'));
   const saved = (await repo.openBundle('A'))!.bundle.space3d!;

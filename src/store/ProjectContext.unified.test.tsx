@@ -8,7 +8,6 @@ import { IndexedDbUnifiedBundleRepository } from '../storage/unifiedBundleReposi
 import { createDefaultProject } from '../data/defaultProject';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
 import { PROJECT_STORAGE_KEY, PROJECT_BACKUP_KEY, PROJECT_RECOVERY_KEY } from '../data/projectStorage';
-import { useSharedToolState } from './SharedToolState';
 
 beforeEach(() => { globalThis.indexedDB = new IDBFactory(); localStorage.clear(); window.history.replaceState(null, '', '/'); });
 afterEach(cleanup);
@@ -79,29 +78,3 @@ it('shows corrupt canonical record diagnostics without changing original source 
   expect((await repo.snapshot()).integrityDiagnostics).toHaveLength(1);
 });
 
-it('publishes a solver snapshot and shared selection without allowing 3D selection to edit 2D', async () => {
-  const project = createDefaultProject();
-  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
-  function SnapshotProbe() {
-    const model = useProject();
-    const shared = useSharedToolState()!;
-    return <>
-      <button onClick={() => model.setSelection({ kind: 'node', id: 'N1' })}>Select 2D</button>
-      <button onClick={() => shared.publish3DSelection([{ projectId: model.project.id, tool: 'space3d', kind: 'member', id: 'M2' }])}>Select 3D</button>
-      <button onClick={model.analyze}>Solve</button>
-      <button onClick={() => model.updateProject((draft) => ({ ...draft, nodes: draft.nodes.map((node) => ({ ...node, x: node.x * 2 })) }))}>Change source</button>
-      <output aria-label="Shared 2D">{shared.selection2d[0]?.id}</output>
-      <output aria-label="Shared 3D">{shared.selection3d[0]?.id}</output>
-      <output aria-label="Snapshot">{shared.snapshot?.sourceVersion ?? 'none'}</output>
-    </>;
-  }
-  render(<ProjectProvider unified><SnapshotProbe /></ProjectProvider>);
-  await userEvent.click(await screen.findByRole('button', { name: 'Select 2D' }));
-  await userEvent.click(screen.getByRole('button', { name: 'Select 3D' }));
-  expect(screen.getByLabelText('Shared 2D').textContent).toBe('N1');
-  expect(screen.getByLabelText('Shared 3D').textContent).toBe('M2');
-  await userEvent.click(screen.getByRole('button', { name: 'Solve' }));
-  await waitFor(() => expect(screen.getByLabelText('Snapshot').textContent).not.toBe('none'));
-  await userEvent.click(screen.getByRole('button', { name: 'Change source' }));
-  expect(screen.getByLabelText('Snapshot').textContent).toBe('none');
-});

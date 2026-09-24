@@ -32,7 +32,6 @@ const NEXT_COPY: Record<Space3DGuideAction, NextCopy> = {
   'add-member': { title: 'space3d.guideAddMemberTitle', body: 'space3d.guideAddMemberBody', action: 'space3d.guideAddMemberAction' },
   'add-support': { title: 'space3d.guideAddSupportTitle', body: 'space3d.guideAddSupportBody', action: 'space3d.guideAddSupportAction' },
   'add-load': { title: 'space3d.guideAddLoadTitle', body: 'space3d.guideAddLoadBody', action: 'space3d.guideAddLoadAction' },
-  'resolve-bridge': { title: 'space3d.guideBridgeTitle', action: 'space3d.guideBridgeAction' },
   analyze: { title: 'space3d.guideAnalyzeTitle', body: 'space3d.guideAnalyzeBody', action: 'space3d.analyze' },
   running: { title: 'space3d.guideRunningTitle', body: 'space3d.guideRunningBody' },
   reanalyze: { title: 'space3d.guideReanalyzeTitle', body: 'space3d.guideReanalyzeBody', action: 'space3d.guideReanalyzeAction' },
@@ -40,20 +39,18 @@ const NEXT_COPY: Record<Space3DGuideAction, NextCopy> = {
   'explore-results': { title: 'space3d.guideResultsTitle', body: 'space3d.guideResultsBody', action: 'space3d.guideResultsAction' },
 };
 
-export interface Space3DGuideProps {
+interface Space3DGuideProps {
   readonly guide: Space3DGuideModel;
   readonly t: Translate;
   /** Estado del análisis ya traducido, para el subtítulo del último paso. */
   readonly analysisLabel: string;
-  /** Texto del primer requisito del puente 2D, cuando bloquea el análisis. */
-  readonly bridgeRequirement?: string | null;
   readonly onAction: (action: Space3DGuideAction) => void;
   readonly compact?: boolean;
   /** La acción ya está hecha (p. ej. la deformada ya se ve): se quita el botón. */
   readonly actionDone?: boolean;
 }
 
-export const Space3DGuide = ({ guide, t, analysisLabel, bridgeRequirement, onAction, compact = false, actionDone = false }: Space3DGuideProps) => {
+export const Space3DGuide = ({ guide, t, analysisLabel, onAction, compact = false, actionDone = false }: Space3DGuideProps) => {
   const headingId = useId();
   const copy = NEXT_COPY[guide.next];
   const vars = { id: guide.nodeId ?? '' };
@@ -67,7 +64,7 @@ export const Space3DGuide = ({ guide, t, analysisLabel, bridgeRequirement, onAct
     loads: count(guide.counts.loads, 'space3d.guideLoadsCaptionOne', 'space3d.guideLoadsCaption'),
     analysis: analysisLabel,
   };
-  const body = guide.next === 'resolve-bridge' ? bridgeRequirement : copy.body ? t(copy.body) : null;
+  const body = copy.body ? t(copy.body) : null;
 
   // Con el lienzo vacío las tres formas de empezar ya están en el centro del
   // lienzo; repetir aquí una sola de ellas la haría parecer la única.

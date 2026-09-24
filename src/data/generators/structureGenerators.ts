@@ -28,10 +28,10 @@ import { validateGeneratedStructure } from './generatorValidation';
  */
 
 /** Mismo presupuesto que la replicación estructural: una operación, un undo. */
-export const MAX_GENERATED_ENTITIES = 2_000;
+const MAX_GENERATED_ENTITIES = 2_000;
 
 /** A partir de aquí conviene revisar el modelo antes de confirmarlo. */
-export const LARGE_MODEL_ENTITIES = 400;
+const LARGE_MODEL_ENTITIES = 400;
 
 const SUPPORT_TYPES: readonly SupportType[] = ['none', 'pin', 'roller', 'fixed', 'custom'];
 const MEMBER_TYPES: readonly MemberType[] = ['frame', 'truss', 'rigid'];

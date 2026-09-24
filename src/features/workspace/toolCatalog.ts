@@ -2,7 +2,7 @@ import type { ToolId } from '../../shared/contracts';
 
 type Language = 'es' | 'en';
 type Localized = Record<Language, string>;
-export type ToolStatus = 'disponible' | 'experimental';
+type ToolStatus = 'disponible' | 'experimental';
 
 /**
  * Identidad pública de cada herramienta, según el brandbook de FusionStructure.
@@ -12,7 +12,7 @@ export type ToolStatus = 'disponible' | 'experimental';
  * repositorio. Es la única fuente que leen el Inicio y la barra de cada
  * herramienta.
  */
-export interface ToolIdentity {
+interface ToolIdentity {
   id: ToolId;
   code: string;
   name: Localized;

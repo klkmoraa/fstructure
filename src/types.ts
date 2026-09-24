@@ -2,13 +2,13 @@ import type { UnitSystemId } from './foundation/units';
 import type { LinearSolverDiagnostics } from './foundation/linearAlgebra';
 
 /** @deprecated Import neutral unit types directly from `foundation/units`. */
-export type { BuiltInUnitSystemId, UnitSystemId } from './foundation/units';
+export type {  UnitSystemId } from './foundation/units';
 /** @deprecated Import neutral numerical types directly from `foundation/linearAlgebra`. */
 export type {
-  LinearSolverBackend,
+  
   LinearSolverDiagnostics,
-  LinearSolverFallbackReason,
-  LinearSolverPolicy,
+  
+  
 } from './foundation/linearAlgebra';
 
 export type ThemeMode = 'light' | 'dark';

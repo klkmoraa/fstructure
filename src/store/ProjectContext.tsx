@@ -15,7 +15,6 @@ import type { ProjectRepository } from '../storage/projectRepository';
 import { recordLocalMetric } from '../analytics/localMetrics';
 import type { PreparedStructuralEdit } from '../data/structuralEditing';
 import type { UnifiedProjectSession } from '../storage/unifiedProjectSession';
-import { createSolverSnapshot, type SolverSnapshot } from '../shared/project/toolSnapshot';
 import { SharedToolStateProvider } from './SharedToolState';
 
 // oxlint-disable-next-line react/only-export-components
@@ -70,7 +69,6 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
   const [past, setPast] = useState<HistoryEntry[]>([]);
   const [future, setFuture] = useState<HistoryEntry[]>([]);
   const [analysis, setAnalysisState] = useState<AnalysisResult | null>(null);
-  const [solverSnapshot, setSolverSnapshot] = useState<SolverSnapshot | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [selection, setSelectionState] = useState<Selection>(null);
   const [theme, setTheme] = useState<ThemeMode>(readPreferredTheme);
@@ -97,7 +95,6 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
   const transactionDescriptionRef = useRef('Editar proyecto');
   const analysisTimerRef = useRef<number | null>(null);
   const analysisRevisionRef = useRef(0);
-  const sourceSessionRef = useRef(crypto.randomUUID());
   const analysisWorkerRef = useRef<Worker | null>(null);
   const repositoryRef = useRef<ProjectRepository | null>(null);
   const repositoryRevisionRef = useRef<{ projectId: string; revision: number } | null>(null);
@@ -107,7 +104,6 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
 
   const setAnalysis = useCallback((result: AnalysisResult | null) => {
     setAnalysisState(result);
-    setSolverSnapshot(result ? createSolverSnapshot(projectRef.current, `${sourceSessionRef.current}:${analysisRevisionRef.current}`, result) : null);
   }, []);
 
   useEffect(() => {
@@ -536,18 +532,6 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
     }
   }, [commitReversibleProjectChange, selectedCombinationId]);
 
-  const updateProjectDesign = useCallback((updater: (project: ProjectModel) => ProjectModel) => {
-    const current = projectRef.current;
-    const next = normalizeProject(updater(structuredClone(current)));
-    if (JSON.stringify(next) === JSON.stringify(current)) return;
-    const { designAssignments: _currentDesign, ...currentWithoutDesign } = current;
-    const { designAssignments: _nextDesign, ...nextWithoutDesign } = next;
-    if (JSON.stringify(nextWithoutDesign) !== JSON.stringify(currentWithoutDesign)) {
-      throw new Error('La ruta de diseño sólo puede modificar asignaciones de diseño.');
-    }
-    commitReversibleProjectChange(current, next, 'Editar diseño', false);
-  }, [commitReversibleProjectChange]);
-
   const executeProjectCommand = useCallback(async (command: ProjectCommand): Promise<ProjectCommandResult | undefined> => {
     const { applyProjectPatch, compileProjectCommand } = await import('../commands/projectCommand');
     const current = projectRef.current;
@@ -593,15 +577,6 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
     if (projectCommandSnapshot(next) === projectCommandSnapshot(current)) return { applied: false, ...created };
     commitReversibleProjectChange(current, next, prepared.description);
     return { applied: true, ...created };
-  }, [commitReversibleProjectChange]);
-
-  const executeApprovedSpace3DSync = useCallback(async (review: import('../integrations/space3dSync').Space3DSyncReviewV1, approvedPatchIds: readonly string[]) => {
-    const { applyApprovedSpace3DSync } = await import('../integrations/space3dSync');
-    const current = projectRef.current;
-    const next = applyApprovedSpace3DSync(current, review, approvedPatchIds);
-    if (JSON.stringify(next) === JSON.stringify(current)) return { applied: false };
-    commitReversibleProjectChange(current, next, 'Sincronizar cambios aprobados desde 3D');
-    return { applied: true };
   }, [commitReversibleProjectChange]);
 
   const updateProjectView = useCallback((updater: (project: ProjectModel) => ProjectModel) => {
@@ -748,9 +723,9 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
     canRedo: future.length > 0,
     storageIssue: storageState.issue,
     storageMessage: storageState.message,
-    renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, executeApprovedSpace3DSync, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient,
+    renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient,
     moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo,
-  }), [unified, openUnifiedProject, project, past.length, future.length, storageState.issue, storageState.message, renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, executeApprovedSpace3DSync, updateProject, updateProjectDesign, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient, moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo]);
+  }), [unified, openUnifiedProject, project, past.length, future.length, storageState.issue, storageState.message, renameProject, executeProjectCommand, executePreparedTopologyRepair, executePreparedStructuralEdit, executePreparedStructureGeneration, updateProject, updateProjectView, updateProjectAnalysisSettings, beginProjectTransaction, updateProjectTransient, moveNodeTransient, commitProjectTransaction, cancelProjectTransaction, replaceProject, undo, redo]);
 
   const analysisValue = useMemo<ProjectAnalysisContextValue>(() => ({
     analysis, isAnalyzing, selectedCombinationId, learningFocus, influenceCanvasState,
@@ -767,7 +742,7 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
     <ProjectModelContext.Provider value={modelValue}>
       <ProjectAnalysisContext.Provider value={analysisValue}>
         <WorkspaceUIContext.Provider value={uiValue}>
-          <SharedToolStateProvider projectId={project.id} selection2d={selection} snapshot={solverSnapshot} session={unifiedSessionRef.current}>
+          <SharedToolStateProvider session={unifiedSessionRef.current}>
             {unifiedReady ? children : <div role="status">Abriendo proyecto local…</div>}
           </SharedToolStateProvider>
         </WorkspaceUIContext.Provider>

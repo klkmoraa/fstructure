@@ -28,7 +28,7 @@ import {
 import type { Space3DProjectV1 } from '../../space3d/model/types';
 import type { TranslationKey } from '../../i18n/catalogs';
 
-export type Space3DArchetype =
+type Space3DArchetype =
   | 'frame'
   | 'truss'
   | 'tower'
@@ -109,7 +109,7 @@ const BoundedNumberInput = ({
   );
 };
 
-export interface Space3DGenerativeModalProps {
+interface Space3DGenerativeModalProps {
   readonly open: boolean;
   readonly onClose: () => void;
   readonly onApply: (project: Space3DProjectV1) => void;

@@ -22,7 +22,6 @@
    que separa una fila de la siguiente es la línea de la propia rejilla. */
 .sc-surface[data-level='flat'],
 [data-level='flat'],
-.selection-card,
 .number-control,
 .select-field select,
 .effect-card,
@@ -47,7 +46,6 @@
    simplemente encima de un gris distinto. */
 .sc-surface[data-level='inset'],
 [data-level='inset'],
-.welcome-filter-tabs,
 .toolbar {
   background: var(--sc-color-surface-inset);
   border: 1px solid var(--sc-color-border-soft);
@@ -62,7 +60,6 @@
 .sc-surface[data-level='raised'],
 [data-level='raised'],
 .topbar,
-.welcome-header,
 .inspector-panel,
 .results-panel {
   background: var(--sc-color-surface-1);
@@ -71,7 +68,6 @@
 }
 
 /* Las barras a sangre completa sólo llevan el canto que de verdad separa. */
-.welcome-header { border-width: 0 0 1px; }
 .inspector-panel { border-width: var(--inspector-border-width, 1px); }
 .results-panel { border-width: var(--results-border-width, 1px 0 0); }
 
@@ -79,8 +75,6 @@
    información: dice que esta pieza está DELANTE de lo que tapa. */
 .sc-surface[data-level='floating'],
 [data-level='floating'],
-.popover,
-.sc-popover__content,
 .sc-toast-card,
 .import-center-dialog,
 .mobile-tool-palette {
@@ -131,9 +125,6 @@
    inspector se llena. */
 .inspector-summary,
 .inspector-property-group,
-.welcome-workflow,
-.welcome-highlight-item,
-.welcome-footer,
 .datasheet-grid-scroll,
 .datasheet-grid tbody th,
 .datasheet-grid tbody td,
@@ -225,8 +216,6 @@
 .canvas-result-legend,
 .canvas-feedback,
 .canvas-hint,
-.mobile-inspector-toggle,
-.selection-cycle-indicator,
 .canvas-layer-trigger,
 .repeat-action-control,
 .cut-tooltip,

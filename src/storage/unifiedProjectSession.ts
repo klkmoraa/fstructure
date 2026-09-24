@@ -4,7 +4,7 @@ import type { JsonValue, LinkedSpace3DBranchV1, UnifiedProjectBundleV1 } from '.
 import { canonicalJsonKey } from './bundleValidation';
 import { BundleConflictError, IndexedDbUnifiedBundleRepository, type LegacyBundleStorage, type StoredBundleRecord, type UnifiedBundleRepository } from './unifiedBundleRepository';
 
-export type UnifiedStorageStatus = { issue: 'conflict' | 'load-failed' | 'save-failed' | 'recovered' | null; message: string | null };
+type UnifiedStorageStatus = { issue: 'conflict' | 'load-failed' | 'save-failed' | 'recovered' | null; message: string | null };
 
 /** FEM studies are versioned JSON snapshots. Match by document id so rerunning
  * a study updates its existing branch instead of creating an unbounded trail

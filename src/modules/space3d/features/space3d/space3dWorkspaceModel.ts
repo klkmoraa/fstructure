@@ -1,7 +1,7 @@
 import type { Space3DAnalysisState } from '../../space3d/store/Space3DProjectContext';
 
-export type Space3DWorkspaceMode = 'select' | 'node' | 'member' | 'support' | 'load' | 'results';
-export type Space3DProductStatus = 'Disponible' | 'Experimental' | 'Planeado' | 'No comprometido';
+type Space3DWorkspaceMode = 'select' | 'node' | 'member' | 'support' | 'load' | 'results';
+type Space3DProductStatus = 'Disponible' | 'Experimental' | 'Planeado' | 'No comprometido';
 
 /**
  * Estudios que se pueden solicitar desde la única bandeja de análisis 3D.
@@ -10,7 +10,7 @@ export type Space3DProductStatus = 'Disponible' | 'Experimental' | 'Planeado' | 
  */
 export type Space3DAnalysisMode = 'linear' | 'pdelta' | 'modal' | 'buckling' | 'influence';
 
-export interface Space3DAnalysisModeDefinition {
+interface Space3DAnalysisModeDefinition {
   readonly id: Space3DAnalysisMode;
   readonly labelKey:
     | 'space3d.analysisModeLinear'
@@ -29,7 +29,7 @@ export const SPACE3D_ANALYSIS_MODES: readonly Space3DAnalysisModeDefinition[] = 
   { id: 'influence', labelKey: 'space3d.analysisModeInfluence', status: 'Experimental' },
 ]);
 
-export interface Space3DWorkspaceModeDefinition {
+interface Space3DWorkspaceModeDefinition {
   readonly id: Space3DWorkspaceMode;
   readonly label: string;
   readonly shortcut: string;
@@ -53,7 +53,7 @@ export const getSpace3DModeAvailability = (
   status: SPACE3D_WORKSPACE_MODES.find((item) => item.id === mode)?.status ?? 'No comprometido',
 });
 
-export interface Space3DMoreCommand {
+interface Space3DMoreCommand {
   readonly id: string;
   readonly label: string;
   readonly status: Space3DProductStatus;

@@ -34,7 +34,7 @@ import {
   type Space3DVector,
 } from '../model/types';
 
-export type Space3DCodecErrorCode =
+type Space3DCodecErrorCode =
   | 'malformed-json'
   | 'analysis-space'
   | 'schema-version'
@@ -458,7 +458,7 @@ const assertProjectIdentitiesAndReferences = (project: Space3DProjectV1): void =
   });
 };
 
-export interface Space3DParseOptions {
+interface Space3DParseOptions {
   /**
    * Exige además un modelo estructuralmente admisible.
    *

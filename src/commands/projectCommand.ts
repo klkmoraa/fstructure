@@ -351,7 +351,7 @@ const diffProjects = (before: ProjectModel, after: ProjectModel, description: st
   return { description, operations };
 };
 
-export const invertProjectPatch = (patch: ProjectPatch): ProjectPatch => ({
+const invertProjectPatch = (patch: ProjectPatch): ProjectPatch => ({
   description: `Revertir: ${patch.description}`,
   operations: patch.operations.map((operation) => ({
     ...operation,

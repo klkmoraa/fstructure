@@ -28,7 +28,7 @@ export type Space3DEditorTarget =
   | { readonly kind: 'member'; readonly id: string | null }
   | { readonly kind: 'load'; readonly id: string | null; readonly initialNodeId?: string };
 
-export interface Space3DEntityEditorProps {
+interface Space3DEntityEditorProps {
   readonly project: Space3DProjectV1;
   readonly target: Space3DEditorTarget;
   readonly t: (key: TranslationKey, variables?: Record<string, string | number>) => string;

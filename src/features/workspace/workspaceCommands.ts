@@ -23,7 +23,7 @@ export type FocusableSelection = Extract<NonNullable<Selection>, { id: string }>
  *
  * Adding a command here is what makes it dispatchable: there is no string overload.
  */
-export interface WorkspaceCommands {
+interface WorkspaceCommands {
   /** Centre and reveal a model object; emitted from results and warnings. */
   'focus-object': FocusableSelection;
   /** Fit the whole model into the visible canvas. */
@@ -92,7 +92,7 @@ export interface WorkspaceCommands {
   };
 }
 
-export type WorkspaceCommand = keyof WorkspaceCommands;
+type WorkspaceCommand = keyof WorkspaceCommands;
 
 const EVENT_PREFIX = 'fusionstructure:';
 
@@ -121,6 +121,3 @@ export const onWorkspaceCommand = <K extends WorkspaceCommand>(
   window.addEventListener(eventName(command), listener);
   return () => window.removeEventListener(eventName(command), listener);
 };
-
-/** Exposed for tests and diagnostics; components should not build names by hand. */
-export const workspaceCommandEventName = eventName;

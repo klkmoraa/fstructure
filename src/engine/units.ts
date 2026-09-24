@@ -17,7 +17,7 @@ import type {
 } from '../foundation/units';
 
 /** 2D selector option, including the display label chosen by this surface. */
-export interface UnitOption<Id extends string = string> {
+interface UnitOption<Id extends string = string> {
   readonly id: Id;
   readonly label: string;
 }
@@ -26,7 +26,7 @@ export const FORCE_UNIT_OPTIONS: readonly UnitOption<UnitForceId>[] = UNIT_FORCE
 
 export const LENGTH_UNIT_OPTIONS: readonly UnitOption<UnitLengthId>[] = UNIT_LENGTH_IDS.map((id) => ({ id, label: id }));
 
-export interface UnitSystemProfile {
+interface UnitSystemProfile {
   readonly id: BuiltInUnitSystemId;
   readonly label: string;
 }
@@ -171,29 +171,7 @@ export const ALL_UNIT_LABELS: ReadonlySet<string> = new Set([
  * directly from `foundation/units`. This compatibility surface will be removed
  * after downstream integrations migrate.
  */
-export {
-  createCustomUnitSystemId,
-  fromDisplay,
-  isBuiltInUnitSystemId,
-  isCustomUnitSystemId,
-  isUnitSystemId,
-  parseCustomUnitSystemId,
-  toDisplay,
-  unitSystemIdentity,
-  UNIT_FORCE_IDS,
-  UNIT_LENGTH_IDS,
-  UNIT_QUANTITIES,
-  UNIT_SYSTEM_IDS,
-} from '../foundation/units';
+;
 
 /** @deprecated Import neutral unit types directly from `foundation/units`. */
-export type {
-  BuiltInUnitSystemId,
-  CustomUnitSystem,
-  UnitFactors,
-  UnitForceId,
-  UnitLengthId,
-  UnitQuantity,
-  UnitSystemId,
-  UnitSystemIdentity,
-} from '../foundation/units';
+;

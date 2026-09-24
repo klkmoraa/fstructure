@@ -25,7 +25,7 @@
  */
 import { analyzeProject } from '../engine/solver';
 import type { AnalysisResult, LoadCombination, NodeModel, ProjectModel, SupportDefinition } from '../types';
-import { add, evaluate, shift, type Polynomial } from './polynomialAlgebra';
+import { add, evaluate, shift } from './polynomialAlgebra';
 import { buildBeamAxis, type BeamAxis } from './beamAxis';
 import { classifyStructure, type StructureClassification } from './structureClassification';
 
@@ -71,12 +71,12 @@ export interface HardyCrossResult {
   momentResidual: number;
 }
 
-export interface HardyCrossRejection {
+interface HardyCrossRejection {
   applicable: false;
   reasonKey: string;
 }
 
-export type HardyCrossOutcome = HardyCrossResult | HardyCrossRejection;
+type HardyCrossOutcome = HardyCrossResult | HardyCrossRejection;
 
 const restrainsTransverse = (support: SupportDefinition): boolean => {
   switch (support.type) {
@@ -316,4 +316,4 @@ export const solveHardyCross = (
   };
 };
 
-export type { Polynomial };
+;

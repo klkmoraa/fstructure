@@ -102,7 +102,7 @@ const externalActionsOn = (
  * put it: with two or three bars the two extreme midpoints define it and it is extended past
  * both; with a single bar there is no direction to fit, so the cut is a short stroke across it.
  */
-export const cutLineThrough = (
+const cutLineThrough = (
   context: ReportContext,
   severedMemberIds: readonly string[],
 ): { from: Point; to: Point } | undefined => {
@@ -385,7 +385,7 @@ interface BeamSegment {
  * This is the drawing Double Integration and Conjugate Beam are *about* — the free body whose
  * moment equation the whole method integrates — and neither section had it.
  */
-export const beamSegmentScenes = (
+const beamSegmentScenes = (
   context: ReportContext,
   axisNodeIds: readonly string[],
   segments: readonly BeamSegment[],
@@ -505,7 +505,7 @@ interface SpanEnds {
 }
 
 /** One scene per span: the span isolated, with its end moments drawn as arcs. */
-export const spanMomentScenes = (
+const spanMomentScenes = (
   context: ReportContext,
   spans: readonly SpanEnds[],
   title: (index: number) => string,
@@ -616,7 +616,7 @@ interface ApproximateColumn {
  * of every column of that storey, with the storey shear above it and each column's own shear
  * and axial on the cut face.
  */
-export const storeyCutScenes = (
+const storeyCutScenes = (
   context: ReportContext,
   columns: readonly ApproximateColumn[],
   storyShear: readonly number[],
@@ -687,7 +687,7 @@ export const storeyCutScenes = (
 };
 
 /** One scene per column: the segment between inflection points, with its end moments. */
-export const columnFreeBodyScenes = (
+const columnFreeBodyScenes = (
   context: ReportContext,
   columns: readonly ApproximateColumn[],
 ): FreeBodyScene[] => {

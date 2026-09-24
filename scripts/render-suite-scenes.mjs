@@ -29,13 +29,14 @@ const page = await browser.newPage();
 await page.goto(base);
 for (const scene of scenes) {
   for (const theme of ['day', 'night']) {
-    const url = await page.evaluate(async ({ scene, theme }) => {
-      const render = await import('/src/features/structural-assets/threeStructuralRender.ts');
+    // Los módulos se cargan dentro del navegador, desde el servidor de Vite.
+    const url = await page.evaluate(async ({ scene, theme, modules }) => {
+      const render = await import(modules.render);
       const [width, height] = scene.size;
       if (scene.source === 'catalog') return render.renderThreeStructuralAssetDataUrl(scene.id, theme, width, height);
-      const suite = await import('/src/features/structural-assets/suiteScenes.ts');
+      const suite = await import(modules.suite);
       return render.renderStructuralGroupDataUrl(suite.buildSuiteScene(scene.id, theme), theme, width, height);
-    }, { scene, theme });
+    }, { scene, theme, modules: { render: '/src/features/structural-assets/threeStructuralRender.ts', suite: '/src/features/structural-assets/suiteScenes.ts' } });
     writeFileSync(join(out, `${scene.file}-${theme}.png`), Buffer.from(url.split(',')[1], 'base64'));
   }
 }

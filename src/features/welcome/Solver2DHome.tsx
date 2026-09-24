@@ -24,7 +24,7 @@ const GitHubIcon = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-export interface Solver2DHomeProps {
+interface Solver2DHomeProps {
   language: 'es' | 'en';
   /** Tema activo. La escena de portada tiene un render por tema, no un filtro. */
   theme: ThemeMode;

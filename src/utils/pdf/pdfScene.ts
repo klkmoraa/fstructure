@@ -10,7 +10,7 @@
  * Everything here draws through `layout.page`, which must always be read at the moment of use —
  * a page break replaces it — and takes its colours from the palette, never from a literal.
  */
-import type { MemberLoad, NodeModel, SupportDefinition } from '../../types';
+import type {  NodeModel, SupportDefinition } from '../../types';
 import type { SectionGeometry } from '../../features/inspector/sectionGeometry';
 import {
   distributedIntensityAt,
@@ -37,7 +37,7 @@ export interface Rect {
   height: number;
 }
 
-export interface PlotBox {
+interface PlotBox {
   left: number;
   right: number;
   bottom: number;
@@ -219,7 +219,7 @@ export const drawNodeDot = (
   if (id) page.drawText(pdfText(id), { x: location.x + size + 2, y: location.y + size + 1, size: labelSize, font: layout.fonts.bold, color });
 };
 
-export interface GhostOptions {
+interface GhostOptions {
   /** Members drawn at full strength; everything else is ghosted. Absent means ghost all. */
   readonly solidMemberIds?: ReadonlySet<string>;
   /** Nodes drawn at full strength. Absent means ghost all. */
@@ -361,7 +361,7 @@ export const sectionShapeBox = (rect: Rect, geometry: SectionGeometry): Rect => 
   };
 };
 
-export interface MemberLoadOptions {
+interface MemberLoadOptions {
   /**
    * Members whose loads are drawn. Absent draws every member's.
    *
@@ -443,4 +443,4 @@ export const drawMemberLoads = (
 };
 
 /** A `MemberLoad`'s own type, re-exported so callers need not reach into `types.ts`. */
-export type { MemberLoad };
+;

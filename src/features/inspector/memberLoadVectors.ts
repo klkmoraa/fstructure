@@ -13,7 +13,7 @@ export const pointLoadPolarFromVector = (px: number, py: number) => ({
   angleDeg: Math.atan2(py, px) * 180 / Math.PI,
 });
 
-export interface PointLoadComponentSplit {
+interface PointLoadComponentSplit {
   project: ProjectModel;
   horizontalId?: string;
   verticalId?: string;

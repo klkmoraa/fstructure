@@ -11,7 +11,6 @@
  * on a page with a grid is already said by alignment.
  */
 import { pdfText } from './pdfGlyphs';
-import { MARGIN } from './pdfBuilder';
 import { TYPE } from './pdfTheme';
 import type { PdfLayout } from './pdfBuilder';
 import type { PdfColor } from './reportContext';
@@ -51,19 +50,6 @@ export const drawFigureFrame = (
     color: layout.palette.paper,
     borderColor: layout.palette.rule,
     borderWidth: 0.5,
-  });
-};
-
-/** Small caps label anchored inside a figure, where a caption would be too far away. */
-export const drawFigureTag = (
-  layout: PdfLayout,
-  x: number,
-  y: number,
-  text: string,
-  color: PdfColor,
-): void => {
-  layout.page.drawText(pdfText(text.toUpperCase()), {
-    x, y, size: TYPE.micro, font: layout.fonts.bold, color,
   });
 };
 
@@ -110,4 +96,4 @@ export const drawFactColumn = (
   return y;
 };
 
-export { MARGIN };
+;

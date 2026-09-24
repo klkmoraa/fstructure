@@ -21,15 +21,15 @@ import { drawMathBlock, drawRawMath, mathWidth, rawMathWidth, hasFraction, needs
 import { SPACE, TYPE, type ReportPalette } from './pdfTheme';
 import type { PdfColor, PdfVectorOps, ReportFonts, RgbFactory } from './reportContext';
 
-export const PAGE_SIZE: [number, number] = [595.28, 841.89];
+const PAGE_SIZE: [number, number] = [595.28, 841.89];
 export const MARGIN = 50;
 /** Baseline of the last line that may be printed before the footer rule. */
-export const CONTENT_BOTTOM = 58;
+const CONTENT_BOTTOM = 58;
 /** Height reserved at the top of every ordinary page for the running head. */
-export const HEAD_SPACE = 74;
+const HEAD_SPACE = 74;
 
-export type HeadingLevel = 1 | 2 | 3;
-export type CalloutTone = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger';
+type HeadingLevel = 1 | 2 | 3;
+type CalloutTone = 'neutral' | 'accent' | 'ok' | 'warn' | 'danger';
 
 export interface PdfTableColumn {
   header: string;
@@ -55,7 +55,7 @@ export interface PdfTableOptions {
 }
 
 /** One headline figure of the summary strip. */
-export interface PdfMetric {
+interface PdfMetric {
   label: string;
   value: string;
   /** Optional second line, for the station or member a governing value belongs to. */
@@ -73,7 +73,7 @@ const CELL_PAD_Y = 3.6;
  * fixed columns alone exceed the page was mis-declared; an even split keeps it readable
  * instead of printing negative widths that overlap into the margin.
  */
-export const resolveColumnWidths = (columns: readonly PdfTableColumn[], available: number): number[] => {
+const resolveColumnWidths = (columns: readonly PdfTableColumn[], available: number): number[] => {
   if (!columns.length) return [];
   const fixed = columns.reduce((sum, column) => sum + (column.width ?? 0), 0);
   const remaining = available - fixed;
@@ -87,7 +87,7 @@ export const resolveColumnWidths = (columns: readonly PdfTableColumn[], availabl
 };
 
 /** A part of the document, as the contents page and the bookmark pane see it. */
-export interface PdfSection {
+interface PdfSection {
   title: string;
   pageIndex: number;
   /** `1`, `2`… for a part; `undefined` for front matter that is listed but not numbered. */

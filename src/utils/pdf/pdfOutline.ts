@@ -13,14 +13,14 @@
 import type { PDFDocument } from 'pdf-lib';
 
 /** The slice of `pdf-lib` this module needs, handed over by the caller that imported it. */
-export interface OutlineFactories {
+interface OutlineFactories {
   PDFName: typeof import('pdf-lib').PDFName;
   PDFArray: typeof import('pdf-lib').PDFArray;
   PDFNumber: typeof import('pdf-lib').PDFNumber;
   PDFHexString: typeof import('pdf-lib').PDFHexString;
 }
 
-export interface OutlineEntry {
+interface OutlineEntry {
   title: string;
   pageIndex: number;
 }

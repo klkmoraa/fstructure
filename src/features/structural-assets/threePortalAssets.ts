@@ -66,7 +66,7 @@ export const segmentMember = (
   return member;
 };
 
-export const addBase = (group: THREE.Group, kit: MaterialKit, width: number, depth: number) => {
+const addBase = (group: THREE.Group, kit: MaterialKit, width: number, depth: number) => {
   group.add(roundedMember([width, 0.2, depth], [0, -0.16, 0], kit.base, kit.edge, 0.06));
   const footingPositions = [[-width * 0.31, -0.01, -depth * 0.27], [width * 0.31, -0.01, -depth * 0.27], [-width * 0.31, -0.01, depth * 0.27], [width * 0.31, -0.01, depth * 0.27]] as const;
   for (const position of footingPositions) group.add(roundedMember([0.78, 0.15, 0.72], position, kit.base, kit.edge, 0.045));
@@ -156,56 +156,3 @@ export const disposeThreeObject = (root: THREE.Object3D) => root.traverse((objec
     materials.forEach((material) => material.dispose());
   }
 });
-
-export const renderPortalAssetDataUrl = async (assetId: PortalAssetId, theme: StructuralRenderTheme, width = 900, height = 600) => {
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(1);
-  renderer.setSize(width, height, false);
-  renderer.setClearColor(0x000000, 0);
-  renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = theme === 'day' ? 1.18 : 1.08;
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFShadowMap;
-
-  const scene = new THREE.Scene();
-  const group = buildPortalGroup(assetId, theme);
-  scene.add(group);
-  scene.add(new THREE.HemisphereLight(theme === 'day' ? 0xffffff : 0xf2f2f2, theme === 'day' ? 0x737373 : 0x0b0b0b, theme === 'day' ? 2.6 : 2.25));
-  const key = new THREE.DirectionalLight(theme === 'day' ? 0xffffff : 0xf2f2f2, theme === 'day' ? 4.4 : 3.6);
-  key.position.set(-4.5, 7, 5.5);
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  key.shadow.camera.left = -5;
-  key.shadow.camera.right = 5;
-  key.shadow.camera.top = 5;
-  key.shadow.camera.bottom = -5;
-  scene.add(key);
-  const rim = new THREE.DirectionalLight(theme === 'day' ? 0xdcdcdc : 0x8a8a8a, 1.7);
-  rim.position.set(5, 3, -5);
-  scene.add(rim);
-
-  const shadow = new THREE.Mesh(
-    new THREE.PlaneGeometry(6.8, 4.8),
-    new THREE.ShadowMaterial({ color: 0x0a0a0a, opacity: theme === 'day' ? 0.09 : 0.2 }),
-  );
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.position.y = -0.275;
-  shadow.receiveShadow = true;
-  scene.add(shadow);
-
-  const aspect = width / height;
-  const viewHalfHeight = assetId === 'portal:two-story' ? 2.75 : assetId === 'portal:industrial-pitched' ? 2.55 : assetId === 'portal:two-bay' ? 2.45 : 2.35;
-  const camera = new THREE.OrthographicCamera(-viewHalfHeight * aspect, viewHalfHeight * aspect, viewHalfHeight, -viewHalfHeight, 0.1, 100);
-  camera.position.set(5.4, assetId === 'portal:two-story' ? 4.3 : 3.65, 6.2);
-  camera.lookAt(0, assetId === 'portal:two-story' ? 1.35 : 1.05, 0);
-  camera.updateProjectionMatrix();
-
-  renderer.render(scene, camera);
-  await new Promise<void>((resolve) => requestAnimationFrame(() => { renderer.render(scene, camera); resolve(); }));
-  const dataUrl = renderer.domElement.toDataURL('image/png');
-  disposeThreeObject(scene);
-  renderer.dispose();
-  renderer.forceContextLoss();
-  return dataUrl;
-};

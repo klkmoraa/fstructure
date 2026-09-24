@@ -4,7 +4,7 @@ import { normalizeProject } from '../data/migrate';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
 import { InMemoryBundleDatabase, InMemoryUnifiedBundleRepository, type StoredBundleRecord } from './unifiedBundleRepository';
 import { UnifiedProjectSession } from './unifiedProjectSession';
-import { buildPlanar2DToSpace3DHandoff } from '../integrations/planar2dToSpace3d';
+import { createSpace3DPortalExample } from '../modules/space3d/space3d/model/defaultProject';
 import type { JsonValue, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
 
 class FailOnceRepository extends InMemoryUnifiedBundleRepository {
@@ -70,7 +70,7 @@ it('serializes 3D and 2D edits through one revision owner without overwriting ei
   const project = createDefaultProject();
   const session = new UnifiedProjectSession(repo);
   await session.initialize(storage, project);
-  const model = JSON.parse(JSON.stringify(buildPlanar2DToSpace3DHandoff(project).candidateModel)) as JsonValue;
+  const model = JSON.parse(JSON.stringify({ ...createSpace3DPortalExample(), id: `space3d:${project.id}` })) as JsonValue;
   const fresh = await session.saveSpace3D(project, { sourceProjectId: project.id, sourceVersion: 'source-1', model });
   expect(fresh.bundle.space3d?.sourceVersion).toBe(fresh.bundle.manifest.sourceVersion);
   await session.save2D({ ...project, name: 'Edited 2D' });
@@ -87,7 +87,7 @@ it('persists a failed 3D working branch when a later 2D save succeeds', async ()
   const project = createDefaultProject();
   const session = new UnifiedProjectSession(repo);
   await session.initialize(storage, project);
-  const model = JSON.parse(JSON.stringify(buildPlanar2DToSpace3DHandoff(project).candidateModel)) as JsonValue;
+  const model = JSON.parse(JSON.stringify({ ...createSpace3DPortalExample(), id: `space3d:${project.id}` })) as JsonValue;
   const branch = { sourceProjectId: project.id, sourceVersion: 'source-1', model };
 
   repo.failNextSave();
@@ -160,10 +160,8 @@ it('guarda proyectos normalizados que traen propiedades opcionales en undefined'
 
   await expect(session.save2D(project)).resolves.toBeDefined();
   await expect(session.saveFem(project, { document: { id: 'study-1' } } as JsonValue)).resolves.toBeDefined();
-  const handoff = buildPlanar2DToSpace3DHandoff(project);
   await expect(session.saveSpace3D(project, {
-    sourceProjectId: project.id, sourceVersion: 'v1', sourceModel2D: structuredClone(project),
-    baselineStatus: 'exact', model: handoff.candidateModel as unknown as JsonValue,
+    sourceProjectId: project.id, sourceVersion: 'v1', model: { ...createSpace3DPortalExample(), id: `space3d:${project.id}` } as unknown as JsonValue,
   })).resolves.toBeDefined();
 
   expect(session.status).toEqual({ issue: null, message: null });

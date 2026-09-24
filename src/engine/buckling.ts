@@ -10,7 +10,7 @@ export interface BucklingResult {
   success: boolean; modes: BucklingMode[]; criticalLoadFactor?: number; converged: boolean; residual: number;
   issues: ValidationIssue[]; reason: string; referenceAxialForces: Record<string, number>; freeDegreesOfFreedom: number;
 }
-export interface BucklingOptions { modes?: number; maxIterations?: number; tolerance?: number }
+interface BucklingOptions { modes?: number; maxIterations?: number; tolerance?: number }
 const failure = (reason: string, issues: ValidationIssue[] = [], freeDegreesOfFreedom = 0): BucklingResult => ({ success: false, modes: [], converged: false, residual: Number.NaN, issues, reason, referenceAxialForces: {}, freeDegreesOfFreedom });
 
 export const analyzeBuckling = (project: ProjectModel, combination?: LoadCombination | null, options: BucklingOptions = {}): BucklingResult => {

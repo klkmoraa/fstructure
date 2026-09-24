@@ -9,7 +9,7 @@ import { evaluatePolynomial, rootsInInterval } from './diagram';
 import { selectEnvelopeScenarios, type AnalysisScenario, type EnvelopeCoverage } from './envelope';
 import { worstLevel } from './reliability';
 
-export interface ExactExtremum<Q extends string> {
+interface ExactExtremum<Q extends string> {
   quantity: Q;
   kind: 'minimum' | 'maximum';
   memberId: string;
@@ -19,63 +19,63 @@ export interface ExactExtremum<Q extends string> {
   side: 'left' | 'right' | 'continuous';
 }
 
-export interface ExactExtrema<Q extends string> {
+interface ExactExtrema<Q extends string> {
   minimum: ExactExtremum<Q>;
   maximum: ExactExtremum<Q>;
   absolute: ExactExtremum<Q>;
 }
 
-export interface MemberResultSummary {
+interface MemberResultSummary {
   memberId: string;
   diagrams: Record<DiagramQuantity, ExactExtrema<DiagramQuantity>>;
   deformations: Partial<Record<ResponseQuantity, ExactExtrema<ResponseQuantity>>>;
 }
 
-export interface GlobalResultSummary {
+interface GlobalResultSummary {
   members: MemberResultSummary[];
   diagrams: Partial<Record<DiagramQuantity, ExactExtrema<DiagramQuantity>>>;
   deformations: Partial<Record<ResponseQuantity, ExactExtrema<ResponseQuantity>>>;
 }
 
-export interface ScenarioValue {
+interface ScenarioValue {
   value: number;
   scenarioId: string;
   scenarioName: string;
 }
 
-export interface ScalarEnvelope {
+interface ScalarEnvelope {
   minimum: ScenarioValue;
   maximum: ScenarioValue;
 }
 
-export type ReactionComponent = 'rx' | 'ry' | 'rm' | 'supportNormalReaction' | 'supportTangentialReaction';
+type ReactionComponent = 'rx' | 'ry' | 'rm' | 'supportNormalReaction' | 'supportTangentialReaction';
 
-export interface NodeReactionEnvelope {
+interface NodeReactionEnvelope {
   nodeId: string;
   components: Partial<Record<ReactionComponent, ScalarEnvelope>>;
   /** True only if every contributing scenario reported this node. */
   complete: boolean;
 }
 
-export interface ReactionEnvelope extends EnvelopeCoverage {
+interface ReactionEnvelope extends EnvelopeCoverage {
   nodes: NodeReactionEnvelope[];
 }
 
-export interface ResponseEnvelopeBranch {
+interface ResponseEnvelopeBranch {
   scenarioId: string;
   scenarioName: string;
   /** Coefficients use the local coordinate xi = x - segment.x0. */
   coefficients: number[];
 }
 
-export interface ResponseEnvelopeSegment {
+interface ResponseEnvelopeSegment {
   x0: number;
   x1: number;
   minimum: ResponseEnvelopeBranch;
   maximum: ResponseEnvelopeBranch;
 }
 
-export interface DeformationEnvelope extends EnvelopeCoverage {
+interface DeformationEnvelope extends EnvelopeCoverage {
   memberId: string;
   quantity: ResponseQuantity;
   segments: ResponseEnvelopeSegment[];
@@ -340,32 +340,5 @@ export const buildDeformationEnvelope = (
     segments,
     minimum: { ...minimumPoint, kind: 'minimum' },
     maximum: { ...maximumPoint, kind: 'maximum' },
-  };
-};
-
-export const evaluateDeformationEnvelopeAt = (
-  envelope: DeformationEnvelope,
-  x: number,
-  side: 'left' | 'right' = 'right',
-) => {
-  if (!envelope.segments.length) return null;
-  const span = envelope.segments.at(-1)!.x1 - envelope.segments[0].x0;
-  const tolerance = Math.max(1, span) * 1e-10;
-  let segment = envelope.segments.find((item) => x > item.x0 + tolerance && x < item.x1 - tolerance);
-  if (!segment) {
-    segment = side === 'left'
-      ? [...envelope.segments].reverse().find((item) => Math.abs(item.x1 - x) <= tolerance) ?? envelope.segments[0]
-      : envelope.segments.find((item) => Math.abs(item.x0 - x) <= tolerance) ?? envelope.segments.at(-1)!;
-  }
-  const xi = Math.max(0, Math.min(segment.x1 - segment.x0, x - segment.x0));
-  return {
-    x: segment.x0 + xi,
-    side,
-    minimum: evaluatePolynomial(segment.minimum.coefficients, xi),
-    maximum: evaluatePolynomial(segment.maximum.coefficients, xi),
-    minimumScenarioId: segment.minimum.scenarioId,
-    minimumScenario: segment.minimum.scenarioName,
-    maximumScenarioId: segment.maximum.scenarioId,
-    maximumScenario: segment.maximum.scenarioName,
   };
 };

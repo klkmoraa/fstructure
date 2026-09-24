@@ -3,7 +3,6 @@ import type { AnalysisResult, ProjectModel, ProjectSettings } from '../types';
 import type { PreparedTopologyRepair, ProjectCommand, ProjectCommandResult } from '../commands/projectCommand';
 import type { PreparedStructureGeneration } from '../commands/structureGeneration';
 import type { PreparedStructuralEdit } from '../data/structuralEditing';
-import type { Space3DSyncReviewV1 } from '../integrations/space3dSync';
 
 /**
  * The structural model, its undo/redo history and persistence state.
@@ -41,17 +40,11 @@ export interface ProjectModelContextValue {
    */
   executePreparedStructureGeneration: (prepared: PreparedStructureGeneration) => Promise<StructureGenerationExecutionResult>;
 
-  /** Applies one explicitly approved 3D review as a single reversible 2D transaction. */
-  executeApprovedSpace3DSync: (review: Space3DSyncReviewV1, approvedPatchIds: readonly string[]) => Promise<{ applied: boolean }>;
-
   /**
    * Applies a discrete reversible edit. It records one history entry and invalidates analysis.
    * Use it for model edits that do not need a typed command contract.
    */
   updateProject: (updater: (project: ProjectModel) => ProjectModel, analyzeAfter?: boolean) => void;
-
-  /** Applies a reversible design-only edit while preserving the current structural analysis. */
-  updateProjectDesign: (updater: (project: ProjectModel) => ProjectModel) => void;
 
   /** Applies a purely visual preference change; it creates no history and keeps analysis valid. */
   updateProjectView: (updater: (project: ProjectModel) => ProjectModel) => void;

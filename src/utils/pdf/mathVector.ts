@@ -14,7 +14,7 @@ import type { PDFPage } from 'pdf-lib';
 import type { AffineMatrix, FormulaOp, ParsedFormula } from './mathTypeset';
 import type { PdfColor, PdfVectorOps } from './reportContext';
 
-export interface FormulaBox {
+interface FormulaBox {
   widthPt: number;
   heightPt: number;
   depthPt: number;

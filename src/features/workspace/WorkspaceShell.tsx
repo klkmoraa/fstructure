@@ -642,7 +642,7 @@ const WorkspaceSurface = (props: WorkspaceShellProps) => {
   </SurfacePresentationProvider></ShellToolSlotsProvider>;
 };
 
-export const WorkspaceShell = (props: WorkspaceShellProps) => <ShellCompositionProvider>
+const WorkspaceShell = (props: WorkspaceShellProps) => <ShellCompositionProvider>
   <WorkspaceSurface {...props} />
 </ShellCompositionProvider>;
 

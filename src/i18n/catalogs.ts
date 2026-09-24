@@ -37,24 +37,15 @@ export const es = {
   'results.compactUnresolved': 'La corrida necesita corrección',
   'results.compactWaiting': 'Aún no hay resultados calculados',
   'results.criticalEnd': 'Extremo',
-  'results.criticalJump': 'Salto',
-  'results.criticalMaximum': 'Máximo',
-  'results.criticalMinimum': 'Mínimo',
-  'results.criticalPoints': 'Puntos notables',
-  'results.criticalZero': 'Cruce por cero',
-  'results.pinCriticalPoint': 'Fijar lectura en {point}',
-  'results.unpinCriticalPoint': 'Quitar lectura fijada de {point}',
   'surface.loadFailed': 'No se pudo cargar esta superficie.',
   'surface.reload': 'Recargar',
-  'space3d.bridgeCompleteNow': 'Completar ahora',
-  'space3d.bridgeNextRequirement': 'Siguiente requisito para analizar: {requirement}',
 } as const;
 
 export type TranslationKey = keyof typeof es;
 export type Language = 'es' | 'en';
 export type Catalog = Record<TranslationKey, string>;
 
-export const catalogs: Partial<Record<Language, Catalog>> & { es: Catalog } = { es };
+const catalogs: Partial<Record<Language, Catalog>> & { es: Catalog } = { es };
 
 const listeners = new Set<() => void>();
 const pendingCatalogs = new Map<Language, Promise<Catalog>>();

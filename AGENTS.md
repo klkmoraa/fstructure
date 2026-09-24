@@ -25,7 +25,7 @@ FStructure es la app de cálculo estructural de FusionStructure: cuatro herramie
 | guardado/importación | abrir → guardar → reabrir, y un archivo inválido |
 | algo transversal o antes de un cambio grande | `npm run check` |
 
-No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa.
+No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa. `npm run deadcode` (knip) lista archivos, exportaciones y dependencias sin uso.
 
 ## Mapa
 

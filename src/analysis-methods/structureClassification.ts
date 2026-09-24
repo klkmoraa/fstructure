@@ -33,7 +33,7 @@ export interface StructureClassification {
 }
 
 /** Restrained global DOFs contributed by one support. */
-export const supportRestraintCount = (support: SupportDefinition): number => {
+const supportRestraintCount = (support: SupportDefinition): number => {
   switch (support.type) {
     case 'fixed': return 3;
     case 'pin': return 2;

@@ -33,7 +33,7 @@ export interface WorkerLike {
   removeEventListener(type: string, listener: (event: Space3DWorkerEvent) => void): void;
 }
 
-export type Space3DWorkerFactory = () => WorkerLike;
+type Space3DWorkerFactory = () => WorkerLike;
 
 export class Space3DAnalysisCancelledError extends Error {
   constructor() {
@@ -42,7 +42,7 @@ export class Space3DAnalysisCancelledError extends Error {
   }
 }
 
-export class Space3DWorkerError extends Error {
+class Space3DWorkerError extends Error {
   readonly code: string;
 
   constructor(code: string, message: string) {
@@ -73,7 +73,7 @@ const defaultWorkerFactory: Space3DWorkerFactory = () =>
  * contrato asíncrono del cliente sea idéntico en ambos caminos; `terminate()`
  * deja de entregar, que es la única cancelación posible sin un hilo aparte.
  */
-export const createInlineSpace3DWorker = (): WorkerLike => {
+const createInlineSpace3DWorker = (): WorkerLike => {
   const listeners = new Map<string, Set<(event: Space3DWorkerEvent) => void>>();
   let alive = true;
   return {

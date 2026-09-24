@@ -30,7 +30,7 @@ export type ImportContentKey =
   | 'procedures'
   | 'attachments';
 
-export type ImportMode = 'new' | 'replace';
+type ImportMode = 'new' | 'replace';
 
 export interface ImportContentOption {
   key: ImportContentKey;
@@ -74,7 +74,7 @@ export interface ImportCenterAdapter {
   importFile: (file: File, inspection: ImportInspection, options: ImportOptions) => Promise<ImportOutcome>;
 }
 
-export interface ImportCenterDialogProps {
+interface ImportCenterDialogProps {
   open: boolean;
   /** Archivo ya entregado por el sistema operativo; sigue pasando por revisión y confirmación. */
   initialFile?: File | null;

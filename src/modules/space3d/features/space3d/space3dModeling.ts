@@ -13,13 +13,13 @@ import type {
 import { freeSpace3DRestraints } from '../../space3d/model/types';
 import { SPACE3D_MATERIALS, SPACE3D_SECTION_CATALOG } from '../../space3d/model/sectionLibrary';
 import type { Space3DViewPreset } from '../../space3d/view/cameraModel';
-import { buildConnectingMember, nextSpace3DMemberId } from './connectMember';
+import { buildConnectingMember } from './connectMember';
 import { SPACE3D_SUPPORT_RESTRAINTS, type Space3DSupportKind } from './space3dSupportKind';
 
 /** Eje normal al plano: `y` es un plano horizontal (XZ); `z`, el alzado XY; `x`, el lateral YZ. */
 export type Space3DPlaneAxis = 'x' | 'y' | 'z';
 
-export interface Space3DWorkPlane {
+interface Space3DWorkPlane {
   readonly axis: Space3DPlaneAxis;
   /** Coordenada fija del plano sobre su eje, m. */
   readonly offset: number;
@@ -54,14 +54,14 @@ export const findSpace3DNodeAt = (project: Space3DProjectV1, point: Space3DVecto
     && Math.abs(node.y - point[1]) < DUPLICATE_TOLERANCE
     && Math.abs(node.z - point[2]) < DUPLICATE_TOLERANCE);
 
-export const nextSpace3DNodeId = (project: Space3DProjectV1, reserved: readonly string[] = []): string => {
+const nextSpace3DNodeId = (project: Space3DProjectV1, reserved: readonly string[] = []): string => {
   const used = new Set([...project.nodes.map((node) => node.id), ...reserved]);
   let index = project.nodes.length + 1;
   while (used.has(`N${index}`)) index += 1;
   return `N${index}`;
 };
 
-export const nextSpace3DLoadId = (project: Space3DProjectV1, reserved: readonly string[] = []): string => {
+const nextSpace3DLoadId = (project: Space3DProjectV1, reserved: readonly string[] = []): string => {
   const used = new Set([...project.nodalLoads.map((load) => load.id), ...reserved]);
   let index = project.nodalLoads.length + 1;
   while (used.has(`L${index}`)) index += 1;
@@ -136,7 +136,7 @@ export type Space3DLoadDirection = 'down' | 'up' | 'x+' | 'x-' | 'z+' | 'z-';
 
 export const SPACE3D_LOAD_DIRECTIONS: readonly Space3DLoadDirection[] = ['down', 'x+', 'x-', 'z+', 'z-', 'up'];
 
-export const space3DLoadVector = (direction: Space3DLoadDirection, magnitude: number): Pick<Space3DNodalLoad, 'fx' | 'fy' | 'fz' | 'mx' | 'my' | 'mz'> => {
+const space3DLoadVector = (direction: Space3DLoadDirection, magnitude: number): Pick<Space3DNodalLoad, 'fx' | 'fy' | 'fz' | 'mx' | 'my' | 'mz'> => {
   const zero = { fx: 0, fy: 0, fz: 0, mx: 0, my: 0, mz: 0 };
   switch (direction) {
     case 'down': return { ...zero, fy: -magnitude };
@@ -191,4 +191,4 @@ export const space3DTopNodeIds = (project: Space3DProjectV1): readonly string[] 
   return project.nodes.filter((node) => highest - node.y < LEVEL_TOLERANCE).map((node) => node.id);
 };
 
-export { nextSpace3DMemberId };
+;

@@ -1,5 +1,5 @@
 .desktop-tool-list { display:contents; }
-.mobile-tool-dock,.mobile-tool-palette,.mobile-tool-sheet-backdrop,.results-mobile-toggle,.results-sheet-backdrop { display:none; }
+.mobile-tool-dock, .mobile-tool-palette, .mobile-tool-sheet-backdrop, .results-mobile-toggle { display:none; }
 .selection-tip { color: var(--subtle); font-size: var(--sc-font-size-label); line-height: 1.4; padding: 10px; display: flex; gap: 8px; align-items: flex-start; }
 .classroom-journey.is-compact .classroom-journey__steps { grid-template-columns:1fr; }.classroom-journey.is-compact .classroom-journey__steps small { display:block; }
 .canvas-host { min-height: 180px; flex: 1 1 auto; position: relative; overflow: hidden; background: var(--canvas-bg); }
@@ -403,13 +403,6 @@
 .cut-title-row > span { color:var(--muted); font-size:10px; }
 .cut-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:5px 0 0; border-top:1px solid var(--border-soft); }
 .cut-values span { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:9px; font-variant-numeric:tabular-nums; }
-.cut-equilibrium { display:flex; flex-direction:column; gap:4px; }
-.cut-equilibrium code { font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:9.5px; color:var(--muted-strong); white-space:normal; }
-.cut-fbd { width:100%; height:82px; border:1px solid var(--border-soft); border-radius:var(--sc-radius-card); background:var(--surface-2); }
-.cut-fbd text { font-size:8px; fill:var(--muted); }.cut-fbd text.axial-text{fill:var(--axial)}.cut-fbd text.shear-text{fill:var(--shear)}.cut-fbd text.moment-text{fill:var(--moment)}
-.cut-fbd-member{stroke:var(--member);stroke-width:3}.cut-fbd-section{stroke:var(--axis);stroke-width:2;stroke-dasharray:4 3}.cut-fbd-axis{stroke:var(--subtle);stroke-width:1}.cut-fbd-load line{stroke:var(--force);stroke-width:1.5}.cut-fbd-load path{fill:var(--force)}.cut-fbd-load text{fill:var(--force);font-weight:700}
-.cut-resultants{display:grid;gap:3px;padding:5px 0}.cut-resultants small,.cut-no-loads{color:var(--muted);font-size:9px}.cut-resultants span{font-size:9px;font-variant-numeric:tabular-nums}.cut-resultants b{color:var(--text);margin-right:4px}.cut-substitution{display:grid;gap:3px;padding:5px 0;border-top:1px solid var(--border-soft);border-bottom:1px solid var(--border-soft)}
-.cut-residuals { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-top:2px; color:var(--muted); font-variant-numeric:tabular-nums; }
 .cut-tooltip strong { margin-bottom: 2px; }
 .reaction-symbol { stroke: var(--reaction); fill: none; stroke-width: 2.2; }
 .reaction-symbol text { fill: var(--reaction); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
@@ -419,13 +412,12 @@
 @media (max-width:1023px) and (max-height:600px) {
   .canvas-host { min-height:112px; }
   .results-panel { min-height:128px; max-height:42dvh; height:42dvh!important; }
-  .professional-note { display:none; }
   .toolbar { bottom:8px; }
   .canvas-controls { bottom:70px; }
-  .mobile-inspector-toggle { bottom:78px; }
 }
-button, .icon-button, .tool-button, .compact-select, .number-control, .selection-card,
-.welcome-filter-tab {
+button,
+.tool-button,
+.number-control {
   transition:var(--sc-transition-control);
 }
 .selection-tip { font-size:var(--sc-font-size-label); }
@@ -434,13 +426,11 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .canvas-controls { border-radius:var(--sc-radius-control); }
 
 @media (max-width:460px) {
-  .brand-mark,.brand-mark svg { width:28px; height:28px; }
   .tool-button { border-radius:var(--sc-radius-card); }
   .tool-node,.tool-pointLoad,.tool-dimension { margin-top:0; box-shadow:none; }
   .tool-node.active,.tool-pointLoad.active,.tool-dimension.active { box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tool-color) 12%,transparent); }
   .canvas-mode-badge { font-size:var(--sc-font-size-technical); }
   .canvas-mode-badge strong { font-size:13px; }
-  .professional-note { font-size:9px; }
 }
 
 /* Mobile v2 --------------------------------------------------------------- */
@@ -450,14 +440,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
     padding-right:max(10px,env(safe-area-inset-right));
   }
   .topbar [data-topbar-cluster] { min-height:0; padding:0; border:0; background:transparent; box-shadow:none; }
-  .brand-home-button,.project-menu-toggle { min-width:44px; min-height:44px; }
-  .analysis-status { width:var(--sc-control-height-touch); height:var(--sc-control-height-touch); min-width:var(--sc-control-height-touch); padding:0; }
-  .project-menu-toggle { width:44px; height:44px; }
-  .project-menu,.mobile-actions-menu {
-    max-height:calc(100dvh - var(--topbar-h) - env(safe-area-inset-top) - 14px);
-    overflow-y:auto;
-    overscroll-behavior:contain;
-  }
 
   .workspace { grid-template-columns:1fr; grid-template-rows:minmax(0,1fr) auto; }
   .center-stage { grid-column:1; grid-row:1; }
@@ -602,14 +584,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 
   .canvas-controls { bottom:14px; }
   .canvas-mode-badge { max-width:calc(100% - 82px); overflow:hidden; white-space:nowrap; }
-  .mobile-inspector-toggle {
-    top:12px;
-    right:max(10px,env(safe-area-inset-right));
-    bottom:auto;
-    width:44px;
-    height:44px;
-    border-radius:var(--sc-radius-card);
-  }
   .inspector-panel {
     height:min(52dvh,480px);
     border-radius:var(--sc-radius-panel) 18px 0 0;
@@ -619,7 +593,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
     scroll-padding-bottom:calc(28px + env(safe-area-inset-bottom));
     -webkit-overflow-scrolling:touch;
   }
-  .professional-note { display:none; }
 }
 
 @media (max-width:1023px) and (orientation:landscape) and (max-height:600px) {
@@ -660,7 +633,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .inspector-panel::before { display:none; }
   .results-panel { min-height:180px; max-height:56dvh; height:min(46dvh,320px)!important; }
   .results-panel.mobile-collapsed { min-height:50px; max-height:50px; height:50px!important; }
-  .mobile-actions-menu,.project-menu { max-height:calc(100dvh - 58px); }
 }
 .canvas-host { contain:layout paint; }
 .mobile-tool-palette { animation:native-menu-in var(--motion-standard) var(--ease-native) both; transform-origin:top right; }
@@ -709,8 +681,7 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .inspector-panel :is(button,input,select),
   .coordinate-entry button,
   .import-center-dialog button,
-  .canvas-hint button,
-  .mobile-inspector-toggle {
+  .canvas-hint button {
     min-width:var(--sc-control-height-touch);
     min-height:var(--sc-control-height-touch);
   }
@@ -1061,19 +1032,6 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 }
 .canvas-layer-row:hover:not(:disabled) { background:var(--surface-2); }
 .canvas-layer-row:disabled { cursor:default; opacity:.86; }
-.canvas-layer-icon {
-  width:34px;
-  height:34px;
-  display:grid;
-  place-items:center;
-  border-radius:var(--sc-radius-card);
-  background:var(--surface-2);
-  color:var(--muted);
-}
-.canvas-layer-row[aria-checked='true'] .canvas-layer-icon { color:var(--accent-on-soft); background:var(--accent-soft); }
-.canvas-layer-copy { display:grid; min-width:0; gap:2px; }
-.canvas-layer-copy strong { font-size:12px; line-height:1.2; }
-.canvas-layer-copy small { color:var(--muted); font-size:10px; line-height:1.28; }
 /* CRI-105 · el interruptor de capas vive UNA sola vez, en
    `design-system/components/ui.css` como `.sc-layer-toggle__switch`.
    Aquí había dos definiciones base incompatibles de `.canvas-layer-switch`
@@ -1423,23 +1381,9 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 
 /* ACM is a read-only extension of the solved diagrams. Each lane keeps its
    own scale so a small axial action never vanishes beside a large moment. */
-.diagram-stack-baseline { stroke:var(--border-soft); stroke-width:1; }
-.diagram-stack-line { fill:none; stroke-width:2; }
-.diagram-stack-fill { stroke:none; opacity:.18; }
-.diagram-stack-caption { font-size:13px; font-weight:700; }
-.diagram-stack-title { fill:var(--muted); font-size:12px; font-weight:650; }
-.diagram-stack-title__span { fill:var(--subtle); font-weight:400; }
-.diagram-stack-extreme-label,.diagram-stack-reading text { font-size:10px; font-weight:700; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:3px; }
-.diagram-stack-extremes { transition:opacity var(--sc-motion-fast) var(--sc-ease-standard); }
-.diagram-stack-extremes.is-dimmed { opacity:.3; }
 .diagram-stack-reading text { font-size:10px; font-weight:700; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:3px; }
-.diagram-stack-cursor { stroke:var(--text); stroke-width:1; stroke-dasharray:4 3; opacity:.55; pointer-events:none; }
-.diagram-stack-cursor__station { fill:var(--muted); font-size:10px; font-weight:650; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:3px; }
+.diagram-stack-reading text { font-size:10px; font-weight:700; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:3px; }
 .diagram-stack-reading circle { stroke:var(--canvas-bg); stroke-width:1.5; }
-.diagram-stack-surface { fill:transparent; stroke:none; cursor:crosshair; }
-.diagram-stack-lane.axial .diagram-stack-line { stroke:var(--axial); }.diagram-stack-lane.axial .diagram-stack-fill,.diagram-stack-lane.axial .diagram-stack-extreme,.diagram-stack-lane.axial .diagram-stack-extreme-label,.diagram-stack-lane.axial .diagram-stack-reading circle,.diagram-stack-lane.axial .diagram-stack-reading text,.diagram-stack-lane.axial .diagram-stack-caption { fill:var(--axial); }
-.diagram-stack-lane.shear .diagram-stack-line { stroke:var(--shear); }.diagram-stack-lane.shear .diagram-stack-fill,.diagram-stack-lane.shear .diagram-stack-extreme,.diagram-stack-lane.shear .diagram-stack-extreme-label,.diagram-stack-lane.shear .diagram-stack-reading circle,.diagram-stack-lane.shear .diagram-stack-reading text,.diagram-stack-lane.shear .diagram-stack-caption { fill:var(--shear); }
-.diagram-stack-lane.moment .diagram-stack-line { stroke:var(--moment); }.diagram-stack-lane.moment .diagram-stack-fill,.diagram-stack-lane.moment .diagram-stack-extreme,.diagram-stack-lane.moment .diagram-stack-extreme-label,.diagram-stack-lane.moment .diagram-stack-reading circle,.diagram-stack-lane.moment .diagram-stack-reading text,.diagram-stack-lane.moment .diagram-stack-caption { fill:var(--moment); }
 
 /* ACM es una lámina de cálculo continua DEBAJO del modelo: la estructura
    completa se repite en la parte baja del lienzo para N, V y M mientras el
@@ -1709,43 +1653,9 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
 .canvas-touch-loupe-ground { fill:var(--canvas-bg); }
 .canvas-touch-loupe-rim { fill:none; stroke:var(--sc-color-border-canvas-chrome); stroke-width:2; }
 .canvas-touch-loupe-crosshair { stroke:color-mix(in srgb,var(--accent) 72%,transparent); stroke-width:1.2; }
-.critical-point-layer.is-shear { --critical-color:var(--shear); }
-.critical-point-stem { stroke:var(--critical-color); stroke-width:1; stroke-dasharray:3 2; opacity:.6; }
-.critical-point-dot { fill:var(--critical-color); stroke:var(--canvas-bg); stroke-width:1.2; }
-.critical-point-marker.is-min .critical-point-dot { fill:var(--canvas-bg); stroke:var(--critical-color); stroke-width:2; }
-.critical-point-stamp {
-  fill:var(--sc-color-surface-elevated);
-  stroke:var(--sc-color-border-canvas-chrome);
-  stroke-width:1;
-}
-.critical-point-value {
-  fill:var(--critical-color);
-  font-family:var(--sc-font-mono);
-  font-size:9px;
-  font-weight:700;
-  font-variant-numeric:var(--sc-numeric-variant);
-}
-.critical-point-station {
-  fill:var(--muted);
-  font-family:var(--sc-font-mono);
-  font-size:8px;
-  font-variant-numeric:var(--sc-numeric-variant);
-}
 
 /* --- Tarjeta contextual del corte: η y estación ------------------------ */
-.cut-demand-badge {
-  padding:1px 7px;
-  border-radius:var(--sc-radius-pill);
-  border:1px solid currentColor;
-  font-family:var(--sc-font-mono);
-  font-size:var(--sc-font-size-caption);
-  font-weight:750;
-  letter-spacing:.03em;
-}
-.cut-demand-badge[data-status='available'] { color:var(--sc-color-demand-peak); }
-.cut-demand-badge[data-at-reference='true'] { color:var(--sc-color-demand-reference); border-width:2px; }
 /* Sin dato verificable el corte no inventa un η: lo dice, en gris y en texto. */
-.cut-demand-badge[data-status='unavailable'] { color:var(--subtle); border-style:dashed; }
 .cut-station { color:var(--subtle); font-family:var(--sc-font-mono); }
 
 /* --- Anti-colisiones: el radar comparte esquina con el zoom ------------- */
@@ -1782,9 +1692,7 @@ button, .icon-button, .tool-button, .compact-select, .number-control, .selection
   .section-viewer-modes button.active,
   .result-tabs button:hover:not(.active),
   .result-tabs button.active,
-  .results-mode-control button[aria-pressed='true'],
-  .topbar-command-button:hover,
-  .topbar-command-button:active { transform:none; transition:none; }
+  .results-mode-control button[aria-pressed='true'] { transform:none; transition:none; }
 }
 
 /* En reposo la retícula orienta sin competir con la estructura; la interacción
@@ -2129,8 +2037,7 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .snap-glyph.perpendicular circle { stroke:var(--shear); }
 .snap-glyph.perpendicular path { stroke:var(--shear); }
 .snap-glyph.perpendicular text { fill:var(--shear); }
-.member-label, .dimension-label { font-size: 11px; fill: var(--muted); paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
-.dimension-label { fill: var(--dimension); }
+.member-label { font-size: 11px; fill: var(--muted); paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
 .smart-label { color:var(--muted); }
 .smart-label rect {
   fill:color-mix(in srgb,var(--surface) 98%,var(--canvas-bg));
@@ -2215,16 +2122,11 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .tool-group { display:grid; gap:4px; }
 .tool-node,.tool-pointLoad,.tool-dimension { margin-top:0; }
 
-@media (max-width:1439px) {
-  .overflow-toolrail-action { display:none!important; }
-}
-
 .tool-group + .tool-group { border-top-color:var(--border-soft); }
 
 /* --- Sellos de extremos M/V sobre el diagrama -------------------------- */
 /* El color es el de la magnitud que se está mirando, el mismo del diagrama:
    la capa declara cuál y el sello lo hereda. */
-.critical-point-layer { --critical-color:var(--moment); }
 
 /* --- Entrada del resultado --------------------------------------------- */
 /* El diagrama se dibuja cuando llega una corrida nueva: primero la curva

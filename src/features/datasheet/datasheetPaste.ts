@@ -11,13 +11,13 @@ import type { DatasheetColumn, DatasheetEntity, DatasheetRow } from './datasheet
  * antes de que nadie pulse Aplicar.
  */
 
-export interface DatasheetPasteEdit {
+interface DatasheetPasteEdit {
   rowId: string;
   fieldId: DatasheetFieldId;
   raw: string;
 }
 
-export interface DatasheetPasteResult {
+interface DatasheetPasteResult {
   edits: readonly DatasheetPasteEdit[];
   /** Celdas del bloque que caen más allá del borde de la tabla. */
   droppedOutside: number;
@@ -39,7 +39,7 @@ export const parseClipboardGrid = (text: string): string[][] => {
   return normalized.split('\n').map((line) => line.split('\t'));
 };
 
-export interface DatasheetPasteInput {
+interface DatasheetPasteInput {
   block: readonly (readonly string[])[];
   rows: readonly DatasheetRow[];
   columns: readonly DatasheetColumn[];

@@ -99,9 +99,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--sc-color-actio
 .results-panel { border-width: 1px 0 0; border-radius: 0; }
 
 .center-stage,
-.canvas-shell,
-.structural-canvas,
-.canvas-viewport { background-color: var(--sc-color-bg-canvas); }
+.structural-canvas { background-color: var(--sc-color-bg-canvas); }
 
 /* ---- Interacción -------------------------------------------------------
    Sin volumen no hay nada que hundir: un control pulsado cambia de plano, no
@@ -129,9 +127,7 @@ button, input, select, textarea, summary, [role='button'], [role='tab'] {
 @keyframes native-content-in { from { opacity:0; transform:translate3d(0,3px,0); } to { opacity:1; transform:translate3d(0,0,0); } }
 @keyframes native-fade-in { from { opacity:0; } to { opacity:1; } }
 @keyframes spin { to { transform:rotate(360deg); } }
-
-.popover, .sc-popover__content { animation: native-menu-in var(--sc-motion-fast) var(--sc-ease-enter) both; }
-.sc-modal-surface, .import-center-dialog, .new-exercise-dialog, .sc-home-settings-panel {
+.sc-modal-surface, .import-center-dialog, .new-exercise-dialog {
   animation: native-dialog-in var(--sc-motion-standard) var(--sc-ease-enter) both;
 }
 

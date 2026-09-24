@@ -10,7 +10,7 @@ import type { TranslationKey } from '../../i18n/catalogs';
 type Units = ProjectModel['settings']['units'];
 type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
 
-export interface CanvasMarqueeBox {
+interface CanvasMarqueeBox {
   start: { x: number; y: number };
   current: { x: number; y: number };
 }
@@ -25,7 +25,7 @@ const snapLabelKeys: Record<SnapKind, TranslationKey> = {
 };
 
 /** Presentation-only, ephemeral interaction feedback: snap glyph, marquee box, member draft, multi-selection badge. */
-export interface CanvasInteractionLayerProps {
+interface CanvasInteractionLayerProps {
   /** `preview` paints under the geometry (snap/marquee/draft); `overlay` paints over it (multi-selection badge). */
   slot: 'preview' | 'overlay';
   snapPreview: { x: number; y: number; kind: SnapKind } | null;

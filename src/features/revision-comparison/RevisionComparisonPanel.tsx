@@ -28,7 +28,7 @@ import './revisionComparison.css';
 type DomainFilter = 'all' | RevisionChangeDomain;
 type CategoryFilter = 'all' | RevisionChangeCategory;
 
-export interface RevisionComparisonPanelProps {
+interface RevisionComparisonPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   presentation?: Extract<SurfacePresentation, 'drawer' | 'fullscreen'>;

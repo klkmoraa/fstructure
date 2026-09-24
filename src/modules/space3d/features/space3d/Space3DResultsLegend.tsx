@@ -17,7 +17,7 @@ import {
 } from '../../space3d/view/resultSemantics';
 import type { TranslationKey } from '../../i18n/catalogs';
 
-export interface Space3DResultsLegendProps {
+interface Space3DResultsLegendProps {
   readonly resultMode: Space3DResultMode;
   readonly analysis: Space3DAnalysisResult | null;
   readonly project: Space3DProjectV1;

@@ -91,17 +91,3 @@ export const saveSpace3DProject = (
     return false;
   }
 };
-
-export const clearSpace3DProject = (
-  storage: Space3DStorageLike | null = browserStorage(),
-  namespace?: string,
-): void => {
-  if (!storage) return;
-  const keys = space3dStorageKeys(namespace);
-  try {
-    storage.removeItem(keys.primary);
-    storage.removeItem(keys.backup);
-  } catch {
-    // Un almacenamiento que no deja borrar tampoco deja guardar: no hay nada que rescatar.
-  }
-};

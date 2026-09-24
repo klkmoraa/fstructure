@@ -26,7 +26,7 @@ import { createStructureGeneratorTranslator } from './structureGeneratorCopy';
  * concretas del caso.
  */
 
-export interface GeneratorSummaryRow {
+interface GeneratorSummaryRow {
   readonly id: string;
   readonly label: string;
   readonly value: string;
@@ -34,9 +34,9 @@ export interface GeneratorSummaryRow {
   readonly detail?: string;
 }
 
-export type GeneratorWarningTone = 'decision' | 'info';
+type GeneratorWarningTone = 'decision' | 'info';
 
-export interface PresentedGeneratorWarning {
+interface PresentedGeneratorWarning {
   readonly code: string;
   readonly tone: GeneratorWarningTone;
   readonly title: string;

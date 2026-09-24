@@ -1,7 +1,7 @@
 import type { SupportDefinition, SupportType } from '../../types';
 import { discardIncompatibleInlineSupportPrescribed } from '../../data/supportSemantics';
 
-export type CanvasSupportPlacementType = Extract<SupportType, 'none' | 'pin' | 'roller' | 'fixed' | 'custom'>;
+type CanvasSupportPlacementType = Extract<SupportType, 'none' | 'pin' | 'roller' | 'fixed' | 'custom'>;
 
 /** Construye el apoyo escrito por la paleta contextual del canvas. */
 export const supportForCanvasPlacement = (

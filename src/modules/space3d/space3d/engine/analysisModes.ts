@@ -12,7 +12,7 @@ import {
   type Matrix,
 } from '../../../../foundation/linearAlgebra';
 import {
-  analyzeSpace3DStatic,
+  analyzeSpace3DProject,
   assembleSpace3DStaticModel,
   type Space3DStaticAnalysisOptions,
 } from './solver';
@@ -33,14 +33,14 @@ const DOF_PER_NODE = 6;
 
 const vectorNorm = (values: readonly number[]): number => Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
 
-export interface Space3DModalOptions extends Space3DStaticAnalysisOptions {
+interface Space3DModalOptions extends Space3DStaticAnalysisOptions {
   readonly targetId?: string;
   readonly modes?: number;
   readonly maxIterations?: number;
   readonly tolerance?: number;
 }
 
-export interface Space3DModalMode {
+interface Space3DModalMode {
   readonly angularFrequency: number;
   readonly frequency: number;
   readonly period: number;
@@ -50,7 +50,7 @@ export interface Space3DModalMode {
   readonly shape: readonly (Space3DDofValues & { readonly nodeId: string })[];
 }
 
-export interface Space3DModalResult {
+interface Space3DModalResult {
   readonly success: boolean;
   readonly targetId: string;
   readonly modes: readonly Space3DModalMode[];
@@ -226,12 +226,12 @@ export const analyzeSpace3DModal = (
   });
 };
 
-export interface Space3DPDeltaOptions extends Space3DStaticAnalysisOptions {
+interface Space3DPDeltaOptions extends Space3DStaticAnalysisOptions {
   readonly maxIterations?: number;
   readonly tolerance?: number;
 }
 
-export interface Space3DPDeltaResult {
+interface Space3DPDeltaResult {
   readonly success: boolean;
   readonly targetId: string;
   readonly linear: Space3DAnalysisResult;
@@ -243,12 +243,12 @@ export interface Space3DPDeltaResult {
   readonly reason: string;
 }
 
-export interface Space3DBucklingMode {
+interface Space3DBucklingMode {
   readonly criticalLoadFactor: number;
   readonly shape: readonly (Space3DDofValues & { readonly nodeId: string })[];
 }
 
-export interface Space3DBucklingResult {
+interface Space3DBucklingResult {
   readonly success: boolean;
   readonly targetId: string;
   readonly modes: readonly Space3DBucklingMode[];
@@ -457,7 +457,7 @@ export const analyzeSpace3DPDelta = (
 ): Space3DPDeltaResult => {
   const linear = ((): Space3DAnalysisResult => {
     const assembly = assembleSpace3DStaticModel(project, targetId, options);
-    return assembly.valid ? analyzeSpace3DStatic(project, targetId, options) : Object.freeze({
+    return assembly.valid ? analyzeSpace3DProject(project, targetId, options) : Object.freeze({
       success: false, targetId, targetKind: assembly.targetKind, nodeResults: Object.freeze([]), memberResults: Object.freeze([]), issues: assembly.issues,
       diagnostics: Object.freeze({ dofCount: assembly.totalDofs, freeDofCount: 0, restrainedDofCount: 0, relativeResidual: Number.NaN, conditionEstimate: Number.NaN, equilibrium: Object.freeze({ force: Object.freeze([0, 0, 0]) as Space3DVector, moment: Object.freeze([0, 0, 0]) as Space3DVector, normalized: Number.NaN }) }),
     });
@@ -510,7 +510,7 @@ export const analyzeSpace3DBuckling = (
 ): Space3DBucklingResult => {
   const assembly = assembleSpace3DStaticModel(project, targetId, options);
   if (!assembly.valid) return bucklingFailure(targetId, 'El ensamblaje espacial no es admisible para pandeo.', assembly.issues);
-  const reference = analyzeSpace3DStatic(project, targetId, options);
+  const reference = analyzeSpace3DProject(project, targetId, options);
   if (!reference.success) return bucklingFailure(targetId, 'El análisis lineal de referencia no es válido para pandeo.', reference.issues);
   const displacement = project.nodes.flatMap((_, index) => {
     const node = reference.nodeResults[index];
@@ -554,9 +554,9 @@ export const analyzeSpace3DBuckling = (
   });
 };
 
-export type Space3DInfluenceQuantity = 'N' | 'Vy' | 'Vz' | 'T' | 'My' | 'Mz';
+type Space3DInfluenceQuantity = 'N' | 'Vy' | 'Vz' | 'T' | 'My' | 'Mz';
 
-export interface Space3DInfluenceTarget {
+interface Space3DInfluenceTarget {
   readonly kind: 'member';
   readonly memberId: string;
   /** Cut coordinate on the deformable member, measured from end i. */
@@ -565,7 +565,7 @@ export interface Space3DInfluenceTarget {
   readonly side: 'left' | 'right' | 'continuous';
 }
 
-export interface Space3DInfluenceOptions extends Space3DStaticAnalysisOptions {
+interface Space3DInfluenceOptions extends Space3DStaticAnalysisOptions {
   readonly targetId: string;
   readonly target: Space3DInfluenceTarget;
   /** Positions of the moving unit load on the same member path. */
@@ -574,14 +574,14 @@ export interface Space3DInfluenceOptions extends Space3DStaticAnalysisOptions {
   readonly unitLoad: Space3DVector;
 }
 
-export interface Space3DInfluencePoint {
+interface Space3DInfluencePoint {
   readonly position: number;
   readonly value: number;
   readonly equilibriumResidual: number;
   readonly analysis: Space3DAnalysisResult;
 }
 
-export interface Space3DInfluenceResult {
+interface Space3DInfluenceResult {
   readonly success: boolean;
   readonly targetId: string;
   readonly target: Space3DInfluenceTarget;

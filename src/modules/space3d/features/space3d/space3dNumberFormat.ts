@@ -8,7 +8,7 @@
  * neutral presentation package is published in a later migration phase.
  */
 
-export interface Space3DNumberFormatOptions {
+interface Space3DNumberFormatOptions {
   readonly significantDigits?: number;
   readonly notAvailable?: string;
 }

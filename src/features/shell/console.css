@@ -30,7 +30,6 @@
    el ratón. */
 
 /* Los controles propios se mantienen por encima del riel flotante. */
-.console__surfaces,
 .console__foot {
   position: relative;
   z-index: 39;
@@ -84,8 +83,7 @@
 }
 
 
-.console__foot,
-.console__surfaces { width: 44px; display: grid; justify-items: center; gap: 1px; }
+.console__foot { width: 44px; display: grid; justify-items: center; gap: 1px; }
 
 .console__body {
   width: 44px;
@@ -99,8 +97,6 @@
   padding-block: 6px;
   scrollbar-width: thin;
 }
-
-.console__surfaces { padding-block-end: 10px; border-bottom: 1px solid var(--border-soft); }
 
 .console__tools .toolbar { width: 100%; padding: 0; border: 0; overflow: visible; }
 .console__tools .toolbar-spacer,
@@ -168,17 +164,14 @@
        leer. */
     scroll-snap-type: x proximity;
   }
-  .console__tools,
-  .console__surfaces { scroll-snap-align: start; }
+  .console__tools { scroll-snap-align: start; }
 
 
-  .console__surfaces,
   .console__tools,
   .console__tools .toolbar { display: flex; flex: none; width: max-content; gap: 0; }
   /* `order` y no `row-reverse`: invertir el eje de un carril desplazable lo
      arranca en su extremo contrario y deja las herramientas fuera de vista. */
   .console__tools { order: 1; }
-  .console__surfaces { order: 2; border-inline-start: 1px solid var(--border-soft); }
   .console__tools .desktop-tool-list { display: none; }
   .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock {
     display: flex;
@@ -198,7 +191,6 @@
   }
 
   .console__tools .toolbar { height: 52px; min-height: 52px; }
-  .console__surfaces > button,
   .console__foot > button { height: 44px; min-height: 44px; margin-block: 4px; }
   .console button { padding: 0 11px; justify-content: center; }
   .console button.is-active { box-shadow: inset 0 2px 0 var(--accent-ink); }
@@ -222,14 +214,8 @@
     background: var(--sc-color-bg-app);
   }
 
-  .console__surfaces,
   .console__foot {
     gap: 6px;
-  }
-
-  .console__surfaces {
-    padding-block: 8px 12px;
-    border-bottom-color: var(--sc-color-border-soft);
   }
 
   .console__foot {
@@ -237,7 +223,6 @@
     border-top-color: var(--sc-color-border-soft);
   }
 
-  .console__surfaces > button,
   .console__foot > button {
     width: 44px;
     min-width: 44px;
@@ -257,8 +242,6 @@
       transform var(--sc-motion-control) var(--sc-ease-press);
   }
 
-  .console__surfaces > button:hover:not(:disabled),
-  .console__surfaces > button:focus-visible,
   .console__foot > button:hover:not(:disabled),
   .console__foot > button:focus-visible {
     border-color: var(--sc-color-border);
@@ -267,7 +250,6 @@
     color: var(--sc-color-text-primary);
   }
 
-  .console__surfaces > button:active:not(:disabled),
   .console__foot > button:active:not(:disabled) {
     background: var(--sc-color-surface-pressed);
     box-shadow: var(--sc-shadow-pressed);
@@ -292,7 +274,6 @@
     background: var(--sc-color-surface-inset);
   }
 
-  .console__surfaces > button,
   .console__foot > button {
     border: var(--sc-depth-raised-border);
     border-radius: var(--sc-radius-control);

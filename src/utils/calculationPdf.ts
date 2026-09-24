@@ -36,7 +36,7 @@ import type { AnalysisResult, ProjectModel } from '../types';
 import { DEFAULT_SOLUTION_METHOD, type SolutionMethodId } from '../analysis-methods/methodRegistry';
 import { inspectPdfMethodAvailability } from './pdf/pdfMethodSection';
 
-export type { CalculationReportOptions, CalculationReportArtifact } from './pdf/reportContext';
+export type { CalculationReportOptions,  } from './pdf/reportContext';
 
 const DOCUMENT_TITLE = 'Memoria de cálculo estructural';
 

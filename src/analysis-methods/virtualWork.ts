@@ -25,7 +25,7 @@ import { classifyStructure, type StructureClassification } from './structureClas
 
 export type DisplacementComponent = 'ux' | 'uy';
 
-export interface VirtualWorkMemberContribution {
+interface VirtualWorkMemberContribution {
   memberId: string;
   length: number;
   A: number;
@@ -64,12 +64,12 @@ export interface VirtualWorkResult {
   residual: number;
 }
 
-export interface VirtualWorkRejection {
+interface VirtualWorkRejection {
   applicable: false;
   reasonKey: string;
 }
 
-export type VirtualWorkOutcome = VirtualWorkResult | VirtualWorkRejection;
+type VirtualWorkOutcome = VirtualWorkResult | VirtualWorkRejection;
 
 /** Which translational components of a joint are free to displace, given its support. */
 export const freeComponents = (support: SupportDefinition): { ux: boolean; uy: boolean } => {

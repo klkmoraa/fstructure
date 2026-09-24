@@ -2,15 +2,15 @@ import type { AnalysisResult, LoadCombination, MemberLoad, ProjectModel } from '
 import { createDefaultSettings } from '../data/defaultProject';
 import { analyzeProject } from './solver';
 
-export type CorpusStatus = 'available' | 'unsupported';
-export type CorpusAssertionTarget =
+type CorpusStatus = 'available' | 'unsupported';
+type CorpusAssertionTarget =
   | { kind: 'node'; nodeId: string; component: 'ux' | 'uy' | 'rz' | 'rx' | 'ry' | 'rm' }
   | { kind: 'member'; memberId: string; quantity: 'axial' | 'shear' | 'moment'; extreme: 'maximum' | 'minimum' | 'absolute-maximum' }
   | { kind: 'member-end-force'; memberId: string; end: 'i' | 'j'; quantity: 'axial' | 'shear' | 'moment' }
   | { kind: 'member-deformation'; memberId: string; x: number; quantity: 'u' | 'v' | 'theta' }
   | { kind: 'analysis'; field: 'success' | 'pDeltaConverged' | 'pDeltaEnabled' | 'finiteDisplacement' | 'pDeltaAmplification' };
 
-export interface CorpusAssertion {
+interface CorpusAssertion {
   id: string;
   target: CorpusAssertionTarget;
   expected: number | boolean;
@@ -19,7 +19,7 @@ export interface CorpusAssertion {
   nearZeroTolerance: number;
 }
 
-export type CorpusInvariant =
+type CorpusInvariant =
   | { id: string; kind: 'global-equilibrium'; description: string; atol: number; rtol: number; supportedLoadDomain: string }
   | { id: string; kind: 'finite-displacement'; description: string }
   | { id: string; kind: 'pdelta-amplification'; description: string; minimum: number }
@@ -27,7 +27,7 @@ export type CorpusInvariant =
   | { id: string; kind: 'member-end-near-zero'; description: string; memberId: string; end: 'i' | 'j'; quantity: 'axial' | 'shear' | 'moment'; tolerance: number }
   | { id: string; kind: 'analysis-failed'; description: string };
 
-export interface Solver2DCorpusCase {
+interface Solver2DCorpusCase {
   id: string;
   title: string;
   status: CorpusStatus;

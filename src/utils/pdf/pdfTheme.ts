@@ -17,7 +17,7 @@
 import type { PdfColor, RgbFactory } from './reportContext';
 
 /** `#1d1d1f` -> the three 0..1 components `pdf-lib`'s `rgb()` wants. */
-export const fromHex = (hex: string): [number, number, number] => {
+const fromHex = (hex: string): [number, number, number] => {
   const value = hex.replace('#', '');
   const full = value.length === 3 ? value.split('').map((c) => c + c).join('') : value;
   return [
@@ -34,7 +34,7 @@ export const fromHex = (hex: string): [number, number, number] => {
  * every rule, the accent is the single brand colour, and the technical hues are reserved for
  * the one thing that needs colour to be understood — which quantity a curve represents.
  */
-export const REPORT_TOKENS = {
+const REPORT_TOKENS = {
   /** `--sc-white` */
   paper: '#ffffff',
   /** `--sc-grey-100`: the tint behind a zebra row or a quiet block. */
@@ -73,7 +73,7 @@ export const REPORT_TOKENS = {
   danger: '#d70015',
 } as const;
 
-export type ReportTokenName = keyof typeof REPORT_TOKENS;
+type ReportTokenName = keyof typeof REPORT_TOKENS;
 
 /**
  * Type scale.

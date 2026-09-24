@@ -24,7 +24,7 @@ const titleFromText = (text: string): string =>
   text.split(/\r?\n/).map((line) => line.trim()).find((line) => line.length >= 3)?.slice(0, 100)
   ?? 'Documento PDF';
 
-export const classifyPdfContent = (
+const classifyPdfContent = (
   textByPage: string[],
   payload?: PortablePayload,
 ): { kind: PdfImportKind; confidence: number } => {

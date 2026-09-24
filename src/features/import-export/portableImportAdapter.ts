@@ -245,5 +245,3 @@ export const createPortableImportCenterAdapter = (language: Language): ImportCen
     },
   };
 };
-
-export const portableImportCenterAdapter = createPortableImportCenterAdapter('es');

@@ -11,7 +11,7 @@ export interface StorageLike {
   setItem(key: string, value: string): void;
 }
 
-export interface StoredProjectLoad {
+interface StoredProjectLoad {
   project: ProjectModel;
   recoveredFromBackup: boolean;
   recoveryMessage?: string;

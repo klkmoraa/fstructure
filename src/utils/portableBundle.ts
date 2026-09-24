@@ -1,6 +1,5 @@
-import type { AnalysisResult, ProjectModel } from '../types';
-import { createCalculationReport, type CalculationReportOptions } from './calculationPdf';
-import { canonicalStringify, parsePortablePayload, serializePortablePayload } from './portablePayload';
+
+import { canonicalStringify, parsePortablePayload } from './portablePayload';
 import {
   assertSafeArchivePath,
   assertWithinBudget,
@@ -14,26 +13,11 @@ import {
   type PortablePayload,
 } from './portableTypes';
 
-export interface PortableBundleArtifact {
-  bytes: Uint8Array;
-  filename: string;
-  manifest: PortableBundleManifest;
-  payload: PortablePayload;
-  reportBytes: Uint8Array;
-}
-
 export interface PortableBundleContents {
   manifest: PortableBundleManifest;
   payload: PortablePayload;
   reportBytes: Uint8Array;
 }
-
-const safeFilename = (name: string): string => name
-  .normalize('NFKD')
-  .replace(/[^a-zA-Z0-9 _-]/g, '')
-  .trim()
-  .replace(/\s+/g, '-')
-  .toLowerCase() || 'fusionstructure-project';
 
 const decodeJson = (bytes: Uint8Array, label: string): unknown => {
   try {
@@ -66,45 +50,6 @@ const assertManifest: (value: unknown) => asserts value is PortableBundleManifes
     }
     assertSafeArchivePath(entry);
   }
-};
-
-export const createPortableBundle = async (
-  project: ProjectModel,
-  analysis: AnalysisResult,
-  options: CalculationReportOptions = {},
-): Promise<PortableBundleArtifact> => {
-  const [{ zipSync, strToU8 }, report] = await Promise.all([
-    import('fflate'),
-    createCalculationReport(project, analysis, options),
-  ]);
-  const manifest: PortableBundleManifest = {
-    format: 'fusionstructure-bundle',
-    formatVersion: PORTABLE_FORMAT_VERSION,
-    createdAt: report.payload.provenance.generatedAt,
-    appVersion: report.payload.provenance.appVersion,
-    projectName: project.name,
-    payloadChecksum: report.payload.checksum.value,
-    files: {
-      payload: 'portable/payload.json',
-      project: 'project.json',
-      analysis: 'analysis/result.json',
-      report: 'report/calculation-report.pdf',
-    },
-  };
-  const bytes = zipSync({
-    'manifest.json': strToU8(JSON.stringify(manifest, null, 2)),
-    [manifest.files.payload]: strToU8(serializePortablePayload(report.payload, true)),
-    [manifest.files.project]: strToU8(JSON.stringify(project, null, 2)),
-    [manifest.files.analysis]: strToU8(JSON.stringify(analysis, null, 2)),
-    [manifest.files.report]: report.bytes,
-  }, { level: 6 });
-  return {
-    bytes,
-    filename: `${safeFilename(project.name)}.fusionstructure`,
-    manifest,
-    payload: report.payload,
-    reportBytes: report.bytes,
-  };
 };
 
 export const readPortableBundle = async (

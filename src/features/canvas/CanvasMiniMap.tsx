@@ -1,7 +1,7 @@
 import { memo, useMemo, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import type { MemberModel, NodeModel } from '../../types';
 
-export interface CanvasMiniMapProps {
+interface CanvasMiniMapProps {
   nodes: readonly NodeModel[];
   members: readonly MemberModel[];
   /** Rectángulo del modelo visible ahora mismo, en coordenadas de modelo. `null` mientras el lienzo no se ha medido. */

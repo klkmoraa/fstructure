@@ -71,32 +71,7 @@ export const mathWidth = (layout: PdfLayout, expression: string, size: number): 
   return measureFormula(parsed, size).widthPt;
 };
 
-/** Draws the expression on one line at `x`/`baseline` and returns the width it consumed. */
-export const drawMathFormula = (
-  layout: PdfLayout,
-  expression: string,
-  x: number,
-  baseline: number,
-  requestedSize: number,
-  color: PdfColor,
-  maxFormulaWidth = Number.POSITIVE_INFINITY,
-): number => {
-  const parsed = safeTypeset(expression);
-  if (!parsed) {
-    // Plain-prose fallback, shrinking on the same schedule the vector path uses.
-    const text = pdfText(expression);
-    const font = layout.fonts.mathRegular;
-    let plainSize = requestedSize;
-    while (plainSize > 7.5 && font.widthOfTextAtSize(text, plainSize) > maxFormulaWidth) plainSize -= 0.4;
-    layout.page.drawText(text, { x, y: baseline, size: plainSize, font, color });
-    return font.widthOfTextAtSize(text, plainSize);
-  }
-  let size = requestedSize;
-  while (size > 7.5 && measureFormula(parsed, size).widthPt > maxFormulaWidth) size -= 0.4;
-  return drawFormula(layout.page, layout.vectorOps, parsed, x, baseline, size, color);
-};
-
-export interface MathBlockOptions {
+interface MathBlockOptions {
   /** Extra left offset applied to every line after the first. */
   continuationIndent?: number;
   /** Right-aligned tag, typically an equation number such as `(4)`. */
@@ -124,7 +99,7 @@ export interface MathBlockOptions {
  * `drawMathBlock` draws such an expression as plain prose anyway (see `safeTypeset`), so the
  * packing only has to stay finite and roughly sane.
  */
-export const packMathLines = (expression: string, width: number, size: number, indent: number): string[] => {
+const packMathLines = (expression: string, width: number, size: number, indent: number): string[] => {
   const atoms = atomize(expression);
   if (!atoms.length) return [];
 
@@ -211,24 +186,6 @@ export const drawMathBlock = (
     }
   }
   return consumed;
-};
-
-/** Titled card holding one governing relation and its plain-language reading. */
-export const drawFormulaCard = (
-  layout: PdfLayout,
-  label: string,
-  expression: string,
-  explanation: string,
-  x: number,
-  bottom: number,
-  width: number,
-  color: PdfColor,
-): void => {
-  const { page, rgb, fonts } = layout;
-  page.drawRectangle({ x, y: bottom, width, height: 54, color: rgb(0.975, 0.985, 0.98), borderColor: color, borderWidth: 0.65 });
-  page.drawText(pdfText(label.toUpperCase()), { x: x + 10, y: bottom + 39, size: 6.3, font: fonts.bold, color });
-  drawMathFormula(layout, expression, x + 10, bottom + 21, 11.2, rgb(0.10, 0.15, 0.12), width - 20);
-  page.drawText(pdfText(explanation), { x: x + 10, y: bottom + 7, size: 6.2, font: fonts.regular, color: rgb(0.37, 0.43, 0.39) });
 };
 
 /**

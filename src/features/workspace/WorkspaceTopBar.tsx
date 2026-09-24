@@ -11,14 +11,14 @@ import type { ToolId } from '../../shared/contracts';
  * cosa y el texto la contraria. `Instrument` ya excluye `recovered` de su
  * predicado de error; aquí no lo hacía.
  */
-export type WorkspaceStorageState = 'ready' | 'recovered' | 'issue';
+type WorkspaceStorageState = 'ready' | 'recovered' | 'issue';
 /**
  * Un análisis que terminó MAL no es un modelo que no se ha corrido. Sin
  * `failed`, un `analysis.success === false` caía en `ready` y la barra decía
  * «Listo para analizar» encima de una corrida que falló: el estado más
  * importante quedaba escondido detrás del más inocuo.
  */
-export type WorkspaceAnalysisState = 'ready' | 'running' | 'resolved' | 'failed';
+type WorkspaceAnalysisState = 'ready' | 'running' | 'resolved' | 'failed';
 
 export interface WorkspaceTopBarLabels {
   solverName: string;
@@ -42,7 +42,7 @@ export interface WorkspaceTopBarLabels {
   actions: string;
 }
 
-export interface WorkspaceTopBarProps {
+interface WorkspaceTopBarProps {
   /**
    * Herramienta dueña de la barra. Sólo pinta su identidad: cada herramienta es
    * una mesa aislada y la barra no ofrece saltos a las otras; se vuelve al

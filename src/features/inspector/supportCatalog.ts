@@ -414,7 +414,7 @@ const CONNECTION_ENTRIES: readonly SupportEntry[] = [
   },
 ];
 
-export const SUPPORT_ENTRIES: readonly SupportEntry[] = [
+const SUPPORT_ENTRIES: readonly SupportEntry[] = [
   ...BASIC_ENTRIES,
   ...GUIDED_ENTRIES,
   ...ELASTIC_ENTRIES,
@@ -437,29 +437,6 @@ const restraintsOf = (support: SupportDefinition): SupportRestraints => ({
   y: Boolean(support.restrainY),
   r: Boolean(support.restrainR),
 });
-
-/**
- * El apoyo que la entrada representa por sí sola, sin mirar el nudo.
- *
- * Es lo que la biblioteca necesita para dibujar la ficha de grados de libertad
- * de una tarjeta que nadie ha pulsado todavía. Devuelve `null` cuando la
- * entrada no fija una condición de borde completa —«Personalizado», los
- * resortes, lo avanzado—, porque en esos casos no hay un apoyo que enseñar.
- */
-export const previewSupportOf = (entry: SupportEntry): SupportDefinition | null => {
-  if (entry.kind !== 'preset' || !entry.type) return null;
-  if (entry.type === 'roller') return { type: 'roller', angleDeg: entry.angleDeg ?? DEFAULT_ROLLER_ANGLE_DEG };
-  if (entry.type === 'custom') {
-    if (!entry.restraints) return null;
-    return {
-      type: 'custom',
-      restrainX: entry.restraints.x,
-      restrainY: entry.restraints.y,
-      restrainR: entry.restraints.r,
-    };
-  }
-  return { type: entry.type };
-};
 
 /**
  * Aplica un preset sobre el apoyo que ya había.

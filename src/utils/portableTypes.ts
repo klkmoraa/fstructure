@@ -3,7 +3,6 @@ import type { UnitSystemId } from '../foundation/units';
 
 export const PORTABLE_PAYLOAD_FILENAME = 'fusionstructure-payload.json';
 export const PORTABLE_PAYLOAD_MIME = 'application/vnd.fusionstructure.project+json';
-export const PORTABLE_BUNDLE_MIME = 'application/vnd.fusionstructure.bundle+zip';
 
 /**
  * Compatibility identifiers are read-only migration points. New exports never use them,

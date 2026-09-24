@@ -1,7 +1,7 @@
 import { applyProjectPatch, compileProjectCommand, type CompiledProjectCommand, type ProjectCommand } from '../../commands/projectCommand';
 import type { MemberModel, NodeModel, ProjectModel, Selection } from '../../types';
 
-export interface PreparedDuplicatePreview {
+interface PreparedDuplicatePreview {
   command: ProjectCommand;
   compiled: CompiledProjectCommand;
   addedNodes: NodeModel[];

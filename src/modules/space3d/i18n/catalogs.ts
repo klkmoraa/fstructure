@@ -37,38 +37,22 @@ export const es = {
   'results.compactUnresolved': 'La corrida necesita corrección',
   'results.compactWaiting': 'Aún no hay resultados calculados',
   'results.criticalEnd': 'Extremo',
-  'results.criticalJump': 'Salto',
-  'results.criticalMaximum': 'Máximo',
-  'results.criticalMinimum': 'Mínimo',
-  'results.criticalPoints': 'Puntos notables',
-  'results.criticalZero': 'Cruce por cero',
-  'results.pinCriticalPoint': 'Fijar lectura en {point}',
-  'results.unpinCriticalPoint': 'Quitar lectura fijada de {point}',
   'surface.loadFailed': 'No se pudo cargar esta superficie.',
   'surface.reload': 'Recargar',
-  'space3d.bridgeCompleteNow': 'Completar ahora',
-  'space3d.bridgeNextRequirement': 'Siguiente requisito para analizar: {requirement}',
 } as const;
 
 export type TranslationKey = keyof typeof es;
 export type Language = 'es' | 'en';
 export type Catalog = Record<TranslationKey, string>;
 
-export const catalogs: Partial<Record<Language, Catalog>> & { es: Catalog } = { es };
+const catalogs: Partial<Record<Language, Catalog>> & { es: Catalog } = { es };
 
-const listeners = new Set<() => void>();
 const pendingCatalogs = new Map<Language, Promise<Catalog>>();
 
 /** Registra una traducción que acaba de llegar y despierta a los consumidores. */
-export const registerCatalog = (language: Language, catalog: Catalog): void => {
+const registerCatalog = (language: Language, catalog: Catalog): void => {
   if (catalogs[language] === catalog) return;
   catalogs[language] = catalog;
-  listeners.forEach((listener) => listener());
-};
-
-export const subscribeToCatalogs = (listener: () => void): (() => void) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
 };
 
 export const isCatalogReady = (language: Language): boolean => catalogs[language] !== undefined;

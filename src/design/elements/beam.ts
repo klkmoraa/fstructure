@@ -187,7 +187,7 @@ export interface BeamDesignResult {
   readonly status: 'pass' | 'fail' | 'warning';
 }
 
-export interface BeamDesignError {
+interface BeamDesignError {
   readonly ok: false;
   readonly errors: readonly string[];
 }
@@ -390,7 +390,7 @@ function designBastions(
   return { bastions: merged, failed };
 }
 
-export const sectionAt = (x: number, bed: 'top' | 'bottom', continuous: BedSection, bastions: readonly BeamBastion[]): BedSection =>
+const sectionAt = (x: number, bed: 'top' | 'bottom', continuous: BedSection, bastions: readonly BeamBastion[]): BedSection =>
   bastions.find((bastion) => bastion.bed === bed && x >= bastion.startM - TOLERANCE && x <= bastion.endM + TOLERANCE)?.section ?? continuous;
 
 /** Inercia de la sección transformada agrietada, mm⁴. */

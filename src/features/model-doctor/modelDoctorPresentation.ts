@@ -12,7 +12,7 @@ export interface ContextualModelDoctorRepair {
   returnLabel: string;
 }
 
-export interface PresentedModelDoctorFinding {
+interface PresentedModelDoctorFinding {
   title: string;
   explanation: string;
   whyItMatters: string;

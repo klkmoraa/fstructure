@@ -12,7 +12,7 @@ import { DatasheetCellEditor, type DatasheetCellEditorProps } from './DatasheetC
 import type { DatasheetColumn, DatasheetRow, DatasheetSort } from './datasheetModel';
 import { datasheetCellText, datasheetColumnHeader } from './datasheetPresentation';
 
-export interface DatasheetGridProps {
+interface DatasheetGridProps {
   columns: readonly DatasheetColumn[];
   rows: readonly DatasheetRow[];
   units: UnitSystemId;

@@ -39,7 +39,7 @@ const arrowPath = (x1: number, y1: number, x2: number, y2: number, marker = 'arr
 );
 
 /** Presentation-only geometry: nodes, members, supports and loads. Selection/edit intents flow out via callback props. */
-export interface CanvasGeometryLayerProps {
+interface CanvasGeometryLayerProps {
   /** `members` paints under the result annotations; `objects` (supports/loads/nodes) paints over them. */
   slot: 'members' | 'objects';
   project: ProjectModel;

@@ -17,7 +17,7 @@ import type { Space3DAnalysisState, Space3DSelection } from '../store/Space3DPro
 
 export type Space3DResultMode = 'model' | 'deformed' | 'axial' | 'shear' | 'moment' | 'reactions';
 
-export interface Space3DSceneMemberResult {
+interface Space3DSceneMemberResult {
   readonly mode: 'axial' | 'shear' | 'moment';
   readonly start: number;
   readonly end: number;
@@ -111,7 +111,7 @@ export interface Space3DSceneModel {
   readonly isEmpty: boolean;
 }
 
-export interface Space3DSceneInput {
+interface Space3DSceneInput {
   readonly project: Space3DProjectV1;
   readonly analysis: Space3DAnalysisResult | null;
   readonly analysisState: Space3DAnalysisState;

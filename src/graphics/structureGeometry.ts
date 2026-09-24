@@ -18,12 +18,12 @@
  */
 import type { LoadCoordinateSystem, MemberLoad, MemberModel, NodeModel } from '../types';
 
-export interface Vec2 {
+interface Vec2 {
   x: number;
   y: number;
 }
 
-export interface ModelBounds {
+interface ModelBounds {
   minX: number;
   maxX: number;
   minY: number;
@@ -38,7 +38,7 @@ export interface ModelBounds {
  * degenerate member is a different problem for the canvas (skip the glyph) than for the
  * report (skip the whole block).
  */
-export interface MemberAxis {
+interface MemberAxis {
   readonly start: Vec2;
   readonly end: Vec2;
   readonly dx: number;

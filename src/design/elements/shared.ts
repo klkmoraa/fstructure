@@ -5,9 +5,8 @@ export { betaOne, equivalentBlockStrengthMpa };
 export const STEEL_ELASTIC_MODULUS_MPA = 200_000;
 export const CONCRETE_ULTIMATE_STRAIN = 0.003;
 export const CONCRETE_UNIT_WEIGHT_KN_M3 = 24;
-export const KGF_CM2_PER_MPA = 10.197_162;
 
-export interface RebarSize {
+interface RebarSize {
   readonly label: string;
   readonly diameterMm: number;
 }
@@ -138,7 +137,7 @@ export function resistanceFactorForStrain(netTensileStrain: number, yieldStrain:
 /** FR de flexión en función de εt y εy; cada norma aporta el suyo (véase `codes.ts`). */
 export type FlexureFactor = (netTensileStrain: number, yieldStrain: number) => number;
 
-export interface FlexuralCapacity {
+interface FlexuralCapacity {
   readonly strengthKnm: number;
   readonly nominalKnm: number;
   readonly resistanceFactor: number;

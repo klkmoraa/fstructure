@@ -84,7 +84,7 @@ export interface PdfVectorOps {
   popGraphicsState: typeof import('pdf-lib').popGraphicsState;
 }
 
-export type { ReportPalette } from './pdfTheme';
+;
 
 export interface ReportFonts {
   readonly regular: import('pdf-lib').PDFFont;

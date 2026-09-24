@@ -24,7 +24,7 @@ const CHANGE_COUNT_KEYS: Readonly<Record<DiffChangeKind, Phase2TranslationKey>> 
 const CHANGE_BADGE_KEYS: Readonly<Record<DiffChangeKind, Phase2TranslationKey>> = { added: 'hub.diffBadgeAdded', modified: 'hub.diffBadgeModified', removed: 'hub.diffBadgeRemoved' };
 const MAX_SHOWN_CHANGES = 40;
 
-export interface LocalCommandAssistantProps { open: boolean; onClose: () => void; }
+interface LocalCommandAssistantProps { open: boolean; onClose: () => void; }
 
 /** Entrada local y determinista para cambios existentes, preparada sobre un clon antes de confirmar. */
 export const LocalCommandAssistant = ({ open, onClose }: LocalCommandAssistantProps) => {

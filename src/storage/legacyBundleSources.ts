@@ -9,7 +9,7 @@ import type { StoredBundleRecord, MigrationRecord } from './unifiedBundleReposit
 
 /** Read-only by construction: migration never rotates or rewrites legacy bytes. */
 export type LegacyBundleStorage = Pick<Storage, 'getItem' | 'key' | 'length'>;
-export interface LegacyImportPlan {
+interface LegacyImportPlan {
   sources: MigrationRecord[];
   bundle?: UnifiedProjectBundleV1;
   space3d?: Space3DProjectV1;

@@ -338,7 +338,7 @@ const boundaryCriticalPoints = (
   return out;
 };
 
-export interface ExactDiagramResult {
+interface ExactDiagramResult {
   segments: DiagramSegment[];
   jumps: DiagramJump[];
   criticalPoints: DiagramCriticalPoint[];

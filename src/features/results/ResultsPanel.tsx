@@ -82,7 +82,7 @@ const getViewportHeightPx = (referenceElement: HTMLElement | null): number => {
   return window.innerHeight;
 };
 
-export interface ResultsPanelProps {
+interface ResultsPanelProps {
   presentation?: Extract<SurfacePresentation, 'dock' | 'inset' | 'sheet'>;
   status?: SurfaceStatus;
   onOpenChange?: (open: boolean, trigger?: HTMLElement | null) => void;

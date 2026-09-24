@@ -2,7 +2,7 @@ import type { GeneralizedLoadComparison, MemberModel, ProjectModel } from '../ty
 
 type Polynomial = number[];
 
-export interface IndependentMemberSourceLoads {
+interface IndependentMemberSourceLoads {
   geometry: {
     grossLength: number;
     length: number;

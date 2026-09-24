@@ -30,7 +30,7 @@ import { ProvenanceCard } from './ProvenanceCard';
  * quien lo hospeda; un extremo no depende del cursor y no debe repintarse con
  * él (riesgo nombrado del slice). Sus props son primitivas o estables.
  */
-export interface ResultExtremeCardProps {
+interface ResultExtremeCardProps {
   /** Qué extremo es — «Momento máximo absoluto», «Rx máxima». */
   label: string;
   /** Número ya formateado en las unidades activas. */

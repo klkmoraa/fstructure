@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { axialCantilever, bendingCantilever, torsionCantilever } from './fixtures';
-import { analyzeSpace3DStatic } from './solver';
+import { analyzeSpace3DProject } from './solver';
 
 /**
  * Verificación del elemento de pórtico de seis GDL contra solución cerrada.
@@ -23,8 +23,8 @@ const J = 2e-5;
 const P = 10;
 const T = 10;
 
-const freeEnd = (project: Parameters<typeof analyzeSpace3DStatic>[0]) => {
-  const result = analyzeSpace3DStatic(project, 'CO1');
+const freeEnd = (project: Parameters<typeof analyzeSpace3DProject>[0]) => {
+  const result = analyzeSpace3DProject(project, 'CO1');
   expect(result.success, result.issues.map((issue) => `${issue.code}:${issue.field}`).join(', ')).toBe(true);
   const node = result.nodeResults.find((item) => item.nodeId === 'J');
   expect(node, 'el extremo libre debe aparecer en los resultados').toBeDefined();

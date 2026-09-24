@@ -9,7 +9,7 @@
  * - Inercias Iy, Iz, Torsión J: m⁴
  */
 
-export interface Space3DMaterialPreset {
+interface Space3DMaterialPreset {
   readonly id: string;
   readonly name: string;
   readonly category: 'steel' | 'concrete' | 'timber' | 'aluminum';
@@ -21,7 +21,7 @@ export interface Space3DMaterialPreset {
   readonly massDensityKgPerM3: number;
 }
 
-export interface Space3DSectionProperties {
+interface Space3DSectionProperties {
   readonly name: string;
   readonly materialId: string;
   readonly A: number;

@@ -125,7 +125,7 @@ const HIBBELER_PEARSON_SAMPLE = 'https://www.pearsonhighered.com/assets/samplech
 const HIBBELER_PEARSON_11E = 'https://www.pearson.com/en-us/pearsonplus/p/9780138026394';
 
 /** Public Pearson sample, Fig. 2-11: 10 ft beam under 500 lb/ft tributary loading. */
-export const createHibbelerTributaryBeam = (): ProjectModel => {
+const createHibbelerTributaryBeam = (): ProjectModel => {
   const project = createDefaultProject();
   const length = 3.048; // 10 ft
   const distributedLoad = 7.29695146860337; // 0.500 kip/ft in kN/m
@@ -164,7 +164,7 @@ export const createHibbelerTributaryBeam = (): ProjectModel => {
   };
 };
 
-export const createHibbelerStyleDiagramPractice = (): ProjectModel => ({
+const createHibbelerStyleDiagramPractice = (): ProjectModel => ({
   ...createDefaultProject(),
   id: createId(),
   name: 'Práctica tipo Hibbeler · diagramas N-V-M',
@@ -195,7 +195,7 @@ export const createHibbelerStyleDiagramPractice = (): ProjectModel => ({
   },
 });
 
-export const createHibbelerStyleTrussPractice = (): ProjectModel => ({
+const createHibbelerStyleTrussPractice = (): ProjectModel => ({
   ...createDefaultProject(),
   id: createId(),
   name: 'Práctica tipo Hibbeler · armadura triangular',

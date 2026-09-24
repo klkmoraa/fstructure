@@ -11,7 +11,7 @@ export type EditorLayerId =
 
 export type EditorLayerState = Record<EditorLayerId, boolean>;
 
-export const EDITOR_LAYER_STORAGE_KEY = 'structureco:editor-layers:v1';
+const EDITOR_LAYER_STORAGE_KEY = 'structureco:editor-layers:v1';
 
 const EDITOR_LAYER_IDS: readonly EditorLayerId[] = [
   'model',
@@ -109,7 +109,7 @@ export const activeEditorLayerPreset = (state: EditorLayerState): EditorLayerPre
 
 export const createEditorLayerState = (): EditorLayerState => ({ ...DEFAULT_EDITOR_LAYERS });
 
-export const parseEditorLayerState = (serialized: string | null): EditorLayerState => {
+const parseEditorLayerState = (serialized: string | null): EditorLayerState => {
   if (!serialized) return createEditorLayerState();
   try {
     const parsed = JSON.parse(serialized) as (Partial<EditorLayerState> & { heatmapExplicit?: boolean }) | null;

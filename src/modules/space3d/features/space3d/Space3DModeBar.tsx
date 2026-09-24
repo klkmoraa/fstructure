@@ -45,7 +45,7 @@ const MATERIAL_GROUPS = SPACE3D_MATERIALS
   .map((material) => ({ material, sections: SPACE3D_SECTION_CATALOG.filter((section) => section.materialId === material.id) }))
   .filter((group) => group.sections.length > 0);
 
-export interface Space3DModeBarProps {
+interface Space3DModeBarProps {
   readonly t: Translate;
   readonly tool: Exclude<Space3DModelingTool, 'select'>;
   readonly onExit: () => void;

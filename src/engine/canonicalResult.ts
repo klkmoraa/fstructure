@@ -1,8 +1,8 @@
 import type { AnalysisResult } from '../types';
 
-export const CANONICAL_RESULT_SCHEMA = 'fusionstructure-2d-result/v2';
-export const LINEAR_STATIC_ALGORITHM = 'matrix-stiffness-linear-static/v1';
-export const P_DELTA_ALGORITHM = 'matrix-stiffness-p-delta/v1';
+const CANONICAL_RESULT_SCHEMA = 'fusionstructure-2d-result/v2';
+const LINEAR_STATIC_ALGORITHM = 'matrix-stiffness-linear-static/v1';
+const P_DELTA_ALGORITHM = 'matrix-stiffness-p-delta/v1';
 
 /** Keep small round-off differences out of cross-repository comparisons. */
 const normalizeNumber = (value: number): number | string => {

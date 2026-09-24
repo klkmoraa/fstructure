@@ -9,7 +9,7 @@ export const toolRegistry: readonly ToolModuleDescriptor[] = [
   },
   {
     id: 'design', labelKey: 'design.title', maturity: 'experimental',
-    capabilities: ['ntc-cdmx-2023-concrete-beam-design'],
+    capabilities: ['concrete-beam-column-footing-design'],
     load: () => import('./adapters/DesignSurface').then((module) => module.default),
   },
   {

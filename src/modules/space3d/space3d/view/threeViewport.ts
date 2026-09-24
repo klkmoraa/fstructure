@@ -30,10 +30,10 @@ import type { Space3DSceneModel } from './sceneModel';
 import type { Space3DSelection } from '../store/Space3DProjectContext';
 
 
-export const SPACE3D_SCENE_LAYERS = Object.freeze([
+const SPACE3D_SCENE_LAYERS = Object.freeze([
   'grid', 'members', 'nodes', 'supports', 'loads', 'reactions', 'local-axes', 'deformed', 'labels',
 ] as const);
-export type Space3DSceneLayer = (typeof SPACE3D_SCENE_LAYERS)[number];
+type Space3DSceneLayer = (typeof SPACE3D_SCENE_LAYERS)[number];
 
 export interface Space3DLayerVisibility {
   readonly grid: boolean;
@@ -70,7 +70,7 @@ export interface Space3DControlsLike {
   dispose(): void;
 }
 
-export interface Space3DViewportOptions {
+interface Space3DViewportOptions {
   readonly canvas: HTMLCanvasElement;
   readonly model: Space3DSceneModel;
   readonly layers?: Space3DLayerVisibility;

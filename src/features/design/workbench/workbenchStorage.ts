@@ -47,7 +47,7 @@ export function parseWorkbenchDocument(raw: unknown): Record<string, JsonValue> 
   return entries;
 }
 
-export const workbenchDocument = (entries: Readonly<Record<string, JsonValue>>): JsonValue =>
+const workbenchDocument = (entries: Readonly<Record<string, JsonValue>>): JsonValue =>
   ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 1, entries: structuredClone(entries) as { [key: string]: JsonValue } });
 
 const BROWSER_PREFIX = 'fstructure.design-workbench.';
@@ -73,7 +73,7 @@ export const browserWorkbenchStorage: WorkbenchStorage = {
   },
 };
 
-export interface ProjectWorkbenchStorage extends WorkbenchStorage {
+interface ProjectWorkbenchStorage extends WorkbenchStorage {
   /** Escribe de inmediato lo pendiente (al cerrar la superficie). */
   flush(): void;
   dispose(): void;

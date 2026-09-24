@@ -135,12 +135,6 @@ const COLUMN_FIELDS: Record<DatasheetEntity, Readonly<Record<string, DatasheetFi
   },
 };
 
-/** Existe un campo para esta columna, con independencia de la fila. */
-export const datasheetColumnField = (
-  entity: DatasheetEntity,
-  columnId: string,
-): DatasheetFieldId | undefined => COLUMN_FIELDS[entity][columnId];
-
 /**
  * Campo que escribe una celda concreta.
  *

@@ -5,7 +5,7 @@ const GIBIBYTE = 1024 * MEBIBYTE;
 const MINIMUM_BUDGET_BYTES = 128 * MEBIBYTE;
 const MAXIMUM_BUDGET_BYTES = 2 * GIBIBYTE;
 const FALLBACK_BUDGET_BYTES = 256 * MEBIBYTE;
-export const DEFAULT_SOFT_DEADLINE_MS = 30_000;
+const DEFAULT_SOFT_DEADLINE_MS = 30_000;
 
 const finitePositive = (value: number | undefined): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0;
@@ -25,7 +25,7 @@ export const createBrowserAnalysisBudget = (): AnalysisBudget => {
   return createAutomaticAnalysisBudget(memory);
 };
 
-export interface SparseLinearSystemShape {
+interface SparseLinearSystemShape {
   readonly dimension: number;
   readonly nonZeros: number;
   readonly rhsCount?: number;
@@ -68,7 +68,7 @@ export const estimateSparseLinearSystemBytes = ({
   return total <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(total) : Number.POSITIVE_INFINITY;
 };
 
-export type AnalysisAdmission =
+type AnalysisAdmission =
   | { readonly accepted: true; readonly estimatedBytes: number; readonly availableBytes: number }
   | {
     readonly accepted: false;

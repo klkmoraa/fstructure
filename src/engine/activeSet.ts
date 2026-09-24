@@ -2,19 +2,15 @@
 import type { AnalysisResult, LoadCombination, MemberModel, NodeLink, ProjectModel } from '../types';
 import { analyzeProject, linearizeNodeLink, linkRelativeDisplacement, type AnalyzeProjectOptions, type LinkLinearization } from './solver';
 
-export interface ActiveSetOptions extends AnalyzeProjectOptions { maxIterations?: number }
+interface ActiveSetOptions extends AnalyzeProjectOptions { maxIterations?: number }
 
 const DEFAULT_MAX_ITERATIONS = 40;
 
 export const conditionalMembers = (project: ProjectModel): MemberModel[] =>
   project.members.filter((member) => member.axialBehavior === 'tension-only' || member.axialBehavior === 'compression-only');
 
-export const hasConditionalMembers = (project: ProjectModel): boolean => conditionalMembers(project).length > 0;
-
 export const conditionalNodeLinks = (project: ProjectModel): NodeLink[] =>
   (project.nodeLinks ?? []).filter((link) => link.behavior !== 'linear');
-
-export const hasConditionalNodeLinks = (project: ProjectModel): boolean => conditionalNodeLinks(project).length > 0;
 
 /** Fuerza axial media, con tracción positiva según el convenio del solver. */
 const axialForceOf = (result: AnalysisResult, memberId: string): number => {

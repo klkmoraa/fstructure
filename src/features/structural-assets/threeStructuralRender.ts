@@ -22,23 +22,19 @@ const implementedAssetIds: readonly ThreeStructuralAssetId[] = [
 ];
 const implementedAssetIdSet = new Set<string>(implementedAssetIds);
 
-export const isThreeStructuralAssetId = (assetId: string): assetId is ThreeStructuralAssetId => implementedAssetIdSet.has(assetId);
+const isThreeStructuralAssetId = (assetId: string): assetId is ThreeStructuralAssetId => implementedAssetIdSet.has(assetId);
 
 const registryAssetIds = STRUCTURAL_ASSET_REGISTRY.map((asset) => asset.id);
 if (implementedAssetIdSet.size !== registryAssetIds.length || registryAssetIds.some((assetId) => !isThreeStructuralAssetId(assetId))) {
   throw new Error('Three.js structural manifest does not cover the canonical registry exactly');
 }
-export const THREE_STRUCTURAL_ASSET_IDS: readonly ThreeStructuralAssetId[] = Object.freeze(registryAssetIds.map((assetId) => {
-  if (!isThreeStructuralAssetId(assetId)) throw new Error(`Missing Three.js structural scene: ${assetId}`);
-  return assetId;
-}));
 
 const textureSlots = [
   'map', 'alphaMap', 'aoMap', 'bumpMap', 'displacementMap', 'emissiveMap', 'envMap',
   'lightMap', 'metalnessMap', 'normalMap', 'roughnessMap',
 ] as const;
 
-export const validateThreeStructuralGroup = (group: THREE.Group, assetId: string) => {
+const validateThreeStructuralGroup = (group: THREE.Group, assetId: string) => {
   if (!(group instanceof THREE.Group)) throw new Error(`${assetId} must be an editable THREE.Group`);
   group.traverse((object) => {
     if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.Line) && !(object instanceof THREE.LineSegments)) return;
@@ -59,14 +55,14 @@ export const validateThreeStructuralGroup = (group: THREE.Group, assetId: string
   return group;
 };
 
-export type OrthographicFrame = {
+type OrthographicFrame = {
   left: number;
   right: number;
   top: number;
   bottom: number;
 };
 
-export const calculateOrthographicFrame = (
+const calculateOrthographicFrame = (
   bounds: THREE.Box3,
   aspect: number,
   cameraDirection = new THREE.Vector3(5.4, 4.1, 6.2),
@@ -105,7 +101,7 @@ export const calculateOrthographicFrame = (
 
 const includesAssetId = <T extends string>(ids: readonly T[], assetId: string): assetId is T => ids.some((candidate) => candidate === assetId);
 
-export const buildThreeStructuralGroup = (assetId: ThreeStructuralAssetId, theme: StructuralRenderTheme) => {
+const buildThreeStructuralGroup = (assetId: ThreeStructuralAssetId, theme: StructuralRenderTheme) => {
   const group = includesAssetId(THREE_PORTAL_ASSET_IDS, assetId)
     ? buildPortalGroup(assetId, theme)
     : includesAssetId(THREE_FAMILY_ASSET_IDS, assetId)
@@ -126,7 +122,7 @@ export const renderThreeStructuralAssetDataUrl = async (
  * de presentación de las herramientas (`suiteScenes.ts`) se dibujan así para
  * que compartan estilo con el pórtico sin entrar al registro canónico.
  */
-export const renderStructuralGroupDataUrl = async (
+const renderStructuralGroupDataUrl = async (
   group: THREE.Group,
   theme: StructuralRenderTheme,
   width = 900,

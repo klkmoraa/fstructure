@@ -1,20 +1,20 @@
-export interface GeometryPoint {
+interface GeometryPoint {
   x: number;
   y: number;
 }
 
-export interface GeometryMember {
+interface GeometryMember {
   id: string;
   i: string;
   j: string;
 }
 
-export interface SelectionGeometryFilter {
+interface SelectionGeometryFilter {
   nodes: boolean;
   members: boolean;
 }
 
-export interface BoxSelectionResult {
+interface BoxSelectionResult {
   mode: 'window' | 'crossing';
   nodeIds: string[];
   memberIds: string[];
@@ -59,7 +59,7 @@ const segmentsIntersect = (a: GeometryPoint, b: GeometryPoint, c: GeometryPoint,
   return onSegment(a, b, c) || onSegment(a, b, d) || onSegment(c, d, a) || onSegment(c, d, b);
 };
 
-export const segmentCrossesBounds = (a: GeometryPoint, b: GeometryPoint, bounds: Bounds) => {
+const segmentCrossesBounds = (a: GeometryPoint, b: GeometryPoint, bounds: Bounds) => {
   if (inside(a, bounds) || inside(b, bounds)) return true;
   const topLeft = { x: bounds.minX, y: bounds.maxY };
   const topRight = { x: bounds.maxX, y: bounds.maxY };

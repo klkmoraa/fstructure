@@ -3,12 +3,12 @@ import { multiply, multiplyMatrixVector, transpose, zeros, type Matrix } from '.
 
 const EPS = 1e-12;
 
-export interface CholeskyFactor {
+interface CholeskyFactor {
   L: Matrix;
 }
 
 /** Factorización sin pivoteo; `null` preserva la señal de un mecanismo. */
-export const choleskyFactor = (matrix: Matrix): CholeskyFactor | null => {
+const choleskyFactor = (matrix: Matrix): CholeskyFactor | null => {
   const L = zeros(matrix.length, matrix.length);
   for (let i = 0; i < matrix.length; i += 1) {
     for (let j = 0; j <= i; j += 1) {
@@ -25,7 +25,7 @@ export const choleskyFactor = (matrix: Matrix): CholeskyFactor | null => {
   return { L };
 };
 
-export const forwardSubstitute = (L: Matrix, b: readonly number[]): number[] => {
+const forwardSubstitute = (L: Matrix, b: readonly number[]): number[] => {
   const result = Array(L.length).fill(0);
   for (let i = 0; i < L.length; i += 1) {
     let sum = b[i];
@@ -35,7 +35,7 @@ export const forwardSubstitute = (L: Matrix, b: readonly number[]): number[] => 
   return result;
 };
 
-export const backSubstitute = (L: Matrix, b: readonly number[]): number[] => {
+const backSubstitute = (L: Matrix, b: readonly number[]): number[] => {
   const result = Array(L.length).fill(0);
   for (let i = L.length - 1; i >= 0; i -= 1) {
     let sum = b[i];
@@ -45,13 +45,13 @@ export const backSubstitute = (L: Matrix, b: readonly number[]): number[] => {
   return result;
 };
 
-export interface SymmetricEigenResult {
+interface SymmetricEigenResult {
   values: number[];
   vectors: number[][];
 }
 
 /** Jacobi cíclico para las proyecciones simétricas pequeñas del subespacio modal. */
-export const symmetricEigenJacobi = (input: Matrix, maxSweeps = 60): SymmetricEigenResult => {
+const symmetricEigenJacobi = (input: Matrix, maxSweeps = 60): SymmetricEigenResult => {
   const a = input.map((row) => [...row]);
   const vectors = zeros(a.length, a.length);
   for (let i = 0; i < vectors.length; i += 1) vectors[i][i] = 1;
@@ -94,7 +94,7 @@ export const symmetricEigenJacobi = (input: Matrix, maxSweeps = 60): SymmetricEi
   };
 };
 
-export interface NullSpaceBasis {
+interface NullSpaceBasis {
   vectors: number[][];
   rank: number;
   nullity: number;
@@ -141,9 +141,9 @@ export const expandFromBasis = (reduced: readonly number[], basis: readonly numb
   return full;
 };
 
-export type EigenFailure = 'mechanism' | 'no-degrees-of-freedom' | 'empty-right-hand-side' | 'not-converged';
+type EigenFailure = 'mechanism' | 'no-degrees-of-freedom' | 'empty-right-hand-side' | 'not-converged';
 
-export interface GeneralizedEigenResult {
+interface GeneralizedEigenResult {
   values: number[];
   vectors: number[][];
   converged: boolean;
@@ -153,7 +153,7 @@ export interface GeneralizedEigenResult {
   reason: string;
 }
 
-export interface GeneralizedEigenOptions {
+interface GeneralizedEigenOptions {
   subspaceSize?: number;
   maxIterations?: number;
   tolerance?: number;

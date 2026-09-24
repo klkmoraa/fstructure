@@ -15,13 +15,6 @@ import {
 } from 'lucide-react';
 import { NodeGlyph, SupportGlyph } from '../../../../design-system/icons/structural';
 import { Space3DProjectProvider, useSpace3DProject, type Space3DSelection } from '../../space3d/store/Space3DProjectContext';
-import {
-  space3DMatchesPlanarHandoff,
-  unresolvedSpace3DBridgeNotes,
-  type Planar2DToSpace3DHandoffV1,
-  type Space3DBridgeNote,
-} from '../../integrations/planar2dToSpace3d';
-import { loadSpace3DProject } from '../../space3d/data/storage';
 // Space 3D contributes content to the canonical 2D shell; it does not carry a
 // second component library or token set. The relative path intentionally exits
 // the module boundary and uses the only production design system.
@@ -54,14 +47,13 @@ import {
   analyzeSpace3DPDelta,
 } from '../../space3d/engine/analysisModes';
 import type { Space3DAnalysisMode } from './space3dWorkspaceModel';
-import { translate, type Language, type TranslationKey } from '../../i18n/catalogs';
+import { isCatalogReady, loadCatalog, translate, type Language, type TranslationKey } from '../../i18n/catalogs';
 import { formatSpace3DNumber } from './space3dNumberFormat';
 import type { Space3DCommand } from '../../space3d/data/commands';
 import type { Space3DProjectV1, Space3DVector } from '../../space3d/model/types';
 import type { Space3DStorageLike } from '../../space3d/data/storage';
 import type { Space3DWorkerClient } from '../../space3d/runtime/workerClient';
 import { ShellContribution, useShellInspector } from '../../../../features/workspace/ShellToolSlots';
-import { useSharedToolState } from '../../../../store/SharedToolState';
 import './space3d.css';
 
 type PendingReplace =
@@ -91,21 +83,15 @@ function EmbeddedInspector({ embedded, expanded, children }: { embedded: boolean
     : <div className="space3d-sheet" data-expanded={expanded || undefined}>{children}</div>;
 }
 
-export interface Space3DWorkspaceProps {
+interface Space3DWorkspaceProps {
   readonly canonicalProject?: Space3DProjectV1;
   readonly onProjectChange?: (project: Space3DProjectV1) => void;
-  /** Explicit source acceptance, completed before replacing tool-owned geometry. */
-  readonly onRederive?: () => Promise<void> | void;
   readonly language: Language;
   /** Render the 3D surface inside the global workbench shell. */
   readonly embedded?: boolean;
-  readonly onOpenHome?: () => void;
-  readonly onOpen2D?: () => void;
   readonly storage?: Space3DStorageLike | null;
   readonly client?: Space3DWorkerClient;
   readonly createViewport?: Space3DViewportFactory;
-  /** Propuesta inmutable preparada fuera de ambos dominios antes de abrir 3D. */
-  readonly handoff?: Planar2DToSpace3DHandoffV1 | null;
   /**
    * Entrada elegida en la bienvenida del Solver 3D. Se aplica una vez, con las
    * mismas acciones del arranque vacío: el ejemplo pide confirmación si ya hay
@@ -163,38 +149,8 @@ const STATE_TONES: Record<string, string> = {
   idle: 'neutral', running: 'loading', ready: 'ok', stale: 'warn', failed: 'error', cancelled: 'neutral',
 };
 
-const BRIDGE_KEYS: Record<string, TranslationKey> = {
-  'pending-shear-modulus': 'space3d.bridge.pendingShearModulus',
-  'pending-weak-axis-inertia': 'space3d.bridge.pendingWeakAxisInertia',
-  'pending-torsion-constant': 'space3d.bridge.pendingTorsionConstant',
-  'out-of-plane-unrestrained': 'space3d.bridge.outOfPlaneUnrestrained',
-  'truss-member-as-frame': 'space3d.bridge.trussMemberAsFrame',
-  'dropped-member-release': 'space3d.bridge.droppedMemberRelease',
-  'dropped-internal-hinge': 'space3d.bridge.droppedInternalHinge',
-  'dropped-semi-rigid-connection': 'space3d.bridge.droppedSemiRigidConnection',
-  'dropped-rigid-offset': 'space3d.bridge.droppedRigidOffset',
-  'dropped-support-spring': 'space3d.bridge.droppedSupportSpring',
-  'dropped-inclined-support': 'space3d.bridge.droppedInclinedSupport',
-  'dropped-prescribed-support-motion': 'space3d.bridge.droppedPrescribedSupportMotion',
-  'dropped-self-weight': 'space3d.bridge.droppedSelfWeight',
-  'dropped-rigid-member': 'space3d.bridge.droppedRigidMember',
-  'dropped-axial-behavior': 'space3d.bridge.droppedAxialBehavior',
-  'dropped-timoshenko-theory': 'space3d.bridge.droppedTimoshenkoTheory',
-  'dropped-shear-area': 'space3d.bridge.droppedShearArea',
-  'dropped-member-load': 'space3d.bridge.droppedMemberLoad',
-  'dropped-prescribed-displacement': 'space3d.bridge.droppedPrescribedDisplacement',
-  'dropped-initial-effect': 'space3d.bridge.droppedInitialEffect',
-  'dropped-node-link': 'space3d.bridge.droppedNodeLink',
-  'dropped-multi-point-constraint': 'space3d.bridge.droppedMultiPointConstraint',
-  'dropped-nodal-mass': 'space3d.bridge.droppedNodalMass',
-  'dropped-generated-load-source': 'space3d.bridge.droppedGeneratedLoadSource',
-  'dropped-moving-load-case': 'space3d.bridge.droppedMovingLoadCase',
-};
 
 /** Notas que el usuario resuelve escribiendo un valor, no reconociendolas. */
-const BRIDGE_RESOLVABLE = new Set([
-  'pending-shear-modulus', 'pending-weak-axis-inertia', 'pending-torsion-constant', 'out-of-plane-unrestrained',
-]);
 
 /**
  * Límites del multiplicador manual sobre la escala automática de la deformada.
@@ -233,17 +189,24 @@ interface Space3DStudyFeedback {
 }
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'language' | 'embedded' | 'onOpenHome' | 'onOpen2D' | 'createViewport' | 'handoff' | 'onProjectChange' | 'onRederive' | 'startIntent'> {
-  readonly bridgeNotes: readonly Space3DBridgeNote[];
-  readonly derived: Space3DProjectV1 | null;
-}
+  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent'> {}
 
 const WorkspaceBody = ({
-  language, embedded = false, createViewport, handoff, bridgeNotes, derived, onProjectChange, onRederive, startIntent,
+  language, embedded = false, createViewport, onProjectChange, startIntent,
 }: WorkspaceBodyProps) => {
+  // El inglés se carga bajo demanda; al llegar, la versión cambia y la mesa se traduce.
+  const [catalogVersion, setCatalogVersion] = useState(0);
+  useEffect(() => {
+    if (isCatalogReady(language)) return;
+    let current = true;
+    void loadCatalog(language).then(() => { if (current) setCatalogVersion((version) => version + 1); });
+    return () => { current = false; };
+  }, [language]);
   const t = useCallback(
     (key: TranslationKey, variables?: Record<string, string | number>) => translate(language, key, variables),
-    [language],
+    // `catalogVersion` renueva `t` cuando llega un catálogo.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [language, catalogVersion],
   );
 
   const {
@@ -251,8 +214,6 @@ const WorkspaceBody = ({
     execute, undo, redo, analyze, cancelAnalysis, select, importPortable, exportPortable, loadExample, resetToBlank,
     replaceProject, setAnalysisTargetId,
   } = useSpace3DProject();
-  const shared = useSharedToolState();
-  const publishSelection = shared?.publish3DSelection;
   const publishedProject = useRef(project);
   useEffect(() => {
     // Hydration (including StrictMode replay) and callback changes are not edits.
@@ -260,11 +221,6 @@ const WorkspaceBody = ({
     publishedProject.current = project;
     onProjectChange?.(project);
   }, [project, onProjectChange]);
-  useEffect(() => {
-    if (!embedded || !handoff || !publishSelection) return;
-    publishSelection(selectedEntity && (selectedEntity.kind === 'node' || selectedEntity.kind === 'member')
-      ? [{ projectId: handoff.source.projectId, tool: 'space3d', kind: selectedEntity.kind, id: selectedEntity.id }] : []);
-  }, [embedded, handoff, publishSelection, selectedEntity]);
 
   const [layers, setLayers] = useState<Space3DLayerVisibility>(SPACE3D_DEFAULT_LAYERS);
   const [layersOpen, setLayersOpen] = useState(false);
@@ -275,7 +231,6 @@ const WorkspaceBody = ({
   const [editorFocus, setEditorFocus] = useState(false);
   const [transfer, setTransfer] = useState<'import' | 'export' | null>(null);
   const [importText, setImportText] = useState('');
-  const [acknowledged, setAcknowledged] = useState<ReadonlySet<string>>(() => new Set());
   /**
    * Multiplicador sobre la escala automatica de la deformada. `null` deja que
    * la escena la calcule para ocupar una fraccion fija del modelo.
@@ -593,50 +548,15 @@ const WorkspaceBody = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [clearToolSelection, editorTarget, enterTool, generativeOpen, memberFrom, pendingReplace, project.nodes.length, remove, selectedEntity, tool, transfer]);
 
-  // El puente solo bloquea lo que no pudo mapear con autoridad. En cuanto el
-  // usuario completa un numero o reconoce una diferencia, deja de bloquear.
-  const pendingNotes = useMemo(
-    () => unresolvedSpace3DBridgeNotes(bridgeNotes, project, acknowledged),
-    [acknowledged, bridgeNotes, project],
-  );
-  const acknowledgeable = useMemo(
-    () => [...new Set(pendingNotes.filter((item) => !BRIDGE_RESOLVABLE.has(item.code)).map((item) => item.code))],
-    [pendingNotes],
-  );
-  const nextBridgeRequirement = pendingNotes[0] ?? null;
-  /**
-   * El puente nunca rellena campos ni reconoce una diferencia por su cuenta.
-   * Esta acción sólo lleva al formulario de la entidad que el propio puente
-   * marcó, para que la persona decida el dato y lo guarde explícitamente.
-   */
-  const completeBridgeRequirement = (item: Space3DBridgeNote) => {
-    const target = item.entityKind === 'project'
-      ? project.nodes[0] ? { kind: 'node' as const, id: project.nodes[0].id } : null
-      : item.entityKind === 'member'
-        ? project.members.some((member) => member.id === item.entityId) ? { kind: 'member' as const, id: item.entityId } : null
-        : item.entityKind === 'node'
-          ? project.nodes.some((node) => node.id === item.entityId) ? { kind: 'node' as const, id: item.entityId } : null
-          : project.nodalLoads.some((load) => load.id === item.entityId) ? { kind: 'load' as const, id: item.entityId } : null;
-    if (!target) return;
-    selectEntity(target, true);
-    setSheetExpanded(true);
-  };
-  // Sin geometría 2D no hay derivación de la que divergir: un modelo 3D hecho
-  // desde cero es trabajo propio de esta herramienta, no una copia desfasada.
-  const diverged = handoff !== undefined && handoff !== null && derived !== null
-    && derived.nodes.length > 0
-    && !space3DMatchesPlanarHandoff(project, handoff);
-
   const running = analysisState === 'running';
   const runningAny = running || studyState === 'running';
-  const analysisBlocked = runningAny || pendingNotes.length > 0;
+  const analysisBlocked = runningAny;
   const errorMessage = lastError ? t(ERROR_KEYS[lastError] ?? 'space3d.error.generic') : null;
   const stateLabel = t(STATE_KEYS[analysisState]);
-  const bridgeRequirementText = nextBridgeRequirement ? t(BRIDGE_KEYS[nextBridgeRequirement.code] ?? 'space3d.error.generic') : null;
 
   const guide = useMemo(
-    () => deriveSpace3DGuide(project, runningAny ? 'running' : analysisState, pendingNotes.length),
-    [analysisState, pendingNotes.length, project, runningAny],
+    () => deriveSpace3DGuide(project, runningAny ? 'running' : analysisState),
+    [analysisState, project, runningAny],
   );
 
   const exploring = guide.next === 'explore-results' && resultMode !== 'model';
@@ -733,7 +653,6 @@ const WorkspaceBody = ({
     else if (action === 'add-member') enterTool('member');
     else if (action === 'add-support') enterTool('support');
     else if (action === 'add-load') enterTool('load');
-    else if (action === 'resolve-bridge' && nextBridgeRequirement) completeBridgeRequirement(nextBridgeRequirement);
     else if (action === 'analyze' || action === 'reanalyze') void runSelectedAnalysis();
     else if (action === 'review-failure') { enterTool('select'); setPanel('analysis'); setSheetExpanded(true); }
     else if (action === 'explore-results') { enterTool('select'); setResultMode('deformed'); setPanel('analysis'); }
@@ -752,7 +671,6 @@ const WorkspaceBody = ({
     className={className}
     onClick={() => { void runSelectedAnalysis(); }}
     disabled={analysisBlocked}
-    title={pendingNotes.length > 0 ? t('space3d.bridgeBlocked', { count: pendingNotes.length }) : undefined}
   >
     <Play size={17} aria-hidden="true" /><span>{runningAny ? t('space3d.analyzing') : t('space3d.analyze')}</span>
   </button>;
@@ -899,45 +817,7 @@ const WorkspaceBody = ({
       </div>
     </header>}
 
-    {(handoff && (pendingNotes.length > 0 || diverged)) || errorMessage ? <div className="space3d-diagnostics">
-      {handoff && (pendingNotes.length > 0 || diverged) ? <section className="space3d-bridge" aria-label={t('space3d.bridgeTitle')}>
-        <header>
-          <strong>{t('space3d.sourceProject', { name: handoff.candidateModel.name })}</strong>
-          {diverged ? <span className="space3d-state space3d-state--warn">{t('space3d.bridgeDiverged')}</span> : null}
-          {diverged && derived
-            ? <button type="button" className="space3d-button" title={t('space3d.rederiveWarning')} onClick={() => {
-              // A failed canonical source save is reported by the shared session; keep this geometry.
-              void Promise.resolve().then(() => onRederive?.()).then(() => { replaceProject(derived); refitView(); }).catch(() => undefined);
-            }}>
-              {t('space3d.rederive')}
-            </button>
-            : null}
-        </header>
-        {pendingNotes.length > 0 ? <>
-          <p className="space3d-bridge-body" role="status">{t('space3d.bridgeBody')}</p>
-          <ul className="space3d-issues">
-            {[...new Map(pendingNotes.map((item) => [item.code, item])).values()].map((item) => <li key={item.code} data-diagnostic-code={item.code}>
-              <span className="space3d-issue-copy" id={`space3d-bridge-${item.code}`}>{t(BRIDGE_KEYS[item.code] ?? 'space3d.error.generic')}</span>
-              <em>{pendingNotes.filter((other) => other.code === item.code).map((other) => other.entityId).filter(Boolean).join(' ')}</em>
-              {BRIDGE_RESOLVABLE.has(item.code)
-                ? <button
-                  type="button"
-                  className="space3d-button space3d-button--ghost space3d-bridge-complete"
-                  onClick={() => completeBridgeRequirement(item)}
-                  aria-describedby={`space3d-bridge-${item.code}`}
-                >{t('space3d.bridgeCompleteNow')}</button>
-                : null}
-            </li>)}
-          </ul>
-          {acknowledgeable.length > 0
-            ? <button
-              type="button"
-              className="space3d-button"
-              onClick={() => setAcknowledged((current) => new Set([...current, ...acknowledgeable]))}
-            >{t('space3d.bridgeAcknowledge')}</button>
-            : null}
-        </> : null}
-      </section> : null}
+    {errorMessage ? <div className="space3d-diagnostics">
       {errorMessage ? <p className="space3d-notice space3d-notice--error" role="alert">{errorMessage}</p> : null}
     </div> : null}
 
@@ -1047,7 +927,7 @@ const WorkspaceBody = ({
             </div>
           </div>
         </div> : tool !== 'select' ? null : <div className="space3d-stage-guide">
-          <Space3DGuide compact guide={guide} t={t} analysisLabel={stateLabel} bridgeRequirement={bridgeRequirementText} onAction={onGuideAction} actionDone={exploring} />
+          <Space3DGuide compact guide={guide} t={t} analysisLabel={stateLabel} onAction={onGuideAction} actionDone={exploring} />
         </div>}
 
         {/* La hoja sólo tapa el lienzo en el layout compacto; en escritorio es una
@@ -1125,7 +1005,7 @@ const WorkspaceBody = ({
 
       <EmbeddedInspector embedded={embedded} expanded={sheetExpanded}>
         <div className="space3d-inspector">
-          <Space3DGuide guide={guide} t={t} analysisLabel={stateLabel} bridgeRequirement={bridgeRequirementText} onAction={onGuideAction} actionDone={exploring} />
+          <Space3DGuide guide={guide} t={t} analysisLabel={stateLabel} onAction={onGuideAction} actionDone={exploring} />
           <div className="space3d-tabs" role="tablist" aria-label={t('space3d.inspectorTabs')}>
             <button type="button" role="tab" id="space3d-tab-model" className="space3d-tab" aria-controls="space3d-panel-model"
               aria-selected={panel === 'model'} tabIndex={panel === 'model' ? 0 : -1} onClick={() => setPanel('model')}>
@@ -1211,7 +1091,6 @@ const WorkspaceBody = ({
     <footer className="space3d-status" aria-label={t('space3d.title')}>
       <span className={`space3d-state space3d-state--${STATE_TONES[analysisState]}`}>{stateLabel}</span>
       <span>{t('space3d.statusCase', { id: analysisTargetId })}</span>
-      {handoff && handoff.candidateModel.nodes.length > 0 && pendingNotes.length === 0 && !diverged ? <span>{t('space3d.statusSource', { name: handoff.candidateModel.name })}</span> : null}
       {lastAnalysisLabel ? <span className="space3d-status-last">{lastAnalysisLabel}</span> : null}
       <span className="space3d-status-help">{t('space3d.interactionHelp')}</span>
       <span className="space3d-status-units">{t('space3d.statusUnits')}</span>
@@ -1221,34 +1100,11 @@ const WorkspaceBody = ({
   </div>;
 };
 
-/**
- * Resolucion del proyecto inicial.
- *
- * Con un proyecto 2D de origen se reabre el modelo espacial ya asociado a el si
- * sigue correspondiendole; solo cuando no existe se deriva uno nuevo. Asi,
- * volver al 2D y entrar otra vez no duplica nada ni descarta el trabajo 3D.
- */
-const Space3DWorkspace = ({ storage, client, handoff, canonicalProject, ...rest }: Space3DWorkspaceProps) => {
-  const namespace = handoff ? `src:${handoff.source.projectId}` : undefined;
-  const initialProject = useMemo(() => {
-    if (canonicalProject) return canonicalProject;
-    if (!handoff) return undefined;
-    const stored = loadSpace3DProject(storage ?? undefined, namespace);
-    return stored && stored.id === handoff.candidateModel.id ? stored : handoff.candidateModel;
-    // El proyecto inicial se resuelve una vez por origen; despues manda el store.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [canonicalProject, handoff, namespace]);
-
-  return (
-    <Space3DProjectProvider key={namespace} storage={storage} client={client} namespace={namespace} initialProject={initialProject}>
-      <WorkspaceBody
-        {...rest}
-        handoff={handoff}
-        bridgeNotes={handoff?.lossReport.entries ?? []}
-        derived={handoff?.candidateModel ?? null}
-      />
-    </Space3DProjectProvider>
-  );
-};
+/** Monta el store del modelo 3D con el proyecto guardado de la herramienta o uno en blanco. */
+const Space3DWorkspace = ({ storage, client, canonicalProject, ...rest }: Space3DWorkspaceProps) => (
+  <Space3DProjectProvider storage={storage} client={client} initialProject={canonicalProject}>
+    <WorkspaceBody {...rest} />
+  </Space3DProjectProvider>
+);
 
 export default Space3DWorkspace;

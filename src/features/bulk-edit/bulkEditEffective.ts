@@ -29,7 +29,7 @@ import type { BulkPropertyId, BulkValue } from './bulkEditTypes';
  * valor actual se muestra. Nunca produce una escritura, porque el borrador sigue
  * conteniendo únicamente lo que el usuario tocó.
  */
-export const BULK_CANONICAL_DEFAULTS: Partial<Record<BulkPropertyId, Exclude<BulkValue, undefined>>> = {
+const BULK_CANONICAL_DEFAULTS: Partial<Record<BulkPropertyId, Exclude<BulkValue, undefined>>> = {
   /** solver.ts:518, 1428, 1667 — `support.angleDeg ?? 90` para un rodillo. */
   'node.support.angleDeg': 90,
   /** solver.ts:111-114 — `!explicitlyReleased`: ausente no está liberado. */

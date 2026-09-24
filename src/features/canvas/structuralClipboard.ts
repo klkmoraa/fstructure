@@ -2,11 +2,11 @@ import type { ModelClipboard } from '../../data/modelOperations';
 
 const STRUCTURAL_CLIPBOARD_PREFIX = 'fusionstructure:model-clipboard:v1\n';
 
-export interface ClipboardReadTextPort {
+interface ClipboardReadTextPort {
   readText?: () => Promise<string>;
 }
 
-export type ClipboardTextRead =
+type ClipboardTextRead =
   | { status: 'unavailable' }
   | { status: 'blocked' }
   | { status: 'timeout' }
@@ -21,9 +21,9 @@ export type ClipboardTextRead =
  * permission prompt answered at gesture time and short enough that a paste that
  * will never arrive falls back to the in-app clipboard instead of hanging.
  */
-export const CLIPBOARD_READ_TIMEOUT_MS = 2_000;
+const CLIPBOARD_READ_TIMEOUT_MS = 2_000;
 
-export const supportsClipboardReadText = (clipboard: ClipboardReadTextPort | null | undefined): clipboard is Required<ClipboardReadTextPort> => (
+const supportsClipboardReadText = (clipboard: ClipboardReadTextPort | null | undefined): clipboard is Required<ClipboardReadTextPort> => (
   typeof clipboard?.readText === 'function'
 );
 

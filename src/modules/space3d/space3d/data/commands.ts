@@ -39,7 +39,7 @@ export type Space3DCommand =
    */
   | { readonly kind: 'batch'; readonly commands: readonly Space3DCommand[] };
 
-export type Space3DCommandErrorCode =
+type Space3DCommandErrorCode =
   | 'empty-id'
   | 'duplicate-id'
   | 'missing-entity'

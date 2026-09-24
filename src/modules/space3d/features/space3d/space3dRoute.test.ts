@@ -13,14 +13,14 @@ const frame = () => generateSpace3DFrame({ baysX: 1, bayWidthX: 4, storiesY: 1, 
 
 describe('deriveSpace3DGuide', () => {
   it('asks to start when the model is empty', () => {
-    const guide = deriveSpace3DGuide(createBlankSpace3DProject(), 'idle', 0);
+    const guide = deriveSpace3DGuide(createBlankSpace3DProject(), 'idle');
     expect(guide.next).toBe('start');
     expect(guide.steps.map((step) => step.state)).toEqual(['current', 'pending', 'pending', 'pending']);
   });
 
   it('proposes the lowest node for supports once geometry exists', () => {
     const project = withoutSupports(frame());
-    const guide = deriveSpace3DGuide(project, 'idle', 0);
+    const guide = deriveSpace3DGuide(project, 'idle');
     expect(guide.next).toBe('add-support');
     const lowest = Math.min(...project.nodes.map((node) => node.y));
     expect(project.nodes.find((node) => node.id === guide.nodeId)?.y).toBe(lowest);
@@ -28,19 +28,18 @@ describe('deriveSpace3DGuide', () => {
     expect(guide.steps[1]!.state).toBe('current');
   });
 
-  it('blocks on bridge notes before offering the analysis', () => {
+  it('offers the analysis once geometry, supports, and loads exist', () => {
     const project = frame();
     expect(project.nodalLoads.length).toBeGreaterThan(0);
-    expect(deriveSpace3DGuide(project, 'idle', 2).next).toBe('resolve-bridge');
-    expect(deriveSpace3DGuide(project, 'idle', 0).next).toBe('analyze');
+    expect(deriveSpace3DGuide(project, 'idle').next).toBe('analyze');
   });
 
   it('follows the analysis lifecycle without touching the model', () => {
     const project = frame();
-    expect(deriveSpace3DGuide(project, 'running', 0).next).toBe('running');
-    expect(deriveSpace3DGuide(project, 'failed', 0).next).toBe('review-failure');
-    expect(deriveSpace3DGuide(project, 'stale', 0).next).toBe('reanalyze');
-    const ready = deriveSpace3DGuide(project, 'ready', 0);
+    expect(deriveSpace3DGuide(project, 'running').next).toBe('running');
+    expect(deriveSpace3DGuide(project, 'failed').next).toBe('review-failure');
+    expect(deriveSpace3DGuide(project, 'stale').next).toBe('reanalyze');
+    const ready = deriveSpace3DGuide(project, 'ready');
     expect(ready.next).toBe('explore-results');
     expect(ready.steps.every((step) => step.state === 'done')).toBe(true);
   });

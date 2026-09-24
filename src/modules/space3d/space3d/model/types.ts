@@ -60,7 +60,7 @@ export interface Space3DNode {
   readonly internalHinge?: boolean;
 }
 
-export interface Space3DSpringDefinition {
+interface Space3DSpringDefinition {
   readonly kx?: number;
   readonly ky?: number;
   readonly kz?: number;
@@ -303,7 +303,7 @@ export interface Space3DMovingLoadCase {
   readonly axles: readonly { readonly id?: string; readonly P: number; readonly offset: number }[];
 }
 
-export interface LegacySpace3DProjectV1 {
+interface LegacySpace3DProjectV1 {
   readonly analysisSpace: typeof SPACE3D_ANALYSIS_SPACE;
   readonly schemaVersion: typeof SPACE3D_LEGACY_SCHEMA_VERSION;
   readonly id: string;
@@ -329,8 +329,6 @@ export interface Space3DProjectV2 extends Omit<LegacySpace3DProjectV1, 'schemaVe
   readonly generatedLoadSources: readonly Space3DGeneratedLoadSource[];
   readonly movingLoadCases: readonly Space3DMovingLoadCase[];
 }
-
-export type Space3DProject = Space3DProjectV2;
 /** @deprecated Usa Space3DProjectV2; alias temporal para consumidores internos del editor existente. */
 export type Space3DProjectV1 = Space3DProjectV2;
 
@@ -470,8 +468,4 @@ export const fixedSpace3DRestraints = (): Space3DRestraints => ({
 
 export const freeSpace3DRestraints = (): Space3DRestraints => ({
   ux: false, uy: false, uz: false, rx: false, ry: false, rz: false,
-});
-
-export const zeroSpace3DDofValues = (): Space3DDofValues => ({
-  ux: 0, uy: 0, uz: 0, rx: 0, ry: 0, rz: 0,
 });

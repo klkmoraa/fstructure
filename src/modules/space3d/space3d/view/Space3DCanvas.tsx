@@ -31,7 +31,7 @@ export interface Space3DCanvasPick {
   readonly point: Space3DVector | null;
 }
 
-export interface Space3DCanvasCopy {
+interface Space3DCanvasCopy {
   readonly label: string;
   readonly fallbackTitle: string;
   readonly fallbackBody: string;
@@ -49,7 +49,7 @@ export type Space3DViewportFactory = (options: {
   layers: Space3DLayerVisibility;
 }) => Space3DViewport;
 
-export interface Space3DCanvasProps {
+interface Space3DCanvasProps {
   readonly model: Space3DSceneModel;
   readonly layers: Space3DLayerVisibility;
   readonly copy: Space3DCanvasCopy;

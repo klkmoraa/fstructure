@@ -40,7 +40,7 @@ export interface BeamAxis {
 }
 
 /** Position of every node along the ordered axis, measured from the first. */
-export const axisStations = (project: ProjectModel, axisNodeIds: readonly string[]): AxisStation[] => {
+const axisStations = (project: ProjectModel, axisNodeIds: readonly string[]): AxisStation[] => {
   const byId = new Map(project.nodes.map((node) => [node.id, node]));
   const first = byId.get(axisNodeIds[0]);
   if (!first) return [];

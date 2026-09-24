@@ -57,7 +57,7 @@ export const CHROME = {
 } as const;
 
 /** Suelos de canvas-budget. Ver CRI-9 §12 para su justificación. */
-export const CB = {
+const CB = {
   /** CB-1 · coexistencia: docks e insets que conviven con el trabajo. */
   coexistenceFloor: 0.5,
   /** CB-2 · reposo: sin ninguna superficie auxiliar invocada. */
@@ -144,20 +144,20 @@ export const COMPACT_CEILING_PX = 1023;
  * el resolutor —y no cuatro componentes— quien lo lea. Como el techo de
  * Compact, es un puente con el CSS y se cruza exacto, sin banda.
  */
-export const PHONE_CEILING_PX = 700;
+const PHONE_CEILING_PX = 700;
 
 /**
  * Banda de histéresis TOTAL, centrada en la frontera. Decisión CRI-12B #6.
  * Se aplica ÚNICAMENTE a la frontera calculada `X2↔M1`; los puentes con el CSS
  * (`COMPACT_CEILING_PX`, `PHONE_CEILING_PX`) se cruzan sin banda.
  */
-export const SHELL_HYSTERESIS_BAND_PX = 24;
+const SHELL_HYSTERESIS_BAND_PX = 24;
 
 /**
  * Clase que el presupuesto de lienzo permite, sin ningún techo de compatibilidad.
  * Se exporta para poder auditar el modelo por separado del puente con el CSS.
  */
-export const canvasBudgetClass = (viewport: ShellViewport): ShellClass => {
+const canvasBudgetClass = (viewport: ShellViewport): ShellClass => {
   for (const composition of WIDE_COMPOSITIONS) {
     if (wideCompositionFits(composition, viewport)) return composition.id;
   }
@@ -182,18 +182,6 @@ export const resolveShellComposition = (viewport: ShellViewport): ShellCompositi
  * y la prop del riel).
  */
 export const isToolRailCompact = (shellClass: ShellClass): boolean => shellClass !== 'X2';
-
-/**
- * Ancho mínimo al que `X2` pasa a caber, para una altura dada. Nadie escribe
- * este número: se barre sobre CB. Reproduce la tabla de CRI-9 §12 —
- * 1130 px a 720 de alto, 1117 a 768, 1089 a 900, 1042 a 1366.
- */
-export const expandedBoundaryWidth = (height: number): number | null => {
-  for (let width = COMPACT_CEILING_PX + 1; width <= 3840; width += 1) {
-    if (resolveShellClass({ width, height }) === 'X2') return width;
-  }
-  return null;
-};
 
 // ---------------------------------------------------------------------------
 // 4. Histéresis (T-INV-5)

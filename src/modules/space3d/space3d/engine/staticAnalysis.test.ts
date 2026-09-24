@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { axialCantilever } from './fixtures';
-import { assembleSpace3DStaticModel, analyzeSpace3DStatic } from './solver';
+import { assembleSpace3DStaticModel, analyzeSpace3DProject } from './solver';
 import { handleSpace3DWorkerRequest, SPACE3D_PROTOCOL_VERSION } from '../runtime/protocol';
 
 describe('Space3D canonical static assembly', () => {
@@ -20,7 +20,7 @@ describe('Space3D canonical static assembly', () => {
   });
 
   it('solves through the canonical assembly with the six-DOF planar result', () => {
-    const result = analyzeSpace3DStatic(axialCantilever({ P: 10 }), 'CO1');
+    const result = analyzeSpace3DProject(axialCantilever({ P: 10 }), 'CO1');
 
     expect(result.success).toBe(true);
     expect(result.nodeResults.find((node) => node.nodeId === 'J')?.displacement).toMatchObject({
@@ -74,7 +74,7 @@ describe('Space3D canonical static assembly', () => {
       members: [{ ...project.members[0], releases: { jRz: true } }],
     };
 
-    const result = analyzeSpace3DStatic(withRelease, 'CO1');
+    const result = analyzeSpace3DProject(withRelease, 'CO1');
 
     expect(result.success).toBe(false);
     expect(result.issues).toContainEqual({

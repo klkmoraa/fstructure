@@ -76,7 +76,7 @@ export interface DatasheetRow {
   values: Readonly<Record<string, DatasheetValue>>;
 }
 
-export interface DatasheetFacetOption {
+interface DatasheetFacetOption {
   token: string;
   /** Etiqueta traducible de un enumerado del dominio. */
   labelKey?: TranslationKey;
@@ -85,7 +85,7 @@ export interface DatasheetFacetOption {
   count: number;
 }
 
-export interface DatasheetFacet {
+interface DatasheetFacet {
   columnId: string;
   labelKey: TranslationKey;
   /** Tokens presentes en el modelo actual, en orden estable de catálogo. */
@@ -152,7 +152,7 @@ const TOKEN_ORDER: Record<string, readonly string[]> = {
   family: ['nodal', 'distributed', 'point', 'moment'],
 };
 
-export const NODE_COLUMNS: readonly DatasheetColumn[] = [
+const NODE_COLUMNS: readonly DatasheetColumn[] = [
   { id: 'id', labelKey: 'datasheet.column.id', editability: 'identity' },
   { id: 'x', labelKey: 'datasheet.column.x', editability: 'inline', quantity: 'length', numeric: true },
   { id: 'y', labelKey: 'datasheet.column.y', editability: 'inline', quantity: 'length', numeric: true },
@@ -162,7 +162,7 @@ export const NODE_COLUMNS: readonly DatasheetColumn[] = [
   { id: 'loads', labelKey: 'datasheet.column.loads', editability: 'derived', numeric: true },
 ];
 
-export const MEMBER_COLUMNS: readonly DatasheetColumn[] = [
+const MEMBER_COLUMNS: readonly DatasheetColumn[] = [
   { id: 'id', labelKey: 'datasheet.column.id', editability: 'identity' },
   { id: 'i', labelKey: 'datasheet.column.nodeI', editability: 'identity' },
   { id: 'j', labelKey: 'datasheet.column.nodeJ', editability: 'identity' },
@@ -192,7 +192,7 @@ export const MEMBER_COLUMNS: readonly DatasheetColumn[] = [
  * sustituir la carga por otra con otros campos obligatorios, no cambiar un
  * valor. Las dos tienen sus propias operaciones fuera de esta tabla.
  */
-export const LOAD_COLUMNS: readonly DatasheetColumn[] = [
+const LOAD_COLUMNS: readonly DatasheetColumn[] = [
   { id: 'id', labelKey: 'datasheet.column.id', editability: 'identity' },
   { id: 'object', labelKey: 'datasheet.column.loadObject', editability: 'identity' },
   { id: 'family', labelKey: 'datasheet.column.loadFamily', editability: 'identity' },
@@ -218,7 +218,7 @@ export const datasheetColumns = (entity: DatasheetEntity): readonly DatasheetCol
   entity === 'nodes' ? NODE_COLUMNS : entity === 'members' ? MEMBER_COLUMNS : LOAD_COLUMNS;
 
 /** Columnas cuyos tokens se ofrecen como filtro; el resto tiene demasiados valores. */
-export const datasheetFacetColumnIds = (entity: DatasheetEntity): readonly string[] =>
+const datasheetFacetColumnIds = (entity: DatasheetEntity): readonly string[] =>
   entity === 'nodes' ? ['support'] : entity === 'members' ? ['type', 'materialOrigin'] : ['family', 'case'];
 
 const booleanValue = (value: boolean): DatasheetValue => ({
@@ -465,7 +465,7 @@ export const datasheetRowSearchText = (
 const normalizeSearch = (value: string): string =>
   value.trim().toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
 
-export const searchDatasheetRows = (
+const searchDatasheetRows = (
   rows: readonly DatasheetRow[],
   query: string,
   haystack: (row: DatasheetRow) => string,
@@ -510,9 +510,9 @@ export const datasheetFacets = (
 };
 
 /** Filtros activos por columna. Un conjunto vacío no filtra: no oculta todo. */
-export type DatasheetFilters = Readonly<Record<string, ReadonlySet<string>>>;
+type DatasheetFilters = Readonly<Record<string, ReadonlySet<string>>>;
 
-export const filterDatasheetRows = (
+const filterDatasheetRows = (
   rows: readonly DatasheetRow[],
   filters: DatasheetFilters,
 ): DatasheetRow[] => {
@@ -558,7 +558,7 @@ const compareValues = (first: DatasheetValue | undefined, second: DatasheetValue
  * Ordena por una columna. Con valores iguales gana el orden del modelo, así que
  * reordenar dos veces por la misma columna devuelve exactamente la misma tabla.
  */
-export const sortDatasheetRows = (
+const sortDatasheetRows = (
   rows: readonly DatasheetRow[],
   sort: DatasheetSort | null,
 ): DatasheetRow[] => {
@@ -582,7 +582,7 @@ export const sortDatasheetRows = (
   return indexed.map((entry) => entry.row);
 };
 
-export interface DatasheetPipelineInput {
+interface DatasheetPipelineInput {
   rows: readonly DatasheetRow[];
   query: string;
   filters: DatasheetFilters;

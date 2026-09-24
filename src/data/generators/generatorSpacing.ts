@@ -36,7 +36,7 @@ const assertPositiveLength = (value: number, message: string): void => {
 };
 
 /** Longitudes de cada división, en el orden declarado por el usuario. */
-export const resolveSpacingSegments = (spec: SpacingSpec, label: string): number[] => {
+const resolveSpacingSegments = (spec: SpacingSpec, label: string): number[] => {
   if (spec.kind === 'uniform') {
     if (!Number.isInteger(spec.count) || spec.count < 1) {
       throw new Error(`${label}: la cantidad de divisiones debe ser un entero mayor o igual que 1.`);
@@ -80,12 +80,6 @@ export const resolveSpacingStations = (spec: SpacingSpec, label: string): number
   }
   return stations;
 };
-
-export const spacingDivisionCount = (spec: SpacingSpec, label: string): number =>
-  resolveSpacingSegments(spec, label).length;
-
-export const spacingTotalLength = (spec: SpacingSpec, label: string): number =>
-  resolveSpacingStations(spec, label).at(-1)!;
 
 export const isUniformSpacing = (spec: SpacingSpec, label: string): boolean => {
   const segments = resolveSpacingSegments(spec, label);

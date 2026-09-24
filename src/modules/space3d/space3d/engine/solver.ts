@@ -319,10 +319,6 @@ const auditEquilibrium = (
   });
 };
 
-/** Resultado neutro para superficies que aún no han analizado. */
-export const emptySpace3DAnalysisResult = (targetId: string): Space3DAnalysisResult =>
-  failed(targetId, 'unknown', []);
-
 /** Opciones del ensamblador estático canónico de seis GDL. */
 export interface Space3DStaticAnalysisOptions {
   readonly backend?: 'auto' | 'dense' | 'sparse';
@@ -330,7 +326,7 @@ export interface Space3DStaticAnalysisOptions {
   readonly budget?: AnalysisBudget;
 }
 
-export interface Space3DStaticAssemblyElement {
+interface Space3DStaticAssemblyElement {
   readonly memberId: string;
   readonly nodeI: string;
   readonly nodeJ: string;
@@ -350,7 +346,7 @@ export interface Space3DStaticAssemblyElement {
  * La asamblea no impone un máximo de entidades: el runtime que la invoque es
  * quien debe admitirla según su presupuesto de memoria.
  */
-export interface Space3DStaticAssembly {
+interface Space3DStaticAssembly {
   readonly valid: boolean;
   readonly targetId: string;
   readonly targetKind: Space3DAnalysisResult['targetKind'];
@@ -601,7 +597,7 @@ export const assembleSpace3DStaticModel = (
  * referencia numérica para esta primera fase, pero sólo se ejecuta después de
  * que la asamblea canónica haya admitido el documento sin omitir semánticas.
  */
-export const analyzeSpace3DStatic = (
+export const analyzeSpace3DProject = (
   project: Space3DProjectV1,
   targetId: string,
   options: Space3DStaticAnalysisOptions = {},
@@ -612,5 +608,3 @@ export const analyzeSpace3DStatic = (
   return analyzeSpace3DProjectLegacy(project, targetId);
 };
 
-/** Compatibilidad pública: el adaptador heredado ahora pasa por la admisión canónica. */
-export const analyzeSpace3DProject = analyzeSpace3DStatic;

@@ -8,7 +8,7 @@ import {
   generateSpace3DTruss,
   parseNaturalLanguageStructuralPrompt,
 } from './space3dGenerative';
-import { analyzeSpace3DStatic } from './solver';
+import { analyzeSpace3DProject } from './solver';
 
 describe('space3dGenerative', () => {
   it('generates a valid solvable 3D frame (building)', () => {
@@ -28,7 +28,7 @@ describe('space3dGenerative', () => {
     expect(frame.members.length).toBeGreaterThan(15);
     expect(frame.nodalLoads.length).toBe(6);
 
-    const result = analyzeSpace3DStatic(frame, 'LC1');
+    const result = analyzeSpace3DProject(frame, 'LC1');
     expect(result.success).toBe(true);
     expect(result.issues).toHaveLength(0);
     expect(result.memberResults.length).toBe(frame.members.length);
@@ -57,7 +57,7 @@ describe('space3dGenerative', () => {
     expect(tower.nodes.length).toBe(16); // 4 tiers * 4 corners
     expect(tower.members.length).toBeGreaterThan(20);
 
-    const result = analyzeSpace3DStatic(tower, 'LC1');
+    const result = analyzeSpace3DProject(tower, 'LC1');
     expect(result.success).toBe(true);
     expect(result.issues).toHaveLength(0);
   });
@@ -74,7 +74,7 @@ describe('space3dGenerative', () => {
     expect(dome.nodes.length).toBe(1 + 6 * 3); // 1 apex + 18 ring nodes = 19
     expect(dome.members.length).toBeGreaterThan(25);
 
-    const result = analyzeSpace3DStatic(dome, 'LC1');
+    const result = analyzeSpace3DProject(dome, 'LC1');
     expect(result.success).toBe(true);
     expect(result.issues).toHaveLength(0);
   });
@@ -93,7 +93,7 @@ describe('space3dGenerative', () => {
     expect(bridge.members.length).toBeGreaterThan(30);
     expect(bridge.nodalLoads.length).toBeGreaterThan(0);
 
-    const result = analyzeSpace3DStatic(bridge, 'LC1');
+    const result = analyzeSpace3DProject(bridge, 'LC1');
     expect(result.success).toBe(true);
     expect(result.issues).toHaveLength(0);
   });
@@ -120,11 +120,11 @@ describe('space3dGenerative', () => {
     expect(shed.nodalLoads.some((load) => load.caseId === 'ROOF')).toBe(true);
     expect(shed.nodalLoads.some((load) => load.caseId === 'WIND_X')).toBe(true);
 
-    const roofResult = analyzeSpace3DStatic(shed, 'ROOF');
+    const roofResult = analyzeSpace3DProject(shed, 'ROOF');
     expect(roofResult.success).toBe(true);
     expect(roofResult.issues).toHaveLength(0);
 
-    const windResult = analyzeSpace3DStatic(shed, 'WIND_X');
+    const windResult = analyzeSpace3DProject(shed, 'WIND_X');
     expect(windResult.success).toBe(true);
     expect(windResult.issues).toHaveLength(0);
   });

@@ -7,7 +7,7 @@ import type {
   ResultReliability,
 } from '../types';
 
-export type { NumericQualityState, ReliabilityCheck, ReliabilityCheckId, ReliabilityLevel, ResultReliability };
+export type {  ReliabilityCheck,    };
 
 const LEVEL_ORDER: Record<ReliabilityLevel, number> = {
   reliable: 0,

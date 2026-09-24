@@ -80,7 +80,7 @@ export function GroupSelect({ value, onChange, groups }: { value: string; onChan
   </Select>;
 }
 
-export const KGCM2_PER_MPA = 10.197_162;
+const KGCM2_PER_MPA = 10.197_162;
 export const mpaFromKgcm2 = (value: string) => parseNumber(value) / KGCM2_PER_MPA;
 export const mpaHint = (value: string) => {
   const mpa = mpaFromKgcm2(value);

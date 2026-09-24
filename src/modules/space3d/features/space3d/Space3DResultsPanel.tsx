@@ -22,7 +22,7 @@ import type { TranslationKey } from '../../i18n/catalogs';
 
 export type Space3DResultsTab = 'summary' | 'nodes' | 'members' | 'diagnostics';
 
-export interface Space3DResultsPanelProps {
+interface Space3DResultsPanelProps {
   readonly analysis: Space3DAnalysisResult | null;
   readonly analysisState: Space3DAnalysisState;
   readonly tab: Space3DResultsTab;

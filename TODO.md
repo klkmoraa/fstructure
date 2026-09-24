@@ -11,9 +11,8 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Limpieza
 
-- [ ] Retirar el puente 2D↔3D que ya no se usa: `src/integrations/*`, `modules/space3d/integrations`, el traspaso y «re-derivar» dentro de `Space3DWorkspace`, y `executeApprovedSpace3DSync` del store.
+- [ ] El modo sin shell de `Space3DWorkspace` (barra local) sólo lo usan pruebas: migrarlas al shell y retirarlo.
 - [ ] Dividir los archivos más grandes (`Space3DWorkspace.tsx`, `WorkspaceShell.tsx`, `ProjectContext.tsx`).
-- [ ] Decidir el complemento ReportLab (`requirements-reportlab.txt`, `utils/reportlabEnhancer.ts`): conectarlo o quitarlo.
 
 ## Rendimiento y distribución
 

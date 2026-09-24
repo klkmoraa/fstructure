@@ -11,7 +11,7 @@ export type InspectorDetent = 'compact' | 'medium' | 'large';
  * preferencia. La clave v1 se conserva como fuente de migración; no se borra,
  * pero el Inspector empieza cerrado en la nueva experiencia.
  */
-export interface WorkspaceLayoutPreferences {
+interface WorkspaceLayoutPreferences {
   inspectorCollapsed: boolean;
   /**
    * El resumen conserva la selección y sus resultados rápidos, pero cede el
@@ -26,7 +26,7 @@ export interface WorkspaceLayoutPreferences {
 
 export const MIN_INSPECTOR_WIDTH = 280;
 export const MAX_INSPECTOR_WIDTH = 480;
-export const DEFAULT_INSPECTOR_WIDTH = 320;
+const DEFAULT_INSPECTOR_WIDTH = 320;
 
 export const normalizeInspectorDetent = (
   detent: InspectorDetent,

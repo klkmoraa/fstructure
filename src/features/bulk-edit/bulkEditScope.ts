@@ -55,7 +55,7 @@ export const propertiesInScope = (
  */
 export const BULK_DISCLOSED_GROUPS: readonly BulkPropertyGroupId[] = ['member', 'node'];
 
-export interface BulkPropertyGroup {
+interface BulkPropertyGroup {
   id: BulkPropertyGroupId;
   properties: readonly BulkPropertyState[];
 }

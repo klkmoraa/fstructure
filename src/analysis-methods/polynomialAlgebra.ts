@@ -37,10 +37,6 @@ export const add = (a: Polynomial, b: Polynomial): number[] => {
 export const scale = (polynomial: Polynomial, factor: number): number[] =>
   trim(polynomial.map((coefficient) => coefficient * factor));
 
-/** Sums any number of polynomials; the neutral element is the zero polynomial. */
-export const sum = (polynomials: readonly Polynomial[]): number[] =>
-  polynomials.reduce<number[]>((total, polynomial) => add(total, polynomial), [0]);
-
 /**
  * Indefinite integral with a zero constant term.
  *
@@ -75,7 +71,3 @@ export const shift = (polynomial: Polynomial, delta: number): number[] => {
   }
   return result;
 };
-
-/** Largest |coefficient|, used as the reference magnitude when collapsing numeric noise. */
-export const magnitude = (polynomial: Polynomial): number =>
-  polynomial.reduce((largest, coefficient) => Math.max(largest, Math.abs(coefficient)), 0);

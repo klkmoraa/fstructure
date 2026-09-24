@@ -1,17 +1,4 @@
-/**
- * Vector artwork of the report: the global free-body diagram, the per-member N/V/M strips,
- * the full-page N, V or M diagram drawn over the structure, and the elastic curve.
- *
- * All three project the model onto the page with the same transform — bounding box, uniform
- * scale, centred offsets. That transform, the arrow, the node dot and the support glyph now
- * live in `pdfScene.ts`, because the free-body scenes of the method sections draw the same
- * structure with the same marks and must not reinvent any of them.
- */
-import type { AnalysisResult, DiagramQuantity } from '../../types';
-import { unitLabel } from '../../engine/units';
-import { toDisplay } from '../../foundation/units';
-import { readCanvasViewSettings } from '../../features/view/canvasViewSettings';
-import { lerpPoint, memberAxis } from '../../graphics/structureGeometry';
+
 import {
   createProjection,
   drawArrow,
@@ -23,10 +10,10 @@ import {
 import { pdfText } from './pdfGlyphs';
 import {
   clearDisplay,
-  clearNumber,
-  display,
-  quantitySymbol,
-  quantityUnit,
+  
+  
+  
+  
 } from './pdfFormat';
 import type { PdfLayout } from './pdfBuilder';
 import type { PdfColor, ReportContext } from './reportContext';
@@ -104,141 +91,6 @@ export const drawGlobalDcl = (
       }
     }
   }
-};
-
-/** Three compact N/V/M strips for the member results page. */
-export const drawMemberDiagrams = (
-  context: ReportContext,
-  result: AnalysisResult['memberResults'][number],
-  rect: { x: number; y: number; width: number; height: number },
-): void => {
-  const { layout, project } = context;
-  const { fonts, palette } = layout;
-  if (result.diagram.length < 2 || result.length <= 0) return;
-  const page = layout.page;
-  const gap = 14;
-  const chartWidth = rect.width;
-  // Reserve a quiet footer inside the figure for the final range label; otherwise it competes
-  // with the figure caption on a page break.
-  const chartHeight = (rect.height - gap * 2 - 20) / 3;
-  const definitions = [
-    { key: 'axial' as const, label: 'N axial', color: palette.quantity.axial },
-    { key: 'shear' as const, label: 'V cortante', color: palette.quantity.shear },
-    { key: 'moment' as const, label: 'M momento', color: palette.quantity.moment },
-  ];
-  for (const [chartIndex, definition] of definitions.entries()) {
-    const left = rect.x;
-    const chartTop = rect.y + rect.height - chartIndex * (chartHeight + gap) - 12;
-    const chartBottom = chartTop - chartHeight;
-    const values = result.diagram.map((entry) => entry[definition.key]);
-    const maximum = Math.max(1e-12, ...values.map((value) => Math.abs(value)));
-    const baseline = chartBottom + chartHeight / 2;
-    page.drawText(definition.label, { x: left, y: chartTop + 4, size: 7.3, font: fonts.bold, color: definition.color });
-    // A single datum line reads like an engineering diagram. The former surrounding card made
-    // three small graphs look like dashboard widgets and added no analytical information.
-    page.drawLine({ start: { x: left, y: baseline }, end: { x: left + chartWidth, y: baseline }, thickness: 0.6, color: palette.inkSoft });
-    for (let pointIndex = 1; pointIndex < result.diagram.length; pointIndex += 1) {
-      const previous = result.diagram[pointIndex - 1];
-      const current = result.diagram[pointIndex];
-      const previousX = left + previous.x / result.length * chartWidth;
-      const currentX = left + current.x / result.length * chartWidth;
-      const previousY = baseline + previous[definition.key] / maximum * (chartHeight * 0.37);
-      const currentY = baseline + current[definition.key] / maximum * (chartHeight * 0.37);
-      // Fine normal strokes create a restrained filled diagram without turning a small strip
-      // into a dark block. They also keep discontinuities legible.
-      page.drawLine({ start: { x: currentX, y: baseline }, end: { x: currentX, y: currentY }, thickness: 0.7, color: definition.color, opacity: 0.16 });
-      page.drawLine({
-        start: { x: previousX, y: previousY },
-        end: { x: currentX, y: currentY },
-        thickness: 1.2,
-        color: definition.color,
-      });
-    }
-    // These legends printed raw base-unit numbers with no label, next to tables stating
-    // the same quantities in the project's display units. Convert, collapse the noise
-    // against the curve's own magnitude, and name the unit.
-    const quantityUnitKey = quantityUnit(definition.key);
-    const scale = Math.max(...values.map((value) => Math.abs(toDisplay(value, project.settings.units, quantityUnitKey))), 1e-12);
-    const legendValue = (value: number) =>
-      clearNumber(toDisplay(value, project.settings.units, quantityUnitKey), scale, 3);
-    const minimum = Math.min(...values);
-    const maximumValue = Math.max(...values);
-    const legend = `mín. ${legendValue(minimum)}   máx. ${legendValue(maximumValue)} ${unitLabel(project.settings.units, quantityUnitKey)}`;
-    page.drawText(pdfText(legend), { x: left, y: chartBottom + 2, size: 5.9, font: fonts.regular, color: palette.inkSoft });
-  }
-};
-
-/** Full-page diagram of one quantity drawn normal to every member. */
-export const drawGlobalQuantityDiagram = (
-  context: ReportContext,
-  quantity: DiagramQuantity,
-  left: number,
-  bottom: number,
-  width: number,
-  height: number,
-): void => {
-  const { layout, project, analysis, index } = context;
-  const { page, fonts, palette } = layout;
-  if (!project.nodes.length) return;
-  const color = palette.quantity[quantity];
-  const projection = createProjection(project.nodes, {
-    left: left + 58,
-    right: left + width - 58,
-    bottom: bottom + 52,
-    top: bottom + height - 48,
-  });
-  const modelPoint = (xValue: number, yValue: number) => projection.at(xValue, yValue);
-  const maximum = Math.max(1e-12, ...analysis.memberResults.flatMap((result) => result.diagram.map((entry) => Math.abs(entry[quantity]))));
-  const amplitude = Math.min(62, Math.max(34, Math.min(width, height) * 0.18));
-  const side = readCanvasViewSettings(project).diagramSide === 'negative' ? -1 : 1;
-  const labelCandidates: Array<{ value: number; x: number; y: number; memberId: string; station: number }> = [];
-  for (const member of project.members) {
-    const ni = index.node(member.i);
-    const nj = index.node(member.j);
-    if (!ni || !nj) continue;
-    const start = modelPoint(ni.x, ni.y); const end = modelPoint(nj.x, nj.y);
-    page.drawLine({ start, end, thickness: member.type === 'rigid' ? 3.2 : 2.2, color: palette.inkSoft });
-    const result = index.memberResult(member.id);
-    const axis = memberAxis(member, ni, nj);
-    const totalLength = axis.length;
-    if (!result || result.diagram.length < 2 || totalLength <= 0 || member.type === 'rigid') continue;
-    const normal = axis.normal;
-    const startOffset = result.startOffset ?? member.rigidOffsetI ?? 0;
-    const diagramPoints = result.diagram.map((entry) => {
-      const ratio = Math.min(1, Math.max(0, (startOffset + entry.x) / totalLength));
-      const base = lerpPoint(start, end, ratio);
-      const diagramOffset = side * entry[quantity] / maximum * amplitude;
-      return { entry, base, curve: { x: base.x + normal.x * diagramOffset, y: base.y + normal.y * diagramOffset } };
-    });
-    const stride = Math.max(1, Math.floor(diagramPoints.length / 18));
-    diagramPoints.forEach((item, pointIndex) => {
-      if (pointIndex % stride === 0 || pointIndex === diagramPoints.length - 1) {
-        page.drawLine({ start: item.base, end: item.curve, thickness: 0.7, color, opacity: 0.16 });
-      }
-      if (pointIndex > 0) page.drawLine({ start: diagramPoints[pointIndex - 1].curve, end: item.curve, thickness: 1.65, color });
-    });
-    const critical = result.criticalPoints.filter((point) => point.quantity === quantity).sort((a, b) => Math.abs(b.value) - Math.abs(a.value))[0];
-    if (critical) {
-      const ratio = Math.min(1, Math.max(0, (startOffset + critical.x) / totalLength));
-      const base = lerpPoint(start, end, ratio);
-      const diagramOffset = side * critical.value / maximum * amplitude;
-      labelCandidates.push({ value: critical.value, x: base.x + normal.x * diagramOffset, y: base.y + normal.y * diagramOffset, memberId: member.id, station: critical.x });
-    }
-  }
-  for (const node of project.nodes) {
-    drawNodeDot(layout, modelPoint(node.x, node.y), node.id, palette.ink, 3.2, 6.4);
-  }
-  labelCandidates.sort((a, b) => Math.abs(b.value) - Math.abs(a.value)).slice(0, 6).forEach((candidate, labelIndex) => {
-    const value = clearDisplay(project, candidate.value, quantityUnit(quantity), maximum);
-    const station = display(project, candidate.station, 'length');
-    const label = `${value}`;
-    const labelY = Math.min(bottom + height - 28, Math.max(bottom + 18, candidate.y + (labelIndex % 2 === 0 ? 8 : -12)));
-    const labelX = Math.min(left + width - 54, Math.max(left + 8, candidate.x - 9));
-    page.drawText(pdfText(label), { x: labelX, y: labelY, size: 6.4, font: fonts.bold, color });
-    page.drawText(pdfText(`${candidate.memberId}, s=${station}`), { x: labelX, y: labelY - 7, size: 5.1, font: fonts.regular, color: palette.inkSoft });
-  });
-  page.drawLine({ start: { x: left + 14, y: bottom + 20 }, end: { x: left + 42, y: bottom + 20 }, thickness: 1.7, color });
-  page.drawText(pdfText(`${quantitySymbol(quantity)} positivo según los ejes locales de cada miembro`), { x: left + 50, y: bottom + 17, size: 6.8, font: fonts.regular, color: palette.inkSoft });
 };
 
 /**

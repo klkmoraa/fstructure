@@ -6,7 +6,7 @@ import { isUnitSystemId } from '../../foundation/units';
 import type { CanvasViewSettings } from '../view/canvasViewSettings';
 
 export const PERSONAL_LIBRARY_STORAGE_KEY = 'structureCo.personal-library.v1';
-export const PERSONAL_LIBRARY_SCHEMA_VERSION = 1 as const;
+const PERSONAL_LIBRARY_SCHEMA_VERSION = 1 as const;
 
 interface PersonalFavoriteBase {
   id: string;

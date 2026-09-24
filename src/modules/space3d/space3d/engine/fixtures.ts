@@ -16,7 +16,7 @@ import {
   type Space3DProjectV1,
 } from '../model/types';
 
-export interface Space3DCantileverOptions {
+interface Space3DCantileverOptions {
   /** Longitud del voladizo, m. */
   readonly L?: number;
   readonly E?: number;

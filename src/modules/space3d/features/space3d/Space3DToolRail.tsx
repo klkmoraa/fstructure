@@ -15,14 +15,14 @@ import { getSpace3DMoreCommands } from './space3dWorkspaceModel';
 
 export type Space3DActiveTool = 'select' | 'node' | 'member' | 'support' | 'load';
 
-export interface Space3DFileActions {
+interface Space3DFileActions {
   readonly onLoadExample: () => void;
   readonly onResetBlank: () => void;
   readonly onImport: () => void;
   readonly onExport: () => void;
 }
 
-export interface Space3DConsoleToolsProps {
+interface Space3DConsoleToolsProps {
   readonly t: (key: TranslationKey, variables?: Record<string, string | number>) => string;
   readonly activeTool: Space3DActiveTool;
   readonly onSelectTool: () => void;

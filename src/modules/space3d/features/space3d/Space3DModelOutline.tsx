@@ -21,7 +21,7 @@ const EXPANDED_LIMIT = 12;
 
 const num = (value: number) => formatSpace3DNumber(value, { significantDigits: 4 });
 
-export interface Space3DModelOutlineProps {
+interface Space3DModelOutlineProps {
   readonly project: Space3DProjectV1;
   readonly selection: Space3DSelection | null;
   readonly t: Translate;

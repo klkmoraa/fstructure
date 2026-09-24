@@ -72,7 +72,7 @@ export function chooseReferenceVector(
   return ny > 0.85 ? [0, 0, 1] : [0, 1, 0];
 }
 
-export interface Space3DFrameGeneratorOptions {
+interface Space3DFrameGeneratorOptions {
   readonly id?: string;
   readonly name?: string;
   /** Número de vanos en dirección X (mínimo 1) */
@@ -100,7 +100,7 @@ export interface Space3DFrameGeneratorOptions {
   readonly J?: number;
 }
 
-export interface Space3DTrussGeneratorOptions {
+interface Space3DTrussGeneratorOptions {
   readonly id?: string;
   readonly name?: string;
   /** Longitud total en X (m) */
@@ -119,7 +119,7 @@ export interface Space3DTrussGeneratorOptions {
   readonly A?: number;
 }
 
-export interface Space3DTowerGeneratorOptions {
+interface Space3DTowerGeneratorOptions {
   readonly id?: string;
   readonly name?: string;
   /** Altura total (m) */
@@ -134,7 +134,7 @@ export interface Space3DTowerGeneratorOptions {
   readonly topWindLoad?: number;
 }
 
-export interface Space3DDomeGeneratorOptions {
+interface Space3DDomeGeneratorOptions {
   readonly id?: string;
   readonly name?: string;
   /** Radio de la base del domo (m) */
@@ -566,7 +566,7 @@ export function generateSpace3DDome(options: Space3DDomeGeneratorOptions): Space
 // Generador: Puente Espacial Reticulado 3D
 // ============================================================================
 
-export interface Space3DBridgeGeneratorOptions {
+interface Space3DBridgeGeneratorOptions {
   readonly id?: string;
   readonly name?: string;
   /** Longitud total del puente en X (m, mínimo 6) */
@@ -718,7 +718,7 @@ export function generateSpace3DBridge(options: Space3DBridgeGeneratorOptions): S
 // Generador: Nave Industrial 3D a Dos Aguas
 // ============================================================================
 
-export interface Space3DIndustrialShedOptions {
+interface Space3DIndustrialShedOptions {
   readonly id?: string;
   readonly name?: string;
   /** Luz libre transversal del pórtico en X (m, mínimo 6) */
@@ -891,7 +891,7 @@ export function generateSpace3DIndustrialShed(options: Space3DIndustrialShedOpti
 // Parser determinista de descripción estructural
 // ============================================================================
 
-export interface ParsedStructuralPrompt {
+interface ParsedStructuralPrompt {
   readonly archetype: 'frame' | 'truss' | 'tower' | 'dome' | 'bridge' | 'industrial-shed';
   readonly params: Record<string, number | string>;
   /** Hay evidencia textual explícita del arquetipo, no sólo el fallback. */

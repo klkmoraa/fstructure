@@ -2,7 +2,7 @@ import type { Space3DAnalysisState } from '../../space3d/store/Space3DProjectCon
 import type { Space3DProjectV1 } from '../../space3d/model/types';
 
 export type Space3DGuideStepId = 'geometry' | 'supports' | 'loads' | 'analysis';
-export type Space3DGuideStepState = 'done' | 'current' | 'pending';
+type Space3DGuideStepState = 'done' | 'current' | 'pending';
 
 export type Space3DGuideAction =
   | 'start'
@@ -10,7 +10,6 @@ export type Space3DGuideAction =
   | 'add-member'
   | 'add-support'
   | 'add-load'
-  | 'resolve-bridge'
   | 'analyze'
   | 'running'
   | 'reanalyze'
@@ -53,7 +52,6 @@ const extremeNode = (project: Space3DProjectV1, pick: 'lowest' | 'highest'): str
 export const deriveSpace3DGuide = (
   project: Space3DProjectV1,
   analysisState: Space3DAnalysisState,
-  pendingBridgeNotes: number,
 ): Space3DGuide => {
   const counts = {
     nodes: project.nodes.length,
@@ -81,7 +79,6 @@ export const deriveSpace3DGuide = (
   else if (counts.members === 0) next = 'add-member';
   else if (counts.supports === 0) { next = 'add-support'; nodeId = extremeNode(project, 'lowest'); }
   else if (counts.loads === 0) { next = 'add-load'; nodeId = extremeNode(project, 'highest'); }
-  else if (pendingBridgeNotes > 0) next = 'resolve-bridge';
   else if (analysisState === 'running') next = 'running';
   else if (analysisState === 'failed') next = 'review-failure';
   else if (analysisState === 'stale') next = 'reanalyze';
