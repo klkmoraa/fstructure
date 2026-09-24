@@ -40,6 +40,8 @@
 .tool-home__segmented {
   display: inline-flex;
   gap: 2px;
+  max-width: 100%;
+  overflow-x: auto;
   padding: 3px;
   border: 1px solid var(--sc-color-border-soft);
   border-radius: var(--sc-radius-pill);
@@ -47,7 +49,8 @@
   box-shadow: var(--sc-shadow-inset);
 }
 .tool-home__segmented button {
-  min-height: 32px;
+  min-height: 44px;
+  flex: none;
   padding: 0 12px;
   border: 0;
   border-radius: var(--sc-radius-pill);
@@ -121,4 +124,5 @@
 
 @media (max-width: 720px) {
   .sc-home.tool-home[data-tool='fem'] .solver2d-paths.tool-home__paths { grid-template-columns: minmax(0, 1fr); }
+  .sc-home.tool-home[data-tool='design'] .solver2d-paths.tool-home__paths { grid-template-columns: minmax(0, 1fr); }
 }

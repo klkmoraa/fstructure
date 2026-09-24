@@ -64,6 +64,25 @@ it('Diseño: la norma y el elemento elegidos en la bienvenida abren el taller', 
   expect((screen.getByRole('combobox', { name: 'Norma de diseño' }) as HTMLSelectElement).value).toBe('nsr-10');
 });
 
+it('Diseño: «Continuar» aplica la norma elegida al último elemento', async () => {
+  const user = userEvent.setup();
+  openHome('design');
+  render(<App />);
+  await user.click(await screen.findByRole('button', { name: 'E.060 (2009)' }));
+  await user.click(screen.getByRole('button', { name: 'Continuar' }));
+  expect((await screen.findByRole('combobox', { name: 'Norma de diseño' }) as HTMLSelectElement).value).toBe('e060');
+  expect(within(screen.getByRole('radiogroup', { name: 'Elemento a diseñar' })).getByRole('radio', { name: 'Viga' }).getAttribute('aria-checked')).toBe('true');
+});
+
+it('Diseño: un proyecto nuevo conserva la norma elegida en la bienvenida', async () => {
+  const user = userEvent.setup();
+  openHome('design');
+  render(<App />);
+  await user.click(await screen.findByRole('button', { name: 'NSR-10' }));
+  await user.click(screen.getByRole('button', { name: 'Proyecto nuevo' }));
+  expect((await screen.findByRole('combobox', { name: 'Norma de diseño' }) as HTMLSelectElement).value).toBe('nsr-10');
+});
+
 it('el logo de una mesa vuelve a la bienvenida de su herramienta', async () => {
   const user = userEvent.setup();
   window.history.replaceState(null, '', '/?tool=fem');

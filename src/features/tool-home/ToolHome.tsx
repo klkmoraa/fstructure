@@ -43,6 +43,7 @@ interface ToolHomeProps {
   summary: readonly { value: string | number; label: string }[];
   onOpenWorkspace: () => void;
   onOpenSuite: () => void;
+  onCreateProject?: () => void;
 }
 
 const copy = {
@@ -80,7 +81,7 @@ const stateAttr = { available: 'available', experimental: 'experimental', planne
  * herramienta aporta su contenido; ninguna enlaza a otra: la única salida
  * lateral es volver a FusionStructure.
  */
-export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite }: ToolHomeProps) => {
+export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite, onCreateProject }: ToolHomeProps) => {
   const { project, replaceProject, updateProjectView } = useProject();
   const { language } = useI18n();
   const { theme } = useWorkspaceUI();
@@ -108,6 +109,10 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite 
   }, []);
 
   const createProject = () => {
+    if (onCreateProject) {
+      onCreateProject();
+      return;
+    }
     const blank = createBlankProject();
     replaceProject({ ...blank, settings: { ...blank.settings, language } });
     onOpenWorkspace();

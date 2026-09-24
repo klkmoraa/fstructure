@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Columns3, FilePlus2, RectangleHorizontal, Square } from 'lucide-react';
+import { Columns3, RectangleHorizontal, Square } from 'lucide-react';
 import { ToolHome, type ToolHomeContent } from '../tool-home/ToolHome';
 import { setToolIntent } from '../workspace/toolIntent';
 import { useI18n } from '../../i18n/useI18n';
@@ -16,14 +16,14 @@ const ELEMENT_LABEL: Record<Element, { es: string; en: string }> = {
   footing: { es: 'Zapata', en: 'Footing' },
 };
 
-const content = (onElement: (element: Element) => void, onNewProject: () => void, codeControl: ToolHomeContent['pathsControl']): ToolHomeContent => ({
+const content = (onElement: (element: Element) => void, codeControl: ToolHomeContent['pathsControl']): ToolHomeContent => ({
   title: { es: 'Del esfuerzo al armado.', en: 'From force to reinforcement.' },
   lead: {
     es: 'Diseña vigas, columnas y zapatas de concreto reforzado con la norma que elijas.',
     en: 'Design reinforced concrete beams, columns, and footings with the code you choose.',
   },
   stageAlt: { es: 'Viga de concreto en arcilla con la jaula de armado expuesta', en: 'Clay concrete beam with its reinforcement cage exposed' },
-  startBody: { es: 'Elige el elemento; la norma se aplica a los tres.', en: 'Choose the element; the code applies to all three.' },
+  startBody: { es: 'Selecciona la norma y después el elemento que quieres revisar.', en: 'Select the code, then the element you want to check.' },
   pathsControl: codeControl,
   paths: [
     { id: 'beam', icon: RectangleHorizontal, label: { es: 'Viga continua', en: 'Continuous beam' },
@@ -35,9 +35,6 @@ const content = (onElement: (element: Element) => void, onNewProject: () => void
     { id: 'footing', icon: Square, label: { es: 'Zapata aislada', en: 'Isolated footing' },
       body: { es: 'Presión del suelo, punzonamiento, cortante y flexión.', en: 'Soil pressure, punching, shear, and flexure.' },
       action: () => onElement('footing') },
-    { id: 'new', icon: FilePlus2, label: { es: 'Proyecto nuevo', en: 'New project' },
-      body: { es: 'Un proyecto aparte, con su propio taller de diseño.', en: 'A separate project with its own design workbench.' },
-      action: onNewProject },
   ],
   capabilities: [
     { id: 'codes', state: 'experimental', label: { es: 'Tres normas', en: 'Three codes' },
@@ -73,12 +70,13 @@ export default function DesignHome({ onOpenWorkspace, onOpenSuite }: { onOpenWor
 
   const summary = [
     { value: ELEMENT_LABEL[storedElement][language], label: en ? 'last element' : 'último elemento' },
-    { value: designCode(storedCode).name, label: en ? 'code' : 'norma' },
+    { value: designCode(code).name, label: en ? 'selected code' : 'norma elegida' },
   ];
   const openElement = (element: Element) => {
     setToolIntent({ tool: 'design', kind: 'element', element, code });
     onOpenWorkspace();
   };
+  const continueDesign = () => openElement(storedElement);
   const newProject = () => {
     const blank = createBlankProject();
     replaceProject({ ...blank, settings: { ...blank.settings, language } });
@@ -88,5 +86,5 @@ export default function DesignHome({ onOpenWorkspace, onOpenSuite }: { onOpenWor
   const codeControl = <div className="tool-home__segmented" role="group" aria-label={en ? 'Design code' : 'Norma de diseño'}>
     {DESIGN_CODE_IDS.map((id) => <button key={id} type="button" aria-pressed={code === id} onClick={() => setCode(id)}>{designCode(id).name}</button>)}
   </div>;
-  return <ToolHome tool="design" content={content(openElement, newProject, codeControl)} summary={summary} onOpenWorkspace={onOpenWorkspace} onOpenSuite={onOpenSuite} />;
+  return <ToolHome tool="design" content={content(openElement, codeControl)} summary={summary} onOpenWorkspace={continueDesign} onOpenSuite={onOpenSuite} onCreateProject={newProject} />;
 }
