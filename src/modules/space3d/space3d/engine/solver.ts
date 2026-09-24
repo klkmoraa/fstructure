@@ -66,6 +66,7 @@ import {
   type Space3DEquilibriumAudit,
   type Space3DFrameMember,
   type Space3DMemberEndForces,
+  type Space3DMemberLoad,
   type Space3DMemberResult,
   type Space3DNodeResult,
   type Space3DProjectV1,
@@ -497,6 +498,14 @@ export const assembleSpace3DStaticModel = (
     nodeDofIndices.set(node.id, Object.freeze(Array.from({ length: DOF_PER_NODE }, (_, dof) => index * DOF_PER_NODE + dof)));
   });
   const selfWeightFactor = space3DSelfWeightFactor(project, target.factors);
+  // Un edificio lleva decenas de miles de tramos de carga: se agrupan una vez
+  // por barra en lugar de recorrerlos todos por cada barra.
+  const loadsByMember = new Map<string, Space3DMemberLoad[]>();
+  for (const load of project.memberLoads) {
+    const list = loadsByMember.get(load.memberId);
+    if (list) list.push(load);
+    else loadsByMember.set(load.memberId, [load]);
+  }
   const diagonal = new Float64Array(totalDofs);
   const loadVector = new Array<number>(totalDofs).fill(0);
   const elements: Space3DStaticAssemblyElement[] = [];
@@ -525,7 +534,7 @@ export const assembleSpace3DStaticModel = (
 
       const loads = resolveSpace3DMemberLoads({
         member,
-        memberLoads: project.memberLoads,
+        memberLoads: loadsByMember.get(member.id) ?? [],
         start: [nodeI.x, nodeI.y, nodeI.z],
         end: [nodeJ.x, nodeJ.y, nodeJ.z],
         basis: element.basis,

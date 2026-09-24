@@ -26,7 +26,7 @@ import { isUnitSystemId } from '../../../../foundation/units';
 const PROJECT_FIELDS = [
   'analysisSpace', 'schemaVersion', 'id', 'name', 'units', 'nodes', 'members', 'nodalLoads', 'loadCases', 'loadCombinations',
   'prescribedDisplacements', 'memberLoads', 'memberInitialEffects', 'nodeLinks', 'multiPointConstraints', 'nodalMasses',
-  'generatedLoadSources', 'movingLoadCases',
+  'generatedLoadSources', 'movingLoadCases', 'grid',
 ];
 const NODE_FIELDS = ['id', 'x', 'y', 'z', 'restraints', 'planarSupport', 'internalHinge'];
 const RESTRAINT_FIELDS = ['ux', 'uy', 'uz', 'rx', 'ry', 'rz'];
@@ -402,5 +402,36 @@ export const validateSpace3DProject = (project: Space3DProjectV1): readonly Spac
     const axleIds = new Set<string>(); for (const axleRaw of axles) { const axle = entityObject(collect, axleRaw, 'moving-load-case', id); unknownFields(collect, axle, AXLE_FIELDS, 'moving-load-case', id); if (!isNonNegativeFinite(axle.P)) collect.push('invalid-property', 'moving-load-case', id, 'axles.P'); if (!isFiniteNumber(axle.offset)) collect.push('invalid-property', 'moving-load-case', id, 'axles.offset'); if (axle.id !== undefined) checkIdentity(collect, axle.id, axleIds, 'moving-load-case'); }
   }
 
+  if (project.grid !== undefined) validateGrid(collect, project.grid);
+
   return Object.freeze(sortIssues(issues));
+};
+
+const GRID_FIELDS = ['xLines', 'zLines', 'stories'];
+const GRID_LINE_FIELDS = ['id', 'coordinate'];
+const STORY_FIELDS = ['id', 'name', 'elevation'];
+
+/** La rejilla no entra en el cálculo, pero una rejilla rota no se guarda. */
+const validateGrid = (collect: Collector, grid: unknown) => {
+  if (typeof grid !== 'object' || grid === null || Array.isArray(grid)) { collect.push('invalid-property', 'project', '', 'grid'); return; }
+  unknownFields(collect, grid, GRID_FIELDS, 'project', '');
+  const source = grid as Record<string, unknown>;
+  const checkList = (field: 'xLines' | 'zLines' | 'stories', allowed: readonly string[], value: 'coordinate' | 'elevation') => {
+    const list = source[field];
+    if (!Array.isArray(list)) { collect.push('invalid-property', 'project', '', `grid.${field}`); return; }
+    const seen = new Set<string>();
+    for (const raw of list) {
+      const entry = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as Record<string, unknown> : null;
+      if (!entry) { collect.push('invalid-property', 'project', '', `grid.${field}`); continue; }
+      unknownFields(collect, entry, allowed, 'project', '');
+      if (typeof entry.id !== 'string' || entry.id.trim() === '') collect.push('empty-id', 'project', '', `grid.${field}.id`);
+      else if (seen.has(entry.id)) collect.push('duplicate-id', 'project', entry.id, `grid.${field}.id`);
+      else seen.add(entry.id);
+      if (!isCoordinate(entry[value])) collect.push('invalid-coordinate', 'project', typeof entry.id === 'string' ? entry.id : '', `grid.${field}.${value}`);
+      if (field === 'stories' && typeof entry.name !== 'string') collect.push('invalid-property', 'project', typeof entry.id === 'string' ? entry.id : '', 'grid.stories.name');
+    }
+  };
+  checkList('xLines', GRID_LINE_FIELDS, 'coordinate');
+  checkList('zLines', GRID_LINE_FIELDS, 'coordinate');
+  checkList('stories', STORY_FIELDS, 'elevation');
 };

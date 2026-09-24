@@ -16,6 +16,8 @@ import {
   SPACE3D_ANALYSIS_SPACE,
   SPACE3D_LEGACY_SCHEMA_VERSION,
   SPACE3D_SCHEMA_VERSION,
+  SPACE3D_V2_SCHEMA_VERSION,
+  type Space3DGridSystem,
   type Space3DFrameMember,
   type Space3DLoadCase,
   type Space3DLoadCombination,
@@ -458,6 +460,33 @@ const assertProjectIdentitiesAndReferences = (project: Space3DProjectV1): void =
   });
 };
 
+const readGrid = (value: unknown): Space3DGridSystem => {
+  const source = object(value, 'grid');
+  exactKeys(source, ['xLines', 'zLines', 'stories'], 'grid');
+  const lines = (key: 'xLines' | 'zLines') => list(source, key, 'grid').map((raw, index) => {
+    const path = `grid.${key}[${index}]`;
+    const line = object(raw, path);
+    exactKeys(line, ['id', 'coordinate'], path);
+    return { id: text(line, 'id', path), coordinate: num(line, 'coordinate', path) };
+  });
+  const stories = list(source, 'stories', 'grid').map((raw, index) => {
+    const path = `grid.stories[${index}]`;
+    const story = object(raw, path);
+    exactKeys(story, ['id', 'name', 'elevation'], path);
+    return { id: text(story, 'id', path), name: text(story, 'name', path), elevation: num(story, 'elevation', path) };
+  });
+  const unique = (ids: readonly string[], path: string) => {
+    const seen = new Set<string>();
+    for (const id of ids) { if (seen.has(id)) fail('invalid-model', `${path} duplicado «${id}»`); seen.add(id); }
+  };
+  const xLines = lines('xLines');
+  const zLines = lines('zLines');
+  unique(xLines.map((line) => line.id), 'grid.xLines');
+  unique(zLines.map((line) => line.id), 'grid.zLines');
+  unique(stories.map((story) => story.id), 'grid.stories');
+  return { xLines, zLines, stories };
+};
+
 interface Space3DParseOptions {
   /**
    * Exige además un modelo estructuralmente admisible.
@@ -486,14 +515,17 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
   if (source.analysisSpace !== SPACE3D_ANALYSIS_SPACE) {
     fail('analysis-space', `se esperaba «${SPACE3D_ANALYSIS_SPACE}» y llegó «${String(source.analysisSpace)}»`);
   }
-  if (source.schemaVersion !== SPACE3D_SCHEMA_VERSION && source.schemaVersion !== SPACE3D_LEGACY_SCHEMA_VERSION) {
-    fail('schema-version', `se esperaba ${SPACE3D_LEGACY_SCHEMA_VERSION} o ${SPACE3D_SCHEMA_VERSION} y llegó ${String(source.schemaVersion)}`);
+  if (source.schemaVersion !== SPACE3D_SCHEMA_VERSION && source.schemaVersion !== SPACE3D_V2_SCHEMA_VERSION && source.schemaVersion !== SPACE3D_LEGACY_SCHEMA_VERSION) {
+    fail('schema-version', `se esperaba ${SPACE3D_LEGACY_SCHEMA_VERSION}, ${SPACE3D_V2_SCHEMA_VERSION} o ${SPACE3D_SCHEMA_VERSION} y llegó ${String(source.schemaVersion)}`);
   }
 
+  // Migración por versión: v1 no tenía semánticas y v2 no tenía rejilla. Lo
+  // que falta se crea vacío; nada de lo que llega se descarta.
   const legacy = source.schemaVersion === SPACE3D_LEGACY_SCHEMA_VERSION;
+  const current = source.schemaVersion === SPACE3D_SCHEMA_VERSION;
   const coreFields = ['analysisSpace', 'schemaVersion', 'id', 'name', 'units', 'nodes', 'members', 'nodalLoads', 'loadCases', 'loadCombinations'];
   const semanticFields = ['prescribedDisplacements', 'memberLoads', 'memberInitialEffects', 'nodeLinks', 'multiPointConstraints', 'nodalMasses', 'generatedLoadSources', 'movingLoadCases'];
-  exactKeys(source, legacy ? coreFields : [...coreFields, ...semanticFields], 'project');
+  exactKeys(source, legacy ? coreFields : [...coreFields, ...semanticFields], 'project', current ? ['grid'] : []);
 
   const units = text(source, 'units', 'project');
   if (!isUnitSystemId(units)) fail('not-a-string', `project.units «${units}»`);
@@ -517,6 +549,7 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
     nodalMasses: legacy ? [] : list(source, 'nodalMasses', 'project').map(readNodalMass),
     generatedLoadSources: legacy ? [] : list(source, 'generatedLoadSources', 'project').map(readGeneratedSource),
     movingLoadCases: legacy ? [] : list(source, 'movingLoadCases', 'project').map(readMovingLoad),
+    ...(current && Object.hasOwn(source, 'grid') ? { grid: readGrid(source.grid) } : {}),
   };
   assertProjectIdentitiesAndReferences(project);
 

@@ -21,7 +21,10 @@
 import type { UnitSystemId } from '../../../../foundation/units';
 
 export const SPACE3D_LEGACY_SCHEMA_VERSION = 1 as const;
-export const SPACE3D_SCHEMA_VERSION = 2 as const;
+/** Esquema con semánticas persistidas (cargas en barra, liberaciones…), sin rejilla. */
+export const SPACE3D_V2_SCHEMA_VERSION = 2 as const;
+/** Esquema vigente: V2 más la rejilla de ejes y pisos. */
+export const SPACE3D_SCHEMA_VERSION = 3 as const;
 export const SPACE3D_ANALYSIS_SPACE = 'space-3d' as const;
 
 /**
@@ -316,8 +319,39 @@ interface LegacySpace3DProjectV1 {
   readonly loadCombinations: readonly Space3DLoadCombination[];
 }
 
+/** Eje de la rejilla: un plano vertical a una coordenada fija. */
+export interface Space3DGridLine {
+  readonly id: string;
+  /** Coordenada global del plano, m. */
+  readonly coordinate: number;
+}
+
+/** Nivel de piso: un plano horizontal a una elevación fija (Y). */
+export interface Space3DStory {
+  readonly id: string;
+  readonly name: string;
+  /** Elevación global, m. */
+  readonly elevation: number;
+}
+
+/**
+ * Rejilla de ejes y pisos, como la de ETABS: define las plantas y alzados del
+ * modelo y los puntos donde se dibuja. No participa en el cálculo.
+ *
+ *   · `xLines`: planos x = constante, rotulados A, B, C…
+ *   · `zLines`: planos z = constante, rotulados 1, 2, 3…
+ *   · `stories`: planos y = constante, de abajo arriba.
+ */
+export interface Space3DGridSystem {
+  readonly xLines: readonly Space3DGridLine[];
+  readonly zLines: readonly Space3DGridLine[];
+  readonly stories: readonly Space3DStory[];
+}
+
 export interface Space3DProjectV2 extends Omit<LegacySpace3DProjectV1, 'schemaVersion' | 'nodes' | 'members'> {
   readonly schemaVersion: typeof SPACE3D_SCHEMA_VERSION;
+  /** Rejilla de ejes y pisos; ausente en proyectos anteriores al esquema 3. */
+  readonly grid?: Space3DGridSystem;
   readonly nodes: readonly Space3DNode[];
   readonly members: readonly Space3DFrameMember[];
   readonly prescribedDisplacements: readonly Space3DPrescribedDisplacement[];
