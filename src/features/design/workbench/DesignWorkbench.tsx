@@ -4,7 +4,6 @@ import { Select } from '../../../design-system/components/controls';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
 import { ShellContribution } from '../../workspace/ShellToolSlots';
-import { ConcreteBeamDesignSurface } from '../ConcreteBeamDesignSurface';
 import { BeamWorkbench } from './BeamWorkbench';
 import { ColumnWorkbench } from './ColumnWorkbench';
 import { FootingWorkbench } from './FootingWorkbench';
@@ -12,28 +11,44 @@ import type { WorkbenchChrome } from './WorkbenchLayout';
 import { useWorkbenchStorage } from './workbenchStorage';
 import './designWorkbench.css';
 
-type ElementKind = 'beam' | 'column' | 'footing' | 'model';
+type ElementKind = 'beam' | 'column' | 'footing';
 
 const icon = (children: ReactNode) => <svg className="dw-element-icon" viewBox="0 0 24 24" aria-hidden="true">{children}</svg>;
 const ELEMENTS: { id: ElementKind; label: string; icon: ReactNode }[] = [
   { id: 'beam', label: 'Viga', icon: icon(<><rect x="2" y="8" width="20" height="5" rx="1" /><path d="M4 13l-2 4h4zM20 13l-2 4h4z" /></>) },
   { id: 'column', label: 'Columna', icon: icon(<><rect x="8.5" y="2" width="7" height="17" rx="1" /><path d="M4 21.5h16" /></>) },
   { id: 'footing', label: 'Zapata', icon: icon(<><rect x="9.5" y="3" width="5" height="9" rx="1" /><rect x="3" y="12" width="18" height="6" rx="1" /></>) },
-  { id: 'model', label: 'Del modelo 2D', icon: icon(<path d="M3 20V8l9-5 9 5v12M3 8h18M12 3v17" />) },
 ];
 
 const isElementKind = (value: unknown): value is ElementKind => ELEMENTS.some((item) => item.id === value);
 
-export function DesignWorkbench({ nativeTool = true, onClose }: { nativeTool?: boolean; onClose?: () => void }) {
+export type DesignElementKind = ElementKind;
+
+export function DesignWorkbench({ nativeTool = true, onClose, startElement, startCode }: {
+  nativeTool?: boolean;
+  onClose?: () => void;
+  /** Elemento elegido en la bienvenida de Diseño; gana al último guardado. */
+  startElement?: ElementKind;
+  /** Norma elegida en la bienvenida de Diseño. */
+  startCode?: string;
+}) {
   const storage = useWorkbenchStorage();
   const [element, setElementState] = useState<ElementKind>(() => {
+    if (startElement) return startElement;
     const stored = storage.read('element');
     return isElementKind(stored) ? stored : 'beam';
   });
   const [code, setCodeState] = useState<DesignCodeId>(() => {
+    if (isDesignCodeId(startCode)) return startCode;
     const stored = storage.read('code');
     return isDesignCodeId(stored) ? stored : 'ntc-2023';
   });
+  // Lo elegido en la bienvenida se guarda como el nuevo último estado del taller.
+  useEffect(() => {
+    if (startElement) storage.write('element', startElement);
+    if (isDesignCodeId(startCode)) storage.write('code', startCode);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [status, setStatus] = useState('');
   const [memo, setMemo] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -47,7 +62,6 @@ export function DesignWorkbench({ nativeTool = true, onClose }: { nativeTool?: b
   const setElement = (next: ElementKind) => {
     setElementState(next);
     setCopied(false);
-    if (next === 'model') { setStatus('Viga del modelo 2D'); setMemo(null); }
     storage.write('element', next);
   };
 
@@ -101,7 +115,7 @@ export function DesignWorkbench({ nativeTool = true, onClose }: { nativeTool?: b
     />)}
   </div>;
   const close = onClose
-    ? <button type="button" className="dw-float-button dw-close" aria-label="Cerrar Diseño" title="Volver al Modelo 2D" onClick={onClose}><X size={17} aria-hidden="true" /></button>
+    ? <button type="button" className="dw-float-button dw-close" aria-label="Cerrar Diseño" title="Volver al inicio" onClick={onClose}><X size={17} aria-hidden="true" /></button>
     : null;
   const codeControl = <div className="dw-code">
     <Select label="Norma de diseño" value={code} onChange={(event) => setCode(event.currentTarget.value)}>
@@ -124,15 +138,6 @@ export function DesignWorkbench({ nativeTool = true, onClose }: { nativeTool?: b
 
     {element === 'beam' ? <BeamWorkbench chrome={chrome} />
       : element === 'column' ? <ColumnWorkbench chrome={chrome} />
-        : element === 'footing' ? <FootingWorkbench chrome={chrome} />
-          : <div className="dw-layout dw-layout--model">
-            <section className="dw-stage" aria-label="Viga ligada al modelo 2D">
-              <div className="dw-stage__scroll dw-model">
-                <p className="dw-model__intro">Diseña una viga con los momentos y cortantes del análisis del Modelo 2D. Necesitas un modelo analizado, una viga seleccionada y combinaciones NTC de servicio y última.</p>
-                <ConcreteBeamDesignSurface open status="active" presentation="dock" onOpenChange={() => setElement('beam')} />
-              </div>
-              {dock}{close}
-            </section>
-          </div>}
+        : <FootingWorkbench chrome={chrome} />}
   </div>;
 }

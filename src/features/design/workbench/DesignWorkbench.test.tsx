@@ -66,13 +66,13 @@ describe('DesignWorkbench', () => {
     expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.element')!)).toBe('footing');
   });
 
-  it('mantiene la viga ligada al modelo 2D y el cierre hacia el Modelo 2D', async () => {
+  it('está aislado del Modelo 2D: sólo sus elementos propios y el cierre al Inicio', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
     renderWorkbench(onClose);
-    await user.click(screen.getByRole('radio', { name: 'Del modelo 2D' }));
-    expect(screen.getByTestId('concrete-beam-design-surface')).toBeTruthy();
-    // La superficie ligada trae su propio botón de cierre, oculto por CSS dentro del taller.
+    const dock = screen.getByRole('radiogroup', { name: 'Elemento a diseñar' });
+    expect(within(dock).getAllByRole('radio')).toHaveLength(3);
+    expect(screen.queryByRole('radio', { name: 'Del modelo 2D' })).toBeNull();
     await user.click(document.querySelector<HTMLButtonElement>('.dw-close')!);
     expect(onClose).toHaveBeenCalledOnce();
   });

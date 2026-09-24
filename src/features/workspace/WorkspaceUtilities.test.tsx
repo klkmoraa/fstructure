@@ -15,10 +15,6 @@ describe('WorkspaceUtilities', () => {
     render(
       <ProjectProvider>
         <WorkspaceUtilities
-          activeWorkspace="model2d"
-          onOpenModel2D={vi.fn()}
-          onOpenSpace3D={vi.fn()}
-          onOpenFem={vi.fn()}
           onOpenInspector={vi.fn()}
           onOpenUnitsEditor={onOpenUnitsEditor}
         />
@@ -34,32 +30,19 @@ describe('WorkspaceUtilities', () => {
     expect(onOpenUnitsEditor).toHaveBeenCalledOnce();
   });
 
-  it('ofrece herramientas integradas y cierra el panel al abrir una', async () => {
+  it('pertenece sólo al Modelo 2D: no ofrece saltos a otras herramientas', async () => {
     const user = userEvent.setup();
-    const onOpenSpace3D = vi.fn();
 
     render(
       <ProjectProvider>
-        <WorkspaceUtilities
-          activeWorkspace="model2d"
-          onOpenModel2D={vi.fn()}
-          onOpenSpace3D={onOpenSpace3D}
-          onOpenFem={vi.fn()}
-          onOpenInspector={vi.fn()}
-        />
+        <WorkspaceUtilities onOpenInspector={vi.fn()} />
       </ProjectProvider>,
     );
 
     await user.click(screen.getByRole('button', { name: 'Herramientas del espacio de trabajo' }));
 
-    expect(screen.getByRole('region', { name: 'Herramientas integradas' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /Modelo 2D/ })).toBeNull();
-    expect(screen.getByRole('button', { name: /Modelo 3D.*Experimental/ }).getAttribute('aria-pressed')).toBe('false');
-    expect(screen.getByRole('button', { name: /FEM.*Experimental/ })).toBeTruthy();
-
-    await user.click(screen.getByRole('button', { name: /Modelo 3D.*Experimental/ }));
-
-    expect(onOpenSpace3D).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('dialog', { name: 'Herramientas del espacio de trabajo' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Herramientas integradas' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Modelo 3D/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^FEM/ })).toBeNull();
   });
 });

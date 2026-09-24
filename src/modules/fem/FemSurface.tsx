@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Download, Grid3X3, Layers3, Play, Sigma, Upload, Waypoints } from 'lucide-react';
 import './femSurface.css';
 import { ShellContribution } from '../../features/workspace/ShellToolSlots';
+import { peekToolIntent, takeToolIntent } from '../../features/workspace/toolIntent';
 import { useProjectModel } from '../../store/ProjectModelContext';
 import { useSharedToolState } from '../../store/SharedToolState';
 import type { JsonValue } from '../../shared/project/unifiedProjectBundle';
@@ -29,7 +30,7 @@ const record = (value: JsonValue): Record<string, JsonValue> | null =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : null;
 
 /** Reads only FEM snapshots that pass the same document validator as analysis. */
-const readStoredFemStudy = (studies: readonly JsonValue[] | undefined): StoredFemStudy | null => {
+export const readStoredFemStudy = (studies: readonly JsonValue[] | undefined): StoredFemStudy | null => {
   if (!studies) return null;
   for (let index = studies.length - 1; index >= 0; index -= 1) {
     const candidate = record(studies[index]);
@@ -74,12 +75,49 @@ export function FemSurface() {
   const [analysis, setAnalysis] = useState<FemAnalysisResult | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  // Entrada elegida en la bienvenida de FEM. Se lee sin consumir durante el
+  // render y se aplica sólo al proyecto con el que se abrió la mesa; aplicarla
+  // es idempotente, así que el doble montaje de StrictMode no la pierde.
+  const [intent] = useState(() => peekToolIntent('fem'));
+  const intentProjectId = useRef(project.id);
+  useEffect(() => { takeToolIntent('fem'); }, []);
+
   useEffect(() => {
     const stored = readStoredFemStudy(session?.currentBundle(project.id)?.fem);
-    setDocument(stored?.document ?? createTri3PatchFixture());
-    setAnalysis(stored?.analysis ?? null);
+    const base = stored?.document ?? createTri3PatchFixture();
     setFeedback(null);
-  }, [project.id, session]);
+    if (intent && project.id === intentProjectId.current) {
+      if (intent.kind === 'analyze') {
+        const next = analyzeFemDocument(base);
+        setDocument(base);
+        setAnalysis(next);
+        if (session) void session.saveFem(project, persistedStudy(base, next)).then(
+          () => setFeedback(next.success ? 'Resultado FEM guardado en el proyecto local.' : 'Diagnóstico FEM guardado en el proyecto local.'),
+          (error: unknown) => setFeedback(`Estudio FEM sólo en memoria: ${error instanceof Error ? error.message : String(error)}`),
+        );
+        return;
+      }
+      try {
+        const imported = parseGmsh41(intent.text);
+        setDocument(imported);
+        setAnalysis(null);
+        if (session) void session.saveFem(project, persistedStudy(imported, null)).then(
+          () => setFeedback(`Gmsh 4.1 importado: ${imported.nodes.length} nodos · ${imported.elements.length} elementos.`),
+          () => setFeedback('Gmsh 4.1 cargado; queda sólo en memoria.'),
+        );
+        return;
+      } catch (error) {
+        setDocument(base);
+        setAnalysis(stored?.analysis ?? null);
+        setFeedback(`No se pudo importar ${intent.fileName}: ${error instanceof Error ? error.message : String(error)}`);
+        return;
+      }
+    }
+    setDocument(base);
+    setAnalysis(stored?.analysis ?? null);
+    // `project` completo no entra: la mesa se recarga por identidad, no por cada edición.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [project.id, session, intent]);
 
   const persistStudy = useCallback(async (nextDocument: FemDocumentV1, nextAnalysis: FemAnalysisResult | null) => {
     if (!session) return false;

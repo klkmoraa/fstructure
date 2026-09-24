@@ -59,6 +59,55 @@ export const findDuplicateSourceViolations = (root) => {
   return violations.sort();
 };
 
+/**
+ * Territorio de cada herramienta aislada. El Modelo 2D es el resto de `src`: la
+ * app y sus piezas comunes (Foundation, sistema de diseño, almacenamiento).
+ *
+ * Una herramienta puede usar piezas comunes, pero nunca el código de otra
+ * herramienta. Los adaptadores de `src/features/workspace` son la única
+ * frontera que las conoce a todas, y los puentes de datos declarados viven en
+ * `src/integrations`.
+ */
+const TOOL_TERRITORIES = new Map([
+  ['design', ['src/design', 'src/features/design']],
+  ['space3d', ['src/modules/space3d']],
+  ['fem', ['src/modules/fem']],
+]);
+
+const territoryOf = (resolvedRoot, path) => {
+  for (const [tool, directories] of TOOL_TERRITORIES) {
+    if (directories.some((directory) => isInside(path, join(resolvedRoot, directory)))) return tool;
+  }
+  return null;
+};
+
+/** Reporta imports de producción que cruzan de una herramienta aislada a otra. */
+export const findToolIsolationViolations = (root) => {
+  const resolvedRoot = resolve(root);
+  const violations = [];
+  for (const path of filesUnder(join(resolvedRoot, 'src'), isProductionTypeScript)) {
+    const territory = territoryOf(resolvedRoot, path);
+    // La interfaz del Modelo 2D (`src/features`) tampoco puede cargar la
+    // interfaz de otra herramienta. Sólo la frontera de `src/features/workspace`
+    // (registro, adaptadores y shells) conoce a todas. El resto de `src` —
+    // almacenamiento, workers, motores— es infraestructura común.
+    const isModel2DInterface = !territory
+      && isInside(path, join(resolvedRoot, 'src/features'))
+      && !isInside(path, join(resolvedRoot, 'src/features/workspace'));
+    if (!territory && !isModel2DInterface) continue;
+    const owner = territory ?? 'model2d';
+    for (const specifier of dependencySpecifiersIn(readFileSync(path, 'utf8'), path)) {
+      if (!specifier.startsWith('.')) continue;
+      const targetPath = resolve(dirname(path), specifier);
+      const target = territoryOf(resolvedRoot, targetPath);
+      // Desde el 2D sólo se vigila la interfaz ajena; `src/design` es biblioteca de cálculo.
+      if (isModel2DInterface && target === 'design' && !isInside(targetPath, join(resolvedRoot, 'src/features/design'))) continue;
+      if (target && target !== owner) violations.push(`${relative(resolvedRoot, path)} -> ${specifier} (${owner} imports ${target})`);
+    }
+  }
+  return violations.sort();
+};
+
 /** Reports production imports that revive a second shell/design system or Vite entry. */
 export const findSingleAppArchitectureViolations = (root) => {
   const resolvedRoot = resolve(root);
@@ -91,7 +140,7 @@ export const findSingleAppArchitectureViolations = (root) => {
 
   const viteEntries = filesUnder(resolvedRoot, (name) => /^vite\.config\.[cm]?[jt]sx?$/.test(name));
   if (viteEntries.length > 1) violations.push(`multiple Vite entries: ${viteEntries.map((path) => relative(resolvedRoot, path)).sort().join(', ')}`);
-  return [...violations, ...findDuplicateSourceViolations(resolvedRoot)];
+  return [...violations, ...findDuplicateSourceViolations(resolvedRoot), ...findToolIsolationViolations(resolvedRoot)];
 };
 
 export const runSingleAppArchitectureGate = (root) => {

@@ -28,20 +28,48 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-const chooseSurface = async (user: ReturnType<typeof userEvent.setup>, label: string) => {
-  await user.click(await screen.findByRole('button', { name: 'Abrir navegación del proyecto' }));
-  await user.click(screen.getByRole('menuitem', { name: label }));
+/**
+ * Recorrido completo entre herramientas: logo → bienvenida de la herramienta
+ * actual → FusionStructure → «Abrir <herramienta>» → su bienvenida →
+ * «Continuar» → su mesa.
+ */
+const openFromHome = async (user: ReturnType<typeof userEvent.setup>, tool: string) => {
+  await user.click(await screen.findByRole('button', { name: 'Ir al inicio' }));
+  await user.click(await screen.findByRole('button', { name: 'Volver a FusionStructure' }));
+  await screen.findByTestId('suite-welcome');
+  await user.click(screen.getByRole('button', { name: new RegExp(`^Abrir ${tool} ·`) }));
+  await user.click(await screen.findByRole('button', { name: 'Continuar' }));
 };
 
 describe('standalone FStructure', () => {
+  it('cada herramienta tiene su bienvenida entre el Inicio y su mesa', async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, '', '/?surface=welcome');
+    render(<App />);
+    for (const [tool, testId, heading] of [
+      ['Solver 3D', 'space3d-welcome', 'Del nudo al espacio.'],
+      ['Elementos finitos', 'fem-welcome', 'De la malla al campo.'],
+      ['Diseño', 'design-welcome', 'Del esfuerzo al armado.'],
+      ['FStructure', 'solver2d-welcome', 'Del trazo al diagrama.'],
+    ] as const) {
+      await user.click(await screen.findByRole('button', { name: new RegExp(`^Abrir ${tool} ·`) }));
+      expect(await screen.findByTestId(testId)).toBeTruthy();
+      expect(screen.getByRole('heading', { level: 1, name: heading })).toBeTruthy();
+      expect(new URLSearchParams(window.location.search).get('surface')).toBe('home');
+      await user.click(screen.getByRole('button', { name: 'Volver a FusionStructure' }));
+      expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
+    }
+  });
+
   it('abre la bienvenida y permite continuar al workspace', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    expect(await screen.findByTestId('solver2d-welcome')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1, name: 'Del trazo al diagrama.' })).toBeTruthy();
+    expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Make complexity legible.' })).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: 'Herramientas' }).querySelectorAll('button')).toHaveLength(4);
 
-    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+    await user.click(screen.getByRole('button', { name: /^Continuar.*en FStructure/ }));
 
     expect(await screen.findByLabelText('Inspector')).toBeTruthy();
     expect(screen.getByLabelText('Panorama del modelo')).toBeTruthy();
@@ -56,9 +84,16 @@ describe('standalone FStructure', () => {
     render(<App />);
 
     expect(await screen.findByLabelText('Inspector')).toBeTruthy();
-    await chooseSurface(user, 'Ir al inicio');
+    await user.click(screen.getByRole('button', { name: 'Ir al inicio' }));
 
-    expect(screen.getByTestId('solver2d-welcome')).toBeTruthy();
+    // El logo de la mesa lleva a la bienvenida original de FStructure…
+    expect(await screen.findByTestId('solver2d-welcome')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Del trazo al diagrama.' })).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get('surface')).toBe('home');
+    expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+    // …y desde ella se vuelve al Inicio de FusionStructure.
+    await user.click(screen.getByRole('button', { name: 'Volver a FusionStructure' }));
+    expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('surface')).toBe('welcome');
   });
 
@@ -72,7 +107,7 @@ describe('standalone FStructure', () => {
       window.history.pushState(null, '', '/?surface=welcome');
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
-    expect(await screen.findByTestId('solver2d-welcome')).toBeTruthy();
+    expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
   });
 
   it('migrates FEM and resolves a missing project to the actual model without losing the tool', async () => {
@@ -89,13 +124,16 @@ describe('standalone FStructure', () => {
     window.history.replaceState(null, '', '/?surface=workspace2d');
     const user = userEvent.setup();
     render(<App />);
-    const length = window.history.length;
-    await chooseSurface(user, 'Diseño');
+    await openFromHome(user, 'Diseño');
     expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
-    expect(window.history.length).toBe(length + 1);
+    const length = window.history.length;
     await user.click(screen.getByLabelText('Cerrar Diseño'));
-    expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+    // Cerrar una herramienta aislada vuelve a SU bienvenida, no a otra herramienta.
+    expect(await screen.findByTestId('design-welcome')).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get('surface')).toBe('home');
+    expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
+    expect(window.history.length).toBe(length + 1);
     window.history.back();
     await waitFor(() => expect(new URLSearchParams(window.location.search).get('tool')).toBe('design'));
     expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
@@ -143,7 +181,7 @@ describe('standalone FStructure', () => {
     });
     await started;
     try {
-      await chooseSurface(userEvent.setup(), 'Diseño');
+      await openFromHome(userEvent.setup(), 'Diseño');
       expect(new URLSearchParams(window.location.search).get('project')).toBe('project-b');
       expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
       await act(async () => { releaseLookup(); });

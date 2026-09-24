@@ -1,9 +1,10 @@
-import { useContext, useEffect, useMemo, useRef } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { DesignWorkbench } from '../../design/workbench/DesignWorkbench';
 import { browserWorkbenchStorage, createProjectWorkbenchStorage, WorkbenchStorageContext } from '../../design/workbench/workbenchStorage';
 import { ProjectModelContext } from '../../../store/ProjectModelContext';
 import { useSharedToolState } from '../../../store/SharedToolState';
 import { DesignSurfaceContext } from './surfaceContexts';
+import { peekToolIntent, takeToolIntent } from '../toolIntent';
 
 /**
  * Superficie Diseño: los borradores del taller se guardan en la rama `design`
@@ -14,6 +15,8 @@ export default function DesignSurface() {
   const project = useContext(ProjectModelContext)?.project ?? null;
   const session = useSharedToolState()?.session ?? null;
   const latestProject = useRef(project);
+  const [intent] = useState(() => peekToolIntent('design'));
+  useEffect(() => { takeToolIntent('design'); }, []);
   useEffect(() => { latestProject.current = project; }, [project]);
   const projectId = project?.id ?? null;
   const storage = useMemo(() => {
@@ -26,6 +29,6 @@ export default function DesignSurface() {
   }, [session, projectId]);
   useEffect(() => () => storage?.dispose(), [storage]);
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
-    <DesignWorkbench key={projectId ?? 'local'} onClose={() => shellProps?.onOpenChange(false)} />
+    <DesignWorkbench key={projectId ?? 'local'} onClose={() => shellProps?.onOpenChange(false)} startElement={intent?.element} startCode={intent?.code} />
   </WorkbenchStorageContext.Provider>;
 }

@@ -106,6 +106,12 @@ export interface Space3DWorkspaceProps {
   readonly createViewport?: Space3DViewportFactory;
   /** Propuesta inmutable preparada fuera de ambos dominios antes de abrir 3D. */
   readonly handoff?: Planar2DToSpace3DHandoffV1 | null;
+  /**
+   * Entrada elegida en la bienvenida del Solver 3D. Se aplica una vez, con las
+   * mismas acciones del arranque vacío: el ejemplo pide confirmación si ya hay
+   * un modelo que perder.
+   */
+  readonly startIntent?: 'generate' | 'example' | 'first-node';
 }
 
 const ERROR_KEYS: Record<string, TranslationKey> = {
@@ -227,13 +233,13 @@ interface Space3DStudyFeedback {
 }
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'language' | 'embedded' | 'onOpenHome' | 'onOpen2D' | 'createViewport' | 'handoff' | 'onProjectChange' | 'onRederive'> {
+  'language' | 'embedded' | 'onOpenHome' | 'onOpen2D' | 'createViewport' | 'handoff' | 'onProjectChange' | 'onRederive' | 'startIntent'> {
   readonly bridgeNotes: readonly Space3DBridgeNote[];
   readonly derived: Space3DProjectV1 | null;
 }
 
 const WorkspaceBody = ({
-  language, embedded = false, createViewport, handoff, bridgeNotes, derived, onProjectChange, onRederive,
+  language, embedded = false, createViewport, handoff, bridgeNotes, derived, onProjectChange, onRederive, startIntent,
 }: WorkspaceBodyProps) => {
   const t = useCallback(
     (key: TranslationKey, variables?: Record<string, string | number>) => translate(language, key, variables),
@@ -481,6 +487,17 @@ const WorkspaceBody = ({
     setEditorTarget(null);
   };
 
+  const startIntentApplied = useRef(false);
+  useEffect(() => {
+    if (!startIntent || startIntentApplied.current) return;
+    startIntentApplied.current = true;
+    if (startIntent === 'generate') setGenerativeOpen(true);
+    else if (startIntent === 'first-node') enterTool('node');
+    else requestReplace('example');
+    // La intención se aplica una sola vez, al abrir la mesa.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [startIntent]);
+
   const requestGeneratedReplace = (generatedProject: Space3DProjectV1) => {
     if (hasContent) {
       setPendingReplace({ kind: 'generated', project: generatedProject });
@@ -604,7 +621,10 @@ const WorkspaceBody = ({
     selectEntity(target, true);
     setSheetExpanded(true);
   };
+  // Sin geometría 2D no hay derivación de la que divergir: un modelo 3D hecho
+  // desde cero es trabajo propio de esta herramienta, no una copia desfasada.
   const diverged = handoff !== undefined && handoff !== null && derived !== null
+    && derived.nodes.length > 0
     && !space3DMatchesPlanarHandoff(project, handoff);
 
   const running = analysisState === 'running';
@@ -1191,7 +1211,7 @@ const WorkspaceBody = ({
     <footer className="space3d-status" aria-label={t('space3d.title')}>
       <span className={`space3d-state space3d-state--${STATE_TONES[analysisState]}`}>{stateLabel}</span>
       <span>{t('space3d.statusCase', { id: analysisTargetId })}</span>
-      {handoff && pendingNotes.length === 0 && !diverged ? <span>{t('space3d.statusSource', { name: handoff.candidateModel.name })}</span> : null}
+      {handoff && handoff.candidateModel.nodes.length > 0 && pendingNotes.length === 0 && !diverged ? <span>{t('space3d.statusSource', { name: handoff.candidateModel.name })}</span> : null}
       {lastAnalysisLabel ? <span className="space3d-status-last">{lastAnalysisLabel}</span> : null}
       <span className="space3d-status-help">{t('space3d.interactionHelp')}</span>
       <span className="space3d-status-units">{t('space3d.statusUnits')}</span>

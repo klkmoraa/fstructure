@@ -1,0 +1,87 @@
+/*
+ * Bienvenida de una herramienta aislada.
+ *
+ * Todo lo visible sale de la bienvenida de FStructure (`totalHome.css` y
+ * `solver2dHome.css`); aquí sólo vive lo que cambia entre herramientas: el
+ * glifo de la marca de la herramienta, las rutas que pueden ser un selector de
+ * archivo y cuántas rutas caben en la fila.
+ */
+
+.tool-home .sc-home-wordmark .fs-glyph {
+  --glyph-accent: var(--sc-color-family-analisis);
+  flex: none;
+  width: 28px;
+  height: 28px;
+  color: var(--sc-color-text-primary);
+}
+
+/* El pie del escenario nombra la herramienta, no el solver 2D. */
+.tool-home .solver2d-stage[data-caption]::after { content: attr(data-caption); text-transform: uppercase; }
+
+.tool-home .solver2d-paths.tool-home__paths {
+  grid-template-columns: repeat(var(--path-count, 4), minmax(0, 1fr));
+}
+
+/* Una ruta que pide un archivo es un <label>: el control nativo queda
+   accesible por su nombre y el recuadro entero lo abre. */
+.tool-home__file { position: relative; cursor: pointer; }
+.tool-home__file input[type='file'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.tool-home__file:focus-within { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
+
+.tool-home__scene { aspect-ratio: 3 / 2; object-fit: contain; }
+
+/* Selector de norma de Diseño, en la cabecera de «Por dónde empezar». */
+.tool-home__segmented {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+}
+.tool-home__segmented button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--sc-radius-pill);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  cursor: pointer;
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-semibold);
+}
+.tool-home__segmented button[aria-pressed='true'] {
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--sc-color-text-primary);
+}
+
+@media (max-width: 860px) {
+  .tool-home .solver2d-paths.tool-home__paths { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 380px) {
+  .tool-home .solver2d-paths.tool-home__paths { grid-template-columns: minmax(0, 1fr); }
+}
+
+.tool-home__toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  max-width: min(420px, calc(100vw - 32px));
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-lg);
+  color: var(--sc-color-text-primary);
+  font-size: var(--sc-font-size-caption);
+}

@@ -32,10 +32,6 @@ export interface WorkspaceCommands {
   'open-results': { trigger?: HTMLElement | null };
   /** Toggle the persistent Results control without giving the dock local state. */
   'toggle-results': { trigger?: HTMLElement | null };
-  /** Request the concrete-design workbench; the broker decides its placement. */
-  'open-design': { trigger?: HTMLElement | null };
-  /** Toggle the persistent Diseño control. */
-  'toggle-design': { trigger?: HTMLElement | null };
   /** Mark a user-initiated analysis so post-analysis UI may react once. */
   'analysis-requested': void;
   /** Open analysis cases, combinations and setup without selecting a placement tool. */

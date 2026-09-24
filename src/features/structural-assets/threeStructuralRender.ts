@@ -119,6 +119,18 @@ export const renderThreeStructuralAssetDataUrl = async (
   theme: StructuralRenderTheme,
   width = 900,
   height = 600,
+) => renderStructuralGroupDataUrl(buildThreeStructuralGroup(assetId, theme), theme, width, height);
+
+/**
+ * Misma luz, cámara y sombra que el catálogo, para cualquier grupo. Las escenas
+ * de presentación de las herramientas (`suiteScenes.ts`) se dibujan así para
+ * que compartan estilo con el pórtico sin entrar al registro canónico.
+ */
+export const renderStructuralGroupDataUrl = async (
+  group: THREE.Group,
+  theme: StructuralRenderTheme,
+  width = 900,
+  height = 600,
 ) => {
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(1);
@@ -131,7 +143,6 @@ export const renderThreeStructuralAssetDataUrl = async (
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
-  const group = buildThreeStructuralGroup(assetId, theme);
   scene.add(group);
   scene.add(new THREE.HemisphereLight(theme === 'day' ? 0xffffff : 0xf2f2f2, theme === 'day' ? 0x737373 : 0x0b0b0b, theme === 'day' ? 2.6 : 2.25));
   const key = new THREE.DirectionalLight(theme === 'day' ? 0xffffff : 0xf2f2f2, theme === 'day' ? 4.2 : 3.5);

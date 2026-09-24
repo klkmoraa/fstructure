@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import test from 'node:test';
-import { findDuplicateSourceViolations, findSingleAppArchitectureViolations } from './check-single-app-architecture.mjs';
+import { findDuplicateSourceViolations, findSingleAppArchitectureViolations, findToolIsolationViolations } from './check-single-app-architecture.mjs';
 
 const roots = [];
 const project = (files) => {
@@ -66,4 +66,22 @@ test('allows distinct modules and ignores test files', () => {
     'vite.config.ts': 'export default {};\n',
   });
   assert.deepEqual(findDuplicateSourceViolations(root), []);
+});
+
+test('rejects a tool importing another isolated tool, but allows shared pieces and adapters', () => {
+  const root = project({
+    'src/modules/fem/FemSurface.tsx': "import '../space3d/space3d/model/types';\nimport '../../foundation/linearAlgebra';\n",
+    'src/modules/space3d/space3d/model/types.ts': "import '../../../../design/elements/beam';\n",
+    'src/design/elements/beam.ts': "import '../../foundation/units';\n",
+    'src/features/design/Workbench.tsx': "import '../../design/elements/beam';\n",
+    'src/features/workspace/adapters/Space3DSurface.tsx': "import '../../../modules/space3d/space3d/model/types';\n",
+    'src/foundation/linearAlgebra.ts': 'export const a = 1;\n',
+    'src/foundation/units.ts': 'export const b = 2;\n',
+    'vite.config.ts': 'export default {};\n',
+  });
+  const violations = findToolIsolationViolations(root);
+  assert.equal(violations.length, 2);
+  assert.ok(violations.some((item) => item.includes('fem imports space3d')));
+  assert.ok(violations.some((item) => item.includes('space3d imports design')));
+  assert.ok(findSingleAppArchitectureViolations(root).some((item) => item.includes('fem imports space3d')));
 });

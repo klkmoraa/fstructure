@@ -5,8 +5,11 @@ import './design-system/material.css';
 import { ProjectProvider, useProject } from './store/ProjectContext';
 import { ClassroomSessionProvider } from './store/ClassroomSessionContext';
 import WorkspaceShell from './features/workspace/WorkspaceShell';
+import ToolShell from './features/workspace/ToolShell';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
-import { FemTool, Space3DTool } from './features/workspace/toolSurfaces';
+import { Model2DWelcome } from './features/welcome/Model2DWelcome';
+import { TOOL_HOMES } from './features/workspace/toolHomes';
+import { rememberLastTool } from './features/welcome/lastTool';
 import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
 import type { ToolId } from './shared/contracts';
 
@@ -19,6 +22,21 @@ const FStructureSurface = () => {
   const openTool = useCallback((tool: ToolId) => {
     navigate({ surface: 'workspace', projectId: route.projectId, tool });
   }, [navigate, route.projectId]);
+  /* Inicio de FusionStructure → bienvenida de la herramienta → mesa. El logo
+     de una mesa vuelve a la bienvenida de SU herramienta; desde ahí se vuelve
+     a FusionStructure. */
+  const openToolHome = useCallback((tool: ToolId) => {
+    navigate({ surface: 'tool-home', projectId: route.projectId, tool });
+  }, [navigate, route.projectId]);
+  const openSuite = useCallback(() => {
+    navigate({ surface: 'welcome', projectId: route.projectId, tool: route.tool });
+  }, [navigate, route.projectId, route.tool]);
+  const openCurrentToolHome = useCallback(() => openToolHome(route.tool), [openToolHome, route.tool]);
+  const openCurrentWorkspace = useCallback(() => openTool(route.tool), [openTool, route.tool]);
+
+  useEffect(() => {
+    if (route.surface === 'workspace') rememberLastTool(route.tool);
+  }, [route.surface, route.tool]);
 
   useEffect(() => {
     if (route.projectId === project.id) return;
@@ -46,19 +64,20 @@ const FStructureSurface = () => {
     return () => { cancelled = true; };
   }, [route, project.id, replaceProject, openUnifiedProject, navigate]);
 
+  const ToolHomeView = route.tool === 'model2d' ? null : TOOL_HOMES[route.tool];
+  /* Cada herramienta monta SU shell. La `key` garantiza que abrir otra
+     herramienta desmonte la anterior por completo: ningún atajo, superficie,
+     historial de interfaz ni estado de render sobrevive al cambio. */
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
     {route.surface === 'welcome'
-      ? <WelcomeScreen onOpenWorkspace={() => openTool('model2d')} />
-      : <WorkspaceShell
-          projectId={project.id}
-          tool={route.tool}
-          onToolChange={openTool}
-          space3dContent={<Suspense fallback={<div className="workspace-loading" role="status">Cargando módulo…</div>}>
-            <Space3DTool />
-          </Suspense>}
-          femContent={<Suspense fallback={<div className="workspace-loading" role="status">Cargando módulo…</div>}><FemTool /></Suspense>}
-          onOpenHome={() => navigate({ surface: 'welcome', projectId: project.id, tool: 'model2d' })}
-        />}
+      ? <WelcomeScreen onOpenToolHome={openToolHome} onResume={openTool} />
+      : route.surface === 'tool-home'
+        ? ToolHomeView
+          ? <Suspense key={route.tool} fallback={<div className="workspace-loading" role="status">Cargando herramienta…</div>}><ToolHomeView onOpenWorkspace={openCurrentWorkspace} onOpenSuite={openSuite} /></Suspense>
+          : <Model2DWelcome key="model2d" onOpenWorkspace={openCurrentWorkspace} onOpenSuite={openSuite} />
+        : route.tool === 'model2d'
+          ? <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openCurrentToolHome} />
+          : <ToolShell key={route.tool} tool={route.tool} projectId={project.id} onOpenHome={openCurrentToolHome} />}
   </ClassroomSessionProvider>;
 };
 

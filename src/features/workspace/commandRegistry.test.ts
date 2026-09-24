@@ -60,11 +60,9 @@ describe('comando de tema', () => {
   });
 });
 
-describe('comando de Diseño', () => {
-  it('expone el workbench de concreto reforzado a la paleta', () => {
-    const command = buildCommands(contextoDe('light', () => undefined)).find((item) => item.id === 'design:concrete-beam');
-    expect(command).toBeTruthy();
-    expect(command?.label).toBe('Diseño');
-    expect(command?.aliases).toContain('concreto');
+describe('aislamiento de herramientas', () => {
+  it('la paleta del Modelo 2D no abre Diseño: esa herramienta se elige en el Inicio', () => {
+    const commands = buildCommands(contextoDe('light', () => undefined));
+    expect(commands.find((item) => item.id === 'design:concrete-beam')).toBeUndefined();
   });
 });

@@ -1,8 +1,7 @@
-import { Box, ChartNoAxesCombined, Check, CloudOff, DraftingCompass, PenLine, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
+import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FStructureMark } from '../../design-system/brand';
 import type { ToolId } from '../../shared/contracts';
-import { ToolSwitcher } from './ToolSwitcher';
 
 /**
  * Recuperar el respaldo con éxito no es un fallo de guardado.
@@ -25,7 +24,6 @@ export interface WorkspaceTopBarLabels {
   solverName: string;
   project: string;
   home: string;
-  workspaceMenu?: string;
   editProject: string;
   saveProject: string;
   cancel: string;
@@ -40,16 +38,17 @@ export interface WorkspaceTopBarLabels {
   redo: string;
   analyze: string;
   results: string;
-  design: string;
   calculationExperience: string;
-  model3d?: string;
-  model2d?: string;
   actions: string;
 }
 
 export interface WorkspaceTopBarProps {
+  /**
+   * Herramienta dueña de la barra. Sólo pinta su identidad: cada herramienta es
+   * una mesa aislada y la barra no ofrece saltos a las otras; se vuelve al
+   * Inicio desde la marca.
+   */
   tool?: ToolId;
-  onToolChange?: (tool: ToolId) => void;
   contextualControls?: ReactNode;
   primaryAction?: ReactNode;
   toolStatus?: ReactNode;
@@ -58,7 +57,6 @@ export interface WorkspaceTopBarProps {
   storageMessage?: string | null;
   analysisState: WorkspaceAnalysisState;
   resultsOpen: boolean;
-  designOpen?: boolean;
   canUndo: boolean;
   canRedo: boolean;
   labels: WorkspaceTopBarLabels;
@@ -69,36 +67,35 @@ export interface WorkspaceTopBarProps {
   onAnalyze: () => void;
   /** Alterna Resultados. Recibe el disparador para que el foco vuelva a él. */
   onOpenResults: (trigger: HTMLElement | null) => void;
-  /** Alterna Diseño. Recibe el disparador para conservar el retorno de foco. */
-  onOpenDesign?: (trigger: HTMLElement | null) => void;
   /** Abre el modo de trabajo, casos y combinaciones de cálculo. */
   onOpenCalculationExperience?: (trigger: HTMLElement | null) => void;
-  /** Alterna el modo 3D dentro de la misma mesa de trabajo. */
-  onOpenSpace3D?: () => void;
-  space3DActive?: boolean;
-  returnTo2D?: boolean;
   /** Acciones secundarias del espacio: exportación, tema, unidades y hojas. */
   utilities?: ReactNode;
-  /** Oculta los comandos 2D cuando el escenario pertenece a otro módulo. */
+  /**
+   * Muestra los comandos del Modelo 2D (historial, Resultados, cálculo). Las
+   * herramientas aisladas —Diseño, 3D y FEM— lo apagan y aportan los suyos por
+   * `contextualControls`, `primaryAction` y `toolStatus`.
+   */
   contextActive?: boolean;
 }
 
 /**
- * Barra superior persistente del canvas 2D.
+ * Barra superior de una herramienta.
  *
+ * Cada herramienta monta la suya: la marca vuelve al Inicio —donde se elige
+ * otra herramienta— y el resto de la barra pertenece sólo a la mesa abierta.
  * Mantiene a la vista el contexto del proyecto, la salud del guardado y el
  * estado de la última corrida. Las acciones rápidas son botones reales —no
  * affordances que sólo aparecen al pasar el puntero— para que el mismo recorrido
  * funcione con teclado, touch y lector de pantalla.
  */
 export const WorkspaceTopBar = ({
-  tool = 'model2d', onToolChange, contextualControls, primaryAction, toolStatus,
+  tool = 'model2d', contextualControls, primaryAction, toolStatus,
   projectName,
   storageState,
   storageMessage,
   analysisState,
   resultsOpen,
-  designOpen = false,
   canUndo,
   canRedo,
   labels,
@@ -108,20 +105,13 @@ export const WorkspaceTopBar = ({
   onRedo,
   onAnalyze,
   onOpenResults,
-  onOpenDesign = () => undefined,
   onOpenCalculationExperience,
-  onOpenSpace3D,
-  space3DActive = false,
-  returnTo2D = false,
   utilities,
   contextActive = true,
 }: WorkspaceTopBarProps) => {
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
-  const [surfaceMenuOpen, setSurfaceMenuOpen] = useState(false);
   const [draftName, setDraftName] = useState(projectName);
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const brandButtonRef = useRef<HTMLButtonElement>(null);
-  const surfaceMenuRef = useRef<HTMLDivElement>(null);
   const storageFailed = storageState === 'issue';
   const storageRecovered = storageState === 'recovered';
   const storageLabel = storageFailed
@@ -146,57 +136,23 @@ export const WorkspaceTopBar = ({
     if (projectEditorOpen) nameInputRef.current?.focus({ preventScroll: true });
   }, [projectEditorOpen]);
 
-  useEffect(() => {
-    if (!surfaceMenuOpen) return;
-    surfaceMenuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus({ preventScroll: true });
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (surfaceMenuRef.current?.contains(target) || brandButtonRef.current?.contains(target)) return;
-      setSurfaceMenuOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      setSurfaceMenuOpen(false);
-      brandButtonRef.current?.focus({ preventScroll: true });
-    };
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [surfaceMenuOpen]);
-
   const saveProjectName = () => {
     const nextName = draftName.trim();
     if (nextName) onRenameProject(nextName);
     setProjectEditorOpen(false);
   };
 
-  return <header className="workspace-topbar" data-workspace-topbar>
+  return <header className="workspace-topbar" data-workspace-topbar data-tool={tool}>
     <div className="workspace-topbar__project-group" data-workspace-group="project">
       <button
-        ref={brandButtonRef}
         type="button"
-        className={'workspace-topbar__brand' + (surfaceMenuOpen ? ' is-open' : '')}
-        onClick={() => onToolChange ? setSurfaceMenuOpen((open) => !open) : onOpenHome()}
-        aria-label={onToolChange ? labels.workspaceMenu ?? 'Abrir navegación del proyecto' : labels.home}
-        aria-haspopup={onToolChange ? 'menu' : undefined}
-        aria-expanded={onToolChange ? surfaceMenuOpen : undefined}
-        aria-controls={onToolChange && surfaceMenuOpen ? 'workspace-surface-menu' : undefined}
-        title={onToolChange ? labels.workspaceMenu ?? 'Abrir navegación del proyecto' : labels.home}
+        className="workspace-topbar__brand"
+        onClick={onOpenHome}
+        aria-label={labels.home}
+        title={labels.home}
       >
         <FStructureMark size={26} />
       </button>
-      {onToolChange && surfaceMenuOpen ? <div ref={surfaceMenuRef}><ToolSwitcher
-        tool={tool}
-        homeLabel={labels.home}
-        menuLabel={labels.workspaceMenu}
-        onChange={onToolChange}
-        onHome={onOpenHome}
-        onRequestClose={() => setSurfaceMenuOpen(false)}
-      /></div> : null}
       <button
         type="button"
         className="workspace-topbar__project"
@@ -269,12 +225,6 @@ export const WorkspaceTopBar = ({
             <span>{labels.results}</span>
           </button>
         </div>
-        {!onToolChange ? <div className="workspace-topbar__results-group" data-workspace-group="design">
-          <button type="button" className={'workspace-topbar__action-button' + (designOpen ? ' is-active' : '')} onClick={(event) => onOpenDesign(event.currentTarget)} aria-label={labels.design} aria-pressed={designOpen}>
-            <DraftingCompass size={17} aria-hidden="true" />
-            <span>{labels.design}</span>
-          </button>
-        </div> : null}
       </div> : null}
       {contextActive && onOpenCalculationExperience ? <div className="workspace-topbar__experience-group" data-workspace-group="calculation-experience">
         <button
@@ -286,19 +236,6 @@ export const WorkspaceTopBar = ({
         >
           <SlidersHorizontal size={17} aria-hidden="true" />
           <span>{labels.calculationExperience}</span>
-        </button>
-      </div> : null}
-      {!onToolChange && onOpenSpace3D ? <div className="workspace-topbar__mode-group" data-workspace-group="workspace-mode">
-        <button
-          type="button"
-          className={'workspace-topbar__action-button' + (space3DActive && !returnTo2D ? ' is-active' : '')}
-          onClick={onOpenSpace3D}
-          aria-label={returnTo2D ? labels.model2d ?? 'Modelo 2D' : labels.model3d ?? 'Modelo 3D'}
-          aria-pressed={returnTo2D ? undefined : space3DActive}
-          title={returnTo2D ? labels.model2d ?? 'Modelo 2D' : labels.model3d ?? 'Modelo 3D'}
-        >
-          {returnTo2D ? <PenLine size={17} aria-hidden="true" /> : <Box size={17} aria-hidden="true" />}
-          <span>{returnTo2D ? labels.model2d ?? '2D' : labels.model3d ?? '3D'}</span>
         </button>
       </div> : null}
       {utilities}

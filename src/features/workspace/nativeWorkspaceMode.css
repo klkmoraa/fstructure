@@ -1,4 +1,4 @@
-/* 3D y FEM son modos del escenario central del mismo AppShellLayout. */
+/* Mesa de una herramienta aislada —Diseño, 3D o FEM— dentro de `ToolShell`. */
 .native-workspace-mode {
   display: flex;
   flex: 1 1 auto;

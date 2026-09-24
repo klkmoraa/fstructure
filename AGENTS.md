@@ -7,7 +7,8 @@ FStructure es una aplicación web local-first y experimental de modelado y anál
 ## Invariantes
 
 - Mantener una sola app, una sola entrada Vite y un solo sistema de diseño raíz.
-- `model2d` es la autoridad del bundle unificado; 3D, Diseño y FEM son ramas o resultados derivados con procedencia explícita.
+- El proyecto es un contenedor compartido (identidad, nombre, guardado); cada herramienta guarda su propia rama (`model2d`, `design`, `space3d`, `fem`) y ninguna deriva datos de otra.
+- Cada herramienta (Modelo 2D, Diseño, Modelo 3D, FEM) monta su propio shell y se elige sólo desde el Inicio. Ninguna importa código de otra: `src/design` + `src/features/design`, `src/modules/space3d` y `src/modules/fem` son territorios separados, y la interfaz 2D (`src/features`) tampoco carga interfaz ajena (gate `architecture:check`). Sólo `src/features/workspace` (registro, adaptadores y shells) las conoce a todas.
 - Conservar unidades internas, signos, ejes, grados de libertad, precisión y conversiones de forma explícita. No redondear entradas del solver para presentación.
 - No aceptar `NaN`, infinitos, objetos de runtime, ciclos, archivos sobredimensionados ni rutas inseguras en persistencia/importación.
 - No perder datos silenciosamente. Migraciones, guardado, undo/redo e import/export deben fallar de forma visible y recuperable.
@@ -54,7 +55,8 @@ No sustituir `npm ci` por una instalación que cambie el lockfile. Si un comando
 
 ## Mapa de arquitectura
 
-- `src/App.tsx`, `src/features/workspace/`: shell, rutas por query string y superficies.
+- `src/App.tsx`, `src/features/workspace/`: rutas por query string, `WorkspaceShell` (Modelo 2D), `ToolShell` (Diseño, 3D, FEM), `toolCatalog.ts` (identidad pública de cada herramienta) y superficies.
+- Navegación: Inicio de FusionStructure (`src/features/welcome/SuiteHome`, `?surface=welcome`) → bienvenida de la herramienta (`?surface=home&tool=…`) → mesa (`?tool=…`). FStructure conserva su bienvenida original (`Model2DWelcome` + `Solver2DHome`); Solver 3D, FEM y Diseño usan `src/features/tool-home/ToolHome` desde sus territorios (`Space3DHome`, `FemHome`, `DesignHome`). Las entradas de una bienvenida llegan a la mesa por `features/workspace/toolIntent.ts`. Escenas: `src/features/structural-assets/suiteScenes.ts`, renderizadas con `node scripts/render-suite-scenes.mjs` a `public/assets/suite/`.
 - `src/types.ts`, `src/data/`, `src/commands/`: modelo 2D, migraciones y mutaciones reversibles.
 - `src/store/`: estado React, historial, selección, análisis y coordinación de persistencia.
 - `src/engine/`, `src/analysis-methods/`, `src/foundation/`: solver, estudios, unidades y álgebra numérica.
@@ -74,7 +76,7 @@ Las reglas de negocio viven fuera de la UI. Las superficies consumen comandos/DT
 - Los resultados derivados deben llevar identidad/procedencia y se invalidan al cambiar entradas relevantes.
 - Toda mutación del proyecto debe declarar si afecta análisis y participar en undo/redo o explicar por qué no.
 - Validar datos no confiables antes de normalizarlos o descomprimirlos; mantener presupuestos de archivo.
-- Mantener adaptadores 2D↔3D/FEM explícitos. No crear sincronización implícita ni asumir equivalencia de grados de libertad.
+- No crear sincronización ni derivación entre herramientas; si algún día se añade un intercambio, debe ser una importación explícita que la persona dispara.
 - Preferir formatos abiertos. DWG/IFC y física no implementada deben rechazarse de forma explícita, no simularse.
 - Preservar navegación por teclado, nombres accesibles, foco visible, reducción de movimiento y controles táctiles.
 - No introducir telemetría o red sin consentimiento, documentación y prueba del modo offline/local.

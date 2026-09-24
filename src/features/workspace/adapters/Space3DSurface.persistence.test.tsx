@@ -101,36 +101,18 @@ it('reopens the pending 3D edit and never queues the older committed branch over
   expect(after.revision).toBe(before + 1);
 });
 
-it('keeps retained provenance, skips mount/no-op writes, rederives explicitly, and retains a reactive conflict outside 3D', async () => {
-  const { repo, project } = await seed('A', 17, true);
+it('abre aislado: sin rama 3D no deriva el modelo del 2D ni lo menciona', async () => {
+  const repo = new IndexedDbUnifiedBundleRepository();
+  const project = { ...createDefaultProject(), id: 'A' };
+  await repo.saveBundle(createUnifiedProjectBundle(project, 'A-current'), 0);
   await start();
-  expect((await repo.openBundle('A'))!.revision).toBe(2); // only the existing 2D autosave
-  expect((await repo.openBundle('A'))!.bundle.space3d!.sourceVersion).toBe('A-old');
-  expect(screen.getByText(/La rama 3D conserva/)).toBeTruthy();
-  await userEvent.click(screen.getByRole('button', { name: t('space3d.rederive') }));
+  expect(project.nodes.length).toBeGreaterThan(0);
+  expect(screen.getByRole('button', { name: new RegExp(`^${t('space3d.nodes')}`) }).textContent).toBe(`${t('space3d.nodes')}0`);
+  expect(screen.queryByText(/2D/)).toBeNull();
+  expect(screen.queryByRole('button', { name: t('space3d.rederive') })).toBeNull();
+  await addNode();
   await act(() => session.open('A'));
-  const fresh = (await repo.openBundle('A'))!;
-  expect(fresh.bundle.space3d!.sourceVersion).toBe(fresh.bundle.manifest.sourceVersion);
-  expect(screen.queryByText(/La rama 3D conserva/)).toBeNull();
-  await act(async () => { await Promise.all([session.saveSpace3D(project, fresh.bundle.space3d!), session.saveSpace3D(project, fresh.bundle.space3d!)]); });
-  expect((await repo.openBundle('A'))!.revision).toBe(fresh.revision);
-  vi.spyOn(session.repository, 'saveBundle').mockRejectedValueOnce(new Error('Disk unavailable'));
-  await addNode();
-  await waitFor(() => expect(screen.getByTestId('storage-notice').textContent).toBe('Disk unavailable'));
-  await userEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
-  // A successful save from another tool neither acknowledges nor discards the failed 3D edit.
-  await act(async () => { await session.save2D(project); });
-  expect(screen.getByTestId('storage-notice').textContent).toBe('Disk unavailable');
-  await userEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
-  expect(screen.getByRole('button', { name: /^Nudos/ }).textContent).toBe(`Nudos${project.nodes.length + 1}`);
-  await addNode();
-  await waitFor(() => expect(screen.getByTestId('storage-notice').textContent).toBe(''));
-  const recovered = (await repo.openBundle('A'))!;
-  await repo.saveBundle({ ...recovered.bundle, design: { otherClient: true } }, recovered.revision);
-  await addNode();
-  await waitFor(() => expect(screen.getByTestId('storage-notice').textContent).toContain('recovery'));
-  await userEvent.click(screen.getByRole('button', { name: 'Switch tool' }));
-  expect(screen.getByTestId('storage-notice').textContent).toContain('recovery');
-  expect((await repo.snapshot()).recoveries).toHaveLength(1);
-  expect((await repo.openBundle('A'))!.bundle.design).toEqual({ otherClient: true });
+  const saved = (await repo.openBundle('A'))!.bundle.space3d!;
+  expect(storedModel(saved.model).nodes).toHaveLength(1);
+  expect(saved.sourceModel2D).toBeUndefined();
 });

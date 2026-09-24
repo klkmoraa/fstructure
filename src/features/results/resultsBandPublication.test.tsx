@@ -19,9 +19,9 @@ const montar = (status: SurfaceStatus) => {
 };
 
 describe('banda que el panel de Resultados publica en el shell', () => {
-  it('ofrece un acceso compacto a Diseño desde Resultados', () => {
+  it('no enlaza a Diseño: Resultados pertenece sólo al Modelo 2D', () => {
     const { container } = render(<ProjectProvider><div className="app-shell"><ResultsPanel status="active" defaultDesktopExpanded /></div></ProjectProvider>);
-    expect(container.querySelector('[data-result-design-launcher]')).not.toBeNull();
+    expect(container.querySelector('[data-result-design-launcher]')).toBeNull();
   });
 
   it('la publica mientras está activo', () => {

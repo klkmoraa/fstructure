@@ -8,7 +8,6 @@ const labels: WorkspaceTopBarLabels = {
   solverName: 'FStructure',
   project: 'Proyecto actual',
   home: 'Ir al inicio',
-  workspaceMenu: 'Abrir navegación del proyecto',
   editProject: 'Nombre del proyecto',
   saveProject: 'Guardar',
   cancel: 'Cancelar',
@@ -23,7 +22,6 @@ const labels: WorkspaceTopBarLabels = {
   redo: 'Rehacer',
   analyze: 'Analizar',
   results: 'Resultados',
-  design: 'Diseño',
   calculationExperience: 'Experiencia y cálculo',
   actions: 'Acciones del espacio de trabajo',
 };
@@ -31,20 +29,19 @@ const labels: WorkspaceTopBarLabels = {
 afterEach(() => cleanup());
 
 describe('WorkspaceTopBar', () => {
-  it('opens surface navigation from the brand and closes it after changing surface', async () => {
+  it('la marca vuelve al inicio y la barra no ofrece saltos a otras herramientas', async () => {
     const user = userEvent.setup();
-    const onToolChange = vi.fn();
+    const onOpenHome = vi.fn();
     render(<WorkspaceTopBar
       labels={labels}
       tool="model2d"
-      onToolChange={onToolChange}
       projectName="Modelo"
       storageState="ready"
       analysisState="ready"
       resultsOpen={false}
       canUndo={false}
       canRedo={false}
-      onOpenHome={vi.fn()}
+      onOpenHome={onOpenHome}
       onRenameProject={vi.fn()}
       onUndo={vi.fn()}
       onRedo={vi.fn()}
@@ -52,24 +49,25 @@ describe('WorkspaceTopBar', () => {
       onOpenResults={vi.fn()}
     />);
 
-    await user.click(screen.getByRole('button', { name: labels.workspaceMenu }));
-    expect(screen.getAllByRole('menuitem').map((node) => node.textContent)).toEqual(['Ir al inicio', 'Diseño', '3D', 'FEM']);
-    await user.click(screen.getByRole('menuitem', { name: 'Diseño' }));
-
-    expect(onToolChange).toHaveBeenCalledWith('design');
+    const brand = screen.getByRole('button', { name: labels.home });
+    expect(brand.getAttribute('aria-haspopup')).toBeNull();
+    await user.click(brand);
+    expect(onOpenHome).toHaveBeenCalledOnce();
     expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Diseño$|^3D$|^2D$|^FEM$/ })).toBeNull();
   });
 
-  it('mantiene Diseño como un control persistente e informa su estado al shell', async () => {
-    const user = userEvent.setup();
-    const onOpenDesign = vi.fn();
+  it('una herramienta aislada pinta sus propios controles en lugar de los del Modelo 2D', () => {
     render(<WorkspaceTopBar
       labels={labels}
-      projectName="Modelo"
+      tool="fem"
+      contextActive={false}
+      primaryAction={<button type="button">Analizar FEM</button>}
+      toolStatus={<span role="status">Malla lista</span>}
+      projectName="Placa"
       storageState="ready"
       analysisState="ready"
       resultsOpen={false}
-      designOpen={true}
       canUndo={false}
       canRedo={false}
       onOpenHome={vi.fn()}
@@ -78,13 +76,16 @@ describe('WorkspaceTopBar', () => {
       onRedo={vi.fn()}
       onAnalyze={vi.fn()}
       onOpenResults={vi.fn()}
-      onOpenDesign={onOpenDesign}
     />);
-    const control = screen.getByRole('button', { name: 'Diseño' });
-    expect(control.getAttribute('aria-pressed')).toBe('true');
-    await user.click(control);
-    expect(onOpenDesign).toHaveBeenCalledWith(control);
+
+    expect(screen.getByRole('banner').getAttribute('data-tool')).toBe('fem');
+    expect(screen.getByRole('button', { name: 'Analizar FEM' })).toBeTruthy();
+    expect(screen.getByText('Malla lista')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Deshacer' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Resultados' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Analizar' })).toBeNull();
   });
+
   it('keeps project and analysis status visible without opening another surface', () => {
     render(
       <WorkspaceTopBar
