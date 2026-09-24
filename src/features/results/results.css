@@ -1070,3 +1070,21 @@
 .numeric-certificate-heading > button:active:not(:disabled) { box-shadow:var(--sc-shadow-pressed); }
 .numeric-certificate-heading > button:disabled { opacity:.6; cursor:default; }
 .numeric-certificate-heading > button:focus-visible { outline:var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset:2px; }
+
+/* Una sola capa de tarjetas: la hoja de resultados ya es la superficie. El
+   cuerpo era otra tarjeta con borde dentro de la hoja, y los estudios de
+   estabilidad metían cajas grises dentro de su tarjeta (tres o cuatro niveles). */
+.app-shell.workspace-screen .results-panel .results-body {
+  margin:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+.stability-study-grid { gap:0; }
+.stability-study-grid article {
+  padding:12px 0;
+  border-top:1px solid var(--sc-color-border-soft);
+  border-radius:0;
+  background:transparent;
+}

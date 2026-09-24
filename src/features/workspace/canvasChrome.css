@@ -31,7 +31,6 @@
   /* Utilidades (panel, pantalla completa, tema): dentro del lienzo, no sobre su borde. */
   .app-shell.workspace-screen[data-shell-class] > .console.console .console__foot {
     right: calc(21px + var(--chrome-gap));
-    bottom: calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px);
     gap: 4px;
     padding: 0;
     border: 0;
@@ -52,24 +51,20 @@
     flex-direction: row;
   }
 
-  /* Barra de herramientas: dentro del lienzo, no montada sobre su borde. */
+  /* Barra de herramientas y utilidades: dentro del lienzo, no sobre su borde, y
+     siempre por encima de los resultados. `--results-band` es la distancia que
+     el panel de resultados publica (plegado o expandido); gana la mayor. */
   .app-shell.workspace-screen[data-shell-class] .tool-rail.is-floating-dock {
-    bottom: calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px);
+    bottom: max(
+      calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px),
+      calc(var(--results-band, 0px) + var(--chrome-gap) + 4px)
+    );
   }
-
-  /* Con la bandeja de resultados abajo, barra y utilidades suben sobre ella
-     (el lienzo ya se acorta solo, y con él el zoom). */
-  .app-shell.workspace-screen[data-shell-class]:has(.results-panel.desktop-collapsed) .tool-rail.is-floating-dock {
-    bottom: calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px + 64px);
-  }
-  .app-shell.workspace-screen[data-shell-class]:has(.results-panel.desktop-collapsed) > .console.console .console__foot {
-    bottom: calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px + 64px);
-  }
-  .app-shell.workspace-screen[data-shell-class] .canvas-host .canvas-controls :is(button, .sc-icon-button) {
-    width: var(--chrome-key);
-    min-width: var(--chrome-key);
-    height: var(--chrome-key);
-    min-height: var(--chrome-key);
+  .app-shell.workspace-screen[data-shell-class] > .console.console .console__foot {
+    bottom: max(
+      calc(var(--fstructure-status-height, 28px) + 17px + var(--chrome-gap) + 4px),
+      calc(var(--results-band, 0px) + var(--chrome-gap) + 4px)
+    );
   }
 
   /* «Repetir · R» sube por encima del zoom en vez de taparlo. */

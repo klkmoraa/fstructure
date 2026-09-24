@@ -11,7 +11,7 @@ import './ntcSteelDesignCard.css';
 const copy = {
   es: {
     title: 'Diseño normativo separado',
-    eyebrow: 'DesignResult · separado de AnalysisResult',
+    eyebrow: 'Acero · NTC CDMX 2023',
     inconclusive: 'No concluyente',
     unavailable: 'Diseño no disponible',
     unavailableGeneric: 'Ningún miembro entra en el alcance inicial: truss + A992 + perfil I AISC con identidad explícita.',
@@ -38,7 +38,7 @@ const copy = {
   },
   en: {
     title: 'Separate code design',
-    eyebrow: 'DesignResult · separate from AnalysisResult',
+    eyebrow: 'Steel · NTC CDMX 2023',
     inconclusive: 'Inconclusive',
     unavailable: 'Design unavailable',
     unavailableGeneric: 'No member enters the initial scope: truss + A992 + explicitly identified AISC I shape.',
