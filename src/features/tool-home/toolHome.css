@@ -85,3 +85,36 @@
   color: var(--sc-color-text-primary);
   font-size: var(--sc-font-size-caption);
 }
+
+.tool-home .solver2d-hero__eyebrow.tool-home__eyebrow {
+  display: inline-flex;
+  gap: 10px;
+  color: var(--sc-color-text-secondary);
+  letter-spacing: .04em;
+  text-transform: none;
+}
+
+.tool-home__status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-pill);
+  color: var(--sc-color-text-secondary);
+  font-size: 10px;
+  letter-spacing: .02em;
+}
+.tool-home__status[data-status='experimental'] {
+  border-color: color-mix(in srgb, var(--sc-color-signal-attention-ink) 45%, var(--sc-color-border));
+}
+
+@media (max-width: 720px), (max-device-width: 720px), (hover: none) and (pointer: coarse) and (max-width: 1023px) {
+  .sc-home.tool-home .solver2d-hero__stage { order: 0; min-height: 0; }
+  .sc-home.tool-home .solver2d-stage { min-height: 200px; height: 200px; }
+  .sc-home.tool-home .solver2d-stage__object { width: min(78%, 280px) !important; transform: none; }
+}
+
+.sc-home.tool-home[data-compact-viewport] .solver2d-hero__stage { order: 0; min-height: 0; }
+.sc-home.tool-home[data-compact-viewport] .solver2d-stage { min-height: 200px; height: 200px; }
+.sc-home.tool-home[data-compact-viewport] .solver2d-stage__object { width: min(78%, 280px) !important; transform: none; }

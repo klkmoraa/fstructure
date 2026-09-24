@@ -36,6 +36,15 @@ it('Solver 3D: «Generar una estructura» abre la mesa con el generador', async 
   expect(await screen.findByRole('textbox', { name: 'Descripción de la estructura a generar' })).toBeTruthy();
 });
 
+it('Solver 3D: «Colocar un nudo» abre el modo de modelado sobre el proyecto actual', async () => {
+  const user = userEvent.setup();
+  openHome('space3d');
+  render(<App />);
+  await user.click(await screen.findByRole('button', { name: /Colocar un nudo/ }));
+  await waitFor(() => expect(document.querySelector('.space3d-modebar')?.getAttribute('data-tool')).toBe('node'));
+  expect(new URLSearchParams(window.location.search).get('tool')).toBe('space3d');
+});
+
 it('Elementos finitos: «Analizar el caso de prueba» abre la mesa con el resultado', async () => {
   const user = userEvent.setup();
   openHome('fem');

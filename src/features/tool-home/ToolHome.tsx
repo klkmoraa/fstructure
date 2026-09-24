@@ -47,6 +47,7 @@ interface ToolHomeProps {
 const copy = {
   es: {
     home: 'Inicio', suite: 'FusionStructure', suiteHint: 'Volver a FusionStructure', navigation: 'Navegación de la herramienta',
+    backToTop: (name: string) => `Volver al inicio de ${name}`,
     menu: 'Abrir navegación', closeMenu: 'Cerrar navegación', search: 'Buscar', searchPlaceholder: 'Buscar proyectos…', clearSearch: 'Borrar búsqueda', language: 'Idioma',
     open: 'Proyecto abierto', continue: 'Continuar', create: 'Proyecto nuevo', startTitle: 'Por dónde empezar',
     recentTitle: 'Proyectos recientes', recentBody: 'Guardados en este dispositivo. Se abren en esta herramienta.',
@@ -56,6 +57,7 @@ const copy = {
   },
   en: {
     home: 'Home', suite: 'FusionStructure', suiteHint: 'Back to FusionStructure', navigation: 'Tool navigation',
+    backToTop: (name: string) => `Back to the top of ${name}`,
     menu: 'Open navigation', closeMenu: 'Close navigation', search: 'Search', searchPlaceholder: 'Search projects…', clearSearch: 'Clear search', language: 'Language',
     open: 'Open project', continue: 'Continue', create: 'New project', startTitle: 'Where to start',
     recentTitle: 'Recent projects', recentBody: 'Saved on this device. They open in this tool.',
@@ -87,6 +89,7 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite 
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const homeRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Mismo contrato táctil que la bienvenida de FStructure (ver Model2DWelcome).
@@ -122,7 +125,7 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite 
 
   return <main ref={homeRef} className="sc-home tool-home" data-testid={`${tool}-welcome`} data-tool={tool}>
     <header className="sc-home-console">
-      <button type="button" className="sc-home-wordmark" onClick={() => window.scrollTo({ top: 0 })} aria-label={`${identity.code} · ${name}`}>
+      <button type="button" className="sc-home-wordmark" onClick={() => contentRef.current?.scrollTo({ top: 0 })} aria-label={text.backToTop(name)}>
         <ToolGlyph tool={tool} size={28} /><strong>{name}</strong><span>{identity.code}</span>
       </button>
       {renderNavigation()}
@@ -135,10 +138,13 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite 
         <div className="sc-home-search" role="search"><Search size={16} aria-hidden="true" /><input ref={searchRef} type="search" value={searchQuery} aria-label={text.search} placeholder={text.searchPlaceholder} onChange={(event) => setSearchQuery(event.currentTarget.value)} />{searchQuery ? <button type="button" aria-label={text.clearSearch} onClick={() => { setSearchQuery(''); searchRef.current?.focus(); }}><X size={15} /></button> : <kbd aria-hidden="true">/</kbd>}</div>
         <div className="sc-home-topline-actions"><label><span className="sr-only">{text.language}</span><select value={language} aria-label={text.language} onChange={(event) => updateProjectView((current) => ({ ...current, settings: { ...current.settings, language: event.currentTarget.value as Language } }))}><option value="es">ES</option><option value="en">EN</option></select></label></div>
       </header>
-      <div className="sc-home-content">
+      <div ref={contentRef} className="sc-home-content">
         <div className="solver2d-home">
           <section className="solver2d-hero" aria-labelledby={`${tool}-hero-name`}>
             <div className="solver2d-hero__copy">
+              <span className="solver2d-hero__eyebrow tool-home__eyebrow" style={{ '--reveal-step': 0 } as CSSProperties}>
+                {identity.code}<span className="tool-home__status" data-status={identity.status}>{identity.status === 'experimental' ? text.state.experimental : text.state.available}</span>
+              </span>
               <h1 id={`${tool}-hero-name`} className="solver2d-hero__name" style={{ '--reveal-step': 1 } as CSSProperties}>{content.title[language]}</h1>
               <p className="solver2d-hero__lead" style={{ '--reveal-step': 2 } as CSSProperties}>{content.lead[language]}</p>
               <div className="solver2d-open" style={{ '--reveal-step': 3 } as CSSProperties}>
