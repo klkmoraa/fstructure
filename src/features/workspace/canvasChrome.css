@@ -42,6 +42,17 @@
     min-height: var(--chrome-key);
   }
 
+  /* Utilidad activa (inspector abierto, pantalla completa): la misma tecla clay
+     que sus vecinas con el glifo en el color de acción, no un hueco gris con
+     borde oscuro. */
+  .app-shell.workspace-screen[data-shell-class] > .console.console .console__foot > button:is([aria-pressed='true'], .is-active),
+  .app-shell.workspace-screen[data-shell-class] > .console.console .console__foot > button:is([aria-pressed='true'], .is-active):hover {
+    border-color: color-mix(in srgb, var(--sc-color-action-primary) 30%, var(--sc-color-border-soft));
+    background: color-mix(in srgb, var(--sc-color-action-primary) 10%, var(--sc-color-surface-1));
+    box-shadow: var(--sc-shadow-xs);
+    color: var(--sc-color-action-primary);
+  }
+
   /* Zoom: justo encima de las utilidades, alineado a su derecha; así nunca
      alcanza la barra de herramientas centrada, ni en pantallas de 1024 px. */
   .app-shell.workspace-screen[data-shell-class] .canvas-host .canvas-controls {

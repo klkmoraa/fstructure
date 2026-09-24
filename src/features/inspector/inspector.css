@@ -957,3 +957,16 @@ dt { color: var(--muted); } dd { margin: 0; font-variant-numeric: tabular-nums; 
 .unit-system-editor__custom select { min-width:0; width:100%; border-radius:var(--sc-radius-card); padding:7px 8px; }
 .unit-system-editor__apply { width:100%; min-height:34px; margin-top:7px; border:1px solid color-mix(in srgb,var(--accent) 42%,var(--border)); border-radius:var(--sc-radius-card); background:var(--accent-soft); color:var(--accent-on-soft); font-size:11px; font-weight:650; }
 .unit-system-editor__apply:hover { border-color:var(--accent); }
+
+/* «Generar estructura»: la tecla primaria clay de la marca, como «Analizar». */
+.model-overview__action {
+  min-height:var(--sc-size-target-touch, 44px);
+  padding:0 18px;
+  border:0;
+  border-radius:var(--sc-radius-pill);
+  box-shadow:var(--sc-shadow-raised);
+  font-weight:var(--sc-font-weight-semibold, 600);
+}
+.model-overview__action:hover { filter:none; box-shadow:var(--sc-shadow-lifted); }
+.model-overview__action:active { box-shadow:var(--sc-shadow-pressed); }
+.model-overview__action:focus-visible { outline:var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset:2px; box-shadow:var(--sc-shadow-raised); }
