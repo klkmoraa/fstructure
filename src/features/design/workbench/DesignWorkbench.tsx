@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Copy, PanelLeft, PanelRight } from 'lucide-react';
+import { Check, ChevronDown, Copy } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
@@ -124,8 +124,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
     setFocusRequest((count) => count + 1);
   };
 
-  const dock = <div className="dw-dock">
-    <div className="dw-dock__group" role="radiogroup" aria-label="Elemento a diseñar">
+  const elements = <div className="dw-dock__group" role="radiogroup" aria-label="Elemento a diseñar">
       {ELEMENTS.map((item, index) => <ToolButton
         key={item.id}
         ref={(node) => { buttons.current[index] = node; }}
@@ -139,10 +138,6 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
         onClick={() => setElement(item.id)}
         onKeyDown={(event) => onKeyDown(event, index)}
       />)}
-    </div>
-    <span className="dw-dock__divider" aria-hidden="true" />
-    <ToolButton label="Datos" icon={<PanelLeft size={18} />} active={panels.inputs} className="dw-dock__toggle" onClick={() => setPanel('inputs', !panels.inputs)} />
-    <ToolButton label="Resultados" icon={<PanelRight size={18} />} active={panels.results} className="dw-dock__toggle" onClick={() => setPanel('results', !panels.results)} />
   </div>;
   const codeControl = <label className="dw-code-chip" title={`${designCode(code).name} · ${designCode(code).country}`}>
     <select aria-label="Norma de diseño" value={code} onChange={(event) => setCode(event.currentTarget.value)}>
@@ -150,7 +145,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
     </select>
     <ChevronDown size={14} aria-hidden="true" />
   </label>;
-  const chrome: WorkbenchChrome = { dock, codeControl, code, panels, setPanel, onMemo };
+  const chrome: WorkbenchChrome = { elements, codeControl, code, panels, setPanel, onMemo };
 
   return <div className="design-workbench" data-testid="design-workbench">
     {nativeTool ? <ShellContribution slot="action">

@@ -1,12 +1,12 @@
-import { Maximize2, Minus, Plus, RotateCcw, X } from 'lucide-react';
+import { ClipboardCheck, Maximize2, Minus, PenLine, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
 
 export type WorkbenchPanel = 'inputs' | 'results';
 
 export interface WorkbenchChrome {
-  /** Barra flotante inferior (elementos y paneles), propiedad de `DesignWorkbench`. */
-  readonly dock: ReactNode;
+  /** Selector de elemento (viga, columna, zapata), propiedad de `DesignWorkbench`. */
+  readonly elements: ReactNode;
   /** Chip de norma sobre el lienzo. */
   readonly codeControl: ReactNode;
   /** Norma de diseño elegida para todo el taller. */
@@ -96,9 +96,10 @@ function useStageZoom() {
 }
 
 /**
- * Mesa de Diseño: el lienzo ocupa todo y los datos y resultados flotan encima,
- * como los paneles del Modelo 2D. En móvil los paneles son hojas inferiores que
- * dejan ver el dibujo mientras se editan los datos.
+ * Mesa de Diseño. En escritorio el lienzo ocupa todo y los datos y resultados
+ * flotan encima, como los paneles del Modelo 2D. En móvil son tres vistas a
+ * pantalla completa —Dibujo, Datos, Resultados— con pestañas fijas abajo y el
+ * elemento arriba.
  */
 export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption, results, memo, onReset }: {
   chrome: WorkbenchChrome;
@@ -116,6 +117,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
   useEffect(() => onMemo(memo), [memo, onMemo]);
   const { scroller, zoom, setZoom } = useStageZoom();
   const canShowResults = verdict.status !== 'error';
+  const percent = verdict.label.split(' · ')[1];
 
   return <div className="dw-layout" data-inputs={panels.inputs ? 'open' : 'closed'} data-results={panels.results && canShowResults ? 'open' : 'closed'}>
     <form className="dw-panel dw-inputs" aria-label="Datos del elemento" data-open={panels.inputs} onSubmit={(event) => event.preventDefault()}>
@@ -124,7 +126,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
         <button type="button" className="dw-icon-button" onClick={onReset} aria-label="Restablecer el ejemplo" title="Restablecer el ejemplo">
           <RotateCcw size={15} aria-hidden="true" />
         </button>
-        <button type="button" className="dw-icon-button" onClick={() => setPanel('inputs', false)} aria-label="Ocultar datos" title="Ocultar datos">
+        <button type="button" className="dw-icon-button dw-panel__close" onClick={() => setPanel('inputs', false)} aria-label="Ocultar datos" title="Ocultar datos">
           <X size={16} aria-hidden="true" />
         </button>
       </header>
@@ -145,23 +147,42 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
         {caption ? <span className="dw-badge dw-badge--caption">{caption}</span> : null}
       </div>
       <div className="dw-hud dw-hud--end">{chrome.codeControl}</div>
-      <div className="dw-zoom" role="group" aria-label="Zoom del lienzo">
-        <button type="button" onClick={() => setZoom(zoom / 1.25)} disabled={zoom <= ZOOM_MIN} aria-label="Alejar" title="Alejar"><Minus size={16} aria-hidden="true" /></button>
+      <div className="dw-zoom" role="group" aria-label="Zoom del lienzo" data-zoomed={zoom !== 1}>
+        <button type="button" className="dw-zoom__step" onClick={() => setZoom(zoom / 1.25)} disabled={zoom <= ZOOM_MIN} aria-label="Alejar" title="Alejar"><Minus size={16} aria-hidden="true" /></button>
         <button type="button" onClick={() => setZoom(1)} disabled={zoom === 1} aria-label="Tamaño normal" title="Tamaño normal"><Maximize2 size={15} aria-hidden="true" /></button>
-        <button type="button" onClick={() => setZoom(zoom * 1.25)} disabled={zoom >= ZOOM_MAX} aria-label="Acercar" title="Acercar"><Plus size={16} aria-hidden="true" /></button>
+        <button type="button" className="dw-zoom__step" onClick={() => setZoom(zoom * 1.25)} disabled={zoom >= ZOOM_MAX} aria-label="Acercar" title="Acercar"><Plus size={16} aria-hidden="true" /></button>
       </div>
-      {chrome.dock}
     </section>
 
     <section className="dw-panel dw-results" aria-label="Resultados" data-open={panels.results && canShowResults}>
-      <header className="dw-panel__head">
+      <header className="dw-panel__head dw-panel__head--results">
         <h2>Resultados</h2>
-        <button type="button" className="dw-icon-button" onClick={() => setPanel('results', false)} aria-label="Ocultar resultados" title="Ocultar resultados">
+        <button type="button" className="dw-icon-button dw-panel__close" onClick={() => setPanel('results', false)} aria-label="Ocultar resultados" title="Ocultar resultados">
           <X size={16} aria-hidden="true" />
         </button>
       </header>
       <div className="dw-panel__body">{results}</div>
     </section>
+
+    {/* Escritorio: barra flotante. Móvil: el elemento arriba y las vistas como pestañas abajo. */}
+    <div className="dw-dock">
+      {chrome.elements}
+      <span className="dw-dock__divider" aria-hidden="true" />
+      <div className="dw-views" role="group" aria-label="Vistas">
+        <button type="button" className="dw-view dw-view--stage" aria-pressed={!panels.inputs && !(panels.results && canShowResults)}
+          onClick={() => { setPanel('inputs', false); setPanel('results', false); }}>
+          <PenLine size={18} aria-hidden="true" /><span>Dibujo</span>
+        </button>
+        <button type="button" className="dw-view" aria-pressed={panels.inputs} title="Datos" onClick={() => setPanel('inputs', !panels.inputs)}>
+          <SlidersHorizontal size={18} aria-hidden="true" /><span>Datos</span>
+        </button>
+        <button type="button" className="dw-view" aria-pressed={panels.results && canShowResults} aria-label="Resultados" title="Resultados"
+          disabled={!canShowResults} data-status={verdict.status} onClick={() => setPanel('results', !panels.results)}>
+          <ClipboardCheck size={18} aria-hidden="true" /><span>Resultados</span>
+          {percent ? <em aria-hidden="true"><i />{percent}</em> : null}
+        </button>
+      </div>
+    </div>
   </div>;
 }
 

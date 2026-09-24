@@ -4,8 +4,8 @@ import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import { designFooting, type FootingDesignInput, type FootingDesignResult, type FootingDirection } from '../../../design/elements/footing';
 import { rebarLabel } from '../../../design/elements/shared';
 import {
-  BarSelect, ChecksList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
-  formatNumber, mpaFromKgcm2, mpaHint, parseNumber, useStoredDraft,
+  BarSelect, ChecksList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
+  formatNumber, mpaFromKgcm2, parseNumber, useStoredDraft,
 } from './common';
 import { FootingPlan, FootingSection } from './FootingDrawings';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
@@ -72,6 +72,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset } = useStoredDraft('footing', DEFAULTS);
   const code = designCode(chrome.code);
   const result = useMemo(() => designFooting(toInput(chrome.code, draft)), [chrome.code, draft]);
+  const [checks, notes] = splitChecks(result.ok ? result.checks : []);
 
   return <WorkbenchLayout
     chrome={chrome}
@@ -105,7 +106,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       <FieldGroup title="Columna y suelo">
         <NumberField label="c1 (X)" unit="cm" value={draft.c1} onChange={set('c1')} />
         <NumberField label="c2 (Y)" unit="cm" value={draft.c2} onChange={set('c2')} />
-        <NumberField label="qa neta" unit="kPa" value={draft.qa} onChange={set('qa')} hint={`${formatNumber(parseNumber(draft.qa) / 9.80665, 1)} t/m²`} />
+        <NumberField label="qa neta" unit="kPa" value={draft.qa} onChange={set('qa')} />
       </FieldGroup>
       <FieldGroup title="Dimensiones">
         <div className="dw-span-all">
@@ -123,8 +124,8 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         {draft.autoThickness === 'yes' ? null : <NumberField label="Peralte h" unit="cm" value={draft.thickness} onChange={set('thickness')} />}
       </FieldGroup>
       <FieldGroup title="Materiales">
-        <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} hint={mpaHint(draft.fc)} />
-        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} hint={mpaHint(draft.fy)} />
+        <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />
+        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
       </FieldGroup>
       <MoreOptions>
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
@@ -132,7 +133,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </MoreOptions>
     </>}
     stage={result.ok ? <>
-      <Plate title="Planta" note="perímetro crítico a d/2">
+      <Plate title="Planta">
         <FootingPlan result={result} />
       </Plate>
       <Plate title="Corte en X">
@@ -152,11 +153,16 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <RebarList items={[result.directions.x, result.directions.y].map((direction) => ({
           kind: 'bar' as const,
           title: directionTitle(direction, result.input.barDiameterMm),
-          detail: directionDetail(direction),
+          detail: `Capa ${direction.layer === 'bottom' ? 'inferior' : 'superior'}`,
         }))} />
       </PanelSection>
-      <PanelSection title="Comprobaciones"><ChecksList checks={result.checks} /></PanelSection>
+      <PanelSection title="Comprobaciones"><ChecksList checks={checks} /></PanelSection>
       <Disclosure label="Detalle del cálculo">
+        <RebarList items={[result.directions.x, result.directions.y].map((direction) => ({
+          kind: 'bar' as const,
+          title: directionTitle(direction, result.input.barDiameterMm),
+          detail: directionDetail(direction),
+        }))} />
         <ValuesTable rows={[
           { symbol: 'A', label: 'Área de contacto', value: `${formatNumber(result.sideXMm * result.sideYMm / 1e6, 2)} m²` },
           { symbol: 'ex · ey', label: 'Excentricidad', value: `${formatNumber(result.service.eccentricityXMm / 10, 1)} · ${formatNumber(result.service.eccentricityYMm / 10, 1)} cm` },
@@ -170,6 +176,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           { symbol: 'Vu / φVc', label: 'Como viga X', value: `${formatNumber(result.directions.x.oneWayDemandKn, 0)} / ${formatNumber(result.directions.x.oneWayStrengthKn, 0)} kN` },
           { symbol: 'Vu / φVc', label: 'Como viga Y', value: `${formatNumber(result.directions.y.oneWayDemandKn, 0)} / ${formatNumber(result.directions.y.oneWayStrengthKn, 0)} kN` },
         ]} />
+        <ChecksList checks={notes} />
       </Disclosure>
     </> : null}
   />;

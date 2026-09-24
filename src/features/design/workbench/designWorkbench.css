@@ -79,7 +79,7 @@
 }
 .dw-stage__content {
   --z: var(--dw-zoom, 1);
-  width: max(calc(100% * var(--z)), calc(var(--dw-content-min, 0px) * var(--z)));
+  width: calc(100% * var(--z));
   margin-inline: auto;
   display: flex;
   flex-wrap: wrap;
@@ -164,15 +164,15 @@
 .dw-zoom button:hover:not(:disabled) { color: var(--dw-ink); background: var(--sc-color-fill-quaternary); }
 .dw-zoom button:disabled { opacity: .35; cursor: default; }
 
-/* Barra flotante inferior: elementos y paneles, como la barra de herramientas 2D. */
+/* Barra flotante inferior: elementos y vistas, como la barra de herramientas 2D. */
 .dw-dock {
   position: absolute;
-  left: var(--dw-left);
-  right: var(--dw-right);
-  bottom: 14px;
+  left: calc(var(--dw-left) + 8px);
+  right: calc(var(--dw-right) + 8px);
+  bottom: 22px;
   z-index: 5;
   width: max-content;
-  max-width: calc(100% - var(--dw-left) - var(--dw-right));
+  max-width: calc(100% - var(--dw-left) - var(--dw-right) - 16px);
   margin-inline: auto;
   display: flex;
   align-items: center;
@@ -189,13 +189,35 @@
 .dw-dock__divider { flex: none; width: 1px; height: 24px; margin: 0 4px; background: var(--dw-line); }
 .dw-dock .sc-tool-button { flex: none; width: auto; min-height: 38px; padding: 0 12px 0 8px; grid-template-columns: auto auto; }
 .dw-dock .sc-tool-button:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
-.dw-dock__toggle.sc-tool-button { padding: 0 9px; }
-.dw-dock__toggle.sc-tool-button .sc-tool-button__copy { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-/* Panel abierto: marcado suave; el color pleno queda para el elemento elegido. */
-.dw-dock__toggle.sc-tool-button.is-active,
-.dw-dock__toggle.sc-tool-button.is-active:not(:disabled):hover { border-color: transparent; background: var(--sc-color-surface-2); color: var(--sc-color-action-primary); }
-.dw-dock__toggle.sc-tool-button.is-active .sc-tool-button__icon { color: var(--sc-color-action-primary); }
 .dw-element-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+
+/* Vistas: en escritorio, dos interruptores de panel; en móvil, pestañas. */
+.dw-views { display: flex; gap: 4px; }
+.dw-view {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 38px;
+  min-height: 38px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--dw-muted);
+  font: 600 12px/1 var(--sc-font-ui);
+  cursor: pointer;
+}
+.dw-view:hover:not(:disabled) { color: var(--dw-ink); background: var(--sc-color-surface-2); }
+.dw-view[aria-pressed='true'] { color: var(--sc-color-action-primary); background: var(--sc-color-surface-2); }
+.dw-view:disabled { opacity: .4; cursor: default; }
+.dw-view:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
+.dw-view > span, .dw-view > em, .dw-view--stage { display: none; }
+.dw-view > em { --status: var(--dw-pass); align-items: center; gap: 4px; color: var(--status); font: 600 11px/1 var(--sc-font-mono); font-style: normal; }
+.dw-view > em i { width: 7px; height: 7px; border-radius: var(--sc-radius-pill); background: var(--status); }
+.dw-view[data-status='fail'] > em { --status: var(--dw-fail); }
+.dw-view[data-status='warning'] > em { --status: var(--dw-warn); }
 
 /* Láminas: dibujo directo sobre el lienzo, sin marco. Todo escala con el zoom. */
 .dw-plate { flex: 1 1 calc(300px * var(--z)); max-width: calc(440px * var(--z)); min-width: 0; margin: 0; }
@@ -288,7 +310,7 @@
 .dw-more__toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
 .dw-more__toggle[aria-expanded='true'] { margin-bottom: 8px; }
 .dw-results .dw-more { border-top: 1px solid var(--dw-line); }
-.dw-more__body > .dw-table + .dw-values { margin-top: 12px; }
+.dw-more__body > * + * { margin-top: 14px; }
 
 /* Tabla de claros */
 .dw-spans { --cols: 3; display: grid; gap: 6px; }
@@ -451,16 +473,33 @@
 .dw-section .dw-table + .dw-rebar-list { margin-top: 12px; }
 .dw-footnote { margin: 6px 0 0; color: var(--dw-subtle); font-size: 10.5px; }
 
-.dw-checks { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.dw-checks li { --status: var(--dw-pass); display: flex; gap: 8px; align-items: flex-start; }
+.dw-checks { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.dw-checks li { --status: var(--dw-pass); min-width: 0; }
 .dw-checks li[data-status='fail'] { --status: var(--dw-fail); }
 .dw-checks li[data-status='warning'] { --status: var(--dw-warn); }
 .dw-checks li[data-status='info'] { --status: var(--dw-muted); }
-.dw-checks li > svg { flex: none; margin-top: 1px; color: var(--status); }
-.dw-checks__body { flex: 1; min-width: 0; }
-.dw-checks__row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.dw-checks__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--dw-ink);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.dw-checks__row > svg { color: var(--status); }
 .dw-checks__row b { font: 600 11.5px var(--sc-font-mono); color: var(--status); white-space: nowrap; }
-.dw-checks small { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; margin-top: 3px; color: var(--dw-muted); font: 10.5px/1.35 var(--sc-font-mono); }
+.dw-checks__row:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
+.dw-checks .dw-meter--thin { margin: 0 0 6px 22px; }
+.dw-checks__detail { display: grid; gap: 3px; margin: 0 0 8px 22px; }
+.dw-checks small { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 8px; color: var(--dw-muted); font: 10.5px/1.35 var(--sc-font-mono); }
 .dw-checks small em { margin-left: auto; font-style: normal; text-align: right; color: var(--dw-subtle); }
 .dw-reference[data-basis='complementary'] { font-style: italic; }
 .dw-reference[data-basis='complementary']::before { content: '◇ '; }
@@ -492,50 +531,91 @@
 @media (max-width: 1240px) {
   .dw-layout { --dw-panel-inputs: 292px; --dw-panel-results: 300px; }
   /* La barra inferior ocupa casi todo el ancho libre: el zoom sube sobre ella. */
-  .dw-zoom { bottom: 76px; }
+  .dw-zoom { bottom: 66px; }
 }
 
-/* Móvil: el lienzo a pantalla completa y los paneles como hojas inferiores. */
+/*
+ * Móvil: tres vistas a pantalla completa. Arriba el elemento, en medio la vista
+ * elegida (dibujo, datos o resultados) y abajo pestañas fijas con el veredicto.
+ * Nada se encima y el dibujo se ajusta al ancho; se amplía con dos dedos.
+ */
 @media (max-width: 760px) {
-  .dw-layout, .dw-layout[data-inputs='open'], .dw-layout[data-results='open'] { --dw-left: 10px; --dw-right: 10px; padding: 6px; }
-  .dw-stage__scroll { padding: 58px 12px 132px; }
+  .dw-layout, .dw-layout[data-inputs='open'], .dw-layout[data-results='open'] {
+    --dw-left: 10px;
+    --dw-right: 10px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    padding: 0;
+  }
+  .dw-dock { display: contents; }
+  .dw-dock__divider { display: none; }
+
+  .dw-dock__group {
+    grid-row: 1;
+    grid-column: 1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    margin: 6px 8px;
+    padding: 4px;
+    border-radius: var(--sc-radius-card);
+    background: var(--sc-color-surface-inset, var(--sc-color-surface-2));
+    box-shadow: var(--sc-shadow-inset);
+  }
+  .dw-dock .sc-tool-button { justify-content: center; min-height: 40px; padding: 0 8px; }
+
+  .dw-stage, .dw-panel { grid-row: 2; grid-column: 1; }
+  .dw-stage { margin: 0 8px; }
+  .dw-layout[data-inputs='open'] .dw-stage, .dw-layout[data-results='open'] .dw-stage { visibility: hidden; }
+  .dw-stage__scroll { padding: 54px 10px 64px; }
   .dw-hud { top: 10px; }
   .dw-hud--start { max-width: calc(100% - 150px); }
   .dw-badge--caption { display: none; }
   .dw-plate, .dw-plate--wide { flex-basis: 100%; }
-  /* Los dibujos anchos no se encogen hasta volverse ilegibles: se recorren con el dedo. */
-  .dw-stage__content:has(.dw-plate--wide > .dw-drawing:not(.dw-chart)) { --dw-content-min: 560px; }
-  .dw-zoom { bottom: 76px; }
-  .dw-dock { bottom: 12px; max-width: calc(100% - 20px); }
-  .dw-dock .sc-tool-button:not(.is-active) { padding: 0 10px; }
-  .dw-dock .sc-tool-button:not(.is-active) .sc-tool-button__copy { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .dw-dock__toggle.sc-tool-button { padding: 0 10px; }
+
+  /* Zoom con dos dedos; sólo queda el botón para volver al tamaño normal. */
+  .dw-zoom { bottom: 12px; }
+  .dw-zoom__step { display: none !important; }
+  .dw-zoom[data-zoomed='false'] { display: none; }
 
   .dw-panel, .dw-inputs, .dw-results {
-    top: auto;
-    left: 6px;
-    right: 6px;
-    bottom: 6px;
+    position: relative;
+    inset: auto;
     width: auto;
-    max-height: min(64%, 560px);
-    border-radius: var(--sc-radius-panel) var(--sc-radius-panel) var(--sc-radius-card) var(--sc-radius-card);
+    min-height: 0;
+    margin: 0 8px;
+    border-radius: var(--sc-radius-card);
+    box-shadow: var(--sc-shadow-raised);
+    transform: none;
+    transition: none;
   }
-  .dw-panel[data-open='false'] { transform: translateY(24px); }
-  .dw-panel__head { padding: 10px 8px 6px 14px; }
-  .dw-panel__head::before {
-    content: '';
-    position: absolute;
-    top: 5px;
-    left: 50%;
-    width: 36px;
-    height: 4px;
-    margin-left: -18px;
-    border-radius: var(--sc-radius-pill);
-    background: var(--dw-line);
-  }
-  /* La barra inferior queda por encima de la hoja; el final del formulario no se esconde tras ella. */
-  .dw-panel__body { padding-bottom: 84px; }
+  .dw-panel[data-open='false'] { display: none; }
+  .dw-panel__close, .dw-panel__head--results { display: none; }
+  .dw-panel__head { padding: 12px 8px 4px 16px; }
+  .dw-panel__body { padding: 0 16px 24px; }
+  .dw-results .dw-panel__body { padding-top: 14px; }
   .dw-icon-button { width: 40px; height: 40px; }
+
+  .dw-views {
+    grid-row: 3;
+    grid-column: 1;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+  .dw-view, .dw-view--stage {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 54px;
+    padding: 6px 4px;
+    font-size: 11.5px;
+  }
+  .dw-view > span { display: block; }
+  .dw-view > em { display: inline-flex; position: absolute; top: 7px; right: 8px; }
+  .dw-view[aria-pressed='true'] { background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-raised); }
 }
 
 @media (prefers-reduced-motion: reduce) {

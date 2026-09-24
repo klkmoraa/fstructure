@@ -82,10 +82,6 @@ export function GroupSelect({ value, onChange, groups }: { value: string; onChan
 
 const KGCM2_PER_MPA = 10.197_162;
 export const mpaFromKgcm2 = (value: string) => parseNumber(value) / KGCM2_PER_MPA;
-export const mpaHint = (value: string) => {
-  const mpa = mpaFromKgcm2(value);
-  return Number.isFinite(mpa) ? `${mpa.toFixed(1)} MPa` : undefined;
-};
 
 export function FieldGroup({ title, children, columns = 2, action }: { title: string; children: ReactNode; columns?: 1 | 2 | 3; action?: ReactNode }) {
   const id = useId();
@@ -141,33 +137,40 @@ export function PanelSection({ title, children }: { title: string; children: Rea
   return <section className="dw-section" aria-labelledby={id}><h3 id={id} className="dw-eyebrow">{title}</h3>{children}</section>;
 }
 
+/** Separa las comprobaciones con veredicto de las notas informativas, que van al detalle. */
+export const splitChecks = (checks: readonly ElementCheck[]) =>
+  [checks.filter((check) => check.status !== 'info'), checks.filter((check) => check.status === 'info')] as const;
+
+function CheckItem({ check }: { check: ElementCheck }) {
+  // Lo que cumple queda en una línea; lo que no, abierto para ver por qué.
+  const [open, setOpen] = useState(check.status === 'fail' || check.status === 'warning');
+  const id = useId();
+  const Icon = statusIcon[check.status];
+  const percent = check.ratio !== undefined && Number.isFinite(check.ratio) ? Math.round(check.ratio * 100) : undefined;
+  return <li data-status={check.status}>
+    <button type="button" className="dw-checks__row" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+      <Icon size={14} aria-hidden="true" />
+      <span>{check.label}</span>
+      <b>{percent !== undefined ? `${percent} %` : statusLabel[check.status]}</b>
+    </button>
+    {percent !== undefined ? <div className="dw-meter dw-meter--thin" aria-hidden="true"><i style={{ width: `${Math.min(100, percent)}%` }} /></div> : null}
+    {open ? <div id={id} className="dw-checks__detail">
+      <small>
+        {check.demand !== undefined && check.capacity !== undefined
+          ? `${formatNumber(check.demand, check.unit === '' ? 2 : 1)} ≤ ${formatNumber(check.capacity, check.unit === '' ? 2 : 1)} ${check.unit ?? ''}`.trim()
+          : null}
+        <em className="dw-reference" data-basis={check.reference.standard}
+          title={check.reference.standard === 'complementary' ? 'Criterio complementario: no proviene de una cláusula NTC verificada' : `Cláusulas verificadas: ${check.reference.clauseIds.join(', ')}`}>
+          {check.reference.label}
+        </em>
+      </small>
+      {check.note ? <small className="dw-checks__note">{check.note}</small> : null}
+    </div> : null}
+  </li>;
+}
+
 export function ChecksList({ checks }: { checks: readonly ElementCheck[] }) {
-  return <ul className="dw-checks">
-    {checks.map((check) => {
-      const Icon = statusIcon[check.status];
-      const percent = check.ratio !== undefined && Number.isFinite(check.ratio) ? Math.round(check.ratio * 100) : undefined;
-      return <li key={check.id} data-status={check.status}>
-        <Icon size={14} aria-hidden="true" />
-        <div className="dw-checks__body">
-          <div className="dw-checks__row">
-            <span>{check.label}</span>
-            <b>{percent !== undefined ? `${percent} %` : statusLabel[check.status]}</b>
-          </div>
-          {percent !== undefined ? <div className="dw-meter dw-meter--thin" aria-hidden="true"><i style={{ width: `${Math.min(100, percent)}%` }} /></div> : null}
-          <small>
-            {check.demand !== undefined && check.capacity !== undefined
-              ? `${formatNumber(check.demand, check.unit === '' ? 2 : 1)} ≤ ${formatNumber(check.capacity, check.unit === '' ? 2 : 1)} ${check.unit ?? ''}`.trim()
-              : null}
-            <em className="dw-reference" data-basis={check.reference.standard}
-              title={check.reference.standard === 'complementary' ? 'Criterio complementario: no proviene de una cláusula NTC verificada' : `Cláusulas verificadas: ${check.reference.clauseIds.join(', ')}`}>
-              {check.reference.label}
-            </em>
-          </small>
-          {check.note ? <small className="dw-checks__note">{check.note}</small> : null}
-        </div>
-      </li>;
-    })}
-  </ul>;
+  return <ul className="dw-checks">{checks.map((check) => <CheckItem key={check.id} check={check} />)}</ul>;
 }
 
 export function ErrorsPanel({ errors }: { errors: readonly string[] }) {
@@ -189,11 +192,11 @@ export function ValuesTable({ rows }: { rows: readonly { symbol: string; label: 
   </dl>;
 }
 
-export function RebarList({ items }: { items: readonly { kind: 'bar' | 'extra' | 'stirrup'; title: string; detail: string }[] }) {
+export function RebarList({ items }: { items: readonly { kind: 'bar' | 'extra' | 'stirrup'; title: string; detail?: string }[] }) {
   return <ul className="dw-rebar-list">
     {items.map((item) => <li key={item.title}>
       <span className={`dw-swatch dw-swatch--${item.kind}`} aria-hidden="true" />
-      <div><strong>{item.title}</strong><small>{item.detail}</small></div>
+      <div><strong>{item.title}</strong>{item.detail ? <small>{item.detail}</small> : null}</div>
     </li>)}
   </ul>;
 }

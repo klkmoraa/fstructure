@@ -6,8 +6,8 @@ import { designColumn, type ColumnDesignInput, type ColumnDesignResult } from '.
 import { rebarLabel } from '../../../design/elements/shared';
 import { ColumnSection, InteractionChart } from './ColumnDrawings';
 import {
-  BarSelect, ChecksList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
-  formatNumber, mpaFromKgcm2, mpaHint, parseNumber, useStoredDraft,
+  BarSelect, ChecksList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
+  formatNumber, mpaFromKgcm2, parseNumber, useStoredDraft,
 } from './common';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
@@ -79,6 +79,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const code = designCode(chrome.code);
   const result = useMemo(() => designColumn(toInput(chrome.code, draft)), [chrome.code, draft]);
   const braced = draft.braced !== 'no';
+  const [checks, notes] = splitChecks(result.ok ? result.checks : []);
   const slendernessSymbol = code.column.neglectUsesEffectiveLength ? 'kH/r' : 'H/r';
   const symmetric = result.ok && Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth;
 
@@ -107,40 +108,43 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <NumberField label="Barras cara h" unit="pzas" value={draft.barsDepth} onChange={set('barsDepth')} min={2} />
       </FieldGroup>
       <FieldGroup title="Materiales">
-        <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} hint={mpaHint(draft.fc)} />
-        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} hint={mpaHint(draft.fy)} />
+        <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />
+        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
       </FieldGroup>
-      {code.column.geometryLimits ? <FieldGroup title="Construcción" columns={1}>
-        <GroupSelect value={draft.group} onChange={set('group')} groups={[
-          { value: 'B2', label: 'Subgrupo B2 · dimensión mínima 25 cm' },
-          { value: 'B1', label: 'Subgrupo B1 · dimensión mínima 30 cm' },
-          { value: 'A', label: 'Grupo A · dimensión mínima 30 cm' },
-        ]} />
-        <LayerToggle label="Planta baja o primer nivel con sismo" checked={draft.groundFloor === 'yes'}
-          onCheckedChange={(checked) => set('groundFloor')(checked ? 'yes' : 'no')} />
-      </FieldGroup> : null}
       <FieldGroup title="Esbeltez">
         <div className="dw-span-all">
           <SegmentedControl label="Marco" size="sm" value={braced ? 'yes' : 'no'} onValueChange={set('braced')}
-            options={[{ value: 'yes', label: 'Sin desplazamiento' }, { value: 'no', label: 'Con desplazamiento lateral' }]} />
+            options={[{ value: 'yes', label: 'Sin desplazamiento' }, { value: 'no', label: 'Con desplazamiento' }]} />
         </div>
         <NumberField label="Altura libre lu" unit="m" value={draft.length} onChange={set('length')} />
-        <NumberField label="Factor k" unit="×" value={draft.k} onChange={set('k')} hint={braced ? '≤ 1 contraventeado' : '≥ 1 con desplazamiento'} />
+        <NumberField label="Factor k" unit="×" value={draft.k} onChange={set('k')} />
         {braced ? null : <>
           <NumberField label="M2s x" unit="kN·m" value={draft.swayX} onChange={set('swayX')} />
           <NumberField label="M2s y" unit="kN·m" value={draft.swayY} onChange={set('swayY')} />
           <NumberField label={code.id === 'ntc-2023' ? 'Índice λest' : 'Índice Q'} unit="×" value={draft.stability} onChange={set('stability')} />
         </>}
+      </FieldGroup>
+      <MoreOptions>
+        {code.column.geometryLimits ? <>
+          <div className="dw-span-all">
+            <GroupSelect value={draft.group} onChange={set('group')} groups={[
+              { value: 'B2', label: 'Subgrupo B2' },
+              { value: 'B1', label: 'Subgrupo B1' },
+              { value: 'A', label: 'Grupo A' },
+            ]} />
+          </div>
+          <div className="dw-span-all">
+            <LayerToggle label="Planta baja con sismo" checked={draft.groundFloor === 'yes'}
+              onCheckedChange={(checked) => set('groundFloor')(checked ? 'yes' : 'no')} />
+          </div>
+        </> : null}
         <div className="dw-span-all">
           <SegmentedControl label="Curvatura" size="sm" value={draft.curvature} onValueChange={set('curvature')}
             options={[{ value: 'single', label: 'Curvatura simple' }, { value: 'double', label: 'Curvatura doble' }]} />
         </div>
-        {braced ? null : <p className="dw-footnote dw-span-all">Mux y Muy: momentos sin desplazamiento.</p>}
-      </FieldGroup>
-      <MoreOptions>
         <NumberField label="Vux" unit="kN" value={draft.shearX} onChange={set('shearX')} min={-1e9} />
         <NumberField label="Vuy" unit="kN" value={draft.shearY} onChange={set('shearY')} min={-1e9} />
-        <NumberField label="|M1/M2|" unit="×" value={draft.endRatio} onChange={set('endRatio')} hint="1 = momentos iguales" />
+        <NumberField label="|M1/M2|" unit="×" value={draft.endRatio} onChange={set('endRatio')} />
         <NumberField label="βdns" unit="×" value={draft.sustained} onChange={set('sustained')} />
         <NumberField label="Agregado" unit="mm" value={draft.aggregate} onChange={set('aggregate')} />
       </MoreOptions>
@@ -172,16 +176,16 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </Verdict>
       <PanelSection title="Armado">
         <RebarList items={[
-          { kind: 'bar', title: `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)}`, detail: `As ${formatNumber(result.steelAreaMm2 / 100, 2)} cm² · ρ ${formatNumber(result.steelRatio * 100, 2)} %` },
-          { kind: 'stirrup', title: tieText(result), detail: result.ties.endLengthMm > 0
-            ? `Lo = ${formatNumber(result.ties.endLengthMm / 10, 0)} cm desde cada extremo · ${result.ties.crossTiesParallelToX + result.ties.crossTiesParallelToY} grapas por juego · hx ${formatNumber(result.ties.hxMm / 10, 1)} cm`
-            : `${result.ties.crossTiesParallelToX + result.ties.crossTiesParallelToY} grapas por juego · estribo mínimo ${rebarLabel(result.ties.minimumDiameterMm)}` },
-          { kind: 'bar', title: 'Traslape Clase B', detail: `${formatNumber(result.spliceLengthMm / 10, 0)} cm a tensión` },
+          { kind: 'bar', title: `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)}`, detail: `ρ ${formatNumber(result.steelRatio * 100, 2)} %` },
+          { kind: 'stirrup', title: tieText(result), detail: result.ties.endLengthMm > 0 ? `Lo = ${formatNumber(result.ties.endLengthMm / 10, 0)} cm` : undefined },
+          { kind: 'bar', title: 'Traslape', detail: `${formatNumber(result.spliceLengthMm / 10, 0)} cm` },
         ]} />
       </PanelSection>
-      <PanelSection title="Comprobaciones"><ChecksList checks={result.checks} /></PanelSection>
+      <PanelSection title="Comprobaciones"><ChecksList checks={checks} /></PanelSection>
       <Disclosure label="Detalle del cálculo">
         <ValuesTable rows={[
+          { symbol: 'As', label: 'Área de acero', value: `${formatNumber(result.steelAreaMm2 / 100, 2)} cm²` },
+          { symbol: 'Grapas', label: 'Por juego', value: String(result.ties.crossTiesParallelToX + result.ties.crossTiesParallelToY) },
           { symbol: 'Ag', label: 'Área bruta', value: `${formatNumber(result.grossAreaMm2 / 100, 0)} cm²` },
           { symbol: 'P0', label: 'Axial nominal', value: `${formatNumber(result.squashLoadKn, 0)} kN` },
           { symbol: 'φPn,máx', label: `${code.maximumAxialCoefficient === 1 ? '' : `${code.maximumAxialCoefficient}·`}φ·P0 (φ = ${code.compressionFactor})`, value: `${formatNumber(result.maximumDesignAxialKn, 0)} kN` },
@@ -194,6 +198,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           { symbol: 'M2,mín', label: 'Pu·emín (X)', value: `${formatNumber(result.magnification.x.minimumMomentKnm)} kN·m` },
           { symbol: 'φ', label: code.axialTransition ? 'Según φPn' : 'Según εt', value: `${code.compressionFactor} → 0.90` },
         ]} />
+        <ChecksList checks={notes} />
       </Disclosure>
     </> : null}
   />;
