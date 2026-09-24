@@ -3,7 +3,6 @@ import { ArrowRight, ArrowUpRight, Moon, Sun } from 'lucide-react';
 import type { ToolId } from '../../shared/contracts';
 import type { ProjectModel, ThemeMode } from '../../types';
 import { TOOL_CATALOG, toolIdentity } from '../workspace/toolCatalog';
-import { ENGINEERING_QUOTES } from './engineeringQuotes';
 import { BrandMark, ToolGlyph } from './toolGlyphs';
 import './suite.css';
 
@@ -25,8 +24,9 @@ export interface SuiteHomeProps {
 
 const copy = {
   es: {
-    kicker: 'FusionStructure · Análisis',
-    lead: 'Cuatro herramientas de cálculo estructural. Cada una abre sola, en su propia mesa.',
+    kicker: 'Make complexity legible.',
+    title: 'Elige tu herramienta.',
+    lead: 'Modela, analiza y diseña estructuras. Cada herramienta tiene su propia mesa de trabajo.',
     tools: 'Herramientas',
     open: (name: string) => `Abrir ${name}`,
     status: { disponible: 'Disponible', experimental: 'Experimental' },
@@ -36,12 +36,14 @@ const copy = {
     themeLabel: 'Cambiar tema',
     languageLabel: 'Idioma',
     note: 'Experimental. Un resultado no sustituye la revisión de una persona responsable.',
+    stageLabel: 'Vista conceptual',
     stage: 'Pórtico de un vano en arcilla, con placas base y anclajes',
-    stageCaption: 'FS · Pórtico de un vano',
+    stageCaption: 'Pórtico de un vano',
   },
   en: {
-    kicker: 'FusionStructure · Analysis',
-    lead: 'Four structural calculation tools. Each one opens on its own workbench.',
+    kicker: 'Make complexity legible.',
+    title: 'Choose your tool.',
+    lead: 'Model, analyze, and design structures. Each tool has its own workspace.',
     tools: 'Tools',
     open: (name: string) => `Open ${name}`,
     status: { disponible: 'Available', experimental: 'Experimental' },
@@ -51,8 +53,9 @@ const copy = {
     themeLabel: 'Change theme',
     languageLabel: 'Language',
     note: 'Experimental. A result does not replace review by a responsible person.',
+    stageLabel: 'Concept view',
     stage: 'Single-bay clay portal frame, with base plates and anchors',
-    stageCaption: 'FS · Single-bay portal',
+    stageCaption: 'Single-bay portal',
   },
 } as const;
 
@@ -61,15 +64,13 @@ const PORTAL = { day: './assets/suite/portal-day.png', night: './assets/suite/po
 /**
  * Inicio de FusionStructure.
  *
- * Un índice de cuatro herramientas y el pórtico. Pasar por una herramienta
- * pone su escena en el escenario; elegirla la abre aislada. Nada compite con
- * eso: sin barra de navegación, sin tarjetas y sin avisos flotantes.
+ * Un índice de cuatro herramientas y una escena de apoyo. Pasar por una
+ * herramienta pone su escena en el escenario; elegirla la abre aislada.
  */
 export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onResume, onLanguageChange, onThemeChange }: SuiteHomeProps) => {
   const text = copy[language];
   const mode = theme === 'dark' ? 'night' : 'day';
   const [preview, setPreview] = useState<ToolId | null>(null);
-  const [quote] = useState(() => ENGINEERING_QUOTES[Math.floor(Math.random() * ENGINEERING_QUOTES.length)] ?? ENGINEERING_QUOTES[0]);
   const last = toolIdentity(lastTool);
   const scenes = [{ id: 'portal', src: PORTAL[mode] }, ...TOOL_CATALOG.map((tool) => ({ id: tool.id, src: tool.scene[mode] }))];
   const shown = preview ?? 'portal';
@@ -92,7 +93,7 @@ export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onRe
     <div className="fs-suite__body">
       <section className="fs-suite__index" aria-labelledby="fs-suite-title">
         <p className="fs-suite__kicker">{text.kicker}</p>
-        <h1 id="fs-suite-title" className="fs-suite__title">Make complexity legible.</h1>
+        <h1 id="fs-suite-title" className="fs-suite__title">{text.title}</h1>
         <p className="fs-suite__lead">{text.lead}</p>
 
         <nav className="fs-suite__tools" aria-label={text.tools} onMouseLeave={() => setPreview(null)}>
@@ -117,14 +118,17 @@ export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onRe
         </nav>
 
         <button type="button" className="fs-suite__resume" onClick={() => onResume(lastTool)}>
-          <span>{text.resume}</span>
-          <strong title={project.name}>{project.name}</strong>
-          <span>{text.resumeIn(last.name[language])}</span>
+          <span className="fs-suite__resume-copy">
+            <span>{text.resume}</span>
+            <strong title={project.name}>{project.name}</strong>
+            <span>{text.resumeIn(last.name[language])}</span>
+          </span>
           <ArrowRight size={16} aria-hidden="true" />
         </button>
       </section>
 
       <figure className="fs-suite__stage" data-preview={shown}>
+        <span className="fs-suite__stage-label">{text.stageLabel}</span>
         {scenes.map((scene) => <img
           key={scene.id}
           src={scene.src}
@@ -139,7 +143,6 @@ export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onRe
     </div>
 
     <footer className="fs-suite__foot">
-      <blockquote className="fs-suite__quote">“{quote.text[language]}” <cite>{quote.author}</cite></blockquote>
       <p className="fs-suite__note">{text.note} · Cristian Mora · <a href="https://github.com/klkmoraa/fstructure" target="_blank" rel="noopener noreferrer">GitHub<ArrowUpRight size={12} aria-hidden="true" /></a></p>
     </footer>
   </main>;

@@ -66,7 +66,7 @@ describe('standalone FStructure', () => {
     render(<App />);
 
     expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1, name: 'Make complexity legible.' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Elige tu herramienta.' })).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Herramientas' }).querySelectorAll('button')).toHaveLength(4);
 
     await user.click(screen.getByRole('button', { name: /^Continuar.*en FStructure/ }));
