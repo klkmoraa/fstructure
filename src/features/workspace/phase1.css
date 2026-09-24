@@ -2048,6 +2048,16 @@
   box-shadow:inset 0 -3px 0 currentColor,var(--sc-shadow-pressed);
 }
 
+/* En móvil la barra inferior no se desplaza: con `overflow-y:auto` de `.toolbar`
+   y el contenido unos píxeles más alto, un gesto con el dedo la subía y la
+   escondía. `clip` no crea contenedor de desplazamiento; el margen deja ver
+   las sombras de las teclas. */
+.app-shell[data-shell-class='K0'] .tool-rail {
+  overflow:clip;
+  overflow-clip-margin:8px;
+  overscroll-behavior:none;
+}
+
 /* K0 is a purpose-built touch composition: one tool route and one horizontally
    sliding quantity rail. The hidden desktop list must never leak into it. */
 .app-shell[data-shell-class='K0'] .tool-rail .desktop-tool-list,
