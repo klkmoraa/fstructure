@@ -4,7 +4,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
-- [ ] FEM: dibujar la malla y colorearla por von Mises, desplazamiento y calidad; editor mínimo de placa, apoyos y cargas.
+- [ ] FEM: editor mínimo de placa, apoyos y cargas (la malla ya se dibuja y colorea por von Mises, desplazamiento y calidad).
 - [ ] Proyectos por herramienta: miniatura y resumen propios en los recientes de 3D, FEM y Diseño (hoy muestran datos del 2D).
 - [ ] Mesas de 3D, FEM y Diseño con barra según el brandbook, y deshacer/rehacer en FEM y Diseño.
 - [ ] Título de pestaña por herramienta («Solver 3D · FusionStructure»).

@@ -42,7 +42,7 @@ const openFromHome = async (user: ReturnType<typeof userEvent.setup>, tool: stri
 it('abre FEM en su propia mesa: sin lienzo, consola ni utilidades del Modelo 2D', async () => {
   const user = userEvent.setup();
   render(<App />);
-  await screen.findByRole('application');
+  await screen.findByRole('application', {}, { timeout: 10_000 }); // el primer render carga los chunks diferidos de App
   await openFromHome(user, 'Elementos finitos');
 
   expect(await screen.findByRole('heading', { name: 'Elementos finitos' })).toBeTruthy();
@@ -61,7 +61,7 @@ it('abre FEM en su propia mesa: sin lienzo, consola ni utilidades del Modelo 2D'
 it('los atajos del Modelo 2D no existen dentro de otra herramienta', async () => {
   const user = userEvent.setup();
   render(<App />);
-  await screen.findByRole('application');
+  await screen.findByRole('application', {}, { timeout: 10_000 }); // el primer render carga los chunks diferidos de App
   // Control: en el Modelo 2D, Ctrl+K sí abre su paleta.
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
   expect(await screen.findByRole('listbox', { name: 'Paleta de comandos' })).toBeTruthy();
@@ -77,7 +77,7 @@ it('los atajos del Modelo 2D no existen dentro de otra herramienta', async () =>
 it('cambiar de herramienta desmonta la anterior y la recarga vuelve a la herramienta de la URL', async () => {
   const user = userEvent.setup();
   const view = render(<App />);
-  await screen.findByRole('application');
+  await screen.findByRole('application', {}, { timeout: 10_000 }); // el primer render carga los chunks diferidos de App
   const projectId = new URLSearchParams(window.location.search).get('project');
 
   await openFromHome(user, 'Solver 3D');

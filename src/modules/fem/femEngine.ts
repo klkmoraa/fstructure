@@ -327,6 +327,33 @@ export const createTri3PatchFixture = (): FemDocumentV1 => ({
   restraints: [{ nodeId: '1', ux: true, uy: true }, { nodeId: '3', ux: true, uy: true }],
 });
 
+/**
+ * Ménsula de acero en esfuerzo plano (L × h, espesor 0.1 m) con malla QUAD4
+ * regular, empotrada a la izquierda y con carga vertical `P` (kN) repartida en
+ * el borde libre. Sirve de ejemplo con campo de tensiones legible.
+ */
+export const createCantileverPlateFixture = ({ length = 2, height = 0.4, columns = 16, rows = 4, P = -10 } = {}): FemDocumentV1 => {
+  const id = (i: number, j: number) => `N${j * (columns + 1) + i + 1}`;
+  const nodes: FemNode[] = [];
+  for (let j = 0; j <= rows; j += 1) for (let i = 0; i <= columns; i += 1) nodes.push({ id: id(i, j), x: (length * i) / columns, y: (height * j) / rows });
+  const elements: FemElement[] = [];
+  for (let j = 0; j < rows; j += 1) for (let i = 0; i < columns; i += 1) {
+    elements.push({ id: `E${j * columns + i + 1}`, type: 'QUAD4', nodeIds: [id(i, j), id(i + 1, j), id(i + 1, j + 1), id(i, j + 1)] });
+  }
+  const loads: FemNodalLoad[] = [];
+  for (let j = 0; j <= rows; j += 1) {
+    const share = j === 0 || j === rows ? 0.5 : 1;
+    loads.push({ id: `P${j + 1}`, nodeId: id(columns, j), fx: 0, fy: (P * share) / rows });
+  }
+  const restraints: FemNodalRestraint[] = [];
+  for (let j = 0; j <= rows; j += 1) restraints.push({ nodeId: id(0, j), ux: true, uy: true });
+  return {
+    kind: 'fem-document', schemaVersion: 1, id: 'fem-cantilever-plate', name: 'Ménsula QUAD4', analysis: 'plane-stress',
+    material: { id: 'steel', E: 200_000_000, nu: 0.3, thickness: 0.1 },
+    nodes, elements, loads, restraints,
+  };
+};
+
 const emptyResult = (documentId: string, issues: readonly FemValidationIssue[], reason: string, degenerateElementIds: readonly string[] = []): FemAnalysisResult => Object.freeze({
   success: false, documentId, displacements: Object.freeze([]), reactions: Object.freeze([]), stresses: Object.freeze([]),
   meshQuality: Object.freeze({ valid: false, minArea: 0, maxAspectRatio: 0, degenerateElementIds: Object.freeze([...degenerateElementIds]) }),

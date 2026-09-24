@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   analyzeFemDocument,
+  createCantileverPlateFixture,
   createTri3PatchFixture,
   exportFemVtk,
   parseGmsh41,
@@ -171,5 +172,25 @@ describe('FEM document and TRI3 engine', () => {
   it('rejects VTK export when an element references a missing node', () => {
     const document = createTri3PatchFixture();
     expect(() => exportFemVtk({ ...document, elements: [{ ...document.elements[0], nodeIds: ['1', '2', 'missing'] }] })).toThrow(/conectividad incompleta/);
+  });
+
+  it('converges on the Timoshenko tip deflection of a cantilever plate', () => {
+    // δ = PL³/3EI + PL/κGA con L=2, h=0.4, t=0.1, E=2e8 kPa, ν=0.3, P=10 kN → 2.578e-4 m.
+    const I = (0.1 * 0.4 ** 3) / 12;
+    const G = 200_000_000 / (2 * 1.3);
+    const reference = (10 * 2 ** 3) / (3 * 200_000_000 * I) + (10 * 2) / ((5 / 6) * G * 0.1 * 0.4);
+    const tipDeflection = (columns: number, rows: number) => {
+      const document = createCantileverPlateFixture({ columns, rows });
+      const result = analyzeFemDocument(document);
+      expect(result.success).toBe(true);
+      const tip = new Set(document.nodes.filter((node) => node.x === 2).map((node) => node.id));
+      const uy = result.displacements.filter((entry) => tip.has(entry.nodeId)).map((entry) => entry.uy);
+      return -uy.reduce((sum, value) => sum + value, 0) / uy.length;
+    };
+    const coarse = tipDeflection(16, 4);
+    const fine = tipDeflection(32, 8);
+    expect(Math.abs(coarse - reference) / reference).toBeLessThan(0.07);
+    expect(Math.abs(fine - reference) / reference).toBeLessThan(0.03);
+    expect(Math.abs(fine - reference)).toBeLessThan(Math.abs(coarse - reference));
   });
 });

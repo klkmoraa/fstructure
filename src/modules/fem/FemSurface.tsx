@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Download, Grid3X3, Layers3, Play, Sigma, Upload, Waypoints } from 'lucide-react';
+import { Download, Grid3X3, Layers3, Play, Shapes, Sigma, Upload, Waypoints } from 'lucide-react';
 import './femSurface.css';
+import { FemMeshView } from './FemMeshView';
 import { ShellContribution } from '../../features/workspace/ShellToolSlots';
 import { peekToolIntent, takeToolIntent } from '../../features/workspace/toolIntent';
 import { useProjectModel } from '../../store/ProjectModelContext';
@@ -8,6 +9,7 @@ import { useSharedToolState } from '../../store/SharedToolState';
 import type { JsonValue } from '../../shared/project/unifiedProjectBundle';
 import {
   analyzeFemDocument,
+  createCantileverPlateFixture,
   createTri3PatchFixture,
   exportFemVtk,
   parseGmsh41,
@@ -163,6 +165,17 @@ export function FemSurface() {
     setFeedback(downloaded ? 'Resultados VTK descargados.' : 'Este navegador no permite descargas locales.');
   }, [analysis, document]);
 
+  const loadExample = useCallback(() => {
+    // El ejemplo tiene su propio id: se guarda junto al estudio actual, no encima.
+    const example = createCantileverPlateFixture();
+    const next = analyzeFemDocument(example);
+    setDocument(example);
+    setAnalysis(next);
+    void persistStudy(example, next).then((saved) => {
+      if (saved) setFeedback('Ménsula de ejemplo analizada y guardada en el proyecto local.');
+    });
+  }, [persistStudy]);
+
   const status = analysis === null ? 'Experimental · Listo' : analysis.success ? 'Experimental · Resuelto' : 'Experimental · Revisar';
 
   return <section className="fusion-fem" aria-labelledby="fem-title">
@@ -192,6 +205,7 @@ export function FemSurface() {
         <span>Importar Gmsh 4.1</span>
         <input type="file" accept=".msh,text/plain" aria-label="Importar Gmsh 4.1" onChange={(event) => void importGmsh(event)} />
       </label>
+      <button type="button" className="fusion-fem__secondary-action" onClick={loadExample}><Shapes size={15} aria-hidden="true" /> Ménsula de ejemplo</button>
       <button type="button" className="fusion-fem__secondary-action" onClick={exportJson}><Download size={15} aria-hidden="true" /> Exportar FEM JSON</button>
       <button type="button" className="fusion-fem__secondary-action" onClick={exportVtk}><Download size={15} aria-hidden="true" /> Exportar VTK</button>
     </div>
@@ -200,6 +214,7 @@ export function FemSurface() {
       <strong>{analysis.success ? 'Análisis completado' : 'Análisis detenido'}</strong>
       <span>{analysis.success && analysis.relativeResidual !== null ? `${analysis.stresses.length} campos de tensión · residuo ${analysis.relativeResidual.toExponential(2)}` : analysis.reason}</span>
     </div> : null}
+    <FemMeshView document={document} analysis={analysis} />
     <ol className="fusion-fem__roadmap" aria-label="Camino del módulo FEM">
       {roadmap.map(({ label, description, Icon }) => <li key={label}>
         <span><Icon size={18} aria-hidden="true" /></span>

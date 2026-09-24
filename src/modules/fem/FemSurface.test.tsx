@@ -67,3 +67,19 @@ it('exposes local JSON and VTK export actions without requiring a remote service
   await user.click(screen.getByRole('button', { name: 'Exportar VTK' }));
   expect(screen.getByRole('button', { name: 'Exportar VTK' })).toBeTruthy();
 });
+
+it('draws the example cantilever coloured by von Mises and switches to mesh quality', async () => {
+  const user = userEvent.setup();
+  renderSurface();
+  await screen.findByRole('heading', { name: 'Elementos finitos' });
+
+  await user.click(screen.getByRole('button', { name: 'Ménsula de ejemplo' }));
+  const view = await screen.findByTestId('fem-mesh-view');
+  await waitFor(() => expect(view.getAttribute('data-field')).toBe('vonMises'));
+  expect(view.querySelectorAll('.fusion-fem__elements polygon')).toHaveLength(64);
+  expect(screen.getByTestId('fem-peak').textContent).toMatch(/Máximo en E\d+: [\d.]+ MPa/);
+
+  await user.click(screen.getByRole('radio', { name: 'Calidad' }));
+  expect(view.getAttribute('data-field')).toBe('quality');
+  expect(screen.getByRole('radio', { name: 'von Mises' }).hasAttribute('disabled')).toBe(false);
+});

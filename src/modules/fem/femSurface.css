@@ -53,3 +53,50 @@
   .fusion-fem__roadmap::before { top: 20px; bottom: 20px; left: 19px; right: auto; width: 1px; height: auto; }
   .fusion-fem__roadmap li { grid-template-columns: 40px 1fr; justify-items: start; align-items: center; text-align: left; }
 }
+
+/* Visor de malla. Bandas de contorno: un solo tono (azul) de claro a oscuro; en
+   oscuro el valor bajo se hunde hacia la superficie y el alto se ilumina. */
+.fusion-fem__view {
+  --fem-band-0: #cde2fb; --fem-band-1: #9ec5f4; --fem-band-2: #6da7ec; --fem-band-3: #3987e5;
+  --fem-band-4: #256abf; --fem-band-5: #184f95; --fem-band-6: #0d366b;
+  --fem-edge: var(--sc-color-surface-1);
+  display: grid; gap: 10px; margin: 0; padding: 12px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fusion-fem__view {
+    --fem-band-0: #104281; --fem-band-1: #1c5cab; --fem-band-2: #2a78d6; --fem-band-3: #5598e7;
+    --fem-band-4: #86b6ef; --fem-band-5: #b7d3f6; --fem-band-6: #e3eefc;
+  }
+}
+:root[data-theme="dark"] .fusion-fem__view {
+  --fem-band-0: #104281; --fem-band-1: #1c5cab; --fem-band-2: #2a78d6; --fem-band-3: #5598e7;
+  --fem-band-4: #86b6ef; --fem-band-5: #b7d3f6; --fem-band-6: #e3eefc;
+}
+.fusion-fem__view-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.fusion-fem__fields { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-control); }
+.fusion-fem__fields button { min-height: 28px; padding: 0 10px; border: 0; border-radius: calc(var(--sc-radius-control) - 2px); background: transparent; color: var(--sc-color-text-secondary); font: inherit; font-size: 12px; cursor: pointer; }
+.fusion-fem__fields button[aria-checked="true"] { background: var(--sc-color-surface-2); color: var(--sc-color-text-primary); font-weight: 600; }
+.fusion-fem__fields button:disabled { color: var(--sc-color-text-muted); cursor: not-allowed; opacity: .6; }
+.fusion-fem__fields button:focus-visible { outline: var(--sc-focus-ring-width-compact) solid var(--sc-color-focus); outline-offset: 1px; }
+.fusion-fem__deformed { display: inline-flex; align-items: center; gap: 6px; color: var(--sc-color-text-secondary); font-size: 12px; }
+.fusion-fem__canvas { display: block; width: 100%; height: auto; max-height: 420px; }
+.fusion-fem__elements polygon { stroke: var(--fem-edge); stroke-width: 1; stroke-linejoin: round; }
+.fusion-fem__elements polygon.is-plain { fill: var(--sc-color-surface-2); stroke: var(--sc-color-text-secondary); }
+.fusion-fem__elements polygon:hover { stroke: var(--sc-color-text-primary); stroke-width: 2; }
+.fusion-fem__ghost polygon { fill: none; stroke: var(--sc-color-text-muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: .7; }
+.fusion-fem__supports path { fill: none; stroke: var(--sc-color-text-primary); stroke-width: 1.5; stroke-linejoin: round; }
+.fusion-fem__loads line { stroke: var(--sc-color-state-error); stroke-width: 2; }
+.fusion-fem__load-head { fill: var(--sc-color-state-error); }
+.fusion-fem .is-band-0 { fill: var(--fem-band-0); background: var(--fem-band-0); }
+.fusion-fem .is-band-1 { fill: var(--fem-band-1); background: var(--fem-band-1); }
+.fusion-fem .is-band-2 { fill: var(--fem-band-2); background: var(--fem-band-2); }
+.fusion-fem .is-band-3 { fill: var(--fem-band-3); background: var(--fem-band-3); }
+.fusion-fem .is-band-4 { fill: var(--fem-band-4); background: var(--fem-band-4); }
+.fusion-fem .is-band-5 { fill: var(--fem-band-5); background: var(--fem-band-5); }
+.fusion-fem .is-band-6 { fill: var(--fem-band-6); background: var(--fem-band-6); }
+.fusion-fem__legend { display: grid; gap: 4px; width: min(360px, 100%); font-size: 12px; }
+.fusion-fem__legend-title { color: var(--sc-color-text-secondary); }
+.fusion-fem__legend-scale { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; height: 10px; }
+.fusion-fem__legend-scale i { border-radius: 2px; }
+.fusion-fem__legend-ends { display: flex; justify-content: space-between; color: var(--sc-color-text-primary); font-variant-numeric: tabular-nums; }
+.fusion-fem__legend-peak { color: var(--sc-color-text-muted); font-size: 11px; }
