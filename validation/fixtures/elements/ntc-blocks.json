@@ -1,0 +1,105 @@
+{
+  "name": "Bloques NTC 2023: FR por εt, acero requerido y longitud de desarrollo",
+  "flexure": [
+    {
+      "areaMm2": 800,
+      "widthMm": 300,
+      "depthMm": 540,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "strengthKnm": 152.36066650660266
+    },
+    {
+      "areaMm2": 2900,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "strengthKnm": 295.1158626183807
+    },
+    {
+      "areaMm2": 3600,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "strengthKnm": 309.7555476590636
+    },
+    {
+      "areaMm2": 1200,
+      "widthMm": 250,
+      "depthMm": 400,
+      "fyMpa": 412,
+      "fcMpa": 30,
+      "strengthKnm": 160.73002164705883
+    }
+  ],
+  "development": [
+    {
+      "diameterMm": 15.9,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "topBar": false,
+      "clearSpacingMm": 40,
+      "clearCoverMm": 50,
+      "minimumStirrups": true,
+      "lengthMm": 630.2197417954878
+    },
+    {
+      "diameterMm": 25.4,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "topBar": true,
+      "clearSpacingMm": 20,
+      "clearCoverMm": 50,
+      "minimumStirrups": false,
+      "lengthMm": 2498.6104823089026
+    },
+    {
+      "diameterMm": 9.5,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "topBar": false,
+      "clearSpacingMm": 100,
+      "clearCoverMm": 50,
+      "minimumStirrups": true,
+      "lengthMm": 376.5463866073669
+    },
+    {
+      "diameterMm": 19.1,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "topBar": true,
+      "clearSpacingMm": 60,
+      "clearCoverMm": 50,
+      "minimumStirrups": true,
+      "lengthMm": 984.1733452064127
+    }
+  ],
+  "required": [
+    {
+      "momentKnm": 120,
+      "widthMm": 300,
+      "depthMm": 540,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "areaMm2": 623.0049035375747
+    },
+    {
+      "momentKnm": 293,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "areaMm2": 2505.533214229226
+    },
+    {
+      "momentKnm": 315,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 412,
+      "fcMpa": 24.5,
+      "areaMm2": null
+    }
+  ]
+}

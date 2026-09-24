@@ -35,7 +35,7 @@ export class UnifiedProjectSession {
   private chain: Promise<unknown> = Promise.resolve();
   private initialization?: Promise<ProjectModel>;
   private storageStatus: UnifiedStorageStatus = { issue: null, message: null };
-  private failedWrite?: { projectId: string; space3d: boolean; fem: boolean };
+  private failedWrite?: { projectId: string; space3d: boolean; fem: boolean; design: boolean };
   private statusListeners = new Set<() => void>();
   get status() { return this.storageStatus; }
   private set status(value: UnifiedStorageStatus) {
@@ -88,12 +88,17 @@ export class UnifiedProjectSession {
   saveFem(project: ProjectModel, study: JsonValue): Promise<StoredBundleRecord> {
     return this.save(project, undefined, structuredClone(study));
   }
-  private save(project: ProjectModel, branch?: LinkedSpace3DBranchV1, femStudy?: JsonValue): Promise<StoredBundleRecord> {
+  /** Persists the Design workbench document (drafts and chosen code) in the `design` branch. */
+  saveDesign(project: ProjectModel, design: JsonValue): Promise<StoredBundleRecord> {
+    return this.save(project, undefined, undefined, structuredClone(design));
+  }
+  private save(project: ProjectModel, branch?: LinkedSpace3DBranchV1, femStudy?: JsonValue, design?: JsonValue): Promise<StoredBundleRecord> {
     const detached = structuredClone(project);
     if (this.blocked.has(detached.id)) return Promise.reject(new Error(this.status.message ?? 'Reopen the canonical project before saving.'));
     const working = this.currentBundle(detached.id) ?? createUnifiedProjectBundle(detached, branch?.sourceVersion ?? crypto.randomUUID());
     if (branch) working.space3d = branch;
     else if (femStudy !== undefined) working.fem = upsertFemStudy(working.fem, femStudy);
+    else if (design !== undefined) working.design = design;
     else {
       if (JSON.stringify(working.model2d) !== JSON.stringify(detached)) working.manifest.sourceVersion = crypto.randomUUID();
       working.model2d = detached;
@@ -105,7 +110,8 @@ export class UnifiedProjectSession {
     };
     const clearFailure = () => {
       if (this.status.issue === 'save-failed' && this.failedWrite?.projectId === detached.id
-        && this.failedWrite.space3d === Boolean(branch) && this.failedWrite.fem === (femStudy !== undefined)) {
+        && this.failedWrite.space3d === Boolean(branch) && this.failedWrite.fem === (femStudy !== undefined)
+        && this.failedWrite.design === (design !== undefined)) {
         this.failedWrite = undefined;
         this.status = { issue: null, message: null };
       }
@@ -121,6 +127,7 @@ export class UnifiedProjectSession {
       }
       if (branch) bundle.space3d = branch;
       else if (femStudy !== undefined) bundle.fem = upsertFemStudy(bundle.fem, femStudy);
+      else if (design !== undefined) bundle.design = structuredClone(design);
       else {
         bundle.manifest.sourceVersion = working.manifest.sourceVersion;
         bundle.model2d = detached;
@@ -133,7 +140,7 @@ export class UnifiedProjectSession {
         return record;
       } catch (error) {
         if (error instanceof BundleConflictError) this.blocked.add(detached.id);
-        else this.failedWrite = { projectId: detached.id, space3d: Boolean(branch), fem: femStudy !== undefined };
+        else this.failedWrite = { projectId: detached.id, space3d: Boolean(branch), fem: femStudy !== undefined, design: design !== undefined };
         this.status = { issue: error instanceof BundleConflictError ? 'conflict' : 'save-failed', message: error instanceof Error ? error.message : String(error) };
         throw error;
       }

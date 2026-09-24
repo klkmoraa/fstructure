@@ -1,3 +1,4 @@
+import { flexuralCapacity, requiredFlexuralSteelMm2 } from '../elements/shared';
 import { NTC_CONCRETE_2023, betaOne, classOneConcreteProperties, equivalentBlockStrengthMpa } from './ntcConcrete2023';
 import type {
   ConcreteBeamDesignAvailable,
@@ -153,21 +154,19 @@ function effectiveDepthMm(input: ConcreteBeamDesignInput, barDiameterMm: number,
   return input.section.heightMm - input.reinforcement.coverMm - stirrupDiameterMm - barDiameterMm / 2;
 }
 
+/**
+ * FR para flexión según la deformación del acero en tensión (tabla 3.8.2.2 de
+ * la NTC 2023): con la cuantía máxima de 0.9ρb la sección queda en transición
+ * y FR ≈ 0.70, no 0.90. Se delega en el cálculo compartido de los elementos.
+ */
 function requiredFlexuralAreaMm2(
   demandKnm: number,
   widthMm: number,
   effectiveDepth: number,
   yieldStrengthMpa: number,
-  blockStrengthMpa: number,
+  compressiveStrengthMpa: number,
 ): number | undefined {
-  if (demandKnm === 0) return 0;
-  const momentNmm = demandKnm * 1_000_000;
-  const phi = NTC_CONCRETE_2023.flexureResistanceFactor;
-  const coefficient = 0.5 * yieldStrengthMpa / (widthMm * effectiveDepth * blockStrengthMpa);
-  const normalizedDemand = momentNmm / (phi * yieldStrengthMpa * effectiveDepth);
-  const discriminant = 1 - 4 * coefficient * normalizedDemand;
-  if (discriminant < 0) return undefined;
-  return (1 - Math.sqrt(discriminant)) / (2 * coefficient);
+  return requiredFlexuralSteelMm2(demandKnm, widthMm, effectiveDepth, yieldStrengthMpa, compressiveStrengthMpa);
 }
 
 function flexuralStrengthKnm(
@@ -175,11 +174,9 @@ function flexuralStrengthKnm(
   widthMm: number,
   effectiveDepth: number,
   yieldStrengthMpa: number,
-  blockStrengthMpa: number,
+  compressiveStrengthMpa: number,
 ): number {
-  const ratio = areaMm2 / (widthMm * effectiveDepth);
-  const q = ratio * yieldStrengthMpa / blockStrengthMpa;
-  return NTC_CONCRETE_2023.flexureResistanceFactor * areaMm2 * yieldStrengthMpa * effectiveDepth * (1 - 0.5 * q) / 1_000_000;
+  return flexuralCapacity(areaMm2, widthMm, effectiveDepth, yieldStrengthMpa, compressiveStrengthMpa).strengthKnm;
 }
 
 function selectLongitudinal(
@@ -197,7 +194,7 @@ function selectLongitudinal(
   input.reinforcement.preferredLongitudinalDiametersMm.forEach((diameter, preferenceIndex) => {
     if (diameter < NTC_CONCRETE_2023.minimumLongitudinalBarDiameterMm) return;
     const depth = effectiveDepthMm(input, diameter, stirrupDiameterMm);
-    const requiredArea = requiredFlexuralAreaMm2(demandKnm, width, depth, fy, fpp);
+    const requiredArea = requiredFlexuralAreaMm2(demandKnm, width, depth, fy, fc);
     if (requiredArea === undefined || depth <= 0) return;
     const minimumArea = Math.max(0.25 * Math.sqrt(fc) * width * depth / Math.min(fy, 560), 1.4 * width * depth / Math.min(fy, 560));
     const balancedArea = fpp / fy * (600 * beta / (fy + 600)) * width * depth;
@@ -229,7 +226,7 @@ function selectLongitudinal(
         requiredAreaMm2: requiredArea,
         minimumAreaMm2: minimumArea,
         maximumAreaMm2: maximumArea,
-        designStrengthKnm: flexuralStrengthKnm(area, width, depth, fy, fpp),
+        designStrengthKnm: flexuralStrengthKnm(area, width, depth, fy, fc),
         preferenceIndex,
         deficitMm2: Math.max(0, targetArea - area),
         excessMm2: Math.max(0, area - targetArea),

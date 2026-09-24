@@ -170,3 +170,43 @@ it('guarda proyectos normalizados que traen propiedades opcionales en undefined'
   const saved = await repo.openBundle(project.id);
   expect(saved?.bundle.model2d.id).toBe(project.id);
 });
+
+it('persists the Design workbench document in the design branch without touching the model or FEM', async () => {
+  const repo = new InMemoryUnifiedBundleRepository();
+  const project = createDefaultProject();
+  const session = new UnifiedProjectSession(repo);
+  await session.initialize(storage, project);
+  const study = { document: { id: 'study-1' } } as JsonValue;
+  await session.saveFem(project, study);
+  const sourceVersion = session.currentBundle(project.id)?.manifest.sourceVersion;
+
+  const design = { kind: 'fstructure-design-workbench', schemaVersion: 1, entries: { code: 'nsr-10', beam: { width: '30' } } } as JsonValue;
+  const saved = await session.saveDesign(project, design);
+  expect(saved.bundle.design).toEqual(design);
+  expect(saved.bundle.fem).toEqual([study]);
+  // Diseño no es la autoridad: guardar sus borradores no invalida la procedencia del modelo.
+  expect(saved.bundle.manifest.sourceVersion).toBe(sourceVersion);
+
+  const edited = await session.save2D({ ...project, name: 'Edited 2D' });
+  expect(edited.bundle.design).toEqual(design);
+  const reopened = new UnifiedProjectSession(repo);
+  await reopened.initialize(storage, project);
+  expect(reopened.currentBundle(project.id)?.design).toEqual(design);
+});
+
+it('keeps a failed Design save in the working copy until a later write commits it', async () => {
+  const repo = new FailOnceRepository();
+  const project = createDefaultProject();
+  const session = new UnifiedProjectSession(repo);
+  await session.initialize(storage, project);
+  const design = { kind: 'fstructure-design-workbench', schemaVersion: 1, entries: { code: 'e060' } } as JsonValue;
+
+  repo.failNextSave();
+  await expect(session.saveDesign(project, design)).rejects.toThrow('Disk unavailable');
+  expect(session.status.issue).toBe('save-failed');
+  expect(session.currentBundle(project.id)?.design).toEqual(design);
+
+  const saved = await session.saveDesign(project, design);
+  expect(saved.bundle.design).toEqual(design);
+  expect(session.status.issue).toBeNull();
+});

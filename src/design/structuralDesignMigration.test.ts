@@ -303,7 +303,63 @@ describe('manifiesto de migración de Diseño Estructural', () => {
       '13.4.2.1-13.4.3.3',
       '13.6.1-13.6.2.1',
       '14.2.1',
+      // Taller de diseño (viga continua, columna y zapata), verificadas el 2026-09-23.
+      '3.3.5.2.1.1-3.3.5.2.2.1',
+      '3.3.5.2.4.1-3.3.5.2.4.3',
+      '3.8.2.1 (tabla 3.8.2.1, incisos b a d)',
+      '3.8.2.2 (tabla 3.8.2.2)',
+      '5.3.2.1',
+      '5.4.1.2',
+      '5.5.3.2.1 y 5.5.3.8.1',
+      '5.6.1.7-5.6.2.1.1',
+      '5.6.3.1.1',
+      '6.7.4.2.2.2 y 6.7.4.4.2.3',
+      '6.4.2.1.1',
+      '6.4.3.1.1-6.4.3.2.1',
+      '6.4.4.4.2.4',
+      '6.4.4.4.2.6',
+      '6.4.4.4.5.1 (tabla 6.4.4.4.5.1)',
+      '14.7.3.2-14.7.3.3',
+      '9.4.3',
+      '9.4.6.1',
+      '9.4.7.8',
+      '9.4.8.2',
+      '14.4.2.1',
+      '14.4.2.4 (tabla 14.4.2.4)',
+      '14.4.2.6 (tabla 14.4.2.6)',
+      '13.4.4.1',
+      '13.6.2 (tabla 13.6.2)',
+      '13.4.1.1 (límites a y b)',
+      // Limitaciones cerradas: inercia promedio, separación en columnas, ganchos, traslapes,
+      // marcos no restringidos, Jc, acero mínimo y separación en zapatas (2026-09-23).
+      '13.4.3.5',
+      '14.2.3',
+      '14.4.3.1-14.4.3.2',
+      '14.5.2.1 (tabla 14.5.2.1)',
+      '3.3.5.2.2.2 y 3.3.5.2.5.1-3.3.5.2.5.5',
+      '6.7.4.4.2.4 (comentario, fig. C6.7.4.4 a)',
+      '6.7.6.1.1-6.7.6.1.2',
+      '6.7.4.2.2.3 (tabla 6.7.4.2.2.3)',
+      '6.7.7.2.2',
+      '9.4.7.2',
     ]);
+    expect(registry.standards[1]).toMatchObject({
+      id: 'ntc-cdmx-2023-criteria-actions',
+      status: 'official-clauses-verified',
+      clauseVerificationStatus: 'verified',
+      implementationGate: 'open-for-verified-clauses-only',
+    });
+    expect(registry.standards[1]!.verifiedClauses.map(({ clauseId }) => clauseId)).toEqual(['3.4.1', '6.1.1', 'tabla 6.1.2.2']);
+    // Normas adicionales del taller: cada una con su propio documento oficial y hash.
+    for (const [index, id, count] of [[2, 'nsr-10-titulo-c', 36], [3, 'e060-2009-concreto-armado', 34]] as const) {
+      expect(registry.standards[index]).toMatchObject({
+        id,
+        status: 'official-clauses-verified',
+        clauseVerificationStatus: 'verified',
+        implementationGate: 'open-for-verified-clauses-only',
+      });
+      expect(registry.standards[index]!.verifiedClauses).toHaveLength(count);
+    }
     const policy = {
       ...registry.policy,
       verifiedClauseEvidenceSchema: {

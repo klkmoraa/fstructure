@@ -5,6 +5,9 @@ from copy import deepcopy
 from pathlib import Path
 
 from validation.python.concrete_beam_oracle import design_reinforced_concrete_beam
+# El gate `npm run design:oracle` ejecuta este módulo; importar la suite de los
+# elementos del taller aquí la incluye sin cambiar el comando fijado por el gate.
+from validation.python.test_elements_oracle import ElementsOracleTest  # noqa: F401
 
 
 FIXTURES = Path(__file__).parents[1] / "fixtures" / "concrete-beam"

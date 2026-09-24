@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14",
+  "generatedAt": "2026-09-23",
   "policy": {
     "localNormativePdfsAllowed": false,
     "redistribution": "link-only",
@@ -41,7 +41,7 @@
           "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
           "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
           "evidence": [
-            { "page": 775, "excerpt": "0.63√𝑓𝑐′, en MPa", "excerptSha256": "39b2d6fb8f9fe2c4c5576c39f4f74172e52aff0a5dd01dee4cb11d482954d4f1", "verifiedAt": "2026-09-14" },
+            { "page": 775, "excerpt": "Resistencia media a la tensión por flexión o módulo de rotura: 0.63√f′c, en MPa; Concretos con agregado grueso calizo: 0.85√f′c, en MPa; Concretos con agregado grueso basáltico: 0.80√f′c, en MPa. Módulo de elasticidad, Ec: Concretos con agregado grueso calizo: 4400√f′c, en MPa; Concretos con agregado grueso basáltico: 3500√f′c, en MPa; Concretos con agregado grueso calizo: 2700√f′c + 11000, en MPa; Concretos con agregado grueso basáltico: 2700√f′c + 5000, en MPa", "excerptSha256": "ec0fef5900de94e655f4d502777658496f77a2e43b3329c517fb094db74acfea", "verifiedAt": "2026-09-23" },
             { "page": 777, "excerpt": "La resistencia media a tensión por flexión o módulo de rotura, 𝒇𝒇̅̅̅, se podrá suponer igual a la indicada en la tabla 2.2.1.", "excerptSha256": "bd55ddb1875fde5aa892afd00baed053fc8f0c6386d058c54635ddf1446ffca2", "verifiedAt": "2026-09-14" }
           ],
           "implementation": {
@@ -55,7 +55,7 @@
           "pages": [812],
           "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
           "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
-          "evidence": [{ "page": 812, "excerpt": "La deformación unitaria del concreto en compresión cuando se alcanza la resistencia de la sección es 0.003", "excerptSha256": "c0f11b34bea44164894cebc6dfdbc3e80cbc716e04e57593734ee63023167a24", "verifiedAt": "2026-09-14" }],
+          "evidence": [{ "page": 812, "excerpt": "d) La deformación unitaria del concreto en compresión cuando se alcanza la resistencia de la sección es 0.003 e) La distribución de esfuerzos de compresión en el concreto, cuando se alcanza la resistencia de la sección, es uniforme con un valor f″c igual a 0.85f′c hasta una profundidad de la zona de compresión igual a β1c, donde β1 se calculará con la ec. 3.6.1. β1 = 0.85; si f′c ≤ 30 MPa (300 kg/cm²) (3.6.1) β1 = 1.05 − f′c/140 ≥ 0.65; si f′c > 30 MPa", "excerptSha256": "9fce45d6885f15f9fe3b23fdd9205bc2bf01da61a2b5ebde79d2adbc196c2a80", "verifiedAt": "2026-09-23" }],
           "implementation": { "equations": ["fpp=0.85*fc", "beta1=0.85 if fc<=30 else max(0.65,1.05-fc/140)"], "units": { "fc": "MPa", "fpp": "MPa" } }
         },
         {
@@ -65,7 +65,7 @@
           "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
           "evidence": [
             { "page": 813, "excerpt": "Los valores de FR serán los indicados en la tabla 3.8.2.1", "excerptSha256": "de2185ea02f09bf0dab3a0ecc1d78a88437be44f8d17b2ab104c341f34cce4a8", "verifiedAt": "2026-09-14" },
-            { "page": 814, "excerpt": "εt ≥ εty+0.003 Controlada por tensión 0.90", "excerptSha256": "b9b9ce41bedbece38227f75ce3c1ad715835fa934f08845a8ae3e38331417400", "verifiedAt": "2026-09-14" }
+            { "page": 814, "excerpt": "b) Cortante 0.75 … εt ≥ εty+0.003; Controlada por tensión; 0.90", "excerptSha256": "c3cf8881da96250e5561fd90caf7249a455abb36e31f99fbc539185f09e6cebc", "verifiedAt": "2026-09-23" }
           ],
           "implementation": { "resistanceFactors": { "tensionControlledFlexure": 0.9, "shear": 0.75 } }
         },
@@ -88,7 +88,7 @@
           "pages": [833],
           "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
           "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
-          "evidence": [{ "page": 833, "excerpt": "La resistencia de diseño a flexión, MR, se calculará con las ecs. 5.2.2.1.1.1.a o 5.2.2.1.1.1.b que son equivalentes", "excerptSha256": "a75da7e042f40cc2d11ae153bd37830a91c852a27b65180c196cad673f600b4f", "verifiedAt": "2026-09-14" }],
+          "evidence": [{ "page": 833, "excerpt": "La resistencia de diseño a flexión, MR, se calculará con las ecs. 5.2.2.1.1.1.a o 5.2.2.1.1.1.b que son equivalentes: MR = FR b d² f″c q (1 − 0.5q) (5.2.2.1.1.1.a) MR = FR As fy d (1 − 0.5q) (5.2.2.1.1.1.b) donde q = p fy/f″c.", "excerptSha256": "33f92d1dd65b75c47970c3cb6edc90dc25bb1cd10391b00b129542285adb8f1d", "verifiedAt": "2026-09-23" }],
           "implementation": { "equation": "MR=FR*As*fy*d*(1-0.5*q); q=(As/(b*d))*fy/fpp", "units": { "MR": "N*mm", "As": "mm2", "fy": "MPa", "d": "mm" } }
         },
         {
@@ -104,8 +104,8 @@
           "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
           "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
           "evidence": [
-            { "page": 838, "excerpt": "La fuerza Pu se considerará positiva si es de compresión, negativa si es de tensión y nula en el caso de vigas.", "excerptSha256": "7711e21679104acbe184073234af83bcffe407bf498aa2cf04ac0aecb0301e8c", "verifiedAt": "2026-09-14" },
-            { "page": 839, "excerpt": "El valor de VcR no deberá tomarse mayor que FR 0.42 λ√fc′ bwd", "excerptSha256": "6aa999f31dc7fa232e8706ed5d3de190c5efd3d990316c60cb5fd0192ef0124f", "verifiedAt": "2026-09-14" }
+            { "page": 838, "excerpt": "La fuerza Pu se considerará positiva si es de compresión, negativa si es de tensión y nula en el caso de vigas. VcR no será menor que cero. VcR = FR(0.17λ√f′c + Pu/6Ag)bw d (5.5.3.1.1.a)", "excerptSha256": "965c193f81fb7acfeb77d5e27e460b16e0d01fc9aad00962ac4fd51014fde1b8", "verifiedAt": "2026-09-23" },
+            { "page": 839, "excerpt": "a) El valor de VcR no deberá tomarse mayor que FR 0.42 λ√fc′ bwd y no será necesario tomarse menor que FR 0.08 √fc′ bwd", "excerptSha256": "11c3ca63574fe775b190d6f5e6c0839ee7367e50d6e83ddd383ec10bd772df4b", "verifiedAt": "2026-09-23" }
           ],
           "implementation": { "equationForPuZero": "VcR=FR*0.17*sqrt(fc)*bw*d", "limits": "FR*0.08*sqrt(fc)*bw*d <= VcR <= FR*0.42*sqrt(fc)*bw*d", "units": { "VcR": "N", "fc": "MPa", "bw": "mm", "d": "mm" } }
         },
@@ -152,7 +152,7 @@
           "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
           "evidence": [
             { "page": 867, "excerpt": "En vigas no presforzadas, no será necesario suministrar un área mínima de refuerzo a cortante, Av,mín, en los casos de la tabla 6.3.5.4.1.", "excerptSha256": "9525b706b2d508e932fa8c70129c250e4400ac4ffabd346cef88079ec70b4f5a", "verifiedAt": "2026-09-14" },
-            { "page": 868, "excerpt": "Tabla 6.3.5.4.4 – Av,mín requerida", "excerptSha256": "2968981113d6d00b5a73005bc4af43d0ff29051e0d40937542a8f6d47d2a73e1", "verifiedAt": "2026-09-14" }
+            { "page": 868, "excerpt": "Tabla 6.3.5.4.4 – Av,mín requerida. No presforzada: El mayor de: 0.062√f′c bw s/fyt a); 0.35 bw s/fyt b)", "excerptSha256": "17c65783f69f63d4fff0509c2f0fb04c3b1a0558a8194d80ec36c80b4c681be5", "verifiedAt": "2026-09-23" }
           ],
           "implementation": { "normalizedMinimum": "Av/s=max(0.062*sqrt(fc)*bw/fyt,0.35*bw/fyt)", "units": "mm2/mm" }
         },
@@ -161,7 +161,7 @@
           "pages": [876],
           "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
           "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
-          "evidence": [{ "page": 876, "excerpt": "La separación máxima de ramas del refuerzo transversal para cortante a lo largo y ancho del miembro deberá cumplir los requisitos de la tabla 6.3.7.6.2.2.", "excerptSha256": "dd2f5b0de455cb131c21f241d7ea87f98c697d12ae7261c7a74cd94b593812d5", "verifiedAt": "2026-09-14" }],
+          "evidence": [{ "page": 876, "excerpt": "La separación máxima de ramas del refuerzo transversal para cortante a lo largo y ancho del miembro deberá cumplir los requisitos de la tabla 6.3.7.6.2.2. Vigas no presforzadas: Vs ≤ 0.33√f′c bwd: el menor de d/2 a lo largo del claro, d a través del ancho y 600 mm; Vs > 0.33√f′c bwd: el menor de d/4 a lo largo del claro, d/2 a través del ancho y 300 mm.", "excerptSha256": "7a943813acd1925bf8d520c0c0032388335cce5d09ae017f38b5a4d26c12e857", "verifiedAt": "2026-09-23" }],
           "implementation": { "nonPrestressed": { "whenVsAtMostThreshold": { "threshold": "0.33*sqrt(fc)*bw*d", "along": "min(d/2,600 mm)", "across": "min(d,600 mm)" }, "whenVsAboveThreshold": { "along": "min(d/4,300 mm)", "across": "min(d/2,300 mm)" } } }
         },
         {
@@ -198,6 +198,294 @@
           "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
           "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
           "evidence": [{ "page": 1091, "excerpt": "La separación mínima libre entre barras paralelas no presforzadas (excepto entre capas de barras en vigas y en columnas) no será menor que 25 mm, db, ni que 1.5tmag.", "excerptSha256": "55a8c0901ee9063b2901bfb16aea9a4a94ca6ce8170f55efe428664d6caa8e26", "verifiedAt": "2026-09-14" }]
+        },
+        {
+          "clauseId": "3.3.5.2.1.1-3.3.5.2.2.1",
+          "pages": [799],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 799, "excerpt": "H/r < 34 − 12 M1/M2 (3.3.5.2.1.1) donde M1 es el menor y M2 el mayor de los momentos flexionantes en los extremos del miembro; el cociente M1/M2 es positivo cuando el miembro se flexiona en curvatura sencilla y negativo cuando lo hace en curvatura doble; si M1=M2=0, el cociente M1/M2 se tomará igual a 1.0. H′/r > 100 (3.3.5.2.2.1)", "excerptSha256": "e4214995b6f701be2e1038a43d6d961f647ebb8de564222309500d7b3ce43d35", "verifiedAt": "2026-09-23" }],
+          "implementation": {"neglectSlenderness": "H/r < 34 - 12*M1/M2", "curvatureSign": "M1/M2 > 0 en curvatura sencilla", "secondOrderAnalysisRequired": "H'/r > 100"}
+        },
+        {
+          "clauseId": "3.3.5.2.4.1-3.3.5.2.4.3",
+          "pages": [800, 801],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 800, "excerpt": "Mc = Fab M2 (3.3.5.2.4.1.a) donde: Fab = Cm / (1 − Pu / 0.75Pc) ≥ 1.0 (3.3.5.2.4.1.b) Cm = 0.6 + 0.4 M1/M2 ≥ 0.4 (3.3.5.2.4.1.c) Pc = π²(EI)ef / (H′)² (3.3.5.2.4.1.d) (EI)ef = 0.4 EcIg / (1 + βdns) (3.3.5.2.4.1.e)", "excerptSha256": "00fa01e238d93b491e12d022df3be54c51476a234493130c0b0831def03377a1", "verifiedAt": "2026-09-23" }, { "page": 801, "excerpt": "No se tomará menor que el que resulte de aplicar la excentricidad mínima prescrita en 5.2.3. Si el momento calculado para la excentricidad mínima es mayor que el momento M2, se tomará Cm=1.0.", "excerptSha256": "16419cd1dd8d6cf8790d5dea51a53e401704094249fba7b408bb3c1996c88d14", "verifiedAt": "2026-09-23" }],
+          "implementation": {"amplifiedMoment": "Mc=Fab*M2", "amplifier": "Fab=max(1.0,Cm/(1-Pu/(0.75*Pc)))", "Cm": "max(0.4,0.6+0.4*M1/M2); Cm=1.0 si rige la excentricidad mínima", "criticalLoad": "Pc=pi^2*EIef/H'^2", "EIef": "0.4*Ec*Ig/(1+betadns)"}
+        },
+        {
+          "clauseId": "3.8.2.1 (tabla 3.8.2.1, incisos b a d)",
+          "pages": [814],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 814, "excerpt": "b) Cortante 0.75 Revisar requisitos adicionales en Capítulos 6, 7 y 8 c) Torsión 0.75 — d) Cortante en dos direcciones en estructuras sujetas a acciones permanentes, variables y sismo 0.65", "excerptSha256": "1e8a51cbca88da5af0973ba2adecafe9cdf7cba990c59b890b9dc4cb353b0c99", "verifiedAt": "2026-09-23" }],
+          "implementation": {"resistanceFactors": {"shear": 0.75, "twoWayShearWithSeismic": 0.65}}
+        },
+        {
+          "clauseId": "3.8.2.2 (tabla 3.8.2.2)",
+          "pages": [814],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 814, "excerpt": "εt ≤ εty; Controladas por compresión; 0.75 a); 0.65 b); εty < εt < εty+0.003; Transición; 0.75 + 0.15 (εt − εty)/(0.003) c); 0.65 + 0.25 (εt − εty)/(0.003) d); εt ≥ εty+0.003; Controlada por tensión; 0.90 e); 0.90 f)", "excerptSha256": "2d4c1c47cd2d1fe5c7a894ad1203193e2a2d240b343c312d61a71914de957cc3", "verifiedAt": "2026-09-23" }],
+          "implementation": {"resistanceFactorsTied": {"compressionControlled": 0.65, "transition": "0.65+0.25*(et-ety)/0.003", "tensionControlled": 0.9}}
+        },
+        {
+          "clauseId": "5.3.2.1",
+          "pages": [836],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 836, "excerpt": "La excentricidad de diseño no será menor que 0.05h o que 20 mm, donde h es la dimensión (peralte) de la sección en la dirección en que se considera la flexión.", "excerptSha256": "6dc6450157177c998f9130f47dbf26a8c3069aad71ec79cc901f775cc390a36d", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimumEccentricity": "max(0.05*h, 20 mm)"}
+        },
+        {
+          "clauseId": "5.4.1.2",
+          "pages": [836, 837],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 836, "excerpt": "La resistencia a compresión PR con excentricidades ex y ey (véase la fig. 5.4.1.2), que es capaz de resistir un elemento, se podrá calcular con la ec. 5.4.1.2.a", "excerptSha256": "a2f7188f33c64bd232dbb94ea643a7e45df9d93e00390b003c6d330c1e9bb4da", "verifiedAt": "2026-09-23" }, { "page": 837, "excerpt": "PR = 1 / (1/PRx + 1/PRy − 1/PR0) (5.4.1.2.a) Para PR/PR0 < 0.1, se usará la ec. 5.4.1.2.b: Mux/MRx + Muy/MRy ≤ 1.0 (5.4.1.2.b)", "excerptSha256": "2615c4ba15696b088c560a9a686830e8f3d44189d364d0489953ee26568dbe41", "verifiedAt": "2026-09-23" }],
+          "implementation": {"bresler": "1/PR=1/PRx+1/PRy-1/PR0", "contour": "Mux/MRx+Muy/MRy<=1.0 si PR/PR0<0.1"}
+        },
+        {
+          "clauseId": "5.5.3.2.1 y 5.5.3.8.1",
+          "pages": [839, 841],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 839, "excerpt": "VcR = FR (0.66λsλ(p)^(1/3)√fc′ + Pu/6Ag) bw d (5.5.3.2.1.a) λs = √(2/(1 + 0.004d)) ≤ 1.0", "excerptSha256": "6b74278078bfb08603d724e2685ce6c545f8f3ce5f7000816380f78873c52aba", "verifiedAt": "2026-09-23" }, { "page": 841, "excerpt": "En los elementos estructurales en los que el Proyectista considere que por razones constructivas no sea posible colocar refuerzo por cortante, como zapatas o losas de peraltes grandes, la fuerza cortante podrá ser resistida únicamente por el concreto, pero su contribución se deberá calcular según 5.5.3.2.1.", "excerptSha256": "6d95b51e944e49b7d0faa2910d872ee5e14b9ca5d6b8afd2a0c9ce9793af4fe9", "verifiedAt": "2026-09-23" }],
+          "implementation": {"VcR": "FR*(0.66*lambdaS*p^(1/3)*sqrt(fc)+Pu/(6*Ag))*bw*d", "lambdaS": "min(1.0,sqrt(2/(1+0.004*d)))", "units": {"d": "mm", "fc": "MPa"}}
+        },
+        {
+          "clauseId": "5.6.1.7-5.6.2.1.1",
+          "pages": [843, 844],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 843, "excerpt": "Para calcular vcR y vsR, d será el promedio de los peraltes efectivos en las dos direcciones ortogonales.", "excerptSha256": "78b60045ba290e7e58ab24249191a945ec9e2feb4562437a264b165d1d3f58fd", "verifiedAt": "2026-09-23" }, { "page": 844, "excerpt": "El menor de a), b) y c) FR0.33λsλ√fc′ a) FR0.17(1 + 2/β)λsλ√fc′ b) FR0.083(2 + αsd/bo)λsλ√fc′ c) λs es el factor de efecto de tamaño (ec. 5.5.3.2.1.b). β es la relación del lado largo al lado corto de la columna, carga concentrada o área de reacción. αs = 40 para columnas interiores, 30 para columnas de borde y 20 para columnas de esquina.", "excerptSha256": "2e2b9667bc4770bf19a0ec848ecc1e8e38e03ace12a448f39992e72e8367eba6", "verifiedAt": "2026-09-23" }],
+          "implementation": {"vcR": "FR*lambdaS*sqrt(fc)*min(0.33,0.17*(1+2/beta),0.083*(2+alphaS*d/bo))", "alphaS": {"interior": 40, "edge": 30, "corner": 20}}
+        },
+        {
+          "clauseId": "5.6.3.1.1",
+          "pages": [846],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 846, "excerpt": "Para cortante en dos direcciones, cada una de las secciones críticas que se investigue deberá estar localizada de modo que su perímetro bo sea mínimo y no habrá necesidad de localizarla a una distancia menor que d/2 de las secciones descritas en a) y b).", "excerptSha256": "f34512a528aee30afceb6a66e8de5962bfc738d1b8b7142985dc62602b1925ca", "verifiedAt": "2026-09-23" }],
+          "implementation": {"criticalSection": "d/2 del paño"}
+        },
+        {
+          "clauseId": "6.7.4.2.2.2 y 6.7.4.4.2.3",
+          "pages": [915, 917],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 915, "excerpt": "La fracción del momento factorizado resistido por la columna, γfMsc, se deberá suponer que es transferido por flexión, donde γf se calculará con la ec. 6.7.4.2.2.2: γf = 1 / (1 + (2/3)√(b1/b2))", "excerptSha256": "fd11364686098305f567db0159c4bfb0c3aaa2c7061f4c34704a29bf9911f79d", "verifiedAt": "2026-09-23" }, { "page": 917, "excerpt": "γv = 1 – γf", "excerptSha256": "490b4bf40582558c6b87c1b2e7518d4fef948e5c808fc0196e47f9cf42c9777e", "verifiedAt": "2026-09-23" }],
+          "implementation": {"gammaF": "1/(1+(2/3)*sqrt(b1/b2))", "gammaV": "1-gammaF"}
+        },
+        {
+          "clauseId": "6.4.2.1.1",
+          "pages": [882],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 882, "excerpt": "La relación entre la dimensión transversal mayor de una columna y la menor no excederá 4. La dimensión transversal menor será por lo menos igual a 250 mm para estructuras del Subgrupo B2 e igual a 300 mm para estructuras del Grupo A y del Subgrupo B1.", "excerptSha256": "f175307171252e39fc623448148198464bb699c731e1e7b108eb68b2de7da778", "verifiedAt": "2026-09-23" }],
+          "implementation": {"maximumAspectRatio": 4, "minimumDimension": {"B2": "250 mm", "A_B1": "300 mm"}}
+        },
+        {
+          "clauseId": "6.4.3.1.1-6.4.3.2.1",
+          "pages": [883],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 883, "excerpt": "El área del refuerzo longitudinal de la sección no será menor que 0.01Ag ni mayor que 0.06Ag si las columnas son no presforzadas. Se suministrará un área mínima de refuerzo a cortante, Av,mín en toda columna que sea el mayor de a) y b): a) 0.062√fc′ bws/fyt b) 0.35 bws/fyt", "excerptSha256": "8ac94b0899e6ef4dd5df890056b4d1045922dcb771e4024d89200be823a3cf8f", "verifiedAt": "2026-09-23" }],
+          "implementation": {"longitudinalRatio": {"minimum": 0.01, "maximum": 0.06}, "AvMin": "max(0.062*sqrt(fc),0.35)*bw*s/fyt"}
+        },
+        {
+          "clauseId": "6.4.4.4.2.4",
+          "pages": [887],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 887, "excerpt": "La separación so no deberá exceder el menor de a) a d): a) Para barras Grado 42, el menor de 8db de la barra longitudinal más delgada y de 200 mm b) Para barras Grado 56, el menor de 6db de la barra longitudinal más delgada y de 150 mm c) Para barras Grado 70, el menor de 5db de la barra longitudinal más delgada y de 150 mm d) Un cuarto de la menor dimensión de la sección transversal de la columna. La longitud Lo no será menor que el valor máximo de a) a d): a) Un sexto de la altura libre de la columna b) La mayor dimensión de la sección transversal de la columna c) 600 mm d) H/2 para las columnas de planta baja o el primer nivel sujeto a sismo", "excerptSha256": "8e64ff035c22d81146bc7011ec4885312fbda33bed3b2561710c428726eb6adc", "verifiedAt": "2026-09-23" }],
+          "implementation": {"endSpacing": {"grade42": "min(8*db, 200 mm)", "grade56": "min(6*db, 150 mm)", "dimension": "un cuarto de la menor dimensión"}, "endLength": "max(un sexto de H, mayor dimensión, 600 mm, H/2 en planta baja)"}
+        },
+        {
+          "clauseId": "6.4.4.4.2.6",
+          "pages": [887, 888],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 887, "excerpt": "El refuerzo transversal se deberá arreglar de modo que la separación hx de las barras de refuerzo longitudinal soportadas lateralmente por la esquina de una grapa o de una rama de estribo no exceda 500 mm alrededor del perímetro de la columna f) Donde Pu > 0.3Agfc′ o fc′ > 70 MPa en columnas con estribos cerrados rectangulares, cada barra o paquete de barras longitudinales alrededor del perímetro deberá estar soportado lateralmente por la esquina de un", "excerptSha256": "06c615357ee8fd7327d38eea79889b98f33ee61f663e1175da4bf06b4e56042a", "verifiedAt": "2026-09-23" }, { "page": 888, "excerpt": "estribo o grapa y el valor de hx no deberá exceder 300 mm.", "excerptSha256": "c56d946c8a8eb3112554505da69b94315d6692ab5bf58dee0de6400d1c7575b2", "verifiedAt": "2026-09-23" }],
+          "implementation": {"hxMax": "500 mm", "hxMaxHighAxial": "300 mm si Pu > 0.3*Ag*fc"}
+        },
+        {
+          "clauseId": "6.4.4.4.5.1 (tabla 6.4.4.4.5.1)",
+          "pages": [890],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 890, "excerpt": "Vs requerido; Separación máxima, s; Columnas no presforzadas; ≤ 0.33√fc′bwd; La menor de: d/2; 3h/4; 600 mm; > 0.33√fc′bwd; La menor de: d/4; 3h/8; 300 mm", "excerptSha256": "6632b8800147830a6dd7e7a4c5af7cc4adc8059fef7c930ee415591d0bc6e672", "verifiedAt": "2026-09-23" }],
+          "implementation": {"maximumShearSpacing": {"VsLow": "min(d/2, 3h/4, 600 mm)", "VsHigh": "min(d/4, 3h/8, 300 mm)", "threshold": "0.33*sqrt(fc)*bw*d"}}
+        },
+        {
+          "clauseId": "14.7.3.2-14.7.3.3",
+          "pages": [1119],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1119, "excerpt": "Separación a centros que no exceda el menor de 16db de la barra longitudinal, 48db de la barra del estribo y la distancia requerida según el tipo de miembro (viga, columna) y el nivel de ductilidad esperado (baja, media o alta). 14.7.3.3 El diámetro de la barra de un estribo cerrado deberá ser al menos a) o b): a) No. 3 si encierran barras longitudinales del no. 10 o menores b) No. 4 si encierran barras del no. 11 o mayores o paquetes de barras.", "excerptSha256": "53d249577571955c1b20b2e7f04e87ac04a6999ce9774a6605b8f92b348cf4e6", "verifiedAt": "2026-09-23" }],
+          "implementation": {"tieSpacing": "min(16*dbLongitudinal, 48*dbTie)", "minimumTie": {"upToNo10": "No. 3", "No11AndUp": "No. 4"}}
+        },
+        {
+          "clauseId": "9.4.3",
+          "pages": [1034],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1034, "excerpt": "El diseño estructural de zapatas, cabezales y losas de cimentación, deberá incluir al menos, las revisiones a) a d): a) Por flexión b) Por fuerza cortante en una dirección c) Por fuerza cortante en dos direcciones (punzonamiento o penetración) d) Anclaje.", "excerptSha256": "57ef6f51a715cd908a01e03269da8fc12b766312c2d71383a8ea9f3ff95f0c9b", "verifiedAt": "2026-09-23" }],
+          "implementation": {"requiredChecks": ["flexión", "cortante en una dirección", "cortante en dos direcciones", "anclaje"]}
+        },
+        {
+          "clauseId": "9.4.6.1",
+          "pages": [1034],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1034, "excerpt": "El peralte efectivo d mínimo de zapatas será de 150 mm y contará con el recubrimiento mínimo señalado en 9.2.2.", "excerptSha256": "9d6158d90ff9b1d426a1209d4f80c2dcfa464050386e86d5cf4ed93d29b4416e", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimumEffectiveDepth": "150 mm"}
+        },
+        {
+          "clauseId": "9.4.7.8",
+          "pages": [1035],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1035, "excerpt": "El refuerzo paralelo al lado menor se distribuirá en tres franjas en la forma siguiente: en la franja central, de ancho a1, una cantidad de refuerzo igual a la totalidad que deberá colocarse en esa dirección, multiplicada por 2a1/(a1+a2), donde a1 y a2, son, respectivamente, los lados corto y largo de la zapata.", "excerptSha256": "8c7d6abc469ca25aa124b900b066b3aa148978c3378dda6a311a000753cf3d95", "verifiedAt": "2026-09-23" }],
+          "implementation": {"centralBandFraction": "2*a1/(a1+a2)"}
+        },
+        {
+          "clauseId": "9.4.8.2",
+          "pages": [1036],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1036, "excerpt": "Las secciones críticas para diseño por fuerza cortante en una dirección, se ubicarán en el plano vertical localizado a un peralte efectivo d de la zapata o losa de cimentación, medido a partir de la sección crítica para diseño por flexión indicada en la tabla 9.4.7.4.", "excerptSha256": "3796a6a680f3a788a92e5d939cafcd4cc73e699f0fcb26e1e4c198fd285ad081", "verifiedAt": "2026-09-23" }],
+          "implementation": {"oneWayCriticalSection": "d desde la cara de la columna"}
+        },
+        {
+          "clauseId": "14.4.2.1",
+          "pages": [1096],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1096, "excerpt": "La longitud de desarrollo de barras corrugadas, alambres corrugados y barras corrugadas postinstaladas (anclas) Ld será la mayor de a) o b): a) Longitud calculada según 14.4.2.3 o 14.4.2.4 usando los factores de 14.4.2.5 aplicables b) 300 mm.", "excerptSha256": "761cc49e8f55fc55524fc8bf77c6bea177c042da40b767a5a26c087c7a0e1042", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimumDevelopmentLength": "300 mm"}
+        },
+        {
+          "clauseId": "14.4.2.4 (tabla 14.4.2.4)",
+          "pages": [1097],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1097, "excerpt": "Separación libre entre barras o alambres por ser desarrollados o unidos mediante traslapes con al menos 2db y recubrimiento libre al menos de db: fy ψp ψe ψg/(2.1λ√fc′) db (no. 6 y menores), fy ψp ψe ψg/(1.7λ√fc′) db (no. 7 a no. 11). Otros casos: fy ψp ψe ψg/(1.4λ√fc′) db (no. 6 y menores), fy ψp ψe ψg/(1.1λ√fc′) db (no. 7 a no. 11)", "excerptSha256": "889f8c2469401b710126b61673f9508cacd2fcbf1ec8fc27ad281e89840805ea", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Ld": {"favorableNo6": "fy*psiP*psiE*psiG/(2.1*sqrt(fc))*db", "favorableNo7to11": "fy*psiP*psiE*psiG/(1.7*sqrt(fc))*db", "otherNo6": "fy*psiP*psiE*psiG/(1.4*sqrt(fc))*db", "otherNo7to11": "fy*psiP*psiE*psiG/(1.1*sqrt(fc))*db"}}
+        },
+        {
+          "clauseId": "14.4.2.6 (tabla 14.4.2.6)",
+          "pages": [1098],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1098, "excerpt": "Grado del refuerzo ψg; Grado 42 o Grado 52; 1.0; Grado 56; 1.15; Grado mayor que 56; 1.3 … Posición en el colado ψp; Más de 300 mm de concreto fresco colocado debajo del refuerzo horizontal o inclinado; 1.3; Otro; 1.0", "excerptSha256": "df6535badef811d04fff3ac87aa235221d1180bd56aa225515ee9c42c856f806", "verifiedAt": "2026-09-23" }],
+          "implementation": {"psiG": {"grade42": 1.0, "grade56": 1.15, "above56": 1.3}, "psiP": {"moreThan300mmBelow": 1.3, "other": 1.0}}
+        },
+        {
+          "clauseId": "13.4.4.1",
+          "pages": [1083],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1083, "excerpt": "la deflexión adicional que ocurra a largo plazo en miembros no presforzados de concreto Clase 1 sujetos a flexión, se obtendrá multiplicando la deflexión inmediata, calculada de acuerdo con 13.4.3, para la carga muerta y la porción de la carga viva que actúa en forma permanente y, en su caso, el efecto del presfuerzo, por el factor determinado según la ec. 13.4.4.1: λΔ = ξ / (1 + 50p′) donde p′ es la cuantía de acero a compresión en el centro del claro, para vigas simplemente apoyadas o continuas, y en el empotramiento, para voladizos. Duración de la carga sostenida, meses; Valor del factor ξ; 3; 1.0; 6; 1.2; 12; 1.4; 60 o más; 2.0", "excerptSha256": "fcbe1c522931e865c511086bb28e5a7640d3e91bdaddbd1ec0310b4ee978769d", "verifiedAt": "2026-09-23" }],
+          "implementation": {"longTermFactor": "xi/(1+50*pPrime)", "xiByMonths": {"3": 1.0, "6": 1.2, "12": 1.4, "60": 2.0}}
+        },
+        {
+          "clauseId": "13.6.2 (tabla 13.6.2)",
+          "pages": [1085],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1085, "excerpt": "380 (280/fs) − 2.5cc a) 300 (280/fs)", "excerptSha256": "b299dccdea2e582ddbd5ea8e15b6868c653e87ccf5dad76b5a24c30e8c6b29ac", "verifiedAt": "2026-09-23" }],
+          "implementation": {"maximumBarSpacing": "min(380*(280/fs)-2.5*cc, 300*(280/fs))"}
+        },
+        {
+          "clauseId": "13.4.1.1 (límites a y b)",
+          "pages": [1080],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1080, "excerpt": "a) Si al flexionarse un elemento no se dañan otros elementos estructurales, 5 mm más el claro dividido entre 240 b) Si al flexionarse un elemento se dañan otros elementos estructurales, 3 mm más el claro entre 480.", "excerptSha256": "4ae65f35dde143997ce86b3575d1e3391a93694dcc864080fd81e5f39ed3852a", "verifiedAt": "2026-09-23" }],
+          "implementation": {"limitWithoutDamage": "5 mm + L/240", "limitWithDamage": "3 mm + L/480"}
+        },
+        {
+          "clauseId": "13.4.3.5",
+          "pages": [1082],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1082, "excerpt": "En claros continuos, el momento de inercia que se utilice será un valor promedio calculado con la ec. 13.4.3.5: I = (I1 + I2 + 2I3)/4 (13.4.3.5) donde I1 e I2 son los momentos de inercia de las secciones extremas del claro e I3 el de la sección central. Si el claro sólo es continuo en un extremo, el momento de inercia correspondiente al extremo discontinuo se supondrá igual a cero, y en la ec. 13.4.3.5 el denominador será igual a 3.", "excerptSha256": "c64edde5463f09d74dfab5d61ea960736cfa21f9cfafe33c58dc6b85235986c7", "verifiedAt": "2026-09-23" }],
+          "implementation": {"continuousAverage": "(I1+I2+2*I3)/4", "oneEndContinuous": "(I1+2*I3)/3"}
+        },
+        {
+          "clauseId": "14.2.3",
+          "pages": [1091],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1091, "excerpt": "En columnas, pedestales, puntales y elementos de borde de muros, la distancia libre entre barras longitudinales no será menor que 1.5db, 1.5tmag ni que 40 mm.", "excerptSha256": "d9b69d3e54d2ecb13b4f151e037086b2a07f84ad6298945c45d990713a5394b7", "verifiedAt": "2026-09-23" }],
+          "implementation": {"columnClearSpacing": "max(1.5*db, 1.5*tmag, 40 mm)"}
+        },
+        {
+          "clauseId": "14.4.3.1-14.4.3.2",
+          "pages": [1099, 1100],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1099, "excerpt": "La longitud de desarrollo de una barra corrugada que termina con un doblez a 90 o 180 grados, Ldh, será la mayor de a) a c): a) 0.24fyψeψrψc/(λ√fc′) db b) 8db c) 150 mm.", "excerptSha256": "8d2642baf91bbc74eff0e20106f1a070352ee94bacdf96740cc05de968cc4014", "verifiedAt": "2026-09-23" }, { "page": 1100, "excerpt": "Tabla 14.4.3.2 - Factores de modificación para la longitud de desarrollo de barras con dobleces a tensión: Concreto de peso normal 1.0; Acero de refuerzo sin revestimiento epóxico o sin revestimiento de lodo bentonítico o galvanizado 1.0; Recubrimiento ψr: Otro 1.0; Refuerzo de confinamiento ψc: Otro 1.0", "excerptSha256": "fcfc43249afe99025c008ffaf3ac61c2a3847e90aca9e9cd6176fbae61f83a2f", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Ldh": "max(0.24*fy*psiE*psiR*psiC/(lambda*sqrt(fc))*db, 8*db, 150 mm)", "factorsUsed": {"lambda": 1.0, "psiE": 1.0, "psiR": 1.0, "psiC": 1.0}}
+        },
+        {
+          "clauseId": "14.5.2.1 (tabla 14.5.2.1)",
+          "pages": [1111],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1111, "excerpt": "La longitud de traslape a tensión Ltt de barras corrugadas y alambres corrugados a tensión se obtendrá de la tabla 14.5.2.1, donde Ld se calcula de 14.4.2.1.a. … < 2.0 Todos los casos Clase B: El mayor de: 1.3Ld y 300 mm", "excerptSha256": "4c988122d4a1b5203f11c7b330db0b9886bcf490d54341409e290b58f684fe6f", "verifiedAt": "2026-09-23" }],
+          "implementation": {"classB": "max(1.3*Ld, 300 mm)"}
+        },
+        {
+          "clauseId": "3.3.5.2.2.2 y 3.3.5.2.5.1-3.3.5.2.5.5",
+          "pages": [800, 801, 802],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 800, "excerpt": "3.3.5.2.2.2 En miembros con extremos no restringidos lateralmente, los efectos de esbeltez no podrán despreciarse.", "excerptSha256": "5738c045088babe5e5a9926659d57eab39f62d54e99e1a8a909ddd0952e6e588", "verifiedAt": "2026-09-23" }, { "page": 801, "excerpt": "M1 = M1b + Fas M1s (3.3.5.2.5.1.a) M2 = M2b + Fas M2s (3.3.5.2.5.1.b) a) Fas = 1/(1 − λest) ≥ 1 (3.3.5.2.5.2.a) b) Fas = 1/(1 − ΣPu/0.75ΣPc) ≥ 1 (3.3.5.2.5.2.b) Pc se calcula con la ec. 3.3.5.2.4.1.d usando un factor de esbeltez k al menos igual a 1.0. 3.3.5.2.5.3 Si Fas calculado con la ec. 3.3.5.2.5.2.a excede 1.5, se podrá usar el valor obtenido con la ec. 3.3.5.2.5.2.b o hacer un análisis elástico lineal de segundo orden de acuerdo con 3.3.6. 3.3.5.2.5.5 Si un miembro sujeto a flexocompresión con extremos no restringidos tiene una relación", "excerptSha256": "1c2cef0d205f5896e7383ab54e2cc29335df1e7be0e65dfcf7649a6ee817c4b5", "verifiedAt": "2026-09-23" }, { "page": 802, "excerpt": "H/r ≥ 35/√(Pu/(fc′Ag)) (3.3.5.2.5.5) se diseñará para la carga Pu y un momento flexionante amplificado Mc calculado según se especifica en 3.3.5.2.4.1, pero calculando M1 y M2 como se especifica en 3.3.5.2.5.1", "excerptSha256": "09e76a7777d93e162054c608248557c21aead73cbcdd57b1398737d5dc728916", "verifiedAt": "2026-09-23" }],
+          "implementation": {"swayMoment": "M2=M2b+Fas*M2s", "Fas": "max(1,1/(1-lambdaEst))", "FasLimit": 1.5, "minimumK": 1.0, "individualCheck": "H/r >= 35/sqrt(Pu/(fc*Ag))"}
+        },
+        {
+          "clauseId": "6.7.4.4.2.4 (comentario, fig. C6.7.4.4 a)",
+          "pages": [917],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 917, "excerpt": "Acr = 2d(c1 + c2 + 2d) Jc = d(c1 + d)³/6 + (c1 + d)d³/6 + d(c2 + d)(c1 + d)²/2 a) Columna interior", "excerptSha256": "fbfb657da94590f83d2469d00768ae3ee77c0c170dd94c389c11b194b40ea3d9", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Jc": "d*(c1+d)^3/6+(c1+d)*d^3/6+d*(c2+d)*(c1+d)^2/2"}
+        },
+        {
+          "clauseId": "6.7.6.1.1-6.7.6.1.2",
+          "pages": [919],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 919, "excerpt": "6.7.6.1.1 Se deberá colocar un área mínima de refuerzo por flexión, As,mín=0.0018Ag, o como se define en 6.7.6.1.2, cerca de la cara a tensión de la losa en la dirección del claro bajo consideración. 6.7.6.1.2 Si vuv > 0.17FRλsλ√fc′ en la sección crítica para cortante en dos direcciones alrededor de una columna, carga concentrada o zona de reacción, As,mín colocada en el espesor blosa deberá cumplir con la ec. 6.7.6.1.2: As,mín = 5vuv blosa bo/(FR αs fy) (6.7.6.1.2)", "excerptSha256": "fba45e159508ab984719802e5c9d44ac8ea2d2cecc0983c7ad72d51673713e4c", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimumRatio": 0.0018, "punchingTrigger": "vuv > 0.17*FR*lambdaS*sqrt(fc)", "AsMinPunching": "5*vuv*bslab*bo/(FR*alphaS*fy)"}
+        },
+        {
+          "clauseId": "6.7.4.2.2.3 (tabla 6.7.4.2.2.3)",
+          "pages": [915],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 915, "excerpt": "El ancho efectivo de la losa, blosa, para resistir γfMsc deberá ser la suma del ancho de la columna o el capitel más una distancia a cada lado determinada con la tabla 6.7.4.2.2.3. Sin ábaco o ábaco de cortante: Menor de: 1.5h de la losa; Distancia al borde de la losa", "excerptSha256": "a2f1921d5e46770cc932c75a7b9d03b6cfdea5d485396a648597c984f6bc28cd", "verifiedAt": "2026-09-23" }],
+          "implementation": {"bslab": "c + 2*min(1.5*h, distancia al borde)"}
+        },
+        {
+          "clauseId": "6.7.7.2.2",
+          "pages": [922],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 922, "excerpt": "En losas macizas sin presfuerzo, la separación máxima s del refuerzo corrugado longitudinal deberá ser el menor de 2h y 450 mm en las secciones críticas, y el menor de 3h y 450 mm en otras secciones.", "excerptSha256": "f85efb7a45ea71728fa8816ddc20531338f52c35b0192d6ea7facd98c5640335", "verifiedAt": "2026-09-23" }],
+          "implementation": {"maximumSpacingCritical": "min(2*h, 450 mm)"}
+        },
+        {
+          "clauseId": "9.4.7.2",
+          "pages": [1034],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1034, "excerpt": "El diseño por flexión de elementos estructurales de las cimentaciones que trabajen en dos direcciones, será de acuerdo con 6.7, excepto en los casos señalados en 9.4.7.3.", "excerptSha256": "dc4555620fed98976081fba0957ba9bc4f78c196a109d8ad7d9edf2b1e3e544f", "verifiedAt": "2026-09-23" }],
+          "implementation": {"twoWayFootingFlexure": "según 6.7"}
         }
       ],
       "clauseVerificationStatus": "verified",
@@ -206,6 +494,650 @@
       "notes": [
         "The publication notice identifies concrete among the updated NTC and supersedes the prior concrete update when the 2023 update takes effect.",
         "PDF page numbers refer to the 1972-page official electronic annex, not the printed page number inside the concrete standard.",
+        "Only metadata, short evidence excerpts and hashes are versioned; the official PDF is not redistributed."
+      ]
+    },
+    {
+      "id": "ntc-cdmx-2023-criteria-actions",
+      "jurisdiction": "Ciudad de México",
+      "edition": "2023",
+      "title": "Norma Técnica Complementaria sobre Criterios y Acciones para el Diseño Estructural de las Edificaciones",
+      "status": "official-clauses-verified",
+      "officialLandingPage": "https://www.isc.cdmx.gob.mx/directores-res/cursos-de-actualizacion-2022/normas-tecnicas-complementarias-2023",
+      "publicationNotice": {"publisher": "Gaceta Oficial de la Ciudad de México", "publicationDate": "2023-11-06", "url": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/dc972b251726e01c75111932799419fc.pdf", "sha256": "3902b700735b31cf97e5eeda6bb720f6f8093631773466f9798e65906d9c23f2", "verification": "download-stream-hashed-2026-09-14"},
+      "officialElectronicAnnex": {"publisher": "Consejería Jurídica y de Servicios Legales de la Ciudad de México", "url": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf", "sha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a", "verification": "download-stream-hashed-2026-09-14", "scopeNote": "Official 2023 electronic annex bundle. Criteria and actions occupy its first pages; only the clauses listed below are open for implementation."},
+      "verifiedClauses": [
+        {
+          "clauseId": "3.4.1",
+          "pages": [7],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 7, "excerpt": "a) Para combinaciones de acciones clasificadas en 2.3.1.a, para estructuras del Grupo B se aplicará un factor de carga igual a 1.3 para las cargas permanentes y 1.5 para las variables, mientras que para las del Grupo A serán igual a 1.5 y 1.7, respectivamente b) Para combinaciones de acciones clasificadas en 2.3.1.b, se tomará un factor de carga de 1.1 aplicado a los efectos de todas las acciones que intervengan en la combinación c) Para acciones o fuerzas internas cuyo efecto sea favorable a la resistencia o estabilidad de la estructura, el factor de carga se tomará igual a 0.9", "excerptSha256": "59927ff67ed9ad0d468375adb591e0759a7ff80d8ba432467630d0ea25688a81", "verifiedAt": "2026-09-23" }],
+          "implementation": {"loadFactors": {"groupB": {"permanent": 1.3, "variable": 1.5}, "groupA": {"permanent": 1.5, "variable": 1.7}, "accidental": 1.1, "favorable": 0.9}}
+        },
+        {
+          "clauseId": "6.1.1",
+          "pages": [10],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 10, "excerpt": "c) La carga media W se deberá emplear en el cálculo de asentamientos diferidos y para el cálculo de flechas diferidas", "excerptSha256": "ffedd82817d427c656ae78d455ea0cfdc4cb32faf71bc96a1d06c5a56e775d6e", "verifiedAt": "2026-09-23" }],
+          "implementation": {"sustainedLiveLoad": "W (carga media) para flechas diferidas"}
+        },
+        {
+          "clauseId": "tabla 6.1.2.2",
+          "pages": [11],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 11, "excerpt": "Destino de piso o cubierta W Wa Wm Observaciones a) Habitación (casa – habitación, departamentos, viviendas, dormitorios, cuartos de hotel, internados de escuelas, cuarteles, cárceles, correccionales, hospitales y similares) 0.8 (80) 1.0 (100) 1.9 (190) [1] b) Oficinas, despachos y laboratorios 1.0 (100) 1.8 (180) 2.5 (250) [2] c) Aulas 1.0 (100) 1.8 (180) 2.5 (250) d) Comunicación para peatones (pasillos, escaleras, rampas, vestíbulos y pasajes de acceso libre al público) 0.4 (40) 1.5 (150) 3.5 (350)", "excerptSha256": "d6d20dc1932573b75def950a70028f5647606a8e57d408c0bb4cbf5327baff66", "verifiedAt": "2026-09-23" }],
+          "implementation": {"liveLoadsKnM2": {"habitacion": {"W": 0.8, "Wm": 1.9}, "oficinas": {"W": 1.0, "Wm": 2.5}, "aulas": {"W": 1.0, "Wm": 2.5}, "comunicacion": {"W": 0.4, "Wm": 3.5}}}
+        }
+      ],
+      "clauseVerificationStatus": "verified",
+      "localPdf": null,
+      "implementationGate": "open-for-verified-clauses-only",
+      "notes": [
+        "Same official annex bytes as the concrete standard; page numbers refer to the 1972-page bundle.",
+        "Only metadata, short evidence excerpts and hashes are versioned; the official PDF is not redistributed."
+      ]
+    },
+    {
+      "id": "nsr-10-titulo-c",
+      "jurisdiction": "Colombia",
+      "edition": "2010",
+      "title": "Reglamento Colombiano de Construcción Sismo Resistente NSR-10 — Título C: Concreto estructural",
+      "status": "official-clauses-verified",
+      "officialLandingPage": "https://minvivienda.gov.co/normativa/decreto-0926-2010",
+      "publicationNotice": {"publisher": "Ministerio de Ambiente, Vivienda y Desarrollo Territorial (Decreto 926 de 2010)", "publicationDate": "2010-03-19", "url": "https://minvivienda.gov.co/sites/default/files/normativa/0926%20%20-%202010.pdf", "sha256": "eb0ca1db05978783daa457d572f1acd7dfcb0870560e99631492c174cd8936b9", "verification": "download-stream-hashed-2026-09-23"},
+      "officialElectronicAnnex": {"publisher": "Ministerio de Ambiente, Vivienda y Desarrollo Territorial — Comisión Asesora Permanente para el Régimen de Construcciones Sismo Resistentes; copia alojada por el Instituto Distrital de Recreación y Deporte (Alcaldía de Bogotá)", "url": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf", "sha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb", "verification": "download-stream-hashed-2026-09-23", "scopeNote": "Título C completo (590 páginas, reglamento y comentario). Las páginas citadas son páginas del PDF, no la numeración C-xxx impresa."},
+      "verifiedClauses": [
+        {
+          "clauseId": "C.9.2.1",
+          "pages": [134],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 134, "excerpt": "U = 1.4(D + F) (C.9-1) U = 1.2(D + F + T) + 1.6(L + H) + 0.5(Lr ó G ó Le) (C.9-2)", "excerptSha256": "ef2a10b0ce63e4602642b7114c16c648e15ce50db98b756cebaf175bfb600e74", "verifiedAt": "2026-09-23" }],
+          "implementation": {"gravityCombinations": ["1.4D", "1.2D+1.6L"]}
+        },
+        {
+          "clauseId": "C.9.3.2.1-C.9.3.2.3",
+          "pages": [136, 138],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 136, "excerpt": "C.9.3.2.1 — Secciones controladas por tracción como se define en 10.3.4 … 0.90; C.9.3.2.2 — Secciones controladas por compresión como se definen en C.10.3.3: (b) Otros elementos reforzados … 0.65; Para las secciones en las que la deformación unitaria neta a la tracción en el acero extremo en tracción en el estado de resistencia nominal, εt, se encuentra entre los límites para secciones controladas por compresión y las secciones controladas por tracción, se permite que φ aumente linealmente desde el valor correspondiente a las secciones controladas por compresión hasta 0.90, en la medida que εt aumente desde el límite de deformación unitaria controlado por compresión hasta 0.005.", "excerptSha256": "1ba27164795dcda9ed6470a3cdb2334ee7b09b7d1c18b477bf9cd62fcb0622cd", "verifiedAt": "2026-09-23" }, { "page": 138, "excerpt": "C.9.3.2.3 — Cortante y torsión … 0.75", "excerptSha256": "925df27438c6187819a510b39285c359bb4a8ddc2175b23e16cc5d15baa13d0d", "verifiedAt": "2026-09-23" }],
+          "implementation": {"phi": {"tensionControlled": 0.9, "compressionControlledTied": 0.65, "transitionEndStrain": 0.005, "shear": 0.75}}
+        },
+        {
+          "clauseId": "C.10.3.3-C.10.3.5",
+          "pages": [151, 153],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 151, "excerpt": "El límite de deformación unitaria controlada por compresión es la deformación unitaria neta de tracción del refuerzo en condiciones de deformación unitaria balanceada. Para refuerzo Grado 420, y para todos los refuerzos preesforzados, se permite fijar el límite de deformación unitaria controlada por compresión en 0.002.", "excerptSha256": "7279469e1789b901b70a197a64439c29c9484ce8da2b47bd44d256ed3a8b6982", "verifiedAt": "2026-09-23" }, { "page": 153, "excerpt": "C.10.3.4 — Las secciones son controladas por tracción si la deformación unitaria neta de tracción en el refuerzo de acero extremo en tracción, εt, es igual o mayor a 0.005 … C.10.3.5 — Para elementos no preesforzados en flexión y elementos no preesforzados con carga axial mayorada de compresión menor a 0.10f′cAg, εt en el estado de resistencia nominal no debe ser menor a 0.004.", "excerptSha256": "49c3d3dc54e6717884a445431c6e93a31e3b643ff0e7b5631c4dad355df3bc25", "verifiedAt": "2026-09-23" }],
+          "implementation": {"compressionControlledLimit": "fy/Es (se permite 0.002 para Grado 420)", "tensionControlledLimit": 0.005, "minimumNetStrainFlexure": 0.004}
+        },
+        {
+          "clauseId": "C.10.2.7.3",
+          "pages": [151],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 151, "excerpt": "Para f′c entre 17 y 28 MPa, el factor β1 se debe tomar como 0.85. Para f′c superior a 28 MPa, β1 se debe disminuir en forma lineal a razón de 0.05 por cada 7 MPa de aumento sobre 28 MPa, sin embargo, β1 no debe ser menor de 0.65.", "excerptSha256": "bafed3bd2a76cbdc6ca93b223203e159d537918964fdbfc274338b4b3bece559", "verifiedAt": "2026-09-23" }],
+          "implementation": {"beta1": "0.85 si fc <= 28 MPa; 0.85-0.05*(fc-28)/7 >= 0.65"}
+        },
+        {
+          "clauseId": "C.8.5.1",
+          "pages": [124],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 124, "excerpt": "Para concreto de densidad normal, Ec puede tomarse como 4700√f′c.", "excerptSha256": "5fdcc4a0681512fbeacd8c361b97c03dfa1828eba8e605ee2693a00a8edbe0ce", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Ec": "4700*sqrt(fc)"}
+        },
+        {
+          "clauseId": "C.9.5.2.3-C.9.5.2.5",
+          "pages": [142, 143],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 142, "excerpt": "C.9.5.2.3 — … el momento de inercia efectivo, Ie, que se indica a continuación, pero sin tomarlo mayor que Ig. Ie = (Mcr/Ma)³Ig + [1 − (Mcr/Ma)³]Icr (C.9-8) donde Mcr = frIg/yt (C.9-9) y para concreto de peso normal, fr = 0.62λ√f′c (C.9-10) C.9.5.2.4 — Para elementos continuos se permite tomar Ie como el promedio de los valores obtenidos de la ecuación (C.9-8) para las secciones críticas de momento positivo y negativo. Para elementos prismáticos, se permite tomar Ie como el valor obtenido de la ecuación (C.9-8) en el centro de la luz para tramos simples y continuos, y en el punto de apoyo para voladizos.", "excerptSha256": "36f0b6f8efc61b35d4ad04397daddb5a5f3d83d94ddc38740cf7d39ee9a97966", "verifiedAt": "2026-09-23" }, { "page": 143, "excerpt": "determinarse multiplicando la deflexión inmediata causada por la carga permanente por el factor λΔ = ξ/(1 + 50ρ′) (C.9-11) … 5 años o más: 2.0; 12 meses: 1.4; 6 meses: 1.2; 3 meses: 1.0", "excerptSha256": "3d8c6b83b7d3856d6e65224a36291ffd860387ec64a1fb07633631b2fca919e0", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Ie": "(Mcr/Ma)^3*Ig+(1-(Mcr/Ma)^3)*Icr <= Ig", "fr": "0.62*sqrt(fc)", "continuous": "promedio de las secciones de momento positivo y negativo", "longTerm": "xi/(1+50*rhoPrime)", "xi": {"3 meses": 1.0, "6 meses": 1.2, "12 meses": 1.4, "5 años": 2.0}}
+        },
+        {
+          "clauseId": "Tabla C.9.5(b)",
+          "pages": [144],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 144, "excerpt": "Entrepisos que no soporten ni estén ligados a elementos no estructurales susceptibles de sufrir daños debido a deflexiones grandes: Deflexión inmediata debida a la carga viva, L: ℓ/360. La parte de la deflexión total que ocurre después de la unión de los elementos no estructurales (la suma de la deflexión a largo plazo debida a todas las cargas permanentes, y la deflexión inmediata debida a cualquier carga viva adicional): elementos susceptibles de sufrir daños ℓ/480; no susceptibles ℓ/240", "excerptSha256": "ed776a4a4c09046707267f356604988c61a862d2b6c2bea8a85b60fca568d516", "verifiedAt": "2026-09-23" }],
+          "implementation": {"liveImmediate": "l/360", "afterAttachmentSensitive": "l/480", "afterAttachmentOther": "l/240"}
+        },
+        {
+          "clauseId": "C.10.5.1",
+          "pages": [155],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 155, "excerpt": "el As proporcionado no debe ser menor que el obtenido por medio de: As,min = 0.25√f′c bw d/fy (C.10-3) pero no menor a 1.4bw d/fy", "excerptSha256": "346f36bf47747fb5cb291902297690d1835409ec75b5e6a248d8f00c55682bc4", "verifiedAt": "2026-09-23" }],
+          "implementation": {"AsMin": "max(0.25*sqrt(fc), 1.4)*bw*d/fy"}
+        },
+        {
+          "clauseId": "C.10.5.4 y C.7.12.2.1",
+          "pages": [156, 117],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 156, "excerpt": "C.10.5.4 — Para losas estructurales y zapatas de espesor uniforme, As,min en la dirección de la luz debe ser el mismo requerido por C.7.12.2.1. El espaciamiento máximo de este refuerzo no debe exceder tres veces el espesor, ni 450 mm.", "excerptSha256": "a7ea70b6534f17daabfbe90802d6b9eea0cb0150193370c5fa029e82d20e6048", "verifiedAt": "2026-09-23" }, { "page": 117, "excerpt": "C.7.12.2.1 — (b) En losas donde se empleen barras corrugadas Grado 420 o refuerzo electrosoldado de alambre … 0.0018", "excerptSha256": "420abb44cc65efa4fe36014cc2e3f3af3f133511b687b2e785f710f8a3fbc9fb", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimumRatio": 0.0018, "maximumSpacing": "min(tres veces h, 450 mm)"}
+        },
+        {
+          "clauseId": "C.10.6.4",
+          "pages": [157],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 157, "excerpt": "El espaciamiento del refuerzo más cercano a una superficie en tracción, s, no debe ser mayor que el dado por: s = 380(280/fs) − 2.5cc (C.10-4) pero no mayor que 300(280/fs) … Se permite tomar fs como 2/3 de fy.", "excerptSha256": "7e231780701ade8ba10663a5b5b24d03b6bd559a617e66b3778b3a74e147d7cd", "verifiedAt": "2026-09-23" }],
+          "implementation": {"maximumSpacing": "min(380*(280/fs)-2.5*cc, 300*(280/fs))", "fs": "2/3*fy"}
+        },
+        {
+          "clauseId": "C.11.2.1.1-C.11.2.1.3",
+          "pages": [181],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 181, "excerpt": "C.11.2.1.1 — Para elementos sometidos únicamente a cortante y flexión: Vc = 0.17λ√f′c bw d (C.11-3) C.11.2.1.2 — Para elementos sometidos a compresión axial: Vc = 0.17(1 + Nu/(14Ag))λ√f′c bw d (C.11-4) C.11.2.1.3 — Para elementos sometidos a tracción axial significativa, Vc debe tomarse como cero a menos que se haga un análisis más detallado", "excerptSha256": "1b3c9ac799c976ea28f5485900c5eb584be64a2d34ede26832b395fe7b16a9f6", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Vc": "0.17*sqrt(fc)*bw*d", "VcAxial": "0.17*(1+Nu/(14*Ag))*sqrt(fc)*bw*d", "VcTension": 0}
+        },
+        {
+          "clauseId": "C.11.4.5.1 y C.11.4.5.3",
+          "pages": [187],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 187, "excerpt": "El espaciamiento del refuerzo de cortante colocado perpendicularmente al eje del elemento no debe exceder de d/2 en elementos de concreto no preesforzado … ni de 600 mm. C.11.4.5.3 — Donde Vs sobrepase 0.33√f′c bw d las separaciones máximas dadas en C.11.4.5.1 y C.11.4.5.2 se deben reducir a la mitad.", "excerptSha256": "7126feba0360aad3d5da00c356dfda001493667c8ffee2a3aa76967c7aef3ed1", "verifiedAt": "2026-09-23" }],
+          "implementation": {"maximumSpacing": "min(d/2, 600 mm)", "highShear": "mitad si Vs > 0.33*sqrt(fc)*bw*d"}
+        },
+        {
+          "clauseId": "C.11.4.6.3",
+          "pages": [189],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 189, "excerpt": "Av,min = 0.062√f′c bw s/fyt (C.11-13) Pero no debe ser menor a (0.35bw s)/fyt.", "excerptSha256": "107637cb3e26f06fc40aa7df3118b39cce08d80b68f9570a90f4ef9e8bbfcd05", "verifiedAt": "2026-09-23" }],
+          "implementation": {"AvMin": "max(0.062*sqrt(fc), 0.35)*bw*s/fyt"}
+        },
+        {
+          "clauseId": "C.11.4.7.9",
+          "pages": [191],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 191, "excerpt": "Vs no debe considerarse mayor que 0.66√f′c bw d.", "excerptSha256": "c9d0cf71b627f9e4ee8ac7e7e7978869bf637c24fe8de93286767ee44b76d5e0", "verifiedAt": "2026-09-23" }],
+          "implementation": {"VsMax": "0.66*sqrt(fc)*bw*d"}
+        },
+        {
+          "clauseId": "C.12.2.1-C.12.2.2",
+          "pages": [230],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 230, "excerpt": "C.12.2.1 — La longitud de desarrollo para barras corrugadas y alambre corrugado en tracción, ℓd, debe determinarse a partir de C.12.2.2 ó C.12.2.3, con los factores de modificación de C.12.2.4 y C.12.2.5, pero ℓd no debe ser menor que 300 mm. C.12.2.2 — Barras No. 6 (3/4\") ó 20M (20 mm) o menores y alambres corrugados; Barras No. 7 (7/8\") ó 22M (22 mm) y mayores. Espaciamiento libre entre barras … no menor que db, recubrimiento libre no menor que db, y estribos … o espaciamiento libre … no menor a 2db y recubrimiento libre no menor a db: (fyψtψe/(2.1λ√f′c))db; (fyψtψe/(1.7λ√f′c))db. Otros casos: (fyψtψe/(1.4λ√f′c))db; (fyψtψe/(1.1λ√f′c))db", "excerptSha256": "c4ba2f4dd4c38d423951a7ed529d0c308660496f2df5972ddd63ba751601df95", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimum": "300 mm", "ld": {"favorableSmall": "fy*psiT*psiE/(2.1*sqrt(fc))*db", "favorableLarge": "fy*psiT*psiE/(1.7*sqrt(fc))*db", "otherSmall": "fy*psiT*psiE/(1.4*sqrt(fc))*db", "otherLarge": "fy*psiT*psiE/(1.1*sqrt(fc))*db"}}
+        },
+        {
+          "clauseId": "C.12.2.4",
+          "pages": [232],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 232, "excerpt": "(a) Cuando para el refuerzo horizontal se colocan más de 300 mm de concreto fresco debajo de la longitud de desarrollo o un empalme, ψt = 1.3. Otras situaciones ψt = 1.0. (b) … Refuerzo sin recubrimiento y refuerzo recubierto con cinc (galvanizado), ψe = 1.0. No obstante, el producto ψtψe no necesita ser mayor de 1.7.", "excerptSha256": "d0cbf4baa59bf59891e34ab9f337036c483035f6702c0831952f9977ee144cd2", "verifiedAt": "2026-09-23" }],
+          "implementation": {"psiT": {"top": 1.3, "other": 1.0}, "psiE": 1.0, "productCap": 1.7}
+        },
+        {
+          "clauseId": "C.12.5.1-C.12.5.2",
+          "pages": [234],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 234, "excerpt": "C.12.5.1 — La longitud de desarrollo para barras corrugadas en tracción que terminen en un gancho estándar (véase C.7.1), ℓdh se debe calcular de C.12.5.2 y los factores de modificación de C.12.5.3, pero ℓdh no debe ser menor que el mayor de 8db y 150 mm. C.12.5.2 — Para las barras corrugadas, ℓdh debe ser (0.24ψefy/(λ√f′c))db … Para otros casos, ψe y λ deben tomarse igual a 1.0.", "excerptSha256": "3154af04fa33bfe2071d9638380c6d4292c22984dd5849acb98063664915ed29", "verifiedAt": "2026-09-23" }],
+          "implementation": {"ldh": "max(0.24*psiE*fy/(lambda*sqrt(fc))*db, 8*db, 150 mm)", "factorsUsed": {"psiE": 1.0, "lambda": 1.0}}
+        },
+        {
+          "clauseId": "C.12.15.1",
+          "pages": [252],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 252, "excerpt": "La longitud mínima del empalme por traslapo en tracción debe ser la requerida para empalmes por traslapo Clases A o B, pero no menor que 300 mm, donde: Empalme por traslapo Clase A … 1.0ℓd Empalme por traslapo Clase B … 1.3ℓd donde ℓd se calcula de acuerdo con C.12.2 para desarrollar fy, pero sin los 300 mm mínimos de C.12.2.1", "excerptSha256": "026ef3ca02aa89f7b67dd49defd43115dc9524f4d77af50991cd98a4950b378c", "verifiedAt": "2026-09-23" }],
+          "implementation": {"classB": "max(1.3*ld, 300 mm)"}
+        },
+        {
+          "clauseId": "C.7.6.1 y C.7.6.3",
+          "pages": [107],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 107, "excerpt": "C.7.6.1 — La distancia libre mínima entre barras paralelas de una capa debe ser db, pero no menor de 25 mm. C.7.6.3 — En elementos a compresión reforzados con espirales o estribos, la distancia libre entre barras longitudinales no debe ser menor de 1.5db, ni de 40 mm.", "excerptSha256": "05fc96c459ab3369fa9b22d6a357dce30f050e027cf763587f6b22d7efedf534", "verifiedAt": "2026-09-23" }],
+          "implementation": {"beamClearSpacing": "max(db, 25 mm)", "columnClearSpacing": "max(1.5*db, 40 mm)"}
+        },
+        {
+          "clauseId": "C.3.3.2",
+          "pages": [54, 55],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 54, "excerpt": "C.3.3.2 — El tamaño máximo nominal del agregado grueso no debe ser superior a:", "excerptSha256": "8fab0e6710d509c2875382981fd0baf8d44ed6519845a8940fce33bb28f438f9", "verifiedAt": "2026-09-23" }, { "page": 55, "excerpt": "(c) 3/4 del espaciamiento mínimo libre entre las barras o alambres individuales de refuerzo", "excerptSha256": "f4841716e9a898e13a6ab59a5e309db0652ae2cc3fc486b5faa33f2f6ac4c7e0", "verifiedAt": "2026-09-23" }],
+          "implementation": {"clearSpacingFromAggregate": "4/3*tmag"}
+        },
+        {
+          "clauseId": "C.7.10.5.1-C.7.10.5.3",
+          "pages": [115],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 115, "excerpt": "C.7.10.5.1 — Todas las barras no preesforzadas deben estar confinadas por medio de estribos transversales de por lo menos diámetro No. 3 (3/8\") ó 10M (10 mm), para barras longitudinales No. 10 (1-1/4\") ó 32M (32 mm) o menores … C.7.10.5.2 — El espaciamiento vertical de los estribos no debe exceder 16 diámetros de barra longitudinal, 48 diámetros de barra o alambre de los estribos, o la menor dimensión del elemento sometido a compresión. C.7.10.5.3 — Los estribos deben disponerse de tal forma que cada barra longitudinal de esquina y barra alterna tenga apoyo lateral proporcionado por la esquina de un estribo con un ángulo interior no mayor de 135º, y ninguna barra longitudinal debe estar separada a más de 150 mm libres de una barra apoyada lateralmente.", "excerptSha256": "18189933ffccb016530edde485b1e9964ba25bca7a7f4509f5d7a309d28bd76c", "verifiedAt": "2026-09-23" }],
+          "implementation": {"tieSpacing": "min(16*db, 48*dbTie, menor dimensión)", "minimumTie": "No. 3", "unsupportedClearLimit": "150 mm"}
+        },
+        {
+          "clauseId": "C.10.3.6.2",
+          "pages": [153],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 153, "excerpt": "C.10.3.6.2 — Para elementos no preesforzados con estribos que cumplan con C.7.10.5: φPn,max = 0.75φ[0.85f′c(Ag − Ast) + fyAst] (C.10-2)", "excerptSha256": "960520977176421294cde790015b966bcbce9f8457c7e8171c7cc8a3944e7ac9", "verifiedAt": "2026-09-23" }],
+          "implementation": {"phiPnMax": "0.75*phi*(0.85*fc*(Ag-Ast)+fy*Ast)"}
+        },
+        {
+          "clauseId": "C.10.9.1",
+          "pages": [160],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 160, "excerpt": "El área de refuerzo longitudinal, Ast, para elementos no compuestos a compresión no debe ser menor que 0.01Ag ni mayor que 0.04Ag.", "excerptSha256": "03a796d4684e175ba023163e877edb31758baf9cc1a552ecc226023d6c550bae", "verifiedAt": "2026-09-23" }],
+          "implementation": {"longitudinalRatio": {"minimum": 0.01, "maximum": 0.04}}
+        },
+        {
+          "clauseId": "C.10.10.1 y C.10.10.1.2",
+          "pages": [162],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 162, "excerpt": "C.10.10.1 — Se permite ignorar los efectos de esbeltez en los siguientes casos: a) en elementos sometidos a compresión no arriostrados contra desplazamientos laterales cuando: kℓu/r ≤ 22 (C.10-6) b) en elementos a compresión arriostrados contra desplazamientos laterales cuando: kℓu/r ≤ 34 − 12(M1/M2) ≤ 40 (C.10-7) donde el término M1/M2 es positivo si la columna está flectada en curvatura simple y negativo si el elemento tiene curvatura doble. C.10.10.1.2 — Se puede tomar el radio de giro, r, igual a 0.3 veces la dimensión total de la sección en la dirección en la cual se está considerando la estabilidad para el caso de elementos rectangulares", "excerptSha256": "bbfa8a42c4ee064bbfd7615e2264cb24e68f4d19cb5bcc5c6c4e53fc69568551", "verifiedAt": "2026-09-23" }],
+          "implementation": {"swayNeglect": "k*lu/r <= 22", "bracedNeglect": "k*lu/r <= 34-12*M1/M2 <= 40", "r": "0.3*h"}
+        },
+        {
+          "clauseId": "C.10.10.2.1",
+          "pages": [163],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 163, "excerpt": "Los momentos totales, incluyendo los efectos de segundo orden, de elementos en compresión, vigas de restricción u otros elementos estructurales no deben exceder 1.4 veces los momentos debidos a los efectos de primer orden.", "excerptSha256": "a6fce499705d371f08280681dc211b660ba0fc8bc44852b5229d2d3d74c9b58e", "verifiedAt": "2026-09-23" }],
+          "implementation": {"secondOrderLimit": 1.4}
+        },
+        {
+          "clauseId": "C.10.10.6-C.10.10.6.5",
+          "pages": [167, 168],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 167, "excerpt": "Mc = δM2 (C.10-11) Donde δ = Cm/(1 − Pu/(0.75Pc)) ≥ 1.0 (C.10-12) y Pc = π²EI/(kℓu)² (C.10-13) C.10.10.6.1 — El EI debe tomarse como: … EI = 0.4EcIg/(1 + βdns) (C.10-15)", "excerptSha256": "e6bef0b7e78a8e7c428efcf35cbae97f8fc0c651969481b4b84f0e4a1d31cee2", "verifiedAt": "2026-09-23" }, { "page": 168, "excerpt": "C.10.10.6.4 — Para elementos sin cargas transversales entre los apoyos, Cm debe considerarse como: Cm = 0.6 + 0.4M1/M2 (C.10-16) … C.10.10.6.5 — El momento mayorado, M2, en la ecuación (C.10-11) no debe ser menor de M2,min = Pu(15 + 0.03h) (C.10-17) en cada eje separadamente, donde 15 y h están en mm. Para los elementos en que M2,min excede a M2, el valor de Cm en la ecuación (10-16) debe ser igual a 1.0", "excerptSha256": "992c68fb37d231cf945a23d04badba69538d85f2d254cd8df90433de5ae56648", "verifiedAt": "2026-09-23" }],
+          "implementation": {"delta": "max(1.0, Cm/(1-Pu/(0.75*Pc)))", "EI": "0.4*Ec*Ig/(1+betadns)", "Cm": "0.6+0.4*M1/M2", "M2min": "Pu*(15+0.03*h)"}
+        },
+        {
+          "clauseId": "C.10.10.7-C.10.10.7.3",
+          "pages": [169],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 169, "excerpt": "M2 = M2ns + δsM2s (C.10-19) … C.10.10.7.2 — El factor de longitud efectiva k debe ser determinado usando los valores de Ec e I dados en C.10.10.4 y no debe ser menor de 1.0. C.10.10.7.3 — El magnificador de momento δs debe ser calculado como: δs = 1/(1 − Q) ≥ 1 (C.10-20) Si el δs calculado por la ecuación (C.10-20) excede de 1.5, el δs debe ser calculado usando el análisis elástico de segundo orden ó C.10.10.7.4.", "excerptSha256": "93625ade5f3f055522d27f6bdd369d9b4e5f2be7ca4779aa3b02feb8bc8a1b31", "verifiedAt": "2026-09-23" }],
+          "implementation": {"swayMoment": "M2=M2ns+deltaS*M2s", "deltaS": "max(1,1/(1-Q))", "deltaSLimit": 1.5, "minimumK": 1.0}
+        },
+        {
+          "clauseId": "CR10.3.6 y CR10.3.7 (comentario)",
+          "pages": [154],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 154, "excerpt": "Un cálculo simple y algo conservador de la resistencia nominal Pni se puede obtener a partir de la relación de cargas recíprocas. 1/Pni = 1/Pnx + 1/Pny − 1/Po … Esta relación es más adecuada cuando los valores Pnx y Pny son mayores que la fuerza axial balanceada Pb para el eje en cuestión.", "excerptSha256": "753ea8bcd193634adebedbec1802dd59e372833102d4da1ae66487bd383b40f9", "verifiedAt": "2026-09-23" }],
+          "implementation": {"reciprocalLoad": "1/Pni=1/Pnx+1/Pny-1/Po"}
+        },
+        {
+          "clauseId": "C.11.11.1.2",
+          "pages": [215],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 215, "excerpt": "Para comportamiento en dos direcciones, cada una de las secciones críticas que van a investigarse deben estar localizadas de modo que su perímetro, bo, es un mínimo, pero no debe estar más cerca de d/2 de: (a) los bordes o las esquinas de las columnas", "excerptSha256": "abb62ced7a43f8436a1983c01a701106d104ab4ba8ebf595ce36bcd1394e7227", "verifiedAt": "2026-09-23" }],
+          "implementation": {"criticalSection": "d/2 del paño"}
+        },
+        {
+          "clauseId": "C.11.11.2.1",
+          "pages": [216],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 216, "excerpt": "Para losas no preesforzadas y zapatas, Vc debe ser el menor entre (a), (b) y (c): (a) Vc = 0.17(1 + 2/β)λ√f′c bo d (C.11-31) (b) Vc = 0.083(αs d/bo + 2)λ√f′c bo d (C.11-32) donde αs es 40 para columnas interiores, 30 para columnas de borde, y 20 para columnas en esquina (c) Vc = 0.33λ√f′c bo d (C.11-33)", "excerptSha256": "489da4597e9e79ef9e34176e30c024c2d09a2ce35b3e5b04e87a6e701c874960", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Vc": "sqrt(fc)*bo*d*min(0.17*(1+2/beta), 0.083*(alphaS*d/bo+2), 0.33)", "alphaS": {"interior": 40, "edge": 30, "corner": 20}}
+        },
+        {
+          "clauseId": "C.11.11.7.1 y C.13.5.3.2",
+          "pages": [225, 268],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 225, "excerpt": "El resto del momento no balanceado dado por γvMu se considera transferido por excentricidad de cortante alrededor del centroide de la sección crítica definida en C.11.11.1.2, donde γv = (1 − γf) (C.11-37)", "excerptSha256": "5a07d355eaad5919add8bd07d91177ab6146bace4ad63eabdc114cae41e9836f", "verifiedAt": "2026-09-23" }, { "page": 268, "excerpt": "γf = 1/(1 + (2/3)√(b1/b2)) (C.13-1)", "excerptSha256": "e6a83028fd6f5c4d12c3b50033a794ef85ea6513d19e5ed60db2f2f035242605", "verifiedAt": "2026-09-23" }],
+          "implementation": {"gammaF": "1/(1+(2/3)*sqrt(b1/b2))", "gammaV": "1-gammaF"}
+        },
+        {
+          "clauseId": "CR11.11.7.2 (comentario)",
+          "pages": [226],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 226, "excerpt": "Para una columna interior, Ac y Jc pueden calcularse por: Ac = área de concreto de la sección crítica supuesta = 2d(c1 + c2 + 2d) Jc = propiedad de la sección crítica supuesta, análoga al momento polar de inercia = d(c1 + d)³/6 + (c1 + d)d³/6 + d(c2 + d)(c1 + d)²/2", "excerptSha256": "d178418587b81bdddbffd50bfd5819c05830c6fe57b0844d38cb1bc7d7603d06", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Jc": "d*(c1+d)^3/6+(c1+d)*d^3/6+d*(c2+d)*(c1+d)^2/2"}
+        },
+        {
+          "clauseId": "C.15.4.2 y C.15.4.4.2",
+          "pages": [300, 301],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 300, "excerpt": "C.15.4.2 — El momento máximo mayorado, Mu, para una zapata aislada debe calcularse … para las secciones críticas localizadas como se indica a continuación: (a) En la cara de la columna, pedestal o muro, para zapatas que soporten una columna, pedestal o muro de concreto.", "excerptSha256": "cc1692a6d3e1a711405e912868b9467fd8f2d10371e3c70ec471862015b44ee0", "verifiedAt": "2026-09-23" }, { "page": 301, "excerpt": "C.15.4.4.2 — Para el refuerzo en la dirección corta, una porción del refuerzo total, γsAs, debe distribuirse en forma uniforme sobre una franja (centrada con respecto al eje de la columna o pedestal) cuyo ancho sea igual a la longitud del lado corto de la zapata … γs = 2/(β + 1) (15-1)", "excerptSha256": "a8b6c9b37e409c446599a575bc7e7554699d290069f3fb728fbbe4aec3f8bfc5", "verifiedAt": "2026-09-23" }],
+          "implementation": {"criticalSection": "cara de la columna", "bandFraction": "2/(beta+1)"}
+        },
+        {
+          "clauseId": "C.15.5.2 y C.11.1.3.1",
+          "pages": [301, 178],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 301, "excerpt": "C.15.5.2 — La ubicación de la sección crítica para cortante de acuerdo con el Capítulo C.11 debe medirse desde la cara de la columna, pedestal o muro.", "excerptSha256": "4a28fe800d1efc583a6274ebb91545850810b85ab86396c1f646f3eef853a69e", "verifiedAt": "2026-09-23" }, { "page": 178, "excerpt": "C.11.1.3.1 — Para elementos no preesforzados, se permite diseñar las secciones localizadas a una distancia menor a d medida desde la cara del apoyo para el Vu calculado a la distancia d.", "excerptSha256": "1353f12d6fe7f004914be7d3e0fdd2a339a84751d49ec46407e9ab0a07456be5", "verifiedAt": "2026-09-23" }],
+          "implementation": {"oneWayCriticalSection": "d desde la cara de la columna"}
+        },
+        {
+          "clauseId": "C.15.7",
+          "pages": [302],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 302, "excerpt": "La altura de las zapatas sobre el refuerzo inferior no debe ser menor de 150 mm para zapatas apoyadas sobre el suelo", "excerptSha256": "1b4910616f95051c9e928a70f1109be97405b40dde4a260b10798e3a25ad075e", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimumDepthAboveBottomSteel": "150 mm"}
+        },
+        {
+          "clauseId": "C.10.7.1",
+          "pages": [158],
+          "sourceUrl": "https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf",
+          "sourceSha256": "d68d196a59ef4a6b05d8039bb110eebfb6649b753cefc12cdcc8badea5607ecb",
+          "evidence": [{ "page": 158, "excerpt": "Las vigas de gran altura son elementos cargados en una cara y apoyados en la cara opuesta de manera que se pueden desarrollar puntales de compresión entre las cargas y los soportes, y tienen: (a) luz libre, ℓn, igual o menor a cuatro veces la altura total del elemento", "excerptSha256": "b084d01ca902b15264d1fbda27eb3c73f02082cd30bc509c48b8ad08bc248d21", "verifiedAt": "2026-09-23" }],
+          "implementation": {"deepBeam": "ln <= cuatro veces h"}
+        }
+      ],
+      "clauseVerificationStatus": "verified",
+      "localPdf": null,
+      "implementationGate": "open-for-verified-clauses-only",
+      "notes": [
+        "Minvivienda ya no aloja los títulos por separado; el Título C se obtuvo de una entidad de la Alcaldía de Bogotá y conserva la portada del Ministerio.",
+        "El NSR-10 tiene decretos modificatorios posteriores (092 de 2011, 340 de 2012, 945 de 2017); sólo se abren las cláusulas transcritas aquí, verificadas contra estos bytes.",
+        "Las cláusulas marcadas como comentario provienen de la columna COMENTARIO del mismo documento oficial.",
+        "Only metadata, short evidence excerpts and hashes are versioned; the official PDF is not redistributed."
+      ]
+    },
+    {
+      "id": "e060-2009-concreto-armado",
+      "jurisdiction": "Perú",
+      "edition": "2009",
+      "title": "Norma Técnica E.060 Concreto Armado — Reglamento Nacional de Edificaciones",
+      "status": "official-clauses-verified",
+      "officialLandingPage": "https://www.gob.pe/institucion/sencico/informes-publicaciones/887225-normas-del-reglamento-nacional-de-edificaciones-rne",
+      "publicationNotice": {"publisher": "Ministerio de Vivienda, Construcción y Saneamiento (Decreto Supremo N.º 010-2009-VIVIENDA)", "publicationDate": "2009-05-08", "url": "https://drive.google.com/file/d/1mWaZd2pKfD9OpBxgWCGvBa3B5CKclsbO/view?usp=sharing", "sha256": "f73d017bbf4d5ee8bb1676a139368f1a825833744f0557be3f8120fb82cb8b09", "verification": "download-stream-hashed-2026-09-23"},
+      "officialElectronicAnnex": {"publisher": "SENCICO — enlace publicado en la página oficial del RNE en gob.pe", "url": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing", "sha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9", "verification": "download-stream-hashed-2026-09-23", "scopeNote": "N.T.E. E.060 completa (205 páginas); la numeración de página del PDF coincide con la impresa."},
+      "verifiedClauses": [
+        {
+          "clauseId": "9.2.1",
+          "pages": [65],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 65, "excerpt": "La resistencia requerida para cargas muertas (CM) y cargas vivas (CV) será como mínimo: U = 1.4 CM + 1.7 CV (9-1)", "excerptSha256": "cb727cd3a9eeacfda439e4ed2d4d3ff4a8f28987185fb116065a5d24e6e08de5", "verifiedAt": "2026-09-23" }],
+          "implementation": {"gravityCombination": "1.4*CM+1.7*CV"}
+        },
+        {
+          "clauseId": "9.3.2.1-9.3.2.3",
+          "pages": [66],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 66, "excerpt": "9.3.2.1 Flexión sin carga axial … 0.90; 9.3.2.2 Carga axial y carga axial con flexión: (a) Carga axial de tracción con o sin flexión … 0.90; (b) Carga axial de compresión con o sin flexión: … Otros elementos … 0.70; Para elementos en flexocompresión φ puede incrementarse linealmente hasta 0.90 en la medida que φPn disminuye desde 0.1f′cAg ó φPb, el que sea menor, hasta cero. 9.3.2.3 Cortante y torsión … 0.85", "excerptSha256": "c3d5af2931296039807d8b411db521ce48b6aa545009da1288b36c5cafb67670", "verifiedAt": "2026-09-23" }],
+          "implementation": {"phi": {"flexure": 0.9, "tension": 0.9, "compressionTied": 0.7, "transition": "hasta 0.90 cuando phiPn baja de min(0.1*fc*Ag, phiPb) a cero", "shear": 0.85}}
+        },
+        {
+          "clauseId": "10.2.7.3",
+          "pages": [76],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 76, "excerpt": "Para f′c entre 17 y 28 MPa, el factor β1 se debe tomar como 0.85. Para f′c mayor o igual a 56 MPa, β1 se debe tomar como 0.65. Para f′c entre 28 y 56 MPa se debe interpolar linealmente entre 0.85 y 0.65.", "excerptSha256": "b7216129671b45a0e1622f72e2a6c62201817ec88a6ab3a55fbe0f959dc3da2f", "verifiedAt": "2026-09-23" }],
+          "implementation": {"beta1": "0.85 si fc <= 28 MPa; interpolación lineal hasta 0.65 en 56 MPa"}
+        },
+        {
+          "clauseId": "8.5.2",
+          "pages": [62],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 62, "excerpt": "Para concretos de peso unitario normal (wc ≈ 2300 kg/m³), Ec, puede tomarse como: Ec = 4700√f′c (en MPa) (8-3)", "excerptSha256": "15ca1ee9f4c907f57ace981a5cd7f4ccdda1a6a2a2af55509d36d644ee7a69db", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Ec": "4700*sqrt(fc)"}
+        },
+        {
+          "clauseId": "9.6.2.3-9.6.2.5",
+          "pages": [68, 69],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 68, "excerpt": "9.6.2.3 … con el momento de inercia efectivo de la sección transformada agrietada (Ie). Cuando el momento flector para condiciones de servicio en cualquier sección del elemento no exceda el momento de agrietamiento (Mcr), podrá usarse el momento de inercia de la sección no agrietada (Ig). Mcr = fr Ig/Yt (9-11) … fr = 0.62√f′c (9-12) 9.6.2.4 … (a) En elementos continuos en ambos extremos: Ie promedio = (Ie1 + Ie2 + 2 Ie3)/4 (9-13) … (b) Si el tramo sólo es continuo en un extremo: Ie promedio = (Ie2 + 2 Ie3)/3 (9-14) … (c) Para elementos simplemente apoyados en ambos extremos, se usará el momento de inercia calculado para la sección central. (d) Para elementos en voladizo se usará el momento de inercia calculado para la sección en el apoyo del voladizo.", "excerptSha256": "6d88d1c907c89f108a3f4f138f89e161be229b677689b4ca8f288c58d27efd91", "verifiedAt": "2026-09-23" }, { "page": 69, "excerpt": "λΔ = ξ/(1 + 50ρ′) (9-15) … 5 años o más: 2.0; 12 meses: 1.4; 6 meses: 1.2; 3 meses: 1.0", "excerptSha256": "69d83549bae774f72f05f038c2ed4f6ce68b78cbf2597c86118c6d461258c98c", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Ie": "Icr si Ms > Mcr; Ig si Ms <= Mcr", "fr": "0.62*sqrt(fc)", "bothEnds": "(Ie1+Ie2+2*Ie3)/4", "oneEnd": "(Ie2+2*Ie3)/3", "longTerm": "xi/(1+50*rhoPrime)", "xi": {"3 meses": 1.0, "6 meses": 1.2, "12 meses": 1.4, "5 años": 2.0}}
+        },
+        {
+          "clauseId": "Tabla 9.2",
+          "pages": [70],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 70, "excerpt": "Pisos que no soporten ni estén ligados a elementos no estructurales susceptibles de sufrir daños debido a deflexiones grandes. Deflexión inmediata debida a la carga viva ℓ/360. Pisos o techos que soporten o estén ligados a elementos no estructurales susceptibles de sufrir daños debido a deflexiones grandes. La parte de la deflexión total que ocurre después de la unión de los elementos no estructurales (la suma de la deflexión a largo plazo debida a todas las cargas permanentes, y la deflexión inmediata debida a cualquier carga viva adicional) ℓ/480. … no susceptibles de sufrir daños … ℓ/240", "excerptSha256": "49098daeb81cb717be96a50048f611c703211f1266f000aaa8c8419b4facc23c", "verifiedAt": "2026-09-23" }],
+          "implementation": {"liveImmediate": "l/360", "afterAttachmentSensitive": "l/480", "afterAttachmentOther": "l/240"}
+        },
+        {
+          "clauseId": "10.3.4",
+          "pages": [77],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 77, "excerpt": "En elementos no preesforzados sujetos a flexión o flexocompresión en los cuales φPn sea menor que 0.1f′cAg, el refuerzo de acero en tracción no deberá exceder de 0.75Asb, donde Asb es la cantidad de acero en tracción que produce la falla balanceada en la sección", "excerptSha256": "9aacb379713c33b366ff44765a7367d0c35362068cb2f5a9546a9aad89b6941f", "verifiedAt": "2026-09-23" }],
+          "implementation": {"AsMax": "0.75*Asb"}
+        },
+        {
+          "clauseId": "10.3.6.2",
+          "pages": [77],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 77, "excerpt": "Para elementos no preesforzados con estribos que cumplan con 7.10.5: φPn max = 0.80φPon = 0.80φ[0.85f′c(Ag − Ast) + fyAst] (10-2)", "excerptSha256": "a429876084e05a535d0516523c8bd5064b7c6a15bbf7e703bf571d804e1f8b96", "verifiedAt": "2026-09-23" }],
+          "implementation": {"phiPnMax": "0.80*phi*(0.85*fc*(Ag-Ast)+fy*Ast)"}
+        },
+        {
+          "clauseId": "10.5.1-10.5.2",
+          "pages": [77, 78],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 77, "excerpt": "el área de acero que se proporcione será la necesaria para que la resistencia de diseño de la sección sea por lo menos 1.2 veces el momento de agrietamiento de la sección bruta Mcr (φMn ≥ 1.2Mcr), donde: Mcr = fr Ig/Yt, fr = 0.62√f′c", "excerptSha256": "317e60e61fea2d11ea7a6f191e4e704d8df1b7683cd73c39248dd027eba57750", "verifiedAt": "2026-09-23" }, { "page": 78, "excerpt": "El área mínima de refuerzo por tracción de las secciones rectangulares y de las secciones T con el ala en compresión, no será menor de: As mín = 0.22√f′c bw d/fy (10-3)", "excerptSha256": "55bfbffd0a0fe28ef81d7e8a321b2e6070bad2ad9f2f074fca49915e7f03aed7", "verifiedAt": "2026-09-23" }],
+          "implementation": {"crackingRule": "phiMn >= 1.2*Mcr", "AsMin": "0.22*sqrt(fc)*bw*d/fy"}
+        },
+        {
+          "clauseId": "10.5.4 y 9.7.2",
+          "pages": [78, 73],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 78, "excerpt": "Para losas estructurales y zapatas de espesor uniforme, el acero mínimo en la dirección de la luz debe ser el requerido por 9.7. … El espaciamiento máximo del refuerzo no debe exceder tres veces el espesor ni de 400 mm.", "excerptSha256": "a289afdcf1461697d846f566a99cfb87d4fb18dba53f97ac4029cf0e5949fd23", "verifiedAt": "2026-09-23" }, { "page": 73, "excerpt": "Barras corrugadas o malla de alambre (liso o corrugado) de intersecciones soldadas, con fy ≥ 420 MPa 0.0018", "excerptSha256": "130184cc38db332cbc16b3e277701abba9dca8413017201f8d0617692aac6de8", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimumRatio": 0.0018, "maximumSpacing": "min(tres veces h, 400 mm)"}
+        },
+        {
+          "clauseId": "9.9.3",
+          "pages": [74],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 74, "excerpt": "Su distribución y esfuerzo bajo condiciones de servicio deberá ser tal que permita obtener un valor del parámetro Z menor o igual que 26 KN/mm. El parámetro Z se calculará mediante: Z = fs (dc Act)^(1/3) (9-18) donde fs es el esfuerzo en el acero, en MPa, el cual puede estimarse sobre la base del momento flector en condiciones de servicio Ms, mediante: fs = Ms/(0.9 d As) (9-19) dc: espesor del recubrimiento (mm) de concreto medido desde la fibra extrema en tracción al centro de la barra de refuerzo más cercana a esa fibra. Act: área efectiva del concreto en tracción (mm²) que rodea al refuerzo principal de tracción y cuyo centroide coincide con el de dicho refuerzo, dividida entre el número de barras.", "excerptSha256": "fb2d7900d615feb932511bbdcf30204035da46cb855457b3070263ff6da54322", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Z": "fs*(dc*Act)^(1/3) <= 26 kN/mm", "fs": "Ms/(0.9*d*As)"}
+        },
+        {
+          "clauseId": "11.3.1.1-11.3.1.2",
+          "pages": [88, 89],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 88, "excerpt": "11.3.1.1 Para elementos sometidos únicamente a cortante y flexión: Vc = 0.17√f′c bw d (11-3)", "excerptSha256": "c383eb779d91566793304f25fdf480cdc65f39612b2b84ffecd5f444c3d4cb7c", "verifiedAt": "2026-09-23" }, { "page": 89, "excerpt": "11.3.1.2 Para elementos sometidos a compresión axial Nu: Vc = 0.17(1 + Nu/(14Ag))√f′c bw d", "excerptSha256": "dfc81a3d2eb48882e78429014b8754d6f25f573d0fde66cf2d1b20fa6aa73d5c", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Vc": "0.17*sqrt(fc)*bw*d", "VcAxial": "0.17*(1+Nu/(14*Ag))*sqrt(fc)*bw*d"}
+        },
+        {
+          "clauseId": "11.5.5.1 y 11.5.5.3",
+          "pages": [91],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 91, "excerpt": "11.5.5.1 El espaciamiento del refuerzo de cortante colocado perpendicularmente al eje del elemento no debe exceder de d/2 en elementos de concreto no preesforzado … ni de 600 mm en ambos casos. 11.5.5.3 Donde Vs sobrepase 0.33√f′c bw d, las separaciones máximas dadas en 11.5.5.1 y 11.5.5.2 se deben reducir a la mitad.", "excerptSha256": "63439eaab9f20ed196bd245bb2825d45e7895653dfc664ca5ef499e69cfdbca2", "verifiedAt": "2026-09-23" }],
+          "implementation": {"maximumSpacing": "min(d/2, 600 mm)", "highShear": "mitad si Vs > 0.33*sqrt(fc)*bw*d"}
+        },
+        {
+          "clauseId": "11.5.6.2",
+          "pages": [91],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 91, "excerpt": "Av min = 0.062√f′c bw s/fyt (11-13) Pero no debe ser menor que 0.35 bw s/fyt.", "excerptSha256": "d4951765aaf04de90d60302c2c98452b9d34b4e70ee04483ec0eaddc094ca933", "verifiedAt": "2026-09-23" }],
+          "implementation": {"AvMin": "max(0.062*sqrt(fc), 0.35)*bw*s/fyt"}
+        },
+        {
+          "clauseId": "11.5.7.9",
+          "pages": [92],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 92, "excerpt": "En ningún caso se debe considerar Vs mayor que 0.66√f′c bw d.", "excerptSha256": "fb013ce1105318c9a423a843111b3ef7e1bbe7bb2a794b3401c7cef09337185f", "verifiedAt": "2026-09-23" }],
+          "implementation": {"VsMax": "0.66*sqrt(fc)*bw*d"}
+        },
+        {
+          "clauseId": "12.2.1-12.2.3 (tabla 12.1)",
+          "pages": [109, 110],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 109, "excerpt": "12.2.1 La longitud de desarrollo para barras corrugadas y alambre corrugado en tracción, ℓd, debe determinarse a partir de 12.2.2 ó 12.2.3, pero no debe ser menor que 300 mm. TABLA 12.1 … Espaciamiento libre entre barras o alambres que están siendo empalmados o desarrolladas no menor que db, con recubrimiento libre no menor que db, y estribos a lo largo de ℓd por lo menos iguales al mínimo indicado en 11.5.6. Aplicable también cuando el espaciamiento libre entre barras o alambres que están siendo desarrolladas o empalmadas no sea menor que 2db y el recubrimiento libre no menor que db: Alambres corrugados o barras de 3/4\" y menores (fyψtψeλ/(2.6√f′c))db; Barras mayores de 3/4\" (fyψtψeλ/(2.1√f′c))db. Otros casos: Ver 12.2.3", "excerptSha256": "87c2b2ef744da4873d9a57475638c98814673139bfbe5563c1c4bceca89cfa15", "verifiedAt": "2026-09-23" }, { "page": 110, "excerpt": "ℓd = (fy/(1.1λ√f′c)) (ψtψeψs/((cb + Ktr)/db)) db (12-1) El término (cb + Ktr)/db no debe tomarse mayor a 2.5 … Se permite usar Ktr = 0, como una simplificación de diseño, aún si hay refuerzo transversal presente.", "excerptSha256": "b73652e422b33ec246f299f648b47f39f6d7b8466af99f9e87b27daea865d97d", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimum": "300 mm", "favorableSmall": "fy*psiT*psiE/(2.6*sqrt(fc))*db", "favorableLarge": "fy*psiT*psiE/(2.1*sqrt(fc))*db", "otherCases": "fy*psiT*psiE*psiS/(1.1*sqrt(fc)*min(2.5,cb/db))*db con Ktr = 0"}
+        },
+        {
+          "clauseId": "Tabla 12.2",
+          "pages": [111],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 111, "excerpt": "ψt Barras superiores. 1.3 Otras barras. 1.0 ψe … Barras sin tratamiento superficial 1.0 ψs Barras de 3/4\" y menores. 0.8 Barras mayores de 3/4\". 1.0 El producto ψtψe no necesita considerarse mayor que 1.7", "excerptSha256": "560dd76eaea4c4a674f76351ae60c9eb1e361d5df93353131a152f12f779f210", "verifiedAt": "2026-09-23" }],
+          "implementation": {"psiT": {"top": 1.3, "other": 1.0}, "psiE": 1.0, "psiS": {"small": 0.8, "large": 1.0}, "productCap": 1.7}
+        },
+        {
+          "clauseId": "12.5.1-12.5.2",
+          "pages": [112],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 112, "excerpt": "12.5.1 La longitud de desarrollo para barras corrugadas en tracción que terminen en un gancho estándar (véase 7.1), ℓdg se debe calcular según 12.5.2 y los factores de modificación de 12.5.3, pero no debe ser menor que el menor valor entre 8 db y 150 mm. 12.5.2 Para las barras corrugadas, ℓdg debe ser (0.24ψeλfy/√f′c)db … Para otros casos, ψe y λ deben tomarse igual a 1.0.", "excerptSha256": "c6e7473f54f08371e50cb30745ee0645bea53be1694a0c2cb789cfb55a533dfc", "verifiedAt": "2026-09-23" }],
+          "implementation": {"ldg": "0.24*psiE*lambda*fy/sqrt(fc)*db", "floor": "se toma el mayor de 8*db y 150 mm (del lado seguro)", "factorsUsed": {"psiE": 1.0, "lambda": 1.0}}
+        },
+        {
+          "clauseId": "12.15.1",
+          "pages": [117],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 117, "excerpt": "La longitud mínima del empalme por traslape en tracción debe ser la requerida para empalmes por traslape Clases A o B, pero no menor que 300 mm, donde: Empalme por traslape Clase A … 1.0ℓd Empalme por traslape Clase B … 1.3ℓd", "excerptSha256": "b8ba36f2d5bf3f5f7ad5571ce757609e0ade1935448fc9e49fc028b2780d7868", "verifiedAt": "2026-09-23" }],
+          "implementation": {"classB": "max(1.3*ld, 300 mm)"}
+        },
+        {
+          "clauseId": "7.6.1 y 7.6.3",
+          "pages": [53],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 53, "excerpt": "7.6.1 La distancia libre mínima entre barras paralelas de una capa debe ser db, pero no menor de 25 mm. 7.6.3 En elementos a compresión reforzados transversalmente con espirales o estribos, la distancia libre entre barras longitudinales no debe ser menor de 1.5 db ni de 40 mm.", "excerptSha256": "8fb22bac86d72b8f125a7c2d5dfe541450c5dcc6569559cc3dfdae17503ec4e4", "verifiedAt": "2026-09-23" }],
+          "implementation": {"beamClearSpacing": "max(db, 25 mm)", "columnClearSpacing": "max(1.5*db, 40 mm)"}
+        },
+        {
+          "clauseId": "3.3.2",
+          "pages": [30],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 30, "excerpt": "El tamaño máximo nominal del agregado grueso no debe ser superior a ninguna de: … (c) 3/4 del espaciamiento mínimo libre entre las barras o alambres individuales de refuerzo", "excerptSha256": "d66df16446e676d27ed3a05ece9acae41f97a11a4d7fecfe9a77b4ee8eaa0c7f", "verifiedAt": "2026-09-23" }],
+          "implementation": {"clearSpacingFromAggregate": "4/3*tmag"}
+        },
+        {
+          "clauseId": "7.10.5.1-7.10.5.3",
+          "pages": [57],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 57, "excerpt": "7.10.5.1 Todas las barras no preesforzadas deben estar confinadas por medio de estribos transversales de por lo menos 8 mm para barras de hasta 5/8\", de 3/8\" para barras longitudinales de más de 5/8\" hasta 1\" y de 1/2\" para barras longitudinales de mayor diámetro … 7.10.5.2 El espaciamiento vertical de los estribos no debe exceder 16 veces el diámetro de las barras longitudinales, 48 veces el diámetro de la barra o alambre de los estribos ni la menor dimensión transversal del elemento sometido a compresión. 7.10.5.3 Los estribos deben disponerse de tal forma que cada barra longitudinal de esquina y cada barra alterna tenga apoyo lateral proporcionado por la esquina de un estribo con un ángulo interior no mayor de 135º y ninguna barra longitudinal esté separada a más de 150 mm libres de una barra apoyada lateralmente.", "excerptSha256": "4cfc3fafc6a7cbb63592884dccdcb77688c71ff777b7b7c7b994591773012f25", "verifiedAt": "2026-09-23" }],
+          "implementation": {"tieSpacing": "min(16*db, 48*dbTie, menor dimensión)", "minimumTie": {"upTo5/8": "8 mm", "upTo1": "3/8\"", "larger": "1/2\""}, "unsupportedClearLimit": "150 mm"}
+        },
+        {
+          "clauseId": "10.9.1",
+          "pages": [79],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 79, "excerpt": "El área de refuerzo longitudinal total, Ast, para elementos en compresión no compuestos no debe ser menor que 0.01 ni mayor que 0.06 veces el área total, Ag, de la sección transversal.", "excerptSha256": "1c50fc9aa249cc74ca397ba8bb178df1b727318e272133838b7882944345a9a1", "verifiedAt": "2026-09-23" }],
+          "implementation": {"longitudinalRatio": {"minimum": 0.01, "maximum": 0.06}}
+        },
+        {
+          "clauseId": "10.11.2 y 10.11.5",
+          "pages": [80],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 80, "excerpt": "10.11.2 Se puede tomar el radio de giro, r, igual a 0.3 veces la dimensión total de la sección en la dirección en la cual se está considerando la estabilidad para el caso de elementos rectangulares … 10.11.5 Ningún elemento en compresión dentro de una estructura tendrá una esbeltez kℓu/r mayor a 100.", "excerptSha256": "a68f702c87466fcbeda52df608243b565925e58550d0be7853f95f4b0dcd2a91", "verifiedAt": "2026-09-23" }],
+          "implementation": {"r": "0.3*h", "maximumSlenderness": 100}
+        },
+        {
+          "clauseId": "10.12.1-10.12.3.2",
+          "pages": [81],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 81, "excerpt": "10.12.1 Para elementos a compresión en estructuras sin desplazamiento lateral, el factor de longitud efectiva, k, debe tomarse igual a 1.0, a menos que se demuestre por análisis que se justifica utilizar un valor más bajo. 10.12.2 En estructuras sin desplazamiento lateral se permite ignorar los efectos de esbeltez en elementos a compresión que satisfacen: kℓu/r ≤ 34 − 12(M1/M2) (10-7) En la ecuación 10-7, el término [34 − 12M1/M2] no debe tomarse mayor que 40. … 10.12.3 … Mc = δns M2 (10-8) δns = Cm/(1 − Pu/(0.75Pc)) ≥ 1.0 (10-9) Pc = π²EI/(kℓu)² (10-10) … EI = 0.4EcIg/(1 + βd) (10-12) 10.12.3.1 … Cm = 0.6 + 0.4(M1/M2) ≥ 0.4 (10-13) … 10.12.3.2 El momento amplificado, M2, en la ecuación (10-8) no debe tomarse menor que M2,min = Pu(15 + 0.03h) (10-14) alrededor de cada eje separadamente, donde 15 y h están en mm. Para elementos en los que M2,min supera a M2, el valor de Cm en la ecuación (10-13) debe ser tomado como 1.0", "excerptSha256": "04b6798bf9b3972f0ee97100072446f40321ad1772f2e3643cb99713445e05ea", "verifiedAt": "2026-09-23" }],
+          "implementation": {"bracedNeglect": "k*lu/r <= 34-12*M1/M2 <= 40", "delta": "max(1.0, Cm/(1-Pu/(0.75*Pc)))", "EI": "0.4*Ec*Ig/(1+betad)", "Cm": "max(0.4, 0.6+0.4*M1/M2)", "M2min": "Pu*(15+0.03*h)"}
+        },
+        {
+          "clauseId": "10.13.1-10.13.6",
+          "pages": [81, 82],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 81, "excerpt": "10.13.1 Para elementos a compresión no arriostrados contra desplazamientos laterales, el factor de longitud efectiva k debe determinarse usando los valores de Ec e I dados en 10.11.1 y no debe ser menor que 1.0.", "excerptSha256": "bd51d4f697dfb65d2660e49dc39a903ec89708333e9838ea3fd3df9400e7a88c", "verifiedAt": "2026-09-23" }, { "page": 82, "excerpt": "10.13.2 Para elementos en compresión no arriostrados contra desplazamientos laterales, pueden despreciarse los efectos de la esbeltez cuando kℓu/r es menor que 22; 10.13.3 … M2 = M2ns + δsM2s (10-16) … 10.13.4.2 Alternativamente, se permite calcular δsMs como δsMs = Ms/(1 − Q) ≥ Ms (10-17) Si δs calculado de esta manera es mayor que 1.5 entonces δsMs debe calcularse usando 10.13.4.1 (análisis de segundo orden) ó 10.13.4.3. … 10.13.5 Si un elemento individual en compresión cumple con: ℓu/r > 35/√(Pu/(f′cAg)) (10-19) éste debe ser diseñado para la fuerza amplificada Pu y el momento Mc calculado usando 10.12.3 en donde M1 y M2 se calculan de acuerdo con 10.13.3 … (b) Cuando δsMs se calcula a partir de 10.13.4.2, el valor de Q calculado usando ΣPu para carga muerta y viva amplificadas (1.4 CM + 1.7 CV) no debe exceder 0.60.", "excerptSha256": "ddf6fda562d14c28b88b6eed158f62277788c72898a85d9fca1dd9850ccaa1d6", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimumK": 1.0, "swayNeglect": "k*lu/r < 22", "swayMoment": "M2=M2ns+deltaS*M2s", "deltaS": "max(1,1/(1-Q))", "deltaSLimit": 1.5, "individualCheck": "lu/r > 35/sqrt(Pu/(fc*Ag))", "maximumQ": 0.6}
+        },
+        {
+          "clauseId": "10.18",
+          "pages": [85, 86],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 85, "excerpt": "Alternativamente se podrá usar la siguiente ecuación aproximada, aplicable a columnas cuadradas o rectangulares con armadura longitudinal simétrica. 1/Pn = 1/Pnx + 1/Pny − 1/Pon (10-22) … Pon … se calcula mediante: 0.85f′c(Ag − Ast) + fyAst", "excerptSha256": "044f335f808212571a42c619b5ecc316b2a723bbafde0d034f1790fec00db0b9", "verifiedAt": "2026-09-23" }, { "page": 86, "excerpt": "La ecuación 10-22 es válida para valores de Pu ≥ 0.1φPon; para valores menores de la carga axial Pu, se usará la siguiente ecuación: Mux/φMnx + Muy/φMny ≤ 1.0 (10-23)", "excerptSha256": "3d5d18cc2a7275464b24ef841be2d81de3c472ade72382523899da6671e381bd", "verifiedAt": "2026-09-23" }],
+          "implementation": {"bresler": "1/Pn=1/Pnx+1/Pny-1/Pon", "validity": "Pu >= 0.1*phi*Pon", "contour": "Mux/phiMnx+Muy/phiMny <= 1.0"}
+        },
+        {
+          "clauseId": "11.12.1.2",
+          "pages": [105],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 105, "excerpt": "Comportamiento en dos direcciones … La superficie crítica equivalente que deberá investigarse estará localizada de modo que su perímetro, bo, sea mínimo, pero no necesita estar más cerca de d/2 desde: (a) los bordes o las esquinas de las columnas", "excerptSha256": "8cdd20a499a5ed802757c009482c174cf21eef4f47a7140738767e498703e2e2", "verifiedAt": "2026-09-23" }],
+          "implementation": {"criticalSection": "d/2 del paño"}
+        },
+        {
+          "clauseId": "11.12.2.1",
+          "pages": [105],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 105, "excerpt": "Para losas no preesforzadas y zapatas, Vc debe ser el menor entre (a), (b) y (c): (a) Vc = 0.17(1 + 2/β)√f′c bo d (11-33) … (b) Vc = 0.083(αs d/bo + 2)√f′c bo d (11-34) donde αs es 40 para columnas interiores, 30 para columnas de borde, y 20 para columnas en esquina. (c) Vc = 0.33√f′c bo d (11-35)", "excerptSha256": "99cdc70a2e88fccd42cf0da2058f220677d1b386f33a16a25859a853750ccca6", "verifiedAt": "2026-09-23" }],
+          "implementation": {"Vc": "sqrt(fc)*bo*d*min(0.17*(1+2/beta), 0.083*(alphaS*d/bo+2), 0.33)", "alphaS": {"interior": 40, "edge": 30, "corner": 20}}
+        },
+        {
+          "clauseId": "11.12.6.1 y 13.5.3.1",
+          "pages": [108, 124],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 108, "excerpt": "El resto del momento no balanceado dado por γvMu se considera transferido por excentricidad del cortante alrededor del centroide de la sección crítica definida en 11.12.1.2, donde γv = 1 − γf (11-39)", "excerptSha256": "d81e0289183a23c2ccd51d284f1bf8ab12972c469b1f19e51249a4bce2a52a07", "verifiedAt": "2026-09-23" }, { "page": 124, "excerpt": "γf = 1/(1 + (2/3)√(b1/b2)) (13-1)", "excerptSha256": "e24b3c3b3e53a4cb601ed548cf879eee0ceb85beb6d95904b117bc177cc5cd16", "verifiedAt": "2026-09-23" }],
+          "implementation": {"gammaF": "1/(1+(2/3)*sqrt(b1/b2))", "gammaV": "1-gammaF"}
+        },
+        {
+          "clauseId": "15.4.2 y 15.4.4.2",
+          "pages": [136, 137],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 136, "excerpt": "15.4.2 Para una zapata aislada el momento máximo amplificado, Mu, debe calcularse … en las secciones críticas localizadas como se indica a continuación: (a) Para zapatas que soporten una columna, pedestal o muro de concreto, en la cara de la columna, pedestal o muro.", "excerptSha256": "4347d2459584720622f89e860a291db442651747a6c928fbb2b081df4ff91ce8", "verifiedAt": "2026-09-23" }, { "page": 137, "excerpt": "15.4.4.2 Para el refuerzo en la dirección corta, una porción del refuerzo total, γsAs, debe distribuirse en forma uniforme sobre una franja (centrada con respecto al eje de la columna o pedestal) cuyo ancho sea igual a la longitud del lado corto de la zapata … γs = 2/(β + 1) (15-1)", "excerptSha256": "ad01142d6c81da3447a880dc3544f9714fe25bddcc6f9ad5474e511824ffff7b", "verifiedAt": "2026-09-23" }],
+          "implementation": {"criticalSection": "cara de la columna", "bandFraction": "2/(beta+1)"}
+        },
+        {
+          "clauseId": "15.5.2 y 11.1.3.1",
+          "pages": [137, 87],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 137, "excerpt": "15.5.2 La ubicación de la sección crítica para cortante de acuerdo con el Capítulo 11 debe medirse desde la cara de la columna, pedestal o muro.", "excerptSha256": "f0d662805e933f43f30b4ac3bd47cea7d9eb64654f62ff3f28e5ce5c4ca4923a", "verifiedAt": "2026-09-23" }, { "page": 87, "excerpt": "11.1.3.1 Para elementos no preesforzados, se permite diseñar las secciones localizadas a una distancia menor a d, medida desde la cara del apoyo, para la fuerza cortante Vu calculada a la distancia d de la cara del apoyo", "excerptSha256": "215501d42cc3e5289702889e07863d302504440c06e9e9133f966b3f8377bf6a", "verifiedAt": "2026-09-23" }],
+          "implementation": {"oneWayCriticalSection": "d desde la cara de la columna"}
+        },
+        {
+          "clauseId": "15.7",
+          "pages": [138],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 138, "excerpt": "La altura de las zapatas, medida sobre el refuerzo inferior no debe ser menor de 300 mm para zapatas apoyadas sobre el suelo", "excerptSha256": "e0d7f496038b708280d5e93dd5124ff7916137f52081c498bfdf5cf1a9306c4e", "verifiedAt": "2026-09-23" }],
+          "implementation": {"minimumDepthAboveBottomSteel": "300 mm"}
+        },
+        {
+          "clauseId": "10.7.1",
+          "pages": [78],
+          "sourceUrl": "https://drive.google.com/file/d/19EYUVMgwvm6rDs47GV374avco2ylU5Kz/view?usp=sharing",
+          "sourceSha256": "7c1210cbd2e94dee87940988dcc633c26de0729362c3fd00602e6d8b4286ebe9",
+          "evidence": [{ "page": 78, "excerpt": "Las vigas de gran peralte son elementos cargados en una cara y apoyados en la cara opuesta, de manera que se pueden desarrollar puntales de compresión entre las cargas y los apoyos y tienen: (a) luz libre, ℓn, igual o menor a cuatro veces el peralte total del elemento", "excerptSha256": "7003055885f999fac51b9c00c697f27c6acb645fe9530a7f7e948b5798fc9b8d", "verifiedAt": "2026-09-23" }],
+          "implementation": {"deepBeam": "ln <= cuatro veces h"}
+        }
+      ],
+      "clauseVerificationStatus": "verified",
+      "localPdf": null,
+      "implementationGate": "open-for-verified-clauses-only",
+      "notes": [
+        "Los extractos transcriben la coma decimal de la norma como punto decimal.",
+        "El enlace original del Ministerio (www3.vivienda.gob.pe) no resuelve; se usa el enlace que SENCICO publica en gob.pe.",
         "Only metadata, short evidence excerpts and hashes are versioned; the official PDF is not redistributed."
       ]
     }

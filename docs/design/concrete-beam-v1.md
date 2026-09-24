@@ -2,6 +2,8 @@
 
 La superficie **Diseño** de FStructure Solver2D propone refuerzo para una viga de marco de concreto reforzado y sección rectangular. Es un flujo experimental de revisión y aprendizaje: no certifica un diseño ni sustituye a la persona responsable del proyecto, la revisión de cargas, el modelo ni los detalles constructivos.
 
+Es la pestaña **Modelo 2D** del taller de diseño; las vigas, columnas y zapatas independientes del modelo se documentan en [design-workbench.md](design-workbench.md).
+
 ## Cómo usarla
 
 1. Modele y analice una viga de marco con una sección rectangular y un material de concreto del catálogo. Las propiedades numéricas del miembro deben coincidir con los registros del catálogo.

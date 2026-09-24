@@ -29,14 +29,15 @@ export const NTC_CONCRETE_2023 = Object.freeze({
 });
 
 /**
- * El cambio de régimen ocurre en 28 MPa, no en 30.
+ * El cambio de régimen se toma en 28 MPa, no en 30.
  *
- * La rama continua `1.05 - f'c/140` es la forma algebraica de
- * `0.85 - 0.05 (f'c - 28) / 7`, y vale exactamente 0.85 en f'c = 28: la función
- * a trozos sólo es continua si el umbral es 28. Un corte en 30 dejaba una meseta
- * en 28 < f'c <= 30 que sobreestimaba beta1 (y con él el área balanceada y
- * `As_max`) hasta un 1.7 % del lado inseguro, justo en f'c = 30 MPa, que es una
- * resistencia de diseño de uso corriente.
+ * La ec. 3.6.1 de la NTC 2023 escribe β1 = 0.85 hasta f'c = 30 MPa y
+ * `1.05 - f'c/140` arriba (extracto registrado en la cláusula 3.6.1), lo que deja
+ * un salto de 0.85 a 0.836 en 30 MPa. La rama `1.05 - f'c/140` es la forma
+ * algebraica de `0.85 - 0.05 (f'c - 28) / 7` y vale exactamente 0.85 en 28 MPa
+ * (así lo escriben NSR-10 C.10.2.7.3 y E.060 10.2.7.3): con el umbral en 28 la
+ * función es continua y, entre 28 y 30 MPa, da un β1 menor que el literal de la
+ * NTC, es decir, menos área balanceada, menos `As_max` y menor εt: del lado seguro.
  */
 export const BETA_ONE_PLATEAU_LIMIT_MPA = 28;
 

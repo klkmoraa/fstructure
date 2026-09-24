@@ -14,7 +14,6 @@ from typing import Any
 SOURCE_URL = "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf"
 SOURCE_SHA256 = "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a"
 MINIMUM_NUMBER_4_DIAMETER_MM = 12.7
-PHI_FLEXURE = 0.90
 PHI_SHEAR = 0.75
 
 
@@ -31,22 +30,15 @@ def _beta_one(fc_mpa: float) -> float:
     return 0.85 if fc_mpa <= BETA_ONE_PLATEAU_LIMIT_MPA else max(0.65, 1.05 - fc_mpa / 140)
 
 
-def _required_flexural_area(
-    demand_knm: float,
-    width_mm: float,
-    depth_mm: float,
-    fy_mpa: float,
-    block_strength_mpa: float,
-) -> float | None:
-    if demand_knm == 0:
-        return 0.0
-    moment_nmm = demand_knm * 1_000_000
-    quadratic = 0.5 * fy_mpa / (width_mm * depth_mm * block_strength_mpa)
-    normalized = moment_nmm / (PHI_FLEXURE * fy_mpa * depth_mm)
-    discriminant = 1 - 4 * quadratic * normalized
-    if discriminant < 0:
-        return None
-    return (1 - math.sqrt(discriminant)) / (2 * quadratic)
+def _flexural_factor(area_mm2: float, width_mm: float, depth_mm: float, fy_mpa: float, fc_mpa: float) -> float:
+    """NTC 2023 tabla 3.8.2.2 (estribos): FR = 0.65 + 0.25(et - ety)/0.003 entre 0.65 y 0.90."""
+    block_depth = area_mm2 * fy_mpa / (0.85 * fc_mpa * width_mm)
+    neutral_axis = block_depth / _beta_one(fc_mpa)
+    if neutral_axis <= 0:
+        return 0.90
+    net_strain = 0.003 * (depth_mm - neutral_axis) / neutral_axis
+    yield_strain = fy_mpa / 200_000
+    return min(0.90, max(0.65, 0.65 + 0.25 * (net_strain - yield_strain) / 0.003))
 
 
 def _flexural_strength(
@@ -54,11 +46,42 @@ def _flexural_strength(
     width_mm: float,
     depth_mm: float,
     fy_mpa: float,
-    block_strength_mpa: float,
+    fc_mpa: float,
 ) -> float:
-    steel_ratio = area_mm2 / (width_mm * depth_mm)
-    q = steel_ratio * fy_mpa / block_strength_mpa
-    return PHI_FLEXURE * area_mm2 * fy_mpa * depth_mm * (1 - 0.5 * q) / 1_000_000
+    block_strength = 0.85 * fc_mpa
+    q = area_mm2 / (width_mm * depth_mm) * fy_mpa / block_strength
+    nominal = area_mm2 * fy_mpa * depth_mm * (1 - 0.5 * q) / 1_000_000
+    return _flexural_factor(area_mm2, width_mm, depth_mm, fy_mpa, fc_mpa) * nominal
+
+
+def _required_flexural_area(
+    demand_knm: float,
+    width_mm: float,
+    depth_mm: float,
+    fy_mpa: float,
+    fc_mpa: float,
+) -> float | None:
+    """Menor As con FR*Mn >= demanda. Se busca en una malla fina hasta el acero
+    balanceado y se afina por bisección: FR baja en la zona de transición, así que
+    FR*Mn no es necesariamente monótono y no se usa la fórmula cerrada."""
+    if demand_knm == 0:
+        return 0.0
+    balanced = 0.85 * fc_mpa / fy_mpa * (600 * _beta_one(fc_mpa) / (fy_mpa + 600)) * width_mm * depth_mm
+    steps = 2000
+    previous = 0.0
+    for step in range(1, steps + 1):
+        area = balanced * step / steps
+        if _flexural_strength(area, width_mm, depth_mm, fy_mpa, fc_mpa) >= demand_knm:
+            low, high = previous, area
+            for _ in range(80):
+                middle = (low + high) / 2
+                if _flexural_strength(middle, width_mm, depth_mm, fy_mpa, fc_mpa) >= demand_knm:
+                    high = middle
+                else:
+                    low = middle
+            return high
+        previous = area
+    return None
 
 
 def _select_longitudinal(data: dict[str, Any], demand_knm: float, stirrup_diameter_mm: float) -> dict[str, float] | None:
@@ -75,7 +98,7 @@ def _select_longitudinal(data: dict[str, Any], demand_knm: float, stirrup_diamet
         if diameter < MINIMUM_NUMBER_4_DIAMETER_MM:
             continue
         depth = section["heightMm"] - steel["coverMm"] - stirrup_diameter_mm - diameter / 2
-        required = _required_flexural_area(demand_knm, width, depth, fy, block_strength)
+        required = _required_flexural_area(demand_knm, width, depth, fy, fc)
         if required is None or depth <= 0:
             continue
         minimum = max(0.25 * math.sqrt(fc) * width * depth / min(fy, 560), 1.4 * width * depth / min(fy, 560))
@@ -96,7 +119,7 @@ def _select_longitudinal(data: dict[str, Any], demand_knm: float, stirrup_diamet
                 "area": area,
                 "depth": depth,
                 "required": required,
-                "strength": _flexural_strength(area, width, depth, fy, block_strength),
+                "strength": _flexural_strength(area, width, depth, fy, fc),
                 "deficit": max(0.0, target - area),
                 "excess": max(0.0, area - target),
                 "preference": preference,

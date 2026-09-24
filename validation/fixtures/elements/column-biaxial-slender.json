@@ -1,0 +1,39 @@
+{
+  "name": "Columna esbelta con flexión biaxial (Bresler, amplificación NTC 3.3.5.2.4, emín 5.3.2.1)",
+  "input": {
+    "code": "ntc-2023",
+    "widthMm": 400,
+    "depthMm": 400,
+    "coverMm": 40,
+    "fcMpa": 28,
+    "fyMpa": 420,
+    "barDiameterMm": 25.4,
+    "barsAlongWidth": 3,
+    "barsAlongDepth": 3,
+    "tieDiameterMm": 9.5,
+    "axialKn": 1000,
+    "momentXKnm": 100,
+    "momentYKnm": 60,
+    "shearXKn": 0,
+    "shearYKn": 0,
+    "unbracedLengthM": 4,
+    "effectiveLengthFactor": 1,
+    "curvature": "single",
+    "endMomentRatio": 1,
+    "sustainedRatio": 0.6,
+    "group": "B2",
+    "groundFloor": false,
+    "maxAggregateMm": 19,
+    "braced": true,
+    "swayMomentXKnm": 0,
+    "swayMomentYKnm": 0,
+    "stabilityIndex": 0
+  },
+  "expected": {
+    "designMomentXKnm": 121.07590766738629,
+    "designMomentYKnm": 72.64554460043178,
+    "maximumDesignAxialKn": 3519.139016735829,
+    "breslerLoadKn": 1302.1584852907804,
+    "ratio": 0.7679556761300784
+  }
+}

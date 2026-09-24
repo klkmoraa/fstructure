@@ -1,0 +1,453 @@
+/*
+ * Diseño de elementos. Mismo lenguaje que el Modelo 2D: un lienzo hundido con
+ * cuadrícula en el centro, controles flotantes con la misma luz y paneles
+ * planos a los lados. Los colores de dominio sólo trazan resultados.
+ */
+.design-workbench {
+  --dw-ink: var(--sc-color-text-primary);
+  --dw-muted: var(--sc-color-text-secondary);
+  --dw-subtle: var(--sc-color-text-tertiary, var(--sc-color-text-secondary));
+  --dw-line: var(--sc-color-border-soft, var(--sc-color-border));
+  --dw-pass: var(--sc-color-state-success);
+  --dw-fail: var(--sc-color-state-error);
+  --dw-warn: var(--sc-color-state-warning);
+  --dw-moment: var(--sc-color-technical-moment);
+  --dw-shear: var(--sc-color-technical-shear);
+  --dw-axial: var(--sc-color-technical-axial);
+  --dw-deformed: var(--sc-color-technical-deformed);
+  --dw-steel: var(--sc-color-text-primary);
+  --dw-bastion: var(--sc-color-action-primary);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--dw-ink);
+  font-family: var(--sc-font-ui);
+  font-size: var(--sc-font-size-body);
+}
+
+.dw-eyebrow {
+  margin: 0;
+  color: var(--dw-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+/* ─── Distribución: datos · lienzo · resultados ─── */
+.dw-layout {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 296px minmax(0, 1fr) 312px;
+  gap: 8px;
+  padding: 8px;
+}
+.dw-layout--model { grid-template-columns: minmax(0, 1fr); }
+.dw-inputs, .dw-results { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.dw-inputs { padding: 6px 8px 24px 6px; }
+.dw-results { display: flex; flex-direction: column; padding: 6px 6px 24px 8px; }
+
+/* ─── Lienzo: igual al del Modelo 2D ─── */
+.dw-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--sc-radius-card);
+  background-color: var(--sc-color-bg-canvas);
+  background-image:
+    linear-gradient(var(--sc-color-canvas-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--sc-color-canvas-grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+  box-shadow: var(--sc-shadow-inset);
+  overflow: hidden;
+}
+.dw-stage__scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: center;
+  gap: 8px 32px;
+  padding: 64px 28px 96px;
+}
+.dw-stage__badge { position: absolute; top: 12px; left: 12px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+
+.dw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--dw-ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dw-badge i { width: 7px; height: 7px; border-radius: var(--sc-radius-pill); background: var(--status); }
+.dw-badge[data-status] { --status: var(--dw-pass); color: var(--status); }
+.dw-badge[data-status='fail'], .dw-badge[data-status='error'] { --status: var(--dw-fail); }
+.dw-badge[data-status='warning'] { --status: var(--dw-warn); }
+
+.dw-float-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--dw-muted);
+  cursor: pointer;
+}
+.dw-float-button:hover { color: var(--dw-ink); }
+.dw-float-button:focus-visible, .dw-icon-button:focus-visible, .dw-add:focus-visible, .dw-more__toggle:focus-visible {
+  outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
+  outline-offset: 2px;
+}
+.dw-close { position: absolute; top: 12px; right: 12px; }
+
+/* Barra flotante de elementos: la misma pieza que la barra de herramientas 2D. */
+.dw-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  width: max-content;
+  margin-inline: auto;
+  display: flex;
+  gap: 4px;
+  max-width: calc(100% - 24px);
+  padding: 5px 6px;
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-lifted);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.dw-dock__button.sc-tool-button { flex: none; width: auto; min-height: 38px; padding: 0 12px 0 8px; grid-template-columns: auto auto; }
+.dw-dock__button.sc-tool-button:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
+.dw-element-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
+
+/* Láminas: dibujo directo sobre el lienzo, sin marco. */
+.dw-plate { flex: 1 1 300px; max-width: 440px; min-width: 0; margin: 0; }
+.dw-plate--wide { flex: 1 1 100%; max-width: 980px; }
+.dw-plate figcaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 8px; }
+.dw-plate figcaption small { color: var(--dw-subtle); font-size: 11px; }
+
+/* ─── Formulario ─── */
+.dw-inputs__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 4px 2px 14px; }
+.dw-inputs__head h2 { margin: 0; font: 600 var(--sc-font-size-display-md)/1.15 var(--sc-font-display); }
+.dw-inputs__head p { margin: 3px 0 0; color: var(--dw-muted); font-size: 11.5px; }
+.dw-code { display: grid; gap: 4px; padding: 0 2px 14px; }
+.dw-code small { color: var(--dw-muted); font-size: 11px; line-height: 1.35; }
+.dw-hook { stroke: var(--dw-steel); stroke-width: 2.6; stroke-linecap: round; fill: none; }
+.dw-hook.is-fail { stroke: var(--dw-fail); }
+.dw-icon-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--dw-muted);
+  cursor: pointer;
+}
+.dw-icon-button:hover:not(:disabled) { color: var(--dw-ink); background: var(--sc-color-fill-quaternary); }
+.dw-icon-button:disabled { opacity: .35; cursor: default; }
+
+.dw-group { padding: 14px 2px 12px; border-top: 1px solid var(--dw-line); min-width: 0; }
+.dw-group > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.dw-group__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.dw-group__grid[data-columns='1'] { grid-template-columns: minmax(0, 1fr); }
+.dw-group__grid[data-columns='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dw-span-all { grid-column: 1 / -1; }
+.dw-group .sc-segmented { width: 100%; }
+.dw-end { display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: 8px; }
+.dw-end > span { color: var(--dw-muted); font-size: 11.5px; }
+.dw-group .sc-segmented button { flex: 1; padding-inline: 4px; }
+.dw-group .sc-unit-field__control input { min-width: 0; }
+
+.dw-more { padding-top: 6px; }
+.dw-more__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--dw-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dw-more__toggle:hover { color: var(--dw-ink); }
+.dw-more__toggle svg { transition: transform var(--sc-motion-quick) var(--sc-ease-standard); }
+.dw-more__toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
+.dw-more__toggle[aria-expanded='true'] { margin-bottom: 8px; }
+
+/* Tabla de claros */
+.dw-spans { --cols: 3; display: grid; gap: 6px; }
+.dw-spans__row--sub { margin-top: -2px; }
+.dw-spans__row--sub input { height: 28px; background: var(--sc-color-surface-1); }
+.dw-spans__head--sub { margin-top: 2px; }
+.dw-spans__row { display: grid; grid-template-columns: 18px repeat(var(--cols), minmax(0, 1fr)) 30px; gap: 5px; align-items: center; }
+.dw-spans__head span { color: var(--dw-muted); font-size: 11px; font-weight: 600; text-align: center; line-height: 1.1; }
+.dw-spans__head small { display: block; color: var(--dw-subtle); font-weight: 400; font-size: 9.5px; }
+.dw-spans__index { color: var(--dw-subtle); font: 500 11px var(--sc-font-mono); text-align: center; }
+.dw-spans input {
+  width: 100%;
+  min-width: 0;
+  height: var(--sc-control-height-sm, 32px);
+  padding: 0 7px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-data);
+  background: var(--sc-color-surface-input);
+  box-shadow: var(--sc-shadow-inset);
+  color: var(--dw-ink);
+  font: 500 12px var(--sc-font-mono);
+  text-align: right;
+}
+.dw-spans input:focus { outline: none; border-color: var(--sc-color-action-primary); }
+.dw-spans input[aria-invalid='true'] { border-color: var(--sc-color-state-error); }
+.dw-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  margin-top: 2px;
+  border: 1px dashed var(--sc-color-border);
+  border-radius: var(--sc-radius-data);
+  background: transparent;
+  color: var(--dw-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.dw-add:hover { color: var(--dw-ink); border-color: var(--dw-muted); }
+
+/* ─── Dibujos ─── */
+.dw-drawing { display: block; width: 100%; height: auto; overflow: visible; font-family: var(--sc-font-mono); font-size: 11px; }
+.dw-drawing--section { max-width: 250px; margin-inline: auto; }
+.dw-drawing--plan { max-width: 340px; margin-inline: auto; }
+.dw-chart { max-width: 600px; margin-inline: auto; }
+.dw-drawing text { fill: var(--dw-ink); }
+.dw-drawing .dw-muted { fill: var(--dw-muted); }
+
+.dw-beam, .dw-concrete { fill: var(--sc-color-surface-1); stroke: var(--dw-ink); stroke-width: 1.3; }
+.dw-column { fill: var(--sc-color-surface-3, var(--sc-color-surface-2)); stroke: var(--dw-ink); stroke-width: 1.3; }
+.dw-rebar { stroke: var(--dw-steel); stroke-width: 2.6; stroke-linecap: round; }
+.dw-rebar--top { stroke-width: 1.8; }
+.dw-stirrup-tick { stroke: var(--dw-muted); stroke-width: .9; }
+.dw-zone { fill: var(--dw-shear); opacity: .8; }
+.dw-stirrup { fill: none; stroke: var(--dw-muted); }
+.dw-bar { fill: var(--dw-steel); }
+.dw-bar--extra { fill: var(--dw-bastion); }
+.dw-bastion line:first-child, .dw-bastion path { stroke: var(--dw-bastion); stroke-width: 2.6; stroke-linecap: round; fill: none; }
+.dw-bastion text { fill: var(--dw-bastion) !important; font-family: var(--sc-font-ui); font-weight: 600; font-size: 11px; }
+.dw-bastion__leader { stroke: var(--dw-bastion); stroke-width: .8 !important; stroke-dasharray: 2 2; opacity: .7; }
+.dw-rebar-label { font-family: var(--sc-font-ui); font-weight: 600; font-size: 11px; }
+.dw-stirrup-label { fill: var(--dw-muted) !important; font-size: 10.5px; }
+.dw-rebar-grid line { stroke: var(--dw-muted); stroke-width: .8; opacity: .6; }
+.dw-critical { fill: none; stroke: var(--dw-shear); stroke-width: 1.5; stroke-dasharray: 6 4; }
+.dw-critical--oneway { stroke-dasharray: 2 3; }
+
+.dw-load line { stroke: var(--sc-color-load-distributed, var(--dw-ink)); stroke-width: 1.2; }
+.dw-load__head { fill: var(--sc-color-load-distributed, var(--dw-ink)); }
+.dw-load text { font-size: 11px; fill: var(--sc-color-load-distributed, var(--dw-ink)) !important; }
+.dw-load--point line { stroke-width: 2; }
+.dw-support path { fill: var(--sc-color-surface-1); stroke: var(--dw-ink); stroke-width: 1.3; }
+.dw-support line { stroke: var(--dw-ink); stroke-width: 1.8; }
+.dw-support .dw-support__hatch { stroke-width: 1; }
+.dw-dimension line { stroke: var(--sc-color-technical-dimension, var(--dw-muted)); stroke-width: 1; }
+.dw-dimension text { fill: var(--dw-muted); font-size: 10.5px; }
+.dw-callout { font-family: var(--sc-font-ui); font-weight: 600; font-size: 11.5px; }
+.dw-axis line { stroke: var(--dw-muted); stroke-width: .8; stroke-dasharray: 5 3 1 3; }
+.dw-axis text { fill: var(--dw-muted); font-size: 10px; font-weight: 600; }
+.dw-soil line { stroke: var(--dw-axial); stroke-width: 1.2; }
+.dw-soil__head { fill: var(--dw-axial); }
+.dw-soil text { fill: var(--dw-muted); font-size: 10.5px; }
+
+.dw-band { --tone: var(--dw-ink); }
+.dw-band--moment { --tone: var(--dw-moment); }
+.dw-band--shear { --tone: var(--dw-shear); }
+.dw-band--deformed { --tone: var(--dw-deformed); }
+.dw-band__area { fill: var(--tone); opacity: .1; }
+.dw-band__line { fill: none; stroke: var(--tone); stroke-width: 1.8; stroke-linejoin: round; }
+.dw-band__capacity { fill: none; stroke: var(--dw-ink); stroke-width: 1.1; stroke-dasharray: 4 3; opacity: .75; }
+.dw-band__axis { stroke: var(--dw-ink); stroke-width: .9; opacity: .7; }
+.dw-band__grid { stroke: var(--sc-color-canvas-grid-strong, var(--dw-line)); stroke-width: 1; stroke-dasharray: 2 4; }
+.dw-band__dot { fill: var(--tone); }
+.dw-band__label { font-family: var(--sc-font-ui); font-weight: 600; font-size: 11.5px; fill: var(--tone) !important; }
+.dw-band__unit { font-size: 10px; fill: var(--dw-muted) !important; }
+.dw-band__value { font-weight: 600; font-size: 11px; }
+
+.dw-chart__grid line { stroke: var(--sc-color-canvas-grid-strong, var(--dw-line)); stroke-width: .8; }
+.dw-chart__grid text { fill: var(--dw-muted); font-size: 10px; }
+.dw-chart__zero { stroke: var(--dw-ink); stroke-width: 1; opacity: .7; }
+.dw-chart__title { font-family: var(--sc-font-ui); font-size: 11px; fill: var(--dw-muted) !important; }
+.dw-curve { fill: none; stroke-linejoin: round; }
+.dw-curve--x { stroke: var(--dw-axial); stroke-width: 2.2; }
+.dw-curve--y { stroke: var(--dw-deformed); stroke-width: 2.2; stroke-dasharray: 8 4; }
+.dw-curve--nominal { stroke: var(--dw-muted); stroke-width: 1.1; stroke-dasharray: 2 3; }
+.dw-chart__cap line { stroke: var(--dw-axial); stroke-width: 1; stroke-dasharray: 4 3; }
+.dw-chart__cap text { fill: var(--dw-axial) !important; font-size: 10px; }
+.dw-chart__balanced { fill: var(--sc-color-bg-canvas); stroke: var(--dw-axial); stroke-width: 1.5; }
+.dw-demand line { stroke: var(--dw-moment); stroke-width: 1; stroke-dasharray: 3 3; }
+.dw-demand circle { fill: var(--dw-moment); stroke: var(--sc-color-bg-canvas); stroke-width: 2; }
+.dw-demand text { font-family: var(--sc-font-ui); font-weight: 600; fill: var(--dw-moment) !important; }
+
+.dw-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin: 6px 0 0; padding: 0; list-style: none; color: var(--dw-muted); font-size: 11px; }
+.dw-legend li { display: flex; align-items: center; gap: 6px; }
+.dw-legend li::before { content: ''; width: 18px; height: 0; border-top: 2.2px solid var(--dw-axial); }
+.dw-legend li[data-kind='y']::before { border-top-color: var(--dw-deformed); border-top-style: dashed; }
+.dw-legend li[data-kind='nominal']::before { border-top: 1.4px dotted var(--dw-muted); }
+.dw-legend li[data-kind='demand']::before { width: 9px; height: 9px; border: 0; border-radius: var(--sc-radius-pill); background: var(--dw-moment); }
+
+/* ─── Resultados: planos, separados por filetes ─── */
+.dw-verdict { --status: var(--dw-pass); padding: 4px 2px 16px; }
+.dw-verdict[data-status='fail'] { --status: var(--dw-fail); }
+.dw-verdict[data-status='warning'] { --status: var(--dw-warn); }
+.dw-verdict__head { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.dw-verdict__head > svg { flex: none; color: var(--status); }
+.dw-verdict__head strong { font: 600 var(--sc-font-size-display-md)/1.15 var(--sc-font-display); }
+.dw-verdict__percent { margin-left: auto; font: 600 24px/1 var(--sc-font-mono); color: var(--status); }
+.dw-verdict__percent small { font-size: 12px; margin-left: 1px; }
+
+.dw-meter { position: relative; height: 5px; margin-top: 12px; border-radius: var(--sc-radius-pill); background: var(--sc-color-surface-inset); overflow: hidden; }
+.dw-meter i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--status, var(--dw-pass)); transition: width var(--sc-motion-bridge) var(--sc-ease-standard); }
+.dw-meter--thin { height: 3px; margin-top: 4px; }
+
+.dw-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; margin: 14px 0 0; }
+.dw-summary div { min-width: 0; padding-left: 8px; border-left: 2px solid var(--dw-line); }
+.dw-summary div[data-tone='moment'] { border-left-color: var(--dw-moment); }
+.dw-summary div[data-tone='shear'] { border-left-color: var(--dw-shear); }
+.dw-summary div[data-tone='axial'] { border-left-color: var(--dw-axial); }
+.dw-summary dt { color: var(--dw-muted); font-size: 10.5px; }
+.dw-summary dd { margin: 2px 0 0; font: 500 12px/1.3 var(--sc-font-mono); overflow-wrap: anywhere; }
+
+.dw-section { padding: 14px 2px; border-top: 1px solid var(--dw-line); }
+.dw-section > .dw-eyebrow { margin-bottom: 10px; }
+
+.dw-rebar-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.dw-rebar-list li { display: flex; gap: 10px; align-items: flex-start; }
+.dw-rebar-list li > div { display: grid; gap: 2px; min-width: 0; }
+.dw-rebar-list strong { font: 600 13px/1.3 var(--sc-font-display); }
+.dw-rebar-list small { color: var(--dw-muted); font: 11px/1.35 var(--sc-font-mono); }
+.dw-swatch { flex: none; width: 10px; height: 10px; margin-top: 4px; border-radius: var(--sc-radius-pill); background: var(--dw-steel); }
+.dw-swatch--stirrup { border-radius: 0; background: transparent; border: 2px solid var(--dw-muted); }
+.dw-swatch--extra { background: var(--dw-bastion); }
+
+.dw-table { width: 100%; border-collapse: collapse; font: 500 11.5px var(--sc-font-mono); }
+.dw-table th, .dw-table td { padding: 5px 4px; border-bottom: 1px solid var(--dw-line); text-align: right; }
+.dw-table thead th { color: var(--dw-muted); font: 600 10.5px var(--sc-font-ui); }
+.dw-table th:first-child { text-align: left; }
+.dw-table tbody th { color: var(--dw-muted); font-weight: 500; }
+.dw-table td[data-status='fail'] { color: var(--dw-fail); }
+.dw-section .dw-table + .dw-rebar-list { margin-top: 12px; }
+.dw-footnote { margin: 6px 0 0; color: var(--dw-subtle); font-size: 10.5px; }
+
+.dw-checks { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.dw-checks li { --status: var(--dw-pass); display: flex; gap: 8px; align-items: flex-start; }
+.dw-checks li[data-status='fail'] { --status: var(--dw-fail); }
+.dw-checks li[data-status='warning'] { --status: var(--dw-warn); }
+.dw-checks li[data-status='info'] { --status: var(--dw-muted); }
+.dw-checks li > svg { flex: none; margin-top: 1px; color: var(--status); }
+.dw-checks__body { flex: 1; min-width: 0; }
+.dw-checks__row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.dw-checks__row b { font: 600 11.5px var(--sc-font-mono); color: var(--status); white-space: nowrap; }
+.dw-checks small { display: flex; justify-content: space-between; gap: 8px; margin-top: 3px; color: var(--dw-muted); font: 10.5px/1.35 var(--sc-font-mono); }
+.dw-checks small em { font-style: normal; white-space: nowrap; color: var(--dw-subtle); }
+.dw-reference[data-basis='complementary'] { font-style: italic; }
+.dw-reference[data-basis='complementary']::before { content: '◇ '; }
+.dw-checks .dw-checks__note { display: block; font-family: var(--sc-font-ui); }
+
+.dw-values { display: grid; gap: 0; margin: 0; font-size: 11.5px; }
+.dw-values > div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--dw-line); }
+.dw-values > div:last-child { border-bottom: 0; }
+.dw-values dt { color: var(--dw-muted); }
+.dw-values dt b { color: var(--dw-ink); font: 500 11px var(--sc-font-mono); margin-right: 6px; }
+.dw-values dd { margin: 0; text-align: right; font: 500 11.5px var(--sc-font-mono); white-space: nowrap; }
+
+.dw-errors {
+  display: flex;
+  gap: 10px;
+  align-self: center;
+  max-width: 440px;
+  margin-top: 40px;
+  padding: 16px;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--dw-fail);
+}
+.dw-errors strong { color: var(--dw-ink); }
+.dw-errors ul { margin: 6px 0 0; padding-left: 18px; color: var(--dw-ink); line-height: 1.45; }
+
+/* Viga ligada al modelo 2D: la superficie existente como un panel flotante. */
+.dw-model { display: block; }
+.dw-model__intro { max-width: 600px; margin: 0 auto 12px; color: var(--dw-muted); line-height: 1.45; }
+.dw-model .concrete-design-surface {
+  position: relative;
+  inset: auto;
+  width: auto;
+  max-width: 600px;
+  margin: 0 auto;
+  overflow: visible;
+  border: 0;
+  border-radius: var(--sc-radius-card);
+  box-shadow: var(--sc-shadow-raised);
+}
+.dw-model .concrete-design-surface__header { position: static; border-radius: var(--sc-radius-card) var(--sc-radius-card) 0 0; }
+.dw-model .concrete-design-surface__header > button { display: none; }
+
+@media (max-width: 1240px) {
+  .dw-layout { grid-template-columns: 280px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
+  .dw-inputs { grid-row: 1 / span 2; }
+  .dw-results {
+    max-height: 38vh;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    column-gap: 20px;
+    align-items: start;
+    padding: 6px 8px 12px;
+  }
+  .dw-results .dw-section { border-top: 0; padding-top: 4px; }
+}
+
+@media (max-width: 760px) {
+  .design-workbench { overflow-y: auto; overscroll-behavior: contain; }
+  .dw-layout { display: flex; flex-direction: column; height: max-content; min-height: 100%; }
+  .dw-inputs, .dw-results { overflow: visible; max-height: none; padding-inline: 8px; }
+  .dw-results { order: 2; display: flex; }
+  .dw-results .dw-section { border-top: 1px solid var(--dw-line); }
+  .dw-stage { order: 3; min-height: 560px; }
+  .dw-stage__scroll { position: relative; inset: auto; padding: 60px 12px 88px; overflow: visible; }
+  .dw-plate, .dw-plate--wide { flex-basis: 100%; }
+  .dw-inputs { order: 1; }
+  .dw-dock { position: fixed; z-index: 40; bottom: 12px; max-width: calc(100vw - 24px); }
+  .dw-layout { padding-bottom: 76px; }
+  .dw-dock__button.sc-tool-button:not(.is-active) { padding: 0 10px; }
+  .dw-dock__button.sc-tool-button:not(.is-active) .sc-tool-button__copy { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .dw-stage { display: flex; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dw-meter i, .dw-more__toggle svg { transition: none; }
+}
+
+.dw-resultant circle { fill: var(--dw-moment); }
+.dw-resultant text { fill: var(--dw-moment) !important; font-family: var(--sc-font-ui); font-weight: 600; font-size: 11px; }

@@ -76,13 +76,8 @@ const unsubstantiated = (clause: Clause): string[] => {
  * código aplica y que ningún extracto verificado contiene.
  */
 const RECORDED_EVIDENCE_DEBT: Readonly<Record<string, readonly string[]>> = {
-  '2.2.1-2.2.7.3': ['0.80', '0.85', '11000', '2700', '3500', '4400', '5000'],
-  '3.6.1': ['0.65', '0.85', '1.05', '140', '30'],
-  '3.8.2.1-3.8.2.2': ['0.75'],
-  '5.2.2.1.1.1': ['0.5'],
-  '5.5.3.1.1-5.5.3.1.2': ['0.08', '0.17'],
-  '6.3.5.4.1-6.3.5.4.4': ['0.062', '0.35'],
-  '6.3.7.6.2.2': ['0.33', '300', '4', '600'],
+  // Saldada el 2026-09-23: los extractos de 2.2.1, 3.6.1, 3.8.2.1-3.8.2.2, 5.2.2.1.1.1,
+  // 5.5.3.1.1-5.5.3.1.2, 6.3.5.4.4 y 6.3.7.6.2.2 ya contienen cada constante que aplica el código.
 };
 
 const clauses = (): Clause[] => {
