@@ -1017,3 +1017,56 @@
 .parametric-study-table-wrap { overflow:auto; }.parametric-study-table { width:100%; min-width:720px; border-collapse:collapse; font-size:var(--sc-font-size-caption); }.parametric-study-table caption { padding:8px 10px; text-align:left; background:var(--surface-2); color:var(--muted); font-size:var(--sc-font-size-caption); }.parametric-study-table th,.parametric-study-table td { padding:6px 8px; border-bottom:1px solid var(--border-soft); text-align:right; white-space:nowrap; vertical-align:top; }.parametric-study-table thead th { color:var(--muted); font-size:var(--sc-font-size-technical); font-weight:700; }.parametric-study-table tbody th { font-family:var(--sc-font-mono); font-weight:700; }.parametric-study-table td { font-family:var(--sc-font-mono); }.parametric-study-table td:last-child { display:grid; gap:2px; text-align:left; font-family:inherit; white-space:normal; }.parametric-study-table tr[data-reliability='unreliable'] td:last-child strong,.parametric-study-table tr[data-reliability='failed'] td:last-child strong { text-decoration:underline; text-underline-offset:2px; }.parametric-study-table td:last-child small { max-width:220px; color:var(--muted); font-size:var(--sc-font-size-technical); white-space:normal; }
 .parametric-study-empty { margin:0; color:var(--muted); font-size:var(--sc-font-size-caption); }
 @media (max-width:700px) { .parametric-study-controls { grid-template-columns:1fr 1fr; }.parametric-study-controls .parametric-study-factors { grid-column:1/-1; }.parametric-study-controls button { grid-column:1/-1; justify-self:start; } }
+
+/* Eje del diagrama: los números viven en HTML porque el SVG se estira
+   (`preserveAspectRatio="none"`) y deformaba el texto. */
+.chart-tick-labels { position:relative; height:14px; margin-top:-14px; pointer-events:none; }
+.chart-tick-labels span { position:absolute; top:0; transform:translateX(-50%); color:var(--muted); font:500 10px/14px var(--sc-font-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.chart-tick-labels span[data-edge='start'] { transform:none; }
+.chart-tick-labels span[data-edge='end'] { transform:translateX(-100%); }
+
+/* Identidad (brandbook): la letra mono es para datos; pestañas y botones van
+   con la de interfaz. */
+.results-panel .results-quantity-tabs button { font-family:var(--sc-font-ui); letter-spacing:0; }
+
+/* La etiqueta repetía el título palabra por palabra y en móvil ocupaba tres
+   líneas; el estado ya se lee en el título. */
+.numeric-quality-heading .numeric-quality-state { display:none; }
+
+/* Acción del índice elástico: tecla clay, no enlace subrayado (en táctil el
+   `:hover` se quedaba pegado y la subrayaba). */
+.elastic-demand-action {
+  border:0;
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-shadow-raised);
+  font-weight:600;
+  text-align:left;
+  line-height:1.3;
+}
+.elastic-demand-action:hover { text-decoration:none; box-shadow:var(--sc-shadow-lifted); }
+.elastic-demand-action:active { box-shadow:var(--sc-shadow-pressed); }
+@media (hover:none) { .elastic-demand-limited button:hover { text-decoration:none; } }
+
+/* «Comprobar el resultado» llegaba como botón nativo del navegador. */
+.numeric-certificate-heading > button {
+  flex:none;
+  align-self:start;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  max-width:48%;
+  min-height:var(--sc-size-target-touch, 44px);
+  padding:8px 14px;
+  border:0;
+  border-radius:var(--sc-radius-pill);
+  background:var(--sc-color-surface-1);
+  box-shadow:var(--sc-shadow-raised);
+  color:var(--accent);
+  font:600 var(--sc-font-size-caption, 12px)/1.25 var(--sc-font-ui);
+  text-align:center;
+  cursor:pointer;
+}
+.numeric-certificate-heading > button:hover:not(:disabled) { box-shadow:var(--sc-shadow-lifted); }
+.numeric-certificate-heading > button:active:not(:disabled) { box-shadow:var(--sc-shadow-pressed); }
+.numeric-certificate-heading > button:disabled { opacity:.6; cursor:default; }
+.numeric-certificate-heading > button:focus-visible { outline:var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset:2px; }

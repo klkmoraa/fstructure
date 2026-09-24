@@ -19,6 +19,13 @@
   --chrome-key: 36px;
 }
 
+/* Pestañas de magnitud (Axial, Cortante, Momento…): si no caben, se deslizan;
+   el borde desvanecido lo dice en vez de cortarlas en seco. */
+.app-shell.workspace-screen .canvas-host .canvas-evidence-rail {
+  scrollbar-width: none;
+}
+.app-shell.workspace-screen .canvas-host .canvas-evidence-rail::-webkit-scrollbar { display: none; }
+
 /* ─── Escritorio y tableta (X2, M1) ─── */
 @media (min-width: 1024px) {
   /* Utilidades (panel, pantalla completa, tema): dentro del lienzo, no sobre su borde. */
@@ -143,9 +150,48 @@
     box-shadow: none;
     color: var(--sc-color-text-secondary);
   }
+  /* Abierto: el mismo tinte suave que una pestaña elegida, no un bloque cuadrado. */
   .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot > button:is([aria-pressed='true'], [aria-expanded='true'], .active, .is-active) {
-    background: var(--sc-color-surface-2);
+    border-radius: var(--sc-radius-card);
+    background: color-mix(in srgb, var(--sc-color-action-primary) 14%, transparent);
+    box-shadow: none;
     color: var(--sc-color-action-primary);
+  }
+
+  /* Resultados «enfocados»: empiezan bajo la barra superior; antes ésta les
+     tapaba la cabecera (salir del enfoque y cerrar) y no había cómo achicarlos. */
+  .app-shell.workspace-screen[data-shell-class='K0'] .results-panel.results-mode-focused {
+    top: calc(var(--sc-visual-viewport-top, 0px) + 56px);
+    height: calc(var(--sc-visual-viewport-height, 100dvh) - 56px) !important;
+    border-radius: var(--sc-radius-sheet, 20px) var(--sc-radius-sheet, 20px) 0 0;
+  }
+
+  .app-shell.workspace-screen[data-shell-class='K0'] .results-panel [data-results-quantity-bar] {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+  /* Pestañas del panel de resultados: a la medida de su nombre, sin truncar. */
+  .app-shell.workspace-screen[data-shell-class='K0'] .results-panel [data-results-quantity-bar] [data-result-tab] {
+    width: auto;
+    min-width: 0;
+    flex: 0 0 auto;
+    padding: 0 14px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+
+  /* Pestañas de magnitud sobre el lienzo: más compactas, y el borde derecho se
+     desvanece para indicar que se deslizan (el hueco final deja ver la última). */
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-evidence-rail {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-evidence-rail::after { content: ''; flex: 0 0 20px; }
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-evidence-layer {
+    min-height: 36px;
+    height: 36px;
+    padding-inline: 11px;
+    font-size: 12.5px;
   }
 
   /* Zoom y coordenadas: una columna compacta en la esquina inferior derecha. */

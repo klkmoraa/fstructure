@@ -9,6 +9,7 @@ import ToolShell from './features/workspace/ToolShell';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 import { Model2DWelcome } from './features/welcome/Model2DWelcome';
 import { TOOL_HOMES } from './features/workspace/toolHomes';
+import { toolRegistry } from './features/workspace/toolRegistry';
 import { rememberLastTool } from './features/welcome/lastTool';
 import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
 import type { ToolId } from './shared/contracts';
@@ -36,6 +37,19 @@ const FStructureSurface = () => {
 
   useEffect(() => {
     if (route.surface === 'workspace') rememberLastTool(route.tool);
+  }, [route.surface, route.tool]);
+
+  /* Desde la bienvenida, la mesa se abre casi siempre: su código se descarga en
+     segundo plano para que «Continuar» no espere a la red (en móvil eran segundos). */
+  useEffect(() => {
+    if (route.surface !== 'tool-home') return;
+    const preload = () => { void toolRegistry.find((tool) => tool.id === route.tool)?.load().catch(() => undefined); };
+    if (typeof window.requestIdleCallback === 'function') {
+      const handle = window.requestIdleCallback(preload, { timeout: 2000 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const handle = window.setTimeout(preload, 600);
+    return () => window.clearTimeout(handle);
   }, [route.surface, route.tool]);
 
   useEffect(() => {
