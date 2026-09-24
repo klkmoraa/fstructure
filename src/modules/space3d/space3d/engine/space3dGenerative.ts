@@ -19,7 +19,8 @@ import {
 } from '../model/types';
 import { fixedSpace3DRestraints, freeSpace3DRestraints } from '../model/types';
 import { validateSpace3DProject } from '../model/validation';
-import { assessAnalysisAdmission, createAutomaticAnalysisBudget, estimateSparseLinearSystemBytes } from '../../../../numeric/admission';
+import { assessAnalysisAdmission, createAutomaticAnalysisBudget } from '../../../../numeric/admission';
+import { estimateSpace3DStaticBytes } from './solver';
 
 const buildProjectSkeleton = (
   id: string,
@@ -167,10 +168,7 @@ const assertGenerationCapacity = (nodeCount: number, memberCount: number): void 
   if (!Number.isSafeInteger(nodeCount) || !Number.isSafeInteger(memberCount) || nodeCount <= 0 || memberCount < 0) {
     throw new RangeError('La geometría solicitada excede el rango seguro del generador');
   }
-  const dimension = nodeCount * 6;
-  const nonZeros = memberCount * 144 + nodeCount * 36;
-  const estimatedBytes = estimateSparseLinearSystemBytes({ dimension, nonZeros, rhsCount: 1 });
-  const admission = assessAnalysisAdmission(estimatedBytes, GENERATOR_ANALYSIS_BUDGET);
+  const admission = assessAnalysisAdmission(estimateSpace3DStaticBytes(nodeCount, memberCount), GENERATOR_ANALYSIS_BUDGET);
   if (!admission.accepted) {
     throw new RangeError(`La geometría solicitada excede el presupuesto de análisis seguro (${nodeCount} nudos, ${memberCount} barras)`);
   }

@@ -6,10 +6,18 @@
  * seis en el nudo `j`. `Iz` gobierna la flexión en el plano `x–y` (pareja
  * `v`–`rz`) e `Iy` la del plano `x–z` (pareja `w`–`ry`); esta última cambia de
  * signo porque un giro positivo alrededor de `+y` desplaza `w` en `-z`.
+ *
+ * Dos variantes más, como en SAP2000/ETABS:
+ *
+ *   · Liberaciones de extremo: los GDL liberados se condensan estáticamente.
+ *     La matriz sigue siendo 12×12, con filas y columnas nulas en lo liberado,
+ *     y el elemento guarda lo necesario para condensar sus cargas y recuperar
+ *     el desplazamiento propio del extremo liberado (el giro de la rótula).
+ *   · Armadura: sólo rigidez axial. No transmite momentos ni torsión.
  */
 import { multiply, transpose, zeros, type Matrix } from '../../../../foundation/linearAlgebra';
 import { buildMemberOrientation, memberLength } from './orientation';
-import type { Space3DFrameMember, Space3DNode, Space3DOrientationBasis } from '../model/types';
+import type { Space3DFrameMember, Space3DMemberRelease, Space3DNode, Space3DOrientationBasis } from '../model/types';
 
 interface Space3DSectionProperties {
   readonly E: number;
@@ -20,13 +28,48 @@ interface Space3DSectionProperties {
   readonly J: number;
 }
 
+/** Condensación estática de los GDL liberados. */
+interface Space3DElementCondensation {
+  /** Índices locales liberados, en orden ascendente. */
+  readonly released: readonly number[];
+  /** `k_cc⁻¹`, |c|×|c|. */
+  readonly kccInverse: Matrix;
+  /** `k_c·` completa (filas liberadas de la rigidez sin condensar), |c|×12. */
+  readonly kcFull: Matrix;
+  /** `k_·c` completa (columnas liberadas de la rigidez sin condensar), 12×|c|. */
+  readonly kFullC: Matrix;
+}
+
 export interface Space3DElement {
   readonly memberId: string;
+  readonly kind: 'frame' | 'truss';
   readonly length: number;
   readonly basis: Space3DOrientationBasis;
+  /** Rigidez local ya condensada: nulas las filas/columnas liberadas. */
   readonly localStiffness: Matrix;
   readonly transformation: Matrix;
   readonly globalStiffness: Matrix;
+  readonly condensation: Space3DElementCondensation | null;
+}
+
+/** El orden de las claves reproduce el de los GDL locales. */
+const RELEASE_KEYS: readonly (keyof Space3DMemberRelease)[] = [
+  'iUx', 'iUy', 'iUz', 'iRx', 'iRy', 'iRz', 'jUx', 'jUy', 'jUz', 'jRx', 'jRy', 'jRz',
+];
+
+/** Índices locales liberados; vacío si no hay liberaciones activas. */
+export const releasedLocalDofs = (releases: Space3DMemberRelease | undefined): number[] =>
+  releases ? RELEASE_KEYS.flatMap((key, index) => (releases[key] ? [index] : [])) : [];
+
+/** Una liberación que deja al elemento como mecanismo: se rechaza con este error. */
+export class Space3DReleaseInstabilityError extends Error {
+  readonly memberId: string;
+
+  constructor(memberId: string) {
+    super(`release-instability:${memberId}`);
+    this.name = 'Space3DReleaseInstabilityError';
+    this.memberId = memberId;
+  }
 }
 
 const addSymmetric2 = (k: Matrix, [a, b]: readonly [number, number], diagonal: number, offDiagonal: number) => {
@@ -72,6 +115,60 @@ const spaceFrameLocalStiffness = (properties: Space3DSectionProperties, length: 
   return k;
 };
 
+const trussLocalStiffness = (properties: Space3DSectionProperties, length: number): Matrix => {
+  const k = zeros(12, 12);
+  addSymmetric2(k, [0, 6], properties.E * properties.A / length, -(properties.E * properties.A / length));
+  return k;
+};
+
+/**
+ * Inversa de una matriz pequeña por Gauss-Jordan con pivoteo parcial. Devuelve
+ * `null` si un pivote cae por debajo de la escala del problema: la liberación
+ * pedida deja un mecanismo dentro de la barra.
+ */
+const invertSmall = (matrix: Matrix): Matrix | null => {
+  const n = matrix.length;
+  const scale = Math.max(...matrix.flat().map(Math.abs), Number.MIN_VALUE);
+  const a = matrix.map((row, index) => [...row, ...Array.from({ length: n }, (_, column) => (column === index ? 1 : 0))]);
+  for (let column = 0; column < n; column += 1) {
+    let pivot = column;
+    for (let row = column + 1; row < n; row += 1) if (Math.abs(a[row][column]) > Math.abs(a[pivot][column])) pivot = row;
+    if (Math.abs(a[pivot][column]) <= scale * 1e-10) return null;
+    [a[column], a[pivot]] = [a[pivot], a[column]];
+    const divisor = a[column][column];
+    for (let entry = 0; entry < 2 * n; entry += 1) a[column][entry] /= divisor;
+    for (let row = 0; row < n; row += 1) {
+      if (row === column) continue;
+      const factor = a[row][column];
+      if (factor === 0) continue;
+      for (let entry = 0; entry < 2 * n; entry += 1) a[row][entry] -= factor * a[column][entry];
+    }
+  }
+  return a.map((row) => row.slice(n));
+};
+
+/** `k_rr − k_rc k_cc⁻¹ k_cr` expresada en 12×12 con lo liberado a cero. */
+const condense = (memberId: string, k: Matrix, released: readonly number[]): { stiffness: Matrix; condensation: Space3DElementCondensation } => {
+  const kcc = released.map((row) => released.map((column) => k[row][column]));
+  const kccInverse = invertSmall(kcc);
+  if (!kccInverse) throw new Space3DReleaseInstabilityError(memberId);
+  const kcFull = released.map((row) => [...k[row]]);
+  const kFullC = k.map((row) => released.map((column) => row[column]));
+  // correction = k_·c · k_cc⁻¹ · k_c·
+  const left = multiply(kFullC, kccInverse);
+  const correction = multiply(left, kcFull);
+  const stiffness = k.map((row, i) => row.map((value, j) => value - correction[i][j]));
+  // Las filas y columnas liberadas ya son nulas en aritmética exacta; se fijan
+  // a cero para que el redondeo no deje rigidez fantasma en el nudo.
+  for (const index of released) {
+    for (let other = 0; other < 12; other += 1) {
+      stiffness[index][other] = 0;
+      stiffness[other][index] = 0;
+    }
+  }
+  return { stiffness, condensation: { released: [...released], kccInverse, kcFull, kFullC } };
+};
+
 /**
  * Matriz de transformación 12×12: cuatro copias del bloque 3×3 cuyas filas son
  * los ejes locales expresados en global, de modo que `uLocal = T · uGlobal`.
@@ -97,9 +194,50 @@ export const buildSpaceFrameElement = (
   const end = [nodeJ.x, nodeJ.y, nodeJ.z] as const;
   const length = memberLength(start, end);
   const basis = buildMemberOrientation(start, end, member.orientation);
-  const localStiffness = spaceFrameLocalStiffness(member, length);
+  const kind = member.type === 'truss' ? 'truss' : 'frame';
+  const full = kind === 'truss' ? trussLocalStiffness(member, length) : spaceFrameLocalStiffness(member, length);
+  const released = kind === 'frame' ? releasedLocalDofs(member.releases) : [];
+  const { stiffness: localStiffness, condensation } = released.length > 0
+    ? condense(member.id, full, released)
+    : { stiffness: full, condensation: null };
   const transformation = spaceFrameTransformation(basis);
   const globalStiffness = multiply(transpose(transformation), multiply(localStiffness, transformation));
 
-  return { memberId: member.id, length, basis, localStiffness, transformation, globalStiffness };
+  return { memberId: member.id, kind, length, basis, localStiffness, transformation, globalStiffness, condensation };
+};
+
+/**
+ * Fuerzas de empotramiento condensadas: `f_r − k_rc k_cc⁻¹ f_c`, y cero en lo
+ * liberado. Sin liberaciones, la entrada vuelve tal cual.
+ */
+export const condenseFixedEndForces = (element: Space3DElement, fixedEnd: readonly number[]): number[] => {
+  const condensation = element.condensation;
+  if (!condensation) return [...fixedEnd];
+  const fc = condensation.released.map((index) => fixedEnd[index]);
+  const z = condensation.kccInverse.map((row) => row.reduce((sum, value, index) => sum + value * fc[index], 0));
+  const result = fixedEnd.map((value, row) => value - condensation.kFullC[row].reduce((sum, coefficient, index) => sum + coefficient * z[index], 0));
+  for (const index of condensation.released) result[index] = 0;
+  return result;
+};
+
+/**
+ * Desplazamientos locales del propio extremo de la barra. En lo retenido
+ * coinciden con los del nudo; en lo liberado se recuperan con
+ * `u_c = −k_cc⁻¹ (k_cr u_r + f_c)`, que es el giro relativo de la rótula.
+ */
+export const recoverMemberEndDisplacements = (
+  element: Space3DElement,
+  nodeLocal: readonly number[],
+  fixedEnd: readonly number[],
+): number[] => {
+  const condensation = element.condensation;
+  if (!condensation) return [...nodeLocal];
+  const releasedSet = new Set(condensation.released);
+  const retained = nodeLocal.map((value, index) => (releasedSet.has(index) ? 0 : value));
+  const rhs = condensation.kcFull.map((row, index) => row.reduce((sum, value, column) => sum + value * retained[column], 0)
+    + fixedEnd[condensation.released[index]]);
+  const uc = condensation.kccInverse.map((row) => -row.reduce((sum, value, index) => sum + value * rhs[index], 0));
+  const result = [...retained];
+  condensation.released.forEach((index, position) => { result[index] = uc[position]; });
+  return result;
 };

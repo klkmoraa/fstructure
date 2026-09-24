@@ -414,12 +414,37 @@ export interface Space3DOrientationBasis {
   readonly z: Space3DVector;
 }
 
+/**
+ * Esfuerzos internos y elástica en una sección de la barra, en ejes locales.
+ * `N` es positivo a tracción; `Mz` positivo si la curvatura `v''` es positiva
+ * (en una viga con `y` hacia arriba, momento de vano); `u`, `v`, `w` son los
+ * desplazamientos locales de la sección, m.
+ */
+export interface Space3DMemberStation {
+  /** Distancia desde el extremo `i`, m. */
+  readonly x: number;
+  readonly N: number;
+  readonly Vy: number;
+  readonly Vz: number;
+  readonly T: number;
+  readonly My: number;
+  readonly Mz: number;
+  readonly u: number;
+  readonly v: number;
+  readonly w: number;
+}
+
 export interface Space3DMemberResult {
   readonly memberId: string;
   readonly length: number;
   readonly basis: Space3DOrientationBasis;
   readonly start: Space3DMemberEndForces;
   readonly end: Space3DMemberEndForces;
+  /**
+   * Estaciones a lo largo de la barra, ordenadas por `x`. En una carga
+   * concentrada la posición se repite (valor a la izquierda y a la derecha).
+   */
+  readonly stations?: readonly Space3DMemberStation[];
 }
 
 export interface Space3DEquilibriumAudit {
@@ -439,6 +464,11 @@ export interface Space3DAnalysisDiagnostics {
   readonly relativeResidual: number;
   readonly conditionEstimate: number;
   readonly equilibrium: Space3DEquilibriumAudit;
+  /**
+   * GDL sin rigidez ni carga que se fijaron solos: giros de nudos a los que
+   * sólo llegan armaduras o barras articuladas, o nudos sueltos.
+   */
+  readonly autoRestrainedDofCount?: number;
 }
 
 export interface Space3DAnalysisResult {

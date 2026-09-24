@@ -14,16 +14,13 @@ import {
 import {
   analyzeSpace3DProject,
   assembleSpace3DStaticModel,
+  recoverSpace3DResult,
   type Space3DStaticAnalysisOptions,
 } from './solver';
 import type {
   Space3DAnalysisIssue,
   Space3DAnalysisResult,
-  Space3DEquilibriumAudit,
   Space3DDofValues,
-  Space3DMemberEndForces,
-  Space3DMemberResult,
-  Space3DNodeResult,
   Space3DProjectV1,
   Space3DVector,
 } from '../model/types';
@@ -148,7 +145,7 @@ export const analyzeSpace3DModal = (
   options: Space3DModalOptions = {},
 ): Space3DModalResult => {
   const targetId = targetForModal(project, options.targetId);
-  const assembly = assembleSpace3DStaticModel(project, targetId, options);
+  const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
   if (!assembly.valid) return failure(targetId, 'El ensamblaje espacial no es admisible para el estudio modal.', assembly.issues);
   if (!assembly.freeDofs.length) return failure(targetId, 'Las condiciones de contorno no dejan grados de libertad libres.', [], 0, 0);
 
@@ -296,63 +293,6 @@ const bucklingFailure = (
   reason,
 });
 
-const zeroDofValues = (): Space3DDofValues => ({ ux: 0, uy: 0, uz: 0, rx: 0, ry: 0, rz: 0 });
-
-const dofValuesFromVector = (values: readonly number[], offset: number): Space3DDofValues => ({
-  ux: values[offset] ?? 0,
-  uy: values[offset + 1] ?? 0,
-  uz: values[offset + 2] ?? 0,
-  rx: values[offset + 3] ?? 0,
-  ry: values[offset + 4] ?? 0,
-  rz: values[offset + 5] ?? 0,
-});
-
-const memberEndForcesFromVector = (values: readonly number[], offset: number): Space3DMemberEndForces => ({
-  N: values[offset] ?? 0,
-  Vy: values[offset + 1] ?? 0,
-  Vz: values[offset + 2] ?? 0,
-  T: values[offset + 3] ?? 0,
-  My: values[offset + 4] ?? 0,
-  Mz: values[offset + 5] ?? 0,
-});
-
-const crossProduct = (r: Space3DVector, f: Space3DVector): Space3DVector => [
-  r[1] * f[2] - r[2] * f[1],
-  r[2] * f[0] - r[0] * f[2],
-  r[0] * f[1] - r[1] * f[0],
-];
-
-const equilibriumFor = (
-  project: Space3DProjectV1,
-  nodeResults: readonly Space3DNodeResult[],
-  F: readonly number[],
-): Space3DEquilibriumAudit => {
-  const force: [number, number, number] = [0, 0, 0];
-  const moment: [number, number, number] = [0, 0, 0];
-  let forceScale = 1;
-  let momentScale = 1;
-  project.nodes.forEach((node, index) => {
-    const base = index * DOF_PER_NODE;
-    const applied: Space3DVector = [F[base] ?? 0, F[base + 1] ?? 0, F[base + 2] ?? 0];
-    const appliedMoment: Space3DVector = [F[base + 3] ?? 0, F[base + 4] ?? 0, F[base + 5] ?? 0];
-    const reaction = nodeResults[index]?.reaction ?? zeroDofValues();
-    const reactionForce: Space3DVector = [reaction.ux, reaction.uy, reaction.uz];
-    const reactionMoment: Space3DVector = [reaction.rx, reaction.ry, reaction.rz];
-    const position: Space3DVector = [node.x, node.y, node.z];
-    for (let axis = 0; axis < 3; axis += 1) {
-      force[axis] += applied[axis] + reactionForce[axis];
-      moment[axis] += appliedMoment[axis] + reactionMoment[axis] + crossProduct(position, applied)[axis] + crossProduct(position, reactionForce)[axis];
-      forceScale = Math.max(forceScale, Math.abs(applied[axis]), Math.abs(reactionForce[axis]));
-      momentScale = Math.max(momentScale, Math.abs(appliedMoment[axis]), Math.abs(reactionMoment[axis]), Math.abs(crossProduct(position, applied)[axis]), Math.abs(crossProduct(position, reactionForce)[axis]));
-    }
-  });
-  return Object.freeze({
-    force: Object.freeze(force) as Space3DVector,
-    moment: Object.freeze(moment) as Space3DVector,
-    normalized: Math.max(Math.max(...force.map(Math.abs)) / forceScale, Math.max(...moment.map(Math.abs)) / momentScale),
-  });
-};
-
 const resultFromDisplacement = (
   project: Space3DProjectV1,
   assembly: ReturnType<typeof assembleSpace3DStaticModel>,
@@ -361,45 +301,10 @@ const resultFromDisplacement = (
   displacement: readonly number[],
   relativeResidual: number,
   conditionEstimate: number,
-): Space3DAnalysisResult => {
-  const rawReactions = multiplyMatrixVector(stiffness, displacement).map((value, index) => value - (loadVector[index] ?? 0));
-  const restrained = new Set(assembly.restrainedDofs);
-  const reactionVector = rawReactions.map((value, dof) => restrained.has(dof) ? value : 0);
-  const nodeResults: Space3DNodeResult[] = project.nodes.map((node, index) => Object.freeze({
-    nodeId: node.id,
-    displacement: Object.freeze(dofValuesFromVector(displacement, index * DOF_PER_NODE)),
-    reaction: Object.freeze(dofValuesFromVector(reactionVector, index * DOF_PER_NODE)),
-  }));
-  const memberResults: Space3DMemberResult[] = assembly.elements.map((element) => {
-    const uElement = element.dofIndices.map((index) => displacement[index] ?? 0);
-    const uLocal = multiplyMatrixVector(element.transformation, uElement);
-    const local = multiplyMatrixVector(element.localStiffness, uLocal);
-    return Object.freeze({
-      memberId: element.memberId,
-      length: element.length,
-      basis: element.basis,
-      start: Object.freeze(memberEndForcesFromVector(local, 0)),
-      end: Object.freeze(memberEndForcesFromVector(local, 6)),
-    });
-  });
-  const equilibrium = equilibriumFor(project, nodeResults, loadVector);
-  return Object.freeze({
-    success: true,
-    targetId: assembly.targetId,
-    targetKind: assembly.targetKind,
-    nodeResults: Object.freeze(nodeResults),
-    memberResults: Object.freeze(memberResults),
-    issues: Object.freeze([]),
-    diagnostics: Object.freeze({
-      dofCount: assembly.totalDofs,
-      freeDofCount: assembly.freeDofs.length,
-      restrainedDofCount: assembly.restrainedDofs.length,
-      relativeResidual,
-      conditionEstimate,
-      equilibrium,
-    }),
-  });
-};
+): Space3DAnalysisResult => recoverSpace3DResult(
+  project, assembly, stiffness, displacement, { relativeResidual, conditionEstimate },
+  loadVector === assembly.loadVector ? {} : { loadVector },
+);
 
 const solveWithStiffness = (
   stiffness: Matrix,
@@ -431,6 +336,17 @@ const localGeometricStiffness = (length: number, compression: number): Matrix =>
   return result;
 };
 
+const chordGeometricStiffness = (length: number, compression: number): Matrix => {
+  const result = zeros(12, 12);
+  if (!(compression > 0) || !(length > 0)) return result;
+  const coefficient = compression / length;
+  for (const [a, b] of [[1, 7], [2, 8]] as const) {
+    result[a][a] += coefficient; result[b][b] += coefficient;
+    result[a][b] -= coefficient; result[b][a] -= coefficient;
+  }
+  return result;
+};
+
 const geometricFromDisplacement = (
   assembly: ReturnType<typeof assembleSpace3DStaticModel>,
   displacement: readonly number[],
@@ -440,10 +356,15 @@ const geometricFromDisplacement = (
   for (const element of assembly.elements) {
     const uElement = element.dofIndices.map((index) => displacement[index] ?? 0);
     const localDisplacement = multiplyMatrixVector(element.transformation, uElement);
-    const localForces = multiplyMatrixVector(element.localStiffness, localDisplacement);
+    const localForces = multiplyMatrixVector(element.localStiffness, localDisplacement)
+      .map((value, index) => value + (element.fixedEndForces[index] ?? 0));
     const axial = ((localForces[6] ?? 0) - (localForces[0] ?? 0)) / 2;
     axialForces.set(element.memberId, axial);
-    const localGeometric = localGeometricStiffness(element.length, Math.max(0, -axial));
+    // Una armadura o una barra con flexión liberada no transmite giro: su
+    // rigidez geométrica es la de la cuerda, N/L sobre las traslaciones.
+    const localGeometric = element.kind === 'truss' || element.element.condensation
+      ? chordGeometricStiffness(element.length, Math.max(0, -axial))
+      : localGeometricStiffness(element.length, Math.max(0, -axial));
     const globalGeometric = multiply(transpose(element.transformation), multiply(localGeometric, element.transformation));
     element.dofIndices.forEach((row, i) => element.dofIndices.forEach((column, j) => { geometric[row][column] += globalGeometric[i][j]; }));
   }
@@ -456,14 +377,14 @@ export const analyzeSpace3DPDelta = (
   options: Space3DPDeltaOptions = {},
 ): Space3DPDeltaResult => {
   const linear = ((): Space3DAnalysisResult => {
-    const assembly = assembleSpace3DStaticModel(project, targetId, options);
+    const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
     return assembly.valid ? analyzeSpace3DProject(project, targetId, options) : Object.freeze({
       success: false, targetId, targetKind: assembly.targetKind, nodeResults: Object.freeze([]), memberResults: Object.freeze([]), issues: assembly.issues,
       diagnostics: Object.freeze({ dofCount: assembly.totalDofs, freeDofCount: 0, restrainedDofCount: 0, relativeResidual: Number.NaN, conditionEstimate: Number.NaN, equilibrium: Object.freeze({ force: Object.freeze([0, 0, 0]) as Space3DVector, moment: Object.freeze([0, 0, 0]) as Space3DVector, normalized: Number.NaN }) }),
     });
   })();
   if (!linear.success) return pDeltaFailure(targetId, 'El análisis lineal de referencia no es válido.', linear, linear.issues);
-  const assembly = assembleSpace3DStaticModel(project, targetId, options);
+  const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
   const maxIterations = Math.max(1, Math.trunc(options.maxIterations ?? 20));
   const tolerance = options.tolerance ?? 1e-7;
   let displacement = project.nodes.flatMap((_, index) => {
@@ -508,7 +429,7 @@ export const analyzeSpace3DBuckling = (
   targetId: string,
   options: Space3DModalOptions = {},
 ): Space3DBucklingResult => {
-  const assembly = assembleSpace3DStaticModel(project, targetId, options);
+  const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
   if (!assembly.valid) return bucklingFailure(targetId, 'El ensamblaje espacial no es admisible para pandeo.', assembly.issues);
   const reference = analyzeSpace3DProject(project, targetId, options);
   if (!reference.success) return bucklingFailure(targetId, 'El análisis lineal de referencia no es válido para pandeo.', reference.issues);
@@ -632,7 +553,7 @@ export const analyzeSpace3DInfluence = (
   options: Space3DInfluenceOptions,
 ): Space3DInfluenceResult => {
   const { target, targetId } = options;
-  const assembly = assembleSpace3DStaticModel(project, targetId, options);
+  const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
   if (!assembly.valid) return influenceFailure(targetId, target, 'El ensamblaje espacial no es admisible para influencia.', assembly.issues);
   const element = assembly.elements.find((candidate) => candidate.memberId === target.memberId);
   if (!element) return influenceFailure(targetId, target, 'El miembro objetivo no existe en la asamblea.', [{ code: 'missing-reference', entityKind: 'member', entityId: target.memberId, field: 'memberId' }]);

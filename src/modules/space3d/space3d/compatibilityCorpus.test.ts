@@ -39,7 +39,7 @@ describe('direct Space3D compatibility corpus', () => {
 
   it('does not advertise unsupported Space3D capabilities', () => {
     expect(unsupportedSpace3DCapabilities.map((item) => item.id)).toEqual([
-      'releases', 'springs', 'member-loads', 'diaphragms', 'dynamics', 'stability', 'nonlinear',
+      'springs', 'diaphragms', 'dynamics', 'stability', 'nonlinear',
     ]);
     for (const item of unsupportedSpace3DCapabilities) {
       expect(item.status).toBe('unsupported');

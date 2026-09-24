@@ -191,6 +191,28 @@ const makeNearDegenerate = (): Space3DProjectV1 => {
   return { ...base, id: 'space3d-near-degenerate-orientation', members: [{ ...base.members[0], orientation: { localYReferenceGlobal: [1, 1e-10, 0], rollRadians: 0 } }] };
 };
 
+/** Voladizo de 2 m con carga uniforme gravitatoria w = 10 kN/m sobre la barra. */
+const makeUniformCantilever = (): Space3DProjectV1 => {
+  const base = axialCantilever({ P: 0 });
+  return {
+    ...base,
+    id: 'space3d-member-load',
+    nodalLoads: [],
+    memberLoads: [{ id: 'Q1', memberId: 'M1', caseId: 'LC1', type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1, qyStart: -10, qyEnd: -10 }],
+  };
+};
+
+/** La misma barra entre dos empotramientos, liberada a flexión en ambos extremos. */
+const makeReleasedBeam = (): Space3DProjectV1 => {
+  const base = makeUniformCantilever();
+  return {
+    ...base,
+    id: 'space3d-releases',
+    nodes: base.nodes.map((node) => ({ ...node, restraints: { ux: true, uy: true, uz: true, rx: true, ry: true, rz: true } })),
+    members: [{ ...base.members[0], releases: { iRy: true, iRz: true, jRy: true, jRz: true } }],
+  };
+};
+
 const available = (entry: Omit<Space3DCorpusCase, 'status' | 'schema' | 'engineId' | 'algorithmId'>): Space3DCorpusCase => ({
   ...entry, status: 'available', schema: SPACE3D_CORPUS_SCHEMA, engineId: SPACE3D_CORPUS_ENGINE_ID, algorithmId: SPACE3D_CORPUS_ALGORITHM_ID,
 });
@@ -214,12 +236,14 @@ export const availableSpace3DCorpus: readonly Space3DCorpusCase[] = Object.freez
       maxResidual: 1e-8,
     },
   ] }),
+  available({ id: 'member-loads', capability: 'uniform member load', units: 'kN-m', coordinateAssumptions: 'cantilever along global X, L=2 m, EIz=16000 kN·m², qy=-10 kN/m in global Y', oracle: 'closed form tip v=-wL^4/(8EI), root reactions wL and wL^2/2', targetId: 'CO1', project: makeUniformCantilever, assertions: [assertion('tip-deflection', 'node.J.displacement.uy', -0.00125), assertion('root-shear-reaction', 'node.I.reaction.uy', 20), assertion('root-moment-reaction', 'node.I.reaction.rz', 20)], invariants: [success, equilibrium] }),
+  available({ id: 'releases', capability: 'member end releases', units: 'kN-m', coordinateAssumptions: 'same beam and load between two fully fixed nodes, bending released at both ends', oracle: 'simply supported statics: reactions wL/2, zero end moments', targetId: 'CO1', project: makeReleasedBeam, assertions: [assertion('released-end-moment', 'member.M1.start.Mz', 0), assertion('support-moment', 'node.I.reaction.rz', 0), assertion('support-shear', 'node.I.reaction.uy', 10), assertion('support-shear-j', 'node.J.reaction.uy', 10)], invariants: [success, equilibrium] }),
   available({ id: 'near-degenerate-orientation', capability: 'near-degenerate orientation rejection', units: 'kN-m', coordinateAssumptions: 'reference [1,1e-10,0] is nearly parallel to member X', oracle: 'independent geometric perpendicularity ratio below 1e-8 threshold', targetId: 'CO1', project: makeNearDegenerate, assertions: [assertion('analysis-fails', 'success', false), assertion('orientation-code', 'issues.0.code', 'degenerate-orientation')], invariants: [{ id: 'analysis-fails-invariant', kind: 'success', expected: false }, { id: 'literal-diagnostic-sequence', kind: 'deterministic-issues', expectedCodes: ['degenerate-orientation'] }] }),
 ]);
 
 const unsupported = (id: string, capability: string): Space3DCorpusCase => ({ id, capability, status: 'unsupported', units: 'kN-m', coordinateAssumptions: 'not applicable', schema: SPACE3D_CORPUS_SCHEMA, engineId: SPACE3D_CORPUS_ENGINE_ID, algorithmId: 'not-implemented', oracle: 'none: no executable implementation or independent result contract', targetId: '', project: () => axialCantilever(), assertions: [], invariants: [] });
 export const unsupportedSpace3DCapabilities: readonly Space3DCorpusCase[] = Object.freeze([
-  unsupported('releases', 'member releases'), unsupported('springs', 'springs'), unsupported('member-loads', 'member loads'), unsupported('diaphragms', 'diaphragms'), unsupported('dynamics', 'dynamics'), unsupported('stability', 'stability/buckling'), unsupported('nonlinear', 'nonlinear analysis'),
+  unsupported('springs', 'springs'), unsupported('diaphragms', 'diaphragms'), unsupported('dynamics', 'dynamics'), unsupported('stability', 'stability/buckling'), unsupported('nonlinear', 'nonlinear analysis'),
 ]);
 export const space3dCorpus: readonly Space3DCorpusCase[] = Object.freeze([...availableSpace3DCorpus, ...unsupportedSpace3DCapabilities]);
 
