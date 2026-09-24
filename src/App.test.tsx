@@ -102,7 +102,7 @@ describe('standalone FStructure', () => {
     localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
     window.history.replaceState(null, '', `/?project=${project.id}&tool=design`);
     render(<App />);
-    expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
+    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
     act(() => {
       window.history.pushState(null, '', '/?surface=welcome');
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -125,10 +125,10 @@ describe('standalone FStructure', () => {
     const user = userEvent.setup();
     render(<App />);
     await openFromHome(user, 'Diseño');
-    expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
+    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
     const length = window.history.length;
-    await user.click(screen.getByLabelText('Cerrar Diseño'));
+    await user.click(screen.getByRole('button', { name: 'Ir al inicio' }));
     // Cerrar una herramienta aislada vuelve a SU bienvenida, no a otra herramienta.
     expect(await screen.findByTestId('design-welcome')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('surface')).toBe('home');
@@ -136,7 +136,7 @@ describe('standalone FStructure', () => {
     expect(window.history.length).toBe(length + 1);
     window.history.back();
     await waitFor(() => expect(new URLSearchParams(window.location.search).get('tool')).toBe('design'));
-    expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
+    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
   });
 
   it('opens an existing requested project and retains its identity and selected tool after reload', async () => {
@@ -186,7 +186,7 @@ describe('standalone FStructure', () => {
       expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
       await act(async () => { releaseLookup(); });
       await waitFor(() => expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).toBe('project-b'));
-      expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
+      expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
       expect(new URLSearchParams(window.location.search).get('project')).toBe('project-b');
       expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
     } finally {

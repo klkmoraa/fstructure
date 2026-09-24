@@ -68,7 +68,7 @@ it('los atajos del Modelo 2D no existen dentro de otra herramienta', async () =>
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
 
   await openFromHome(user, 'Diseño');
-  expect(await screen.findByLabelText('Cerrar Diseño')).toBeTruthy();
+  expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(screen.queryByRole('listbox', { name: 'Paleta de comandos' })).toBeNull();

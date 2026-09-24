@@ -7,11 +7,11 @@ import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import { rebarLabel } from '../../../design/elements/shared';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
 import {
-  BarSelect, ChecksList, ErrorsPanel, FieldGroup, GroupSelect, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField, PanelSection, RebarList, Summary,
-  ValuesTable, Verdict, formatNumber, isShortString, mpaFromKgcm2, mpaHint, parseNumber, readStored, sustainedRatioFor, useStoredDraft, xiFor,
+  BarSelect, ChecksList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField, PanelSection, RebarList,
+  Summary, ValuesTable, Verdict, formatNumber, isShortString, mpaFromKgcm2, mpaHint, parseNumber, readStored, sustainedRatioFor, useStoredDraft, xiFor,
 } from './common';
 import { useWorkbenchStorage } from './workbenchStorage';
-import { Plate, StatusBadge, WorkbenchLayout, type WorkbenchChrome } from './WorkbenchLayout';
+import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 const DEFAULTS = {
   width: '25', height: '50', cover: '4', fc: '250', fy: '4200', fyv: '4200', leftEnd: 'pin', rightEnd: 'pin',
@@ -179,7 +179,6 @@ function SpanTable({ spans, points, onChange, onAdd, onRemove }: {
       </> : null}
     </Fragment>)}
     {spans.length < MAX_SPANS ? <button type="button" className="dw-add" onClick={onAdd}><Plus size={14} aria-hidden="true" />Agregar claro</button> : null}
-    {points ? <p className="dw-footnote">a: distancia de la carga puntual desde el inicio del claro.</p> : null}
   </div>;
 }
 
@@ -193,31 +192,14 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const deferred = useDeferredValue(input);
   const result = useMemo(() => designBeam(deferred), [deferred]);
 
-  const status = result.ok
-    ? `Viga · ${result.status === 'fail' ? 'No cumple' : 'Cumple'} · ${Math.round(result.governingRatio * 100)} %`
-    : 'Viga · datos incompletos';
-
   return <WorkbenchLayout
     chrome={chrome}
     title="Viga"
-    subtitle={`Análisis con el solver 2D · diseño ${code.name}`}
-    status={status}
     memo={result.ok ? beamMemo(result) : null}
     onReset={() => { reset(); setSpans(DEFAULT_SPANS); }}
-    badge={result.ok
-      ? <><span className="dw-badge">{describe(result.input)}</span><StatusBadge status={result.status} label={`${result.status === 'fail' ? 'No cumple' : 'Cumple'} · ${Math.round(result.governingRatio * 100)} %`} /></>
-      : <StatusBadge status="error" label="Datos incompletos" />}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : { status: 'error', label: 'Datos incompletos' }}
+    caption={result.ok ? describe(result.input) : undefined}
     inputs={<>
-      <FieldGroup title="Sección">
-        <NumberField label="Base b" unit="cm" value={draft.width} onChange={set('width')} />
-        <NumberField label="Peralte h" unit="cm" value={draft.height} onChange={set('height')} />
-        <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} hint="libre al estribo" />
-      </FieldGroup>
-      <FieldGroup title="Extremos" columns={1}>
-        <div className="dw-end"><span aria-hidden="true">Izquierdo</span><SegmentedControl label="Extremo izquierdo" size="sm" value={draft.leftEnd} options={ENDS} onValueChange={set('leftEnd')} /></div>
-        <div className="dw-end"><span aria-hidden="true">Derecho</span><SegmentedControl label="Extremo derecho" size="sm" value={draft.rightEnd} options={ENDS} onValueChange={set('rightEnd')} /></div>
-        <NumberField label="Ancho de los apoyos extremos" unit="cm" value={draft.supportWidth} onChange={set('supportWidth')} hint="para anclar las barras" />
-      </FieldGroup>
       <FieldGroup title="Claros y cargas de servicio" columns={1}>
         <SpanTable
           spans={spans}
@@ -226,22 +208,31 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           onAdd={() => setSpans((current) => [...current, { ...current[current.length - 1]! }])}
           onRemove={(index) => setSpans((current) => current.filter((_, position) => position !== index))}
         />
-        <LayerToggle label="Cargas puntuales" description="Una por claro, en cualquier posición" checked={draft.points === 'yes'} onCheckedChange={(checked) => set('points')(checked ? 'yes' : 'no')} />
-        <LayerToggle label="Sumar peso propio" description="24 kN/m³ × b × h" checked={draft.selfWeight === 'yes'} onCheckedChange={(checked) => set('selfWeight')(checked ? 'yes' : 'no')} />
+        <LayerToggle label="Cargas puntuales" checked={draft.points === 'yes'} onCheckedChange={(checked) => set('points')(checked ? 'yes' : 'no')} />
+        <LayerToggle label="Sumar peso propio" checked={draft.selfWeight === 'yes'} onCheckedChange={(checked) => set('selfWeight')(checked ? 'yes' : 'no')} />
+      </FieldGroup>
+      <FieldGroup title="Sección">
+        <NumberField label="Base b" unit="cm" value={draft.width} onChange={set('width')} />
+        <NumberField label="Peralte h" unit="cm" value={draft.height} onChange={set('height')} />
+        <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
+      </FieldGroup>
+      <FieldGroup title="Extremos" columns={1}>
+        <div className="dw-end"><span aria-hidden="true">Izquierdo</span><SegmentedControl label="Extremo izquierdo" size="sm" value={draft.leftEnd} options={ENDS} onValueChange={set('leftEnd')} /></div>
+        <div className="dw-end"><span aria-hidden="true">Derecho</span><SegmentedControl label="Extremo derecho" size="sm" value={draft.rightEnd} options={ENDS} onValueChange={set('rightEnd')} /></div>
       </FieldGroup>
       <FieldGroup title="Materiales">
         <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} hint={mpaHint(draft.fc)} />
         <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} hint={mpaHint(draft.fy)} />
       </FieldGroup>
-      <FieldGroup title={`Criterios de carga · ${code.usesStructureGroup ? 'NTC-CyA 2023' : code.name}`} columns={1}>
+      <FieldGroup title="Criterios de carga" columns={1}>
         {code.usesStructureGroup
           ? <GroupSelect value={draft.group} onChange={set('group')} groups={[{ value: 'B', label: 'Grupo B · 1.3 CM + 1.5 CV' }, { value: 'A', label: 'Grupo A · 1.5 CM + 1.7 CV' }]} />
-          : <p className="dw-footnote">{`Combinaciones: ${code.loadCombinations('B').map((combination) => combination.label).join(' · ')}.`}</p>}
+          : null}
         {code.sustainedLive === 'use'
-          ? <Select label="Destino (carga viva sostenida W/Wm)" value={draft.use} onChange={(event) => set('use')(event.currentTarget.value)}>
+          ? <Select label="Destino" value={draft.use} onChange={(event) => set('use')(event.currentTarget.value)}>
             {LIVE_LOAD_USES.map((use) => <option key={use.value} value={use.value}>{`${use.label} · W ${use.w} / Wm ${use.wm} kN/m²`}</option>)}
           </Select>
-          : <NumberField label="Carga viva sostenida" unit="%" value={draft.sustained} onChange={set('sustained')} hint="porción permanente para la flecha diferida" />}
+          : <NumberField label="Carga viva sostenida" unit="%" value={draft.sustained} onChange={set('sustained')} />}
       </FieldGroup>
       <MoreOptions>
         <div className="dw-span-all">
@@ -253,17 +244,18 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <BarSelect label="Estribo" value={draft.stirrup} onChange={set('stirrup')} allowAuto />
         <NumberField label="fy estribos" unit="kg/cm²" value={draft.fyv} onChange={set('fyv')} />
         <NumberField label="Agregado" unit="mm" value={draft.aggregate} onChange={set('aggregate')} />
+        <NumberField label="Ancho de apoyo" unit="cm" value={draft.supportWidth} onChange={set('supportWidth')} />
         <div className="dw-span-all">
-          <LayerToggle label="Soporta muros frágiles" description={code.beam.deflection === 'ntc' ? 'Límite de deflexión L/480 + 3 mm' : 'Deflexión posterior a los muros ≤ ℓ/480'} checked={draft.damages === 'yes'}
+          <LayerToggle label="Soporta muros frágiles" description={code.beam.deflection === 'ntc' ? 'Límite L/480 + 3 mm' : 'Límite ℓ/480'} checked={draft.damages === 'yes'}
             onCheckedChange={(checked) => set('damages')(checked ? 'yes' : 'no')} />
         </div>
       </MoreOptions>
     </>}
     stage={result.ok ? <>
-      <Plate title="Elevación y envolventes" note={`Carga viva alternada por claro · punteado: resistencia φMn provista · ${result.solverRuns} análisis del solver 2D`} wide>
+      <Plate title="Elevación y envolventes" note="punteado: φMn provista" wide>
         <BeamElevation result={result} />
       </Plate>
-      <Plate title="Armado longitudinal" note="corridas + bastones con su longitud · estribos por zonas" wide>
+      <Plate title="Armado longitudinal" wide>
         <BeamRebarDetail result={result} />
       </Plate>
       {result.cuts.map((cut) => <Plate key={cut.label} title={cut.label} note={`x = ${meters(cut.xM)} m`}>
@@ -285,11 +277,17 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           { kind: 'bar', title: `${barsText(result.continuousBottom.continuous)} corridas abajo`, detail: `Toda la viga · φMn⁺ ${formatNumber(result.continuousBottom.strengthKnm)} kN·m` },
           ...result.bastions.map((bastion) => ({ kind: 'extra' as const, title: bastionTitle(bastion), detail: bastionDetail(bastion) })),
           ...result.anchorages.filter((item) => item.kind !== 'straight').map((item) => ({ kind: 'bar' as const, title: item.kind === 'hook' ? 'Gancho estándar' : 'Anclaje insuficiente', detail: anchorageText(item) })),
-          { kind: 'bar' as const, title: 'Traslapes Clase B', detail: `Superior ${cm(result.splices.top)} · inferior ${cm(result.splices.bottom)} · fuera de los momentos máximos` },
+          { kind: 'bar' as const, title: 'Traslapes Clase B', detail: `Superior ${cm(result.splices.top)} · inferior ${cm(result.splices.bottom)}` },
+          ...result.spans.map((span, index) => ({
+            kind: 'stirrup' as const,
+            title: `Claro ${index + 1} · ${stirrupText(span.stirrups, result.stirrupDiameterMm)}`,
+            detail: `Vu ${formatNumber(span.stirrups.demandKn)} kN · φVn ${formatNumber(span.stirrups.strengthKn)} kN`,
+          })),
         ]} />
       </PanelSection>
-      <PanelSection title="Por claro">
-        <table className="dw-table">
+      <PanelSection title="Comprobaciones"><ChecksList checks={result.checks} /></PanelSection>
+      <Disclosure label="Detalle del cálculo">
+        <table className="dw-table" aria-label="Envolvente por claro (kN·m, kN)">
           <thead><tr><th scope="col">Claro</th><th scope="col">M⁺</th><th scope="col">M⁻ izq</th><th scope="col">M⁻ der</th><th scope="col">V</th><th scope="col">Δ/lím</th></tr></thead>
           <tbody>{result.spans.map((span, index) => <tr key={index}>
             <th scope="row">{index + 1}</th>
@@ -300,15 +298,6 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             <td data-status={span.checkedDeflectionMm > span.deflectionLimitMm ? 'fail' : undefined}>{`${Math.round(span.checkedDeflectionMm / span.deflectionLimitMm * 100)} %`}</td>
           </tr>)}</tbody>
         </table>
-        <RebarList items={result.spans.map((span, index) => ({
-          kind: 'stirrup' as const,
-          title: `Claro ${index + 1} · ${stirrupText(span.stirrups, result.stirrupDiameterMm)}`,
-          detail: `Vu ${formatNumber(span.stirrups.demandKn)} kN · φVn ${formatNumber(span.stirrups.strengthKn)} kN · Ie/Ig ${formatNumber(span.effectiveInertiaRatio, 2)}`,
-        }))} />
-        <p className="dw-footnote">Momentos en kN·m y cortante en kN de la envolvente factorizada.</p>
-      </PanelSection>
-      <PanelSection title="Comprobaciones"><ChecksList checks={result.checks} /></PanelSection>
-      <PanelSection title="Valores de cálculo">
         <ValuesTable rows={[
           { symbol: 'd', label: 'Peralte efectivo (corridas)', value: cm(result.continuousBottom.effectiveDepthMm) },
           { symbol: 'As mín', label: 'Lecho inferior', value: cm2(code.beam.minimumSteel(result.input.widthMm, result.continuousBottom.effectiveDepthMm, result.input.heightMm, result.input.fcMpa, result.input.fyMpa, result.continuousBottom.extremeDepthMm)) },
@@ -318,8 +307,9 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           { symbol: 'Δt', label: `Total con diferida claro ${result.deflection.governingSpan + 1}`, value: `${formatNumber(result.deflection.totalMm)} mm` },
           { symbol: 'Ec', label: 'Módulo de elasticidad', value: `${formatNumber(code.elasticModulusMpa(result.input.fcMpa), 0)} MPa` },
           { symbol: 'Estribo', label: 'Diámetro', value: rebarLabel(result.stirrupDiameterMm) },
+          ...result.spans.map((span, index) => ({ symbol: 'Ie/Ig', label: `Claro ${index + 1}`, value: formatNumber(span.effectiveInertiaRatio, 2) })),
         ]} />
-      </PanelSection>
+      </Disclosure>
     </> : null}
   />;
 }

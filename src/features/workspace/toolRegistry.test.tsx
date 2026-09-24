@@ -23,7 +23,7 @@ describe('public tool registry', () => {
     cleanup();
     const Design = await toolRegistry[1].load();
     render(<ProjectProvider><Design /></ProjectProvider>);
-    expect(screen.getByLabelText('Cerrar Diseño')).toBeTruthy();
+    expect(screen.getByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
   });
   it('provides translated labels for the selector in both languages', () => {
     for (const descriptor of toolRegistry) {

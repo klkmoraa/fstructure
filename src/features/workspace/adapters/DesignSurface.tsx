@@ -3,7 +3,6 @@ import { DesignWorkbench } from '../../design/workbench/DesignWorkbench';
 import { browserWorkbenchStorage, createProjectWorkbenchStorage, WorkbenchStorageContext } from '../../design/workbench/workbenchStorage';
 import { ProjectModelContext } from '../../../store/ProjectModelContext';
 import { useSharedToolState } from '../../../store/SharedToolState';
-import { DesignSurfaceContext } from './surfaceContexts';
 import { peekToolIntent, takeToolIntent } from '../toolIntent';
 
 /**
@@ -11,7 +10,6 @@ import { peekToolIntent, takeToolIntent } from '../toolIntent';
  * del bundle del proyecto abierto; sin sesión de proyecto, en el navegador.
  */
 export default function DesignSurface() {
-  const shellProps = useContext(DesignSurfaceContext);
   const project = useContext(ProjectModelContext)?.project ?? null;
   const session = useSharedToolState()?.session ?? null;
   const latestProject = useRef(project);
@@ -29,6 +27,6 @@ export default function DesignSurface() {
   }, [session, projectId]);
   useEffect(() => () => storage?.dispose(), [storage]);
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
-    <DesignWorkbench key={projectId ?? 'local'} onClose={() => shellProps?.onOpenChange(false)} startElement={intent?.element} startCode={intent?.code} />
+    <DesignWorkbench key={projectId ?? 'local'} startElement={intent?.element} startCode={intent?.code} />
   </WorkbenchStorageContext.Provider>;
 }

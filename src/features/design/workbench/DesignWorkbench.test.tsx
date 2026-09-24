@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDefaultProject } from '../../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../../data/projectStorage';
 import { ProjectProvider } from '../../../store/ProjectContext';
@@ -13,17 +13,20 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const renderWorkbench = (onClose?: () => void) => render(<ProjectProvider><DesignWorkbench nativeTool={false} onClose={onClose} /></ProjectProvider>);
+const renderWorkbench = () => render(<ProjectProvider><DesignWorkbench nativeTool={false} /></ProjectProvider>);
 const results = () => screen.getByRole('region', { name: 'Resultados' });
 
 describe('DesignWorkbench', () => {
   it('abre con una viga continua de ejemplo ya calculada por el solver 2D', async () => {
+    const user = userEvent.setup();
     renderWorkbench();
     expect(screen.getByRole('radio', { name: 'Viga' }).getAttribute('aria-checked')).toBe('true');
     expect(await within(results()).findByText('Cumple')).toBeTruthy();
     expect(screen.getByRole('img', { name: /Elevación de la viga de 2 claros/ })).toBeTruthy();
     expect(screen.getAllByRole('img', { name: /sección 25 por 50/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole('img', { name: /Despiece/ })).toBeTruthy();
+    expect(within(results()).queryByRole('table')).toBeNull();
+    await user.click(within(results()).getByRole('button', { name: 'Detalle del cálculo' }));
     expect(within(results()).getByRole('table')).toBeTruthy();
   });
 
@@ -66,14 +69,25 @@ describe('DesignWorkbench', () => {
     expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.element')!)).toBe('footing');
   });
 
-  it('está aislado del Modelo 2D: sólo sus elementos propios y el cierre al Inicio', async () => {
-    const user = userEvent.setup();
-    const onClose = vi.fn();
-    renderWorkbench(onClose);
+  it('está aislado del Modelo 2D: sólo sus elementos propios', () => {
+    renderWorkbench();
     const dock = screen.getByRole('radiogroup', { name: 'Elemento a diseñar' });
     expect(within(dock).getAllByRole('radio')).toHaveLength(3);
     expect(screen.queryByRole('radio', { name: 'Del modelo 2D' })).toBeNull();
-    await user.click(document.querySelector<HTMLButtonElement>('.dw-close')!);
-    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('muestra y oculta los paneles de datos y resultados sobre el lienzo', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    const inputs = () => screen.getByRole('form', { name: 'Datos del elemento' });
+    const toggle = screen.getByRole('button', { name: 'Datos' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    await user.click(toggle);
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(inputs().dataset.open).toBe('false');
+    await user.click(screen.getByRole('button', { name: 'Ocultar resultados' }));
+    expect(results().dataset.open).toBe('false');
+    await user.click(screen.getByRole('button', { name: /Cumple · \d+ %\. Ver resultados/ }));
+    expect(results().dataset.open).toBe('true');
   });
 });

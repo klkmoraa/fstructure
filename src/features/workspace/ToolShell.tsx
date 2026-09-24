@@ -9,7 +9,6 @@ import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
 import { useShellComposition } from './useShellComposition';
 import { ShellInspectorHost, ShellInspectorTrigger, ShellSlotHost, ShellToolSlotsProvider } from './ShellToolSlots';
-import { DesignSurfaceContext } from './adapters/surfaceContexts';
 import { DesignTool, FemTool, Space3DTool } from './toolSurfaces';
 import { LazySurface } from './LazySurface';
 import { toolIdentity } from './toolCatalog';
@@ -47,12 +46,8 @@ class ToolErrorBoundary extends Component<BoundaryProps, BoundaryState> {
   render() { return this.state.failed ? this.props.fallback(this.reset) : this.props.children; }
 }
 
-const ToolContent = ({ tool, onOpenHome }: { tool: IsolatedToolId; onOpenHome: () => void }) => {
-  if (tool === 'design') {
-    return <DesignSurfaceContext value={{ onOpenChange: onOpenHome }}>
-      <LazySurface><DesignTool /></LazySurface>
-    </DesignSurfaceContext>;
-  }
+const ToolContent = ({ tool }: { tool: IsolatedToolId }) => {
+  if (tool === 'design') return <LazySurface><DesignTool /></LazySurface>;
   return tool === 'space3d' ? <Space3DTool /> : <FemTool />;
 };
 
@@ -65,6 +60,8 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
   const identity = toolIdentity(tool);
   const text = copy[language];
   const name = identity.name[language];
+  // Diseño lleva sus datos y resultados sobre su propio lienzo; no usa el inspector del shell.
+  const hasInspector = tool !== 'design';
 
   return <ShellToolSlotsProvider tool={tool} mobile={shellClass === 'K0'}>
     <AppShellLayout
@@ -77,7 +74,7 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
       topbar={<WorkspaceTopBar
         tool={tool}
         contextActive={false}
-        contextualControls={<><ShellSlotHost slot="controls" /><ShellInspectorTrigger /></>}
+        contextualControls={<><ShellSlotHost slot="controls" />{hasInspector ? <ShellInspectorTrigger /> : null}</>}
         primaryAction={<ShellSlotHost slot="action" />}
         toolStatus={<ShellSlotHost slot="status" />}
         utilities={<button
@@ -136,11 +133,11 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
           </div>
         </div>}>
           <Suspense fallback={<div className="workspace-loading" role="status">{text.loading}</div>}>
-            <ToolContent tool={tool} onOpenHome={onOpenHome} />
+            <ToolContent tool={tool} />
           </Suspense>
         </ToolErrorBoundary>
       </section>}
-      inspector={<ShellInspectorHost />}
+      inspector={hasInspector ? <ShellInspectorHost /> : null}
       floatingActions={<ShellSlotHost slot="mobile" />}
       instrument={storageIssue ? <p className="shell-storage-notice" role="status">{storageMessage}</p> : undefined}
     />

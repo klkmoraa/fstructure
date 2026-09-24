@@ -4,11 +4,11 @@ import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import { designFooting, type FootingDesignInput, type FootingDesignResult, type FootingDirection } from '../../../design/elements/footing';
 import { rebarLabel } from '../../../design/elements/shared';
 import {
-  BarSelect, ChecksList, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
+  BarSelect, ChecksList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
   formatNumber, mpaFromKgcm2, mpaHint, parseNumber, useStoredDraft,
 } from './common';
 import { FootingPlan, FootingSection } from './FootingDrawings';
-import { Plate, StatusBadge, WorkbenchLayout, type WorkbenchChrome } from './WorkbenchLayout';
+import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 const DEFAULTS = {
   c1: '40', c2: '40', dead: '600', live: '300', group: 'B', seismic: 'no', qa: '150', fc: '250', fy: '4200',
@@ -72,35 +72,23 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset } = useStoredDraft('footing', DEFAULTS);
   const code = designCode(chrome.code);
   const result = useMemo(() => designFooting(toInput(chrome.code, draft)), [chrome.code, draft]);
-  const status = result.ok
-    ? `Zapata · ${result.status === 'fail' ? 'No cumple' : 'Cumple'} · ${Math.round(result.governingRatio * 100)} %`
-    : 'Zapata · datos incompletos';
 
   return <WorkbenchLayout
     chrome={chrome}
     title="Zapata aislada"
-    subtitle={`Rectangular · carga y momentos · ${code.name}`}
-    status={status}
     memo={result.ok ? footingMemo(result) : null}
     onReset={reset}
-    badge={result.ok
-      ? <><span className="dw-badge">{`${planText(result)} · h ${formatNumber(result.thicknessMm / 10, 0)} cm`}</span><StatusBadge status={result.status} label={`${result.status === 'fail' ? 'No cumple' : 'Cumple'} · ${Math.round(result.governingRatio * 100)} %`} /></>
-      : <StatusBadge status="error" label="Datos incompletos" />}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : { status: 'error', label: 'Datos incompletos' }}
+    caption={result.ok ? `${planText(result)} · h ${formatNumber(result.thicknessMm / 10, 0)} cm` : undefined}
     inputs={<>
-      <FieldGroup title="Columna">
-        <NumberField label="c1 (X)" unit="cm" value={draft.c1} onChange={set('c1')} />
-        <NumberField label="c2 (Y)" unit="cm" value={draft.c2} onChange={set('c2')} />
-      </FieldGroup>
       <FieldGroup title="Cargas de servicio">
-        <div className="dw-span-all">
-          {code.usesStructureGroup
-            ? <GroupSelect value={draft.group} onChange={set('group')} groups={[{ value: 'B', label: 'Grupo B · 1.3 CM + 1.5 CV' }, { value: 'A', label: 'Grupo A · 1.5 CM + 1.7 CV' }]} />
-            : <p className="dw-footnote">{`Combinaciones: ${code.loadCombinations('B').map((combination) => combination.label).join(' · ')}; rige la mayor carga axial.`}</p>}
-        </div>
         <NumberField label="Muerta" unit="kN" value={draft.dead} onChange={set('dead')} />
         <NumberField label="Viva" unit="kN" value={draft.live} onChange={set('live')} />
+        {code.usesStructureGroup ? <div className="dw-span-all">
+          <GroupSelect value={draft.group} onChange={set('group')} groups={[{ value: 'B', label: 'Grupo B · 1.3 CM + 1.5 CV' }, { value: 'A', label: 'Grupo A · 1.5 CM + 1.7 CV' }]} />
+        </div> : null}
         <div className="dw-span-all">
-          <LayerToggle label="Momentos en la base" description="Presión trapecial y núcleo" checked={draft.moments === 'yes'}
+          <LayerToggle label="Momentos en la base" checked={draft.moments === 'yes'}
             onCheckedChange={(checked) => set('moments')(checked ? 'yes' : 'no')} />
         </div>
         {draft.moments === 'yes' ? <>
@@ -109,17 +97,19 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <NumberField label="Mux último" unit="kN·m" value={draft.mux} onChange={set('mux')} min={-1e9} />
           <NumberField label="Muy último" unit="kN·m" value={draft.muy} onChange={set('muy')} min={-1e9} />
           {code.usesStructureGroup ? <div className="dw-span-all">
-            <LayerToggle label="La combinación incluye sismo" description="FR = 0.65 en penetración (tabla 3.8.2.1 d)" checked={draft.seismic === 'yes'}
+            <LayerToggle label="La combinación incluye sismo" checked={draft.seismic === 'yes'}
               onCheckedChange={(checked) => set('seismic')(checked ? 'yes' : 'no')} />
           </div> : null}
         </> : null}
       </FieldGroup>
-      <FieldGroup title="Suelo" columns={1}>
-        <NumberField label="Capacidad admisible neta" unit="kPa" value={draft.qa} onChange={set('qa')} hint={`${formatNumber(parseNumber(draft.qa) / 9.80665, 1)} t/m²`} />
+      <FieldGroup title="Columna y suelo">
+        <NumberField label="c1 (X)" unit="cm" value={draft.c1} onChange={set('c1')} />
+        <NumberField label="c2 (Y)" unit="cm" value={draft.c2} onChange={set('c2')} />
+        <NumberField label="qa neta" unit="kPa" value={draft.qa} onChange={set('qa')} hint={`${formatNumber(parseNumber(draft.qa) / 9.80665, 1)} t/m²`} />
       </FieldGroup>
       <FieldGroup title="Dimensiones">
         <div className="dw-span-all">
-          <LayerToggle label="Planta automática" description="Presión admisible y núcleo" checked={draft.autoPlan === 'yes'}
+          <LayerToggle label="Planta automática" checked={draft.autoPlan === 'yes'}
             onCheckedChange={(checked) => set('autoPlan')(checked ? 'yes' : 'no')} />
         </div>
         {draft.autoPlan === 'yes' ? null : <>
@@ -127,7 +117,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <NumberField label="L (Y)" unit="cm" value={draft.sideY} onChange={set('sideY')} />
         </>}
         <div className="dw-span-all">
-          <LayerToggle label="Peralte automático" description="El mínimo que resiste los cortantes" checked={draft.autoThickness === 'yes'}
+          <LayerToggle label="Peralte automático" checked={draft.autoThickness === 'yes'}
             onCheckedChange={(checked) => set('autoThickness')(checked ? 'yes' : 'no')} />
         </div>
         {draft.autoThickness === 'yes' ? null : <NumberField label="Peralte h" unit="cm" value={draft.thickness} onChange={set('thickness')} />}
@@ -142,10 +132,10 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </MoreOptions>
     </>}
     stage={result.ok ? <>
-      <Plate title="Planta" note="parrilla · perímetro crítico a d/2 · cortante como viga a d">
+      <Plate title="Planta" note="perímetro crítico a d/2">
         <FootingPlan result={result} />
       </Plate>
-      <Plate title="Corte en X" note="presión última del suelo">
+      <Plate title="Corte en X">
         <FootingSection result={result} />
       </Plate>
     </> : <ErrorsPanel errors={result.errors} />}
@@ -166,7 +156,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         }))} />
       </PanelSection>
       <PanelSection title="Comprobaciones"><ChecksList checks={result.checks} /></PanelSection>
-      <PanelSection title="Valores de cálculo">
+      <Disclosure label="Detalle del cálculo">
         <ValuesTable rows={[
           { symbol: 'A', label: 'Área de contacto', value: `${formatNumber(result.sideXMm * result.sideYMm / 1e6, 2)} m²` },
           { symbol: 'ex · ey', label: 'Excentricidad', value: `${formatNumber(result.service.eccentricityXMm / 10, 1)} · ${formatNumber(result.service.eccentricityYMm / 10, 1)} cm` },
@@ -180,7 +170,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           { symbol: 'Vu / φVc', label: 'Como viga X', value: `${formatNumber(result.directions.x.oneWayDemandKn, 0)} / ${formatNumber(result.directions.x.oneWayStrengthKn, 0)} kN` },
           { symbol: 'Vu / φVc', label: 'Como viga Y', value: `${formatNumber(result.directions.y.oneWayDemandKn, 0)} / ${formatNumber(result.directions.y.oneWayStrengthKn, 0)} kN` },
         ]} />
-      </PanelSection>
+      </Disclosure>
     </> : null}
   />;
 }

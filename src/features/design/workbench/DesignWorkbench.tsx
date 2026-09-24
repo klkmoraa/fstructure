@@ -1,13 +1,12 @@
-import { Check, Copy, X } from 'lucide-react';
+import { Check, ChevronDown, Copy, PanelLeft, PanelRight } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { Select } from '../../../design-system/components/controls';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
 import { ShellContribution } from '../../workspace/ShellToolSlots';
 import { BeamWorkbench } from './BeamWorkbench';
 import { ColumnWorkbench } from './ColumnWorkbench';
 import { FootingWorkbench } from './FootingWorkbench';
-import type { WorkbenchChrome } from './WorkbenchLayout';
+import type { WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { useWorkbenchStorage } from './workbenchStorage';
 import './designWorkbench.css';
 
@@ -22,9 +21,18 @@ const ELEMENTS: { id: ElementKind; label: string; icon: ReactNode }[] = [
 
 const isElementKind = (value: unknown): value is ElementKind => ELEMENTS.some((item) => item.id === value);
 
-export function DesignWorkbench({ nativeTool = true, onClose, startElement, startCode }: {
+/** Anchos de la mesa: en `wide` caben los dos paneles junto al lienzo; en `narrow` sólo uno; en `phone` son hojas inferiores. */
+type Room = 'wide' | 'narrow' | 'phone';
+const readRoom = (): Room => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'wide';
+  if (window.matchMedia('(max-width: 760px)').matches) return 'phone';
+  return window.matchMedia('(max-width: 1240px)').matches ? 'narrow' : 'wide';
+};
+const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
+  room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
+
+export function DesignWorkbench({ nativeTool = true, startElement, startCode }: {
   nativeTool?: boolean;
-  onClose?: () => void;
   /** Elemento elegido en la bienvenida de Diseño; gana al último guardado. */
   startElement?: ElementKind;
   /** Norma elegida en la bienvenida de Diseño. */
@@ -47,7 +55,6 @@ export function DesignWorkbench({ nativeTool = true, onClose, startElement, star
     if (isDesignCodeId(startCode)) storage.write('code', startCode);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [status, setStatus] = useState('');
   const [memo, setMemo] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
@@ -56,6 +63,27 @@ export function DesignWorkbench({ nativeTool = true, onClose, startElement, star
   useEffect(() => {
     if (focusRequest > 0) buttons.current[ELEMENTS.findIndex((item) => item.id === element)]?.focus();
   }, [element, focusRequest]);
+
+  // Paneles: preferencia de la sesión, no se guarda en el proyecto.
+  const room = useRef<Room>(readRoom());
+  const [panels, setPanels] = useState(() => initialPanels(room.current));
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const queries = [window.matchMedia('(max-width: 760px)'), window.matchMedia('(max-width: 1240px)')];
+    const onChange = () => {
+      const next = readRoom();
+      if (next === room.current) return;
+      room.current = next;
+      setPanels(initialPanels(next));
+    };
+    queries.forEach((query) => query.addEventListener('change', onChange));
+    return () => queries.forEach((query) => query.removeEventListener('change', onChange));
+  }, []);
+  const setPanel = useCallback((panel: WorkbenchPanel, open: boolean) => setPanels((current) => {
+    // Sin espacio para los dos, abrir uno cierra el otro.
+    if (open && room.current !== 'wide') return { inputs: panel === 'inputs', results: panel === 'results' };
+    return { ...current, [panel]: open };
+  }), []);
 
   const setElement = (next: ElementKind) => {
     setElementState(next);
@@ -69,8 +97,7 @@ export function DesignWorkbench({ nativeTool = true, onClose, startElement, star
     storage.write('code', next);
   };
 
-  const onStatus = useCallback((text: string, nextMemo: string | null) => {
-    setStatus(text);
+  const onMemo = useCallback((nextMemo: string | null) => {
     setMemo(nextMemo);
     setCopied(false);
   }, []);
@@ -97,42 +124,42 @@ export function DesignWorkbench({ nativeTool = true, onClose, startElement, star
     setFocusRequest((count) => count + 1);
   };
 
-  const dock = <div className="dw-dock" role="radiogroup" aria-label="Elemento a diseñar">
-    {ELEMENTS.map((item, index) => <ToolButton
-      key={item.id}
-      ref={(node) => { buttons.current[index] = node; }}
-      role="radio"
-      aria-checked={element === item.id}
-      tabIndex={element === item.id ? 0 : -1}
-      label={item.label}
-      icon={item.icon}
-      active={element === item.id}
-      className="dw-dock__button"
-      onClick={() => setElement(item.id)}
-      onKeyDown={(event) => onKeyDown(event, index)}
-    />)}
+  const dock = <div className="dw-dock">
+    <div className="dw-dock__group" role="radiogroup" aria-label="Elemento a diseñar">
+      {ELEMENTS.map((item, index) => <ToolButton
+        key={item.id}
+        ref={(node) => { buttons.current[index] = node; }}
+        role="radio"
+        aria-checked={element === item.id}
+        tabIndex={element === item.id ? 0 : -1}
+        label={item.label}
+        icon={item.icon}
+        active={element === item.id}
+        className="dw-dock__button"
+        onClick={() => setElement(item.id)}
+        onKeyDown={(event) => onKeyDown(event, index)}
+      />)}
+    </div>
+    <span className="dw-dock__divider" aria-hidden="true" />
+    <ToolButton label="Datos" icon={<PanelLeft size={18} />} active={panels.inputs} className="dw-dock__toggle" onClick={() => setPanel('inputs', !panels.inputs)} />
+    <ToolButton label="Resultados" icon={<PanelRight size={18} />} active={panels.results} className="dw-dock__toggle" onClick={() => setPanel('results', !panels.results)} />
   </div>;
-  const close = onClose
-    ? <button type="button" className="dw-float-button dw-close" aria-label="Cerrar Diseño" title="Volver al inicio" onClick={onClose}><X size={17} aria-hidden="true" /></button>
-    : null;
-  const codeControl = <div className="dw-code">
-    <Select label="Norma de diseño" value={code} onChange={(event) => setCode(event.currentTarget.value)}>
-      {DESIGN_CODE_IDS.map((id) => <option key={id} value={id}>{`${designCode(id).name} · ${designCode(id).country}`}</option>)}
-    </Select>
-    <small>{designCode(code).summary}</small>
-  </div>;
-  const chrome: WorkbenchChrome = { overlay: <>{dock}{close}</>, onStatus, code, codeControl };
+  const codeControl = <label className="dw-code-chip" title={`${designCode(code).name} · ${designCode(code).country}`}>
+    <select aria-label="Norma de diseño" value={code} onChange={(event) => setCode(event.currentTarget.value)}>
+      {DESIGN_CODE_IDS.map((id) => <option key={id} value={id}>{designCode(id).name}</option>)}
+    </select>
+    <ChevronDown size={14} aria-hidden="true" />
+  </label>;
+  const chrome: WorkbenchChrome = { dock, codeControl, code, panels, setPanel, onMemo };
 
   return <div className="design-workbench" data-testid="design-workbench">
-    {nativeTool ? <>
-      <ShellContribution slot="action">
-        <button type="button" className="workspace-topbar__action-button is-primary" disabled={!memo} onClick={copyMemo}>
-          {copied ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
-          <span>{copied ? 'Memoria copiada' : 'Copiar memoria'}</span>
-        </button>
-      </ShellContribution>
-      <ShellContribution slot="status"><span role="status">{status}</span></ShellContribution>
-    </> : null}
+    {nativeTool ? <ShellContribution slot="action">
+      <button type="button" className="workspace-topbar__action-button is-primary" disabled={!memo} onClick={copyMemo}
+        aria-label={copied ? 'Memoria copiada' : 'Copiar memoria de cálculo'}>
+        {copied ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
+        <span>{copied ? 'Copiada' : 'Copiar memoria'}</span>
+      </button>
+    </ShellContribution> : null}
 
     {element === 'beam' ? <BeamWorkbench chrome={chrome} />
       : element === 'column' ? <ColumnWorkbench chrome={chrome} />

@@ -95,16 +95,20 @@ export function FieldGroup({ title, children, columns = 2, action }: { title: st
   </section>;
 }
 
-/** Opciones que casi nunca se tocan; plegadas para que el formulario quede corto. */
-export function MoreOptions({ children }: { children: ReactNode }) {
+/** Bloque plegado: lo que casi nunca se toca o sólo se consulta queda fuera de la vista. */
+export function Disclosure({ label, children }: { label: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   return <section className="dw-group dw-more">
     <button type="button" className="dw-more__toggle" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
-      <span>Más opciones</span><ChevronDown size={15} aria-hidden="true" />
+      <span>{label}</span><ChevronDown size={15} aria-hidden="true" />
     </button>
-    {open ? <div id={id} className="dw-group__grid" data-columns={2}>{children}</div> : null}
+    {open ? <div id={id} className="dw-more__body">{children}</div> : null}
   </section>;
+}
+
+export function MoreOptions({ children }: { children: ReactNode }) {
+  return <Disclosure label="Más opciones"><div className="dw-group__grid" data-columns={2}>{children}</div></Disclosure>;
 }
 
 export const formatNumber = (value: number, digits = 1) =>

@@ -6,10 +6,10 @@ import { designColumn, type ColumnDesignInput, type ColumnDesignResult } from '.
 import { rebarLabel } from '../../../design/elements/shared';
 import { ColumnSection, InteractionChart } from './ColumnDrawings';
 import {
-  BarSelect, ChecksList, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
+  BarSelect, ChecksList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
   formatNumber, mpaFromKgcm2, mpaHint, parseNumber, useStoredDraft,
 } from './common';
-import { Plate, StatusBadge, WorkbenchLayout, type WorkbenchChrome } from './WorkbenchLayout';
+import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 const DEFAULTS = {
   width: '40', depth: '40', cover: '4', fc: '250', fy: '4200', bar: '19.1', barsWidth: '3', barsDepth: '3', tie: '9.5',
@@ -80,33 +80,25 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const result = useMemo(() => designColumn(toInput(chrome.code, draft)), [chrome.code, draft]);
   const braced = draft.braced !== 'no';
   const slendernessSymbol = code.column.neglectUsesEffectiveLength ? 'kH/r' : 'H/r';
-  const status = result.ok
-    ? `Columna · ${result.status === 'fail' ? 'No cumple' : 'Cumple'} · ${Math.round(result.governingRatio * 100)} %`
-    : 'Columna · datos incompletos';
   const symmetric = result.ok && Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth;
 
   return <WorkbenchLayout
     chrome={chrome}
     title="Columna"
-    subtitle={`Flexocompresión biaxial · diagrama P–M · ${code.name}`}
-    status={status}
     memo={result.ok ? columnMemo(result) : null}
     onReset={reset}
-    badge={result.ok
-      ? <><span className="dw-badge">{`${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} · ρ ${formatNumber(result.steelRatio * 100, 2)} %`}</span><StatusBadge status={result.status} label={`${result.status === 'fail' ? 'No cumple' : 'Cumple'} · ${Math.round(result.governingRatio * 100)} %`} /></>
-      : <StatusBadge status="error" label="Datos incompletos" />}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : { status: 'error', label: 'Datos incompletos' }}
+    caption={result.ok ? `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} · ρ ${formatNumber(result.steelRatio * 100, 2)} %` : undefined}
     inputs={<>
-      <FieldGroup title="Sección">
-        <NumberField label="Base b (X)" unit="cm" value={draft.width} onChange={set('width')} />
-        <NumberField label="Peralte h (Y)" unit="cm" value={draft.depth} onChange={set('depth')} />
-        <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} hint="libre al estribo" />
-      </FieldGroup>
       <FieldGroup title="Solicitaciones últimas">
         <NumberField label="Pu" unit="kN" value={draft.axial} onChange={set('axial')} min={-1e9} />
         <NumberField label="Mux" unit="kN·m" value={draft.momentX} onChange={set('momentX')} min={-1e9} />
         <NumberField label="Muy" unit="kN·m" value={draft.momentY} onChange={set('momentY')} min={-1e9} />
-        <NumberField label="Vux" unit="kN" value={draft.shearX} onChange={set('shearX')} min={-1e9} />
-        <NumberField label="Vuy" unit="kN" value={draft.shearY} onChange={set('shearY')} min={-1e9} />
+      </FieldGroup>
+      <FieldGroup title="Sección">
+        <NumberField label="Base b (X)" unit="cm" value={draft.width} onChange={set('width')} />
+        <NumberField label="Peralte h (Y)" unit="cm" value={draft.depth} onChange={set('depth')} />
+        <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
       </FieldGroup>
       <FieldGroup title="Refuerzo">
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
@@ -124,7 +116,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           { value: 'B1', label: 'Subgrupo B1 · dimensión mínima 30 cm' },
           { value: 'A', label: 'Grupo A · dimensión mínima 30 cm' },
         ]} />
-        <LayerToggle label="Planta baja o primer nivel con sismo" description="Zona Lo ≥ H/2" checked={draft.groundFloor === 'yes'}
+        <LayerToggle label="Planta baja o primer nivel con sismo" checked={draft.groundFloor === 'yes'}
           onCheckedChange={(checked) => set('groundFloor')(checked ? 'yes' : 'no')} />
       </FieldGroup> : null}
       <FieldGroup title="Esbeltez">
@@ -135,24 +127,26 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <NumberField label="Altura libre lu" unit="m" value={draft.length} onChange={set('length')} />
         <NumberField label="Factor k" unit="×" value={draft.k} onChange={set('k')} hint={braced ? '≤ 1 contraventeado' : '≥ 1 con desplazamiento'} />
         {braced ? null : <>
-          <NumberField label="M2s x" unit="kN·m" value={draft.swayX} onChange={set('swayX')} hint="momento por desplazamiento" />
-          <NumberField label="M2s y" unit="kN·m" value={draft.swayY} onChange={set('swayY')} hint="momento por desplazamiento" />
-          <NumberField label={code.id === 'ntc-2023' ? 'Índice λest' : 'Índice Q'} unit="×" value={draft.stability} onChange={set('stability')} hint="estabilidad del entrepiso" />
+          <NumberField label="M2s x" unit="kN·m" value={draft.swayX} onChange={set('swayX')} />
+          <NumberField label="M2s y" unit="kN·m" value={draft.swayY} onChange={set('swayY')} />
+          <NumberField label={code.id === 'ntc-2023' ? 'Índice λest' : 'Índice Q'} unit="×" value={draft.stability} onChange={set('stability')} />
         </>}
         <div className="dw-span-all">
           <SegmentedControl label="Curvatura" size="sm" value={draft.curvature} onValueChange={set('curvature')}
             options={[{ value: 'single', label: 'Curvatura simple' }, { value: 'double', label: 'Curvatura doble' }]} />
         </div>
-        {braced ? null : <p className="dw-footnote dw-span-all">Mux y Muy son los momentos que no producen desplazamiento (M2b, M2ns); se amplifican los M2s con δs = 1/(1 − Q).</p>}
+        {braced ? null : <p className="dw-footnote dw-span-all">Mux y Muy: momentos sin desplazamiento.</p>}
       </FieldGroup>
       <MoreOptions>
+        <NumberField label="Vux" unit="kN" value={draft.shearX} onChange={set('shearX')} min={-1e9} />
+        <NumberField label="Vuy" unit="kN" value={draft.shearY} onChange={set('shearY')} min={-1e9} />
         <NumberField label="|M1/M2|" unit="×" value={draft.endRatio} onChange={set('endRatio')} hint="1 = momentos iguales" />
-        <NumberField label="βdns" unit="×" value={draft.sustained} onChange={set('sustained')} hint="carga sostenida" />
+        <NumberField label="βdns" unit="×" value={draft.sustained} onChange={set('sustained')} />
         <NumberField label="Agregado" unit="mm" value={draft.aggregate} onChange={set('aggregate')} />
       </MoreOptions>
     </>}
     stage={result.ok ? <>
-      <Plate title="Diagrama de interacción" note={`resistencia de diseño φ·Pn – φ·Mn · ${code.name}`} wide>
+      <Plate title="Diagrama de interacción" wide>
         <InteractionChart result={result} />
         <ul className="dw-legend">
           <li data-kind="x">{symmetric ? 'Diseño (X = Y)' : 'Diseño en X'}</li>
@@ -161,7 +155,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <li data-kind="demand">Demanda</li>
         </ul>
       </Plate>
-      <Plate title="Sección" note="a escala">
+      <Plate title="Sección">
         <ColumnSection result={result} />
       </Plate>
     </> : <ErrorsPanel errors={result.errors} />}
@@ -186,7 +180,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         ]} />
       </PanelSection>
       <PanelSection title="Comprobaciones"><ChecksList checks={result.checks} /></PanelSection>
-      <PanelSection title="Valores de cálculo">
+      <Disclosure label="Detalle del cálculo">
         <ValuesTable rows={[
           { symbol: 'Ag', label: 'Área bruta', value: `${formatNumber(result.grossAreaMm2 / 100, 0)} cm²` },
           { symbol: 'P0', label: 'Axial nominal', value: `${formatNumber(result.squashLoadKn, 0)} kN` },
@@ -200,7 +194,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           { symbol: 'M2,mín', label: 'Pu·emín (X)', value: `${formatNumber(result.magnification.x.minimumMomentKnm)} kN·m` },
           { symbol: 'φ', label: code.axialTransition ? 'Según φPn' : 'Según εt', value: `${code.compressionFactor} → 0.90` },
         ]} />
-      </PanelSection>
+      </Disclosure>
     </> : null}
   />;
 }
