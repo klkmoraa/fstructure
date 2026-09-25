@@ -42,4 +42,12 @@ No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa.
 - Un resultado es derivado: si cambian sus entradas, se invalida.
 - El cálculo pesado va en workers con mensajes serializables.
 - Lo no probado se muestra como **Experimental** en la interfaz.
-- Estilo: brandbook de FusionStructure (tokens en `src/design-system`). Se puede romper si el experimento lo pide; se dice por qué en el commit.
+
+## Marca
+
+- Canon: [FusionStructureBrand](https://klkmoraa.github.io/FusionStructureBrand/). Brandbook de la familia: `docs/brandbook/` (abrir `index.html`).
+- FStructure es familia **Análisis**: cambia sólo el acento. `#ED4B46` / `#FF8E80` en relleno, `#C23A33` como texto en Día, `#14171A` sobre el acento. Todo lo demás (neutros, tipo, radios, materia, movimiento, señales, voz) es del canon.
+- La marca es la ménsula con la franja roja; el verde `#1AA57A` sólo aparece cuando se nombra a FusionStructure.
+- Los resultados usan las seis señales (N, M, V, Δ, Fy, !); el acento nunca pinta un resultado.
+- Tokens en `src/design-system/tokens.css`. Si un valor contradice el canon, se corrige aquí o se propone en el canon; si el experimento pide romperlo, se dice por qué en el commit.
+- Si cambia la interfaz de una mesa, actualiza las capturas y la ficha de `docs/brandbook/`.
