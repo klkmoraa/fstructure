@@ -1,9 +1,7 @@
 import { Component, Suspense, useRef, type ErrorInfo, type ReactNode } from 'react';
-import { Moon, Sun } from 'lucide-react';
 import type { ToolId } from '../../shared/contracts';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
-import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
 import { AppShellLayout } from './AppShellLayout';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
@@ -12,6 +10,7 @@ import { ShellInspectorHost, ShellInspectorTrigger, ShellSlotHost, ShellToolSlot
 import { DesignTool, FemTool, Space3DTool } from './toolSurfaces';
 import { LazySurface } from './LazySurface';
 import { toolIdentity } from './toolCatalog';
+import { ThemeToggleButton } from './ThemeToggleButton';
 import '../../design-system/components/ui.css';
 import './phase1.css';
 import './workspaceTopbar.css';
@@ -56,7 +55,6 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
   const { shellClass } = useShellComposition();
   const { t, language } = useI18n();
   const { project, storageIssue, storageMessage, renameProject } = useProject();
-  const { theme, setTheme } = useWorkspaceUI();
   const identity = toolIdentity(tool);
   const text = copy[language];
   const name = identity.name[language];
@@ -80,13 +78,7 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
         </div>}
         primaryAction={<ShellSlotHost slot="action" />}
         toolStatus={<ShellSlotHost slot="status" />}
-        utilities={<button
-          type="button"
-          className="workspace-topbar__icon-button workspace-topbar__theme-button"
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          aria-label={t(theme === 'dark' ? 'theme.light' : 'theme.dark')}
-          title={t(theme === 'dark' ? 'theme.light' : 'theme.dark')}
-        >{theme === 'dark' ? <Sun size={17} aria-hidden="true" /> : <Moon size={17} aria-hidden="true" />}</button>}
+        themeControl={<ThemeToggleButton />}
         projectName={project.name}
         storageState={!storageIssue ? 'ready' : storageIssue === 'recovered' ? 'recovered' : 'issue'}
         storageMessage={storageMessage}

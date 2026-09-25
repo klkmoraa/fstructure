@@ -168,9 +168,17 @@ export function FemSurface() {
     : analysis.success ? { tone: 'ok' as const, label: 'Resuelto' } : { tone: 'error' as const, label: 'Revisar' };
 
   return <section className="fusion-fem" aria-labelledby="fem-title">
-    <ShellContribution slot="action"><button type="button" className="workspace-topbar__action-button is-primary" onClick={runAnalysis}>
-      <Play size={16} aria-hidden="true" /> Analizar FEM
+    {/* La acción primaria dice el verbo, como en 2D y 3D; el nombre accesible conserva el dominio. */}
+    <ShellContribution slot="action"><button type="button" className="workspace-topbar__action-button is-primary" onClick={runAnalysis} aria-label="Analizar FEM">
+      <Play size={16} fill="currentColor" aria-hidden="true" /> <span>Analizar</span>
     </button></ShellContribution>
+    <ShellContribution slot="statusbar"><footer className="fusion-fem__statusbar" aria-label="Estado de Elementos finitos">
+      <span><b>{document.nodes.length}</b> nudos <b>{document.elements.length}</b> elementos</span>
+      <span>{document.name}</span>
+      <span className="fusion-fem__statusbar-help">TRI3/QUAD4 · elasticidad lineal 2D</span>
+      <span>{analysis === null ? 'SIN ANALIZAR' : analysis.success ? 'RESUELTO' : 'REVISAR'}</span>
+      <span>Local</span>
+    </footer></ShellContribution>
     <ShellContribution slot="status"><ShellStatusChip tone={status.tone} label={status.label} badge="Experimental" detail={feedback ?? undefined} /></ShellContribution>
     <ShellContribution slot="inspector">
       <div className="fusion-fem__inspector">
@@ -188,15 +196,6 @@ export function FemSurface() {
       <h1 id="fem-title">Elementos finitos</h1>
       <p>Modelo, malla y resultados FEM en el mismo shell. Esta primera entrega resuelve elasticidad lineal 2D con TRI3 y QUAD4, sin servicios remotos.</p>
     </header>
-    <div className="fusion-fem__actions" aria-label="Intercambio FEM">
-      <label className="fusion-fem__file-action">
-        <Upload size={15} aria-hidden="true" />
-        <span>Importar Gmsh 4.1</span>
-        <input type="file" accept=".msh,text/plain" aria-label="Importar Gmsh 4.1" onChange={(event) => void importGmsh(event)} />
-      </label>
-      <button type="button" className="fusion-fem__secondary-action" onClick={exportJson}><Download size={15} aria-hidden="true" /> Exportar FEM JSON</button>
-      <button type="button" className="fusion-fem__secondary-action" onClick={exportVtk}><Download size={15} aria-hidden="true" /> Exportar VTK</button>
-    </div>
     {feedback ? <p className="fusion-fem__feedback" role="status">{feedback}</p> : null}
     {analysis ? <div className={`fusion-fem__result ${analysis.success ? 'is-success' : 'is-failure'}`} role="status" data-testid="fem-analysis-result">
       <strong>{analysis.success ? 'Análisis completado' : 'Análisis detenido'}</strong>
@@ -208,5 +207,16 @@ export function FemSurface() {
         <div><strong>{label}</strong><small>{description}</small></div>
       </li>)}
     </ol>
+    {/* Barra flotante al pie, como el dock de 2D, 3D y Diseño. */}
+    <div className="fusion-fem__dock" role="toolbar" aria-label="Intercambio FEM">
+      <label className="fusion-fem__dock-button">
+        <Upload size={17} aria-hidden="true" />
+        <span>Importar Gmsh 4.1</span>
+        <input type="file" accept=".msh,text/plain" aria-label="Importar Gmsh 4.1" onChange={(event) => void importGmsh(event)} />
+      </label>
+      <span className="fusion-fem__dock-divider" aria-hidden="true" />
+      <button type="button" className="fusion-fem__dock-button" onClick={exportJson} aria-label="Exportar FEM JSON"><Download size={17} aria-hidden="true" /><span>Exportar FEM JSON</span></button>
+      <button type="button" className="fusion-fem__dock-button" onClick={exportVtk} aria-label="Exportar VTK"><Download size={17} aria-hidden="true" /><span>Exportar VTK</span></button>
+    </div>
   </section>;
 }

@@ -1,7 +1,6 @@
-import { Maximize2, Minimize2, Moon, PanelRight, Sun } from 'lucide-react';
+import { Maximize2, Minimize2, PanelRight } from 'lucide-react';
 import { ToolRail } from '../canvas/ToolRail';
 import { useI18n } from '../../i18n/useI18n';
-import { useWorkspaceUI } from '../../store/ProjectContext';
 import './console.css';
 
 interface ConsoleLayoutActions {
@@ -25,9 +24,7 @@ const Label = ({ children }: { children: string }) => <span className="console__
 export const Console = ({ layoutActions }: {
   layoutActions: ConsoleLayoutActions;
 }) => {
-  const { theme, setTheme } = useWorkspaceUI();
   const { t } = useI18n();
-  const themeLabel = theme === 'dark' ? t('theme.light') : t('theme.dark');
   const canvasLabel = layoutActions.fullCanvas ? t('shell.exitFullCanvas') : t('shell.fullCanvas');
 
   return <aside className="console" aria-label={t('toolbar.primary')}>
@@ -35,14 +32,13 @@ export const Console = ({ layoutActions }: {
       <div className="console__tools"><ToolRail /></div>
     </div>
     <div className="console__foot">
-      <button type="button" className={layoutActions.inspectorCollapsed ? '' : 'is-active'} onClick={() => layoutActions.onToggleInspector()} aria-label={t('shell.showInspector')} aria-pressed={!layoutActions.inspectorCollapsed} title={t('shell.showInspector')}>
+      {/* En escritorio el panel y el tema viven en la barra superior, como en las
+          demás mesas; aquí queda el interruptor del panel para el dock del teléfono. */}
+      <button type="button" className={'console__inspector-toggle' + (layoutActions.inspectorCollapsed ? '' : ' is-active')} onClick={() => layoutActions.onToggleInspector()} aria-label={t('shell.showInspector')} aria-pressed={!layoutActions.inspectorCollapsed} title={t('shell.showInspector')}>
         <PanelRight size={18} /><Label>{t('shell.showInspector')}</Label>
       </button>
       <button type="button" className="console__canvas-toggle" onClick={layoutActions.onToggleFullCanvas} aria-label={canvasLabel} aria-pressed={layoutActions.fullCanvas} title={canvasLabel}>
         {layoutActions.fullCanvas ? <Minimize2 size={18} /> : <Maximize2 size={18} />}<Label>{canvasLabel}</Label>
-      </button>
-      <button type="button" className="console__theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={themeLabel} title={themeLabel}>
-        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}<Label>{themeLabel}</Label>
       </button>
     </div>
   </aside>;

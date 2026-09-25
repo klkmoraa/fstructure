@@ -69,8 +69,13 @@ interface WorkspaceTopBarProps {
   onOpenResults: (trigger: HTMLElement | null) => void;
   /** Abre el modo de trabajo, casos y combinaciones de cálculo. */
   onOpenCalculationExperience?: (trigger: HTMLElement | null) => void;
-  /** Acciones secundarias del espacio: exportación, tema, unidades y hojas. */
+  /** Acciones secundarias del espacio: exportación, unidades y hojas. */
   utilities?: ReactNode;
+  /**
+   * Día / Noche. Va siempre junto a la acción primaria, en las cuatro mesas, para
+   * que cambiar de herramienta no cambie el lugar de los controles comunes.
+   */
+  themeControl?: ReactNode;
   /**
    * Muestra los comandos del Modelo 2D (historial, Resultados, cálculo). Las
    * herramientas aisladas —Diseño, 3D y FEM— lo apagan y aportan los suyos por
@@ -107,6 +112,7 @@ export const WorkspaceTopBar = ({
   onOpenResults,
   onOpenCalculationExperience,
   utilities,
+  themeControl,
   contextActive = true,
 }: WorkspaceTopBarProps) => {
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
@@ -240,6 +246,7 @@ export const WorkspaceTopBar = ({
       </div> : null}
       {utilities}
       {contextualControls}
+      {themeControl}
       {primaryAction}
       {contextActive ? <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
         <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>

@@ -133,7 +133,6 @@
 
   /* El tema se cambia una vez por sesión; en K0 el carril conserva ese ancho
      para las herramientas de modelado. */
-  .console button.console__theme-toggle { display: none; }
   /* En K0 el lienzo YA ocupa la pantalla: el modo completo sólo escondería el
      riel y dejaría al usuario sin herramientas. */
   .console button.console__canvas-toggle { display: none; }
@@ -296,4 +295,10 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+/* El panel se abre desde la barra superior en escritorio (igual en las cuatro
+   mesas); el botón de la consola queda para el dock del teléfono. */
+@media (min-width: 1024px) {
+  .app-shell[data-shell-class] > .console.console .console__foot > button.console__inspector-toggle { display: none; }
 }

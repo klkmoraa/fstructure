@@ -16,14 +16,37 @@
 .fusion-fem__intro p { max-width: 62ch; margin: 0; color: var(--sc-color-text-secondary); font-size: 15px; line-height: 1.65; }
 .fusion-fem__inspector { display: grid; gap: 5px; min-width: 180px; color: var(--sc-color-text-secondary); font-size: 12px; line-height: 1.35; }
 .fusion-fem__inspector strong { color: var(--sc-color-text-primary); font-size: 13px; }
-.fusion-fem__actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.fusion-fem__file-action,
-.fusion-fem__secondary-action { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 11px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); font: inherit; font-size: 12px; cursor: pointer; }
-.fusion-fem__file-action:hover,
-.fusion-fem__secondary-action:hover { border-color: var(--sc-color-text-secondary); }
-.fusion-fem__file-action input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
-.fusion-fem__file-action:focus-within,
-.fusion-fem__secondary-action:focus-visible { outline: var(--sc-focus-ring-width-compact) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
+/* Dock flotante al pie de la mesa, con la misma forma que el de 2D, 3D y Diseño. */
+.fusion-fem__dock {
+  position: sticky;
+  z-index: 4;
+  bottom: 14px;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  padding: 5px 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border: 1px solid var(--sc-color-border-soft, var(--sc-color-border));
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-md, 0 8px 24px rgb(0 0 0 / 16%));
+}
+.fusion-fem__dock-divider { flex: none; width: 1px; height: 24px; margin: 0 4px; background: var(--sc-color-border); }
+.fusion-fem__dock-button { position: relative; display: inline-flex; flex: none; align-items: center; gap: 7px; min-height: 38px; padding: 0 12px; border: 0; border-radius: var(--sc-radius-control); background: transparent; color: var(--sc-color-text-primary); font: 500 12.5px var(--sc-font-ui); cursor: pointer; }
+.fusion-fem__dock-button:hover { background: var(--sc-color-surface-2); }
+.fusion-fem__dock-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
+.fusion-fem__dock-button:focus-within,
+.fusion-fem__dock-button:focus-visible { outline: var(--sc-focus-ring-width-compact) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
+
+/* Franja de estado monoespaciada al pie del shell, como la de 2D y 3D. */
+.fusion-fem__statusbar { display: flex; align-items: center; gap: 12px; height: var(--fstructure-status-height, 28px); padding: 0 12px; overflow: hidden; background: var(--sc-color-surface-1); color: var(--sc-color-text-secondary); font: var(--sc-font-size-label, 11px) / 1 var(--sc-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fusion-fem__statusbar > span { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.fusion-fem__statusbar b { color: var(--sc-color-text-primary); }
+.fusion-fem__statusbar-help { flex: 1 1 auto !important; min-width: 0; overflow: hidden; color: var(--sc-color-text-muted); font-family: var(--sc-font-ui); text-overflow: ellipsis; }
 .fusion-fem__feedback { margin: -22px 0 0; color: var(--sc-color-text-secondary); font-size: 12px; }
 .fusion-fem__result { display: grid; gap: 5px; width: min(620px, 100%); padding: 13px 15px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1); font-size: 13px; }
 .fusion-fem__result span { color: var(--sc-color-text-secondary); font-size: 12px; }
@@ -47,8 +70,7 @@
 .fusion-fem__roadmap small { color: var(--sc-color-text-muted); font-size: 10px; line-height: 1.35; }
 @media (max-width: 640px) {
   .fusion-fem { width: min(100% - 28px, 520px); align-content: start; gap: 28px; padding-block: 34px; }
-  .fusion-fem__actions { align-items: stretch; flex-direction: column; }
-  .fusion-fem__file-action, .fusion-fem__secondary-action { justify-content: center; }
+  .fusion-fem__dock-button span { display: none; }
   .fusion-fem__roadmap { grid-template-columns: 1fr; gap: 18px; }
   .fusion-fem__roadmap::before { top: 20px; bottom: 20px; left: 19px; right: auto; width: 1px; height: auto; }
   .fusion-fem__roadmap li { grid-template-columns: 40px 1fr; justify-items: start; align-items: center; text-align: left; }

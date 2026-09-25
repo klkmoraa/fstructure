@@ -1,12 +1,12 @@
-import { Check, ChevronDown, Copy } from 'lucide-react';
+import { Check, ChevronDown, Copy, PanelRight } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
-import { ShellContribution } from '../../workspace/ShellToolSlots';
+import { ShellContribution, ShellStatusChip, type ShellStatusTone } from '../../workspace/ShellToolSlots';
 import { BeamWorkbench } from './BeamWorkbench';
 import { ColumnWorkbench } from './ColumnWorkbench';
 import { FootingWorkbench } from './FootingWorkbench';
-import type { WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
+import type { Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { useWorkbenchStorage } from './workbenchStorage';
 import './designWorkbench.css';
 
@@ -20,6 +20,8 @@ const ELEMENTS: { id: ElementKind; label: string; icon: ReactNode }[] = [
 ];
 
 const isElementKind = (value: unknown): value is ElementKind => ELEMENTS.some((item) => item.id === value);
+
+const VERDICT_TONE: Record<Verdict['status'], ShellStatusTone> = { pass: 'ok', warning: 'warn', fail: 'error', error: 'warn' };
 
 /** Anchos de la mesa: en `wide` caben los dos paneles junto al lienzo; en `narrow` sólo uno; en `phone` son hojas inferiores. */
 type Room = 'wide' | 'narrow' | 'phone';
@@ -101,6 +103,12 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
     setMemo(nextMemo);
     setCopied(false);
   }, []);
+  const [verdict, setVerdict] = useState<Verdict | null>(null);
+  const onVerdict = useCallback((next: Verdict) => setVerdict((current) =>
+    current && current.status === next.status && current.label === next.label ? current : next), []);
+  const anyPanelOpen = panels.inputs || panels.results;
+  // «Panel» de la barra, como en las demás mesas: pliega o despliega los dos paneles.
+  const togglePanels = () => setPanels(anyPanelOpen ? { inputs: false, results: false } : initialPanels(room.current === 'phone' ? 'narrow' : room.current));
 
   const copyMemo = async () => {
     if (!memo) return;
@@ -145,9 +153,18 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
     </select>
     <ChevronDown size={14} aria-hidden="true" />
   </label>;
-  const chrome: WorkbenchChrome = { elements, codeControl, code, panels, setPanel, onMemo };
+  const chrome: WorkbenchChrome = { elements, codeControl, code, panels, setPanel, onMemo, ...(nativeTool ? { onVerdict } : {}) };
 
   return <div className="design-workbench" data-testid="design-workbench">
+    {nativeTool ? <ShellContribution slot="controls">
+      <button type="button" className={'workspace-topbar__action-button workspace-topbar__inspector-button' + (anyPanelOpen ? ' is-active' : '')}
+        aria-label="Paneles de datos y resultados" aria-pressed={anyPanelOpen} title="Panel" onClick={togglePanels}>
+        <PanelRight size={17} aria-hidden="true" /><span>Panel</span>
+      </button>
+    </ShellContribution> : null}
+    {nativeTool && verdict ? <ShellContribution slot="status">
+      <ShellStatusChip tone={VERDICT_TONE[verdict.status]} label={verdict.label} badge="Experimental" />
+    </ShellContribution> : null}
     {nativeTool ? <ShellContribution slot="action">
       <button type="button" className="workspace-topbar__action-button is-primary" disabled={!memo} onClick={copyMemo}
         aria-label={copied ? 'Memoria copiada' : 'Copiar memoria de cálculo'}>

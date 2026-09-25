@@ -1159,3 +1159,8 @@
   .workspace-topbar__inspector-button span { display: none; }
   .workspace-topbar__inspector-button { min-width: 36px; padding-inline: 0; justify-content: center; }
 }
+
+/* El «Panel» de 2D en la barra es de escritorio; en teléfono lo lleva el dock. */
+@media (max-width: 1023px) {
+  .workspace-topbar__inspector-button--desktop { display: none; }
+}

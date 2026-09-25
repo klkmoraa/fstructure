@@ -3,7 +3,9 @@ import { Inspector } from '../inspector/Inspector';
 import { ResultsPanel } from '../results/ResultsPanel';
 import { Model2DTool } from './toolSurfaces';
 import { Model2DSurfaceContext } from './adapters/surfaceContexts';
+import { PanelRight } from 'lucide-react';
 import { Console } from '../shell/Console';
+import { ThemeToggleButton } from './ThemeToggleButton';
 import { Instrument } from '../shell/Instrument';
 import { ClassroomGuide } from '../classroom/ClassroomGuide';
 import { ToastNotification } from './ToastNotification';
@@ -430,6 +432,15 @@ const WorkspaceBrokerContent = ({
   const restoreComparison = useCallback(() => setSurfaceExtent('comparison', 'default'), [setSurfaceExtent]);
   const peekDoctor = useCallback(() => setSurfaceExtent('doctor', 'peek'), [setSurfaceExtent]);
   const restoreDoctor = useCallback(() => setSurfaceExtent('doctor', 'default'), [setSurfaceExtent]);
+  // El mismo interruptor del panel en la barra superior (escritorio) y en el
+  // dock de la consola (teléfono): abre el inspector o cierra el que esté abierto.
+  const toggleInspector = (trigger?: HTMLElement | null) => {
+    if (layout.fullCanvas) setPreference('fullCanvas', false);
+    if (detail.open) closeDetail();
+    else if (analysisSetup.open) closeSurface('analysisSetup');
+    else if (view.open) closeSurface('view');
+    else openDetail(trigger);
+  };
   return <DataSurfaceRetainedStateProvider resetVersion={dataSurfaceStateEpoch}><AppShellLayout
     ref={shellRef}
     projectId={projectId}
@@ -500,6 +511,13 @@ const WorkspaceBrokerContent = ({
       // que además devuelve el foco a quien lo pulsó.
       onOpenResults={(trigger) => emitWorkspaceCommand('toggle-results', { trigger })}
       onOpenCalculationExperience={(trigger) => openModel2DSurface('analysisSetup', trigger)}
+      contextualControls={<div className="workspace-topbar__tool-group" data-workspace-group="tool">
+        <button type="button"
+          className={'workspace-topbar__action-button workspace-topbar__inspector-button workspace-topbar__inspector-button--desktop' + (inspectorOpen ? ' is-active' : '')}
+          aria-label={t('shell.showInspector')} aria-pressed={inspectorOpen} title={t('shell.showInspector')}
+          onClick={(event) => toggleInspector(event.currentTarget)}><PanelRight size={17} aria-hidden="true" /><span>Panel</span></button>
+      </div>}
+      themeControl={<ThemeToggleButton />}
       utilities={<WorkspaceUtilities onOpenInspector={(trigger) => {
         // La utilidad abre una consulta contextual: en móvil empieza compacta
         // y el tirador del Inspector permite crecerla sólo si hace falta.
@@ -511,13 +529,7 @@ const WorkspaceBrokerContent = ({
       layoutActions={{
         inspectorCollapsed: !inspectorOpen,
         fullCanvas: layout.fullCanvas,
-        onToggleInspector: (trigger) => {
-          if (layout.fullCanvas) setPreference('fullCanvas', false);
-          if (detail.open) closeDetail();
-          else if (analysisSetup.open) closeSurface('analysisSetup');
-          else if (view.open) closeSurface('view');
-          else openDetail(trigger);
-        },
+        onToggleInspector: toggleInspector,
         onToggleFullCanvas: () => {
           if (!layout.fullCanvas) {
             closeSurface('detail');

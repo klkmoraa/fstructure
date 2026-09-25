@@ -14,9 +14,14 @@ export interface WorkbenchChrome {
   readonly panels: Readonly<Record<WorkbenchPanel, boolean>>;
   readonly setPanel: (panel: WorkbenchPanel, open: boolean) => void;
   readonly onMemo: (memo: string | null) => void;
+  /**
+   * Con la mesa dentro del shell, el veredicto sube a la barra superior —donde
+   * las cuatro mesas dicen su estado— y deja de repetirse sobre el lienzo.
+   */
+  readonly onVerdict?: (verdict: Verdict) => void;
 }
 
-type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };
+export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3;
@@ -113,8 +118,9 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
   memo: string | null;
   onReset: () => void;
 }) {
-  const { onMemo, panels, setPanel } = chrome;
+  const { onMemo, onVerdict, panels, setPanel } = chrome;
   useEffect(() => onMemo(memo), [memo, onMemo]);
+  useEffect(() => { onVerdict?.({ status: verdict.status, label: verdict.label }); }, [verdict.status, verdict.label, onVerdict]);
   const { scroller, zoom, setZoom } = useStageZoom();
   const canShowResults = verdict.status !== 'error';
   const percent = verdict.label.split(' · ')[1];
@@ -138,12 +144,12 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
         <div className="dw-stage__content" style={{ '--dw-zoom': zoom } as CSSProperties}>{stage}</div>
       </div>
       <div className="dw-hud dw-hud--start">
-        <button type="button" className="dw-badge dw-badge--button" data-status={verdict.status}
+        {onVerdict ? null : <button type="button" className="dw-badge dw-badge--button" data-status={verdict.status}
           disabled={!canShowResults} aria-expanded={canShowResults ? panels.results : undefined}
           aria-label={canShowResults ? `${verdict.label}. ${panels.results ? 'Ocultar' : 'Ver'} resultados` : verdict.label}
           onClick={() => setPanel('results', !panels.results)}>
           <i aria-hidden="true" />{verdict.label}
-        </button>
+        </button>}
         {caption ? <span className="dw-badge dw-badge--caption">{caption}</span> : null}
       </div>
       <div className="dw-hud dw-hud--end">{chrome.codeControl}</div>
