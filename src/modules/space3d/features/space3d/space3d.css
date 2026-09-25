@@ -324,59 +324,131 @@
 
 /* --- Cinta de comandos ------------------------------------------------------ */
 
-/* La cinta es la barra de herramientas de un programa de cálculo: grupos con
-   nombre (Definir, Dibujar, Asignar…), botones con icono y palabra, y el
-   atajo en el título. En un teléfono se desliza de lado. */
+/* Como la cinta de ETABS 22: una fila de pestañas y una fila de comandos de
+   la pestaña activa. Dos filas finas y siempre la misma altura: cambiar de
+   pestaña no mueve el lienzo. En un teléfono las dos filas se deslizan. */
 .space3d-ribbon {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
+  display: grid;
   gap: 2px;
   margin: var(--s3-gap) var(--s3-gap) var(--s3-gap);
-  padding: 4px 6px 2px;
+  padding: 4px 6px 4px;
   border-radius: var(--sc-radius-panel);
   background: var(--sc-color-surface-1);
   box-shadow: var(--sc-shadow-xs);
-  scrollbar-width: thin;
 }
 
-.space3d-ribbon-group {
+.space3d-ribbon-bar {
   display: flex;
-  flex-direction: column;
-  flex: none;
-  padding: 0 var(--sc-space-2);
-  border-right: var(--sc-border-width) solid var(--sc-color-divider);
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-width: 0;
+  padding-bottom: 3px;
+  border-bottom: var(--sc-border-width) solid var(--sc-color-divider);
 }
 
-.space3d-ribbon-group:last-child { border-right: 0; }
+.space3d-ribbon-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.space3d-ribbon-tabs::-webkit-scrollbar { display: none; }
 
-.space3d-ribbon-items {
+.space3d-ribbon-tab {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 var(--sc-space-3);
+  border: 0;
+  border-radius: var(--sc-radius-sm);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: inherit;
+  font-size: var(--s3-small);
+  font-weight: var(--sc-font-weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--sc-transition-control);
+}
+
+.space3d-ribbon-tab:hover { background: var(--sc-color-surface-2); color: var(--sc-color-text-primary); }
+
+.space3d-ribbon-tab[aria-selected='true'] {
+  color: var(--sc-color-text-primary);
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+/* Subrayado de la pestaña activa, del color de acción. */
+.space3d-ribbon-tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  right: var(--sc-space-3);
+  bottom: -4px;
+  left: var(--sc-space-3);
+  height: 2px;
+  border-radius: 2px;
+  background: var(--sc-color-action-primary);
+}
+
+.space3d-ribbon-tab:focus-visible { outline: 2px solid var(--sc-color-focus-ring, var(--sc-color-action-primary)); outline-offset: 1px; }
+
+.space3d-ribbon-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-text-on-action, #fff);
+  font-family: var(--sc-font-mono);
+  font-size: 10px;
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+.space3d-ribbon-panel {
   display: flex;
   align-items: center;
   gap: 2px;
-  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 50px;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
-.space3d-ribbon-caption {
-  padding: 1px 0 0;
+.space3d-ribbon-separator {
+  flex: none;
+  align-self: stretch;
+  width: var(--sc-border-width);
+  margin: 6px var(--sc-space-1);
+  background: var(--sc-color-divider);
+}
+
+.space3d-ribbon-hint {
+  flex: 0 1 260px;
+  min-width: 180px;
+  margin: 0 var(--sc-space-3) 0 var(--sc-space-2);
   color: var(--sc-color-text-muted);
-  font-size: 10px;
-  font-weight: var(--sc-font-weight-medium);
-  letter-spacing: 0.02em;
-  text-align: center;
-  text-transform: uppercase;
+  font-size: var(--s3-tiny);
+  line-height: 1.35;
 }
 
 .space3d-ribbon-button,
 .space3d-ribbon-menu .sc-popover__trigger {
   display: inline-flex;
+  flex: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-width: 44px;
+  min-width: 52px;
   min-height: 46px;
-  padding: 4px 5px;
+  padding: 3px 7px;
   border: 0;
   border-radius: var(--sc-radius-md);
   background: transparent;
@@ -391,8 +463,18 @@
   transition: var(--sc-transition-control);
 }
 
-.space3d-ribbon-menu .sc-popover__trigger { flex-direction: row; flex-wrap: wrap; min-width: 64px; }
-.space3d-ribbon-menu .sc-popover__trigger > span { flex-basis: 100%; }
+/* «Archivo» vive en la fila de pestañas, en horizontal, como el menú File. */
+.space3d-ribbon-menu .sc-popover__trigger {
+  flex-direction: row;
+  gap: 6px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 var(--sc-space-3);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-2);
+  color: var(--sc-color-text-primary);
+  font-size: var(--s3-small);
+}
 
 .space3d-ribbon-button:hover:not(:disabled),
 .space3d-ribbon-menu .sc-popover__trigger:hover:not(:disabled) {
@@ -412,7 +494,7 @@
 
 .space3d-ribbon-menu .sc-popover__surface { width: 280px; padding: var(--sc-space-2); }
 
-.space3d-ribbon .space3d-layers .sc-popover__trigger { min-height: 48px; }
+.space3d-ribbon .space3d-layers .sc-popover__trigger { min-height: 46px; }
 
 /* --- Explorador del modelo --------------------------------------------------- */
 
@@ -1298,8 +1380,8 @@
   left: var(--sc-space-3);
   display: grid;
   gap: var(--sc-space-2);
-  width: min(280px, calc(100% - var(--sc-space-6)));
-  padding: var(--sc-space-3);
+  width: min(340px, calc(100% - var(--sc-space-6)));
+  padding: var(--sc-space-2) var(--sc-space-2) var(--sc-space-2) var(--sc-space-3);
   border-radius: var(--sc-radius-md);
   background: var(--s3-float);
   backdrop-filter: blur(12px);
@@ -1371,8 +1453,8 @@
   z-index: 11;
   right: var(--sc-space-3);
   bottom: 64px;
-  width: min(280px, calc(100% - var(--sc-space-6)));
-  padding: var(--sc-space-3);
+  width: min(340px, calc(100% - var(--sc-space-6)));
+  padding: var(--sc-space-2) var(--sc-space-2) var(--sc-space-2) var(--sc-space-3);
   border-radius: var(--sc-radius-md);
   background: var(--s3-float);
   backdrop-filter: blur(12px);
@@ -1381,13 +1463,16 @@
   color: var(--sc-color-text-primary);
 }
 
-.space3d-results-legend--minimized { width: auto; min-width: 180px; }
-.space3d-legend-header { display: flex; align-items: center; justify-content: space-between; gap: var(--sc-space-2); }
-.space3d-legend-title-group { display: flex; align-items: center; gap: 6px; font-size: var(--s3-small); font-weight: var(--sc-font-weight-semibold); }
-.space3d-legend-icon { color: var(--sc-color-text-secondary); }
+.space3d-results-legend--minimized { width: auto; max-width: calc(100% - var(--sc-space-6)); padding: 4px 4px 4px var(--sc-space-3); }
+.space3d-legend-header { display: flex; align-items: center; gap: var(--sc-space-2); }
+.space3d-legend-title-group { display: flex; flex: 1; align-items: center; gap: 6px; min-width: 0; font-size: var(--s3-small); font-weight: var(--sc-font-weight-semibold); }
+.space3d-legend-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.space3d-legend-range { flex: none; color: var(--sc-color-text-secondary); font-family: var(--sc-font-mono); font-size: var(--s3-tiny); font-weight: var(--sc-font-weight-medium); }
+.space3d-legend-icon { flex: none; color: var(--sc-color-text-secondary); }
 
 .space3d-legend-toggle {
   display: inline-grid;
+  flex: none;
   place-items: center;
   width: var(--sc-size-target-pointer);
   height: var(--sc-size-target-pointer);
@@ -1399,23 +1484,32 @@
 }
 
 .space3d-legend-toggle:hover { background: var(--sc-color-surface-2); }
-.space3d-legend-body { display: grid; gap: var(--sc-space-2); }
-.space3d-legend-bar-wrapper { display: grid; gap: 4px; margin-top: var(--sc-space-2); }
-.space3d-legend-labels { display: flex; justify-content: space-between; font-family: var(--sc-font-mono); font-size: var(--s3-tiny); color: var(--sc-color-text-secondary); }
-.space3d-legend-bar { width: 100%; height: 8px; border-radius: var(--sc-radius-pill); }
+.space3d-legend-body { display: grid; gap: 4px; margin-top: 6px; }
+/* Escala en una sola fila: mínimo, barra y máximo. */
+.space3d-legend-scale {
+  display: grid;
+  grid-template-columns: auto minmax(40px, 1fr) auto;
+  align-items: center;
+  gap: var(--sc-space-2);
+  color: var(--sc-color-text-secondary);
+  font-family: var(--sc-font-mono);
+  font-size: var(--s3-tiny);
+  white-space: nowrap;
+}
+.space3d-legend-bar { width: 100%; height: 6px; border-radius: var(--sc-radius-pill); }
 .space3d-legend-grad--deformed { background: var(--sc-color-technical-deformed); }
 .space3d-legend-grad--axial { background: var(--sc-color-technical-axial); }
 .space3d-legend-grad--shear { background: var(--sc-color-technical-shear); }
 .space3d-legend-grad--moment { background: var(--sc-color-technical-moment); }
 .space3d-legend-grad--reactions { background: var(--sc-color-technical-reaction); }
-.space3d-legend-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--sc-space-2); font-size: var(--s3-tiny); color: var(--sc-color-text-secondary); }
-.space3d-legend-convention { margin: 0; font-size: var(--s3-tiny); color: var(--sc-color-text-muted); }
+.space3d-legend-convention { margin: 0; overflow: hidden; color: var(--sc-color-text-muted); font-size: var(--s3-tiny); line-height: 1.35; }
 
 .space3d-legend-critical-btn {
   display: inline-flex;
   align-items: center;
   gap: var(--sc-space-1);
-  min-height: var(--sc-size-target-pointer);
+  flex: none;
+  min-height: 28px;
   padding: 0 var(--sc-space-2);
   border: var(--sc-border-width) solid var(--sc-color-border-soft);
   border-radius: var(--sc-radius-sm);
@@ -1628,6 +1722,15 @@
   min-height: 34px;
   border-radius: var(--sc-radius-pill);
   font-size: var(--s3-small);
+}
+
+/* En el panel, la píldora es una línea tranquila, no un flotante. */
+.space3d-inspector .space3d-guide--compact {
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-color-surface-2);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
 }
 
 /* --- Pestañas del panel ---------------------------------------------------- */
@@ -2256,9 +2359,6 @@
 /* --- Shell compacto: el panel vive en la hoja ----------------------------- */
 
 @media (max-width: 1023px) {
-  /* Una sola fila que se desliza: el lienzo no pierde altura. */
-  .space3d-ribbon { flex-wrap: nowrap; overflow-x: auto; }
-  .space3d-ribbon-caption { display: none; }
 
   .space3d-stage-guide {
     position: absolute;
@@ -2304,11 +2404,16 @@
 @media (max-width: 700px) {
   .space3d-screen { --s3-gap: var(--sc-space-2); }
 
-  .space3d-ribbon { flex-wrap: nowrap; overflow-x: auto; margin: var(--s3-gap); padding: 2px 4px; }
-  .space3d-ribbon-caption { display: none; }
-  .space3d-ribbon-button,
-  .space3d-ribbon-menu .sc-popover__trigger { min-width: 46px; min-height: 44px; padding: 3px 4px; }
-  .space3d-ribbon-group { padding: 0 4px; }
+  .space3d-ribbon { margin: var(--s3-gap); padding: 3px 4px; }
+  .space3d-ribbon-bar { gap: var(--sc-space-1); }
+  /* «Archivo» queda como icono: las pestañas necesitan el ancho. */
+  .space3d-ribbon-menu .sc-popover__trigger { padding: 0 var(--sc-space-2); }
+  .space3d-ribbon-menu .sc-popover__trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .space3d-ribbon-tab { padding: 0 7px; font-size: var(--s3-tiny); }
+  .space3d-ribbon-tab[aria-selected='true']::after { right: 7px; left: 7px; }
+  .space3d-ribbon-panel { min-height: 48px; scrollbar-width: none; }
+  .space3d-ribbon-button { min-width: 48px; min-height: 44px; padding: 3px 5px; }
+  .space3d-ribbon-hint { min-width: 200px; }
   /* En táctil se selecciona tocando el lienzo; el pellizco ya acerca y aleja. */
   .space3d-canvas-topbar-actions > .space3d-tool:nth-child(-n + 2) { display: none; }
 
@@ -2365,6 +2470,30 @@
   .space3d-bridge { gap: var(--sc-space-1); padding: var(--sc-space-2) var(--sc-space-3); font-size: var(--s3-small); }
   .space3d-bridge header .space3d-button { min-height: 32px; }
   .space3d-generative-tabs { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* --- Pantallas bajas (teléfono en horizontal) ------------------------------ */
+
+/* Con menos de 500 px de alto, cada fila cuenta: la cinta se vuelve una sola
+   fila de iconos (el nombre sigue en el título y en el nombre accesible), la
+   barra de estado se retira y la leyenda nace plegada. */
+@media (max-height: 500px) {
+  .space3d-ribbon {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--sc-space-2);
+    margin: var(--sc-space-1) var(--s3-gap);
+    padding: 2px 4px;
+  }
+  .space3d-ribbon-bar { padding-bottom: 0; border-bottom: 0; border-right: var(--sc-border-width) solid var(--sc-color-divider); padding-right: var(--sc-space-2); }
+  .space3d-ribbon-tab[aria-selected='true']::after { bottom: 0; }
+  .space3d-ribbon-panel { min-height: 36px; scrollbar-width: none; }
+  .space3d-ribbon-button { min-width: 36px; min-height: 36px; padding: 2px 4px; }
+  .space3d-ribbon-button > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .space3d-ribbon-hint { display: none; }
+  .space3d-ribbon .space3d-layers .sc-popover__trigger { min-height: 36px; }
+  .space3d-status { display: none; }
+  .space3d-stage-guide { display: none; }
 }
 
 @media (pointer: coarse) {

@@ -213,7 +213,7 @@ export const esStudio = {
   'space3d.modal.bucklingMode': 'Modo {n} · λ = {value}',
   'space3d.modal.bucklingTitle': 'Modos de pandeo',
 
-  'space3d.legend.component': '{symbol} · {name} [{unit}]',
+  'space3d.legend.component': '{name} [{unit}]',
   'space3d.legend.conventionMoment': 'Dibujado del lado traccionado: M3 positivo bajo la viga.',
   'space3d.legend.conventionShear': 'V2 en el plano 1-2 y V3 en el 1-3 de cada barra.',
   'space3d.legend.conventionTorsion': 'Torsor sobre el eje 1 de la barra.',
@@ -308,4 +308,6 @@ export const esStudio = {
   'space3d.modal.sturm': 'verificado con Sturm',
   'space3d.error.constraintConflict': 'Un nudo de diafragma rígido tiene apoyo en ux, uz o ry: quita el apoyo o saca el nudo del diafragma',
   'space3d.story.rowTitle': 'Elevación {elevation} m · desplazamiento ux {x} mm, uz {z} mm',
+  'space3d.ribbon.assignHint': 'Selecciona barras o nudos en el lienzo (clic, Ctrl o ventana) para asignarles algo.',
+  'space3d.story.noDrift': 'Sin deriva lateral apreciable en este caso.',
 } as const;

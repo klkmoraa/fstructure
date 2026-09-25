@@ -39,7 +39,10 @@ export const Space3DResultsLegend = ({
   onSelectCritical,
   t,
 }: Space3DResultsLegendProps) => {
-  const [minimized, setMinimized] = useState(false);
+  // En un teléfono (vertical u horizontal) la leyenda nace plegada: una línea con el rango.
+  const [minimized, setMinimized] = useState(() => (
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 700px), (max-height: 500px)').matches
+  ));
 
   const stats = useMemo(() => {
     if (!analysis || !analysis.success) return null;
@@ -135,13 +138,28 @@ export const Space3DResultsLegend = ({
 
   const num = (val: number) => formatSpace3DNumber(val, { significantDigits: 4 });
 
+  const critical = stats.criticalId ? (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="space3d-legend-critical-btn"
+      leadingIcon={<Crosshair size={12} />}
+      onClick={() => onSelectCritical?.(stats.criticalKind, stats.criticalId)}
+      title={t('space3d.legendSelectCritical', { id: stats.criticalId })}
+    >
+      {t('space3d.criticalElement' as TranslationKey) || 'Crítico'}: <b>{stats.criticalId}</b>
+    </Button>
+  ) : null;
+
   return (
     <div className={`space3d-results-legend ${minimized ? 'space3d-results-legend--minimized' : ''}`} role="region" aria-label={stats.title}>
       <header className="space3d-legend-header">
         <div className="space3d-legend-title-group">
           <Activity size={14} className="space3d-legend-icon" aria-hidden="true" />
-          <span>{stats.title}</span>
+          <span className="space3d-legend-title">{stats.title}</span>
+          {minimized ? <span className="space3d-legend-range">{num(stats.min)} … {num(stats.max)} {stats.unit}</span> : null}
         </div>
+        {minimized ? null : critical}
         <IconButton
           size="sm"
           className="space3d-legend-toggle"
@@ -155,29 +173,12 @@ export const Space3DResultsLegend = ({
 
       {!minimized && (
         <div className="space3d-legend-body">
-          <div className="space3d-legend-bar-wrapper">
+          <div className="space3d-legend-scale">
+            <span>{num(stats.min)} {stats.unit}</span>
             <div className={`space3d-legend-bar ${stats.gradientClass}`} aria-hidden="true" />
-            <div className="space3d-legend-labels">
-              <span>{num(stats.min)} {stats.unit}</span>
-              <span>{num(stats.max)} {stats.unit}</span>
-            </div>
+            <span>{num(stats.max)} {stats.unit}</span>
           </div>
-
-          <div className="space3d-legend-meta">
-            <small className="space3d-legend-convention">{stats.convention}</small>
-            {stats.criticalId ? (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="space3d-legend-critical-btn"
-                leadingIcon={<Crosshair size={12} />}
-                onClick={() => onSelectCritical?.(stats.criticalKind, stats.criticalId)}
-                title={t('space3d.legendSelectCritical', { id: stats.criticalId })}
-              >
-                {t('space3d.criticalElement' as TranslationKey) || 'Crítico'}: <b>{stats.criticalId}</b>
-              </Button>
-            ) : null}
-          </div>
+          <small className="space3d-legend-convention">{stats.convention}</small>
         </div>
       )}
     </div>

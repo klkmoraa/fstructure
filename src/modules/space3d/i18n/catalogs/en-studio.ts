@@ -215,7 +215,7 @@ export const enStudio: Record<keyof typeof esStudio, string> = {
   'space3d.modal.bucklingMode': 'Mode {n} · λ = {value}',
   'space3d.modal.bucklingTitle': 'Buckling modes',
 
-  'space3d.legend.component': '{symbol} · {name} [{unit}]',
+  'space3d.legend.component': '{name} [{unit}]',
   'space3d.legend.conventionMoment': 'Drawn on the tension side: positive M3 below the beam.',
   'space3d.legend.conventionShear': 'V2 in each member’s 1-2 plane and V3 in its 1-3 plane.',
   'space3d.legend.conventionTorsion': 'Torsion about the member’s axis 1.',
@@ -310,4 +310,6 @@ export const enStudio: Record<keyof typeof esStudio, string> = {
   'space3d.modal.sturm': 'verified with Sturm',
   'space3d.error.constraintConflict': 'A rigid-diaphragm node has a support in ux, uz or ry: remove the support or take the node out of the diaphragm',
   'space3d.story.rowTitle': 'Elevation {elevation} m · displacement ux {x} mm, uz {z} mm',
+  'space3d.ribbon.assignHint': 'Select members or nodes on the canvas (click, Ctrl or window) to assign to them.',
+  'space3d.story.noDrift': 'No noticeable lateral drift in this case.',
 };

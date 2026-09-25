@@ -26,22 +26,26 @@ const ratio = (value: number | null) => {
  * Por debajo de una milmillonésima de la mayor magnitud del mismo tipo, un
  * valor es redondeo (la dirección que el caso no excita): se muestra como 0.
  */
-const denoise = (values: readonly number[]): ((value: number) => number) => {
-  const floor = Math.max(0, ...values.map(Math.abs)) * 1e-9;
+const denoise = (values: readonly number[], absolute = 0): ((value: number) => number) => {
+  const floor = Math.max(absolute, Math.max(0, ...values.map(Math.abs)) * 1e-9);
   return (value) => (Math.abs(value) <= floor ? 0 : value);
 };
 
 /** Perfil de derivas: un punto por piso, X y Z. */
-const DriftProfile = ({ stories, t }: { stories: readonly Space3DStoryResponse[]; t: Translate }) => {
+const DriftProfile = ({ stories, t, clean }: { stories: readonly Space3DStoryResponse[]; t: Translate; clean: (value: number) => number }) => {
   const titleId = useId();
+  const peak = Math.max(0, ...stories.flatMap((story) => story.drift.map((value) => Math.abs(clean(value ?? 0)))));
+  // Sin deriva apreciable (gravedad sobre un edificio simétrico): no se dibuja ruido.
+  if (peak === 0) return <p className="space3d-field-hint">{t('space3d.story.noDrift')}</p>;
   const width = 240;
   const rowHeight = 22;
   const height = Math.max(60, stories.length * rowHeight + 20);
   const ordered = [...stories].sort((a, b) => a.elevation - b.elevation);
-  const maxDrift = Math.max(1e-12, ...stories.flatMap((story) => story.drift.map((value) => Math.abs(value ?? 0))));
+  const maxDrift = peak;
   const y = (index: number) => height - 12 - index * ((height - 24) / Math.max(1, ordered.length - 1));
   const x = (value: number) => 36 + (Math.abs(value) / maxDrift) * (width - 48);
-  const line = (axis: 0 | 1) => ordered.map((story, index) => `${index === 0 ? 'M' : 'L'}${x(story.drift[axis] ?? 0).toFixed(1)},${y(index).toFixed(1)}`).join(' ');
+  const at = (story: Space3DStoryResponse, axis: 0 | 1) => clean(story.drift[axis] ?? 0);
+  const line = (axis: 0 | 1) => ordered.map((story, index) => `${index === 0 ? 'M' : 'L'}${x(at(story, axis)).toFixed(1)},${y(index).toFixed(1)}`).join(' ');
   return <figure className="space3d-story-plot">
     <figcaption id={titleId}>{t('space3d.story.driftProfile', { max: ratio(maxDrift) })}</figcaption>
     <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={titleId}>
@@ -50,8 +54,8 @@ const DriftProfile = ({ stories, t }: { stories: readonly Space3DStoryResponse[]
       <path d={line(0)} className="space3d-story-line" data-axis="x" />
       <path d={line(1)} className="space3d-story-line" data-axis="z" />
       {ordered.map((story, index) => <g key={`${story.storyId}-dots`}>
-        <circle cx={x(story.drift[0] ?? 0)} cy={y(index)} r={2.6} className="space3d-story-dot" data-axis="x" />
-        <circle cx={x(story.drift[1] ?? 0)} cy={y(index)} r={2.6} className="space3d-story-dot" data-axis="z" />
+        <circle cx={x(at(story, 0))} cy={y(index)} r={2.6} className="space3d-story-dot" data-axis="x" />
+        <circle cx={x(at(story, 1))} cy={y(index)} r={2.6} className="space3d-story-dot" data-axis="z" />
       </g>)}
     </svg>
     <p className="space3d-story-legend"><span data-axis="x">X</span><span data-axis="z">Z</span></p>
@@ -63,13 +67,20 @@ interface Space3DStoryPanelProps {
   readonly stories: readonly Space3DStoryResponse[];
   /** Envolvente espectral: valores sin signo. */
   readonly envelope: boolean;
+  /** Mayor desplazamiento del análisis, m: fija qué deriva es redondeo. */
+  readonly displacementScale: number;
+  /** Umbral de ruido de fuerzas del análisis, kN. */
+  readonly forceNoise: number;
 }
 
-export const Space3DStoryPanel = ({ t, stories, envelope }: Space3DStoryPanelProps) => {
+export const Space3DStoryPanel = ({ t, stories, envelope, displacementScale, forceNoise }: Space3DStoryPanelProps) => {
   const [open, setOpen] = useState(true);
   if (stories.length === 0) return null;
-  const drift = denoise(stories.flatMap((story) => story.drift.map((value) => value ?? 0)));
-  const shear = denoise(stories.flatMap((story) => [...story.shear]));
+  // Una deriva por debajo de 1e-7 del mayor desplazamiento (entre la altura
+  // más corta) es redondeo, igual que un cortante bajo el umbral de fuerzas.
+  const shortest = Math.max(1e-6, Math.min(...stories.map((story) => story.height)));
+  const drift = denoise(stories.flatMap((story) => story.drift.map((value) => value ?? 0)), (displacementScale * 1e-7) / shortest);
+  const shear = denoise(stories.flatMap((story) => [...story.shear]), forceNoise);
   const show = (value: number) => number(envelope ? Math.abs(value) : value);
   return <section className="space3d-story" aria-label={t('space3d.story.title')}>
     <header>
@@ -79,7 +90,7 @@ export const Space3DStoryPanel = ({ t, stories, envelope }: Space3DStoryPanelPro
       </button>
     </header>
     {open ? <>
-      <DriftProfile stories={stories} t={t} />
+      <DriftProfile stories={stories} t={t} clean={drift} />
       <div className="space3d-story-table-wrap">
         <table className="space3d-define-table space3d-story-table">
           <thead><tr>

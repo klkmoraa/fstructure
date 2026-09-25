@@ -1012,7 +1012,13 @@ const WorkspaceBody = ({
 
     <Space3DModesPanel t={t} modal={modalResult} buckling={bucklingResult} shown={shownMode} onShow={(index) => { setShownMode(index); setAnimate(index !== null); }} />
     {spectrumResult && envelopeShown ? <Space3DSpectrumPanel t={t} result={spectrumResult} /> : null}
-    {currentAnalysis?.stories ? <Space3DStoryPanel t={t} stories={currentAnalysis.stories} envelope={envelopeShown} /> : null}
+    {currentAnalysis?.stories ? <Space3DStoryPanel
+      t={t}
+      stories={currentAnalysis.stories}
+      envelope={envelopeShown}
+      displacementScale={currentAnalysis.nodeResults.reduce((peak, node) => Math.max(peak, Math.abs(node.displacement.ux), Math.abs(node.displacement.uy), Math.abs(node.displacement.uz)), 0)}
+      forceNoise={space3DResultNoiseFloor(currentAnalysis)}
+    /> : null}
 
     {/* El motivo del fallo se publica junto a la acción que lo provocó. */}
     {analysisState === 'failed' && analysis && analysis.issues.length > 0
@@ -1055,6 +1061,7 @@ const WorkspaceBody = ({
       <button type="button" className="space3d-button" disabled={selection.nodes.length === 0} onClick={() => openAssign('nodal-load')}>{t('space3d.assign.nodalLoad')}</button>
       <button type="button" className="space3d-button" disabled={selection.nodes.length === 0} onClick={() => openAssign('support')}>{t('space3d.assign.support')}</button>
       <button type="button" className="space3d-button" disabled={selection.members.length === 0} onClick={() => openAssign('type')}>{t('space3d.assign.type')}</button>
+      <button type="button" className="space3d-button" disabled={selection.nodes.length === 0} onClick={() => openAssign('diaphragm')}>{t('space3d.assign.diaphragm')}</button>
     </div>
     <footer className="space3d-editor-actions">
       <button type="button" className="space3d-button space3d-button--danger" onClick={removeSelection}><Trash2 size={16} aria-hidden="true" />{t('space3d.selection.delete')}</button>
@@ -1401,7 +1408,15 @@ const WorkspaceBody = ({
 
     <EmbeddedInspector embedded={embedded} expanded={sheetExpanded}>
       <div className="space3d-inspector">
-        <Space3DGuide guide={guide} t={t} analysisLabel={stateLabel} onAction={onGuideAction} actionDone={exploring} />
+        {/* Con resultados, la ruta ya se recorrió: basta una línea y el panel es para los números. */}
+        <Space3DGuide
+          compact={guide.next === 'explore-results' || guide.next === 'running'}
+          guide={guide}
+          t={t}
+          analysisLabel={stateLabel}
+          onAction={onGuideAction}
+          actionDone={exploring}
+        />
         <div className="space3d-tabs" role="tablist" aria-label={t('space3d.inspectorTabs')}>
           <button type="button" role="tab" id="space3d-tab-model" className="space3d-tab" aria-controls="space3d-panel-model"
             aria-selected={panel === 'model'} tabIndex={panel === 'model' ? 0 : -1} onClick={() => setPanel('model')}>
