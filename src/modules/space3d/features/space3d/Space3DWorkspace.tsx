@@ -65,7 +65,7 @@ import type { Space3DCommand } from '../../space3d/data/commands';
 import type { Space3DProjectV1, Space3DVector } from '../../space3d/model/types';
 import type { Space3DStorageLike } from '../../space3d/data/storage';
 import type { Space3DWorkerClient } from '../../space3d/runtime/workerClient';
-import { ShellContribution, useShellInspector } from '../../../../features/workspace/ShellToolSlots';
+import { ShellContribution, ShellStatusChip, useShellInspector, type ShellStatusTone } from '../../../../features/workspace/ShellToolSlots';
 import './space3d.css';
 
 // Los diálogos de «Definir» y la plantilla de edificio sólo se usan a demanda:
@@ -171,6 +171,11 @@ const STATE_KEYS: Record<string, TranslationKey> = {
 
 const STATE_TONES: Record<string, string> = {
   idle: 'neutral', running: 'loading', ready: 'ok', stale: 'warn', failed: 'error', cancelled: 'neutral',
+};
+
+/** El mismo estado, en los tonos del chip de la barra superior. */
+const SHELL_TONES: Record<string, ShellStatusTone> = {
+  idle: 'neutral', running: 'running', ready: 'ok', stale: 'warn', failed: 'error', cancelled: 'neutral',
 };
 
 /**
@@ -1177,7 +1182,7 @@ const WorkspaceBody = ({
         <button type="button" className="workspace-topbar__icon-button" onClick={redo} disabled={!canRedo} aria-label={t('space3d.redo')} title={t('space3d.redo')}><Redo2 size={17} aria-hidden="true" /></button>
       </ShellContribution>
       <ShellContribution slot="action">{analyzeButton('workspace-topbar__action-button is-primary')}</ShellContribution>
-      <ShellContribution slot="status"><span role="status">{stateLabel} ({t('space3d.badge')})</span></ShellContribution>
+      <ShellContribution slot="status"><ShellStatusChip tone={SHELL_TONES[analysisState] ?? 'neutral'} label={stateLabel} badge={t('space3d.badge')} /></ShellContribution>
     </> : <header className="space3d-localbar">
       <strong className="space3d-localbar-title">{project.name}</strong>
       <span className="space3d-badge">{t('space3d.badge')}</span>

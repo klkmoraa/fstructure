@@ -844,7 +844,7 @@
 /* Respuesta ------------------------------------------------------------- */
 
 @media (max-width: 1180px) and (min-width: 1024px) {
-  .workspace-topbar__status {
+  .workspace-topbar__status:not(:has(.workspace-topbar__tool-status)) {
     display: none;
   }
 }
@@ -971,7 +971,9 @@
     padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
   }
 
-  .workspace-topbar__status {
+  /* El estado del Modelo 2D vive en su franja inferior; el de 3D y FEM se
+     queda como un punto junto al nombre. */
+  .workspace-topbar__status:not(:has(.workspace-topbar__tool-status)) {
     display: none;
   }
 
@@ -987,13 +989,7 @@
     grid-template-columns: 1fr;
   }
 
-  .workspace-topbar__project {
-    max-width: 104px;
-  }
 
-  .workspace-topbar__project-copy strong {
-    max-width: 88px;
-  }
 }
 
 /* La presión no encoge ni desplaza la tecla: la superficie baja por materia.

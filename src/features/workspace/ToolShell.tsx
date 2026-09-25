@@ -74,12 +74,15 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
       topbar={<WorkspaceTopBar
         tool={tool}
         contextActive={false}
-        contextualControls={<><ShellSlotHost slot="controls" />{hasInspector ? <ShellInspectorTrigger /> : null}</>}
+        contextualControls={<div className="workspace-topbar__tool-group" data-workspace-group="tool">
+          <ShellSlotHost slot="controls" />
+          {hasInspector ? <ShellInspectorTrigger /> : null}
+        </div>}
         primaryAction={<ShellSlotHost slot="action" />}
         toolStatus={<ShellSlotHost slot="status" />}
         utilities={<button
           type="button"
-          className="workspace-topbar__icon-button"
+          className="workspace-topbar__icon-button workspace-topbar__theme-button"
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           aria-label={t(theme === 'dark' ? 'theme.light' : 'theme.dark')}
           title={t(theme === 'dark' ? 'theme.light' : 'theme.dark')}

@@ -5,7 +5,7 @@ import { useSharedToolState } from '../../../store/SharedToolState';
 import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
 import type { Space3DProjectV1 } from '../../../modules/space3d/space3d/model/types';
 import { createBlankSpace3DProject } from '../../../modules/space3d/space3d/model/defaultProject';
-import { ShellContribution } from '../ShellToolSlots';
+import { ShellContribution, ShellStatusChip } from '../ShellToolSlots';
 import { linkSpace3DToShell } from './space3dShellBridge';
 import { peekToolIntent, takeToolIntent } from '../toolIntent';
 import type { ProjectModel } from '../../../types';
@@ -41,7 +41,7 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
     void session.saveSpace3D(project, linkSpace3DToShell(project.id, sourceVersion, model)).catch(() => undefined);
   }, [session, project, sourceVersion]);
   return <>
-    {failure ? <ShellContribution slot="status"><span role="status">{failure}</span></ShellContribution> : null}
+    {failure ? <ShellContribution slot="status"><ShellStatusChip tone="warn" label="Sólo en memoria" detail={failure} /></ShellContribution> : null}
     <Space3DWorkspace language={project.settings.language} embedded storage={embeddedStorage}
       canonicalProject={canonicalProject} onProjectChange={save} startIntent={startIntent} />
   </>;

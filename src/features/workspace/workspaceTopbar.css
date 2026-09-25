@@ -271,11 +271,72 @@
   gap: 8px;
 }
 
+/* --- Estado y controles de una herramienta aislada (3D, FEM, Diseño) -------- */
+
+/* El estado de 3D y FEM tiene la forma del chip del Modelo 2D: punto de
+   color, palabra corta e insignia «Experimental» aparte. La frase larga (un
+   aviso, un error) va en el título, no en la barra. */
+.workspace-topbar__tool-status {
+  max-width: 320px;
+  gap: 7px;
+  padding-inline: 10px 6px;
+}
+
+.workspace-topbar__tool-status > .workspace-topbar__status-dot {
+  position: static;
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--sc-color-text-muted);
+  clip: auto;
+}
+
+.workspace-topbar__tool-status[data-tone='ok'] > .workspace-topbar__status-dot { background: var(--sc-color-state-success); }
+.workspace-topbar__tool-status[data-tone='warn'] > .workspace-topbar__status-dot { background: var(--sc-color-state-warning); }
+.workspace-topbar__tool-status[data-tone='error'] > .workspace-topbar__status-dot { background: var(--sc-color-state-error); }
+.workspace-topbar__tool-status[data-tone='running'] > .workspace-topbar__status-dot {
+  background: var(--sc-color-action-primary);
+  animation: workspace-topbar-pulse 1.1s var(--sc-ease-standard) infinite alternate;
+}
+
+.workspace-topbar__tool-status[data-tone='error'] {
+  border-color: color-mix(in srgb, var(--sc-color-state-error) 34%, var(--sc-color-border));
+  background: color-mix(in srgb, var(--sc-color-state-error) 7%, var(--sc-color-surface-1));
+  color: var(--sc-color-state-error-foreground);
+}
+
+.workspace-topbar__tool-status > .workspace-topbar__tool-status-copy { display: block; min-width: 0; overflow: hidden; }
+.workspace-topbar__tool-status strong { color: var(--sc-color-text-primary); }
+
+.workspace-topbar__status-badge {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border-radius: var(--sc-radius-pill);
+  background: color-mix(in srgb, var(--sc-color-state-warning) 14%, transparent);
+  color: var(--sc-color-state-warning-foreground);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: var(--sc-font-weight-semibold);
+  letter-spacing: .02em;
+}
+
+@keyframes workspace-topbar-pulse {
+  from { opacity: .45; transform: scale(.8); }
+  to { opacity: 1; transform: scale(1.1); }
+}
+
+/* Deshacer, rehacer y el panel de la herramienta comparten superficie, como
+   el historial del Modelo 2D. Sin controles (Diseño) el grupo no se dibuja. */
+.workspace-topbar__tool-group .shell-tool-slot--controls { gap: 2px; }
+.workspace-topbar__tool-group:not(:has(button)) { display: none; }
+
 /* Model history and results share one segmented surface; calculation remains
    visually decisive without changing the command it invokes. */
 .workspace-topbar__model-group,
 .workspace-topbar__experience-group,
 .workspace-topbar__mode-group,
+.workspace-topbar__tool-group,
 .workspace-topbar__calculate-group {
   min-height: 44px;
   display: flex;
@@ -974,6 +1035,42 @@
     min-width: 40px;
   }
 
+  /* El nombre del proyecto es la identidad de la mesa: cede lo último. */
+  .workspace-topbar__project {
+    flex: 1 1 auto;
+    min-width: 64px;
+  }
+
+  .workspace-topbar__model-group,
+  .workspace-topbar__tool-group {
+    gap: 0;
+  }
+
+  /* El estado de 3D y FEM se vuelve un punto en la esquina de la marca, como
+     un aviso de app: no le quita sitio al nombre del proyecto. */
+  .workspace-topbar__status:has(.workspace-topbar__tool-status) {
+    position: absolute;
+    z-index: 1;
+    top: 2px;
+    left: 28px;
+    pointer-events: none;
+  }
+
+  .workspace-topbar__tool-status {
+    width: 12px;
+    min-width: 12px;
+    min-height: 12px;
+    padding: 0;
+    border: 2px solid var(--sc-color-bg-app);
+    border-radius: 50%;
+    background: var(--sc-color-bg-app);
+    box-shadow: none;
+    pointer-events: auto;
+  }
+
+  .workspace-topbar__tool-status > .workspace-topbar__status-dot { width: 8px; height: 8px; }
+  .workspace-topbar__tool-status > .workspace-topbar__status-badge { display: none; }
+
   .workspace-utilities__panel {
     position: fixed;
     top: calc(var(--topbar-h) + 7px);
@@ -994,6 +1091,50 @@
   .workspace-topbar__project-copy strong {
     font-size: var(--sc-font-size-caption);
   }
+
+  .workspace-topbar__icon-button,
+  .workspace-topbar__action-button,
+  .workspace-topbar__action-button.is-primary {
+    min-width: 36px;
+    min-height: 38px;
+  }
+
+  .workspace-topbar__brand {
+    width: 34px;
+    min-width: 34px;
+  }
+}
+
+/* En los teléfonos más estrechos el tema sigue al sistema (y se cambia en el
+   Inicio): su botón cede el sitio al nombre del proyecto. */
+@media (max-width: 360px) {
+  .workspace-topbar__theme-button { display: none; }
+}
+
+/* Pantallas bajas (teléfono en horizontal): una barra de 48 px en vez de 64. */
+@media (max-height: 500px) and (min-width: 561px) {
+  :root:root {
+    --topbar-h: calc(48px + env(safe-area-inset-top));
+    --fstructure-header-height: calc(48px + env(safe-area-inset-top));
+  }
+
+  .workspace-topbar {
+    min-height: var(--topbar-h);
+    padding-block: calc(4px + env(safe-area-inset-top)) 4px;
+  }
+
+  .workspace-topbar__brand { width: 34px; min-width: 34px; min-height: 34px; }
+  .workspace-topbar__project { min-height: 36px; }
+  .workspace-topbar__eyebrow { display: none; }
+
+  .workspace-topbar__model-group,
+  .workspace-topbar__experience-group,
+  .workspace-topbar__mode-group,
+  .workspace-topbar__tool-group,
+  .workspace-topbar__calculate-group { min-height: 38px; padding: 2px; }
+
+  .workspace-topbar__icon-button,
+  .workspace-topbar__action-button { min-height: 32px; }
 }
 
 /* K0 ya publica el estado de cálculo en la franja inferior. Ocultar aquí ese

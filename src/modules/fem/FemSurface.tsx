@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Download, Grid3X3, Layers3, Play, Sigma, Upload, Waypoints } from 'lucide-react';
 import './femSurface.css';
-import { ShellContribution } from '../../features/workspace/ShellToolSlots';
+import { ShellContribution, ShellStatusChip } from '../../features/workspace/ShellToolSlots';
 import { peekToolIntent, takeToolIntent } from '../../features/workspace/toolIntent';
 import { useProjectModel } from '../../store/ProjectModelContext';
 import { useSharedToolState } from '../../store/SharedToolState';
@@ -163,13 +163,15 @@ export function FemSurface() {
     setFeedback(downloaded ? 'Resultados VTK descargados.' : 'Este navegador no permite descargas locales.');
   }, [analysis, document]);
 
-  const status = analysis === null ? 'Experimental · Listo' : analysis.success ? 'Experimental · Resuelto' : 'Experimental · Revisar';
+  const status = analysis === null
+    ? { tone: 'neutral' as const, label: 'Listo' }
+    : analysis.success ? { tone: 'ok' as const, label: 'Resuelto' } : { tone: 'error' as const, label: 'Revisar' };
 
   return <section className="fusion-fem" aria-labelledby="fem-title">
     <ShellContribution slot="action"><button type="button" className="workspace-topbar__action-button is-primary" onClick={runAnalysis}>
       <Play size={16} aria-hidden="true" /> Analizar FEM
     </button></ShellContribution>
-    <ShellContribution slot="status"><span role="status">{feedback ?? status}</span></ShellContribution>
+    <ShellContribution slot="status"><ShellStatusChip tone={status.tone} label={status.label} badge="Experimental" detail={feedback ?? undefined} /></ShellContribution>
     <ShellContribution slot="inspector">
       <div className="fusion-fem__inspector">
         <strong>Modelo local</strong>

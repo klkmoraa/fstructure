@@ -40,6 +40,23 @@ export function ShellMobileSurface({ children }: { children: ReactNode }) {
   const slots = useContext(Context);
   return slots?.mobile ? slots.hosts.mobile ? createPortal(children, slots.hosts.mobile) : null : children;
 }
+export type ShellStatusTone = 'neutral' | 'running' | 'ok' | 'warn' | 'error';
+
+/**
+ * Estado de una herramienta en la barra superior, con la misma forma que el
+ * del Modelo 2D: un punto de color, una palabra y, si toca, la insignia
+ * «Experimental» aparte. En un teléfono queda sólo el punto junto al nombre
+ * del proyecto; la frase completa sigue en el título y en el lector.
+ */
+export function ShellStatusChip({ tone, label, badge, detail }: { tone: ShellStatusTone; label: string; badge?: string; detail?: string }) {
+  return <span className="workspace-topbar__status-chip workspace-topbar__tool-status" data-tone={tone} role="status"
+    title={[label, badge, detail].filter(Boolean).join(' · ')}>
+    <span className="workspace-topbar__status-dot" aria-hidden="true" />
+    <span className="workspace-topbar__tool-status-copy"><strong>{label}</strong></span>
+    {badge ? <em className="workspace-topbar__status-badge">{badge}</em> : null}
+  </span>;
+}
+
 export function ShellInspectorTrigger() {
   const slots = useContext(Context);
   if (!slots?.mobile) return null;
