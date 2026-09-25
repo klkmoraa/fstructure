@@ -3,7 +3,6 @@ export const esStudio = {
   'space3d.ribbon.label': 'Comandos del modelo',
   'space3d.ribbon.file': 'Archivo',
   'space3d.ribbon.define': 'Definir',
-  'space3d.ribbon.draw': 'Dibujar',
   'space3d.ribbon.assign': 'Asignar',
   'space3d.ribbon.display': 'Mostrar',
   'space3d.ribbon.view': 'Vista',

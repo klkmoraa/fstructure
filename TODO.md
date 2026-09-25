@@ -6,7 +6,8 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 - [ ] FEM: dibujar la malla y colorearla por von Mises, desplazamiento y calidad; editor mínimo de placa, apoyos y cargas.
 - [ ] Proyectos por herramienta: miniatura y resumen propios en los recientes de 3D, FEM y Diseño (hoy muestran datos del 2D).
-- [ ] Mesas de 3D, FEM y Diseño con barra según el brandbook, y deshacer/rehacer en FEM y Diseño.
+- [ ] Mesas de FEM y Diseño con el lenguaje de la 2D (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM y Diseño.
+- [ ] 3D en teléfonos ≤390 px: los menús (Definir · Asignar · Mostrar · Vista) no caben junto a la vista y se deslizan; buscarles sitio sin tapar el lienzo.
 - [ ] Título de pestaña por herramienta («Solver 3D · FusionStructure»).
 - [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
 - [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.

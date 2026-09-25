@@ -7,7 +7,7 @@
  * funciona. Si el visor cae, lo único que desaparece es la imagen.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { AlertTriangle, ChevronDown, Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
+import { AlertTriangle, ChevronDown, LocateFixed, Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
 import { SPACE3D_VIEW_PRESETS, type Space3DViewPreset } from './cameraModel';
 import { createSpace3DViewport, type Space3DLayerVisibility, type Space3DViewport, type Space3DWindowPick } from './threeViewport';
 import type { Space3DSceneModel } from './sceneModel';
@@ -37,6 +37,8 @@ interface Space3DCanvasCopy {
   readonly fallbackBody: string;
   readonly retry: string;
   readonly summaryTitle: string;
+  /** Nombre del grupo de cámara (acercar, alejar, encuadrar, pantalla completa). */
+  readonly cameraLabel?: string;
   readonly nodes: string;
   readonly members: string;
   readonly supports: string;
@@ -90,6 +92,8 @@ interface Space3DCanvasProps {
   readonly viewSelectLabel?: string;
   /** Controles adicionales inyectados por quien aloja el lienzo (p.ej. capas). */
   readonly trailingControls?: ReactNode;
+  /** Entre los dos extremos de la barra superior (las magnitudes de resultado). */
+  readonly centerControls?: ReactNode;
   readonly draft?: Space3DCanvasDraft | null;
   /** Con `draft`, el clic se entrega aquí en lugar de a `onSelect`. */
   readonly onDraftPick?: (pick: Space3DCanvasPick) => void;
@@ -121,6 +125,7 @@ export const Space3DCanvas = ({
   fullscreenEnterLabel = 'Pantalla completa',
   fullscreenExitLabel = 'Salir de pantalla completa',
   trailingControls,
+  centerControls,
   draft = null,
   onDraftPick,
   onWindowSelect,
@@ -290,7 +295,12 @@ export const Space3DCanvas = ({
           </select>
           <ChevronDown size={14} aria-hidden="true" />
         </label>}
-        <div className="space3d-canvas-topbar-actions">
+        {centerControls ?? null}
+        {trailingControls ? <div className="space3d-canvas-topbar-trailing">{trailingControls}</div> : null}
+      </div>
+      {/* Cámara abajo a la derecha, como los controles del lienzo 2D. */}
+      <div className="space3d-canvas-camera" role="group" aria-label={copy.cameraLabel ?? resetLabel}>
+        <div className="space3d-canvas-camera-zoom">
           <button type="button" className="space3d-tool" onClick={() => viewportRef.current?.zoomBy(0.8)} title={zoomInLabel}>
             <Plus size={16} aria-hidden="true" /><span className="space3d-visually-hidden">{zoomInLabel}</span>
           </button>
@@ -298,14 +308,13 @@ export const Space3DCanvas = ({
             <Minus size={16} aria-hidden="true" /><span className="space3d-visually-hidden">{zoomOutLabel}</span>
           </button>
           <button type="button" className="space3d-tool" onClick={() => onViewChange?.('isometric')} title={resetLabel}>
-            <RotateCcw size={16} aria-hidden="true" /><span className="space3d-visually-hidden">{resetLabel}</span>
+            <LocateFixed size={16} aria-hidden="true" /><span className="space3d-visually-hidden">{resetLabel}</span>
           </button>
-          <button type="button" className="space3d-tool" onClick={toggleFullscreen} title={isFullscreen ? fullscreenExitLabel : fullscreenEnterLabel}>
-            {isFullscreen ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
-            <span className="space3d-visually-hidden">{isFullscreen ? fullscreenExitLabel : fullscreenEnterLabel}</span>
-          </button>
-          {trailingControls}
         </div>
+        <button type="button" className="space3d-tool space3d-canvas-camera-full" onClick={toggleFullscreen} title={isFullscreen ? fullscreenExitLabel : fullscreenEnterLabel}>
+          {isFullscreen ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
+          <span className="space3d-visually-hidden">{isFullscreen ? fullscreenExitLabel : fullscreenEnterLabel}</span>
+        </button>
       </div>
       {unavailable
         ? <div className="space3d-canvas-fallback" role="alert">

@@ -62,7 +62,21 @@
   overflow: auto;
 }
 .shell-mobile-sheet::backdrop { background: rgb(0 0 0 / 25%); }
-.shell-tool-inspector:has(.space3d-inspector) { width: min(344px, 34vw); background: var(--sc-color-surface-1); border-left: var(--sc-border-width) solid var(--sc-color-divider); }
+.shell-tool-inspector:has(.space3d-inspector) { width: min(344px, 30vw); }
+/* El panel lateral es la misma pieza elevada que el inspector de 2D, y se
+   pliega con su interruptor de la barra superior para dar el ancho al lienzo. */
+.shell-tool-inspector {
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+}
+.shell-tool-inspector[data-collapsed] { display: none; }
+/* 3D trae su propio relleno; el resto de herramientas lo recibe del shell. */
+.shell-tool-inspector:not(:has(.space3d-inspector)) { padding: 16px; }
+.app-shell[data-shell-class]:has(.native-workspace-mode):has(.shell-tool-inspector[data-collapsed]) .workspace { grid-template-columns: minmax(0, 1fr); }
+/* Franja de estado y dock de la herramienta, al pie como en 2D. */
+.shell-tool-slot--statusbar,
+.shell-tool-slot--dock { flex: none; min-width: 0; }
 .shell-tool-inspector .space3d-source-notice,
 .shell-mobile-sheet .space3d-source-notice { margin: var(--sc-space-3) var(--sc-space-4) 0; padding: var(--sc-space-2) var(--sc-space-3); border-radius: var(--sc-radius-md); background: color-mix(in srgb, var(--sc-color-state-warning) 14%, var(--sc-color-surface-1)); font-size: var(--sc-font-size-caption); }
 .shell-storage-notice { margin: 0; padding: 4px 12px; font-size: var(--sc-font-size-caption); color: var(--sc-color-text-primary); background: var(--sc-color-surface-1); }

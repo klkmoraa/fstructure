@@ -24,3 +24,16 @@ it('mounts adapter controls in shell slots and has one mobile dialog with focus 
   expect(screen.queryByRole('dialog')).toBeNull();
   expect(document.activeElement).toBe(trigger);
 });
+it('folds the desktop inspector with its topbar toggle instead of opening a sheet', async () => {
+  const user = userEvent.setup();
+  const { container } = render(<ShellToolSlotsProvider mobile={false}>
+    <ShellInspectorTrigger label="Panel" /><ShellInspectorHost />
+    <ShellContribution slot="inspector"><input aria-label="Propiedad" /></ShellContribution>
+  </ShellToolSlotsProvider>);
+  const toggle = screen.getByRole('button', { name: 'Inspector de herramienta' });
+  expect(toggle.getAttribute('aria-pressed')).toBe('true');
+  await user.click(toggle);
+  expect(toggle.getAttribute('aria-pressed')).toBe('false');
+  expect(container.querySelector('.shell-tool-inspector')?.hasAttribute('data-collapsed')).toBe(true);
+  expect(screen.queryByRole('dialog')).toBeNull();
+});

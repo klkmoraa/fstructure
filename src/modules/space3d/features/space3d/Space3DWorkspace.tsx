@@ -16,7 +16,7 @@
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  CircleStop, Grid3x3, Layers, Minus, Play, Plus, Redo2, Tag, Trash2, Undo2, Weight, X,
+  ChevronDown, CircleStop, Grid3x3, Layers, Minus, Play, Plus, Redo2, Tag, Trash2, Undo2, Weight, X,
 } from 'lucide-react';
 import { NodeGlyph, SupportGlyph } from '../../../../design-system/icons/structural';
 import { Space3DProjectProvider, useSpace3DProject, type Space3DSelection } from '../../space3d/store/Space3DProjectContext';
@@ -37,6 +37,8 @@ import { Space3DSelectionHUD } from './Space3DSelectionHUD';
 import { Space3DResultsLegend } from './Space3DResultsLegend';
 import { Space3DGuide } from './Space3DGuide';
 import { SPACE3D_DISPLAY_MODES, Space3DRibbon, type Space3DAssignKind } from './Space3DRibbon';
+import { Space3DDock } from './Space3DDock';
+import { space3DResultStats } from './space3dResultStats';
 import { Space3DExplorer } from './Space3DExplorer';
 import { Space3DAssignPanel } from './Space3DAssignPanel';
 import { Space3DMemberDiagrams } from './Space3DMemberDiagrams';
@@ -262,7 +264,10 @@ const WorkspaceBody = ({
   const refitView = () => setViewFitToken((token) => token + 1);
   const [viewId, setViewId] = useState<Space3DViewId>('3d');
   const [split, setSplit] = useState(false);
-  const [explorerOpen, setExplorerOpen] = useState(true);
+  // Como en 2D, el lienzo manda: el explorador nace abierto sólo si sobra ancho.
+  const [explorerOpen, setExplorerOpen] = useState(() => (
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1600px)').matches
+  ));
   const [animate, setAnimate] = useState(false);
   const [sheetExpanded, setLocalSheetExpanded] = useState(false);
   const shellInspector = useShellInspector();
@@ -935,6 +940,63 @@ const WorkspaceBody = ({
     </select>
   </label>;
 
+  const ribbon = <Space3DRibbon
+      t={t}
+      file={{
+        onNewBuilding: () => setBuildingOpen(true),
+        onGenerator: () => setGenerativeOpen(true),
+        onLoadExample: () => requestReplace('example'),
+        onResetBlank: () => requestReplace('blank'),
+        onImport: () => setTransfer('import'),
+        onExport: () => setTransfer('export'),
+      }}
+      onDefine={setDefineDialog}
+      selectedMembers={selection.members.length}
+      selectedNodes={selection.nodes.length}
+      onAssign={openAssign}
+      resultsReady={analysisState === 'ready'}
+      animate={animate}
+      onAnimate={(value) => {
+        setAnimate(value);
+        if (value && resultMode !== 'deformed' && !modeShape) setResultMode('deformed');
+      }}
+      extruded={Boolean(layers.extruded)}
+      onExtruded={(value) => setLayers((current) => ({ ...current, extruded: value }))}
+      labels={layers.labels}
+      onLabels={(value) => setLayers((current) => ({ ...current, labels: value }))}
+      split={split}
+      onSplit={setSplit}
+      explorer={explorerOpen}
+      onExplorer={setExplorerOpen}
+    />;
+
+  // Magnitudes arriba y al centro, como Axial · Cortante · Momento en 2D.
+  // Sólo con resultados: antes no hay nada que elegir.
+  const resultRail = hasContent && analysisState === 'ready' ? <nav className="space3d-result-rail" aria-label={t('space3d.resultBarLabel')}>
+    <button type="button" aria-pressed={resultMode === 'model' && !modeShape} onClick={() => chooseResultMode('model')}>{t('space3d.display.model')}</button>
+    {SPACE3D_DISPLAY_MODES.map(({ mode, short, key }) => <button
+      key={mode}
+      type="button"
+      data-mode={mode}
+      aria-pressed={resultMode === mode && !modeShape}
+      aria-label={t(key)}
+      title={t(key)}
+      onClick={() => chooseResultMode(mode)}
+    ><span className="space3d-result-rail-long" aria-hidden="true">{t(key)}</span><span className="space3d-result-rail-short" aria-hidden="true">{short}</span></button>)}
+  </nav> : null;
+
+  const dock = <Space3DDock
+    t={t}
+    tool={tool}
+    onTool={(next) => { if (next === 'select') { enterTool('select'); clearToolSelection(); } else enterTool(next); }}
+    hasNodes={project.nodes.length > 0}
+    onGenerate={() => setGenerativeOpen(true)}
+    explorer={explorerOpen}
+    onExplorer={setExplorerOpen}
+    split={split}
+    onSplit={setSplit}
+  />;
+
   const selectedMemberResult = currentAnalysis && selectedEntity?.kind === 'member'
     ? currentAnalysis.memberResults.find((item) => item.memberId === selectedEntity.id) ?? null
     : null;
@@ -1138,6 +1200,7 @@ const WorkspaceBody = ({
     fallbackBody: t('space3d.webglBody'),
     retry: t('space3d.retry'),
     summaryTitle: t('space3d.canvasSummary'),
+    cameraLabel: t('space3d.cameraLabel'),
     nodes: t('space3d.nodes'),
     members: t('space3d.members'),
     supports: t('space3d.supports'),
@@ -1175,6 +1238,69 @@ const WorkspaceBody = ({
       disabled={diagramFactor >= 8} onClick={() => setDiagramFactor((value) => value * 2)}><Plus size={15} aria-hidden="true" /></button>
   </div> : null;
 
+  const toolLabel = t(tool === 'node' ? 'space3d.node' : tool === 'member' ? 'space3d.member'
+    : tool === 'support' ? 'space3d.toolSupport' : tool === 'load' ? 'space3d.load' : 'space3d.toolSelect');
+  // Franja de estado con la voz de la de 2D: lectura del modelo a la izquierda,
+  // herramienta, unidades y estado del cálculo a la derecha.
+  const statusBar = <footer className="space3d-status" aria-label={t('space3d.title')}>
+    <span className="space3d-status-counts" title={t('space3d.canvasSummary')}>
+      <span><b>{project.nodes.length}</b> N</span>
+      <span><b>{project.members.length}</b> B</span>
+      <span><b>{project.nodalLoads.length + project.memberLoads.length}</b> C</span>
+    </span>
+    <span className="space3d-status-case">{t('space3d.statusCase', { id: analysisTargetId })}</span>
+    <span className="space3d-status-view">{viewName(view.id)}</span>
+    {selectionSize > 0 ? <span className="space3d-status-selection">{t('space3d.status.selection', { count: selectionSize })}</span> : null}
+    <span className="space3d-status-help">{view.scope.kind === '3d' ? t('space3d.interactionHelp') : t('space3d.selection.none')}</span>
+    <span className="space3d-status-tool">{toolLabel}</span>
+    <span className="space3d-status-units">{t('space3d.statusUnits')}</span>
+    {lastAnalysisLabel ? <span className="space3d-status-last">{lastAnalysisLabel}</span> : null}
+    <span className={`space3d-state space3d-state--${STATE_TONES[analysisState]}`}>{stateLabel}</span>
+  </footer>;
+
+  const phoneDock = embedded && Boolean(shellInspector?.mobile);
+
+  // Banda de resultados al pie del lienzo, como el «Centro analítico» de 2D: el
+  // dato que gobierna y un acceso al panel con las tablas.
+  const bandHeadline = (() => {
+    if (!currentAnalysis) return null;
+    if (spectrumResult && envelopeShown) return t('space3d.band.spectrum', { value: formatSpace3DNumber(spectrumResult.baseShear, { significantDigits: 4 }), axis: spectrumResult.direction.toUpperCase() });
+    // Con un diagrama en pantalla, la banda dice su valor gobernante (como «M gobernante» en 2D).
+    const shown = SPACE3D_DISPLAY_MODES.find((item) => item.mode === resultMode);
+    if (shown && resultMode !== 'deformed' && !modeShape) {
+      const stats = space3DResultStats(resultMode, currentAnalysis, t);
+      if (stats && stats.criticalId) {
+        const governing = Math.abs(stats.min) > Math.abs(stats.max) ? stats.min : stats.max;
+        return t('space3d.band.governing', { name: t(shown.key), value: formatSpace3DNumber(governing, { significantDigits: 4 }), unit: stats.unit, id: stats.criticalId });
+      }
+    }
+    let peak = 0;
+    let peakNode = '';
+    let vertical = 0;
+    for (const node of currentAnalysis.nodeResults) {
+      const value = Math.hypot(node.displacement.ux, node.displacement.uy, node.displacement.uz);
+      if (value > peak) { peak = value; peakNode = node.nodeId; }
+      vertical += node.reaction.uy;
+    }
+    const parts = [t('space3d.band.displacement', { value: formatSpace3DNumber(peak * 1000, { significantDigits: 4 }), id: peakNode })];
+    if (Math.abs(vertical) > noise) parts.push(t('space3d.band.reaction', { value: formatSpace3DNumber(vertical, { significantDigits: 4 }) }));
+    return parts.join(' · ');
+  })();
+  const openResults = (element: HTMLElement) => {
+    setPanel('analysis');
+    if (embedded && shellInspector) shellInspector.reveal(element);
+    else setSheetExpanded(true);
+  };
+  const resultsBand = bandHeadline ? <section className="space3d-results-band" aria-label={t('space3d.band.label')}>
+    <div className="space3d-results-band-copy">
+      <span className="space3d-results-band-label">{t('space3d.band.label')}</span>
+      <strong>{bandHeadline}</strong>
+    </div>
+    <button type="button" className="space3d-results-band-open" onClick={(event) => openResults(event.currentTarget)}>
+      {t('space3d.band.open')}<ChevronDown size={15} aria-hidden="true" />
+    </button>
+  </section> : null;
+
   return <div className="space3d-screen" data-space3d-layout="workbench" data-embedded={embedded || undefined}>
     {embedded ? <>
       <ShellContribution slot="controls">
@@ -1192,40 +1318,6 @@ const WorkspaceBody = ({
         {analyzeButton('space3d-button space3d-button--primary')}
       </div>
     </header>}
-
-    <Space3DRibbon
-      t={t}
-      file={{
-        onNewBuilding: () => setBuildingOpen(true),
-        onGenerator: () => setGenerativeOpen(true),
-        onLoadExample: () => requestReplace('example'),
-        onResetBlank: () => requestReplace('blank'),
-        onImport: () => setTransfer('import'),
-        onExport: () => setTransfer('export'),
-      }}
-      onDefine={setDefineDialog}
-      tool={tool}
-      onTool={(next) => { if (next === 'select') { enterTool('select'); clearToolSelection(); } else enterTool(next); }}
-      hasNodes={project.nodes.length > 0}
-      selectedMembers={selection.members.length}
-      selectedNodes={selection.nodes.length}
-      onAssign={openAssign}
-      resultsReady={analysisState === 'ready'}
-      animate={animate}
-      onAnimate={(value) => {
-        setAnimate(value);
-        if (value && resultMode !== 'deformed' && !modeShape) setResultMode('deformed');
-      }}
-      extruded={Boolean(layers.extruded)}
-      onExtruded={(value) => setLayers((current) => ({ ...current, extruded: value }))}
-      labels={layers.labels}
-      onLabels={(value) => setLayers((current) => ({ ...current, labels: value }))}
-      split={split}
-      onSplit={setSplit}
-      explorer={explorerOpen}
-      onExplorer={setExplorerOpen}
-      displayExtras={layersControl}
-    />
 
     {errorMessage ? <div className="space3d-diagnostics">
       <p className="space3d-notice space3d-notice--error" role="alert">{errorMessage}</p>
@@ -1302,8 +1394,9 @@ const WorkspaceBody = ({
             fullscreenEnterLabel={t('space3d.fullscreenEnter')}
             fullscreenExitLabel={t('space3d.fullscreenExit')}
             onViewChange={() => changeView('3d')}
-            leadingControls={viewSelect}
-            trailingControls={null}
+            leadingControls={ribbon}
+            centerControls={resultRail}
+            trailingControls={<>{viewSelect}{layersControl}</>}
             copy={canvasCopy}
           />
 
@@ -1367,24 +1460,7 @@ const WorkspaceBody = ({
             ) : null}
           </div>
 
-          {hasContent ? <div className="space3d-stage-footer">
-            <nav className="space3d-result-bar" aria-label={t('space3d.resultBarLabel')}>
-              <button type="button" aria-pressed={resultMode === 'model' && !modeShape} onClick={() => chooseResultMode('model')}>{t('space3d.display.model')}</button>
-              {SPACE3D_DISPLAY_MODES.map(({ mode, short, key }) => {
-                const blocked = analysisState !== 'ready';
-                return <button
-                  key={mode}
-                  type="button"
-                  aria-pressed={resultMode === mode && !modeShape}
-                  aria-label={t(key)}
-                  disabled={blocked}
-                  title={blocked ? t('space3d.resultNeedsAnalysis') : t(key)}
-                  onClick={() => chooseResultMode(mode)}
-                >{short}</button>;
-              })}
-            </nav>
-            {scaleControl}
-          </div> : null}
+          {scaleControl ? <div className="space3d-stage-scale">{scaleControl}</div> : null}
         </section>
 
         {secondaryScene ? <section className="space3d-stage space3d-stage--secondary" aria-label={t('space3d.view.secondary')}>
@@ -1408,7 +1484,10 @@ const WorkspaceBody = ({
             copy={canvasCopy}
           />
         </section> : null}
+        {/* En un teléfono el dock baja al pie del shell, como el de 2D. */}
+        {phoneDock ? <ShellContribution slot="dock">{dock}</ShellContribution> : dock}
       </div>
+      {resultsBand}
     </div>
 
     <EmbeddedInspector embedded={embedded} expanded={sheetExpanded}>
@@ -1527,17 +1606,9 @@ const WorkspaceBody = ({
       /> : null}
     </Suspense>
 
-    <footer className="space3d-status" aria-label={t('space3d.title')}>
-      <span className={`space3d-state space3d-state--${STATE_TONES[analysisState]}`}>{stateLabel}</span>
-      <span>{t('space3d.statusCase', { id: analysisTargetId })}</span>
-      <span className="space3d-status-view">{viewName(view.id)}</span>
-      {selectionSize > 0 ? <span>{t('space3d.status.selection', { count: selectionSize })}</span> : null}
-      {lastAnalysisLabel ? <span className="space3d-status-last">{lastAnalysisLabel}</span> : null}
-      <span className="space3d-status-help">{view.scope.kind === '3d' ? t('space3d.interactionHelp') : t('space3d.selection.none')}</span>
-      <span className="space3d-status-units">{t('space3d.statusUnits')}</span>
-      <span data-testid="space3d-analysis-state" className="space3d-visually-hidden">{analysisState}</span>
-      <span data-testid="space3d-deformed-visible" className="space3d-visually-hidden">{String(scene.deformed !== null)}</span>
-    </footer>
+    {embedded ? <ShellContribution slot="statusbar">{statusBar}</ShellContribution> : statusBar}
+    <span data-testid="space3d-analysis-state" className="space3d-visually-hidden">{analysisState}</span>
+    <span data-testid="space3d-deformed-visible" className="space3d-visually-hidden">{String(scene.deformed !== null)}</span>
   </div>;
 };
 

@@ -5,7 +5,6 @@ export const enStudio: Record<keyof typeof esStudio, string> = {
   'space3d.ribbon.label': 'Model commands',
   'space3d.ribbon.file': 'File',
   'space3d.ribbon.define': 'Define',
-  'space3d.ribbon.draw': 'Draw',
   'space3d.ribbon.assign': 'Assign',
   'space3d.ribbon.display': 'Display',
   'space3d.ribbon.view': 'View',

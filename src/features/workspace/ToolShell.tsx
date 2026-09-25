@@ -27,8 +27,8 @@ type ToolShellProps = {
 };
 
 const copy = {
-  es: { loading: 'Cargando herramienta…', failed: 'Esta herramienta dejó de responder.', failedBody: 'Tu proyecto sigue guardado. Vuelve al inicio o recarga la herramienta; las demás no se ven afectadas.', retry: 'Recargar herramienta', home: 'Volver al inicio' },
-  en: { loading: 'Loading tool…', failed: 'This tool stopped responding.', failedBody: 'Your project is still saved. Go back home or reload the tool; the other tools are not affected.', retry: 'Reload tool', home: 'Back to home' },
+  es: { loading: 'Cargando herramienta…', failed: 'Esta herramienta dejó de responder.', failedBody: 'Tu proyecto sigue guardado. Vuelve al inicio o recarga la herramienta; las demás no se ven afectadas.', retry: 'Recargar herramienta', home: 'Volver al inicio', panel: 'Panel' },
+  en: { loading: 'Loading tool…', failed: 'This tool stopped responding.', failedBody: 'Your project is still saved. Go back home or reload the tool; the other tools are not affected.', retry: 'Reload tool', home: 'Back to home', panel: 'Panel' },
 } as const;
 
 type BoundaryProps = { children: ReactNode; fallback: (reset: () => void) => ReactNode };
@@ -76,7 +76,7 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
         contextActive={false}
         contextualControls={<div className="workspace-topbar__tool-group" data-workspace-group="tool">
           <ShellSlotHost slot="controls" />
-          {hasInspector ? <ShellInspectorTrigger /> : null}
+          {hasInspector ? <ShellInspectorTrigger label={text.panel} /> : null}
         </div>}
         primaryAction={<ShellSlotHost slot="action" />}
         toolStatus={<ShellSlotHost slot="status" />}
@@ -142,7 +142,11 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
       </section>}
       inspector={hasInspector ? <ShellInspectorHost /> : null}
       floatingActions={<ShellSlotHost slot="mobile" />}
-      instrument={storageIssue ? <p className="shell-storage-notice" role="status">{storageMessage}</p> : undefined}
+      instrument={<>
+        {storageIssue ? <p className="shell-storage-notice" role="status">{storageMessage}</p> : null}
+        <ShellSlotHost slot="statusbar" />
+        <ShellSlotHost slot="dock" />
+      </>}
     />
   </ShellToolSlotsProvider>;
 };

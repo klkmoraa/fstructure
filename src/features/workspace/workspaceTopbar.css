@@ -1152,3 +1152,10 @@
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Interruptor del panel de una herramienta aislada: la misma pieza que
+   «Experiencia de cálculo» en 2D, con su nombre mientras cabe. */
+@media (max-width: 1180px) {
+  .workspace-topbar__inspector-button span { display: none; }
+  .workspace-topbar__inspector-button { min-width: 36px; padding-inline: 0; justify-content: center; }
+}

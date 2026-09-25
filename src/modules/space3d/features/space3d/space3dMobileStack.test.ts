@@ -77,31 +77,23 @@ const mediaBody = (query: string): string => {
   return bodies.join('\n');
 };
 
-describe('space3d · pila inferior en pantalla estrecha', () => {
+describe('space3d · pila de selección y leyenda', () => {
   const narrow = parseRules(mediaBody('@media (max-width: 700px)'));
   const base = parseRules(css);
 
-  it('anchors the bottom panels through a single stack container', () => {
-    const stack = narrow.get('.space3d-bottom-stack');
-    expect(stack, 'la pila debe existir en la media query estrecha').not.toBeNull();
+  it('anchors the HUD and the legend through a single stack container', () => {
+    const stack = base.get('.space3d-bottom-stack');
     expect(stack).toMatch(/position:\s*absolute/);
-    expect(stack).toMatch(/flex-direction:\s*column-reverse/);
+    expect(stack).toMatch(/display:\s*flex/);
+    // En un teléfono baja al pulgar y el HUD queda pegado al pie.
+    expect(narrow.get('.space3d-bottom-stack')).toMatch(/flex-direction:\s*column-reverse/);
   });
 
-  it('keeps the HUD and the legend out of the fixed layer', () => {
+  it('never positions the HUD or the legend on their own', () => {
+    // Si vuelven a posicionarse por su cuenta recuperan el inset compartido y el solape.
     for (const selector of ['.space3d-hud-card', '.space3d-results-legend']) {
-      const declarations = narrow.get(selector);
-      expect(declarations, `${selector} debe declararse en la media query`).not.toBeNull();
-      // Si vuelven a posicionarse por su cuenta recuperan el inset compartido y el solape.
-      expect(declarations, selector).not.toMatch(/position:\s*(fixed|absolute)/);
-      expect(declarations, selector).toMatch(/position:\s*static/);
+      for (const rules of [base, narrow]) expect(rules.get(selector) ?? '', selector).not.toMatch(/position:\s*(fixed|absolute)/);
     }
-  });
-
-  it('declares the stack as a non-box wrapper outside the narrow layout', () => {
-    // Fuera de la media query los paneles conservan su posición propia, así que
-    // el contenedor no debe crear caja ni desplazarlos.
-    expect(base.get('.space3d-bottom-stack')).toMatch(/display:\s*contents/);
   });
 
   it('hides the stack for an expanded sheet only in the compact layout', () => {

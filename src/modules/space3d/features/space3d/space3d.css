@@ -28,7 +28,7 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  background: var(--sc-color-bg-canvas);
+  background: transparent;
   color: var(--sc-color-text-primary);
   font-family: var(--sc-font-ui);
   font-size: var(--s3-text);
@@ -285,25 +285,40 @@
 
 /* --- Disposición ----------------------------------------------------------- */
 
+/* El marco elevado es el `center-stage` del shell, igual que en 2D. Dentro,
+   el lienzo hundido ocupa todo; el explorador es una columna plana a su lado y
+   la banda de resultados cierra el pie, como el «Centro analítico» de 2D. */
 .space3d-layout {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--s3-gap);
-  padding: 0 var(--s3-gap) var(--s3-gap);
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
 }
 
 .space3d-layout[data-explorer] { grid-template-columns: var(--s3-explorer-w) minmax(0, 1fr); }
+.space3d-layout > .space3d-explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sc-space-2) var(--sc-space-1) var(--sc-space-2) 0;
+  background: transparent;
+}
+.space3d-layout > .space3d-results-band { grid-column: -2 / -1; }
 
 .space3d-screen:not([data-embedded]) .space3d-layout { grid-template-columns: minmax(0, 1fr) minmax(300px, 340px); }
 .space3d-screen:not([data-embedded]) .space3d-layout[data-explorer] { grid-template-columns: var(--s3-explorer-w) minmax(0, 1fr) minmax(300px, 340px); }
 
-/* Una vista o dos (planta + 3D), como la pareja de ventanas de ETABS. */
+/* Una vista o dos (planta + 3D), como la pareja de ventanas de ETABS. El dock
+   se centra sobre ellas. */
 .space3d-stages {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--s3-gap);
+  gap: 8px;
   min-width: 0;
   min-height: 0;
 }
@@ -313,86 +328,94 @@
 .space3d-view-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
+  min-height: 36px;
   padding: 0 var(--sc-space-3);
-  border-radius: var(--sc-radius-md);
-  background: var(--s3-float);
-  box-shadow: var(--sc-shadow-sm);
-  font-size: var(--s3-small);
-  font-weight: var(--sc-font-weight-medium);
-}
-
-/* --- Cinta de comandos ------------------------------------------------------ */
-
-/* Como la cinta de ETABS 22: una fila de pestañas y una fila de comandos de
-   la pestaña activa. Dos filas finas y siempre la misma altura: cambiar de
-   pestaña no mueve el lienzo. En un teléfono las dos filas se deslizan. */
-.space3d-ribbon {
-  display: grid;
-  gap: 2px;
-  margin: var(--s3-gap) var(--s3-gap) var(--s3-gap);
-  padding: 4px 6px 4px;
-  border-radius: var(--sc-radius-panel);
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-1);
   box-shadow: var(--sc-shadow-xs);
+  font-size: var(--s3-small);
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+/* --- Menús flotantes (Archivo · Definir · Asignar · Mostrar · Vista) ------- */
+
+/* Una píldora sobre el lienzo, arriba a la izquierda, con la gramática de las
+   fichas de 2D. El menú abierto despliega su fila de comandos debajo, en otra
+   pieza flotante; plegado, el lienzo queda libre. */
+.space3d-ribbon {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .space3d-ribbon-bar {
   display: flex;
   align-items: center;
-  gap: var(--sc-space-2);
+  gap: 3px;
   min-width: 0;
-  padding-bottom: 3px;
-  border-bottom: var(--sc-border-width) solid var(--sc-color-divider);
+  max-width: 100%;
+  padding: 3px;
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
 }
 
 .space3d-ribbon-tabs {
   display: flex;
-  align-items: stretch;
-  gap: 2px;
+  align-items: center;
+  gap: 3px;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: none;
 }
 .space3d-ribbon-tabs::-webkit-scrollbar { display: none; }
 
-.space3d-ribbon-tab {
+.space3d-ribbon-tab,
+.space3d-ribbon-menu .sc-popover__trigger {
   position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: 6px;
   min-height: 30px;
-  padding: 0 var(--sc-space-3);
-  border: 0;
-  border-radius: var(--sc-radius-sm);
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius-card);
   background: transparent;
   color: var(--sc-color-text-secondary);
   font: inherit;
   font-size: var(--s3-small);
-  font-weight: var(--sc-font-weight-medium);
+  font-weight: var(--sc-font-weight-semibold);
   white-space: nowrap;
   cursor: pointer;
+  box-shadow: none;
   transition: var(--sc-transition-control);
 }
 
-.space3d-ribbon-tab:hover { background: var(--sc-color-surface-2); color: var(--sc-color-text-primary); }
-
-.space3d-ribbon-tab[aria-selected='true'] {
+.space3d-ribbon-menu .sc-popover__trigger {
+  border-color: var(--sc-color-border-soft);
+  background: var(--sc-color-surface-elevated);
   color: var(--sc-color-text-primary);
-  font-weight: var(--sc-font-weight-semibold);
 }
 
-/* Subrayado de la pestaña activa, del color de acción. */
-.space3d-ribbon-tab[aria-selected='true']::after {
-  content: '';
-  position: absolute;
-  right: var(--sc-space-3);
-  bottom: -4px;
-  left: var(--sc-space-3);
-  height: 2px;
-  border-radius: 2px;
-  background: var(--sc-color-action-primary);
+.space3d-ribbon-tab:hover,
+.space3d-ribbon-menu .sc-popover__trigger:hover:not(:disabled) {
+  color: var(--sc-color-text-primary);
+  box-shadow: var(--sc-shadow-xs);
+}
+
+/* Menú abierto = ficha presionada, como la magnitud elegida en 2D. */
+.space3d-ribbon-tab[aria-expanded='true'],
+.space3d-ribbon-menu .sc-popover__trigger[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--sc-color-action-primary) 42%, var(--sc-color-border-soft));
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-action-primary);
+  box-shadow: var(--sc-shadow-pressed);
 }
 
 .space3d-ribbon-tab:focus-visible { outline: 2px solid var(--sc-color-focus-ring, var(--sc-color-action-primary)); outline-offset: 1px; }
@@ -405,7 +428,7 @@
   padding: 0 5px;
   border-radius: 999px;
   background: var(--sc-color-action-primary);
-  color: var(--sc-color-text-on-action, #fff);
+  color: var(--sc-color-action-foreground, #fff);
   font-family: var(--sc-font-mono);
   font-size: 10px;
   font-weight: var(--sc-font-weight-semibold);
@@ -416,10 +439,19 @@
   align-items: center;
   gap: 2px;
   min-width: 0;
-  min-height: 50px;
+  max-width: 100%;
+  padding: 4px;
   overflow-x: auto;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  box-shadow:
+    var(--sc-shadow-floating),
+    inset 1px 1.5px 2px var(--sc-clay-light),
+    inset -1px -1.5px 2px var(--sc-clay-dark-soft);
 }
+.space3d-ribbon-panel::-webkit-scrollbar { display: none; }
 
 .space3d-ribbon-separator {
   flex: none;
@@ -430,27 +462,26 @@
 }
 
 .space3d-ribbon-hint {
-  flex: 0 1 260px;
-  min-width: 180px;
-  margin: 0 var(--sc-space-3) 0 var(--sc-space-2);
+  flex: 0 1 240px;
+  min-width: 170px;
+  margin: 0 var(--sc-space-2);
   color: var(--sc-color-text-muted);
   font-size: var(--s3-tiny);
   line-height: 1.35;
 }
 
-.space3d-ribbon-button,
-.space3d-ribbon-menu .sc-popover__trigger {
+.space3d-ribbon-button {
   display: inline-flex;
   flex: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  min-width: 52px;
-  min-height: 46px;
-  padding: 3px 7px;
+  min-width: 56px;
+  min-height: 48px;
+  padding: 4px 8px;
   border: 0;
-  border-radius: var(--sc-radius-md);
+  border-radius: var(--sc-radius-card);
   background: transparent;
   color: var(--sc-color-text-secondary);
   font: inherit;
@@ -459,34 +490,15 @@
   line-height: 1.1;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: none;
   transition: var(--sc-transition-control);
 }
 
-/* «Archivo» vive en la fila de pestañas, en horizontal, como el menú File. */
-.space3d-ribbon-menu .sc-popover__trigger {
-  flex-direction: row;
-  gap: 6px;
-  min-width: 0;
-  min-height: 30px;
-  padding: 0 var(--sc-space-3);
-  border-radius: var(--sc-radius-sm);
-  background: var(--sc-color-surface-2);
-  color: var(--sc-color-text-primary);
-  font-size: var(--s3-small);
-}
-
-.space3d-ribbon-button:hover:not(:disabled),
-.space3d-ribbon-menu .sc-popover__trigger:hover:not(:disabled) {
-  background: var(--sc-color-surface-2);
-  color: var(--sc-color-text-primary);
-  box-shadow: none;
-}
+.space3d-ribbon-button:hover:not(:disabled) { background: var(--sc-color-surface-2); color: var(--sc-color-text-primary); }
 
 .space3d-ribbon-button[aria-pressed='true'] {
-  background: var(--sc-color-action-subtle);
-  color: var(--sc-color-action-ink-on-soft, var(--sc-color-text-primary));
-  box-shadow: inset 0 0 0 var(--sc-border-width) color-mix(in srgb, var(--sc-color-action-primary) 45%, transparent);
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-action-primary);
+  box-shadow: var(--sc-shadow-pressed);
 }
 
 .space3d-ribbon-button:disabled { color: var(--sc-color-text-disabled); cursor: not-allowed; }
@@ -494,7 +506,83 @@
 
 .space3d-ribbon-menu .sc-popover__surface { width: 280px; padding: var(--sc-space-2); }
 
-.space3d-ribbon .space3d-layers .sc-popover__trigger { min-height: 46px; }
+/* --- Dock de herramientas ----------------------------------------------------- */
+
+/* La pieza de arcilla del dock de 2D: centrada al pie del lienzo, grupos
+   separados por un filete y la herramienta activa en el color de acción con su
+   nombre. */
+.space3d-dock {
+  position: absolute;
+  z-index: 14;
+  left: 50%;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  width: max-content;
+  max-width: calc(100% - 28px);
+  padding: 5px 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  box-shadow:
+    0 8px 24px rgb(0 0 0 / 16%),
+    0 2px 6px rgb(0 0 0 / 10%),
+    inset 1px 1.5px 2px var(--sc-clay-light),
+    inset -1px -1.5px 2px var(--sc-clay-dark-soft);
+  transform: translateX(-50%);
+}
+.space3d-dock::-webkit-scrollbar { display: none; }
+
+.space3d-dock-group { display: flex; align-items: center; gap: 4px; padding: 0 4px; }
+.space3d-dock-group + .space3d-dock-group { border-inline-start: 1px solid var(--sc-color-border-soft); }
+
+.space3d-dock-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius-card);
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  font-size: var(--s3-small);
+  font-weight: var(--sc-font-weight-semibold);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--sc-transition-control);
+}
+
+.space3d-dock-button:hover:not(:disabled) { background: var(--sc-color-surface-2); }
+.space3d-dock-button:disabled { color: var(--sc-color-text-disabled); cursor: not-allowed; }
+.space3d-dock-button:disabled svg { opacity: 0.5; }
+.space3d-dock-label { display: none; }
+
+/* Herramienta activa: pieza presionada en el color de acción, con su nombre. */
+.space3d-dock-button[data-active],
+.space3d-dock-button[data-active]:hover:not(:disabled) {
+  width: auto;
+  padding: 0 14px 0 12px;
+  border-color: var(--sc-color-action-primary);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-selected);
+}
+.space3d-dock-button[data-active] .space3d-dock-label { display: inline; }
+
+/* Interruptores de panel: presionados cuando el panel está abierto. */
+.space3d-dock-button--toggle[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--sc-color-action-primary) 36%, var(--sc-color-border-soft));
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-action-primary);
+  box-shadow: var(--sc-shadow-pressed);
+}
 
 /* --- Explorador del modelo --------------------------------------------------- */
 
@@ -687,12 +775,16 @@
 
 /* --- Escenario y lienzo ---------------------------------------------------- */
 
+/* El plano de trabajo hundido del brandbook, el mismo que el lienzo de 2D:
+   filete, `surface-inset` y la sombra interior. */
 .space3d-stage {
   position: relative;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-radius: var(--sc-radius-panel);
+  container: s3stage / inline-size;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-inset);
   box-shadow: var(--sc-shadow-inset, inset 0 1px 3px rgb(0 0 0 / 18%));
 }
@@ -714,12 +806,14 @@
 
 .space3d-canvas-stage[data-fullscreen] { background: var(--sc-color-surface-inset); }
 
+/* Arriba: menús a la izquierda, vista y capas a la derecha. Las magnitudes
+   (con resultados) quedan al centro, entre ambos. */
 .space3d-canvas-topbar {
   position: absolute;
-  z-index: 10;
-  top: var(--sc-space-3);
-  left: var(--sc-space-3);
-  right: var(--sc-space-3);
+  z-index: 12;
+  top: 10px;
+  left: 10px;
+  right: 10px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -728,34 +822,46 @@
 }
 
 .space3d-canvas-topbar > * { pointer-events: auto; }
+.space3d-canvas-topbar > :first-child { min-width: 0; }
 
-.space3d-canvas-topbar-actions,
+.space3d-canvas-topbar-trailing { display: flex; flex: none; align-items: center; gap: 6px; }
+
 .space3d-view-select {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 3px;
-  border-radius: var(--sc-radius-md);
-  background: var(--s3-float);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: var(--sc-shadow-sm);
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
 }
 
-.space3d-view-select { position: relative; padding: 0; }
-
 .space3d-view-select select {
-  min-height: var(--sc-size-target-pointer);
-  padding: 0 30px 0 var(--sc-space-3);
+  min-height: 36px;
+  max-width: 190px;
+  padding: 0 28px 0 var(--sc-space-3);
   border: 0;
-  border-radius: var(--sc-radius-md);
+  border-radius: var(--sc-radius-card);
   background: transparent;
   color: var(--sc-color-text-primary);
   font: inherit;
   font-size: var(--s3-small);
-  font-weight: var(--sc-font-weight-medium);
+  font-weight: var(--sc-font-weight-semibold);
+  text-overflow: ellipsis;
   appearance: none;
   cursor: pointer;
+}
+
+.space3d-view-select::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--sc-color-text-secondary);
+  border-bottom: 1.5px solid var(--sc-color-text-secondary);
+  transform: translateY(-2px) rotate(45deg);
+  pointer-events: none;
 }
 
 .space3d-view-select svg {
@@ -764,6 +870,64 @@
   pointer-events: none;
   color: var(--sc-color-text-secondary);
 }
+
+/* Capas: el botón redondo de arriba a la derecha de 2D. */
+.space3d-canvas-topbar .space3d-layers .sc-popover__trigger {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: var(--sc-depth-raised-border);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-secondary);
+  box-shadow: var(--sc-depth-raised-shadow);
+}
+.space3d-canvas-topbar .space3d-layers .sc-popover__trigger:hover { color: var(--sc-color-text-primary); box-shadow: var(--sc-shadow-sm); }
+.space3d-canvas-topbar .space3d-layers .sc-popover__trigger[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--sc-color-action-primary) 30%, var(--sc-color-border));
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-action-primary);
+  box-shadow: var(--sc-shadow-pressed);
+}
+.space3d-canvas-topbar .space3d-layers .sc-popover__trigger span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Cámara abajo a la derecha: acercar, alejar y encuadrar en una píldora, y la
+   pantalla completa debajo, como el zoom y las utilidades de 2D. */
+.space3d-canvas-camera {
+  position: absolute;
+  z-index: 10;
+  right: 10px;
+  bottom: 10px;
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.space3d-canvas-camera-zoom {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
+}
+
+.space3d-canvas-camera .space3d-tool { width: 32px; min-width: 32px; height: 32px; min-height: 32px; border-radius: var(--sc-radius-card); }
+.space3d-canvas-camera .space3d-canvas-camera-full {
+  width: 36px;
+  height: 36px;
+  border: var(--sc-depth-raised-border);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-depth-raised-shadow);
+}
+
+.space3d-view-select:has(svg)::after { display: none; }
 
 .space3d-canvas-controls { display: contents; }
 .space3d-canvas-summary {
@@ -816,8 +980,8 @@
 
 .space3d-stage-modebar {
   position: absolute;
-  z-index: 12;
-  top: 60px;
+  z-index: 13;
+  bottom: 72px;
   left: 50%;
   width: min(680px, calc(100% - var(--sc-space-6)));
   transform: translateX(-50%);
@@ -1013,67 +1177,141 @@
 
 .space3d-stage-guide { display: none; }
 
-/* --- Pie del escenario: qué se dibuja y escala ---------------------------- */
+/* --- Magnitudes: fichas arriba al centro, como en 2D -------------------------- */
 
-.space3d-stage-footer {
-  position: absolute;
-  z-index: 10;
-  left: 50%;
-  bottom: var(--sc-space-3);
+.space3d-result-rail {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 1 auto;
   align-items: center;
-  justify-content: center;
-  gap: var(--sc-space-2);
-  width: max-content;
-  max-width: calc(100% - var(--sc-space-6));
-  transform: translateX(-50%);
-}
-
-.space3d-result-bar {
-  display: flex;
-  gap: 2px;
+  gap: 5px;
+  min-width: 0;
+  margin-inline: auto;
   padding: 3px;
-  border-radius: var(--sc-radius-md);
-  background: var(--s3-float);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: var(--sc-shadow-sm);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
 }
+.space3d-result-rail::-webkit-scrollbar { display: none; }
 
-.space3d-result-bar button {
+.space3d-result-rail button {
+  --tone: var(--sc-color-action-primary);
   flex: none;
-  min-width: 34px;
-  min-height: 32px;
-  padding: 0 var(--sc-space-2);
-  border: 0;
-  border-radius: var(--sc-radius-sm);
-  background: transparent;
+  min-width: max-content;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-elevated);
   color: var(--sc-color-text-secondary);
-  font-family: var(--sc-font-mono);
-  font-size: var(--s3-small);
-  font-weight: var(--sc-font-weight-semibold);
+  font: inherit;
+  font-size: var(--s3-tiny);
+  font-weight: 700;
   cursor: pointer;
   transition: var(--sc-transition-control);
 }
 
-.space3d-result-bar button:first-child { font-family: var(--sc-font-ui); font-weight: var(--sc-font-weight-medium); }
-.space3d-result-bar button:hover:not(:disabled) { background: var(--sc-color-surface-2); color: var(--sc-color-text-primary); }
-.space3d-result-bar button[aria-pressed='true'] { background: var(--sc-color-text-primary); color: var(--sc-color-surface-1); }
-.space3d-result-bar button:disabled { color: var(--sc-color-text-disabled); cursor: not-allowed; }
+.space3d-result-rail button[data-mode='deformed'] { --tone: var(--sc-color-technical-deformed); }
+.space3d-result-rail button[data-mode='axial'] { --tone: var(--sc-color-technical-axial); }
+.space3d-result-rail button:is([data-mode='shear'], [data-mode='shear3'], [data-mode='torsion']) { --tone: var(--sc-color-technical-shear); }
+.space3d-result-rail button:is([data-mode='moment'], [data-mode='moment2']) { --tone: var(--sc-color-technical-moment); }
+.space3d-result-rail button[data-mode='reactions'] { --tone: var(--sc-color-technical-reaction); }
+
+.space3d-result-rail button:hover { color: var(--sc-color-text-primary); box-shadow: var(--sc-shadow-xs); }
+.space3d-result-rail button[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--tone) 46%, var(--sc-color-border-soft));
+  background: var(--sc-color-surface-inset);
+  color: var(--tone);
+  box-shadow: var(--sc-shadow-pressed);
+  transform: var(--sc-press-transform);
+}
+
+/* Nombre completo si el lienzo lo permite; si no, el símbolo de ETABS. */
+.space3d-result-rail-short { display: none; font-family: var(--sc-font-mono); }
+
+@container s3stage (max-width: 1380px) {
+  .space3d-result-rail button[data-mode] .space3d-result-rail-long { display: none; }
+  .space3d-result-rail button[data-mode] .space3d-result-rail-short { display: inline; }
+  .space3d-result-rail button[data-mode] { min-width: 34px; }
+}
+
+/* Escala de la deformada o del diagrama: encima de la cámara. */
+.space3d-stage-scale {
+  position: absolute;
+  z-index: 10;
+  right: 10px;
+  bottom: 104px;
+}
 
 .space3d-scale {
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 3px 3px 3px var(--sc-space-3);
-  border-radius: var(--sc-radius-md);
-  background: var(--s3-float);
-  box-shadow: var(--sc-shadow-sm);
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
   font-family: var(--sc-font-mono);
   font-size: var(--s3-tiny);
   color: var(--sc-color-text-secondary);
 }
+
+/* --- Banda de resultados («Centro analítico») -------------------------------- */
+
+.space3d-results-band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-4);
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 12px 8px 20px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow:
+    var(--sc-shadow-xs),
+    inset 1px 1.5px 2px var(--sc-clay-light),
+    inset -1px -1.5px 2px var(--sc-clay-dark-soft);
+}
+
+.space3d-results-band-copy { display: grid; gap: 2px; min-width: 0; }
+.space3d-results-band-label {
+  color: var(--sc-color-text-secondary);
+  font-size: var(--s3-tiny);
+  font-weight: var(--sc-font-weight-semibold);
+  letter-spacing: var(--sc-tracking-eyebrow);
+  text-transform: uppercase;
+}
+.space3d-results-band-copy strong {
+  overflow: hidden;
+  font-size: var(--s3-text);
+  font-weight: var(--sc-font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.space3d-results-band-open {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--sc-radius-card);
+  background: transparent;
+  color: var(--sc-color-action-primary);
+  font: inherit;
+  font-size: var(--s3-small);
+  font-weight: var(--sc-font-weight-semibold);
+  cursor: pointer;
+}
+.space3d-results-band-open:hover { background: var(--sc-color-surface-2); }
 
 /* --- Selección por ventana ---------------------------------------------------- */
 
@@ -1371,22 +1609,35 @@
 
 /* --- HUD de selección y leyenda ------------------------------------------- */
 
-.space3d-bottom-stack { display: contents; }
-
-.space3d-hud-card {
+/* Selección y leyenda arriba a la izquierda, bajo los menús, como la leyenda
+   del diagrama en 2D. Se apilan sin solaparse. */
+.space3d-bottom-stack {
   position: absolute;
   z-index: 11;
-  top: 64px;
-  left: var(--sc-space-3);
+  top: 58px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: min(340px, calc(100% - 20px));
+  max-height: calc(100% - 150px);
+  pointer-events: none;
+}
+
+.space3d-bottom-stack > * { pointer-events: auto; }
+
+.space3d-hud-card {
   display: grid;
   gap: var(--sc-space-2);
-  width: min(340px, calc(100% - var(--sc-space-6)));
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
   padding: var(--sc-space-2) var(--sc-space-2) var(--sc-space-2) var(--sc-space-3);
-  border-radius: var(--sc-radius-md);
-  background: var(--s3-float);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--sc-shadow-floating);
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-sm);
   color: var(--sc-color-text-primary);
 }
 
@@ -1449,21 +1700,16 @@
 .space3d-hud-action-btn--danger { margin-left: auto; }
 
 .space3d-results-legend {
-  position: absolute;
-  z-index: 11;
-  right: var(--sc-space-3);
-  bottom: 64px;
-  width: min(340px, calc(100% - var(--sc-space-6)));
-  padding: var(--sc-space-2) var(--sc-space-2) var(--sc-space-2) var(--sc-space-3);
-  border-radius: var(--sc-radius-md);
-  background: var(--s3-float);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: var(--sc-shadow-floating);
+  width: 100%;
+  padding: 7px 8px 7px 11px;
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
   color: var(--sc-color-text-primary);
 }
 
-.space3d-results-legend--minimized { width: auto; max-width: calc(100% - var(--sc-space-6)); padding: 4px 4px 4px var(--sc-space-3); }
+.space3d-results-legend--minimized { width: auto; max-width: 100%; padding: 3px 3px 3px 11px; }
 .space3d-legend-header { display: flex; align-items: center; gap: var(--sc-space-2); }
 .space3d-legend-title-group { display: flex; flex: 1; align-items: center; gap: 6px; min-width: 0; font-size: var(--s3-small); font-weight: var(--sc-font-weight-semibold); }
 .space3d-legend-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1522,32 +1768,40 @@
 
 .space3d-legend-critical-btn:hover { border-color: var(--sc-color-border-strong); }
 
-/* --- Barra de estado ------------------------------------------------------- */
+/* --- Franja de estado ------------------------------------------------------- */
 
+/* La franja inferior de 2D: monoespaciada, plana y de altura fija. Cada tramo
+   se retira en el ancho en que dejaría de caber. */
 .space3d-status {
   display: flex;
   align-items: center;
-  gap: var(--sc-space-4);
-  min-height: 30px;
-  padding: 0 var(--sc-space-4);
-  border-top: var(--sc-border-width) solid var(--sc-color-divider);
+  gap: 12px;
+  min-height: var(--fstructure-status-height, 28px);
+  height: var(--fstructure-status-height, 28px);
+  padding: 0 12px;
+  overflow: hidden;
   background: var(--sc-color-surface-1);
   color: var(--sc-color-text-secondary);
-  font-size: var(--s3-tiny);
+  font: var(--sc-font-size-label, 11px) / 1 var(--sc-font-mono);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.space3d-status .space3d-state { font-size: var(--s3-tiny); }
+.space3d-status > span { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.space3d-status b { color: var(--sc-color-text-primary); font-weight: var(--sc-font-weight-bold); }
+.space3d-status-counts { gap: 10px !important; }
+.space3d-status .space3d-state { font-family: inherit; font-size: inherit; }
 
 .space3d-status-help {
-  flex: 1 1 auto;
+  flex: 1 1 auto !important;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
   color: var(--sc-color-text-muted);
+  font-family: var(--sc-font-ui);
+  text-overflow: ellipsis;
 }
 
-.space3d-status-units { font-family: var(--sc-font-mono); }
+.space3d-status-tool { text-transform: uppercase; letter-spacing: var(--sc-tracking-eyebrow); }
 
 /* --- Panel lateral --------------------------------------------------------- */
 
@@ -1561,6 +1815,8 @@
 
 .space3d-inspector {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   align-content: start;
   gap: var(--sc-space-4);
   padding: var(--sc-space-4);
@@ -2359,17 +2615,18 @@
 /* --- Shell compacto: el panel vive en la hoja ----------------------------- */
 
 @media (max-width: 1023px) {
-
   .space3d-stage-guide {
     position: absolute;
     z-index: 9;
-    top: 60px;
+    top: 56px;
     left: 50%;
     display: block;
     width: max-content;
-    max-width: calc(100% - var(--sc-space-6));
+    max-width: calc(100% - 16px);
     transform: translateX(-50%);
   }
+  /* Con resultados, la banda del pie ya dice qué mirar. */
+  .space3d-stage:has(.space3d-result-rail) .space3d-stage-guide { display: none; }
 
   /* Sin sitio para tres columnas: el explorador y la vista doble se retiran. */
   .space3d-layout,
@@ -2377,7 +2634,8 @@
   .space3d-screen:not([data-embedded]) .space3d-layout,
   .space3d-screen:not([data-embedded]) .space3d-layout[data-explorer] { grid-template-columns: minmax(0, 1fr); }
   .space3d-explorer,
-  .space3d-stage--secondary { display: none; }
+  .space3d-stage--secondary,
+  .space3d-dock-group--view { display: none; }
   .space3d-layout[data-split] .space3d-stages:has(.space3d-stage--secondary) { grid-template-columns: minmax(0, 1fr); }
 
   .space3d-screen:not([data-embedded]) .space3d-sheet {
@@ -2395,74 +2653,103 @@
   /* Con la hoja abierta, HUD y leyenda se retiran para no quedar debajo. */
   .space3d-bottom-stack[data-sheet-expanded] { display: none; }
 
-  .space3d-status-help { display: none; }
+  .space3d-status-help { display: none !important; }
+  .space3d-status-tool { display: none !important; }
   .space3d-generative-columns { grid-template-columns: 1fr; }
+
+  /* El dock baja al pie del shell: una franja plana de teclas táctiles, como
+     el dock móvil de 2D. La herramienta activa es la tecla roja. */
+  .shell-tool-slot--dock .space3d-dock {
+    position: static;
+    justify-content: space-between;
+    width: 100%;
+    max-width: none;
+    padding: 4px 8px calc(4px + env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid var(--sc-color-border-soft);
+    border-radius: 0;
+    box-shadow: none;
+    transform: none;
+  }
+  .shell-tool-slot--dock .space3d-dock-group { padding: 0; gap: 2px; }
+  .shell-tool-slot--dock .space3d-dock-group + .space3d-dock-group { border: 0; }
+  .shell-tool-slot--dock .space3d-dock-button,
+  .shell-tool-slot--dock .space3d-dock-button[data-active] { width: 44px; height: 44px; padding: 0; }
+  .shell-tool-slot--dock .space3d-dock-button[data-active] .space3d-dock-label { display: none; }
+  .shell-tool-slot--dock .space3d-dock-group:last-of-type { margin-left: auto; }
 }
 
-/* --- Teléfono: el carril baja a un dock ----------------------------------- */
+/* En una tableta el dock se agrupa al centro en vez de repartirse de borde a borde. */
+@media (min-width: 561px) and (max-width: 1023px) {
+  .shell-tool-slot--dock .space3d-dock { justify-content: center; gap: 16px; }
+  .shell-tool-slot--dock .space3d-dock-group:last-of-type { margin-left: 0; }
+
+  /* Fuera del shell (vista independiente) el dock sigue flotando en el lienzo. */
+  .space3d-stages > .space3d-dock .space3d-dock-label { display: none; }
+  .space3d-stages > .space3d-dock .space3d-dock-button[data-active] { width: 38px; padding: 0; }
+}
+
+/* --- Teléfono ---------------------------------------------------------------- */
+
+@container s3stage (max-width: 900px) {
+  /* Las magnitudes bajan a su propia fila, bajo menús, vista y capas. */
+  .space3d-result-rail { position: absolute; top: 48px; left: 0; max-width: 100%; margin: 0; }
+  .space3d-stage:has(.space3d-result-rail) .space3d-bottom-stack { top: 102px; }
+}
 
 @media (max-width: 700px) {
   .space3d-screen { --s3-gap: var(--sc-space-2); }
 
-  .space3d-ribbon { margin: var(--s3-gap); padding: 3px 4px; }
-  .space3d-ribbon-bar { gap: var(--sc-space-1); }
-  /* «Archivo» queda como icono: las pestañas necesitan el ancho. */
-  .space3d-ribbon-menu .sc-popover__trigger { padding: 0 var(--sc-space-2); }
+  .space3d-canvas-topbar { top: 8px; left: 8px; right: 8px; gap: 6px; }
+  .space3d-ribbon-bar { padding: 2px; gap: 2px; }
+  /* «Archivo» queda como icono: los menús necesitan el ancho. */
+  .space3d-ribbon-menu .sc-popover__trigger { padding: 0 8px; }
   .space3d-ribbon-menu .sc-popover__trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .space3d-ribbon-tab { padding: 0 7px; font-size: var(--s3-tiny); }
-  .space3d-ribbon-tab[aria-selected='true']::after { right: 7px; left: 7px; }
-  .space3d-ribbon-panel { min-height: 48px; scrollbar-width: none; }
-  .space3d-ribbon-button { min-width: 48px; min-height: 44px; padding: 3px 5px; }
-  .space3d-ribbon-hint { min-width: 200px; }
-  /* En táctil se selecciona tocando el lienzo; el pellizco ya acerca y aleja. */
-  .space3d-canvas-topbar-actions > .space3d-tool:nth-child(-n + 2) { display: none; }
-
+  .space3d-ribbon-tab { min-height: 34px; padding: 0 6px; font-size: var(--s3-tiny); }
+  /* Si los menús no caben, se deslizan: el borde desvanecido lo dice. */
+  .space3d-ribbon-tabs { mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent); padding-right: 10px; }
+  .space3d-canvas-topbar .space3d-layers .sc-popover__trigger { width: 38px; min-width: 38px; height: 38px; min-height: 38px; }
+  .space3d-ribbon-panel { max-width: calc(100vw - 40px); }
+  .space3d-ribbon-button { min-width: 50px; min-height: 46px; padding: 3px 5px; }
+  .space3d-ribbon-hint { min-width: 190px; }
   .space3d-ribbon-menu .sc-popover__surface { left: 0; right: auto; }
+  .space3d-view-select select { max-width: 96px; min-height: 38px; padding-right: 24px; }
+  .space3d-view-select::after { right: 10px; }
 
-  .space3d-canvas-topbar { top: var(--sc-space-2); left: var(--sc-space-2); right: var(--sc-space-2); }
-  .space3d-layers .sc-popover__trigger span { display: none; }
-  .space3d-stage-guide { top: 56px; }
-  .space3d-stage-modebar { top: 56px; width: calc(100% - var(--sc-space-4)); }
+  .space3d-stage-modebar { bottom: 8px; width: calc(100% - 64px); left: 8px; transform: none; }
   .space3d-modebar { padding: var(--sc-space-2); }
   .space3d-modebar-foot { display: none; }
   .space3d-modebar-field select { max-width: 140px; }
 
-  /* Un único contenedor anclado al pie del lienzo apila HUD y leyenda: la
-     leyenda arriba y el HUD pegado al pulgar, sin solaparse. */
-  .space3d-bottom-stack {
-    position: absolute;
-    z-index: 11;
-    display: flex;
+  /* Cámara en columna al borde derecho, como el zoom móvil de 2D. */
+  .space3d-canvas-camera { right: 8px; bottom: 8px; }
+  .space3d-canvas-camera-zoom { flex-direction: column; }
+  .space3d-canvas-camera .space3d-tool { width: 40px; min-width: 40px; height: 40px; min-height: 40px; }
+  .space3d-canvas-camera .space3d-canvas-camera-full { display: none; }
+  .space3d-stage-scale { display: none; }
+
+  /* HUD y leyenda al pie, junto al pulgar, sin tapar la cámara. */
+  .space3d-bottom-stack,
+  .space3d-stage:has(.space3d-result-rail) .space3d-bottom-stack {
+    top: auto;
+    right: 60px;
+    bottom: 8px;
+    width: auto;
     flex-direction: column-reverse;
-    gap: var(--sc-space-2);
-    left: var(--sc-space-2);
-    right: var(--sc-space-2);
-    bottom: 60px;
+    align-items: stretch;
     max-height: calc(100% - 120px);
-    pointer-events: none;
   }
+  .space3d-hud-card { max-height: 42dvh; }
+  .space3d-results-legend--minimized { align-self: flex-start; }
 
-  .space3d-bottom-stack > * { pointer-events: auto; }
+  .space3d-results-band { min-height: 48px; padding: 6px 6px 6px 14px; gap: var(--sc-space-2); }
+  .space3d-results-band-copy strong { font-size: var(--s3-small); }
 
-  .space3d-hud-card {
-    position: static;
-    width: auto;
-    max-height: 42dvh;
-    overflow-y: auto;
-  }
-
-  .space3d-results-legend {
-    position: static;
-    width: auto;
-  }
-
-  .space3d-stage-footer { bottom: var(--sc-space-2); max-width: calc(100% - var(--sc-space-4)); }
-  .space3d-result-bar { overflow-x: auto; max-width: 100%; scrollbar-width: none; }
-  .space3d-scale { display: none; }
-
-  .space3d-status { gap: var(--sc-space-3); padding: 0 var(--sc-space-3); }
+  .space3d-status { gap: 10px; padding: 0 12px; }
+  .space3d-status-case,
+  .space3d-status-view,
   .space3d-status-last,
-  .space3d-status-units { display: none; }
+  .space3d-status-units { display: none !important; }
 
   .space3d-empty-card h2 { font-size: 19px; }
   .space3d-guide--compact { border-radius: var(--sc-radius-md); }
@@ -2472,33 +2759,34 @@
   .space3d-generative-tabs { grid-template-columns: repeat(3, 1fr); }
 }
 
+@media (max-width: 360px) {
+  .space3d-view-select select { max-width: 74px; padding-left: 10px; }
+  .space3d-results-band-label { display: none; }
+}
+
 /* --- Pantallas bajas (teléfono en horizontal) ------------------------------ */
 
-/* Con menos de 500 px de alto, cada fila cuenta: la cinta se vuelve una sola
-   fila de iconos (el nombre sigue en el título y en el nombre accesible), la
-   barra de estado se retira y la leyenda nace plegada. */
+/* Con menos de 500 px de alto, cada fila cuenta: la franja de estado se
+   retira, el dock encoge y la leyenda nace plegada. */
 @media (max-height: 500px) {
-  .space3d-ribbon {
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    column-gap: var(--sc-space-2);
-    margin: var(--sc-space-1) var(--s3-gap);
-    padding: 2px 4px;
-  }
-  .space3d-ribbon-bar { padding-bottom: 0; border-bottom: 0; border-right: var(--sc-border-width) solid var(--sc-color-divider); padding-right: var(--sc-space-2); }
-  .space3d-ribbon-tab[aria-selected='true']::after { bottom: 0; }
-  .space3d-ribbon-panel { min-height: 36px; scrollbar-width: none; }
-  .space3d-ribbon-button { min-width: 36px; min-height: 36px; padding: 2px 4px; }
-  .space3d-ribbon-button > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .space3d-ribbon-hint { display: none; }
-  .space3d-ribbon .space3d-layers .sc-popover__trigger { min-height: 36px; }
   .space3d-status { display: none; }
   .space3d-stage-guide { display: none; }
+  .shell-tool-slot--dock .space3d-dock { padding-block: 2px; justify-content: center; gap: 12px; }
+  .shell-tool-slot--dock .space3d-dock-group:last-of-type { margin-left: 0; }
+  .shell-tool-slot--dock .space3d-dock-button,
+  .shell-tool-slot--dock .space3d-dock-button[data-active] { width: 40px; height: 40px; }
+  .space3d-results-band { min-height: 40px; padding-block: 2px; }
+  .space3d-results-band-label { display: none; }
+  .space3d-stage-scale { display: none; }
+  .space3d-canvas-camera-zoom { flex-direction: row; }
+  .space3d-canvas-camera .space3d-tool { width: 34px; min-width: 34px; height: 34px; min-height: 34px; }
+  .space3d-bottom-stack,
+  .space3d-stage:has(.space3d-result-rail) .space3d-bottom-stack { right: 140px; }
 }
 
 @media (pointer: coarse) {
   .space3d-tool,
-  .space3d-result-bar button,
+  .space3d-result-rail button,
   .space3d-outline-toggle,
   .space3d-outline-add,
   .space3d-legend-toggle,
@@ -2518,9 +2806,4 @@
     transition: none !important;
     animation: none !important;
   }
-}
-
-/* Con dos vistas el pie de cada lienzo ocupa dos filas: la leyenda sube. */
-@media (min-width: 1024px) {
-  .space3d-layout[data-split] .space3d-results-legend { top: 64px; bottom: auto; }
 }
