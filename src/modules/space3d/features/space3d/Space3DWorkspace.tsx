@@ -346,6 +346,8 @@ const WorkspaceBody = ({
     setStudyFeedback(null);
     if (analysisMode === 'linear') {
       setStudyState('idle');
+      // Los modos siguen en su lista, pero el lienzo vuelve a la estática.
+      setShownMode(null);
       await analyze();
       return;
     }

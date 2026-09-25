@@ -1098,17 +1098,35 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
         label.position.copy(vec(load.origin)).addScaledVector(vec(load.direction), -loadLength * (0.45 + 0.55 * load.relative) * 1.12);
         labelsGroup.add(label);
       }
-      const inScopeMembers = new Set(scoped.map((member) => member.id));
-      const memberLoads = (model.memberLoads ?? []).filter((load) => inScopeMembers.has(load.memberId) && load.kind === 'distributed');
-      if (memberLoads.length <= 60) {
-        for (const load of memberLoads) {
-          const peak = load.points.reduce((best, sample) => (Math.hypot(...sample.vector) > Math.hypot(...best.vector) ? sample : best), load.points[0]);
-          const magnitude = Math.hypot(...peak.vector);
+      // Un rótulo por barra con la intensidad total: los tramos de losa de los
+      // dos paños que llegan a una viga se suman, como la carga que la viga ve.
+      const byMember = new Map<string, NonNullable<Space3DSceneModel['memberLoads']>[number][]>();
+      for (const load of model.memberLoads ?? []) {
+        if (load.kind !== 'distributed' || !load.span) continue;
+        const list = byMember.get(load.memberId);
+        if (list) list.push(load);
+        else byMember.set(load.memberId, [load]);
+      }
+      const loaded = scoped.filter((member) => byMember.has(member.id));
+      if (loaded.length <= 60) {
+        for (const member of loaded) {
+          let peak = { t: 0.5, vector: new Vector3() };
+          for (let index = 0; index <= 20; index += 1) {
+            const t = index / 20;
+            const total = new Vector3();
+            for (const load of byMember.get(member.id)!) {
+              const { a, b, q1, q2 } = load.span!;
+              if (t < a - 1e-9 || t > b + 1e-9 || b <= a) continue;
+              const ratio = (t - a) / (b - a);
+              total.add(vec(q1).lerp(vec(q2), ratio));
+            }
+            if (total.length() > peak.vector.length()) peak = { t, vector: total };
+          }
+          const magnitude = peak.vector.length();
           if (magnitude === 0) continue;
-          const reference = loadLength * 0.8 * (0.35 + 0.65 * load.relative);
-          const label = makeLabel(`${formatLabel(load.magnitude)} kN/m`, palette.loadDistributed, size * 0.9, { background: palette.surface });
+          const label = makeLabel(`${formatLabel(magnitude)} kN/m`, palette.loadDistributed, size * 0.9, { background: palette.surface });
           if (!label) break;
-          label.position.copy(vec(peak.position)).addScaledVector(vec(peak.vector).divideScalar(magnitude), -reference * 1.18);
+          label.position.copy(vec(member.start).lerp(vec(member.end), peak.t)).addScaledVector(peak.vector.clone().normalize(), -loadLength * 0.95);
           labelsGroup.add(label);
         }
       }

@@ -35,14 +35,19 @@ describe('space3dGenerative', () => {
     expect(result.nodeResults.length).toBe(frame.nodes.length);
   });
 
-  it('rejects the unsupported axial truss archetype instead of analyzing it as a frame', () => {
-    expect(() => generateSpace3DTruss({
-      spanX: 12,
-      heightY: 2.5,
-      widthZ: 3,
-      panels: 4,
-      loadAtTopNodes: 15,
-    })).toThrow(/no está soportada|truss/i);
+  it('generates a statically stable spatial truss that carries its load purely axially', () => {
+    for (const pattern of ['pratt', 'warren'] as const) {
+      const truss = generateSpace3DTruss({ spanX: 12, heightY: 2.5, widthZ: 3, panels: 4, loadAtTopNodes: 15, pattern });
+      expect(truss.members.every((member) => member.type === 'truss')).toBe(true);
+      const result = analyzeSpace3DProject(truss, 'LC1');
+      expect(result.success, pattern).toBe(true);
+      const applied = truss.nodalLoads.reduce((sum, load) => sum + load.fy, 0);
+      const vertical = result.nodeResults.reduce((sum, node) => sum + node.reaction.uy, 0);
+      expect(vertical).toBeCloseTo(-applied, 8);
+      for (const member of result.memberResults) {
+        expect(Math.abs(member.start.Mz) + Math.abs(member.start.My) + Math.abs(member.start.T)).toBeLessThan(1e-9);
+      }
+    }
   });
 
   it('generates a valid solvable 3D lattice tower', () => {

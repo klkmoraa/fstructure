@@ -320,14 +320,88 @@ export function generateSpace3DFrame(options: Space3DFrameGeneratorOptions): Spa
 }
 
 /**
- * El dominio persiste miembros `truss`, pero el solver actual rechaza esa
- * familia porque todavía no implementa su ensamblaje axial. No se sustituye
- * silenciosamente por frames: hacerlo cambiaría el problema físico analizado.
+ * Celosía espacial de dos planos (z = 0 y z = ancho) con barras de armadura:
+ * cordones, montantes y diagonales Warren o Pratt en cada plano, travesaños
+ * entre planos, arriostramiento en cruz alterna en los planos superior e
+ * inferior y una diagonal en cada pórtico transversal extremo. Apoyos isostáticos: articulado en un extremo y deslizantes en el
+ * otro, sin restringir más de lo que el equilibrio espacial necesita.
  */
-export function generateSpace3DTruss(_options: Space3DTrussGeneratorOptions): Space3DProjectV1 {
-  throw new Error(
-    'La cercha espacial axial todavía no está soportada por el solver 3D. Usa un pórtico/reticulado de frames o implementa primero el elemento truss.',
+export function generateSpace3DTruss(options: Space3DTrussGeneratorOptions): Space3DProjectV1 {
+  const panels = Math.max(2, Math.round(finiteGeneratorValue(options.panels, 'panels')));
+  const span = Math.max(1, finiteGeneratorValue(options.spanX, 'spanX'));
+  const height = Math.max(0.2, finiteGeneratorValue(options.heightY, 'heightY'));
+  const width = Math.max(0.2, finiteGeneratorValue(options.widthZ, 'widthZ'));
+  const load = finiteGeneratorValue(options.loadAtTopNodes ?? 10, 'loadAtTopNodes');
+  const pattern = options.pattern ?? 'pratt';
+  const panel = span / panels;
+  const topCount = pattern === 'warren' ? panels : panels + 1;
+  const nodeCount = 2 * (panels + 1 + topCount);
+  assertGenerationCapacity(nodeCount, nodeCount * 4);
+
+  const E = options.E ?? DEFAULT_E;
+  const A = options.A ?? 0.00155;
+  const truss = { type: 'truss' as const, E, G: 0, A, Iy: 0, Iz: 0, J: 0, materialId: 'steel-a36', materialOrigin: 'catalog' as const, sectionId: 'Tubo Ø 114.3x4.5', sectionOrigin: 'catalog' as const, density: 7850 };
+  const planes = [0, width];
+  const bottomId = (i: number, p: number) => `B${i}_${p}`;
+  const topId = (i: number, p: number) => `T${i}_${p}`;
+  const topX = (i: number) => (pattern === 'warren' ? (i + 0.5) * panel : i * panel);
+
+  const free = freeSpace3DRestraints();
+  const nodes: Space3DNode[] = [];
+  planes.forEach((z, p) => {
+    for (let i = 0; i <= panels; i += 1) {
+      const restraints: Space3DRestraints = i === 0
+        ? { ...free, ux: true, uy: true, uz: p === 0 }
+        : i === panels ? { ...free, uy: true, uz: p === 0 } : free;
+      nodes.push({ id: bottomId(i, p), x: i * panel, y: 0, z, restraints });
+    }
+    for (let i = 0; i < topCount; i += 1) nodes.push({ id: topId(i, p), x: topX(i), y: height, z, restraints: free });
+  });
+
+  const members: Space3DFrameMember[] = [];
+  const add = (i: string, j: string) => {
+    const a = nodes.find((node) => node.id === i)!;
+    const b = nodes.find((node) => node.id === j)!;
+    members.push({ id: `M${members.length + 1}`, i, j, ...truss, orientation: { localYReferenceGlobal: chooseReferenceVector(a, b), rollRadians: 0 } });
+  };
+  planes.forEach((_, p) => {
+    for (let i = 0; i < panels; i += 1) add(bottomId(i, p), bottomId(i + 1, p));
+    for (let i = 0; i < topCount - 1; i += 1) add(topId(i, p), topId(i + 1, p));
+    if (pattern === 'warren') {
+      for (let i = 0; i < panels; i += 1) {
+        add(bottomId(i, p), topId(i, p));
+        add(topId(i, p), bottomId(i + 1, p));
+      }
+    } else {
+      for (let i = 0; i <= panels; i += 1) add(bottomId(i, p), topId(i, p));
+      // Pratt: diagonales que bajan hacia el centro, traccionadas con gravedad.
+      for (let i = 0; i < panels; i += 1) {
+        if (i < panels / 2) add(topId(i, p), bottomId(i + 1, p));
+        else add(bottomId(i, p), topId(i + 1, p));
+      }
+    }
+  });
+  for (let i = 0; i <= panels; i += 1) add(bottomId(i, 0), bottomId(i, 1));
+  for (let i = 0; i < topCount; i += 1) add(topId(i, 0), topId(i, 1));
+  for (let i = 0; i < panels; i += 1) add(i % 2 === 0 ? bottomId(i, 0) : bottomId(i, 1), i % 2 === 0 ? bottomId(i + 1, 1) : bottomId(i + 1, 0));
+  for (let i = 0; i < topCount - 1; i += 1) add(i % 2 === 0 ? topId(i, 0) : topId(i, 1), i % 2 === 0 ? topId(i + 1, 1) : topId(i + 1, 0));
+  // Pórticos transversales de los extremos: sin su diagonal, el plano superior
+  // se desliza en z respecto del inferior (mecanismo de ladeo).
+  add(bottomId(0, 0), topId(0, 1));
+  add(bottomId(panels, 0), topId(topCount - 1, 1));
+
+  const nodalLoads: Space3DNodalLoad[] = load === 0 ? [] : nodes
+    .filter((node) => node.y > 0)
+    .map((node, index) => ({ id: `L${index + 1}`, caseId: 'LC1', nodeId: node.id, fx: 0, fy: -load, fz: 0, mx: 0, my: 0, mz: 0 }));
+
+  const project = buildProjectSkeleton(
+    options.id ?? `space3d-truss-${Date.now()}`,
+    options.name ?? `Celosía 3D ${pattern === 'warren' ? 'Warren' : 'Pratt'} ${span} m`,
+    nodes,
+    members,
+    nodalLoads,
   );
+  return validateGeneratedProject(project);
 }
 
 /**

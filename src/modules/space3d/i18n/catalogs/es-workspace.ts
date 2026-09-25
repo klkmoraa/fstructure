@@ -434,7 +434,6 @@ export const esWorkspace = {
   'space3d.promptSuggestionBridgePrompt': 'Puente espacial de 20 metros con 5 paneles',
   'space3d.promptSuggestionShedLabel': 'Nave industrial',
   'space3d.promptSuggestionShedPrompt': 'Nave industrial de 16m de luz y 4 vanos',
-  'space3d.trussUnsupported': 'La celosía axial todavía no está soportada por el solver 3D.',
   'space3d.generatorShort': 'Generar 3D',
   'space3d.generateAndApply': 'Generar estructura',
   'space3d.archetypeFrame': 'Pórtico 3D',

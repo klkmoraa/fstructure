@@ -22,7 +22,8 @@ interface Space3DModesPanelProps {
 }
 
 const number = (value: number) => formatSpace3DNumber(value, { significantDigits: 4 });
-const percent = (value: number) => formatSpace3DNumber(value * 100, { significantDigits: 3 });
+/** Una participación por debajo de una parte en un millón es redondeo, no masa. */
+const percent = (value: number) => formatSpace3DNumber(Math.abs(value) < 1e-6 ? 0 : value * 100, { significantDigits: 3 });
 
 export const Space3DModesPanel = ({ t, modal, buckling, shown, onShow }: Space3DModesPanelProps) => {
   if (modal?.success) {

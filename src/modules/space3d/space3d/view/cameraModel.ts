@@ -40,7 +40,8 @@ const DIRECTIONS: Record<Space3DViewPreset, { readonly offset: Space3DVector; re
   front: { offset: [0, 0, 1], up: [0, 1, 0] },
   // Planta: X a la derecha de la pantalla, como en un plano; Z crece hacia abajo.
   top: { offset: [0, 1, 0], up: [0, 0, -1] },
-  side: { offset: [1, 0, 0], up: [0, 1, 0] },
+  // Lateral desde −X: Z crece hacia la derecha y los ejes 1, 2, 3 se leen en orden.
+  side: { offset: [-1, 0, 0], up: [0, 1, 0] },
   isometric: { offset: [1, 0.72, 1], up: [0, 1, 0] },
 };
 

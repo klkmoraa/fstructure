@@ -72,19 +72,17 @@ it('interprets natural language prompt and switches archetype', async () => {
   });
 });
 
-it('keeps unsupported truss disabled and ignores unrecognized prompts', async () => {
+it('generates a pin-jointed truss and ignores unrecognized prompts', async () => {
   const user = userEvent.setup();
+  const onApply = vi.fn();
   render(
     <Space3DGenerativeModal
       open={true}
       onClose={vi.fn()}
-      onApply={vi.fn()}
+      onApply={onApply}
       t={(key, vars) => translate('es', key, vars)}
     />,
   );
-
-  const truss = screen.getByRole('button', { name: /celosía 3d/i }) as HTMLButtonElement;
-  expect(truss.disabled).toBe(true);
 
   const prompt = screen.getByPlaceholderText(/describe tu estructura/i);
   await user.type(prompt, 'algo de 5 metros');
@@ -92,6 +90,11 @@ it('keeps unsupported truss disabled and ignores unrecognized prompts', async ()
 
   expect(screen.getByRole('status').textContent).toMatch(/no se reconoció/i);
   expect(screen.getByRole('button', { name: /pórtico 3d/i }).getAttribute('aria-pressed')).toBe('true');
+
+  await user.click(screen.getByRole('button', { name: /celosía 3d/i }));
+  await user.click(screen.getByRole('button', { name: /generar estructura/i }));
+  const generated = onApply.mock.calls[0][0];
+  expect(generated.members.every((member: { type: string }) => member.type === 'truss')).toBe(true);
 });
 
 it('applies parsed bay size to frame geometry', async () => {

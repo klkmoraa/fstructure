@@ -162,6 +162,8 @@ export interface Space3DSceneMemberLoad {
   /** Intensidad de referencia (kN/m, kN o kN·m) para el rótulo. */
   readonly magnitude: number;
   readonly relative: number;
+  /** Tramo relativo y extremos globales de una distribuida, para sumar tramos. */
+  readonly span?: { readonly a: number; readonly b: number; readonly q1: Space3DVector; readonly q2: Space3DVector };
 }
 
 export interface Space3DSceneLocalAxes {
@@ -646,7 +648,7 @@ const buildMemberLoads = (
         const t = count === 1 ? 0 : index / (count - 1);
         return { position: lerp(member.start, member.end, a + (b - a) * t), vector: lerp(q1, q2, t) };
       });
-      raw.push({ id: load.id, memberId: member.id, kind: 'distributed', points, magnitude: Math.max(Math.hypot(...q1), Math.hypot(...q2)) });
+      raw.push({ id: load.id, memberId: member.id, kind: 'distributed', points, magnitude: Math.max(Math.hypot(...q1), Math.hypot(...q2)), span: { a, b, q1, q2 } });
     } else if (load.type === 'point') {
       const vector = orient([(load.px ?? 0) * factor, (load.py ?? 0) * factor, (load.pz ?? 0) * factor]);
       raw.push({ id: load.id, memberId: member.id, kind: 'point', points: [{ position: lerp(member.start, member.end, load.position ?? 0.5), vector }], magnitude: Math.hypot(...vector) });

@@ -1000,8 +1000,8 @@
 .space3d-window-band {
   position: absolute;
   z-index: 12;
-  border: 1.5px solid var(--sc-color-selection-stroke, var(--sc-color-action-primary));
-  background: color-mix(in srgb, var(--sc-color-selection-stroke, var(--sc-color-action-primary)) 10%, transparent);
+  border: 1.5px solid var(--sc-color-action-primary);
+  background: color-mix(in srgb, var(--sc-color-action-primary) 10%, transparent);
   pointer-events: none;
 }
 

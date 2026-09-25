@@ -331,10 +331,6 @@ export const Space3DGenerativeModal = ({
       setPromptFeedback(t('space3d.promptUnrecognized' as TranslationKey));
       return;
     }
-    if (parsed.archetype === 'truss') {
-      setPromptFeedback(t('space3d.trussUnsupported' as TranslationKey));
-      return;
-    }
     setArchetype(parsed.archetype);
 
     if (parsed.archetype === 'frame') {
@@ -547,10 +543,9 @@ export const Space3DGenerativeModal = ({
           </button>
           <button
             type="button"
-            aria-pressed={false}
-            className="space3d-archetype-tab"
-            disabled
-            title={t('space3d.trussUnsupported' as TranslationKey)}
+            aria-pressed={archetype === 'truss'}
+            className={`space3d-archetype-tab ${archetype === 'truss' ? 'is-active' : ''}`}
+            onClick={() => setArchetype('truss')}
           >
             <Box size={18} aria-hidden="true" />
             <span>{t('space3d.archetypeTruss' as TranslationKey) || 'Celosía 3D'}</span>
