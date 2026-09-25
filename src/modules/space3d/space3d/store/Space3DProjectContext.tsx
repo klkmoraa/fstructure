@@ -19,9 +19,17 @@ import { parseSpace3DProject, serializeSpace3DProject, Space3DCodecError } from 
 import { loadSpace3DProject, saveSpace3DProject, type Space3DStorageLike } from '../data/storage';
 import { createBlankSpace3DProject, createSpace3DPortalExample } from '../model/defaultProject';
 import { Space3DAnalysisCancelledError, Space3DWorkerClient, createSpace3DWorkerClient } from '../runtime/workerClient';
+import type { Space3DStudy, Space3DStudyOutcome } from '../runtime/protocol';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../model/types';
 
 export type Space3DAnalysisState = 'idle' | 'running' | 'ready' | 'stale' | 'failed' | 'cancelled';
+
+/** Qué cálculo produjo el resultado del lienzo. */
+export interface Space3DAnalysisSource {
+  readonly kind: 'linear' | 'pdelta' | 'response-spectrum';
+  /** Caso o combinación (lineal, P-Delta) o caso espectral. */
+  readonly id: string;
+}
 
 export type Space3DSelectionKind = 'node' | 'member' | 'load';
 
@@ -48,6 +56,12 @@ interface Space3DProjectContextValue {
   readonly undo: () => void;
   readonly redo: () => void;
   readonly analyze: () => Promise<void>;
+  readonly analysisSource: Space3DAnalysisSource | null;
+  /**
+   * Corre un estudio en el worker. P-Delta y espectro publican su resultado
+   * en el lienzo como el lineal; modal y pandeo sólo lo devuelven.
+   */
+  readonly runStudy: (study: Space3DStudy) => Promise<Space3DStudyOutcome>;
   readonly cancelAnalysis: () => void;
   readonly setAnalysisTargetId: (targetId: string) => void;
   readonly replaceProject: (project: Space3DProjectV1) => void;
@@ -110,6 +124,7 @@ export const Space3DProjectProvider = ({ children, storage, client, initialProje
   }));
   const [analysis, setAnalysis] = useState<Space3DAnalysisResult | null>(null);
   const [analysisState, setAnalysisState] = useState<Space3DAnalysisState>('idle');
+  const [analysisSource, setAnalysisSource] = useState<Space3DAnalysisSource | null>(null);
   const [storedTargetId, setTargetId] = useState(() => defaultTargetId(history.present));
   const [selectedEntity, setSelectedEntity] = useState<Space3DSelection | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -234,6 +249,7 @@ export const Space3DProjectProvider = ({ children, storage, client, initialProje
       const result = await runner.run(project, analysisTargetId);
       if (!alive.current) return;
       setAnalysis(result);
+      setAnalysisSource({ kind: 'linear', id: analysisTargetId });
       setAnalysisState(result.success ? 'ready' : 'failed');
     } catch (error) {
       if (!alive.current) return;
@@ -245,6 +261,35 @@ export const Space3DProjectProvider = ({ children, storage, client, initialProje
       reportError('analysis-failed', error instanceof Error ? error.message : String(error));
     }
   }, [analysisTargetId, clearError, ensureClient, project, reportError]);
+
+  const runStudy = useCallback(async (study: Space3DStudy): Promise<Space3DStudyOutcome> => {
+    const runner = ensureClient();
+    const publishes = study.kind === 'pdelta' || study.kind === 'response-spectrum';
+    if (publishes) setAnalysisState('running');
+    clearError();
+    try {
+      const outcome = await runner.study(project, study);
+      if (!alive.current || !publishes) return outcome;
+      if (outcome.kind === 'pdelta' || outcome.kind === 'response-spectrum') {
+        const published = outcome.result.success ? outcome.result.analysis : null;
+        if (published) {
+          setAnalysis(published);
+          setAnalysisSource({ kind: outcome.kind, id: study.kind === 'response-spectrum' ? study.caseId : study.kind === 'pdelta' ? study.targetId : '' });
+          setAnalysisState('ready');
+        } else {
+          setAnalysisState('failed');
+          reportError('analysis-failed', outcome.result.reason);
+        }
+      }
+      return outcome;
+    } catch (error) {
+      if (alive.current && publishes) {
+        setAnalysisState(error instanceof Space3DAnalysisCancelledError ? 'cancelled' : 'failed');
+        if (!(error instanceof Space3DAnalysisCancelledError)) reportError('analysis-failed', error instanceof Error ? error.message : String(error));
+      }
+      throw error;
+    }
+  }, [clearError, ensureClient, project, reportError]);
 
   /**
    * Cambiar de objetivo deja obsoleto el resultado: describe otra combinacion de
@@ -288,6 +333,8 @@ export const Space3DProjectProvider = ({ children, storage, client, initialProje
     undo,
     redo,
     analyze,
+    analysisSource,
+    runStudy,
     cancelAnalysis,
     setAnalysisTargetId,
     replaceProject,
@@ -297,7 +344,7 @@ export const Space3DProjectProvider = ({ children, storage, client, initialProje
     loadExample: () => replaceProject(createSpace3DPortalExample()),
     resetToBlank: () => replaceProject(createBlankSpace3DProject()),
   }), [
-    analysis, analysisState, analysisTargetId, analyze, cancelAnalysis, execute, exportPortable,
+    analysis, analysisSource, analysisState, analysisTargetId, analyze, cancelAnalysis, execute, exportPortable, runStudy,
     history.future.length, history.past.length, importPortable, lastError, lastErrorMessage,
     project, redo, replaceProject, selectedEntity, setAnalysisTargetId, undo,
   ]);

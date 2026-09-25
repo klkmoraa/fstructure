@@ -7,9 +7,10 @@
  */
 import type { Space3DCommand } from '../../space3d/data/commands';
 import type {
-  Space3DFrameMember, Space3DMemberLoad, Space3DMemberRelease, Space3DNodalLoad, Space3DProjectV1, Space3DRestraints,
+  Space3DDiaphragm, Space3DFrameMember, Space3DMemberLoad, Space3DMemberRelease, Space3DNodalLoad, Space3DProjectV1, Space3DRestraints,
 } from '../../space3d/model/types';
 import { SPACE3D_MATERIALS, SPACE3D_SECTION_CATALOG } from '../../space3d/model/sectionLibrary';
+import { resolveSpace3DGrid, SPACE3D_GRID_TOLERANCE } from '../../space3d/model/grid';
 import type { Space3DSelection } from '../../space3d/store/Space3DProjectContext';
 
 /** Selección múltiple: identificadores en el orden en que se eligieron. */
@@ -257,3 +258,54 @@ export const space3DMembersWithSection = (project: Space3DProjectV1, sectionKey:
 /** Nombre de sección para agrupar: la de catálogo o «A = …» si es propia. */
 export const space3DSectionKey = (member: Space3DFrameMember): string =>
   member.sectionOrigin === 'catalog' && member.sectionId ? member.sectionId : `A ${member.A.toPrecision(3)} m²`;
+
+/** Un nudo con apoyo en ux, uz o ry no puede seguir a un diafragma. */
+const restrainedInPlane = (node: Space3DProjectV1['nodes'][number]) => node.restraints.ux || node.restraints.uz || node.restraints.ry;
+
+const withoutNodes = (project: Space3DProjectV1, nodeIds: ReadonlySet<string>): Space3DDiaphragm[] =>
+  (project.diaphragms ?? [])
+    .map((item) => ({ ...item, nodeIds: item.nodeIds.filter((id) => !nodeIds.has(id)) }))
+    .filter((item) => item.nodeIds.length >= 2);
+
+/**
+ * Diafragma rígido para la selección («Assign → Joint → Diaphragms»): los
+ * nudos salen del diafragma que tuvieran y forman uno nuevo. Los que tienen
+ * apoyo en el plano se dejan fuera y se informan.
+ */
+export const space3DAssignDiaphragmCommand = (
+  project: Space3DProjectV1,
+  nodeIds: readonly string[],
+  mode: 'new' | 'remove',
+  name: string,
+): { readonly command: Space3DCommand | null; readonly excluded: readonly string[] } => {
+  const selected = new Set(nodeIds);
+  if (mode === 'remove') {
+    const touched = (project.diaphragms ?? []).some((item) => item.nodeIds.some((id) => selected.has(id)));
+    return { command: touched ? { kind: 'set-diaphragms', diaphragms: withoutNodes(project, selected) } : null, excluded: [] };
+  }
+  const nodes = project.nodes.filter((node) => selected.has(node.id));
+  const excluded = nodes.filter(restrainedInPlane).map((node) => node.id);
+  const members = nodes.filter((node) => !restrainedInPlane(node)).map((node) => node.id);
+  if (members.length < 2) return { command: null, excluded };
+  const kept = withoutNodes(project, new Set(members));
+  const used = new Set(kept.map((item) => item.id));
+  let index = kept.length + 1;
+  while (used.has(`D${index}`)) index += 1;
+  return { command: { kind: 'set-diaphragms', diaphragms: [...kept, { id: `D${index}`, name, nodeIds: members }] }, excluded };
+};
+
+/**
+ * Un diafragma rígido por piso de la rejilla (sin la base), con los nudos del
+ * nivel que no tienen apoyo en el plano. Reemplaza los que hubiera.
+ */
+export const space3DStoryDiaphragmsCommand = (project: Space3DProjectV1): Space3DCommand | null => {
+  const grid = resolveSpace3DGrid(project);
+  const diaphragms: Space3DDiaphragm[] = [];
+  grid.stories.slice(1).forEach((story, index) => {
+    const nodeIds = project.nodes
+      .filter((node) => Math.abs(node.y - story.elevation) <= SPACE3D_GRID_TOLERANCE && !restrainedInPlane(node))
+      .map((node) => node.id);
+    if (nodeIds.length >= 2) diaphragms.push({ id: `D${index + 1}`, name: story.name, nodeIds });
+  });
+  return diaphragms.length > 0 ? { kind: 'set-diaphragms', diaphragms } : null;
+};

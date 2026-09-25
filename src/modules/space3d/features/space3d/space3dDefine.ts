@@ -1,6 +1,6 @@
 /**
- * Utilidades puras de los diálogos de «Definir»: separaciones de rejilla y
- * términos de combinación escritos como texto.
+ * Utilidades puras de los diálogos de «Definir»: separaciones de rejilla,
+ * términos de combinación y espectros escritos como texto.
  */
 import type { Space3DLoadCase, Space3DLoadCombinationTerm } from '../../space3d/model/types';
 
@@ -66,3 +66,50 @@ export const formatSpace3DCombinationTerms = (terms: readonly Space3DLoadCombina
     return `${sign}${magnitude} ${term.caseId}`;
   })
   .join(' ');
+
+/**
+ * «0 0.16\n0.1 0.4 …» (un par periodo–Sa por línea) → puntos. `null` si un
+ * valor no es un número no negativo o los periodos no crecen.
+ */
+export const parseSpace3DSpectrumPoints = (text: string): [number, number][] | null => {
+  const lines = text.split(/\n|;/).map((line) => line.trim()).filter(Boolean);
+  if (lines.length === 0) return null;
+  const points: [number, number][] = [];
+  for (const line of lines) {
+    const values = line.split(/[\s,\t]+/).filter(Boolean).map((token) => Number(token));
+    if (values.length !== 2 || !values.every((value) => Number.isFinite(value) && value >= 0)) return null;
+    if (points.length > 0 && !(values[0] > points[points.length - 1][0])) return null;
+    points.push([values[0], values[1]]);
+  }
+  return points;
+};
+
+export const formatSpace3DSpectrumPoints = (points: readonly (readonly [number, number])[]): string =>
+  points.map(([period, acceleration]) => `${Number(period.toPrecision(6))} ${Number(acceleration.toPrecision(6))}`).join('\n');
+
+export interface Space3DPlateauSpectrumInput {
+  /** Sa en T = 0, g. */
+  readonly a0: number;
+  /** Meseta, g. */
+  readonly peak: number;
+  /** Inicio y fin de la meseta, s. */
+  readonly ta: number;
+  readonly tb: number;
+  /** Exponente de la caída Sa = peak·(tb/T)^r. */
+  readonly exponent: number;
+  readonly tMax?: number;
+}
+
+/** Espectro de meseta genérico, la forma común a las normas de la región. */
+export const space3DPlateauSpectrum = ({ a0, peak, ta, tb, exponent, tMax = 4 }: Space3DPlateauSpectrumInput): [number, number][] | null => {
+  if (![a0, peak, ta, tb, exponent, tMax].every((value) => Number.isFinite(value) && value >= 0) || !(tb > ta) || !(tMax > tb)) return null;
+  const points: [number, number][] = [[0, a0]];
+  if (ta > 0) points.push([ta, peak]);
+  points.push([tb, peak]);
+  const steps = 12;
+  for (let step = 1; step <= steps; step += 1) {
+    const period = tb + ((tMax - tb) * step) / steps;
+    points.push([Number(period.toFixed(4)), Number((peak * (tb / period) ** exponent).toFixed(5))]);
+  }
+  return points;
+};

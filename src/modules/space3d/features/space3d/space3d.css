@@ -1187,6 +1187,106 @@
 
 .space3d-field input[aria-invalid='true'] { border-color: var(--sc-color-state-error-foreground); }
 
+/* --- Masa, diafragmas y espectro ------------------------------------------- */
+
+.space3d-define-actions { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); }
+.space3d-define-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.space3d-define-list li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px var(--sc-space-2);
+  border: var(--sc-border-width) solid var(--sc-color-divider);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-1);
+}
+.space3d-define-list small { color: var(--sc-color-text-muted); font-family: var(--sc-font-mono); font-size: var(--s3-tiny); }
+.space3d-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.space3d-link-button:hover { text-decoration: underline; }
+.space3d-field-grid.space3d-field-grid--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+
+.space3d-spectrum-card {
+  display: grid;
+  gap: var(--sc-space-2);
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border: var(--sc-border-width) solid var(--sc-color-divider);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-color-surface-1);
+}
+.space3d-spectrum-card header { display: flex; align-items: center; gap: var(--sc-space-2); }
+.space3d-spectrum-card header input {
+  flex: 1;
+  min-height: 30px;
+  padding: 0 var(--sc-space-2);
+  border: var(--sc-border-width) solid var(--sc-color-border);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-input, var(--sc-color-surface-1));
+  color: var(--sc-color-text-primary);
+  font: inherit;
+}
+.space3d-spectrum-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: var(--sc-space-3); align-items: end; }
+.space3d-spectrum-body textarea {
+  width: 100%;
+  padding: var(--sc-space-2);
+  border: var(--sc-border-width) solid var(--sc-color-border);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-input, var(--sc-color-surface-1));
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-mono);
+  font-size: var(--s3-small);
+  resize: vertical;
+}
+.space3d-spectrum-preview { width: 100%; height: auto; border-radius: var(--sc-radius-sm); background: var(--sc-color-surface-2); }
+.space3d-spectrum-line { fill: none; stroke: var(--sc-color-technical-moment); stroke-width: 1.8; stroke-linejoin: round; }
+
+.space3d-source-chip {
+  margin: 0;
+  padding: 4px var(--sc-space-2);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-action-subtle);
+  color: var(--sc-color-text-primary);
+  font-size: var(--s3-small);
+}
+
+.space3d-spectrum-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sc-space-2); margin: 0; }
+.space3d-spectrum-summary div { display: grid; gap: 2px; padding: var(--sc-space-2); border-radius: var(--sc-radius-sm); background: var(--sc-color-surface-2); }
+.space3d-spectrum-summary dt { color: var(--sc-color-text-muted); font-size: var(--s3-tiny); }
+.space3d-spectrum-summary dd { margin: 0; font-family: var(--sc-font-mono); font-size: var(--s3-small); font-weight: var(--sc-font-weight-semibold); }
+.space3d-spectrum-summary dd[data-short] { color: var(--sc-color-state-error-foreground); }
+.space3d-spectrum-modes td, .space3d-story-table td { text-align: right; }
+
+.space3d-story { display: grid; gap: var(--sc-space-2); }
+.space3d-story header { display: flex; align-items: center; justify-content: space-between; gap: var(--sc-space-2); }
+.space3d-story h4 { margin: 0; font-size: var(--s3-text); font-weight: var(--sc-font-weight-semibold); }
+.space3d-story-plot { display: grid; gap: 4px; margin: 0; }
+.space3d-story-plot figcaption { color: var(--sc-color-text-muted); font-size: var(--s3-tiny); }
+.space3d-story-plot svg { width: 100%; height: auto; border-radius: var(--sc-radius-sm); background: var(--sc-color-surface-2); }
+.space3d-story-label { fill: var(--sc-color-text-muted); font-family: var(--sc-font-mono); font-size: 8px; }
+.space3d-story-line { fill: none; stroke-width: 1.6; stroke-linejoin: round; }
+.space3d-story-line[data-axis='x'], .space3d-story-dot[data-axis='x'] { stroke: var(--sc-color-technical-axis); }
+.space3d-story-line[data-axis='z'], .space3d-story-dot[data-axis='z'] { stroke: var(--sc-color-brand-secondary); }
+.space3d-story-dot { fill: var(--sc-color-surface-elevated); stroke-width: 1.4; }
+.space3d-story-legend { display: flex; gap: var(--sc-space-3); margin: 0; font-size: var(--s3-tiny); font-family: var(--sc-font-mono); }
+.space3d-story-legend span::before { content: ''; display: inline-block; width: 14px; height: 2px; margin-right: 4px; vertical-align: middle; }
+.space3d-story-legend span[data-axis='x']::before { background: var(--sc-color-technical-axis); }
+.space3d-story-legend span[data-axis='z']::before { background: var(--sc-color-brand-secondary); }
+.space3d-story-table-wrap { overflow-x: auto; max-width: 100%; }
+.space3d-spectrum-cases { min-width: 640px; }
+.space3d-story-table th small { display: block; color: var(--sc-color-text-muted); font-family: var(--sc-font-mono); font-size: var(--s3-tiny); }
+
+@media (max-width: 700px) {
+  .space3d-field-grid.space3d-field-grid--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .space3d-spectrum-body { grid-template-columns: 1fr; }
+  .space3d-spectrum-summary { grid-template-columns: 1fr; }
+}
+
 /* --- HUD de selección y leyenda ------------------------------------------- */
 
 .space3d-bottom-stack { display: contents; }

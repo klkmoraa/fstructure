@@ -34,6 +34,11 @@ export const Space3DModesPanel = ({ t, modal, buckling, shown, onShow }: Space3D
           <EyeOff size={15} aria-hidden="true" />{t('space3d.modal.hide')}
         </button> : null}
       </header>
+      <p className="space3d-field-hint">{t('space3d.modal.summary', {
+        x: percent(modal.modes.reduce((sum, mode) => sum + mode.participatingMassRatioX, 0)),
+        z: percent(modal.modes.reduce((sum, mode) => sum + mode.participatingMassRatioZ, 0)),
+        mass: number(modal.totalMass),
+      })}{modal.sturmVerified ? ` · ${t('space3d.modal.sturm')}` : ''}</p>
       <ol className="space3d-modes-list">
         {modal.modes.map((mode, index) => <li key={index}>
           <button type="button" aria-pressed={shown === index} onClick={() => onShow(shown === index ? null : index)}

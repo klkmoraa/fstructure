@@ -25,6 +25,8 @@ interface Space3DExplorerProps {
   readonly onSelectMembers: (ids: readonly string[]) => void;
   readonly onEditGrid: () => void;
   readonly onEditLoads: () => void;
+  readonly onEditDynamics: () => void;
+  readonly onSelectNodes: (ids: readonly string[]) => void;
 }
 
 const Section = ({ title, count, action, children, initiallyOpen = true }: {
@@ -45,7 +47,7 @@ const Section = ({ title, count, action, children, initiallyOpen = true }: {
 };
 
 export const Space3DExplorer = ({
-  t, project, grid, viewId, onView, analysisTargetId, onTarget, onSelectMembers, onEditGrid, onEditLoads,
+  t, project, grid, viewId, onView, analysisTargetId, onTarget, onSelectMembers, onEditGrid, onEditLoads, onEditDynamics, onSelectNodes,
 }: Space3DExplorerProps) => {
   const sections = useMemo(() => {
     const groups = new Map<string, string[]>();
@@ -106,6 +108,20 @@ export const Space3DExplorer = ({
       </ul>
     </Section>
 
+    <Section title={t('space3d.explorer.diaphragms')} count={project.diaphragms?.length ?? 0} action={editButton(t('space3d.explorer.editDynamics'), onEditDynamics)}
+      initiallyOpen={(project.diaphragms?.length ?? 0) <= 10}>
+      {(project.diaphragms?.length ?? 0) === 0
+        ? <p className="space3d-explorer-note">{t('space3d.explorer.noDiaphragms')}</p>
+        : <ul className="space3d-explorer-list">
+          {project.diaphragms!.map((diaphragm) => <li key={diaphragm.id}>
+            <button type="button" title={t('space3d.diaphragm.select')} onClick={() => onSelectNodes(diaphragm.nodeIds)}>
+              <span>{diaphragm.name}</span>
+              <small>{diaphragm.id} · {t('space3d.diaphragm.nodes', { count: diaphragm.nodeIds.length })}</small>
+            </button>
+          </li>)}
+        </ul>}
+    </Section>
+
     <Section title={t('space3d.explorer.sections')} count={sections.length}>
       <ul className="space3d-explorer-list">
         {sections.map(([name, ids]) => <li key={name}>
@@ -127,6 +143,17 @@ export const Space3DExplorer = ({
         </li>)}
       </ul>
     </Section>
+
+    {(project.responseSpectrumCases?.length ?? 0) > 0 ? <Section title={t('space3d.explorer.spectrumCases')} count={project.responseSpectrumCases!.length} action={editButton(t('space3d.explorer.editDynamics'), onEditDynamics)}>
+      <ul className="space3d-explorer-list">
+        {project.responseSpectrumCases!.map((item) => <li key={item.id}>
+          <button type="button" onClick={onEditDynamics}>
+            <span>{item.name}</span>
+            <small>{item.direction.toUpperCase()} · {item.combination.toUpperCase()}</small>
+          </button>
+        </li>)}
+      </ul>
+    </Section> : null}
 
     <Section title={t('space3d.explorer.combinations')} count={project.loadCombinations.length} initiallyOpen={project.loadCombinations.length <= 10}>
       <ul className="space3d-explorer-list">

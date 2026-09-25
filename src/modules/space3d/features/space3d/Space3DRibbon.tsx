@@ -8,7 +8,7 @@
  */
 import { useState, type ReactNode } from 'react';
 import {
-  Anchor, Blocks, Box, Building2, ChevronDown, Columns2, Download, FolderOpen, Grid3x3, Link2Off, ListTree,
+  Activity, Anchor, Blocks, Box, Building2, ChevronDown, Columns2, Download, FolderOpen, Grid3x3, Layers, Link2Off, ListTree,
   MousePointer2, PanelLeft, Play, RotateCcw, Sigma, Sparkles, Tag, Upload, Waves,
 } from 'lucide-react';
 import { DistributedLoadGlyph, MemberGlyph, NodeGlyph, PointLoadGlyph, SupportGlyph } from '../../../../design-system/icons/structural';
@@ -17,7 +17,7 @@ import type { TranslationKey } from '../../i18n/catalogs';
 import type { Space3DResultMode } from '../../space3d/view/sceneModel';
 import type { Space3DModelingTool } from './Space3DModeBar';
 
-export type Space3DAssignKind = 'section' | 'releases' | 'member-load' | 'nodal-load' | 'support' | 'type';
+export type Space3DAssignKind = 'section' | 'releases' | 'member-load' | 'nodal-load' | 'support' | 'type' | 'diaphragm';
 
 type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
 
@@ -31,7 +31,7 @@ interface Space3DRibbonProps {
     readonly onImport: () => void;
     readonly onExport: () => void;
   };
-  readonly onDefine: (what: 'grid' | 'sections' | 'loads') => void;
+  readonly onDefine: (what: 'grid' | 'sections' | 'loads' | 'dynamics') => void;
   readonly tool: Space3DModelingTool;
   readonly onTool: (tool: Space3DModelingTool) => void;
   readonly hasNodes: boolean;
@@ -127,6 +127,7 @@ export const Space3DRibbon = (props: Space3DRibbonProps) => {
       <RibbonButton icon={<Grid3x3 size={18} aria-hidden="true" />} label={t('space3d.define.grid')} title={t('space3d.define.gridTitle')} onClick={() => props.onDefine('grid')} />
       <RibbonButton icon={<Box size={18} aria-hidden="true" />} label={t('space3d.define.sections')} title={t('space3d.define.sectionsTitle')} onClick={() => props.onDefine('sections')} />
       <RibbonButton icon={<Sigma size={18} aria-hidden="true" />} label={t('space3d.define.loads')} title={t('space3d.define.loadsTitle')} onClick={() => props.onDefine('loads')} />
+      <RibbonButton icon={<Activity size={18} aria-hidden="true" />} label={t('space3d.define.dynamics')} title={t('space3d.define.dynamicsTitle')} onClick={() => props.onDefine('dynamics')} />
     </Group>
 
     <Group label={t('space3d.ribbon.draw')}>
@@ -157,6 +158,8 @@ export const Space3DRibbon = (props: Space3DRibbonProps) => {
         disabled={needsNodes} onClick={() => props.onAssign('support')} />
       <RibbonButton icon={<ListTree size={18} aria-hidden="true" />} label={t('space3d.assign.type')} title={needsMembers ? t('space3d.assign.needsMembers') : t('space3d.assign.titleType')}
         disabled={needsMembers} onClick={() => props.onAssign('type')} />
+      <RibbonButton icon={<Layers size={18} aria-hidden="true" />} label={t('space3d.assign.diaphragm')} title={needsNodes ? t('space3d.assign.needsNodes') : t('space3d.assign.titleDiaphragm')}
+        disabled={needsNodes} onClick={() => props.onAssign('diaphragm')} />
     </Group>
 
     <Group label={t('space3d.ribbon.display')}>

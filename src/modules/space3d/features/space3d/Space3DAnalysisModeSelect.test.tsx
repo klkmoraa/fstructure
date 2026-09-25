@@ -16,7 +16,7 @@ it('exposes all supported 3D study modes in the existing contextual control', as
   expect(select.getAttribute('aria-describedby')).toBeTruthy();
   expect(screen.getByText('Respuesta elástica bajo las cargas del caso elegido.')).toBeTruthy();
   expect([...select.querySelectorAll('option')].map((option) => option.value)).toEqual([
-    'linear', 'pdelta', 'modal', 'buckling', 'influence',
+    'linear', 'pdelta', 'modal', 'spectrum', 'buckling', 'influence',
   ]);
   await user.selectOptions(select, 'buckling');
   expect(onChange).toHaveBeenCalledWith('buckling');

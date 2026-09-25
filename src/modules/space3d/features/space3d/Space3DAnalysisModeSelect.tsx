@@ -18,6 +18,7 @@ const HINT_KEYS: Record<Space3DAnalysisMode, TranslationKey> = {
   modal: 'space3d.analysisModeModalHint',
   buckling: 'space3d.analysisModeBucklingHint',
   influence: 'space3d.analysisModeInfluenceHint',
+  spectrum: 'space3d.analysisModeSpectrumHint',
 };
 
 /** Selector de estudio con su explicación: el nombre técnico solo no dice qué se obtiene. */

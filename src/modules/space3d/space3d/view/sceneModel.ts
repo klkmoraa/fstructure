@@ -197,6 +197,14 @@ export interface Space3DSceneGrid {
   readonly automatic: boolean;
 }
 
+/** Diafragma rígido visible: contorno en planta (envolvente convexa) y centro. */
+export interface Space3DSceneDiaphragm {
+  readonly id: string;
+  readonly name: string;
+  readonly outline: readonly Space3DVector[];
+  readonly center: Space3DVector;
+}
+
 export type Space3DSceneDiagnostic =
   | { readonly code: 'unresolved-member-endpoint'; readonly entityId: string }
   | { readonly code: 'degenerate-member'; readonly entityId: string }
@@ -216,6 +224,7 @@ export interface Space3DSceneModel {
   readonly isEmpty: boolean;
   readonly scope?: Space3DViewScope;
   readonly grid?: Space3DSceneGrid | null;
+  readonly diaphragms?: readonly Space3DSceneDiaphragm[];
   /** Diagrama activo: componente, escala (m por unidad) y máximo global. */
   readonly diagram?: { readonly component: Space3DForceComponent; readonly scale: number; readonly maxAbs: number } | null;
 }
@@ -604,7 +613,10 @@ export const buildSpace3DSceneModel = (input: Space3DSceneInput): Space3DSceneMo
     })
     : null;
 
+  const diaphragms = buildDiaphragms(project, scope);
+
   return Object.freeze({
+    diaphragms,
     nodes: Object.freeze(nodes),
     members: Object.freeze(finalMembers),
     supports: Object.freeze(supports),
@@ -620,6 +632,49 @@ export const buildSpace3DSceneModel = (input: Space3DSceneInput): Space3DSceneMo
     grid,
     diagram: component && diagramScale > 0 ? Object.freeze({ component, scale: diagramScale, maxAbs: visibleMax }) : null,
   });
+};
+
+/** Envolvente convexa (cadena monótona) de puntos en planta (x, z). */
+const convexHull = (points: readonly (readonly [number, number])[]): [number, number][] => {
+  const sorted = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (sorted.length < 3) return sorted.map((point) => [point[0], point[1]]);
+  const cross = (o: readonly number[], a: readonly number[], b: readonly number[]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower: [number, number][] = [];
+  for (const point of sorted) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], point) <= 0) lower.pop();
+    lower.push([point[0], point[1]]);
+  }
+  const upper: [number, number][] = [];
+  for (const point of [...sorted].reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], point) <= 0) upper.pop();
+    upper.push([point[0], point[1]]);
+  }
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)];
+};
+
+/** Diafragmas del alcance: todos en 3D, el del piso en planta, ninguno en alzado. */
+const buildDiaphragms = (project: Space3DProjectV1, scope: Space3DViewScope): readonly Space3DSceneDiaphragm[] => {
+  if (scope.kind === 'elevation' || !project.diaphragms?.length) return Object.freeze([]);
+  const byId = new Map(project.nodes.map((node) => [node.id, node]));
+  const result: Space3DSceneDiaphragm[] = [];
+  for (const diaphragm of project.diaphragms) {
+    const nodes = diaphragm.nodeIds.map((id) => byId.get(id)).filter((node): node is NonNullable<typeof node> => node !== undefined);
+    if (nodes.length < 2) continue;
+    const y = nodes.reduce((sum, node) => sum + node.y, 0) / nodes.length;
+    if (scope.kind === 'plan' && Math.abs(y - scope.elevation) > SPACE3D_GRID_TOLERANCE) continue;
+    const hull = convexHull(nodes.map((node) => [node.x, node.z] as const));
+    result.push(Object.freeze({
+      id: diaphragm.id,
+      name: diaphragm.name,
+      outline: Object.freeze(hull.map(([x, z]) => Object.freeze([x, y, z]) as Space3DVector)),
+      center: Object.freeze([
+        nodes.reduce((sum, node) => sum + node.x, 0) / nodes.length,
+        y,
+        nodes.reduce((sum, node) => sum + node.z, 0) / nodes.length,
+      ]) as Space3DVector,
+    }));
+  }
+  return Object.freeze(result);
 };
 
 /**

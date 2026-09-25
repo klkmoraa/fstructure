@@ -14,7 +14,8 @@ import type { Space3DProjectV1, Space3DRestraints } from '../../space3d/model/ty
 import { SPACE3D_MATERIALS, SPACE3D_SECTION_CATALOG } from '../../space3d/model/sectionLibrary';
 import {
   SPACE3D_RELEASE_PRESETS, space3DAssignDistributedLoadCommand, space3DAssignMemberTypeCommand, space3DAssignNodalLoadCommand,
-  space3DAssignPointMemberLoadCommand, space3DAssignReleasesCommand, space3DAssignRestraintsCommand, space3DAssignSectionCommand,
+  space3DAssignDiaphragmCommand, space3DAssignPointMemberLoadCommand, space3DAssignReleasesCommand, space3DAssignRestraintsCommand,
+  space3DAssignSectionCommand, space3DStoryDiaphragmsCommand,
   type Space3DMemberLoadDirection, type Space3DReleasePreset, type Space3DSelectionSet,
 } from './space3dAssign';
 import { SPACE3D_SUPPORT_RESTRAINTS } from './space3dSupportKind';
@@ -40,6 +41,7 @@ const TITLES: Record<Space3DAssignKind, TranslationKey> = {
   'nodal-load': 'space3d.assign.titleNodalLoad',
   support: 'space3d.assign.titleSupport',
   type: 'space3d.assign.titleType',
+  diaphragm: 'space3d.assign.titleDiaphragm',
 };
 
 const RELEASE_OPTIONS: readonly { id: Space3DReleasePreset; key: TranslationKey }[] = [
@@ -79,7 +81,7 @@ const MATERIAL_GROUPS = SPACE3D_MATERIALS
 export const Space3DAssignPanel = ({ t, kind, project, selection, defaultCaseId, onSubmit, onClose }: Space3DAssignPanelProps) => {
   const members = selection.members;
   const nodes = selection.nodes;
-  const targetsMembers = kind !== 'nodal-load' && kind !== 'support';
+  const targetsMembers = kind !== 'nodal-load' && kind !== 'support' && kind !== 'diaphragm';
   const count = targetsMembers ? members.length : nodes.length;
 
   const firstMember = project.members.find((member) => member.id === members[0]);
@@ -97,6 +99,7 @@ export const Space3DAssignPanel = ({ t, kind, project, selection, defaultCaseId,
   const [mode, setMode] = useState<'add' | 'replace'>('replace');
   const [nodal, setNodal] = useState({ fx: '0', fy: '-10', fz: '0', mx: '0', my: '0', mz: '0' });
   const [support, setSupport] = useState<'fixed' | 'pinned' | 'free'>('fixed');
+  const [diaphragmMode, setDiaphragmMode] = useState<'new' | 'remove'>('new');
   const [notice, setNotice] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
 
   const sectionPreset = useMemo(() => SPACE3D_SECTION_CATALOG.find((item) => item.name === section), [section]);
@@ -107,6 +110,11 @@ export const Space3DAssignPanel = ({ t, kind, project, selection, defaultCaseId,
       case 'releases': return space3DAssignReleasesCommand(project, members, SPACE3D_RELEASE_PRESETS[release]);
       case 'type': return space3DAssignMemberTypeCommand(project, members, memberType);
       case 'support': return space3DAssignRestraintsCommand(nodes, { ...SPACE3D_SUPPORT_RESTRAINTS[support] } as Space3DRestraints);
+      case 'diaphragm': {
+        const { command, excluded } = space3DAssignDiaphragmCommand(project, nodes, diaphragmMode, t('space3d.diaphragm.defaultName'));
+        if (excluded.length > 0) setNotice({ text: t('space3d.diaphragm.excluded', { count: excluded.length }), tone: 'error' });
+        return command;
+      }
       case 'member-load': {
         const magnitude = numeric(value);
         if (magnitude === null) return 'invalid';
@@ -199,6 +207,21 @@ export const Space3DAssignPanel = ({ t, kind, project, selection, defaultCaseId,
         <span>{t(option.key)}</span>
       </label>)}
     </div> : null}
+
+    {kind === 'diaphragm' ? <>
+      <div className="space3d-assign-radios" role="radiogroup" aria-label={t('space3d.assign.titleDiaphragm')}>
+        {(['new', 'remove'] as const).map((option) => <label key={option} className="space3d-assign-radio">
+          <input type="radio" name="space3d-assign-diaphragm" checked={diaphragmMode === option} onChange={() => setDiaphragmMode(option)} />
+          <span>{t(option === 'new' ? 'space3d.diaphragm.assignNew' : 'space3d.diaphragm.assignRemove')}</span>
+        </label>)}
+      </div>
+      <p className="space3d-field-hint">{t('space3d.diaphragm.hint')}</p>
+      <button type="button" className="space3d-button" onClick={() => {
+        const command = space3DStoryDiaphragmsCommand(project);
+        if (!command) { setNotice({ text: t('space3d.diaphragm.noStories'), tone: 'error' }); return; }
+        if (onSubmit(command)) setNotice({ text: t('space3d.diaphragm.perStoryDone'), tone: 'ok' });
+      }}>{t('space3d.diaphragm.perStory')}</button>
+    </> : null}
 
     {kind === 'member-load' ? <>
       <div className="space3d-assign-radios space3d-assign-radios--inline" role="radiogroup" aria-label={t('space3d.assign.loadKind')}>

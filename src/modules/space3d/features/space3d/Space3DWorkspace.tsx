@@ -54,12 +54,10 @@ import {
 } from './space3dAssign';
 import { resolveSpace3DView, space3DViewOptions, space3DViewWorkPlane, type Space3DViewId } from './space3dViews';
 import { SPACE3D_SUPPORT_LABEL_KEYS } from './space3dSupportKind';
-import {
-  analyzeSpace3DBuckling,
-  analyzeSpace3DInfluence,
-  analyzeSpace3DModal,
-  analyzeSpace3DPDelta,
-} from '../../space3d/engine/analysisModes';
+import { analyzeSpace3DInfluence } from '../../space3d/engine/analysisModes';
+import type { Space3DResponseSpectrumResult } from '../../space3d/engine/responseSpectrum';
+import { Space3DAnalysisCancelledError } from '../../space3d/runtime/workerClient';
+import { Space3DSpectrumPanel, Space3DStoryPanel } from './Space3DStoryResponse';
 import type { Space3DAnalysisMode } from './space3dWorkspaceModel';
 import { isCatalogReady, loadCatalog, translate, type Language, type TranslationKey } from '../../i18n/catalogs';
 import { formatSpace3DNumber } from './space3dNumberFormat';
@@ -76,6 +74,7 @@ const Space3DBuildingDialog = lazy(() => import('./Space3DDefineDialogs').then((
 const Space3DGridDialog = lazy(() => import('./Space3DDefineDialogs').then((module) => ({ default: module.Space3DGridDialog })));
 const Space3DLoadsDialog = lazy(() => import('./Space3DDefineDialogs').then((module) => ({ default: module.Space3DLoadsDialog })));
 const Space3DSectionsDialog = lazy(() => import('./Space3DDefineDialogs').then((module) => ({ default: module.Space3DSectionsDialog })));
+const Space3DDynamicsDialog = lazy(() => import('./Space3DDynamicsDialog').then((module) => ({ default: module.Space3DDynamicsDialog })));
 
 type PendingReplace =
   | { readonly kind: 'example' }
@@ -97,6 +96,7 @@ const ANALYSIS_MODE_LABEL_KEYS: Record<Space3DAnalysisMode, TranslationKey> = {
   modal: 'space3d.analysisModeModal',
   buckling: 'space3d.analysisModeBuckling',
   influence: 'space3d.analysisModeInfluence',
+  spectrum: 'space3d.analysisModeSpectrum',
 };
 
 function EmbeddedInspector({ embedded, expanded, children }: { embedded: boolean; expanded: boolean; children: ReactNode }) {
@@ -148,6 +148,7 @@ const ANALYSIS_ISSUE_KEYS: Record<string, TranslationKey> = {
   'non-finite-solution': 'space3d.error.analysisFailed',
   'unsupported-member-type': 'space3d.error.unsupportedMemberType',
   'unsupported-semantics': 'space3d.error.analysisFailed',
+  'constraint-conflict': 'space3d.error.constraintConflict',
   'missing-reference': 'space3d.error.missingEntity',
   'invalid-property': 'space3d.error.invalidValue',
   'invalid-coordinate': 'space3d.error.invalidValue',
@@ -224,7 +225,7 @@ const WorkspaceBody = ({
   const {
     project, analysis, analysisState, analysisTargetId, selectedEntity, canUndo, canRedo, lastError,
     execute, undo, redo, analyze, cancelAnalysis, select, importPortable, exportPortable, loadExample, resetToBlank,
-    replaceProject, setAnalysisTargetId,
+    replaceProject, setAnalysisTargetId, runStudy, analysisSource,
   } = useSpace3DProject();
   const publishedProject = useRef(project);
   useEffect(() => {
@@ -274,7 +275,9 @@ const WorkspaceBody = ({
   const [shownMode, setShownMode] = useState<number | null>(null);
   const [generativeOpen, setGenerativeOpen] = useState(false);
   const [buildingOpen, setBuildingOpen] = useState(false);
-  const [defineDialog, setDefineDialog] = useState<'grid' | 'sections' | 'loads' | null>(null);
+  const [defineDialog, setDefineDialog] = useState<'grid' | 'sections' | 'loads' | 'dynamics' | null>(null);
+  const [spectrumCaseChoice, setSpectrumCaseChoice] = useState<string | null>(null);
+  const [spectrumResult, setSpectrumResult] = useState<Space3DResponseSpectrumResult | null>(null);
   const [assignKind, setAssignKind] = useState<Space3DAssignKind | null>(null);
   const [tool, setTool] = useState<Space3DModelingTool>('select');
   const [planeOffsets, setPlaneOffsets] = useState<Record<Space3DPlaneAxis, string>>({ x: '0', y: '0', z: '0' });
@@ -295,6 +298,9 @@ const WorkspaceBody = ({
   const nodeCount = project.nodes.length;
   const effectiveScaleFactor = scaleFactor ?? 1;
   const currentAnalysis = analysisState === 'ready' && analysis?.success === true ? analysis : null;
+  const spectrumCases = project.responseSpectrumCases ?? [];
+  const spectrumCase = spectrumCases.find((item) => item.id === spectrumCaseChoice) ?? spectrumCases[0] ?? null;
+  const envelopeShown = currentAnalysis?.targetKind === 'response-spectrum';
 
   // La selección no puede apuntar a lo que ya no existe (deshacer, borrar, importar).
   useEffect(() => {
@@ -353,38 +359,54 @@ const WorkspaceBody = ({
     }
 
     setStudyState('running');
-    // Da al navegador un ciclo para pintar el estado «en curso» antes del
-    // runner síncrono, sin inventar una progresión que el motor no publica.
-    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
 
     try {
       const modeLabel = t(ANALYSIS_MODE_LABEL_KEYS[analysisMode]);
       let success = false;
       let detail = '';
+      // Los estudios corren en el worker: la mesa sigue respondiendo.
       if (analysisMode === 'pdelta') {
-        const result = analyzeSpace3DPDelta(project, analysisTargetId, { maxIterations: 20 });
-        success = result.success;
-        detail = success
-          ? `${t('space3d.studyCompleted', { mode: modeLabel })}: ${result.iterations} iteraciones, residuo ${number(result.residual)}`
-          : t('space3d.studyFailed', { mode: modeLabel, reason: result.reason });
+        const outcome = await runStudy({ kind: 'pdelta', targetId: analysisTargetId, maxIterations: 20 });
+        const result = outcome.kind === 'pdelta' ? outcome.result : null;
+        success = result?.success ?? false;
+        detail = result && success
+          ? `${t('space3d.studyCompleted', { mode: modeLabel })}: ${t('space3d.study.pdeltaDetail', { iterations: result.iterations, residual: number(result.residual) })}`
+          : t('space3d.studyFailed', { mode: modeLabel, reason: result?.reason ?? '' });
       } else if (analysisMode === 'modal') {
-        const result = analyzeSpace3DModal(project, { targetId: analysisTargetId, modes: Math.min(6, Math.max(1, project.nodes.length)) });
-        success = result.success;
-        setModalResult(result.success ? result : null);
+        const outcome = await runStudy({ kind: 'modal', targetId: analysisTargetId, modes: Math.min(12, Math.max(1, project.nodes.length)) });
+        const result = outcome.kind === 'modal' ? outcome.result : null;
+        success = result?.success ?? false;
+        setModalResult(result?.success ? result : null);
         setBucklingResult(null);
-        setShownMode(result.success ? 0 : null);
-        detail = success
+        setShownMode(result?.success ? 0 : null);
+        detail = result && success
           ? `${t('space3d.studyCompleted', { mode: modeLabel })}: ${result.modes.length} modos, T₁ ${number(result.modes[0]?.period ?? Number.NaN)} s`
-          : t('space3d.studyFailed', { mode: modeLabel, reason: result.reason });
+          : t('space3d.studyFailed', { mode: modeLabel, reason: result?.reason ?? '' });
       } else if (analysisMode === 'buckling') {
-        const result = analyzeSpace3DBuckling(project, analysisTargetId, { modes: 3 });
-        success = result.success;
-        setBucklingResult(result.success ? result : null);
+        const outcome = await runStudy({ kind: 'buckling', targetId: analysisTargetId, modes: 3 });
+        const result = outcome.kind === 'buckling' ? outcome.result : null;
+        success = result?.success ?? false;
+        setBucklingResult(result?.success ? result : null);
         setModalResult(null);
-        setShownMode(result.success ? 0 : null);
-        detail = success
+        setShownMode(result?.success ? 0 : null);
+        detail = result && success
           ? `${t('space3d.studyCompleted', { mode: modeLabel })}: factor crítico ${number(result.criticalLoadFactor ?? Number.NaN)}`
-          : t('space3d.studyFailed', { mode: modeLabel, reason: result.reason });
+          : t('space3d.studyFailed', { mode: modeLabel, reason: result?.reason ?? '' });
+      } else if (analysisMode === 'spectrum') {
+        if (!spectrumCase) {
+          setStudyState('idle');
+          setDefineDialog('dynamics');
+          return;
+        }
+        const outcome = await runStudy({ kind: 'response-spectrum', caseId: spectrumCase.id });
+        const result = outcome.kind === 'response-spectrum' ? outcome.result : null;
+        success = result?.success ?? false;
+        setSpectrumResult(result?.success ? result : null);
+        setShownMode(null);
+        detail = result && success
+          ? `${t('space3d.studyCompleted', { mode: modeLabel })}: ${t('space3d.spectrum.detail', { shear: number(result.baseShear), ratio: formatSpace3DNumber(result.cumulativeMassRatio * 100, { significantDigits: 3 }) })}`
+          : t('space3d.studyFailed', { mode: modeLabel, reason: result?.reason ?? '' });
+        if (success) setResultMode('moment');
       } else {
         const member = project.members.find((item) => item.id === selection.members[0]) ?? project.members[0];
         const start = member ? project.nodes.find((node) => node.id === member.i) : undefined;
@@ -410,6 +432,8 @@ const WorkspaceBody = ({
         setPanel('analysis');
       }
     } catch (error) {
+      // Cancelar no es un fallo: la mesa vuelve a su estado sin aviso rojo.
+      if (error instanceof Space3DAnalysisCancelledError) { setStudyState('idle'); return; }
       const modeLabel = t(ANALYSIS_MODE_LABEL_KEYS[analysisMode]);
       setStudyFeedback({
         mode: analysisMode,
@@ -421,7 +445,7 @@ const WorkspaceBody = ({
       });
       setStudyState('failed');
     }
-  }, [analysisMode, analysisTargetId, analyze, project, selection.members, t]);
+  }, [analysisMode, analysisTargetId, analyze, project, runStudy, selection.members, spectrumCase, t]);
 
   // Un estudio sólo describe el proyecto y el objetivo con los que se ejecutó.
   useEffect(() => {
@@ -429,6 +453,7 @@ const WorkspaceBody = ({
     setStudyFeedback(null);
     setModalResult(null);
     setBucklingResult(null);
+    setSpectrumResult(null);
     setShownMode(null);
   }, [analysisTargetId, project]);
 
@@ -939,7 +964,12 @@ const WorkspaceBody = ({
           setStudyFeedback(null);
         }}
       />
-      <label className="space3d-field space3d-target">
+      {analysisMode === 'spectrum' ? <label className="space3d-field space3d-target">
+        <span className="space3d-field-label">{t('space3d.spectrum.caseLabel')}</span>
+        {spectrumCases.length > 0 ? <select value={spectrumCase?.id ?? ''} onChange={(event) => setSpectrumCaseChoice(event.target.value)}>
+          {spectrumCases.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.direction.toUpperCase()}</option>)}
+        </select> : <button type="button" className="space3d-button" onClick={() => setDefineDialog('dynamics')}>{t('space3d.spectrum.define')}</button>}
+      </label> : <label className="space3d-field space3d-target">
         <span className="space3d-field-label">{t('space3d.analysisCaseLabel')}</span>
         <select
           value={analysisTargetId}
@@ -952,10 +982,10 @@ const WorkspaceBody = ({
             {project.loadCombinations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </optgroup> : null}
         </select>
-      </label>
+      </label>}
       <div className="space3d-analysis-run">
         {analyzeButton('space3d-button')}
-        {running ? <button type="button" className="space3d-button" onClick={cancelAnalysis}>
+        {runningAny ? <button type="button" className="space3d-button" onClick={cancelAnalysis}>
           <CircleStop size={16} aria-hidden="true" />{t('space3d.cancelAnalysis')}
         </button> : null}
       </div>
@@ -963,6 +993,9 @@ const WorkspaceBody = ({
         <span className={`space3d-state space3d-state--${STATE_TONES[analysisState]}`} data-testid="space3d-analysis-state-label">{stateLabel}</span>
         {lastAnalysisLabel ? <span>{lastAnalysisLabel}</span> : null}
       </p>
+      {currentAnalysis && analysisSource && analysisSource.kind !== 'linear'
+        ? <p className="space3d-source-chip" data-kind={analysisSource.kind}>{t(analysisSource.kind === 'pdelta' ? 'space3d.source.pdelta' : 'space3d.source.spectrum', { id: analysisSource.id })}</p>
+        : null}
     </section>
 
     {studyState === 'running' ? <p className="space3d-notice" role="status" data-testid="space3d-study-status">
@@ -974,10 +1007,12 @@ const WorkspaceBody = ({
       data-testid="space3d-study-status"
     >
       <strong>{studyFeedback.detail}</strong>
-      {studyFeedback.mode === 'linear' ? null : <small>{t('space3d.studyLinearPreserved')}</small>}
+      {studyFeedback.mode === 'linear' ? null : <small>{t(studyFeedback.mode === 'pdelta' || studyFeedback.mode === 'spectrum' ? 'space3d.studyShownOnCanvas' : 'space3d.studyLinearPreserved')}</small>}
     </div> : null}
 
     <Space3DModesPanel t={t} modal={modalResult} buckling={bucklingResult} shown={shownMode} onShow={(index) => { setShownMode(index); setAnimate(index !== null); }} />
+    {spectrumResult && envelopeShown ? <Space3DSpectrumPanel t={t} result={spectrumResult} /> : null}
+    {currentAnalysis?.stories ? <Space3DStoryPanel t={t} stories={currentAnalysis.stories} envelope={envelopeShown} /> : null}
 
     {/* El motivo del fallo se publica junto a la acción que lo provocó. */}
     {analysisState === 'failed' && analysis && analysis.issues.length > 0
@@ -1196,6 +1231,8 @@ const WorkspaceBody = ({
         onSelectMembers={(ids) => applySelection({ nodes: [], members: [...ids] }, null)}
         onEditGrid={() => setDefineDialog('grid')}
         onEditLoads={() => setDefineDialog('loads')}
+        onEditDynamics={() => setDefineDialog('dynamics')}
+        onSelectNodes={(ids) => applySelection({ nodes: [...ids], members: [] }, null)}
       /> : null}
 
       <div className="space3d-stages">
@@ -1450,6 +1487,14 @@ const WorkspaceBody = ({
       {buildingOpen ? <Space3DBuildingDialog open onOpenChange={setBuildingOpen} t={t} onCreate={requestGeneratedReplace} /> : null}
       {defineDialog === 'grid' ? <Space3DGridDialog open onOpenChange={(open) => setDefineDialog(open ? 'grid' : null)} t={t} grid={grid} onSubmit={submit} /> : null}
       {defineDialog === 'loads' ? <Space3DLoadsDialog open onOpenChange={(open) => setDefineDialog(open ? 'loads' : null)} t={t} project={project} onSubmit={submit} /> : null}
+      {defineDialog === 'dynamics' ? <Space3DDynamicsDialog
+        open
+        onOpenChange={(open) => setDefineDialog(open ? 'dynamics' : null)}
+        t={t}
+        project={project}
+        onSubmit={submit}
+        onSelectNodes={(ids) => { applySelection({ nodes: [...ids], members: [] }, null); setDefineDialog(null); }}
+      /> : null}
       {defineDialog === 'sections' ? <Space3DSectionsDialog
         open
         onOpenChange={(open) => setDefineDialog(open ? 'sections' : null)}

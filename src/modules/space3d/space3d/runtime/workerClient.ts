@@ -11,7 +11,14 @@
  * Las respuestas llevan `requestId`: cualquier mensaje de una corrida anterior
  * se descarta en vez de resolver una promesa que ya no corresponde al modelo.
  */
-import { SPACE3D_PROTOCOL_VERSION, handleSpace3DWorkerRequest, type Space3DWorkerRequest, type Space3DWorkerResponse } from './protocol';
+import {
+  SPACE3D_PROTOCOL_VERSION,
+  handleSpace3DWorkerRequest,
+  type Space3DStudy,
+  type Space3DStudyOutcome,
+  type Space3DWorkerRequest,
+  type Space3DWorkerResponse,
+} from './protocol';
 import { createBrowserAnalysisBudget } from '../../../../numeric/admission';
 import type { AnalysisBudget } from '../../../../shared/contracts';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../model/types';
@@ -54,7 +61,7 @@ class Space3DWorkerError extends Error {
 
 interface Pending {
   readonly requestId: number;
-  readonly resolve: (result: Space3DAnalysisResult) => void;
+  readonly resolve: (result: never) => void;
   readonly reject: (error: Error) => void;
 }
 
@@ -110,6 +117,29 @@ export class Space3DWorkerClient {
   }
 
   run(project: Space3DProjectV1, targetId: string, budget: AnalysisBudget = createBrowserAnalysisBudget()): Promise<Space3DAnalysisResult> {
+    return this.request<Space3DAnalysisResult>((requestId) => ({
+      protocolVersion: SPACE3D_PROTOCOL_VERSION,
+      type: 'run',
+      requestId,
+      project,
+      targetId,
+      budget,
+    }));
+  }
+
+  /** Un estudio (P-Delta, modal, pandeo, espectro) en el mismo hilo aparte. */
+  study(project: Space3DProjectV1, study: Space3DStudy, budget: AnalysisBudget = createBrowserAnalysisBudget()): Promise<Space3DStudyOutcome> {
+    return this.request<Space3DStudyOutcome>((requestId) => ({
+      protocolVersion: SPACE3D_PROTOCOL_VERSION,
+      type: 'study',
+      requestId,
+      project,
+      study,
+      budget,
+    }));
+  }
+
+  private request<T>(message: (requestId: number) => Space3DWorkerRequest): Promise<T> {
     if (this.disposed) return Promise.reject(new Space3DAnalysisCancelledError());
     this.cancel();
 
@@ -117,16 +147,9 @@ export class Space3DWorkerClient {
     this.nextRequestId += 1;
     const requestId = this.nextRequestId;
 
-    return new Promise<Space3DAnalysisResult>((resolve, reject) => {
-      this.pending = { requestId, resolve, reject };
-      worker.postMessage({
-        protocolVersion: SPACE3D_PROTOCOL_VERSION,
-        type: 'run',
-        requestId,
-        project,
-        targetId,
-        budget,
-      });
+    return new Promise<T>((resolve, reject) => {
+      this.pending = { requestId, resolve: resolve as (result: never) => void, reject };
+      worker.postMessage(message(requestId));
     });
   }
 
@@ -170,7 +193,8 @@ export class Space3DWorkerClient {
     const pending = this.pending;
     if (!pending || !response || response.requestId !== pending.requestId) return;
     this.pending = null;
-    if (response.type === 'success') pending.resolve(response.result);
+    if (response.type === 'success') (pending.resolve as (result: Space3DAnalysisResult) => void)(response.result);
+    else if (response.type === 'study-success') (pending.resolve as (result: Space3DStudyOutcome) => void)(response.outcome);
     else pending.reject(new Space3DWorkerError(response.code, response.message));
   }
 

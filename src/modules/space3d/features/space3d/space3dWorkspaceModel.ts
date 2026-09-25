@@ -8,7 +8,7 @@ type Space3DProductStatus = 'Disponible' | 'Experimental' | 'Planeado' | 'No com
  * Cada opción tiene un runner real; la superficie decide después qué parte
  * del resultado puede publicar sin sustituir el análisis lineal compartido.
  */
-export type Space3DAnalysisMode = 'linear' | 'pdelta' | 'modal' | 'buckling' | 'influence';
+export type Space3DAnalysisMode = 'linear' | 'pdelta' | 'modal' | 'spectrum' | 'buckling' | 'influence';
 
 interface Space3DAnalysisModeDefinition {
   readonly id: Space3DAnalysisMode;
@@ -17,7 +17,8 @@ interface Space3DAnalysisModeDefinition {
     | 'space3d.analysisModePDelta'
     | 'space3d.analysisModeModal'
     | 'space3d.analysisModeBuckling'
-    | 'space3d.analysisModeInfluence';
+    | 'space3d.analysisModeInfluence'
+    | 'space3d.analysisModeSpectrum';
   readonly status: Space3DProductStatus;
 }
 
@@ -25,6 +26,7 @@ export const SPACE3D_ANALYSIS_MODES: readonly Space3DAnalysisModeDefinition[] = 
   { id: 'linear', labelKey: 'space3d.analysisModeLinear', status: 'Disponible' },
   { id: 'pdelta', labelKey: 'space3d.analysisModePDelta', status: 'Experimental' },
   { id: 'modal', labelKey: 'space3d.analysisModeModal', status: 'Experimental' },
+  { id: 'spectrum', labelKey: 'space3d.analysisModeSpectrum', status: 'Experimental' },
   { id: 'buckling', labelKey: 'space3d.analysisModeBuckling', status: 'Experimental' },
   { id: 'influence', labelKey: 'space3d.analysisModeInfluence', status: 'Experimental' },
 ]);

@@ -27,7 +27,7 @@ import {
   ArrowHelper, BoxGeometry, BufferGeometry, CanvasTexture, Color, ConeGeometry, CylinderGeometry, DirectionalLight,
   DoubleSide, ExtrudeGeometry, Float32BufferAttribute, Group, HemisphereLight, InstancedMesh, LineBasicMaterial,
   LineSegments, MathUtils, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, OrthographicCamera, Path,
-  PerspectiveCamera, Plane, Points, PointsMaterial, Quaternion, Raycaster, Scene, Shape, SphereGeometry, Sprite,
+  PerspectiveCamera, Plane, Points, PointsMaterial, Quaternion, Raycaster, Scene, Shape, ShapeGeometry, SphereGeometry, Sprite,
   SpriteMaterial, Vector2, Vector3, WebGLRenderer,
   type Camera, type Material, type Object3D,
 } from 'three';
@@ -582,6 +582,7 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
     }));
     lines.name = 'grid-lines';
     group.add(lines);
+    buildDiaphragms(group);
     for (const bubble of bubbles) {
       const ring = bubble.text.length <= 3;
       const label = makeLabel(bubble.text, palette.gridInk, ring ? bubbleSize : labelSize(1.1), ring ? { ring: true, background: palette.surface } : {});
@@ -589,6 +590,47 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
       label.position.copy(bubble.position);
       group.add(label);
     }
+  };
+
+  /**
+   * Diafragmas rígidos, como los dibuja ETABS: el contorno del piso con un
+   * velo muy claro y su nombre en el centro. Viajan con la rejilla.
+   */
+  const buildDiaphragms = (group: Group) => {
+    const diaphragms = model.diaphragms ?? [];
+    if (diaphragms.length === 0) return;
+    const outline: number[] = [];
+    for (const diaphragm of diaphragms) {
+      const points = diaphragm.outline;
+      if (points.length < 2) continue;
+      points.forEach((point, index) => {
+        const next = points[(index + 1) % points.length];
+        outline.push(...point, ...next);
+      });
+      if (points.length >= 3) {
+        const shape = new Shape(points.map((point) => new Vector2(point[0], point[2])));
+        const geometry = new ShapeGeometry(shape);
+        // La forma vive en XY: girarla lleva (x, y) a (x, 0, y), es decir, a planta.
+        geometry.rotateX(Math.PI / 2);
+        geometry.translate(0, diaphragm.center[1], 0);
+        const veil = new Mesh(geometry, new MeshBasicMaterial({
+          color: palette.axisZ, transparent: true, opacity: 0.07, side: DoubleSide, depthWrite: false,
+        }));
+        veil.name = `diaphragm-${diaphragm.id}`;
+        veil.renderOrder = -1;
+        group.add(veil);
+      }
+      const label = makeLabel(diaphragm.id, palette.axisZ, labelSize(0.95));
+      if (label) {
+        label.position.set(diaphragm.center[0], diaphragm.center[1], diaphragm.center[2]);
+        group.add(label);
+      }
+    }
+    const lines = new LineSegments(lineGeometry(outline), new LineBasicMaterial({
+      color: palette.axisZ, transparent: true, opacity: 0.55, depthWrite: false,
+    }));
+    lines.name = 'diaphragm-outlines';
+    group.add(lines);
   };
 
   // ────────────────────────────── Modelo ──────────────────────────────
