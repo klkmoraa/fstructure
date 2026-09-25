@@ -3,6 +3,7 @@ import { axialCantilever } from '../engine/fixtures';
 import { parseSpace3DDraft, parseSpace3DProject, serializeSpace3DProject, Space3DCodecError } from '../data/codec';
 import { createSpace3DGrid, deriveAutomaticSpace3DGrid, resolveSpace3DGrid, space3DLetterLabel } from './grid';
 import { validateSpace3DProject } from './validation';
+import { SPACE3D_SCHEMA_VERSION } from './types';
 
 describe('Space3D grid and stories', () => {
   it('labels grid lines like ETABS: A…Z, AA…', () => {
@@ -27,13 +28,13 @@ describe('Space3D grid and stories', () => {
 });
 
 describe('Space3D schema v3 migration', () => {
-  it('opens a v2 file, keeps every entity and saves it as v3 without inventing a grid', () => {
+  it('opens a v2 file, keeps every entity and saves it as the current version without inventing a grid', () => {
     const v3 = axialCantilever();
     const raw = JSON.parse(serializeSpace3DProject(v3)) as Record<string, unknown>;
     raw.schemaVersion = 2;
     const migrated = parseSpace3DProject(JSON.stringify(raw));
 
-    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.schemaVersion).toBe(SPACE3D_SCHEMA_VERSION);
     expect(migrated.grid).toBeUndefined();
     expect(migrated.nodes).toEqual(v3.nodes);
     expect(migrated.members).toEqual(v3.members);

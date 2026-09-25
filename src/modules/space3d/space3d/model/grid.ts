@@ -2,7 +2,8 @@
  * Rejilla de ejes y pisos al modo de ETABS.
  *
  * La rejilla es geometría de trabajo: fija las plantas y los alzados que la
- * interfaz ofrece y los puntos donde se dibuja. El cálculo no la lee.
+ * interfaz ofrece y los puntos donde se dibuja. El cálculo no la lee; sólo
+ * la respuesta por piso (derivas, cortantes) agrupa resultados con ella.
  *
  * Un proyecto anterior al esquema 3, o uno importado sin rejilla, sigue
  * teniendo plantas y alzados: se derivan de las coordenadas de sus nudos y se

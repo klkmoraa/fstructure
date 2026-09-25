@@ -1,21 +1,40 @@
-/** Estudios modales espaciales sobre el ensamblaje canónico de seis GDL. */
+/**
+ * Estudios que reutilizan el ensamblaje estático: modal, P-Delta, pandeo e
+ * influencia. Todos trabajan en perfil con las mismas ecuaciones reducidas
+ * (diafragmas incluidos) que el cálculo lineal: ninguna matriz densa.
+ *
+ *   · Modal: `K·φ = ω²·M·φ` con Lanczos y verificación de Sturm; la masa sale
+ *     de la fuente de masa del proyecto.
+ *   · Pandeo: `K·φ = λ·K_G·φ` con la rigidez geométrica de las barras
+ *     comprimidas bajo el objetivo.
+ *   · P-Delta: `(K − K_G(u))·u = F` iterado hasta que `u` deja de cambiar.
+ */
+import { multiply, transpose, zeros, multiplyMatrixVector, type Matrix } from '../../../../foundation/linearAlgebra';
+import { smallestGeneralizedEigenpairs, type Space3DEigenpair } from './eigenSolvers';
+import { expandSpace3DVector, reduceSpace3DVector, scatterSpace3DDiagonal, scatterSpace3DElement } from './equations';
+import { assembleSpace3DMassDistribution, type Space3DMassDistribution } from './mass';
 import {
-  generalizedSmallestEigenpairs,
-} from '../../../../engine/eigen';
-import {
-  multiplyMatrixVector,
-  multiply,
-  solveLinearSystem,
-  submatrix,
-  zeros,
-  transpose,
-  type Matrix,
-} from '../../../../foundation/linearAlgebra';
+  cloneSkyline,
+  countSkylineNegativePivots,
+  createSkylineMatrix,
+  factorizeSkyline,
+  multiplySkyline,
+  Space3DSingularMatrixError,
+  type Space3DSkylineFactorization,
+  type Space3DSkylineMatrix,
+} from './skylineSolver';
 import {
   analyzeSpace3DProject,
+  assembleSpace3DSkylineStiffness,
   assembleSpace3DStaticModel,
   recoverSpace3DResult,
+  space3DElementStiffnessProduct,
+  space3DMechanismIssue,
+  space3DReducedStiffnessProduct,
+  withStoryResponse,
   type Space3DStaticAnalysisOptions,
+  type Space3DStaticAssembly,
+  type Space3DStaticAssemblyElement,
 } from './solver';
 import type {
   Space3DAnalysisIssue,
@@ -25,7 +44,6 @@ import type {
   Space3DVector,
 } from '../model/types';
 
-const KILOGRAM_TO_MEGAGRAM = 1e-3;
 const DOF_PER_NODE = 6;
 
 const vectorNorm = (values: readonly number[]): number => Math.sqrt(values.reduce((sum, value) => sum + value * value, 0));
@@ -52,7 +70,13 @@ interface Space3DModalResult {
   readonly targetId: string;
   readonly modes: readonly Space3DModalMode[];
   readonly totalMass: number;
+  /** Masa traslacional por dirección X, Y, Z, t. */
+  readonly totalMassByDirection: Space3DVector;
+  /** De dónde salió la masa, t. */
+  readonly massBreakdown: { readonly self: number; readonly nodal: number; readonly loads: number };
   readonly converged: boolean;
+  /** La cuenta de Sturm confirma que no falta ningún modo por debajo del último. */
+  readonly sturmVerified: boolean;
   readonly residual: number;
   readonly freeDegreesOfFreedom: number;
   readonly issues: readonly Space3DAnalysisIssue[];
@@ -70,143 +94,166 @@ const failure = (
   targetId,
   modes: Object.freeze([]),
   totalMass,
+  totalMassByDirection: Object.freeze([0, 0, 0]) as Space3DVector,
+  massBreakdown: Object.freeze({ self: 0, nodal: 0, loads: 0 }),
   converged: false,
+  sturmVerified: false,
   residual: Number.NaN,
   freeDegreesOfFreedom,
   issues: Object.freeze([...issues]),
   reason,
 });
 
-const bilinear = (matrix: Matrix, left: readonly number[], right: readonly number[]): number =>
-  multiplyMatrixVector(matrix, right).reduce((sum, value, index) => sum + left[index] * value, 0);
+const targetForModal = (project: Space3DProjectV1, requested?: string): string =>
+  requested ?? project.loadCombinations[0]?.id ?? project.loadCases[0]?.id ?? '';
 
-const addDiagonalMass = (matrix: Matrix, index: number, value: number): void => {
-  if (value > 0 && Number.isFinite(value)) matrix[index][index] += value;
+type Factored =
+  | { readonly ok: true; readonly matrix: Space3DSkylineMatrix; readonly factorization: Space3DSkylineFactorization }
+  | { readonly ok: false; readonly issue: Space3DAnalysisIssue };
+
+/** Rigidez reducida (más un término por barra) factorizada; la copia sin factorizar sirve para Sturm. */
+const factorStiffness = (
+  project: Space3DProjectV1,
+  assembly: Space3DStaticAssembly,
+  extra?: (element: Space3DStaticAssemblyElement) => Matrix | null,
+): Factored => {
+  const matrix = assembleSpace3DSkylineStiffness(assembly, extra);
+  const pristine = cloneSkyline(matrix);
+  try {
+    return { ok: true, matrix: pristine, factorization: factorizeSkyline(matrix) };
+  } catch (error) {
+    if (!(error instanceof Space3DSingularMatrixError)) throw error;
+    return { ok: false, issue: space3DMechanismIssue(project, assembly, error.row) };
+  }
+};
+
+/** Número de autovalores de `K − σ·B` por debajo de σ; los dos perfiles son el mismo. */
+const sturmCounter = (stiffness: Space3DSkylineMatrix, weight: Space3DSkylineMatrix) => (sigma: number): number | null => {
+  const shifted = cloneSkyline(stiffness);
+  for (let index = 0; index < shifted.values.length; index += 1) shifted.values[index] -= sigma * weight.values[index];
+  return countSkylineNegativePivots(shifted);
+};
+
+/** Filas con término diagonal positivo: cota del rango de `B`. */
+const positiveDiagonalCount = (matrix: Space3DSkylineMatrix): number => {
+  let count = 0;
+  for (let row = 0; row < matrix.n; row += 1) if (matrix.values[matrix.offset[row + 1] - 1] > 0) count += 1;
+  return count;
+};
+
+/** Modos del proyecto en ecuaciones reducidas; lo comparten el modal y el espectro. */
+export interface Space3DModalBasis {
+  readonly assembly: Space3DStaticAssembly;
+  readonly mass: Space3DMassDistribution;
+  readonly pairs: readonly Space3DEigenpair[];
+  readonly converged: boolean;
+  readonly sturmVerified: boolean;
+}
+
+export type Space3DModalBasisOutcome =
+  | ({ readonly ok: true } & Space3DModalBasis)
+  | { readonly ok: false; readonly result: Space3DModalResult };
+
+export const computeSpace3DModalBasis = (project: Space3DProjectV1, options: Space3DModalOptions = {}): Space3DModalBasisOutcome => {
+  const targetId = targetForModal(project, options.targetId);
+  const assembly = assembleSpace3DStaticModel(project, targetId, options);
+  if (!assembly.valid) return { ok: false, result: failure(targetId, 'El ensamblaje espacial no es admisible para el estudio modal.', assembly.issues) };
+  const n = assembly.equations.count;
+  if (n === 0) return { ok: false, result: failure(targetId, 'Las condiciones de contorno no dejan grados de libertad libres.', [], 0, 0) };
+
+  const mass = assembleSpace3DMassDistribution(project, assembly);
+  const totalMass = Math.max(...mass.total);
+  if (!(totalMass > 0)) return { ok: false, result: failure(targetId, 'El modelo no declara masa: ni masa propia, ni masas nodales, ni cargas en la fuente de masa.', [], 0, n) };
+
+  const stiffness = factorStiffness(project, assembly);
+  if (!stiffness.ok) return { ok: false, result: failure(targetId, 'La rigidez es singular: hay un mecanismo.', [stiffness.issue], totalMass, n) };
+  const massMatrix = createSkylineMatrix(assembly.equations.firstColumn);
+  mass.diagonal.forEach((value, dof) => { if (value > 0) scatterSpace3DDiagonal(assembly.equations, massMatrix, dof, value); });
+  const rank = positiveDiagonalCount(massMatrix);
+  const count = Math.max(1, Math.min(Math.trunc(options.modes ?? 5), rank));
+  if (rank === 0) return { ok: false, result: failure(targetId, 'La masa cae toda en GDL restringidos.', [], totalMass, n) };
+
+  const eigen = smallestGeneralizedEigenpairs({
+    n,
+    solve: (rhs) => stiffness.factorization.solve(rhs),
+    applyB: (vector) => multiplySkyline(massMatrix, vector),
+    count,
+    sturmCount: sturmCounter(stiffness.matrix, massMatrix),
+    tolerance: options.tolerance,
+  });
+  if (eigen.pairs.length === 0) return { ok: false, result: failure(targetId, 'Lanczos no encontró ningún modo con masa.', [], totalMass, n) };
+  return { ok: true, assembly, mass, pairs: eigen.pairs, converged: eigen.converged, sturmVerified: eigen.sturmVerified };
+};
+
+/** Forma normalizada a la mayor traslación, para dibujarla. */
+const normalizedShape = (project: Space3DProjectV1, full: readonly number[]) => {
+  const peak = project.nodes.reduce((maximum, _node, nodeIndex) => {
+    const base = nodeIndex * DOF_PER_NODE;
+    return Math.max(maximum, Math.abs(full[base]), Math.abs(full[base + 1]), Math.abs(full[base + 2]));
+  }, 0);
+  const scale = peak > 0 ? 1 / peak : 1;
+  return Object.freeze(project.nodes.map((node, nodeIndex) => {
+    const base = nodeIndex * DOF_PER_NODE;
+    return Object.freeze({
+      nodeId: node.id,
+      ux: full[base] * scale,
+      uy: full[base + 1] * scale,
+      uz: full[base + 2] * scale,
+      rx: full[base + 3] * scale,
+      ry: full[base + 4] * scale,
+      rz: full[base + 5] * scale,
+    });
+  }));
+};
+
+/** Factor de participación `Γ = φᵀ·M·r` para una traslación unitaria en `axis`. */
+export const space3DParticipation = (mass: Space3DMassDistribution, full: readonly number[], axis: 0 | 1 | 2): number => {
+  let sum = 0;
+  for (let dof = axis; dof < full.length; dof += DOF_PER_NODE) sum += mass.diagonal[dof] * full[dof];
+  return sum;
 };
 
 /**
- * Masa concentrada de referencia para el primer estudio espacial. La masa
- * distribuida se reparte a los extremos y la inercia rotacional equivalente
- * mantiene positiva la matriz en los seis GDL sin inventar masa si el miembro
- * no declara densidad.
+ * Masa que puede moverse en cada dirección: la de los GDL libres o esclavos
+ * de un diafragma (una traslación rígida siempre es compatible con ellos).
  */
-const assembleSpace3DMass = (project: Space3DProjectV1, assembly: ReturnType<typeof assembleSpace3DStaticModel>): { M: Matrix; totalMass: number } => {
-  const M = zeros(assembly.totalDofs, assembly.totalDofs);
-  let totalMass = 0;
-  const nodeIndex = new Map(project.nodes.map((node, index) => [node.id, index]));
-
-  for (const element of assembly.elements) {
-    const member = project.members.find((candidate) => candidate.id === element.memberId);
-    if (!member || !(member.density && member.density > 0) || !(member.A > 0)) continue;
-    const memberMass = member.density * member.A * element.length * KILOGRAM_TO_MEGAGRAM;
-    if (!(memberMass > 0) || !Number.isFinite(memberMass)) continue;
-    totalMass += memberMass;
-    const half = memberMass / 2;
-    const rotational = memberMass * element.length * element.length / 24;
-    for (const nodeId of [element.nodeI, element.nodeJ]) {
-      const index = nodeIndex.get(nodeId);
-      if (index === undefined) continue;
-      const base = index * DOF_PER_NODE;
-      addDiagonalMass(M, base, half);
-      addDiagonalMass(M, base + 1, half);
-      addDiagonalMass(M, base + 2, half);
-      addDiagonalMass(M, base + 3, rotational);
-      addDiagonalMass(M, base + 4, rotational);
-      addDiagonalMass(M, base + 5, rotational);
-    }
+export const space3DParticipatingMass = (assembly: Space3DStaticAssembly, mass: Space3DMassDistribution): [number, number, number] => {
+  const totals: [number, number, number] = [0, 0, 0];
+  for (let dof = 0; dof < assembly.totalDofs; dof += 1) {
+    const axis = dof % DOF_PER_NODE;
+    if (axis > 2) continue;
+    if (assembly.equations.position[dof] >= 0 || assembly.equations.slaves.has(dof)) totals[axis] += mass.diagonal[dof];
   }
-
-  for (const nodalMass of project.nodalMasses) {
-    const index = nodeIndex.get(nodalMass.nodeId);
-    if (index === undefined || !(nodalMass.mass > 0) || !Number.isFinite(nodalMass.mass)) continue;
-    const base = index * DOF_PER_NODE;
-    const translational = nodalMass.mass * KILOGRAM_TO_MEGAGRAM;
-    addDiagonalMass(M, base, (nodalMass.massX ?? nodalMass.mass) * KILOGRAM_TO_MEGAGRAM);
-    addDiagonalMass(M, base + 1, (nodalMass.massY ?? nodalMass.mass) * KILOGRAM_TO_MEGAGRAM);
-    addDiagonalMass(M, base + 2, (nodalMass.massZ ?? nodalMass.mass) * KILOGRAM_TO_MEGAGRAM);
-    const inertia = nodalMass.rotationalInertia !== undefined
-      ? nodalMass.rotationalInertia * KILOGRAM_TO_MEGAGRAM
-      : 0;
-    addDiagonalMass(M, base + 3, nodalMass.inertiaX !== undefined ? nodalMass.inertiaX * KILOGRAM_TO_MEGAGRAM : inertia);
-    addDiagonalMass(M, base + 4, nodalMass.inertiaY !== undefined ? nodalMass.inertiaY * KILOGRAM_TO_MEGAGRAM : inertia);
-    addDiagonalMass(M, base + 5, nodalMass.inertiaZ !== undefined ? nodalMass.inertiaZ * KILOGRAM_TO_MEGAGRAM : inertia);
-    // `totalMass` is translational mass, not the three repeated directional
-    // entries of the matrix.
-    totalMass += translational;
-  }
-  return { M, totalMass };
+  return totals;
 };
-
-const targetForModal = (project: Space3DProjectV1, requested?: string): string =>
-  requested ?? project.loadCombinations[0]?.id ?? project.loadCases[0]?.id ?? '';
 
 export const analyzeSpace3DModal = (
   project: Space3DProjectV1,
   options: Space3DModalOptions = {},
 ): Space3DModalResult => {
   const targetId = targetForModal(project, options.targetId);
-  const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
-  if (!assembly.valid) return failure(targetId, 'El ensamblaje espacial no es admisible para el estudio modal.', assembly.issues);
-  if (!assembly.freeDofs.length) return failure(targetId, 'Las condiciones de contorno no dejan grados de libertad libres.', [], 0, 0);
-
-  const mass = assembleSpace3DMass(project, assembly);
-  if (!(mass.totalMass > 0)) return failure(targetId, 'El modelo no declara masa distribuida ni masa nodal positiva.', [], 0, assembly.freeDofs.length);
-  const freeDofs = [...assembly.freeDofs];
-  const Kff = submatrix(assembly.stiffness, freeDofs, freeDofs);
-  const Mff = submatrix(mass.M, freeDofs, freeDofs);
-  const count = Math.max(1, Math.trunc(options.modes ?? 5));
-  const eigen = generalizedSmallestEigenpairs(Kff, Mff, count, {
-    positiveOnly: true,
-    maxIterations: options.maxIterations,
-    tolerance: options.tolerance,
-  });
-  if (!eigen.values.length) return failure(targetId, eigen.reason, [], mass.totalMass, assembly.freeDofs.length);
-
-  const influence = (component: 0 | 1 | 2): number[] => {
-    const vector = new Array<number>(assembly.totalDofs).fill(0);
-    for (let index = component; index < vector.length; index += DOF_PER_NODE) vector[index] = 1;
-    return vector;
-  };
-  const totalByComponent = ([0, 1, 2] as const).map((component) => {
-    const vector = influence(component);
-    return bilinear(mass.M, vector, vector);
-  });
-
-  const modes = eigen.values.map((omegaSquared, modeIndex): Space3DModalMode => {
-    const reduced = eigen.vectors[modeIndex];
-    const full = new Array<number>(assembly.totalDofs).fill(0);
-    assembly.freeDofs.forEach((global, index) => { full[global] = reduced[index]; });
-    const modalMass = bilinear(mass.M, full, full);
-    const ratios = [0, 1, 2].map((component, index) => {
-      const vector = influence(component as 0 | 1 | 2);
-      return totalByComponent[index] > 0 && modalMass > 0
-        ? (bilinear(mass.M, full, vector) ** 2) / modalMass / totalByComponent[index]
-        : 0;
+  const basis = computeSpace3DModalBasis(project, options);
+  if (!basis.ok) return basis.result;
+  const { assembly, mass } = basis;
+  // La masa de los GDL restringidos no participa: la base se mueve con el suelo.
+  const participating = space3DParticipatingMass(assembly, mass);
+  let residual = 0;
+  const modes = basis.pairs.map((pair): Space3DModalMode => {
+    const full = expandSpace3DVector(assembly.equations, pair.vector);
+    residual = Math.max(residual, pair.bound);
+    const ratios = ([0, 1, 2] as const).map((axis) => {
+      const gamma = space3DParticipation(mass, full, axis);
+      return participating[axis] > 0 ? (gamma * gamma) / participating[axis] : 0;
     });
-    const peak = project.nodes.reduce((maximum, _node, nodeIndex) => {
-      const base = nodeIndex * DOF_PER_NODE;
-      return Math.max(maximum, Math.abs(full[base]), Math.abs(full[base + 1]), Math.abs(full[base + 2]));
-    }, 0);
-    const scale = peak > 0 ? 1 / peak : 1;
+    const omega = Math.sqrt(pair.value);
     return Object.freeze({
-      angularFrequency: Math.sqrt(omegaSquared),
-      frequency: Math.sqrt(omegaSquared) / (2 * Math.PI),
-      period: omegaSquared > 0 ? 2 * Math.PI / Math.sqrt(omegaSquared) : Number.POSITIVE_INFINITY,
+      angularFrequency: omega,
+      frequency: omega / (2 * Math.PI),
+      period: omega > 0 ? 2 * Math.PI / omega : Number.POSITIVE_INFINITY,
       participatingMassRatioX: ratios[0],
       participatingMassRatioY: ratios[1],
       participatingMassRatioZ: ratios[2],
-      shape: Object.freeze(project.nodes.map((node, nodeIndex) => {
-        const base = nodeIndex * DOF_PER_NODE;
-        return Object.freeze({
-          nodeId: node.id,
-          ux: full[base] * scale,
-          uy: full[base + 1] * scale,
-          uz: full[base + 2] * scale,
-          rx: full[base + 3] * scale,
-          ry: full[base + 4] * scale,
-          rz: full[base + 5] * scale,
-        });
-      })),
+      shape: normalizedShape(project, full),
     });
   });
 
@@ -214,12 +261,17 @@ export const analyzeSpace3DModal = (
     success: true,
     targetId,
     modes: Object.freeze(modes),
-    totalMass: mass.totalMass,
-    converged: eigen.converged,
-    residual: eigen.residual,
-    freeDegreesOfFreedom: assembly.freeDofs.length,
+    totalMass: Math.max(...mass.total),
+    totalMassByDirection: Object.freeze([...mass.total]) as unknown as Space3DVector,
+    massBreakdown: Object.freeze({ self: mass.fromSelf, nodal: mass.fromNodal, loads: mass.fromLoads }),
+    converged: basis.converged,
+    sturmVerified: basis.sturmVerified,
+    residual,
+    freeDegreesOfFreedom: assembly.equations.count,
     issues: Object.freeze([]),
-    reason: eigen.reason,
+    reason: basis.sturmVerified
+      ? `${modes.length} modos; la cuenta de Sturm confirma que no falta ninguno.`
+      : `${modes.length} modos; la cuenta de Sturm no pudo confirmarlos.`,
   });
 };
 
@@ -252,6 +304,7 @@ interface Space3DBucklingResult {
   readonly criticalLoadFactor?: number;
   readonly referenceAxialForces: Readonly<Record<string, number>>;
   readonly converged: boolean;
+  readonly sturmVerified: boolean;
   readonly residual: number;
   readonly freeDegreesOfFreedom: number;
   readonly issues: readonly Space3DAnalysisIssue[];
@@ -287,52 +340,35 @@ const bucklingFailure = (
   modes: Object.freeze([]),
   referenceAxialForces,
   converged: false,
+  sturmVerified: false,
   residual: Number.NaN,
   freeDegreesOfFreedom,
   issues: Object.freeze([...issues]),
   reason,
 });
 
-const resultFromDisplacement = (
-  project: Space3DProjectV1,
-  assembly: ReturnType<typeof assembleSpace3DStaticModel>,
-  stiffness: Matrix,
-  loadVector: readonly number[],
-  displacement: readonly number[],
-  relativeResidual: number,
-  conditionEstimate: number,
-): Space3DAnalysisResult => recoverSpace3DResult(
-  project, assembly, stiffness, displacement, { relativeResidual, conditionEstimate },
-  loadVector === assembly.loadVector ? {} : { loadVector },
-);
-
-const solveWithStiffness = (
-  stiffness: Matrix,
-  loadVector: readonly number[],
-  freeDofs: readonly number[],
-): { displacement: number[]; relativeResidual: number; conditionEstimate: number } => {
-  const free = [...freeDofs];
-  const solved = solveLinearSystem(submatrix(stiffness, free, free), free.map((index) => loadVector[index] ?? 0));
-  const displacement = new Array<number>(loadVector.length).fill(0);
-  free.forEach((global, index) => { displacement[global] = solved.x[index]; });
-  return { displacement, relativeResidual: solved.relativeResidual, conditionEstimate: solved.conditionEstimate };
-};
-
 const localGeometricStiffness = (length: number, compression: number): Matrix => {
   const result = zeros(12, 12);
   if (!(compression > 0) || !(length > 0)) return result;
   const coefficient = compression / (30 * length);
-  const scaledBlock = (indices: readonly [number, number, number, number]) => {
+  // En el plano x–z el giro ry tiene el signo contrario a w' (como en la
+  // rigidez elástica): los términos que acoplan traslación y giro cambian de
+  // signo. Sin eso el pandeo alrededor del eje local y sale mal.
+  const scaledBlock = (indices: readonly [number, number, number, number], sign: 1 | -1) => {
     const block: readonly (readonly number[])[] = [
       [36, 3 * length, -36, 3 * length],
       [3 * length, 4 * length * length, -3 * length, -length * length],
       [-36, -3 * length, 36, -3 * length],
       [3 * length, -length * length, -3 * length, 4 * length * length],
     ];
-    indices.forEach((row, i) => indices.forEach((column, j) => { result[row][column] += coefficient * block[i][j]; }));
+    const rotation = (index: number) => index === 1 || index === 3;
+    indices.forEach((row, i) => indices.forEach((column, j) => {
+      const coupling = rotation(i) !== rotation(j) ? sign : 1;
+      result[row][column] += coefficient * coupling * block[i][j];
+    }));
   };
-  scaledBlock([1, 5, 7, 11]);
-  scaledBlock([2, 4, 8, 10]);
+  scaledBlock([1, 5, 7, 11], 1);
+  scaledBlock([2, 4, 8, 10], -1);
   return result;
 };
 
@@ -347,11 +383,15 @@ const chordGeometricStiffness = (length: number, compression: number): Matrix =>
   return result;
 };
 
+/**
+ * Rigidez geométrica global de cada barra comprimida bajo un campo de
+ * desplazamientos (las traccionadas no rigidizan: criterio conservador).
+ */
 const geometricFromDisplacement = (
-  assembly: ReturnType<typeof assembleSpace3DStaticModel>,
+  assembly: Space3DStaticAssembly,
   displacement: readonly number[],
-): { matrix: Matrix; axialForces: Map<string, number> } => {
-  const geometric = zeros(assembly.totalDofs, assembly.totalDofs);
+): { matrices: Map<string, Matrix>; axialForces: Map<string, number> } => {
+  const matrices = new Map<string, Matrix>();
   const axialForces = new Map<string, number>();
   for (const element of assembly.elements) {
     const uElement = element.dofIndices.map((index) => displacement[index] ?? 0);
@@ -360,57 +400,87 @@ const geometricFromDisplacement = (
       .map((value, index) => value + (element.fixedEndForces[index] ?? 0));
     const axial = ((localForces[6] ?? 0) - (localForces[0] ?? 0)) / 2;
     axialForces.set(element.memberId, axial);
+    if (!(axial < 0)) continue;
     // Una armadura o una barra con flexión liberada no transmite giro: su
     // rigidez geométrica es la de la cuerda, N/L sobre las traslaciones.
     const localGeometric = element.kind === 'truss' || element.element.condensation
-      ? chordGeometricStiffness(element.length, Math.max(0, -axial))
-      : localGeometricStiffness(element.length, Math.max(0, -axial));
-    const globalGeometric = multiply(transpose(element.transformation), multiply(localGeometric, element.transformation));
-    element.dofIndices.forEach((row, i) => element.dofIndices.forEach((column, j) => { geometric[row][column] += globalGeometric[i][j]; }));
+      ? chordGeometricStiffness(element.length, -axial)
+      : localGeometricStiffness(element.length, -axial);
+    matrices.set(element.memberId, multiply(transpose(element.transformation), multiply(localGeometric, element.transformation)));
   }
-  return { matrix: geometric, axialForces };
+  return { matrices, axialForces };
 };
+
+const negated = (matrix: Matrix): Matrix => matrix.map((row) => row.map((value) => -value));
+
+const displacementOf = (project: Space3DProjectV1, result: Space3DAnalysisResult): number[] => project.nodes.flatMap((_, index) => {
+  const node = result.nodeResults[index];
+  return node ? [node.displacement.ux, node.displacement.uy, node.displacement.uz, node.displacement.rx, node.displacement.ry, node.displacement.rz] : [0, 0, 0, 0, 0, 0];
+});
 
 export const analyzeSpace3DPDelta = (
   project: Space3DProjectV1,
   targetId: string,
   options: Space3DPDeltaOptions = {},
 ): Space3DPDeltaResult => {
-  const linear = ((): Space3DAnalysisResult => {
-    const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
-    return assembly.valid ? analyzeSpace3DProject(project, targetId, options) : Object.freeze({
-      success: false, targetId, targetKind: assembly.targetKind, nodeResults: Object.freeze([]), memberResults: Object.freeze([]), issues: assembly.issues,
-      diagnostics: Object.freeze({ dofCount: assembly.totalDofs, freeDofCount: 0, restrainedDofCount: 0, relativeResidual: Number.NaN, conditionEstimate: Number.NaN, equilibrium: Object.freeze({ force: Object.freeze([0, 0, 0]) as Space3DVector, moment: Object.freeze([0, 0, 0]) as Space3DVector, normalized: Number.NaN }) }),
-    });
-  })();
+  const linear = analyzeSpace3DProject(project, targetId, options);
   if (!linear.success) return pDeltaFailure(targetId, 'El análisis lineal de referencia no es válido.', linear, linear.issues);
-  const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
+  const assembly = assembleSpace3DStaticModel(project, targetId, options);
   const maxIterations = Math.max(1, Math.trunc(options.maxIterations ?? 20));
   const tolerance = options.tolerance ?? 1e-7;
-  let displacement = project.nodes.flatMap((_, index) => {
-    const result = linear.nodeResults[index];
-    return result ? [result.displacement.ux, result.displacement.uy, result.displacement.uz, result.displacement.rx, result.displacement.ry, result.displacement.rz] : [0, 0, 0, 0, 0, 0];
-  });
-  let stiffness = assembly.stiffness;
-  let solved = { relativeResidual: linear.diagnostics.relativeResidual, conditionEstimate: linear.diagnostics.conditionEstimate };
+  const rhs = reduceSpace3DVector(assembly.equations, assembly.loadVector);
+  let displacement = displacementOf(project, linear);
+  let geometric = new Map<string, Matrix>();
   let converged = false;
   let iterations = 0;
   for (iterations = 1; iterations <= maxIterations; iterations += 1) {
-    const geometric = geometricFromDisplacement(assembly, displacement).matrix;
-    stiffness = assembly.stiffness.map((row, i) => row.map((value, j) => value - geometric[i][j]));
-    try {
-      const next = solveWithStiffness(stiffness, assembly.loadVector, assembly.freeDofs);
-      const difference = vectorNorm(next.displacement.map((value, index) => value - displacement[index]));
-      const scale = Math.max(1, vectorNorm(next.displacement));
-      displacement = next.displacement;
-      solved = { relativeResidual: next.relativeResidual, conditionEstimate: next.conditionEstimate };
-      if (difference <= tolerance * scale) { converged = true; break; }
-    } catch (cause) {
-      const message = cause instanceof Error ? cause.message : 'sistema singular';
-      return pDeltaFailure(targetId, `El P-Delta no pudo resolver la rigidez geométrica: ${message}`, linear);
+    geometric = geometricFromDisplacement(assembly, displacement).matrices;
+    const current = geometric;
+    const tangent = factorStiffness(project, assembly, (element) => {
+      const matrix = current.get(element.memberId);
+      return matrix ? negated(matrix) : null;
+    });
+    if (!tangent.ok) {
+      return pDeltaFailure(targetId, 'Con la compresión actual la estructura pierde rigidez: la carga supera la crítica de pandeo.', linear, [tangent.issue]);
     }
+    const next = expandSpace3DVector(assembly.equations, tangent.factorization.solve(rhs));
+    const difference = vectorNorm(next.map((value, index) => value - displacement[index]));
+    const scale = Math.max(1e-12, vectorNorm(next));
+    displacement = next;
+    if (difference <= tolerance * scale) { converged = true; break; }
   }
-  const analysis = resultFromDisplacement(project, assembly, stiffness, assembly.loadVector, displacement, solved.relativeResidual, solved.conditionEstimate);
+  const finalGeometric = geometric;
+  // Reacciones con la rigidez tangente: (K − K_G)·u − F en los apoyos.
+  const product = (u: readonly number[]): number[] => {
+    const result = space3DElementStiffnessProduct(assembly, u);
+    for (const element of assembly.elements) {
+      const matrix = finalGeometric.get(element.memberId);
+      if (!matrix) continue;
+      const local = element.dofIndices.map((index) => u[index] ?? 0);
+      element.dofIndices.forEach((row, i) => {
+        let sum = 0;
+        for (let j = 0; j < 12; j += 1) sum += matrix[i][j] * local[j];
+        result[row] -= sum;
+      });
+    }
+    return result;
+  };
+  const reducedResidual = (() => {
+    const applied = reduceSpace3DVector(assembly.equations, product(displacement));
+    let numerator = 0;
+    let denominator = 0;
+    for (let row = 0; row < rhs.length; row += 1) {
+      numerator = Math.max(numerator, Math.abs(applied[row] - rhs[row]));
+      denominator = Math.max(denominator, Math.abs(rhs[row]));
+    }
+    return denominator > 0 ? numerator / denominator : numerator;
+  })();
+  const analysis = withStoryResponse(
+    project,
+    recoverSpace3DResult(project, assembly, product, displacement, { relativeResidual: reducedResidual, conditionEstimate: linear.diagnostics.conditionEstimate }, options),
+    displacement,
+    assembly.loadVector,
+  );
   return Object.freeze({
     success: converged,
     targetId,
@@ -429,38 +499,34 @@ export const analyzeSpace3DBuckling = (
   targetId: string,
   options: Space3DModalOptions = {},
 ): Space3DBucklingResult => {
-  const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
+  const assembly = assembleSpace3DStaticModel(project, targetId, options);
   if (!assembly.valid) return bucklingFailure(targetId, 'El ensamblaje espacial no es admisible para pandeo.', assembly.issues);
   const reference = analyzeSpace3DProject(project, targetId, options);
   if (!reference.success) return bucklingFailure(targetId, 'El análisis lineal de referencia no es válido para pandeo.', reference.issues);
-  const displacement = project.nodes.flatMap((_, index) => {
-    const node = reference.nodeResults[index];
-    return node ? [node.displacement.ux, node.displacement.uy, node.displacement.uz, node.displacement.rx, node.displacement.ry, node.displacement.rz] : [0, 0, 0, 0, 0, 0];
-  });
-  const geometric = geometricFromDisplacement(assembly, displacement);
+  const geometric = geometricFromDisplacement(assembly, displacementOf(project, reference));
   const referenceAxialForces = Object.fromEntries(geometric.axialForces);
-  if (![...geometric.axialForces.values()].some((value) => value < 0)) return bucklingFailure(targetId, 'Ningún miembro está comprimido bajo esta combinación.', [], referenceAxialForces, assembly.freeDofs.length);
-  const freeDofs = [...assembly.freeDofs];
-  const eigen = generalizedSmallestEigenpairs(submatrix(assembly.stiffness, freeDofs, freeDofs), submatrix(geometric.matrix, freeDofs, freeDofs), Math.max(1, Math.trunc(options.modes ?? 3)), { positiveOnly: true, maxIterations: options.maxIterations, tolerance: options.tolerance });
-  if (!eigen.values.length) return bucklingFailure(targetId, eigen.reason, [], referenceAxialForces, freeDofs.length);
-  const modes = eigen.values.map((criticalLoadFactor, index) => {
-    const full = new Array<number>(assembly.totalDofs).fill(0);
-    freeDofs.forEach((global, reduced) => { full[global] = eigen.vectors[index][reduced]; });
-    const peak = project.nodes.reduce((maximum, _, nodeIndex) => Math.max(maximum, Math.abs(full[nodeIndex * DOF_PER_NODE]), Math.abs(full[nodeIndex * DOF_PER_NODE + 1]), Math.abs(full[nodeIndex * DOF_PER_NODE + 2])), 0);
-    const scale = peak > 0 ? 1 / peak : 1;
-    return Object.freeze({
-      criticalLoadFactor,
-      shape: Object.freeze(project.nodes.map((node, nodeIndex) => Object.freeze({
-        nodeId: node.id,
-        ux: full[nodeIndex * DOF_PER_NODE] * scale,
-        uy: full[nodeIndex * DOF_PER_NODE + 1] * scale,
-        uz: full[nodeIndex * DOF_PER_NODE + 2] * scale,
-        rx: full[nodeIndex * DOF_PER_NODE + 3] * scale,
-        ry: full[nodeIndex * DOF_PER_NODE + 4] * scale,
-        rz: full[nodeIndex * DOF_PER_NODE + 5] * scale,
-      }))),
-    });
+  const n = assembly.equations.count;
+  if (geometric.matrices.size === 0) return bucklingFailure(targetId, 'Ningún miembro está comprimido bajo esta combinación.', [], referenceAxialForces, n);
+  const stiffness = factorStiffness(project, assembly);
+  if (!stiffness.ok) return bucklingFailure(targetId, 'La rigidez es singular: hay un mecanismo.', [stiffness.issue], referenceAxialForces, n);
+  const geometricMatrix = createSkylineMatrix(assembly.equations.firstColumn);
+  for (const element of assembly.elements) {
+    const matrix = geometric.matrices.get(element.memberId);
+    if (matrix) scatterSpace3DElement(assembly.equations, geometricMatrix, element.dofIndices, matrix);
+  }
+  const eigen = smallestGeneralizedEigenpairs({
+    n,
+    solve: (rhs) => stiffness.factorization.solve(rhs),
+    applyB: (vector) => multiplySkyline(geometricMatrix, vector),
+    count: Math.max(1, Math.min(Math.trunc(options.modes ?? 3), positiveDiagonalCount(geometricMatrix))),
+    sturmCount: sturmCounter(stiffness.matrix, geometricMatrix),
+    tolerance: options.tolerance,
   });
+  if (eigen.pairs.length === 0) return bucklingFailure(targetId, 'No se encontró ningún modo de pandeo.', [], referenceAxialForces, n);
+  const modes = eigen.pairs.map((pair) => Object.freeze({
+    criticalLoadFactor: pair.value,
+    shape: normalizedShape(project, expandSpace3DVector(assembly.equations, pair.vector)),
+  }));
   return Object.freeze({
     success: true,
     targetId,
@@ -468,10 +534,11 @@ export const analyzeSpace3DBuckling = (
     criticalLoadFactor: modes[0].criticalLoadFactor,
     referenceAxialForces,
     converged: eigen.converged,
-    residual: eigen.residual,
-    freeDegreesOfFreedom: freeDofs.length,
+    sturmVerified: eigen.sturmVerified,
+    residual: Math.max(...eigen.pairs.map((pair) => pair.bound)),
+    freeDegreesOfFreedom: n,
     issues: Object.freeze([]),
-    reason: eigen.reason,
+    reason: eigen.sturmVerified ? 'Factores verificados con la cuenta de Sturm.' : 'La cuenta de Sturm no pudo confirmar los factores.',
   });
 };
 
@@ -553,7 +620,7 @@ export const analyzeSpace3DInfluence = (
   options: Space3DInfluenceOptions,
 ): Space3DInfluenceResult => {
   const { target, targetId } = options;
-  const assembly = assembleSpace3DStaticModel(project, targetId, { ...options, requireDense: true });
+  const assembly = assembleSpace3DStaticModel(project, targetId, options);
   if (!assembly.valid) return influenceFailure(targetId, target, 'El ensamblaje espacial no es admisible para influencia.', assembly.issues);
   const element = assembly.elements.find((candidate) => candidate.memberId === target.memberId);
   if (!element) return influenceFailure(targetId, target, 'El miembro objetivo no existe en la asamblea.', [{ code: 'missing-reference', entityKind: 'member', entityId: target.memberId, field: 'memberId' }]);
@@ -568,6 +635,8 @@ export const analyzeSpace3DInfluence = (
   const endIndex = nodeIndex.get(element.nodeJ);
   if (startIndex === undefined || endIndex === undefined) return influenceFailure(targetId, target, 'La asamblea no tiene extremos del miembro objetivo.');
   const points: Space3DInfluencePoint[] = [];
+  const stiffness = factorStiffness(project, assembly);
+  if (!stiffness.ok) return influenceFailure(targetId, target, 'La rigidez es singular: hay un mecanismo.', [stiffness.issue]);
   try {
     for (const position of options.positions) {
       if (!Number.isFinite(position) || position < 0 || position > element.length) {
@@ -583,8 +652,17 @@ export const analyzeSpace3DInfluence = (
       loadVector[endBase] += options.unitLoad[0] * ratio;
       loadVector[endBase + 1] += options.unitLoad[1] * ratio;
       loadVector[endBase + 2] += options.unitLoad[2] * ratio;
-      const solved = solveWithStiffness(assembly.stiffness, loadVector, assembly.freeDofs);
-      const analysis = resultFromDisplacement(project, assembly, assembly.stiffness, loadVector, solved.displacement, solved.relativeResidual, solved.conditionEstimate);
+      const rhs = reduceSpace3DVector(assembly.equations, loadVector);
+      const reduced = stiffness.factorization.solve(rhs);
+      const product = space3DReducedStiffnessProduct(assembly, reduced);
+      let numerator = 0;
+      let denominator = 0;
+      for (let row = 0; row < rhs.length; row += 1) {
+        numerator = Math.max(numerator, Math.abs(product[row] - rhs[row]));
+        denominator = Math.max(denominator, Math.abs(rhs[row]));
+      }
+      const displacement = expandSpace3DVector(assembly.equations, reduced);
+      const analysis = recoverSpace3DResult(project, assembly, null, displacement, { relativeResidual: denominator > 0 ? numerator / denominator : numerator, conditionEstimate: Number.NaN }, { loadVector });
       points.push(Object.freeze({ position, value: evaluateInfluenceQuantity(analysis, target, element.length), equilibriumResidual: analysis.diagnostics.equilibrium.normalized, analysis }));
     }
   } catch (cause) {

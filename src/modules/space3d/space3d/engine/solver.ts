@@ -27,7 +27,6 @@ import {
 import {
   assessAnalysisAdmission,
   createBrowserAnalysisBudget,
-  estimateSparseLinearSystemBytes,
 } from '../../../../numeric/admission';
 import type { AnalysisBudget } from '../../../../shared/contracts';
 import {
@@ -47,15 +46,25 @@ import {
   type Space3DLocalLoadSet,
 } from './memberLoading';
 import {
-  addToSkyline,
   createSkylineMatrix,
   factorizeSkyline,
-  reverseCuthillMcKeeOrder,
   skylineInfinityNorm,
   Space3DSingularMatrixError,
   type Space3DSkylineFactorization,
+  type Space3DSkylineMatrix,
 } from './skylineSolver';
+import {
+  expandSpace3DVector,
+  planSpace3DEquations,
+  reduceSpace3DVector,
+  scatterSpace3DElement,
+  space3DDiaphragmOfNodes,
+  space3DSlaveDofs,
+  SPACE3D_DIAPHRAGM_DOFS,
+  type Space3DEquationMap,
+} from './equations';
 import { validateSpace3DProject } from '../model/validation';
+import { computeSpace3DStoryResponse } from './storyResponse';
 import {
   SPACE3D_DOF_KEYS,
   Space3DGeometryError,
@@ -208,14 +217,9 @@ export interface Space3DStaticAnalysisOptions {
   readonly budget?: AnalysisBudget;
   /** Tramos uniformes de las estaciones de cada barra (12 por omisión). */
   readonly stationSegments?: number;
-  /**
-   * El consumidor necesita la rigidez densa (modal, pandeo, P-Delta): se
-   * admite contra el presupuesto de la matriz completa antes de ensamblar.
-   */
-  readonly requireDense?: boolean;
 }
 
-interface Space3DStaticAssemblyElement {
+export interface Space3DStaticAssemblyElement {
   readonly memberId: string;
   readonly nodeI: string;
   readonly nodeJ: string;
@@ -248,7 +252,7 @@ interface Space3DStaticAssemblyElement {
  * La asamblea no impone un máximo de entidades: el runtime que la invoque es
  * quien debe admitirla según su presupuesto de memoria.
  */
-interface Space3DStaticAssembly {
+export interface Space3DStaticAssembly {
   readonly valid: boolean;
   readonly targetId: string;
   readonly targetKind: Space3DAnalysisResult['targetKind'];
@@ -267,11 +271,10 @@ interface Space3DStaticAssembly {
   readonly issues: readonly Space3DAnalysisIssue[];
   readonly backend: 'dense-reference' | 'sparse-requested';
   /**
-   * Numeración del perfil: `position[dof]` es la fila del GDL libre en la
-   * matriz reordenada (−1 si está restringido) y `firstColumn` la primera
-   * columna no nula de cada fila.
+   * Ecuaciones del sistema reducido: GDL libres, restringidos y esclavos de
+   * diafragmas, con el perfil de la matriz reordenada.
    */
-  readonly profile: { readonly position: Int32Array; readonly firstColumn: Int32Array };
+  readonly equations: Space3DEquationMap;
   readonly assemblyTrace?: readonly {
     readonly memberId: string;
     readonly dofIndices: readonly number[];
@@ -354,72 +357,22 @@ const emptyStaticAssembly = (
     elements: Object.freeze([]),
     issues: Object.freeze([...issues]),
     backend,
-    profile: { position: new Int32Array(0), firstColumn: new Int32Array(0) },
+    equations: EMPTY_EQUATIONS,
   });
 };
 
-/**
- * Dense Space 3D paths need the same adaptive budget as the sparse runtime.
- * Passing n² as the non-zero count reuses the conservative arithmetic-only
- * estimate (including dense fill and solve workspace) without imposing an
- * entity-count ceiling on the model.
- */
-const estimateSpace3DAnalysisBytes = (dofCount: number): number => {
-  if (!Number.isSafeInteger(dofCount) || dofCount <= 0) return Number.POSITIVE_INFINITY;
-  const maxSafeDimension = Math.floor(Math.sqrt(Number.MAX_SAFE_INTEGER));
-  const denseEntries = dofCount <= maxSafeDimension ? dofCount * dofCount : Number.MAX_SAFE_INTEGER;
-  return estimateSparseLinearSystemBytes({ dimension: dofCount, nonZeros: denseEntries });
-};
+const EMPTY_EQUATIONS: Space3DEquationMap = Object.freeze({
+  count: 0,
+  firstColumn: new Int32Array(0),
+  position: new Int32Array(0),
+  slaves: new Map(),
+  diaphragms: Object.freeze([]),
+  owners: Object.freeze([]),
+});
 
 /** Cota de memoria por barra: tres matrices 12×12 y sus cargas. */
 const ELEMENT_BYTES = 8 * 1024;
 const DOF_BYTES = 256;
-
-/**
- * Numeración del perfil: los nudos se ordenan con Cuthill–McKee inverso sobre
- * la conectividad de las barras y sus GDL libres se numeran seguidos. La
- * primera columna de cada fila es la menor posición entre los nudos vecinos.
- */
-const planSkylineProfile = (
-  project: Space3DProjectV1,
-  nodeIndex: ReadonlyMap<string, number>,
-  restrained: ReadonlySet<number>,
-  totalDofs: number,
-): { position: Int32Array; firstColumn: Int32Array } => {
-  const nodeCount = project.nodes.length;
-  const neighbours: Set<number>[] = Array.from({ length: nodeCount }, () => new Set<number>());
-  for (const member of project.members) {
-    const i = nodeIndex.get(member.i);
-    const j = nodeIndex.get(member.j);
-    if (i === undefined || j === undefined || i === j) continue;
-    neighbours[i].add(j);
-    neighbours[j].add(i);
-  }
-  const order = reverseCuthillMcKeeOrder(neighbours.map((set) => [...set]));
-  const position = new Int32Array(totalDofs).fill(-1);
-  const firstOfNode = new Int32Array(nodeCount).fill(-1);
-  let next = 0;
-  for (const node of order) {
-    for (let dof = 0; dof < DOF_PER_NODE; dof += 1) {
-      const global = node * DOF_PER_NODE + dof;
-      if (restrained.has(global)) continue;
-      if (firstOfNode[node] < 0) firstOfNode[node] = next;
-      position[global] = next;
-      next += 1;
-    }
-  }
-  const firstColumn = new Int32Array(next);
-  for (let node = 0; node < nodeCount; node += 1) {
-    if (firstOfNode[node] < 0) continue;
-    let first = firstOfNode[node];
-    for (const other of neighbours[node]) if (firstOfNode[other] >= 0 && firstOfNode[other] < first) first = firstOfNode[other];
-    for (let dof = 0; dof < DOF_PER_NODE; dof += 1) {
-      const row = position[node * DOF_PER_NODE + dof];
-      if (row >= 0) firstColumn[row] = first;
-    }
-  }
-  return { position, firstColumn };
-};
 
 /**
  * Cota previa del cálculo lineal en perfil, sin ordenar nada: el ancho de
@@ -475,12 +428,10 @@ export const assembleSpace3DStaticModel = (
     return emptyStaticAssembly(targetId, target.kind, [...memberIssues, ...semantics], backend, totalDofs, nodeDofIndices);
   }
 
-  // Primera admisión, antes de reservar nada: la densa si el consumidor la
-  // pide, y si no una cota de lo que ocupan los elementos y los vectores.
+  // Primera admisión, antes de reservar nada: una cota de lo que ocupan los
+  // elementos y los vectores.
   const budget = options.budget ?? createBrowserAnalysisBudget();
-  const coarseBytes = options.requireDense
-    ? estimateSpace3DAnalysisBytes(totalDofs)
-    : project.members.length * ELEMENT_BYTES + totalDofs * DOF_BYTES;
+  const coarseBytes = project.members.length * ELEMENT_BYTES + totalDofs * DOF_BYTES;
   const admission = assessAnalysisAdmission(coarseBytes, budget);
   if (!admission.accepted) {
     return emptyStaticAssembly(
@@ -600,6 +551,20 @@ export const assembleSpace3DStaticModel = (
     SPACE3D_DOF_KEYS.forEach((key, dof) => { if (node.restraints[key]) userRestrained.add(index * DOF_PER_NODE + dof); });
   });
 
+  // Un nudo de diafragma no puede tener apoyo en el plano: el diafragma
+  // entero quedaría apoyado sin que nadie lo haya pedido.
+  const diaphragms = project.diaphragms ?? [];
+  const diaphragmOf = space3DDiaphragmOfNodes(project.nodes, diaphragms);
+  const conflicts: Space3DAnalysisIssue[] = [];
+  diaphragmOf.forEach((diaphragm, node) => {
+    if (diaphragm < 0) return;
+    for (const dof of SPACE3D_DIAPHRAGM_DOFS) {
+      if (userRestrained.has(node * DOF_PER_NODE + dof)) conflicts.push(issue('constraint-conflict', 'node', project.nodes[node].id, SPACE3D_DOF_KEYS[dof]));
+    }
+  });
+  if (conflicts.length > 0) return emptyStaticAssembly(targetId, target.kind, conflicts, backend, totalDofs, nodeDofIndices);
+  const slaveDofs = space3DSlaveDofs(diaphragmOf);
+
   // Un GDL al que ninguna barra aporta rigidez no es un mecanismo si nada lo
   // carga: se fija, como hacen los programas comerciales con los giros de un
   // nudo de armadura. Si lo carga algo, es un mecanismo de verdad.
@@ -608,7 +573,7 @@ export const assembleSpace3DStaticModel = (
   const autoRestrained: number[] = [];
   const loadedMechanisms: Space3DAnalysisIssue[] = [];
   for (let dof = 0; dof < totalDofs; dof += 1) {
-    if (userRestrained.has(dof) || Math.abs(diagonal[dof]) > zeroTolerance) continue;
+    if (userRestrained.has(dof) || slaveDofs.has(dof) || Math.abs(diagonal[dof]) > zeroTolerance) continue;
     if (loadVector[dof] !== 0) {
       const node = project.nodes[Math.floor(dof / DOF_PER_NODE)];
       loadedMechanisms.push(issue('mechanism', 'node', node.id, SPACE3D_DOF_KEYS[dof % DOF_PER_NODE]));
@@ -620,20 +585,23 @@ export const assembleSpace3DStaticModel = (
 
   const restrainedSet = new Set([...userRestrained, ...autoRestrained]);
   const restrainedDofs = [...restrainedSet].sort((a, b) => a - b);
+  const equations = planSpace3DEquations({
+    nodes: project.nodes,
+    connections: elements.map((element) => [nodeIndex.get(element.nodeI) ?? 0, nodeIndex.get(element.nodeJ) ?? 0] as const),
+    diaphragms,
+    diaphragmOf,
+    restrained: restrainedSet,
+  });
   const freeDofs: number[] = [];
-  for (let dof = 0; dof < totalDofs; dof += 1) if (!restrainedSet.has(dof)) freeDofs.push(dof);
-  const profile = planSkylineProfile(project, nodeIndex, restrainedSet, totalDofs);
-  const profileEntries = profileSize(profile.firstColumn);
-  const fineAdmission = assessAnalysisAdmission(
-    (options.requireDense ? estimateSpace3DAnalysisBytes(totalDofs) : 0) + coarseBytes + profileEntries * 8,
-    budget,
-  );
+  for (let dof = 0; dof < totalDofs; dof += 1) if (equations.position[dof] >= 0) freeDofs.push(dof);
+  const profileEntries = profileSize(equations.firstColumn);
+  const fineAdmission = assessAnalysisAdmission(coarseBytes + profileEntries * 8, budget);
   if (!fineAdmission.accepted) {
     return emptyStaticAssembly(targetId, target.kind, [issue('memory-budget', 'project', project.id, 'budget')], backend, totalDofs, nodeDofIndices);
   }
 
-  // La rigidez densa sólo se construye si alguien la lee (modal, pandeo,
-  // P-Delta, auditorías): el cálculo lineal trabaja sobre el perfil.
+  // La rigidez densa global (sin restricciones) sólo se construye si alguien
+  // la lee (auditorías, pruebas pequeñas): todo el cálculo va en perfil.
   let dense: Matrix | null = null;
   const denseStiffness = (): Matrix => {
     if (dense) return dense;
@@ -660,7 +628,7 @@ export const assembleSpace3DStaticModel = (
     loadVector,
     get K() { return denseStiffness(); },
     F: loadVector,
-    profile,
+    equations,
     nodeDofIndices,
     restrainedDofs: Object.freeze(restrainedDofs),
     autoRestrainedDofs: Object.freeze(autoRestrained),
@@ -680,8 +648,11 @@ export const assembleSpace3DStaticModel = (
 export const recoverSpace3DResult = (
   project: Space3DProjectV1,
   assembly: Space3DStaticAssembly,
-  /** Rigidez con la que se resolvió (P-Delta la modifica); `null` usa la de las barras. */
-  stiffness: Matrix | null,
+  /**
+   * Rigidez con la que se resolvió: `null` usa la de las barras; P-Delta pasa
+   * su producto `(K − K_G)·u` para que las reacciones cierren con él.
+   */
+  stiffness: Matrix | null | ((displacement: readonly number[]) => number[]),
   displacement: readonly number[],
   solve: { readonly relativeResidual: number; readonly conditionEstimate: number },
   options: Pick<Space3DStaticAnalysisOptions, 'stationSegments'> & {
@@ -694,7 +665,9 @@ export const recoverSpace3DResult = (
 ): Space3DAnalysisResult => {
   const loadVector = options.loadVector ?? assembly.loadVector;
   const withMemberLoads = options.loadVector === undefined;
-  const product = stiffness ? multiplyMatrixVector(stiffness, [...displacement]) : elementStiffnessProduct(assembly, displacement);
+  const product = typeof stiffness === 'function'
+    ? stiffness(displacement)
+    : stiffness ? multiplyMatrixVector(stiffness, [...displacement]) : space3DElementStiffnessProduct(assembly, displacement);
   const rawReactions = product.map((value, index) => value - (loadVector[index] ?? 0));
   const restrained = new Set(assembly.restrainedDofs);
   const reactions = rawReactions.map((value, index) => (restrained.has(index) ? value : 0));
@@ -735,14 +708,16 @@ export const recoverSpace3DResult = (
 
   const equilibrium = auditEquilibrium(project, nodeResults, loadVector);
   const userRestrainedCount = assembly.restrainedDofs.length - assembly.autoRestrainedDofs.length;
+  const constrained = assembly.equations.slaves.size;
   const diagnostics: Space3DAnalysisDiagnostics = Object.freeze({
     dofCount: assembly.totalDofs,
-    freeDofCount: assembly.freeDofs.length,
+    freeDofCount: assembly.equations.count,
     restrainedDofCount: userRestrainedCount,
     relativeResidual: solve.relativeResidual,
     conditionEstimate: solve.conditionEstimate,
     equilibrium,
     ...(assembly.autoRestrainedDofs.length > 0 ? { autoRestrainedDofCount: assembly.autoRestrainedDofs.length } : {}),
+    ...(constrained > 0 ? { constrainedDofCount: constrained } : {}),
   });
 
   return Object.freeze({
@@ -757,7 +732,7 @@ export const recoverSpace3DResult = (
 };
 
 /** `K·u` barra a barra, sin formar la matriz global. */
-const elementStiffnessProduct = (assembly: Space3DStaticAssembly, displacement: readonly number[]): number[] => {
+export const space3DElementStiffnessProduct = (assembly: Space3DStaticAssembly, displacement: readonly number[]): number[] => {
   const result = new Array<number>(assembly.totalDofs).fill(0);
   for (const element of assembly.elements) {
     const indices = element.dofIndices;
@@ -794,6 +769,32 @@ const estimateInverseNorm = (factorization: Space3DSkylineFactorization): number
   return estimate;
 };
 
+/** Rigidez reducida `Cᵀ·K·C` en perfil, barra a barra. */
+export const assembleSpace3DSkylineStiffness = (
+  assembly: Space3DStaticAssembly,
+  extra?: (element: Space3DStaticAssemblyElement) => Matrix | null,
+): Space3DSkylineMatrix => {
+  const matrix = createSkylineMatrix(assembly.equations.firstColumn);
+  for (const element of assembly.elements) {
+    scatterSpace3DElement(assembly.equations, matrix, element.dofIndices, element.globalStiffness);
+    const additional = extra?.(element);
+    if (additional) scatterSpace3DElement(assembly.equations, matrix, element.dofIndices, additional);
+  }
+  return matrix;
+};
+
+/** Nudo y GDL (o diafragma) de una ecuación, para informar un mecanismo. */
+export const space3DMechanismIssue = (project: Space3DProjectV1, assembly: Space3DStaticAssembly, row: number): Space3DAnalysisIssue => {
+  const owner = assembly.equations.owners[row];
+  if (owner?.kind === 'node') return issue('mechanism', 'node', project.nodes[owner.nodeIndex].id, SPACE3D_DOF_KEYS[owner.dof]);
+  if (owner?.kind === 'diaphragm') return issue('mechanism', 'diaphragm', assembly.equations.diaphragms[owner.diaphragmIndex].id, ['ux', 'uz', 'ry'][owner.component]);
+  return issue('mechanism', 'project', '');
+};
+
+/** `Cᵀ·K·C·û` sin formar la matriz: expandir, multiplicar barra a barra, reducir. */
+export const space3DReducedStiffnessProduct = (assembly: Space3DStaticAssembly, reduced: ArrayLike<number>): Float64Array =>
+  reduceSpace3DVector(assembly.equations, space3DElementStiffnessProduct(assembly, expandSpace3DVector(assembly.equations, reduced)));
+
 /** Punto de entrada estático: ensamblar una vez, resolver en perfil y recuperar. */
 export const analyzeSpace3DProject = (
   project: Space3DProjectV1,
@@ -802,31 +803,16 @@ export const analyzeSpace3DProject = (
 ): Space3DAnalysisResult => {
   const assembly = assembleSpace3DStaticModel(project, targetId, options);
   if (!assembly.valid) return failed(targetId, assembly.targetKind, assembly.issues);
-  const { position, firstColumn } = assembly.profile;
-  const n = firstColumn.length;
+  const { equations } = assembly;
+  const n = equations.count;
   // Todo restringido no es un error: los desplazamientos son nulos y las
   // reacciones equilibran las cargas (una viga biempotrada aislada).
   if (n === 0) {
     return recoverSpace3DResult(project, assembly, null, new Array<number>(assembly.totalDofs).fill(0), { relativeResidual: 0, conditionEstimate: 1 }, options);
   }
 
-  const matrix = createSkylineMatrix(firstColumn);
-  for (const element of assembly.elements) {
-    const rows = element.dofIndices.map((dof) => position[dof]);
-    for (let a = 0; a < 12; a += 1) {
-      const row = rows[a];
-      if (row < 0) continue;
-      const source = element.globalStiffness[a];
-      for (let b = 0; b < 12; b += 1) {
-        const column = rows[b];
-        if (column < 0 || column > row) continue;
-        const value = source[b];
-        if (value !== 0) addToSkyline(matrix, row, column, value);
-      }
-    }
-  }
-  const rhs = new Float64Array(n);
-  for (let dof = 0; dof < assembly.totalDofs; dof += 1) if (position[dof] >= 0) rhs[position[dof]] = assembly.loadVector[dof];
+  const matrix = assembleSpace3DSkylineStiffness(assembly);
+  const rhs = reduceSpace3DVector(equations, assembly.loadVector);
   const matrixNorm = skylineInfinityNorm(matrix);
 
   let factorization: Space3DSkylineFactorization;
@@ -834,53 +820,52 @@ export const analyzeSpace3DProject = (
     factorization = factorizeSkyline(matrix);
   } catch (error) {
     if (!(error instanceof Space3DSingularMatrixError)) throw error;
-    const dof = position.indexOf(error.row);
-    const node = dof >= 0 ? project.nodes[Math.floor(dof / DOF_PER_NODE)] : undefined;
-    return failed(targetId, assembly.targetKind, [node
-      ? issue('mechanism', 'node', node.id, SPACE3D_DOF_KEYS[dof % DOF_PER_NODE])
-      : issue('mechanism', 'project', '')]);
+    return failed(targetId, assembly.targetKind, [space3DMechanismIssue(project, assembly, error.row)]);
   }
 
-  const toGlobal = (reduced: Float64Array): number[] => {
-    const full = new Array<number>(assembly.totalDofs).fill(0);
-    for (let dof = 0; dof < assembly.totalDofs; dof += 1) if (position[dof] >= 0) full[dof] = reduced[position[dof]];
-    return full;
-  };
-  const residualOf = (full: readonly number[]): { residual: Float64Array; relative: number } => {
-    const product = elementStiffnessProduct(assembly, full);
+  const residualOf = (reduced: Float64Array): { residual: Float64Array; relative: number } => {
+    const product = space3DReducedStiffnessProduct(assembly, reduced);
     const residual = new Float64Array(n);
     let numerator = 0;
     let xNorm = 0;
     let bNorm = 0;
-    for (let dof = 0; dof < assembly.totalDofs; dof += 1) {
-      const row = position[dof];
-      if (row < 0) continue;
-      residual[row] = rhs[row] - product[dof];
+    for (let row = 0; row < n; row += 1) {
+      residual[row] = rhs[row] - product[row];
       numerator = Math.max(numerator, Math.abs(residual[row]));
-      xNorm = Math.max(xNorm, Math.abs(full[dof]));
+      xNorm = Math.max(xNorm, Math.abs(reduced[row]));
       bNorm = Math.max(bNorm, Math.abs(rhs[row]));
     }
     return { residual, relative: numerator / Math.max(Number.MIN_VALUE, matrixNorm * xNorm + bNorm) };
   };
 
   let reduced = factorization.solve(rhs);
-  let displacement = toGlobal(reduced);
-  let check = residualOf(displacement);
+  let check = residualOf(reduced);
   // Un paso de refinamiento iterativo: barato con la factorización hecha.
   if (check.relative > 1e-12) {
     const correction = factorization.solve(check.residual);
     const candidate = reduced.map((value, index) => value + correction[index]);
-    const candidateDisplacement = toGlobal(candidate);
-    const candidateCheck = residualOf(candidateDisplacement);
+    const candidateCheck = residualOf(candidate);
     if (candidateCheck.relative < check.relative) {
       reduced = candidate;
-      displacement = candidateDisplacement;
       check = candidateCheck;
     }
   }
+  const displacement = expandSpace3DVector(equations, reduced);
   if (displacement.some((value) => !Number.isFinite(value)) || !Number.isFinite(check.relative)) {
     return failed(targetId, assembly.targetKind, [issue('non-finite-solution', 'project', '')]);
   }
   const conditionEstimate = matrixNorm * estimateInverseNorm(factorization);
-  return recoverSpace3DResult(project, assembly, null, displacement, { relativeResidual: check.relative, conditionEstimate }, options);
+  const result = recoverSpace3DResult(project, assembly, null, displacement, { relativeResidual: check.relative, conditionEstimate }, options);
+  return withStoryResponse(project, result, displacement, assembly.loadVector);
+};
+
+/** Añade la respuesta por piso de un estado estático (desplazamientos y cargas). */
+export const withStoryResponse = (
+  project: Space3DProjectV1,
+  result: Space3DAnalysisResult,
+  displacement: readonly number[],
+  loads: readonly number[],
+): Space3DAnalysisResult => {
+  const stories = computeSpace3DStoryResponse(project, { displacements: [displacement], forces: [loads], combine: (values) => values[0] });
+  return stories.length > 0 ? Object.freeze({ ...result, stories: Object.freeze(stories) }) : result;
 };

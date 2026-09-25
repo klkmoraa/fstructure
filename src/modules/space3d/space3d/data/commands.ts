@@ -15,15 +15,19 @@
 import { validateSpace3DProject } from '../model/validation';
 import {
   SPACE3D_LIMITS,
+  type Space3DDiaphragm,
   type Space3DFrameMember,
   type Space3DGridSystem,
   type Space3DLoadCase,
   type Space3DLoadCombination,
+  type Space3DMassSource,
   type Space3DMemberLoad,
   type Space3DNodalLoad,
   type Space3DNode,
   type Space3DProjectV1,
+  type Space3DResponseSpectrumCase,
   type Space3DRestraints,
+  type Space3DSpectrumFunction,
 } from '../model/types';
 
 export type Space3DCommand =
@@ -48,6 +52,15 @@ export type Space3DCommand =
   /** Guarda (o, con `null`, retira) la rejilla de ejes y pisos. */
   | { readonly kind: 'set-grid'; readonly grid: Space3DGridSystem | null }
   | { readonly kind: 'rename-project'; readonly name: string }
+  /** Reemplaza (o, con `null`, retira) los diafragmas rígidos. */
+  | { readonly kind: 'set-diaphragms'; readonly diaphragms: readonly Space3DDiaphragm[] | null }
+  /** Fija (o, con `null`, vuelve a la masa propia) la fuente de masa. */
+  | { readonly kind: 'set-mass-source'; readonly massSource: Space3DMassSource | null }
+  | { readonly kind: 'upsert-spectrum-function'; readonly spectrum: Space3DSpectrumFunction }
+  /** Se rechaza si algún caso espectral la usa. */
+  | { readonly kind: 'delete-spectrum-function'; readonly functionId: string }
+  | { readonly kind: 'upsert-response-spectrum-case'; readonly spectrumCase: Space3DResponseSpectrumCase }
+  | { readonly kind: 'delete-response-spectrum-case'; readonly caseId: string }
   /**
    * Varias ediciones como un solo paso: se aplican en orden y, si una falla,
    * no se aplica ninguna. Deshacer revierte el lote entero.
@@ -63,7 +76,8 @@ type Space3DCommandErrorCode =
   | 'invalid-value'
   | 'limit-exceeded'
   | 'invalid-result'
-  | 'case-in-use';
+  | 'case-in-use'
+  | 'function-in-use';
 
 export class Space3DCommandError extends Error {
   readonly code: Space3DCommandErrorCode;
@@ -182,7 +196,16 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
         const consumers = [...members.map((item) => item.id), ...loads.map((item) => item.id)].join(', ');
         fail('node-in-use', `el nudo «${command.nodeId}» todavía es usado por: ${consumers}`);
       }
-      return finish(project, { ...project, nodes: project.nodes.filter((node) => node.id !== command.nodeId) });
+      // Un diafragma sin el nudo sigue siendo el mismo diafragma; con menos de
+      // dos nudos ya no restringe nada y se retira. Deshacer lo recupera.
+      const diaphragms = project.diaphragms
+        ?.map((item) => ({ ...item, nodeIds: item.nodeIds.filter((id) => id !== command.nodeId) }))
+        .filter((item) => item.nodeIds.length >= 2);
+      return finish(project, {
+        ...project,
+        nodes: project.nodes.filter((node) => node.id !== command.nodeId),
+        ...(diaphragms ? { diaphragms } : {}),
+      });
     }
 
     case 'add-member': {
@@ -277,8 +300,9 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
       requireExisting(project.loadCases, command.caseId, 'el caso de carga');
       const used = project.nodalLoads.some((load) => load.caseId === command.caseId)
         || project.memberLoads.some((load) => load.caseId === command.caseId)
-        || project.loadCombinations.some((item) => item.terms.some((term) => term.caseId === command.caseId));
-      if (used) fail('case-in-use', `el caso «${command.caseId}» todavía tiene cargas o combinaciones`);
+        || project.loadCombinations.some((item) => item.terms.some((term) => term.caseId === command.caseId))
+        || (project.massSource?.loads.some((term) => term.caseId === command.caseId) ?? false);
+      if (used) fail('case-in-use', `el caso «${command.caseId}» todavía tiene cargas, combinaciones o aporta masa`);
       return finish(project, { ...project, loadCases: project.loadCases.filter((item) => item.id !== command.caseId) });
     }
 
@@ -319,6 +343,89 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
     case 'rename-project': {
       if (typeof command.name !== 'string' || command.name.trim() === '') fail('empty-id', 'el proyecto necesita un nombre');
       return finish(project, { ...project, name: command.name.trim() });
+    }
+
+    case 'set-diaphragms': {
+      if (command.diaphragms === null || command.diaphragms.length === 0) {
+        const { diaphragms: _removed, ...rest } = project;
+        return finish(project, rest);
+      }
+      const owner = new Map<string, string>();
+      const ids = new Set<string>();
+      for (const diaphragm of command.diaphragms) {
+        requireId(diaphragm.id, 'el diafragma');
+        if (ids.has(diaphragm.id)) fail('duplicate-id', `ya existe el diafragma «${diaphragm.id}»`);
+        ids.add(diaphragm.id);
+        if (diaphragm.nodeIds.length < 2) fail('invalid-value', `el diafragma «${diaphragm.id}» necesita al menos dos nudos`);
+        for (const nodeId of diaphragm.nodeIds) {
+          requireExisting(project.nodes, nodeId, 'el nudo');
+          const previous = owner.get(nodeId);
+          if (previous !== undefined) fail('invalid-value', `el nudo «${nodeId}» ya pertenece a «${previous}»`);
+          owner.set(nodeId, diaphragm.id);
+        }
+      }
+      return finish(project, { ...project, diaphragms: command.diaphragms });
+    }
+
+    case 'set-mass-source': {
+      if (command.massSource === null) {
+        const { massSource: _removed, ...rest } = project;
+        return finish(project, rest);
+      }
+      if (typeof command.massSource.selfMass !== 'boolean') fail('invalid-value', 'masa propia');
+      for (const term of command.massSource.loads) {
+        requireExisting(project.loadCases, term.caseId, 'el caso de carga');
+        requireFinite(term.factor, `factor de masa de ${term.caseId}`);
+        if (term.factor < 0) fail('invalid-value', `el factor de masa de ${term.caseId} no puede ser negativo`);
+      }
+      return finish(project, { ...project, massSource: command.massSource });
+    }
+
+    case 'upsert-spectrum-function': {
+      const spectrum = command.spectrum;
+      requireId(spectrum.id, 'el espectro');
+      if (spectrum.points.length === 0) fail('invalid-value', 'el espectro necesita al menos un punto');
+      spectrum.points.forEach(([period, acceleration], index) => {
+        requireFinite(period, `periodo ${index + 1}`);
+        requireFinite(acceleration, `Sa ${index + 1}`);
+        if (period < 0 || acceleration < 0) fail('invalid-value', `el punto ${index + 1} del espectro no puede ser negativo`);
+        if (index > 0 && !(period > spectrum.points[index - 1][0])) fail('invalid-value', 'los periodos del espectro deben crecer');
+      });
+      const list = project.spectrumFunctions ?? [];
+      const exists = list.some((item) => item.id === spectrum.id);
+      return finish(project, {
+        ...project,
+        spectrumFunctions: exists ? list.map((item) => (item.id === spectrum.id ? spectrum : item)) : [...list, spectrum],
+      });
+    }
+
+    case 'delete-spectrum-function': {
+      requireExisting(project.spectrumFunctions ?? [], command.functionId, 'el espectro');
+      if ((project.responseSpectrumCases ?? []).some((item) => item.functionId === command.functionId)) {
+        fail('function-in-use', `el espectro «${command.functionId}» lo usa un caso espectral`);
+      }
+      return finish(project, { ...project, spectrumFunctions: (project.spectrumFunctions ?? []).filter((item) => item.id !== command.functionId) });
+    }
+
+    case 'upsert-response-spectrum-case': {
+      const spectrumCase = command.spectrumCase;
+      requireId(spectrumCase.id, 'el caso espectral');
+      requireExisting(project.spectrumFunctions ?? [], spectrumCase.functionId, 'el espectro');
+      requirePositive(spectrumCase.scale, 'factor de escala');
+      requireFinite(spectrumCase.dampingRatio, 'amortiguamiento');
+      if (spectrumCase.dampingRatio < 0 || spectrumCase.dampingRatio >= 1) fail('invalid-value', 'el amortiguamiento debe estar entre 0 y 1');
+      if (!Number.isInteger(spectrumCase.modes) || spectrumCase.modes < 1 || spectrumCase.modes > 500) fail('invalid-value', 'el número de modos va de 1 a 500');
+      const list = project.responseSpectrumCases ?? [];
+      const exists = list.some((item) => item.id === spectrumCase.id);
+      return finish(project, {
+        ...project,
+        responseSpectrumCases: exists ? list.map((item) => (item.id === spectrumCase.id ? spectrumCase : item)) : [...list, spectrumCase],
+      });
+    }
+
+    case 'delete-response-spectrum-case': {
+      requireExisting(project.responseSpectrumCases ?? [], command.caseId, 'el caso espectral');
+      return finish(project, { ...project, responseSpectrumCases: (project.responseSpectrumCases ?? []).filter((item) => item.id !== command.caseId) });
     }
 
     case 'batch': {

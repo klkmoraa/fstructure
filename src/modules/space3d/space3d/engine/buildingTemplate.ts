@@ -16,6 +16,10 @@
  * La carga de losa llega a las vigas por áreas tributarias a 45° de cada
  * paño (reparto de losa en dos direcciones): trapecios en los lados largos y
  * triángulos en los cortos, con la resultante exacta `q·a·b` por paño.
+ *
+ * Para el análisis dinámico, como ETABS con losas: un diafragma rígido por
+ * piso, fuente de masa «D + 0,25 L» y, si se pide, un espectro de ejemplo
+ * con sus casos EX y EZ (una forma genérica de meseta, no la de una norma).
  */
 import {
   SPACE3D_ANALYSIS_SPACE,
@@ -57,7 +61,19 @@ export interface Space3DBuildingTemplateOptions {
   readonly liveLoad?: number;
   /** Coeficiente de cortante basal en +X (0 lo omite). */
   readonly lateralCoefficient?: number;
+  /** Un diafragma rígido por piso (por omisión, sí). */
+  readonly rigidDiaphragms?: boolean;
+  /** Espectro de ejemplo y casos EX/EZ (por omisión, sí). */
+  readonly exampleSpectrum?: boolean;
 }
+
+/**
+ * Espectro de meseta genérico: rampa hasta Ta, meseta hasta Tb y caída 1/T.
+ * Es un ejemplo para empezar; el de la norma se escribe en «Definir».
+ */
+export const SPACE3D_EXAMPLE_SPECTRUM: readonly (readonly [number, number])[] = Object.freeze([
+  [0, 0.16], [0.1, 0.4], [0.6, 0.4], [0.8, 0.3], [1, 0.24], [1.5, 0.16], [2, 0.12], [3, 0.08], [4, 0.06],
+].map((point) => Object.freeze(point) as readonly [number, number]));
 
 const pinned = (): Space3DRestraints => ({ ux: true, uy: true, uz: true, rx: false, ry: false, rz: false });
 
@@ -263,6 +279,27 @@ export const generateSpace3DBuilding = (options: Space3DBuildingTemplateOptions)
     generatedLoadSources: [],
     movingLoadCases: [],
     grid,
+    ...(options.rigidDiaphragms ?? true ? {
+      diaphragms: grid.stories.slice(1).map((story, index) => ({
+        id: `D${index + 1}`,
+        name: story.name,
+        nodeIds: nodes.filter((node) => Math.abs(node.y - story.elevation) < 1e-9).map((node) => node.id),
+      })),
+    } : {}),
+    massSource: { selfMass: true, loads: [{ caseId: 'DEAD', factor: 1 }, { caseId: 'LIVE', factor: 0.25 }] },
+    ...(options.exampleSpectrum ?? true ? {
+      spectrumFunctions: [{ id: 'SPEC', name: 'Espectro de ejemplo (no normativo)', points: SPACE3D_EXAMPLE_SPECTRUM.map((point) => [point[0], point[1]] as const) }],
+      responseSpectrumCases: (['x', 'z'] as const).map((direction) => ({
+        id: direction === 'x' ? 'EX' : 'EZ',
+        name: direction === 'x' ? 'Espectro X' : 'Espectro Z',
+        functionId: 'SPEC',
+        direction,
+        scale: 1,
+        dampingRatio: 0.05,
+        modes: Math.min(3 * storyHeights.length, 30),
+        combination: 'cqc' as const,
+      })),
+    } : {}),
   };
   const issues = validateSpace3DProject(project);
   if (issues.length > 0) {

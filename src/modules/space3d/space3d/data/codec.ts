@@ -17,7 +17,12 @@ import {
   SPACE3D_LEGACY_SCHEMA_VERSION,
   SPACE3D_SCHEMA_VERSION,
   SPACE3D_V2_SCHEMA_VERSION,
+  SPACE3D_V3_SCHEMA_VERSION,
+  type Space3DDiaphragm,
   type Space3DGridSystem,
+  type Space3DMassSource,
+  type Space3DResponseSpectrumCase,
+  type Space3DSpectrumFunction,
   type Space3DFrameMember,
   type Space3DLoadCase,
   type Space3DLoadCombination,
@@ -487,6 +492,107 @@ const readGrid = (value: unknown): Space3DGridSystem => {
   return { xLines, zLines, stories };
 };
 
+const uniqueIds = (ids: readonly string[], path: string) => {
+  const seen = new Set<string>();
+  for (const id of ids) {
+    if (id.trim() === '') fail('invalid-model', `${path} con id vacío`);
+    if (seen.has(id)) fail('invalid-model', `${path} duplicado «${id}»`);
+    seen.add(id);
+  }
+};
+
+const readDiaphragms = (value: unknown, nodeIds: ReadonlySet<string>): Space3DDiaphragm[] => {
+  if (!Array.isArray(value)) fail('not-an-array', 'project.diaphragms');
+  const owner = new Map<string, string>();
+  const diaphragms = (value as unknown[]).map((raw, index) => {
+    const path = `diaphragms[${index}]`;
+    const source = object(raw, path);
+    exactKeys(source, ['id', 'name', 'nodeIds'], path);
+    const id = text(source, 'id', path);
+    const members = list(source, 'nodeIds', path).map((node, nodeIndex) => {
+      if (typeof node !== 'string') fail('not-a-string', `${path}.nodeIds[${nodeIndex}]`);
+      const nodeId = node as string;
+      if (!nodeIds.has(nodeId)) fail('invalid-model', `${path}.nodeIds[${nodeIndex}] «${nodeId}» no existe`);
+      const previous = owner.get(nodeId);
+      if (previous !== undefined) fail('invalid-model', `${path}: el nudo «${nodeId}» ya pertenece a «${previous}»`);
+      owner.set(nodeId, id);
+      return nodeId;
+    });
+    return { id, name: text(source, 'name', path), nodeIds: members };
+  });
+  uniqueIds(diaphragms.map((item) => item.id), 'diaphragms');
+  return diaphragms;
+};
+
+const readMassSource = (value: unknown, caseIds: ReadonlySet<string>): Space3DMassSource => {
+  const source = object(value, 'massSource');
+  exactKeys(source, ['selfMass', 'loads'], 'massSource');
+  const loads = list(source, 'loads', 'massSource').map((raw, index) => {
+    const path = `massSource.loads[${index}]`;
+    const term = object(raw, path);
+    exactKeys(term, ['caseId', 'factor'], path);
+    const caseId = text(term, 'caseId', path);
+    if (!caseIds.has(caseId)) fail('invalid-model', `${path}.caseId «${caseId}» no existe`);
+    const factor = num(term, 'factor', path);
+    if (factor < 0) fail('invalid-model', `${path}.factor no puede ser negativo`);
+    return { caseId, factor };
+  });
+  return { selfMass: flag(source, 'selfMass', 'massSource'), loads };
+};
+
+const readSpectrumFunctions = (value: unknown): Space3DSpectrumFunction[] => {
+  if (!Array.isArray(value)) fail('not-an-array', 'project.spectrumFunctions');
+  const functions = (value as unknown[]).map((raw, index) => {
+    const path = `spectrumFunctions[${index}]`;
+    const source = object(raw, path);
+    exactKeys(source, ['id', 'name', 'points'], path);
+    const points = list(source, 'points', path, 2000).map((point, pointIndex) => {
+      const pair = point as unknown[];
+      if (!Array.isArray(point) || pair.length !== 2) fail('not-a-vector', `${path}.points[${pointIndex}]`);
+      const [period, acceleration] = pair;
+      if (typeof period !== 'number' || !Number.isFinite(period) || typeof acceleration !== 'number' || !Number.isFinite(acceleration)) fail('not-a-number', `${path}.points[${pointIndex}]`);
+      return [period as number, acceleration as number] as const;
+    });
+    if (points.length === 0) fail('invalid-model', `${path}.points vacío`);
+    points.forEach(([period, acceleration], pointIndex) => {
+      if (period < 0 || acceleration < 0) fail('invalid-model', `${path}.points[${pointIndex}] negativo`);
+      if (pointIndex > 0 && !(period > points[pointIndex - 1][0])) fail('invalid-model', `${path}.points: los periodos deben crecer`);
+    });
+    return { id: text(source, 'id', path), name: text(source, 'name', path), points };
+  });
+  uniqueIds(functions.map((item) => item.id), 'spectrumFunctions');
+  return functions;
+};
+
+const readResponseSpectrumCases = (value: unknown, functionIds: ReadonlySet<string>): Space3DResponseSpectrumCase[] => {
+  if (!Array.isArray(value)) fail('not-an-array', 'project.responseSpectrumCases');
+  const cases = (value as unknown[]).map((raw, index) => {
+    const path = `responseSpectrumCases[${index}]`;
+    const source = object(raw, path);
+    exactKeys(source, ['id', 'name', 'functionId', 'direction', 'scale', 'dampingRatio', 'modes', 'combination'], path);
+    const functionId = text(source, 'functionId', path);
+    if (!functionIds.has(functionId)) fail('invalid-model', `${path}.functionId «${functionId}» no existe`);
+    const scale = num(source, 'scale', path);
+    const dampingRatio = num(source, 'dampingRatio', path);
+    const modes = num(source, 'modes', path);
+    if (!(scale > 0)) fail('invalid-model', `${path}.scale debe ser positivo`);
+    if (dampingRatio < 0 || dampingRatio >= 1) fail('invalid-model', `${path}.dampingRatio fuera de [0, 1)`);
+    if (!Number.isInteger(modes) || modes < 1 || modes > 500) fail('invalid-model', `${path}.modes entre 1 y 500`);
+    return {
+      id: text(source, 'id', path),
+      name: text(source, 'name', path),
+      functionId,
+      direction: enumField(source, 'direction', ['x', 'z'] as const, path),
+      scale,
+      dampingRatio,
+      modes,
+      combination: enumField(source, 'combination', ['cqc', 'srss'] as const, path),
+    };
+  });
+  uniqueIds(cases.map((item) => item.id), 'responseSpectrumCases');
+  return cases;
+};
+
 interface Space3DParseOptions {
   /**
    * Exige además un modelo estructuralmente admisible.
@@ -515,17 +621,24 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
   if (source.analysisSpace !== SPACE3D_ANALYSIS_SPACE) {
     fail('analysis-space', `se esperaba «${SPACE3D_ANALYSIS_SPACE}» y llegó «${String(source.analysisSpace)}»`);
   }
-  if (source.schemaVersion !== SPACE3D_SCHEMA_VERSION && source.schemaVersion !== SPACE3D_V2_SCHEMA_VERSION && source.schemaVersion !== SPACE3D_LEGACY_SCHEMA_VERSION) {
-    fail('schema-version', `se esperaba ${SPACE3D_LEGACY_SCHEMA_VERSION}, ${SPACE3D_V2_SCHEMA_VERSION} o ${SPACE3D_SCHEMA_VERSION} y llegó ${String(source.schemaVersion)}`);
+  const versions = [SPACE3D_LEGACY_SCHEMA_VERSION, SPACE3D_V2_SCHEMA_VERSION, SPACE3D_V3_SCHEMA_VERSION, SPACE3D_SCHEMA_VERSION] as const;
+  if (!versions.includes(source.schemaVersion as (typeof versions)[number])) {
+    fail('schema-version', `se esperaba ${versions.join(', ')} y llegó ${String(source.schemaVersion)}`);
   }
 
-  // Migración por versión: v1 no tenía semánticas y v2 no tenía rejilla. Lo
-  // que falta se crea vacío; nada de lo que llega se descarta.
-  const legacy = source.schemaVersion === SPACE3D_LEGACY_SCHEMA_VERSION;
-  const current = source.schemaVersion === SPACE3D_SCHEMA_VERSION;
+  // Migración por versión: v1 no tenía semánticas, v2 no tenía rejilla y v3
+  // no tenía diafragmas, masa ni espectros. Lo que falta se crea vacío; nada
+  // de lo que llega se descarta, y un campo de una versión posterior en un
+  // archivo anterior se rechaza.
+  const version = source.schemaVersion as (typeof versions)[number];
+  const legacy = version === SPACE3D_LEGACY_SCHEMA_VERSION;
   const coreFields = ['analysisSpace', 'schemaVersion', 'id', 'name', 'units', 'nodes', 'members', 'nodalLoads', 'loadCases', 'loadCombinations'];
   const semanticFields = ['prescribedDisplacements', 'memberLoads', 'memberInitialEffects', 'nodeLinks', 'multiPointConstraints', 'nodalMasses', 'generatedLoadSources', 'movingLoadCases'];
-  exactKeys(source, legacy ? coreFields : [...coreFields, ...semanticFields], 'project', current ? ['grid'] : []);
+  const optionalFields = [
+    ...(version >= SPACE3D_V3_SCHEMA_VERSION ? ['grid'] : []),
+    ...(version >= SPACE3D_SCHEMA_VERSION ? ['diaphragms', 'massSource', 'spectrumFunctions', 'responseSpectrumCases'] : []),
+  ];
+  exactKeys(source, legacy ? coreFields : [...coreFields, ...semanticFields], 'project', optionalFields);
 
   const units = text(source, 'units', 'project');
   if (!isUnitSystemId(units)) fail('not-a-string', `project.units «${units}»`);
@@ -549,19 +662,29 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
     nodalMasses: legacy ? [] : list(source, 'nodalMasses', 'project').map(readNodalMass),
     generatedLoadSources: legacy ? [] : list(source, 'generatedLoadSources', 'project').map(readGeneratedSource),
     movingLoadCases: legacy ? [] : list(source, 'movingLoadCases', 'project').map(readMovingLoad),
-    ...(current && Object.hasOwn(source, 'grid') ? { grid: readGrid(source.grid) } : {}),
+    ...(Object.hasOwn(source, 'grid') ? { grid: readGrid(source.grid) } : {}),
   };
-  assertProjectIdentitiesAndReferences(project);
+  const withDynamics: Space3DProjectV1 = {
+    ...project,
+    ...(Object.hasOwn(source, 'diaphragms') ? { diaphragms: readDiaphragms(source.diaphragms, new Set(project.nodes.map((node) => node.id))) } : {}),
+    ...(Object.hasOwn(source, 'massSource') ? { massSource: readMassSource(source.massSource, new Set(project.loadCases.map((item) => item.id))) } : {}),
+    ...(Object.hasOwn(source, 'spectrumFunctions') ? { spectrumFunctions: readSpectrumFunctions(source.spectrumFunctions) } : {}),
+  };
+  const functionIds = new Set((withDynamics.spectrumFunctions ?? []).map((item) => item.id));
+  const full: Space3DProjectV1 = Object.hasOwn(source, 'responseSpectrumCases')
+    ? { ...withDynamics, responseSpectrumCases: readResponseSpectrumCases(source.responseSpectrumCases, functionIds) }
+    : withDynamics;
+  assertProjectIdentitiesAndReferences(full);
 
   if (requireAdmissibleModel) {
-    const issues = validateSpace3DProject(project);
+    const issues = validateSpace3DProject(full);
     if (issues.length > 0) {
       const detail = issues.slice(0, 3).map((item) => `${item.entityKind}:${item.entityId}:${item.code}`).join(', ');
       fail('invalid-model', `${issues.length} problema(s): ${detail}`);
     }
   }
 
-  return project;
+  return full;
 };
 
 /** Lectura de trabajo en curso: forma estricta, admisibilidad no exigida. */

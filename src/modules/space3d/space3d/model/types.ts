@@ -23,8 +23,10 @@ import type { UnitSystemId } from '../../../../foundation/units';
 export const SPACE3D_LEGACY_SCHEMA_VERSION = 1 as const;
 /** Esquema con semánticas persistidas (cargas en barra, liberaciones…), sin rejilla. */
 export const SPACE3D_V2_SCHEMA_VERSION = 2 as const;
-/** Esquema vigente: V2 más la rejilla de ejes y pisos. */
-export const SPACE3D_SCHEMA_VERSION = 3 as const;
+/** V2 más la rejilla de ejes y pisos. */
+export const SPACE3D_V3_SCHEMA_VERSION = 3 as const;
+/** Esquema vigente: V3 más diafragmas, fuente de masa y espectros de respuesta. */
+export const SPACE3D_SCHEMA_VERSION = 4 as const;
 export const SPACE3D_ANALYSIS_SPACE = 'space-3d' as const;
 
 /**
@@ -348,10 +350,59 @@ export interface Space3DGridSystem {
   readonly stories: readonly Space3DStory[];
 }
 
+/**
+ * Diafragma rígido en su plano horizontal (XZ), como el «Diaphragm» de ETABS:
+ * los desplazamientos `ux`, `uz` y el giro `ry` de sus nudos siguen a un sólido
+ * rígido; `uy`, `rx` y `rz` quedan libres. Las vigas del plano no se acortan.
+ */
+export interface Space3DDiaphragm {
+  readonly id: string;
+  readonly name: string;
+  readonly nodeIds: readonly string[];
+}
+
+/**
+ * De dónde sale la masa del análisis dinámico («Mass Source» de ETABS). Las
+ * masas nodales declaradas se suman siempre.
+ */
+export interface Space3DMassSource {
+  /** Masa propia de las barras: densidad · área · longitud. */
+  readonly selfMass: boolean;
+  /** Cargas verticales de estos casos convertidas en masa (W/g), con su factor. */
+  readonly loads: readonly Space3DLoadCombinationTerm[];
+}
+
+/** Espectro de diseño: pares (periodo en s, Sa en g) con periodos crecientes. */
+export interface Space3DSpectrumFunction {
+  readonly id: string;
+  readonly name: string;
+  readonly points: readonly (readonly [number, number])[];
+}
+
+/** Caso de espectro de respuesta en una dirección horizontal global. */
+export interface Space3DResponseSpectrumCase {
+  readonly id: string;
+  readonly name: string;
+  readonly functionId: string;
+  readonly direction: 'x' | 'z';
+  /** Factor sobre la función (p. ej. I/R): la aceleración es Sa · g · scale. */
+  readonly scale: number;
+  /** Amortiguamiento relativo para la combinación CQC (0,05 = 5 %). */
+  readonly dampingRatio: number;
+  readonly modes: number;
+  readonly combination: 'cqc' | 'srss';
+}
+
 export interface Space3DProjectV2 extends Omit<LegacySpace3DProjectV1, 'schemaVersion' | 'nodes' | 'members'> {
   readonly schemaVersion: typeof SPACE3D_SCHEMA_VERSION;
   /** Rejilla de ejes y pisos; ausente en proyectos anteriores al esquema 3. */
   readonly grid?: Space3DGridSystem;
+  /** Diafragmas rígidos; ausentes antes del esquema 4. */
+  readonly diaphragms?: readonly Space3DDiaphragm[];
+  /** Sin declarar: masa propia de las barras y masas nodales. */
+  readonly massSource?: Space3DMassSource;
+  readonly spectrumFunctions?: readonly Space3DSpectrumFunction[];
+  readonly responseSpectrumCases?: readonly Space3DResponseSpectrumCase[];
   readonly nodes: readonly Space3DNode[];
   readonly members: readonly Space3DFrameMember[];
   readonly prescribedDisplacements: readonly Space3DPrescribedDisplacement[];
@@ -368,7 +419,8 @@ export type Space3DProjectV1 = Space3DProjectV2;
 
 export type Space3DEntityKind = 'project' | 'node' | 'member' | 'load' | 'case' | 'combination'
   | 'member-load' | 'prescribed-displacement' | 'initial-effect' | 'node-link'
-  | 'multi-point-constraint' | 'nodal-mass' | 'generated-load-source' | 'moving-load-case';
+  | 'multi-point-constraint' | 'nodal-mass' | 'generated-load-source' | 'moving-load-case'
+  | 'diaphragm' | 'mass-source' | 'spectrum-function' | 'response-spectrum-case';
 
 export type Space3DValidationCode =
   | 'duplicate-id'
@@ -402,7 +454,9 @@ export type Space3DAnalysisIssueCode =
   /** Task 6 persists these member families, but the legacy frame solver does not analyze them. */
   | 'unsupported-member-type'
   /** A preserved semantic is not silently reinterpreted by the current solver. */
-  | 'unsupported-semantics';
+  | 'unsupported-semantics'
+  /** Un nudo de diafragma rígido con apoyo en un GDL del plano (ux, uz, ry). */
+  | 'constraint-conflict';
 
 export interface Space3DAnalysisIssue {
   readonly code: Space3DAnalysisIssueCode;
@@ -503,16 +557,38 @@ export interface Space3DAnalysisDiagnostics {
    * sólo llegan armaduras o barras articuladas, o nudos sueltos.
    */
   readonly autoRestrainedDofCount?: number;
+  /** GDL que siguen a un diafragma rígido (ux, uz y ry de sus nudos). */
+  readonly constrainedDofCount?: number;
+}
+
+/** Una fila de la respuesta por piso (valores con signo; en espectro, CQC). */
+export interface Space3DStoryResponse {
+  readonly storyId: string;
+  readonly name: string;
+  readonly elevation: number;
+  /** Altura del piso: distancia al nivel inferior, m. */
+  readonly height: number;
+  /** Mayor desplazamiento horizontal del nivel en X y en Z, m. */
+  readonly displacement: readonly [number, number];
+  /** Mayor deriva Δ/h entre nudos alineados; `null` si no hay ninguno alineado. */
+  readonly drift: readonly [number | null, number | null];
+  /** Cortante de piso: fuerzas aplicadas por encima del nivel inferior, kN. */
+  readonly shear: readonly [number, number];
+  readonly mass?: number;
+  readonly centerOfMass?: readonly [number, number] | null;
 }
 
 export interface Space3DAnalysisResult {
   readonly success: boolean;
   readonly targetId: string;
-  readonly targetKind: 'case' | 'combination' | 'unknown';
+  /** `response-spectrum`: envolvente CQC/SRSS con el signo del modo dominante. */
+  readonly targetKind: 'case' | 'combination' | 'response-spectrum' | 'unknown';
   readonly nodeResults: readonly Space3DNodeResult[];
   readonly memberResults: readonly Space3DMemberResult[];
   readonly issues: readonly Space3DAnalysisIssue[];
   readonly diagnostics: Space3DAnalysisDiagnostics;
+  /** Respuesta por piso de la rejilla (si tiene al menos dos niveles con nudos). */
+  readonly stories?: readonly Space3DStoryResponse[];
 }
 
 /** Error de geometría degenerada; su `message` es el código estable. */

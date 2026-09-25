@@ -26,7 +26,7 @@ import { isUnitSystemId } from '../../../../foundation/units';
 const PROJECT_FIELDS = [
   'analysisSpace', 'schemaVersion', 'id', 'name', 'units', 'nodes', 'members', 'nodalLoads', 'loadCases', 'loadCombinations',
   'prescribedDisplacements', 'memberLoads', 'memberInitialEffects', 'nodeLinks', 'multiPointConstraints', 'nodalMasses',
-  'generatedLoadSources', 'movingLoadCases', 'grid',
+  'generatedLoadSources', 'movingLoadCases', 'grid', 'diaphragms', 'massSource', 'spectrumFunctions', 'responseSpectrumCases',
 ];
 const NODE_FIELDS = ['id', 'x', 'y', 'z', 'restraints', 'planarSupport', 'internalHinge'];
 const RESTRAINT_FIELDS = ['ux', 'uy', 'uz', 'rx', 'ry', 'rz'];
@@ -403,8 +403,98 @@ export const validateSpace3DProject = (project: Space3DProjectV1): readonly Spac
   }
 
   if (project.grid !== undefined) validateGrid(collect, project.grid);
+  validateDynamics(collect, project, nodeIds, caseIds);
 
   return Object.freeze(sortIssues(issues));
+};
+
+/**
+ * Diafragmas, fuente de masa y espectros: referencias existentes, un nudo en
+ * un solo diafragma, espectros con periodos crecientes y parámetros físicos.
+ */
+const validateDynamics = (collect: Collector, project: Space3DProjectV1, nodeIds: ReadonlySet<string>, caseIds: ReadonlySet<string>) => {
+  const record = (value: unknown): Record<string, unknown> | null =>
+    value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  if (project.diaphragms !== undefined) {
+    if (!Array.isArray(project.diaphragms)) collect.push('invalid-property', 'project', '', 'diaphragms');
+    else {
+      const seen = new Set<string>();
+      const owner = new Set<string>();
+      for (const raw of project.diaphragms as unknown[]) {
+        const entity = record(raw);
+        if (!entity) { collect.push('invalid-property', 'diaphragm', '', '$entity'); continue; }
+        const id = typeof entity.id === 'string' ? entity.id : '';
+        unknownFields(collect, entity, ['id', 'name', 'nodeIds'], 'diaphragm', id);
+        checkIdentity(collect, entity.id, seen, 'diaphragm');
+        if (typeof entity.name !== 'string') collect.push('invalid-property', 'diaphragm', id, 'name');
+        if (!Array.isArray(entity.nodeIds)) { collect.push('invalid-property', 'diaphragm', id, 'nodeIds'); continue; }
+        for (const nodeId of entity.nodeIds as unknown[]) {
+          if (typeof nodeId !== 'string' || !nodeIds.has(nodeId)) { collect.push('missing-reference', 'diaphragm', id, 'nodeIds'); continue; }
+          if (owner.has(nodeId)) collect.push('duplicate-id', 'diaphragm', id, 'nodeIds');
+          owner.add(nodeId);
+        }
+      }
+    }
+  }
+  if (project.massSource !== undefined) {
+    const source = record(project.massSource);
+    if (!source) collect.push('invalid-property', 'mass-source', '', '$entity');
+    else {
+      unknownFields(collect, source, ['selfMass', 'loads'], 'mass-source', '');
+      if (typeof source.selfMass !== 'boolean') collect.push('invalid-property', 'mass-source', '', 'selfMass');
+      if (!Array.isArray(source.loads)) collect.push('invalid-property', 'mass-source', '', 'loads');
+      else for (const raw of source.loads as unknown[]) {
+        const term = record(raw);
+        if (!term) { collect.push('invalid-property', 'mass-source', '', 'loads'); continue; }
+        unknownFields(collect, term, TERM_FIELDS, 'mass-source', '');
+        if (typeof term.caseId !== 'string' || !caseIds.has(term.caseId)) collect.push('missing-reference', 'mass-source', '', 'loads.caseId');
+        if (!isNonNegativeFinite(term.factor)) collect.push('invalid-property', 'mass-source', '', 'loads.factor');
+      }
+    }
+  }
+  const functionIds = new Set<string>();
+  if (project.spectrumFunctions !== undefined) {
+    if (!Array.isArray(project.spectrumFunctions)) collect.push('invalid-property', 'project', '', 'spectrumFunctions');
+    else for (const raw of project.spectrumFunctions as unknown[]) {
+      const entity = record(raw);
+      if (!entity) { collect.push('invalid-property', 'spectrum-function', '', '$entity'); continue; }
+      const id = typeof entity.id === 'string' ? entity.id : '';
+      unknownFields(collect, entity, ['id', 'name', 'points'], 'spectrum-function', id);
+      checkIdentity(collect, entity.id, functionIds, 'spectrum-function');
+      if (typeof entity.name !== 'string') collect.push('invalid-property', 'spectrum-function', id, 'name');
+      const points = Array.isArray(entity.points) ? entity.points as unknown[] : null;
+      if (!points || points.length === 0) { collect.push('invalid-property', 'spectrum-function', id, 'points'); continue; }
+      let previous = Number.NEGATIVE_INFINITY;
+      for (const point of points) {
+        const pair = Array.isArray(point) && point.length === 2 ? point as unknown[] : null;
+        if (!pair || !isNonNegativeFinite(pair[0]) || !isNonNegativeFinite(pair[1]) || !((pair[0] as number) > previous)) {
+          collect.push('invalid-property', 'spectrum-function', id, 'points');
+          break;
+        }
+        previous = pair[0] as number;
+      }
+    }
+  }
+  if (project.responseSpectrumCases !== undefined) {
+    if (!Array.isArray(project.responseSpectrumCases)) collect.push('invalid-property', 'project', '', 'responseSpectrumCases');
+    else {
+      const seen = new Set<string>();
+      for (const raw of project.responseSpectrumCases as unknown[]) {
+        const entity = record(raw);
+        if (!entity) { collect.push('invalid-property', 'response-spectrum-case', '', '$entity'); continue; }
+        const id = typeof entity.id === 'string' ? entity.id : '';
+        unknownFields(collect, entity, ['id', 'name', 'functionId', 'direction', 'scale', 'dampingRatio', 'modes', 'combination'], 'response-spectrum-case', id);
+        checkIdentity(collect, entity.id, seen, 'response-spectrum-case');
+        if (typeof entity.name !== 'string') collect.push('invalid-property', 'response-spectrum-case', id, 'name');
+        if (typeof entity.functionId !== 'string' || !functionIds.has(entity.functionId)) collect.push('missing-reference', 'response-spectrum-case', id, 'functionId');
+        if (!oneOf(entity.direction, ['x', 'z'])) collect.push('invalid-property', 'response-spectrum-case', id, 'direction');
+        if (!isPositiveFinite(entity.scale)) collect.push('invalid-property', 'response-spectrum-case', id, 'scale');
+        if (!isNonNegativeFinite(entity.dampingRatio) || (entity.dampingRatio as number) >= 1) collect.push('invalid-property', 'response-spectrum-case', id, 'dampingRatio');
+        if (!Number.isInteger(entity.modes) || (entity.modes as number) < 1 || (entity.modes as number) > 500) collect.push('invalid-property', 'response-spectrum-case', id, 'modes');
+        if (!oneOf(entity.combination, ['cqc', 'srss'])) collect.push('invalid-property', 'response-spectrum-case', id, 'combination');
+      }
+    }
+  }
 };
 
 const GRID_FIELDS = ['xLines', 'zLines', 'stories'];

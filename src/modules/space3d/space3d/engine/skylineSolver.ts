@@ -138,6 +138,68 @@ export const factorizeSkyline = (matrix: Space3DSkylineMatrix): Space3DSkylineFa
 };
 
 /**
+ * Cuenta de Sturm: cuántos pivotes de `L·D·Lᵀ` son negativos. Para `K − σ·M`
+ * es el número de autovalores de `K·φ = λ·M·φ` por debajo de σ (ley de
+ * inercia de Sylvester), que es como se comprueba que un cálculo modal no se
+ * saltó ningún modo. Destruye la matriz; devuelve `null` si un pivote es casi
+ * nulo (σ cae justo en un autovalor) para que el llamador desplace σ.
+ */
+export const countSkylineNegativePivots = (matrix: Space3DSkylineMatrix): number | null => {
+  const { n, start, offset, values } = matrix;
+  const diagonal = new Float64Array(n);
+  let negatives = 0;
+  for (let i = 0; i < n; i += 1) {
+    const fi = start[i];
+    const oi = offset[i];
+    for (let j = fi; j < i; j += 1) {
+      const fj = start[j];
+      const oj = offset[j];
+      const from = fi > fj ? fi : fj;
+      let sum = values[oi + (j - fi)];
+      for (let r = from; r < j; r += 1) sum -= values[oj + (r - fj)] * values[oi + (r - fi)];
+      values[oi + (j - fi)] = sum;
+    }
+    const original = values[oi + (i - fi)];
+    let pivot = original;
+    for (let j = fi; j < i; j += 1) {
+      const g = values[oi + (j - fi)];
+      const l = g / diagonal[j];
+      pivot -= l * g;
+      values[oi + (j - fi)] = l;
+    }
+    if (!Number.isFinite(pivot) || Math.abs(pivot) <= Math.abs(original) * 1e-13) return null;
+    diagonal[i] = pivot;
+    values[oi + (i - fi)] = 1;
+    if (pivot < 0) negatives += 1;
+  }
+  return negatives;
+};
+
+/** `y = A·x` con la matriz sin factorizar (simétrica, sólo el triángulo inferior guardado). */
+export const multiplySkyline = (matrix: Space3DSkylineMatrix, x: ArrayLike<number>): Float64Array => {
+  const { n, start, offset, values } = matrix;
+  const y = new Float64Array(n);
+  for (let i = 0; i < n; i += 1) {
+    const fi = start[i];
+    const oi = offset[i];
+    let sum = 0;
+    const xi = x[i];
+    for (let j = fi; j < i; j += 1) {
+      const value = values[oi + (j - fi)];
+      sum += value * x[j];
+      y[j] += value * xi;
+    }
+    y[i] += sum + values[oi + (i - fi)] * xi;
+  }
+  return y;
+};
+
+/** Copia independiente del perfil (la factorización destruye el original). */
+export const cloneSkyline = (matrix: Space3DSkylineMatrix): Space3DSkylineMatrix => ({
+  n: matrix.n, start: matrix.start, offset: matrix.offset, values: Float64Array.from(matrix.values),
+});
+
+/**
  * Cuthill–McKee inverso sobre un grafo dado por listas de adyacencia. Cada
  * componente conexa arranca en un nudo pseudoperiférico (el más lejano de uno
  * de grado mínimo), que es lo que mantiene estrecho el perfil.

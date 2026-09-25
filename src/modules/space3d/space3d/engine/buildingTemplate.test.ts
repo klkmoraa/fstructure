@@ -49,6 +49,19 @@ describe('Space3D building quick template', () => {
     expect(sumReactions(lateral, 'ux')).toBeCloseTo(-applied, 8);
   });
 
+  it('adds one rigid diaphragm per storey, a D + 0.25L mass source and example spectra that analyse', async () => {
+    const project = generateSpace3DBuilding(options);
+    expect(project.diaphragms?.map((item) => item.nodeIds.length)).toEqual([6, 6]);
+    expect(project.massSource?.loads).toEqual([{ caseId: 'DEAD', factor: 1 }, { caseId: 'LIVE', factor: 0.25 }]);
+    const { analyzeSpace3DResponseSpectrum } = await import('./responseSpectrum');
+    const spectrum = analyzeSpace3DResponseSpectrum(project, 'EX');
+    expect(spectrum.success).toBe(true);
+    expect(spectrum.sturmVerified).toBe(true);
+    // Con diafragmas y 3 modos por piso, los modos cubren toda la masa en X.
+    expect(spectrum.cumulativeMassRatio).toBeCloseTo(1, 6);
+    expect(spectrum.stories.map((story) => story.name)).toEqual(['Piso 2', 'Piso 1']);
+  });
+
   it('rejects empty or non-finite geometry', () => {
     expect(() => generateSpace3DBuilding({ ...options, xSpacings: [] })).toThrow(RangeError);
     expect(() => generateSpace3DBuilding({ ...options, storyHeights: [Number.NaN] })).toThrow(RangeError);
