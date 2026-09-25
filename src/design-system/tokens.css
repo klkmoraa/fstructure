@@ -133,7 +133,7 @@
 
   /* Registro de la marca madre: rojo pastel, separado del rojo técnico de
      momento para que el logo no parezca un resultado del solver. */
-  --fs-brand-register: #d96f67;
+  --fs-brand-register: #1aa57a;
 
   /* Con el par Día/Noche, la tinta ES la señal. Se conservan los nombres para
      no reescribir los roles que los consumen. */
@@ -277,8 +277,8 @@
   --sc-color-action-pressed: color-mix(in srgb, var(--fs-family-analisis) 78%, var(--sc-color-text-primary));
   --sc-color-action-foreground: #14171a;
   --sc-color-action-edge: var(--fs-family-analisis);
-  --sc-color-action-ink: var(--fs-family-analisis);
-  --sc-color-action-ink-on-soft: var(--fs-family-analisis);
+  --sc-color-action-ink: #c23a33;
+  --sc-color-action-ink-on-soft: #c23a33;
   --sc-color-action-subtle: var(--fs-gray-50);
   --sc-color-brand: var(--fs-family-analisis);
   --sc-color-brand-secondary: var(--fs-gray-700);
@@ -916,7 +916,7 @@
   --fs-signal-deformed: #a990ff;
   --fs-signal-yield: #ef7ab9;
   --fs-signal-attention: #f3c553;
-  --fs-brand-register: #f0958e;
+  --fs-brand-register: #1aa57a;
 
   /* Sobre carbón la carga sube de luminosidad sin perder croma: el mismo
      cobalto, bermellón y esmeralda, recalibrados para que sigan separados de
@@ -949,7 +949,7 @@
 
   --sc-color-canvas-grid: #212528;
   --sc-color-canvas-grid-strong: #2d3336;
-  --sc-color-canvas-member: #f4f4f1;
+  --sc-color-canvas-member: #f2f4f3;
   --sc-color-canvas-node-fill: #0e1113;
   --sc-color-overlay-soft: rgb(8 10 11 / .46);
   --sc-color-overlay-sheet: rgb(8 10 11 / .58);
@@ -968,8 +968,8 @@
   --sc-color-technical-dimension: #f3c553;
   --sc-color-critical-point: #f3c553;
   --sc-color-stale-result: #f3c553;
-  --sc-color-snap-target: #f4f4f1;
-  --sc-color-hover-target: #f4f4f1;
+  --sc-color-snap-target: #f2f4f3;
+  --sc-color-hover-target: #f2f4f3;
   --sc-color-envelope: #8d8f8c;
   --sc-color-demand-base: #1668b0;
   --sc-color-demand-peak: #a8d5f4;

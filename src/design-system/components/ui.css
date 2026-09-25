@@ -155,8 +155,10 @@
 /* Relleno y tinta medidos como pareja (#c93028 con blanco = 5,33:1). Antes
    heredaba la tinta de la acción primaria; ahora esa tinta es oscura y sobre el
    rojo habría caído por debajo del suelo. */
-.sc-button--danger { background: var(--sc-color-error-solid); color: var(--sc-color-error-on-solid); border-color: transparent; box-shadow: var(--sc-shadow-xs); }
-.sc-button--danger:not(:disabled):hover { background: color-mix(in srgb, var(--sc-color-error-solid) 84%, var(--sc-color-text-primary)); box-shadow: var(--sc-shadow-sm); }
+/* Peligro no puede parecerse a la acción primaria: en FStructure ambas serían
+   rojas. Se distingue por el canto rojo y el texto en tinta, nunca por relleno. */
+.sc-button--danger { background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); border-color: var(--sc-color-state-error); box-shadow: var(--sc-shadow-xs); }
+.sc-button--danger:not(:disabled):hover { background: color-mix(in srgb, var(--sc-color-state-error) 10%, var(--sc-color-surface-1)); box-shadow: var(--sc-shadow-sm); }
 .sc-button--danger:not(:disabled):active { box-shadow: var(--sc-shadow-pressed); transform: var(--sc-press-transform); }
 
 .sc-icon-button {

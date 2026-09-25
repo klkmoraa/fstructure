@@ -19,7 +19,7 @@ const svgAdaptive = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"
     .fs-mark-body { fill: #14171a; }
     .fs-mark-arm { fill: #ed4b46; }
     @media (prefers-color-scheme: dark) {
-      .fs-mark-body { fill: #ffffff; }
+      .fs-mark-body { fill: #f2f4f3; }
       .fs-mark-arm { fill: #ff8e80; }
     }
   </style>
@@ -30,11 +30,11 @@ const svgAdaptive = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"
 </svg>
 `;
 
-// Dark-explicit SVG (guaranteed white F without relying on SVG media queries)
+// Dark-explicit SVG: cuerpo en tiza y franja en el salmón de Análisis de Noche
 const svgDark = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
   <g transform="translate(-0.5, 0)">
-    <path fill="#ffffff" d="M8 5h9v38H8z M17 5h24v5.5L17 14z" />
-    <path fill="#ed4b46" d="M17 21h17v5L17 30z" />
+    <path fill="#f2f4f3" d="M8 5h9v38H8z M17 5h24v5.5L17 14z" />
+    <path fill="#ff8e80" d="M17 21h17v5L17 30z" />
   </g>
 </svg>
 `;
@@ -91,8 +91,8 @@ const manifestLight = {
   ],
   start_url: './',
   display: 'standalone',
-  background_color: '#ffffff',
-  theme_color: '#ffffff'
+  background_color: '#f7f6f1',
+  theme_color: '#f7f6f1'
 };
 
 const manifestDark = {
@@ -212,8 +212,8 @@ async function generatePngs() {
 </body>
 </html>`;
 
-  const lightColors = { bgColor: '#ffffff', bodyColor: '#14171a', armColor: '#ed4b46' };
-  const darkColors = { bgColor: '#14171a', bodyColor: '#ffffff', armColor: '#ed4b46' };
+  const lightColors = { bgColor: '#f7f6f1', bodyColor: '#14171a', armColor: '#ed4b46' };
+  const darkColors = { bgColor: '#14171a', bodyColor: '#f2f4f3', armColor: '#ff8e80' };
 
   const targets = [
     // --- LIGHT THEME (Fondo blanco, F carbón oscuro, línea roja) ---
