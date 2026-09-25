@@ -29,7 +29,7 @@ export type Space3DStudyOutcome =
   | { readonly kind: 'response-spectrum'; readonly result: ReturnType<typeof analyzeSpace3DResponseSpectrum> };
 
 /** Ejecuta un estudio; puro, lo comparten el worker y la ruta en hilo. */
-export const runSpace3DStudy = (project: Space3DProjectV1, study: Space3DStudy, budget?: AnalysisBudget): Space3DStudyOutcome => {
+const runSpace3DStudy = (project: Space3DProjectV1, study: Space3DStudy, budget?: AnalysisBudget): Space3DStudyOutcome => {
   switch (study.kind) {
     case 'pdelta': return { kind: 'pdelta', result: analyzeSpace3DPDelta(project, study.targetId, { maxIterations: study.maxIterations ?? 20, budget }) };
     case 'modal': return { kind: 'modal', result: analyzeSpace3DModal(project, { targetId: study.targetId, modes: study.modes, budget }) };

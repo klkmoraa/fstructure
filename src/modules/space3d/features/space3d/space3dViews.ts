@@ -17,7 +17,7 @@ export interface Space3DViewOption {
   readonly name: string;
 }
 
-export const SPACE3D_VIEW_3D: Space3DViewOption = Object.freeze({ id: '3d', group: '3d', scope: SPACE3D_SCOPE_3D, preset: 'isometric', name: '3D' });
+const SPACE3D_VIEW_3D: Space3DViewOption = Object.freeze({ id: '3d', group: '3d', scope: SPACE3D_SCOPE_3D, preset: 'isometric', name: '3D' });
 
 /** Todas las vistas que ofrece la rejilla: 3D, plantas de arriba abajo y alzados. */
 export const space3DViewOptions = (grid: Space3DResolvedGrid): Space3DViewOption[] => [

@@ -134,7 +134,7 @@ interface LanczosOutput {
 }
 
 /** Lanczos con inversión y reortogonalización completa en el producto de `B`. */
-export const lanczosEigenpairs = (input: LanczosInput): LanczosOutput => {
+const lanczosEigenpairs = (input: LanczosInput): LanczosOutput => {
   const { n, solve, applyB, count, tolerance } = input;
   const locked = input.locked ?? [];
   const lockedB = locked.map((pair) => applyB(pair.vector));
@@ -227,7 +227,7 @@ interface GeneralizedEigenInput {
   readonly tolerance?: number;
 }
 
-export interface Space3DGeneralizedEigenResult {
+interface Space3DGeneralizedEigenResult {
   readonly pairs: readonly Space3DEigenpair[];
   readonly converged: boolean;
   /** La cuenta de Sturm confirma que no falta ningún modo por debajo del último. */

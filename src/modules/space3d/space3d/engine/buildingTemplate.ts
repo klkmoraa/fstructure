@@ -71,7 +71,7 @@ export interface Space3DBuildingTemplateOptions {
  * Espectro de meseta genérico: rampa hasta Ta, meseta hasta Tb y caída 1/T.
  * Es un ejemplo para empezar; el de la norma se escribe en «Definir».
  */
-export const SPACE3D_EXAMPLE_SPECTRUM: readonly (readonly [number, number])[] = Object.freeze([
+const SPACE3D_EXAMPLE_SPECTRUM: readonly (readonly [number, number])[] = Object.freeze([
   [0, 0.16], [0.1, 0.4], [0.6, 0.4], [0.8, 0.3], [1, 0.24], [1.5, 0.16], [2, 0.12], [3, 0.08], [4, 0.06],
 ].map((point) => Object.freeze(point) as readonly [number, number]));
 

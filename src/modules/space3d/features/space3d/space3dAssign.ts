@@ -61,14 +61,6 @@ export const pruneSpace3DSelection = (project: Space3DProjectV1, selection: Spac
     : { nodes: keptNodes, members: keptMembers };
 };
 
-/** El elemento «primario» de la selección, el que edita el inspector: el último elegido. */
-export const primarySpace3DSelection = (selection: Space3DSelectionSet, order: 'node' | 'member' | null): Space3DSelection | null => {
-  if (order === 'node' && selection.nodes.length > 0) return { kind: 'node', id: selection.nodes[selection.nodes.length - 1] };
-  if (selection.members.length > 0) return { kind: 'member', id: selection.members[selection.members.length - 1] };
-  if (selection.nodes.length > 0) return { kind: 'node', id: selection.nodes[selection.nodes.length - 1] };
-  return null;
-};
-
 const batch = (commands: readonly Space3DCommand[]): Space3DCommand | null =>
   commands.length === 0 ? null : commands.length === 1 ? commands[0] : { kind: 'batch', commands };
 
@@ -250,10 +242,6 @@ export const space3DDeleteSelectionCommand = (
   ];
   return { command: batch(commands), keptNodes };
 };
-
-/** Barras con la misma sección que las elegidas (seleccionar «similares»). */
-export const space3DMembersWithSection = (project: Space3DProjectV1, sectionKey: string): string[] =>
-  project.members.filter((member) => space3DSectionKey(member) === sectionKey).map((member) => member.id);
 
 /** Nombre de sección para agrupar: la de catálogo o «A = …» si es propia. */
 export const space3DSectionKey = (member: Space3DFrameMember): string =>

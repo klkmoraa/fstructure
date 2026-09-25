@@ -68,14 +68,14 @@ const toLocal = (basis: Space3DOrientationBasis, vector: Vec3): Vec3 => [
 const isZero = (vector: Vec3) => vector[0] === 0 && vector[1] === 0 && vector[2] === 0;
 
 /** Densidad de masa, kg/m³: la declarada en la barra o la del material de catálogo. */
-export const space3DMemberDensity = (member: Space3DFrameMember): number => {
+const space3DMemberDensity = (member: Space3DFrameMember): number => {
   if (member.density !== undefined && Number.isFinite(member.density) && member.density > 0) return member.density;
   const material = member.materialId ? SPACE3D_MATERIALS.find((item) => item.id === member.materialId) : undefined;
   return material?.massDensityKgPerM3 ?? 0;
 };
 
 /** Peso por metro de la barra, kN/m. */
-export const space3DMemberWeightPerLength = (member: Space3DFrameMember): number =>
+const space3DMemberWeightPerLength = (member: Space3DFrameMember): number =>
   space3DMemberDensity(member) * SPACE3D_GRAVITY * member.A / 1000;
 
 /**

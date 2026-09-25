@@ -142,7 +142,7 @@ const positiveDiagonalCount = (matrix: Space3DSkylineMatrix): number => {
 };
 
 /** Modos del proyecto en ecuaciones reducidas; lo comparten el modal y el espectro. */
-export interface Space3DModalBasis {
+interface Space3DModalBasis {
   readonly assembly: Space3DStaticAssembly;
   readonly mass: Space3DMassDistribution;
   readonly pairs: readonly Space3DEigenpair[];
@@ -150,7 +150,7 @@ export interface Space3DModalBasis {
   readonly sturmVerified: boolean;
 }
 
-export type Space3DModalBasisOutcome =
+type Space3DModalBasisOutcome =
   | ({ readonly ok: true } & Space3DModalBasis)
   | { readonly ok: false; readonly result: Space3DModalResult };
 

@@ -28,7 +28,7 @@ export const space3DLetterLabel = (index: number): string => {
   return label;
 };
 
-export const space3DStoryLabel = (index: number): string => (index === 0 ? 'Base' : `Piso ${index}`);
+const space3DStoryLabel = (index: number): string => (index === 0 ? 'Base' : `Piso ${index}`);
 
 const round = (value: number) => Number(value.toFixed(6));
 
@@ -97,10 +97,6 @@ export const resolveSpace3DGrid = (project: Pick<Space3DProjectV1, 'nodes' | 'gr
     automatic: project.grid === undefined,
   };
 };
-
-/** Piso cuya elevación coincide con `y`, si lo hay. */
-export const space3DStoryAt = (grid: Space3DGridSystem, y: number, tolerance = SPACE3D_GRID_TOLERANCE): Space3DStory | undefined =>
-  grid.stories.find((story) => Math.abs(story.elevation - y) <= tolerance);
 
 /** Intersecciones de la rejilla en un piso: los puntos donde se dibuja en planta. */
 export const space3DGridPointsAt = (grid: Space3DGridSystem, elevation: number): [number, number, number][] =>

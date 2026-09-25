@@ -37,7 +37,7 @@
   --s-clay-soft: rgb(20 23 26 / 8%);
   --s-raised: 2px 4px 7px -1px var(--s-clay-dark), 1px 1px 2px var(--s-clay-dark), inset 1.5px 1.5px 2px var(--s-clay-light), inset -2px -2px 4px var(--s-clay-soft);
   --s-inset: inset 2px 2.5px 5px var(--s-clay-dark), inset -1.5px -1.5px 3px var(--s-clay-light);
-  --s-display: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --s-display: 'Space Grotesk Variable', 'Space Grotesk', 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --s-ui: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --s-data: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
   --s-ease: cubic-bezier(.2, .8, .2, 1);

@@ -8,9 +8,9 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] Proyectos por herramienta: miniatura y resumen propios en los recientes de 3D, FEM y Diseño (hoy muestran datos del 2D).
 - [ ] Mesas de 3D, FEM y Diseño con barra según el brandbook, y deshacer/rehacer en FEM y Diseño.
 - [ ] Título de pestaña por herramienta («Solver 3D · FusionStructure»).
-- [ ] 3D: diafragma rígido por piso, resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
-- [ ] 3D: modal y P-Delta sobre el solver en perfil (hoy usan matriz densa; lentos con más de ~300 nudos) y P-Delta dibujado en el lienzo.
-- [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano), losas como áreas y espectro de respuesta.
+- [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
+- [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.
+- [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
 
 ## Limpieza
 

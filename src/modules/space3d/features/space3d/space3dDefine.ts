@@ -87,7 +87,7 @@ export const parseSpace3DSpectrumPoints = (text: string): [number, number][] | n
 export const formatSpace3DSpectrumPoints = (points: readonly (readonly [number, number])[]): string =>
   points.map(([period, acceleration]) => `${Number(period.toPrecision(6))} ${Number(acceleration.toPrecision(6))}`).join('\n');
 
-export interface Space3DPlateauSpectrumInput {
+interface Space3DPlateauSpectrumInput {
   /** Sa en T = 0, g. */
   readonly a0: number;
   /** Meseta, g. */

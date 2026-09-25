@@ -58,7 +58,7 @@ const RELEASE_KEYS: readonly (keyof Space3DMemberRelease)[] = [
 ];
 
 /** Índices locales liberados; vacío si no hay liberaciones activas. */
-export const releasedLocalDofs = (releases: Space3DMemberRelease | undefined): number[] =>
+const releasedLocalDofs = (releases: Space3DMemberRelease | undefined): number[] =>
   releases ? RELEASE_KEYS.flatMap((key, index) => (releases[key] ? [index] : [])) : [];
 
 /** Una liberación que deja al elemento como mecanismo: se rechaza con este error. */
