@@ -634,7 +634,7 @@ export const enWorkspace = {
   'space3d.emptyCanvasTitle': 'Start your 3D model',
   'space3d.emptyCanvasBody': 'Choose how to begin. Everything you do can be undone.',
   'space3d.emptyGenerate': 'Generate a structure',
-  'space3d.emptyGenerateHint': 'Frames, towers, domes or bridges from a few dimensions.',
+  'space3d.emptyGenerateHint': 'Frames, trusses, towers, domes or bridges from a few dimensions.',
   'space3d.emptyExample': 'Open the example',
   'space3d.emptyExampleHint': 'A small frame with supports and loads, ready to analyse.',
   'space3d.emptyNode': 'Place the first node',

@@ -13,7 +13,7 @@ otra.
 | Código | Herramienta | Qué hace | Código fuente |
 | --- | --- | --- | --- |
 | FS-A01 | FStructure | Modelo 2D: marcos, vigas y armaduras; lineal, P-Delta, pandeo, modos, influencia | `src/features`, `src/engine` |
-| FS-A02 | Solver 3D | Marcos espaciales con 6 GDL por nudo, generador, lineal/P-Delta/modal/pandeo | `src/modules/space3d` (licencia MIT propia) |
+| FS-A02 | Solver 3D | Pórticos y armaduras espaciales al modo de ETABS/SAP2000: rejilla de ejes y pisos, plantas y alzados, asignar a una selección, cargas en barra y peso propio, liberaciones, diagramas P·V2·V3·T·M2·M3; lineal (solver en perfil), P-Delta, modal y pandeo | `src/modules/space3d` (licencia MIT propia) |
 | FS-A03 | Elementos finitos | Elasticidad lineal 2D con TRI3/QUAD4, Gmsh 4.1, JSON/VTK | `src/modules/fem` |
 | FS-A04 | Diseño | Vigas, columnas y zapatas de concreto con NTC-CDMX 2023, NSR-10 y E.060 | `src/design`, `src/features/design` |
 

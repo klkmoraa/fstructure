@@ -634,7 +634,7 @@ export const esWorkspace = {
   'space3d.emptyCanvasTitle': 'Empieza tu modelo 3D',
   'space3d.emptyCanvasBody': 'Elige cómo comenzar. Todo lo que hagas se puede deshacer.',
   'space3d.emptyGenerate': 'Generar una estructura',
-  'space3d.emptyGenerateHint': 'Pórticos, torres, cúpulas o puentes a partir de unas medidas.',
+  'space3d.emptyGenerateHint': 'Pórticos, celosías, torres, cúpulas o puentes a partir de unas medidas.',
   'space3d.emptyExample': 'Abrir el ejemplo',
   'space3d.emptyExampleHint': 'Un pórtico pequeño con apoyos y cargas, listo para analizar.',
   'space3d.emptyNode': 'Colocar el primer nudo',

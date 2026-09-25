@@ -36,7 +36,7 @@ it('Solver 3D: «Generar una estructura» abre la mesa con el generador', async 
   // La mesa 3D se carga de forma diferida (three.js incluido): en jsdom y en frío
   // tarda más del segundo por defecto de `findBy*`.
   expect(await screen.findByRole('textbox', { name: 'Descripción de la estructura a generar' }, { timeout: 8000 })).toBeTruthy();
-});
+}, 20_000);
 
 it('Solver 3D: «Colocar un nudo» abre el modo de modelado sobre el proyecto actual', async () => {
   const user = userEvent.setup();
