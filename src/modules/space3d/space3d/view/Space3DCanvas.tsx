@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, ChevronDown, Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
 import { SPACE3D_VIEW_PRESETS, type Space3DViewPreset } from './cameraModel';
-import { createSpace3DViewport, type Space3DLayerVisibility, type Space3DViewport } from './threeViewport';
+import { createSpace3DViewport, type Space3DLayerVisibility, type Space3DViewport, type Space3DWindowPick } from './threeViewport';
 import type { Space3DSceneModel } from './sceneModel';
 import type { Space3DSelection } from '../store/Space3DProjectContext';
 import type { Space3DVector } from '../model/types';
@@ -49,11 +49,28 @@ export type Space3DViewportFactory = (options: {
   layers: Space3DLayerVisibility;
 }) => Space3DViewport;
 
+/** Cómo se eligió: un clic simple reemplaza; con Ctrl/⌘/Mayús suma o quita. */
+export interface Space3DPickModifiers {
+  readonly additive: boolean;
+}
+
 interface Space3DCanvasProps {
   readonly model: Space3DSceneModel;
   readonly layers: Space3DLayerVisibility;
   readonly copy: Space3DCanvasCopy;
-  readonly onSelect?: (selection: Space3DSelection | null) => void;
+  readonly onSelect?: (selection: Space3DSelection | null, modifiers?: Space3DPickModifiers) => void;
+  /**
+   * Selección por ventana (Mayús + arrastrar, o siempre con `windowSelect`):
+   * de izquierda a derecha, lo que queda dentro; de derecha a izquierda, lo
+   * que la ventana toca.
+   */
+  readonly onWindowSelect?: (pick: Space3DWindowPick, modifiers: Space3DPickModifiers) => void;
+  /** El arrastre con el botón principal selecciona por ventana en lugar de orbitar. */
+  readonly windowSelect?: boolean;
+  /** Anima la deformada o el modo propio. */
+  readonly animate?: boolean;
+  /** Sustituye el selector de vista integrado (p. ej. plantas y alzados de la rejilla). */
+  readonly leadingControls?: ReactNode;
   readonly createViewport?: Space3DViewportFactory;
   readonly viewLabels?: Readonly<Record<Space3DViewPreset, string>>;
   /** Preset activo, controlado por quien aloja el lienzo (comparte estado con la lista de Vistas del panel lateral). */
@@ -106,13 +123,20 @@ export const Space3DCanvas = ({
   trailingControls,
   draft = null,
   onDraftPick,
+  onWindowSelect,
+  windowSelect = false,
+  animate = false,
+  leadingControls,
 }: Space3DCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<Space3DViewport | null>(null);
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
-  const pointerDownPos = useRef<{ x: number; y: number; pointerId: number } | null>(null);
+  const pointerDownPos = useRef<{ x: number; y: number; pointerId: number; window: boolean; additive: boolean } | null>(null);
+  const windowSelectRef = useRef(onWindowSelect);
+  windowSelectRef.current = onWindowSelect;
+  const [band, setBand] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const draftPickRef = useRef(onDraftPick);
@@ -205,6 +229,10 @@ export const Space3DCanvas = ({
     viewportRef.current?.setLayers(layers);
   }, [layers]);
 
+  useEffect(() => {
+    viewportRef.current?.setAnimation?.(animate && model.deformed !== null);
+  }, [animate, model]);
+
   // El preset lo gobierna quien aloja el lienzo (comparte estado con la lista
   // de Vistas del panel lateral); este efecto sólo lo aplica a la cámara viva.
   useEffect(() => {
@@ -252,7 +280,7 @@ export const Space3DCanvas = ({
   return <div className="space3d-canvas">
     <div className="space3d-canvas-stage" ref={stageRef} data-fullscreen={isFullscreen || undefined}>
       <div className="space3d-canvas-topbar">
-        <label className="space3d-view-select">
+        {leadingControls ?? <label className="space3d-view-select">
           <span className="space3d-visually-hidden">{viewSelectLabel}</span>
           <select
             value={activeView}
@@ -261,7 +289,7 @@ export const Space3DCanvas = ({
             {SPACE3D_VIEW_PRESETS.map((preset) => <option key={preset} value={preset}>{viewLabels[preset]}</option>)}
           </select>
           <ChevronDown size={14} aria-hidden="true" />
-        </label>
+        </label>}
         <div className="space3d-canvas-topbar-actions">
           <button type="button" className="space3d-tool" onClick={() => viewportRef.current?.zoomBy(0.8)} title={zoomInLabel}>
             <Plus size={16} aria-hidden="true" /><span className="space3d-visually-hidden">{zoomInLabel}</span>
@@ -300,9 +328,18 @@ export const Space3DCanvas = ({
           tabIndex={0}
           data-drafting={draft ? true : undefined}
           onPointerDown={(event) => {
-            pointerDownPos.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+            const additive = event.ctrlKey || event.metaKey || event.shiftKey;
+            const windowMode = event.button === 0 && !draftRef.current && Boolean(windowSelectRef.current) && (windowSelect || event.shiftKey);
+            pointerDownPos.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, window: windowMode, additive };
+            if (windowMode) viewportRef.current?.setNavigationEnabled?.(false);
           }}
           onPointerMove={(event) => {
+            const start = pointerDownPos.current;
+            if (start?.window && start.pointerId === event.pointerId) {
+              const rect = event.currentTarget.getBoundingClientRect();
+              setBand({ x0: start.x - rect.left, y0: start.y - rect.top, x1: event.clientX - rect.left, y1: event.clientY - rect.top });
+              return;
+            }
             const current = draftRef.current;
             if (!current || event.buttons !== 0) return;
             const rect = event.currentTarget.getBoundingClientRect();
@@ -320,28 +357,47 @@ export const Space3DCanvas = ({
           }}
           onPointerUp={(event) => {
             const start = pointerDownPos.current;
+            if (start?.window) {
+              viewportRef.current?.setNavigationEnabled?.(true);
+              setBand(null);
+            }
             if ((!selectRef.current && !draftPickRef.current) || !start || start.pointerId !== event.pointerId) return;
             pointerDownPos.current = null;
             const dx = event.clientX - start.x;
             const dy = event.clientY - start.y;
+            const rect = event.currentTarget.getBoundingClientRect();
+            if (start.window && Math.hypot(dx, dy) > 6 && windowSelectRef.current) {
+              const pick = viewportRef.current?.pickRect?.(start.x - rect.left, start.y - rect.top, event.clientX - rect.left, event.clientY - rect.top, dx >= 0 ? 'window' : 'crossing');
+              if (pick) windowSelectRef.current(pick, { additive: start.additive });
+              return;
+            }
             // Orbit/pan is movement, not duration. A stationary slow press remains
             // a valid touch selection for users with reduced motor dexterity.
             if (Math.hypot(dx, dy) > 6) return;
-            const rect = event.currentTarget.getBoundingClientRect();
             if (draftRef.current && draftPickRef.current) {
               const { selection, point } = resolvePick(event.clientX - rect.left, event.clientY - rect.top);
               draftPickRef.current({ selection, point });
               return;
             }
-            selectRef.current?.(viewportRef.current?.pickAt(event.clientX - rect.left, event.clientY - rect.top) ?? null);
+            selectRef.current?.(viewportRef.current?.pickAt(event.clientX - rect.left, event.clientY - rect.top) ?? null, { additive: start.additive });
           }}
           onPointerCancel={(event) => {
-            if (pointerDownPos.current?.pointerId === event.pointerId) pointerDownPos.current = null;
+            if (pointerDownPos.current?.pointerId === event.pointerId) {
+              if (pointerDownPos.current.window) viewportRef.current?.setNavigationEnabled?.(true);
+              pointerDownPos.current = null;
+              setBand(null);
+            }
           }}
         />}
     </div>
 
     {hover ? <div className="space3d-cursor-chip" aria-hidden="true" style={{ left: hover.x, top: hover.y }}>{hover.label}</div> : null}
+    {band ? <div
+      className="space3d-window-band"
+      data-crossing={band.x1 < band.x0 || undefined}
+      aria-hidden="true"
+      style={{ left: Math.min(band.x0, band.x1), top: Math.min(band.y0, band.y1), width: Math.abs(band.x1 - band.x0), height: Math.abs(band.y1 - band.y0) }}
+    /> : null}
 
     <div className="space3d-canvas-controls">
       {summary}

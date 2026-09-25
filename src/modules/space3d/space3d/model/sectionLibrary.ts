@@ -21,9 +21,13 @@ interface Space3DMaterialPreset {
   readonly massDensityKgPerM3: number;
 }
 
+/** Forma del perfil para dibujarlo extruido. */
+export type Space3DSectionShape = 'I' | 'box' | 'pipe' | 'rect' | 'circle';
+
 interface Space3DSectionProperties {
   readonly name: string;
   readonly materialId: string;
+  readonly shape: Space3DSectionShape;
   readonly A: number;
   readonly Iy: number;
   readonly Iz: number;
@@ -43,33 +47,49 @@ export const SPACE3D_MATERIALS: readonly Space3DMaterialPreset[] = Object.freeze
 
 export const SPACE3D_SECTION_CATALOG: readonly Space3DSectionProperties[] = Object.freeze([
   // Perfiles IPE (Acero)
-  { name: 'IPE 140', materialId: 'steel-a36', A: 0.00164, Iy: 4.49e-7, Iz: 5.41e-6, J: 2.45e-8, depth: 0.14, width: 0.073 },
-  { name: 'IPE 160', materialId: 'steel-a36', A: 0.00201, Iy: 6.83e-7, Iz: 8.69e-6, J: 3.60e-8, depth: 0.16, width: 0.082 },
-  { name: 'IPE 200', materialId: 'steel-a36', A: 0.00285, Iy: 1.42e-6, Iz: 1.94e-5, J: 6.98e-8, depth: 0.20, width: 0.100 },
-  { name: 'IPE 240', materialId: 'steel-a36', A: 0.00391, Iy: 2.84e-6, Iz: 3.89e-5, J: 1.29e-7, depth: 0.24, width: 0.120 },
-  { name: 'IPE 300', materialId: 'steel-a36', A: 0.00538, Iy: 6.04e-6, Iz: 8.36e-5, J: 2.01e-7, depth: 0.30, width: 0.150 },
-  { name: 'IPE 360', materialId: 'steel-a36', A: 0.00727, Iy: 1.04e-5, Iz: 1.63e-4, J: 3.73e-7, depth: 0.36, width: 0.170 },
+  { name: 'IPE 140', shape: 'I', materialId: 'steel-a36', A: 0.00164, Iy: 4.49e-7, Iz: 5.41e-6, J: 2.45e-8, depth: 0.14, width: 0.073 },
+  { name: 'IPE 160', shape: 'I', materialId: 'steel-a36', A: 0.00201, Iy: 6.83e-7, Iz: 8.69e-6, J: 3.60e-8, depth: 0.16, width: 0.082 },
+  { name: 'IPE 200', shape: 'I', materialId: 'steel-a36', A: 0.00285, Iy: 1.42e-6, Iz: 1.94e-5, J: 6.98e-8, depth: 0.20, width: 0.100 },
+  { name: 'IPE 240', shape: 'I', materialId: 'steel-a36', A: 0.00391, Iy: 2.84e-6, Iz: 3.89e-5, J: 1.29e-7, depth: 0.24, width: 0.120 },
+  { name: 'IPE 300', shape: 'I', materialId: 'steel-a36', A: 0.00538, Iy: 6.04e-6, Iz: 8.36e-5, J: 2.01e-7, depth: 0.30, width: 0.150 },
+  { name: 'IPE 360', shape: 'I', materialId: 'steel-a36', A: 0.00727, Iy: 1.04e-5, Iz: 1.63e-4, J: 3.73e-7, depth: 0.36, width: 0.170 },
 
   // Perfiles HEB (Columnas Acero)
-  { name: 'HEB 160', materialId: 'steel-a36', A: 0.00543, Iy: 8.89e-6, Iz: 2.49e-5, J: 3.12e-7, depth: 0.16, width: 0.16 },
-  { name: 'HEB 200', materialId: 'steel-a36', A: 0.00781, Iy: 2.00e-5, Iz: 5.70e-5, J: 5.93e-7, depth: 0.20, width: 0.20 },
-  { name: 'HEB 240', materialId: 'steel-a36', A: 0.01060, Iy: 3.92e-5, Iz: 1.13e-4, J: 1.03e-6, depth: 0.24, width: 0.24 },
+  { name: 'HEB 160', shape: 'I', materialId: 'steel-a36', A: 0.00543, Iy: 8.89e-6, Iz: 2.49e-5, J: 3.12e-7, depth: 0.16, width: 0.16 },
+  { name: 'HEB 200', shape: 'I', materialId: 'steel-a36', A: 0.00781, Iy: 2.00e-5, Iz: 5.70e-5, J: 5.93e-7, depth: 0.20, width: 0.20 },
+  { name: 'HEB 240', shape: 'I', materialId: 'steel-a36', A: 0.01060, Iy: 3.92e-5, Iz: 1.13e-4, J: 1.03e-6, depth: 0.24, width: 0.24 },
 
   // Tubulares Cuadrados HSS (Acero)
-  { name: 'HSS 100x100x4', materialId: 'steel-a36', A: 0.00150, Iy: 2.30e-6, Iz: 2.30e-6, J: 3.56e-6, depth: 0.10, width: 0.10 },
-  { name: 'HSS 150x150x6', materialId: 'steel-a36', A: 0.00340, Iy: 1.18e-5, Iz: 1.18e-5, J: 1.84e-5, depth: 0.15, width: 0.15 },
-  { name: 'HSS 200x200x8', materialId: 'steel-a36', A: 0.00595, Iy: 3.65e-5, Iz: 3.65e-5, J: 5.75e-5, depth: 0.20, width: 0.20 },
+  { name: 'HSS 100x100x4', shape: 'box', materialId: 'steel-a36', A: 0.00150, Iy: 2.30e-6, Iz: 2.30e-6, J: 3.56e-6, depth: 0.10, width: 0.10 },
+  { name: 'HSS 150x150x6', shape: 'box', materialId: 'steel-a36', A: 0.00340, Iy: 1.18e-5, Iz: 1.18e-5, J: 1.84e-5, depth: 0.15, width: 0.15 },
+  { name: 'HSS 200x200x8', shape: 'box', materialId: 'steel-a36', A: 0.00595, Iy: 3.65e-5, Iz: 3.65e-5, J: 5.75e-5, depth: 0.20, width: 0.20 },
 
   // Tubulares Circulares CHS (Acero)
-  { name: 'Tubo Ø 88.9x3.2', materialId: 'steel-a36', A: 0.00086, Iy: 7.95e-7, Iz: 7.95e-7, J: 1.59e-6, depth: 0.0889, width: 0.0889 },
-  { name: 'Tubo Ø 114.3x4.5', materialId: 'steel-a36', A: 0.00155, Iy: 2.34e-6, Iz: 2.34e-6, J: 4.68e-6, depth: 0.1143, width: 0.1143 },
-  { name: 'Tubo Ø 168.3x6.3', materialId: 'steel-a36', A: 0.00321, Iy: 1.04e-5, Iz: 1.04e-5, J: 2.08e-5, depth: 0.1683, width: 0.1683 },
+  { name: 'Tubo Ø 88.9x3.2', shape: 'pipe', materialId: 'steel-a36', A: 0.00086, Iy: 7.95e-7, Iz: 7.95e-7, J: 1.59e-6, depth: 0.0889, width: 0.0889 },
+  { name: 'Tubo Ø 114.3x4.5', shape: 'pipe', materialId: 'steel-a36', A: 0.00155, Iy: 2.34e-6, Iz: 2.34e-6, J: 4.68e-6, depth: 0.1143, width: 0.1143 },
+  { name: 'Tubo Ø 168.3x6.3', shape: 'pipe', materialId: 'steel-a36', A: 0.00321, Iy: 1.04e-5, Iz: 1.04e-5, J: 2.08e-5, depth: 0.1683, width: 0.1683 },
 
   // Concreto Rectangular
-  { name: 'Concreto 30x30 cm', materialId: 'concrete-fc25', A: 0.09, Iy: 0.000675, Iz: 0.000675, J: 0.00114, depth: 0.30, width: 0.30 },
-  { name: 'Concreto 30x40 cm', materialId: 'concrete-fc25', A: 0.12, Iy: 0.0009, Iz: 0.0016, J: 0.00185, depth: 0.40, width: 0.30 },
-  { name: 'Concreto 40x40 cm', materialId: 'concrete-fc25', A: 0.16, Iy: 0.00213, Iz: 0.00213, J: 0.00360, depth: 0.40, width: 0.40 },
-  { name: 'Concreto 30x50 cm', materialId: 'concrete-fc25', A: 0.15, Iy: 0.001125, Iz: 0.003125, J: 0.00300, depth: 0.50, width: 0.30 },
+  { name: 'Concreto 30x30 cm', shape: 'rect', materialId: 'concrete-fc25', A: 0.09, Iy: 0.000675, Iz: 0.000675, J: 0.00114, depth: 0.30, width: 0.30 },
+  { name: 'Concreto 30x40 cm', shape: 'rect', materialId: 'concrete-fc25', A: 0.12, Iy: 0.0009, Iz: 0.0016, J: 0.00185, depth: 0.40, width: 0.30 },
+  { name: 'Concreto 40x40 cm', shape: 'rect', materialId: 'concrete-fc25', A: 0.16, Iy: 0.00213, Iz: 0.00213, J: 0.00360, depth: 0.40, width: 0.40 },
+  { name: 'Concreto 30x50 cm', shape: 'rect', materialId: 'concrete-fc25', A: 0.15, Iy: 0.001125, Iz: 0.003125, J: 0.00300, depth: 0.50, width: 0.30 },
+
+  // Perfiles W (AISC, propiedades nominales en SI)
+  { name: 'W10x49', shape: 'I', materialId: 'steel-gr50', A: 0.00929, Iy: 3.888e-05, Iz: 0.0001132, J: 5.786e-07, depth: 0.254, width: 0.254 },
+  { name: 'W12x65', shape: 'I', materialId: 'steel-gr50', A: 0.01232, Iy: 7.242e-05, Iz: 0.0002219, J: 9.074e-07, depth: 0.3073, width: 0.3048 },
+  { name: 'W14x90', shape: 'I', materialId: 'steel-gr50', A: 0.0171, Iy: 0.0001507, Iz: 0.0004158, J: 1.69e-06, depth: 0.3556, width: 0.3683 },
+  { name: 'W16x40', shape: 'I', materialId: 'steel-gr50', A: 0.007613, Iy: 1.203e-05, Iz: 0.0002156, J: 3.305e-07, depth: 0.4064, width: 0.1778 },
+  { name: 'W18x50', shape: 'I', materialId: 'steel-gr50', A: 0.009484, Iy: 1.669e-05, Iz: 0.000333, J: 5.161e-07, depth: 0.4572, width: 0.1905 },
+  { name: 'W21x62', shape: 'I', materialId: 'steel-gr50', A: 0.01181, Iy: 2.393e-05, Iz: 0.0005536, J: 7.617e-07, depth: 0.5334, width: 0.2093 },
+  { name: 'W24x76', shape: 'I', materialId: 'steel-gr50', A: 0.01445, Iy: 3.434e-05, Iz: 0.0008741, J: 1.116e-06, depth: 0.6071, width: 0.2283 },
+
+  // Concreto: vigas (peralte × base) y columnas
+  { name: 'Concreto 25x50 cm', shape: 'rect', materialId: 'concrete-fc30', A: 0.125, Iy: 0.000651, Iz: 0.002604, J: 0.001788, depth: 0.5, width: 0.25 },
+  { name: 'Concreto 30x60 cm', shape: 'rect', materialId: 'concrete-fc30', A: 0.18, Iy: 0.00135, Iz: 0.0054, J: 0.003708, depth: 0.6, width: 0.3 },
+  { name: 'Concreto 40x70 cm', shape: 'rect', materialId: 'concrete-fc30', A: 0.28, Iy: 0.003733, Iz: 0.01143, J: 0.009605, depth: 0.7, width: 0.4 },
+  { name: 'Concreto 50x50 cm', shape: 'rect', materialId: 'concrete-fc30', A: 0.25, Iy: 0.005208, Iz: 0.005208, J: 0.008802, depth: 0.5, width: 0.5 },
+  { name: 'Concreto 60x60 cm', shape: 'rect', materialId: 'concrete-fc30', A: 0.36, Iy: 0.0108, Iz: 0.0108, J: 0.01825, depth: 0.6, width: 0.6 },
 ]);
 
 /**

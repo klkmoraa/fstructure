@@ -22,6 +22,8 @@ interface Space3DCameraPlacement {
   readonly near: number;
   readonly far: number;
   readonly fovDegrees: number;
+  /** Radio de la esfera que se encuadra, m: fija la altura de una vista ortográfica. */
+  readonly radius: number;
 }
 
 const FOV_DEGREES = 45;
@@ -36,7 +38,8 @@ const MIN_FRAME_RADIUS = 5;
 /** Direcciones unitarias de cada preset, en la convención global Y-arriba. */
 const DIRECTIONS: Record<Space3DViewPreset, { readonly offset: Space3DVector; readonly up: Space3DVector }> = {
   front: { offset: [0, 0, 1], up: [0, 1, 0] },
-  top: { offset: [0, 1, 0], up: [0, 0, 1] },
+  // Planta: X a la derecha de la pantalla, como en un plano; Z crece hacia abajo.
+  top: { offset: [0, 1, 0], up: [0, 0, -1] },
   side: { offset: [1, 0, 0], up: [0, 1, 0] },
   isometric: { offset: [1, 0.72, 1], up: [0, 1, 0] },
 };
@@ -71,5 +74,6 @@ export const computeSpace3DCameraPlacement = (
     near: Math.max(distance / 5_000, 1e-3),
     far: Math.max(distance * 40, 200),
     fovDegrees: FOV_DEGREES,
+    radius,
   });
 };

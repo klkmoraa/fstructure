@@ -16,6 +16,10 @@ import { validateSpace3DProject } from '../model/validation';
 import {
   SPACE3D_LIMITS,
   type Space3DFrameMember,
+  type Space3DGridSystem,
+  type Space3DLoadCase,
+  type Space3DLoadCombination,
+  type Space3DMemberLoad,
   type Space3DNodalLoad,
   type Space3DNode,
   type Space3DProjectV1,
@@ -33,6 +37,17 @@ export type Space3DCommand =
   | { readonly kind: 'add-nodal-load'; readonly load: Space3DNodalLoad }
   | { readonly kind: 'update-nodal-load'; readonly loadId: string; readonly changes: Partial<Omit<Space3DNodalLoad, 'id'>> }
   | { readonly kind: 'delete-nodal-load'; readonly loadId: string }
+  | { readonly kind: 'add-member-load'; readonly load: Space3DMemberLoad }
+  | { readonly kind: 'delete-member-load'; readonly loadId: string }
+  /** Crea el caso o reemplaza el del mismo identificador. */
+  | { readonly kind: 'upsert-load-case'; readonly loadCase: Space3DLoadCase }
+  /** Borra el caso; si hay cargas o combinaciones que lo usan, se rechaza. */
+  | { readonly kind: 'delete-load-case'; readonly caseId: string }
+  | { readonly kind: 'upsert-combination'; readonly combination: Space3DLoadCombination }
+  | { readonly kind: 'delete-combination'; readonly combinationId: string }
+  /** Guarda (o, con `null`, retira) la rejilla de ejes y pisos. */
+  | { readonly kind: 'set-grid'; readonly grid: Space3DGridSystem | null }
+  | { readonly kind: 'rename-project'; readonly name: string }
   /**
    * Varias ediciones como un solo paso: se aplican en orden y, si una falla,
    * no se aplica ninguna. Deshacer revierte el lote entero.
@@ -47,7 +62,8 @@ type Space3DCommandErrorCode =
   | 'self-referential'
   | 'invalid-value'
   | 'limit-exceeded'
-  | 'invalid-result';
+  | 'invalid-result'
+  | 'case-in-use';
 
 export class Space3DCommandError extends Error {
   readonly code: Space3DCommandErrorCode;
@@ -190,7 +206,13 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
 
     case 'delete-member': {
       requireExisting(project.members, command.memberId, 'la barra');
-      return finish(project, { ...project, members: project.members.filter((member) => member.id !== command.memberId) });
+      // Las cargas de la barra no tienen sentido sin ella: se van con ella y
+      // vuelven con ella al deshacer, porque el historial guarda snapshots.
+      return finish(project, {
+        ...project,
+        members: project.members.filter((member) => member.id !== command.memberId),
+        memberLoads: project.memberLoads.filter((load) => load.memberId !== command.memberId),
+      });
     }
 
     case 'set-restraints': {
@@ -222,6 +244,81 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
     case 'delete-nodal-load': {
       requireExisting(project.nodalLoads, command.loadId, 'la carga');
       return finish(project, { ...project, nodalLoads: project.nodalLoads.filter((load) => load.id !== command.loadId) });
+    }
+
+    case 'add-member-load': {
+      requireId(command.load.id, 'la carga en barra');
+      requireUnique(project.memberLoads.map((load) => load.id), command.load.id, 'la carga en barra');
+      requireExisting(project.members, command.load.memberId, 'la barra');
+      requireExisting(project.loadCases, command.load.caseId, 'el caso de carga');
+      return finish(project, { ...project, memberLoads: [...project.memberLoads, command.load] });
+    }
+
+    case 'delete-member-load': {
+      requireExisting(project.memberLoads, command.loadId, 'la carga en barra');
+      return finish(project, { ...project, memberLoads: project.memberLoads.filter((load) => load.id !== command.loadId) });
+    }
+
+    case 'upsert-load-case': {
+      requireId(command.loadCase.id, 'el caso de carga');
+      if (typeof command.loadCase.name !== 'string') fail('invalid-value', 'el caso necesita un nombre');
+      if (command.loadCase.selfWeightFactor !== undefined) requireFinite(command.loadCase.selfWeightFactor, 'multiplicador de peso propio');
+      if (project.loadCombinations.some((item) => item.id === command.loadCase.id)) fail('duplicate-id', `ya existe una combinación «${command.loadCase.id}»`);
+      const exists = project.loadCases.some((item) => item.id === command.loadCase.id);
+      return finish(project, {
+        ...project,
+        loadCases: exists
+          ? project.loadCases.map((item) => (item.id === command.loadCase.id ? command.loadCase : item))
+          : [...project.loadCases, command.loadCase],
+      });
+    }
+
+    case 'delete-load-case': {
+      requireExisting(project.loadCases, command.caseId, 'el caso de carga');
+      const used = project.nodalLoads.some((load) => load.caseId === command.caseId)
+        || project.memberLoads.some((load) => load.caseId === command.caseId)
+        || project.loadCombinations.some((item) => item.terms.some((term) => term.caseId === command.caseId));
+      if (used) fail('case-in-use', `el caso «${command.caseId}» todavía tiene cargas o combinaciones`);
+      return finish(project, { ...project, loadCases: project.loadCases.filter((item) => item.id !== command.caseId) });
+    }
+
+    case 'upsert-combination': {
+      requireId(command.combination.id, 'la combinación');
+      if (project.loadCases.some((item) => item.id === command.combination.id)) fail('duplicate-id', `ya existe un caso «${command.combination.id}»`);
+      if (!Array.isArray(command.combination.terms) || command.combination.terms.length === 0) fail('invalid-value', 'la combinación necesita al menos un término');
+      for (const term of command.combination.terms) {
+        requireExisting(project.loadCases, term.caseId, 'el caso de carga');
+        requireFinite(term.factor, `factor de ${term.caseId}`);
+      }
+      const exists = project.loadCombinations.some((item) => item.id === command.combination.id);
+      return finish(project, {
+        ...project,
+        loadCombinations: exists
+          ? project.loadCombinations.map((item) => (item.id === command.combination.id ? command.combination : item))
+          : [...project.loadCombinations, command.combination],
+      });
+    }
+
+    case 'delete-combination': {
+      requireExisting(project.loadCombinations, command.combinationId, 'la combinación');
+      return finish(project, { ...project, loadCombinations: project.loadCombinations.filter((item) => item.id !== command.combinationId) });
+    }
+
+    case 'set-grid': {
+      if (command.grid === null) {
+        const { grid: _removed, ...rest } = project;
+        return finish(project, rest);
+      }
+      for (const list of [command.grid.xLines, command.grid.zLines]) {
+        for (const line of list) { requireId(line.id, 'el eje'); requireFinite(line.coordinate, `eje ${line.id}`); }
+      }
+      for (const story of command.grid.stories) { requireId(story.id, 'el piso'); requireFinite(story.elevation, `piso ${story.id}`); }
+      return finish(project, { ...project, grid: command.grid });
+    }
+
+    case 'rename-project': {
+      if (typeof command.name !== 'string' || command.name.trim() === '') fail('empty-id', 'el proyecto necesita un nombre');
+      return finish(project, { ...project, name: command.name.trim() });
     }
 
     case 'batch': {

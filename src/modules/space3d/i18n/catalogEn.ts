@@ -4,6 +4,7 @@ import { enAnalysis } from '../../../i18n/catalogs/en-analysis';
 import { enModeling } from './catalogs/en-modeling';
 import { enResults } from './catalogs/en-results';
 import { enInterchange } from './catalogs/en-interchange';
+import { enStudio } from './catalogs/en-studio';
 
 /**
  * El catálogo inglés es un límite de carga: sólo se importa cuando el proyecto
@@ -15,6 +16,7 @@ export const en: Catalog = {
   ...enModeling,
   ...enResults,
   ...enInterchange,
+  ...enStudio,
   // Local additions retained during the modular extraction.
   'canvas.keyboardEditAlternative': 'With an object selected, press F2 to edit it with numeric fields instead of dragging it',
   'canvas.structuralEditConnectedHelp': 'Incident members stay connected and follow their nodes.',

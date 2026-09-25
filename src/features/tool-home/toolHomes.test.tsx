@@ -33,7 +33,9 @@ it('Solver 3D: «Generar una estructura» abre la mesa con el generador', async 
   await user.click(await screen.findByRole('button', { name: /Generar una estructura/ }));
   expect(new URLSearchParams(window.location.search).get('surface')).toBeNull();
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('space3d');
-  expect(await screen.findByRole('textbox', { name: 'Descripción de la estructura a generar' })).toBeTruthy();
+  // La mesa 3D se carga de forma diferida (three.js incluido): en jsdom y en frío
+  // tarda más del segundo por defecto de `findBy*`.
+  expect(await screen.findByRole('textbox', { name: 'Descripción de la estructura a generar' }, { timeout: 8000 })).toBeTruthy();
 });
 
 it('Solver 3D: «Colocar un nudo» abre el modo de modelado sobre el proyecto actual', async () => {

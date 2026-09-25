@@ -365,9 +365,7 @@ export const computeSpace3DMemberStations = (input: StationInput): readonly Spac
     ...loads.points.map((load) => load.a),
     ...loads.moments.map((load) => load.a),
   ].filter((a) => a > 1e-9 && a < L - 1e-9);
-  const breaks = [
-    ...loads.distributed.flatMap((load) => [load.a, load.b]),
-  ].filter((a) => a > 1e-9 && a < L - 1e-9);
+  const breaks = loads.distributed.flatMap((load) => [load.a, load.b]).filter((a) => a > 1e-9 && a < L - 1e-9);
   const positions = [...new Set([
     ...Array.from({ length: segments + 1 }, (_, index) => (L * index) / segments),
     ...breaks,

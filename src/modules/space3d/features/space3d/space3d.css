@@ -17,7 +17,7 @@
   --s3-small: 12px;
   --s3-tiny: 11px;
   --s3-heading: 15px;
-  --s3-rail-w: 72px;
+  --s3-explorer-w: 232px;
   --s3-float: color-mix(in srgb, var(--sc-color-surface-floating) 92%, transparent);
 }
 
@@ -289,49 +289,94 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: var(--s3-rail-w) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--s3-gap);
-  padding: var(--s3-gap);
+  padding: 0 var(--s3-gap) var(--s3-gap);
 }
 
-.space3d-screen:not([data-embedded]) .space3d-layout {
-  grid-template-columns: var(--s3-rail-w) minmax(0, 1fr) minmax(300px, 340px);
-}
+.space3d-layout[data-explorer] { grid-template-columns: var(--s3-explorer-w) minmax(0, 1fr); }
 
-/* --- Carril de herramientas ------------------------------------------------ */
+.space3d-screen:not([data-embedded]) .space3d-layout { grid-template-columns: minmax(0, 1fr) minmax(300px, 340px); }
+.space3d-screen:not([data-embedded]) .space3d-layout[data-explorer] { grid-template-columns: var(--s3-explorer-w) minmax(0, 1fr) minmax(300px, 340px); }
 
-.space3d-rail-vertical {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: var(--sc-space-1);
+/* Una vista o dos (planta + 3D), como la pareja de ventanas de ETABS. */
+.space3d-stages {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s3-gap);
+  min-width: 0;
   min-height: 0;
-  padding: var(--sc-space-2) 6px;
+}
+
+.space3d-layout[data-split] .space3d-stages:has(.space3d-stage--secondary) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+
+.space3d-view-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--sc-space-3);
+  border-radius: var(--sc-radius-md);
+  background: var(--s3-float);
+  box-shadow: var(--sc-shadow-sm);
+  font-size: var(--s3-small);
+  font-weight: var(--sc-font-weight-medium);
+}
+
+/* --- Cinta de comandos ------------------------------------------------------ */
+
+/* La cinta es la barra de herramientas de un programa de cálculo: grupos con
+   nombre (Definir, Dibujar, Asignar…), botones con icono y palabra, y el
+   atajo en el título. En un teléfono se desliza de lado. */
+.space3d-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 2px;
+  margin: var(--s3-gap) var(--s3-gap) var(--s3-gap);
+  padding: 4px 6px 2px;
   border-radius: var(--sc-radius-panel);
   background: var(--sc-color-surface-1);
   box-shadow: var(--sc-shadow-xs);
+  scrollbar-width: thin;
 }
 
-.space3d-rail-vertical-group {
+.space3d-ribbon-group {
   display: flex;
   flex-direction: column;
-  gap: var(--sc-space-1);
-  margin: var(--sc-space-1) 0;
-  padding: var(--sc-space-2) 0;
-  border-block: var(--sc-border-width) solid var(--sc-color-divider);
+  flex: none;
+  padding: 0 var(--sc-space-2);
+  border-right: var(--sc-border-width) solid var(--sc-color-divider);
 }
 
-.space3d-rail-button,
-.space3d-file-menu .sc-popover__trigger {
-  position: relative;
+.space3d-ribbon-group:last-child { border-right: 0; }
+
+.space3d-ribbon-items {
   display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1 1 auto;
+}
+
+.space3d-ribbon-caption {
+  padding: 1px 0 0;
+  color: var(--sc-color-text-muted);
+  font-size: 10px;
+  font-weight: var(--sc-font-weight-medium);
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.space3d-ribbon-button,
+.space3d-ribbon-menu .sc-popover__trigger {
+  display: inline-flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  width: 100%;
-  min-height: 56px;
-  padding: 6px 2px;
+  gap: 2px;
+  min-width: 44px;
+  min-height: 46px;
+  padding: 4px 5px;
   border: 0;
   border-radius: var(--sc-radius-md);
   background: transparent;
@@ -339,63 +384,146 @@
   font: inherit;
   font-size: var(--s3-tiny);
   font-weight: var(--sc-font-weight-medium);
-  line-height: 1.15;
-  text-align: center;
+  line-height: 1.1;
+  white-space: nowrap;
   cursor: pointer;
   box-shadow: none;
   transition: var(--sc-transition-control);
 }
 
-.space3d-rail-button kbd {
-  position: absolute;
-  top: 4px;
-  right: 5px;
-  font-family: var(--sc-font-mono);
-  font-size: 9.5px;
-  color: var(--sc-color-text-muted);
-}
+.space3d-ribbon-menu .sc-popover__trigger { flex-direction: row; flex-wrap: wrap; min-width: 64px; }
+.space3d-ribbon-menu .sc-popover__trigger > span { flex-basis: 100%; }
 
-.space3d-rail-button:hover:not(:disabled),
-.space3d-file-menu .sc-popover__trigger:not(:disabled):hover {
+.space3d-ribbon-button:hover:not(:disabled),
+.space3d-ribbon-menu .sc-popover__trigger:hover:not(:disabled) {
   background: var(--sc-color-surface-2);
   color: var(--sc-color-text-primary);
-  border-color: transparent;
   box-shadow: none;
 }
 
-.space3d-rail-button[aria-pressed='true'] {
+.space3d-ribbon-button[aria-pressed='true'] {
   background: var(--sc-color-action-subtle);
   color: var(--sc-color-action-ink-on-soft, var(--sc-color-text-primary));
   box-shadow: inset 0 0 0 var(--sc-border-width) color-mix(in srgb, var(--sc-color-action-primary) 45%, transparent);
 }
 
-.space3d-rail-button[aria-pressed='true'] kbd { color: inherit; opacity: 0.7; }
+.space3d-ribbon-button:disabled { color: var(--sc-color-text-disabled); cursor: not-allowed; }
+.space3d-ribbon-button:disabled svg { opacity: 0.55; }
 
-.space3d-rail-button:disabled {
-  color: var(--sc-color-text-disabled);
-  cursor: not-allowed;
+.space3d-ribbon-menu .sc-popover__surface { width: 280px; padding: var(--sc-space-2); }
+
+.space3d-ribbon .space3d-layers .sc-popover__trigger { min-height: 48px; }
+
+/* --- Explorador del modelo --------------------------------------------------- */
+
+.space3d-explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sc-space-3) var(--sc-space-2);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
 }
 
-.space3d-rail-button:disabled svg { opacity: 0.55; }
+.space3d-explorer-title {
+  margin: 0 var(--sc-space-2) var(--sc-space-2);
+  font-family: var(--sc-font-display);
+  font-size: var(--s3-heading);
+}
 
-.space3d-rail-button--generative { color: var(--sc-color-action-primary); }
+.space3d-explorer-note { margin: 0 var(--sc-space-2) var(--sc-space-2); color: var(--sc-color-text-muted); font-size: var(--s3-tiny); }
 
-.space3d-file-menu { display: block; margin-top: auto; }
+.space3d-explorer-section header { display: flex; align-items: center; gap: 2px; }
 
-.space3d-file-menu .sc-popover__trigger[aria-expanded='true'] {
-  background: var(--sc-color-surface-inset);
+.space3d-explorer-section header > button:first-child {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 32px;
+  padding: 0 var(--sc-space-2);
+  border: 0;
+  border-radius: var(--sc-radius-sm);
+  background: transparent;
   color: var(--sc-color-text-primary);
-  box-shadow: var(--sc-shadow-pressed);
-  transform: none;
+  font: inherit;
+  font-size: var(--s3-small);
+  font-weight: var(--sc-font-weight-semibold);
+  text-align: left;
+  cursor: pointer;
 }
 
-.space3d-file-menu .sc-popover__surface {
-  top: auto;
-  bottom: 0;
-  left: calc(100% + var(--sc-space-3));
-  width: 260px;
-  padding: var(--sc-space-2);
+.space3d-explorer-section header > button:first-child svg { color: var(--sc-color-text-muted); transition: transform var(--sc-motion-fast, 120ms); }
+.space3d-explorer-section[data-open] header > button:first-child svg { transform: rotate(90deg); }
+.space3d-explorer-section header small { margin-left: auto; color: var(--sc-color-text-muted); font-family: var(--sc-font-mono); font-weight: 400; }
+.space3d-explorer-section header > button:hover { background: var(--sc-color-surface-2); }
+
+.space3d-explorer-edit {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--sc-radius-sm);
+  background: transparent;
+  color: var(--sc-color-text-muted);
+  cursor: pointer;
 }
+
+.space3d-explorer-edit:hover { background: var(--sc-color-surface-2); color: var(--sc-color-text-primary); }
+
+.space3d-explorer-list { display: grid; gap: 1px; margin: 0 0 var(--sc-space-2); padding: 0 0 0 18px; list-style: none; }
+
+.space3d-explorer-list button {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sc-space-2);
+  width: 100%;
+  min-height: 28px;
+  padding: 0 var(--sc-space-2);
+  border: 0;
+  border-radius: var(--sc-radius-sm);
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  font-size: var(--s3-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+.space3d-explorer-list button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.space3d-explorer-list button small { flex: none; color: var(--sc-color-text-muted); font-family: var(--sc-font-mono); font-size: var(--s3-tiny); }
+.space3d-explorer-list button:hover { background: var(--sc-color-surface-2); }
+
+.space3d-explorer-list button[aria-current],
+.space3d-explorer-chips button[aria-current] {
+  background: var(--sc-color-action-subtle);
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+.space3d-explorer-chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 var(--sc-space-2); padding: 0 0 0 18px; list-style: none; }
+
+.space3d-explorer-chips button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 var(--sc-space-2);
+  border: var(--sc-border-width) solid var(--sc-color-divider);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  font-size: var(--s3-small);
+  cursor: pointer;
+}
+
+.space3d-explorer-chips small { color: var(--sc-color-text-muted); font-family: var(--sc-font-mono); font-size: 10px; }
+.space3d-explorer-chips button:hover { background: var(--sc-color-surface-2); }
 
 /* --- Menús y popovers ------------------------------------------------------ */
 
@@ -832,36 +960,24 @@
 }
 
 .space3d-result-bar button {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 4px;
-  min-height: var(--sc-size-target-pointer);
-  padding: 0 var(--sc-space-3);
+  flex: none;
+  min-width: 34px;
+  min-height: 32px;
+  padding: 0 var(--sc-space-2);
   border: 0;
   border-radius: var(--sc-radius-sm);
   background: transparent;
   color: var(--sc-color-text-secondary);
-  font: inherit;
+  font-family: var(--sc-font-mono);
   font-size: var(--s3-small);
-  font-weight: var(--sc-font-weight-medium);
-  line-height: var(--sc-size-target-pointer);
+  font-weight: var(--sc-font-weight-semibold);
   cursor: pointer;
   transition: var(--sc-transition-control);
 }
 
-.space3d-result-bar small {
-  font-family: var(--sc-font-mono);
-  font-size: var(--s3-tiny);
-  opacity: 0.7;
-}
-
+.space3d-result-bar button:first-child { font-family: var(--sc-font-ui); font-weight: var(--sc-font-weight-medium); }
 .space3d-result-bar button:hover:not(:disabled) { background: var(--sc-color-surface-2); color: var(--sc-color-text-primary); }
-
-.space3d-result-bar button[aria-pressed='true'] {
-  background: var(--sc-color-text-primary);
-  color: var(--sc-color-surface-1);
-}
-
+.space3d-result-bar button[aria-pressed='true'] { background: var(--sc-color-text-primary); color: var(--sc-color-surface-1); }
 .space3d-result-bar button:disabled { color: var(--sc-color-text-disabled); cursor: not-allowed; }
 
 .space3d-scale {
@@ -876,6 +992,200 @@
   font-size: var(--s3-tiny);
   color: var(--sc-color-text-secondary);
 }
+
+/* --- Selección por ventana ---------------------------------------------------- */
+
+/* Izquierda→derecha, trazo continuo: lo que queda dentro. Derecha→izquierda,
+   trazo discontinuo: lo que la ventana toca. La convención de los CAD. */
+.space3d-window-band {
+  position: absolute;
+  z-index: 12;
+  border: 1.5px solid var(--sc-color-selection-stroke, var(--sc-color-action-primary));
+  background: color-mix(in srgb, var(--sc-color-selection-stroke, var(--sc-color-action-primary)) 10%, transparent);
+  pointer-events: none;
+}
+
+.space3d-window-band[data-crossing] {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--sc-color-technical-reaction) 10%, transparent);
+}
+
+/* --- Asignar, selección múltiple y detalle de barra ------------------------------ */
+
+.space3d-assign,
+.space3d-selection-panel { display: grid; gap: var(--sc-space-3); }
+
+.space3d-assign-head,
+.space3d-selection-panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sc-space-2);
+}
+
+.space3d-assign-head h3,
+.space3d-selection-panel h3 { margin: 0; font-family: var(--sc-font-display); font-size: var(--s3-heading); }
+.space3d-assign-head p,
+.space3d-selection-panel header p { margin: 2px 0 0; color: var(--sc-color-text-secondary); font-size: var(--s3-small); }
+
+.space3d-assign-radios { display: grid; gap: 2px; }
+.space3d-assign-radios--inline { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); }
+
+.space3d-assign-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-height: 34px;
+  padding: 0 var(--sc-space-2);
+  border-radius: var(--sc-radius-sm);
+  cursor: pointer;
+}
+
+.space3d-assign-radio:hover { background: var(--sc-color-surface-2); }
+.space3d-assign-radio input { margin: 0; accent-color: var(--sc-color-action-primary); }
+
+.space3d-assign-props {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px var(--sc-space-3);
+  margin: 0;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-color-surface-inset);
+  font-size: var(--s3-small);
+}
+
+.space3d-assign-props div { display: flex; justify-content: space-between; gap: var(--sc-space-2); }
+.space3d-assign-props dt { color: var(--sc-color-text-secondary); }
+.space3d-assign-props dd { margin: 0; font-family: var(--sc-font-mono); }
+
+.space3d-selection-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sc-space-2); }
+
+.space3d-member-loads { display: grid; gap: var(--sc-space-2); margin-top: var(--sc-space-3); }
+.space3d-member-loads h4,
+.space3d-member-diagrams h4,
+.space3d-modes h4 { margin: 0; font-size: var(--s3-text); font-weight: var(--sc-font-weight-semibold); }
+.space3d-member-loads ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+
+.space3d-member-loads li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-height: 32px;
+  padding: 0 0 0 var(--sc-space-2);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-inset);
+  font-size: var(--s3-small);
+}
+
+.space3d-member-loads code { color: var(--sc-color-text-muted); font-size: var(--s3-tiny); }
+
+.space3d-member-diagrams { display: grid; gap: var(--sc-space-2); margin-top: var(--sc-space-3); }
+.space3d-member-diagrams header { display: flex; align-items: baseline; justify-content: space-between; }
+.space3d-member-diagrams header small { color: var(--sc-color-text-muted); font-family: var(--sc-font-mono); }
+
+.space3d-diagram-chart {
+  --tone: var(--sc-color-technical-moment);
+  margin: 0;
+  padding: 6px var(--sc-space-2) 4px;
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-color-surface-inset);
+}
+
+.space3d-diagram-chart[data-tone='axial'] { --tone: var(--sc-color-technical-axial); }
+.space3d-diagram-chart[data-tone='shear'] { --tone: var(--sc-color-technical-shear); }
+
+.space3d-diagram-chart figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--sc-space-2);
+  font-size: var(--s3-tiny);
+  color: var(--sc-color-text-secondary);
+}
+
+.space3d-diagram-chart figcaption b { color: var(--tone); font-family: var(--sc-font-mono); font-size: var(--s3-small); }
+.space3d-diagram-chart figcaption span,
+.space3d-diagram-chart output { font-family: var(--sc-font-mono); }
+.space3d-diagram-chart output { margin-left: auto; color: var(--sc-color-text-primary); }
+.space3d-diagram-chart svg { display: block; width: 100%; height: 56px; touch-action: none; }
+.space3d-diagram-axis { stroke: var(--sc-color-text-muted); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.space3d-diagram-fill { fill: color-mix(in srgb, var(--tone) 28%, transparent); }
+.space3d-diagram-line { fill: none; stroke: var(--tone); stroke-width: 1.6; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.space3d-diagram-cursor { stroke: var(--sc-color-text-primary); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+
+.space3d-modes { display: grid; gap: var(--sc-space-2); }
+.space3d-modes header { display: flex; align-items: center; justify-content: space-between; gap: var(--sc-space-2); }
+.space3d-modes-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+
+.space3d-modes-list button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 6px var(--sc-space-3);
+  border: var(--sc-border-width) solid var(--sc-color-divider);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.space3d-modes-list button[aria-pressed='true'] {
+  border-color: var(--sc-color-technical-deformed);
+  box-shadow: inset 3px 0 0 var(--sc-color-technical-deformed);
+}
+
+.space3d-modes-head { display: flex; align-items: center; gap: var(--sc-space-3); font-size: var(--s3-small); }
+.space3d-modes-head span { font-family: var(--sc-font-mono); color: var(--sc-color-text-secondary); }
+.space3d-modes-head svg { margin-left: auto; color: var(--sc-color-text-muted); }
+.space3d-modes-list small { color: var(--sc-color-text-muted); font-family: var(--sc-font-mono); font-size: var(--s3-tiny); }
+
+/* --- Diálogos de «Definir» ---------------------------------------------------- */
+
+.space3d-define-dialog { width: min(560px, calc(100vw - 32px)); }
+.space3d-define-dialog--wide { width: min(820px, calc(100vw - 32px)); }
+.space3d-define-fields { display: grid; gap: var(--sc-space-3); }
+.space3d-define-block { display: grid; gap: var(--sc-space-2); margin-bottom: var(--sc-space-4); }
+.space3d-define-block header { display: flex; align-items: center; justify-content: space-between; gap: var(--sc-space-2); }
+.space3d-define-block h3 { margin: 0; font-size: var(--s3-text); font-weight: var(--sc-font-weight-semibold); }
+
+.space3d-define-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--s3-small);
+}
+
+.space3d-define-table th,
+.space3d-define-table td {
+  padding: 4px var(--sc-space-2);
+  border-bottom: var(--sc-border-width) solid var(--sc-color-divider);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.space3d-define-table thead th { color: var(--sc-color-text-muted); font-weight: var(--sc-font-weight-medium); font-size: var(--s3-tiny); }
+.space3d-define-table td { font-family: var(--sc-font-mono); }
+.space3d-define-table input,
+.space3d-define-table select {
+  width: 100%;
+  min-height: 30px;
+  padding: 0 var(--sc-space-2);
+  border: var(--sc-border-width) solid var(--sc-color-border);
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-input, var(--sc-color-surface-1));
+  color: var(--sc-color-text-primary);
+  font: inherit;
+}
+
+.space3d-define-table--pick tbody tr { cursor: pointer; }
+.space3d-define-table--pick tbody tr:hover { background: var(--sc-color-surface-2); }
+.space3d-define-table--pick tbody tr[aria-selected='true'] { background: var(--sc-color-action-subtle); }
+.space3d-define-table label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+
+.space3d-field input[aria-invalid='true'] { border-color: var(--sc-color-state-error-foreground); }
 
 /* --- HUD de selección y leyenda ------------------------------------------- */
 
@@ -1846,6 +2156,10 @@
 /* --- Shell compacto: el panel vive en la hoja ----------------------------- */
 
 @media (max-width: 1023px) {
+  /* Una sola fila que se desliza: el lienzo no pierde altura. */
+  .space3d-ribbon { flex-wrap: nowrap; overflow-x: auto; }
+  .space3d-ribbon-caption { display: none; }
+
   .space3d-stage-guide {
     position: absolute;
     z-index: 9;
@@ -1857,7 +2171,14 @@
     transform: translateX(-50%);
   }
 
-  .space3d-screen:not([data-embedded]) .space3d-layout { grid-template-columns: var(--s3-rail-w) minmax(0, 1fr); }
+  /* Sin sitio para tres columnas: el explorador y la vista doble se retiran. */
+  .space3d-layout,
+  .space3d-layout[data-explorer],
+  .space3d-screen:not([data-embedded]) .space3d-layout,
+  .space3d-screen:not([data-embedded]) .space3d-layout[data-explorer] { grid-template-columns: minmax(0, 1fr); }
+  .space3d-explorer,
+  .space3d-stage--secondary { display: none; }
+  .space3d-layout[data-split] .space3d-stages:has(.space3d-stage--secondary) { grid-template-columns: minmax(0, 1fr); }
 
   .space3d-screen:not([data-embedded]) .space3d-sheet {
     position: fixed;
@@ -1883,43 +2204,15 @@
 @media (max-width: 700px) {
   .space3d-screen { --s3-gap: var(--sc-space-2); }
 
-  .space3d-layout,
-  .space3d-screen:not([data-embedded]) .space3d-layout {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto;
-  }
-
-  .space3d-stage { grid-row: 1; }
-
-  .space3d-rail-vertical {
-    grid-row: 2;
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 4px;
-  }
-
-  .space3d-rail-vertical-group {
-    flex-direction: row;
-    flex: 4 1 0;
-    margin: 0;
-    padding: 0 4px;
-    border-block: 0;
-    border-inline: var(--sc-border-width) solid var(--sc-color-divider);
-  }
-
-  .space3d-rail-button,
-  .space3d-file-menu .sc-popover__trigger { flex: 1 1 0; min-width: 0; min-height: var(--sc-size-target-touch, 48px); }
-  .space3d-rail-button kbd { display: none; }
+  .space3d-ribbon { flex-wrap: nowrap; overflow-x: auto; margin: var(--s3-gap); padding: 2px 4px; }
+  .space3d-ribbon-caption { display: none; }
+  .space3d-ribbon-button,
+  .space3d-ribbon-menu .sc-popover__trigger { min-width: 46px; min-height: 44px; padding: 3px 4px; }
+  .space3d-ribbon-group { padding: 0 4px; }
   /* En táctil se selecciona tocando el lienzo; el pellizco ya acerca y aleja. */
-  .space3d-rail-vertical > .space3d-rail-button:first-child { display: none; }
   .space3d-canvas-topbar-actions > .space3d-tool:nth-child(-n + 2) { display: none; }
-  .space3d-file-menu { flex: 1 1 0; margin: 0; }
 
-  .space3d-file-menu .sc-popover__surface {
-    left: auto;
-    right: 0;
-    bottom: calc(100% + var(--sc-space-2));
-  }
+  .space3d-ribbon-menu .sc-popover__surface { left: 0; right: auto; }
 
   .space3d-canvas-topbar { top: var(--sc-space-2); left: var(--sc-space-2); right: var(--sc-space-2); }
   .space3d-layers .sc-popover__trigger span { display: none; }
@@ -1960,8 +2253,6 @@
 
   .space3d-stage-footer { bottom: var(--sc-space-2); max-width: calc(100% - var(--sc-space-4)); }
   .space3d-result-bar { overflow-x: auto; max-width: 100%; scrollbar-width: none; }
-  .space3d-result-bar small { display: none; }
-  .space3d-result-bar button { padding: 0 var(--sc-space-2); }
   .space3d-scale { display: none; }
 
   .space3d-status { gap: var(--sc-space-3); padding: 0 var(--sc-space-3); }
@@ -1998,4 +2289,9 @@
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Con dos vistas el pie de cada lienzo ocupa dos filas: la leyenda sube. */
+@media (min-width: 1024px) {
+  .space3d-layout[data-split] .space3d-results-legend { top: 64px; bottom: auto; }
 }

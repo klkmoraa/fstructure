@@ -8,13 +8,12 @@ import { useMemo, useState } from 'react';
 import { Activity, ChevronDown, ChevronUp, Crosshair } from 'lucide-react';
 import { Button, IconButton } from '../../../../design-system/components/controls';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../../space3d/model/types';
-import type { Space3DResultMode } from '../../space3d/view/sceneModel';
-import { formatSpace3DNumber } from './space3dNumberFormat';
 import {
-  deriveSpace3DMemberAxialAction,
-  deriveSpace3DMemberMomentMagnitude,
-  deriveSpace3DMemberShearMagnitude,
-} from '../../space3d/view/resultSemantics';
+  SPACE3D_COMPONENT_SYMBOL, SPACE3D_RESULT_COMPONENT, space3DResultNoiseFloor,
+  type Space3DForceComponent, type Space3DResultMode,
+} from '../../space3d/view/sceneModel';
+import { formatSpace3DNumber } from './space3dNumberFormat';
+import { deriveSpace3DMemberAxialAction } from '../../space3d/view/resultSemantics';
 import type { TranslationKey } from '../../i18n/catalogs';
 
 interface Space3DResultsLegendProps {
@@ -24,6 +23,15 @@ interface Space3DResultsLegendProps {
   readonly onSelectCritical?: (kind: 'node' | 'member', id: string) => void;
   readonly t: (key: TranslationKey, variables?: Record<string, string | number>) => string;
 }
+
+const COMPONENT_NAME_KEYS: Record<Space3DForceComponent, TranslationKey> = {
+  N: 'space3d.display.axial',
+  Vy: 'space3d.display.shear2',
+  Vz: 'space3d.display.shear3',
+  T: 'space3d.display.torsion',
+  My: 'space3d.display.moment2',
+  Mz: 'space3d.display.moment3',
+};
 
 export const Space3DResultsLegend = ({
   resultMode,
@@ -64,80 +72,35 @@ export const Space3DResultsLegend = ({
       };
     }
 
-    if (resultMode === 'axial') {
-      let minN = Infinity;
-      let maxN = -Infinity;
-      let maxAbsN = -Infinity;
-      let maxMember = '';
-
+    const component = SPACE3D_RESULT_COMPONENT[resultMode];
+    if (component) {
+      // Extremos sobre todas las estaciones de todas las barras, sin el ruido
+      // de redondeo: el diagrama y la leyenda dicen el mismo número.
+      const noise = space3DResultNoiseFloor(analysis);
+      let min = 0;
+      let max = 0;
+      let peak = 0;
+      let criticalId = '';
       for (const res of analysis.memberResults) {
-        const axial = deriveSpace3DMemberAxialAction(res);
-        if (axial < minN) minN = axial;
-        if (axial > maxN) maxN = axial;
-        const absAxial = Math.abs(axial);
-        if (absAxial > maxAbsN) {
-          maxAbsN = absAxial;
-          maxMember = res.memberId;
+        const values = res.stations?.map((station) => station[component])
+          ?? (component === 'N' ? [deriveSpace3DMemberAxialAction(res)] : [-res.start[component], res.end[component]]);
+        for (const raw of values) {
+          const value = Math.abs(raw) <= noise ? 0 : raw;
+          if (value < min) min = value;
+          if (value > max) max = value;
+          if (Math.abs(value) > peak) { peak = Math.abs(value); criticalId = res.memberId; }
         }
       }
-
+      const moment = component === 'T' || component === 'My' || component === 'Mz';
       return {
-        title: t('space3d.legendAxial' as TranslationKey) || 'Esfuerzo Axial N [kN]',
-        unit: 'kN',
-        min: Number.isFinite(minN) ? minN : 0,
-        max: Number.isFinite(maxN) ? maxN : 0,
-        criticalId: maxMember,
+        title: t('space3d.legend.component', { symbol: SPACE3D_COMPONENT_SYMBOL[component], name: t(COMPONENT_NAME_KEYS[component]), unit: moment ? 'kN·m' : 'kN' }),
+        unit: moment ? 'kN·m' : 'kN',
+        min,
+        max,
+        criticalId,
         criticalKind: 'member' as const,
-        convention: t('space3d.legendConventionAxial'),
-        gradientClass: 'space3d-legend-grad--axial',
-      };
-    }
-
-    if (resultMode === 'shear') {
-      let maxV = 0;
-      let maxMember = '';
-
-      for (const res of analysis.memberResults) {
-        const peak = deriveSpace3DMemberShearMagnitude(res);
-        if (peak > maxV) {
-          maxV = peak;
-          maxMember = res.memberId;
-        }
-      }
-
-      return {
-        title: t('space3d.legendShear' as TranslationKey) || 'Fuerza Cortante Resultante V [kN]',
-        unit: 'kN',
-        min: 0,
-        max: maxV,
-        criticalId: maxMember,
-        criticalKind: 'member' as const,
-        convention: t('space3d.legendConventionShear'),
-        gradientClass: 'space3d-legend-grad--shear',
-      };
-    }
-
-    if (resultMode === 'moment') {
-      let maxM = 0;
-      let maxMember = '';
-
-      for (const res of analysis.memberResults) {
-        const peak = deriveSpace3DMemberMomentMagnitude(res);
-        if (peak > maxM) {
-          maxM = peak;
-          maxMember = res.memberId;
-        }
-      }
-
-      return {
-        title: t('space3d.legendMoment' as TranslationKey) || 'Momento Flector Resultante M [kN·m]',
-        unit: 'kN·m',
-        min: 0,
-        max: maxM,
-        criticalId: maxMember,
-        criticalKind: 'member' as const,
-        convention: t('space3d.legendConventionMoment'),
-        gradientClass: 'space3d-legend-grad--moment',
+        convention: t(component === 'N' ? 'space3d.legendConventionAxial' : component === 'Mz' || component === 'My' ? 'space3d.legend.conventionMoment' : component === 'T' ? 'space3d.legend.conventionTorsion' : 'space3d.legend.conventionShear'),
+        gradientClass: component === 'N' ? 'space3d-legend-grad--axial' : component === 'Vy' || component === 'Vz' ? 'space3d-legend-grad--shear' : 'space3d-legend-grad--moment',
       };
     }
 

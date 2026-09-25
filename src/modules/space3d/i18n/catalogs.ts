@@ -3,6 +3,7 @@ import { esAnalysis } from '../../../i18n/catalogs/es-analysis';
 import { esModeling } from './catalogs/es-modeling';
 import { esResults } from './catalogs/es-results';
 import { esInterchange } from './catalogs/es-interchange';
+import { esStudio } from './catalogs/es-studio';
 
 export const es = {
   ...esWorkspace,
@@ -10,6 +11,7 @@ export const es = {
   ...esModeling,
   ...esResults,
   ...esInterchange,
+  ...esStudio,
   // Adiciones locales conservadas durante la extracción modular.
   'canvas.keyboardEditAlternative': 'Con un objeto seleccionado, pulsa F2 para editarlo con campos numéricos en lugar de arrastrarlo',
   'canvas.structuralEditConnectedHelp': 'Los miembros incidentes permanecen conectados y acompañan a sus nodos.',
