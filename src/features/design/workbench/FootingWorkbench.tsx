@@ -4,10 +4,12 @@ import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import { designFooting, type FootingDesignInput, type FootingDesignResult, type FootingDirection } from '../../../design/elements/footing';
 import { rebarLabel } from '../../../design/elements/shared';
 import {
-  BarSelect, ChecksList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
+  BarSelect, ChecksList, ReviewList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
   formatNumber, mpaFromKgcm2, parseNumber, useStoredDraft,
 } from './common';
 import { FootingPlan, FootingSection } from './FootingDrawings';
+import { outOfScopeChecks } from '../../../design/elements/scope';
+import type { DesignReport } from './designReport';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 const DEFAULTS = {
@@ -73,13 +75,22 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const code = designCode(chrome.code);
   const result = useMemo(() => designFooting(toInput(chrome.code, draft)), [chrome.code, draft]);
   const [checks, notes] = splitChecks(result.ok ? result.checks : []);
+  const outOfScope = useMemo(() => outOfScopeChecks('footing', chrome.code), [chrome.code]);
+  const title = result.ok ? `Zapata ${planText(result)}` : '';
+  const report = useMemo<DesignReport | null>(() => result.ok ? {
+    element: 'footing', title, code: result.input.code, status: result.status, governingRatio: result.governingRatio,
+    memo: footingMemo(result), checks, notes, outOfScope, input: result.input,
+  } : null,
+  // `checks` y `notes` derivan de `result`.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  [result, outOfScope, title]);
 
   return <WorkbenchLayout
     chrome={chrome}
     title="Zapata aislada"
-    memo={result.ok ? footingMemo(result) : null}
+    report={report}
     onReset={reset}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
     caption={result.ok ? `${planText(result)} · h ${formatNumber(result.thicknessMm / 10, 0)} cm` : undefined}
     inputs={<>
       <FieldGroup title="Cargas de servicio">
@@ -141,7 +152,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </Plate>
     </> : <ErrorsPanel errors={result.errors} />}
     results={result.ok ? <>
-      <Verdict status={result.status} ratio={result.governingRatio} title={`Zapata ${planText(result)}`}>
+      <Verdict status={result.status} ratio={result.governingRatio} title={title} outOfScope={outOfScope.length}>
         <Summary rows={[
           { label: 'Peralte', value: `${formatNumber(result.thicknessMm / 10, 0)} cm · d ${formatNumber(result.effectiveDepthMm / 10, 1)}` },
           { label: 'q servicio', value: `${formatNumber(result.service.minimumKpa, 0)}–${formatNumber(result.service.maximumKpa, 0)} kPa`, tone: 'axial' },
@@ -156,7 +167,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           detail: `Capa ${direction.layer === 'bottom' ? 'inferior' : 'superior'}`,
         }))} />
       </PanelSection>
-      <PanelSection title="Comprobaciones"><ChecksList checks={checks} /></PanelSection>
+      <PanelSection title="Revisión"><ReviewList checks={checks} outOfScope={outOfScope} /></PanelSection>
       <Disclosure label="Detalle del cálculo">
         <RebarList items={[result.directions.x, result.directions.y].map((direction) => ({
           kind: 'bar' as const,

@@ -1,6 +1,8 @@
 import { ClipboardCheck, Maximize2, Minus, PenLine, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
+import { verdictHeadline } from './common';
+import type { DesignReport } from './designReport';
 
 export type WorkbenchPanel = 'inputs' | 'results';
 
@@ -13,7 +15,8 @@ export interface WorkbenchChrome {
   readonly code: DesignCodeId;
   readonly panels: Readonly<Record<WorkbenchPanel, boolean>>;
   readonly setPanel: (panel: WorkbenchPanel, open: boolean) => void;
-  readonly onMemo: (memo: string | null) => void;
+  /** Instantánea del diseño vigente, para copiar la memoria o exportar el PDF. */
+  readonly onReport: (report: DesignReport | null) => void;
   /**
    * Con la mesa dentro del shell, el veredicto sube a la barra superior —donde
    * las cuatro mesas dicen su estado— y deja de repetirse sobre el lienzo.
@@ -106,7 +109,7 @@ function useStageZoom() {
  * pantalla completa —Dibujo, Datos, Resultados— con pestañas fijas abajo y el
  * elemento arriba.
  */
-export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption, results, memo, onReset }: {
+export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption, results, report, onReset }: {
   chrome: WorkbenchChrome;
   title: string;
   inputs: ReactNode;
@@ -115,11 +118,11 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
   /** Resumen corto del elemento junto al veredicto. */
   caption?: string;
   results: ReactNode;
-  memo: string | null;
+  report: DesignReport | null;
   onReset: () => void;
 }) {
-  const { onMemo, onVerdict, panels, setPanel } = chrome;
-  useEffect(() => onMemo(memo), [memo, onMemo]);
+  const { onReport, onVerdict, panels, setPanel } = chrome;
+  useEffect(() => onReport(report), [report, onReport]);
   useEffect(() => { onVerdict?.({ status: verdict.status, label: verdict.label }); }, [verdict.status, verdict.label, onVerdict]);
   const { scroller, zoom, setZoom } = useStageZoom();
   const canShowResults = verdict.status !== 'error';
@@ -199,5 +202,5 @@ export function Plate({ title, note, wide = false, children }: { title: string; 
   </figure>;
 }
 
-export const verdictLabel = (status: 'pass' | 'fail' | 'warning', ratio: number) =>
-  `${status === 'fail' ? 'No cumple' : 'Cumple'} · ${Math.round(ratio * 100)} %`;
+export const verdictLabel = (status: 'pass' | 'fail' | 'warning', ratio: number, incomplete = false) =>
+  `${status === 'warning' ? 'Cumple' : verdictHeadline(status, incomplete)} · ${Math.round(ratio * 100)} %`;

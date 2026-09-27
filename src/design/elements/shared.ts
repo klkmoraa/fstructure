@@ -68,7 +68,11 @@ export const e060 = reference('e060-2009-concreto-armado', 'E.060');
 /** Criterio que no sale de una cláusula verificada (estática, práctica constructiva, dato geotécnico). */
 export const complementary = (label: string): ClauseReference => ({ standard: 'complementary', clauseIds: [], label });
 
-export type CheckStatus = 'pass' | 'fail' | 'warning' | 'info';
+/**
+ * `out-of-scope`: verificación que la norma pide y el taller no calcula. Nunca
+ * aprueba ni reprueba, pero impide llamar «Cumple» a secas al elemento.
+ */
+export type CheckStatus = 'pass' | 'fail' | 'warning' | 'info' | 'out-of-scope';
 
 export interface ElementCheck {
   readonly id: string;
@@ -81,7 +85,18 @@ export interface ElementCheck {
   readonly ratio?: number;
   readonly reference: ClauseReference;
   readonly note?: string;
+  /** Dónde rige: estación, claro, lecho o dirección. */
+  readonly location?: string;
+  /** De qué combinación o captura sale la demanda, y si es envolvente o concurrente. */
+  readonly combination?: string;
 }
+
+/** Añade ubicación y origen de la demanda a una comprobación ya hecha. */
+export const tracedAt = (check: ElementCheck, location?: string, combination?: string): ElementCheck => ({
+  ...check,
+  ...(location ? { location } : {}),
+  ...(combination ? { combination } : {}),
+});
 
 export const capacityCheck = (
   id: string,
@@ -104,7 +119,7 @@ export const capacityCheck = (
 });
 
 export const governingRatio = (checks: readonly ElementCheck[]): number =>
-  checks.reduce((max, item) => item.ratio !== undefined && Number.isFinite(item.ratio) && item.status !== 'info' ? Math.max(max, item.ratio) : max, 0);
+  checks.reduce((max, item) => item.ratio !== undefined && Number.isFinite(item.ratio) && item.status !== 'info' && item.status !== 'out-of-scope' ? Math.max(max, item.ratio) : max, 0);
 
 export const overallStatus = (checks: readonly ElementCheck[]): 'pass' | 'fail' | 'warning' =>
   checks.some((item) => item.status === 'fail') ? 'fail' : checks.some((item) => item.status === 'warning') ? 'warning' : 'pass';

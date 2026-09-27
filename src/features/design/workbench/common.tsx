@@ -1,6 +1,6 @@
-import { AlertTriangle, CheckCircle2, ChevronDown, CircleAlert, Info, XCircle } from 'lucide-react';
-import { useEffect, useId, useState, type ReactNode } from 'react';
-import { Select } from '../../../design-system/components/controls';
+import { AlertTriangle, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, Info, XCircle } from 'lucide-react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
+import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { UnitField } from '../../../design-system/components/editor';
 import { REBAR_SIZES, type ElementCheck } from '../../../design/elements/shared';
 import { useWorkbenchStorage, type WorkbenchStorage } from './workbenchStorage';
@@ -110,24 +110,35 @@ export function MoreOptions({ children }: { children: ReactNode }) {
 export const formatNumber = (value: number, digits = 1) =>
   Number.isFinite(value) ? value.toLocaleString('es-MX', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '—';
 
-const statusIcon = { pass: CheckCircle2, fail: XCircle, warning: AlertTriangle, info: Info } as const;
-const statusLabel = { pass: 'Cumple', fail: 'No cumple', warning: 'Revisar', info: 'Nota' } as const;
+const statusIcon = { pass: CheckCircle2, fail: XCircle, warning: AlertTriangle, info: Info, 'out-of-scope': CircleDashed } as const;
+const statusLabel = { pass: 'Cumple', fail: 'No cumple', warning: 'Revisar', info: 'Nota', 'out-of-scope': 'Sin evaluar' } as const;
 
-export function Verdict({ status, ratio, title, children }: {
-  status: 'pass' | 'fail' | 'warning'; ratio: number; title: string; children?: ReactNode;
+/** Titular del veredicto: con verificaciones sin evaluar nunca dice «Cumple» a secas. */
+export const verdictHeadline = (status: 'pass' | 'fail' | 'warning', incomplete: boolean) =>
+  status === 'fail' ? 'No cumple' : status === 'warning' ? 'Cumple con observaciones' : incomplete ? 'Cumple lo evaluado' : 'Cumple';
+
+export function Verdict({ status, ratio, title, outOfScope = 0, children }: {
+  status: 'pass' | 'fail' | 'warning'; ratio: number; title: string;
+  /** Verificaciones que la norma pide y el taller no calcula. */
+  outOfScope?: number;
+  children?: ReactNode;
 }) {
   const Icon = statusIcon[status];
   const percent = Number.isFinite(ratio) ? Math.round(ratio * 100) : 999;
-  return <section className="dw-verdict" data-status={status} aria-live="polite">
+  return <section className="dw-verdict" data-status={status} data-incomplete={outOfScope > 0 && status !== 'fail'} aria-live="polite">
     <p className="dw-eyebrow">{title}</p>
     <div className="dw-verdict__head">
       <Icon size={20} aria-hidden="true" />
-      <strong>{status === 'pass' ? 'Cumple' : status === 'fail' ? 'No cumple' : 'Cumple con observaciones'}</strong>
+      <strong>{verdictHeadline(status, outOfScope > 0)}</strong>
       <span className="dw-verdict__percent" title="Relación demanda/capacidad que rige">{percent > 999 ? '>999' : percent}<small>%</small></span>
     </div>
     <div className="dw-meter" role="meter" aria-label="Utilización que rige" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(percent, 100)}>
       <i style={{ width: `${Math.min(100, percent)}%` }} />
     </div>
+    {outOfScope > 0 ? <p className="dw-verdict__scope">
+      <CircleDashed size={13} aria-hidden="true" />
+      Revisión incompleta: {outOfScope} {outOfScope === 1 ? 'verificación queda' : 'verificaciones quedan'} fuera del alcance del taller.
+    </p> : null}
     {children}
   </section>;
 }
@@ -155,6 +166,10 @@ function CheckItem({ check }: { check: ElementCheck }) {
     </button>
     {percent !== undefined ? <div className="dw-meter dw-meter--thin" aria-hidden="true"><i style={{ width: `${Math.min(100, percent)}%` }} /></div> : null}
     {open ? <div id={id} className="dw-checks__detail">
+      {check.location || check.combination ? <dl className="dw-checks__trace">
+        {check.location ? <div><dt>Rige en</dt><dd>{check.location}</dd></div> : null}
+        {check.combination ? <div><dt>Demanda</dt><dd>{check.combination}</dd></div> : null}
+      </dl> : null}
       <small>
         {check.demand !== undefined && check.capacity !== undefined
           ? `${formatNumber(check.demand, check.unit === '' ? 2 : 1)} ≤ ${formatNumber(check.capacity, check.unit === '' ? 2 : 1)} ${check.unit ?? ''}`.trim()
@@ -171,6 +186,43 @@ function CheckItem({ check }: { check: ElementCheck }) {
 
 export function ChecksList({ checks }: { checks: readonly ElementCheck[] }) {
   return <ul className="dw-checks">{checks.map((check) => <CheckItem key={check.id} check={check} />)}</ul>;
+}
+
+type ReviewFilter = 'all' | 'attention' | 'scope';
+type ReviewOrder = 'calculation' | 'ratio';
+const needsAttention = (check: ElementCheck) => check.status === 'fail' || check.status === 'warning';
+const ratioOf = (check: ElementCheck) => check.ratio !== undefined && Number.isFinite(check.ratio) ? check.ratio : check.status === 'fail' ? Number.POSITIVE_INFINITY : -1;
+
+/**
+ * Revisión del elemento: las comprobaciones con veredicto y lo que queda fuera
+ * de alcance, con filtro por estado y orden por utilización. Así lo que rige y
+ * lo que falta evaluar se leen sin abrir cada fila.
+ */
+export function ReviewList({ checks, outOfScope }: { checks: readonly ElementCheck[]; outOfScope: readonly ElementCheck[] }) {
+  const attention = checks.filter(needsAttention).length;
+  const [filter, setFilter] = useState<ReviewFilter>('all');
+  const [order, setOrder] = useState<ReviewOrder>('calculation');
+  const shown = useMemo(() => {
+    const pool = filter === 'scope' ? outOfScope : filter === 'attention' ? checks.filter(needsAttention) : checks;
+    return order === 'ratio' ? [...pool].sort((a, b) => ratioOf(b) - ratioOf(a)) : pool;
+  }, [checks, outOfScope, filter, order]);
+  return <div className="dw-review">
+    <div className="dw-review__bar">
+      <SegmentedControl label="Filtrar comprobaciones" size="sm" value={filter} onValueChange={(value) => setFilter(value as ReviewFilter)}
+        options={[
+          { value: 'all', label: `Todas ${checks.length}` },
+          { value: 'attention', label: `Atender ${attention}` },
+          { value: 'scope', label: `Sin evaluar ${outOfScope.length}` },
+        ]} />
+      {filter === 'scope' ? null : <button type="button" className="dw-review__order" aria-pressed={order === 'ratio'}
+        title="Ordenar por utilización" onClick={() => setOrder(order === 'ratio' ? 'calculation' : 'ratio')}>
+        {order === 'ratio' ? 'Mayor utilización' : 'Orden de cálculo'}
+      </button>}
+    </div>
+    {shown.length ? <ChecksList checks={shown} /> : <p className="dw-review__empty">
+      {filter === 'attention' ? 'Nada que atender: ninguna comprobación falla ni pide revisión.' : 'Sin comprobaciones.'}
+    </p>}
+  </div>;
 }
 
 export function ErrorsPanel({ errors }: { errors: readonly string[] }) {

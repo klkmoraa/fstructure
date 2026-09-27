@@ -5,6 +5,7 @@ import {
   barArea,
   betaOne,
   capacityCheck,
+  tracedAt,
   complementary,
   equivalentBlockStrengthMpa,
   floorTo,
@@ -476,6 +477,9 @@ const aciCrossTies = (barsOnFace: number, clearSpacingMm: number) => {
   return clearSpacingMm > 150 ? interior : Math.floor(interior / 2);
 };
 
+/** Columna: las solicitaciones se capturan a mano y se suponen de una misma combinación. */
+const CAPTURED_DEMAND = 'Pu, Mu y Vu capturados · concurrentes';
+
 export function designColumn(input: ColumnDesignInput): ColumnDesignResult | ColumnDesignError {
   const errors = validate(input);
   if (errors.length) return { ok: false, errors };
@@ -640,7 +644,8 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
                 : `La esbeltez se desprecia (${rules.radiusNote}).`;
 
   const checks: ElementCheck[] = [
-    { ...capacityCheck('strength', 'Flexocompresión', capacity.ratio, 1, '', refs.columnStrength, capacity.detail), demand: capacity.ratio, capacity: 1, unit: '' },
+    tracedAt({ ...capacityCheck('strength', 'Flexocompresión', capacity.ratio, 1, '', refs.columnStrength, capacity.detail), demand: capacity.ratio, capacity: 1, unit: '' },
+      'Sección crítica con momentos amplificados', CAPTURED_DEMAND),
     { ...capacityCheck('ratio-min', `Cuantía mínima (${rules.ratioMin * 100} %)`, rules.ratioMin, ratio, '', refs.columnRatio), demand: rules.ratioMin * 100, capacity: ratio * 100, unit: '%' },
     { ...capacityCheck('ratio-max', `Cuantía máxima (${rules.ratioMax * 100} %)`, ratio, rules.ratioMax, '', refs.columnRatio), demand: ratio * 100, capacity: rules.ratioMax * 100, unit: '%' },
   ];
@@ -681,8 +686,8 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
   for (const [axis, shear] of [['X', ties.shear.x], ['Y', ties.shear.y]] as const) {
     if (shear.demandKn <= TOLERANCE) continue;
     checks.push(
-      capacityCheck(`shear-${axis.toLowerCase()}`, `Cortante en ${axis}`, shear.demandKn, shear.strengthKn, 'kN', refs.columnShear,
-        `${shear.legs} ramas · φVc = ${shear.concreteStrengthKn.toFixed(1)} kN · FR ${code.shearFactor}.`),
+      tracedAt(capacityCheck(`shear-${axis.toLowerCase()}`, `Cortante en ${axis}`, shear.demandKn, shear.strengthKn, 'kN', refs.columnShear,
+        `${shear.legs} ramas · φVc = ${shear.concreteStrengthKn.toFixed(1)} kN · FR ${code.shearFactor}.`), `Dirección ${axis}`, CAPTURED_DEMAND),
       capacityCheck(`shear-section-${axis.toLowerCase()}`, `Cortante máximo por sección en ${axis}`, shear.demandKn, shear.sectionStrengthKn, 'kN', refs.columnShearSection),
     );
   }

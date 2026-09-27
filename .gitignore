@@ -17,3 +17,8 @@ qa-artifacts/
 
 # Las normas se enlazan desde docs/references/normative; el PDF no se versiona.
 *.pdf
+
+# Material de terceros de la investigación de diseño: sólo local (repo público).
+docs/research/concrete-design/*.pdf
+docs/research/concrete-design/assets/*.png
+docs/research/concrete-design/assets/*.pdf

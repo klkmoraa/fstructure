@@ -6,9 +6,11 @@ import { designColumn, type ColumnDesignInput, type ColumnDesignResult } from '.
 import { rebarLabel } from '../../../design/elements/shared';
 import { ColumnSection, InteractionChart } from './ColumnDrawings';
 import {
-  BarSelect, ChecksList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
+  BarSelect, ChecksList, ReviewList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
   formatNumber, mpaFromKgcm2, parseNumber, useStoredDraft,
 } from './common';
+import { outOfScopeChecks } from '../../../design/elements/scope';
+import type { DesignReport } from './designReport';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 const DEFAULTS = {
@@ -80,15 +82,24 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const result = useMemo(() => designColumn(toInput(chrome.code, draft)), [chrome.code, draft]);
   const braced = draft.braced !== 'no';
   const [checks, notes] = splitChecks(result.ok ? result.checks : []);
+  const outOfScope = useMemo(() => outOfScopeChecks('column', chrome.code), [chrome.code]);
+  const title = result.ok ? `Columna ${formatNumber(result.input.widthMm / 10, 0)} × ${formatNumber(result.input.depthMm / 10, 0)} cm` : '';
+  const report = useMemo<DesignReport | null>(() => result.ok ? {
+    element: 'column', title, code: result.input.code, status: result.status, governingRatio: result.governingRatio,
+    memo: columnMemo(result), checks, notes, outOfScope, input: result.input,
+  } : null,
+  // `checks` y `notes` derivan de `result`.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  [result, outOfScope, title]);
   const slendernessSymbol = code.column.neglectUsesEffectiveLength ? 'kH/r' : 'H/r';
   const symmetric = result.ok && Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth;
 
   return <WorkbenchLayout
     chrome={chrome}
     title="Columna"
-    memo={result.ok ? columnMemo(result) : null}
+    report={report}
     onReset={reset}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
     caption={result.ok ? `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} · ρ ${formatNumber(result.steelRatio * 100, 2)} %` : undefined}
     inputs={<>
       <FieldGroup title="Solicitaciones últimas">
@@ -164,7 +175,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </Plate>
     </> : <ErrorsPanel errors={result.errors} />}
     results={result.ok ? <>
-      <Verdict status={result.status} ratio={result.governingRatio} title={`Columna ${formatNumber(result.input.widthMm / 10, 0)} × ${formatNumber(result.input.depthMm / 10, 0)} cm`}>
+      <Verdict status={result.status} ratio={result.governingRatio} title={title} outOfScope={outOfScope.length}>
         <Summary rows={[
           { label: 'Método', value: methodLabel[result.capacity.method] },
           { label: 'Capacidad', value: result.capacity.detail.split(' (')[0], tone: 'axial' },
@@ -181,7 +192,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           { kind: 'bar', title: 'Traslape', detail: `${formatNumber(result.spliceLengthMm / 10, 0)} cm` },
         ]} />
       </PanelSection>
-      <PanelSection title="Comprobaciones"><ChecksList checks={checks} /></PanelSection>
+      <PanelSection title="Revisión"><ReviewList checks={checks} outOfScope={outOfScope} /></PanelSection>
       <Disclosure label="Detalle del cálculo">
         <ValuesTable rows={[
           { symbol: 'As', label: 'Área de acero', value: `${formatNumber(result.steelAreaMm2 / 100, 2)} cm²` },

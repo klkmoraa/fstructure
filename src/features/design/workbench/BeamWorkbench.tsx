@@ -7,10 +7,12 @@ import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import { rebarLabel } from '../../../design/elements/shared';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
 import {
-  BarSelect, ChecksList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField, PanelSection, RebarList,
+  BarSelect, ChecksList, ReviewList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField, PanelSection, RebarList,
   Summary, ValuesTable, Verdict, formatNumber, isShortString, mpaFromKgcm2, parseNumber, readStored, sustainedRatioFor, useStoredDraft, xiFor,
 } from './common';
 import { useWorkbenchStorage } from './workbenchStorage';
+import { outOfScopeChecks } from '../../../design/elements/scope';
+import type { DesignReport } from './designReport';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 const DEFAULTS = {
@@ -192,13 +194,22 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const deferred = useDeferredValue(input);
   const result = useMemo(() => designBeam(deferred), [deferred]);
   const [checks, notes] = splitChecks(result.ok ? result.checks : []);
+  const outOfScope = useMemo(() => outOfScopeChecks('beam', chrome.code), [chrome.code]);
+  const title = result.ok ? `Viga ${formatNumber(result.input.widthMm / 10, 0)} × ${formatNumber(result.input.heightMm / 10, 0)} cm` : '';
+  const report = useMemo<DesignReport | null>(() => result.ok ? {
+    element: 'beam', title, code: result.input.code, status: result.status, governingRatio: result.governingRatio,
+    memo: beamMemo(result), checks, notes, outOfScope, input: result.input,
+  } : null,
+  // `checks` y `notes` derivan de `result`.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  [result, outOfScope, title]);
 
   return <WorkbenchLayout
     chrome={chrome}
     title="Viga"
-    memo={result.ok ? beamMemo(result) : null}
+    report={report}
     onReset={() => { reset(); setSpans(DEFAULT_SPANS); }}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
     caption={result.ok ? describe(result.input) : undefined}
     inputs={<>
       <FieldGroup title="Claros y cargas" columns={1}>
@@ -264,7 +275,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </Plate>)}
     </> : <ErrorsPanel errors={result.errors} />}
     results={result.ok ? <>
-      <Verdict status={result.status} ratio={result.governingRatio} title={`Viga ${formatNumber(result.input.widthMm / 10, 0)} × ${formatNumber(result.input.heightMm / 10, 0)} cm`}>
+      <Verdict status={result.status} ratio={result.governingRatio} title={title} outOfScope={outOfScope.length}>
         <Summary rows={[
           { label: 'Mu positivo', value: `${formatNumber(result.extremes.positiveMomentKnm)} kN·m`, tone: 'moment' },
           { label: 'Mu negativo', value: `${formatNumber(result.extremes.negativeMomentKnm)} kN·m`, tone: 'moment' },
@@ -286,7 +297,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           { kind: 'bar' as const, title: 'Traslapes', detail: `Arriba ${cm(result.splices.top)} · abajo ${cm(result.splices.bottom)}` },
         ]} />
       </PanelSection>
-      <PanelSection title="Comprobaciones"><ChecksList checks={checks} /></PanelSection>
+      <PanelSection title="Revisión"><ReviewList checks={checks} outOfScope={outOfScope} /></PanelSection>
       <Disclosure label="Detalle del cálculo">
         <RebarList items={result.bastions.map((bastion) => ({ kind: 'extra' as const, title: bastionTitle(bastion), detail: bastionDetail(bastion) }))} />
         <table className="dw-table" aria-label="Envolvente por claro (kN·m, kN)">

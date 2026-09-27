@@ -2,6 +2,7 @@ import { designCode, isDesignCodeId, type DesignCode, type DesignCodeId, type Lo
 import {
   barArea,
   capacityCheck,
+  tracedAt,
   ceilTo,
   complementary,
   flexuralCapacity,
@@ -363,8 +364,10 @@ export function designFooting(input: FootingDesignInput): FootingDesignResult | 
   const y = reinforce(code, input, geometry, state, state.y);
   const refs = code.refs;
 
+  const ultimateLabel = input.combinations.map((combination) => combination.label).join(' · ');
   const checks: ElementCheck[] = [
-    capacityCheck('bearing', 'Presión máxima de servicio', service.maximum, input.allowablePressureKpa, 'kPa', complementary('Capacidad admisible del estudio geotécnico')),
+    tracedAt(capacityCheck('bearing', 'Presión máxima de servicio', service.maximum, input.allowablePressureKpa, 'kPa', complementary('Capacidad admisible del estudio geotécnico')),
+      'Esquina más cargada', 'Servicio: cargas sin factorizar'),
   ];
   if (service.ex > 0 || service.ey > 0) {
     checks.push({
@@ -385,16 +388,18 @@ export function designFooting(input: FootingDesignInput): FootingDesignResult | 
     : '';
   checks.push(
     capacityCheck('min-depth', 'Peralte efectivo mínimo', code.footing.minimumEffectiveDepthMm, state.average, 'mm', refs.footingDepth),
-    capacityCheck('punching', 'Cortante por penetración', state.punching.demandStressMpa, state.punching.strengthStressMpa, 'MPa', refs.punching,
+    tracedAt(capacityCheck('punching', 'Cortante por penetración', state.punching.demandStressMpa, state.punching.strengthStressMpa, 'MPa', refs.punching,
       `${code.footing.punchingSizeFactor ? `λs = ${state.punching.sizeFactor.toFixed(2)} · ` : ''}FR ${state.punching.resistanceFactor}${polarNote}.`),
+    'Perímetro crítico a d/2 de la columna', ultimateLabel),
   );
   for (const [axis, direction] of [['X', x], ['Y', y]] as const) {
     checks.push(
-      capacityCheck(`one-way-${axis.toLowerCase()}`, `Cortante como viga (${axis})`, direction.oneWayDemandKn, direction.oneWayStrengthKn, 'kN', refs.oneWay,
+      tracedAt(capacityCheck(`one-way-${axis.toLowerCase()}`, `Cortante como viga (${axis})`, direction.oneWayDemandKn, direction.oneWayStrengthKn, 'kN', refs.oneWay,
         code.footing.oneWay === 'ntc'
           ? `Sin estribos: 0.66·λs·ρ^(1/3)·√f′c con λs = ${direction.sizeFactor.toFixed(2)} y ρ = ${(direction.steelRatio * 100).toFixed(2)} %.`
-          : `Sin estribos: 0.17·√f′c·b·d a d del paño · FR ${code.shearFactor}.`),
-      capacityCheck(`flexure-${axis.toLowerCase()}`, `Flexión en el paño (${axis})`, direction.momentKnm, direction.strengthKnm, 'kN·m', refs.footingFlexure, `FR ${direction.resistanceFactor.toFixed(2)}.`),
+          : `Sin estribos: 0.17·√f′c·b·d a d del paño · FR ${code.shearFactor}.`), `A d del paño · dirección ${axis}`, ultimateLabel),
+      tracedAt(capacityCheck(`flexure-${axis.toLowerCase()}`, `Flexión en el paño (${axis})`, direction.momentKnm, direction.strengthKnm, 'kN·m', refs.footingFlexure, `FR ${direction.resistanceFactor.toFixed(2)}.`),
+        `Paño de la columna · dirección ${axis}`, ultimateLabel),
     );
     checks.push({
       id: `anchorage-${axis.toLowerCase()}`,
@@ -417,7 +422,7 @@ export function designFooting(input: FootingDesignInput): FootingDesignResult | 
   checks.push(
     capacityCheck('steel-min', 'Acero mínimo', minimumRequired, minimumDirection.providedMm2, 'mm²', refs.footingMinSteel,
       minimumDirection.punchingMinimumMm2 > minimumDirection.minimumMm2
-        ? `vuv = ${state.punching.directStressMpa.toFixed(2)} MPa > 0.17·FR·λs·√f′c: rige As,mín = 5·vuv·bo/(FR·αs·fy) por unidad de ancho.`
+        ? `vuv = ${state.punching.directStressMpa.toFixed(2)} MPa > 0.17·FR·λs·√f′c: rige As,mín = 5·vuv·bo/(FR·αs·fy) por unidad de ancho.${withMoment ? ' El umbral usa el esfuerzo directo; con transferencia de momento, confirma si rige el esfuerzo combinado.' : ''}`
         : `${(code.footing.minimumSteelRatio * 100).toFixed(2)} % del área bruta.`),
     capacityCheck('spacing', 'Separación del refuerzo', Math.max(x.spacingMm, y.spacingMm), x.maximumSpacingMm, 'mm', refs.footingSpacing, `Máximo: ${code.footing.maximumSpacingNote}.`),
   );

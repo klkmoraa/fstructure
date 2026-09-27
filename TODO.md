@@ -13,6 +13,13 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.
 - [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
 
+## Diseño (de `docs/research/concrete-design`)
+
+- [ ] Armado editable: cambiar barras y zonas de la viga, revalidar separación, recubrimiento, desarrollo y traslape, y comparar antes/después.
+- [ ] Confirmar con la NTC 6.7.4 si el umbral de acero mínimo por penetración (6.7.6.1.2) usa el esfuerzo combinado con transferencia de momento; hoy usa vuv directo y la nota lo avisa.
+- [ ] Vínculo con el modelo (selección de miembro y demandas concurrentes): choca con el aislamiento de herramientas; decidir si se abre un puente de datos declarado en `src/integrations`.
+- [ ] Nuevas familias por fases: losas, muros, cimentaciones corridas/combinadas; torsión en vigas.
+
 ## Limpieza
 
 - [ ] El modo sin shell de `Space3DWorkspace` (barra local) sólo lo usan pruebas: migrarlas al shell y retirarlo.

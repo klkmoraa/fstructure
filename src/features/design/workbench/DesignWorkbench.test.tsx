@@ -21,7 +21,8 @@ describe('DesignWorkbench', () => {
     const user = userEvent.setup();
     renderWorkbench();
     expect(screen.getByRole('radio', { name: 'Viga' }).getAttribute('aria-checked')).toBe('true');
-    expect(await within(results()).findByText('Cumple')).toBeTruthy();
+    expect(await within(results()).findByText('Cumple lo evaluado')).toBeTruthy();
+    expect(within(results()).getByText(/Revisión incompleta: 5 verificaciones/)).toBeTruthy();
     expect(screen.getByRole('img', { name: /Elevación de la viga de 2 claros/ })).toBeTruthy();
     expect(screen.getAllByRole('img', { name: /sección 25 por 50/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole('img', { name: /Despiece/ })).toBeTruthy();
@@ -76,6 +77,20 @@ describe('DesignWorkbench', () => {
     expect(screen.queryByRole('radio', { name: 'Del modelo 2D' })).toBeNull();
   });
 
+  it('filtra la revisión y enseña lo que queda sin evaluar con su ubicación', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    const filter = await within(results()).findByRole('radiogroup', { name: 'Filtrar comprobaciones' });
+    await user.click(within(filter).getByRole('radio', { name: /Sin evaluar 5/ }));
+    expect(within(results()).getByRole('button', { name: /Torsión/ })).toBeTruthy();
+    await user.click(within(results()).getByRole('button', { name: /Torsión/ }));
+    expect(within(results()).getByText(/NTC-C 5\.8/)).toBeTruthy();
+    await user.click(within(filter).getByRole('radio', { name: /Todas/ }));
+    await user.click(within(results()).getByRole('button', { name: /Flexión positiva/ }));
+    expect(within(results()).getByText(/lecho inferior/)).toBeTruthy();
+    expect(within(results()).getAllByText(/Envolvente de/).length).toBeGreaterThan(0);
+  });
+
   it('muestra y oculta los paneles de datos y resultados sobre el lienzo', async () => {
     const user = userEvent.setup();
     renderWorkbench();
@@ -87,7 +102,7 @@ describe('DesignWorkbench', () => {
     expect(inputs().dataset.open).toBe('false');
     await user.click(screen.getByRole('button', { name: 'Ocultar resultados' }));
     expect(results().dataset.open).toBe('false');
-    await user.click(screen.getByRole('button', { name: /Cumple · \d+ %\. Ver resultados/ }));
+    await user.click(screen.getByRole('button', { name: /Cumple lo evaluado · \d+ %\. Ver resultados/ }));
     expect(results().dataset.open).toBe('true');
   });
 });

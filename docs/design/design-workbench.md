@@ -45,7 +45,7 @@ Los PDF no se versionan. Los extractos de E.060 transcriben la coma decimal como
 
 `complementary` marca lo que no proviene de una cláusula verificada y la interfaz lo muestra en cursiva con «◇». Quedan: la presión admisible del suelo (dato del estudio geotécnico), la estática del núcleo y de la presión última, la separación práctica mínima de estribos (5 cm), el aviso de columna en tensión y, sólo en E.060, el Jc de sección rectangular (la norma no da la expresión; NTC y NSR sí, en su comentario).
 
-Decisión deliberada: la ec. 3.6.1 de la NTC escribe β1 = 0.85 hasta 30 MPa con un salto a 0.836; el código usa el umbral continuo de 28 MPa (como NSR y E.060), que da un β1 menor entre 28 y 30 MPa, del lado seguro.
+Decisión deliberada: la ec. 3.6.1 de la NTC escribe β1 = 0.85 hasta 30 MPa con un salto a 0.836; el código usa el umbral continuo de 28 MPa (como NSR y E.060), que da un β1 menor entre 28 y 30 MPa, del lado seguro. El bloque `implementation` de la cláusula 3.6.1 transcribe la norma (30 MPa) y el campo hermano `engineDeviation` declara la desviación del motor, para que el registro no se lea como comportamiento del código.
 
 ## Alcance por elemento
 
@@ -54,6 +54,13 @@ Decisión deliberada: la ec. 3.6.1 de la NTC escribe β1 = 0.85 hasta 30 MPa con
 **Columna rectangular con estribos.** Diagrama de interacción por compatibilidad con el φ de la norma, φPn,máx, momentos mínimos, Bresler (NTC 5.4.1.2, E.060 10.18, comentario CR10.3.6 de NSR) con contorno para carga axial baja, esbeltez en marcos arriostrados y con desplazamiento lateral (índice de estabilidad y momentos M2s), cuantías, cortante, estribos y traslape Clase B.
 
 **Zapata aislada rectangular.** Planta por presión admisible y núcleo, presión trapecial por momentos, flexión en el paño, cortante como viga a d, penetración con transferencia γv·M (y λs en la NTC), acero mínimo (con el adicional de NTC 6.7.6.1.2 cuando vuv > 0.17FRλs√f′c), banda central 2/(β + 1), separación máxima, peralte mínimo y anclaje recto o con gancho desde el paño.
+
+## Revisión, alcance y memoria
+
+- **Estado honesto.** `src/design/elements/scope.ts` declara por elemento y norma lo que la norma pide y el taller no calcula (torsión, combinaciones accidentales, ductilidad, geotecnia, concurrencia de la demanda capturada, ramas ψe/λ del desarrollo…). Mientras haya algo ahí, lo que cumple se titula «Cumple lo evaluado» con «Revisión incompleta», nunca «Cumple» a secas.
+- **Trazabilidad.** Cada comprobación puede llevar `location` (dónde rige: estación, lecho, claro, perímetro) y `combination` (de dónde sale la demanda y si es envolvente o captura concurrente). Hoy la llevan flexión, cortante y deflexión de viga; flexocompresión y cortante de columna; presión, penetración, cortante y flexión de zapata.
+- **Revisión.** El panel de resultados filtra (Todas · Atender · Sin evaluar) y ordena por utilización.
+- **Memoria.** «Copiar memoria» añade lo sin evaluar. «PDF» (`designReportPdf.ts`, cargado al pedirlo) arma resumen, tabla de comprobaciones, trazabilidad, notas, alcance y una instantánea con la entrada del motor y su huella SHA-256 (`designReport.ts`): misma entrada, norma y versión reproducen el documento.
 
 ## Datos y persistencia
 
@@ -71,3 +78,5 @@ Los borradores del taller (norma, elemento y datos de cada formulario) se guarda
 - Zapatas corridas o combinadas, pedestales, volteo y deslizamiento.
 - Presfuerzo, losas y muros.
 - Modificadores favorables de ganchos (ψr, ψc, 0.7 o 0.8), que se toman iguales a 1, y traslapes a compresión.
+
+La lista que ve la persona usuaria vive en `scope.ts`; si cambia el alcance, se cambia ahí y aquí.

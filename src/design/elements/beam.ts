@@ -5,6 +5,7 @@ import {
   STEEL_ELASTIC_MODULUS_MPA,
   barArea,
   capacityCheck,
+  tracedAt,
   complementary,
   flexuralCapacity,
   floorTo,
@@ -795,13 +796,17 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
   const governingSpanIndex = spans.indexOf(governingSpan);
   const combinationsText = input.combinations.map((combination) => combination.label).join(' · ');
 
+  // Viga: la demanda es la envolvente de las combinaciones con la viva por claros (patrones).
+  const envelope = `Envolvente de ${combinationsText} · viva por claros`;
+  const at = (index: number, bed: 'inferior' | 'superior') => `x = ${stations[index]!.toFixed(2)} m · lecho ${bed}`;
   const checks: ElementCheck[] = [
     capacityCheck('flexure-positive', 'Flexión positiva', Math.max(0, moment.max[positiveWorst.index]!), capacityPositive[positiveWorst.index]!, 'kN·m', refs.flexure,
       `Rige en x = ${stations[positiveWorst.index]!.toFixed(2)} m · FR ${sectionAt(stations[positiveWorst.index]!, 'bottom', continuousBottom, bastions).resistanceFactor.toFixed(2)}.`),
-  ];
+  ].map((check) => tracedAt(check, at(positiveWorst.index, 'inferior'), envelope));
   if (negativeMoment > TOLERANCE) {
-    checks.push(capacityCheck('flexure-negative', 'Flexión negativa', Math.max(0, -moment.min[negativeWorst.index]!), -capacityNegative[negativeWorst.index]!, 'kN·m', refs.flexure,
-      `Rige en x = ${stations[negativeWorst.index]!.toFixed(2)} m · FR ${sectionAt(stations[negativeWorst.index]!, 'top', continuousTop, bastions).resistanceFactor.toFixed(2)}.`));
+    checks.push(tracedAt(capacityCheck('flexure-negative', 'Flexión negativa', Math.max(0, -moment.min[negativeWorst.index]!), -capacityNegative[negativeWorst.index]!, 'kN·m', refs.flexure,
+      `Rige en x = ${stations[negativeWorst.index]!.toFixed(2)} m · FR ${sectionAt(stations[negativeWorst.index]!, 'top', continuousTop, bastions).resistanceFactor.toFixed(2)}.`),
+    at(negativeWorst.index, 'superior'), envelope));
   }
   checks.push(capacityCheck('steel-max', 'Acero máximo', steelWorst.areaMm2, steelWorst.maximumMm2, 'mm²', refs.steelMax, code.beam.maximumSteelNote));
   if (minimumWorst) {
@@ -809,9 +814,10 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
       `Lecho ${minimumWorst.bed === 'top' ? 'superior' : 'inferior'}.`));
   }
   checks.push(
-    capacityCheck('shear', 'Cortante', shearWorst.demandKn, shearWorst.strengthKn, 'kN', refs.shear, `Claro ${stirrups.indexOf(shearWorst) + 1} · FR ${code.shearFactor}.`),
-    capacityCheck('shear-section', 'Cortante máximo por sección', sectionWorst.demandKn, sectionWorst.maximumSectionStrengthKn, 'kN', refs.shearSection,
-      'Si no cumple, hay que aumentar la sección: más estribos no ayudan.'),
+    tracedAt(capacityCheck('shear', 'Cortante', shearWorst.demandKn, shearWorst.strengthKn, 'kN', refs.shear, `Claro ${stirrups.indexOf(shearWorst) + 1} · FR ${code.shearFactor}.`),
+      `Claro ${stirrups.indexOf(shearWorst) + 1} · a d del paño`, envelope),
+    tracedAt(capacityCheck('shear-section', 'Cortante máximo por sección', sectionWorst.demandKn, sectionWorst.maximumSectionStrengthKn, 'kN', refs.shearSection,
+      'Si no cumple, hay que aumentar la sección: más estribos no ayudan.'), `Claro ${stirrups.indexOf(sectionWorst) + 1}`, envelope),
     capacityCheck('stirrup-spacing', 'Separación de estribos', stirrupSpacingWorst.denseSpacingMm, stirrupSpacingWorst.maximumSpacingMm, 'mm', refs.stirrupSpacing),
     capacityCheck('bar-spacing', 'Separación libre entre barras', spacingWorst.minimumClearSpacingMm, spacingWorst.clearSpacingMm, 'mm', refs.barSpacing),
   );
@@ -844,11 +850,12 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
   }
 
   const aci = code.beam.deflection === 'aci';
-  checks.push(capacityCheck('deflection', aci ? `Deflexión posterior a los elementos no estructurales (claro ${governingSpanIndex + 1})` : `Deflexión total (claro ${governingSpanIndex + 1})`,
+  checks.push(tracedAt(capacityCheck('deflection', aci ? `Deflexión posterior a los elementos no estructurales (claro ${governingSpanIndex + 1})` : `Deflexión total (claro ${governingSpanIndex + 1})`,
     governingSpan.checkedDeflectionMm, governingSpan.deflectionLimitMm, 'mm', refs.deflection,
     aci
       ? `Diferida ξ/(1+50ρ′) con ξ = ${input.longTermXi} sobre la muerta y ${Math.round(input.sustainedLiveRatio * 100)} % de la viva, más la inmediata por viva; límite ℓ/${input.damagesNonstructural ? 480 : 240}.`
-      : `Ie por claro con (I₁ + I₂ + 2I₃)/4; diferida ξ/(1+50p′) con ξ = ${input.longTermXi} sobre la muerta y ${Math.round(input.sustainedLiveRatio * 100)} % de la viva (W/Wm).`));
+      : `Ie por claro con (I₁ + I₂ + 2I₃)/4; diferida ξ/(1+50p′) con ξ = ${input.longTermXi} sobre la muerta y ${Math.round(input.sustainedLiveRatio * 100)} % de la viva (W/Wm).`),
+    `Claro ${governingSpanIndex + 1}`, `Servicio: CM + ${Math.round(input.sustainedLiveRatio * 100)} % CV sostenida, sin factores`));
   if (aci) {
     const liveWorst = pickWorst(spans, (span) => (span.liveDeflectionMm ?? 0) / (span.liveDeflectionLimitMm ?? 1));
     checks.push(capacityCheck('deflection-live', `Deflexión inmediata por viva (claro ${spans.indexOf(liveWorst) + 1})`, liveWorst.liveDeflectionMm ?? 0, liveWorst.liveDeflectionLimitMm ?? 1, 'mm', refs.deflection,

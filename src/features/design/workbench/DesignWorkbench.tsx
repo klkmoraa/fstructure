@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Copy, PanelRight } from 'lucide-react';
+import { Check, ChevronDown, Copy, FileDown, PanelRight } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
@@ -6,6 +6,7 @@ import { ShellContribution, ShellStatusChip, type ShellStatusTone } from '../../
 import { BeamWorkbench } from './BeamWorkbench';
 import { ColumnWorkbench } from './ColumnWorkbench';
 import { FootingWorkbench } from './FootingWorkbench';
+import { memoText, type DesignReport } from './designReport';
 import type { Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { useWorkbenchStorage } from './workbenchStorage';
 import './designWorkbench.css';
@@ -57,8 +58,9 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
     if (isDesignCodeId(startCode)) storage.write('code', startCode);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [memo, setMemo] = useState<string | null>(null);
+  const [report, setReport] = useState<DesignReport | null>(null);
   const [copied, setCopied] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   // Cada elemento monta su propia barra; el foco del teclado se mueve cuando ya existe la nueva.
   const [focusRequest, setFocusRequest] = useState(0);
@@ -99,8 +101,8 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
     storage.write('code', next);
   };
 
-  const onMemo = useCallback((nextMemo: string | null) => {
-    setMemo(nextMemo);
+  const onReport = useCallback((next: DesignReport | null) => {
+    setReport(next);
     setCopied(false);
   }, []);
   const [verdict, setVerdict] = useState<Verdict | null>(null);
@@ -111,12 +113,29 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
   const togglePanels = () => setPanels(anyPanelOpen ? { inputs: false, results: false } : initialPanels(room.current === 'phone' ? 'narrow' : room.current));
 
   const copyMemo = async () => {
-    if (!memo) return;
+    if (!report) return;
     try {
-      await navigator.clipboard.writeText(memo);
+      await navigator.clipboard.writeText(memoText(report));
       setCopied(true);
     } catch {
       setCopied(false);
+    }
+  };
+
+  // El PDF se arma sólo al pedirlo: pdf-lib no entra en la carga inicial de la mesa.
+  const exportPdf = async () => {
+    if (!report || exporting) return;
+    setExporting(true);
+    try {
+      const [{ buildDesignReportPdf }, { shareOrDownloadPortableBytes }] = await Promise.all([
+        import('./designReportPdf'),
+        import('../../../utils/portableDownload'),
+      ]);
+      const bytes = await buildDesignReportPdf(report);
+      const name = report.title.normalize('NFD').replace(/[^\w× -]/g, '').replace(/[× ]+/g, '-').toLowerCase();
+      await shareOrDownloadPortableBytes(bytes, `memoria-${name}.pdf`, 'application/pdf', 'Memoria de diseño');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -153,7 +172,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
     </select>
     <ChevronDown size={14} aria-hidden="true" />
   </label>;
-  const chrome: WorkbenchChrome = { elements, codeControl, code, panels, setPanel, onMemo, ...(nativeTool ? { onVerdict } : {}) };
+  const chrome: WorkbenchChrome = { elements, codeControl, code, panels, setPanel, onReport, ...(nativeTool ? { onVerdict } : {}) };
 
   return <div className="design-workbench" data-testid="design-workbench">
     {nativeTool ? <ShellContribution slot="controls">
@@ -166,7 +185,11 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode }: 
       <ShellStatusChip tone={VERDICT_TONE[verdict.status]} label={verdict.label} badge="Experimental" />
     </ShellContribution> : null}
     {nativeTool ? <ShellContribution slot="action">
-      <button type="button" className="workspace-topbar__action-button is-primary" disabled={!memo} onClick={copyMemo}
+      <button type="button" className="workspace-topbar__action-button" disabled={!report || exporting} onClick={exportPdf}
+        aria-label="Exportar memoria en PDF" title="Memoria en PDF con la instantánea del cálculo">
+        <FileDown size={17} aria-hidden="true" /><span>{exporting ? 'Generando…' : 'PDF'}</span>
+      </button>
+      <button type="button" className="workspace-topbar__action-button is-primary" disabled={!report} onClick={copyMemo}
         aria-label={copied ? 'Memoria copiada' : 'Copiar memoria de cálculo'}>
         {copied ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
         <span>{copied ? 'Copiada' : 'Copiar memoria'}</span>
