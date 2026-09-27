@@ -10,16 +10,21 @@ import type { DesignReport, ReportRow } from './designReport';
 /** Columna: del borrador del formulario a la entrada del motor y a la memoria. */
 export const COLUMN_DEFAULTS = {
   tag: '', place: '',
+  shape: 'rectangular', diameter: '45', barCount: '8',
   width: '40', depth: '40', cover: '4', fc: '250', fy: '4200', bar: '19.1', barsWidth: '3', barsDepth: '3', tie: '9.5',
   axial: '900', momentX: '80', momentY: '40', shearX: '0', shearY: '0', length: '3', k: '1', curvature: 'single', endRatio: '1', sustained: '0.6',
   group: 'B2', groundFloor: 'no', aggregate: '19', braced: 'yes', swayX: '0', swayY: '0', stability: '0.05',
 };
 type ColumnDraft = typeof COLUMN_DEFAULTS;
 
+const circularDraft = (draft: ColumnDraft) => draft.shape === 'circular';
+
 export const columnToInput = (codeId: DesignCodeId, draft: ColumnDraft): ColumnDesignInput => ({
   code: codeId,
-  widthMm: parseNumber(draft.width) * 10,
-  depthMm: parseNumber(draft.depth) * 10,
+  shape: circularDraft(draft) ? 'circular' : 'rectangular',
+  widthMm: parseNumber(circularDraft(draft) ? draft.diameter : draft.width) * 10,
+  depthMm: parseNumber(circularDraft(draft) ? draft.diameter : draft.depth) * 10,
+  barCount: parseNumber(draft.barCount),
   coverMm: parseNumber(draft.cover) * 10,
   fcMpa: mpaFromKgcm2(draft.fc),
   fyMpa: mpaFromKgcm2(draft.fy),
@@ -47,8 +52,8 @@ export const columnToInput = (codeId: DesignCodeId, draft: ColumnDraft): ColumnD
 });
 
 export const tieText = (result: ColumnDesignResult) => result.ties.endLengthMm > 0
-  ? `E ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.endSpacingMm / 10, 1)} cm en Lo · @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm al centro`
-  : `E ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm`;
+  ? `${tieWord(result)} ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.endSpacingMm / 10, 1)} cm en Lo · @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm al centro`
+  : `${tieWord(result)} ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm`;
 
 export const methodLabel: Record<ColumnDesignResult['capacity']['method'], string> = {
   axial: 'Compresión axial',
@@ -56,14 +61,22 @@ export const methodLabel: Record<ColumnDesignResult['capacity']['method'], strin
   'uniaxial-y': 'Flexocompresión en Y',
   'bresler-load': 'Biaxial · carga recíproca (Bresler)',
   'bresler-contour': 'Biaxial · contorno de carga',
+  resultant: 'Flexocompresión con el momento resultante',
 };
 
-const columnTitle = (result: ColumnDesignResult) => `Columna ${formatNumber(result.input.widthMm / 10, 0)} × ${formatNumber(result.input.depthMm / 10, 0)} cm`;
+const circularResult = (result: ColumnDesignResult) => result.input.shape === 'circular';
+
+const columnTitle = (result: ColumnDesignResult) => circularResult(result)
+  ? `Columna circular Ø ${formatNumber(result.input.widthMm / 10, 0)} cm`
+  : `Columna ${formatNumber(result.input.widthMm / 10, 0)} × ${formatNumber(result.input.depthMm / 10, 0)} cm`;
+
+/** Estribo circular o rectangular, según la sección. */
+const tieWord = (result: ColumnDesignResult) => circularResult(result) ? 'E circular' : 'E';
 
 function columnMemo(result: ColumnDesignResult): string {
   const { input } = result;
   return [
-    `COLUMNA ${input.widthMm / 10}×${input.depthMm / 10} cm · ${designCode(input.code).name} · Pu = ${input.axialKn} kN · Mux = ${input.momentXKnm} kN·m · Muy = ${input.momentYKnm} kN·m`,
+    `${circularResult(result) ? `COLUMNA CIRCULAR Ø ${input.widthMm / 10} cm` : `COLUMNA ${input.widthMm / 10}×${input.depthMm / 10} cm`} · ${designCode(input.code).name} · Pu = ${input.axialKn} kN · Mux = ${input.momentXKnm} kN·m · Muy = ${input.momentYKnm} kN·m`,
     ...(input.braced ? [] : [`Marco con desplazamiento lateral: M2s = ${input.swayMomentXKnm} / ${input.swayMomentYKnm} kN·m · Q = ${input.stabilityIndex} · δs = ${formatNumber(Math.max(result.magnification.x.swayFactor, result.magnification.y.swayFactor), 2)}`]),
     `Esbeltez = ${formatNumber(Math.max(result.slenderness.x, result.slenderness.y), 1)} (límite ${formatNumber(result.slenderness.limit, 0)}) · Mc = ${formatNumber(result.magnification.x.designMomentKnm)} / ${formatNumber(result.magnification.y.designMomentKnm)} kN·m (δ ${formatNumber(result.magnification.x.factor, 2)} / ${formatNumber(result.magnification.y.factor, 2)})`,
     `Refuerzo: ${result.bars.length} ${rebarLabel(input.barDiameterMm)} (ρ = ${formatNumber(result.steelRatio * 100, 2)} %)`,
@@ -77,9 +90,9 @@ function columnMemo(result: ColumnDesignResult): string {
 
 function columnReinforcementRows(result: ColumnDesignResult): ReportRow[] {
   return [
-    { label: `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} longitudinales`, value: `${result.input.barsAlongWidth} por cara b · ${result.input.barsAlongDepth} por cara h · ρ ${formatNumber(result.steelRatio * 100, 2)} %` },
+    { label: `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} longitudinales`, value: `${circularResult(result) ? 'en la circunferencia' : `${result.input.barsAlongWidth} por cara b · ${result.input.barsAlongDepth} por cara h`} · ρ ${formatNumber(result.steelRatio * 100, 2)} %` },
     { label: 'Estribos', value: `${tieText(result)}${result.ties.endLengthMm > 0 ? ` · Lo = ${formatNumber(result.ties.endLengthMm / 10, 0)} cm` : ''}` },
-    { label: 'Grapas por juego', value: `${result.ties.crossTiesParallelToX} paralelas a X · ${result.ties.crossTiesParallelToY} paralelas a Y` },
+    ...(circularResult(result) ? [] : [{ label: 'Grapas por juego', value: `${result.ties.crossTiesParallelToX} paralelas a X · ${result.ties.crossTiesParallelToY} paralelas a Y` }]),
     { label: 'Traslape Clase B', value: `${formatNumber(result.spliceLengthMm / 10, 0)} cm` },
   ];
 }
@@ -117,10 +130,10 @@ function columnData(result: ColumnDesignResult, draft: ColumnDraft) {
       { label: 'Vux · Vuy', value: `${formatNumber(input.shearXKn, 1)} · ${formatNumber(input.shearYKn, 1)} kN` },
     ] },
     { title: 'Sección y refuerzo', rows: [
-      { label: 'Sección', value: `b = ${formatNumber(input.widthMm / 10, 0)} cm (X) · h = ${formatNumber(input.depthMm / 10, 0)} cm (Y)` },
+      { label: 'Sección', value: input.shape === 'circular' ? `circular, D = ${formatNumber(input.widthMm / 10, 0)} cm` : `rectangular, b = ${formatNumber(input.widthMm / 10, 0)} cm (X) · h = ${formatNumber(input.depthMm / 10, 0)} cm (Y)` },
       { label: 'Recubrimiento libre', value: `${formatNumber(input.coverMm / 10, 1)} cm` },
-      { label: 'Barras', value: `${rebarLabel(input.barDiameterMm)} · ${input.barsAlongWidth} por cara b · ${input.barsAlongDepth} por cara h` },
-      { label: 'Estribo', value: rebarLabel(input.tieDiameterMm) },
+      { label: 'Barras', value: input.shape === 'circular' ? `${input.barCount} ${rebarLabel(input.barDiameterMm)} en la circunferencia` : `${rebarLabel(input.barDiameterMm)} · ${input.barsAlongWidth} por cara b · ${input.barsAlongDepth} por cara h` },
+      { label: 'Estribo', value: `${input.shape === 'circular' ? 'circular ' : ''}${rebarLabel(input.tieDiameterMm)}` },
       { label: 'Agregado máximo', value: `${formatNumber(input.maxAggregateMm, 0)} mm` },
     ] },
     { title: 'Materiales', rows: [
@@ -139,7 +152,7 @@ function columnData(result: ColumnDesignResult, draft: ColumnDraft) {
 
 export function columnReport(result: ColumnDesignResult, draft: ColumnDraft): DesignReport {
   const [checks, notes] = splitChecks(result.checks);
-  const symmetric = Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth;
+  const symmetric = circularResult(result) || (Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth);
   return {
     element: 'column',
     title: columnTitle(result),
@@ -168,4 +181,39 @@ export function columnReport(result: ColumnDesignResult, draft: ColumnDraft): De
 export function columnReportFromDraft(code: DesignCodeId, draft: ColumnDraft) {
   const result = designColumn(columnToInput(code, draft));
   return result.ok ? { ok: true as const, report: columnReport(result, draft) } : { ok: false as const, errors: result.errors };
+}
+
+const PROPOSED_BARS = [15.9, 19.1, 22.2, 25.4, 28.6, 31.8];
+
+/**
+ * Sección y armado mínimos que cumplen: crece la sección de 5 en 5 cm y, en
+ * cada tamaño, prueba diámetros y número de barras hasta el de menor acero que
+ * no reprueba nada. Acepta el primer tamaño con cuantía hasta 2.5 %; si ninguno
+ * la logra, el primero que cumple.
+ */
+export function proposeColumn(codeId: DesignCodeId, draft: ColumnDraft): Partial<ColumnDraft> | null {
+  const circular = circularDraft(draft);
+  const minimum = draft.group === 'B2' ? 25 : 30;
+  let fallback: Partial<ColumnDraft> | null = null;
+  for (let size = minimum; size <= 120; size += 5) {
+    let best: { fields: Partial<ColumnDraft>; steel: number; ratio: number } | null = null;
+    for (const bar of PROPOSED_BARS) {
+      const counts = circular ? [6, 8, 10, 12, 14, 16, 18, 20] : [2, 3, 4, 5, 6];
+      for (const count of counts) {
+        const fields: Partial<ColumnDraft> = circular
+          ? { diameter: String(size), bar: String(bar), barCount: String(count) }
+          : { width: String(size), depth: String(size), bar: String(bar), barsWidth: String(count), barsDepth: String(count) };
+        if (bar > 31.8) fields.tie = '12.7';
+        const trial = designColumn(columnToInput(codeId, { ...draft, ...fields }));
+        if (!trial.ok || trial.status === 'fail') continue;
+        if (!best || trial.steelAreaMm2 < best.steel) best = { fields, steel: trial.steelAreaMm2, ratio: trial.steelRatio };
+        break;
+      }
+    }
+    if (best) {
+      if (best.ratio <= 0.025) return best.fields;
+      fallback ??= best.fields;
+    }
+  }
+  return fallback;
 }

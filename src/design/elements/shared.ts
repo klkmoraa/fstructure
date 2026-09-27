@@ -12,18 +12,22 @@ interface RebarSize {
 }
 
 /**
- * Varillas corrugadas comerciales en México (número en octavos de pulgada).
- * El catálogo termina en la #10: la tabla 14.4.2.4 de la NTC 2023 separa las
- * longitudes de desarrollo en «no. 6 y menores» y «no. 7 a no. 11»; la #12
- * mexicana (38.1 mm) queda fuera de ambos renglones verificados.
+ * Varillas corrugadas en México (número en octavos de pulgada), de la #2.5 a
+ * la #11. El mismo catálogo sirve para barras y estribos. Termina en la #11: la
+ * tabla 14.4.2.4 de la NTC 2023 separa las longitudes de desarrollo en «no. 6 y
+ * menores» y «no. 7 a no. 11»; la #12 (38.1 mm) queda fuera de ambos renglones.
  */
 export const REBAR_SIZES: readonly RebarSize[] = Object.freeze([
+  { label: '#2.5', diameterMm: 7.9 },
   { label: '#3', diameterMm: 9.5 },
   { label: '#4', diameterMm: 12.7 },
   { label: '#5', diameterMm: 15.9 },
   { label: '#6', diameterMm: 19.1 },
+  { label: '#7', diameterMm: 22.2 },
   { label: '#8', diameterMm: 25.4 },
+  { label: '#9', diameterMm: 28.6 },
   { label: '#10', diameterMm: 31.8 },
+  { label: '#11', diameterMm: 34.9 },
 ]);
 
 export const rebarLabel = (diameterMm: number): string =>

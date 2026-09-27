@@ -2,7 +2,34 @@ import type { ColumnDesignResult, InteractionPoint } from '../../../design/eleme
 import { rebarLabel } from '../../../design/elements/shared';
 import { formatNumber } from './common';
 
+function CircularColumnSection({ result }: { result: ColumnDesignResult }) {
+  const { widthMm: diameter, coverMm, tieDiameterMm: dt, barDiameterMm: db } = result.input;
+  const size = 230;
+  const scale = 170 / diameter;
+  const radius = diameter * scale / 2;
+  const cx = size / 2;
+  const cy = size / 2 - 4;
+  const hoop = (diameter / 2 - coverMm - dt / 2) * scale;
+  return <svg className="dw-drawing dw-drawing--section" viewBox={`0 0 ${size} ${size + 30}`} role="img"
+    aria-label={`Sección circular de columna de ${diameter / 10} centímetros de diámetro con ${result.bars.length} varillas ${rebarLabel(db)}`}>
+    <circle className="dw-concrete" cx={cx} cy={cy} r={radius} />
+    <circle className="dw-stirrup" cx={cx} cy={cy} r={hoop} style={{ strokeWidth: Math.max(1.5, dt * scale) }} />
+    <g className="dw-axis">
+      <line x1={cx - radius - 14} x2={cx + radius + 14} y1={cy} y2={cy} />
+      <line x1={cx} x2={cx} y1={cy - radius - 14} y2={cy + radius + 14} />
+      <text x={cx + radius + 16} y={cy + 4}>X</text>
+      <text x={cx - 4} y={cy - radius - 18}>Y</text>
+    </g>
+    {result.bars.map((bar, index) => <circle key={index} className="dw-bar" cx={cx + bar.x * scale} cy={cy - bar.y * scale} r={Math.max(2.6, db / 2 * scale)} />)}
+    <g className="dw-dimension">
+      <line x1={cx - radius} x2={cx + radius} y1={cy + radius + 22} y2={cy + radius + 22} />
+      <text x={cx} y={cy + radius + 36} textAnchor="middle">{`D = ${formatNumber(diameter / 10, 0)} cm`}</text>
+    </g>
+  </svg>;
+}
+
 export function ColumnSection({ result }: { result: ColumnDesignResult }) {
+  if (result.input.shape === 'circular') return <CircularColumnSection result={result} />;
   const { widthMm: b, depthMm: h, coverMm, tieDiameterMm: dt, barDiameterMm: db } = result.input;
   const size = 230;
   const scale = Math.min(170 / b, 170 / h);
@@ -57,14 +84,17 @@ export function InteractionChart({ result }: { result: ColumnDesignResult }) {
   const my = result.magnification.y.designMomentKnm;
   const magnified = result.magnification.x.factor > 1 || result.magnification.y.factor > 1;
   const curves = [result.aboutX.nominal, result.aboutY.nominal];
-  const maxM = Math.max(...curves.flat().map((point) => point.momentKnm), mx, my) * 1.08 || 1;
+  const maxM = Math.max(...curves.flat().map((point) => point.momentKnm), mx, my, Math.hypot(mx, my)) * 1.08 || 1;
   const minP = Math.min(...curves.flat().map((point) => point.axialKn), axialKn) * 1.08;
   const maxP = Math.max(...curves.flat().map((point) => point.axialKn), axialKn) * 1.05;
   const sx = (m: number) => pad.left + m / maxM * (W - pad.left - pad.right);
   const sy = (p: number) => pad.top + (maxP - p) / (maxP - minP) * (H - pad.top - pad.bottom);
   const path = (points: readonly InteractionPoint[]) => points.map((point, index) => `${index ? 'L' : 'M'}${sx(point.momentKnm).toFixed(1)},${sy(point.axialKn).toFixed(1)}`).join(' ');
-  const symmetric = Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth;
-  const demand = [
+  const circular = result.input.shape === 'circular';
+  const symmetric = circular || (Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth);
+  // Circular: un solo punto con el momento resultante.
+  const resultant = mx > 0 && my > 0 ? Math.hypot(mx, my) : Math.max(mx, my);
+  const demand = circular ? [{ id: 'x', m: resultant, label: magnified ? 'Mc' : 'Mu' }] : [
     ...(mx > 0 || my === 0 ? [{ id: 'x', m: mx, label: magnified ? 'Mcx' : 'Mux' }] : []),
     ...(my > 0 ? [{ id: 'y', m: my, label: magnified ? 'Mcy' : 'Muy' }] : []),
   ];

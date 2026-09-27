@@ -1,13 +1,13 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SegmentedControl } from '../../../design-system/components/controls';
 import { LayerToggle } from '../../../design-system/components/editor';
 import { designCode } from '../../../design/elements/codes';
 import { designColumn } from '../../../design/elements/column';
 import { rebarLabel } from '../../../design/elements/shared';
 import { ColumnSection, InteractionChart } from './ColumnDrawings';
-import { COLUMN_DEFAULTS, columnReport, columnToInput, methodLabel, tieText } from './columnModel';
+import { COLUMN_DEFAULTS, columnReport, columnToInput, methodLabel, proposeColumn, tieText } from './columnModel';
 import {
-  BarSelect, ChecksList, IdentityGroup, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict,
+  ActionNote, BarSelect, ChecksList, IdentityGroup, InlineAction, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict,
   formatNumber, useDraftHistory, useStoredDraft,
 } from './common';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
@@ -20,12 +20,21 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const code = designCode(chrome.code);
   const result = useMemo(() => designColumn(columnToInput(chrome.code, draft)), [chrome.code, draft]);
   const braced = draft.braced !== 'no';
+  const circular = draft.shape === 'circular';
+  const [proposalNote, setProposalNote] = useState<string | null>(null);
+  const propose = () => {
+    const proposal = proposeColumn(chrome.code, draft);
+    if (!proposal) { setProposalNote('Ninguna sección hasta 120 cm cumple: revisa las solicitaciones y la esbeltez.'); return; }
+    replace({ ...draft, ...proposal });
+    const bars = circular ? `${proposal.barCount} barras` : `${proposal.barsWidth} × ${proposal.barsDepth} barras por cara`;
+    setProposalNote(`Propuesta: ${circular ? `Ø ${proposal.diameter}` : `${proposal.width} × ${proposal.depth}`} cm con ${bars} de ${Number(proposal.bar).toFixed(1)} mm, el menor acero que cumple.`);
+  };
   const report = useMemo(() => result.ok ? columnReport(result, draft) : null, [result, draft]);
   const checks = report?.checks ?? [];
   const notes = report?.notes ?? [];
   const outOfScope = report?.outOfScope ?? [];
   const title = report?.title ?? '';
-  const symmetric = result.ok && Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth;
+  const symmetric = result.ok && (result.input.shape === 'circular' || (Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth));
 
   return <WorkbenchLayout
     chrome={chrome}
@@ -35,22 +44,35 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
     caption={result.ok ? `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} · ρ ${formatNumber(result.steelRatio * 100, 2)} %` : undefined}
     inputs={<>
-      <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} />
+      <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="C-1" />
       <FieldGroup title="Solicitaciones últimas">
         <NumberField label="Pu" unit="kN" value={draft.axial} onChange={set('axial')} min={-1e9} />
         <NumberField label="Mux" unit="kN·m" value={draft.momentX} onChange={set('momentX')} min={-1e9} />
         <NumberField label="Muy" unit="kN·m" value={draft.momentY} onChange={set('momentY')} min={-1e9} />
       </FieldGroup>
-      <FieldGroup title="Sección">
-        <NumberField label="Base b (X)" unit="cm" value={draft.width} onChange={set('width')} />
-        <NumberField label="Peralte h (Y)" unit="cm" value={draft.depth} onChange={set('depth')} />
+      <FieldGroup title="Sección" action={<InlineAction label="Proponer" title="Dimensionar sección y armado: los menores que cumplen" onClick={propose} />}>
+        <div className="dw-span-all">
+          <SegmentedControl label="Forma de la sección" size="sm" value={circular ? 'circular' : 'rectangular'} onValueChange={set('shape')}
+            options={[{ value: 'rectangular', label: 'Rectangular' }, { value: 'circular', label: 'Circular' }]} />
+        </div>
+        {circular
+          ? <NumberField label="Diámetro D" unit="cm" value={draft.diameter} onChange={set('diameter')} />
+          : <>
+            <NumberField label="Base b (X)" unit="cm" value={draft.width} onChange={set('width')} />
+            <NumberField label="Peralte h (Y)" unit="cm" value={draft.depth} onChange={set('depth')} />
+          </>}
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
+        <div className="dw-span-all"><ActionNote text={proposalNote} /></div>
       </FieldGroup>
       <FieldGroup title="Refuerzo">
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
-        <BarSelect label="Estribo" value={draft.tie} onChange={set('tie')} />
-        <NumberField label="Barras cara b" unit="pzas" value={draft.barsWidth} onChange={set('barsWidth')} min={2} />
-        <NumberField label="Barras cara h" unit="pzas" value={draft.barsDepth} onChange={set('barsDepth')} min={2} />
+        <BarSelect label={circular ? 'Estribo circular' : 'Estribo'} value={draft.tie} onChange={set('tie')} />
+        {circular
+          ? <NumberField label="Número de barras" unit="pzas" value={draft.barCount} onChange={set('barCount')} min={4} />
+          : <>
+            <NumberField label="Barras cara b" unit="pzas" value={draft.barsWidth} onChange={set('barsWidth')} min={2} />
+            <NumberField label="Barras cara h" unit="pzas" value={draft.barsDepth} onChange={set('barsDepth')} min={2} />
+          </>}
       </FieldGroup>
       <FieldGroup title="Materiales">
         <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />

@@ -100,8 +100,13 @@ export interface ColumnRules {
   readonly geometryLimits: boolean;
 }
 
+/** Área del bloque de compresión de profundidad `a` (mm²): rectangular a·b o de sección T/L. */
+export type BlockArea = (depthMm: number) => number;
+
 export interface BeamRules {
   maximumSteel(widthMm: number, depthMm: number, extremeDepthMm: number, fcMpa: number, fyMpa: number): number;
+  /** El mismo límite para un bloque de compresión cualquiera (sección T o L con el patín en compresión). */
+  maximumSteelForBlock(block: BlockArea, depthMm: number, extremeDepthMm: number, fcMpa: number, fyMpa: number): number;
   minimumSteel(widthMm: number, depthMm: number, heightMm: number, fcMpa: number, fyMpa: number, extremeDepthMm: number): number;
   readonly maximumSteelNote: string;
   minimumClearSpacing(barDiameterMm: number, aggregateMm: number): number;
@@ -162,6 +167,9 @@ export interface DesignCode {
 const SMALL_BAR_MM = 19.1;
 const balancedSteel = (b: number, d: number, fc: number, fy: number) =>
   equivalentBlockStrengthMpa(fc) / fy * (600 * betaOne(fc) / (fy + 600)) * b * d;
+/** Acero balanceado de un bloque cualquiera: fuerza del bloque con c = 600d/(fy + 600), entre fy. */
+const balancedSteelForBlock = (block: BlockArea, d: number, fc: number, fy: number) =>
+  equivalentBlockStrengthMpa(fc) * block(betaOne(fc) * 600 * d / (fy + 600)) / fy;
 
 /** Barras con gancho estándar: 0.24 fy/(λ√f′c) db ≥ 8db y 150 mm, con ψ = 1 (del lado seguro). */
 const hooked = (db: number, fy: number, fc: number) => Math.max(0.24 * fy / Math.sqrt(Math.min(fc, 70)) * db, 8 * db, 150);
@@ -199,6 +207,7 @@ const NTC_2023: DesignCode = {
   twoWayShearFactor: (seismic) => seismic ? 0.65 : 0.75,
   beam: {
     maximumSteel: (b, d, _dt, fc, fy) => 0.9 * balancedSteel(b, d, fc, fy),
+    maximumSteelForBlock: (block, d, _dt, fc, fy) => 0.9 * balancedSteelForBlock(block, d, fc, fy),
     minimumSteel: (b, d, _h, fc, fy) => Math.max(0.25 * Math.sqrt(fc) / fy, 1.4 / fy) * b * d,
     maximumSteelNote: '0.9 del acero balanceado.',
     minimumClearSpacing: (db, aggregate) => Math.max(25, db, 1.5 * aggregate),
@@ -327,6 +336,7 @@ const NSR_10: DesignCode = {
   beam: {
     // C.10.3.5: εt ≥ 0.004 en elementos a flexión.
     maximumSteel: (b, _d, dt, fc, fy) => equivalentBlockStrengthMpa(fc) * betaOne(fc) * (0.003 / (0.003 + 0.004)) * dt * b / fy,
+    maximumSteelForBlock: (block, _d, dt, fc, fy) => equivalentBlockStrengthMpa(fc) * block(betaOne(fc) * (0.003 / (0.003 + 0.004)) * dt) / fy,
     minimumSteel: (b, d, _h, fc, fy) => Math.max(0.25 * Math.sqrt(fc), 1.4) * b * d / fy,
     maximumSteelNote: 'εt ≥ 0.004 (C.10.3.5).',
     minimumClearSpacing: (db, aggregate) => Math.max(25, db, 4 / 3 * aggregate),
@@ -445,6 +455,7 @@ const E060: DesignCode = {
   twoWayShearFactor: () => 0.85,
   beam: {
     maximumSteel: (b, d, _dt, fc, fy) => 0.75 * balancedSteel(b, d, fc, fy),
+    maximumSteelForBlock: (block, d, _dt, fc, fy) => 0.75 * balancedSteelForBlock(block, d, fc, fy),
     // 10.5.1 y 10.5.2: φMn ≥ 1.2Mcr y As ≥ 0.22√f′c bw d/fy.
     minimumSteel: (b, d, h, fc, fy, dt) => {
       const crackingKnm = 0.62 * Math.sqrt(fc) * b * h ** 2 / 6 / 1e6;

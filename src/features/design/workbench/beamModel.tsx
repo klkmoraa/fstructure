@@ -13,10 +13,13 @@ import type { DesignReport, ReportAlternative, ReportRow } from './designReport'
  */
 export const BEAM_DEFAULTS = {
   tag: '', place: '',
+  sectionType: 'rect', flangeWidth: '100', flangeThickness: '12',
   width: '25', height: '50', cover: '4', fc: '250', fy: '4200', fyv: '4200', leftEnd: 'pin', rightEnd: 'pin',
   selfWeight: 'yes', points: 'no', group: 'B', use: 'habitacion', sustained: '25', duration: '60', bar: 'auto', stirrup: 'auto', aggregate: '19', damages: 'no',
   supportWidth: '40',
   rebarMode: 'auto', topCount: '2', topBar: '15.9', bottomCount: '3', bottomBar: '15.9', ownBastions: 'auto', stirrupSpacing: '',
+  /** Cargas desde la losa: ancho tributario (m), muerta y viva de la losa (kN/m²) y muros sobre la viga (kN/m). */
+  tributary: '3', slabDead: '4.5', slabLive: '1.9', wallLoad: '0',
 };
 type BeamDraft = typeof BEAM_DEFAULTS;
 
@@ -78,6 +81,9 @@ export const beamToInput = (codeId: DesignCodeId, draft: BeamDraft, spans: reado
   maxAggregateMm: parseNumber(draft.aggregate),
   damagesNonstructural: draft.damages === 'yes',
   supportWidthMm: parseNumber(draft.supportWidth) * 10,
+  flange: draft.sectionType === 'T' || draft.sectionType === 'L'
+    ? { kind: draft.sectionType, widthMm: parseNumber(draft.flangeWidth) * 10, thicknessMm: parseNumber(draft.flangeThickness) * 10 }
+    : null,
   provided: useOwn && draft.rebarMode === 'own' ? {
     top: { count: parseNumber(draft.topCount), diameterMm: parseNumber(draft.topBar) },
     bottom: { count: parseNumber(draft.bottomCount), diameterMm: parseNumber(draft.bottomBar) },
@@ -114,12 +120,21 @@ const anchorageText = (item: BeamDesignResult['anchorages'][number]) =>
     ? `recta, ld ${cm(item.straightMm)}`
     : item.kind === 'hook' ? `gancho estándar, ldh ${cm(item.hookMm)}` : `no cabe (ldh ${cm(item.hookMm)} > ${cm(item.availableMm)})`}`;
 
-const beamTitle = (result: BeamDesignResult) => `Viga ${formatNumber(result.input.widthMm / 10, 0)} × ${formatNumber(result.input.heightMm / 10, 0)} cm`;
+const beamTitle = (result: BeamDesignResult) => {
+  const { widthMm, heightMm, flange } = result.input;
+  const web = `${formatNumber(widthMm / 10, 0)} × ${formatNumber(heightMm / 10, 0)} cm`;
+  return flange ? `Viga ${flange.kind} ${web} · patín ${formatNumber(flange.widthMm / 10, 0)} × ${formatNumber(flange.thicknessMm / 10, 0)}` : `Viga ${web}`;
+};
+
+/** Texto de la sección para datos y memoria. */
+const sectionText = (input: BeamDesignInput) => input.flange
+  ? `${input.flange.kind === 'T' ? 'T (losa a ambos lados)' : 'L (losa de un lado)'}: alma bw = ${formatNumber(input.widthMm / 10, 0)} cm · h = ${formatNumber(input.heightMm / 10, 0)} cm · patín bf = ${formatNumber(input.flange.widthMm / 10, 0)} cm, hf = ${formatNumber(input.flange.thicknessMm / 10, 0)} cm`
+  : `rectangular: b = ${formatNumber(input.widthMm / 10, 0)} cm · h = ${formatNumber(input.heightMm / 10, 0)} cm`;
 
 function beamMemo(result: BeamDesignResult): string {
   const { input } = result;
   return [
-    `VIGA ${input.widthMm / 10}×${input.heightMm / 10} cm · ${describeBeam(input)} · L = ${input.spans.map((span) => span.lengthM).join(' + ')} m · ${designCode(input.code).name}`,
+    `VIGA ${input.flange ? `${input.flange.kind} ` : ''}${input.widthMm / 10}×${input.heightMm / 10} cm${input.flange ? ` (patín ${input.flange.widthMm / 10}×${input.flange.thicknessMm / 10})` : ''} · ${describeBeam(input)} · L = ${input.spans.map((span) => span.lengthM).join(' + ')} m · ${designCode(input.code).name}`,
     `Combinaciones: ${input.combinations.map((combination) => combination.label).join(' · ')}`,
     `Envolvente del solver 2D (${result.solverRuns} análisis): Mu+ = ${formatNumber(result.extremes.positiveMomentKnm)} kN·m · Mu− = ${formatNumber(result.extremes.negativeMomentKnm)} kN·m · Vu = ${formatNumber(result.extremes.shearKn)} kN`,
     `${input.provided ? 'Armado propio · corridas' : 'Corridas'}: ${barsText(result.continuousTop.continuous)} arriba · ${barsText(result.continuousBottom.continuous)} abajo`,
@@ -172,7 +187,7 @@ function beamData(result: BeamDesignResult, draft: BeamDraft) {
       { label: 'Tipo', value: describeBeam(input) },
       { label: 'Claros', value: `${input.spans.map((span) => formatNumber(span.lengthM, 2)).join(' + ')} m` },
       { label: 'Apoyos', value: `izquierdo ${endLabel(input.leftEnd).toLowerCase()} · derecho ${endLabel(input.rightEnd).toLowerCase()}` },
-      { label: 'Sección', value: `b = ${formatNumber(input.widthMm / 10, 0)} cm · h = ${formatNumber(input.heightMm / 10, 0)} cm` },
+      { label: 'Sección', value: sectionText(input) },
       { label: 'Recubrimiento libre', value: cm(input.coverMm) },
       { label: 'Ancho de apoyo extremo', value: cm(input.supportWidthMm) },
     ] },
@@ -181,7 +196,7 @@ function beamData(result: BeamDesignResult, draft: BeamDraft) {
         label: `Claro ${index + 1}`,
         value: `CM ${formatNumber(span.deadKnPerM, 2)} · CV ${formatNumber(span.liveKnPerM, 2)} kN/m${points ? ` · P CM ${formatNumber(span.pointDeadKn, 1)} · P CV ${formatNumber(span.pointLiveKn, 1)} kN a ${formatNumber(span.pointAtM, 2)} m` : ''}`,
       })),
-      { label: 'Peso propio', value: input.includeSelfWeight ? `incluido, ${formatNumber(result.selfWeightKnPerM, 2)} kN/m` : 'no incluido' },
+      { label: 'Peso propio', value: input.includeSelfWeight ? `incluido, ${formatNumber(result.selfWeightKnPerM, 2)} kN/m${input.flange ? ' (alma bajo la losa; la losa va en la carga muerta)' : ''}` : 'no incluido' },
     ] },
     { title: 'Materiales', rows: [
       { label: 'f′c', value: kgcm2(draft.fc) },
@@ -221,7 +236,7 @@ export function beamReport(result: BeamDesignResult, draft: BeamDraft, alternati
     memo: beamMemo(result),
     checks,
     notes,
-    outOfScope: outOfScopeChecks('beam', result.input.code),
+    outOfScope: outOfScopeChecks('beam', result.input.code, { flange: Boolean(result.input.flange) }),
     input: result.input,
     data: beamData(result, draft),
     reinforcement: beamReinforcementRows(result),
@@ -250,4 +265,40 @@ export function beamReportFromDraft(code: DesignCodeId, draft: BeamDraft, spans:
   if (!result.ok) return { ok: false as const, errors: result.errors };
   const proposed = draft.rebarMode === 'own' ? designBeam(beamToInput(code, draft, spans, false)) : undefined;
   return { ok: true as const, report: beamReport(result, draft, proposed?.ok ? proposed : undefined) };
+}
+
+/** Carga de línea por claro a partir de la losa: w = ancho tributario × carga de losa (+ muros en la muerta). */
+export function slabLineLoads(draft: BeamDraft): { dead: number; live: number } | null {
+  const tributary = parseNumber(draft.tributary);
+  const dead = parseNumber(draft.slabDead);
+  const live = parseNumber(draft.slabLive);
+  const wall = draft.wallLoad.trim() === '' ? 0 : parseNumber(draft.wallLoad);
+  if (![tributary, dead, live, wall].every((value) => Number.isFinite(value) && value >= 0) || tributary <= 0) return null;
+  const round = (value: number) => Math.round(value * 100) / 100;
+  return { dead: round(tributary * dead + wall), live: round(tributary * live) };
+}
+
+const WIDTHS_CM = [20, 25, 30, 35, 40, 45, 50];
+
+/**
+ * Sección mínima que cumple: para cada ancho, el menor peralte (de 5 en 5 cm)
+ * con el que la viga no reprueba ninguna comprobación con el armado propuesto;
+ * gana la de menor área con peralte entre 1 y 3 veces el ancho.
+ */
+export function proposeBeamSection(codeId: DesignCodeId, draft: BeamDraft, spans: readonly SpanDraft[]): { width: string; height: string } | null {
+  const longest = Math.max(...spans.map((span) => parseNumber(span.length)).filter(Number.isFinite), 0);
+  if (!(longest > 0)) return null;
+  const start = Math.max(30, Math.ceil(longest * 100 / 16 / 5) * 5);
+  let best: { width: number; height: number } | null = null;
+  for (const width of WIDTHS_CM) {
+    for (let height = Math.max(start, width); height <= Math.min(150, 3 * width); height += 5) {
+      if (best && width * height >= best.width * best.height) break;
+      const trial = designBeam(beamToInput(codeId, { ...draft, width: String(width), height: String(height) }, spans, false));
+      if (trial.ok && trial.status !== 'fail') {
+        best = { width, height };
+        break;
+      }
+    }
+  }
+  return best ? { width: String(best.width), height: String(best.height) } : null;
 }

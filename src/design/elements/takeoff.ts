@@ -1,5 +1,7 @@
 import type { BeamDesignResult } from './beam';
 import type { ColumnDesignResult } from './column';
+import type { CombinedFootingResult } from './combinedFooting';
+import type { StripFootingResult } from './stripFooting';
 import type { FootingDesignResult } from './footing';
 import { barArea, rebarLabel } from './shared';
 
@@ -96,12 +98,15 @@ export function columnTakeoff(result: ColumnDesignResult): Takeoff {
     ? 2 * piecesAlong(endZone, ties.endSpacingMm) + piecesAlong(heightMm - 2 * endZone, ties.centerSpacingMm) + 1
     : piecesAlong(heightMm, ties.centerSpacingMm) + 1;
   const crossTie = (spanMm: number) => (spanMm - 2 * input.coverMm + 2 * hook135Mm(dt)) / 1e3;
+  const circular = input.shape === 'circular';
+  // Estribo circular: perímetro de su eje más dos ganchos de 135°.
+  const hoopLengthM = (Math.PI * (input.widthMm - 2 * input.coverMm - dt) + 2 * hook135Mm(dt)) / 1e3;
   return summarize([
     line(`Longitudinales ${rebarLabel(db)} (con traslape)`, db, result.bars.length, (heightMm + result.spliceLengthMm) / 1e3),
-    line(`Estribos ${rebarLabel(dt)}`, dt, tieCount, stirrupLengthM(input.widthMm, input.depthMm, input.coverMm, dt)),
+    line(`${circular ? 'Estribos circulares' : 'Estribos'} ${rebarLabel(dt)}`, dt, tieCount, circular ? hoopLengthM : stirrupLengthM(input.widthMm, input.depthMm, input.coverMm, dt)),
     line(`Grapas paralelas a X ${rebarLabel(dt)}`, dt, tieCount * ties.crossTiesParallelToX, crossTie(input.widthMm)),
     line(`Grapas paralelas a Y ${rebarLabel(dt)}`, dt, tieCount * ties.crossTiesParallelToY, crossTie(input.depthMm)),
-  ], input.widthMm * input.depthMm * heightMm / 1e9);
+  ], result.grossAreaMm2 * heightMm / 1e9);
 }
 
 export function footingTakeoff(result: FootingDesignResult): Takeoff {
@@ -113,4 +118,30 @@ export function footingTakeoff(result: FootingDesignResult): Takeoff {
     line(`Parrilla en X ${rebarLabel(db)}`, db, result.directions.x.barCount, piece(result.sideXMm, result.directions.x.anchorage)),
     line(`Parrilla en Y ${rebarLabel(db)}`, db, result.directions.y.barCount, piece(result.sideYMm, result.directions.y.anchorage)),
   ], result.sideXMm * result.sideYMm * result.thicknessMm / 1e9);
+}
+
+/** Zapata corrida: cantidades por metro de muro. */
+export function stripFootingTakeoff(result: StripFootingResult): Takeoff {
+  const { input } = result;
+  const db = input.barDiameterMm;
+  const perMeter = Math.ceil(1_000 / result.transverse.spacingMm - 1e-9);
+  const piece = (result.widthMm - 2 * input.coverMm + (result.transverse.anchorage === 'hook' ? 2 * hook90Mm(db) : 0)) / 1e3;
+  return summarize([
+    line(`Transversales ${rebarLabel(db)} (por metro)`, db, perMeter, piece),
+    line(`Longitudinales ${rebarLabel(input.distributionBarDiameterMm)} (por metro)`, input.distributionBarDiameterMm, result.distribution.barCount, 1),
+  ], result.widthMm * result.thicknessMm / 1e6);
+}
+
+export function combinedFootingTakeoff(result: CombinedFootingResult): Takeoff {
+  const { input } = result;
+  const long = (result.lengthMm - 2 * input.coverMm) / 1e3;
+  const dt = input.transverseBarMm;
+  const across = (anchorage: 'straight' | 'hook' | 'insufficient') => (result.widthMm - 2 * input.coverMm + (anchorage === 'hook' ? 2 * hook90Mm(dt) : 0)) / 1e3;
+  const outside = Math.max(0, result.lengthMm - result.bands.reduce((total, band) => total + band.widthMm, 0));
+  return summarize([
+    line(`Longitudinal inferior ${rebarLabel(result.bottom.diameterMm)}`, result.bottom.diameterMm, result.bottom.barCount, long),
+    ...(result.top ? [line(`Longitudinal superior ${rebarLabel(result.top.diameterMm)}`, result.top.diameterMm, result.top.barCount, long)] : []),
+    ...result.bands.map((band) => line(`Transversal bajo C${band.column} ${rebarLabel(band.diameterMm)}`, band.diameterMm, band.barCount, across(band.anchorage))),
+    line(`Transversal fuera de bandas ${rebarLabel(dt)}`, dt, Math.ceil(outside / result.transverseMinimumSpacingMm), across('straight')),
+  ], result.lengthMm * result.widthMm * result.thicknessMm / 1e9);
 }

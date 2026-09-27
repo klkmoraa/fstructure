@@ -7,6 +7,8 @@ const WIDTH = 820;
 const LEFT = 74;
 const RIGHT = 30;
 const PLOT = WIDTH - LEFT - RIGHT;
+/** Marco horizontal de las láminas de elevación, compartido con las zapatas combinadas. */
+export const ELEVATION_FRAME = Object.freeze({ width: WIDTH, left: LEFT, plot: PLOT });
 
 interface BandProps {
   readonly xs: readonly number[];
@@ -29,7 +31,7 @@ interface BandProps {
 const pathOf = (xs: readonly number[], values: readonly number[], scaleX: (x: number) => number, y: (value: number) => number) =>
   values.map((value, index) => `${index === 0 ? 'M' : 'L'}${scaleX(xs[index]!).toFixed(2)},${y(value).toFixed(2)}`).join(' ');
 
-function DiagramBand({ xs, upper, lower, capacityUpper, capacityLower, top, height, scaleX, positive, tone, label, unit, nodesAtM }: BandProps) {
+export function DiagramBand({ xs, upper, lower, capacityUpper, capacityLower, top, height, scaleX, positive, tone, label, unit, nodesAtM }: BandProps) {
   const demand = lower ? [...upper, ...lower] : upper;
   const all = [...demand, ...(capacityUpper ?? []), ...(capacityLower ?? [])];
   const max = Math.max(0, ...all);
@@ -292,35 +294,55 @@ function bedBars(section: BedSection, input: BeamDesignResult['input'], stirrupD
 const bedText = (section: BedSection) => section.extra ? `${barsText(section.continuous)} + ${barsText(section.extra)}` : barsText(section.continuous);
 
 export function BeamSection({ result, cut }: { result: BeamDesignResult; cut: BeamSectionCut }) {
-  const { widthMm: b, heightMm: h, coverMm } = result.input;
-  const scale = Math.min(130 / b, 190 / h);
-  const width = b * scale;
+  const { widthMm: b, heightMm: h, coverMm, flange } = result.input;
+  // Viga T/L: el patín define el ancho del dibujo; el alma va al centro (T) o a la izquierda (L).
+  const bf = flange ? flange.widthMm : b;
+  const hf = flange?.thicknessMm ?? 0;
+  const webX = flange?.kind === 'T' ? (bf - b) / 2 : 0;
+  const scale = Math.min((flange ? 190 : 130) / bf, 190 / h);
+  const width = bf * scale;
   const height = h * scale;
-  const W = 230;
+  const W = Math.max(230, width + 70);
   const ox = (W - width) / 2 - 12;
-  const oy = 30;
+  const oy = flange ? 44 : 30;
+  const wx = ox + webX * scale;
+  const webWidth = b * scale;
   const ds = result.stirrupDiameterMm;
   const inset = (coverMm + ds / 2) * scale;
   const bars = [...bedBars(cut.top, result.input, ds), ...bedBars(cut.bottom, result.input, ds)];
+  const outline = flange
+    ? flange.kind === 'T'
+      ? [[0, 0], [bf, 0], [bf, hf], [webX + b, hf], [webX + b, h], [webX, h], [webX, hf], [0, hf]]
+      : [[0, 0], [bf, 0], [bf, hf], [b, hf], [b, h], [0, h]]
+    : [[0, 0], [b, 0], [b, h], [0, h]];
+  const path = outline.map(([x, y], index) => `${index ? 'L' : 'M'}${(ox + x! * scale).toFixed(1)},${(oy + y! * scale).toFixed(1)}`).join(' ') + ' Z';
+  const kind = flange ? `viga ${flange.kind} con patín de ${bf / 10} por ${hf / 10} centímetros, alma de ${b / 10} por ${h / 10}` : `sección ${b / 10} por ${h / 10} centímetros`;
 
   return <svg className="dw-drawing dw-drawing--section" viewBox={`0 0 ${W} ${oy + height + 58}`} role="img"
-    aria-label={`${cut.label}: sección ${b / 10} por ${h / 10} centímetros con ${bedText(cut.top)} arriba y ${bedText(cut.bottom)} abajo`}>
-    <text className="dw-callout" x={ox + width / 2} y={16} textAnchor="middle">{bedText(cut.top)}</text>
-    <rect className="dw-concrete" x={ox} y={oy} width={width} height={height} />
-    <rect className="dw-stirrup" x={ox + inset} y={oy + inset} width={width - 2 * inset} height={height - 2 * inset}
+    aria-label={`${cut.label}: ${kind} con ${bedText(cut.top)} arriba y ${bedText(cut.bottom)} abajo`}>
+    <text className="dw-callout" x={wx + webWidth / 2} y={flange ? 14 : 16} textAnchor="middle">{bedText(cut.top)}</text>
+    <path className="dw-concrete" d={path} />
+    <rect className="dw-stirrup" x={wx + inset} y={oy + inset} width={webWidth - 2 * inset} height={height - 2 * inset}
       rx={Math.max(2, 2 * ds * scale)} style={{ strokeWidth: Math.max(1.4, ds * scale) }} />
     {bars.map((bar, index) => <circle key={index} className={bar.kind === 'extra' ? 'dw-bar dw-bar--extra' : 'dw-bar'}
-      cx={ox + bar.x * scale} cy={oy + bar.y * scale} r={Math.max(2.4, bar.d / 2 * scale)} />)}
+      cx={wx + bar.x * scale} cy={oy + bar.y * scale} r={Math.max(2.4, bar.d / 2 * scale)} />)}
     <g className="dw-dimension">
-      <line x1={ox} x2={ox + width} y1={oy + height + 14} y2={oy + height + 14} />
-      <line x1={ox} x2={ox} y1={oy + height + 8} y2={oy + height + 20} />
-      <line x1={ox + width} x2={ox + width} y1={oy + height + 8} y2={oy + height + 20} />
-      <text x={ox + width / 2} y={oy + height + 31} textAnchor="middle">{`${formatNumber(b / 10, 0)} cm`}</text>
+      <line x1={wx} x2={wx + webWidth} y1={oy + height + 14} y2={oy + height + 14} />
+      <line x1={wx} x2={wx} y1={oy + height + 8} y2={oy + height + 20} />
+      <line x1={wx + webWidth} x2={wx + webWidth} y1={oy + height + 8} y2={oy + height + 20} />
+      <text x={wx + webWidth / 2} y={oy + height + 31} textAnchor="middle">{`${flange ? 'bw ' : ''}${formatNumber(b / 10, 0)} cm`}</text>
       <line x1={ox + width + 14} x2={ox + width + 14} y1={oy} y2={oy + height} />
       <line x1={ox + width + 8} x2={ox + width + 20} y1={oy} y2={oy} />
       <line x1={ox + width + 8} x2={ox + width + 20} y1={oy + height} y2={oy + height} />
       <text x={ox + width + 20} y={oy + height / 2 + 4}>{`${formatNumber(h / 10, 0)} cm`}</text>
+      {flange ? <>
+        <line x1={ox} x2={ox + width} y1={oy - 10} y2={oy - 10} />
+        <line x1={ox} x2={ox} y1={oy - 16} y2={oy - 4} />
+        <line x1={ox + width} x2={ox + width} y1={oy - 16} y2={oy - 4} />
+        <text x={ox + width / 2} y={oy - 15} textAnchor="middle">{`bf ${formatNumber(bf / 10, 0)} cm`}</text>
+        <text x={ox + width + 20} y={oy + hf * scale / 2 + 4}>{`hf ${formatNumber(hf / 10, 0)}`}</text>
+      </> : null}
     </g>
-    <text className="dw-callout" x={ox + width / 2} y={oy + height + 52} textAnchor="middle">{bedText(cut.bottom)}</text>
+    <text className="dw-callout" x={wx + webWidth / 2} y={oy + height + 52} textAnchor="middle">{bedText(cut.bottom)}</text>
   </svg>;
 }

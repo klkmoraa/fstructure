@@ -1,9 +1,11 @@
 import { analyzeBeam, type BeamAnalysis, type BeamEnd, type BeamSpanLoads, type CaseResponse } from './beamAnalysis';
-import { designCode, isDesignCodeId, type DesignCode, type DesignCodeId, type DevelopmentLength, type LoadCombination } from './codes';
+import { designCode, isDesignCodeId, type BlockArea, type DesignCode, type DesignCodeId, type DevelopmentLength, type LoadCombination } from './codes';
 import {
   CONCRETE_UNIT_WEIGHT_KN_M3,
   STEEL_ELASTIC_MODULUS_MPA,
   barArea,
+  betaOne,
+  equivalentBlockStrengthMpa,
   capacityCheck,
   tracedAt,
   complementary,
@@ -15,6 +17,7 @@ import {
   rebarLabel,
   requiredFlexuralSteelMm2,
   type ElementCheck,
+  type FlexureFactor,
 } from './shared';
 
 export type { BeamEnd, BeamSpanLoads };
@@ -47,6 +50,19 @@ export interface BeamDesignInput {
   readonly supportWidthMm: number;
   /** Armado propio que sustituye la propuesta automática; sin él, el motor propone. */
   readonly provided?: BeamProvidedReinforcement | null;
+  /**
+   * Patín de una viga T (losa a ambos lados) o L (losa de un lado). `widthMm`
+   * es entonces el ancho del alma bw y `heightMm` el peralte total. El patín
+   * trabaja en compresión con momento positivo; con negativo rige el alma.
+   */
+  readonly flange?: BeamFlange | null;
+}
+
+export interface BeamFlange {
+  readonly kind: 'T' | 'L';
+  /** Ancho efectivo del patín bf (incluye el alma); lo fija quien diseña. */
+  readonly widthMm: number;
+  readonly thicknessMm: number;
 }
 
 /**
@@ -210,8 +226,8 @@ interface BeamDesignError {
 
 /** Las separaciones son límites geométricos, no una utilización de resistencia. */
 const STRENGTH_CHECKS = new Set(['flexure-positive', 'flexure-negative', 'shear', 'shear-section', 'deflection', 'deflection-live']);
-const AUTO_BAR_DIAMETERS = [12.7, 15.9, 19.1, 25.4, 31.8];
-const AUTO_STIRRUP_DIAMETERS = [9.5, 12.7];
+const AUTO_BAR_DIAMETERS = [12.7, 15.9, 19.1, 22.2, 25.4, 28.6, 31.8];
+const AUTO_STIRRUP_DIAMETERS = [9.5, 12.7, 15.9];
 export const MAX_SPANS = 6;
 const TOLERANCE = 1e-9;
 /** E.060 9.9.3: Z ≤ 26 kN/mm. */
@@ -223,6 +239,59 @@ interface SectionContext {
   readonly input: BeamDesignInput;
   readonly code: DesignCode;
   readonly stirrupDiameterMm: number;
+}
+
+/** Bloque de compresión de una sección T/L con el patín comprimido: área para una profundidad a. */
+const flangeBlock = (webMm: number, flange: BeamFlange): BlockArea => (a) =>
+  Math.min(a, flange.thicknessMm) * flange.widthMm + Math.max(0, a - flange.thicknessMm) * webMm;
+
+/**
+ * Resistencia a flexión de una sección T/L con el patín en compresión, por
+ * equilibrio con el bloque equivalente (mismas hipótesis que la rectangular):
+ * si el bloque cabe en el patín es rectangular de ancho bf; si no, el vuelo del
+ * patín aporta Cf = f″c(bf − bw)hf y el alma el resto.
+ */
+function flangeFlexure(areaMm2: number, webMm: number, flange: BeamFlange, depthMm: number, fyMpa: number, fcMpa: number, extremeDepthMm: number, factor: FlexureFactor) {
+  const fpp = equivalentBlockStrengthMpa(fcMpa);
+  const tension = areaMm2 * fyMpa;
+  const { widthMm: bf, thicknessMm: hf } = flange;
+  let blockDepth: number;
+  let nominalNmm: number;
+  if (tension <= fpp * bf * hf) {
+    blockDepth = tension / (fpp * bf);
+    nominalNmm = tension * (depthMm - blockDepth / 2);
+  } else {
+    const overhang = fpp * (bf - webMm) * hf;
+    blockDepth = (tension - overhang) / (fpp * webMm);
+    nominalNmm = overhang * (depthMm - hf / 2) + (tension - overhang) * (depthMm - blockDepth / 2);
+  }
+  const neutralAxis = blockDepth / betaOne(fcMpa);
+  const netTensileStrain = neutralAxis > 0 ? 0.003 * (extremeDepthMm - neutralAxis) / neutralAxis : Number.POSITIVE_INFINITY;
+  const resistanceFactor = factor(netTensileStrain, fyMpa / STEEL_ELASTIC_MODULUS_MPA);
+  return { strengthKnm: resistanceFactor * nominalNmm / 1e6, nominalKnm: nominalNmm / 1e6, resistanceFactor, netTensileStrain };
+}
+
+/** Acero para `momentKnm` en sección T/L; recorre hasta el acero balanceado del bloque y afina por bisección. */
+function requiredFlangeSteelMm2(momentKnm: number, webMm: number, flange: BeamFlange, depthMm: number, fyMpa: number, fcMpa: number, extremeDepthMm: number, factor: FlexureFactor): number | undefined {
+  if (momentKnm <= 0) return 0;
+  const balanced = equivalentBlockStrengthMpa(fcMpa) * flangeBlock(webMm, flange)(betaOne(fcMpa) * 600 * depthMm / (fyMpa + 600)) / fyMpa;
+  const strength = (area: number) => flangeFlexure(area, webMm, flange, depthMm, fyMpa, fcMpa, extremeDepthMm, factor).strengthKnm;
+  const steps = 400;
+  let previous = 0;
+  for (let step = 1; step <= steps; step += 1) {
+    const area = balanced * step / steps;
+    if (strength(area) >= momentKnm) {
+      let low = previous;
+      let high = area;
+      for (let iteration = 0; iteration < 60; iteration += 1) {
+        const middle = (low + high) / 2;
+        if (strength(middle) >= momentKnm) high = middle; else low = middle;
+      }
+      return high;
+    }
+    previous = area;
+  }
+  return undefined;
 }
 
 /** Evalúa corridas + bastones en un lecho: acomodo en una o dos capas, peralte efectivo y resistencia. */
@@ -250,9 +319,16 @@ function evaluateSection(context: SectionContext, bed: 'top' | 'bottom', continu
   const depth = input.heightMm - centroid;
   const extremeDepth = input.heightMm - firstCentroid;
   if (depth <= 0) return undefined;
-  const maximum = code.beam.maximumSteel(b, depth, extremeDepth, fc, fy);
-  const required = requiredFlexuralSteelMm2(demandKnm, b, depth, fy, fc, extremeDepth, code.flexureFactor, code.tensionControlledStrain) ?? Number.POSITIVE_INFINITY;
-  const capacity = flexuralCapacity(Math.min(area, maximum), b, depth, fy, fc, extremeDepth, code.flexureFactor);
+  // Momento positivo en viga T/L: el patín trabaja en compresión.
+  const flange = bed === 'bottom' ? input.flange ?? null : null;
+  const block = flange ? flangeBlock(b, flange) : null;
+  const maximum = block ? code.beam.maximumSteelForBlock(block, depth, extremeDepth, fc, fy) : code.beam.maximumSteel(b, depth, extremeDepth, fc, fy);
+  const required = (flange
+    ? requiredFlangeSteelMm2(demandKnm, b, flange, depth, fy, fc, extremeDepth, code.flexureFactor)
+    : requiredFlexuralSteelMm2(demandKnm, b, depth, fy, fc, extremeDepth, code.flexureFactor, code.tensionControlledStrain)) ?? Number.POSITIVE_INFINITY;
+  const capacity = flange
+    ? flangeFlexure(Math.min(area, maximum), b, flange, depth, fy, fc, extremeDepth, code.flexureFactor)
+    : flexuralCapacity(Math.min(area, maximum), b, depth, fy, fc, extremeDepth, code.flexureFactor);
   const minimum = demandKnm > TOLERANCE ? code.beam.minimumSteel(b, depth, input.heightMm, fc, fy, extremeDepth) : 0;
   return {
     bed,
@@ -409,11 +485,20 @@ function designBastions(
 const sectionAt = (x: number, bed: 'top' | 'bottom', continuous: BedSection, bastions: readonly BeamBastion[]): BedSection =>
   bastions.find((bastion) => bastion.bed === bed && x >= bastion.startM - TOLERANCE && x <= bastion.endM + TOLERANCE)?.section ?? continuous;
 
-/** Inercia de la sección transformada agrietada, mm⁴. */
-function crackedInertia(section: BedSection, widthMm: number, modularRatio: number) {
+/** Inercia de la sección transformada agrietada, mm⁴; con patín comprimido, T si el eje neutro baja al alma. */
+function crackedInertia(section: BedSection, widthMm: number, modularRatio: number, flange: BeamFlange | null = null) {
   const transformed = modularRatio * section.areaMm2;
-  const neutral = (-transformed + Math.sqrt(transformed ** 2 + 2 * widthMm * transformed * section.effectiveDepthMm)) / widthMm;
-  return widthMm * neutral ** 3 / 3 + transformed * (section.effectiveDepthMm - neutral) ** 2;
+  const d = section.effectiveDepthMm;
+  const top = flange ? flange.widthMm : widthMm;
+  const neutral = (-transformed + Math.sqrt(transformed ** 2 + 2 * top * transformed * d)) / top;
+  if (!flange || neutral <= flange.thicknessMm) return top * neutral ** 3 / 3 + transformed * (d - neutral) ** 2;
+  const { widthMm: bf, thicknessMm: hf } = flange;
+  const overhang = (bf - widthMm) * hf;
+  const a = widthMm / 2;
+  const b = overhang + transformed;
+  const c = -(overhang * hf / 2 + transformed * d);
+  const kd = (-b + Math.sqrt(b ** 2 - 4 * a * c)) / (2 * a);
+  return widthMm * kd ** 3 / 3 + (bf - widthMm) * hf ** 3 / 12 + overhang * (kd - hf / 2) ** 2 + transformed * (d - kd) ** 2;
 }
 
 /**
@@ -422,8 +507,8 @@ function crackedInertia(section: BedSection, widthMm: number, modularRatio: numb
  * NSR C.9-8 (Branson): Ie = (Mcr/Ma)³Ig + (1 − (Mcr/Ma)³)Icr;
  * E.060 9.6.2.3: Icr si Ma > Mcr.
  */
-function effectiveInertia(code: DesignCode, section: BedSection, widthMm: number, grossInertia: number, modularRatio: number, crackingMomentKnm: number, serviceMomentKnm: number) {
-  const cracked = () => crackedInertia(section, widthMm, modularRatio);
+function effectiveInertia(code: DesignCode, section: BedSection, widthMm: number, grossInertia: number, modularRatio: number, crackingMomentKnm: number, serviceMomentKnm: number, flange: BeamFlange | null = null) {
+  const cracked = () => crackedInertia(section, widthMm, modularRatio, flange);
   switch (code.beam.inertia) {
     case 'ntc': {
       if (serviceMomentKnm <= 2 * crackingMomentKnm / 3) return grossInertia;
@@ -469,6 +554,11 @@ function validate(input: BeamDesignInput): string[] {
       errors.push(`Claro ${index + 1}: la carga puntual debe quedar entre 0 y ${Number.isFinite(span.lengthM) ? span.lengthM : 'L'} m.`);
     }
   });
+  if (input.flange) {
+    const { widthMm: bf, thicknessMm: hf } = input.flange;
+    if (!isPositiveFinite(bf) || bf < input.widthMm) errors.push('El ancho efectivo del patín debe ser al menos el ancho del alma.');
+    if (!isPositiveFinite(hf) || hf >= input.heightMm) errors.push('El espesor del patín debe ser mayor que cero y menor que el peralte.');
+  }
   if (input.provided) {
     for (const [bed, group] of [['superiores', input.provided.top], ['inferiores', input.provided.bottom]] as const) {
       if (!Number.isInteger(group.count) || group.count < 2 || group.count > 16) errors.push(`Corridas ${bed}: entre 2 y 16 barras.`);
@@ -680,15 +770,24 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
   const h = input.heightMm;
   const ec = code.elasticModulusMpa(fc);
   const fr = code.ruptureModulusMpa(fc);
-  const grossInertia = b * h ** 3 / 12;
-  const selfWeight = input.includeSelfWeight ? CONCRETE_UNIT_WEIGHT_KN_M3 * b * h / 1e6 : 0;
+  const flange = input.flange ?? null;
+  const hf = flange?.thicknessMm ?? 0;
+  const overhangArea = flange ? (flange.widthMm - b) * hf : 0;
+  const grossArea = b * h + overhangArea;
+  // Centroide desde la fibra superior y momento de inercia de la sección bruta (rectangular o T/L).
+  const centroidTop = flange ? (b * h * h / 2 + overhangArea * hf / 2) / grossArea : h / 2;
+  const grossInertia = flange
+    ? b * h ** 3 / 12 + b * h * (h / 2 - centroidTop) ** 2 + (flange.widthMm - b) * hf ** 3 / 12 + overhangArea * (centroidTop - hf / 2) ** 2
+    : b * h ** 3 / 12;
+  // T/L: el peso propio es el del alma bajo la losa; la losa va en la carga muerta que se captura.
+  const selfWeight = input.includeSelfWeight ? CONCRETE_UNIT_WEIGHT_KN_M3 * b * (h - hf) / 1e6 : 0;
   const baseAnalysisInput = {
     spans: input.spans,
     leftEnd: input.leftEnd,
     rightEnd: input.rightEnd,
     selfWeightKnPerM: selfWeight,
     elasticModulusKpa: ec * 1e3,
-    areaM2: b * h / 1e6,
+    areaM2: grossArea / 1e6,
     inertiaM4: grossInertia / 1e12,
   };
 
@@ -718,7 +817,9 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
 
   // 2 · Servicio: inercia efectiva por claro y un segundo análisis del solver con esas inercias.
   const modularRatio = STEEL_ELASTIC_MODULUS_MPA / ec;
-  const crackingMoment = fr * grossInertia / (h / 2) / 1e6;
+  // Mcr con la fibra en tensión: abajo con momento positivo, arriba con negativo (iguales en la rectangular).
+  const crackingMoment = fr * grossInertia / (h - centroidTop) / 1e6;
+  const crackingNegative = fr * grossInertia / centroidTop / 1e6;
   const spanCount = input.spans.length;
   const isCantilever = (index: number) => (index === 0 && input.leftEnd === 'free') || (index === spanCount - 1 && input.rightEnd === 'free');
   const topAt = (station: number) => sectionAt(stations[station]!, 'top', continuousTop, bastions);
@@ -730,7 +831,7 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
     const first = indexes[0]!;
     const last = indexes[indexes.length - 1]!;
     const middle = indexes.reduce((best, station) => serviceMoment.max[station]! > serviceMoment.max[best]! ? station : best, first);
-    const endInertia = (station: number) => effectiveInertia(code, topAt(station), b, grossInertia, modularRatio, crackingMoment, Math.max(0, -serviceMoment.min[station]!));
+    const endInertia = (station: number) => effectiveInertia(code, topAt(station), b, grossInertia, modularRatio, crackingNegative, Math.max(0, -serviceMoment.min[station]!));
     let inertia: number;
     let rhoPrime: number;
     if (isCantilever(index)) {
@@ -739,7 +840,7 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
       inertia = endInertia(support);
       rhoPrime = bottomAt(support).areaMm2 / (b * topAt(support).effectiveDepthMm);
     } else {
-      const midInertia = effectiveInertia(code, bottomAt(middle), b, grossInertia, modularRatio, crackingMoment, Math.max(0, serviceMoment.max[middle]!));
+      const midInertia = effectiveInertia(code, bottomAt(middle), b, grossInertia, modularRatio, crackingMoment, Math.max(0, serviceMoment.max[middle]!), flange);
       const leftContinuous = index > 0 || input.leftEnd === 'fixed';
       const rightContinuous = index < spanCount - 1 || input.rightEnd === 'fixed';
       const ends = [...(leftContinuous ? [endInertia(first)] : []), ...(rightContinuous ? [endInertia(last)] : [])];

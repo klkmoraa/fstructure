@@ -121,6 +121,35 @@ describe('DesignWorkbench', () => {
     expect(within(dialog).getByText(/Aún no hay elementos/)).toBeTruthy();
   });
 
+  it('ofrece columnas circulares, vigas T y los tres tipos de zapata', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    await user.click(screen.getByRole('radio', { name: 'T' }));
+    expect(await screen.findByRole('textbox', { name: /Patín bf/ })).toBeTruthy();
+    expect((await screen.findAllByRole('img', { name: /viga T con patín/ })).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('radio', { name: 'Columna' }));
+    await user.click(screen.getByRole('radio', { name: 'Circular' }));
+    expect(await screen.findByRole('img', { name: /Sección circular de columna/ })).toBeTruthy();
+    await user.click(screen.getByRole('radio', { name: 'Zapata' }));
+    await user.click(screen.getByRole('radio', { name: 'Corrida' }));
+    expect(await screen.findByRole('img', { name: /zapata corrida/ })).toBeTruthy();
+    await user.click(screen.getByRole('radio', { name: 'Combinada' }));
+    expect(await screen.findByRole('img', { name: /Planta de zapata combinada/ })).toBeTruthy();
+    expect(within(results()).getByText(/^Zapata combinada/)).toBeTruthy();
+  });
+
+  it('propone la sección de la columna con un clic', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    await user.click(screen.getByRole('radio', { name: 'Columna' }));
+    const axial = screen.getByRole('textbox', { name: /^Pu/ });
+    await user.clear(axial);
+    await user.type(axial, '3000');
+    await user.click(screen.getByRole('button', { name: 'Proponer' }));
+    expect(await screen.findByText(/^Propuesta: /)).toBeTruthy();
+    expect(within(results()).queryByText('No cumple')).toBeNull();
+  });
+
   it('muestra y oculta los paneles de datos y resultados sobre el lienzo', async () => {
     const user = userEvent.setup();
     renderWorkbench();

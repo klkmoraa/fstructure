@@ -16,6 +16,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 ## Diseño (de `docs/research/concrete-design`)
 
 - [ ] Armado propio por zonas en la viga (bastones y estribos por claro); hoy se fijan corridas, bastones sí/no y una separación uniforme.
+- [ ] Columnas zunchadas, de lindero con contratrabe, losas de cimentación y dados: necesitan cláusulas registradas (FR y φPn,máx del zuncho, αs de borde, ancho efectivo del patín).
 - [ ] Normas para ampliar el taller: torsión (NTC 5.8), losas, muros y combinaciones accidentales necesitan el texto oficial registrado con evidencia en `docs/design/normative-sources.json`.
 - [ ] Confirmar con la NTC 6.7.4 si el umbral de acero mínimo por penetración (6.7.6.1.2) usa el esfuerzo combinado con transferencia de momento; hoy usa vuv directo y la nota lo avisa.
 - [ ] Vínculo con el modelo (selección de miembro y demandas concurrentes): choca con el aislamiento de herramientas; decidir si se abre un puente de datos declarado en `src/integrations`.

@@ -19,12 +19,18 @@ import {
 /** Grupo de la construcción según el Reglamento de la CDMX; fija la dimensión mínima de 6.4.2.1.1. */
 export type ColumnGroup = 'A' | 'B1' | 'B2';
 
+export type ColumnShape = 'rectangular' | 'circular';
+
 export interface ColumnDesignInput {
   readonly code: DesignCodeId;
-  /** Dimensión paralela al eje X. */
+  /** Rectangular (por omisión) o circular con estribos circulares. */
+  readonly shape?: ColumnShape;
+  /** Dimensión paralela al eje X. Circular: el diámetro D. */
   readonly widthMm: number;
-  /** Dimensión paralela al eje Y. */
+  /** Dimensión paralela al eje Y. Circular: se toma igual a D. */
   readonly depthMm: number;
+  /** Circular: número de barras repartidas en la circunferencia. */
+  readonly barCount?: number;
   readonly coverMm: number;
   readonly fcMpa: number;
   readonly fyMpa: number;
@@ -155,7 +161,7 @@ export interface ColumnDesignResult {
   readonly aboutX: InteractionCurve;
   readonly aboutY: InteractionCurve;
   readonly capacity: {
-    readonly method: 'uniaxial-x' | 'uniaxial-y' | 'bresler-load' | 'bresler-contour' | 'axial';
+    readonly method: 'uniaxial-x' | 'uniaxial-y' | 'bresler-load' | 'bresler-contour' | 'axial' | 'resultant';
     readonly ratio: number;
     readonly detail: string;
   };
@@ -174,7 +180,20 @@ interface ColumnDesignError { readonly ok: false; readonly errors: readonly stri
 const PHI_TENSION = 0.9;
 const TOLERANCE = 1e-9;
 
-export function columnBars(input: Pick<ColumnDesignInput, 'widthMm' | 'depthMm' | 'coverMm' | 'tieDiameterMm' | 'barDiameterMm' | 'barsAlongWidth' | 'barsAlongDepth'>): ColumnBar[] {
+const isCircular = (input: Pick<ColumnDesignInput, 'shape'>) => input.shape === 'circular';
+
+/** Barras de una columna circular sobre una circunferencia; `rotation` gira el arreglo (rad). */
+function circularBars(input: Pick<ColumnDesignInput, 'widthMm' | 'coverMm' | 'tieDiameterMm' | 'barDiameterMm' | 'barCount'>, rotation = 0): ColumnBar[] {
+  const radius = input.widthMm / 2 - input.coverMm - input.tieDiameterMm - input.barDiameterMm / 2;
+  const count = Math.max(4, Math.round(input.barCount ?? 6));
+  return Array.from({ length: count }, (_, index) => {
+    const angle = Math.PI / 2 + rotation + 2 * Math.PI * index / count;
+    return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
+  });
+}
+
+export function columnBars(input: Pick<ColumnDesignInput, 'shape' | 'widthMm' | 'depthMm' | 'coverMm' | 'tieDiameterMm' | 'barDiameterMm' | 'barsAlongWidth' | 'barsAlongDepth' | 'barCount'>): ColumnBar[] {
+  if (isCircular(input)) return circularBars(input);
   const offset = input.coverMm + input.tieDiameterMm + input.barDiameterMm / 2;
   const xEdge = input.widthMm / 2 - offset;
   const yEdge = input.depthMm / 2 - offset;
@@ -192,10 +211,27 @@ export function columnBars(input: Pick<ColumnDesignInput, 'widthMm' | 'depthMm' 
   return bars;
 }
 
+/** Bloque de compresión de profundidad `a` medida desde la fibra extrema: área y centroide desde esa fibra. */
+type CompressionBlock = (depthMm: number) => { readonly areaMm2: number; readonly centroidMm: number };
+
+const rectangularBlock = (widthMm: number): CompressionBlock => (a) => ({ areaMm2: a * widthMm, centroidMm: a / 2 });
+
+/** Segmento circular de altura `a` en un círculo de diámetro D (bloque equivalente de 3.6.1 en sección circular). */
+const circularBlock = (diameterMm: number): CompressionBlock => (a) => {
+  const radius = diameterMm / 2;
+  if (a <= 0) return { areaMm2: 0, centroidMm: 0 };
+  if (a >= diameterMm) return { areaMm2: Math.PI * radius ** 2, centroidMm: radius };
+  const half = Math.acos((radius - a) / radius);
+  const area = radius ** 2 * (half - Math.sin(half) * Math.cos(half));
+  const fromCenter = 2 * radius * Math.sin(half) ** 3 / (3 * (half - Math.sin(half) * Math.cos(half)));
+  return { areaMm2: area, centroidMm: radius - fromCenter };
+};
+
 function interactionCurve(
   code: DesignCode,
   sectionDepth: number,
-  sectionWidth: number,
+  block: CompressionBlock,
+  gross: number,
   positions: readonly number[],
   barAreaMm2: number,
   fc: number,
@@ -209,13 +245,13 @@ function interactionCurve(
   const extremeTension = Math.min(...positions);
   const dt = top - extremeTension;
   const totalSteel = positions.length * barAreaMm2;
-  const gross = sectionDepth * sectionWidth;
 
   const section = (c: number) => {
     const a = Math.min(beta * c, sectionDepth);
-    const concreteForce = fpp * a * sectionWidth;
+    const compressed = block(a);
+    const concreteForce = fpp * compressed.areaMm2;
     let axial = concreteForce;
-    let moment = concreteForce * (top - a / 2);
+    let moment = concreteForce * (top - compressed.centroidMm);
     for (const y of positions) {
       const strain = CONCRETE_ULTIMATE_STRAIN * (c - (top - y)) / c;
       let stress = Math.max(-fy, Math.min(fy, strain * STEEL_ELASTIC_MODULUS_MPA));
@@ -320,8 +356,13 @@ function validate(input: ColumnDesignInput): string[] {
     if (!Number.isFinite(input.stabilityIndex) || input.stabilityIndex < 0) errors.push('El índice de estabilidad debe ser cero o positivo.');
     if (input.effectiveLengthFactor < 1) errors.push('En marcos con desplazamiento lateral k no puede ser menor que 1.0.');
   }
-  if (!Number.isInteger(input.barsAlongWidth) || input.barsAlongWidth < 2 || input.barsAlongWidth > 12) errors.push('Barras por cara (b) debe ser un entero entre 2 y 12.');
-  if (!Number.isInteger(input.barsAlongDepth) || input.barsAlongDepth < 2 || input.barsAlongDepth > 12) errors.push('Barras por cara (h) debe ser un entero entre 2 y 12.');
+  if (isCircular(input)) {
+    const count = input.barCount ?? Number.NaN;
+    if (!Number.isInteger(count) || count < 4 || count > 30) errors.push('Número de barras de la columna circular: entero entre 4 y 30.');
+  } else {
+    if (!Number.isInteger(input.barsAlongWidth) || input.barsAlongWidth < 2 || input.barsAlongWidth > 12) errors.push('Barras por cara (b) debe ser un entero entre 2 y 12.');
+    if (!Number.isInteger(input.barsAlongDepth) || input.barsAlongDepth < 2 || input.barsAlongDepth > 12) errors.push('Barras por cara (h) debe ser un entero entre 2 y 12.');
+  }
   if (errors.length) return errors;
   const offset = 2 * (input.coverMm + input.tieDiameterMm) + input.barDiameterMm;
   if (input.widthMm <= offset || input.depthMm <= offset) errors.push('La sección es demasiado pequeña para el recubrimiento y las barras.');
@@ -341,18 +382,28 @@ function validate(input: ColumnDesignInput): string[] {
  * (NTC 3.3.5.2.5, NSR C.10.10.7, E.060 10.13); si δs > 1.5 la norma exige
  * ΣPu/ΣPc o un análisis de segundo orden, que este taller no hace.
  */
-function magnify(code: DesignCode, input: ColumnDesignInput, depthMm: number, widthMm: number, nonSwayKnm: number, swayKnm: number): AxisMagnification {
+/** Propiedades de la sección bruta para la esbeltez en una dirección. */
+interface AxisSection {
+  /** Dimensión en la dirección de flexión (h o D). */
+  readonly depthMm: number;
+  readonly radiusMm: number;
+  readonly inertiaMm4: number;
+  readonly areaMm2: number;
+}
+
+function magnify(code: DesignCode, input: ColumnDesignInput, section: AxisSection, nonSwayKnm: number, swayKnm: number): AxisMagnification {
   const rules = code.column;
   const pu = input.axialKn;
   const height = input.unbracedLengthM * 1e3;
-  const radius = rules.radiusOfGyration(depthMm);
+  const depthMm = section.depthMm;
+  const radius = section.radiusMm;
   const k = input.effectiveLengthFactor;
   const slendernessH = height / radius;
   const effectiveSlenderness = k * height / radius;
   const slenderness = rules.neglectUsesEffectiveLength ? effectiveSlenderness : slendernessH;
   const signedRatio = (input.curvature === 'single' ? 1 : -1) * input.endMomentRatio;
   const ec = code.elasticModulusMpa(input.fcMpa);
-  const stiffness = 0.4 * ec * (widthMm * depthMm ** 3 / 12) / (1 + input.sustainedRatio);
+  const stiffness = 0.4 * ec * section.inertiaMm4 / (1 + input.sustainedRatio);
   const criticalFor = (factor: number) => Math.PI ** 2 * stiffness / (factor * height) ** 2 / 1e3;
 
   // δ por curvatura del miembro (sin desplazamiento) sobre un M2 dado.
@@ -399,7 +450,7 @@ function magnify(code: DesignCode, input: ColumnDesignInput, depthMm: number, wi
   const firstOrder = nonSwayKnm + swayKnm;
   const m2 = nonSwayKnm + (Number.isFinite(swayFactor) ? swayFactor : 1) * swayKnm;
   // NTC 3.3.5.2.5.5 y E.060 10.13.5: si H/r ≥ 35/√(Pu/f′cAg) se amplifica además con δns y k de marco arriostrado.
-  const individualLimit = pu > 0 ? 35 / Math.sqrt(pu * 1e3 / (input.fcMpa * widthMm * depthMm)) : Number.POSITIVE_INFINITY;
+  const individualLimit = pu > 0 ? 35 / Math.sqrt(pu * 1e3 / (input.fcMpa * section.areaMm2)) : Number.POSITIVE_INFINITY;
   const individual = rules.swayIndividualCheck === 'inclusive' ? slendernessH >= individualLimit
     : rules.swayIndividualCheck === 'strict' ? slendernessH > individualLimit : false;
   const amplified = amplify(m2, Math.min(k, 1));
@@ -419,14 +470,16 @@ function magnify(code: DesignCode, input: ColumnDesignInput, depthMm: number, wi
  * nulo con tensión, s ≤ d/2 ≤ 600 mm (d/4 ≤ 300 mm si Vs > 0.33√f′c·b·d) y
  * Av,mín donde Vu > 0.5φVc.
  */
-function columnShear(code: DesignCode, input: ColumnDesignInput, along: 'x' | 'y', gross: number, legs: number): ColumnShear {
+function columnShear(code: DesignCode, input: ColumnDesignInput, along: 'x' | 'y', gross: number, legs: number, demandKn?: number): ColumnShear {
   const fc = input.fcMpa;
   const fy = input.fyMpa;
   const phi = code.shearFactor;
+  const circular = isCircular(input);
   const depthDimension = along === 'x' ? input.widthMm : input.depthMm;
-  const width = along === 'x' ? input.depthMm : input.widthMm;
-  const d = depthDimension - input.coverMm - input.tieDiameterMm - input.barDiameterMm / 2;
-  const demand = Math.abs(along === 'x' ? input.shearXKn : input.shearYKn);
+  // Circular: bw = D y d = 0.8D (criterio complementario, como en el comentario de ACI 318).
+  const width = circular ? input.widthMm : along === 'x' ? input.depthMm : input.widthMm;
+  const d = circular ? 0.8 * input.widthMm : depthDimension - input.coverMm - input.tieDiameterMm - input.barDiameterMm / 2;
+  const demand = demandKn ?? Math.abs(along === 'x' ? input.shearXKn : input.shearYKn);
   let concreteN: number;
   if (code.column.ties === 'ntc') {
     const axialStress = Math.min(input.axialKn * 1e3 / (6 * gross), 0.05 * fc);
@@ -481,8 +534,11 @@ const aciCrossTies = (barsOnFace: number, clearSpacingMm: number) => {
 const CAPTURED_DEMAND = 'Pu, Mu y Vu capturados · concurrentes';
 
 export function designColumn(input: ColumnDesignInput): ColumnDesignResult | ColumnDesignError {
-  const errors = validate(input);
-  if (errors.length) return { ok: false, errors };
+  const rawErrors = validate(input);
+  if (rawErrors.length) return { ok: false, errors: rawErrors };
+  const circular = isCircular(input);
+  // Circular: D en `widthMm`; el resto del cálculo lo lee también como `depthMm`.
+  if (circular && input.depthMm !== input.widthMm) input = { ...input, depthMm: input.widthMm };
 
   const code = designCode(input.code);
   const rules = code.column;
@@ -490,13 +546,16 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
   const bars = columnBars(input);
   const area = barArea(input.barDiameterMm);
   const steel = bars.length * area;
-  const gross = b * h;
+  const gross = circular ? Math.PI * b ** 2 / 4 : b * h;
   const fpp = equivalentBlockStrengthMpa(fc);
   const squashN = fpp * (gross - steel) + fy * steel;
   // φPn,máx = coeficiente · φ · P0 (NTC: PR0 = 0.65P0; NSR C.10.3.6.2: 0.75φP0; E.060 10.3.6.2: 0.80φP0).
   const maximumDesignAxialN = code.maximumAxialCoefficient * code.compressionFactor * squashN;
-  const aboutX = interactionCurve(code, h, b, bars.map((bar) => bar.y), area, fc, fy, maximumDesignAxialN);
-  const aboutY = interactionCurve(code, b, h, bars.map((bar) => bar.x), area, fc, fy, maximumDesignAxialN);
+  // Circular: dos orientaciones del arreglo (una barra en la fibra extrema o entre dos); rige la menor resistencia.
+  const circularCurves = circular ? [bars, circularBars(input, Math.PI / bars.length)].map((arrangement) =>
+    interactionCurve(code, b, circularBlock(b), gross, arrangement.map((bar) => bar.y), area, fc, fy, maximumDesignAxialN)) : [];
+  const aboutX = circular ? circularCurves[0]! : interactionCurve(code, h, rectangularBlock(b), gross, bars.map((bar) => bar.y), area, fc, fy, maximumDesignAxialN);
+  const aboutY = circular ? circularCurves[1]! : interactionCurve(code, b, rectangularBlock(h), gross, bars.map((bar) => bar.x), area, fc, fy, maximumDesignAxialN);
   const cap = maximumDesignAxialN / 1e3;
   // Término de carga axial pura en Bresler: φP0 sin el coeficiente de φPn,máx.
   const pr0 = code.compressionFactor * squashN / 1e3;
@@ -506,7 +565,11 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
   const appliedY = Math.abs(input.momentYKnm);
   const swayX = input.braced ? 0 : Math.abs(input.swayMomentXKnm);
   const swayY = input.braced ? 0 : Math.abs(input.swayMomentYKnm);
-  const magnification = { x: magnify(code, input, h, b, appliedX, swayX), y: magnify(code, input, b, h, appliedY, swayY) };
+  const sectionX: AxisSection = circular
+    ? { depthMm: b, radiusMm: b / 4, inertiaMm4: Math.PI * b ** 4 / 64, areaMm2: gross }
+    : { depthMm: h, radiusMm: rules.radiusOfGyration(h), inertiaMm4: b * h ** 3 / 12, areaMm2: gross };
+  const sectionY: AxisSection = circular ? sectionX : { depthMm: b, radiusMm: rules.radiusOfGyration(b), inertiaMm4: h * b ** 3 / 12, areaMm2: gross };
+  const magnification = { x: magnify(code, input, sectionX, appliedX, swayX), y: magnify(code, input, sectionY, appliedY, swayY) };
 
   const uniaxial = (curve: InteractionCurve, moment: number) => {
     if (moment < TOLERANCE) {
@@ -526,7 +589,16 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
   const mx = hasX ? magnification.x.designMomentKnm : 0;
   const my = hasY ? magnification.y.designMomentKnm : 0;
   let capacity: ColumnDesignResult['capacity'];
-  if (mx === 0 && my === 0) {
+  // Circular: índice de la orientación del arreglo que rige; se entrega como `aboutX`.
+  let governingCurve = 0;
+  if (circular) {
+    // Sección simétrica: flexión con el momento resultante; cada orientación del arreglo con su curva.
+    const resultant = mx === 0 && my === 0 ? Math.max(magnification.x.designMomentKnm, magnification.y.designMomentKnm) : Math.hypot(mx, my);
+    const outcomes = circularCurves.map((curve) => uniaxial(curve, resultant));
+    governingCurve = outcomes[1]!.ratio > outcomes[0]!.ratio ? 1 : 0;
+    const governing = outcomes[governingCurve]!;
+    capacity = { method: 'resultant', ratio: governing.ratio, detail: `${governing.detail}${mx > 0 && my > 0 ? ` (Mu = √(Mx² + My²) = ${resultant.toFixed(1)} kN·m)` : ''}` };
+  } else if (mx === 0 && my === 0) {
     const x = uniaxial(aboutX, magnification.x.designMomentKnm);
     const y = uniaxial(aboutY, magnification.y.designMomentKnm);
     capacity = x.ratio >= y.ratio
@@ -555,18 +627,22 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
 
   // Refuerzo transversal.
   const offset = input.coverMm + input.tieDiameterMm + input.barDiameterMm / 2;
-  const alongWidth = (b - 2 * offset) / (input.barsAlongWidth - 1);
-  const alongDepth = (h - 2 * offset) / (input.barsAlongDepth - 1);
+  // Circular: separación entre barras vecinas medida en la cuerda.
+  const chord = circular ? 2 * (b / 2 - offset) * Math.sin(Math.PI / bars.length) : 0;
+  const alongWidth = circular ? chord : (b - 2 * offset) / (input.barsAlongWidth - 1);
+  const alongDepth = circular ? chord : (h - 2 * offset) / (input.barsAlongDepth - 1);
   const clearAlongWidth = alongWidth - input.barDiameterMm;
   const clearAlongDepth = alongDepth - input.barDiameterMm;
   const ntcTies = rules.ties === 'ntc';
   // NTC 6.4.4.4.2.6: cada barra intermedia soportada; ACI: esquinas, alternas y la regla de 150 mm.
-  const crossTiesParallelToY = ntcTies ? Math.max(0, input.barsAlongWidth - 2) : aciCrossTies(input.barsAlongWidth, clearAlongWidth);
-  const crossTiesParallelToX = ntcTies ? Math.max(0, input.barsAlongDepth - 2) : aciCrossTies(input.barsAlongDepth, clearAlongDepth);
+  // Circular: el estribo circular soporta todas las barras; no lleva grapas.
+  const crossTiesParallelToY = circular ? 0 : ntcTies ? Math.max(0, input.barsAlongWidth - 2) : aciCrossTies(input.barsAlongWidth, clearAlongWidth);
+  const crossTiesParallelToX = circular ? 0 : ntcTies ? Math.max(0, input.barsAlongDepth - 2) : aciCrossTies(input.barsAlongDepth, clearAlongDepth);
   const hx = Math.max(alongWidth, alongDepth);
   const hxLimit = pu * 1e3 > 0.3 * gross * fc || fc > 70 ? 300 : 500;
-  const shearX = columnShear(code, input, 'x', gross, 2 + crossTiesParallelToX);
-  const shearY = columnShear(code, input, 'y', gross, 2 + crossTiesParallelToY);
+  // Circular: el cortante resultante √(Vx² + Vy²) en una sola revisión.
+  const shearX = columnShear(code, input, 'x', gross, 2 + crossTiesParallelToX, circular ? Math.hypot(input.shearXKn, input.shearYKn) : undefined);
+  const shearY = columnShear(code, input, 'y', gross, 2 + crossTiesParallelToY, circular ? 0 : undefined);
   const grade56 = fy > 420 * 1.02;
   const detailLimit = ntcTies
     ? Math.min(16 * input.barDiameterMm, 48 * input.tieDiameterMm)
@@ -625,6 +701,7 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
   const swayFail = !input.braced && (swayFactor > 1.5 || input.stabilityIndex > rules.maximumStabilityIndex);
   const ratioFail = secondOrderRatio > rules.secondOrderRatioLimit + 1e-9;
   const anySlender = magnification.x.slender || magnification.y.slender;
+  const radiusNote = circular ? 'r = D/4 de la sección bruta' : rules.radiusNote;
   const slenderNote = unstable
     ? 'Pu ≥ 0.75·Pc: la columna pandea. Aumenta la sección o reduce la altura libre.'
     : limitFail
@@ -640,11 +717,11 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
             : !input.braced
               ? `Marco con desplazamiento: δs = ${swayFactor.toFixed(2)}${anySlender ? '' : ' (esbeltez despreciable)'}; δns X = ${magnification.x.factor.toFixed(2)}, Y = ${magnification.y.factor.toFixed(2)}.`
               : anySlender
-                ? `Momentos amplificados δ X = ${magnification.x.factor.toFixed(2)}, Y = ${magnification.y.factor.toFixed(2)} (${rules.radiusNote}).`
-                : `La esbeltez se desprecia (${rules.radiusNote}).`;
+                ? `Momentos amplificados δ X = ${magnification.x.factor.toFixed(2)}, Y = ${magnification.y.factor.toFixed(2)} (${radiusNote}).`
+                : `La esbeltez se desprecia (${radiusNote}).`;
 
   const checks: ElementCheck[] = [
-    tracedAt({ ...capacityCheck('strength', 'Flexocompresión', capacity.ratio, 1, '', refs.columnStrength, capacity.detail), demand: capacity.ratio, capacity: 1, unit: '' },
+    tracedAt({ ...capacityCheck('strength', circular ? 'Flexocompresión (momento resultante)' : 'Flexocompresión', capacity.ratio, 1, '', refs.columnStrength, capacity.detail), demand: capacity.ratio, capacity: 1, unit: '' },
       'Sección crítica con momentos amplificados', CAPTURED_DEMAND),
     { ...capacityCheck('ratio-min', `Cuantía mínima (${rules.ratioMin * 100} %)`, rules.ratioMin, ratio, '', refs.columnRatio), demand: rules.ratioMin * 100, capacity: ratio * 100, unit: '%' },
     { ...capacityCheck('ratio-max', `Cuantía máxima (${rules.ratioMax * 100} %)`, ratio, rules.ratioMax, '', refs.columnRatio), demand: ratio * 100, capacity: rules.ratioMax * 100, unit: '%' },
@@ -652,8 +729,8 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
   if (rules.geometryLimits) {
     checks.push(
       // Sólo NTC (geometryLimits).
-      capacityCheck('min-dimension', `Dimensión mínima (Grupo ${input.group})`, requiredMinimumDimension, minimumDimension, 'mm', ntc('6.4.2.1.1')),
-      { ...capacityCheck('aspect', 'Relación de lados', Math.max(b, h) / minimumDimension, 4, '', ntc('6.4.2.1.1')), unit: '' },
+      capacityCheck('min-dimension', `${circular ? 'Diámetro mínimo' : 'Dimensión mínima'} (Grupo ${input.group})`, requiredMinimumDimension, minimumDimension, 'mm', ntc('6.4.2.1.1')),
+      ...(circular ? [] : [{ ...capacityCheck('aspect', 'Relación de lados', Math.max(b, h) / minimumDimension, 4, '', ntc('6.4.2.1.1')), unit: '' }]),
     );
   }
   checks.push(
@@ -673,22 +750,31 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
       capacityCheck('tie-end-spacing', 'Estribos en Lo', endSpacing, endLimit, 'mm', ntc('6.4.4.4.2.4'),
         `so ≤ ${grade56 ? '6db y 150 mm' : '8db y 200 mm'} y b/4; Lo = ${Math.round(ties.endLengthMm)} mm desde cada extremo.`),
       capacityCheck('tie-center-spacing', 'Estribos fuera de Lo', centerSpacing, detailLimit, 'mm', refs.tieSpacing),
-      capacityCheck('hx', 'Separación hx de barras soportadas', hx, hxLimit, 'mm', refs.lateralSupport,
-        `${crossTiesParallelToX + crossTiesParallelToY} grapas por juego para soportar las barras intermedias.`),
+      ...(circular ? [] : [capacityCheck('hx', 'Separación hx de barras soportadas', hx, hxLimit, 'mm', refs.lateralSupport,
+        `${crossTiesParallelToX + crossTiesParallelToY} grapas por juego para soportar las barras intermedias.`)]),
     );
+    if (circular) {
+      checks.push({ id: 'lateral-support', label: 'Barras con apoyo lateral', status: 'info', reference: complementary('Estribo circular'),
+        note: 'Cada barra queda dentro del estribo circular; no se requieren grapas. El confinamiento con zuncho (refuerzo helicoidal) no se evalúa.' });
+    }
   } else {
     checks.push(
       capacityCheck('tie-center-spacing', 'Separación de estribos', centerSpacing, detailLimit, 'mm', refs.tieSpacing, '16db, 48de y la menor dimensión.'),
-      { id: 'lateral-support', label: 'Barras con apoyo lateral', status: 'info', reference: refs.lateralSupport,
-        note: `Esquinas y barras alternas en estribo; ${crossTiesParallelToX + crossTiesParallelToY} grapas por juego para que ninguna barra quede a más de 150 mm libres de una apoyada.` },
+      circular
+        ? { id: 'lateral-support', label: 'Barras con apoyo lateral', status: 'info', reference: complementary('Estribo circular'),
+          note: 'Cada barra queda dentro del estribo circular; no se requieren grapas. El confinamiento con zuncho (refuerzo helicoidal) no se evalúa.' }
+        : { id: 'lateral-support', label: 'Barras con apoyo lateral', status: 'info', reference: refs.lateralSupport,
+          note: `Esquinas y barras alternas en estribo; ${crossTiesParallelToX + crossTiesParallelToY} grapas por juego para que ninguna barra quede a más de 150 mm libres de una apoyada.` },
     );
   }
   for (const [axis, shear] of [['X', ties.shear.x], ['Y', ties.shear.y]] as const) {
     if (shear.demandKn <= TOLERANCE) continue;
+    const where = circular ? 'resultante' : `en ${axis}`;
     checks.push(
-      tracedAt(capacityCheck(`shear-${axis.toLowerCase()}`, `Cortante en ${axis}`, shear.demandKn, shear.strengthKn, 'kN', refs.columnShear,
-        `${shear.legs} ramas · φVc = ${shear.concreteStrengthKn.toFixed(1)} kN · FR ${code.shearFactor}.`), `Dirección ${axis}`, CAPTURED_DEMAND),
-      capacityCheck(`shear-section-${axis.toLowerCase()}`, `Cortante máximo por sección en ${axis}`, shear.demandKn, shear.sectionStrengthKn, 'kN', refs.columnShearSection),
+      tracedAt(capacityCheck(`shear-${axis.toLowerCase()}`, `Cortante ${where}`, shear.demandKn, shear.strengthKn, 'kN', refs.columnShear,
+        `${shear.legs} ramas · φVc = ${shear.concreteStrengthKn.toFixed(1)} kN · FR ${code.shearFactor}.${circular ? ' Sección circular: bw = D y d = 0.8D (criterio complementario).' : ''}`),
+      circular ? 'Resultante √(Vx² + Vy²)' : `Dirección ${axis}`, CAPTURED_DEMAND),
+      capacityCheck(`shear-section-${axis.toLowerCase()}`, `Cortante máximo por sección ${where}`, shear.demandKn, shear.sectionStrengthKn, 'kN', refs.columnShearSection),
     );
   }
   checks.push({ id: 'splice', label: 'Traslape de barras longitudinales', status: 'info', reference: refs.splice,
@@ -706,8 +792,8 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
     grossAreaMm2: gross,
     squashLoadKn: squashN / 1e3,
     maximumDesignAxialKn: cap,
-    aboutX,
-    aboutY,
+    aboutX: circular ? circularCurves[governingCurve]! : aboutX,
+    aboutY: circular ? circularCurves[1 - governingCurve]! : aboutY,
     capacity,
     ties,
     spliceLengthMm,

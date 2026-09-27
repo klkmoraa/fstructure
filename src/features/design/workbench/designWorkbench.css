@@ -727,3 +727,23 @@
   .workspace-topbar .dw-topbar-history { display: none; }
   .dw-memory .sc-modal-surface__footer .sc-button { flex: 1 1 100%; justify-content: center; }
 }
+.dw-drawing--wide { max-width: calc(640px * var(--z, 1)); margin-inline: auto; }
+.dw-band-zone { fill: var(--dw-moment); opacity: .08; }
+.dw-wall--masonry { stroke-dasharray: 4 2; }
+
+/* ─── Acciones automáticas: Proponer, Aplicar ─── */
+.dw-inline-action {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--dw-line);
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  color: var(--dw-ink);
+  font: 600 11px var(--sc-font-ui);
+  cursor: pointer;
+}
+.dw-inline-action:hover:not(:disabled) { border-color: var(--dw-muted); }
+.dw-inline-action:disabled { opacity: .45; cursor: default; }
+.dw-inline-action:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
+.dw-action-note { margin: 0; color: var(--dw-muted); font-size: 11.5px; line-height: 1.4; }
+.dw-slab-apply { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font: 500 11.5px var(--sc-font-mono); color: var(--dw-muted); }

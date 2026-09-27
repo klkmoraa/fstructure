@@ -10,7 +10,7 @@ import { complementary, type ElementCheck } from './shared';
  * Las secciones citadas en la nota orientan al lector; no son cláusulas con
  * evidencia en el registro normativo, por eso la referencia es complementaria.
  */
-type ElementKind = 'beam' | 'column' | 'footing';
+type ElementKind = 'beam' | 'column' | 'footing' | 'stripFooting' | 'combinedFooting';
 
 interface ScopeItem {
   readonly id: string;
@@ -37,33 +37,55 @@ const DEVELOPMENT_BRANCHES: ScopeItem = {
   note: same('Las longitudes de desarrollo y traslape suponen barra sin recubrimiento epóxico y concreto de peso normal (ψe = 1, λ = 1).'),
 };
 
+const GEOTECHNICS: ScopeItem = { id: 'geotechnics', label: 'Capacidad y asentamiento del suelo', note: { 'ntc-2023': 'La presión admisible es un dato del estudio geotécnico (NTC-Cimentaciones); el taller no calcula capacidad de carga ni asentamientos.', 'nsr-10': 'La presión admisible es un dato del estudio geotécnico (Título H); el taller no calcula capacidad de carga ni asentamientos.', e060: 'La presión admisible es un dato del estudio de mecánica de suelos (E.050); el taller no calcula capacidad de carga ni asentamientos.' } };
+
 const SCOPE: Readonly<Record<ElementKind, readonly ScopeItem[]>> = {
   beam: [
     { id: 'torsion', label: 'Torsión', note: { 'ntc-2023': 'No se revisa la torsión ni su interacción con cortante y flexión (NTC-C 5.8).', 'nsr-10': 'No se revisa la torsión (C.11.5).', e060: 'No se revisa la torsión (11.5).' } },
     { id: 'accidental-combinations', label: 'Combinaciones accidentales', note: { 'ntc-2023': 'Sólo se generan combinaciones gravitacionales; las de sismo o viento (NTC-CyA 3.4.1 b) quedan fuera.', 'nsr-10': 'Sólo se generan combinaciones gravitacionales; las de sismo o viento (B.2.4) quedan fuera.', e060: 'Sólo se generan combinaciones gravitacionales; las de sismo (9.2) quedan fuera.' } },
-    { id: 'axial-and-flanges', label: 'Carga axial, secciones T/L y acero de compresión', note: same('La sección es rectangular, sin patín, sin axial concurrente y sin contar el acero de compresión en la resistencia.') },
+    { id: 'axial-and-compression-steel', label: 'Carga axial y acero de compresión', note: same('Sin axial concurrente y sin contar el acero de compresión en la resistencia (del lado seguro).') },
     DUCTILITY,
     DEVELOPMENT_BRANCHES,
   ],
   column: [
     { id: 'concurrent-demand', label: 'Concurrencia de Pu, Mux y Muy', note: same('Las solicitaciones capturadas deben venir de la misma combinación. Máximos de casos distintos no forman un vector concurrente y pueden quedar del lado inseguro.') },
     { id: 'second-order', label: 'Análisis de segundo orden explícito', note: same('La esbeltez se trata con amplificación de momentos; no hay análisis P-Δ del marco.') },
-    { id: 'shape', label: 'Columnas circulares o zunchadas', note: same('Sólo sección rectangular con estribos.') },
+    { id: 'shape', label: 'Zuncho y otras formas', note: same('Columnas rectangulares y circulares con estribos; el refuerzo helicoidal (zuncho) y las secciones L, T o huecas no se diseñan.') },
     DUCTILITY,
     DEVELOPMENT_BRANCHES,
   ],
   footing: [
-    { id: 'geotechnics', label: 'Capacidad y asentamiento del suelo', note: { 'ntc-2023': 'La presión admisible es un dato del estudio geotécnico (NTC-Cimentaciones); el taller no calcula capacidad de carga ni asentamientos.', 'nsr-10': 'La presión admisible es un dato del estudio geotécnico (Título H); el taller no calcula capacidad de carga ni asentamientos.', e060: 'La presión admisible es un dato del estudio de mecánica de suelos (E.050); el taller no calcula capacidad de carga ni asentamientos.' } },
+    GEOTECHNICS,
     { id: 'stability', label: 'Volteo y deslizamiento', note: same('No se revisa la estabilidad de la zapata como cuerpo rígido.') },
     { id: 'seismic', label: 'Diseño sísmico de la cimentación', note: same('Marcar la combinación con sismo sólo cambia el factor de resistencia en penetración; no genera ni revisa las combinaciones sísmicas.') },
-    { id: 'other-footings', label: 'Zapatas corridas, combinadas y dados', note: same('Sólo zapata aislada rectangular con columna centrada; el dado o pedestal no se diseña.') },
+    { id: 'other-footings', label: 'Columna excéntrica y dados', note: same('Zapata aislada rectangular con la columna centrada; la de lindero se resuelve como combinada o con contratrabe, y el dado o pedestal no se diseña.') },
+    DEVELOPMENT_BRANCHES,
+  ],
+  stripFooting: [
+    GEOTECHNICS,
+    { id: 'wall-moment', label: 'Momento y empuje en la base del muro', note: same('Carga vertical centrada; los muros de contención y los momentos en la base del muro no se revisan.') },
+    { id: 'stability', label: 'Volteo y deslizamiento', note: same('No se revisa la estabilidad de la zapata como cuerpo rígido.') },
+    DEVELOPMENT_BRANCHES,
+  ],
+  combinedFooting: [
+    GEOTECHNICS,
+    { id: 'rigid', label: 'Interacción suelo-estructura', note: same('Zapata rígida con presión lineal; no se modela el suelo como resortes ni los asentamientos diferenciales.') },
+    { id: 'column-moments', label: 'Momentos de las columnas', note: same('Las columnas bajan sólo carga axial; los momentos y su transferencia en penetración no se consideran.') },
+    { id: 'strap', label: 'Contratrabe y zapata trapecial', note: same('Zapata rectangular; la de lindero con contratrabe (strap) o de planta trapecial no se diseña.') },
     DEVELOPMENT_BRANCHES,
   ],
 };
 
+const FLANGE: ScopeItem = {
+  id: 'flange',
+  label: 'Ancho efectivo del patín',
+  note: same('Se usa el ancho efectivo que se captura; el taller no lo deduce de la norma ni revisa el acero mínimo con el patín en tensión ni la transferencia de cortante entre alma y losa.'),
+};
+
 /** Comprobaciones fuera de alcance del elemento, listas para mostrarse junto a las demás. */
-export function outOfScopeChecks(element: ElementKind, code: DesignCodeId): ElementCheck[] {
-  return SCOPE[element].map((item) => ({
+export function outOfScopeChecks(element: ElementKind, code: DesignCodeId, options: { readonly flange?: boolean } = {}): ElementCheck[] {
+  const items = options.flange ? [FLANGE, ...SCOPE[element]] : SCOPE[element];
+  return items.map((item) => ({
     id: `scope-${item.id}`,
     label: item.label,
     status: 'out-of-scope',

@@ -317,9 +317,9 @@ export function RebarList({ items }: { items: readonly { kind: 'bar' | 'extra' |
 }
 
 /** Clave y ubicación del elemento: encabezan la memoria. */
-export function IdentityGroup({ tag, place, onTag, onPlace }: { tag: string; place: string; onTag: (value: string) => void; onPlace: (value: string) => void }) {
+export function IdentityGroup({ tag, place, onTag, onPlace, example = 'V-1' }: { tag: string; place: string; onTag: (value: string) => void; onPlace: (value: string) => void; example?: string }) {
   return <FieldGroup title="Identificación">
-    <Field label="Clave" value={tag} maxLength={32} placeholder="V-1" controlSize="sm" onChange={(event) => onTag(event.currentTarget.value)} />
+    <Field label="Clave" value={tag} maxLength={32} placeholder={example} controlSize="sm" onChange={(event) => onTag(event.currentTarget.value)} />
     <Field label="Ubicación" value={place} maxLength={32} placeholder="Eje 3 · B–C · N2" controlSize="sm" onChange={(event) => onPlace(event.currentTarget.value)} />
   </FieldGroup>;
 }
@@ -353,4 +353,14 @@ export function AlternativeSection({ own, alternative }: { own: { governingRatio
     <p className="dw-footnote">{Math.abs(delta) < 0.05 ? 'Mismo peso de acero.'
       : delta > 0 ? `El propio usa ${formatNumber(delta, 1)} kg más que el propuesto.` : `El propio ahorra ${formatNumber(-delta, 1)} kg frente al propuesto.`}</p>
   </PanelSection>;
+}
+
+/** Botón discreto en la cabecera de un grupo («Proponer»). */
+export function InlineAction({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
+  return <button type="button" className="dw-inline-action" title={title} onClick={onClick}>{label}</button>;
+}
+
+/** Aviso breve bajo un grupo tras una acción automática. */
+export function ActionNote({ text }: { text: string | null }) {
+  return text ? <p className="dw-action-note" role="status">{text}</p> : null;
 }

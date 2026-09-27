@@ -25,7 +25,7 @@ function printStyles(): string {
 }
 
 let cachedStyles: string | undefined;
-const FIGURE_MARGIN = 14;
+const FIGURE_MARGIN = 40;
 
 /** SVG autónomo con estilos incrustados, o `null` si el nodo no es un `<svg>` con viewBox. */
 function standaloneSvg(node: ReactElement): { markup: string; width: number; height: number } | null {

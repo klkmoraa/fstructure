@@ -6,11 +6,11 @@ import { MAX_SPANS, barsText, designBeam } from '../../../design/elements/beam';
 import { designCode } from '../../../design/elements/codes';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
 import {
-  BEAM_DEFAULTS, DEFAULT_SPANS, END_LABEL, ENDS, bastionDetail, bastionTitle, beamReport, beamToInput, cm, describeBeam, meters, parseSpans, stirrupText,
+  BEAM_DEFAULTS, DEFAULT_SPANS, END_LABEL, ENDS, bastionDetail, bastionTitle, beamReport, beamToInput, cm, describeBeam, meters, parseSpans, proposeBeamSection, slabLineLoads, stirrupText,
   type SpanDraft,
 } from './beamModel';
 import {
-  AlternativeSection, BarSelect, ChecksList, IdentityGroup, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField,
+  ActionNote, AlternativeSection, BarSelect, InlineAction, ChecksList, IdentityGroup, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField,
   PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict, formatNumber, parseNumber, readStored, useDraftHistory, useStoredDraft,
 } from './common';
 import { useWorkbenchStorage } from './workbenchStorage';
@@ -87,6 +87,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   useEffect(() => onHistory?.(history), [history, onHistory]);
   const code = designCode(chrome.code);
   const own = draft.rebarMode === 'own';
+  const flanged = draft.sectionType === 'T' || draft.sectionType === 'L';
   const input = useMemo(() => beamToInput(chrome.code, draft, spans), [chrome.code, draft, spans]);
   const deferred = useDeferredValue(input);
   const result = useMemo(() => designBeam(deferred), [deferred]);
@@ -98,6 +99,20 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const notes = report?.notes ?? [];
   const outOfScope = report?.outOfScope ?? [];
   const title = report?.title ?? '';
+  const [sectionNote, setSectionNote] = useState<string | null>(null);
+  const [loadNote, setLoadNote] = useState<string | null>(null);
+  const slab = slabLineLoads(draft);
+  const proposeSection = () => {
+    const proposal = proposeBeamSection(chrome.code, draft, spans);
+    if (!proposal) { setSectionNote('Ninguna sección hasta 50 × 150 cm cumple con el armado propuesto: revisa claros y cargas.'); return; }
+    replace({ ...draft, ...proposal });
+    setSectionNote(`Sección propuesta: ${proposal.width} × ${proposal.height} cm, la de menor área que cumple.`);
+  };
+  const applySlab = () => {
+    if (!slab) return;
+    setSpans((current) => current.map((span) => ({ ...span, dead: String(slab.dead), live: String(slab.live) })));
+    setLoadNote(`Aplicado a ${spans.length === 1 ? 'el claro' : `los ${spans.length} claros`}: CM ${slab.dead} · CV ${slab.live} kN/m.`);
+  };
   const spacingValue = parseNumber(draft.stirrupSpacing);
   const spacingError = draft.stirrupSpacing.trim() !== '' && !(spacingValue >= 5) ? 'Mínimo 5 cm, o vacío para calcularla' : undefined;
 
@@ -118,13 +133,35 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           onAdd={() => setSpans((current) => [...current, { ...current[current.length - 1]! }])}
           onRemove={(index) => setSpans((current) => current.filter((_, position) => position !== index))}
         />
+        <Disclosure label="Cargas desde la losa">
+          <div className="dw-group__grid" data-columns={2}>
+            <NumberField label="Ancho tributario" unit="m" value={draft.tributary} onChange={set('tributary')} />
+            <NumberField label="Muros sobre la viga" unit="kN/m" value={draft.wallLoad} onChange={set('wallLoad')} />
+            <NumberField label="Muerta de la losa" unit="kN/m²" value={draft.slabDead} onChange={set('slabDead')} hint="Losa, acabados, instalaciones" />
+            <NumberField label="Viva de la losa" unit="kN/m²" value={draft.slabLive} onChange={set('slabLive')} hint={code.id === 'ntc-2023' ? 'NTC habitación: Wm 1.9' : 'Según el destino'} />
+          </div>
+          <div className="dw-slab-apply">
+            <span>{slab ? `CM ${slab.dead} · CV ${slab.live} kN/m` : 'Datos incompletos'}</span>
+            <button type="button" className="dw-inline-action" disabled={!slab} onClick={applySlab}>Aplicar a los claros</button>
+          </div>
+          <ActionNote text={loadNote} />
+        </Disclosure>
         <LayerToggle label="Cargas puntuales" checked={draft.points === 'yes'} onCheckedChange={(checked) => set('points')(checked ? 'yes' : 'no')} />
         <LayerToggle label="Sumar peso propio" checked={draft.selfWeight === 'yes'} onCheckedChange={(checked) => set('selfWeight')(checked ? 'yes' : 'no')} />
       </FieldGroup>
-      <FieldGroup title="Sección">
-        <NumberField label="Base b" unit="cm" value={draft.width} onChange={set('width')} />
+      <FieldGroup title="Sección" action={<InlineAction label="Proponer" title="Dimensionar: la sección de menor área que cumple" onClick={proposeSection} />}>
+        <div className="dw-span-all">
+          <SegmentedControl label="Tipo de viga" size="sm" value={flanged ? draft.sectionType : 'rect'} onValueChange={set('sectionType')}
+            options={[{ value: 'rect', label: 'Rectangular' }, { value: 'T', label: 'T' }, { value: 'L', label: 'L' }]} />
+        </div>
+        <NumberField label={flanged ? 'Alma bw' : 'Base b'} unit="cm" value={draft.width} onChange={set('width')} />
         <NumberField label="Peralte h" unit="cm" value={draft.height} onChange={set('height')} />
+        {flanged ? <>
+          <NumberField label="Patín bf" unit="cm" value={draft.flangeWidth} onChange={set('flangeWidth')} hint="Ancho efectivo" />
+          <NumberField label="Espesor hf" unit="cm" value={draft.flangeThickness} onChange={set('flangeThickness')} hint="Losa" />
+        </> : null}
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
+        <div className="dw-span-all"><ActionNote text={sectionNote} /></div>
       </FieldGroup>
       <FieldGroup title="Apoyos" columns={1}>
         <div className="dw-end"><span aria-hidden="true">Izquierdo</span><SegmentedControl label="Extremo izquierdo" size="sm" value={draft.leftEnd} options={ENDS} onValueChange={set('leftEnd')} /></div>

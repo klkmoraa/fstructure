@@ -55,6 +55,20 @@ Decisión deliberada: la ec. 3.6.1 de la NTC escribe β1 = 0.85 hasta 30 MPa con
 
 **Zapata aislada rectangular.** Planta por presión admisible y núcleo, presión trapecial por momentos, flexión en el paño, cortante como viga a d, penetración con transferencia γv·M (y λs en la NTC), acero mínimo (con el adicional de NTC 6.7.6.1.2 cuando vuv > 0.17FRλs√f′c), banda central 2/(β + 1), separación máxima, peralte mínimo y anclaje recto o con gancho desde el paño.
 
+## Tipos de elemento
+
+- **Viga rectangular, T o L.** Con patín, `widthMm` es el alma bw y `flange` da el ancho efectivo bf (lo fija quien diseña) y el espesor hf. Con momento positivo la resistencia sale del equilibrio del bloque equivalente de 3.6.1 en patín y alma, y el acero máximo con la regla de cada norma aplicada a ese bloque (`maximumSteelForBlock`); con negativo rige el alma rectangular. La inercia bruta, la agrietada (eje neutro en patín o alma) y Mcr por signo usan la sección T. El peso propio es el del alma bajo la losa: la losa va en la carga muerta. Fuera de alcance: ancho efectivo de norma, acero mínimo con patín en tensión y cortante entre alma y losa.
+- **Columna rectangular o circular.** La circular usa `widthMm` como D, barras en la circunferencia y estribo circular; la interacción integra el segmento circular comprimido (contrastada con una integración por fibras) y rige la peor de dos orientaciones del arreglo. Flexión con el momento resultante √(Mx² + My²), r = D/4, cortante resultante con bw = D y d = 0.8D (complementario). El zuncho no se diseña.
+- **Zapata aislada, corrida o combinada.** Corrida (`stripFooting.ts`): por metro de muro, voladizo desde el paño (mampostería: a la mitad entre eje y paño, complementario), cortante a d, acero transversal y de distribución. Combinada (`combinedFooting.ts`): dos columnas alineadas, longitud que centra la resultante de servicio (borde izquierdo al paño o voladizo dado), zapata rígida con presión lineal, envolventes de V y M a lo largo, penetración por columna con perímetro de borde o esquina (αs 30/20, complementario), bandas transversales de ancho c + d (complementario). Con NTC, si el cortante sin estribos no alcanza, el lecho en tensión sube hasta ρ = 0.5 % antes de engrosar; cada lecho sube de diámetro para dejar al menos 10 cm entre barras.
+- **Varillas.** Catálogo #2.5 a #11 para barras y estribos.
+
+## Diseño más fácil
+
+- **Cargas desde la losa (viga):** ancho tributario × muerta y viva de la losa (+ muros) y «Aplicar a los claros».
+- **Proponer (viga):** la sección de menor área, en anchos de 20 a 50 cm y peralte hasta 3 veces el ancho, que no reprueba ninguna comprobación con el armado propuesto.
+- **Proponer (columna):** crece la sección de 5 en 5 cm y en cada tamaño prueba diámetros y número de barras; se queda con el primer tamaño con cuantía ≤ 2.5 %.
+- Las zapatas ya dimensionan planta y peralte solas.
+
 ## Revisión, alcance y memoria
 
 - **Estado honesto.** `src/design/elements/scope.ts` declara por elemento y norma lo que la norma pide y el taller no calcula (torsión, combinaciones accidentales, ductilidad, geotecnia, concurrencia de la demanda capturada, ramas ψe/λ del desarrollo…). Mientras haya algo ahí, lo que cumple se titula «Cumple lo evaluado» con «Revisión incompleta», nunca «Cumple» a secas.
