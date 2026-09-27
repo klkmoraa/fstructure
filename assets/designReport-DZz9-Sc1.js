@@ -1,3 +1,0 @@
-var e=/^FStructure · /;function t(t){if(!t.outOfScope.length)return t.memo;let n=t.memo.split(`
-`),r=n.length&&e.test(n[n.length-1])?n.pop():void 0;return[...n,`○ Sin evaluar (fuera del alcance del taller): ${t.outOfScope.map(e=>e.label).join(` · `)}`,...r?[r]:[]].join(`
-`)}function n(e){return Array.isArray(e)?`[${e.map(n).join(`,`)}]`:e&&typeof e==`object`?`{${Object.keys(e).sort().map(t=>`${JSON.stringify(t)}:${n(e[t])}`).join(`,`)}}`:JSON.stringify(e??null)}async function r(e){let t=new TextEncoder().encode(n({element:e.element,code:e.code,input:e.input})),r=await crypto.subtle.digest(`SHA-256`,t);return Array.from(new Uint8Array(r),e=>e.toString(16).padStart(2,`0`)).join(``)}export{r as n,n as r,t};
