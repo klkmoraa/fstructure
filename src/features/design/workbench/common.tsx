@@ -1,8 +1,10 @@
 import { AlertTriangle, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, Info, XCircle } from 'lucide-react';
-import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
-import { SegmentedControl, Select } from '../../../design-system/components/controls';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Field, SegmentedControl, Select } from '../../../design-system/components/controls';
 import { UnitField } from '../../../design-system/components/editor';
 import { REBAR_SIZES, type ElementCheck } from '../../../design/elements/shared';
+import type { Takeoff } from '../../../design/elements/takeoff';
+import type { ReportAlternative } from './designReport';
 import { useWorkbenchStorage, type WorkbenchStorage } from './workbenchStorage';
 
 export const parseNumber = (value: string): number => {
@@ -31,7 +33,68 @@ export function useStoredDraft<T extends Record<string, string>>(key: string, de
   useEffect(() => storage.write(key, draft), [draft, key, storage]);
   const set = (field: keyof T) => (value: string) => setDraft((current) => ({ ...current, [field]: value }));
   const reset = () => setDraft(defaults);
-  return { draft, set, reset };
+  return { draft, set, reset, replace: setDraft };
+}
+
+/** Deshacer y rehacer de un formulario del taller; la mesa lo muestra en la barra superior. */
+export interface DraftHistory {
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
+  undo(): void;
+  redo(): void;
+}
+
+/** Cambios seguidos dentro de esta ventana (una palabra tecleada) se deshacen de una vez. */
+const HISTORY_GROUP_MS = 700;
+const HISTORY_LIMIT = 100;
+
+/**
+ * Historial de un estado de formulario. Cada cambio guarda el estado anterior;
+ * los cambios muy seguidos se agrupan. Aplicar un paso del historial no crea
+ * uno nuevo.
+ */
+export function useDraftHistory<T>(value: T, apply: (value: T) => void): DraftHistory {
+  const past = useRef<T[]>([]);
+  const future = useRef<T[]>([]);
+  const previous = useRef(value);
+  const lastChange = useRef(0);
+  const applying = useRef(false);
+  const [counts, setCounts] = useState({ past: 0, future: 0 });
+  const sync = () => setCounts({ past: past.current.length, future: future.current.length });
+
+  useEffect(() => {
+    if (Object.is(previous.current, value)) return;
+    if (applying.current) {
+      applying.current = false;
+    } else {
+      const now = Date.now();
+      if (now - lastChange.current > HISTORY_GROUP_MS || past.current.length === 0) {
+        past.current = [...past.current, previous.current].slice(-HISTORY_LIMIT);
+      }
+      lastChange.current = now;
+      future.current = [];
+      sync();
+    }
+    previous.current = value;
+  }, [value]);
+
+  const step = useCallback((from: { current: T[] }, to: { current: T[] }) => {
+    const target = from.current[from.current.length - 1];
+    if (target === undefined) return;
+    from.current = from.current.slice(0, -1);
+    to.current = [...to.current, previous.current];
+    applying.current = true;
+    lastChange.current = 0;
+    apply(target);
+    sync();
+  }, [apply]);
+
+  return useMemo(() => ({
+    canUndo: counts.past > 0,
+    canRedo: counts.future > 0,
+    undo: () => step(past, future),
+    redo: () => step(future, past),
+  }), [counts, step]);
 }
 
 export function NumberField({ label, value, unit, onChange, hint, min = 0 }: {
@@ -251,4 +314,43 @@ export function RebarList({ items }: { items: readonly { kind: 'bar' | 'extra' |
       <div><strong>{item.title}</strong>{item.detail ? <small>{item.detail}</small> : null}</div>
     </li>)}
   </ul>;
+}
+
+/** Clave y ubicación del elemento: encabezan la memoria. */
+export function IdentityGroup({ tag, place, onTag, onPlace }: { tag: string; place: string; onTag: (value: string) => void; onPlace: (value: string) => void }) {
+  return <FieldGroup title="Identificación">
+    <Field label="Clave" value={tag} maxLength={32} placeholder="V-1" controlSize="sm" onChange={(event) => onTag(event.currentTarget.value)} />
+    <Field label="Ubicación" value={place} maxLength={32} placeholder="Eje 3 · B–C · N2" controlSize="sm" onChange={(event) => onPlace(event.currentTarget.value)} />
+  </FieldGroup>;
+}
+
+/** Cuantificación aproximada de acero y concreto del elemento. */
+export function TakeoffSection({ takeoff }: { takeoff: Takeoff }) {
+  return <PanelSection title="Cuantificación">
+    <Summary rows={[
+      { label: 'Acero', value: `${formatNumber(takeoff.steelKg, 1)} kg` },
+      { label: 'Concreto', value: `${formatNumber(takeoff.concreteM3, 3)} m³` },
+      { label: 'Cuantía', value: `${formatNumber(takeoff.steelRatioKgM3, 0)} kg/m³` },
+    ]} />
+    <p className="dw-footnote">{takeoff.basis}</p>
+  </PanelSection>;
+}
+
+/** Armado propio frente al propuesto por el taller, con la misma entrada. */
+export function AlternativeSection({ own, alternative }: { own: { governingRatio: number; status: 'pass' | 'fail' | 'warning'; steelKg: number }; alternative: ReportAlternative }) {
+  const delta = own.steelKg - alternative.steelKg;
+  const row = (name: string, item: { governingRatio: number; status: 'pass' | 'fail' | 'warning'; steelKg: number }) => <tr>
+    <th scope="row">{name}</th>
+    <td data-status={item.status === 'fail' ? 'fail' : undefined}>{statusLabel[item.status]}</td>
+    <td>{`${Math.round(item.governingRatio * 100)} %`}</td>
+    <td>{`${formatNumber(item.steelKg, 1)} kg`}</td>
+  </tr>;
+  return <PanelSection title="Propio frente a propuesto">
+    <table className="dw-table" aria-label="Comparación del armado propio con el propuesto">
+      <thead><tr><th scope="col">Armado</th><th scope="col">Estado</th><th scope="col">Rige</th><th scope="col">Acero</th></tr></thead>
+      <tbody>{row('Propio', own)}{row('Propuesto', alternative)}</tbody>
+    </table>
+    <p className="dw-footnote">{Math.abs(delta) < 0.05 ? 'Mismo peso de acero.'
+      : delta > 0 ? `El propio usa ${formatNumber(delta, 1)} kg más que el propuesto.` : `El propio ahorra ${formatNumber(-delta, 1)} kg frente al propuesto.`}</p>
+  </PanelSection>;
 }

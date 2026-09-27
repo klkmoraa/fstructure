@@ -72,7 +72,7 @@ export function outOfScopeChecks(element: ElementKind, code: DesignCodeId): Elem
   }));
 }
 
-export type ReviewState = 'fail' | 'warning' | 'incomplete' | 'pass';
+type ReviewState = 'fail' | 'warning' | 'incomplete' | 'pass';
 
 /**
  * Estado de la revisión del elemento. «incomplete» significa que todo lo

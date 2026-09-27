@@ -1,7 +1,7 @@
 import { ClipboardCheck, Maximize2, Minus, PenLine, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
-import { verdictHeadline } from './common';
+import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
 
 export type WorkbenchPanel = 'inputs' | 'results';
@@ -17,6 +17,10 @@ export interface WorkbenchChrome {
   readonly setPanel: (panel: WorkbenchPanel, open: boolean) => void;
   /** Instantánea del diseño vigente, para copiar la memoria o exportar el PDF. */
   readonly onReport: (report: DesignReport | null) => void;
+  /** Estado del elemento en la memoria del proyecto, sobre los resultados. */
+  readonly memoryBar?: ReactNode;
+  /** El formulario activo entrega aquí su deshacer/rehacer. */
+  readonly onHistory?: (history: DraftHistory) => void;
   /**
    * Con la mesa dentro del shell, el veredicto sube a la barra superior —donde
    * las cuatro mesas dicen su estado— y deja de repetirse sobre el lienzo.
@@ -170,7 +174,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
           <X size={16} aria-hidden="true" />
         </button>
       </header>
-      <div className="dw-panel__body">{results}</div>
+      <div className="dw-panel__body">{chrome.memoryBar}{results}</div>
     </section>
 
     {/* Escritorio: barra flotante. Móvil: el elemento arriba y las vistas como pestañas abajo. */}

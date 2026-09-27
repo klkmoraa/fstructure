@@ -1,97 +1,30 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { SegmentedControl } from '../../../design-system/components/controls';
 import { LayerToggle } from '../../../design-system/components/editor';
-import { designCode, type DesignCodeId } from '../../../design/elements/codes';
-import { designColumn, type ColumnDesignInput, type ColumnDesignResult } from '../../../design/elements/column';
+import { designCode } from '../../../design/elements/codes';
+import { designColumn } from '../../../design/elements/column';
 import { rebarLabel } from '../../../design/elements/shared';
 import { ColumnSection, InteractionChart } from './ColumnDrawings';
+import { COLUMN_DEFAULTS, columnReport, columnToInput, methodLabel, tieText } from './columnModel';
 import {
-  BarSelect, ChecksList, ReviewList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
-  formatNumber, mpaFromKgcm2, parseNumber, useStoredDraft,
+  BarSelect, ChecksList, IdentityGroup, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict,
+  formatNumber, useDraftHistory, useStoredDraft,
 } from './common';
-import { outOfScopeChecks } from '../../../design/elements/scope';
-import type { DesignReport } from './designReport';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
-const DEFAULTS = {
-  width: '40', depth: '40', cover: '4', fc: '250', fy: '4200', bar: '19.1', barsWidth: '3', barsDepth: '3', tie: '9.5',
-  axial: '900', momentX: '80', momentY: '40', shearX: '0', shearY: '0', length: '3', k: '1', curvature: 'single', endRatio: '1', sustained: '0.6',
-  group: 'B2', groundFloor: 'no', aggregate: '19', braced: 'yes', swayX: '0', swayY: '0', stability: '0.05',
-};
-
-const toInput = (codeId: DesignCodeId, draft: typeof DEFAULTS): ColumnDesignInput => ({
-  code: codeId,
-  widthMm: parseNumber(draft.width) * 10,
-  depthMm: parseNumber(draft.depth) * 10,
-  coverMm: parseNumber(draft.cover) * 10,
-  fcMpa: mpaFromKgcm2(draft.fc),
-  fyMpa: mpaFromKgcm2(draft.fy),
-  barDiameterMm: parseNumber(draft.bar),
-  barsAlongWidth: parseNumber(draft.barsWidth),
-  barsAlongDepth: parseNumber(draft.barsDepth),
-  tieDiameterMm: parseNumber(draft.tie),
-  maxAggregateMm: parseNumber(draft.aggregate),
-  axialKn: parseNumber(draft.axial),
-  momentXKnm: parseNumber(draft.momentX),
-  momentYKnm: parseNumber(draft.momentY),
-  unbracedLengthM: parseNumber(draft.length),
-  effectiveLengthFactor: parseNumber(draft.k),
-  curvature: draft.curvature === 'double' ? 'double' : 'single',
-  endMomentRatio: parseNumber(draft.endRatio),
-  shearXKn: parseNumber(draft.shearX),
-  shearYKn: parseNumber(draft.shearY),
-  group: draft.group === 'A' || draft.group === 'B1' ? draft.group : 'B2',
-  groundFloor: draft.groundFloor === 'yes',
-  sustainedRatio: parseNumber(draft.sustained),
-  braced: draft.braced !== 'no',
-  swayMomentXKnm: draft.braced === 'no' ? parseNumber(draft.swayX) : 0,
-  swayMomentYKnm: draft.braced === 'no' ? parseNumber(draft.swayY) : 0,
-  stabilityIndex: draft.braced === 'no' ? parseNumber(draft.stability) : 0,
-});
-
-const tieText = (result: ColumnDesignResult) => result.ties.endLengthMm > 0
-  ? `E ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.endSpacingMm / 10, 1)} cm en Lo · @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm al centro`
-  : `E ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm`;
-
-const methodLabel: Record<ColumnDesignResult['capacity']['method'], string> = {
-  axial: 'Compresión axial',
-  'uniaxial-x': 'Flexocompresión en X',
-  'uniaxial-y': 'Flexocompresión en Y',
-  'bresler-load': 'Biaxial · carga recíproca (Bresler)',
-  'bresler-contour': 'Biaxial · contorno de carga',
-};
-
-function columnMemo(result: ColumnDesignResult): string {
-  const { input } = result;
-  return [
-    `COLUMNA ${input.widthMm / 10}×${input.depthMm / 10} cm · ${designCode(input.code).name} · Pu = ${input.axialKn} kN · Mux = ${input.momentXKnm} kN·m · Muy = ${input.momentYKnm} kN·m`,
-    ...(input.braced ? [] : [`Marco con desplazamiento lateral: M2s = ${input.swayMomentXKnm} / ${input.swayMomentYKnm} kN·m · Q = ${input.stabilityIndex} · δs = ${formatNumber(Math.max(result.magnification.x.swayFactor, result.magnification.y.swayFactor), 2)}`]),
-    `Esbeltez = ${formatNumber(Math.max(result.slenderness.x, result.slenderness.y), 1)} (límite ${formatNumber(result.slenderness.limit, 0)}) · Mc = ${formatNumber(result.magnification.x.designMomentKnm)} / ${formatNumber(result.magnification.y.designMomentKnm)} kN·m (δ ${formatNumber(result.magnification.x.factor, 2)} / ${formatNumber(result.magnification.y.factor, 2)})`,
-    `Refuerzo: ${result.bars.length} ${rebarLabel(input.barDiameterMm)} (ρ = ${formatNumber(result.steelRatio * 100, 2)} %)`,
-    `Estribos: ${tieText(result)}`,
-    `Traslape Clase B: ${formatNumber(result.spliceLengthMm / 10, 0)} cm`,
-    `${methodLabel[result.capacity.method]}: ${Math.round(result.capacity.ratio * 100)} % · ${result.capacity.detail}`,
-    ...result.checks.map((check) => `${check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '!'} ${check.label}`),
-    'FStructure · Diseño experimental; requiere revisión profesional.',
-  ].join('\n');
-}
-
 export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
-  const { draft, set, reset } = useStoredDraft('column', DEFAULTS);
+  const { draft, set, reset, replace } = useStoredDraft('column', COLUMN_DEFAULTS);
+  const history = useDraftHistory(draft, replace);
+  const { onHistory } = chrome;
+  useEffect(() => onHistory?.(history), [history, onHistory]);
   const code = designCode(chrome.code);
-  const result = useMemo(() => designColumn(toInput(chrome.code, draft)), [chrome.code, draft]);
+  const result = useMemo(() => designColumn(columnToInput(chrome.code, draft)), [chrome.code, draft]);
   const braced = draft.braced !== 'no';
-  const [checks, notes] = splitChecks(result.ok ? result.checks : []);
-  const outOfScope = useMemo(() => outOfScopeChecks('column', chrome.code), [chrome.code]);
-  const title = result.ok ? `Columna ${formatNumber(result.input.widthMm / 10, 0)} × ${formatNumber(result.input.depthMm / 10, 0)} cm` : '';
-  const report = useMemo<DesignReport | null>(() => result.ok ? {
-    element: 'column', title, code: result.input.code, status: result.status, governingRatio: result.governingRatio,
-    memo: columnMemo(result), checks, notes, outOfScope, input: result.input,
-  } : null,
-  // `checks` y `notes` derivan de `result`.
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  [result, outOfScope, title]);
-  const slendernessSymbol = code.column.neglectUsesEffectiveLength ? 'kH/r' : 'H/r';
+  const report = useMemo(() => result.ok ? columnReport(result, draft) : null, [result, draft]);
+  const checks = report?.checks ?? [];
+  const notes = report?.notes ?? [];
+  const outOfScope = report?.outOfScope ?? [];
+  const title = report?.title ?? '';
   const symmetric = result.ok && Math.abs(result.input.widthMm - result.input.depthMm) < 1e-6 && result.input.barsAlongWidth === result.input.barsAlongDepth;
 
   return <WorkbenchLayout
@@ -102,6 +35,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
     caption={result.ok ? `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} · ρ ${formatNumber(result.steelRatio * 100, 2)} %` : undefined}
     inputs={<>
+      <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} />
       <FieldGroup title="Solicitaciones últimas">
         <NumberField label="Pu" unit="kN" value={draft.axial} onChange={set('axial')} min={-1e9} />
         <NumberField label="Mux" unit="kN·m" value={draft.momentX} onChange={set('momentX')} min={-1e9} />
@@ -193,22 +127,9 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         ]} />
       </PanelSection>
       <PanelSection title="Revisión"><ReviewList checks={checks} outOfScope={outOfScope} /></PanelSection>
+      {report ? <TakeoffSection takeoff={report.takeoff} /> : null}
       <Disclosure label="Detalle del cálculo">
-        <ValuesTable rows={[
-          { symbol: 'As', label: 'Área de acero', value: `${formatNumber(result.steelAreaMm2 / 100, 2)} cm²` },
-          { symbol: 'Grapas', label: 'Por juego', value: String(result.ties.crossTiesParallelToX + result.ties.crossTiesParallelToY) },
-          { symbol: 'Ag', label: 'Área bruta', value: `${formatNumber(result.grossAreaMm2 / 100, 0)} cm²` },
-          { symbol: 'P0', label: 'Axial nominal', value: `${formatNumber(result.squashLoadKn, 0)} kN` },
-          { symbol: 'φPn,máx', label: `${code.maximumAxialCoefficient === 1 ? '' : `${code.maximumAxialCoefficient}·`}φ·P0 (φ = ${code.compressionFactor})`, value: `${formatNumber(result.maximumDesignAxialKn, 0)} kN` },
-          { symbol: 'emín', label: code.column.minimumMoment === 'eccentricity' ? '0.05h ≥ 20 mm (X / Y)' : '15 + 0.03h si es esbelta (X / Y)', value: `${formatNumber(result.magnification.x.minimumEccentricityMm, 0)} / ${formatNumber(result.magnification.y.minimumEccentricityMm, 0)} mm` },
-          { symbol: 'VcR', label: 'Cortante del concreto X / Y', value: `${formatNumber(result.ties.shear.x.concreteStrengthKn, 0)} / ${formatNumber(result.ties.shear.y.concreteStrengthKn, 0)} kN` },
-          { symbol: 'Pb · Mb', label: 'Balanceada X', value: `${formatNumber(result.aboutX.balanced.axialKn, 0)} kN · ${formatNumber(result.aboutX.balanced.momentKnm, 0)} kN·m` },
-          { symbol: slendernessSymbol, label: `X / Y · límite ${formatNumber(result.slenderness.limit, 0)} (${code.column.radiusNote})`, value: `${formatNumber(result.slenderness.x, 1)} / ${formatNumber(result.slenderness.y, 1)}` },
-          { symbol: 'Pc', label: 'Carga crítica X / Y', value: `${formatNumber(result.magnification.x.criticalLoadKn, 0)} / ${formatNumber(result.magnification.y.criticalLoadKn, 0)} kN` },
-          { symbol: 'Cm', label: 'Factor de momento', value: formatNumber(result.magnification.x.cm, 2) },
-          { symbol: 'M2,mín', label: 'Pu·emín (X)', value: `${formatNumber(result.magnification.x.minimumMomentKnm)} kN·m` },
-          { symbol: 'φ', label: code.axialTransition ? 'Según φPn' : 'Según εt', value: `${code.compressionFactor} → 0.90` },
-        ]} />
+        <ValuesTable rows={report?.values ?? []} />
         <ChecksList checks={notes} />
       </Disclosure>
     </> : null}

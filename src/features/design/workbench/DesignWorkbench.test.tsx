@@ -91,6 +91,36 @@ describe('DesignWorkbench', () => {
     expect(within(results()).getAllByText(/Envolvente de/).length).toBeGreaterThan(0);
   });
 
+  it('deshace y rehace los cambios del formulario con Ctrl+Z fuera de los campos', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    await user.click(screen.getByRole('radio', { name: 'Columna' }));
+    const width = screen.getByRole('textbox', { name: /Base b/ }) as HTMLInputElement;
+    await user.clear(width);
+    await user.type(width, '55');
+    expect(width.value).toBe('55');
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    await user.click(screen.getByRole('heading', { name: 'Columna' }));
+    await user.keyboard('{Control>}z{/Control}');
+    expect((screen.getByRole('textbox', { name: /Base b/ }) as HTMLInputElement).value).toBe('40');
+    await user.keyboard('{Control>}{Shift>}z{/Shift}{/Control}');
+    expect((screen.getByRole('textbox', { name: /Base b/ }) as HTMLInputElement).value).toBe('55');
+  });
+
+  it('guarda el elemento en la memoria del proyecto y lo lista con su clave', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    await user.type(screen.getByRole('textbox', { name: 'Clave' }), 'V-9');
+    await user.click(await within(results()).findByRole('button', { name: 'Agregar' }));
+    expect(await within(results()).findByText('Guardado en la memoria como V-9')).toBeTruthy();
+    await user.click(within(results()).getByRole('button', { name: /Guardado en la memoria/ }));
+    const dialog = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
+    expect(within(dialog).getByText(/V-9 · Viga 25 × 50 cm/)).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: /Exportar memoria \(1\)/ })).toBeTruthy();
+    await user.click(within(dialog).getByRole('button', { name: 'Quitar V-9 de la memoria' }));
+    expect(within(dialog).getByText(/Aún no hay elementos/)).toBeTruthy();
+  });
+
   it('muestra y oculta los paneles de datos y resultados sobre el lienzo', async () => {
     const user = userEvent.setup();
     renderWorkbench();

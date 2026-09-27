@@ -15,10 +15,18 @@ export interface WorkbenchStorage {
 }
 
 export const WORKBENCH_DOCUMENT_KIND = 'fstructure-design-workbench';
-const MAX_DOCUMENT_CHARS = 32_000;
+/**
+ * v1: borradores (cadenas cortas, registros y listas de claros).
+ * v2: además, la memoria del proyecto (`memory`): elementos guardados con su
+ * borrador para recalcularlos al exportar. Un documento v1 se lee tal cual.
+ */
+const WORKBENCH_SCHEMA_VERSION = 2;
+const MAX_DOCUMENT_CHARS = 240_000;
 const MAX_ENTRIES = 16;
 const MAX_FIELDS = 64;
 const MAX_ROWS = 8;
+/** Elementos que caben en la memoria del proyecto. */
+export const MAX_MEMORY_ITEMS = 60;
 const KEY = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
 
 const isShortString = (value: unknown): value is string => typeof value === 'string' && value.length <= 32;
@@ -28,13 +36,40 @@ const isRecord = (value: unknown): value is Record<string, string> =>
   isPlainObject(value) && Object.keys(value).length <= MAX_FIELDS
   && Object.entries(value).every(([field, item]) => KEY.test(field) && isShortString(item));
 
-/** Sólo cadenas cortas, registros de cadenas y listas cortas de registros (los claros de la viga). */
-const isEntry = (value: unknown): value is JsonValue =>
-  isShortString(value) || isRecord(value) || (Array.isArray(value) && value.length <= MAX_ROWS && value.every(isRecord));
+const isRows = (value: unknown): value is Record<string, string>[] =>
+  Array.isArray(value) && value.length <= MAX_ROWS && value.every(isRecord);
+
+/** Elemento guardado en la memoria del proyecto: su borrador, la norma y cuándo se guardó. */
+export interface WorkbenchMemoryItem {
+  readonly id: string;
+  readonly element: 'beam' | 'column' | 'footing';
+  readonly code: string;
+  readonly savedAt: string;
+  readonly fields: Record<string, string>;
+  /** Filas del formulario (los claros de la viga). */
+  readonly rows?: Record<string, string>[];
+}
+
+export const isMemoryItem = (value: unknown): value is WorkbenchMemoryItem => {
+  if (!isPlainObject(value)) return false;
+  const keys = Object.keys(value);
+  if (keys.some((key) => !['id', 'element', 'code', 'savedAt', 'fields', 'rows'].includes(key))) return false;
+  return isShortString(value.id) && (value.element === 'beam' || value.element === 'column' || value.element === 'footing')
+    && isShortString(value.code) && isShortString(value.savedAt) && isRecord(value.fields)
+    && (value.rows === undefined || isRows(value.rows));
+};
+
+const isMemory = (value: unknown): value is WorkbenchMemoryItem[] =>
+  Array.isArray(value) && value.length <= MAX_MEMORY_ITEMS && value.every(isMemoryItem)
+  && new Set(value.map((item) => item.id)).size === value.length;
+
+/** Cadenas cortas, registros de cadenas, listas cortas de registros (los claros) y la memoria del proyecto. */
+const isEntry = (key: string, value: unknown): value is JsonValue =>
+  isShortString(value) || isRecord(value) || isRows(value) || (key === 'memory' && isMemory(value));
 
 /** Lee un documento del taller; ante cualquier forma inesperada devuelve un borrador vacío, nunca lanza. */
 export function parseWorkbenchDocument(raw: unknown): Record<string, JsonValue> {
-  if (!isPlainObject(raw) || raw.kind !== WORKBENCH_DOCUMENT_KIND || raw.schemaVersion !== 1 || !isPlainObject(raw.entries)) return {};
+  if (!isPlainObject(raw) || raw.kind !== WORKBENCH_DOCUMENT_KIND || (raw.schemaVersion !== 1 && raw.schemaVersion !== 2) || !isPlainObject(raw.entries)) return {};
   try {
     if (JSON.stringify(raw).length > MAX_DOCUMENT_CHARS) return {};
   } catch {
@@ -42,13 +77,13 @@ export function parseWorkbenchDocument(raw: unknown): Record<string, JsonValue> 
   }
   const entries: Record<string, JsonValue> = {};
   for (const [key, value] of Object.entries(raw.entries).slice(0, MAX_ENTRIES)) {
-    if (KEY.test(key) && isEntry(value)) entries[key] = structuredClone(value);
+    if (KEY.test(key) && isEntry(key, value)) entries[key] = structuredClone(value);
   }
   return entries;
 }
 
 const workbenchDocument = (entries: Readonly<Record<string, JsonValue>>): JsonValue =>
-  ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 1, entries: structuredClone(entries) as { [key: string]: JsonValue } });
+  ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: WORKBENCH_SCHEMA_VERSION, entries: structuredClone(entries) as { [key: string]: JsonValue } });
 
 const BROWSER_PREFIX = 'fstructure.design-workbench.';
 
@@ -57,7 +92,7 @@ export const browserWorkbenchStorage: WorkbenchStorage = {
   read(key) {
     try {
       const raw = window.localStorage.getItem(BROWSER_PREFIX + key);
-      if (!raw || raw.length > 8_000) return undefined;
+      if (!raw || raw.length > (key === 'memory' ? MAX_DOCUMENT_CHARS : 8_000)) return undefined;
       try {
         return JSON.parse(raw) as unknown;
       } catch {
@@ -101,7 +136,7 @@ export function createProjectWorkbenchStorage(
   return {
     read: (key) => entries[key],
     write(key, value) {
-      if (!KEY.test(key) || !isEntry(value)) return;
+      if (!KEY.test(key) || !isEntry(key, value)) return;
       if (JSON.stringify(entries[key]) === JSON.stringify(value)) return;
       entries[key] = structuredClone(value);
       dirty = true;

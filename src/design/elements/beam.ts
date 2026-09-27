@@ -45,6 +45,21 @@ export interface BeamDesignInput {
   readonly damagesNonstructural: boolean;
   /** Ancho de las columnas o muros de apoyo en los extremos: longitud para anclar las barras. */
   readonly supportWidthMm: number;
+  /** Armado propio que sustituye la propuesta automática; sin él, el motor propone. */
+  readonly provided?: BeamProvidedReinforcement | null;
+}
+
+/**
+ * Armado que fija la persona usuaria. Las corridas son las suyas; los bastones
+ * se siguen proponiendo donde no alcanzan (`auto`) o se omiten (`none`), en
+ * cuyo caso la flexión se revisa sólo con las corridas. Los estribos van a una
+ * separación uniforme en todos los claros, o se calculan si es `null`.
+ */
+export interface BeamProvidedReinforcement {
+  readonly top: BarGroup;
+  readonly bottom: BarGroup;
+  readonly bastions: 'auto' | 'none';
+  readonly stirrupSpacingMm: number | null;
 }
 
 export interface BarGroup { readonly count: number; readonly diameterMm: number }
@@ -454,6 +469,14 @@ function validate(input: BeamDesignInput): string[] {
       errors.push(`Claro ${index + 1}: la carga puntual debe quedar entre 0 y ${Number.isFinite(span.lengthM) ? span.lengthM : 'L'} m.`);
     }
   });
+  if (input.provided) {
+    for (const [bed, group] of [['superiores', input.provided.top], ['inferiores', input.provided.bottom]] as const) {
+      if (!Number.isInteger(group.count) || group.count < 2 || group.count > 16) errors.push(`Corridas ${bed}: entre 2 y 16 barras.`);
+      if (!isPositiveFinite(group.diameterMm)) errors.push(`Corridas ${bed}: diámetro inválido.`);
+    }
+    const spacing = input.provided.stirrupSpacingMm;
+    if (spacing !== null && (!Number.isFinite(spacing) || spacing < 50)) errors.push('La separación de estribos debe ser de al menos 5 cm.');
+  }
   if (errors.length) return errors;
   if (input.heightMm < 2 * input.coverMm + 60) errors.push('El peralte no deja espacio para el refuerzo.');
   if (input.widthMm < 2 * input.coverMm + 60) errors.push('La base no deja espacio para el refuerzo.');
@@ -539,6 +562,7 @@ function designSpanStirrups(
   spanIndex: number,
   span: { startM: number; lengthM: number },
   depthMm: number,
+  forcedSpacingMm: number | null = null,
 ): SpanStirrups {
   const { input, code, stirrupDiameterMm } = context;
   const fc = input.fcMpa;
@@ -573,6 +597,19 @@ function designSpanStirrups(
     else zones.push({ startM, endM });
   }
   const uniform = zones.length === 0 || dense >= center;
+  if (forcedSpacingMm !== null) {
+    return {
+      denseSpacingMm: forcedSpacingMm,
+      centerSpacingMm: forcedSpacingMm,
+      maximumSpacingMm: maximumSpacing,
+      denseZones: [],
+      demandKn: demand,
+      concreteStrengthKn: phi * concreteN / 1e3,
+      strengthKn: strengthAt(forcedSpacingMm),
+      maximumSectionStrengthKn: phi * (concreteN + 0.66 * Math.sqrt(fc) * b * depthMm) / 1e3,
+      impractical: false,
+    };
+  }
   return {
     denseSpacingMm: dense,
     centerSpacingMm: uniform ? dense : center,
@@ -608,16 +645,23 @@ function designReinforcement(
   const positiveDemand = moment.max.map((value) => Math.max(0, value));
   const negativeDemand = moment.min.map((value) => Math.max(0, -value));
   let chosen: Reinforcement | undefined;
+  const provided = input.provided ?? null;
+  const noBastions = { bastions: [] as BeamBastion[], failed: false };
   for (const stirrupDiameterMm of stirrupDiameters) {
     const context: SectionContext = { input, code, stirrupDiameterMm };
-    const continuousBottom = chooseContinuous(context, 'bottom', barDiameters, positiveDemand.some((value) => value > TOLERANCE));
-    const continuousTop = chooseContinuous(context, 'top', barDiameters, negativeDemand.some((value) => value > TOLERANCE));
+    const continuousBottom = provided
+      ? evaluateSection(context, 'bottom', provided.bottom, null, 0)
+      : chooseContinuous(context, 'bottom', barDiameters, positiveDemand.some((value) => value > TOLERANCE));
+    const continuousTop = provided
+      ? evaluateSection(context, 'top', provided.top, null, 0)
+      : chooseContinuous(context, 'top', barDiameters, negativeDemand.some((value) => value > TOLERANCE));
     if (!continuousBottom || !continuousTop) continue;
-    const bottom = designBastions(context, analysis.stations, analysis.totalLengthM, 'bottom', positiveDemand, continuousBottom, barDiameters);
-    const top = designBastions(context, analysis.stations, analysis.totalLengthM, 'top', negativeDemand, continuousTop, barDiameters);
+    const withBastions = provided?.bastions !== 'none';
+    const bottom = withBastions ? designBastions(context, analysis.stations, analysis.totalLengthM, 'bottom', positiveDemand, continuousBottom, barDiameters) : noBastions;
+    const top = withBastions ? designBastions(context, analysis.stations, analysis.totalLengthM, 'top', negativeDemand, continuousTop, barDiameters) : noBastions;
     const bastions = [...bottom.bastions, ...top.bastions];
     const depth = Math.min(continuousBottom.effectiveDepthMm, continuousTop.effectiveDepthMm, ...bastions.map((bastion) => bastion.section.effectiveDepthMm));
-    const stirrups = spans.map((span, index) => designSpanStirrups(context, analysis, shear, index, span, depth));
+    const stirrups = spans.map((span, index) => designSpanStirrups(context, analysis, shear, index, span, depth, provided?.stirrupSpacingMm ?? null));
     chosen = { context, continuousTop, continuousBottom, bastions, failed: bottom.failed || top.failed, stirrups };
     if (!chosen.failed && stirrups.every((item) => !item.impractical)) break;
   }
@@ -663,7 +707,11 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
 
   const spanGeometry = input.spans.map((span, index) => ({ startM: analysis.nodesAtM[index]!, lengthM: span.lengthM }));
   const reinforcement = designReinforcement(input, code, analysis, moment, shear, spanGeometry);
-  if (!reinforcement) return { ok: false, errors: ['No caben dos varillas corridas en la base: aumenta la sección o usa otro diámetro.'] };
+  if (!reinforcement) {
+    return { ok: false, errors: [input.provided
+      ? 'El armado propio no cabe en dos capas dentro de la base: usa menos barras, otro diámetro o una sección más ancha.'
+      : 'No caben dos varillas corridas en la base: aumenta la sección o usa otro diámetro.'] };
+  }
   const { continuousTop, continuousBottom, bastions, stirrups, context } = reinforcement;
   const capacityPositive = stations.map((x) => sectionAt(x, 'bottom', continuousBottom, bastions).strengthKnm);
   const capacityNegative = stations.map((x) => -sectionAt(x, 'top', continuousTop, bastions).strengthKnm);

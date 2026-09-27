@@ -27,6 +27,6 @@ export default function DesignSurface() {
   }, [session, projectId]);
   useEffect(() => () => storage?.dispose(), [storage]);
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
-    <DesignWorkbench key={projectId ?? 'local'} startElement={intent?.element} startCode={intent?.code} />
+    <DesignWorkbench key={projectId ?? 'local'} startElement={intent?.element} startCode={intent?.code} projectName={project?.name} />
   </WorkbenchStorageContext.Provider>;
 }

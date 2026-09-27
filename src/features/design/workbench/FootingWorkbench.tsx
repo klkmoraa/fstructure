@@ -1,89 +1,27 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { LayerToggle } from '../../../design-system/components/editor';
-import { designCode, type DesignCodeId } from '../../../design/elements/codes';
-import { designFooting, type FootingDesignInput, type FootingDesignResult, type FootingDirection } from '../../../design/elements/footing';
-import { rebarLabel } from '../../../design/elements/shared';
+import { designCode } from '../../../design/elements/codes';
+import { designFooting } from '../../../design/elements/footing';
 import {
-  BarSelect, ChecksList, ReviewList, Disclosure, splitChecks, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, ValuesTable, Verdict,
-  formatNumber, mpaFromKgcm2, parseNumber, useStoredDraft,
+  BarSelect, ChecksList, IdentityGroup, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict,
+  formatNumber, useDraftHistory, useStoredDraft,
 } from './common';
 import { FootingPlan, FootingSection } from './FootingDrawings';
-import { outOfScopeChecks } from '../../../design/elements/scope';
-import type { DesignReport } from './designReport';
+import { FOOTING_DEFAULTS, directionDetail, directionTitle, footingReport, footingToInput, planText } from './footingModel';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
-const DEFAULTS = {
-  c1: '40', c2: '40', dead: '600', live: '300', group: 'B', seismic: 'no', qa: '150', fc: '250', fy: '4200',
-  moments: 'no', mx: '0', my: '60', mux: '0', muy: '85',
-  autoPlan: 'yes', sideX: '250', sideY: '250', autoThickness: 'yes', thickness: '50', cover: '7.5', bar: '15.9',
-};
-
-const toInput = (codeId: DesignCodeId, draft: typeof DEFAULTS): FootingDesignInput => {
-  const moments = draft.moments === 'yes';
-  const code = designCode(codeId);
-  return {
-    code: codeId,
-    columnWidthMm: parseNumber(draft.c1) * 10,
-    columnDepthMm: parseNumber(draft.c2) * 10,
-    deadKn: parseNumber(draft.dead),
-    liveKn: parseNumber(draft.live),
-    combinations: code.loadCombinations(draft.group === 'A' ? 'A' : 'B'),
-    seismicCombination: code.usesStructureGroup && moments && draft.seismic === 'yes',
-    serviceMomentXKnm: moments ? parseNumber(draft.mx) : 0,
-    serviceMomentYKnm: moments ? parseNumber(draft.my) : 0,
-    ultimateMomentXKnm: moments ? parseNumber(draft.mux) : 0,
-    ultimateMomentYKnm: moments ? parseNumber(draft.muy) : 0,
-    allowablePressureKpa: parseNumber(draft.qa),
-    fcMpa: mpaFromKgcm2(draft.fc),
-    fyMpa: mpaFromKgcm2(draft.fy),
-    sideXMm: draft.autoPlan === 'yes' ? null : parseNumber(draft.sideX) * 10,
-    sideYMm: draft.autoPlan === 'yes' ? null : parseNumber(draft.sideY) * 10,
-    thicknessMm: draft.autoThickness === 'yes' ? null : parseNumber(draft.thickness) * 10,
-    coverMm: parseNumber(draft.cover) * 10,
-    barDiameterMm: parseNumber(draft.bar),
-  };
-};
-
-const meters = (mm: number) => formatNumber(mm / 1000, 2);
-const planText = (result: FootingDesignResult) => `${meters(result.sideXMm)} × ${meters(result.sideYMm)} m`;
-
-const directionTitle = (direction: FootingDirection, diameterMm: number) =>
-  `${direction.axis.toUpperCase()}: ${direction.barCount} ${rebarLabel(diameterMm)} @ ${formatNumber(direction.spacingMm / 10, 0)} cm`;
-const directionDetail = (direction: FootingDirection) => {
-  const band = direction.band
-    ? ` · ${direction.band.barsInBand} en la banda central de ${meters(direction.band.widthMm)} m (@ ${formatNumber(direction.band.spacingInBandMm / 10, 0)} cm), resto @ ${formatNumber(direction.band.spacingOutsideMm / 10, 0)} cm`
-    : '';
-  const anchorage = direction.anchorage === 'straight' ? '' : direction.anchorage === 'hook' ? ` · gancho estándar (ldh ${formatNumber(direction.hookLengthMm / 10, 0)} cm)` : ' · anclaje insuficiente';
-  return `Capa ${direction.layer === 'bottom' ? 'inferior' : 'superior'} · As ${formatNumber(direction.providedMm2 / 100, 2)} cm² (req. ${formatNumber(Math.max(direction.requiredMm2, direction.minimumMm2, direction.punchingMinimumMm2) / 100, 2)})${band}${anchorage}`;
-};
-
-function footingMemo(result: FootingDesignResult): string {
-  const { input } = result;
-  return [
-    `ZAPATA AISLADA ${planText(result)} · h = ${formatNumber(result.thicknessMm / 10, 0)} cm · ${designCode(input.code).name}`,
-    `Combinaciones: ${input.combinations.map((combination) => combination.label).join(' · ')} · Pu = ${formatNumber(result.ultimateAxialKn, 0)} kN`,
-    `Columna ${input.columnWidthMm / 10}×${input.columnDepthMm / 10} cm · P = ${input.deadKn + input.liveKn} kN · Mx = ${input.serviceMomentXKnm} · My = ${input.serviceMomentYKnm} kN·m (servicio)`,
-    `Presión de servicio ${formatNumber(result.service.minimumKpa, 0)} a ${formatNumber(result.service.maximumKpa, 0)} kPa · admisible ${input.allowablePressureKpa} kPa`,
-    `Refuerzo ${directionTitle(result.directions.x, input.barDiameterMm)} · ${directionTitle(result.directions.y, input.barDiameterMm)}`,
-    ...result.checks.map((check) => `${check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '!'} ${check.label}${check.ratio !== undefined && Number.isFinite(check.ratio) ? ` (${Math.round(check.ratio * 100)} %)` : ''}`),
-    'FStructure · Diseño experimental; requiere revisión profesional.',
-  ].join('\n');
-}
-
 export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
-  const { draft, set, reset } = useStoredDraft('footing', DEFAULTS);
+  const { draft, set, reset, replace } = useStoredDraft('footing', FOOTING_DEFAULTS);
+  const history = useDraftHistory(draft, replace);
+  const { onHistory } = chrome;
+  useEffect(() => onHistory?.(history), [history, onHistory]);
   const code = designCode(chrome.code);
-  const result = useMemo(() => designFooting(toInput(chrome.code, draft)), [chrome.code, draft]);
-  const [checks, notes] = splitChecks(result.ok ? result.checks : []);
-  const outOfScope = useMemo(() => outOfScopeChecks('footing', chrome.code), [chrome.code]);
-  const title = result.ok ? `Zapata ${planText(result)}` : '';
-  const report = useMemo<DesignReport | null>(() => result.ok ? {
-    element: 'footing', title, code: result.input.code, status: result.status, governingRatio: result.governingRatio,
-    memo: footingMemo(result), checks, notes, outOfScope, input: result.input,
-  } : null,
-  // `checks` y `notes` derivan de `result`.
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  [result, outOfScope, title]);
+  const result = useMemo(() => designFooting(footingToInput(chrome.code, draft)), [chrome.code, draft]);
+  const report = useMemo(() => result.ok ? footingReport(result, draft) : null, [result, draft]);
+  const checks = report?.checks ?? [];
+  const notes = report?.notes ?? [];
+  const outOfScope = report?.outOfScope ?? [];
+  const title = report?.title ?? '';
 
   return <WorkbenchLayout
     chrome={chrome}
@@ -93,6 +31,7 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
     caption={result.ok ? `${planText(result)} · h ${formatNumber(result.thicknessMm / 10, 0)} cm` : undefined}
     inputs={<>
+      <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} />
       <FieldGroup title="Cargas de servicio">
         <NumberField label="Muerta" unit="kN" value={draft.dead} onChange={set('dead')} />
         <NumberField label="Viva" unit="kN" value={draft.live} onChange={set('live')} />
@@ -168,25 +107,14 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         }))} />
       </PanelSection>
       <PanelSection title="Revisión"><ReviewList checks={checks} outOfScope={outOfScope} /></PanelSection>
+      {report ? <TakeoffSection takeoff={report.takeoff} /> : null}
       <Disclosure label="Detalle del cálculo">
         <RebarList items={[result.directions.x, result.directions.y].map((direction) => ({
           kind: 'bar' as const,
           title: directionTitle(direction, result.input.barDiameterMm),
           detail: directionDetail(direction),
         }))} />
-        <ValuesTable rows={[
-          { symbol: 'A', label: 'Área de contacto', value: `${formatNumber(result.sideXMm * result.sideYMm / 1e6, 2)} m²` },
-          { symbol: 'ex · ey', label: 'Excentricidad', value: `${formatNumber(result.service.eccentricityXMm / 10, 1)} · ${formatNumber(result.service.eccentricityYMm / 10, 1)} cm` },
-          { symbol: 'qu', label: 'Última mín · máx', value: `${formatNumber(result.ultimate.minimumKpa, 0)} · ${formatNumber(result.ultimate.maximumKpa, 0)} kPa` },
-          { symbol: 'bo', label: 'Perímetro crítico', value: `${formatNumber(result.punching.perimeterMm / 10, 0)} cm` },
-          { symbol: 'Vu', label: 'Penetración directa', value: `${formatNumber(result.punching.demandKn, 0)} kN` },
-          ...(code.footing.punchingSizeFactor ? [{ symbol: 'λs', label: 'Efecto de tamaño (penetración)', value: formatNumber(result.punching.sizeFactor, 3) }] : []),
-          { symbol: 'φ', label: 'Cortante · penetración', value: `${code.shearFactor} · ${result.punching.resistanceFactor}` },
-          { symbol: 'ld · ldh', label: 'Recta / gancho X', value: `${formatNumber(result.directions.x.developmentLengthMm / 10, 0)} / ${formatNumber(result.directions.x.hookLengthMm / 10, 0)} cm` },
-          { symbol: 'd mín', label: 'Peralte efectivo mínimo', value: `${formatNumber(code.footing.minimumEffectiveDepthMm / 10, 0)} cm` },
-          { symbol: 'Vu / φVc', label: 'Como viga X', value: `${formatNumber(result.directions.x.oneWayDemandKn, 0)} / ${formatNumber(result.directions.x.oneWayStrengthKn, 0)} kN` },
-          { symbol: 'Vu / φVc', label: 'Como viga Y', value: `${formatNumber(result.directions.y.oneWayDemandKn, 0)} / ${formatNumber(result.directions.y.oneWayStrengthKn, 0)} kN` },
-        ]} />
+        <ValuesTable rows={report?.values ?? []} />
         <ChecksList checks={notes} />
       </Disclosure>
     </> : null}

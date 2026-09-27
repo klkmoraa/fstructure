@@ -647,3 +647,83 @@
 
 .dw-resultant circle { fill: var(--dw-moment); }
 .dw-resultant text { fill: var(--dw-moment) !important; font-family: var(--sc-font-ui); font-weight: 600; font-size: 11px; }
+
+/* ─── Memoria del proyecto ─── */
+.dw-memory-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 10px;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid var(--dw-line);
+  border-radius: var(--sc-radius-control, 8px);
+  font-size: 11.5px;
+}
+.dw-memory-status__open {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--dw-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dw-memory-status__open span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dw-memory-status__open i { flex: none; width: 7px; height: 7px; border-radius: var(--sc-radius-pill); border: 1.5px solid var(--dw-subtle); }
+.dw-memory-status[data-state='saved'] .dw-memory-status__open i { border-color: var(--dw-pass); background: var(--dw-pass); }
+.dw-memory-status[data-state='dirty'] .dw-memory-status__open i { border-color: var(--dw-warn); background: var(--dw-warn); }
+.dw-memory-status__save {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--dw-line);
+  border-radius: var(--sc-radius-control, 6px);
+  background: var(--sc-color-surface-1);
+  color: var(--dw-ink);
+  font: 600 11px var(--sc-font-ui);
+  cursor: pointer;
+}
+.dw-memory-status__open:focus-visible, .dw-memory-status__save:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
+
+/* El diálogo vive fuera de la mesa (portal): repite las variables que usan sus tablas. */
+.dw-memory {
+  --dw-ink: var(--sc-color-text-primary);
+  --dw-muted: var(--sc-color-text-secondary);
+  --dw-subtle: var(--sc-color-text-tertiary, var(--sc-color-text-secondary));
+  --dw-line: var(--sc-color-border-soft, var(--sc-color-border));
+  --dw-pass: var(--sc-color-state-success);
+  --dw-fail: var(--sc-color-state-error);
+  --dw-warn: var(--sc-color-state-warning);
+  width: min(640px, calc(100vw - 32px));
+}
+.dw-memory .sc-modal-surface__footer { flex-wrap: wrap; }
+.dw-memory__table { font-family: var(--sc-font-ui); }
+.dw-memory__table th[scope='row'] { display: grid; gap: 2px; text-align: left; color: var(--dw-ink); }
+.dw-memory__table th[scope='row'] strong { font: 600 12.5px/1.3 var(--sc-font-ui); }
+.dw-memory__table th[scope='row'] small { color: var(--dw-muted); font: 11px var(--sc-font-ui); }
+.dw-memory__table td { vertical-align: middle; font: 500 11.5px var(--sc-font-mono); }
+.dw-memory__table td[data-status='pass'] { color: var(--dw-pass); }
+.dw-memory__table td[data-status='warning'] { color: var(--dw-warn); }
+.dw-memory__table td[data-status='fail'] { color: var(--dw-fail); }
+.dw-memory__table tr[data-active] th[scope='row'] strong::after { content: ' · abierto'; color: var(--dw-muted); font-weight: 500; }
+.dw-memory__actions { white-space: nowrap; }
+.dw-memory__actions { text-align: right; }
+.dw-memory__actions .dw-icon-button { display: inline-grid; margin-left: 2px; vertical-align: middle; }
+.dw-memory__empty { margin: 4px 0; color: var(--dw-muted); font-size: 13px; line-height: 1.5; }
+.dw-memory__notice { margin: 0 0 10px; color: var(--dw-muted); font-size: 12px; }
+.dw-memory__confirm { display: grid; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-left: 2px solid var(--dw-warn); background: var(--sc-color-surface-inset); font-size: 12.5px; }
+.dw-memory__confirm p { margin: 0; }
+.dw-memory__confirm div { display: flex; flex-wrap: wrap; gap: 6px; }
+@media (max-width: 480px) {
+  /* En teléfono el nombre del proyecto pesa más que deshacer: los campos tienen el suyo. */
+  .workspace-topbar .dw-topbar-history { display: none; }
+  .dw-memory .sc-modal-surface__footer .sc-button { flex: 1 1 100%; justify-content: center; }
+}

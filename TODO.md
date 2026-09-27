@@ -6,7 +6,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 - [ ] FEM: dibujar la malla y colorearla por von Mises, desplazamiento y calidad; editor mínimo de placa, apoyos y cargas.
 - [ ] Proyectos por herramienta: miniatura y resumen propios en los recientes de 3D, FEM y Diseño (hoy muestran datos del 2D).
-- [ ] Mesas de FEM y Diseño con el lenguaje de la 2D (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM y Diseño.
+- [ ] Mesas de FEM y Diseño con el lenguaje de la 2D (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM.
 - [ ] 3D en teléfonos ≤390 px: los menús (Definir · Asignar · Mostrar · Vista) no caben junto a la vista y se deslizan; buscarles sitio sin tapar el lienzo.
 - [ ] Título de pestaña por herramienta («Solver 3D · FusionStructure»).
 - [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
@@ -15,10 +15,10 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Diseño (de `docs/research/concrete-design`)
 
-- [ ] Armado editable: cambiar barras y zonas de la viga, revalidar separación, recubrimiento, desarrollo y traslape, y comparar antes/después.
+- [ ] Armado propio por zonas en la viga (bastones y estribos por claro); hoy se fijan corridas, bastones sí/no y una separación uniforme.
+- [ ] Normas para ampliar el taller: torsión (NTC 5.8), losas, muros y combinaciones accidentales necesitan el texto oficial registrado con evidencia en `docs/design/normative-sources.json`.
 - [ ] Confirmar con la NTC 6.7.4 si el umbral de acero mínimo por penetración (6.7.6.1.2) usa el esfuerzo combinado con transferencia de momento; hoy usa vuv directo y la nota lo avisa.
 - [ ] Vínculo con el modelo (selección de miembro y demandas concurrentes): choca con el aislamiento de herramientas; decidir si se abre un puente de datos declarado en `src/integrations`.
-- [ ] Nuevas familias por fases: losas, muros, cimentaciones corridas/combinadas; torsión en vigas.
 
 ## Limpieza
 
