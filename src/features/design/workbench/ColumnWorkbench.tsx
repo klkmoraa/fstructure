@@ -21,6 +21,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const result = useMemo(() => designColumn(columnToInput(chrome.code, draft)), [chrome.code, draft]);
   const braced = draft.braced !== 'no';
   const circular = draft.shape === 'circular';
+  const spiral = circular && draft.transverse === 'spiral' && code.column.spiral !== null;
   const [proposalNote, setProposalNote] = useState<string | null>(null);
   const propose = () => {
     const proposal = proposeColumn(chrome.code, draft);
@@ -66,9 +67,13 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </FieldGroup>
       <FieldGroup title="Refuerzo">
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
-        <BarSelect label={circular ? 'Estribo circular' : 'Estribo'} value={draft.tie} onChange={set('tie')} />
+        {circular && code.column.spiral ? <div className="dw-span-all">
+          <SegmentedControl label="Refuerzo transversal" size="sm" value={spiral ? 'spiral' : 'ties'} onValueChange={set('transverse')}
+            options={[{ value: 'ties', label: 'Estribos circulares' }, { value: 'spiral', label: 'Zuncho' }]} />
+        </div> : null}
+        <BarSelect label={spiral ? 'Zuncho' : circular ? 'Estribo circular' : 'Estribo'} value={draft.tie} onChange={set('tie')} />
         {circular
-          ? <NumberField label="Número de barras" unit="pzas" value={draft.barCount} onChange={set('barCount')} min={4} />
+          ? <NumberField label="Número de barras" unit="pzas" value={draft.barCount} onChange={set('barCount')} min={code.column.circularMinimumBars} />
           : <>
             <NumberField label="Barras cara b" unit="pzas" value={draft.barsWidth} onChange={set('barsWidth')} min={2} />
             <NumberField label="Barras cara h" unit="pzas" value={draft.barsDepth} onChange={set('barsDepth')} min={2} />

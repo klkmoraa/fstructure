@@ -21,6 +21,9 @@ export type ColumnGroup = 'A' | 'B1' | 'B2';
 
 export type ColumnShape = 'rectangular' | 'circular';
 
+/** Refuerzo transversal de la columna circular: estribos circulares o zuncho (refuerzo helicoidal, sólo NTC). */
+export type ColumnTransverse = 'ties' | 'spiral';
+
 export interface ColumnDesignInput {
   readonly code: DesignCodeId;
   /** Rectangular (por omisión) o circular con estribos circulares. */
@@ -31,6 +34,8 @@ export interface ColumnDesignInput {
   readonly depthMm: number;
   /** Circular: número de barras repartidas en la circunferencia. */
   readonly barCount?: number;
+  /** Circular: estribos circulares (por omisión) o zuncho; `tieDiameterMm` es el de su barra. */
+  readonly transverse?: ColumnTransverse;
   readonly coverMm: number;
   readonly fcMpa: number;
   readonly fyMpa: number;
@@ -146,6 +151,24 @@ export interface ColumnTies {
   readonly hxMm: number;
   readonly hxLimitMm: number;
   readonly shear: { readonly x: ColumnShear; readonly y: ColumnShear };
+  /** Zuncho (NTC 14.7.4): paso de diseño igual en toda la altura. */
+  readonly spiral?: ColumnSpiral;
+}
+
+export interface ColumnSpiral {
+  /** Paso centro a centro s. */
+  readonly pitchMm: number;
+  readonly clearPitchMm: number;
+  readonly minimumClearPitchMm: number;
+  readonly maximumClearPitchMm: number;
+  /** Diámetro del núcleo Dc hasta el paño exterior del zuncho. */
+  readonly coreDiameterMm: number;
+  /** ρs = volumen del zuncho / volumen del núcleo. */
+  readonly volumetricRatio: number;
+  /** 0.45 (Ag/Ac − 1) f′c/fyt, fyt ≤ 700 MPa. */
+  readonly requiredRatio: number;
+  /** Paso que exige la cuantía volumétrica. */
+  readonly ratioPitchMm: number;
 }
 
 export interface ColumnDesignResult {
@@ -181,6 +204,38 @@ const PHI_TENSION = 0.9;
 const TOLERANCE = 1e-9;
 
 const isCircular = (input: Pick<ColumnDesignInput, 'shape'>) => input.shape === 'circular';
+const isSpiral = (input: Pick<ColumnDesignInput, 'shape' | 'transverse'>) => isCircular(input) && input.transverse === 'spiral';
+
+/** Diámetro mínimo de la barra del zuncho colado en sitio: no. 3 (NTC 14.7.4.2). */
+const SPIRAL_MINIMUM_DIAMETER_MM = 9.5;
+
+/**
+ * Zuncho de NTC 14.7.4: paso libre ≥ max(25 mm, 1.5tmag) y ≤ 80 mm (14.7.4.1),
+ * ρs ≥ 0.45(Ag/Ac − 1)f′c/fyt con fyt ≤ 700 MPa (ec. 14.7.4.3). ρs se toma con
+ * la longitud del eje del zuncho: 4Asp(Dc − dsp)/(Dc² s).
+ */
+function spiralPitch(input: ColumnDesignInput, gross: number, shearSpacingMm: number): ColumnSpiral {
+  const db = input.tieDiameterMm;
+  const core = input.widthMm - 2 * input.coverMm;
+  const coreArea = Math.PI * core ** 2 / 4;
+  const fyt = Math.min(input.fyMpa, 700);
+  const requiredRatio = 0.45 * (gross / coreArea - 1) * input.fcMpa / fyt;
+  const volumeFactor = 4 * barArea(db) * (core - db) / core ** 2;
+  const ratioPitch = volumeFactor / requiredRatio;
+  const minimumClear = Math.max(25, 1.5 * input.maxAggregateMm);
+  const maximumClear = 80;
+  const pitch = Math.max(floorTo(Math.min(ratioPitch, maximumClear + db, shearSpacingMm), 5), 5);
+  return {
+    pitchMm: pitch,
+    clearPitchMm: pitch - db,
+    minimumClearPitchMm: minimumClear,
+    maximumClearPitchMm: maximumClear,
+    coreDiameterMm: core,
+    volumetricRatio: volumeFactor / pitch,
+    requiredRatio,
+    ratioPitchMm: ratioPitch,
+  };
+}
 
 /** Barras de una columna circular sobre una circunferencia; `rotation` gira el arreglo (rad). */
 function circularBars(input: Pick<ColumnDesignInput, 'widthMm' | 'coverMm' | 'tieDiameterMm' | 'barDiameterMm' | 'barCount'>, rotation = 0): ColumnBar[] {
@@ -356,6 +411,8 @@ function validate(input: ColumnDesignInput): string[] {
     if (!Number.isFinite(input.stabilityIndex) || input.stabilityIndex < 0) errors.push('El índice de estabilidad debe ser cero o positivo.');
     if (input.effectiveLengthFactor < 1) errors.push('En marcos con desplazamiento lateral k no puede ser menor que 1.0.');
   }
+  if (input.transverse === 'spiral' && !isCircular(input)) errors.push('El zuncho sólo se usa en columnas circulares.');
+  if (isSpiral(input) && !designCode(input.code).column.spiral) errors.push('El zuncho (refuerzo helicoidal) sólo está implementado con la NTC 2023; usa estribos circulares.');
   if (isCircular(input)) {
     const count = input.barCount ?? Number.NaN;
     if (!Number.isInteger(count) || count < 4 || count > 30) errors.push('Número de barras de la columna circular: entero entre 4 y 30.');
@@ -540,7 +597,13 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
   // Circular: D en `widthMm`; el resto del cálculo lo lee también como `depthMm`.
   if (circular && input.depthMm !== input.widthMm) input = { ...input, depthMm: input.widthMm };
 
-  const code = designCode(input.code);
+  const spiral = isSpiral(input);
+  const baseCode = designCode(input.code);
+  const spiralRules = baseCode.column.spiral;
+  // Zuncho: FR de la columna «refuerzo helicoidal» de la tabla 3.8.2.2 en todo el diagrama y en PR0.
+  const code: DesignCode = spiral && spiralRules
+    ? { ...baseCode, compressionFactor: spiralRules.compressionFactor, columnFactor: ({ netStrain, yieldStrain }) => spiralRules.factor(netStrain, yieldStrain) }
+    : baseCode;
   const rules = code.column;
   const { widthMm: b, depthMm: h, fcMpa: fc, fyMpa: fy } = input;
   const bars = columnBars(input);
@@ -657,18 +720,26 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
   const endSpacing = ntcTies ? Math.min(centerSpacing, roundSpacing(endLimit)) : centerSpacing;
   const height = input.unbracedLengthM * 1e3;
   const endLength = Math.max(height / 6, Math.max(b, h), 600, input.groundFloor ? height / 2 : 0);
-  const minimumTie = rules.minimumTieDiameter(input.barDiameterMm);
+  const minimumTie = spiral ? Math.max(SPIRAL_MINIMUM_DIAMETER_MM, rules.minimumTieDiameter(input.barDiameterMm)) : rules.minimumTieDiameter(input.barDiameterMm);
+  // Zuncho: un solo paso en toda la altura, que cumple 14.7.4 y el cortante.
+  const spiralDesign = spiral
+    ? spiralPitch(input, gross, Math.min(shearX.strengthSpacingMm, shearX.tableSpacingMm, shearX.minimumSteelSpacingMm))
+    : undefined;
   const ties: ColumnTies = {
     diameterMm: input.tieDiameterMm,
     minimumDiameterMm: minimumTie,
-    endSpacingMm: endSpacing,
-    endLengthMm: ntcTies ? Math.min(height / 2, Math.ceil(endLength / 50) * 50) : 0,
-    centerSpacingMm: centerSpacing,
+    endSpacingMm: spiralDesign?.pitchMm ?? endSpacing,
+    endLengthMm: ntcTies && !spiralDesign ? Math.min(height / 2, Math.ceil(endLength / 50) * 50) : 0,
+    centerSpacingMm: spiralDesign?.pitchMm ?? centerSpacing,
     crossTiesParallelToX,
     crossTiesParallelToY,
     hxMm: hx,
     hxLimitMm: hxLimit,
-    shear: { x: withSpacing(code, shearX, input, centerSpacing), y: withSpacing(code, shearY, input, centerSpacing) },
+    shear: {
+      x: withSpacing(code, shearX, input, spiralDesign?.pitchMm ?? centerSpacing),
+      y: withSpacing(code, shearY, input, spiralDesign?.pitchMm ?? centerSpacing),
+    },
+    ...(spiralDesign ? { spiral: spiralDesign } : {}),
   };
   const development = code.developmentLength({
     diameterMm: input.barDiameterMm,
@@ -721,11 +792,16 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
                 : `La esbeltez se desprecia (${radiusNote}).`;
 
   const checks: ElementCheck[] = [
-    tracedAt({ ...capacityCheck('strength', circular ? 'Flexocompresión (momento resultante)' : 'Flexocompresión', capacity.ratio, 1, '', refs.columnStrength, capacity.detail), demand: capacity.ratio, capacity: 1, unit: '' },
-      'Sección crítica con momentos amplificados', CAPTURED_DEMAND),
+    tracedAt({ ...capacityCheck('strength', circular ? 'Flexocompresión (momento resultante)' : 'Flexocompresión', capacity.ratio, 1, '',
+      circular ? refs.columnSection : refs.columnStrength,
+      `${capacity.detail}${spiral ? ' · FR de columna zunchada (0.75 a 0.90).' : ''}`), demand: capacity.ratio, capacity: 1, unit: '' },
+    'Sección crítica con momentos amplificados', CAPTURED_DEMAND),
     { ...capacityCheck('ratio-min', `Cuantía mínima (${rules.ratioMin * 100} %)`, rules.ratioMin, ratio, '', refs.columnRatio), demand: rules.ratioMin * 100, capacity: ratio * 100, unit: '%' },
     { ...capacityCheck('ratio-max', `Cuantía máxima (${rules.ratioMax * 100} %)`, ratio, rules.ratioMax, '', refs.columnRatio), demand: ratio * 100, capacity: rules.ratioMax * 100, unit: '%' },
   ];
+  if (circular && rules.circularMinimumBars > 4) {
+    checks.push({ ...capacityCheck('min-bars', `Barras mínimas dentro de ${spiral ? 'zuncho' : 'estribo circular'}`, rules.circularMinimumBars, bars.length, '', refs.minimumBars), unit: '' });
+  }
   if (rules.geometryLimits) {
     checks.push(
       // Sólo NTC (geometryLimits).
@@ -743,9 +819,21 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
       reference: input.braced ? refs.slenderness : refs.sway,
       note: `${rules.neglectUsesEffectiveLength ? 'kH/r' : 'H/r'} = ${governingAxis.slenderness.toFixed(1)}${Number.isFinite(governingAxis.limit) ? ` (límite para despreciarla ${governingAxis.limit.toFixed(0)})` : ''}. ${slenderNote}`,
     },
-    { ...capacityCheck('tie-diameter', 'Diámetro de estribo', minimumTie, input.tieDiameterMm, 'mm', refs.tieDiameter) },
+    { ...capacityCheck('tie-diameter', spiral ? 'Diámetro del zuncho' : 'Diámetro de estribo', minimumTie, input.tieDiameterMm, 'mm', spiral ? refs.spiral : refs.tieDiameter) },
   );
-  if (ntcTies) {
+  if (spiralDesign) {
+    checks.push(
+      { ...capacityCheck('spiral-ratio', 'Cuantía volumétrica del zuncho', spiralDesign.requiredRatio, spiralDesign.volumetricRatio, '', refs.spiral,
+        `ρs = 4Asp(Dc − dsp)/(Dc² s) con Dc = ${Math.round(spiralDesign.coreDiameterMm)} mm; mínima 0.45(Ag/Ac − 1)f′c/fyt.`),
+      demand: spiralDesign.requiredRatio * 100, capacity: spiralDesign.volumetricRatio * 100, unit: '%' },
+      capacityCheck('spiral-pitch-max', 'Paso libre máximo del zuncho', spiralDesign.clearPitchMm, spiralDesign.maximumClearPitchMm, 'mm', refs.spiral,
+        `Paso s = ${spiralDesign.pitchMm} mm (${spiralDesign.ratioPitchMm.toFixed(0)} mm por cuantía volumétrica).`),
+      capacityCheck('spiral-pitch-min', 'Paso libre mínimo del zuncho', spiralDesign.minimumClearPitchMm, spiralDesign.clearPitchMm, 'mm', refs.spiral,
+        'Al menos 25 mm y 1.5 veces el agregado; si no cabe, aumenta el diámetro del zuncho.'),
+      { id: 'spiral-anchorage', label: 'Anclaje del zuncho', status: 'info', reference: refs.spiral,
+        note: '2.5 vueltas adicionales en cada extremo; el zuncho arranca en la cara superior de la zapata o losa. Cada barra queda dentro del zuncho, sin grapas.' },
+    );
+  } else if (ntcTies) {
     checks.push(
       capacityCheck('tie-end-spacing', 'Estribos en Lo', endSpacing, endLimit, 'mm', ntc('6.4.4.4.2.4'),
         `so ≤ ${grade56 ? '6db y 150 mm' : '8db y 200 mm'} y b/4; Lo = ${Math.round(ties.endLengthMm)} mm desde cada extremo.`),
@@ -755,14 +843,14 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
     );
     if (circular) {
       checks.push({ id: 'lateral-support', label: 'Barras con apoyo lateral', status: 'info', reference: complementary('Estribo circular'),
-        note: 'Cada barra queda dentro del estribo circular; no se requieren grapas. El confinamiento con zuncho (refuerzo helicoidal) no se evalúa.' });
+        note: 'Cada barra queda dentro del estribo circular; no se requieren grapas.' });
     }
   } else {
     checks.push(
       capacityCheck('tie-center-spacing', 'Separación de estribos', centerSpacing, detailLimit, 'mm', refs.tieSpacing, '16db, 48de y la menor dimensión.'),
       circular
         ? { id: 'lateral-support', label: 'Barras con apoyo lateral', status: 'info', reference: complementary('Estribo circular'),
-          note: 'Cada barra queda dentro del estribo circular; no se requieren grapas. El confinamiento con zuncho (refuerzo helicoidal) no se evalúa.' }
+          note: 'Cada barra queda dentro del estribo circular; no se requieren grapas.' }
         : { id: 'lateral-support', label: 'Barras con apoyo lateral', status: 'info', reference: refs.lateralSupport,
           note: `Esquinas y barras alternas en estribo; ${crossTiesParallelToX + crossTiesParallelToY} grapas por juego para que ninguna barra quede a más de 150 mm libres de una apoyada.` },
     );
@@ -771,8 +859,8 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
     if (shear.demandKn <= TOLERANCE) continue;
     const where = circular ? 'resultante' : `en ${axis}`;
     checks.push(
-      tracedAt(capacityCheck(`shear-${axis.toLowerCase()}`, `Cortante ${where}`, shear.demandKn, shear.strengthKn, 'kN', refs.columnShear,
-        `${shear.legs} ramas · φVc = ${shear.concreteStrengthKn.toFixed(1)} kN · FR ${code.shearFactor}.${circular ? ' Sección circular: bw = D y d = 0.8D (criterio complementario).' : ''}`),
+      tracedAt(capacityCheck(`shear-${axis.toLowerCase()}`, `Cortante ${where}`, shear.demandKn, shear.strengthKn, 'kN', circular ? refs.circularShear : refs.columnShear,
+        `${shear.legs} ramas${circular ? ` (Av = 2Ab del ${spiral ? 'zuncho' : 'estribo circular'})` : ''} · φVc = ${shear.concreteStrengthKn.toFixed(1)} kN · FR ${code.shearFactor}.${circular ? ' Sección circular: bw = D y d = 0.8D (criterio complementario).' : ''}`),
       circular ? 'Resultante √(Vx² + Vy²)' : `Dirección ${axis}`, CAPTURED_DEMAND),
       capacityCheck(`shear-section-${axis.toLowerCase()}`, `Cortante máximo por sección ${where}`, shear.demandKn, shear.sectionStrengthKn, 'kN', refs.columnShearSection),
     );

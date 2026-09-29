@@ -1023,11 +1023,12 @@
 }
 
 .app-shell.workspace-screen .workspace-topbar :is(.workspace-topbar__icon-button, .workspace-topbar__action-button):active:not(:disabled) {
-  transform: none;
+  transform: var(--sc-press-transform);
   box-shadow: var(--sc-shadow-pressed);
 }
 
 .app-shell.workspace-screen .workspace-topbar .workspace-topbar__action-button.is-primary:active:not(:disabled) {
+  transform: var(--sc-press-transform);
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);

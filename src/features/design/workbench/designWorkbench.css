@@ -111,9 +111,21 @@
 .dw-badge[data-status] { --status: var(--dw-pass); color: var(--status); }
 .dw-badge[data-status='fail'], .dw-badge[data-status='error'] { --status: var(--dw-fail); }
 .dw-badge[data-status='warning'] { --status: var(--dw-warn); }
-.dw-badge--button { cursor: pointer; }
+.dw-badge--button {
+  cursor: pointer;
+  transition:
+    box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
+}
 .dw-badge--button:disabled { cursor: default; }
-.dw-badge--button:hover:not(:disabled) { box-shadow: var(--sc-shadow-lifted); }
+.dw-badge--button:hover:not(:disabled) {
+  box-shadow: var(--sc-shadow-lifted);
+  transform: translateY(-1px);
+}
+.dw-badge--button:active:not(:disabled) {
+  transform: var(--sc-press-transform);
+  box-shadow: var(--sc-shadow-inset);
+}
 .dw-badge--caption { overflow: hidden; text-overflow: ellipsis; color: var(--dw-muted); font-weight: 500; }
 
 .dw-code-chip { position: relative; display: inline-flex; align-items: center; }
@@ -160,8 +172,19 @@
   background: transparent;
   color: var(--dw-muted);
   cursor: pointer;
+  transition:
+    background-color var(--sc-motion-control) var(--sc-ease-standard),
+    color var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
 }
-.dw-zoom button:hover:not(:disabled) { color: var(--dw-ink); background: var(--sc-color-fill-quaternary); }
+.dw-zoom button:hover:not(:disabled) {
+  color: var(--dw-ink);
+  background: var(--sc-color-fill-quaternary);
+  transform: translateY(-1px);
+}
+.dw-zoom button:active:not(:disabled) {
+  transform: var(--sc-press-transform);
+}
 .dw-zoom button:disabled { opacity: .35; cursor: default; }
 
 /* Barra flotante inferior: elementos y vistas, como la barra de herramientas 2D. */
@@ -187,7 +210,26 @@
 }
 .dw-dock__group { display: flex; gap: 4px; }
 .dw-dock__divider { flex: none; width: 1px; height: 24px; margin: 0 4px; background: var(--dw-line); }
-.dw-dock .sc-tool-button { flex: none; width: auto; min-height: 38px; padding: 0 12px 0 8px; grid-template-columns: auto auto; }
+.dw-dock .sc-tool-button {
+  flex: none;
+  width: auto;
+  min-height: 38px;
+  padding: 0 12px 0 8px;
+  grid-template-columns: auto auto;
+  border-radius: var(--sc-radius-control);
+  transition:
+    background-color var(--sc-motion-control) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+    color var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
+}
+.dw-dock .sc-tool-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+.dw-dock .sc-tool-button:active:not(:disabled) {
+  transform: var(--sc-press-transform);
+  box-shadow: var(--sc-shadow-inset);
+}
 .dw-dock .sc-tool-button:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
 .dw-element-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round; }
 
@@ -208,8 +250,21 @@
   color: var(--dw-muted);
   font: 600 12px/1 var(--sc-font-ui);
   cursor: pointer;
+  transition:
+    background-color var(--sc-motion-control) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+    color var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
 }
-.dw-view:hover:not(:disabled) { color: var(--dw-ink); background: var(--sc-color-surface-2); }
+.dw-view:hover:not(:disabled) {
+  color: var(--dw-ink);
+  background: var(--sc-color-surface-2);
+  transform: translateY(-1px);
+}
+.dw-view:active:not(:disabled) {
+  transform: var(--sc-press-transform);
+  box-shadow: var(--sc-shadow-inset);
+}
 .dw-view[aria-pressed='true'] { color: var(--sc-color-action-primary); background: var(--sc-color-surface-2); }
 .dw-view:disabled { opacity: .4; cursor: default; }
 .dw-view:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
@@ -274,8 +329,19 @@
   background: transparent;
   color: var(--dw-muted);
   cursor: pointer;
+  transition:
+    background-color var(--sc-motion-control) var(--sc-ease-standard),
+    color var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
 }
-.dw-icon-button:hover:not(:disabled) { color: var(--dw-ink); background: var(--sc-color-fill-quaternary); }
+.dw-icon-button:hover:not(:disabled) {
+  color: var(--dw-ink);
+  background: var(--sc-color-fill-quaternary);
+  transform: translateY(-1px);
+}
+.dw-icon-button:active:not(:disabled) {
+  transform: var(--sc-press-transform);
+}
 .dw-icon-button:disabled { opacity: .35; cursor: default; }
 
 .dw-group { padding: 14px 2px 12px; border-top: 1px solid var(--dw-line); min-width: 0; }
@@ -363,6 +429,7 @@
 
 .dw-beam, .dw-concrete { fill: var(--sc-color-surface-1); stroke: var(--dw-ink); stroke-width: 1.3; }
 .dw-column { fill: var(--sc-color-surface-3, var(--sc-color-surface-2)); stroke: var(--dw-ink); stroke-width: 1.3; }
+.dw-pedestal { fill: var(--sc-color-surface-2); stroke: var(--dw-ink); stroke-width: 1.3; }
 .dw-rebar { stroke: var(--dw-steel); stroke-width: 2.6; stroke-linecap: round; }
 .dw-stirrup-tick { stroke: var(--dw-muted); stroke-width: .9; }
 .dw-zone { fill: var(--dw-shear); opacity: .8; }
@@ -377,6 +444,7 @@
 .dw-rebar-grid line { stroke: var(--dw-muted); stroke-width: .8; opacity: .6; }
 .dw-critical { fill: none; stroke: var(--dw-shear); stroke-width: 1.5; stroke-dasharray: 6 4; }
 .dw-critical--oneway { stroke-dasharray: 2 3; }
+.dw-property-line { stroke: var(--dw-ink); stroke-width: 2.5; stroke-dasharray: 10 4 2 4; }
 
 .dw-load line { stroke: var(--sc-color-load-distributed, var(--dw-ink)); stroke-width: 1.2; }
 .dw-load__head { fill: var(--sc-color-load-distributed, var(--dw-ink)); }
@@ -672,6 +740,15 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition:
+    color var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
+}
+.dw-memory-status__open:hover {
+  color: var(--dw-ink);
+}
+.dw-memory-status__open:active {
+  transform: var(--sc-press-transform);
 }
 .dw-memory-status__open span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dw-memory-status__open i { flex: none; width: 7px; height: 7px; border-radius: var(--sc-radius-pill); border: 1.5px solid var(--dw-subtle); }
@@ -690,6 +767,19 @@
   color: var(--dw-ink);
   font: 600 11px var(--sc-font-ui);
   cursor: pointer;
+  transition:
+    background-color var(--sc-motion-control) var(--sc-ease-standard),
+    border-color var(--sc-motion-control) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
+}
+.dw-memory-status__save:hover:not(:disabled) {
+  border-color: var(--dw-muted);
+  transform: translateY(-1px);
+}
+.dw-memory-status__save:active:not(:disabled) {
+  transform: var(--sc-press-transform);
+  box-shadow: var(--sc-shadow-inset);
 }
 .dw-memory-status__open:focus-visible, .dw-memory-status__save:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
 
@@ -741,8 +831,20 @@
   color: var(--dw-ink);
   font: 600 11px var(--sc-font-ui);
   cursor: pointer;
+  transition:
+    background-color var(--sc-motion-control) var(--sc-ease-standard),
+    border-color var(--sc-motion-control) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
 }
-.dw-inline-action:hover:not(:disabled) { border-color: var(--dw-muted); }
+.dw-inline-action:hover:not(:disabled) {
+  border-color: var(--dw-muted);
+  transform: translateY(-1px);
+}
+.dw-inline-action:active:not(:disabled) {
+  transform: var(--sc-press-transform);
+  box-shadow: var(--sc-shadow-inset);
+}
 .dw-inline-action:disabled { opacity: .45; cursor: default; }
 .dw-inline-action:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
 .dw-action-note { margin: 0; color: var(--dw-muted); font-size: 11.5px; line-height: 1.4; }

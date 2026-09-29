@@ -95,11 +95,33 @@
   font-family: var(--s-data);
   font-size: 11px;
   letter-spacing: .08em;
+  transition:
+    background-color 140ms var(--s-ease),
+    box-shadow 140ms var(--s-ease),
+    transform 90ms var(--s-ease);
 }
 .fs-suite__segmented { padding: 3px; gap: 2px; }
-.fs-suite__segmented button { min-width: 36px; min-height: 26px; border: 0; border-radius: 999px; background: transparent; color: var(--s-muted); cursor: pointer; }
+.fs-suite__segmented button {
+  min-width: 36px;
+  min-height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--s-muted);
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--s-ease),
+    box-shadow 140ms var(--s-ease),
+    color 140ms var(--s-ease),
+    transform 90ms var(--s-ease);
+}
+.fs-suite__segmented button:active { transform: translateY(1px); }
 .fs-suite__segmented button[aria-pressed='true'] { background: var(--s-bg); box-shadow: var(--s-inset); color: var(--s-ink); }
 .fs-suite__chip { gap: 7px; padding: 0 13px; color: var(--s-ink-2); cursor: pointer; }
+.fs-suite__chip:hover { transform: translateY(-1px); }
+.fs-suite__chip:active { transform: translateY(1.5px); box-shadow: var(--s-inset); }
+.fs-suite__chip svg { transition: transform 140ms var(--s-ease); }
+.fs-suite__chip:hover svg { transform: rotate(15deg); }
 
 /* ----------------------------------------------------------------- Cuerpo */
 
@@ -156,10 +178,24 @@
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: background-color 140ms var(--s-ease), box-shadow 140ms var(--s-ease), border-radius 140ms var(--s-ease);
+  transition:
+    background-color 140ms var(--s-ease),
+    box-shadow 140ms var(--s-ease),
+    border-radius 140ms var(--s-ease),
+    transform 90ms var(--s-ease);
 }
 .fs-tool:hover,
-.fs-tool:focus-visible { border-radius: var(--sc-radius-card); border-bottom-color: transparent; background: var(--s-surface); box-shadow: var(--s-raised); }
+.fs-tool:focus-visible {
+  border-radius: var(--sc-radius-card);
+  border-bottom-color: transparent;
+  background: var(--s-surface);
+  box-shadow: var(--s-raised);
+  transform: translateY(-1px);
+}
+.fs-tool:active {
+  transform: translateY(1.5px);
+  box-shadow: var(--s-inset) !important;
+}
 .fs-tool:focus-visible { outline-offset: -2px; }
 
 .fs-tool__tile {
@@ -208,12 +244,29 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 0;
-  border: 0;
-  background: none;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
   color: var(--s-muted);
   cursor: pointer;
   font-size: 14px;
+  transition:
+    background-color 140ms var(--s-ease),
+    box-shadow 140ms var(--s-ease),
+    border-color 140ms var(--s-ease),
+    transform 90ms var(--s-ease),
+    color 140ms var(--s-ease);
+}
+.fs-suite__resume:hover {
+  background: var(--s-surface);
+  border-color: var(--s-line);
+  box-shadow: var(--s-raised);
+  transform: translateY(-1px);
+}
+.fs-suite__resume:active {
+  transform: translateY(1.5px);
+  box-shadow: var(--s-inset);
 }
 .fs-suite__resume strong { overflow: hidden; color: var(--s-ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .fs-suite__resume svg { flex: none; color: var(--s-brand); transition: transform 140ms var(--s-ease); }

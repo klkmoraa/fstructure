@@ -10,7 +10,7 @@ import type { DesignReport, ReportRow } from './designReport';
 /** Columna: del borrador del formulario a la entrada del motor y a la memoria. */
 export const COLUMN_DEFAULTS = {
   tag: '', place: '',
-  shape: 'rectangular', diameter: '45', barCount: '8',
+  shape: 'rectangular', diameter: '45', barCount: '8', transverse: 'ties',
   width: '40', depth: '40', cover: '4', fc: '250', fy: '4200', bar: '19.1', barsWidth: '3', barsDepth: '3', tie: '9.5',
   axial: '900', momentX: '80', momentY: '40', shearX: '0', shearY: '0', length: '3', k: '1', curvature: 'single', endRatio: '1', sustained: '0.6',
   group: 'B2', groundFloor: 'no', aggregate: '19', braced: 'yes', swayX: '0', swayY: '0', stability: '0.05',
@@ -25,6 +25,8 @@ export const columnToInput = (codeId: DesignCodeId, draft: ColumnDraft): ColumnD
   widthMm: parseNumber(circularDraft(draft) ? draft.diameter : draft.width) * 10,
   depthMm: parseNumber(circularDraft(draft) ? draft.diameter : draft.depth) * 10,
   barCount: parseNumber(draft.barCount),
+  // El zuncho sólo existe en normas con sus cláusulas; en las demás la circular lleva estribos.
+  transverse: circularDraft(draft) && draft.transverse === 'spiral' && designCode(codeId).column.spiral ? 'spiral' : 'ties',
   coverMm: parseNumber(draft.cover) * 10,
   fcMpa: mpaFromKgcm2(draft.fc),
   fyMpa: mpaFromKgcm2(draft.fy),
@@ -51,7 +53,9 @@ export const columnToInput = (codeId: DesignCodeId, draft: ColumnDraft): ColumnD
   stabilityIndex: draft.braced === 'no' ? parseNumber(draft.stability) : 0,
 });
 
-export const tieText = (result: ColumnDesignResult) => result.ties.endLengthMm > 0
+export const tieText = (result: ColumnDesignResult) => result.ties.spiral
+  ? `Zuncho ${rebarLabel(result.ties.diameterMm)} a paso de ${formatNumber(result.ties.spiral.pitchMm / 10, 1)} cm`
+  : result.ties.endLengthMm > 0
   ? `${tieWord(result)} ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.endSpacingMm / 10, 1)} cm en Lo · @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm al centro`
   : `${tieWord(result)} ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm`;
 
@@ -80,7 +84,7 @@ function columnMemo(result: ColumnDesignResult): string {
     ...(input.braced ? [] : [`Marco con desplazamiento lateral: M2s = ${input.swayMomentXKnm} / ${input.swayMomentYKnm} kN·m · Q = ${input.stabilityIndex} · δs = ${formatNumber(Math.max(result.magnification.x.swayFactor, result.magnification.y.swayFactor), 2)}`]),
     `Esbeltez = ${formatNumber(Math.max(result.slenderness.x, result.slenderness.y), 1)} (límite ${formatNumber(result.slenderness.limit, 0)}) · Mc = ${formatNumber(result.magnification.x.designMomentKnm)} / ${formatNumber(result.magnification.y.designMomentKnm)} kN·m (δ ${formatNumber(result.magnification.x.factor, 2)} / ${formatNumber(result.magnification.y.factor, 2)})`,
     `Refuerzo: ${result.bars.length} ${rebarLabel(input.barDiameterMm)} (ρ = ${formatNumber(result.steelRatio * 100, 2)} %)`,
-    `Estribos: ${tieText(result)}`,
+    `${result.ties.spiral ? 'Refuerzo helicoidal' : 'Estribos'}: ${tieText(result)}${result.ties.spiral ? ` (ρs = ${formatNumber(result.ties.spiral.volumetricRatio * 100, 2)} % ≥ ${formatNumber(result.ties.spiral.requiredRatio * 100, 2)} %)` : ''}`,
     `Traslape Clase B: ${formatNumber(result.spliceLengthMm / 10, 0)} cm`,
     `${methodLabel[result.capacity.method]}: ${Math.round(result.capacity.ratio * 100)} % · ${result.capacity.detail}`,
     ...result.checks.map((check) => `${check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '!'} ${check.label}`),
@@ -91,7 +95,9 @@ function columnMemo(result: ColumnDesignResult): string {
 function columnReinforcementRows(result: ColumnDesignResult): ReportRow[] {
   return [
     { label: `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} longitudinales`, value: `${circularResult(result) ? 'en la circunferencia' : `${result.input.barsAlongWidth} por cara b · ${result.input.barsAlongDepth} por cara h`} · ρ ${formatNumber(result.steelRatio * 100, 2)} %` },
-    { label: 'Estribos', value: `${tieText(result)}${result.ties.endLengthMm > 0 ? ` · Lo = ${formatNumber(result.ties.endLengthMm / 10, 0)} cm` : ''}` },
+    result.ties.spiral
+      ? { label: 'Zuncho', value: `${tieText(result)} · paso libre ${formatNumber(result.ties.spiral.clearPitchMm / 10, 2)} cm · 2.5 vueltas de anclaje en cada extremo` }
+      : { label: 'Estribos', value: `${tieText(result)}${result.ties.endLengthMm > 0 ? ` · Lo = ${formatNumber(result.ties.endLengthMm / 10, 0)} cm` : ''}` },
     ...(circularResult(result) ? [] : [{ label: 'Grapas por juego', value: `${result.ties.crossTiesParallelToX} paralelas a X · ${result.ties.crossTiesParallelToY} paralelas a Y` }]),
     { label: 'Traslape Clase B', value: `${formatNumber(result.spliceLengthMm / 10, 0)} cm` },
   ];
@@ -100,12 +106,17 @@ function columnReinforcementRows(result: ColumnDesignResult): ReportRow[] {
 function columnValues(result: ColumnDesignResult) {
   const code = designCode(result.input.code);
   const slendernessSymbol = code.column.neglectUsesEffectiveLength ? 'kH/r' : 'H/r';
+  const compressionFactor = result.ties.spiral && code.column.spiral ? code.column.spiral.compressionFactor : code.compressionFactor;
   return [
     { symbol: 'As', label: 'Área de acero', value: `${formatNumber(result.steelAreaMm2 / 100, 2)} cm²` },
-    { symbol: 'Grapas', label: 'Por juego', value: String(result.ties.crossTiesParallelToX + result.ties.crossTiesParallelToY) },
+    ...(result.ties.spiral ? [
+      { symbol: 'Dc', label: 'Núcleo hasta el paño exterior del zuncho', value: `${formatNumber(result.ties.spiral.coreDiameterMm / 10, 1)} cm` },
+      { symbol: 'ρs', label: 'Cuantía volumétrica / mínima 0.45(Ag/Ac − 1)f′c/fyt', value: `${formatNumber(result.ties.spiral.volumetricRatio * 100, 2)} / ${formatNumber(result.ties.spiral.requiredRatio * 100, 2)} %` },
+      { symbol: 's', label: 'Paso (por cuantía)', value: `${formatNumber(result.ties.spiral.pitchMm, 0)} mm (${formatNumber(result.ties.spiral.ratioPitchMm, 0)} mm)` },
+    ] : [{ symbol: 'Grapas', label: 'Por juego', value: String(result.ties.crossTiesParallelToX + result.ties.crossTiesParallelToY) }]),
     { symbol: 'Ag', label: 'Área bruta', value: `${formatNumber(result.grossAreaMm2 / 100, 0)} cm²` },
     { symbol: 'P0', label: 'Axial nominal', value: `${formatNumber(result.squashLoadKn, 0)} kN` },
-    { symbol: 'φPn,máx', label: `${code.maximumAxialCoefficient === 1 ? '' : `${code.maximumAxialCoefficient}·`}φ·P0 (φ = ${code.compressionFactor})`, value: `${formatNumber(result.maximumDesignAxialKn, 0)} kN` },
+    { symbol: 'φPn,máx', label: `${code.maximumAxialCoefficient === 1 ? '' : `${code.maximumAxialCoefficient}·`}φ·P0 (φ = ${compressionFactor})`, value: `${formatNumber(result.maximumDesignAxialKn, 0)} kN` },
     { symbol: 'emín', label: code.column.minimumMoment === 'eccentricity' ? '0.05h ≥ 20 mm (X / Y)' : '15 + 0.03h si es esbelta (X / Y)', value: `${formatNumber(result.magnification.x.minimumEccentricityMm, 0)} / ${formatNumber(result.magnification.y.minimumEccentricityMm, 0)} mm` },
     { symbol: 'VcR', label: 'Cortante del concreto X / Y', value: `${formatNumber(result.ties.shear.x.concreteStrengthKn, 0)} / ${formatNumber(result.ties.shear.y.concreteStrengthKn, 0)} kN` },
     { symbol: 'Pb · Mb', label: 'Balanceada X', value: `${formatNumber(result.aboutX.balanced.axialKn, 0)} kN · ${formatNumber(result.aboutX.balanced.momentKnm, 0)} kN·m` },
@@ -114,7 +125,7 @@ function columnValues(result: ColumnDesignResult) {
     { symbol: 'Cm', label: 'Factor de momento', value: formatNumber(result.magnification.x.cm, 2) },
     { symbol: 'M2,mín', label: 'Pu·emín (X)', value: `${formatNumber(result.magnification.x.minimumMomentKnm)} kN·m` },
     { symbol: 'Mc', label: 'Momento de diseño X / Y', value: `${formatNumber(result.magnification.x.designMomentKnm)} / ${formatNumber(result.magnification.y.designMomentKnm)} kN·m` },
-    { symbol: 'φ', label: code.axialTransition ? 'Según φPn' : 'Según εt', value: `${code.compressionFactor} → 0.90` },
+    { symbol: 'φ', label: code.axialTransition ? 'Según φPn' : `Según εt${result.ties.spiral ? ' (columna zunchada)' : ''}`, value: `${compressionFactor} → 0.90` },
   ];
 }
 
@@ -133,7 +144,7 @@ function columnData(result: ColumnDesignResult, draft: ColumnDraft) {
       { label: 'Sección', value: input.shape === 'circular' ? `circular, D = ${formatNumber(input.widthMm / 10, 0)} cm` : `rectangular, b = ${formatNumber(input.widthMm / 10, 0)} cm (X) · h = ${formatNumber(input.depthMm / 10, 0)} cm (Y)` },
       { label: 'Recubrimiento libre', value: `${formatNumber(input.coverMm / 10, 1)} cm` },
       { label: 'Barras', value: input.shape === 'circular' ? `${input.barCount} ${rebarLabel(input.barDiameterMm)} en la circunferencia` : `${rebarLabel(input.barDiameterMm)} · ${input.barsAlongWidth} por cara b · ${input.barsAlongDepth} por cara h` },
-      { label: 'Estribo', value: `${input.shape === 'circular' ? 'circular ' : ''}${rebarLabel(input.tieDiameterMm)}` },
+      { label: input.transverse === 'spiral' ? 'Zuncho' : 'Estribo', value: `${input.shape === 'circular' && input.transverse !== 'spiral' ? 'circular ' : ''}${rebarLabel(input.tieDiameterMm)}` },
       { label: 'Agregado máximo', value: `${formatNumber(input.maxAggregateMm, 0)} mm` },
     ] },
     { title: 'Materiales', rows: [

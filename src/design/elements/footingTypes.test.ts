@@ -26,6 +26,16 @@ describe('zapata corrida', () => {
     expect(result.cantileverMm).toBe(250);
   });
 
+  it('desprecia λs en cortante (NTC 9.3.1.6) y cita la sección crítica de mampostería', () => {
+    const result = ok(designStripFooting({ ...base, thicknessMm: 600 }));
+    const d = result.effectiveDepthMm;
+    const rho = result.transverse.providedMm2PerM / (1000 * d);
+    expect(result.shearStrengthKnPerM).toBeCloseTo(designCode('ntc-2023').shearFactor * 0.66 * Math.cbrt(rho) * Math.sqrt(25) * 1000 * d / 1e3, 9);
+    expect(result.checks.find((check) => check.id === 'one-way')!.reference.clauseIds).toContain('9.3.1.3-9.3.1.6');
+    const masonry = ok(designStripFooting({ ...base, wallMaterial: 'masonry' }));
+    expect(masonry.checks.find((check) => check.id === 'flexure')!.reference.clauseIds).toContain('9.4.7.4 (tabla 9.4.7.4)');
+  });
+
   it('busca el peralte que cumple cortante', () => {
     const result = ok(designStripFooting({ ...base, thicknessMm: null, deadKnPerM: 200, liveKnPerM: 100, allowablePressureKpa: 100 }));
     expect(result.checks.find((check) => check.id === 'one-way')!.status).toBe('pass');

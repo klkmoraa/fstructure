@@ -10,8 +10,9 @@ function CircularColumnSection({ result }: { result: ColumnDesignResult }) {
   const cx = size / 2;
   const cy = size / 2 - 4;
   const hoop = (diameter / 2 - coverMm - dt / 2) * scale;
+  const spiral = result.ties.spiral;
   return <svg className="dw-drawing dw-drawing--section" viewBox={`0 0 ${size} ${size + 30}`} role="img"
-    aria-label={`Sección circular de columna de ${diameter / 10} centímetros de diámetro con ${result.bars.length} varillas ${rebarLabel(db)}`}>
+    aria-label={`Sección circular de columna de ${diameter / 10} centímetros de diámetro con ${result.bars.length} varillas ${rebarLabel(db)}${spiral ? ` y zuncho ${rebarLabel(dt)} a paso de ${formatNumber(spiral.pitchMm / 10, 1)} centímetros` : ''}`}>
     <circle className="dw-concrete" cx={cx} cy={cy} r={radius} />
     <circle className="dw-stirrup" cx={cx} cy={cy} r={hoop} style={{ strokeWidth: Math.max(1.5, dt * scale) }} />
     <g className="dw-axis">
@@ -23,7 +24,7 @@ function CircularColumnSection({ result }: { result: ColumnDesignResult }) {
     {result.bars.map((bar, index) => <circle key={index} className="dw-bar" cx={cx + bar.x * scale} cy={cy - bar.y * scale} r={Math.max(2.6, db / 2 * scale)} />)}
     <g className="dw-dimension">
       <line x1={cx - radius} x2={cx + radius} y1={cy + radius + 22} y2={cy + radius + 22} />
-      <text x={cx} y={cy + radius + 36} textAnchor="middle">{`D = ${formatNumber(diameter / 10, 0)} cm`}</text>
+      <text x={cx} y={cy + radius + 36} textAnchor="middle">{`D = ${formatNumber(diameter / 10, 0)} cm${spiral ? ` · zuncho @ ${formatNumber(spiral.pitchMm / 10, 1)} cm` : ''}`}</text>
     </g>
   </svg>;
 }

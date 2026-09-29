@@ -373,8 +373,16 @@
 }
 
 .solver2d-action svg { flex: none; }
-.solver2d-action:hover { background: var(--sc-color-surface-2); border-color: var(--sc-color-border-strong); box-shadow: var(--sc-shadow-raised); }
-.solver2d-action:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
+.solver2d-action:hover {
+  background: var(--sc-color-surface-2);
+  border-color: var(--sc-color-border-strong);
+  box-shadow: var(--sc-shadow-raised);
+  transform: translateY(-1px);
+}
+.solver2d-action:active {
+  transform: translateY(1.5px);
+  box-shadow: var(--sc-shadow-inset) !important;
+}
 .solver2d-action:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
 
 .solver2d-action--primary {
@@ -388,8 +396,13 @@
   border-color: var(--sc-color-action-hover);
   box-shadow: var(--sc-shadow-action-hover);
   color: var(--sc-color-action-foreground);
+  transform: translateY(-1px);
 }
-.solver2d-action--primary:active { background: var(--sc-color-action-pressed); box-shadow: var(--sc-shadow-action-pressed); }
+.solver2d-action--primary:active {
+  background: var(--sc-color-action-pressed);
+  box-shadow: inset 2px 2.5px 5px rgb(0 0 0 / 25%), inset -1.5px -1.5px 3px rgb(255 255 255 / 35%) !important;
+  transform: translateY(1.5px);
+}
 
 /* ------------------------------------------------------- Escena de portada
    El pórtico tridimensional, solo. Llevaba encima una hoja con el diagrama de
@@ -536,10 +549,14 @@
   border-color: var(--sc-color-border);
   background: var(--sc-color-surface-elevated);
   box-shadow: var(--sc-shadow-raised);
+  transform: translateY(-1px);
 }
 .solver2d-path:hover::before,
 .solver2d-path:focus-visible::before { opacity: 1; }
-.solver2d-path:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
+.solver2d-path:active {
+  transform: translateY(1.5px);
+  box-shadow: var(--sc-shadow-inset) !important;
+}
 .solver2d-path:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
 
 .solver2d-path__icon {

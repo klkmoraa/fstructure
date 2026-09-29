@@ -60,22 +60,73 @@ export interface BeamDesignInput {
 
 export interface BeamFlange {
   readonly kind: 'T' | 'L';
-  /** Ancho efectivo del patín bf (incluye el alma); lo fija quien diseña. */
+  /** Ancho efectivo del patín bf (incluye el alma); lo fija quien diseña y se revisa contra `flangeWidthLimit`. */
   readonly widthMm: number;
   readonly thicknessMm: number;
+  /** La: distancia libre a la viga paralela vecina; sin ella el límite sale de t y Ln. */
+  readonly clearDistanceMm?: number | null;
+}
+
+export interface FlangeWidthLimit {
+  /** bf máximo, alma incluida. */
+  readonly widthMm: number;
+  /** Vuelo máximo desde la cara del alma, por lado. */
+  readonly overhangMm: number;
+  readonly governs: string;
 }
 
 /**
+ * Ancho efectivo máximo del patín (NTC tabla 5.2.1.4.2): vuelo desde la cara
+ * del alma de min(8t, La/2, Ln/8) a cada lado en vigas T y de min(6t, La/2,
+ * Ln/12) en vigas L. Ln es el claro libre de la viga.
+ */
+export function flangeWidthLimit(kind: BeamFlange['kind'], webMm: number, thicknessMm: number, clearSpanMm: number, clearDistanceMm?: number | null): FlangeWidthLimit {
+  const tee = kind === 'T';
+  const candidates: [number, string][] = [
+    [(tee ? 8 : 6) * thicknessMm, tee ? '8t' : '6t'],
+    [clearSpanMm / (tee ? 8 : 12), tee ? 'Ln/8' : 'Ln/12'],
+    ...(clearDistanceMm && clearDistanceMm > 0 ? [[clearDistanceMm / 2, 'La/2'] as [number, string]] : []),
+  ];
+  const [overhangMm, governs] = candidates.reduce((best, item) => item[0] < best[0] ? item : best);
+  return { widthMm: webMm + (tee ? 2 : 1) * overhangMm, overhangMm, governs };
+}
+
+/** Claro libre menor de la viga: Ln de la tabla 5.2.1.4.2. */
+export const beamClearSpanMm = (input: { readonly spans: readonly Pick<BeamSpanLoads, 'lengthM'>[]; readonly supportWidthMm: number }) =>
+  Math.min(...input.spans.map((span) => Math.max(span.lengthM * 1e3 - input.supportWidthMm, span.lengthM * 1e3 / 2)));
+
+/**
  * Armado que fija la persona usuaria. Las corridas son las suyas; los bastones
- * se siguen proponiendo donde no alcanzan (`auto`) o se omiten (`none`), en
- * cuyo caso la flexión se revisa sólo con las corridas. Los estribos van a una
- * separación uniforme en todos los claros, o se calculan si es `null`.
+ * se siguen proponiendo donde no alcanzan (`auto`), se omiten (`none`, la
+ * flexión se revisa sólo con las corridas) o son los suyos (`custom`). Los
+ * estribos van por zonas en cada claro (`stirrupZones`), a una separación
+ * uniforme en todos los claros o se calculan si `stirrupSpacingMm` es `null`.
  */
 export interface BeamProvidedReinforcement {
   readonly top: BarGroup;
   readonly bottom: BarGroup;
-  readonly bastions: 'auto' | 'none';
+  readonly bastions: 'auto' | 'none' | 'custom';
+  /** Bastones propios (`bastions: 'custom'`); sin traslapes en un mismo lecho. */
+  readonly customBastions?: readonly ProvidedBastion[];
   readonly stirrupSpacingMm: number | null;
+  /** Estribos por claro; una entrada `null` deja ese claro a `stirrupSpacingMm` o al cálculo. */
+  readonly stirrupZones?: readonly (ProvidedStirrupZone | null)[] | null;
+}
+
+export interface ProvidedBastion {
+  readonly bed: 'top' | 'bottom';
+  readonly count: number;
+  readonly diameterMm: number;
+  /** Desde el extremo izquierdo de la viga, m. */
+  readonly startM: number;
+  readonly endM: number;
+}
+
+/** Estribos de un claro: zona densa desde cada apoyo y separación al centro. */
+export interface ProvidedStirrupZone {
+  readonly endSpacingMm: number;
+  readonly endLengthM: number;
+  readonly centerSpacingMm: number;
 }
 
 export interface BarGroup { readonly count: number; readonly diameterMm: number }
@@ -108,6 +159,8 @@ export interface BeamBastion {
   readonly bars: BarGroup;
   readonly startM: number;
   readonly endM: number;
+  /** Bastón propio: el tramo que exigen el corte teórico y ld (null si no hace falta). */
+  readonly requiredSpanM?: { readonly startM: number; readonly endM: number } | null;
   readonly peakAtM: number;
   readonly demandKnm: number;
   readonly developmentLengthMm: number;
@@ -125,6 +178,10 @@ export interface SpanStirrups {
   /** Tramos, en m desde el extremo izquierdo de la viga, donde rige `denseSpacingMm`. */
   readonly denseZones: readonly { readonly startM: number; readonly endM: number }[];
   readonly demandKn: number;
+  /** Cortante en la estación que rige contra `strengthKn` (con zonas, puede no ser el máximo del claro). */
+  readonly checkedDemandKn: number;
+  /** Dónde rige, m desde el extremo izquierdo de la viga. */
+  readonly checkedAtM: number;
   readonly concreteStrengthKn: number;
   readonly strengthKn: number;
   readonly maximumSectionStrengthKn: number;
@@ -482,6 +539,58 @@ function designBastions(
   return { bastions: merged, failed };
 }
 
+/**
+ * Bastones propios: su sección con las corridas y el tramo que exigen el corte
+ * teórico más max(d, 12db) y ld a cada lado del pico, como los propuestos.
+ */
+function customBastions(
+  context: SectionContext,
+  stations: readonly number[],
+  totalLength: number,
+  bed: 'top' | 'bottom',
+  demand: readonly number[],
+  continuousSection: BedSection,
+  provided: readonly ProvidedBastion[],
+): { bastions: BeamBastion[]; failed: boolean } {
+  const bastions: BeamBastion[] = [];
+  let failed = false;
+  for (const item of provided.filter((bastion) => bastion.bed === bed)) {
+    const inside = stations.map((x, index) => ({ x, index })).filter(({ x }) => x >= item.startM - TOLERANCE && x <= item.endM + TOLERANCE);
+    const peak = inside.reduce((best, station) => demand[station.index]! > demand[best.index]! ? station : best, inside[0] ?? { x: item.startM, index: 0 });
+    const peakDemand = demand[peak.index] ?? 0;
+    const section = evaluateSection(context, bed, continuousSection.continuous, { count: item.count, diameterMm: item.diameterMm }, peakDemand);
+    if (!section) { failed = true; continue; }
+    const development = developmentOf(context, section, item.diameterMm);
+    const ld = development.lengthMm;
+    // Donde las corridas no bastan dentro del bastón: su corte teórico.
+    const exceeding = inside.filter(({ index }) => demand[index]! > continuousSection.strengthKnm * (1 + 1e-9) + TOLERANCE).map(({ index }) => index);
+    let requiredSpanM: BeamBastion['requiredSpanM'] = null;
+    if (exceeding.length) {
+      const extension = Math.max(section.effectiveDepthMm, 12 * item.diameterMm) / 1e3;
+      const theoreticalStart = stations[Math.max(0, exceeding[0]! - 1)]!;
+      const theoreticalEnd = stations[Math.min(stations.length - 1, exceeding[exceeding.length - 1]! + 1)]!;
+      requiredSpanM = {
+        startM: Math.max(0, Math.min(theoreticalStart - extension, peak.x - ld / 1e3)),
+        endM: Math.min(totalLength, Math.max(theoreticalEnd + extension, peak.x + ld / 1e3)),
+      };
+    }
+    bastions.push({
+      bed,
+      bars: { count: item.count, diameterMm: item.diameterMm },
+      startM: item.startM,
+      endM: item.endM,
+      requiredSpanM,
+      peakAtM: peak.x,
+      demandKnm: peakDemand,
+      developmentLengthMm: ld,
+      developmentFavorable: development.favorable,
+      needsHook: (item.startM <= TOLERANCE && peak.x - ld / 1e3 < -TOLERANCE) || (item.endM >= totalLength - TOLERANCE && peak.x + ld / 1e3 > totalLength + TOLERANCE),
+      section,
+    });
+  }
+  return { bastions, failed };
+}
+
 const sectionAt = (x: number, bed: 'top' | 'bottom', continuous: BedSection, bastions: readonly BeamBastion[]): BedSection =>
   bastions.find((bastion) => bastion.bed === bed && x >= bastion.startM - TOLERANCE && x <= bastion.endM + TOLERANCE)?.section ?? continuous;
 
@@ -558,6 +667,8 @@ function validate(input: BeamDesignInput): string[] {
     const { widthMm: bf, thicknessMm: hf } = input.flange;
     if (!isPositiveFinite(bf) || bf < input.widthMm) errors.push('El ancho efectivo del patín debe ser al menos el ancho del alma.');
     if (!isPositiveFinite(hf) || hf >= input.heightMm) errors.push('El espesor del patín debe ser mayor que cero y menor que el peralte.');
+    const la = input.flange.clearDistanceMm;
+    if (la !== undefined && la !== null && !(Number.isFinite(la) && la >= 0)) errors.push('La separación libre a la viga vecina debe ser cero (sin dato) o positiva.');
   }
   if (input.provided) {
     for (const [bed, group] of [['superiores', input.provided.top], ['inferiores', input.provided.bottom]] as const) {
@@ -566,6 +677,36 @@ function validate(input: BeamDesignInput): string[] {
     }
     const spacing = input.provided.stirrupSpacingMm;
     if (spacing !== null && (!Number.isFinite(spacing) || spacing < 50)) errors.push('La separación de estribos debe ser de al menos 5 cm.');
+    const total = input.spans.reduce((sum, span) => sum + span.lengthM, 0);
+    if (input.provided.bastions === 'custom') {
+      const custom = input.provided.customBastions ?? [];
+      if (custom.length > 16) errors.push('Hasta 16 bastones propios.');
+      custom.forEach((bastion, index) => {
+        const label = `Bastón ${index + 1}`;
+        if (!Number.isInteger(bastion.count) || bastion.count < 1 || bastion.count > 12) errors.push(`${label}: entre 1 y 12 barras.`);
+        if (!isPositiveFinite(bastion.diameterMm)) errors.push(`${label}: diámetro inválido.`);
+        if (!Number.isFinite(bastion.startM) || !Number.isFinite(bastion.endM) || bastion.startM < 0 || bastion.endM <= bastion.startM || bastion.endM > total + 1e-6) {
+          errors.push(`${label}: debe ir de 0 a ${Number.isFinite(total) ? total.toFixed(2) : 'L'} m con inicio antes del fin.`);
+        }
+      });
+      for (const bed of ['top', 'bottom'] as const) {
+        const sorted = custom.filter((bastion) => bastion.bed === bed).sort((left, right) => left.startM - right.startM);
+        if (sorted.some((bastion, index) => index > 0 && bastion.startM < sorted[index - 1]!.endM - 1e-6)) {
+          errors.push(`Bastones ${bed === 'top' ? 'superiores' : 'inferiores'} traslapados: únelos en uno con la suma de barras.`);
+        }
+      }
+    }
+    (input.provided.stirrupZones ?? []).forEach((zone, index) => {
+      if (!zone) return;
+      const span = input.spans[index];
+      if (!span) { errors.push(`Estribos: el claro ${index + 1} no existe.`); return; }
+      if (!Number.isFinite(zone.endSpacingMm) || zone.endSpacingMm < 50 || !Number.isFinite(zone.centerSpacingMm) || zone.centerSpacingMm < 50) {
+        errors.push(`Estribos del claro ${index + 1}: separaciones de al menos 5 cm.`);
+      }
+      if (!Number.isFinite(zone.endLengthM) || zone.endLengthM < 0 || 2 * zone.endLengthM > span.lengthM + 1e-6) {
+        errors.push(`Estribos del claro ${index + 1}: la zona de cada extremo va de 0 a la mitad del claro.`);
+      }
+    });
   }
   if (errors.length) return errors;
   if (input.heightMm < 2 * input.coverMm + 60) errors.push('El peralte no deja espacio para el refuerzo.');
@@ -653,6 +794,7 @@ function designSpanStirrups(
   span: { startM: number; lengthM: number },
   depthMm: number,
   forcedSpacingMm: number | null = null,
+  zone: ProvidedStirrupZone | null = null,
 ): SpanStirrups {
   const { input, code, stirrupDiameterMm } = context;
   const fc = input.fcMpa;
@@ -687,6 +829,30 @@ function designSpanStirrups(
     else zones.push({ startM, endM });
   }
   const uniform = zones.length === 0 || dense >= center;
+  const maximumAt = indexes.reduce((best, index) => shearAt(index) > shearAt(best) ? index : best, indexes[0]!);
+  if (zone) {
+    // Zonas propias: cada estación se revisa con la separación que le toca.
+    const endZones = zone.endLengthM > 0 ? [
+      { startM: span.startM, endM: span.startM + zone.endLengthM },
+      { startM: spanEnd - zone.endLengthM, endM: spanEnd },
+    ] : [];
+    const spacingAt = (x: number) => endZones.some((item) => x >= item.startM - 1e-9 && x <= item.endM + 1e-9) ? zone.endSpacingMm : zone.centerSpacingMm;
+    const ratioAt = (index: number) => shearAt(index) / strengthAt(spacingAt(analysis.stations[index]!));
+    const governing = indexes.reduce((best, index) => ratioAt(index) > ratioAt(best) ? index : best, indexes[0]!);
+    return {
+      denseSpacingMm: zone.endSpacingMm,
+      centerSpacingMm: zone.centerSpacingMm,
+      maximumSpacingMm: maximumSpacing,
+      denseZones: endZones,
+      demandKn: demand,
+      checkedDemandKn: shearAt(governing),
+      checkedAtM: analysis.stations[governing]!,
+      concreteStrengthKn: phi * concreteN / 1e3,
+      strengthKn: strengthAt(spacingAt(analysis.stations[governing]!)),
+      maximumSectionStrengthKn: phi * (concreteN + 0.66 * Math.sqrt(fc) * b * depthMm) / 1e3,
+      impractical: false,
+    };
+  }
   if (forcedSpacingMm !== null) {
     return {
       denseSpacingMm: forcedSpacingMm,
@@ -694,6 +860,8 @@ function designSpanStirrups(
       maximumSpacingMm: maximumSpacing,
       denseZones: [],
       demandKn: demand,
+      checkedDemandKn: demand,
+      checkedAtM: analysis.stations[maximumAt]!,
       concreteStrengthKn: phi * concreteN / 1e3,
       strengthKn: strengthAt(forcedSpacingMm),
       maximumSectionStrengthKn: phi * (concreteN + 0.66 * Math.sqrt(fc) * b * depthMm) / 1e3,
@@ -706,6 +874,8 @@ function designSpanStirrups(
     maximumSpacingMm: maximumSpacing,
     denseZones: uniform ? [] : zones,
     demandKn: demand,
+    checkedDemandKn: demand,
+    checkedAtM: analysis.stations[maximumAt]!,
     concreteStrengthKn: phi * concreteN / 1e3,
     strengthKn: strengthAt(dense),
     maximumSectionStrengthKn: phi * (concreteN + 0.66 * Math.sqrt(fc) * b * depthMm) / 1e3,
@@ -746,12 +916,15 @@ function designReinforcement(
       ? evaluateSection(context, 'top', provided.top, null, 0)
       : chooseContinuous(context, 'top', barDiameters, negativeDemand.some((value) => value > TOLERANCE));
     if (!continuousBottom || !continuousTop) continue;
-    const withBastions = provided?.bastions !== 'none';
-    const bottom = withBastions ? designBastions(context, analysis.stations, analysis.totalLengthM, 'bottom', positiveDemand, continuousBottom, barDiameters) : noBastions;
-    const top = withBastions ? designBastions(context, analysis.stations, analysis.totalLengthM, 'top', negativeDemand, continuousTop, barDiameters) : noBastions;
+    const custom = provided?.bastions === 'custom';
+    const withBastions = provided?.bastions !== 'none' && !custom;
+    const bottom = custom ? customBastions(context, analysis.stations, analysis.totalLengthM, 'bottom', positiveDemand, continuousBottom, provided?.customBastions ?? [])
+      : withBastions ? designBastions(context, analysis.stations, analysis.totalLengthM, 'bottom', positiveDemand, continuousBottom, barDiameters) : noBastions;
+    const top = custom ? customBastions(context, analysis.stations, analysis.totalLengthM, 'top', negativeDemand, continuousTop, provided?.customBastions ?? [])
+      : withBastions ? designBastions(context, analysis.stations, analysis.totalLengthM, 'top', negativeDemand, continuousTop, barDiameters) : noBastions;
     const bastions = [...bottom.bastions, ...top.bastions];
     const depth = Math.min(continuousBottom.effectiveDepthMm, continuousTop.effectiveDepthMm, ...bastions.map((bastion) => bastion.section.effectiveDepthMm));
-    const stirrups = spans.map((span, index) => designSpanStirrups(context, analysis, shear, index, span, depth, provided?.stirrupSpacingMm ?? null));
+    const stirrups = spans.map((span, index) => designSpanStirrups(context, analysis, shear, index, span, depth, provided?.stirrupSpacingMm ?? null, provided?.stirrupZones?.[index] ?? null));
     chosen = { context, continuousTop, continuousBottom, bastions, failed: bottom.failed || top.failed, stirrups };
     if (!chosen.failed && stirrups.every((item) => !item.impractical)) break;
   }
@@ -938,9 +1111,10 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
   const minimumOf = (section: BedSection) => code.beam.minimumSteel(b, section.effectiveDepthMm, h, fc, input.fyMpa, section.extremeDepthMm);
   const minimumWorst = loadedSections.length ? pickWorst(loadedSections, (section) => minimumOf(section) / section.areaMm2) : undefined;
   const spacingWorst = pickWorst(allSections, (section) => section.minimumClearSpacingMm / section.clearSpacingMm);
-  const shearWorst = pickWorst(stirrups, (item) => item.demandKn / item.strengthKn);
+  const shearWorst = pickWorst(stirrups, (item) => item.checkedDemandKn / item.strengthKn);
   const sectionWorst = pickWorst(stirrups, (item) => item.demandKn / item.maximumSectionStrengthKn);
-  const stirrupSpacingWorst = pickWorst(stirrups, (item) => item.denseSpacingMm / item.maximumSpacingMm);
+  const widestSpacing = (item: SpanStirrups) => Math.max(item.denseSpacingMm, item.centerSpacingMm);
+  const stirrupSpacingWorst = pickWorst(stirrups, (item) => widestSpacing(item) / item.maximumSpacingMm);
   const governingSpan = pickWorst(spans, (span) => span.checkedDeflectionMm / span.deflectionLimitMm);
   const governingSpanIndex = spans.indexOf(governingSpan);
   const combinationsText = input.combinations.map((combination) => combination.label).join(' · ');
@@ -949,7 +1123,7 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
   const envelope = `Envolvente de ${combinationsText} · viva por claros`;
   const at = (index: number, bed: 'inferior' | 'superior') => `x = ${stations[index]!.toFixed(2)} m · lecho ${bed}`;
   const checks: ElementCheck[] = [
-    capacityCheck('flexure-positive', 'Flexión positiva', Math.max(0, moment.max[positiveWorst.index]!), capacityPositive[positiveWorst.index]!, 'kN·m', refs.flexure,
+    capacityCheck('flexure-positive', 'Flexión positiva', Math.max(0, moment.max[positiveWorst.index]!), capacityPositive[positiveWorst.index]!, 'kN·m', input.flange ? refs.flexureT : refs.flexure,
       `Rige en x = ${stations[positiveWorst.index]!.toFixed(2)} m · FR ${sectionAt(stations[positiveWorst.index]!, 'bottom', continuousBottom, bastions).resistanceFactor.toFixed(2)}.`),
   ].map((check) => tracedAt(check, at(positiveWorst.index, 'inferior'), envelope));
   if (negativeMoment > TOLERANCE) {
@@ -958,16 +1132,22 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
     at(negativeWorst.index, 'superior'), envelope));
   }
   checks.push(capacityCheck('steel-max', 'Acero máximo', steelWorst.areaMm2, steelWorst.maximumMm2, 'mm²', refs.steelMax, code.beam.maximumSteelNote));
+  if (input.flange && code.beam.flangeWidthLimits) {
+    const clearSpan = beamClearSpanMm(input);
+    const limit = flangeWidthLimit(input.flange.kind, b, input.flange.thicknessMm, clearSpan, input.flange.clearDistanceMm);
+    checks.push(capacityCheck('flange-width', 'Ancho efectivo del patín', input.flange.widthMm, limit.widthMm, 'mm', refs.flangeWidth,
+      `Vuelo ≤ ${Math.round(limit.overhangMm)} mm ${input.flange.kind === 'T' ? 'a cada lado' : 'de un lado'} (rige ${limit.governs}; Ln = ${Math.round(clearSpan)} mm${input.flange.clearDistanceMm ? '' : ', sin La capturada'}).`));
+  }
   if (minimumWorst) {
     checks.push(capacityCheck('steel-min', 'Acero mínimo', minimumOf(minimumWorst), minimumWorst.areaMm2, 'mm²', refs.steelMin,
       `Lecho ${minimumWorst.bed === 'top' ? 'superior' : 'inferior'}.`));
   }
   checks.push(
-    tracedAt(capacityCheck('shear', 'Cortante', shearWorst.demandKn, shearWorst.strengthKn, 'kN', refs.shear, `Claro ${stirrups.indexOf(shearWorst) + 1} · FR ${code.shearFactor}.`),
-      `Claro ${stirrups.indexOf(shearWorst) + 1} · a d del paño`, envelope),
+    tracedAt(capacityCheck('shear', 'Cortante', shearWorst.checkedDemandKn, shearWorst.strengthKn, 'kN', refs.shear, `Claro ${stirrups.indexOf(shearWorst) + 1} · FR ${code.shearFactor}.`),
+      `Claro ${stirrups.indexOf(shearWorst) + 1} · x = ${shearWorst.checkedAtM.toFixed(2)} m`, envelope),
     tracedAt(capacityCheck('shear-section', 'Cortante máximo por sección', sectionWorst.demandKn, sectionWorst.maximumSectionStrengthKn, 'kN', refs.shearSection,
       'Si no cumple, hay que aumentar la sección: más estribos no ayudan.'), `Claro ${stirrups.indexOf(sectionWorst) + 1}`, envelope),
-    capacityCheck('stirrup-spacing', 'Separación de estribos', stirrupSpacingWorst.denseSpacingMm, stirrupSpacingWorst.maximumSpacingMm, 'mm', refs.stirrupSpacing),
+    capacityCheck('stirrup-spacing', 'Separación de estribos', widestSpacing(stirrupSpacingWorst), stirrupSpacingWorst.maximumSpacingMm, 'mm', refs.stirrupSpacing),
     capacityCheck('bar-spacing', 'Separación libre entre barras', spacingWorst.minimumClearSpacingMm, spacingWorst.clearSpacingMm, 'mm', refs.barSpacing),
   );
 
@@ -1042,6 +1222,18 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
           ? `Gancho estándar en ${hooks.map((item) => `${item.end === 'left' ? 'izquierda' : 'derecha'} (${item.bed === 'top' ? 'superior' : 'inferior'})`).join(', ')}: ldh = ${Math.round(hooks[0]!.hookMm)} mm; recta requeriría ${Math.round(hooks[0]!.straightMm)} mm.`
           : 'Las barras rectas desarrollan ld dentro del apoyo.',
     });
+  }
+  if (input.provided?.bastions === 'custom') {
+    const needed = bastions.filter((bastion) => bastion.requiredSpanM);
+    const shortfall = (bastion: BeamBastion) => bastion.requiredSpanM
+      ? Math.max(0, bastion.startM - bastion.requiredSpanM.startM, bastion.requiredSpanM.endM - bastion.endM) : 0;
+    const worst = needed.length ? pickWorst(needed, shortfall) : undefined;
+    const label = (bastion: BeamBastion) => `bastón ${bastion.bed === 'top' ? 'superior' : 'inferior'} de x = ${bastion.startM.toFixed(2)} m`;
+    checks.push(worst && shortfall(worst) > 0.005
+      ? { id: 'bastion-length', label: 'Longitud de los bastones', status: 'fail', reference: refs.beamAnchorage,
+        note: `El ${label(worst)} debe ir de ${worst.requiredSpanM!.startM.toFixed(2)} a ${worst.requiredSpanM!.endM.toFixed(2)} m: corte teórico más max(d, 12db) y ld = ${Math.round(worst.developmentLengthMm)} mm desde el pico.` }
+      : { id: 'bastion-length', label: 'Longitud de los bastones', status: 'pass', reference: refs.beamAnchorage,
+        note: needed.length ? 'Cada bastón pasa el corte teórico max(d, 12db) y desarrolla ld a ambos lados del pico.' : 'Las corridas bastan; los bastones propios no son necesarios por resistencia.' });
   }
   const freeEndHooks = bastions.filter((bastion) => bastion.needsHook && ((bastion.startM <= TOLERANCE && input.leftEnd === 'free') || (bastion.endM >= analysis.totalLengthM - TOLERANCE && input.rightEnd === 'free')));
   if (freeEndHooks.length) {

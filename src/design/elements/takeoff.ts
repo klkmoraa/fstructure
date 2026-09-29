@@ -3,6 +3,8 @@ import type { ColumnDesignResult } from './column';
 import type { CombinedFootingResult } from './combinedFooting';
 import type { StripFootingResult } from './stripFooting';
 import type { FootingDesignResult } from './footing';
+import type { MatFoundationResult } from './matFoundation';
+import type { StrapFootingResult } from './strapFooting';
 import { barArea, rebarLabel } from './shared';
 
 /**
@@ -101,8 +103,15 @@ export function columnTakeoff(result: ColumnDesignResult): Takeoff {
   const circular = input.shape === 'circular';
   // Estribo circular: perímetro de su eje más dos ganchos de 135°.
   const hoopLengthM = (Math.PI * (input.widthMm - 2 * input.coverMm - dt) + 2 * hook135Mm(dt)) / 1e3;
+  const longitudinal = line(`Longitudinales ${rebarLabel(db)} (con traslape)`, db, result.bars.length, (heightMm + result.spliceLengthMm) / 1e3);
+  if (ties.spiral) {
+    // Zuncho continuo: vueltas de la altura más 2.5 de anclaje en cada extremo (NTC 14.7.4.4).
+    const turns = heightMm / ties.spiral.pitchMm + 2 * 2.5;
+    const turnLength = Math.hypot(Math.PI * (ties.spiral.coreDiameterMm - dt), ties.spiral.pitchMm);
+    return summarize([longitudinal, line(`Zuncho ${rebarLabel(dt)} (continuo)`, dt, 1, turns * turnLength / 1e3)], result.grossAreaMm2 * heightMm / 1e9);
+  }
   return summarize([
-    line(`Longitudinales ${rebarLabel(db)} (con traslape)`, db, result.bars.length, (heightMm + result.spliceLengthMm) / 1e3),
+    longitudinal,
     line(`${circular ? 'Estribos circulares' : 'Estribos'} ${rebarLabel(dt)}`, dt, tieCount, circular ? hoopLengthM : stirrupLengthM(input.widthMm, input.depthMm, input.coverMm, dt)),
     line(`Grapas paralelas a X ${rebarLabel(dt)}`, dt, tieCount * ties.crossTiesParallelToX, crossTie(input.widthMm)),
     line(`Grapas paralelas a Y ${rebarLabel(dt)}`, dt, tieCount * ties.crossTiesParallelToY, crossTie(input.depthMm)),
@@ -117,7 +126,7 @@ export function footingTakeoff(result: FootingDesignResult): Takeoff {
   return summarize([
     line(`Parrilla en X ${rebarLabel(db)}`, db, result.directions.x.barCount, piece(result.sideXMm, result.directions.x.anchorage)),
     line(`Parrilla en Y ${rebarLabel(db)}`, db, result.directions.y.barCount, piece(result.sideYMm, result.directions.y.anchorage)),
-  ], result.sideXMm * result.sideYMm * result.thicknessMm / 1e9);
+  ], (result.sideXMm * result.sideYMm * result.thicknessMm + (input.pedestal ? input.pedestal.widthMm * input.pedestal.depthMm * input.pedestal.heightMm : 0)) / 1e9);
 }
 
 /** Zapata corrida: cantidades por metro de muro. */
@@ -144,4 +153,43 @@ export function combinedFootingTakeoff(result: CombinedFootingResult): Takeoff {
     ...result.bands.map((band) => line(`Transversal bajo C${band.column} ${rebarLabel(band.diameterMm)}`, band.diameterMm, band.barCount, across(band.anchorage))),
     line(`Transversal fuera de bandas ${rebarLabel(dt)}`, dt, Math.ceil(outside / result.transverseMinimumSpacingMm), across('straight')),
   ], result.lengthMm * result.widthMm * result.thicknessMm / 1e9);
+}
+
+/** Zapata de lindero: zapata 1 (corrida bajo la contratrabe), zapata 2 aislada y contratrabe. */
+export function strapFootingTakeoff(result: StrapFootingResult): Takeoff {
+  const { input, exterior, interior, strap } = result;
+  const db = input.barDiameterMm;
+  const cover = input.coverMm;
+  const exteriorBars = Math.floor((result.exteriorLengthMm - 2 * cover) / exterior.transverse.spacingMm) + 1;
+  const across = (result.exteriorWidthMm - 2 * cover + (exterior.transverse.anchorage === 'hook' ? 2 * hook90Mm(db) : 0)) / 1e3;
+  const x2 = input.exterior.widthMm / 2 + input.spacingMm;
+  const dbs = input.strap.barDiameterMm;
+  const ds = input.strap.stirrupDiameterMm;
+  // Barras de la contratrabe del lindero al paño exterior de la columna 2, con gancho en el lindero.
+  const strapLength = (x2 + input.interior.widthMm / 2 - 2 * cover + hook90Mm(dbs)) / 1e3;
+  const free = Math.max(0, x2 - interior.sideXMm / 2 - result.exteriorLengthMm);
+  const interiorTakeoff = footingTakeoff(interior);
+  return summarize([
+    line(`Zapata 1 transversal ${rebarLabel(db)}`, db, exteriorBars, across),
+    line(`Zapata 1 longitudinal ${rebarLabel(db)}`, db, exterior.distribution.barCount, (result.exteriorLengthMm - 2 * cover) / 1e3),
+    ...interiorTakeoff.lines.map((item) => ({ ...item, mark: `Zapata 2 ${item.mark.charAt(0).toLowerCase()}${item.mark.slice(1)}` })),
+    line(`Contratrabe superior ${rebarLabel(dbs)}`, dbs, strap.top.barCount, strapLength),
+    line(`Contratrabe inferior ${rebarLabel(dbs)}`, dbs, strap.bottom.barCount, strapLength),
+    line(`Estribos de contratrabe ${rebarLabel(ds)}`, ds, piecesAlong(x2, strap.shear.spacingMm) + 1, stirrupLengthM(strap.widthMm, strap.heightMm, cover, ds)),
+  ], (result.exteriorLengthMm * result.exteriorWidthMm * exterior.thicknessMm + free * strap.widthMm * strap.heightMm) / 1e9 + interiorTakeoff.concreteM3);
+}
+
+/** Losa de cimentación: cuatro parrillas (inferior y superior en X y en Y). */
+export function matFoundationTakeoff(result: MatFoundationResult): Takeoff {
+  const { input } = result;
+  const db = input.barDiameterMm;
+  const cover = input.coverMm;
+  const mesh = (axis: 'x' | 'y', face: 'bottom' | 'top') => {
+    const layer = result.directions[axis][face];
+    const along = axis === 'x' ? result.lengthXMm : result.lengthYMm;
+    const across = axis === 'x' ? result.lengthYMm : result.lengthXMm;
+    return line(`${face === 'bottom' ? 'Inferior' : 'Superior'} en ${axis.toUpperCase()} ${rebarLabel(db)}`, db,
+      Math.floor((across - 2 * cover) / layer.spacingMm) + 1, (along - 2 * cover + 2 * hook90Mm(db)) / 1e3);
+  };
+  return summarize([mesh('x', 'bottom'), mesh('y', 'bottom'), mesh('x', 'top'), mesh('y', 'top')], result.lengthXMm * result.lengthYMm * result.thicknessMm / 1e9);
 }

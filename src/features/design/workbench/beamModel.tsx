@@ -13,7 +13,7 @@ import type { DesignReport, ReportAlternative, ReportRow } from './designReport'
  */
 export const BEAM_DEFAULTS = {
   tag: '', place: '',
-  sectionType: 'rect', flangeWidth: '100', flangeThickness: '12',
+  sectionType: 'rect', flangeWidth: '100', flangeThickness: '12', flangeClear: '0',
   width: '25', height: '50', cover: '4', fc: '250', fy: '4200', fyv: '4200', leftEnd: 'pin', rightEnd: 'pin',
   selfWeight: 'yes', points: 'no', group: 'B', use: 'habitacion', sustained: '25', duration: '60', bar: 'auto', stirrup: 'auto', aggregate: '19', damages: 'no',
   supportWidth: '40',
@@ -82,7 +82,7 @@ export const beamToInput = (codeId: DesignCodeId, draft: BeamDraft, spans: reado
   damagesNonstructural: draft.damages === 'yes',
   supportWidthMm: parseNumber(draft.supportWidth) * 10,
   flange: draft.sectionType === 'T' || draft.sectionType === 'L'
-    ? { kind: draft.sectionType, widthMm: parseNumber(draft.flangeWidth) * 10, thicknessMm: parseNumber(draft.flangeThickness) * 10 }
+    ? { kind: draft.sectionType, widthMm: parseNumber(draft.flangeWidth) * 10, thicknessMm: parseNumber(draft.flangeThickness) * 10, clearDistanceMm: parseNumber(draft.flangeClear) * 1000 }
     : null,
   provided: useOwn && draft.rebarMode === 'own' ? {
     top: { count: parseNumber(draft.topCount), diameterMm: parseNumber(draft.topBar) },
@@ -128,7 +128,7 @@ const beamTitle = (result: BeamDesignResult) => {
 
 /** Texto de la sección para datos y memoria. */
 const sectionText = (input: BeamDesignInput) => input.flange
-  ? `${input.flange.kind === 'T' ? 'T (losa a ambos lados)' : 'L (losa de un lado)'}: alma bw = ${formatNumber(input.widthMm / 10, 0)} cm · h = ${formatNumber(input.heightMm / 10, 0)} cm · patín bf = ${formatNumber(input.flange.widthMm / 10, 0)} cm, hf = ${formatNumber(input.flange.thicknessMm / 10, 0)} cm`
+  ? `${input.flange.kind === 'T' ? 'T (losa a ambos lados)' : 'L (losa de un lado)'}: alma bw = ${formatNumber(input.widthMm / 10, 0)} cm · h = ${formatNumber(input.heightMm / 10, 0)} cm · patín bf = ${formatNumber(input.flange.widthMm / 10, 0)} cm, hf = ${formatNumber(input.flange.thicknessMm / 10, 0)} cm${input.flange.clearDistanceMm ? ` · La = ${formatNumber(input.flange.clearDistanceMm / 1000, 2)} m` : ''}`
   : `rectangular: b = ${formatNumber(input.widthMm / 10, 0)} cm · h = ${formatNumber(input.heightMm / 10, 0)} cm`;
 
 function beamMemo(result: BeamDesignResult): string {

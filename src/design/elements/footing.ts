@@ -1,6 +1,8 @@
 import { designCode, isDesignCodeId, type DesignCode, type DesignCodeId, type LoadCombination } from './codes';
 import {
+  BEARING_FACTOR,
   barArea,
+  bearingStrengthKn,
   capacityCheck,
   tracedAt,
   ceilTo,
@@ -11,11 +13,27 @@ import {
   isPositiveFinite,
   overallStatus,
   requiredFlexuralSteelMm2,
+  withClauses,
   type ElementCheck,
 } from './shared';
 
+/** Dado o pedestal entre la columna y la zapata, del mismo concreto que la zapata. */
+export interface FootingPedestal {
+  /** Paralelo a X. */
+  readonly widthMm: number;
+  /** Paralelo a Y. */
+  readonly depthMm: number;
+  readonly heightMm: number;
+}
+
 export interface FootingDesignInput {
   readonly code: DesignCodeId;
+  /** Columna rectangular (por omisión) o circular; en la circular `columnWidthMm` es el diámetro D. */
+  readonly columnShape?: 'rectangular' | 'circular';
+  /** f′c de la columna para el aplastamiento en su base; por omisión, el de la zapata. */
+  readonly columnFcMpa?: number;
+  /** Dado entre la columna y la zapata; la zapata se revisa entonces con el dado como elemento apoyado. */
+  readonly pedestal?: FootingPedestal | null;
   /** Dimensión de la columna paralela a X. */
   readonly columnWidthMm: number;
   /** Dimensión de la columna paralela a Y. */
@@ -77,9 +95,43 @@ export interface FootingDirection {
   readonly band: { readonly widthMm: number; readonly barsInBand: number; readonly spacingInBandMm: number; readonly spacingOutsideMm: number } | null;
 }
 
+/** Elemento que apoya en la zapata y las dimensiones con que se ubican sus secciones críticas. */
+export interface FootingSupport {
+  readonly kind: 'column' | 'pedestal';
+  readonly circular: boolean;
+  readonly widthMm: number;
+  readonly depthMm: number;
+  /** Ancho que deja la sección crítica de flexión (0.8D en la columna circular con la NTC). */
+  readonly flexureWidthMm: number;
+  readonly flexureDepthMm: number;
+  /** Para cortante: la cuadrada de igual área si es circular. */
+  readonly shearWidthMm: number;
+  readonly shearDepthMm: number;
+}
+
+/** Transmisión de la carga por una interfaz de concreto (NTC 5.9 y 6.10.3). */
+export interface FootingBearing {
+  readonly id: 'column-footing' | 'column-pedestal' | 'pedestal-footing';
+  readonly label: string;
+  readonly loadedAreaMm2: number;
+  /** A2 de la pirámide 1:2 dentro del apoyo. */
+  readonly supportAreaMm2: number;
+  /** Aplastamiento del elemento apoyado (sin confinamiento). */
+  readonly upperStrengthKn: number;
+  /** Aplastamiento del apoyo con √(A2/A1) ≤ 2. */
+  readonly lowerStrengthKn: number;
+  readonly demandKn: number;
+  /** 0.005Ag del elemento apoyado. */
+  readonly dowelMinimumMm2: number;
+  /** (Pu − BR)/(FR·fy) si la compresión excede el aplastamiento. */
+  readonly dowelExcessMm2: number;
+}
+
 export interface FootingDesignResult {
   readonly ok: true;
   readonly input: FootingDesignInput;
+  readonly support: FootingSupport;
+  readonly bearing: readonly FootingBearing[];
   readonly sideXMm: number;
   readonly sideYMm: number;
   readonly thicknessMm: number;
@@ -141,9 +193,83 @@ function validate(input: FootingDesignInput): string[] {
   for (const [value, label] of [[input.sideXMm, 'B'], [input.sideYMm, 'L']] as const) {
     if (value !== null && !isPositiveFinite(value)) errors.push(`El lado ${label} debe ser mayor que cero.`);
   }
-  if (input.sideXMm !== null && input.sideXMm <= input.columnWidthMm) errors.push('El lado B debe ser mayor que la columna.');
-  if (input.sideYMm !== null && input.sideYMm <= input.columnDepthMm) errors.push('El lado L debe ser mayor que la columna.');
+  if (input.columnFcMpa !== undefined && !isPositiveFinite(input.columnFcMpa)) errors.push("f'c de la columna debe ser mayor que cero.");
+  const pedestal = input.pedestal;
+  if (pedestal) {
+    if (![pedestal.widthMm, pedestal.depthMm, pedestal.heightMm].every(isPositiveFinite)) errors.push('Las dimensiones del dado deben ser mayores que cero.');
+    else if (pedestal.widthMm < input.columnWidthMm || pedestal.depthMm < (input.columnShape === 'circular' ? input.columnWidthMm : input.columnDepthMm)) {
+      errors.push('El dado debe ser al menos tan grande como la columna.');
+    }
+  }
+  if (errors.length) return errors;
+  const support = supportOf(designCode(input.code), input);
+  if (input.sideXMm !== null && input.sideXMm <= support.widthMm) errors.push(`El lado B debe ser mayor que ${pedestal ? 'el dado' : 'la columna'}.`);
+  if (input.sideYMm !== null && input.sideYMm <= support.depthMm) errors.push(`El lado L debe ser mayor que ${pedestal ? 'el dado' : 'la columna'}.`);
   return errors;
+}
+
+const isCircularColumn = (input: FootingDesignInput) => input.columnShape === 'circular';
+
+/** Área de la columna: círculo de diámetro `columnWidthMm` o rectángulo. */
+const columnAreaMm2 = (input: FootingDesignInput) => isCircularColumn(input)
+  ? Math.PI * input.columnWidthMm ** 2 / 4
+  : input.columnWidthMm * input.columnDepthMm;
+
+/**
+ * Elemento que apoya en la zapata. Columna circular: cuadrada de igual área para
+ * cortante (NTC 9.4.9.3.2); para flexión, sección crítica a D/10 dentro del paño
+ * (NTC tabla 9.4.7.4) o la misma cuadrada en NSR-10 y E.060 (complementario).
+ */
+function supportOf(code: DesignCode, input: FootingDesignInput): FootingSupport {
+  if (input.pedestal) {
+    const { widthMm, depthMm } = input.pedestal;
+    return { kind: 'pedestal', circular: false, widthMm, depthMm, flexureWidthMm: widthMm, flexureDepthMm: depthMm, shearWidthMm: widthMm, shearDepthMm: depthMm };
+  }
+  if (isCircularColumn(input)) {
+    const diameter = input.columnWidthMm;
+    const square = diameter * Math.sqrt(Math.PI) / 2;
+    const flexure = code.footing.circularCriticalSection === 'tenth' ? 0.8 * diameter : square;
+    return { kind: 'column', circular: true, widthMm: diameter, depthMm: diameter, flexureWidthMm: flexure, flexureDepthMm: flexure, shearWidthMm: square, shearDepthMm: square };
+  }
+  const { columnWidthMm: widthMm, columnDepthMm: depthMm } = input;
+  return { kind: 'column', circular: false, widthMm, depthMm, flexureWidthMm: widthMm, flexureDepthMm: depthMm, shearWidthMm: widthMm, shearDepthMm: depthMm };
+}
+
+/**
+ * A2 concéntrica y semejante al área cargada: el margen crece con pendiente 1:2
+ * en el espesor del apoyo sin salir de su planta (NTC 5.9.1.1).
+ */
+function pyramidBaseMm2(circular: boolean, loadedWidthMm: number, loadedDepthMm: number, supportWidthMm: number, supportDepthMm: number, thicknessMm: number): number {
+  const margin = Math.max(0, Math.min((supportWidthMm - loadedWidthMm) / 2, (supportDepthMm - loadedDepthMm) / 2, 2 * thicknessMm));
+  return circular
+    ? Math.PI * (loadedWidthMm + 2 * margin) ** 2 / 4
+    : (loadedWidthMm + 2 * margin) * (loadedDepthMm + 2 * margin);
+}
+
+/** Aplastamiento y pasadores en cada interfaz columna–dado–zapata. */
+function bearingInterfaces(input: FootingDesignInput, bx: number, by: number, h: number, pu: number): FootingBearing[] {
+  const circular = isCircularColumn(input);
+  const columnFc = input.columnFcMpa ?? input.fcMpa;
+  const columnArea = columnAreaMm2(input);
+  const c1 = input.columnWidthMm;
+  const c2 = circular ? c1 : input.columnDepthMm;
+  const make = (id: FootingBearing['id'], label: string, loaded: number, upperFc: number, support: number): FootingBearing => {
+    const upper = bearingStrengthKn(upperFc, loaded, loaded);
+    const lower = bearingStrengthKn(input.fcMpa, loaded, support);
+    const excess = Math.max(0, pu - Math.min(upper, lower));
+    return {
+      id, label, loadedAreaMm2: loaded, supportAreaMm2: support, upperStrengthKn: upper, lowerStrengthKn: lower, demandKn: pu,
+      dowelMinimumMm2: 0.005 * loaded,
+      dowelExcessMm2: excess * 1e3 / (BEARING_FACTOR * input.fyMpa),
+    };
+  };
+  const pedestal = input.pedestal;
+  if (!pedestal) return [make('column-footing', 'columna sobre zapata', columnArea, columnFc, pyramidBaseMm2(circular, c1, c2, bx, by, h))];
+  const pedestalArea = pedestal.widthMm * pedestal.depthMm;
+  return [
+    make('column-pedestal', 'columna sobre dado', columnArea, columnFc, pyramidBaseMm2(circular, c1, c2, pedestal.widthMm, pedestal.depthMm, pedestal.heightMm)),
+    make('pedestal-footing', 'dado sobre zapata', pedestalArea, input.fcMpa, pyramidBaseMm2(false, pedestal.widthMm, pedestal.depthMm, bx, by, h)),
+  ];
 }
 
 const servicePressure = (input: FootingDesignInput, bx: number, by: number) => {
@@ -156,11 +282,11 @@ const servicePressure = (input: FootingDesignInput, bx: number, by: number) => {
 };
 
 /** Planta mínima: presión máxima ≤ admisible y resultante dentro del núcleo, creciendo el lado más excéntrico. */
-function sizePlan(input: FootingDesignInput): { bx: number; by: number } {
+function sizePlan(input: FootingDesignInput, support: FootingSupport): { bx: number; by: number } {
   const service = input.deadKn + input.liveKn;
   const start = Math.max(
     ceilTo(Math.sqrt(service / input.allowablePressureKpa) * 1e3, 50),
-    Math.max(input.columnWidthMm, input.columnDepthMm) + 200,
+    Math.max(support.widthMm, support.depthMm) + 200,
   );
   let bx = input.sideXMm ?? start;
   let by = input.sideYMm ?? start;
@@ -183,9 +309,9 @@ const ultimateAxialKn = (input: FootingDesignInput) =>
   Math.max(...input.combinations.map((combination) => combination.dead * input.deadKn + combination.live * input.liveKn));
 
 /** Resultados de resistencia para una geometría dada. */
-function evaluate(code: DesignCode, input: FootingDesignInput, { bx, by, h }: Geometry) {
-  const c1 = input.columnWidthMm;
-  const c2 = input.columnDepthMm;
+function evaluate(code: DesignCode, input: FootingDesignInput, support: FootingSupport, { bx, by, h }: Geometry) {
+  const c1 = support.shearWidthMm;
+  const c2 = support.shearDepthMm;
   const fc = input.fcMpa;
   const db = input.barDiameterMm;
   const pu = ultimateAxialKn(input);
@@ -208,14 +334,14 @@ function evaluate(code: DesignCode, input: FootingDesignInput, { bx, by, h }: Ge
   // Cortante como viga a d del paño y momento en el paño con presión trapecial (lado más cargado).
   const cantilever = (axis: 'x' | 'y') => {
     const side = axis === 'x' ? bx : by;
-    const column = axis === 'x' ? c1 : c2;
     const width = axis === 'x' ? by : bx;
     const k = axis === 'x' ? kx : ky;
-    const a = column / 2;
+    // Momento en la sección crítica de flexión; cortante a d del paño (de la cuadrada equivalente si es circular).
+    const a = (axis === 'x' ? support.flexureWidthMm : support.flexureDepthMm) / 2;
     const e = side / 2;
     const d = depthFor(axis);
     const momentNmm = width * (q0 * (e - a) ** 2 / 2 + k * ((e ** 3 - a ** 3) / 3 - a * (e ** 2 - a ** 2) / 2));
-    const s = a + d;
+    const s = (axis === 'x' ? c1 : c2) / 2 + d;
     const shearN = s < e ? width * (q0 * (e - s) + k * (e ** 2 - s ** 2) / 2) : 0;
     return { axis, d, width, cantileverMm: e - a, momentKnm: momentNmm / 1e6, oneWayDemandKn: shearN / 1e3 };
   };
@@ -348,17 +474,19 @@ export function designFooting(input: FootingDesignInput): FootingDesignResult | 
   if (errors.length) return { ok: false, errors };
 
   const code = designCode(input.code);
-  const { bx, by } = sizePlan(input);
+  const support = supportOf(code, input);
+  const { bx, by } = sizePlan(input, support);
   let h = input.thicknessMm ?? 250;
   if (input.thicknessMm === null) {
     for (; h < 2_000; h += 50) {
       const geometry = { bx, by, h };
-      const trial = evaluate(code, input, geometry);
+      const trial = evaluate(code, input, support, geometry);
       if (passesShear(code, trial, reinforce(code, input, geometry, trial, trial.x), reinforce(code, input, geometry, trial, trial.y))) break;
     }
   }
   const geometry = { bx, by, h };
-  const state = evaluate(code, input, geometry);
+  const state = evaluate(code, input, support, geometry);
+  const bearing = bearingInterfaces(input, bx, by, h, state.pu);
   const service = servicePressure(input, bx, by);
   const x = reinforce(code, input, geometry, state, state.x);
   const y = reinforce(code, input, geometry, state, state.y);
@@ -378,8 +506,10 @@ export function designFooting(input: FootingDesignInput): FootingDesignResult | 
       capacity: 1,
       unit: '',
       ratio: 6 * service.ex / bx + 6 * service.ey / by,
-      reference: complementary('Estática'),
-      note: service.minimum >= -1e-9 ? `Presión mínima ${service.minimum.toFixed(0)} kPa: todo el apoyo en compresión.` : 'Parte de la zapata se levanta: aumenta el lado en la dirección del momento.',
+      reference: refs.stability,
+      note: service.minimum >= -1e-9
+        ? `Presión mínima ${service.minimum.toFixed(0)} kPa: todo el apoyo en compresión (la resultante queda en el tercio medio de cada lado).`
+        : 'Parte de la zapata se levanta: aumenta el lado en la dirección del momento.',
     });
   }
   const withMoment = state.punching.demandStressMpa > state.punching.directStressMpa + 1e-9;
@@ -388,9 +518,10 @@ export function designFooting(input: FootingDesignInput): FootingDesignResult | 
     : '';
   checks.push(
     capacityCheck('min-depth', 'Peralte efectivo mínimo', code.footing.minimumEffectiveDepthMm, state.average, 'mm', refs.footingDepth),
-    tracedAt(capacityCheck('punching', 'Cortante por penetración', state.punching.demandStressMpa, state.punching.strengthStressMpa, 'MPa', refs.punching,
-      `${code.footing.punchingSizeFactor ? `λs = ${state.punching.sizeFactor.toFixed(2)} · ` : ''}FR ${state.punching.resistanceFactor}${polarNote}.`),
-    'Perímetro crítico a d/2 de la columna', ultimateLabel),
+    tracedAt(capacityCheck('punching', 'Cortante por penetración', state.punching.demandStressMpa, state.punching.strengthStressMpa, 'MPa',
+      support.circular ? withClauses(refs.punching, refs.punchingCircular) : refs.punching,
+      `${code.footing.punchingSizeFactor ? `λs = ${state.punching.sizeFactor.toFixed(2)} · ` : ''}FR ${state.punching.resistanceFactor}${polarNote}.${support.circular ? ` Columna circular como cuadrada de igual área (${Math.round(support.shearWidthMm)} mm).` : ''}`),
+    `Perímetro crítico a d/2 ${support.kind === 'pedestal' ? 'del dado' : 'de la columna'}`, ultimateLabel),
   );
   for (const [axis, direction] of [['X', x], ['Y', y]] as const) {
     checks.push(
@@ -398,8 +529,12 @@ export function designFooting(input: FootingDesignInput): FootingDesignResult | 
         code.footing.oneWay === 'ntc'
           ? `Sin estribos: 0.66·λs·ρ^(1/3)·√f′c con λs = ${direction.sizeFactor.toFixed(2)} y ρ = ${(direction.steelRatio * 100).toFixed(2)} %.`
           : `Sin estribos: 0.17·√f′c·b·d a d del paño · FR ${code.shearFactor}.`), `A d del paño · dirección ${axis}`, ultimateLabel),
-      tracedAt(capacityCheck(`flexure-${axis.toLowerCase()}`, `Flexión en el paño (${axis})`, direction.momentKnm, direction.strengthKnm, 'kN·m', refs.footingFlexure, `FR ${direction.resistanceFactor.toFixed(2)}.`),
-        `Paño de la columna · dirección ${axis}`, ultimateLabel),
+      tracedAt(capacityCheck(`flexure-${axis.toLowerCase()}`, support.circular ? `Flexión en la sección crítica (${axis})` : `Flexión en el paño (${axis})`, direction.momentKnm, direction.strengthKnm, 'kN·m',
+        support.circular ? withClauses(refs.footingFlexure, refs.criticalSection) : refs.footingFlexure,
+        `FR ${direction.resistanceFactor.toFixed(2)}.${support.circular
+          ? code.footing.circularCriticalSection === 'tenth' ? ' Columna circular: sección crítica a D/10 dentro del paño.' : ' Columna circular: paño de la cuadrada de igual área (criterio complementario).'
+          : ''}`),
+        `${support.circular ? 'Sección crítica' : support.kind === 'pedestal' ? 'Paño del dado' : 'Paño de la columna'} · dirección ${axis}`, ultimateLabel),
     );
     checks.push({
       id: `anchorage-${axis.toLowerCase()}`,
@@ -432,12 +567,31 @@ export function designFooting(input: FootingDesignInput): FootingDesignResult | 
   if (state.qMin < 0) {
     checks.push({ id: 'ultimate-uplift', label: 'Presión última sin tensión', status: 'warning', reference: complementary('Estática'), note: 'Con cargas factorizadas la resultante sale del núcleo; la distribución lineal es conservadora sólo aproximadamente.' });
   }
+  for (const item of bearing) {
+    const strength = Math.min(item.upperStrengthKn, item.lowerStrengthKn);
+    const crushing = capacityCheck(`crushing-${item.id}`, `Aplastamiento ${item.label}`, item.demandKn, strength, 'kN', refs.bearing,
+      `BR = min(${item.upperStrengthKn.toFixed(0)} kN del elemento apoyado, ${item.lowerStrengthKn.toFixed(0)} kN del apoyo con √(A2/A1) = ${Math.min(2, Math.sqrt(item.supportAreaMm2 / item.loadedAreaMm2)).toFixed(2)}) · FR ${BEARING_FACTOR}.`);
+    // Si la compresión excede el aplastamiento, el excedente lo toman las barras que cruzan la interfaz (6.10.3.1.2).
+    checks.push(tracedAt(crushing.status === 'fail'
+      ? { ...crushing, status: 'warning', note: `${crushing.note} El excedente de ${(item.demandKn - strength).toFixed(0)} kN debe tomarse con barras que crucen la interfaz.` }
+      : crushing, 'Interfaz de contacto', ultimateLabel));
+    const dowels = Math.max(item.dowelMinimumMm2, item.dowelExcessMm2);
+    checks.push({ id: `dowels-${item.id}`, label: `Barras a través de la interfaz ${item.label}`, status: 'info', reference: refs.dowels,
+      note: `As ≥ ${(dowels / 100).toFixed(2)} cm² (0.005Ag = ${(item.dowelMinimumMm2 / 100).toFixed(2)} cm²${item.dowelExcessMm2 > 0 ? `; excedente sobre el aplastamiento ${(item.dowelExcessMm2 / 100).toFixed(2)} cm²` : ''}): barras de la columna prolongadas o pasadores anclados a ambos lados.` });
+  }
+  const pedestal = input.pedestal;
+  if (pedestal && pedestal.heightMm > 3 * Math.min(pedestal.widthMm, pedestal.depthMm)) {
+    checks.push({ id: 'pedestal-height', label: 'Altura del dado', status: 'warning', reference: complementary('Dado: altura ≤ 3 veces su menor dimensión'),
+      note: `h = ${pedestal.heightMm} mm > 3 × ${Math.min(pedestal.widthMm, pedestal.depthMm)} mm: diséñalo como columna corta.` });
+  }
   checks.push({ id: 'load-factors', label: 'Combinaciones de carga', status: 'info', reference: refs.loadFactors,
     note: `${input.combinations.map((combination) => combination.label).join(' · ')}: Pu = ${state.pu.toFixed(0)} kN.` });
 
   return {
     ok: true,
     input,
+    support,
+    bearing,
     sideXMm: bx,
     sideYMm: by,
     thicknessMm: h,
@@ -448,7 +602,7 @@ export function designFooting(input: FootingDesignInput): FootingDesignResult | 
     punching: state.punching,
     directions: { x, y },
     checks,
-    governingRatio: governingRatio(checks.filter((item) => !['spacing', 'kern', 'min-depth', 'steel-min'].includes(item.id) && !item.id.startsWith('anchorage'))),
+    governingRatio: governingRatio(checks.filter((item) => !['spacing', 'kern', 'min-depth', 'steel-min'].includes(item.id) && !item.id.startsWith('anchorage') && !item.id.startsWith('crushing'))),
     status: overallStatus(checks),
   };
 }

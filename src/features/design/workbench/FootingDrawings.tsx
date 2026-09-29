@@ -34,11 +34,13 @@ export function FootingPlan({ result }: { result: FootingDesignResult }) {
   const oy = 20 + (220 - h) / 2;
   const cx = ox + w / 2;
   const cy = oy + h / 2;
-  const { columnWidthMm: c1, columnDepthMm: c2, coverMm } = result.input;
+  const { columnWidthMm: c1, columnDepthMm: c2, coverMm, pedestal } = result.input;
+  const circular = result.input.columnShape === 'circular';
+  const { support } = result;
   const pw = result.punching.criticalWidthMm * scale;
   const pd = result.punching.criticalDepthMm * scale;
-  const xLine = (c1 / 2 + result.directions.x.effectiveDepthMm) * scale;
-  const yLine = (c2 / 2 + result.directions.y.effectiveDepthMm) * scale;
+  const xLine = (support.shearWidthMm / 2 + result.directions.x.effectiveDepthMm) * scale;
+  const yLine = (support.shearDepthMm / 2 + result.directions.y.effectiveDepthMm) * scale;
   const ex = result.service.eccentricityXMm * scale;
   const ey = result.service.eccentricityYMm * scale;
   return <svg className="dw-drawing dw-drawing--plan" viewBox={`0 0 ${W} 290`} role="img"
@@ -53,7 +55,12 @@ export function FootingPlan({ result }: { result: FootingDesignResult }) {
     </rect>
     {cx + xLine < ox + w ? <line className="dw-critical dw-critical--oneway" x1={cx + xLine} x2={cx + xLine} y1={oy} y2={oy + h}><title>Cortante como viga en X, a d del paño</title></line> : null}
     {cy - yLine > oy ? <line className="dw-critical dw-critical--oneway" y1={cy - yLine} y2={cy - yLine} x1={ox} x2={ox + w}><title>Cortante como viga en Y, a d del paño</title></line> : null}
-    <rect className="dw-column" x={cx - c1 * scale / 2} y={cy - c2 * scale / 2} width={c1 * scale} height={c2 * scale} />
+    {pedestal ? <rect className="dw-pedestal" x={cx - pedestal.widthMm * scale / 2} y={cy - pedestal.depthMm * scale / 2} width={pedestal.widthMm * scale} height={pedestal.depthMm * scale}>
+      <title>Dado</title>
+    </rect> : null}
+    {circular
+      ? <circle className="dw-column" cx={cx} cy={cy} r={c1 * scale / 2} />
+      : <rect className="dw-column" x={cx - c1 * scale / 2} y={cy - c2 * scale / 2} width={c1 * scale} height={c2 * scale} />}
     {ex > 0.5 || ey > 0.5 ? <g className="dw-resultant">
       <circle cx={cx + ex} cy={cy - ey} r={3.5}><title>Resultante de servicio (excentricidad)</title></circle>
       <text x={cx + ex + 6} y={cy - ey - 5}>R</text>
@@ -80,7 +87,9 @@ export function FootingSection({ result }: { result: FootingDesignResult }) {
   const s = side * scale;
   const t = Math.max(24, result.thicknessMm * scale);
   const ox = (W - s) / 2;
-  const oy = 70;
+  const pedestal = result.input.pedestal;
+  const pedestalH = pedestal ? Math.min(40, Math.max(14, pedestal.heightMm * scale)) : 0;
+  const oy = 70 + pedestalH;
   const colW = result.input.columnWidthMm * scale;
   const cover = result.input.coverMm * scale;
   const count = Math.min(result.directions.y.barCount, 30);
@@ -99,7 +108,10 @@ export function FootingSection({ result }: { result: FootingDesignResult }) {
         <path d="M0,10 L5,0 L10,10 Z" className="dw-soil__head" />
       </marker>
     </defs>
-    <rect className="dw-column" x={W / 2 - colW / 2} y={10} width={colW} height={oy - 10} />
+    <rect className="dw-column" x={W / 2 - colW / 2} y={10} width={colW} height={oy - pedestalH - 10} />
+    {pedestal ? <rect className="dw-pedestal" x={W / 2 - pedestal.widthMm * scale / 2} y={oy - pedestalH} width={pedestal.widthMm * scale} height={pedestalH}>
+      <title>{`Dado de ${formatNumber(pedestal.heightMm / 10, 0)} cm de altura`}</title>
+    </rect> : null}
     <rect className="dw-concrete" x={ox} y={oy} width={s} height={t} />
     <line className="dw-rebar" x1={ox + cover} x2={ox + s - cover} y1={oy + t - cover - (x.layer === 'top' ? 5 : 0)} y2={oy + t - cover - (x.layer === 'top' ? 5 : 0)} />
     {Array.from({ length: count }, (_, index) => <circle key={index} className="dw-bar" r={2.4}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { designBeam, type BeamDesignInput } from './beam';
+import { designBeam, flangeWidthLimit, type BeamDesignInput } from './beam';
 import { designCode } from './codes';
 import { barArea, equivalentBlockStrengthMpa } from './shared';
 
@@ -63,5 +63,23 @@ describe('viga T y L', () => {
   it('rechaza un patín más angosto que el alma o más grueso que la viga', () => {
     expect(designBeam({ ...base, flange: { kind: 'T', widthMm: 200, thicknessMm: 100 } }).ok).toBe(false);
     expect(designBeam({ ...base, flange: { kind: 'T', widthMm: 1000, thicknessMm: 500 } }).ok).toBe(false);
+  });
+
+  it('limita el patín con la tabla 5.2.1.4.2 de la NTC', () => {
+    const tee = flangeWidthLimit('T', 250, 100, 5600, 1200);
+    expect(tee.overhangMm).toBeCloseTo(600, 9);
+    expect(tee.widthMm).toBeCloseTo(250 + 2 * 600, 9);
+    expect(tee.governs).toBe('La/2');
+    const ell = flangeWidthLimit('L', 250, 100, 5600);
+    expect(ell.overhangMm).toBeCloseTo(5600 / 12, 9);
+    expect(ell.widthMm).toBeCloseTo(250 + 5600 / 12, 9);
+    expect(ell.governs).toBe('Ln/12');
+    const width = (flange: NonNullable<BeamDesignInput['flange']>, code: BeamDesignInput['code'] = 'ntc-2023') =>
+      ok(designBeam({ ...base, code, flange })).checks.find((check) => check.id === 'flange-width');
+    // Ln = 6000 − 400 = 5600 mm: bf ≤ 250 + 2 min(800, 700) = 1650 mm.
+    expect(width({ kind: 'T', widthMm: 1650, thicknessMm: 100 })!.status).toBe('pass');
+    expect(width({ kind: 'T', widthMm: 1700, thicknessMm: 100 })!.status).toBe('fail');
+    expect(width({ kind: 'T', widthMm: 1500, thicknessMm: 100, clearDistanceMm: 1000 })!.status).toBe('fail');
+    expect(width({ kind: 'T', widthMm: 1700, thicknessMm: 100 }, 'nsr-10')).toBeUndefined();
   });
 });

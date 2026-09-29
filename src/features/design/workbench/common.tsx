@@ -356,8 +356,8 @@ export function AlternativeSection({ own, alternative }: { own: { governingRatio
 }
 
 /** Botón discreto en la cabecera de un grupo («Proponer»). */
-export function InlineAction({ label, title, onClick }: { label: string; title: string; onClick: () => void }) {
-  return <button type="button" className="dw-inline-action" title={title} onClick={onClick}>{label}</button>;
+export function InlineAction({ label, title, onClick, disabled = false }: { label: string; title: string; onClick: () => void; disabled?: boolean }) {
+  return <button type="button" className="dw-inline-action" title={title} onClick={onClick} disabled={disabled}>{label}</button>;
 }
 
 /** Aviso breve bajo un grupo tras una acción automática. */

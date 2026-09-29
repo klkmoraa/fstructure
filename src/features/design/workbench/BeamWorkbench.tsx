@@ -2,7 +2,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
-import { MAX_SPANS, barsText, designBeam } from '../../../design/elements/beam';
+import { MAX_SPANS, barsText, beamClearSpanMm, designBeam, flangeWidthLimit } from '../../../design/elements/beam';
 import { designCode } from '../../../design/elements/codes';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
 import {
@@ -88,6 +88,14 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const code = designCode(chrome.code);
   const own = draft.rebarMode === 'own';
   const flanged = draft.sectionType === 'T' || draft.sectionType === 'L';
+  const flangeLimit = useMemo(() => {
+    if (!flanged || !code.beam.flangeWidthLimits) return null;
+    const web = parseNumber(draft.width) * 10;
+    const thickness = parseNumber(draft.flangeThickness) * 10;
+    const clearSpan = beamClearSpanMm({ spans: spans.map((span) => ({ lengthM: parseNumber(span.length) })), supportWidthMm: parseNumber(draft.supportWidth) * 10 });
+    const limit = flangeWidthLimit(draft.sectionType === 'L' ? 'L' : 'T', web, thickness, clearSpan, parseNumber(draft.flangeClear) * 1000);
+    return Number.isFinite(limit.widthMm) && limit.widthMm > 0 ? limit : null;
+  }, [flanged, code, draft.width, draft.flangeThickness, draft.flangeClear, draft.supportWidth, draft.sectionType, spans]);
   const input = useMemo(() => beamToInput(chrome.code, draft, spans), [chrome.code, draft, spans]);
   const deferred = useDeferredValue(input);
   const result = useMemo(() => designBeam(deferred), [deferred]);
@@ -157,8 +165,16 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <NumberField label={flanged ? 'Alma bw' : 'Base b'} unit="cm" value={draft.width} onChange={set('width')} />
         <NumberField label="Peralte h" unit="cm" value={draft.height} onChange={set('height')} />
         {flanged ? <>
-          <NumberField label="Patín bf" unit="cm" value={draft.flangeWidth} onChange={set('flangeWidth')} hint="Ancho efectivo" />
+          <NumberField label="Patín bf" unit="cm" value={draft.flangeWidth} onChange={set('flangeWidth')}
+            hint={flangeLimit ? `Máximo ${formatNumber(flangeLimit.widthMm / 10, 0)} cm (rige ${flangeLimit.governs})` : 'Ancho efectivo'} />
           <NumberField label="Espesor hf" unit="cm" value={draft.flangeThickness} onChange={set('flangeThickness')} hint="Losa" />
+          {code.beam.flangeWidthLimits ? <>
+            <NumberField label="Separación libre La" unit="m" value={draft.flangeClear} onChange={set('flangeClear')} hint="A la viga vecina; 0 si no aplica" />
+            <div className="dw-span-all">
+              <InlineAction label="Usar el máximo" title="Ancho efectivo máximo de la tabla 5.2.1.4.2" disabled={!flangeLimit}
+                onClick={() => flangeLimit && set('flangeWidth')(String(Math.floor(flangeLimit.widthMm / 10)))} />
+            </div>
+          </> : null}
         </> : null}
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
         <div className="dw-span-all"><ActionNote text={sectionNote} /></div>

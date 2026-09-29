@@ -121,7 +121,7 @@ describe('DesignWorkbench', () => {
     expect(within(dialog).getByText(/Aún no hay elementos/)).toBeTruthy();
   });
 
-  it('ofrece columnas circulares, vigas T y los tres tipos de zapata', async () => {
+  it('ofrece columnas circulares con zuncho, vigas T y los cinco tipos de cimentación', async () => {
     const user = userEvent.setup();
     renderWorkbench();
     await user.click(screen.getByRole('radio', { name: 'T' }));
@@ -130,12 +130,20 @@ describe('DesignWorkbench', () => {
     await user.click(screen.getByRole('radio', { name: 'Columna' }));
     await user.click(screen.getByRole('radio', { name: 'Circular' }));
     expect(await screen.findByRole('img', { name: /Sección circular de columna/ })).toBeTruthy();
+    await user.click(screen.getByRole('radio', { name: 'Zuncho' }));
+    expect(await screen.findByRole('img', { name: /zuncho/ })).toBeTruthy();
     await user.click(screen.getByRole('radio', { name: 'Zapata' }));
-    await user.click(screen.getByRole('radio', { name: 'Corrida' }));
+    const type = () => screen.getByRole('combobox', { name: 'Tipo de cimentación' });
+    await user.selectOptions(type(), 'strip');
     expect(await screen.findByRole('img', { name: /zapata corrida/ })).toBeTruthy();
-    await user.click(screen.getByRole('radio', { name: 'Combinada' }));
+    await user.selectOptions(type(), 'combined');
     expect(await screen.findByRole('img', { name: /Planta de zapata combinada/ })).toBeTruthy();
     expect(within(results()).getByText(/^Zapata combinada/)).toBeTruthy();
+    await user.selectOptions(type(), 'strap');
+    expect(await screen.findByRole('img', { name: /zapata de lindero/ })).toBeTruthy();
+    await user.selectOptions(type(), 'mat');
+    expect(await screen.findByRole('img', { name: /losa de cimentación/ })).toBeTruthy();
+    expect(within(results()).getByText(/^Losa de cimentación/)).toBeTruthy();
   });
 
   it('propone la sección de la columna con un clic', async () => {

@@ -64,7 +64,10 @@ export type ReferenceKey =
   | 'deflection' | 'loadFactors' | 'deepBeam' | 'development' | 'hook' | 'splice' | 'beamAnchorage'
   | 'columnStrength' | 'columnRatio' | 'columnBarSpacing' | 'slenderness' | 'sway' | 'tieDiameter' | 'tieSpacing'
   | 'lateralSupport' | 'columnShear' | 'columnShearSection'
-  | 'footingDepth' | 'punching' | 'punchingPolar' | 'oneWay' | 'footingFlexure' | 'footingMinSteel' | 'footingSpacing' | 'anchorage';
+  | 'footingDepth' | 'punching' | 'punchingPolar' | 'oneWay' | 'footingFlexure' | 'footingMinSteel' | 'footingSpacing' | 'anchorage'
+  // Tipos de elemento: viga T/L, columna circular y con zuncho, zapatas corrida, combinada y de lindero, losa y dados.
+  | 'flexureT' | 'flangeWidth' | 'columnSection' | 'spiral' | 'minimumBars' | 'circularShear'
+  | 'bearing' | 'dowels' | 'stability' | 'criticalSection' | 'sizeEffectStrip' | 'soilReaction' | 'strapBeam' | 'slabMinSteel' | 'punchingCircular';
 
 export interface ColumnRules {
   readonly ratioMin: number;
@@ -98,6 +101,17 @@ export interface ColumnRules {
   minimumClearSpacing(barDiameterMm: number, aggregateMm: number): number;
   /** Dimensión mínima y relación de lados de 6.4.2.1.1 (sólo NTC). */
   readonly geometryLimits: boolean;
+  /**
+   * Columnas con refuerzo helicoidal (zuncho): FR de la columna «zunchos» de la
+   * tabla 3.8.2.2 y requisitos de 14.7.4. `null` si la norma no tiene esas
+   * cláusulas registradas en el taller.
+   */
+  readonly spiral: {
+    readonly compressionFactor: number;
+    factor(netStrain: number, yieldStrain: number): number;
+  } | null;
+  /** Barras longitudinales mínimas dentro de estribo circular o zuncho (NTC 6.4.4.1.1). */
+  readonly circularMinimumBars: number;
 }
 
 /** Área del bloque de compresión de profundidad `a` (mm²): rectangular a·b o de sección T/L. */
@@ -118,6 +132,8 @@ export interface BeamRules {
   readonly crack: 'spacing' | 'z';
   /** Viga peraltada: NTC L/h < 5; ACI ℓn ≤ 4h. */
   readonly deepBeam: { readonly ratio: number; readonly inclusive: boolean };
+  /** Límite del ancho efectivo del patín con cláusula registrada (NTC tabla 5.2.1.4.2). */
+  readonly flangeWidthLimits: boolean;
 }
 
 export interface FootingRules {
@@ -130,6 +146,11 @@ export interface FootingRules {
   readonly maximumSpacingNote: string;
   /** Acero mínimo adicional por penetración (NTC 6.7.6.1.2). */
   readonly punchingMinimumSteel: boolean;
+  /**
+   * Sección crítica de flexión con columna circular: a D/10 dentro del paño
+   * (NTC tabla 9.4.7.4) o en el paño de la cuadrada de igual área (complementario).
+   */
+  readonly circularCriticalSection: 'tenth' | 'equivalent-square';
 }
 
 export interface DesignCode {
@@ -216,6 +237,7 @@ const NTC_2023: DesignCode = {
     deflection: 'ntc',
     crack: 'spacing',
     deepBeam: { ratio: 5, inclusive: false },
+    flangeWidthLimits: true,
   },
   column: {
     ratioMin: 0.01,
@@ -236,6 +258,14 @@ const NTC_2023: DesignCode = {
     minimumTieDiameter: (db) => db <= 31.8 + 1e-6 ? 9.5 : 12.7,
     minimumClearSpacing: (db, aggregate) => Math.max(1.5 * db, 1.5 * aggregate, 40),
     geometryLimits: true,
+    // Tabla 3.8.2.2, columna «Refuerzo helicoidal (zunchos) que cumple con 14.7.4»: incisos a), c) y e).
+    spiral: {
+      compressionFactor: 0.75,
+      factor: (netStrain, yieldStrain) => netStrain <= yieldStrain ? 0.75
+        : netStrain >= yieldStrain + 0.003 ? 0.9
+          : 0.75 + 0.15 * (netStrain - yieldStrain) / 0.003,
+    },
+    circularMinimumBars: 6,
   },
   footing: {
     minimumEffectiveDepthMm: 150,
@@ -245,6 +275,7 @@ const NTC_2023: DesignCode = {
     maximumSpacing: (h) => Math.min(2 * h, 450),
     maximumSpacingNote: 'menor de 2h y 450 mm en la sección crítica',
     punchingMinimumSteel: true,
+    circularCriticalSection: 'tenth',
   },
   developmentLength: (o) => {
     const favorable = favorableRow(o);
@@ -291,6 +322,21 @@ const NTC_2023: DesignCode = {
     footingMinSteel: ntc('6.7.6.1.1-6.7.6.1.2', '6.7.4.2.2.3 (tabla 6.7.4.2.2.3)'),
     footingSpacing: ntc('6.7.7.2.2'),
     anchorage: ntc('9.4.3', '14.4.2.1', '14.4.2.4 (tabla 14.4.2.4)', '14.4.3.1-14.4.3.2'),
+    flexureT: ntc('3.6.1', '5.2.2.1.3.1', '3.8.2.2 (tabla 3.8.2.2)'),
+    flangeWidth: ntc('5.2.1.4.1-5.2.1.4.2 (tabla 5.2.1.4.2)'),
+    columnSection: ntc('3.6.1', '5.3.1.1 y 5.4.1.1', '3.8.2.2 (tabla 3.8.2.2)', '5.3.2.1'),
+    spiral: ntc('14.7.4.1-14.7.4.4', '3.8.2.2 (tabla 3.8.2.2, tipo de refuerzo transversal)'),
+    minimumBars: ntc('6.4.4.1.1'),
+    circularShear: ntc('5.5.3.1.1-5.5.3.1.2', '5.5.3.6.2', '6.4.4.4.5.1 (tabla 6.4.4.4.5.1)', '3.8.2.1 (tabla 3.8.2.1, incisos b a d)'),
+    bearing: ntc('5.9.1.1 (tabla 5.9.1.1)', '3.8.2.1 (tabla 3.8.2.1, inciso e)', '9.4.5.1'),
+    dowels: ntc('6.10.3.1.2 y 6.10.3.4.1'),
+    stability: ntc('9.4.5 (comentario)'),
+    criticalSection: ntc('9.4.7.4 (tabla 9.4.7.4)'),
+    sizeEffectStrip: ntc('9.3.1.3-9.3.1.6'),
+    soilReaction: ntc('9.3.2.3-9.3.2.4'),
+    strapBeam: ntc('9.5.1.1-9.5.1.2', '9.2.5.8'),
+    slabMinSteel: ntc('6.6.6.1.1'),
+    punchingCircular: ntc('9.4.9.3.2'),
   },
 };
 
@@ -345,6 +391,7 @@ const NSR_10: DesignCode = {
     deflection: 'aci',
     crack: 'spacing',
     deepBeam: { ratio: 4, inclusive: true },
+    flangeWidthLimits: false,
   },
   column: {
     ratioMin: 0.01,
@@ -365,6 +412,8 @@ const NSR_10: DesignCode = {
     minimumTieDiameter: (db) => db <= 31.8 + 1e-6 ? 9.5 : 12.7,
     minimumClearSpacing: (db, aggregate) => Math.max(1.5 * db, 40, 4 / 3 * aggregate),
     geometryLimits: false,
+    spiral: null,
+    circularMinimumBars: 4,
   },
   footing: {
     minimumEffectiveDepthMm: 150,
@@ -374,6 +423,7 @@ const NSR_10: DesignCode = {
     maximumSpacing: (h) => Math.min(3 * h, 450),
     maximumSpacingNote: 'menor de 3h y 450 mm',
     punchingMinimumSteel: false,
+    circularCriticalSection: 'equivalent-square',
   },
   developmentLength: ACI_ROW_DEVELOPMENT({ favorableSmall: 2.1, favorableLarge: 1.7, otherSmall: 1.4, otherLarge: 1.1 }),
   hookedDevelopmentMm: hooked,
@@ -412,6 +462,21 @@ const NSR_10: DesignCode = {
     footingMinSteel: nsr('C.10.5.4 y C.7.12.2.1'),
     footingSpacing: nsr('C.10.5.4 y C.7.12.2.1'),
     anchorage: nsr('C.12.2.1-C.12.2.2', 'C.12.2.4', 'C.12.5.1-C.12.5.2'),
+    flexureT: nsr('C.9.3.2.1-C.9.3.2.3', 'C.10.3.3-C.10.3.5', 'C.10.2.7.3'),
+    flangeWidth: complementary('Ancho efectivo del patín (sin cláusula registrada de NSR-10)'),
+    columnSection: nsr('C.9.3.2.1-C.9.3.2.3', 'C.10.3.3-C.10.3.5', 'C.10.3.6.2'),
+    spiral: complementary('Zuncho (sin cláusula registrada de NSR-10)'),
+    minimumBars: complementary('Número mínimo de barras (sin cláusula registrada de NSR-10)'),
+    circularShear: nsr('C.11.2.1.1-C.11.2.1.3', 'C.11.4.5.1 y C.11.4.5.3', 'C.11.4.6.3', 'C.9.3.2.1-C.9.3.2.3'),
+    bearing: complementary('Aplastamiento 0.85f′c A1 √(A2/A1) ≤ 2 (sin cláusula registrada de NSR-10)'),
+    dowels: complementary('Pasadores ≥ 0.005Ag (sin cláusula registrada de NSR-10)'),
+    stability: complementary('Estática: resultante en el tercio medio'),
+    criticalSection: complementary('Secciones críticas de flexión en zapatas (sin cláusula registrada de NSR-10 para este caso)'),
+    sizeEffectStrip: complementary('Sin efecto de tamaño en la norma'),
+    soilReaction: complementary('Reacción del suelo lineal'),
+    strapBeam: complementary('Contratrabe (sin cláusula registrada de NSR-10)'),
+    slabMinSteel: complementary('Acero mínimo de losa 0.0018Ag (sin cláusula registrada de NSR-10)'),
+    punchingCircular: complementary('Columna circular como cuadrada de igual área (sin cláusula registrada de NSR-10)'),
   },
 };
 
@@ -469,6 +534,7 @@ const E060: DesignCode = {
     deflection: 'aci',
     crack: 'z',
     deepBeam: { ratio: 4, inclusive: true },
+    flangeWidthLimits: false,
   },
   column: {
     ratioMin: 0.01,
@@ -490,6 +556,8 @@ const E060: DesignCode = {
     minimumTieDiameter: (db) => db <= 15.9 + 1e-6 ? 8 : db <= 25.4 + 1e-6 ? 9.5 : 12.7,
     minimumClearSpacing: (db, aggregate) => Math.max(1.5 * db, 40, 4 / 3 * aggregate),
     geometryLimits: false,
+    spiral: null,
+    circularMinimumBars: 4,
   },
   footing: {
     minimumEffectiveDepthMm: 300,
@@ -499,6 +567,7 @@ const E060: DesignCode = {
     maximumSpacing: (h) => Math.min(3 * h, 400),
     maximumSpacingNote: 'menor de 3h y 400 mm',
     punchingMinimumSteel: false,
+    circularCriticalSection: 'equivalent-square',
   },
   developmentLength: e060Development,
   hookedDevelopmentMm: hooked,
@@ -537,6 +606,21 @@ const E060: DesignCode = {
     footingMinSteel: e060('10.5.4 y 9.7.2'),
     footingSpacing: e060('10.5.4 y 9.7.2'),
     anchorage: e060('12.2.1-12.2.3 (tabla 12.1)', 'Tabla 12.2', '12.5.1-12.5.2'),
+    flexureT: e060('9.3.2.1-9.3.2.3', '10.2.7.3'),
+    flangeWidth: complementary('Ancho efectivo del patín (sin cláusula registrada de E.060)'),
+    columnSection: e060('9.3.2.1-9.3.2.3', '10.3.6.2'),
+    spiral: complementary('Zuncho (sin cláusula registrada de E.060)'),
+    minimumBars: complementary('Número mínimo de barras (sin cláusula registrada de E.060)'),
+    circularShear: e060('11.3.1.1-11.3.1.2', '11.5.5.1 y 11.5.5.3', '11.5.6.2', '9.3.2.1-9.3.2.3'),
+    bearing: complementary('Aplastamiento 0.85f′c A1 √(A2/A1) ≤ 2 (sin cláusula registrada de E.060)'),
+    dowels: complementary('Pasadores ≥ 0.005Ag (sin cláusula registrada de E.060)'),
+    stability: complementary('Estática: resultante en el tercio medio'),
+    criticalSection: complementary('Secciones críticas de flexión en zapatas (sin cláusula registrada de E.060 para este caso)'),
+    sizeEffectStrip: complementary('Sin efecto de tamaño en la norma'),
+    soilReaction: complementary('Reacción del suelo lineal'),
+    strapBeam: complementary('Contratrabe (sin cláusula registrada de E.060)'),
+    slabMinSteel: complementary('Acero mínimo de losa 0.0018Ag (sin cláusula registrada de E.060)'),
+    punchingCircular: complementary('Columna circular como cuadrada de igual área (sin cláusula registrada de E.060)'),
   },
 };
 

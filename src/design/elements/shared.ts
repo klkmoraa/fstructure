@@ -72,6 +72,25 @@ export const e060 = reference('e060-2009-concreto-armado', 'E.060');
 /** Criterio que no sale de una cláusula verificada (estática, práctica constructiva, dato geotécnico). */
 export const complementary = (label: string): ClauseReference => ({ standard: 'complementary', clauseIds: [], label });
 
+/** Suma las cláusulas de `extra` a `base` si son de la misma norma; si no, deja `base`. */
+export const withClauses = (base: ClauseReference, extra: ClauseReference): ClauseReference =>
+  extra.standard !== base.standard || base.standard === 'complementary'
+    ? base
+    : { standard: base.standard, clauseIds: [...base.clauseIds, ...extra.clauseIds], label: `${base.label} · ${extra.label.slice(extra.label.indexOf(' ') + 1)}` };
+
+/** FR del aplastamiento del concreto (NTC tabla 3.8.2.1 e; el mismo φ en NSR-10 y E.060). */
+export const BEARING_FACTOR = 0.65;
+
+/**
+ * Resistencia al aplastamiento (NTC tabla 5.9.1.1): FR·0.85f′c·A1 multiplicada
+ * por √(A2/A1) ≤ 2 si el apoyo es más ancho en todos sus lados. A2 es la base
+ * de la pirámide de pendiente 1:2 que cabe en el apoyo, semejante a A1.
+ */
+export function bearingStrengthKn(fcMpa: number, loadedAreaMm2: number, supportAreaMm2: number): number {
+  const confinement = Math.min(2, Math.sqrt(Math.max(supportAreaMm2, loadedAreaMm2) / loadedAreaMm2));
+  return BEARING_FACTOR * 0.85 * fcMpa * loadedAreaMm2 * confinement / 1e3;
+}
+
 /**
  * `out-of-scope`: verificación que la norma pide y el taller no calcula. Nunca
  * aprueba ni reprueba, pero impide llamar «Cumple» a secas al elemento.

@@ -40,6 +40,19 @@
     min-width: var(--chrome-key);
     height: var(--chrome-key);
     min-height: var(--chrome-key);
+    transition:
+      background-color var(--sc-motion-control) var(--sc-ease-standard),
+      border-color var(--sc-motion-control) var(--sc-ease-standard),
+      box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+      color var(--sc-motion-control) var(--sc-ease-standard),
+      transform var(--sc-motion-control) var(--sc-ease-press);
+  }
+  .app-shell.workspace-screen[data-shell-class] > .console.console .console__foot > button:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .app-shell.workspace-screen[data-shell-class] > .console.console .console__foot > button:active:not(:disabled) {
+    transform: var(--sc-press-transform);
+    box-shadow: var(--sc-shadow-inset) !important;
   }
 
   /* Utilidad activa (inspector abierto, pantalla completa): la misma tecla clay
@@ -60,6 +73,18 @@
     right: var(--chrome-gap);
     bottom: calc(var(--chrome-gap) * 2 + var(--chrome-key));
     flex-direction: row;
+  }
+  .app-shell.workspace-screen[data-shell-class] .canvas-host .canvas-controls button {
+    transition:
+      background-color var(--sc-motion-control) var(--sc-ease-standard),
+      color var(--sc-motion-control) var(--sc-ease-standard),
+      transform var(--sc-motion-control) var(--sc-ease-press);
+  }
+  .app-shell.workspace-screen[data-shell-class] .canvas-host .canvas-controls button:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+  .app-shell.workspace-screen[data-shell-class] .canvas-host .canvas-controls button:active:not(:disabled) {
+    transform: var(--sc-press-transform);
   }
 
   /* Barra de herramientas y utilidades: dentro del lienzo, no sobre su borde, y
@@ -82,6 +107,14 @@
   .app-shell.workspace-screen[data-shell-class] .canvas-host .repeat-action-control {
     right: var(--chrome-gap);
     bottom: calc(var(--chrome-gap) * 3 + var(--chrome-key) * 2 + 2px);
+    transition:
+      background-color var(--sc-motion-control) var(--sc-ease-standard),
+      box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+      color var(--sc-motion-control) var(--sc-ease-standard),
+      transform var(--sc-motion-control) var(--sc-ease-press);
+  }
+  .app-shell.workspace-screen[data-shell-class] .canvas-host .repeat-action-control:hover:not(:disabled) {
+    transform: translateY(-1px);
   }
 
   /* La leyenda del resultado cabe entera («M · Momento  Curva exacta…»). */
@@ -155,6 +188,13 @@
     background: transparent;
     box-shadow: none;
     color: var(--sc-color-text-secondary);
+    transition:
+      background-color var(--sc-motion-control) var(--sc-ease-standard),
+      color var(--sc-motion-control) var(--sc-ease-standard),
+      transform var(--sc-motion-control) var(--sc-ease-press);
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot > button:active:not(:disabled) {
+    transform: var(--sc-press-transform);
   }
   /* Abierto: el mismo tinte suave que una pestaña elegida, no un bloque cuadrado. */
   .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot > button:is([aria-pressed='true'], [aria-expanded='true'], .active, .is-active) {

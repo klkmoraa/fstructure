@@ -10,7 +10,7 @@ import { complementary, type ElementCheck } from './shared';
  * Las secciones citadas en la nota orientan al lector; no son cláusulas con
  * evidencia en el registro normativo, por eso la referencia es complementaria.
  */
-type ElementKind = 'beam' | 'column' | 'footing' | 'stripFooting' | 'combinedFooting';
+type ElementKind = 'beam' | 'column' | 'footing' | 'stripFooting' | 'combinedFooting' | 'strapFooting' | 'matFoundation';
 
 interface ScopeItem {
   readonly id: string;
@@ -50,7 +50,11 @@ const SCOPE: Readonly<Record<ElementKind, readonly ScopeItem[]>> = {
   column: [
     { id: 'concurrent-demand', label: 'Concurrencia de Pu, Mux y Muy', note: same('Las solicitaciones capturadas deben venir de la misma combinación. Máximos de casos distintos no forman un vector concurrente y pueden quedar del lado inseguro.') },
     { id: 'second-order', label: 'Análisis de segundo orden explícito', note: same('La esbeltez se trata con amplificación de momentos; no hay análisis P-Δ del marco.') },
-    { id: 'shape', label: 'Zuncho y otras formas', note: same('Columnas rectangulares y circulares con estribos; el refuerzo helicoidal (zuncho) y las secciones L, T o huecas no se diseñan.') },
+    { id: 'shape', label: 'Otras formas y zuncho fuera de la NTC', note: {
+      'ntc-2023': 'Columnas rectangulares y circulares (con estribos o zuncho); las secciones L, T o huecas no se diseñan.',
+      'nsr-10': 'Columnas rectangulares y circulares con estribos; el zuncho (sin cláusulas registradas de NSR-10) y las secciones L, T o huecas no se diseñan.',
+      e060: 'Columnas rectangulares y circulares con estribos; el zuncho (sin cláusulas registradas de E.060) y las secciones L, T o huecas no se diseñan.',
+    } },
     DUCTILITY,
     DEVELOPMENT_BRANCHES,
   ],
@@ -58,7 +62,8 @@ const SCOPE: Readonly<Record<ElementKind, readonly ScopeItem[]>> = {
     GEOTECHNICS,
     { id: 'stability', label: 'Volteo y deslizamiento', note: same('No se revisa la estabilidad de la zapata como cuerpo rígido.') },
     { id: 'seismic', label: 'Diseño sísmico de la cimentación', note: same('Marcar la combinación con sismo sólo cambia el factor de resistencia en penetración; no genera ni revisa las combinaciones sísmicas.') },
-    { id: 'other-footings', label: 'Columna excéntrica y dados', note: same('Zapata aislada rectangular con la columna centrada; la de lindero se resuelve como combinada o con contratrabe, y el dado o pedestal no se diseña.') },
+    { id: 'other-footings', label: 'Columna excéntrica y armado del dado', note: same('Zapata aislada con la columna (o el dado) centrada; la de lindero se resuelve como combinada o con contratrabe. Del dado se revisan el aplastamiento y las barras de la interfaz, no su armado como columna corta.') },
+    { id: 'effective-area', label: 'Reacción con área efectiva', note: { 'ntc-2023': 'Con momentos se usa presión lineal (trapecial) en lugar del área efectiva de 9.3.2.4; su comentario admite la distribución lineal en suelos firmes (zona I).', 'nsr-10': 'Con momentos se usa presión lineal (trapecial).', e060: 'Con momentos se usa presión lineal (trapecial).' } },
     DEVELOPMENT_BRANCHES,
   ],
   stripFooting: [
@@ -71,15 +76,33 @@ const SCOPE: Readonly<Record<ElementKind, readonly ScopeItem[]>> = {
     GEOTECHNICS,
     { id: 'rigid', label: 'Interacción suelo-estructura', note: same('Zapata rígida con presión lineal; no se modela el suelo como resortes ni los asentamientos diferenciales.') },
     { id: 'column-moments', label: 'Momentos de las columnas', note: same('Las columnas bajan sólo carga axial; los momentos y su transferencia en penetración no se consideran.') },
-    { id: 'strap', label: 'Contratrabe y zapata trapecial', note: same('Zapata rectangular; la de lindero con contratrabe (strap) o de planta trapecial no se diseña.') },
+    { id: 'trapezoidal', label: 'Zapata trapecial', note: same('Zapata rectangular; la de planta trapecial no se diseña (la de lindero puede resolverse con contratrabe).') },
+    DEVELOPMENT_BRANCHES,
+  ],
+  strapFooting: [
+    GEOTECHNICS,
+    { id: 'strap-weight', label: 'Peso de la contratrabe y relleno', note: same('La contratrabe se supone sin apoyo en el suelo entre zapatas y sin su peso propio ni el del relleno sobre ella.') },
+    { id: 'column-moments', label: 'Momentos de las columnas', note: same('Las columnas bajan sólo carga axial; los momentos y el sismo en la liga no se consideran.') },
+    DUCTILITY,
+    DEVELOPMENT_BRANCHES,
+  ],
+  matFoundation: [
+    GEOTECHNICS,
+    { id: 'rigid', label: 'Interacción suelo-estructura', note: same('Método rígido convencional: sin resortes del suelo, asentamientos diferenciales ni flexibilidad de la losa. Para claros o cargas muy desiguales se requiere un análisis de placa sobre medio elástico.') },
+    { id: 'column-moments', label: 'Momentos y transferencia en penetración', note: same('Las columnas bajan sólo carga axial; la fracción γv del momento transferido no se considera.') },
+    { id: 'irregular', label: 'Retícula irregular y cargas asimétricas', note: same('Retícula rectangular con claros iguales en cada dirección y la misma carga por tipo de columna; la resultante cae al centro.') },
     DEVELOPMENT_BRANCHES,
   ],
 };
 
 const FLANGE: ScopeItem = {
   id: 'flange',
-  label: 'Ancho efectivo del patín',
-  note: same('Se usa el ancho efectivo que se captura; el taller no lo deduce de la norma ni revisa el acero mínimo con el patín en tensión ni la transferencia de cortante entre alma y losa.'),
+  label: 'Patín en tensión y liga alma-losa',
+  note: {
+    'ntc-2023': 'El ancho capturado se revisa con la tabla 5.2.1.4.2; no se revisa el acero mínimo con el patín en tensión ni la transferencia de cortante entre alma y losa.',
+    'nsr-10': 'Se usa el ancho efectivo que se captura (sin límite registrado de NSR-10); no se revisa el acero mínimo con el patín en tensión ni la transferencia de cortante entre alma y losa.',
+    e060: 'Se usa el ancho efectivo que se captura (sin límite registrado de E.060); no se revisa el acero mínimo con el patín en tensión ni la transferencia de cortante entre alma y losa.',
+  },
 };
 
 /** Comprobaciones fuera de alcance del elemento, listas para mostrarse junto a las demás. */

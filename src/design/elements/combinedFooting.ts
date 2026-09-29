@@ -346,13 +346,13 @@ export function designCombinedFooting(input: CombinedFootingInput): CombinedFoot
       id: 'kern', label: 'Resultante dentro del núcleo',
       status: service.minimum >= -1e-9 ? 'pass' : 'fail',
       demand: 6 * Math.abs(service.eccentricity) / length, capacity: 1, unit: '', ratio: 6 * Math.abs(service.eccentricity) / length,
-      reference: complementary('Estática'),
+      reference: refs.stability,
       note: Math.abs(service.eccentricity) < 1 ? 'La resultante de servicio queda al centro de la zapata.'
         : `Resultante a ${Math.abs(service.eccentricity).toFixed(0)} mm del centro${service.minimum < 0 ? ': parte de la zapata se levanta; acerca la columna 2 o usa contratrabe.' : '.'}`,
     },
     capacityCheck('min-depth', 'Peralte efectivo mínimo', code.footing.minimumEffectiveDepthMm, state.dLong, 'mm', refs.footingDepth),
     ...state.punching.map((item) => tracedAt(capacityCheck(`punching-${item.column}`, `Penetración en la columna ${item.column}`, item.demandStressMpa, item.strengthStressMpa, 'MPa', refs.punching,
-      `${item.sides === 4 ? 'Columna interior' : item.sides === 3 ? 'Columna de borde (3 lados)' : 'Columna de esquina (2 lados)'}: bo = ${item.perimeterMm.toFixed(0)} mm, αs = ${item.alphaS}${item.sides < 4 ? ' (criterio complementario)' : ''}. Sin transferencia de momento de la columna.`),
+      `${item.sides === 4 ? 'Columna interior' : item.sides === 3 ? 'Columna de borde (3 lados)' : 'Columna de esquina (2 lados)'}: bo = ${item.perimeterMm.toFixed(0)} mm, αs = ${item.alphaS}. Sin transferencia de momento de la columna.`),
     `Perímetro a d/2 de la columna ${item.column}`, 'Combinación con la mayor carga de esa columna')),
     tracedAt(capacityCheck('one-way', 'Cortante como viga (a lo largo)', state.oneWayAt.value, oneWayStrength, 'kN', refs.oneWay,
       code.footing.oneWay === 'ntc'

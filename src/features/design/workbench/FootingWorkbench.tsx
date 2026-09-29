@@ -1,9 +1,11 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
-import { SegmentedControl } from '../../../design-system/components/controls';
+import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { LayerToggle } from '../../../design-system/components/editor';
 import { designCode } from '../../../design/elements/codes';
 import { designCombinedFooting } from '../../../design/elements/combinedFooting';
 import { designFooting } from '../../../design/elements/footing';
+import { designMatFoundation } from '../../../design/elements/matFoundation';
+import { designStrapFooting } from '../../../design/elements/strapFooting';
 import { designStripFooting } from '../../../design/elements/stripFooting';
 import {
   BarSelect, ChecksList, IdentityGroup, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict,
@@ -11,9 +13,11 @@ import {
 } from './common';
 import { FootingPlan, FootingSection } from './FootingDrawings';
 import {
-  FOOTING_DEFAULTS, combinedReport, combinedToInput, directionDetail, directionTitle, footingReport, footingToInput, footingType, planText, stripReport, stripToInput,
+  FOOTING_DEFAULTS, combinedReport, combinedToInput, directionDetail, directionTitle, footingReport, footingToInput, footingType, matReport, matToInput, planText,
+  strapReport, strapText, strapToInput, stripReport, stripToInput,
   type FootingDraft,
 } from './footingModel';
+import { MatPlan, MatStripDiagram, StrapDiagrams, StrapFootingPlan } from './FoundationDrawings';
 import { CombinedFootingDiagrams, CombinedFootingPlan, StripFootingSection } from './FootingTypeDrawings';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
@@ -27,15 +31,159 @@ export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   useEffect(() => onHistory?.(history), [history, onHistory]);
   const type = footingType(draft);
   const props = { chrome, draft, set, reset };
-  return type === 'strip' ? <StripFooting {...props} /> : type === 'combined' ? <CombinedFooting {...props} /> : <IsolatedFooting {...props} />;
+  return type === 'strip' ? <StripFooting {...props} />
+    : type === 'combined' ? <CombinedFooting {...props} />
+      : type === 'strap' ? <StrapFooting {...props} />
+        : type === 'mat' ? <MatFoundation {...props} />
+          : <IsolatedFooting {...props} />;
 }
 
-/** Tipo de zapata: el formulario, la lámina y la memoria cambian con él. */
+const FOOTING_TYPES = [
+  { value: 'isolated', label: 'Aislada (con o sin dado)' },
+  { value: 'strip', label: 'Corrida bajo muro' },
+  { value: 'combined', label: 'Combinada de dos columnas' },
+  { value: 'strap', label: 'De lindero con contratrabe' },
+  { value: 'mat', label: 'Losa de cimentación' },
+] as const;
+
+/** Tipo de cimentación: el formulario, la lámina y la memoria cambian con él. */
 function TypeGroup({ draft, set }: { draft: FootingDraft; set: Setter }) {
-  return <FieldGroup title="Tipo de zapata" columns={1}>
-    <SegmentedControl label="Tipo de zapata" size="sm" value={footingType(draft)} onValueChange={set('type')}
-      options={[{ value: 'isolated', label: 'Aislada' }, { value: 'strip', label: 'Corrida' }, { value: 'combined', label: 'Combinada' }]} />
+  return <FieldGroup title="Tipo de cimentación" columns={1}>
+    <Select label="Tipo de cimentación" value={footingType(draft)} onChange={(event) => set('type')(event.currentTarget.value)}>
+      {FOOTING_TYPES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+    </Select>
   </FieldGroup>;
+}
+
+/** Resultado común de los tipos compuestos: veredicto, armado, revisión, cuantificación y detalle. */
+function ReportResults({ report, status, ratio, summary }: {
+  report: NonNullable<ReturnType<typeof strapReport>>; status: 'pass' | 'fail' | 'warning'; ratio: number; summary: Parameters<typeof Summary>[0]['rows'];
+}) {
+  return <>
+    <Verdict status={status} ratio={ratio} title={report.title} outOfScope={report.outOfScope.length}>
+      <Summary rows={summary} />
+    </Verdict>
+    <PanelSection title="Armado"><RebarList items={report.reinforcement.map((row) => ({ kind: 'bar' as const, title: row.label, detail: row.value }))} /></PanelSection>
+    <PanelSection title="Revisión"><ReviewList checks={report.checks} outOfScope={report.outOfScope} /></PanelSection>
+    <TakeoffSection takeoff={report.takeoff} />
+    <Disclosure label="Detalle del cálculo">
+      <ValuesTable rows={report.values} />
+      <ChecksList checks={report.notes} />
+    </Disclosure>
+  </>;
+}
+
+function StrapFooting({ chrome, draft, set, reset }: FootingProps) {
+  const code = designCode(chrome.code);
+  const result = useMemo(() => designStrapFooting(strapToInput(chrome.code, draft)), [chrome.code, draft]);
+  const report = useMemo(() => result.ok ? strapReport(result, draft) : null, [result, draft]);
+  const column = (index: 1 | 2) => <>
+    <NumberField label={`C${index} · c1 (X)`} unit="cm" value={draft[`s${index}x`]} onChange={set(`s${index}x`)} />
+    <NumberField label={`C${index} · c2 (Y)`} unit="cm" value={draft[`s${index}y`]} onChange={set(`s${index}y`)} />
+    <NumberField label={`C${index} · muerta`} unit="kN" value={draft[`s${index}d`]} onChange={set(`s${index}d`)} />
+    <NumberField label={`C${index} · viva`} unit="kN" value={draft[`s${index}l`]} onChange={set(`s${index}l`)} />
+  </>;
+  return <WorkbenchLayout
+    chrome={chrome}
+    title="Zapata de lindero"
+    report={report}
+    onReset={reset}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, (report?.outOfScope.length ?? 0) > 0) } : { status: 'error', label: 'Datos incompletos' }}
+    caption={result.ok ? `${formatNumber(result.exteriorLengthMm / 1000, 2)} × ${formatNumber(result.exteriorWidthMm / 1000, 2)} m · ${strapText(result).toLowerCase()}` : undefined}
+    inputs={<>
+      <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="Z-1" />
+      <TypeGroup draft={draft} set={set} />
+      <FieldGroup title="Columna 1 (en el lindero)">{column(1)}</FieldGroup>
+      <FieldGroup title="Columna 2 (interior)">{column(2)}</FieldGroup>
+      <FieldGroup title="Contratrabe">
+        <NumberField label="Entre ejes" unit="m" value={draft.strapSpacing} onChange={set('strapSpacing')} />
+        {code.usesStructureGroup ? <GroupField draft={draft} set={set} /> : null}
+        <div className="dw-span-all">
+          <LayerToggle label="Sección automática" checked={draft.strapAuto === 'yes'} onCheckedChange={(checked) => set('strapAuto')(checked ? 'yes' : 'no')} />
+        </div>
+        {draft.strapAuto === 'yes' ? null : <>
+          <NumberField label="Ancho" unit="cm" value={draft.strapWidth} onChange={set('strapWidth')} />
+          <NumberField label="Peralte" unit="cm" value={draft.strapHeight} onChange={set('strapHeight')} />
+        </>}
+        <BarSelect label="Varilla" value={draft.strapBar} onChange={set('strapBar')} minimumDiameterMm={12.7} />
+        <BarSelect label="Estribo" value={draft.strapStirrup} onChange={set('strapStirrup')} />
+      </FieldGroup>
+      <SoilAndMaterials draft={draft} set={set} planLabel="Zapata 1 con ancho ≈ 2 × largo"
+        planFields={<NumberField label="Largo B1 (X)" unit="cm" value={draft.b1} onChange={set('b1')} />} />
+      <MoreOptions>
+        <BarSelect label="Varilla de zapatas" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
+      </MoreOptions>
+    </>}
+    stage={result.ok ? <>
+      <Plate title="Planta" wide><StrapFootingPlan result={result} /></Plate>
+      <Plate title="Contratrabe: cortante y momento" wide><StrapDiagrams result={result} /></Plate>
+    </> : <ErrorsPanel errors={result.errors} />}
+    results={result.ok && report ? <ReportResults report={report} status={result.status} ratio={result.governingRatio} summary={[
+      { label: 'R1 · R2', value: `${formatNumber(result.reactions.service.exteriorKn, 0)} · ${formatNumber(result.reactions.service.interiorKn, 0)} kN`, tone: 'axial' },
+      { label: 'Contratrabe', value: `${formatNumber(result.strap.widthMm / 10, 0)} × ${formatNumber(result.strap.heightMm / 10, 0)} cm` },
+      { label: 'Mu−', value: `${formatNumber(result.strap.top.momentKnm, 0)} kN·m`, tone: 'moment' },
+      { label: 'Vu / φVn', value: `${formatNumber(result.strap.shear.demandKn, 0)} / ${formatNumber(result.strap.shear.strengthKn, 0)} kN`, tone: 'shear' },
+    ]} /> : null}
+  />;
+}
+
+function MatFoundation({ chrome, draft, set, reset }: FootingProps) {
+  const code = designCode(chrome.code);
+  const result = useMemo(() => designMatFoundation(matToInput(chrome.code, draft)), [chrome.code, draft]);
+  const report = useMemo(() => result.ok ? matReport(result, draft) : null, [result, draft]);
+  const load = (kind: 'corner' | 'edge' | 'interior', label: string) => <>
+    <NumberField label={`${label} · muerta`} unit="kN" value={draft[`${kind}D`]} onChange={set(`${kind}D`)} />
+    <NumberField label={`${label} · viva`} unit="kN" value={draft[`${kind}L`]} onChange={set(`${kind}L`)} />
+  </>;
+  const punching = result.ok ? result.punching.reduce((worst, item) => item.demandStressMpa / item.strengthStressMpa > worst.demandStressMpa / worst.strengthStressMpa ? item : worst) : null;
+  return <WorkbenchLayout
+    chrome={chrome}
+    title="Losa de cimentación"
+    report={report}
+    onReset={reset}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, (report?.outOfScope.length ?? 0) > 0) } : { status: 'error', label: 'Datos incompletos' }}
+    caption={result.ok ? `${formatNumber(result.lengthXMm / 1000, 2)} × ${formatNumber(result.lengthYMm / 1000, 2)} m · h ${formatNumber(result.thicknessMm / 10, 0)} cm` : undefined}
+    inputs={<>
+      <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="LC-1" />
+      <TypeGroup draft={draft} set={set} />
+      <FieldGroup title="Retícula">
+        <NumberField label="Claros en X" unit="pzas" value={draft.nx} onChange={set('nx')} min={1} />
+        <NumberField label="Claro X" unit="m" value={draft.sx} onChange={set('sx')} />
+        <NumberField label="Claros en Y" unit="pzas" value={draft.ny} onChange={set('ny')} min={1} />
+        <NumberField label="Claro Y" unit="m" value={draft.sy} onChange={set('sy')} />
+        <NumberField label="Volado desde el eje" unit="cm" value={draft.matOverhang} onChange={set('matOverhang')} />
+        <NumberField label="Columna c1 (X)" unit="cm" value={draft.mc1} onChange={set('mc1')} />
+        <NumberField label="Columna c2 (Y)" unit="cm" value={draft.mc2} onChange={set('mc2')} />
+      </FieldGroup>
+      <FieldGroup title="Cargas de servicio por columna">
+        {load('corner', 'Esquina')}
+        {load('edge', 'Borde')}
+        {load('interior', 'Interior')}
+        {code.usesStructureGroup ? <GroupField draft={draft} set={set} /> : null}
+      </FieldGroup>
+      <FieldGroup title="Suelo y materiales">
+        <NumberField label="qa neta" unit="kPa" value={draft.qa} onChange={set('qa')} />
+        <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
+        <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />
+        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
+        <div className="dw-span-all">
+          <LayerToggle label="Espesor automático" checked={draft.autoThickness === 'yes'} onCheckedChange={(checked) => set('autoThickness')(checked ? 'yes' : 'no')} />
+        </div>
+        {draft.autoThickness === 'yes' ? null : <NumberField label="Espesor h" unit="cm" value={draft.thickness} onChange={set('thickness')} />}
+        <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
+      </FieldGroup>
+    </>}
+    stage={result.ok ? <>
+      <Plate title="Planta" wide><MatPlan result={result} /></Plate>
+      <Plate title="Franja que rige en X" wide><MatStripDiagram result={result} /></Plate>
+    </> : <ErrorsPanel errors={result.errors} />}
+    results={result.ok && report ? <ReportResults report={report} status={result.status} ratio={result.governingRatio} summary={[
+      { label: 'Espesor', value: `${formatNumber(result.thicknessMm / 10, 0)} cm · d ${formatNumber(result.effectiveDepthMm / 10, 1)}` },
+      { label: 'q servicio', value: `${formatNumber(result.service.pressureKpa, 0)} kPa`, tone: 'axial' },
+      { label: 'vu / φvc', value: punching ? `${formatNumber(punching.demandStressMpa, 2)} / ${formatNumber(punching.strengthStressMpa, 2)} MPa` : '—', tone: 'shear' },
+      { label: 'Mu X inf · sup', value: `${formatNumber(result.directions.x.bottom.momentKnmPerM, 0)} · ${formatNumber(result.directions.x.top.momentKnmPerM, 0)} kN·m/m`, tone: 'moment' },
+    ]} /> : null}
+  />;
 }
 
 /** Suelo, materiales y dimensiones automáticas: comunes a los tres tipos. */
@@ -220,9 +368,25 @@ function IsolatedFooting({ chrome, draft, set, reset }: FootingProps) {
         </> : null}
       </FieldGroup>
       <FieldGroup title="Columna y suelo">
-        <NumberField label="c1 (X)" unit="cm" value={draft.c1} onChange={set('c1')} />
-        <NumberField label="c2 (Y)" unit="cm" value={draft.c2} onChange={set('c2')} />
+        <div className="dw-span-all">
+          <SegmentedControl label="Forma de la columna" size="sm" value={draft.colShape === 'circular' ? 'circular' : 'rectangular'} onValueChange={set('colShape')}
+            options={[{ value: 'rectangular', label: 'Rectangular' }, { value: 'circular', label: 'Circular' }]} />
+        </div>
+        {draft.colShape === 'circular'
+          ? <NumberField label="Diámetro D" unit="cm" value={draft.colDiameter} onChange={set('colDiameter')} />
+          : <>
+            <NumberField label="c1 (X)" unit="cm" value={draft.c1} onChange={set('c1')} />
+            <NumberField label="c2 (Y)" unit="cm" value={draft.c2} onChange={set('c2')} />
+          </>}
         <NumberField label="qa neta" unit="kPa" value={draft.qa} onChange={set('qa')} />
+        <div className="dw-span-all">
+          <LayerToggle label="Dado entre columna y zapata" checked={draft.pedestal === 'yes'} onCheckedChange={(checked) => set('pedestal')(checked ? 'yes' : 'no')} />
+        </div>
+        {draft.pedestal === 'yes' ? <>
+          <NumberField label="Dado (X)" unit="cm" value={draft.pedX} onChange={set('pedX')} />
+          <NumberField label="Dado (Y)" unit="cm" value={draft.pedY} onChange={set('pedY')} />
+          <NumberField label="Altura del dado" unit="cm" value={draft.pedH} onChange={set('pedH')} />
+        </> : null}
       </FieldGroup>
       <FieldGroup title="Dimensiones">
         <div className="dw-span-all">
@@ -246,6 +410,7 @@ function IsolatedFooting({ chrome, draft, set, reset }: FootingProps) {
       <MoreOptions>
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
+        <NumberField label="f′c de la columna" unit="kg/cm²" value={draft.colFc} onChange={set('colFc')} />
       </MoreOptions>
     </>}
     stage={result.ok ? <>

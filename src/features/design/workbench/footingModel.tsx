@@ -1,18 +1,22 @@
 import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import { designCombinedFooting, type CombinedFootingInput, type CombinedFootingResult } from '../../../design/elements/combinedFooting';
 import { designFooting, type FootingDesignInput, type FootingDesignResult, type FootingDirection } from '../../../design/elements/footing';
+import { designMatFoundation, type MatFoundationInput, type MatFoundationResult, type MatLayer } from '../../../design/elements/matFoundation';
+import { designStrapFooting, type StrapFootingInput, type StrapFootingResult } from '../../../design/elements/strapFooting';
 import { designStripFooting, type StripFootingInput, type StripFootingResult } from '../../../design/elements/stripFooting';
 import { outOfScopeChecks } from '../../../design/elements/scope';
 import { rebarLabel } from '../../../design/elements/shared';
-import { combinedFootingTakeoff, footingTakeoff, stripFootingTakeoff } from '../../../design/elements/takeoff';
+import { combinedFootingTakeoff, footingTakeoff, matFoundationTakeoff, strapFootingTakeoff, stripFootingTakeoff } from '../../../design/elements/takeoff';
 import { formatNumber, mpaFromKgcm2, parseNumber, splitChecks } from './common';
 import type { DesignReport, ReportRow } from './designReport';
 import { FootingPlan, FootingSection } from './FootingDrawings';
 import { CombinedFootingDiagrams, CombinedFootingPlan, StripFootingSection } from './FootingTypeDrawings';
+import { MatPlan, MatStripDiagram, StrapDiagrams, StrapFootingPlan } from './FoundationDrawings';
 
 /** Zapata aislada: del borrador del formulario a la entrada del motor y a la memoria. */
 export const FOOTING_DEFAULTS = {
   tag: '', place: '',
+  colShape: 'rectangular', colDiameter: '45', colFc: '250', pedestal: 'no', pedX: '60', pedY: '60', pedH: '60',
   c1: '40', c2: '40', dead: '600', live: '300', group: 'B', seismic: 'no', qa: '150', fc: '250', fy: '4200',
   moments: 'no', mx: '0', my: '60', mux: '0', muy: '85',
   autoPlan: 'yes', sideX: '250', sideY: '250', autoThickness: 'yes', thickness: '50', cover: '7.5', bar: '15.9',
@@ -21,6 +25,12 @@ export const FOOTING_DEFAULTS = {
   wallWidth: '20', wallType: 'concrete', wDead: '100', wLive: '50', distBar: '9.5', stripWidth: '100',
   c1x: '40', c1y: '40', p1d: '500', p1l: '200', c2x: '40', c2y: '40', p2d: '800', p2l: '300',
   spacing: '4', edge: 'yes', overhang: '80', combWidth: '250', transBar: '15.9',
+  /** Zapata de lindero con contratrabe. */
+  s1x: '40', s1y: '40', s1d: '500', s1l: '200', s2x: '40', s2y: '40', s2d: '800', s2l: '300', strapSpacing: '5',
+  strapAuto: 'yes', strapWidth: '45', strapHeight: '80', strapBar: '15.9', strapStirrup: '9.5', b1Auto: 'yes', b1: '170',
+  /** Losa de cimentación: retícula, volado y cargas por tipo de columna. */
+  nx: '2', sx: '6', ny: '2', sy: '5', matOverhang: '60', mc1: '50', mc2: '50',
+  cornerD: '300', cornerL: '150', edgeD: '600', edgeL: '300', interiorD: '1200', interiorL: '600',
 };
 
 export type FootingDraft = typeof FOOTING_DEFAULTS;
@@ -28,10 +38,14 @@ export type FootingDraft = typeof FOOTING_DEFAULTS;
 export const footingToInput = (codeId: DesignCodeId, draft: FootingDraft): FootingDesignInput => {
   const moments = draft.moments === 'yes';
   const code = designCode(codeId);
+  const circular = draft.colShape === 'circular';
   return {
     code: codeId,
-    columnWidthMm: parseNumber(draft.c1) * 10,
-    columnDepthMm: parseNumber(draft.c2) * 10,
+    columnShape: circular ? 'circular' : 'rectangular',
+    columnFcMpa: mpaFromKgcm2(draft.colFc),
+    pedestal: draft.pedestal === 'yes' ? { widthMm: parseNumber(draft.pedX) * 10, depthMm: parseNumber(draft.pedY) * 10, heightMm: parseNumber(draft.pedH) * 10 } : null,
+    columnWidthMm: parseNumber(circular ? draft.colDiameter : draft.c1) * 10,
+    columnDepthMm: parseNumber(circular ? draft.colDiameter : draft.c2) * 10,
     deadKn: parseNumber(draft.dead),
     liveKn: parseNumber(draft.live),
     combinations: code.loadCombinations(draft.group === 'A' ? 'A' : 'B'),
@@ -69,21 +83,32 @@ function footingMemo(result: FootingDesignResult): string {
   return [
     `ZAPATA AISLADA ${planText(result)} · h = ${formatNumber(result.thicknessMm / 10, 0)} cm · ${designCode(input.code).name}`,
     `Combinaciones: ${input.combinations.map((combination) => combination.label).join(' · ')} · Pu = ${formatNumber(result.ultimateAxialKn, 0)} kN`,
-    `Columna ${input.columnWidthMm / 10}×${input.columnDepthMm / 10} cm · P = ${input.deadKn + input.liveKn} kN · Mx = ${input.serviceMomentXKnm} · My = ${input.serviceMomentYKnm} kN·m (servicio)`,
+    `${columnText(input)}${input.pedestal ? ` sobre dado ${input.pedestal.widthMm / 10}×${input.pedestal.depthMm / 10}×${input.pedestal.heightMm / 10} cm` : ''} · P = ${input.deadKn + input.liveKn} kN · Mx = ${input.serviceMomentXKnm} · My = ${input.serviceMomentYKnm} kN·m (servicio)`,
     `Presión de servicio ${formatNumber(result.service.minimumKpa, 0)} a ${formatNumber(result.service.maximumKpa, 0)} kPa · admisible ${input.allowablePressureKpa} kPa`,
     `Refuerzo ${directionTitle(result.directions.x, input.barDiameterMm)} · ${directionTitle(result.directions.y, input.barDiameterMm)}`,
+    ...result.bearing.map((item) => `Aplastamiento ${item.label}: Pu = ${formatNumber(item.demandKn, 0)} kN · BR = ${formatNumber(Math.min(item.upperStrengthKn, item.lowerStrengthKn), 0)} kN · barras a través de la interfaz ≥ ${formatNumber(Math.max(item.dowelMinimumMm2, item.dowelExcessMm2) / 100, 2)} cm²`),
     ...result.checks.map((check) => `${check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '!'} ${check.label}${check.ratio !== undefined && Number.isFinite(check.ratio) ? ` (${Math.round(check.ratio * 100)} %)` : ''}`),
     'FStructure · Diseño experimental; requiere revisión profesional.',
   ].join('\n');
 }
 
-const footingTitle = (result: FootingDesignResult) => `Zapata ${planText(result)}`;
+const footingTitle = (result: FootingDesignResult) => `Zapata ${planText(result)}${result.input.pedestal ? ' con dado' : ''}`;
+
+const columnText = (input: FootingDesignInput) => input.columnShape === 'circular'
+  ? `Columna circular Ø ${formatNumber(input.columnWidthMm / 10, 0)} cm`
+  : `Columna ${formatNumber(input.columnWidthMm / 10, 0)}×${formatNumber(input.columnDepthMm / 10, 0)} cm`;
 
 function footingReinforcementRows(result: FootingDesignResult): ReportRow[] {
-  return [result.directions.x, result.directions.y].map((direction) => ({
-    label: directionTitle(direction, result.input.barDiameterMm),
-    value: directionDetail(direction),
-  }));
+  return [
+    ...[result.directions.x, result.directions.y].map((direction) => ({
+      label: directionTitle(direction, result.input.barDiameterMm),
+      value: directionDetail(direction),
+    })),
+    ...result.bearing.map((item) => ({
+      label: `Barras ${item.label}`,
+      value: `As ≥ ${formatNumber(Math.max(item.dowelMinimumMm2, item.dowelExcessMm2) / 100, 2)} cm² a través de la interfaz (0.005Ag${item.dowelExcessMm2 > item.dowelMinimumMm2 ? ', rige el excedente sobre el aplastamiento' : ''})`,
+    })),
+  ];
 }
 
 function footingValues(result: FootingDesignResult) {
@@ -101,7 +126,8 @@ function footingValues(result: FootingDesignResult) {
     { symbol: 'vu / φvc', label: 'Esfuerzo de penetración', value: `${formatNumber(result.punching.demandStressMpa, 2)} / ${formatNumber(result.punching.strengthStressMpa, 2)} MPa` },
     ...(code.footing.punchingSizeFactor ? [{ symbol: 'λs', label: 'Efecto de tamaño (penetración)', value: formatNumber(result.punching.sizeFactor, 3) }] : []),
     { symbol: 'φ', label: 'Cortante · penetración', value: `${code.shearFactor} · ${result.punching.resistanceFactor}` },
-    { symbol: 'Mu', label: 'Flexión en el paño X · Y', value: `${formatNumber(result.directions.x.momentKnm, 1)} · ${formatNumber(result.directions.y.momentKnm, 1)} kN·m` },
+    ...result.bearing.map((item) => ({ symbol: 'Pu / BR', label: `Aplastamiento ${item.label} (√(A2/A1) = ${formatNumber(Math.min(2, Math.sqrt(item.supportAreaMm2 / item.loadedAreaMm2)), 2)})`, value: `${formatNumber(item.demandKn, 0)} / ${formatNumber(Math.min(item.upperStrengthKn, item.lowerStrengthKn), 0)} kN` })),
+    { symbol: 'Mu', label: result.support.circular ? 'Flexión en la sección crítica X · Y' : 'Flexión en el paño X · Y', value: `${formatNumber(result.directions.x.momentKnm, 1)} · ${formatNumber(result.directions.y.momentKnm, 1)} kN·m` },
     { symbol: 'ld · ldh', label: 'Recta / gancho X', value: `${formatNumber(result.directions.x.developmentLengthMm / 10, 0)} / ${formatNumber(result.directions.x.hookLengthMm / 10, 0)} cm` },
     { symbol: 'd mín', label: 'Peralte efectivo mínimo', value: `${formatNumber(code.footing.minimumEffectiveDepthMm / 10, 0)} cm` },
     { symbol: 'Vu / φVc', label: 'Como viga X', value: `${formatNumber(result.directions.x.oneWayDemandKn, 0)} / ${formatNumber(result.directions.x.oneWayStrengthKn, 0)} kN` },
@@ -124,7 +150,10 @@ function footingData(result: FootingDesignResult, draft: FootingDraft) {
       ] : []),
     ] },
     { title: 'Columna y suelo', rows: [
-      { label: 'Columna', value: `c1 = ${formatNumber(input.columnWidthMm / 10, 0)} cm (X) · c2 = ${formatNumber(input.columnDepthMm / 10, 0)} cm (Y)` },
+      { label: 'Columna', value: input.columnShape === 'circular'
+        ? `circular, D = ${formatNumber(input.columnWidthMm / 10, 0)} cm · f′c ${draft.colFc} kg/cm²`
+        : `c1 = ${formatNumber(input.columnWidthMm / 10, 0)} cm (X) · c2 = ${formatNumber(input.columnDepthMm / 10, 0)} cm (Y) · f′c ${draft.colFc} kg/cm²` },
+      ...(input.pedestal ? [{ label: 'Dado', value: `${formatNumber(input.pedestal.widthMm / 10, 0)} × ${formatNumber(input.pedestal.depthMm / 10, 0)} cm, altura ${formatNumber(input.pedestal.heightMm / 10, 0)} cm (concreto de la zapata)` }] : []),
       { label: 'Presión admisible neta', value: `${formatNumber(input.allowablePressureKpa, 0)} kPa (del estudio geotécnico)` },
     ] },
     { title: 'Dimensiones y materiales', rows: [
@@ -165,8 +194,9 @@ export function footingReport(result: FootingDesignResult, draft: FootingDraft):
   };
 }
 
-type FootingType = 'isolated' | 'strip' | 'combined';
-export const footingType = (draft: FootingDraft): FootingType => draft.type === 'strip' || draft.type === 'combined' ? draft.type : 'isolated';
+type FootingType = 'isolated' | 'strip' | 'combined' | 'strap' | 'mat';
+export const footingType = (draft: FootingDraft): FootingType =>
+  draft.type === 'strip' || draft.type === 'combined' || draft.type === 'strap' || draft.type === 'mat' ? draft.type : 'isolated';
 const cmToMm = (value: string) => parseNumber(value) * 10;
 
 // ─── Zapata corrida ───
@@ -338,6 +368,14 @@ export function combinedReport(result: CombinedFootingResult, draft: FootingDraf
 
 export function footingReportFromDraft(code: DesignCodeId, draft: FootingDraft) {
   const type = footingType(draft);
+  if (type === 'strap') {
+    const result = designStrapFooting(strapToInput(code, draft));
+    return result.ok ? { ok: true as const, report: strapReport(result, draft) } : { ok: false as const, errors: result.errors };
+  }
+  if (type === 'mat') {
+    const result = designMatFoundation(matToInput(code, draft));
+    return result.ok ? { ok: true as const, report: matReport(result, draft) } : { ok: false as const, errors: result.errors };
+  }
   if (type === 'strip') {
     const result = designStripFooting(stripToInput(code, draft));
     return result.ok ? { ok: true as const, report: stripReport(result, draft) } : { ok: false as const, errors: result.errors };
@@ -348,4 +386,181 @@ export function footingReportFromDraft(code: DesignCodeId, draft: FootingDraft) 
   }
   const result = designFooting(footingToInput(code, draft));
   return result.ok ? { ok: true as const, report: footingReport(result, draft) } : { ok: false as const, errors: result.errors };
+}
+
+const statusMark = (status: string) => status === 'pass' ? '✓' : status === 'fail' ? '✗' : '!';
+
+// ─── Zapata de lindero con contratrabe ───
+export const strapToInput = (codeId: DesignCodeId, draft: FootingDraft): StrapFootingInput => ({
+  code: codeId,
+  exterior: { widthMm: cmToMm(draft.s1x), depthMm: cmToMm(draft.s1y), deadKn: parseNumber(draft.s1d), liveKn: parseNumber(draft.s1l) },
+  interior: { widthMm: cmToMm(draft.s2x), depthMm: cmToMm(draft.s2y), deadKn: parseNumber(draft.s2d), liveKn: parseNumber(draft.s2l) },
+  spacingMm: parseNumber(draft.strapSpacing) * 1000,
+  combinations: designCode(codeId).loadCombinations(draft.group === 'A' ? 'A' : 'B'),
+  allowablePressureKpa: parseNumber(draft.qa),
+  fcMpa: mpaFromKgcm2(draft.fc),
+  fyMpa: mpaFromKgcm2(draft.fy),
+  coverMm: cmToMm(draft.cover),
+  exteriorLengthMm: draft.b1Auto === 'yes' ? null : cmToMm(draft.b1),
+  thicknessMm: draft.autoThickness === 'yes' ? null : cmToMm(draft.thickness),
+  barDiameterMm: parseNumber(draft.bar),
+  strap: {
+    widthMm: draft.strapAuto === 'yes' ? null : cmToMm(draft.strapWidth),
+    heightMm: draft.strapAuto === 'yes' ? null : cmToMm(draft.strapHeight),
+    barDiameterMm: parseNumber(draft.strapBar),
+    stirrupDiameterMm: parseNumber(draft.strapStirrup),
+  },
+});
+
+export const strapText = (result: StrapFootingResult) => {
+  const { strap } = result;
+  return `Contratrabe ${formatNumber(strap.widthMm / 10, 0)} × ${formatNumber(strap.heightMm / 10, 0)} cm`;
+};
+
+export function strapReinforcementRows(result: StrapFootingResult): ReportRow[] {
+  const { input, strap, exterior, interior } = result;
+  return [
+    { label: `Contratrabe superior ${strap.top.barCount} ${rebarLabel(input.strap.barDiameterMm)}`, value: `Mu− ${formatNumber(strap.top.momentKnm, 0)} kN·m · gancho en la columna de lindero, corridas a través de la columna 2` },
+    { label: `Contratrabe inferior ${strap.bottom.barCount} ${rebarLabel(input.strap.barDiameterMm)}`, value: `Corridas · Mu+ ${formatNumber(strap.bottom.momentKnm, 0)} kN·m` },
+    { label: `Estribos ${rebarLabel(input.strap.stirrupDiameterMm)} @ ${formatNumber(strap.shear.spacingMm / 10, 1)} cm`, value: 'Cerrados, en toda la contratrabe' },
+    { label: `Zapata 1 ${rebarLabel(input.barDiameterMm)} @ ${formatNumber(exterior.transverse.spacingMm / 10, 0)} cm`, value: `Transversal a la contratrabe · ${exterior.distribution.barCount} ${rebarLabel(input.barDiameterMm)} a lo largo` },
+    ...[interior.directions.x, interior.directions.y].map((direction) => ({ label: `Zapata 2 ${directionTitle(direction, input.barDiameterMm)}`, value: directionDetail(direction) })),
+  ];
+}
+
+export function strapReport(result: StrapFootingResult, draft: FootingDraft): DesignReport {
+  const [checks, notes] = splitChecks(result.checks);
+  const { input, exterior, interior, strap } = result;
+  const title = `Zapata de lindero ${meters(result.exteriorLengthMm)} × ${meters(result.exteriorWidthMm)} m con contratrabe`;
+  return {
+    element: 'footing', title, tag: draft.tag.trim(), place: draft.place.trim(), code: input.code,
+    status: result.status, governingRatio: result.governingRatio,
+    memo: [
+      `ZAPATA DE LINDERO CON CONTRATRABE · ${designCode(input.code).name}`,
+      `C1 ${input.exterior.widthMm / 10}×${input.exterior.depthMm / 10} cm en el lindero (CM ${input.exterior.deadKn} · CV ${input.exterior.liveKn} kN) · C2 ${input.interior.widthMm / 10}×${input.interior.depthMm / 10} cm (CM ${input.interior.deadKn} · CV ${input.interior.liveKn} kN) · L = ${meters(input.spacingMm)} m`,
+      `Zapata 1 ${meters(result.exteriorLengthMm)} × ${meters(result.exteriorWidthMm)} m · h ${formatNumber(exterior.thicknessMm / 10, 0)} cm · e = ${formatNumber(result.eccentricityMm / 10, 1)} cm · R1 = ${formatNumber(result.reactions.service.exteriorKn, 0)} kN`,
+      `Zapata 2 ${planText(interior)} · h ${formatNumber(interior.thicknessMm / 10, 0)} cm · R2 = ${formatNumber(result.reactions.service.interiorKn, 0)} kN (diseñada con P2)`,
+      `${strapText(result)} · ${strap.top.barCount} ${rebarLabel(input.strap.barDiameterMm)} sup. · ${strap.bottom.barCount} inf. · E ${rebarLabel(input.strap.stirrupDiameterMm)} @ ${formatNumber(strap.shear.spacingMm / 10, 1)} cm`,
+      ...result.checks.filter((check) => check.status !== 'info').map((check) => `${statusMark(check.status)} ${check.label}`),
+      'FStructure · Diseño experimental; requiere revisión profesional.',
+    ].join('\n'),
+    checks, notes,
+    outOfScope: outOfScopeChecks('strapFooting', input.code), input,
+    data: [
+      { title: 'Columnas', rows: [
+        { label: 'Columna 1 (lindero)', value: `${formatNumber(input.exterior.widthMm / 10, 0)} × ${formatNumber(input.exterior.depthMm / 10, 0)} cm · CM ${formatNumber(input.exterior.deadKn, 0)} · CV ${formatNumber(input.exterior.liveKn, 0)} kN` },
+        { label: 'Columna 2 (interior)', value: `${formatNumber(input.interior.widthMm / 10, 0)} × ${formatNumber(input.interior.depthMm / 10, 0)} cm · CM ${formatNumber(input.interior.deadKn, 0)} · CV ${formatNumber(input.interior.liveKn, 0)} kN` },
+        { label: 'Distancia entre ejes', value: `${meters(input.spacingMm)} m` },
+      ] },
+      { title: 'Suelo y materiales', rows: [
+        { label: 'Presión admisible neta', value: `${formatNumber(input.allowablePressureKpa, 0)} kPa (del estudio geotécnico)` },
+        { label: 'Combinaciones', value: input.combinations.map((combination) => combination.label).join(' · ') },
+        { label: 'f′c · fy', value: `${draft.fc} · ${draft.fy} kg/cm²` },
+        { label: 'Contratrabe', value: input.strap.widthMm === null ? `automática → ${formatNumber(strap.widthMm / 10, 0)} × ${formatNumber(strap.heightMm / 10, 0)} cm` : `${formatNumber(strap.widthMm / 10, 0)} × ${formatNumber(strap.heightMm / 10, 0)} cm` },
+      ] },
+    ],
+    reinforcement: strapReinforcementRows(result),
+    values: [
+      { symbol: 'B1 × W1', label: 'Zapata 1', value: `${meters(result.exteriorLengthMm)} × ${meters(result.exteriorWidthMm)} m` },
+      { symbol: 'e', label: 'Excentricidad de la zapata 1', value: `${formatNumber(result.eccentricityMm / 10, 1)} cm` },
+      { symbol: 'R1 · R2', label: 'Reacciones de servicio', value: `${formatNumber(result.reactions.service.exteriorKn, 0)} · ${formatNumber(result.reactions.service.interiorKn, 0)} kN` },
+      { symbol: 'R2,mín', label: 'Columna 2 sólo con muerta', value: `${formatNumber(result.reactions.minimumInteriorKn, 0)} kN` },
+      { symbol: 'R1u', label: 'Reacción última de la zapata 1', value: `${formatNumber(result.reactions.ultimate.exteriorKn, 0)} kN` },
+      { symbol: 'Mu−', label: `Contratrabe a ${meters(strap.negativeAtMm)} m del lindero`, value: `${formatNumber(strap.top.momentKnm, 0)} kN·m` },
+      { symbol: 'Vu / φVn', label: 'Cortante de la contratrabe', value: `${formatNumber(strap.shear.demandKn, 0)} / ${formatNumber(strap.shear.strengthKn, 0)} kN` },
+      { symbol: 'd', label: 'Peralte efectivo de la contratrabe', value: `${formatNumber(strap.effectiveDepthMm / 10, 1)} cm` },
+    ],
+    tables: [],
+    takeoff: strapFootingTakeoff(result),
+    figures: [
+      { title: 'Planta', note: 'Línea de trazo y punto: lindero; sombra: contratrabe', render: () => <StrapFootingPlan result={result} /> },
+      { title: 'Contratrabe: cortante y momento', note: 'Del lindero al eje de la columna 2; momento positivo con tensión abajo', render: () => <StrapDiagrams result={result} /> },
+    ],
+  };
+}
+
+// ─── Losa de cimentación ───
+export const matToInput = (codeId: DesignCodeId, draft: FootingDraft): MatFoundationInput => ({
+  code: codeId,
+  spansX: { count: parseNumber(draft.nx), lengthMm: parseNumber(draft.sx) * 1000 },
+  spansY: { count: parseNumber(draft.ny), lengthMm: parseNumber(draft.sy) * 1000 },
+  overhangMm: cmToMm(draft.matOverhang),
+  columnWidthMm: cmToMm(draft.mc1),
+  columnDepthMm: cmToMm(draft.mc2),
+  loads: {
+    corner: { deadKn: parseNumber(draft.cornerD), liveKn: parseNumber(draft.cornerL) },
+    edge: { deadKn: parseNumber(draft.edgeD), liveKn: parseNumber(draft.edgeL) },
+    interior: { deadKn: parseNumber(draft.interiorD), liveKn: parseNumber(draft.interiorL) },
+  },
+  combinations: designCode(codeId).loadCombinations(draft.group === 'A' ? 'A' : 'B'),
+  allowablePressureKpa: parseNumber(draft.qa),
+  fcMpa: mpaFromKgcm2(draft.fc),
+  fyMpa: mpaFromKgcm2(draft.fy),
+  coverMm: cmToMm(draft.cover),
+  barDiameterMm: parseNumber(draft.bar),
+  thicknessMm: draft.autoThickness === 'yes' ? null : cmToMm(draft.thickness),
+});
+
+const matLayerText = (layer: MatLayer, diameterMm: number) => `${rebarLabel(diameterMm)} @ ${formatNumber(layer.spacingMm / 10, 0)} cm`;
+
+export function matReinforcementRows(result: MatFoundationResult): ReportRow[] {
+  const db = result.input.barDiameterMm;
+  return (['x', 'y'] as const).flatMap((axis) => (['bottom', 'top'] as const).map((face) => {
+    const layer = result.directions[axis][face];
+    return {
+      label: `${face === 'bottom' ? 'Inferior' : 'Superior'} en ${axis.toUpperCase()}: ${matLayerText(layer, db)}`,
+      value: `As ${formatNumber(layer.providedMm2PerM / 100, 2)} cm²/m (req. ${formatNumber(Math.max(layer.requiredMm2PerM, layer.minimumMm2PerM) / 100, 2)}) · Mu ${formatNumber(layer.momentKnmPerM, 1)} kN·m/m`,
+    };
+  }));
+}
+
+const KIND_TEXT = { corner: 'Esquina', edge: 'Borde', interior: 'Interior' } as const;
+
+export function matReport(result: MatFoundationResult, draft: FootingDraft): DesignReport {
+  const [checks, notes] = splitChecks(result.checks);
+  const { input } = result;
+  const title = `Losa de cimentación ${meters(result.lengthXMm)} × ${meters(result.lengthYMm)} m`;
+  return {
+    element: 'footing', title, tag: draft.tag.trim(), place: draft.place.trim(), code: input.code,
+    status: result.status, governingRatio: result.governingRatio,
+    memo: [
+      `LOSA DE CIMENTACIÓN ${meters(result.lengthXMm)} × ${meters(result.lengthYMm)} m · h = ${formatNumber(result.thicknessMm / 10, 0)} cm · ${designCode(input.code).name}`,
+      `Retícula ${input.spansX.count} × ${meters(input.spansX.lengthMm)} m en X · ${input.spansY.count} × ${meters(input.spansY.lengthMm)} m en Y · volado ${formatNumber(input.overhangMm / 10, 0)} cm · columnas ${input.columnWidthMm / 10}×${input.columnDepthMm / 10} cm`,
+      `Presión de servicio ${formatNumber(result.service.pressureKpa, 0)} kPa · admisible ${input.allowablePressureKpa} kPa · qu = ${formatNumber(result.ultimate.pressureKpa, 0)} kPa`,
+      ...matReinforcementRows(result).map((row) => row.label),
+      ...result.checks.filter((check) => check.status !== 'info').map((check) => `${statusMark(check.status)} ${check.label}`),
+      'FStructure · Diseño experimental; requiere revisión profesional.',
+    ].join('\n'),
+    checks, notes,
+    outOfScope: outOfScopeChecks('matFoundation', input.code), input,
+    data: [
+      { title: 'Retícula y columnas', rows: [
+        { label: 'Claros en X', value: `${input.spansX.count} × ${meters(input.spansX.lengthMm)} m` },
+        { label: 'Claros en Y', value: `${input.spansY.count} × ${meters(input.spansY.lengthMm)} m` },
+        { label: 'Volado desde el eje', value: `${formatNumber(input.overhangMm / 10, 0)} cm` },
+        { label: 'Columnas', value: `${formatNumber(input.columnWidthMm / 10, 0)} × ${formatNumber(input.columnDepthMm / 10, 0)} cm` },
+        ...(['corner', 'edge', 'interior'] as const).map((kind) => ({ label: `Carga ${KIND_TEXT[kind].toLowerCase()}`, value: `CM ${formatNumber(input.loads[kind].deadKn, 0)} · CV ${formatNumber(input.loads[kind].liveKn, 0)} kN` })),
+      ] },
+      { title: 'Suelo y materiales', rows: [
+        { label: 'Presión admisible neta', value: `${formatNumber(input.allowablePressureKpa, 0)} kPa (del estudio geotécnico)` },
+        { label: 'Combinaciones', value: input.combinations.map((combination) => combination.label).join(' · ') },
+        { label: 'Espesor', value: input.thicknessMm === null ? `automático → ${formatNumber(result.thicknessMm / 10, 0)} cm` : `${formatNumber(result.thicknessMm / 10, 0)} cm` },
+        { label: 'f′c · fy', value: `${draft.fc} · ${draft.fy} kg/cm²` },
+      ] },
+    ],
+    reinforcement: matReinforcementRows(result),
+    values: [
+      { symbol: 'Lx × Ly × h', label: 'Dimensiones', value: `${meters(result.lengthXMm)} × ${meters(result.lengthYMm)} m · ${formatNumber(result.thicknessMm / 10, 0)} cm` },
+      { symbol: 'd', label: 'Peralte efectivo medio', value: `${formatNumber(result.effectiveDepthMm / 10, 1)} cm` },
+      { symbol: 'q · qu', label: 'Presión de servicio · última', value: `${formatNumber(result.service.pressureKpa, 0)} · ${formatNumber(result.ultimate.pressureKpa, 0)} kPa` },
+      ...result.punching.map((item) => ({ symbol: `vu / φvc`, label: `Penetración ${KIND_TEXT[item.kind].toLowerCase()} (${item.sides} lados, bo ${formatNumber(item.perimeterMm / 10, 0)} cm)`, value: `${formatNumber(item.demandStressMpa, 2)} / ${formatNumber(item.strengthStressMpa, 2)} MPa` })),
+      ...(['x', 'y'] as const).map((axis) => ({ symbol: `Vu / φVc ${axis.toUpperCase()}`, label: 'Como viga, por metro', value: `${formatNumber(result.directions[axis].oneWay.demandKnPerM, 0)} / ${formatNumber(result.directions[axis].oneWay.strengthKnPerM, 0)} kN/m` })),
+    ],
+    tables: [],
+    takeoff: matFoundationTakeoff(result),
+    figures: [
+      { title: 'Planta', note: 'Discontinua: perímetros críticos de penetración', render: () => <MatPlan result={result} /> },
+      { title: 'Franja que rige en X', note: 'Momento por metro; positivo con tensión abajo', render: () => <MatStripDiagram result={result} /> },
+    ],
+  };
 }

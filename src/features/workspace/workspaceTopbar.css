@@ -36,6 +36,11 @@
   background: var(--sc-color-surface-1);
   color: var(--sc-color-text-primary);
   box-shadow: var(--sc-depth-raised-shadow);
+  transition:
+    background-color var(--sc-motion-control) var(--sc-ease-standard),
+    border-color var(--sc-motion-control) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
 }
 
 .workspace-topbar__brand:hover,
@@ -43,6 +48,12 @@
   border-color: var(--sc-color-border);
   background: var(--sc-color-surface-elevated);
   box-shadow: var(--sc-shadow-lifted);
+  transform: translateY(-1px);
+}
+
+.workspace-topbar__brand:active {
+  transform: translateY(1.5px);
+  box-shadow: var(--sc-shadow-inset);
 }
 
 .workspace-topbar__project {
@@ -64,7 +75,8 @@
     background-color var(--sc-motion-control) var(--sc-ease-standard),
     border-color var(--sc-motion-control) var(--sc-ease-standard),
     box-shadow var(--sc-motion-control) var(--sc-ease-standard),
-    color var(--sc-motion-control) var(--sc-ease-standard);
+    color var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
 }
 
 .workspace-topbar__project:hover,
@@ -73,6 +85,12 @@
   background: var(--sc-color-surface-elevated);
   color: var(--sc-color-text-primary);
   box-shadow: var(--sc-shadow-lifted);
+  transform: translateY(-1px);
+}
+
+.workspace-topbar__project:active {
+  transform: translateY(1.5px);
+  box-shadow: var(--sc-shadow-inset);
 }
 
 .workspace-topbar__project:focus-visible,
@@ -411,12 +429,26 @@
   background: var(--sc-color-surface-1);
   box-shadow: var(--sc-shadow-xs);
   color: var(--sc-color-text-primary);
+  transform: translateY(-1px);
 }
 
 .workspace-topbar__icon-button:active:not(:disabled),
 .workspace-topbar__action-button:active:not(:disabled) {
   background: var(--sc-color-surface-pressed);
-  box-shadow: var(--sc-shadow-pressed);
+  box-shadow: var(--sc-shadow-inset) !important;
+  transform: translateY(1.5px);
+}
+
+.workspace-topbar__theme-button svg {
+  transition: transform var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+.workspace-topbar__theme-button:hover:not(:disabled) svg {
+  transform: rotate(18deg);
+}
+
+.workspace-topbar__theme-button:active:not(:disabled) svg {
+  transform: rotate(45deg) scale(0.9);
 }
 
 .workspace-topbar__icon-button:disabled,
@@ -439,11 +471,13 @@
   background: var(--sc-color-action-hover);
   box-shadow: var(--sc-shadow-action-hover);
   color: var(--sc-color-action-foreground);
+  transform: translateY(-1px);
 }
 
 .workspace-topbar__action-button.is-primary:active:not(:disabled) {
   background: var(--sc-color-action-pressed);
-  box-shadow: var(--sc-shadow-action-pressed);
+  box-shadow: inset 2px 2.5px 5px rgb(0 0 0 / 25%), inset -1.5px -1.5px 3px rgb(255 255 255 / 35%) !important;
+  transform: translateY(1.5px);
 }
 
 .workspace-topbar__action-button.is-active {
@@ -932,6 +966,20 @@
 }
 
 @media (max-width: 1180px) {
+  .workspace-topbar {
+    gap: 8px;
+    padding: 8px clamp(10px, 1.4vw, 16px);
+  }
+
+  .workspace-topbar__project {
+    flex: 0 1 260px;
+    min-width: 110px;
+  }
+
+  .workspace-topbar__tool-status {
+    max-width: 200px;
+  }
+
   .workspace-topbar__experience-button span {
     display: none;
   }
@@ -941,11 +989,25 @@
     padding-inline: 0;
     justify-content: center;
   }
+
+  /* Prevenir colisiones y desbordes ocultando texto de botones secundarios en laptops/tablets */
+  .workspace-topbar__tool-group .workspace-topbar__inspector-button span,
+  .workspace-topbar__actions .workspace-topbar__action-button:not(.is-primary) span {
+    display: none;
+  }
+
+  .workspace-topbar__tool-group .workspace-topbar__inspector-button,
+  .workspace-topbar__actions .workspace-topbar__action-button:not(.is-primary) {
+    min-width: 38px;
+    padding-inline: 8px;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 980px) {
   .workspace-topbar__project {
-    flex: 0 1 240px;
+    flex: 0 1 180px;
+    min-width: 80px;
   }
 
   .workspace-topbar__results-group .workspace-topbar__action-button span {
@@ -956,6 +1018,11 @@
     min-width: 36px;
     padding-inline: 0;
     justify-content: center;
+  }
+
+  .workspace-topbar__action-button.is-primary {
+    min-width: 80px;
+    padding-inline: 10px;
   }
 }
 
@@ -1070,6 +1137,7 @@
 
   .workspace-topbar__tool-status > .workspace-topbar__status-dot { width: 8px; height: 8px; }
   .workspace-topbar__tool-status > .workspace-topbar__status-badge { display: none; }
+  .workspace-topbar__tool-status > .workspace-topbar__tool-status-copy { display: none; }
 
   .workspace-utilities__panel {
     position: fixed;

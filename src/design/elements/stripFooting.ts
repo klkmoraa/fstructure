@@ -1,5 +1,4 @@
 import { designCode, isDesignCodeId, type DesignCode, type DesignCodeId, type LoadCombination } from './codes';
-import { sizeFactor } from './footing';
 import {
   barArea,
   capacityCheck,
@@ -12,6 +11,7 @@ import {
   overallStatus,
   requiredFlexuralSteelMm2,
   tracedAt,
+  withClauses,
   type ElementCheck,
 } from './shared';
 
@@ -19,8 +19,8 @@ import {
  * Zapata corrida bajo muro, por metro de longitud. El muro baja una carga
  * lineal centrada; la zapata trabaja como dos voladizos desde el paño del muro
  * (muro de concreto) o desde la mitad entre el eje y el paño (muro de
- * mampostería, criterio complementario). Presión uniforme: sin momento en la
- * base del muro.
+ * mampostería, NTC tabla 9.4.7.4). Presión uniforme: sin momento en la base
+ * del muro. En la NTC se desprecia λs en cortante (9.3.1.6).
  */
 export interface StripFootingInput {
   readonly code: DesignCodeId;
@@ -42,6 +42,8 @@ export interface StripFootingInput {
   readonly barDiameterMm: number;
   /** Barras longitudinales de distribución. */
   readonly distributionBarDiameterMm: number;
+  /** Qué apoya en la zapata, para los textos: muro (por omisión) o contratrabe (zapata de lindero). */
+  readonly supportName?: 'muro' | 'contratrabe';
 }
 
 export interface StripFootingResult {
@@ -116,8 +118,9 @@ function evaluate(code: DesignCode, input: StripFootingInput, widthMm: number, t
   const provided = area * STRIP / Math.max(spacing, 1);
   const capacity = flexuralCapacity(provided, STRIP, d, fy, fc, d, code.flexureFactor);
   const ratio = provided / (STRIP * d);
+  // NTC 9.3.1.6: en zapatas corridas apoyadas en el terreno se permite despreciar λs.
   const shearStrength = code.footing.oneWay === 'ntc'
-    ? code.shearFactor * 0.66 * sizeFactor(d) * Math.cbrt(ratio) * Math.sqrt(fc) * STRIP * d / 1e3
+    ? code.shearFactor * 0.66 * Math.cbrt(ratio) * Math.sqrt(fc) * STRIP * d / 1e3
     : code.shearFactor * 0.17 * Math.sqrt(fc) * STRIP * d / 1e3;
   const development = code.developmentLength({
     diameterMm: input.barDiameterMm, fyMpa: fy, fcMpa: fc, topBar: false,
@@ -155,23 +158,29 @@ export function designStripFooting(input: StripFootingInput): StripFootingResult
   const distributionMaximum = code.footing.maximumSpacing(h);
   if (usable / (distributionCount - 1) > distributionMaximum) distributionCount = Math.ceil(usable / distributionMaximum) + 1;
   const combinations = input.combinations.map((combination) => combination.label).join(' · ');
-  const perMeter = 'Por metro de muro';
+  const wall = input.supportName ?? 'muro';
+  const perMeter = `Por metro de ${wall}`;
+  const ofWall = wall === 'muro' ? 'del muro' : 'de la contratrabe';
+  // NTC 9.3.1.3: la zapata corrida trabaja en una dirección y se diseña como losa (acero mínimo de 6.6.6.1.1).
+  const minimumSteelRef = refs.slabMinSteel.standard === 'complementary' ? refs.footingMinSteel : withClauses(refs.slabMinSteel, refs.sizeEffectStrip);
+  const masonry = input.wallMaterial === 'masonry';
+  const masonryVerified = refs.criticalSection.standard !== 'complementary';
 
   const checks: ElementCheck[] = [
     tracedAt(capacityCheck('bearing', 'Presión de servicio', pressure, input.allowablePressureKpa, 'kPa', complementary('Capacidad admisible del estudio geotécnico')),
       'Bajo toda la zapata (presión uniforme)', 'Servicio: cargas sin factorizar'),
     capacityCheck('min-depth', 'Peralte efectivo mínimo', code.footing.minimumEffectiveDepthMm, state.d, 'mm', refs.footingDepth),
-    tracedAt(capacityCheck('one-way', 'Cortante como viga', state.shearKn, state.shearStrength, 'kN/m', refs.oneWay,
+    tracedAt(capacityCheck('one-way', 'Cortante como viga', state.shearKn, state.shearStrength, 'kN/m', withClauses(refs.oneWay, refs.sizeEffectStrip),
       code.footing.oneWay === 'ntc'
-        ? `Sin estribos: 0.66·λs·ρ^(1/3)·√f′c con λs = ${sizeFactor(state.d).toFixed(2)}.`
+        ? 'Sin estribos: 0.66·ρ^(1/3)·√f′c; en zapata corrida se desprecia el efecto de tamaño (λs = 1).'
         : `Sin estribos: 0.17·√f′c·b·d · FR ${code.shearFactor}.`),
-    `A d del paño del muro · ${perMeter.toLowerCase()}`, combinations),
-    tracedAt(capacityCheck('flexure', 'Flexión transversal', state.momentKnm, state.capacity.strengthKnm, 'kN·m/m', refs.footingFlexure,
-      input.wallMaterial === 'masonry'
-        ? `FR ${state.capacity.resistanceFactor.toFixed(2)}. Muro de mampostería: sección crítica a la mitad entre el eje y el paño (criterio complementario).`
+    `A d del paño ${ofWall} · ${perMeter.toLowerCase()}`, combinations),
+    tracedAt(capacityCheck('flexure', 'Flexión transversal', state.momentKnm, state.capacity.strengthKnm, 'kN·m/m', masonry ? withClauses(refs.footingFlexure, refs.criticalSection) : refs.footingFlexure,
+      masonry
+        ? `FR ${state.capacity.resistanceFactor.toFixed(2)}. Muro de mampostería: sección crítica a la mitad entre el eje y el paño${masonryVerified ? '' : ' (criterio complementario)'}.`
         : `FR ${state.capacity.resistanceFactor.toFixed(2)}.`),
-    input.wallMaterial === 'masonry' ? 'Entre el eje y el paño del muro' : 'Paño del muro', combinations),
-    capacityCheck('steel-min', 'Acero transversal mínimo', state.minimum, state.provided, 'mm²/m', refs.footingMinSteel,
+    input.wallMaterial === 'masonry' ? `Entre el eje y el paño ${ofWall}` : `Paño ${ofWall}`, combinations),
+    capacityCheck('steel-min', 'Acero transversal mínimo', state.minimum, state.provided, 'mm²/m', minimumSteelRef,
       `${(code.footing.minimumSteelRatio * 100).toFixed(2)} % del área bruta.`),
     capacityCheck('spacing', 'Separación del refuerzo', state.spacing, state.maximumSpacing, 'mm', refs.footingSpacing, `Máximo: ${code.footing.maximumSpacingNote}.`),
     {
@@ -183,11 +192,11 @@ export function designStripFooting(input: StripFootingInput): StripFootingResult
       unit: 'mm',
       ratio: (state.anchorage === 'straight' ? state.development : state.hook) / state.available,
       reference: refs.anchorage,
-      note: state.anchorage === 'straight' ? 'La barra recta desarrolla ld desde el paño del muro.'
+      note: state.anchorage === 'straight' ? `La barra recta desarrolla ld desde el paño ${ofWall}.`
         : state.anchorage === 'hook' ? `Remata con gancho estándar (ldh = ${Math.round(state.hook)} mm).`
           : 'Ni recta ni con gancho cabe en el voladizo: usa varilla más delgada o ensancha la zapata.',
     },
-    { id: 'distribution', label: 'Acero longitudinal de distribución', status: 'info', reference: refs.footingMinSteel,
+    { id: 'distribution', label: 'Acero longitudinal de distribución', status: 'info', reference: minimumSteelRef,
       note: `${distributionCount} ${input.distributionBarDiameterMm} mm en el ancho (${(code.footing.minimumSteelRatio * 100).toFixed(2)} % de B·h).` },
     { id: 'load-factors', label: 'Combinaciones de carga', status: 'info', reference: refs.loadFactors,
       note: `${combinations}: wu = ${state.ultimate.toFixed(1)} kN/m.` },

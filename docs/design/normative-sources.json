@@ -487,6 +487,140 @@
           "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
           "evidence": [{ "page": 1034, "excerpt": "El diseño por flexión de elementos estructurales de las cimentaciones que trabajen en dos direcciones, será de acuerdo con 6.7, excepto en los casos señalados en 9.4.7.3.", "excerptSha256": "dc4555620fed98976081fba0957ba9bc4f78c196a109d8ad7d9edf2b1e3e544f", "verifiedAt": "2026-09-23" }],
           "implementation": {"twoWayFootingFlexure": "según 6.7"}
+        },
+        {
+          "clauseId": "3.8.2.1 (tabla 3.8.2.1, inciso e)",
+          "pages": [814],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 814, "excerpt": "Tabla 3.8.2.1 – Valores del factor de resistencia FR … e) Aplastamiento en el concreto 0.65 —", "excerptSha256": "8c76290f75899c61463b7c5b62ec48140d62395f88bc8ef5eaae87771eac269f", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "3.8.2.2 (tabla 3.8.2.2, tipo de refuerzo transversal)",
+          "pages": [814],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 814, "excerpt": "Tabla 3.8.2.2 – Valores del factor de resistencia FR para momento, fuerza axial, o momento con fuerza axial. Deformación unitaria neta de tensión εt; Clasificación; FR; Tipo de refuerzo transversal: Refuerzo helicoidal (zunchos) que cumple con 14.7.4; Otros. εt ≤ εty; Controladas por compresión; 0.75 a) 0.65 b). εty < εt < εty+0.003; Transición; 0.75 + 0.15 (εt − εty)/(0.003) c) 0.65 + 0.25 (εt − εty)/(0.003) d). εt ≥ εty+0.003; Controlada por tensión; 0.90 e) 0.90 f)", "excerptSha256": "770b544142ba4ab8770b353b5bd4038abc686a2bd84407e98842c39ec8a98c3b", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "5.2.1.4.1-5.2.1.4.2 (tabla 5.2.1.4.2)",
+          "pages": [832, 833],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 832, "excerpt": "5.2.1.4.1 El área balanceada de acero dependerá de la posición del eje neutro respecto al espesor del patín en el momento de la falla. Si el eje neutro cae dentro del patín, el área balanceada se calculará con la ec. 5.2.1.3.1 usando como valor de bw el ancho efectivo de patín determinado con la tabla 5.2.1.4.2. Si cae por debajo del patín, el área se determinará con el criterio general de 5.2.1.2.1.", "excerptSha256": "2337f4e0d3a67f743ab74e4ab5ce8674eff4e32251ceb7e263a50cd751a11bb1", "verifiedAt": "2026-09-27" }, { "page": 833, "excerpt": "5.2.1.4.2 El ancho del patín bf que se considere trabajando a compresión en secciones L y T a cada lado del alma se determinará según se indica en la tabla 5.2.1.4.2. Tabla 5.2.1.4.2 - Ancho efectivo del patín para vigas T y L. Ubicación del patín; Ancho sobresaliente a partir de la cara del alma. A cada lado del alma: El menor de: 8t; La / 2; Ln / 8. A un solo lado del alma: El menor de: 6t; La / 2; Ln / 12.", "excerptSha256": "31c0e086b1481d8c0178251c237b4d13c8a6944e310506663285fdc9500624ea", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "5.2.2.1.3.1",
+          "pages": [834],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 834, "excerpt": "5.2.2.1.3 Secciones T e I no presforzadas sin acero de compresión. 5.2.2.1.3.1 Si la profundidad del bloque de esfuerzos, a, calculada con la ecuación 5.2.2.1.3.1.a, no es mayor que el espesor del patín, t, MR se puede calcular con las ecs. 5.2.2.1.1.1.a o 5.2.2.1.1.1.b usando el ancho del patín a compresión, bf, en vez de bw. Si a resulta mayor que t, MR puede calcularse con las ecs. 5.2.2.1.3.1.b a 5.2.2.1.3.1.d: a = As fy / (fc″ bf) (5.2.2.1.3.1.a); MR = FR [Asf fy (d − t/2) + (As − Asf) fy (d − a/2)] (5.2.2.1.3.1.b); Asf = fc″ (bf − bw) t / fy (5.2.2.1.3.1.c); a = (As − Asf) fy / (fc″ bf) (5.2.2.1.3.1.d). Comentario: … En vez de usar estas ecuaciones, pueden obtenerse las resistencias a flexión a partir de las ecuaciones de equilibrio de fuerzas en las secciones transversales y de compatibilidad de deformaciones de 3.6 (González y Robles, 2004).", "excerptSha256": "5413396ac141a8c12e892e7222e9b735938e90e28e15a49664f14dcc0139dac0", "verifiedAt": "2026-09-27" }],
+          "engineDeviation": "La ec. 5.2.2.1.3.1.d impresa divide entre fc″ bf; por equilibrio, el bloque bajo el patín trabaja con el ancho del alma bw, y usar bf daría un a menor y un MR mayor (del lado inseguro). El motor (src/design/elements/beam.ts, flangeFlexure) resuelve el equilibrio con las hipótesis de 3.6, como permite el comentario de la misma cláusula."
+        },
+        {
+          "clauseId": "5.3.1.1 y 5.4.1.1",
+          "pages": [836],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 836, "excerpt": "5.3.1.1 Toda sección sujeta a compresión axial y flexión en una dirección se dimensionará y diseñará para la combinación más desfavorable de dichas acciones incluyendo los efectos de esbeltez. El dimensionamiento se hará a partir de las hipótesis generales de 3.6, o bien, con diagramas de interacción construidos de acuerdo con ellas. Se usará el factor de resistencia, FR, especificado en 3.8.2.1, calculado según 3.8.2.2. … 5.4.1.1 Los elementos sujetos a flexocompresión en dos direcciones se podrán dimensionar y diseñar con las hipótesis generales de 3.6 o, para secciones cuadradas o rectangulares, con el método aproximado de 5.4.1.2.", "excerptSha256": "8d3821ba0bea829923eef7a428b182d20dfaed9bd378920cc3b016bd13578261", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "5.5.3.6.2",
+          "pages": [841],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 841, "excerpt": "5.5.3.6.2 El valor de Av deberá ser la suma de las áreas efectivas de todas las ramas de los estribos o de los alambres separados a una distancia s. En el caso de estribos circulares o zunchos, debe ser el doble del área de la barra.", "excerptSha256": "df9dce8e7212d80d867730c2aa31f8cacce3afe3df1c4b8be3aff4c1b640dc67", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "5.9.1.1 (tabla 5.9.1.1)",
+          "pages": [858],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 858, "excerpt": "5.9.1.1 La resistencia al aplastamiento BR se calculará de acuerdo con la tabla 5.9.1.1, donde A1 es el área cargada y A2 es el área de la base inferior de una pirámide, cono o cuña inclinada contenida totalmente dentro del apoyo y que tiene su base superior igual al área cargada (véase la fig. 5.9.1.1). Los lados de la pirámide, cono o cuña tendrán una pendiente de 1:2 (vertical:horizontal). Tabla 5.9.1.1 – Resistencia al aplastamiento. La superficie de apoyo es más ancha en todos sus lados que el área cargada: el menor de a) FR √(A2/A1) 0.85fc′ A1 y b) 2FR 0.85fc′ A1. Otros casos: c) FR 0.85fc′ A1.", "excerptSha256": "8440312bcb3ce61c02be545d9bcf14a23cafe80486063ebbd56bf462a67356ce", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "6.4.4.1.1",
+          "pages": [884],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 884, "excerpt": "6.4.4.1.1 El número mínimo de barras longitudinales en columnas no presforzadas o presforzadas con un esfuerzo efectivo medio debido al presfuerzo fpe < 1.5 MPa (15 kg/cm2) será a) o b): a) Cuatro barras dentro de estribos rectangulares b) Seis barras dentro de refuerzo helicoidal o estribos circulares.", "excerptSha256": "29c56b8520a0c9aee693af8c6da73dec48b8c6cd86744b1fcd14bb4039d1ec18", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "6.6.6.1.1",
+          "pages": [903],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 903, "excerpt": "6.6.6.1.1 El refuerzo de flexión mínimo As,mín será 0.0018Ag.", "excerptSha256": "045596a835e6aac90545b5353988ae4115a1efc0c328a074f176cde1430f2fa7", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "6.10.3.1.2 y 6.10.3.4.1",
+          "pages": [952, 953],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 952, "excerpt": "6.10.3.1.2 El refuerzo, los pasadores o los conectores mecánicos entre los elementos apoyados y la cimentación deberán diseñarse tal que transmitan a) y b): a) La fuerza de compresión que exceda la menor de las resistencias al aplastamiento del concreto del elemento apoyado o de la cimentación, calculadas de acuerdo con 5.9 b) Cualquier fuerza de tensión calculada que se transmita a través de la interfaz.", "excerptSha256": "4f14cc0e3dda0b61cddb53ecf6d529c412bcc05ef992e91befeee5f8e2054011", "verifiedAt": "2026-09-27" }, { "page": 953, "excerpt": "6.10.3.4.1 Para las conexiones entre columnas o pedestales construidos en sitio y la cimentación, As, a través de la interfaz, deberá ser al menos 0.005Ag, donde Ag, es el área bruta del elemento apoyado.", "excerptSha256": "11f913158e24c19bfbac59d7626d0ca412d9aacad3eb551a9cc1afa9b72dc7fe", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "9.2.5.8",
+          "pages": [1031],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1031, "excerpt": "9.2.5.8 Las vigas diseñadas como elementos de unión entre zapatas o cabezales de pilas o pilotes, deben tener acero de refuerzo longitudinal continuo a través del núcleo de la columna y de la pila o pilote. En zapatas o cabezales de borde, las barras deberán desarrollarse en la cara de la columna o más allá de la columna de apoyo, o bien en la cara de las cabezas de pilas o pilotes.", "excerptSha256": "103b57d7c6f18a2ca7217a94b11262ed603519add447809e068e44b06d27ab89", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "9.3.1.3-9.3.1.6",
+          "pages": [1031],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1031, "excerpt": "9.3.1.3 Los elementos estructurales de la cimentación que trabajen en una dirección, como vigas de liga, contratrabes, zapatas corridas, losas que cumplan esta condición, entre otros miembros, deberán diseñarse de acuerdo con 6.3, si son vigas, o 6.6, si son losas, según corresponda, excepto para los casos señalados en 9.3.1.5. 9.3.1.4 Los elementos estructurales de la cimentación que trabajen en dos direcciones, como zapatas aisladas, cabezales para pilas o pilotes, losas de cimentación y losas fondo de cajones de cimentación que cumplan esta condición, entre otros miembros, se diseñarán con 6.7, excepto para los casos señalados en 9.3.1.5. … 9.3.1.6 Se permitirá despreciar el factor por efecto de tamaño, λs, especificado en 5.5.3.2 para fuerza cortante en una dirección y en 5.6.2 para fuerza cortante en dos direcciones, en elementos de cimentaciones superficiales apoyados longitudinalmente en el terreno, como las zapatas corridas, así como en muros de contención que resistan presiones laterales del suelo.", "excerptSha256": "d1f7db0c7eb5f41ba9d7e58bdd32b129d7f7384443ee80e6d9bfeedd3ca4cfd7", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "9.3.2.3-9.3.2.4",
+          "pages": [1032],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1032, "excerpt": "9.3.2.3 La reacción qr del suelo bajo zapatas, losas o cajones de cimentación sin cargas excéntricas se podrá suponer de manera simplificada como una reacción uniforme, repartiendo las acciones verticales de diseño en el área de desplante. 9.3.2.4 En la determinación de la reacción qru del suelo bajo zapatas, losas o cajones de cimentación con cargas excéntricas que produzcan momentos, se adoptará la aproximación simplificada de área efectiva equivalente, que supone redistribución de esfuerzos en el suelo, con una reacción uniforme incrementada, que es concéntrica con la resultante de cargas (fig. 9.3.2.4). Para ello, el ancho a1 se disminuirá en dos veces la excentricidad e1 para calcular la dimensión efectiva a1′. Si se presenta doble excentricidad, se tomarán simultáneamente las dimensiones efectivas a a1′ y a2′ para el cálculo del área efectiva donde se distribuyen uniformemente las acciones verticales de diseño. La reacción uniforme en el suelo qru se calculará con la ec. 9.3.2.4: qru = Pu / (a1′ a2′) (9.3.2.4)", "excerptSha256": "c57feaf4ad244daaa515928041152a26a24b142193b69add81584eb8fc9f5cc7", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "9.4.5 (comentario)",
+          "pages": [1034],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1034, "excerpt": "9.4.5 En cimentaciones someras que soporten elementos estructurales aislados que no formen marcos con otros elementos, como lo son las zapatas para pedestales, zapatas para muros de contención, losas de cimentación, entre otras, se deberá revisar además de lo señalado en 9.4.3, su estabilidad general ante volteo (véase 4.4.6 de la NTC-Cimentaciones) y deslizamiento. Comentario: La estabilidad ante volteo de las cimentaciones someras, se verifica si la resultante de cargas para cada una de las combinaciones de acciones señaladas en 9.3.2.1, se ubica en el tercio medio del ancho y de la longitud de la cimentación, tal como se señala en 4.4.6 de la NTC-Cimentaciones.", "excerptSha256": "a41afbfcb76e001a7e959c9e1361f20ba5b8bb270cbb8d6290dd5cc64b2bb415", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "9.4.7.4 (tabla 9.4.7.4)",
+          "pages": [1034],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1034, "excerpt": "9.4.7.4 Las secciones críticas para diseño por flexión de zapatas y de cabezales, de acuerdo con el elemento que soportan, serán las indicadas en la tabla 9.4.7.4 algunas de las cuales se ilustran esquemáticamente en la fig. 9.4.7.4. Tabla 9.4.7.4 – Ubicación de la sección crítica en zapatas y cabezales para diseño por flexión. Columna cuadrada o rectangular de concreto o muro de concreto: En el plano vertical tangente a la cara del elemento. Columna circular de concreto: El plano vertical a un décimo del diámetro hacia adentro medido a partir del plano tangente de la columna. Muros de mampostería de tabique o piedra: Sección media entre el paño y el eje del muro. Columnas de acero con placas base: En el perímetro de la columna.", "excerptSha256": "1d340e15639081ab24f318fd26a820055d472795835775a83e117ab9006eacf1", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "9.4.9.3.2",
+          "pages": [1037],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1037, "excerpt": "9.4.9.3.2 En zapatas y losas de cimentación que soportan columnas de concreto de forma circular o de polígono regular, las secciones críticas para diseño por punzonamiento, serán las mismas definidas en 9.4.9.3.1, considerando la columna como una sección cuadrada equivalente con la misma área.", "excerptSha256": "c5f853b9d0cac5b35cc7c66820e41a8fdc18b10c0032bf248738dc5cf71fbced", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "9.4.5.1",
+          "pages": [1038],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1038, "excerpt": "9.4.5.1 Los esfuerzos de aplastamiento en el área de contacto no excederán los valores consignados en 5.9.", "excerptSha256": "d31be17ccc6c5184033e8df23e394bd22ca19501896cbf1d547b20a64d94fb4e", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "9.5.1.1-9.5.1.2",
+          "pages": [1039],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1039, "excerpt": "9.5.1.1 Además de cumplir con las disposiciones de vigas señaladas en los Capítulos 6, 7 u 8, según corresponda, la menor de las dimensiones de la sección transversal de trabes de liga y contratrabes diseñadas como elementos de unión entre muros, pilas y o pilotes, en cajones de cimentación o entre zapatas deberá ser igual o mayor que el claro libre entre columnas dividido entre 20, pero no menor que 450 mm. 9.5.1.2 Se deberán proporcionar estribos cerrados con una separación que no exceda la mitad de la dimensión menor de dicha sección transversal o 300 mm.", "excerptSha256": "c566a2bed52a6e18d81c20dc92351657459b95ab17dbc1738c8a2dff3c9b17b5", "verifiedAt": "2026-09-27" }]
+        },
+        {
+          "clauseId": "14.7.4.1-14.7.4.4",
+          "pages": [1123],
+          "sourceUrl": "https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf",
+          "sourceSha256": "293f22316a59ec2ec64d1f64f0749f49ba8849ded15b289cd88cc171c55ae62a",
+          "evidence": [{ "page": 1123, "excerpt": "14.7.4.1 El refuerzo helicoidal se usará en elementos de sección circular o curva y consistirá en una barra o alambre continuo (zuncho) y separado de manera uniforme, con una separación libre (o paso libre) que cumpla con a) y b): a) Al menos el mayor de 25 mm y 1.5tmag b) No más de 80 mm. 14.7.4.2 En construcciones coladas en sitio, el diámetro de la barra corrugada o lisa será al menos del no. 3. Si se usan alambres, el diámetro mínimo será de 9.44 mm si se usa alambre corrugado o liso. 14.7.4.3 Con excepción del refuerzo transversal en cimentaciones profundas, la cuantía volumétrica del refuerzo helicoidal deberá cumplir con la ecuación 14.7.4.3: ρs ≥ 0.45 (Ag/Ac − 1) fc′/fyt (14.7.4.3) donde fyt no se deberá tomar mayor que 700 MPa (7 000 kg/cm2). La cuantía no será menor que la establecida para estructuras de ductilidad baja, media y alta (Capítulos 6, 7 y 8, respectivamente). 14.7.4.4 El refuerzo helicoidal se deberá anclar por medio de 2.5 vueltas de la barra o alambre en sus extremos.", "excerptSha256": "b52b441075987c412747853838b1d0eb02325fbdcc5f8b5f7edd3d32858221e7", "verifiedAt": "2026-09-27" }]
         }
       ],
       "clauseVerificationStatus": "verified",

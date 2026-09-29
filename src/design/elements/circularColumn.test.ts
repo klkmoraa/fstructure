@@ -105,4 +105,61 @@ describe('columna circular', () => {
     expect(designColumn({ ...base, barCount: 3 }).ok).toBe(false);
     expect(designColumn({ ...base, barCount: undefined }).ok).toBe(false);
   });
+
+  it('pide seis barras dentro de estribo circular con la NTC', () => {
+    const five = ok(designColumn({ ...base, barCount: 5 }));
+    expect(five.checks.find((check) => check.id === 'min-bars')!.status).toBe('fail');
+    expect(result.checks.find((check) => check.id === 'min-bars')!.status).toBe('pass');
+    const nsr = ok(designColumn({ ...base, code: 'nsr-10', barCount: 5 }));
+    expect(nsr.checks.some((check) => check.id === 'min-bars')).toBe(false);
+  });
+});
+
+describe('columna zunchada (NTC 14.7.4)', () => {
+  const spiral = ok(designColumn({ ...base, transverse: 'spiral' }));
+  const result = ok(designColumn(base));
+
+  it('diseña el paso por cuantía volumétrica y paso libre', () => {
+    const core = 500 - 2 * 40;
+    const required = 0.45 * (Math.PI * 250 ** 2 / (Math.PI * core ** 2 / 4) - 1) * 28 / 420;
+    const volume = 4 * barArea(9.5) * (core - 9.5) / core ** 2;
+    const design = spiral.ties.spiral!;
+    expect(design.requiredRatio).toBeCloseTo(required, 9);
+    expect(design.ratioPitchMm).toBeCloseTo(volume / required, 9);
+    expect(design.pitchMm).toBe(50);
+    expect(design.clearPitchMm).toBeCloseTo(40.5, 9);
+    expect(design.minimumClearPitchMm).toBeCloseTo(28.5, 9);
+    for (const id of ['spiral-ratio', 'spiral-pitch-max', 'spiral-pitch-min']) {
+      expect(spiral.checks.find((check) => check.id === id)!.status).toBe('pass');
+    }
+    expect(spiral.checks.some((check) => check.id.startsWith('tie-end') || check.id === 'tie-center-spacing')).toBe(false);
+  });
+
+  it('usa FR = 0.75 en compresión y 0.90 en tensión controlada', () => {
+    expect(spiral.maximumDesignAxialKn).toBeCloseTo(0.75 * spiral.squashLoadKn, 6);
+    expect(result.maximumDesignAxialKn).toBeCloseTo(0.65 * result.squashLoadKn, 6);
+    const yieldStrain = 420 / 200_000;
+    for (const point of spiral.aboutX.nominal.slice(1, -1)) {
+      expect(point.phi).toBeGreaterThanOrEqual(0.75 - 1e-12);
+      expect(point.phi).toBeLessThanOrEqual(0.9 + 1e-12);
+    }
+    expect(spiral.aboutX.nominal.at(-1)!.phi).toBe(0.75);
+    expect(spiral.aboutX.nominal[0]!.phi).toBe(0.9);
+    // Transición lineal: 0.75 + 0.15 (εt − εty)/0.003.
+    const transition = 0.75 + 0.15 * (yieldStrain + 0.0015 - yieldStrain) / 0.003;
+    expect(transition).toBeCloseTo(0.825, 12);
+    expect(spiral.capacity.ratio).toBeLessThan(result.capacity.ratio);
+  });
+
+  it('cierra el paso si el cortante lo pide y reprueba un zuncho que no cabe', () => {
+    const sheared = ok(designColumn({ ...base, transverse: 'spiral', shearXKn: 780 }));
+    expect(sheared.ties.spiral!.pitchMm).toBeLessThan(50);
+    const tight = ok(designColumn({ ...base, transverse: 'spiral', fcMpa: 60 }));
+    expect(tight.checks.find((check) => check.id === 'spiral-pitch-min')!.status).toBe('fail');
+  });
+
+  it('sólo existe con la NTC y en columnas circulares', () => {
+    expect(designColumn({ ...base, code: 'nsr-10', transverse: 'spiral' }).ok).toBe(false);
+    expect(designColumn({ ...base, shape: 'rectangular', transverse: 'spiral' }).ok).toBe(false);
+  });
 });

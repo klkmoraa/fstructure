@@ -49,9 +49,9 @@
   box-shadow: var(--sc-shadow-inset);
 }
 .tool-home__segmented button {
-  min-height: 44px;
+  min-height: 40px;
   flex: none;
-  padding: 0 12px;
+  padding: 0 14px;
   border: 0;
   border-radius: var(--sc-radius-pill);
   background: transparent;
@@ -59,6 +59,18 @@
   cursor: pointer;
   font-size: var(--sc-font-size-caption);
   font-weight: var(--sc-font-weight-semibold);
+  transition:
+    background-color var(--sc-motion-control) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-control) var(--sc-ease-standard),
+    color var(--sc-motion-control) var(--sc-ease-standard),
+    transform var(--sc-motion-control) var(--sc-ease-press);
+}
+.tool-home__segmented button:hover:not([aria-pressed='true']) {
+  color: var(--sc-color-text-primary);
+  transform: translateY(-1px);
+}
+.tool-home__segmented button:active {
+  transform: translateY(1.5px);
 }
 .tool-home__segmented button[aria-pressed='true'] {
   background: var(--sc-color-surface-1);
@@ -76,17 +88,24 @@
 .tool-home__toast {
   position: fixed;
   right: 16px;
-  bottom: 16px;
-  z-index: 40;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  z-index: 9998;
   max-width: min(420px, calc(100vw - 32px));
   margin: 0;
   padding: 12px 14px;
   border: 1px solid var(--sc-color-border);
-  border-radius: var(--sc-radius-control);
-  background: var(--sc-color-surface-1);
-  box-shadow: var(--sc-shadow-lg);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-elevated);
+  box-shadow: var(--sc-shadow-lifted);
   color: var(--sc-color-text-primary);
   font-size: var(--sc-font-size-caption);
+  transition:
+    transform var(--sc-motion-reveal) var(--sc-ease-reveal),
+    opacity var(--sc-motion-reveal) var(--sc-ease-reveal);
+}
+
+:has(.solver2d-quote-toast) .tool-home__toast {
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + 90px);
 }
 
 .tool-home .solver2d-hero__eyebrow.tool-home__eyebrow {
