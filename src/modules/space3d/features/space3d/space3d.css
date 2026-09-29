@@ -2701,6 +2701,11 @@
   .space3d-screen { --s3-gap: var(--sc-space-2); }
 
   .space3d-canvas-topbar { top: 8px; left: 8px; right: 8px; gap: 6px; }
+  .space3d-canvas-topbar > :first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: calc(100% - 136px);
+  }
   .space3d-ribbon-bar { padding: 2px; gap: 2px; }
   /* «Archivo» queda como icono: los menús necesitan el ancho. */
   .space3d-ribbon-menu .sc-popover__trigger { padding: 0 8px; }
@@ -2751,6 +2756,15 @@
   .space3d-status-last,
   .space3d-status-units { display: none !important; }
 
+  .space3d-empty-stage {
+    padding: 60px 12px 14px;
+    align-items: start;
+    overflow-y: auto;
+  }
+  .space3d-empty-card {
+    width: min(380px, calc(100% - 52px));
+    margin-right: auto;
+  }
   .space3d-empty-card h2 { font-size: 19px; }
   .space3d-guide--compact { border-radius: var(--sc-radius-md); }
   .space3d-guide-compact-title { white-space: normal; line-height: 1.25; }

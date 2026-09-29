@@ -21,6 +21,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  overflow: hidden;
 }
 
 .workspace-topbar__brand {
@@ -60,6 +61,7 @@
   min-width: 0;
   flex: 0 1 420px;
   width: min(420px, 100%);
+  overflow: hidden;
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -197,6 +199,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  overflow: hidden;
 }
 
 .workspace-topbar__status-chip {
@@ -324,8 +327,8 @@
   color: var(--sc-color-state-error-foreground);
 }
 
-.workspace-topbar__tool-status > .workspace-topbar__tool-status-copy { display: block; min-width: 0; overflow: hidden; }
-.workspace-topbar__tool-status strong { color: var(--sc-color-text-primary); }
+.workspace-topbar__tool-status > .workspace-topbar__tool-status-copy { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-topbar__tool-status strong { color: var(--sc-color-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .workspace-topbar__status-badge {
   flex: 0 0 auto;
@@ -972,12 +975,18 @@
   }
 
   .workspace-topbar__project {
-    flex: 0 1 260px;
-    min-width: 110px;
+    flex: 0 1 200px;
+    min-width: 0;
+    max-width: 200px;
   }
 
   .workspace-topbar__tool-status {
-    max-width: 200px;
+    max-width: 180px;
+    min-width: 0;
+  }
+
+  .workspace-topbar__tool-status > .workspace-topbar__status-badge {
+    display: none;
   }
 
   .workspace-topbar__experience-button span {
@@ -1006,8 +1015,14 @@
 
 @media (max-width: 980px) {
   .workspace-topbar__project {
-    flex: 0 1 180px;
-    min-width: 80px;
+    flex: 0 1 140px;
+    min-width: 0;
+    max-width: 140px;
+  }
+
+  .workspace-topbar__tool-status {
+    max-width: 140px;
+    min-width: 0;
   }
 
   .workspace-topbar__results-group .workspace-topbar__action-button span {
@@ -1020,9 +1035,14 @@
     justify-content: center;
   }
 
+  .workspace-topbar__action-button.is-primary span {
+    display: none;
+  }
+
   .workspace-topbar__action-button.is-primary {
-    min-width: 80px;
-    padding-inline: 10px;
+    min-width: 38px;
+    padding-inline: 8px;
+    justify-content: center;
   }
 }
 
@@ -1039,11 +1059,13 @@
 
   .workspace-topbar__project-group {
     gap: 6px;
+    overflow: hidden;
   }
 
   .workspace-topbar__project {
-    flex: 1 1 125px;
+    flex: 1 1 auto;
     width: auto;
+    min-width: 0;
     gap: 6px;
     padding-inline: 8px;
   }
@@ -1086,10 +1108,14 @@
   }
 
   .workspace-topbar__model-group,
-  .workspace-topbar__experience-group,
   .workspace-topbar__calculate-group {
     min-height: 44px;
     padding: 2px;
+  }
+
+  /* La experiencia de cálculo en móvil se maneja desde el menú '...' y el inspector */
+  .workspace-topbar__experience-group {
+    display: none !important;
   }
 
   .workspace-topbar__icon-button,
@@ -1102,19 +1128,13 @@
     min-width: 40px;
   }
 
-  /* El nombre del proyecto es la identidad de la mesa: cede lo último. */
-  .workspace-topbar__project {
-    flex: 1 1 auto;
-    min-width: 64px;
-  }
-
   .workspace-topbar__model-group,
   .workspace-topbar__tool-group {
     gap: 0;
   }
 
   /* El estado de 3D y FEM se vuelve un punto en la esquina de la marca, como
-     un aviso de app: no le quita sitio al nombre del proyecto. */
+     un aviso de app: no le quita sitio al nombre del proyecto y no bloquea clics. */
   .workspace-topbar__status:has(.workspace-topbar__tool-status) {
     position: absolute;
     z-index: 1;
@@ -1132,7 +1152,7 @@
     border-radius: 50%;
     background: var(--sc-color-bg-app);
     box-shadow: none;
-    pointer-events: auto;
+    pointer-events: none;
   }
 
   .workspace-topbar__tool-status > .workspace-topbar__status-dot { width: 8px; height: 8px; }
@@ -1148,6 +1168,12 @@
     overflow: auto;
     overscroll-behavior: contain;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 480px) {
+  .workspace-topbar__theme-button {
+    display: none;
   }
 }
 

@@ -73,7 +73,7 @@
   inset: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 64px calc(var(--dw-right) + 16px) 96px calc(var(--dw-left) + 16px);
+  padding: 64px calc(var(--dw-right) + 16px) 160px calc(var(--dw-left) + 16px);
   scrollbar-width: thin;
   transition: padding var(--sc-motion-bridge) var(--sc-ease-standard);
 }
@@ -86,6 +86,7 @@
   align-content: flex-start;
   justify-content: safe center;
   gap: calc(12px * var(--z)) calc(32px * var(--z));
+  padding-bottom: 40px;
 }
 
 /* Chips sobre el lienzo: veredicto a la izquierda, norma a la derecha. */
@@ -622,7 +623,7 @@
 @media (max-width: 1240px) {
   .dw-layout { --dw-panel-inputs: 292px; --dw-panel-results: 300px; }
   /* La barra inferior ocupa casi todo el ancho libre: el zoom sube sobre ella. */
-  .dw-zoom { bottom: 66px; }
+  .dw-zoom { bottom: 76px; }
 }
 
 /*
@@ -812,9 +813,11 @@
 .dw-memory__confirm { display: grid; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-left: 2px solid var(--dw-warn); background: var(--sc-color-surface-inset); font-size: 12.5px; }
 .dw-memory__confirm p { margin: 0; }
 .dw-memory__confirm div { display: flex; flex-wrap: wrap; gap: 6px; }
-@media (max-width: 480px) {
-  /* En teléfono el nombre del proyecto pesa más que deshacer: los campos tienen el suyo. */
+@media (max-width: 840px) {
+  /* En tablets y teléfonos el nombre del proyecto y acciones pesan más que deshacer. */
   .workspace-topbar .dw-topbar-history { display: none; }
+}
+@media (max-width: 480px) {
   .dw-memory .sc-modal-surface__footer .sc-button { flex: 1 1 100%; justify-content: center; }
 }
 .dw-drawing--wide { max-width: calc(640px * var(--z, 1)); margin-inline: auto; }
