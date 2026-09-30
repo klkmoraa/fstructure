@@ -2821,3 +2821,15 @@
     animation: none !important;
   }
 }
+
+
+/* En teléfonos estrechos todos los menús del ribbon deben quedar a la vista:
+   dos filas son preferibles a esconder comandos detrás de un gesto horizontal. */
+@media (max-width: 390px) {
+  .space3d-ribbon-tabs {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    mask-image: none;
+    padding-right: 0;
+  }
+}
