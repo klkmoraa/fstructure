@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceTopBar, type WorkspaceTopBarLabels } from './WorkspaceTopBar';
+const workspaceTopbarCss = readFileSync('src/features/workspace/workspaceTopbar.css', 'utf8');
 
 const labels: WorkspaceTopBarLabels = {
   solverName: 'FStructure',
@@ -280,4 +282,38 @@ describe('WorkspaceTopBar', () => {
     expect(screen.getByText('No se pudo analizar')).toBeTruthy();
     expect(screen.queryByText('Listo para analizar')).toBeNull();
   });
+
+  it('no recorta el editor de nombre fuera del grupo del proyecto', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <WorkspaceTopBar
+        labels={labels}
+        projectName="Modelo"
+        storageState="ready"
+        analysisState="ready"
+        resultsOpen={false}
+        canUndo={false}
+        canRedo={false}
+        onOpenHome={vi.fn()}
+        onRenameProject={vi.fn()}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
+        onAnalyze={vi.fn()}
+        onOpenResults={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Nombre del proyecto: Modelo' }));
+    expect(screen.getByRole('form', { name: labels.editProject })).toBeTruthy();
+
+    const projectGroupRules = workspaceTopbarCss
+      .split('.workspace-topbar__project-group {')
+      .slice(1)
+      .map((section) => section.split('}')[0] ?? '');
+
+    expect(projectGroupRules.length).toBeGreaterThan(0);
+    expect(projectGroupRules.some((rule) => rule.includes('overflow: hidden'))).toBe(false);
+  });
+
 });
