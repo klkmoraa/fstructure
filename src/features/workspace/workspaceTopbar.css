@@ -1170,7 +1170,7 @@
 }
 
 @media (max-width: 480px) {
-  .workspace-topbar__theme-button {
+  .workspace-topbar[data-tool='model2d'] .workspace-topbar__theme-button {
     display: none;
   }
 }
@@ -1197,10 +1197,10 @@
   }
 }
 
-/* En los teléfonos más estrechos el tema sigue al sistema (y se cambia en el
-   Inicio): su botón cede el sitio al nombre del proyecto. */
+/* En Modelo 2D el tema también vive en Utilidades; en las mesas aisladas
+   (3D, FEM y Diseño) este botón sigue visible porque es su único acceso. */
 @media (max-width: 360px) {
-  .workspace-topbar__theme-button { display: none; }
+  .workspace-topbar[data-tool='model2d'] .workspace-topbar__theme-button { display: none; }
 }
 
 /* Pantallas bajas (teléfono en horizontal): una barra de 48 px en vez de 64. */
