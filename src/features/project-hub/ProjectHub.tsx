@@ -4,6 +4,10 @@ import { usePhase2I18n } from '../../i18n/usePhase2I18n';
 import { useI18n } from '../../i18n/useI18n';
 import { useWorkspaceUI } from '../../store/ProjectContext';
 import type { ProjectModel } from '../../types';
+import type { ToolId } from '../../shared/contracts';
+import type { StoredBundleRecord, UnifiedBundleRepository } from '../../storage/unifiedBundleRepository';
+import { toolIdentity } from '../workspace/toolCatalog';
+import { recentProjectPresentation } from './recentProjectPresentation';
 import {
   getProjectRepository,
   PROJECT_LIBRARY_CHANGE_KEY,
@@ -95,12 +99,16 @@ export const ProjectHub = ({
   limit,
   filter = '',
   variant = 'full',
+  tool = 'model2d',
+  bundleRepository,
 }: {
   repository?: ProjectRepository;
   onOpen: (record: StoredProjectRecord) => void;
   limit?: number;
   filter?: string;
   variant?: 'full' | 'recent';
+  tool?: ToolId;
+  bundleRepository?: UnifiedBundleRepository;
 }) => {
   const { language } = useI18n();
   const { t } = usePhase2I18n(language);
@@ -108,6 +116,7 @@ export const ProjectHub = ({
   const activeRepository = repository ?? (typeof indexedDB === 'undefined' ? null : getProjectRepository());
   const [projects, setProjects] = useState<StoredProjectRecord[]>([]);
   const [recoveries, setRecoveries] = useState<RecoveryRecord[]>([]);
+  const [bundles, setBundles] = useState<Map<string, StoredBundleRecord>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
@@ -124,16 +133,20 @@ export const ProjectHub = ({
       return;
     }
     try {
-      const snapshot = await activeRepository.listLibrary();
+      const [snapshot, bundleSnapshot] = await Promise.all([
+        activeRepository.listLibrary(),
+        bundleRepository?.snapshot() ?? Promise.resolve(null),
+      ]);
       setProjects(snapshot.projects);
       setRecoveries(snapshot.recoveries.filter((recovery) => recovery.reason !== 'version'));
+      setBundles(new Map((bundleSnapshot?.bundles ?? []).map((record) => [record.id, record])));
       setError(null);
     } catch {
       setError(t('hub.unavailable'));
     } finally {
       setLoading(false);
     }
-  }, [activeRepository, t]);
+  }, [activeRepository, bundleRepository, t]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -251,16 +264,22 @@ export const ProjectHub = ({
     {!loading && projects.length === 0 ? <p className="project-hub__empty">{t('hub.empty')}</p> : null}
     {!loading && noMatches ? <p className="project-hub__empty" role="status">{t('hub.noMatches')}</p> : null}
     {visibleProjects.length ? <div className="project-hub__list">
-      {visibleProjects.map((record) => <div className="project-hub__entry" key={record.id}><article className="project-hub__row">
+      {visibleProjects.map((record) => {
+        const presentation = recentProjectPresentation(tool, bundles.get(record.id)?.bundle, language);
+        const toolScene = tool === 'model2d' ? null : toolIdentity(tool).scene;
+        const meta = presentation.meta || t('hub.meta', { members: record.project.members.length, nodes: record.project.nodes.length });
+        return <div className="project-hub__entry" key={record.id}><article className="project-hub__row">
         <div className="project-hub__preview" aria-hidden="true">
-          <ThreeStructuralImage assetId={projectAssetId(record.project)} theme={theme} alt={record.name} render="three" />
+          {presentation.preview === 'tool' && toolScene
+            ? <img src={theme === 'dark' ? toolScene.night : toolScene.day} alt="" />
+            : <ThreeStructuralImage assetId={projectAssetId(record.project)} theme={theme} alt={record.name} render="three" />}
         </div>
         <div className="project-hub__identity">
           {editing?.id === record.id ? <form onSubmit={(event) => { event.preventDefault(); void commitRename(); }}>
             <label><span className="sr-only">{t('hub.renameLabel')}</span><input value={editing.name} onChange={(event) => setEditing({ ...editing, name: event.target.value })} autoFocus /></label>
             <button type="submit">{t('hub.saveName')}</button>
             <button type="button" onClick={() => setEditing(null)}>{t('hub.cancel')}</button>
-          </form> : <><strong>{record.name}</strong><span>{t('hub.meta', { members: record.project.members.length, nodes: record.project.nodes.length })}</span></>}
+          </form> : <><strong>{record.name}</strong><span>{meta}</span></>}
           <div className="project-hub__record-meta">
             <time className="project-hub__updated" dateTime={record.updatedAt}>{formatUpdated(record.updatedAt, language)}</time>
             {variant === 'full' ? <small className="project-hub__revision">{t('hub.revision', { revision: record.revision })}</small> : null}
@@ -284,7 +303,8 @@ export const ProjectHub = ({
         t={t}
         onRestored={onOpen}
         onChanged={() => { void refresh(); }}
-      /> : null}</div>)}
+      /> : null}</div>;
+      })}
     </div> : null}
     {filteredRecoveries.length ? <section className="project-hub__recoveries" aria-labelledby="recoveries-title">
       <h3 id="recoveries-title">{t('hub.recoveries', { count: filteredRecoveries.length })}</h3>
