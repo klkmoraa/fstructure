@@ -307,11 +307,13 @@ describe('WorkspaceTopBar', () => {
     await user.click(screen.getByRole('button', { name: 'Nombre del proyecto: Modelo' }));
     expect(screen.getByRole('form', { name: labels.editProject })).toBeTruthy();
 
-    const projectGroupRules = [...workspaceTopbarCss.matchAll(/\.workspace-topbar__project-group\s*\{([^}]*)\}/g)]
-      .map((match) => match[1] ?? '');
+    const projectGroupRules = workspaceTopbarCss
+      .split('.workspace-topbar__project-group {')
+      .slice(1)
+      .map((section) => section.split('}')[0] ?? '');
 
     expect(projectGroupRules.length).toBeGreaterThan(0);
-    expect(projectGroupRules.some((rule) => /overflow\s*:\s*hidden/.test(rule))).toBe(false);
+    expect(projectGroupRules.some((rule) => rule.includes('overflow: hidden'))).toBe(false);
   });
 
 });
