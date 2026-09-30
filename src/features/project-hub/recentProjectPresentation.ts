@@ -1,5 +1,6 @@
 import type { ToolId } from '../../shared/contracts';
 import type { JsonValue, UnifiedProjectBundleV1 } from '../../shared/project/unifiedProjectBundle';
+import { parseWorkbenchDocument } from '../design/workbench/workbenchStorage';
 
 type Language = 'es' | 'en';
 type Presentation = { meta: string; preview: 'model2d' | 'tool' };
@@ -8,9 +9,8 @@ const object = (value: JsonValue | undefined): Record<string, JsonValue> | null 
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, JsonValue> : null;
 const arrayLength = (value: JsonValue | undefined) => Array.isArray(value) ? value.length : 0;
 
-const designElement = (value: JsonValue | undefined, language: Language) => {
-  const document = object(value);
-  const raw = document?.element;
+const designElement = (entries: Record<string, JsonValue>, language: Language) => {
+  const raw = entries.element;
   const element = raw === 'column' || raw === 'footing' ? raw : 'beam';
   const labels = language === 'es'
     ? { beam: 'Viga', column: 'Columna', footing: 'Zapata' }
@@ -18,8 +18,8 @@ const designElement = (value: JsonValue | undefined, language: Language) => {
   return labels[element];
 };
 
-const designCodeLabel = (value: JsonValue | undefined) => {
-  const raw = object(value)?.code;
+const designCodeLabel = (entries: Record<string, JsonValue>) => {
+  const raw = entries.code;
   if (raw === 'ntc-2023') return 'NTC-CDMX 2023';
   if (raw === 'nsr-10') return 'NSR-10';
   if (raw === 'e060') return 'E.060';
@@ -45,21 +45,24 @@ export const recentProjectPresentation = (
   }
 
   if (tool === 'fem') {
-    const study = bundle?.fem.at(-1);
-    if (!study) return { meta: '', preview: 'model2d' };
-    const document = object(object(study)?.document);
-    const nodes = arrayLength(document?.nodes);
-    const elements = arrayLength(document?.elements);
-    return {
-      meta: language === 'es' ? `${nodes} nodos · ${elements} elementos` : `${nodes} nodes · ${elements} elements`,
-      preview: 'tool',
-    };
+    const studies = bundle?.fem ?? [];
+    for (let index = studies.length - 1; index >= 0; index -= 1) {
+      const document = object(object(studies[index])?.document);
+      if (document?.kind !== 'fem-document' || document.schemaVersion !== 1 || !Array.isArray(document.nodes) || !Array.isArray(document.elements)) continue;
+      const nodes = document.nodes.length;
+      const elements = document.elements.length;
+      return {
+        meta: language === 'es' ? `${nodes} nodos · ${elements} elementos` : `${nodes} nodes · ${elements} elements`,
+        preview: 'tool',
+      };
+    }
+    return { meta: '', preview: 'model2d' };
   }
 
   if (tool === 'design') {
-    const design = object(bundle?.design);
-    if (!design || Object.keys(design).length === 0) return { meta: '', preview: 'model2d' };
-    return { meta: `${designElement(bundle?.design, language)} · ${designCodeLabel(bundle?.design)}`, preview: 'tool' };
+    const entries = parseWorkbenchDocument(bundle?.design);
+    if (Object.keys(entries).length === 0) return { meta: '', preview: 'model2d' };
+    return { meta: `${designElement(entries, language)} · ${designCodeLabel(entries)}`, preview: 'tool' };
   }
 
   return { meta: '', preview: 'model2d' };
