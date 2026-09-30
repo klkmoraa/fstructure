@@ -316,4 +316,13 @@ describe('WorkspaceTopBar', () => {
     expect(projectGroupRules.some((rule) => rule.includes('overflow: hidden'))).toBe(false);
   });
 
+
+  it('mantiene el control de tema accesible en móvil para 3D, FEM y Diseño', () => {
+    const globalMobileThemeHide = /@media\s*\(max-width:\s*(?:480|360)px\)\s*\{[\s\S]*?\.workspace-topbar__theme-button\s*\{\s*display:\s*none;?\s*\}/g;
+    const scopedMobileThemeHide = /\.workspace-topbar\[data-tool=['"]model2d['"]\]\s+\.workspace-topbar__theme-button\s*\{\s*display:\s*none;?\s*\}/;
+
+    expect(workspaceTopbarCss.match(globalMobileThemeHide) ?? []).toHaveLength(0);
+    expect(scopedMobileThemeHide.test(workspaceTopbarCss)).toBe(true);
+  });
+
 });
