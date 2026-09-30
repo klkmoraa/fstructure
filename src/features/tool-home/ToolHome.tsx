@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowUpRight, FilePlus2, Home, Menu, Play, Search, X, type L
 import { createBlankProject } from '../../data/defaultProject';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
+import { useSharedToolState } from '../../store/SharedToolState';
 import type { ToolId } from '../../shared/contracts';
 import { ProjectHub } from '../project-hub/ProjectHub';
 import { toolIdentity } from '../workspace/toolCatalog';
@@ -85,6 +86,7 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite,
   const { project, replaceProject, updateProjectView } = useProject();
   const { language } = useI18n();
   const { theme } = useWorkspaceUI();
+  const session = useSharedToolState()?.session;
   const text = copy[language];
   const identity = toolIdentity(tool);
   const name = identity.name[language];
@@ -203,7 +205,7 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite,
             <header className="solver2d-section__head">
               <div><h2 id={`${tool}-recent-title`}>{text.recentTitle}</h2><p>{text.recentBody}</p></div>
             </header>
-            <div className="solver2d-recents"><ProjectHub variant="recent" limit={3} filter={searchQuery} onOpen={(record) => {
+            <div className="solver2d-recents"><ProjectHub variant="recent" tool={tool} bundleRepository={session?.repository} limit={3} filter={searchQuery} onOpen={(record) => {
               replaceProject({ ...record.project, settings: { ...record.project.settings, language } }, undefined, record.revision);
               onOpenWorkspace();
             }} /></div>
