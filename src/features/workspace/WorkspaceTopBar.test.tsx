@@ -4,7 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceTopBar, type WorkspaceTopBarLabels } from './WorkspaceTopBar';
-const workspaceTopbarCss = readFileSync(new URL('./workspaceTopbar.css', import.meta.url), 'utf8');
+const workspaceTopbarCss = readFileSync('src/features/workspace/workspaceTopbar.css', 'utf8');
 
 const labels: WorkspaceTopBarLabels = {
   solverName: 'FStructure',
