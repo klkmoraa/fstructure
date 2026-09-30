@@ -107,9 +107,8 @@ describe('space3d · pila de selección y leyenda', () => {
 
 
 describe('space3d · ribbon en teléfono estrecho', () => {
-  const phone = parseRules(mediaBody('@media (max-width: 390px)'));
-
   it('muestra todas las pestañas sin depender de scroll horizontal oculto', () => {
+    const phone = parseRules(mediaBody('@media (max-width: 390px)'));
     const tabs = phone.get('.space3d-ribbon-tabs') ?? '';
     expect(tabs).toMatch(/flex-wrap:\s*wrap/);
     expect(tabs).toMatch(/overflow-x:\s*visible/);
