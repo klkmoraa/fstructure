@@ -21,7 +21,6 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  overflow: hidden;
 }
 
 .workspace-topbar__brand {
@@ -1059,7 +1058,6 @@
 
   .workspace-topbar__project-group {
     gap: 6px;
-    overflow: hidden;
   }
 
   .workspace-topbar__project {
