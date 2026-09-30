@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceTopBar, type WorkspaceTopBarLabels } from './WorkspaceTopBar';
-import workspaceTopbarCss from './workspaceTopbar.css?raw';
+const workspaceTopbarCss = readFileSync(new URL('./workspaceTopbar.css', import.meta.url), 'utf8');
 
 const labels: WorkspaceTopBarLabels = {
   solverName: 'FStructure',
