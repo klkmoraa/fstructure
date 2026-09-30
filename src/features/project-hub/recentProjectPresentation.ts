@@ -1,6 +1,5 @@
 import type { ToolId } from '../../shared/contracts';
 import type { JsonValue, UnifiedProjectBundleV1 } from '../../shared/project/unifiedProjectBundle';
-import { parseWorkbenchDocument } from '../design/workbench/workbenchStorage';
 
 type Language = 'es' | 'en';
 type Presentation = { meta: string; preview: 'model2d' | 'tool' };
@@ -8,6 +7,12 @@ type Presentation = { meta: string; preview: 'model2d' | 'tool' };
 const object = (value: JsonValue | undefined): Record<string, JsonValue> | null =>
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, JsonValue> : null;
 const arrayLength = (value: JsonValue | undefined) => Array.isArray(value) ? value.length : 0;
+
+const designEntries = (value: JsonValue | undefined): Record<string, JsonValue> | null => {
+  const document = object(value);
+  if (document?.kind !== 'fstructure-design-workbench' || (document.schemaVersion !== 1 && document.schemaVersion !== 2)) return null;
+  return object(document.entries);
+};
 
 const designElement = (entries: Record<string, JsonValue>, language: Language) => {
   const raw = entries.element;
@@ -60,8 +65,8 @@ export const recentProjectPresentation = (
   }
 
   if (tool === 'design') {
-    const entries = parseWorkbenchDocument(bundle?.design);
-    if (Object.keys(entries).length === 0) return { meta: '', preview: 'model2d' };
+    const entries = designEntries(bundle?.design);
+    if (!entries || Object.keys(entries).length === 0) return { meta: '', preview: 'model2d' };
     return { meta: `${designElement(entries, language)} · ${designCodeLabel(entries)}`, preview: 'tool' };
   }
 
