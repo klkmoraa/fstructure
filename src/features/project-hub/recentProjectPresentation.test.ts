@@ -11,6 +11,18 @@ const bundle = (overrides: Partial<UnifiedProjectBundleV1>): UnifiedProjectBundl
   design: {},
   fem: [],
   ...overrides,
+
+  it('ignora un snapshot FEM ajeno al final y usa el último estudio FEM válido', () => {
+    const value = recentProjectPresentation('fem', bundle({
+      fem: [
+        { document: { kind: 'fem-document', schemaVersion: 1, id: 'study', nodes: [{}, {}], elements: [{}] } },
+        { foreign: true },
+      ],
+    }), 'es');
+    expect(value.meta).toBe('2 nodos · 1 elementos');
+    expect(value.preview).toBe('tool');
+  });
+
 });
 
 describe('recentProjectPresentation', () => {
@@ -39,7 +51,11 @@ describe('recentProjectPresentation', () => {
 
   it('identifica el documento de Diseño guardado', () => {
     const value = recentProjectPresentation('design', bundle({
-      design: { element: 'column', code: 'ntc-2023' },
+      design: {
+        kind: 'fstructure-design-workbench',
+        schemaVersion: 2,
+        entries: { element: 'column', code: 'ntc-2023' },
+      },
     }), 'es');
     expect(value.meta).toContain('Columna');
     expect(value.meta).toContain('NTC');
