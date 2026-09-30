@@ -34,7 +34,8 @@ export const recentProjectPresentation = (
   language: Language,
 ): Presentation => {
   if (tool === 'space3d') {
-    const model = object(bundle?.space3d?.model);
+    if (!bundle?.space3d) return { meta: '', preview: 'model2d' };
+    const model = object(bundle.space3d.model);
     const members = arrayLength(model?.members);
     const nodes = arrayLength(model?.nodes);
     return {
@@ -45,6 +46,7 @@ export const recentProjectPresentation = (
 
   if (tool === 'fem') {
     const study = bundle?.fem.at(-1);
+    if (!study) return { meta: '', preview: 'model2d' };
     const document = object(object(study)?.document);
     const nodes = arrayLength(document?.nodes);
     const elements = arrayLength(document?.elements);
@@ -55,6 +57,8 @@ export const recentProjectPresentation = (
   }
 
   if (tool === 'design') {
+    const design = object(bundle?.design);
+    if (!design || Object.keys(design).length === 0) return { meta: '', preview: 'model2d' };
     return { meta: `${designElement(bundle?.design, language)} · ${designCodeLabel(bundle?.design)}`, preview: 'tool' };
   }
 
