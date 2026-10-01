@@ -9,7 +9,7 @@ export const toolRegistry: readonly ToolModuleDescriptor[] = [
   },
   {
     id: 'design', labelKey: 'design.title', maturity: 'experimental',
-    capabilities: ['concrete-beam-column-footing-design'],
+    capabilities: ['concrete-beam-column-footing-design', 'concrete-section-philosophies', 'concrete-reinforcement-takeoff'],
     load: () => import('./adapters/DesignSurface').then((module) => module.default),
   },
   {

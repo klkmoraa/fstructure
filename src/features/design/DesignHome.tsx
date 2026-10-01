@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Columns3, RectangleHorizontal, Square } from 'lucide-react';
+import { Columns3, RectangleHorizontal, Square, Shapes } from 'lucide-react';
 import { ToolHome, type ToolHomeContent } from '../tool-home/ToolHome';
 import { setToolIntent } from '../workspace/toolIntent';
 import { useI18n } from '../../i18n/useI18n';
@@ -9,21 +9,22 @@ import { createBlankProject } from '../../data/defaultProject';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../design/elements/codes';
 import { parseWorkbenchDocument } from './workbench/workbenchStorage';
 
-type Element = 'beam' | 'column' | 'footing';
+type Element = 'beam' | 'column' | 'footing' | 'section';
 const ELEMENT_LABEL: Record<Element, { es: string; en: string }> = {
   beam: { es: 'Viga', en: 'Beam' },
   column: { es: 'Columna', en: 'Column' },
   footing: { es: 'Zapata', en: 'Footing' },
+  section: { es: 'Secciones', en: 'Sections' },
 };
 
 const content = (onElement: (element: Element) => void, codeControl: ToolHomeContent['pathsControl']): ToolHomeContent => ({
   title: { es: 'Del esfuerzo al armado.', en: 'From force to reinforcement.' },
   lead: {
-    es: 'Diseña vigas, columnas y zapatas de concreto reforzado con la norma que elijas.',
-    en: 'Design reinforced concrete beams, columns, and footings with the code you choose.',
+    es: 'Diseña elementos de concreto, edita el armado y explora secciones con tres filosofías de cálculo.',
+    en: 'Design concrete elements, edit reinforcement, and explore sections with three design philosophies.',
   },
   stageAlt: { es: 'Viga de concreto en arcilla con la jaula de armado expuesta', en: 'Clay concrete beam with its reinforcement cage exposed' },
-  startBody: { es: 'Elige el elemento; la norma se aplica a los tres.', en: 'Choose the element; the code applies to all three.' },
+  startBody: { es: 'Elige un elemento normativo o explora la calculadora experimental de secciones.', en: 'Choose a code-based element or explore the experimental section calculator.' },
   pathsControl: codeControl,
   paths: [
     { id: 'beam', icon: RectangleHorizontal, label: { es: 'Viga continua', en: 'Continuous beam' },
@@ -35,6 +36,9 @@ const content = (onElement: (element: Element) => void, codeControl: ToolHomeCon
     { id: 'footing', icon: Square, label: { es: 'Zapata aislada', en: 'Isolated footing' },
       body: { es: 'Presión del suelo, punzonamiento, cortante y flexión.', en: 'Soil pressure, punching, shear, and flexure.' },
       action: () => onElement('footing') },
+    { id: 'section', icon: Shapes, label: { es: 'Secciones y filosofías', en: 'Sections and philosophies' },
+      body: { es: 'Seis geometrías, flexión, columnas cortas, acero, concreto y recubrimiento.', en: 'Six geometries, flexure, short columns, steel, concrete, and cover.' },
+      action: () => onElement('section') },
   ],
   capabilities: [
     { id: 'codes', state: 'experimental', label: { es: 'Tres normas', en: 'Three codes' },
@@ -46,7 +50,7 @@ const content = (onElement: (element: Element) => void, codeControl: ToolHomeCon
     { id: 'footing', state: 'experimental', label: { es: 'Zapatas', en: 'Footings' },
       body: { es: 'Dimensionamiento en planta, punzonamiento y armado en ambas direcciones.', en: 'Plan sizing, punching, and reinforcement in both directions.' } },
     { id: 'memo', state: 'available', label: { es: 'Memoria de cálculo', en: 'Calculation report' },
-      body: { es: 'Cada revisión con su artículo, lista para copiar.', en: 'Every check with its clause, ready to copy.' } },
+      body: { es: 'Revisión, diagramas y cantidades; guarda elementos y exporta el proyecto en PDF.', en: 'Checks, diagrams, and quantities; save elements and export the project as PDF.' } },
     { id: 'isolated', state: 'available', label: { es: 'Taller propio', en: 'Own workbench' },
       body: { es: 'Los datos del taller se guardan en el proyecto y no dependen del Modelo 2D.', en: 'Workbench data is saved in the project and does not depend on the 2D model.' } },
   ],
@@ -64,13 +68,13 @@ export default function DesignHome({ onOpenWorkspace, onOpenSuite }: { onOpenWor
   const draft = session?.currentBundle(project.id)?.design;
   const entries = useMemo(() => parseWorkbenchDocument(draft), [draft]);
   const storedCode = isDesignCodeId(entries.code) ? entries.code : 'ntc-2023';
-  const storedElement: Element = entries.element === 'column' || entries.element === 'footing' ? entries.element : 'beam';
+  const storedElement: Element = entries.element === 'column' || entries.element === 'footing' || entries.element === 'section' ? entries.element : 'beam';
   const [code, setCode] = useState<DesignCodeId>(storedCode);
   const en = language === 'en';
 
   const summary = [
     { value: ELEMENT_LABEL[storedElement][language], label: en ? 'last element' : 'último elemento' },
-    { value: designCode(code).name, label: en ? 'code' : 'norma' },
+    { value: storedElement === 'section' ? 'Experimental' : designCode(code).name, label: storedElement === 'section' ? (en ? 'model' : 'modelo') : (en ? 'code' : 'norma') },
   ];
   const openElement = (element: Element) => {
     setToolIntent({ tool: 'design', kind: 'element', element, code });

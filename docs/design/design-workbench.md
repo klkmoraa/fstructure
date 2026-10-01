@@ -1,6 +1,6 @@
 # Taller de diseño de elementos — experimental
 
-La herramienta **Diseño** (FS-A04) abre un taller aislado con tres elementos: Viga, Columna y Zapata. No lee el Modelo 2D: cada elemento se captura en el propio taller. Es una herramienta de revisión y aprendizaje; no certifica un diseño ni sustituye a la persona responsable del proyecto.
+La herramienta **Diseño** (FS-A04) abre un taller aislado con Viga, Columna, Zapata y Secciones. No lee el Modelo 2D: cada elemento se captura en el propio taller. Es una herramienta de revisión y aprendizaje; no certifica un diseño ni sustituye a la persona responsable del proyecto.
 
 ## Normas disponibles
 
@@ -82,11 +82,35 @@ Decisión deliberada: la ec. 3.6.1 de la NTC escribe β1 = 0.85 hasta 30 MPa con
 - **Deshacer/rehacer.** Cada formulario lleva su historial (los cambios seguidos se agrupan); botones en la barra superior y Ctrl/⌘+Z fuera de los campos de texto.
 - **Modelo por elemento.** `beamModel.tsx`, `columnModel.tsx` y `footingModel.tsx` pasan del borrador a la entrada del motor y a la memoria; los usan la mesa y la memoria del proyecto.
 
+## Secciones y tres filosofías de cálculo
+
+**Secciones** es el cuarto elemento del taller. Calcula una sección aislada de concreto con carga axial y flexión en una dirección: cuadrada, rectangular, circular, triangular, hexagonal u octagonal. Los polígonos se integran con su geometría real; la circular usa integrales analíticas. El recubrimiento se mide a la cara exterior del refuerzo transversal. Las coordenadas de las barras, los estribos y las grapas que se dibujan provienen del motor.
+
+Tiene ejemplos editables de flexión de viga, columna corta, franja de losa por metro y pedestal; dos niveles de captura, simple y avanzado; acero perimetral o por lechos en rectángulos; estribo cerrado, cerrado con grapas y hélice circular. La búsqueda de armado propone un número de barras del diámetro actual que cubre axial/flexión y separación geométrica, manteniendo visibles sus limitaciones. La sugerencia transversal es geométrica: para calcular cortante y detallado normativo se usan los elementos Viga y Columna.
+
+| Filosofía | Demanda | Modelo del cálculo experimental |
+| --- | --- | --- |
+| EA: esfuerzos admisibles | Servicio | Sección elástica fisurada, concreto sin resistencia a tensión, compatibilidad y equilibrio; compara esfuerzos con fracciones editables de f′c y fy. |
+| RU: resistencia última | Última capturada, o servicio multiplicado por un factor explícito | Bloque equivalente y compatibilidad, concreto desplazado por las barras; reducción φ editable sobre la resistencia nominal. |
+| EL: estados límite | Última capturada, o servicio multiplicado por un factor explícito | El mismo modelo resistente con f′c/γc y fy/γs, sin aplicar además φ. Los estados de servicio del miembro quedan sin evaluar. |
+
+Estos modelos no implementan por completo NTC, ACI o Eurocódigo: φ no se deduce de ductilidad, no hay combinaciones automáticas y no se verifica el detalle sísmico. Cambiar de filosofía conserva las demandas numéricas; la interfaz identifica si corresponden a servicio o a últimas. El factor global es explícito y no sustituye las combinaciones de acciones. La memoria identifica la filosofía como **modelo experimental**, separada del perfil normativo de los otros elementos.
+
+Las láminas muestran sección y recubrimiento, envolvente N–M firmada con la demanda, deformación/compresión y elevación de estribos. El modelo de deformación impone una dirección: cuando genera un momento perpendicular lo declara, porque una proyección N–M no basta para resolver flexión biaxial arbitraria. Para las columnas rectangulares/circulares normativas, la mesa Columna conserva la evaluación biaxial y la esbeltez existentes.
+
+Las cantidades son volumen bruto geométrico de concreto y masa del acero dibujado. El neto descontando acero es adicional; no se agregan traslapes ni desperdicio. Los longitudinales son rectos; los estribos y grapas incluyen una estimación de ganchos de 10 diámetros por extremo y la hélice no incluye sus vueltas de anclaje. No es un despiece constructivo.
+
+Las hipótesis de compatibilidad se apoyan en el [manual de referencia LRFD de FHWA](https://www.fhwa.dot.gov/bridge/pubs/nhi15047.pdf); la comparación de esfuerzos permisibles y factores parciales se documenta en el [Handbook 2 de JRC](https://eurocodes.jrc.ec.europa.eu/sites/default/files/2021-12/handbook2.pdf). Las ecuaciones implementadas se verifican con equilibrio, integraciones independientes y geometrías analíticas en `sectionStudio.test.ts`.
+
+**Estribos propios en Columna.** Separación al centro, separación en extremos Lo para NTC y paso uniforme del zuncho circular. Vacío conserva la propuesta. El motor revisa la separación exacta, cortante con la separación más abierta, refuerzo transversal mínimo y límites del perfil elegido. Se muestran propuesta, valor propio y máximos, y se actualizan elevación, cantidades y PDF. El diagrama puede mostrar X/Y, curvas nominales y reducidas; el punto balanceado usa el factor del perfil y la demanda circular coincide con la que evalúa el motor.
+
 ## Datos y persistencia
 
-Los borradores del taller (norma, elemento y datos de cada formulario) y la memoria del proyecto se guardan en la rama `design` del bundle unificado del proyecto abierto, como documento `fstructure-design-workbench` validado al leerlo (`workbenchStorage.ts`). La versión 2 añade `memory` (hasta 60 elementos); un documento v1 se lee tal cual y se reescribe como v2. No forman parte del modelo 2D: no cambian la procedencia (`sourceVersion`), no invalidan el análisis y no entran al historial de deshacer, igual que los estudios FEM. Sin sesión de proyecto (pruebas o vista aislada) se guardan en el navegador.
+Los borradores del taller (norma, elemento y datos de cada formulario) y la memoria del proyecto se guardan en la rama `design` del bundle unificado del proyecto abierto, como documento `fstructure-design-workbench` validado al leerlo (`workbenchStorage.ts`). La versión 2 añade `memory` (hasta 60 elementos); la versión 3 incluye secciones experimentales en esa memoria. Se leen documentos v1/v2/v3 y las siguientes escrituras usan v3 conservando sus borradores y elementos. No forman parte del modelo 2D: no cambian la procedencia (`sourceVersion`), no invalidan el análisis y no entran al historial de deshacer, igual que los estudios FEM. Sin sesión de proyecto (pruebas o vista aislada) se guardan en el navegador.
 
 ## Validación
+
+La ampliación de geometrías, filosofías, armado y diagramas tiene su [registro de validación del 2026-10-01](concrete-studio-validation-2026-10-01.md), con referencias numéricas, persistencia, revisión visual y exportación PDF.
 
 `validation/python/elements_oracle.py` recalcula columnas, zapatas y los bloques de las tres normas con algoritmos distintos a los del motor: bisección sobre el eje neutro acotando antes la raíz Pn = 0, integración numérica de presiones y una malla fina de acero. Sus fixtures (`validation/fixtures/elements/`) cubren la NTC (columna biaxial esbelta, zapata con sismo), NSR-10 (columna biaxial arriostrada, zapata con momentos) y E.060 (columna en marco con desplazamiento, zapata con momentos), además de φ, acero requerido, desarrollo y ganchos. Se contrastan desde TypeScript (`elements.fixtures.test.ts`) y desde Python (`npm run design:oracle`).
 
@@ -94,9 +118,9 @@ Los borradores del taller (norma, elemento y datos de cada formulario) y la memo
 
 - Detallado sísmico de ductilidad media y alta (NTC caps. 7 y 8, NSR C.21, E.060 cap. 21).
 - Análisis de segundo orden explícito, necesario cuando δs > 1.5.
-- Torsión, secciones T/L y acero de compresión en flexión (que se desprecia, del lado seguro).
-- Zapatas corridas o combinadas, pedestales, volteo y deslizamiento.
-- Presfuerzo, losas y muros.
+- Torsión, selección normativa del ancho efectivo T/L y contribución resistente del acero de compresión en el cálculo de las vigas normativas.
+- Estabilidad geotécnica por volteo y deslizamiento.
+- Presfuerzo, muros y diseño integral de losas y pedestales. Los ejemplos de Secciones sólo revisan una sección aislada; no resuelven esos miembros completos.
 - Modificadores favorables de ganchos (ψr, ψc, 0.7 o 0.8), que se toman iguales a 1, y traslapes a compresión.
 
 La lista que ve la persona usuaria vive en `scope.ts`; si cambia el alcance, se cambia ahí y aquí.

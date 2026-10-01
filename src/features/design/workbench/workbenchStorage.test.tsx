@@ -5,7 +5,7 @@ import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { DesignWorkbench } from './DesignWorkbench';
 import { WORKBENCH_DOCUMENT_KIND, WorkbenchStorageContext, createProjectWorkbenchStorage, parseWorkbenchDocument } from './workbenchStorage';
 
-const workbenchDoc = (entries: Record<string, unknown>, schemaVersion = 2) => ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion, entries });
+const workbenchDoc = (entries: Record<string, unknown>, schemaVersion = 3) => ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion, entries });
 
 afterEach(() => {
   vi.useRealTimers();
@@ -13,6 +13,20 @@ afterEach(() => {
 });
 
 describe('design workbench document', () => {
+  it('migrates v2 memory and retains the section studio draft and memory in v3', () => {
+    const old = { id: 'a1', element: 'column', code: 'ntc-2023', savedAt: '2026-09-27', fields: { tag: 'C-1', width: '40' } };
+    const section = { id: 'a2', element: 'section', code: 'ntc-2023', savedAt: '2026-10-01', fields: { tag: 'S-1', shape: 'octagonal', philosophy: 'allowable', cover: '4' } };
+    const persist = vi.fn<(value: JsonValue) => void>();
+    const storage = createProjectWorkbenchStorage(workbenchDoc({ memory: [old] }, 2), persist);
+    storage.write('section', section.fields);
+    storage.write('memory', [old, section]);
+    storage.flush();
+    const document = persist.mock.calls[0]?.[0] as { schemaVersion: number; entries: Record<string, JsonValue> };
+    expect(document.schemaVersion).toBe(3);
+    expect(parseWorkbenchDocument(document)).toEqual({ memory: [old, section], section: section.fields });
+    storage.dispose();
+  });
+
   it('keeps short strings, records of strings and short lists of records only', () => {
     const parsed = parseWorkbenchDocument(workbenchDoc({
       code: 'nsr-10',
@@ -41,7 +55,7 @@ describe('design workbench document', () => {
   it('rejects foreign or oversized documents without throwing', () => {
     expect(parseWorkbenchDocument(null)).toEqual({});
     expect(parseWorkbenchDocument({ kind: 'other', schemaVersion: 1, entries: {} })).toEqual({});
-    expect(parseWorkbenchDocument({ ...workbenchDoc({}), schemaVersion: 3 })).toEqual({});
+    expect(parseWorkbenchDocument({ ...workbenchDoc({}), schemaVersion: 4 })).toEqual({});
     expect(parseWorkbenchDocument(workbenchDoc({ wide: Object.fromEntries(Array.from({ length: 70 }, (_, index) => [`f${index}`, 'x'])) }))).toEqual({});
     const fields = Object.fromEntries(Array.from({ length: 64 }, (_, index) => [`f${index}`.padEnd(32, 'k'), 'x'.repeat(32)]));
     const huge = { memory: Array.from({ length: 60 }, (_, index) => ({ id: `m${index}`, element: 'beam', code: 'ntc-2023', savedAt: '2026-09-27', fields })) };

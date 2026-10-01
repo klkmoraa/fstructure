@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceTopBar, type WorkspaceTopBarLabels } from './WorkspaceTopBar';
@@ -55,7 +55,7 @@ it('abre ayuda de la mesa y Escape vuelve al control que la abrió', async () =>
   expect(screen.getByRole('dialog', { name: 'Cómo usar FStructure' })).toBeTruthy();
   await user.keyboard('{Escape}');
   expect(screen.queryByRole('dialog')).toBeNull();
-  expect(document.activeElement).toBe(trigger);
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
 });
 
 describe('WorkspaceTopBar', () => {

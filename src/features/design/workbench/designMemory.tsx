@@ -5,6 +5,7 @@ import { Dialog } from '../../../design-system/components/overlays';
 import { designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
 import { BEAM_DEFAULTS, beamReportFromDraft, parseSpans, DEFAULT_SPANS } from './beamModel';
 import { COLUMN_DEFAULTS, columnReportFromDraft } from './columnModel';
+import { SECTION_DEFAULTS, sectionReportFromDraft } from './concreteStudioModel';
 import { verdictHeadline } from './common';
 import { reportHeading, stableJson, type DesignElementKind, type DesignReport } from './designReport';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
@@ -15,7 +16,7 @@ import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type Workbenc
  * cálculo. Se guarda el borrador (no el resultado) y se recalcula al mostrar o
  * exportar, así que la memoria siempre sale con el motor vigente.
  */
-const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', footing: 'Zapata' };
+const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', footing: 'Zapata', section: 'Sección' };
 /** Presupuesto del documento para la memoria; el resto queda para los borradores. */
 const MEMORY_BUDGET_CHARS = 180_000;
 
@@ -36,6 +37,7 @@ export function reportFromMemoryItem(item: WorkbenchMemoryItem): MemoryReport {
     case 'beam': return beamReportFromDraft(code, merge(BEAM_DEFAULTS, item.fields), parseSpans(item.rows) ?? DEFAULT_SPANS);
     case 'column': return columnReportFromDraft(code, merge(COLUMN_DEFAULTS, item.fields));
     case 'footing': return footingReportFromDraft(code, merge(FOOTING_DEFAULTS, item.fields));
+    case 'section': return sectionReportFromDraft(code, merge(SECTION_DEFAULTS, item.fields));
   }
 }
 
@@ -200,7 +202,7 @@ export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onEx
         return <tr key={item.id} data-active={item.id === memory.activeId || undefined}>
           <th scope="row">
             <strong>{report ? reportHeading(report) : `${item.fields.tag || ELEMENT_LABEL[item.element]} · datos incompletos`}</strong>
-            <small>{[item.fields.place, designCode(isDesignCodeId(item.code) ? item.code : 'ntc-2023').name, savedDate(item.savedAt)].filter(Boolean).join(' · ')}</small>
+            <small>{[item.fields.place, report?.basisLabel ?? designCode(isDesignCodeId(item.code) ? item.code : 'ntc-2023').name, savedDate(item.savedAt)].filter(Boolean).join(' · ')}</small>
           </th>
           <td data-status={status}>{report ? `${verdictHeadline(report.status, report.outOfScope.length > 0)} · ${percent(report.governingRatio)}` : 'No se puede calcular'}</td>
           <td className="dw-memory__actions">

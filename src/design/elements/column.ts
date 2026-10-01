@@ -45,6 +45,10 @@ export interface ColumnDesignInput {
   /** Barras por cara paralela a Y, incluyendo esquinas. */
   readonly barsAlongDepth: number;
   readonly tieDiameterMm: number;
+  /** Separación propia al centro; en zuncho es el paso uniforme. Omitir conserva la propuesta. */
+  readonly tieSpacingMm?: number;
+  /** Separación propia en ambos extremos Lo (sólo estribos NTC). */
+  readonly endTieSpacingMm?: number;
   readonly maxAggregateMm: number;
   /** Compresión positiva. */
   readonly axialKn: number;
@@ -145,6 +149,13 @@ export interface ColumnTies {
   readonly endLengthMm: number;
   /** Separación fuera de Lo. */
   readonly centerSpacingMm: number;
+  /** Propuestas automáticas; se conservan aun cuando se proporcione una separación propia. */
+  readonly proposedCenterSpacingMm: number;
+  readonly proposedEndSpacingMm: number;
+  readonly maximumCenterSpacingMm: number;
+  readonly maximumEndSpacingMm: number;
+  /** Separación más abierta que se evalúa conservadoramente para el cortante capturado. */
+  readonly governingSpacingMm: number;
   /** Grapas por juego para soportar las barras intermedias de cada cara. */
   readonly crossTiesParallelToX: number;
   readonly crossTiesParallelToY: number;
@@ -214,7 +225,7 @@ const SPIRAL_MINIMUM_DIAMETER_MM = 9.5;
  * ρs ≥ 0.45(Ag/Ac − 1)f′c/fyt con fyt ≤ 700 MPa (ec. 14.7.4.3). ρs se toma con
  * la longitud del eje del zuncho: 4Asp(Dc − dsp)/(Dc² s).
  */
-function spiralPitch(input: ColumnDesignInput, gross: number, shearSpacingMm: number): ColumnSpiral {
+function spiralPitch(input: ColumnDesignInput, gross: number, shearSpacingMm: number, providedPitchMm?: number): ColumnSpiral {
   const db = input.tieDiameterMm;
   const core = input.widthMm - 2 * input.coverMm;
   const coreArea = Math.PI * core ** 2 / 4;
@@ -224,7 +235,7 @@ function spiralPitch(input: ColumnDesignInput, gross: number, shearSpacingMm: nu
   const ratioPitch = volumeFactor / requiredRatio;
   const minimumClear = Math.max(25, 1.5 * input.maxAggregateMm);
   const maximumClear = 80;
-  const pitch = Math.max(floorTo(Math.min(ratioPitch, maximumClear + db, shearSpacingMm), 5), 5);
+  const pitch = providedPitchMm ?? Math.max(floorTo(Math.min(ratioPitch, maximumClear + db, shearSpacingMm), 5), 5);
   return {
     pitchMm: pitch,
     clearPitchMm: pitch - db,
@@ -402,6 +413,9 @@ function validate(input: ColumnDesignInput): string[] {
     ['effectiveLengthFactor', 'Factor k'], ['maxAggregateMm', 'Agregado máximo'],
   ];
   for (const [key, label] of positive) if (!isPositiveFinite(input[key] as number)) errors.push(`${label} debe ser mayor que cero.`);
+  if (input.tieSpacingMm !== undefined && !isPositiveFinite(input.tieSpacingMm)) errors.push('Separación propia de estribos o paso del zuncho debe ser mayor que cero.');
+  if (input.endTieSpacingMm !== undefined && !isPositiveFinite(input.endTieSpacingMm)) errors.push('Separación propia en extremos debe ser mayor que cero.');
+  if (input.endTieSpacingMm !== undefined && (isSpiral(input) || designCode(input.code).column.ties !== 'ntc')) errors.push('La separación propia en extremos sólo aplica a columnas con estribos y zonas Lo de la NTC.');
   if (!Number.isFinite(input.endMomentRatio) || input.endMomentRatio < 0 || input.endMomentRatio > 1) errors.push('|M1/M2| debe estar entre 0 y 1.');
   if (!Number.isFinite(input.sustainedRatio) || input.sustainedRatio < 0 || input.sustainedRatio > 1) errors.push('βdns debe estar entre 0 y 1.');
   for (const key of ['axialKn', 'momentXKnm', 'momentYKnm', 'shearXKn', 'shearYKn', 'swayMomentXKnm', 'swayMomentYKnm'] as const) {
@@ -716,28 +730,38 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
     shearX.strengthSpacingMm, shearX.tableSpacingMm, shearX.minimumSteelSpacingMm,
     shearY.strengthSpacingMm, shearY.tableSpacingMm, shearY.minimumSteelSpacingMm,
   );
-  const centerSpacing = roundSpacing(centerLimit);
-  const endSpacing = ntcTies ? Math.min(centerSpacing, roundSpacing(endLimit)) : centerSpacing;
+  const proposedCenterSpacing = roundSpacing(centerLimit);
+  const proposedEndSpacing = ntcTies ? Math.min(proposedCenterSpacing, roundSpacing(endLimit)) : proposedCenterSpacing;
+  const centerSpacing = input.tieSpacingMm ?? proposedCenterSpacing;
+  const endSpacing = ntcTies ? input.endTieSpacingMm ?? Math.min(centerSpacing, proposedEndSpacing) : centerSpacing;
   const height = input.unbracedLengthM * 1e3;
   const endLength = Math.max(height / 6, Math.max(b, h), 600, input.groundFloor ? height / 2 : 0);
   const minimumTie = spiral ? Math.max(SPIRAL_MINIMUM_DIAMETER_MM, rules.minimumTieDiameter(input.barDiameterMm)) : rules.minimumTieDiameter(input.barDiameterMm);
   // Zuncho: un solo paso en toda la altura, que cumple 14.7.4 y el cortante.
+  const spiralShearSpacing = Math.min(shearX.strengthSpacingMm, shearX.tableSpacingMm, shearX.minimumSteelSpacingMm);
+  const spiralProposal = spiral ? spiralPitch(input, gross, spiralShearSpacing) : undefined;
   const spiralDesign = spiral
-    ? spiralPitch(input, gross, Math.min(shearX.strengthSpacingMm, shearX.tableSpacingMm, shearX.minimumSteelSpacingMm))
+    ? spiralPitch(input, gross, spiralShearSpacing, input.tieSpacingMm)
     : undefined;
+  const governingSpacing = spiralDesign?.pitchMm ?? Math.max(centerSpacing, endSpacing);
   const ties: ColumnTies = {
     diameterMm: input.tieDiameterMm,
     minimumDiameterMm: minimumTie,
     endSpacingMm: spiralDesign?.pitchMm ?? endSpacing,
     endLengthMm: ntcTies && !spiralDesign ? Math.min(height / 2, Math.ceil(endLength / 50) * 50) : 0,
     centerSpacingMm: spiralDesign?.pitchMm ?? centerSpacing,
+    proposedCenterSpacingMm: spiralProposal?.pitchMm ?? proposedCenterSpacing,
+    proposedEndSpacingMm: spiralProposal?.pitchMm ?? proposedEndSpacing,
+    maximumCenterSpacingMm: spiralProposal ? Math.min(spiralProposal.ratioPitchMm, spiralProposal.maximumClearPitchMm + input.tieDiameterMm, spiralShearSpacing) : centerLimit,
+    maximumEndSpacingMm: spiralProposal ? Math.min(spiralProposal.ratioPitchMm, spiralProposal.maximumClearPitchMm + input.tieDiameterMm, spiralShearSpacing) : ntcTies ? Math.min(centerLimit, endLimit) : centerLimit,
+    governingSpacingMm: governingSpacing,
     crossTiesParallelToX,
     crossTiesParallelToY,
     hxMm: hx,
     hxLimitMm: hxLimit,
     shear: {
-      x: withSpacing(code, shearX, input, spiralDesign?.pitchMm ?? centerSpacing),
-      y: withSpacing(code, shearY, input, spiralDesign?.pitchMm ?? centerSpacing),
+      x: withSpacing(code, shearX, input, governingSpacing),
+      y: withSpacing(code, shearY, input, governingSpacing),
     },
     ...(spiralDesign ? { spiral: spiralDesign } : {}),
   };
@@ -855,12 +879,25 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
           note: `Esquinas y barras alternas en estribo; ${crossTiesParallelToX + crossTiesParallelToY} grapas por juego para que ninguna barra quede a más de 150 mm libres de una apoyada.` },
     );
   }
+  if (!spiralDesign) {
+    checks.push(capacityCheck('tie-clear-spacing', 'Estribos sin superponerse en altura', input.tieDiameterMm, Math.min(centerSpacing, endSpacing), 'mm', complementary('Geometría del armado'),
+      'La separación entre ejes debe ser al menos el diámetro del estribo; este chequeo geométrico no incluye tolerancias de ejecución.'));
+  }
   for (const [axis, shear] of [['X', ties.shear.x], ['Y', ties.shear.y]] as const) {
+    if (circular && axis === 'Y') continue;
+    if (Number.isFinite(shear.tableSpacingMm)) {
+      checks.push(capacityCheck(`tie-shear-spacing-${axis.toLowerCase()}`, `Separación por cortante ${circular ? 'resultante' : axis}`, governingSpacing, shear.tableSpacingMm, 'mm', refs.columnShear,
+        `Separación más abierta evaluada: ${governingSpacing} mm; la demanda de cortante se considera en toda la altura.`));
+    }
+    if (Number.isFinite(shear.minimumSteelSpacingMm)) {
+      checks.push(capacityCheck(`tie-minimum-steel-${axis.toLowerCase()}`, `Refuerzo transversal mínimo ${circular ? 'resultante' : axis}`, governingSpacing, shear.minimumSteelSpacingMm, 'mm', refs.columnShear,
+        'Av/s debe alcanzar el refuerzo mínimo; no basta verificar sólo la resistencia a cortante.'));
+    }
     if (shear.demandKn <= TOLERANCE) continue;
     const where = circular ? 'resultante' : `en ${axis}`;
     checks.push(
       tracedAt(capacityCheck(`shear-${axis.toLowerCase()}`, `Cortante ${where}`, shear.demandKn, shear.strengthKn, 'kN', circular ? refs.circularShear : refs.columnShear,
-        `${shear.legs} ramas${circular ? ` (Av = 2Ab del ${spiral ? 'zuncho' : 'estribo circular'})` : ''} · φVc = ${shear.concreteStrengthKn.toFixed(1)} kN · FR ${code.shearFactor}.${circular ? ' Sección circular: bw = D y d = 0.8D (criterio complementario).' : ''}`),
+        `${shear.legs} ramas${circular ? ` (Av = 2Ab del ${spiral ? 'zuncho' : 'estribo circular'})` : ''} · s = ${governingSpacing} mm · φVc = ${shear.concreteStrengthKn.toFixed(1)} kN · FR ${code.shearFactor}.${circular ? ' Sección circular: bw = D y d = 0.8D (criterio complementario).' : ''}`),
       circular ? 'Resultante √(Vx² + Vy²)' : `Dirección ${axis}`, CAPTURED_DEMAND),
       capacityCheck(`shear-section-${axis.toLowerCase()}`, `Cortante máximo por sección ${where}`, shear.demandKn, shear.sectionStrengthKn, 'kN', refs.columnShearSection),
     );
@@ -892,4 +929,3 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
     status: overallStatus(checks),
   };
 }
-

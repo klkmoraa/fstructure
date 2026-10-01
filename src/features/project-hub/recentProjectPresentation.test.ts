@@ -14,6 +14,14 @@ const bundle = (overrides: Partial<UnifiedProjectBundleV1>): UnifiedProjectBundl
 });
 
 describe('recentProjectPresentation', () => {
+  it('muestra la filosofía experimental de una sección v3 guardada', () => {
+    const value = recentProjectPresentation('design', bundle({ design: {
+      kind: 'fstructure-design-workbench', schemaVersion: 3,
+      entries: { element: 'section', code: 'ntc-2023', section: { philosophy: 'allowable' } },
+    } }), 'es');
+    expect(value).toEqual({ meta: 'Sección · Esfuerzos admisibles', preview: 'tool' });
+  });
+
   it('usa entidades 3D aunque el modelo 2D esté vacío', () => {
     const value = recentProjectPresentation('space3d', bundle({
       space3d: { sourceProjectId: base.id, sourceVersion: 's3d', model: {

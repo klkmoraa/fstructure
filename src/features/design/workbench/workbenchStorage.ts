@@ -19,8 +19,9 @@ export const WORKBENCH_DOCUMENT_KIND = 'fstructure-design-workbench';
  * v1: borradores (cadenas cortas, registros y listas de claros).
  * v2: además, la memoria del proyecto (`memory`): elementos guardados con su
  * borrador para recalcularlos al exportar. Un documento v1 se lee tal cual.
+ * v3: añade secciones y sus filosofías a la memoria; conserva v1 y v2.
  */
-const WORKBENCH_SCHEMA_VERSION = 2;
+const WORKBENCH_SCHEMA_VERSION = 3;
 const MAX_DOCUMENT_CHARS = 240_000;
 const MAX_ENTRIES = 16;
 const MAX_FIELDS = 64;
@@ -42,7 +43,7 @@ const isRows = (value: unknown): value is Record<string, string>[] =>
 /** Elemento guardado en la memoria del proyecto: su borrador, la norma y cuándo se guardó. */
 export interface WorkbenchMemoryItem {
   readonly id: string;
-  readonly element: 'beam' | 'column' | 'footing';
+  readonly element: 'beam' | 'column' | 'footing' | 'section';
   readonly code: string;
   readonly savedAt: string;
   readonly fields: Record<string, string>;
@@ -54,7 +55,7 @@ export const isMemoryItem = (value: unknown): value is WorkbenchMemoryItem => {
   if (!isPlainObject(value)) return false;
   const keys = Object.keys(value);
   if (keys.some((key) => !['id', 'element', 'code', 'savedAt', 'fields', 'rows'].includes(key))) return false;
-  return isShortString(value.id) && (value.element === 'beam' || value.element === 'column' || value.element === 'footing')
+  return isShortString(value.id) && (value.element === 'beam' || value.element === 'column' || value.element === 'footing' || value.element === 'section')
     && isShortString(value.code) && isShortString(value.savedAt) && isRecord(value.fields)
     && (value.rows === undefined || isRows(value.rows));
 };
@@ -69,7 +70,7 @@ const isEntry = (key: string, value: unknown): value is JsonValue =>
 
 /** Lee un documento del taller; ante cualquier forma inesperada devuelve un borrador vacío, nunca lanza. */
 export function parseWorkbenchDocument(raw: unknown): Record<string, JsonValue> {
-  if (!isPlainObject(raw) || raw.kind !== WORKBENCH_DOCUMENT_KIND || (raw.schemaVersion !== 1 && raw.schemaVersion !== 2) || !isPlainObject(raw.entries)) return {};
+  if (!isPlainObject(raw) || raw.kind !== WORKBENCH_DOCUMENT_KIND || ![1, 2, 3].includes(raw.schemaVersion as number) || !isPlainObject(raw.entries)) return {};
   try {
     if (JSON.stringify(raw).length > MAX_DOCUMENT_CHARS) return {};
   } catch {

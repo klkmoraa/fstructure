@@ -7,7 +7,7 @@ import type { DesignReport } from './designReport';
 export type WorkbenchPanel = 'inputs' | 'results';
 
 export interface WorkbenchChrome {
-  /** Selector de elemento (viga, columna, zapata), propiedad de `DesignWorkbench`. */
+  /** Selector de elemento, propiedad de `DesignWorkbench`. */
   readonly elements: ReactNode;
   /** Chip de norma sobre el lienzo. */
   readonly codeControl: ReactNode;

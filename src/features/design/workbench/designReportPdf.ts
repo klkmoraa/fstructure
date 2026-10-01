@@ -19,7 +19,7 @@ const DOCUMENT_TITLE = 'Memoria de diseño · Experimental';
 const STATUS_TEXT: Record<ElementCheck['status'], string> = {
   pass: 'Cumple', fail: 'No cumple', warning: 'Revisar', info: 'Nota', 'out-of-scope': 'Sin evaluar',
 };
-const ELEMENT_NAME = { beam: 'Viga', column: 'Columna', footing: 'Cimentación' } as const;
+const ELEMENT_NAME = { beam: 'Viga', column: 'Columna', footing: 'Cimentación', section: 'Sección experimental' } as const;
 
 const number = (value: number | undefined, unit: string | undefined) =>
   value === undefined || !Number.isFinite(value) ? '—' : `${value.toLocaleString('es-MX', { maximumFractionDigits: unit === '' ? 2 : 1 })}${unit ? ` ${unit}` : ''}`;
@@ -101,7 +101,7 @@ async function drawElement(layout: PdfLayout, pdf: PDFDocument, source: DesignRe
   const code = designCode(report.code);
   const incomplete = report.outOfScope.length > 0;
   const hash = await snapshotHash(source);
-  layout.part(reportHeading(report), [ELEMENT_NAME[report.element], report.place, `${code.name} · ${code.country}`].filter(Boolean).join(' · '));
+  layout.part(reportHeading(report), [ELEMENT_NAME[report.element], report.place, report.basisLabel ?? `${code.name} · ${code.country}`].filter(Boolean).join(' · '));
 
   layout.metrics([
     { label: 'Estado', value: report.status === 'fail' ? 'No cumple' : report.status === 'warning' ? 'Observado' : 'Cumple',
@@ -211,14 +211,14 @@ async function drawElement(layout: PdfLayout, pdf: PDFDocument, source: DesignRe
   }
 
   layout.heading('Fuera de alcance');
-  layout.note('Verificaciones que la norma pide y el taller no calcula. Deben resolverse aparte.');
+  layout.note(report.basisLabel ? 'Verificaciones fuera del modelo experimental. Deben resolverse aparte.' : 'Verificaciones que la norma pide y el taller no calcula. Deben resolverse aparte.');
   if (report.outOfScope.length) layout.keyValues(report.outOfScope.map((check) => [check.label, check.note ?? ''] as const), 150);
   else layout.text('Todas las verificaciones declaradas para este elemento se evaluaron.');
 
   layout.heading('Instantánea');
   layout.note('La huella identifica la entrada exacta: la misma entrada, norma y versión reproducen este cálculo.');
   layout.keyValues([
-    ['Norma', `${code.name} · ${code.country}`],
+    [report.basisLabel ? 'Modelo' : 'Norma', report.basisLabel ?? `${code.name} · ${code.country}`],
     ['FStructure', APP_VERSION],
     ['Huella SHA-256', hash],
   ], 110);
@@ -228,11 +228,11 @@ async function drawElement(layout: PdfLayout, pdf: PDFDocument, source: DesignRe
 
 /** Portada: proyecto, índice de elementos, totales y el bloque de responsiva. */
 function drawCover(layout: PdfLayout, reports: readonly DesignReport[], options: DesignMemoriaOptions, generatedAt: Date) {
-  const codes = [...new Set(reports.map((report) => designCode(report.code)))];
+  const bases = [...new Set(reports.map((report) => report.basisLabel ?? `${designCode(report.code).name} · ${designCode(report.code).country}`))];
   layout.label('Memoria de cálculo · Diseño de elementos de concreto');
   layout.heading(options.projectName?.trim() || 'Proyecto sin título');
   layout.keyValues([
-    ['Norma', codes.map((code) => `${code.name} · ${code.country}`).join('; ')],
+    ['Bases de cálculo', bases.join('; ')],
     ['Elementos', String(reports.length)],
     ['Fecha', generatedAt.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })],
     ['Programa', `FStructure ${APP_VERSION} · FS-A04 Diseño (experimental)`],

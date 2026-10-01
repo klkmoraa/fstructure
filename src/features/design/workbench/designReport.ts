@@ -3,7 +3,7 @@ import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ElementCheck } from '../../../design/elements/shared';
 import type { Takeoff } from '../../../design/elements/takeoff';
 
-export type DesignElementKind = 'beam' | 'column' | 'footing';
+export type DesignElementKind = 'beam' | 'column' | 'footing' | 'section';
 
 export interface ReportRow { readonly label: string; readonly value: string }
 export interface ReportGroup { readonly title: string; readonly rows: readonly ReportRow[] }
@@ -39,6 +39,8 @@ export interface DesignReport {
   /** Ubicación en la obra («Eje 3, B–C, nivel 2»). */
   readonly place: string;
   readonly code: DesignCodeId;
+  /** Identifica un modelo experimental que no implementa el perfil normativo del taller. */
+  readonly basisLabel?: string;
   readonly status: 'pass' | 'fail' | 'warning';
   readonly governingRatio: number;
   /** Memoria de texto propia del elemento (sin las líneas de alcance). */

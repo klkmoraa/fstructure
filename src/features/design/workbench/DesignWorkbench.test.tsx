@@ -94,7 +94,7 @@ describe('DesignWorkbench', () => {
   it('está aislado del Modelo 2D: sólo sus elementos propios', () => {
     renderWorkbench();
     const dock = screen.getByRole('radiogroup', { name: 'Elemento a diseñar' });
-    expect(within(dock).getAllByRole('radio')).toHaveLength(3);
+    expect(within(dock).getAllByRole('radio')).toHaveLength(4);
     expect(screen.queryByRole('radio', { name: 'Del modelo 2D' })).toBeNull();
   });
 
@@ -175,7 +175,7 @@ describe('DesignWorkbench', () => {
     await user.clear(axial);
     await user.type(axial, '3000');
     await user.click(screen.getByRole('button', { name: 'Proponer' }));
-    expect(await screen.findByText(/^Propuesta: /)).toBeTruthy();
+    expect(await screen.findByText(/^Propuesta: .* cm con /)).toBeTruthy();
     expect(within(results()).queryByText('No cumple')).toBeNull();
   });
 

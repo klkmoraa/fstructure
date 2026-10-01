@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 import { designBeam } from '../../../design/elements/beam';
 import { reviewState } from '../../../design/elements/scope';
 import { barMassKgPerM } from '../../../design/elements/takeoff';
@@ -100,6 +101,43 @@ describe('armado propio de la viga', () => {
 });
 
 describe('memoria del proyecto', () => {
+  it('recalcula secciones guardadas con su geometría, filosofía y factores propios', async () => {
+    const item = { id: 's1', element: 'section' as const, code: 'ntc-2023', savedAt: '2026-10-01', fields: {
+      tag: 'S-1', shape: 'triangle', width: '60', height: '70', barCount: '6',
+      philosophy: 'limit-state', gammaConcrete: '1.6', gammaSteel: '1.2', axial: '200', moment: '-30',
+    } };
+    const section = unwrap(reportFromMemoryItem(item));
+    expect(section.element).toBe('section');
+    expect(section.tag).toBe('S-1');
+    expect(section.basisLabel).toMatch(/Estados límite/);
+    expect(section.input).toMatchObject({ shape: 'triangle', widthMm: 600, heightMm: 700, philosophy: 'limit-state', gammaConcrete: 1.6, gammaSteel: 1.2, momentKnm: -30 });
+    expect(section.takeoff.concreteM3).toBeCloseTo(0.6 * 0.7 / 2 * 3, 8);
+    const changed = unwrap(reportFromMemoryItem({ ...item, fields: { ...item.fields, gammaConcrete: '1.5' } }));
+    expect(await snapshotHash(section)).not.toBe(await snapshotHash(changed));
+    expect(reportFromMemoryItem({ ...item, fields: { ...item.fields, cover: '50' } }).ok).toBe(false);
+    const bytes = await buildDesignMemoriaPdf([column, section], { figures: false });
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBeGreaterThan(2);
+  });
+
+  it('identifica el modelo experimental en el PDF sin atribuirlo a la norma seleccionada', async () => {
+    const model = { ...column, basisLabel: 'Resistencia ultima · Modelo experimental', code: 'e060' as const };
+    const bytes = await buildDesignMemoriaPdf([model], { figures: false });
+    const pdf = await PDFDocument.load(bytes);
+    const texts = pdf.getPages().flatMap((page) => {
+      const contents = page.node.Contents();
+      const streams = contents instanceof PDFArray ? contents.asArray() : contents ? [contents] : [];
+      return streams.flatMap((ref) => {
+        const stream = pdf.context.lookup(ref);
+        if (!(stream instanceof PDFRawStream)) return [];
+        const decoded = new TextDecoder().decode(decodePDFRawStream(stream).decode());
+        return [...decoded.matchAll(/<([0-9A-F]+)>\s*Tj/gi)].map((match) => Buffer.from(match[1]!, 'hex').toString('latin1'));
+      });
+    }).join(' ');
+    expect(texts).toContain('Resistencia ultima');
+    expect(texts).toContain('Modelo experimental');
+    expect(texts).not.toContain('E.060');
+  });
+
   it('recalcula un elemento guardado desde su borrador', () => {
     const outcome = reportFromMemoryItem({ id: 'v1', element: 'beam', code: 'nsr-10', savedAt: '2026-09-27T00:00:00.000Z', fields: { tag: 'V-7', width: '30' }, rows: [{ length: '6', dead: '12', live: '8', pointDead: '0', pointLive: '0', pointAt: '3' }] });
     const report = unwrap(outcome);

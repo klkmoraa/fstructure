@@ -3,7 +3,7 @@ import { designColumn, type ColumnDesignInput, type ColumnDesignResult } from '.
 import { outOfScopeChecks } from '../../../design/elements/scope';
 import { rebarLabel } from '../../../design/elements/shared';
 import { columnTakeoff } from '../../../design/elements/takeoff';
-import { ColumnSection, InteractionChart } from './ColumnDrawings';
+import { ColumnElevation, ColumnSection, InteractionChart } from './ColumnDrawings';
 import { formatNumber, mpaFromKgcm2, parseNumber, splitChecks } from './common';
 import type { DesignReport, ReportRow } from './designReport';
 
@@ -12,6 +12,7 @@ export const COLUMN_DEFAULTS = {
   tag: '', place: '',
   shape: 'rectangular', diameter: '45', barCount: '8', transverse: 'ties',
   width: '40', depth: '40', cover: '4', fc: '250', fy: '4200', bar: '19.1', barsWidth: '3', barsDepth: '3', tie: '9.5',
+  tieSpacing: '', endTieSpacing: '',
   axial: '900', momentX: '80', momentY: '40', shearX: '0', shearY: '0', length: '3', k: '1', curvature: 'single', endRatio: '1', sustained: '0.6',
   group: 'B2', groundFloor: 'no', aggregate: '19', braced: 'yes', swayX: '0', swayY: '0', stability: '0.05',
 };
@@ -34,6 +35,9 @@ export const columnToInput = (codeId: DesignCodeId, draft: ColumnDraft): ColumnD
   barsAlongWidth: parseNumber(draft.barsWidth),
   barsAlongDepth: parseNumber(draft.barsDepth),
   tieDiameterMm: parseNumber(draft.tie),
+  ...(draft.tieSpacing.trim() ? { tieSpacingMm: parseNumber(draft.tieSpacing) * 10 } : {}),
+  ...(!isSpiralDraft(codeId, draft) && designCode(codeId).column.ties === 'ntc' && draft.endTieSpacing.trim()
+    ? { endTieSpacingMm: parseNumber(draft.endTieSpacing) * 10 } : {}),
   maxAggregateMm: parseNumber(draft.aggregate),
   axialKn: parseNumber(draft.axial),
   momentXKnm: parseNumber(draft.momentX),
@@ -52,6 +56,12 @@ export const columnToInput = (codeId: DesignCodeId, draft: ColumnDraft): ColumnD
   swayMomentYKnm: draft.braced === 'no' ? parseNumber(draft.swayY) : 0,
   stabilityIndex: draft.braced === 'no' ? parseNumber(draft.stability) : 0,
 });
+
+const isSpiralDraft = (codeId: DesignCodeId, draft: ColumnDraft) => circularDraft(draft) && draft.transverse === 'spiral' && designCode(codeId).column.spiral !== null;
+
+export const spacingOriginText = (result: ColumnDesignResult) => result.input.tieSpacingMm !== undefined || result.input.endTieSpacingMm !== undefined
+  ? `Separación propia evaluada · propuesta ${formatNumber(result.ties.proposedCenterSpacingMm / 10, 1)} cm${result.ties.endLengthMm > 0 ? ` al centro y ${formatNumber(result.ties.proposedEndSpacingMm / 10, 1)} cm en Lo` : ''}`
+  : 'Separación propuesta por resistencia y detallado';
 
 export const tieText = (result: ColumnDesignResult) => result.ties.spiral
   ? `Zuncho ${rebarLabel(result.ties.diameterMm)} a paso de ${formatNumber(result.ties.spiral.pitchMm / 10, 1)} cm`
@@ -85,6 +95,7 @@ function columnMemo(result: ColumnDesignResult): string {
     `Esbeltez = ${formatNumber(Math.max(result.slenderness.x, result.slenderness.y), 1)} (límite ${formatNumber(result.slenderness.limit, 0)}) · Mc = ${formatNumber(result.magnification.x.designMomentKnm)} / ${formatNumber(result.magnification.y.designMomentKnm)} kN·m (δ ${formatNumber(result.magnification.x.factor, 2)} / ${formatNumber(result.magnification.y.factor, 2)})`,
     `Refuerzo: ${result.bars.length} ${rebarLabel(input.barDiameterMm)} (ρ = ${formatNumber(result.steelRatio * 100, 2)} %)`,
     `${result.ties.spiral ? 'Refuerzo helicoidal' : 'Estribos'}: ${tieText(result)}${result.ties.spiral ? ` (ρs = ${formatNumber(result.ties.spiral.volumetricRatio * 100, 2)} % ≥ ${formatNumber(result.ties.spiral.requiredRatio * 100, 2)} %)` : ''}`,
+    spacingOriginText(result),
     `Traslape Clase B: ${formatNumber(result.spliceLengthMm / 10, 0)} cm`,
     `${methodLabel[result.capacity.method]}: ${Math.round(result.capacity.ratio * 100)} % · ${result.capacity.detail}`,
     ...result.checks.map((check) => `${check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '!'} ${check.label}`),
@@ -99,6 +110,7 @@ function columnReinforcementRows(result: ColumnDesignResult): ReportRow[] {
       ? { label: 'Zuncho', value: `${tieText(result)} · paso libre ${formatNumber(result.ties.spiral.clearPitchMm / 10, 2)} cm · 2.5 vueltas de anclaje en cada extremo` }
       : { label: 'Estribos', value: `${tieText(result)}${result.ties.endLengthMm > 0 ? ` · Lo = ${formatNumber(result.ties.endLengthMm / 10, 0)} cm` : ''}` },
     ...(circularResult(result) ? [] : [{ label: 'Grapas por juego', value: `${result.ties.crossTiesParallelToX} paralelas a X · ${result.ties.crossTiesParallelToY} paralelas a Y` }]),
+    { label: 'Origen de la separación', value: spacingOriginText(result) },
     { label: 'Traslape Clase B', value: `${formatNumber(result.spliceLengthMm / 10, 0)} cm` },
   ];
 }
@@ -109,6 +121,9 @@ function columnValues(result: ColumnDesignResult) {
   const compressionFactor = result.ties.spiral && code.column.spiral ? code.column.spiral.compressionFactor : code.compressionFactor;
   return [
     { symbol: 'As', label: 'Área de acero', value: `${formatNumber(result.steelAreaMm2 / 100, 2)} cm²` },
+    { symbol: 's', label: 'Separación propia / propuesta al centro', value: `${formatNumber(result.ties.centerSpacingMm, 1)} / ${formatNumber(result.ties.proposedCenterSpacingMm, 1)} mm` },
+    { symbol: 'smáx', label: 'Límite conjunto al centro', value: `${formatNumber(result.ties.maximumCenterSpacingMm, 1)} mm` },
+    ...(result.ties.endLengthMm > 0 ? [{ symbol: 'so', label: 'Propia / propuesta / máxima en Lo', value: `${formatNumber(result.ties.endSpacingMm, 1)} / ${formatNumber(result.ties.proposedEndSpacingMm, 1)} / ${formatNumber(result.ties.maximumEndSpacingMm, 1)} mm` }] : []),
     ...(result.ties.spiral ? [
       { symbol: 'Dc', label: 'Núcleo hasta el paño exterior del zuncho', value: `${formatNumber(result.ties.spiral.coreDiameterMm / 10, 1)} cm` },
       { symbol: 'ρs', label: 'Cuantía volumétrica / mínima 0.45(Ag/Ac − 1)f′c/fyt', value: `${formatNumber(result.ties.spiral.volumetricRatio * 100, 2)} / ${formatNumber(result.ties.spiral.requiredRatio * 100, 2)} %` },
@@ -145,6 +160,7 @@ function columnData(result: ColumnDesignResult, draft: ColumnDraft) {
       { label: 'Recubrimiento libre', value: `${formatNumber(input.coverMm / 10, 1)} cm` },
       { label: 'Barras', value: input.shape === 'circular' ? `${input.barCount} ${rebarLabel(input.barDiameterMm)} en la circunferencia` : `${rebarLabel(input.barDiameterMm)} · ${input.barsAlongWidth} por cara b · ${input.barsAlongDepth} por cara h` },
       { label: input.transverse === 'spiral' ? 'Zuncho' : 'Estribo', value: `${input.shape === 'circular' && input.transverse !== 'spiral' ? 'circular ' : ''}${rebarLabel(input.tieDiameterMm)}` },
+      { label: 'Separación proporcionada', value: input.tieSpacingMm !== undefined ? `${formatNumber(input.tieSpacingMm / 10, 2)} cm${input.endTieSpacingMm !== undefined ? ` · extremos ${formatNumber(input.endTieSpacingMm / 10, 2)} cm` : ''}` : input.endTieSpacingMm !== undefined ? `Extremos ${formatNumber(input.endTieSpacingMm / 10, 2)} cm; centro propuesto` : 'Automática' },
       { label: 'Agregado máximo', value: `${formatNumber(input.maxAggregateMm, 0)} mm` },
     ] },
     { title: 'Materiales', rows: [
@@ -183,8 +199,9 @@ export function columnReport(result: ColumnDesignResult, draft: ColumnDraft): De
     tables: [],
     takeoff: columnTakeoff(result),
     figures: [
-      { title: 'Diagrama de interacción', note: `${methodLabel[result.capacity.method]} · ${symmetric ? 'X = Y' : 'continua X · discontinua Y'} · punteada: nominal`, render: () => <InteractionChart result={result} /> },
+      { title: 'Diagrama de interacción', note: `${methodLabel[result.capacity.method]} · ${circularResult(result) ? 'continua: orientación gobernante · discontinua: otra orientación del arreglo' : symmetric ? 'X = Y' : 'continua X · discontinua Y'} · punteada: nominal`, render: () => <InteractionChart result={result} /> },
       { title: 'Sección', render: () => <ColumnSection result={result} /> },
+      { title: 'Armado en elevación', note: 'Distribución por zonas; extremos en el paño. Esquema para comparar, no plano de taller.', render: () => <ColumnElevation result={result} /> },
     ],
   };
 }

@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { SegmentedControl } from '../../../design-system/components/controls';
-import { LayerToggle } from '../../../design-system/components/editor';
+import { LayerToggle, UnitField } from '../../../design-system/components/editor';
 import { designCode } from '../../../design/elements/codes';
 import { designColumn } from '../../../design/elements/column';
 import { rebarLabel } from '../../../design/elements/shared';
-import { ColumnSection, InteractionChart } from './ColumnDrawings';
-import { COLUMN_DEFAULTS, columnReport, columnToInput, methodLabel, proposeColumn, tieText } from './columnModel';
+import { ColumnElevation, ColumnSection, InteractionChart } from './ColumnDrawings';
+import { COLUMN_DEFAULTS, columnReport, columnToInput, methodLabel, proposeColumn, spacingOriginText, tieText } from './columnModel';
 import {
   ActionNote, BarSelect, ChecksList, IdentityGroup, InlineAction, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict,
   formatNumber, useDraftHistory, useStoredDraft,
+  parseNumber,
 } from './common';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
@@ -23,6 +24,8 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const circular = draft.shape === 'circular';
   const spiral = circular && draft.transverse === 'spiral' && code.column.spiral !== null;
   const [proposalNote, setProposalNote] = useState<string | null>(null);
+  const [diagramAxis, setDiagramAxis] = useState<'both' | 'x' | 'y'>('both');
+  const [showNominal, setShowNominal] = useState(true);
   const propose = () => {
     const proposal = proposeColumn(chrome.code, draft);
     if (!proposal) { setProposalNote('Ninguna sección hasta 120 cm cumple: revisa las solicitaciones y la esbeltez.'); return; }
@@ -79,6 +82,13 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             <NumberField label="Barras cara h" unit="pzas" value={draft.barsDepth} onChange={set('barsDepth')} min={2} />
           </>}
       </FieldGroup>
+      <FieldGroup title={spiral ? 'Paso del zuncho' : 'Separación de estribos'} action={<InlineAction label="Usar propuesta" title="Volver a calcular la separación automática" onClick={() => replace({ ...draft, tieSpacing: '', endTieSpacing: '' })} />}>
+        <UnitField label={spiral ? 'Paso propio s' : 'Propia al centro s'} unit="cm" value={draft.tieSpacing} onValueChange={set('tieSpacing')}
+          placeholder="Propuesta" hint="Vacío usa la propuesta" error={draft.tieSpacing.trim() && (!Number.isFinite(parseNumber(draft.tieSpacing)) || parseNumber(draft.tieSpacing) <= 0) ? 'Debe ser mayor que cero' : undefined} />
+        {!spiral && code.column.ties === 'ntc' ? <UnitField label="Propia en extremos so" unit="cm" value={draft.endTieSpacing} onValueChange={set('endTieSpacing')}
+          placeholder="Propuesta" hint="Ambos extremos Lo" error={draft.endTieSpacing.trim() && (!Number.isFinite(parseNumber(draft.endTieSpacing)) || parseNumber(draft.endTieSpacing) <= 0) ? 'Debe ser mayor que cero' : undefined} /> : null}
+        {result.ok ? <div className="dw-span-all"><ActionNote text={`Propuesta: ${formatNumber(result.ties.proposedCenterSpacingMm / 10, 1)} cm${result.ties.endLengthMm > 0 ? ` al centro · ${formatNumber(result.ties.proposedEndSpacingMm / 10, 1)} cm en Lo` : ''}. ${draft.tieSpacing.trim() || draft.endTieSpacing.trim() ? 'Se evalúa tu separación, sin ajustarla en silencio.' : 'Puedes escribir otra separación para verificarla.'}`} /></div> : null}
+      </FieldGroup>
       <FieldGroup title="Materiales">
         <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />
         <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
@@ -123,16 +133,25 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     </>}
     stage={result.ok ? <>
       <Plate title="Diagrama de interacción" wide>
-        <InteractionChart result={result} />
+        <div className="dw-span-all">
+          {!circular ? <SegmentedControl label="Curvas del diagrama" size="sm" value={diagramAxis}
+            onValueChange={(value) => setDiagramAxis(value === 'x' || value === 'y' ? value : 'both')}
+            options={[{ value: 'both', label: 'Ambos ejes' }, { value: 'x', label: 'Eje X' }, { value: 'y', label: 'Eje Y' }]} /> : null}
+          <LayerToggle label="Mostrar resistencia nominal" checked={showNominal} onCheckedChange={setShowNominal} />
+        </div>
+        <InteractionChart result={result} axis={circular ? 'both' : diagramAxis} showNominal={showNominal} />
         <ul className="dw-legend">
-          <li data-kind="x">{symmetric ? 'Diseño (X = Y)' : 'Diseño en X'}</li>
-          {symmetric ? null : <li data-kind="y">Diseño en Y</li>}
-          <li data-kind="nominal">Nominal</li>
+          {circular || diagramAxis !== 'y' ? <li data-kind="x">{circular ? 'Orientación gobernante' : symmetric ? 'Diseño (X = Y)' : 'Diseño en X'}</li> : null}
+          {circular || (diagramAxis !== 'x' && (!symmetric || diagramAxis === 'y')) ? <li data-kind="y">{circular ? 'Otra orientación' : 'Diseño en Y'}</li> : null}
+          {showNominal ? <li data-kind="nominal">Nominal</li> : null}
           <li data-kind="demand">Demanda</li>
         </ul>
       </Plate>
       <Plate title="Sección">
         <ColumnSection result={result} />
+      </Plate>
+      <Plate title="Armado en elevación">
+        <ColumnElevation result={result} />
       </Plate>
     </> : <ErrorsPanel errors={result.errors} />}
     results={result.ok ? <>
@@ -149,7 +168,8 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       <PanelSection title="Armado">
         <RebarList items={[
           { kind: 'bar', title: `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)}`, detail: `ρ ${formatNumber(result.steelRatio * 100, 2)} %` },
-          { kind: 'stirrup', title: tieText(result), detail: result.ties.endLengthMm > 0 ? `Lo = ${formatNumber(result.ties.endLengthMm / 10, 0)} cm` : undefined },
+          { kind: 'stirrup', title: tieText(result), detail: `${spacingOriginText(result)}${result.ties.endLengthMm > 0 ? ` · Lo = ${formatNumber(result.ties.endLengthMm / 10, 0)} cm` : ''}` },
+          ...(!circular ? [{ kind: 'stirrup' as const, title: `Estribo cerrado + ${result.ties.crossTiesParallelToX + result.ties.crossTiesParallelToY} grapas`, detail: `${result.ties.crossTiesParallelToX} paralelas a X · ${result.ties.crossTiesParallelToY} paralelas a Y` }] : []),
           { kind: 'bar', title: 'Traslape', detail: `${formatNumber(result.spliceLengthMm / 10, 0)} cm` },
         ]} />
       </PanelSection>

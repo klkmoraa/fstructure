@@ -10,16 +10,16 @@ const arrayLength = (value: JsonValue | undefined) => Array.isArray(value) ? val
 
 const designEntries = (value: JsonValue | undefined): Record<string, JsonValue> | null => {
   const document = object(value);
-  if (document?.kind !== 'fstructure-design-workbench' || (document.schemaVersion !== 1 && document.schemaVersion !== 2)) return null;
+  if (document?.kind !== 'fstructure-design-workbench' || ![1, 2, 3].includes(document.schemaVersion as number)) return null;
   return object(document.entries);
 };
 
 const designElement = (entries: Record<string, JsonValue>, language: Language) => {
   const raw = entries.element;
-  const element = raw === 'column' || raw === 'footing' ? raw : 'beam';
+  const element = raw === 'column' || raw === 'footing' || raw === 'section' ? raw : 'beam';
   const labels = language === 'es'
-    ? { beam: 'Viga', column: 'Columna', footing: 'Zapata' }
-    : { beam: 'Beam', column: 'Column', footing: 'Footing' };
+    ? { beam: 'Viga', column: 'Columna', footing: 'Zapata', section: 'Sección' }
+    : { beam: 'Beam', column: 'Column', footing: 'Footing', section: 'Section' };
   return labels[element];
 };
 
@@ -67,7 +67,13 @@ export const recentProjectPresentation = (
   if (tool === 'design') {
     const entries = designEntries(bundle?.design);
     if (!entries || Object.keys(entries).length === 0) return { meta: '', preview: 'model2d' };
-    return { meta: `${designElement(entries, language)} · ${designCodeLabel(entries)}`, preview: 'tool' };
+    const philosophy = object(entries.section)?.philosophy;
+    const basis = entries.element === 'section'
+      ? philosophy === 'allowable' ? (language === 'es' ? 'Esfuerzos admisibles' : 'Allowable stress')
+        : philosophy === 'limit-state' ? (language === 'es' ? 'Estados límite' : 'Limit states')
+          : (language === 'es' ? 'Resistencia última' : 'Ultimate strength')
+      : designCodeLabel(entries);
+    return { meta: `${designElement(entries, language)} · ${basis}`, preview: 'tool' };
   }
 
   return { meta: '', preview: 'model2d' };

@@ -5,6 +5,7 @@ import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '
 import { ShellContribution, ShellStatusChip, type ShellStatusTone } from '../../workspace/ShellToolSlots';
 import { BeamWorkbench } from './BeamWorkbench';
 import { ColumnWorkbench } from './ColumnWorkbench';
+import { ConcreteStudio } from './ConcreteStudio';
 import { FootingWorkbench } from './FootingWorkbench';
 import type { DraftHistory } from './common';
 import { MemoryDialog, MemoryStatus, useDesignMemory } from './designMemory';
@@ -13,13 +14,14 @@ import type { Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout
 import { useWorkbenchStorage } from './workbenchStorage';
 import './designWorkbench.css';
 
-type ElementKind = 'beam' | 'column' | 'footing';
+type ElementKind = 'beam' | 'column' | 'footing' | 'section';
 
 const icon = (children: ReactNode) => <svg className="dw-element-icon" viewBox="0 0 24 24" aria-hidden="true">{children}</svg>;
 const ELEMENTS: { id: ElementKind; label: string; icon: ReactNode }[] = [
   { id: 'beam', label: 'Viga', icon: icon(<><rect x="2" y="8" width="20" height="5" rx="1" /><path d="M4 13l-2 4h4zM20 13l-2 4h4z" /></>) },
   { id: 'column', label: 'Columna', icon: icon(<><rect x="8.5" y="2" width="7" height="17" rx="1" /><path d="M4 21.5h16" /></>) },
   { id: 'footing', label: 'Zapata', icon: icon(<><rect x="9.5" y="3" width="5" height="9" rx="1" /><rect x="3" y="12" width="18" height="6" rx="1" /></>) },
+  { id: 'section', label: 'Secciones', icon: icon(<><path d="M8 2h8l6 6v8l-6 6H8l-6-6V8z" /><path d="M8 8h8v8H8z" /></>) },
 ];
 
 const isElementKind = (value: unknown): value is ElementKind => ELEMENTS.some((item) => item.id === value);
@@ -253,7 +255,8 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, pr
 
     {element === 'beam' ? <BeamWorkbench key={loadCount} chrome={chrome} />
       : element === 'column' ? <ColumnWorkbench key={loadCount} chrome={chrome} />
-        : <FootingWorkbench key={loadCount} chrome={chrome} />}
+        : element === 'footing' ? <FootingWorkbench key={loadCount} chrome={chrome} />
+          : <ConcreteStudio key={loadCount} chrome={chrome} />}
     <MemoryDialog open={memoryOpen} onOpenChange={setMemoryOpen} memory={memory} element={element} onLoad={loadFromMemory}
       onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} />
   </div>;
