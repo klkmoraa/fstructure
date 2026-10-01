@@ -70,6 +70,7 @@ const ToolSurface = ({ tool, projectId, onOpenHome }: ToolShellProps) => {
       inspectorCollapsed
       console={null}
       topbar={<WorkspaceTopBar
+        language={language}
         tool={tool}
         contextActive={false}
         contextualControls={<div className="workspace-topbar__tool-group" data-workspace-group="tool">

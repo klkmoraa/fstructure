@@ -4,11 +4,9 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
-- [ ] FEM: dibujar la malla y colorearla por von Mises, desplazamiento y calidad; editor mínimo de placa, apoyos y cargas.
-- [ ] Proyectos por herramienta: miniatura y resumen propios en los recientes de 3D, FEM y Diseño (hoy muestran datos del 2D).
+- [ ] FEM: colorear por desplazamiento y calidad; editor mínimo de placa, apoyos y cargas. Malla, von Mises y tablas ya se consultan en la mesa.
+- [ ] Proyectos por herramienta: miniatura generada de cada modelo 3D, malla FEM o elemento de Diseño; hoy usan la escena de la herramienta y el resumen de su rama local.
 - [ ] Mesas de FEM y Diseño con el lenguaje de la 2D (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM.
-- [ ] 3D en teléfonos ≤390 px: los menús (Definir · Asignar · Mostrar · Vista) no caben junto a la vista y se deslizan; buscarles sitio sin tapar el lienzo.
-- [ ] Título de pestaña por herramienta («Solver 3D · FusionStructure»).
 - [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
 - [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.
 - [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
@@ -37,4 +35,5 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 - [ ] Humo E2E de las cinco pantallas de entrada (Inicio y cuatro bienvenidas) con capturas en claro, oscuro y móvil.
 - [ ] Matriz de importación/exportación: un archivo válido y uno inválido por formato.
+- [ ] Confirmar la entrega del PDF de Diseño en Safari/Chrome: la generación pasa las pruebas, pero el navegador integrado no confirmó compartir/descargar.
 - [ ] Auditoría de dependencias en CI.

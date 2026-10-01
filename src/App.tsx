@@ -10,6 +10,8 @@ import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 import { Model2DWelcome } from './features/welcome/Model2DWelcome';
 import { TOOL_HOMES } from './features/workspace/toolHomes';
 import { toolRegistry } from './features/workspace/toolRegistry';
+import { toolIdentity } from './features/workspace/toolCatalog';
+import { useI18n } from './i18n/useI18n';
 import { rememberLastTool } from './features/welcome/lastTool';
 import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
 import type { ToolId } from './shared/contracts';
@@ -20,6 +22,11 @@ const loadMotionFeatures = () => import('./design-system/motionFeatures')
 const FStructureSurface = () => {
   const { project, analysis, replaceProject, openUnifiedProject } = useProject();
   const { route, navigate } = useProjectNavigation(project.id);
+  const { language } = useI18n();
+  useEffect(() => {
+    document.title = route.surface === 'welcome' ? 'FusionStructure · Análisis estructural'
+      : `${toolIdentity(route.tool).name[language]} · ${route.surface === 'workspace' ? project.name : language === 'es' ? 'Inicio' : 'Home'} · FusionStructure`;
+  }, [route.surface, route.tool, project.name, language]);
   const openTool = useCallback((tool: ToolId) => {
     navigate({ surface: 'workspace', projectId: route.projectId, tool });
   }, [navigate, route.projectId]);

@@ -1141,6 +1141,18 @@
     pointer-events: none;
   }
 
+  .workspace-topbar__status:has(.workspace-topbar__tool-status) > [data-storage-state] {
+    width: 12px;
+    min-height: 12px;
+    padding: 0;
+    border: 2px solid var(--sc-color-bg-app);
+    background: var(--sc-color-state-warning);
+    box-shadow: none;
+  }
+
+  .workspace-topbar__status:has(.workspace-topbar__tool-status) > [data-storage-state].is-error { background: var(--sc-color-state-error); }
+  .workspace-topbar__status:has(.workspace-topbar__tool-status) > [data-storage-state] > svg { display: none; }
+
   .workspace-topbar__tool-status {
     width: 12px;
     min-width: 12px;
@@ -1253,6 +1265,9 @@
 }
 
 /* El «Panel» de 2D en la barra es de escritorio; en teléfono lo lleva el dock. */
+.workspace-topbar__rename-hint { flex: none; color: var(--sc-color-text-muted); opacity: .65; }
+.workspace-topbar__project:hover .workspace-topbar__rename-hint { opacity: 1; }
+@media (max-width: 560px) { .workspace-topbar__rename-hint { display: none; } }
 @media (max-width: 1023px) {
   .workspace-topbar__inspector-button--desktop { display: none; }
 }

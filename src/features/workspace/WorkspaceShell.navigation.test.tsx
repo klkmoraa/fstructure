@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
@@ -71,6 +71,16 @@ it('los atajos del Modelo 2D no existen dentro de otra herramienta', async () =>
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
   expect(await screen.findByRole('listbox', { name: 'Paleta de comandos' })).toBeTruthy();
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+  await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Paleta de comandos' })).toBeNull());
+  await user.click(screen.getByRole('button', { name: /Cómo usar FStructure/ }));
+  const close = screen.getByRole('button', { name: 'Cerrar guía' });
+  await waitFor(() => expect(document.activeElement).toBe(close));
+  fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+  expect(screen.queryByRole('listbox', { name: 'Paleta de comandos' })).toBeNull();
+  expect(document.activeElement).toBe(close);
+  await user.keyboard('{Escape}');
+  await waitFor(() => expect(document.querySelector('[aria-modal="true"]')).toBeNull());
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: /Cómo usar FStructure/ })));
 
   await openFromHome(user, 'Diseño');
   expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' }, LAZY)).toBeTruthy();

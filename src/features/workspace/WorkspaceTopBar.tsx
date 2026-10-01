@@ -1,7 +1,8 @@
-import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
+import { ChartNoAxesCombined, Check, CloudOff, Pencil, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FStructureMark } from '../../design-system/brand';
 import type { ToolId } from '../../shared/contracts';
+import { WorkspaceHelp } from './WorkspaceHelp';
 
 /**
  * Recuperar el respaldo con éxito no es un fallo de guardado.
@@ -49,6 +50,7 @@ interface WorkspaceTopBarProps {
    * Inicio desde la marca.
    */
   tool?: ToolId;
+  language?: 'es' | 'en';
   contextualControls?: ReactNode;
   primaryAction?: ReactNode;
   toolStatus?: ReactNode;
@@ -95,7 +97,7 @@ interface WorkspaceTopBarProps {
  * funcione con teclado, touch y lector de pantalla.
  */
 export const WorkspaceTopBar = ({
-  tool = 'model2d', contextualControls, primaryAction, toolStatus,
+  tool = 'model2d', language = 'es', contextualControls, primaryAction, toolStatus,
   projectName,
   storageState,
   storageMessage,
@@ -118,6 +120,8 @@ export const WorkspaceTopBar = ({
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
   const [draftName, setDraftName] = useState(projectName);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const projectButtonRef = useRef<HTMLButtonElement>(null);
+  const projectGroupRef = useRef<HTMLDivElement>(null);
   const storageFailed = storageState === 'issue';
   const storageRecovered = storageState === 'recovered';
   const storageLabel = storageFailed
@@ -142,14 +146,35 @@ export const WorkspaceTopBar = ({
     if (projectEditorOpen) nameInputRef.current?.focus({ preventScroll: true });
   }, [projectEditorOpen]);
 
+  useEffect(() => {
+    if (!projectEditorOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setProjectEditorOpen(false);
+      projectButtonRef.current?.focus({ preventScroll: true });
+    };
+    const onPointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !projectGroupRef.current?.contains(event.target)) setProjectEditorOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('pointerdown', onPointer); };
+  }, [projectEditorOpen]);
+
+  const closeProjectEditor = () => {
+    setProjectEditorOpen(false);
+    projectButtonRef.current?.focus({ preventScroll: true });
+  };
+
   const saveProjectName = () => {
     const nextName = draftName.trim();
     if (nextName) onRenameProject(nextName);
-    setProjectEditorOpen(false);
+    closeProjectEditor();
   };
 
   return <header className="workspace-topbar" data-workspace-topbar data-tool={tool}>
-    <div className="workspace-topbar__project-group" data-workspace-group="project">
+    <div ref={projectGroupRef} className="workspace-topbar__project-group" data-workspace-group="project">
       <button
         type="button"
         className="workspace-topbar__brand"
@@ -160,9 +185,10 @@ export const WorkspaceTopBar = ({
         <FStructureMark size={26} />
       </button>
       <button
+        ref={projectButtonRef}
         type="button"
         className="workspace-topbar__project"
-        onClick={() => setProjectEditorOpen(true)}
+        onClick={() => setProjectEditorOpen((current) => !current)}
         aria-label={labels.editProject + ': ' + projectName}
         title={labels.editProject}
         aria-expanded={projectEditorOpen}
@@ -171,6 +197,7 @@ export const WorkspaceTopBar = ({
           <span className="workspace-topbar__eyebrow">{labels.solverName}</span>
           <strong>{projectName}</strong>
         </span>
+        <Pencil className="workspace-topbar__rename-hint" size={12} aria-hidden="true" />
       </button>
 
       {projectEditorOpen ? <form className="workspace-topbar__project-editor" aria-label={labels.editProject} onSubmit={(event) => {
@@ -182,7 +209,7 @@ export const WorkspaceTopBar = ({
           <input ref={nameInputRef} value={draftName} onChange={(event) => setDraftName(event.currentTarget.value)} />
         </label>
         <div className="workspace-topbar__project-editor-actions">
-          <button type="button" onClick={() => setProjectEditorOpen(false)}>{labels.cancel}</button>
+          <button type="button" onClick={closeProjectEditor}>{labels.cancel}</button>
           <button type="submit" disabled={!draftName.trim()}>{labels.saveProject}</button>
         </div>
       </form> : null}
@@ -246,6 +273,7 @@ export const WorkspaceTopBar = ({
       </div> : null}
       {utilities}
       {contextualControls}
+      <WorkspaceHelp tool={tool} language={language} />
       {themeControl}
       {primaryAction}
       {contextActive ? <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">

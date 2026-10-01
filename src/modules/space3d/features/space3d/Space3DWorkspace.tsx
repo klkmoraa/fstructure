@@ -896,6 +896,8 @@ const WorkspaceBody = ({
   const analyzeButton = (className: string) => <button
     type="button"
     className={className}
+    aria-label={runningAny ? t('space3d.analyzing') : t('space3d.analyze')}
+    title={runningAny ? t('space3d.analyzing') : t('space3d.analyze')}
     onClick={() => { void runSelectedAnalysis(); }}
     disabled={analysisBlocked}
   >

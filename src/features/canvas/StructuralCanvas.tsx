@@ -482,6 +482,13 @@ export const StructuralCanvas = ({
         ? t('canvas.placeMoment')
         : null;
   const loadsLayerVisible = layers.loads || loadPlacementInstruction !== null;
+  const creationInstruction = activeTool === 'node'
+    ? language === 'es' ? 'Toca el lienzo o escribe las coordenadas para colocar un nudo.' : 'Tap the canvas or enter coordinates to place a node.'
+    : activeTool === 'member' && !memberStart
+      ? language === 'es' ? 'Elige un nudo o un punto para comenzar la barra.' : 'Choose a node or a point to start the member.'
+      : activeTool === 'support' && !supportPlacement
+        ? language === 'es' ? 'Toca un nudo y elige su tipo de apoyo.' : 'Tap a node and choose its support type.'
+        : null;
   /**
    * Si de verdad se está DIBUJANDO decoración de carga ahora mismo.
    *
@@ -2823,7 +2830,7 @@ export const StructuralCanvas = ({
 
       <CanvasChrome
         modeLabel={t(toolLabelKeys[activeTool])}
-        placementInstruction={loadPlacementInstruction}
+        placementInstruction={loadPlacementInstruction ?? creationInstruction}
         showHelp={layers.help}
         layers={layers}
         dispatchLayers={dispatchLayers}

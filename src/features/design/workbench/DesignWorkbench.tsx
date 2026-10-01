@@ -145,11 +145,13 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, pr
 
   const copyMemo = async () => {
     if (!report) return;
+    setExportMessage(null);
     try {
       await navigator.clipboard.writeText(memoText(report));
       setCopied(true);
     } catch {
       setCopied(false);
+      setExportMessage('No se pudo copiar la memoria. Puedes exportarla en PDF o volver a intentarlo.');
     }
   };
 
@@ -219,6 +221,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, pr
   const chrome: WorkbenchChrome = { elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, ...(nativeTool ? { onVerdict } : {}) };
 
   return <div className="design-workbench" data-testid="design-workbench">
+    {exportMessage && !memoryOpen ? <p className="dw-action-feedback" role="alert">{exportMessage}<button type="button" aria-label="Cerrar aviso" onClick={() => setExportMessage(null)}>×</button></p> : null}
     {nativeTool ? <ShellContribution slot="controls">
       <button type="button" className="workspace-topbar__icon-button dw-topbar-history" onClick={() => history.current?.undo()} disabled={!historyFlags.canUndo}
         aria-label="Deshacer" title="Deshacer (Ctrl/⌘ Z)"><Undo2 size={17} aria-hidden="true" /></button>

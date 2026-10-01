@@ -112,7 +112,7 @@ const WorkspaceBrokerContent = ({
   const [dataSurfaceStateEpoch, setDataSurfaceStateEpoch] = useState(0);
   const [revisionBaseline, setRevisionBaseline] = useState<RevisionSnapshot | null>(null);
   const [editorLayers, dispatchEditorLayers] = useReducer(editorLayerReducer, undefined, createPersistedEditorLayerState);
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const { project, analysis, isAnalyzing, storageIssue, storageMessage, renameProject, setActiveTool, setResultTab, updateProjectView, analyze, undo, redo, canUndo, canRedo } = useProject();
   const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
   const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
@@ -190,7 +190,7 @@ const WorkspaceBrokerContent = ({
         // Ctrl/Cmd+K ya respeta esta exclusión; el lanzador visible debe pasar
         // por la misma autoridad para no montar una segunda capa sobre Doctor
         // o Datasheet.
-        if (canOpenPalette) openModel2DSurface('palette');
+        if (canOpenPalette && !document.querySelector('[aria-modal="true"]')) openModel2DSurface('palette');
       }),
       onWorkspaceCommand('open-model-doctor', () => openModel2DSurface('doctor')),
       onWorkspaceCommand('open-local-assistant', ({ trigger }) => {
@@ -315,6 +315,7 @@ const WorkspaceBrokerContent = ({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== 'k' || !(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
       if (datasheet.status === 'active' || bom.status === 'active' || comparison.status === 'active' || doctor.status === 'active') return;
       event.preventDefault();
       toggleSurface('palette', document.activeElement instanceof HTMLElement ? document.activeElement : null);
@@ -451,6 +452,7 @@ const WorkspaceBrokerContent = ({
     inspectorWidth={layout.inspectorWidth}
     fullCanvas={layout.fullCanvas}
     topbar={<WorkspaceTopBar
+      language={language}
       tool="model2d"
       projectName={project.name}
       storageState={!storageIssue ? 'ready' : storageIssue === 'recovered' ? 'recovered' : 'issue'}

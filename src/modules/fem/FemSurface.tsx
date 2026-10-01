@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Download, Grid3X3, Layers3, Play, Sigma, Upload, Waypoints } from 'lucide-react';
+import { Download, Play, Upload } from 'lucide-react';
+import { FemStudyView } from './FemStudyView';
 import './femSurface.css';
 import { ShellContribution, ShellStatusChip } from '../../features/workspace/ShellToolSlots';
 import { peekToolIntent, takeToolIntent } from '../../features/workspace/toolIntent';
@@ -17,17 +18,38 @@ import {
   type FemDocumentV1,
 } from './public';
 
-const roadmap = [
-  { label: 'Modelo', description: 'Geometría, materiales y condiciones de borde', Icon: Waypoints },
-  { label: 'Malla', description: 'Discretización y control de calidad', Icon: Grid3X3 },
-  { label: 'Solver', description: 'Ensamble, solución y diagnóstico', Icon: Sigma },
-  { label: 'Resultados', description: 'Campos, contornos y evidencia', Icon: Layers3 },
-] as const;
-
 type StoredFemStudy = { document: FemDocumentV1; analysis: FemAnalysisResult | null };
 
 const record = (value: JsonValue): Record<string, JsonValue> | null =>
   value && typeof value === 'object' && !Array.isArray(value) ? value : null;
+
+/** Un resultado derivado incompleto no debe impedir consultar su documento. */
+const readStoredAnalysis = (value: JsonValue, document: FemDocumentV1): FemAnalysisResult | null => {
+  const result = record(value);
+  if (!result || typeof result.success !== 'boolean' || result.documentId !== document.id || typeof result.reason !== 'string') return null;
+  const finite = (number: JsonValue | undefined) => typeof number === 'number' && Number.isFinite(number);
+  const nullable = (number: JsonValue | undefined) => number === null || finite(number);
+  const numbers = (values: JsonValue | undefined, length: number) => Array.isArray(values) && values.length === length && values.every(finite);
+  const records = (values: JsonValue | undefined, valid: (row: Record<string, JsonValue>) => boolean) => Array.isArray(values) && values.every((value) => {
+    const row = record(value);
+    return row !== null && valid(row);
+  });
+  const nodeIds = new Set(document.nodes.map((node) => node.id));
+  const elementIds = new Set(document.elements.map((element) => element.id));
+  const displacement = (row: Record<string, JsonValue>) => typeof row.nodeId === 'string' && nodeIds.has(row.nodeId) && finite(row.ux) && finite(row.uy) && finite(row.uz);
+  const quality = record(result.meshQuality ?? null);
+  const equilibrium = record(result.equilibrium ?? null);
+  if (!records(result.displacements, displacement) || !records(result.reactions, displacement)
+    || !records(result.stresses, (row) => typeof row.elementId === 'string' && elementIds.has(row.elementId)
+      && (row.type === 'TRI3' || row.type === 'QUAD4') && numbers(row.stress, 3) && numbers(row.strain, 3)
+      && numbers(row.principal, 2) && finite(row.vonMises) && (row.outOfPlaneStress === undefined || finite(row.outOfPlaneStress)))
+    || !quality || typeof quality.valid !== 'boolean' || !finite(quality.minArea) || !finite(quality.maxAspectRatio)
+    || !Array.isArray(quality.degenerateElementIds) || !quality.degenerateElementIds.every((id) => typeof id === 'string')
+    || !equilibrium || !numbers(equilibrium.force, 3) || !nullable(equilibrium.normalized)
+    || !nullable(result.relativeResidual) || !nullable(result.conditionEstimate)
+    || !records(result.issues, (row) => ['code', 'entity', 'id', 'field'].every((key) => typeof row[key] === 'string'))) return null;
+  return result as unknown as FemAnalysisResult;
+};
 
 /** Reads only FEM snapshots that pass the same document validator as analysis. */
 export const readStoredFemStudy = (studies: readonly JsonValue[] | undefined): StoredFemStudy | null => {
@@ -39,10 +61,7 @@ export const readStoredFemStudy = (studies: readonly JsonValue[] | undefined): S
     const typedDocument = document as unknown as FemDocumentV1;
     try {
       if (validateFemDocument(typedDocument).length > 0) continue;
-      const storedAnalysis = record(candidate.analysis ?? null);
-      const analysis = storedAnalysis && typeof storedAnalysis.success === 'boolean'
-        ? storedAnalysis as unknown as FemAnalysisResult
-        : null;
+      const analysis = readStoredAnalysis(candidate.analysis ?? null, typedDocument);
       return { document: typedDocument, analysis };
     } catch {
       // A foreign/old FEM study must not prevent the project shell from opening.
@@ -192,31 +211,26 @@ export function FemSurface() {
       </div>
     </ShellContribution>
     <header className="fusion-fem__intro">
-      <span className="fusion-fem__status">Experimental · local-first</span>
+      <span className="fusion-fem__status">Experimental · en este dispositivo</span>
       <h1 id="fem-title">Elementos finitos</h1>
-      <p>Modelo, malla y resultados FEM en el mismo shell. Esta primera entrega resuelve elasticidad lineal 2D con TRI3 y QUAD4, sin servicios remotos.</p>
+      <p>Revisa el modelo y su malla, analiza y consulta los campos. Elasticidad lineal 2D con TRI3 y QUAD4.</p>
     </header>
     {feedback ? <p className="fusion-fem__feedback" role="status">{feedback}</p> : null}
     {analysis ? <div className={`fusion-fem__result ${analysis.success ? 'is-success' : 'is-failure'}`} role="status" data-testid="fem-analysis-result">
       <strong>{analysis.success ? 'Análisis completado' : 'Análisis detenido'}</strong>
       <span>{analysis.success && analysis.relativeResidual !== null ? `${analysis.stresses.length} campos de tensión · residuo ${analysis.relativeResidual.toExponential(2)}` : analysis.reason}</span>
     </div> : null}
-    <ol className="fusion-fem__roadmap" aria-label="Camino del módulo FEM">
-      {roadmap.map(({ label, description, Icon }) => <li key={label}>
-        <span><Icon size={18} aria-hidden="true" /></span>
-        <div><strong>{label}</strong><small>{description}</small></div>
-      </li>)}
-    </ol>
+    <FemStudyView document={document} analysis={analysis} onAnalyze={runAnalysis} />
     {/* Barra flotante al pie, como el dock de 2D, 3D y Diseño. */}
     <div className="fusion-fem__dock" role="toolbar" aria-label="Intercambio FEM">
       <label className="fusion-fem__dock-button">
         <Upload size={17} aria-hidden="true" />
-        <span>Importar Gmsh 4.1</span>
+        <span>Importar<span className="fusion-fem__dock-detail"> Gmsh 4.1</span></span>
         <input type="file" accept=".msh,text/plain" aria-label="Importar Gmsh 4.1" onChange={(event) => void importGmsh(event)} />
       </label>
       <span className="fusion-fem__dock-divider" aria-hidden="true" />
-      <button type="button" className="fusion-fem__dock-button" onClick={exportJson} aria-label="Exportar FEM JSON"><Download size={17} aria-hidden="true" /><span>Exportar FEM JSON</span></button>
-      <button type="button" className="fusion-fem__dock-button" onClick={exportVtk} aria-label="Exportar VTK"><Download size={17} aria-hidden="true" /><span>Exportar VTK</span></button>
+      <button type="button" className="fusion-fem__dock-button" onClick={exportJson} aria-label="Exportar FEM JSON" title="Descargar el estudio y su análisis en JSON"><Download size={17} aria-hidden="true" /><span>JSON</span></button>
+      <button type="button" className="fusion-fem__dock-button" onClick={exportVtk} aria-label="Exportar VTK" title="Descargar la malla y sus campos en VTK"><Download size={17} aria-hidden="true" /><span>VTK</span></button>
     </div>
   </section>;
 }

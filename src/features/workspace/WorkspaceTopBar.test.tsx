@@ -30,6 +30,34 @@ const labels: WorkspaceTopBarLabels = {
 
 afterEach(() => cleanup());
 
+const renderTopbar = () => render(<WorkspaceTopBar labels={labels} projectName="Modelo"
+  storageState="ready" analysisState="ready" resultsOpen={false} canUndo={false} canRedo={false}
+  onOpenHome={() => undefined} onRenameProject={() => undefined} onUndo={() => undefined}
+  onRedo={() => undefined} onAnalyze={() => undefined} onOpenResults={() => undefined} />);
+
+it('cancela el nombre con Escape y devuelve el foco al proyecto', async () => {
+  const user = userEvent.setup();
+  renderTopbar();
+  const trigger = screen.getByRole('button', { name: 'Nombre del proyecto: Modelo' });
+  await user.click(trigger);
+  await user.type(screen.getByRole('textbox'), ' cambiado');
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('textbox')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  expect(screen.getByText('Modelo')).toBeTruthy();
+});
+
+it('abre ayuda de la mesa y Escape vuelve al control que la abrió', async () => {
+  const user = userEvent.setup();
+  renderTopbar();
+  const trigger = screen.getByRole('button', { name: 'Cómo usar FStructure' });
+  await user.click(trigger);
+  expect(screen.getByRole('dialog', { name: 'Cómo usar FStructure' })).toBeTruthy();
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+});
+
 describe('WorkspaceTopBar', () => {
   it('la marca vuelve al inicio y la barra no ofrece saltos a otras herramientas', async () => {
     const user = userEvent.setup();

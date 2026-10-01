@@ -26,6 +26,20 @@ afterEach(cleanup);
 
 const openHome = (tool: string) => window.history.replaceState(null, '', `/?surface=home&tool=${tool}`);
 
+it('la búsqueda anunciada por / recibe el foco sin interrumpir la escritura', async () => {
+  const user = userEvent.setup();
+  openHome('design');
+  render(<App />);
+  await screen.findByTestId('design-welcome');
+  const search = screen.getByRole('searchbox', { name: 'Buscar' });
+  await user.keyboard('/');
+  expect(document.activeElement).toBe(search);
+  await user.type(search, 'viga/');
+  expect((search as HTMLInputElement).value).toBe('viga/');
+  await user.keyboard('{Escape}');
+  expect((search as HTMLInputElement).value).toBe('');
+});
+
 it('Solver 3D: «Generar una estructura» abre la mesa con el generador', async () => {
   const user = userEvent.setup();
   openHome('space3d');

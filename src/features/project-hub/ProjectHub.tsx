@@ -267,10 +267,12 @@ export const ProjectHub = ({
       {visibleProjects.map((record) => {
         const presentation = recentProjectPresentation(tool, bundles.get(record.id)?.bundle, language);
         const toolScene = tool === 'model2d' ? null : toolIdentity(tool).scene;
-        const meta = presentation.meta || t('hub.meta', { members: record.project.members.length, nodes: record.project.nodes.length });
+        const meta = presentation.meta || (tool === 'model2d'
+          ? t('hub.meta', { members: record.project.members.length, nodes: record.project.nodes.length })
+          : language === 'es' ? 'Sin datos guardados de esta herramienta' : 'No saved data for this tool');
         return <div className="project-hub__entry" key={record.id}><article className="project-hub__row">
         <div className="project-hub__preview" aria-hidden="true">
-          {presentation.preview === 'tool' && toolScene
+          {toolScene
             ? <img src={theme === 'dark' ? toolScene.night : toolScene.day} alt="" />
             : <ThreeStructuralImage assetId={projectAssetId(record.project)} theme={theme} alt={record.name} render="three" />}
         </div>
@@ -306,8 +308,8 @@ export const ProjectHub = ({
       /> : null}</div>;
       })}
     </div> : null}
-    {filteredRecoveries.length ? <section className="project-hub__recoveries" aria-labelledby="recoveries-title">
-      <h3 id="recoveries-title">{t('hub.recoveries', { count: filteredRecoveries.length })}</h3>
+    {filteredRecoveries.length ? <details className="project-hub__recoveries" open={variant === 'full' || Boolean(normalizedFilter) || visibleProjects.length === 0}>
+      <summary><h3 id="recoveries-title">{t('hub.recoveries', { count: filteredRecoveries.length })}</h3></summary>
       {filteredRecoveries.map((recovery) => {
         const current = projects.find((record) => record.id === recovery.projectId);
         const conflict = recovery.reason === 'conflict' && current;
@@ -318,6 +320,7 @@ export const ProjectHub = ({
             {conflict ? <ShieldAlert size={18} aria-hidden="true" /> : <RotateCcw size={18} aria-hidden="true" />}
             <strong>{conflict ? t('hub.conflictTitle') : recovery.project.name}</strong>
           </header>
+          {conflict ? <p className="project-hub__recovery-name">{recovery.project.name} · {formatUpdated(recovery.createdAt, language)}</p> : null}
           <dl className="project-hub__recovery-delta" aria-label={t('hub.recoveryDifference', difference)}>
             <div><dt>N</dt><dd>{signed(difference.nodes)}</dd></div>
             <div><dt>B</dt><dd>{signed(difference.members)}</dd></div>
@@ -329,6 +332,6 @@ export const ProjectHub = ({
           </div>
         </article>;
       })}
-    </section> : null}
+    </details> : null}
   </section>;
 };

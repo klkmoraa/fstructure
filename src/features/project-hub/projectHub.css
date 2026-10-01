@@ -1,3 +1,9 @@
+.project-hub__recoveries > summary { min-height: 44px; padding: 12px 4px; color: var(--sc-color-text-secondary); cursor: pointer; }
+.project-hub__recoveries > summary h3 { display: inline; margin: 0; font-size: 13px; }
+.project-hub__recoveries > summary:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 3px; }
+.project-hub__recoveries:not([open]) { display: block; }
+.project-hub__recovery-name { margin: 0; color: var(--sc-color-text-secondary); font-size: 12px; }
+.project-hub__preview > svg { color: var(--sc-color-text-secondary); margin: auto; }
 .project-hub {
   position: relative;
   margin-top: 0;

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type CSSProperties, type ReactNode } from 'react';
 import { ArrowLeft, ArrowUpRight, FilePlus2, Home, Menu, Play, Search, X, type LucideIcon } from 'lucide-react';
 import { createBlankProject } from '../../data/defaultProject';
 import { useI18n } from '../../i18n/useI18n';
@@ -95,6 +95,30 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite,
   const homeRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (event.key === 'Escape') {
+        if (mobileNavOpen) { setMobileNavOpen(false); menuRef.current?.focus(); }
+        else if (target === searchRef.current) { setSearchQuery(''); searchRef.current?.blur(); }
+        return;
+      }
+      if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || event.defaultPrevented
+        || target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]')
+        || document.querySelector('[aria-modal="true"]')) return;
+      event.preventDefault();
+      searchRef.current?.focus();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileNavOpen]);
+
+  const goHome = () => {
+    contentRef.current?.scrollTo({ top: 0 });
+    setMobileNavOpen(false);
+  };
 
   // Mismo contrato táctil que la bienvenida de FStructure (ver Model2DWelcome).
   useLayoutEffect(() => {
@@ -128,7 +152,7 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite,
 
   const renderNavigation = (menu = false) => <nav className={menu ? 'sc-home-nav sc-home-nav--menu' : 'sc-home-nav sc-home-nav--console'} aria-label={text.navigation}>
     <button type="button" aria-label={text.suiteHint} title={text.suiteHint} onClick={onOpenSuite}><ArrowLeft size={19} /><span>{text.suite}</span></button>
-    <button type="button" aria-label={text.home} title={text.home} className="is-active" aria-current="page"><Home size={19} /><span>{text.home}</span></button>
+    <button type="button" aria-label={text.home} title={text.home} className="is-active" aria-current="page" onClick={goHome}><Home size={19} /><span>{text.home}</span></button>
   </nav>;
 
   return <main ref={homeRef} className="sc-home tool-home" data-testid={`${tool}-welcome`} data-tool={tool}>
@@ -137,7 +161,7 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite,
         <ToolGlyph tool={tool} size={28} /><strong>{name}</strong><span>{identity.code}</span>
       </button>
       {renderNavigation()}
-      <button type="button" className="sc-home-console__menu" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button>
+      <button ref={menuRef} type="button" className="sc-home-console__menu" aria-label={mobileNavOpen ? text.closeMenu : text.menu} aria-expanded={mobileNavOpen} onClick={() => setMobileNavOpen((open) => !open)}><Menu size={20} /></button>
     </header>
     {mobileNavOpen ? renderNavigation(true) : null}
     <div className="sc-home-main">

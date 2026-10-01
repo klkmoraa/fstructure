@@ -27,6 +27,12 @@
   font-size: var(--sc-font-size-body);
 }
 
+.dw-input-note { margin: 4px 0 12px; color: var(--dw-muted); font-size: 11px; line-height: 1.6; }
+.dw-action-feedback { position: absolute; z-index: 30; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100% - 24px); margin: 0; padding: 10px 12px; border: 1px solid var(--dw-line); border-left: 3px solid var(--fs-signal-attention); border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-md); font-size: 12px; line-height: 1.5; }
+.dw-action-feedback button { flex: none; min-width: 44px; min-height: 44px; border: 0; border-radius: var(--sc-radius-control); background: var(--sc-color-surface-2); color: var(--dw-ink); font-size: 20px; cursor: pointer; }
+.dw-review-inputs { position: absolute; z-index: 3; bottom: 130px; left: var(--dw-left); right: var(--dw-right); display: grid; justify-items: center; gap: 8px; padding: 10px; text-align: center; }
+.dw-review-inputs button { min-height: 44px; padding: 10px 18px; border: 1px solid var(--dw-line); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); color: var(--dw-ink); box-shadow: var(--sc-shadow-xs); cursor: pointer; }
+.dw-review-inputs span { color: var(--dw-muted); font-size: 12px; line-height: 1.5; }
 .dw-eyebrow {
   margin: 0;
   color: var(--dw-muted);

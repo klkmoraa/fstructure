@@ -47,6 +47,7 @@ export function ToolButton({
     ref={ref}
     type={type}
     role={role}
+    title={props.title ?? [label, detail, shortcut].filter(Boolean).join(' · ')}
     className={`sc-tool-button sc-tool-button--${tone}${active ? ' is-active' : ''}${compact ? ' is-compact' : ''}${loading ? ' is-loading' : ''}${className ? ` ${className}` : ''}`}
     aria-label={loading ? (loadingLabel ?? label) : shortcut ? `${label} (${shortcut})` : label}
     aria-pressed={role === 'menuitemradio' || role === 'radio' ? undefined : active}

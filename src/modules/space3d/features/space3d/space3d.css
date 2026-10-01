@@ -2700,25 +2700,27 @@
 @media (max-width: 700px) {
   .space3d-screen { --s3-gap: var(--sc-space-2); }
 
-  .space3d-canvas-topbar { top: 8px; left: 8px; right: 8px; gap: 6px; }
+  .space3d-canvas-topbar { top: 8px; left: 8px; right: 8px; gap: 6px; flex-wrap: wrap; }
   .space3d-canvas-topbar > :first-child {
-    flex: 1 1 auto;
+    flex: 1 1 100%;
     min-width: 0;
-    max-width: calc(100% - 136px);
+    max-width: 100%;
   }
-  .space3d-ribbon-bar { padding: 2px; gap: 2px; }
-  /* «Archivo» queda como icono: los menús necesitan el ancho. */
-  .space3d-ribbon-menu .sc-popover__trigger { padding: 0 8px; }
+  .space3d-canvas-topbar-trailing { margin-left: auto; }
+  .space3d-stage-guide { top: 116px; }
+  .space3d-ribbon-bar { width: 100%; padding: 2px; gap: 2px; }
+  /* Las cuatro opciones caben completas; Archivo conserva un blanco táctil. */
+  .space3d-ribbon-menu .sc-popover__trigger { min-width: 44px; min-height: 44px; padding: 0 8px; }
   .space3d-ribbon-menu .sc-popover__trigger > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .space3d-ribbon-tab { min-height: 34px; padding: 0 6px; font-size: var(--s3-tiny); }
-  /* Si los menús no caben, se deslizan: el borde desvanecido lo dice. */
-  .space3d-ribbon-tabs { mask-image: linear-gradient(to right, #000 calc(100% - 14px), transparent); padding-right: 10px; }
-  .space3d-canvas-topbar .space3d-layers .sc-popover__trigger { width: 38px; min-width: 38px; height: 38px; min-height: 38px; }
-  .space3d-ribbon-panel { max-width: calc(100vw - 40px); }
-  .space3d-ribbon-button { min-width: 50px; min-height: 46px; padding: 3px 5px; }
-  .space3d-ribbon-hint { min-width: 190px; }
+  .space3d-ribbon-tab { flex: 1; justify-content: center; min-width: 0; min-height: 44px; padding: 0 5px; gap: 3px; font-size: var(--s3-tiny); }
+  .space3d-ribbon-tabs { flex: 1; overflow: visible; mask-image: none; padding-right: 0; gap: 0; }
+  .space3d-canvas-topbar .space3d-layers .sc-popover__trigger { width: 44px; min-width: 44px; height: 44px; min-height: 44px; }
+  .space3d-ribbon-panel { width: 100%; max-width: 100%; max-height: min(42dvh, 320px); overflow-y: auto; flex-wrap: wrap; }
+  .space3d-ribbon-button { flex: 1 1 90px; min-width: 0; min-height: 48px; padding: 5px; }
+  .space3d-ribbon-hint { flex: 1 1 100%; min-width: 0; padding: 6px; }
+  .space3d-ribbon-separator { display: none; }
   .space3d-ribbon-menu .sc-popover__surface { left: 0; right: auto; }
-  .space3d-view-select select { max-width: 96px; min-height: 38px; padding-right: 24px; }
+  .space3d-view-select select { max-width: 120px; min-height: 44px; padding-right: 24px; }
   .space3d-view-select::after { right: 10px; }
 
   .space3d-stage-modebar { bottom: 8px; width: calc(100% - 64px); left: 8px; transform: none; }
@@ -2757,7 +2759,7 @@
   .space3d-status-units { display: none !important; }
 
   .space3d-empty-stage {
-    padding: 60px 12px 14px;
+    padding: 116px 12px 14px;
     align-items: start;
     overflow-y: auto;
   }
@@ -2771,6 +2773,14 @@
   .space3d-bridge { gap: var(--sc-space-1); padding: var(--sc-space-2) var(--sc-space-3); font-size: var(--s3-small); }
   .space3d-bridge header .space3d-button { min-height: 32px; }
   .space3d-generative-tabs { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 700px) {
+  .space3d-result-rail { top: 116px; }
+  /* El menú abierto tiene prioridad sobre las ayudas del lienzo. */
+  .space3d-stage:has(.space3d-ribbon-panel) .space3d-stage-guide,
+  .space3d-stage:has(.space3d-ribbon-panel) .space3d-result-rail,
+  .space3d-stage:has(.space3d-ribbon-panel) .space3d-bottom-stack { visibility: hidden; }
 }
 
 @media (max-width: 360px) {

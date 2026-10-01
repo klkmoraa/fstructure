@@ -1,5 +1,5 @@
 import { ClipboardCheck, Maximize2, Minus, PenLine, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
 import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
@@ -131,9 +131,21 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
   const { scroller, zoom, setZoom } = useStageZoom();
   const canShowResults = verdict.status !== 'error';
   const percent = verdict.label.split(' · ')[1];
+  const inputsRef = useRef<HTMLFormElement>(null);
+  const inputId = useId();
+  const resultsId = useId();
+  const reviewInputs = () => {
+    setPanel('inputs', true);
+    window.requestAnimationFrame(() => {
+      const target = inputsRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+        ?? inputsRef.current?.querySelector<HTMLElement>('input, select');
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView?.({ block: 'nearest' });
+    });
+  };
 
   return <div className="dw-layout" data-inputs={panels.inputs ? 'open' : 'closed'} data-results={panels.results && canShowResults ? 'open' : 'closed'}>
-    <form className="dw-panel dw-inputs" aria-label="Datos del elemento" data-open={panels.inputs} onSubmit={(event) => event.preventDefault()}>
+    <form ref={inputsRef} id={inputId} className="dw-panel dw-inputs" aria-label="Datos del elemento" data-open={panels.inputs} onSubmit={(event) => event.preventDefault()}>
       <header className="dw-panel__head">
         <h2>{title}</h2>
         <button type="button" className="dw-icon-button" onClick={onReset} aria-label="Restablecer el ejemplo" title="Restablecer el ejemplo">
@@ -143,7 +155,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
           <X size={16} aria-hidden="true" />
         </button>
       </header>
-      <div className="dw-panel__body">{inputs}</div>
+      <div className="dw-panel__body"><p className="dw-input-note">El cálculo se actualiza al editar. Revisa las unidades de cada campo.</p>{inputs}</div>
     </form>
 
     <section className="dw-stage" aria-label="Lámina de diseño">
@@ -160,6 +172,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
         {caption ? <span className="dw-badge dw-badge--caption">{caption}</span> : null}
       </div>
       <div className="dw-hud dw-hud--end">{chrome.codeControl}</div>
+      {!canShowResults ? <div className="dw-review-inputs"><button type="button" onClick={reviewInputs}>Revisar datos</button><span>Corrige los campos para consultar los resultados.</span></div> : null}
       <div className="dw-zoom" role="group" aria-label="Zoom del lienzo" data-zoomed={zoom !== 1}>
         <button type="button" className="dw-zoom__step" onClick={() => setZoom(zoom / 1.25)} disabled={zoom <= ZOOM_MIN} aria-label="Alejar" title="Alejar"><Minus size={16} aria-hidden="true" /></button>
         <button type="button" onClick={() => setZoom(1)} disabled={zoom === 1} aria-label="Tamaño normal" title="Tamaño normal"><Maximize2 size={15} aria-hidden="true" /></button>
@@ -167,7 +180,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
       </div>
     </section>
 
-    <section className="dw-panel dw-results" aria-label="Resultados" data-open={panels.results && canShowResults}>
+    <section id={resultsId} className="dw-panel dw-results" aria-label="Resultados" data-open={panels.results && canShowResults}>
       <header className="dw-panel__head dw-panel__head--results">
         <h2>Resultados</h2>
         <button type="button" className="dw-icon-button dw-panel__close" onClick={() => setPanel('results', false)} aria-label="Ocultar resultados" title="Ocultar resultados">
@@ -186,10 +199,10 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
           onClick={() => { setPanel('inputs', false); setPanel('results', false); }}>
           <PenLine size={18} aria-hidden="true" /><span>Dibujo</span>
         </button>
-        <button type="button" className="dw-view" aria-pressed={panels.inputs} title="Datos" onClick={() => setPanel('inputs', !panels.inputs)}>
+        <button type="button" className="dw-view" aria-pressed={panels.inputs} aria-controls={inputId} title="Editar geometría, materiales y demandas" onClick={() => setPanel('inputs', !panels.inputs)}>
           <SlidersHorizontal size={18} aria-hidden="true" /><span>Datos</span>
         </button>
-        <button type="button" className="dw-view" aria-pressed={panels.results && canShowResults} aria-label="Resultados" title="Resultados"
+        <button type="button" className="dw-view" aria-pressed={panels.results && canShowResults} aria-label="Resultados" aria-controls={resultsId} title={canShowResults ? 'Consultar comprobaciones y memoria' : 'Corrige los datos del elemento para consultar los resultados'}
           disabled={!canShowResults} data-status={verdict.status} onClick={() => setPanel('results', !panels.results)}>
           <ClipboardCheck size={18} aria-hidden="true" /><span>Resultados</span>
           {percent ? <em aria-hidden="true"><i />{percent}</em> : null}

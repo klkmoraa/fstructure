@@ -1,22 +1,43 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../../data/projectStorage';
 import { ProjectProvider } from '../../../store/ProjectContext';
 import { DesignWorkbench } from './DesignWorkbench';
+import { ShellSlotHost, ShellToolSlotsProvider } from '../../workspace/ShellToolSlots';
 
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createDefaultProject()));
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 const renderWorkbench = () => render(<ProjectProvider><DesignWorkbench nativeTool={false} /></ProjectProvider>);
 const results = () => screen.getByRole('region', { name: 'Resultados' });
 
 describe('DesignWorkbench', () => {
+  it('responde a un fallo al copiar sin perder el formulario', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
+    render(<ProjectProvider><ShellToolSlotsProvider mobile={false}><ShellSlotHost slot="action" /><DesignWorkbench /></ShellToolSlotsProvider></ProjectProvider>);
+    await user.click(await screen.findByRole('button', { name: 'Copiar memoria de cálculo' }));
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent', expect.stringMatching(/No se pudo copiar/));
+    expect((screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement).value).toBe('5');
+  });
+
+  it('desde un error abre Datos y enfoca el primer campo inválido', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    const length = screen.getByRole('textbox', { name: 'Claro 1 · L (m)' });
+    await user.clear(length);
+    await user.click(screen.getByRole('button', { name: 'Datos' }));
+    await user.click(screen.getByRole('button', { name: 'Revisar datos' }));
+    await waitFor(() => expect(document.activeElement).toBe(length));
+    expect(screen.getByRole('button', { name: 'Datos' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('abre con una viga continua de ejemplo ya calculada por el solver 2D', async () => {
     const user = userEvent.setup();
     renderWorkbench();
