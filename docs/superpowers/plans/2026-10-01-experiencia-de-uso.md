@@ -114,7 +114,7 @@ mezclar sus datos. La ayuda vive en workspace; FEM proyecta sólo su documento.
 - [x] Recorrer Inicio, bienvenidas y cuatro mesas en día/noche/móvil.
 - [x] Guardar capturas, revisar diff y obtener una revisión fresca de la rama.
 - [x] Corregir hallazgos importantes y repetir sus comprobaciones.
-- [ ] Commit en main y push según AGENTS.md; comprobar CI/Pages y SHA final.
+- [x] Commit en main y push según AGENTS.md; comprobar CI/Pages y SHA final.
   Expected: gate y publicación exitosos, sin cambios pendientes.
 
 ## Evidencia de cierre local
@@ -128,3 +128,10 @@ mezclar sus datos. La ayuda vive en workspace; FEM proyecta sólo su documento.
 - Diseño: datos inválidos llevan al campo correspondiente; longitud restaurada a 5 m. Fallo de portapapeles cubierto en pruebas.
 - Capturas nuevas de las cuatro mesas en `docs/brandbook/assets/`; ficha actualizada. Se usó un proyecto de prueba, sin editar los proyectos existentes.
 - Límite de la comprobación: el navegador integrado no confirmó la descarga del PDF de Diseño. La generación pasa las pruebas; la entrega mediante compartir/descargar necesita comprobarse en navegador de usuario.
+
+## Publicación comprobada
+
+- Implementación: `f72b84ab8e7db9b0b2e88a275fa564ddb24e5760`.
+- [Quality gate y publicación](https://github.com/klkmoraa/fstructure/actions/runs/36904521999): ambos trabajos y sus pasos completados correctamente.
+- `gh-pages`: `321682a03bdfc00c182386c809b0a77bed9dff6d`, mensaje `deploy: f72b84ab8e7d`.
+- [App pública](https://klkmoraa.github.io/fstructure/): HTTP 200. JavaScript y CSS principal, FEM y ToolHome coinciden por SHA-256 con el commit publicado. Inicio comprobado en navegador.
