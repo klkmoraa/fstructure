@@ -7,7 +7,7 @@ import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
 import type { Space3DProjectV1 } from '../../../modules/space3d/space3d/model/types';
 import { createBlankSpace3DProject } from '../../../modules/space3d/space3d/model/defaultProject';
 import { Dialog } from '../../../design-system/components/overlays';
-import { UnitField } from '../../../design-system/components/editor';
+import { LayerToggle, UnitField } from '../../../design-system/components/editor';
 import { MAX_EXTRUDED_FRAMES, space3dFromModel2d } from '../../../integrations/model2dSpace3d';
 import { ShellContribution, ShellStatusChip } from '../ShellToolSlots';
 import { linkSpace3DToShell } from './space3dShellBridge';
@@ -37,7 +37,9 @@ export default function Space3DSurface() {
 function ProjectSpace3D({ project, session }: { project: ProjectModel; session?: UnifiedProjectSession | null }) {
   const [failure, setFailure] = useState<string | null>(null);
   // Se lee sin consumir durante el render (StrictMode lo repite) y se consume al montar.
-  const [startIntent] = useState(() => peekToolIntent('space3d')?.kind);
+  const [intent] = useState(() => peekToolIntent('space3d'));
+  const startIntent = intent && intent.kind !== 'view' ? intent.kind : undefined;
+  const startView = intent?.kind === 'view' ? intent.view : undefined;
   useEffect(() => { takeToolIntent('space3d'); }, []);
   const [branch] = useState(() => session?.currentBundle(project.id)?.space3d ?? null);
   const [sourceVersion] = useState(() => branch?.sourceVersion ?? crypto.randomUUID());
@@ -70,7 +72,8 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
       });
     }} /> : null}
     <Space3DWorkspace language={project.settings.language} embedded storage={embeddedStorage}
-      canonicalProject={canonicalProject} onProjectChange={save} startIntent={startIntent} incomingProject={incoming} />
+      canonicalProject={canonicalProject} onProjectChange={save} startIntent={startIntent} incomingProject={incoming}
+      {...(startView ? { startView } : {})} />
   </>;
 }
 
@@ -78,9 +81,10 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
 function BringFrom2D({ project, es, onClose, onBring }: { project: ProjectModel; es: boolean; onClose: () => void; onBring: (model: Space3DProjectV1) => void }) {
   const [frames, setFrames] = useState('3');
   const [spacing, setSpacing] = useState('5');
+  const [diaphragms, setDiaphragms] = useState(true);
   const count = Number(frames);
   const spacingM = Number(spacing.replace(',', '.'));
-  const preview = useMemo(() => space3dFromModel2d(project, { frames: count, spacingM }), [project, count, spacingM]);
+  const preview = useMemo(() => space3dFromModel2d(project, { frames: count, spacingM, diaphragms }), [project, count, spacingM, diaphragms]);
   const model = preview.model;
   const transverse = model ? model.members.length - project.members.length * Math.max(1, Math.round(count)) : 0;
   return <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}
@@ -101,6 +105,8 @@ function BringFrom2D({ project, es, onClose, onBring }: { project: ProjectModel;
         <UnitField label={es ? 'Separación' : 'Spacing'} unit="m" value={spacing} onValueChange={setSpacing} disabled={count === 1}
           hint={es ? 'Entre pórticos, a lo largo de z' : 'Between frames, along z'} />
       </div>
+      <LayerToggle label={es ? 'Diafragma rígido en cada nivel' : 'Rigid diaphragm at each level'} disabled={count === 1} checked={diaphragms && count !== 1}
+        description={es ? 'La losa une los pórticos en su plano (ux, uz y giro vertical)' : 'The slab ties the frames in its plane'} onCheckedChange={setDiaphragms} />
       {model
         ? <p className="space3d-bring__summary" role="status">{es
           ? `${model.nodes.length} nudos · ${model.members.length} barras${transverse > 0 ? ` (${transverse} transversales)` : ''} · ${model.loadCases.length} casos`

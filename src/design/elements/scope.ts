@@ -120,8 +120,16 @@ const FLANGE: ScopeItem = {
 };
 
 /** Comprobaciones fuera de alcance del elemento, listas para mostrarse junto a las demás. */
-export function outOfScopeChecks(element: ElementKind, code: DesignCodeId, options: { readonly flange?: boolean } = {}): ElementCheck[] {
-  const items = options.flange ? [FLANGE, ...SCOPE[element]] : SCOPE[element];
+/** Estructura de un eje del Modelo 3D: las columnas ya llevan la flexión perpendicular del modelo. */
+const OUT_OF_PLANE_BIAXIAL: ScopeItem = {
+  id: 'out-of-plane',
+  label: 'Flexión fuera del plano',
+  note: same('Las columnas se revisan en flexión biaxial con los momentos del Modelo 3D, pero la amplificación fuera del plano usa la k y el índice de estabilidad del eje; las vigas sólo se diseñan en el plano.'),
+};
+
+export function outOfScopeChecks(element: ElementKind, code: DesignCodeId, options: { readonly flange?: boolean; readonly biaxialColumns?: boolean } = {}): ElementCheck[] {
+  const base = options.biaxialColumns ? SCOPE[element].map((item) => item.id === 'out-of-plane' ? OUT_OF_PLANE_BIAXIAL : item) : SCOPE[element];
+  const items = options.flange ? [FLANGE, ...base] : base;
   return items.map((item) => ({
     id: `scope-${item.id}`,
     label: item.label,

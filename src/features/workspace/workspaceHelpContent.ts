@@ -30,7 +30,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'space3d'
         ['Selecciona y asigna', 'Elige nudos o barras y abre Asignar. Los comandos explican si requieren nudos o barras seleccionados.'],
         ['Calcula', 'Analizar utiliza el caso o combinación activo. La guía del modelo indica el siguiente paso y los resultados se invalidan al editar.'],
         ['Consulta los resultados', 'Elige la magnitud en la banda del lienzo. Panel abre datos y diagnósticos; Mostrar controla deformada, etiquetas y capas; Vista abre el explorador.'],
-        ['Diseña un eje', 'En Diseño · Estructura, el origen Modelo 3D diseña en concreto el pórtico de un eje (A, B… o 1, 2…) con las acciones del modelo completo. La categoría de cada caso (permanente, variable, accidental) decide cómo entra.'],
+        ['Diseña un eje', 'En Diseño · Estructura, el origen Modelo 3D diseña en concreto el pórtico de un eje (A, B… o 1, 2…) con las acciones del modelo completo (columnas en flexión biaxial). «Revisar los N ejes» diseña todos y los resume en planta. La categoría de cada caso (permanente, variable, accidental) decide cómo entra.'],
       ],
       controls: [
         ['2D, 3D y Diseño', 'Son modos de la misma mesa: el proyecto, el guardado y la barra no cambian; sólo cambian las herramientas del modo.'],
@@ -97,7 +97,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'space3d'
         ['Select and assign', 'Select nodes or members, then open Assign. Commands explain the selection they need.'],
         ['Analyze', 'Analyze uses the active case or combination. The model guide suggests the next step; editing invalidates results.'],
         ['Inspect results', 'Select a quantity on the canvas rail. Panel opens data and diagnostics, Display controls deformation and layers, and View opens the explorer.'],
-        ['Design an axis', 'In Design · Estructura, the Modelo 3D source designs the concrete frame of one axis (A, B… or 1, 2…) with the actions of the whole model. Each case category (permanent, variable, accidental) decides how it enters.'],
+        ['Design an axis', 'In Design · Estructura, the Modelo 3D source designs the concrete frame of one axis (A, B… or 1, 2…) with the actions of the whole model (columns in biaxial bending). «Revisar los N ejes» designs every axis and summarises them in plan. Each case category (permanent, variable, accidental) decides how it enters.'],
       ],
       controls: [
         ['2D, 3D and Design', 'They are modes of the same workspace: project, saving and the bar stay; only the mode tools change.'],

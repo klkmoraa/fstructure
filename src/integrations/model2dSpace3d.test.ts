@@ -27,6 +27,22 @@ describe('Traer del 2D: el pórtico del Modelo 2D extruido al Modelo 3D', () => 
     expect(column?.orientation.localYReferenceGlobal).toEqual([1, 0, 0]);
   });
 
+  it('con diafragmas, cada nivel une sus nudos libres de todos los pórticos y el edificio se resuelve', () => {
+    const project = portal();
+    const { model, notes } = space3dFromModel2d(project, { frames: 3, spacingM: 5, diaphragms: true });
+    const parsed = parseSpace3DProject(serializeSpace3DProject(model!));
+    const free = project.nodes.filter((node) => node.support.type === 'none');
+    const levels = [...new Set(free.map((node) => node.y))].sort((a, b) => a - b);
+    expect(parsed.diaphragms).toHaveLength(levels.length);
+    // Primer nivel: sus nudos libres, en cada uno de los tres pórticos.
+    expect(parsed.diaphragms![0]!.nodeIds).toHaveLength(free.filter((node) => node.y === levels[0]).length * 3);
+    expect(notes.some((note) => note.includes('diafragma rígido'))).toBe(true);
+    const permanent = parsed.loadCases.find((item) => item.category === 'permanent')!;
+    expect(analyzeSpace3DProject(parsed, permanent.id).success).toBe(true);
+    // Un pórtico solo no lleva diafragma (ya es plano).
+    expect(space3dFromModel2d(project, { frames: 1, spacingM: 0, diaphragms: true }).model!.diaphragms).toBeUndefined();
+  });
+
   it('el edificio extruido se resuelve en el 3D', () => {
     const { model } = space3dFromModel2d(portal(), { frames: 3, spacingM: 5 });
     const permanent = model!.loadCases.find((item) => item.category === 'permanent')!;

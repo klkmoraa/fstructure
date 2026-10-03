@@ -1,4 +1,4 @@
-import { ArrowRightLeft, Box, PenLine, Plus, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, Box, LayoutGrid, PenLine, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
@@ -20,6 +20,7 @@ import {
   DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraft, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
   type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome,
 } from './frameModel';
+import { BuildingAxes } from './BuildingAxes';
 import { useWorkbenchStorage } from './workbenchStorage';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
@@ -94,7 +95,7 @@ function MemberGrid({ result, selected, onSelect }: { result: StructureDesignRes
       <th scope="row">{`N${row.level}`}</th>
       <td><div className="dw-member-grid__chips">
         {row.beams.map((beam, index) => chip(beam.id, row.beams.length > 1 ? `V${String.fromCharCode(65 + index)}` : 'V', beam.label, beam.result.governingRatio))}
-        {row.columns.map((column) => chip(column.id, `C${column.axis + 1}`, column.label, column.result.governingRatio))}
+        {row.columns.map((column) => chip(column.id, `C${column.axisLabel}`, column.label, column.result.governingRatio))}
       </div></td>
     </tr>)}</tbody>
   </table>;
@@ -228,9 +229,18 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     ...(lateral ? [{ field: 'lateral' as const, label: 'F', unit: 'kN' }] : []),
   ];
   const memberChecks = beam ? splitChecks(beam.result.checks) : column ? splitChecks(column.result.checks) : [[], []] as const;
+  const biaxialColumn = Boolean(column?.states.some((state) => state.outOfPlaneKnm !== undefined));
   const fcFromModel = fromModel && external?.fcMpa !== null && external?.fcMpa !== undefined;
   const name = from3d ? 'Modelo 3D' : fromModel ? 'Modelo 2D' : 'Pórtico rápido';
-  const openSource = from3d ? onOpenSpace3D : onOpenModel;
+  const openSource = from3d
+    ? onOpenSpace3D && (() => onOpenSpace3D(modelAxes ? axisOf(draft, modelAxes) : undefined))
+    : onOpenModel;
+  // Todos los ejes: una vista de la mesa (no se guarda en el borrador).
+  const [building, setBuilding] = useState(false);
+  const buildingView = from3d && building && modelAxes && modelAxes.axes.length > 1
+    ? <BuildingAxes axes={modelAxes} code={chrome.code as DesignCodeId} draft={deferredInputs.draft as FrameDraft} current={axisOf(draft, modelAxes)}
+      onOpen={(axisId) => { set('axis')(axisId); setPicked(null); }} onClose={() => setBuilding(false)} />
+    : null;
   const supports = result?.columns.length ? 'columns' as const : 'ideal' as const;
   const verdict = result
     ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) }
@@ -248,9 +258,14 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       <FieldGroup title="Origen de la estructura" columns={1}>
         <SegmentedControl label="Origen de la estructura" size="sm" value={from3d ? 'model3d' : fromModel ? 'model' : 'frame'} onValueChange={(value) => { set('source')(value); setPicked(null); }}
           options={[{ value: 'model', label: 'Modelo 2D' }, { value: 'model3d', label: 'Modelo 3D' }, { value: 'frame', label: 'Pórtico rápido' }]} />
-        {from3d && modelAxes?.axes.length ? <Select label="Eje del Modelo 3D" value={axisOf(draft, modelAxes)} onChange={(event) => { set('axis')(event.currentTarget.value); setPicked(null); }}>
-          {modelAxes.axes.map((axis) => <option key={axis.id} value={axis.id}>{`${axis.label} · ${axis.members} ${axis.members === 1 ? 'barra' : 'barras'}`}</option>)}
-        </Select> : null}
+        {from3d && modelAxes?.axes.length ? <>
+          <Select label="Eje del Modelo 3D" value={axisOf(draft, modelAxes)} onChange={(event) => { set('axis')(event.currentTarget.value); setPicked(null); }}>
+            {modelAxes.axes.map((axis) => <option key={axis.id} value={axis.id}>{`${axis.label} · ${axis.members} ${axis.members === 1 ? 'barra' : 'barras'}`}</option>)}
+          </Select>
+          {modelAxes.axes.length > 1 ? <button type="button" className="dw-inline-action" aria-pressed={building} onClick={() => setBuilding((open) => !open)}>
+            <LayoutGrid size={13} aria-hidden="true" />{building ? 'Ocultar todos los ejes' : `Revisar los ${modelAxes.axes.length} ejes`}
+          </button> : null}
+        </> : null}
         {fromModel ? <ModelSummary modelSource={external} fcFromModel={fcFromModel} space={from3d} {...(openSource ? { onOpenModel: openSource } : {})} />
           : onCreateModel ? <QuickFrameCard spec={frameOutcome?.ok ? frameModelSpec(chrome.code as DesignCodeId, draft, bays, stories) : null} modelMembers={modelSource?.summary.members ?? 0}
             onCreate={(spec) => { onCreateModel(spec); set('source')('model'); setPicked(null); setLoadNote(null); }} /> : null}
@@ -347,7 +362,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         </div>
       </MoreOptions>
     </>}
-    stage={result ? <>
+    stage={<>{buildingView}{result ? <>
       <Plate title={name} wide note={`${result.loadCases} casos superpuestos · ${result.combinations.length} combinaciones${fromModel && model.pending ? ' · recalculando…' : ''}`}>
         <div className="dw-span-all dw-frame-diagram">
           <SegmentedControl className="dw-frame-diagram__tabs" label="Diagrama de la estructura" size="sm" value={kind} onValueChange={(value) => setKind(value as FrameDiagramKind)} options={FRAME_DIAGRAMS} />
@@ -387,6 +402,9 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             <li data-kind="demand">Estado que rige</li>
           </ul>
         </Plate>
+        {biaxialColumn ? <Plate title={`${column.label} · fuera del plano`} wide note="Flexión perpendicular al eje, del Modelo 3D">
+          <InteractionChart result={column.result} axis="y" cloud={column.states.map((state) => ({ axialKn: state.axialKn, momentKnm: state.outOfPlaneDesignKnm ?? 0, label: `${state.combination} · ${state.label}` }))} />
+        </Plate> : null}
         <Plate title="Sección"><ColumnSection result={column.result} /></Plate>
         <Plate title="Armado en elevación"><ColumnElevation result={column.result} /></Plate>
       </> : null}
@@ -397,7 +415,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         {fromModel && openSource ? <button type="button" className="dw-inline-action" onClick={openSource}>
           {from3d ? <Box size={13} aria-hidden="true" /> : <PenLine size={13} aria-hidden="true" />}{from3d ? 'Editar en 3D' : 'Editar en Modelo'}
         </button> : null}
-      </div>}
+      </div>}</>}
     results={result && report ? <>
       <Verdict status={result.status} ratio={result.governingRatio} title={report.title} outOfScope={outOfScope.length}>
         <Summary rows={[
@@ -429,19 +447,23 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             { label: 'Estado que rige', value: column.states[column.governingState]!.label },
             { label: 'Pu', value: `${formatNumber(column.states[column.governingState]!.axialKn, 0)} kN`, tone: 'axial' },
             { label: 'Mc', value: `${formatNumber(column.states[column.governingState]!.designMomentKnm)} kN·m`, tone: 'moment' },
+            ...(column.states[column.governingState]!.outOfPlaneDesignKnm !== undefined
+              ? [{ label: 'Mc ⊥ (fuera del plano)', value: `${formatNumber(column.states[column.governingState]!.outOfPlaneDesignKnm!)} kN·m`, tone: 'moment' as const }] : []),
             { label: 'k · ψ', value: `${formatNumber(column.effectiveLengthFactor, 2)} · ${formatNumber(column.psiTop, 2)}/${formatNumber(column.psiBottom, 2)}` },
           ]} />
         </> : null}
         <ReviewList checks={memberChecks[0]} outOfScope={[]} />
         {column ? <Disclosure label={`Estados de la columna (${column.states.length})`}>
           <table className="dw-table" aria-label="Estados concurrentes de la columna (kN, kN·m)">
-            <thead><tr><th scope="col">Combinación</th><th scope="col">Pu</th><th scope="col">M sup</th><th scope="col">M inf</th><th scope="col">Mc</th><th scope="col">Rige</th></tr></thead>
+            <thead><tr><th scope="col">Combinación</th><th scope="col">Pu</th><th scope="col">M sup</th><th scope="col">M inf</th><th scope="col">Mc</th>
+              {biaxialColumn ? <th scope="col" title="Flexión perpendicular al plano del eje">M ⊥</th> : null}<th scope="col">Rige</th></tr></thead>
             <tbody>{column.states.map((state, index) => <tr key={index} data-active={index === column.governingState || undefined}>
               <th scope="row">{`${state.combination} · ${state.label}`}</th>
               <td>{formatNumber(state.axialKn, 0)}</td>
               <td>{formatNumber(state.topKnm)}</td>
               <td>{formatNumber(state.bottomKnm)}</td>
               <td>{formatNumber(state.designMomentKnm)}</td>
+              {biaxialColumn ? <td>{formatNumber(state.outOfPlaneKnm ?? 0)}</td> : null}
               <td data-status={state.status === 'fail' ? 'fail' : undefined}>{percent(state.ratio)}</td>
             </tr>)}</tbody>
           </table>

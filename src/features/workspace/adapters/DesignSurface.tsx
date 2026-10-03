@@ -3,7 +3,7 @@ import { withConcreteFrame, type ConcreteFrameSpec } from '../../../data/concret
 import { model2dDesignSource } from '../../../design/elements/model2dSource';
 import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
 import { space3dDesignAxes } from '../../../integrations/space3dDesign';
-import { peekToolIntent, takeToolIntent } from '../toolIntent';
+import { peekToolIntent, setToolIntent, takeToolIntent } from '../toolIntent';
 import { DesignWorkbench } from '../../design/workbench/DesignWorkbench';
 import { browserWorkbenchStorage, createProjectWorkbenchStorage, WorkbenchStorageContext } from '../../design/workbench/workbenchStorage';
 import { ProjectModelContext } from '../../../store/ProjectModelContext';
@@ -38,6 +38,12 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   }, [session, projectId]);
   const modelAxes = useMemo(() => space3d && space3d.members.length ? space3dDesignAxes(space3d) : null, [space3d]);
   const [startSource] = useState(() => peekToolIntent('design')?.kind);
+  // «Editar en 3D» desde un eje abre el modo 3D en el alzado de ese eje.
+  const openSpace3D = useMemo(() => onOpenSpace3D ? (axisId?: string) => {
+    const axis = axisId ? modelAxes?.axes.find((item) => item.id === axisId) : undefined;
+    if (axis?.short) setToolIntent({ tool: 'space3d', kind: 'view', view: `elev-${axis.direction}:${axis.short}` });
+    onOpenSpace3D();
+  } : undefined, [onOpenSpace3D, modelAxes]);
   useEffect(() => { takeToolIntent('design'); }, []);
   const storage = useMemo(() => {
     if (!session || !projectId) return null;
@@ -50,7 +56,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   useEffect(() => () => storage?.dispose(), [storage]);
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
     <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
-      {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(onOpenSpace3D ? { onOpenSpace3D } : {})}
+      {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})}
       {...(updateProject ? { onCreateModel: createModel } : {})} />
   </WorkbenchStorageContext.Provider>;
 }

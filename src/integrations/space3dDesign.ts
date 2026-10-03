@@ -1,10 +1,18 @@
 import {
   probeLoads,
-  type ExternalStructureAxes, type ExternalStructureSource, type StructureAction, type StructureCase, type StructureCaseResult, type StructureMember, type StructureNode,
+  type ExternalStructureAxes, type ExternalStructureSource, type StructureAction, type StructureAnalysisOutcome, type StructureCase, type StructureCaseResult, type StructureMember, type StructureNode,
   type StructureSource, type StructureSupport,
 } from '../design/elements/structure';
 import { buildMemberOrientation } from '../modules/space3d/space3d/engine/orientation';
-import { analyzeSpace3DProject } from '../modules/space3d/space3d/engine/solver';
+import { multiplyMatrixVector } from '../foundation/linearAlgebra';
+import { recoverMemberEndDisplacements } from '../modules/space3d/space3d/engine/element';
+import { computeSpace3DMemberStations, EMPTY_LOCAL_LOADS } from '../modules/space3d/space3d/engine/memberLoading';
+import {
+  analyzeSpace3DProject, assembleSpace3DSkylineStiffness, assembleSpace3DStaticModel, space3DMechanismIssue,
+  type Space3DStaticAssembly, type Space3DStaticAssemblyElement,
+} from '../modules/space3d/space3d/engine/solver';
+import { expandSpace3DVector, reduceSpace3DVector } from '../modules/space3d/space3d/engine/equations';
+import { factorizeSkyline, Space3DSingularMatrixError, type Space3DSkylineFactorization } from '../modules/space3d/space3d/engine/skylineSolver';
 import { resolveSpace3DGrid } from '../modules/space3d/space3d/model/grid';
 import { SPACE3D_MATERIALS } from '../modules/space3d/space3d/model/sectionLibrary';
 import type {
@@ -22,7 +30,8 @@ import type {
  *   (vigas transversales, diafragmas, los demás ejes), así las cargas que bajan
  *   por las vigas que llegan al eje sí llegan a sus columnas. Del resultado se
  *   leen las acciones en el plano del eje: axial, cortante y momento de flexión
- *   en el plano. La flexión fuera del plano y la torsión no se diseñan aquí.
+ *   en el plano; las columnas también reciben la flexión perpendicular (y su
+ *   cortante) para revisarse en flexión biaxial. La torsión no se diseña aquí.
  * - **Casos por categoría**, como el Modelo 2D: permanente → muerta, variable →
  *   viva partida por barra cargada del eje (el resto del caso va junto) para
  *   alternarla, accidental → lateral. Inactivos y «otro» no entran.
@@ -43,6 +52,8 @@ export interface Space3DFramePlane {
   readonly coordinate: number;
   /** «Eje 1 · z = 0 m». */
   readonly label: string;
+  /** Rótulo de la rejilla («1», «A»), si el plano coincide con uno de sus ejes. */
+  readonly short: string | null;
   readonly members: number;
 }
 
@@ -103,6 +114,7 @@ export function space3dFramePlanes(model: Space3DProjectV1): Space3DFramePlane[]
         axis,
         coordinate,
         label: line ? `Eje ${line.id} · ${where}` : where,
+        short: line?.id ?? null,
         members: count,
       });
     }
@@ -156,6 +168,9 @@ interface PlaneMember {
 }
 
 interface InPlaneStation {
+  /** Flexión perpendicular al plano y su cortante (dM/dx), para las columnas. */
+  readonly outMoment: number;
+  readonly outShear: number;
   readonly x: number;
   readonly axial: number;
   readonly shear: number;
@@ -166,10 +181,17 @@ interface InPlaneStation {
 
 /** Acciones del 3D en los ejes del 2D (axial a tensión, V = dM/dx, M positivo con v'' > 0). */
 const inPlaneStation = (station: Space3DMemberStation, member: PlaneMember): InPlaneStation => member.bending === 'y'
-  ? { x: station.x, axial: station.N, shear: -member.sign * station.Vy, moment: member.sign * station.Mz, u: station.u, v: member.sign * station.v }
-  : { x: station.x, axial: station.N, shear: -member.sign * station.Vz, moment: -member.sign * station.My, u: station.u, v: member.sign * station.w };
+  ? {
+    x: station.x, axial: station.N, shear: -member.sign * station.Vy, moment: member.sign * station.Mz, u: station.u, v: member.sign * station.v,
+    outMoment: station.My, outShear: station.Vz,
+  }
+  : {
+    x: station.x, axial: station.N, shear: -member.sign * station.Vz, moment: -member.sign * station.My, u: station.u, v: member.sign * station.w,
+    outMoment: station.Mz, outShear: -station.Vy,
+  };
 
 const ZERO_ACTION: StructureAction = { axial: 0, shear: 0, moment: 0, u: 0, v: 0 };
+const ZERO_END_FORCES: readonly number[] = Object.freeze(new Array<number>(12).fill(0));
 
 /** Estaciones de una barra en los ejes del plano, con la elástica sin repetidos. */
 interface MemberSamples {
@@ -219,11 +241,14 @@ const sampleStations = ({ length, stations, xs, us, vs }: MemberSamples, x: numb
     const linear = (p: number, q: number) => p + (q - p) * t;
     const t2 = t * t;
     const t3 = t2 * t;
-    const moment = (2 * t3 - 3 * t2 + 1) * a.moment + (t3 - 2 * t2 + t) * h * a.shear + (-2 * t3 + 3 * t2) * b.moment + (t3 - t2) * h * b.shear;
-    return { axial: linear(a.axial, b.axial), shear: linear(a.shear, b.shear), moment, ...elastic };
+    const hermite = (m0: number, v0: number, m1: number, v1: number) => (2 * t3 - 3 * t2 + 1) * m0 + (t3 - 2 * t2 + t) * h * v0 + (-2 * t3 + 3 * t2) * m1 + (t3 - t2) * h * v1;
+    return {
+      axial: linear(a.axial, b.axial), shear: linear(a.shear, b.shear), moment: hermite(a.moment, a.shear, b.moment, b.shear), ...elastic,
+      outOfPlane: { moment: hermite(a.outMoment, a.outShear, b.outMoment, b.outShear), shear: linear(a.outShear, b.outShear) },
+    };
   }
   const last = stations.at(-1)!;
-  return { axial: last.axial, shear: last.shear, moment: last.moment, ...elastic };
+  return { axial: last.axial, shear: last.shear, moment: last.moment, ...elastic, outOfPlane: { moment: last.outMoment, shear: last.outShear } };
 };
 
 interface ProjectedCase {
@@ -246,6 +271,9 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
     return { label: model.name, revision: revisionOf(model, planeId), summary: empty, fcMpa: null, includesSelfWeight: false, errors, create: () => null };
   }
   const { axis, coordinate } = plane;
+  // Ejes de la rejilla que cruzan este plano: los x = cte en un eje z = cte y al revés.
+  const grid = resolveSpace3DGrid(model);
+  const gridLines = axis === 'z' ? grid.xLines : grid.zLines;
   const normal = normalOf(axis);
   const nodeById = new Map(model.nodes.map((node) => [node.id, node]));
   const planeSources = model.members.filter((member) => {
@@ -325,7 +353,7 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
     }
   }
   if (rolled) notes.push('Hay barras con la sección girada respecto al plano del eje: se diseñan con la flexión del eje local más cercano.');
-  notes.push('Acciones del Modelo 3D completo, en el plano del eje; la flexión fuera del plano y la torsión no se revisan aquí.');
+  notes.push('Acciones del Modelo 3D completo. Vigas: flexión en el plano del eje. Columnas: flexión biaxial (la perpendicular amplificada con la k y el índice de estabilidad del eje). La torsión no se revisa.');
 
   // Casos: muertos enteros, vivos partidos por barra del eje y laterales; el sondeo se agrega al crear la fuente.
   const active = (item: Space3DLoadCase) => item.active !== false;
@@ -392,6 +420,11 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
     const { displacement: d } = result;
     return axis === 'z' ? [d.ux, d.uy, d.rz] : [d.uz, d.uy, -d.rx];
   };
+  /** [s, y, giro en el plano] de un nudo a partir del vector de desplazamientos (6 GDL por nudo). */
+  const inPlaneOfVector = (vector: readonly number[], node: number): readonly [number, number, number] => {
+    const base = node * 6;
+    return axis === 'z' ? [vector[base] ?? 0, vector[base + 1] ?? 0, vector[base + 5] ?? 0] : [vector[base + 2] ?? 0, vector[base + 1] ?? 0, -(vector[base + 3] ?? 0)];
+  };
   const withOverrides = (list: readonly Space3DFrameMember[], overrides: ReadonlyMap<number, number> | undefined) => {
     if (!overrides?.size) return list;
     const byId = new Map(planeMembers.flatMap((member, index) => overrides.has(index) ? [[member.source.id, { member, inertia: overrides.get(index)! }] as const] : []));
@@ -414,8 +447,12 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
       const cases: ProjectedCase[] = braced ? projected.filter((item) => item.case.kind !== 'lateral') : [...projected];
       const probe = braced ? [] : probeLoads(nodes, members);
       if (probe.length) cases.push({ case: { id: PROBE_CASE, label: 'Sondeo lateral (eje solo)', kind: 'probe' }, solverId: PROBE_CASE });
+      // Lo dinámico (masas, espectros) no entra al análisis estático y apunta a
+      // casos que la proyección renombra: se deja fuera.
+      const { massSource: _mass, spectrumFunctions: _spectra, responseSpectrumCases: _cases, nodalMasses: _masses, ...statics } = model;
       const full: Space3DProjectV1 = {
-        ...model,
+        ...statics,
+        nodalMasses: [],
         loadCases: projection.loadCases,
         loadCombinations: [],
         memberLoads: projection.memberLoads,
@@ -446,30 +483,67 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
         multiPointConstraints: [],
       };
       const cache = new Map<string, ReturnType<StructureSource['analyze']>>();
-      return {
-        kind: 'model3d',
-        label: `Modelo 3D · ${model.name} · ${plane.label}`,
-        nodes,
-        members,
-        cases: cases.map((item) => item.case),
-        braced,
-        notes,
-        lateralLevels: braced ? [] : lateralLevels,
-        analyze(overrides) {
-          const key = overrides?.size ? [...overrides.entries()].map(([index, value]) => `${index}:${value.toPrecision(6)}`).join('|') : '';
-          const cached = cache.get(key);
-          if (cached) return cached;
-          const fullModel = overrides?.size ? { ...full, members: withOverrides(full.members, overrides) } : full;
-          const isolatedModel = overrides?.size ? { ...isolated, members: withOverrides(isolated.members, overrides) } : isolated;
-          const results: StructureCaseResult[] = [];
-          for (const item of cases) {
-            const target = item.solverId === PROBE_CASE ? isolatedModel : fullModel;
-            const run = analyzeSpace3DProject(target, item.solverId, { stationSegments: STATION_SEGMENTS });
-            if (!run.success) {
-              const outcome = { ok: false as const, error: `El Modelo 3D no se pudo resolver en «${item.case.label}»: ${issueText(run.issues[0])}.` };
-              cache.set(key, outcome);
-              return outcome;
+      const fullNodeIndex = new Map(full.nodes.map((node, index) => [node.id, index]));
+      const planeNodeIndexes = planeNodes.map((node) => fullNodeIndex.get(node.id)!);
+      const solverCases = cases.filter((item) => item.solverId !== PROBE_CASE);
+      const failure = (detail: string, label?: string) => ({ ok: false as const, error: `El Modelo 3D no se pudo resolver${label ? ` en «${label}»` : ''}: ${detail}.` });
+
+      // Cargas de cada caso, una vez: el vector nodal y las cargas de las barras
+      // del eje. No dependen de las inercias (las del agrietamiento tampoco las
+      // cambian), así que sirven para todos los análisis de esta fuente. Cada
+      // caso se arma sólo con sus barras cargadas: la viva de una barra es una.
+      type CaseLoads = { readonly vector: readonly number[]; readonly elements: ReadonlyMap<string, Space3DStaticAssemblyElement> };
+      let loads: Map<string, CaseLoads> | { readonly error: string } | null = null;
+      const caseLoads = () => {
+        if (loads) return loads;
+        const table = new Map<string, CaseLoads>();
+        for (const item of solverCases) {
+          const definition = full.loadCases.find((loadCase) => loadCase.id === item.solverId)!;
+          const memberLoads = full.memberLoads.filter((load) => load.caseId === item.solverId);
+          const nodalLoads = full.nodalLoads.filter((load) => load.caseId === item.solverId);
+          const loaded = new Set(memberLoads.map((load) => load.memberId));
+          // Peso propio o cargas en nudos: todas las barras (un nudo cargado sin
+          // barras sería un mecanismo para el ensamblador).
+          const everyMember = (definition.selfWeightFactor ?? 0) !== 0 || nodalLoads.length > 0;
+          const project = (members: readonly Space3DFrameMember[]): Space3DProjectV1 => ({ ...full, members, loadCases: [definition], memberLoads, nodalLoads });
+          const pruned = everyMember ? null : assembleSpace3DStaticModel(project(full.members.filter((member, index) => index === 0 || loaded.has(member.id))), item.solverId, { stationSegments: STATION_SEGMENTS });
+          const assembly = pruned?.valid ? pruned : assembleSpace3DStaticModel(project(full.members), item.solverId, { stationSegments: STATION_SEGMENTS });
+          if (!assembly.valid) return (loads = { error: failure(issueText(assembly.issues[0]), item.case.label).error });
+          table.set(item.solverId, { vector: assembly.loadVector, elements: new Map(assembly.elements.map((element) => [element.memberId, element])) });
+        }
+        return (loads = table);
+      };
+
+      /**
+       * Todos los casos con una sola rigidez: se arma y factoriza una vez y cada
+       * caso es una sustitución. Las barras del eje se reconstruyen sólo cuando
+       * el diseño las lee (la flecha de una viga lee las suyas).
+       */
+      const solve = (overrides: ReadonlyMap<number, number> | undefined): StructureAnalysisOutcome => {
+        const table = caseLoads();
+        if (!(table instanceof Map)) return { ok: false, error: table.error };
+        const project = overrides?.size ? { ...full, members: withOverrides(full.members, overrides) } : full;
+        let assembly: Space3DStaticAssembly | null = null;
+        let factorization: Space3DSkylineFactorization | null = null;
+        if (solverCases.length) {
+          assembly = assembleSpace3DStaticModel(project, solverCases[0]!.solverId, { stationSegments: STATION_SEGMENTS });
+          if (!assembly.valid) return failure(issueText(assembly.issues[0]));
+          if (assembly.equations.count > 0) {
+            try {
+              factorization = factorizeSkyline(assembleSpace3DSkylineStiffness(assembly));
+            } catch (error) {
+              if (!(error instanceof Space3DSingularMatrixError)) throw error;
+              return failure(issueText(space3DMechanismIssue(project, assembly, error.row)));
             }
+          }
+        }
+        const elementOf = new Map((assembly?.elements ?? []).map((element) => [element.memberId, element]));
+        const results: StructureCaseResult[] = [];
+        for (const item of cases) {
+          if (item.solverId === PROBE_CASE) {
+            const isolatedModel = overrides?.size ? { ...isolated, members: withOverrides(isolated.members, overrides) } : isolated;
+            const run = analyzeSpace3DProject(isolatedModel, PROBE_CASE, { stationSegments: STATION_SEGMENTS });
+            if (!run.success) return failure(issueText(run.issues[0]), item.case.label);
             const byNode = new Map(run.nodeResults.map((result) => [result.nodeId, result]));
             const byMember = new Map(run.memberResults.map((result) => [result.memberId, result]));
             const samples = planeMembers.map((member) => {
@@ -483,8 +557,64 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
                 return member ? sampleStations(member, x) : ZERO_ACTION;
               },
             });
+            continue;
           }
-          const outcome = { ok: true as const, cases: results };
+          const load = table.get(item.solverId)!;
+          const displacement = assembly && factorization
+            ? expandSpace3DVector(assembly.equations, factorization.solve(reduceSpace3DVector(assembly.equations, load.vector)))
+            : new Array<number>(full.nodes.length * 6).fill(0);
+          if (displacement.some((value) => !Number.isFinite(value))) return failure('la solución no es finita', item.case.label);
+          const samples: (MemberSamples | undefined)[] = [];
+          // Una barra del eje en este caso: rigidez de la solución (con las
+          // inercias del análisis) y cargas del caso, como recupera el motor 3D.
+          const recover = (memberIndex: number): MemberSamples => {
+            const member = planeMembers[memberIndex]!;
+            const element = elementOf.get(member.source.id);
+            if (!element) return samplesOf(0, []);
+            const loaded = load.elements.get(member.source.id);
+            const uLocal = multiplyMatrixVector(element.transformation, element.dofIndices.map((index) => displacement[index] ?? 0));
+            const fixedEnd = loaded?.fixedEndForces ?? ZERO_END_FORCES;
+            const endForces = multiplyMatrixVector(element.localStiffness, uLocal).map((value, index) => value + (fixedEnd[index] ?? 0));
+            const stations = computeSpace3DMemberStations({
+              length: element.length,
+              kind: element.kind,
+              E: element.E,
+              Iy: element.Iy,
+              Iz: element.Iz,
+              endForces,
+              endDisplacements: recoverMemberEndDisplacements(element.element, uLocal, loaded?.rawFixedEndForces ?? ZERO_END_FORCES),
+              loads: loaded?.loads ?? EMPTY_LOCAL_LOADS,
+              segments: STATION_SEGMENTS,
+            });
+            return samplesOf(element.length, stations.map((station) => inPlaneStation(station, member)));
+          };
+          results.push({
+            nodeDisplacements: planeNodeIndexes.map((node) => inPlaneOfVector(displacement, node)),
+            at: (memberIndex, x) => {
+              if (memberIndex < 0 || memberIndex >= planeMembers.length) return ZERO_ACTION;
+              const member = samples[memberIndex] ??= recover(memberIndex);
+              return sampleStations(member, x);
+            },
+          });
+        }
+        return { ok: true, cases: results };
+      };
+
+      return {
+        kind: 'model3d',
+        label: `Modelo 3D · ${model.name} · ${plane.label}`,
+        nodes,
+        members,
+        cases: cases.map((item) => item.case),
+        braced,
+        notes,
+        lateralLevels: braced ? [] : lateralLevels,
+        gridLabelAt: (coordinate) => gridLines.find((line) => Math.abs(line.coordinate - coordinate) <= 5 * PLANE_TOLERANCE)?.id ?? null,
+        analyze(overrides) {
+          const key = overrides?.size ? [...overrides.entries()].map(([index, value]) => `${index}:${value.toPrecision(6)}`).join('|') : '';
+          const cached = cache.get(key);
+          if (cached) return cached;
+          const outcome = solve(overrides);
           if (cache.size > 24) cache.delete(cache.keys().next().value!);
           cache.set(key, outcome);
           return outcome;
@@ -498,9 +628,22 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
 export function space3dDesignAxes(model: Space3DProjectV1): ExternalStructureAxes {
   const planes = space3dFramePlanes(model);
   const sources = new Map<string, ExternalStructureSource>();
+  // Columnas en planta: barras verticales agrupadas por su punto (x, z).
+  const nodeById = new Map(model.nodes.map((node) => [node.id, node]));
+  const stacks = new Map<string, { x: number; z: number; memberIds: string[] }>();
+  for (const member of model.members) {
+    const a = nodeById.get(member.i);
+    const b = nodeById.get(member.j);
+    if (!a || !b || Math.abs(a.x - b.x) > PLANE_TOLERANCE || Math.abs(a.z - b.z) > PLANE_TOLERANCE || Math.abs(a.y - b.y) <= PLANE_TOLERANCE) continue;
+    const key = `${keyOf(a.x)}|${keyOf(a.z)}`;
+    const stack = stacks.get(key) ?? { x: keyOf(a.x), z: keyOf(a.z), memberIds: [] };
+    stack.memberIds.push(member.id);
+    stacks.set(key, stack);
+  }
   return {
     label: model.name,
-    axes: planes.map((plane) => ({ id: plane.id, label: plane.label, members: plane.members })),
+    axes: planes.map((plane) => ({ id: plane.id, label: plane.label, short: plane.short, direction: plane.axis, coordinate: plane.coordinate, members: plane.members })),
+    columns: [...stacks.values()],
     source(axisId) {
       let source = sources.get(axisId);
       if (!source) {

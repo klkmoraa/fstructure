@@ -77,6 +77,11 @@ export interface StructureAction {
   readonly moment: number;
   readonly u: number;
   readonly v: number;
+  /**
+   * Flexión perpendicular al plano (y su cortante, dM/dx), cuando la fuente la
+   * conoce: un eje del Modelo 3D. Las columnas la revisan como flexión biaxial.
+   */
+  readonly outOfPlane?: { readonly moment: number; readonly shear: number };
 }
 
 export interface StructureCaseResult {
@@ -105,6 +110,8 @@ export interface StructureSource {
   readonly lateralLevels?: readonly { readonly y: number; readonly kN: number }[];
   /** Supuestos y datos que la fuente no pudo traducir. */
   readonly notes?: readonly string[];
+  /** Rótulo de la rejilla en una coordenada horizontal del plano (un eje del 3D: «A», «2»), si lo hay. */
+  gridLabelAt?(coordinate: number): string | null;
 }
 
 /** «Pórtico», «Modelo 2D» o «Modelo 3D»: de dónde salió la estructura. */
@@ -147,9 +154,23 @@ export interface ExternalStructureSource {
 export interface ExternalStructureAxes {
   /** Nombre del modelo de origen. */
   readonly label: string;
-  readonly axes: readonly { readonly id: string; readonly label: string; readonly members: number }[];
+  readonly axes: readonly ExternalStructureAxis[];
+  /** Columnas en planta: cada pila de barras verticales en un mismo punto (x, z), m. */
+  readonly columns: readonly { readonly x: number; readonly z: number; readonly memberIds: readonly string[] }[];
   /** La fuente de un eje; la misma instancia mientras el modelo no cambie. */
   source(axisId: string): ExternalStructureSource;
+}
+
+/** Un eje en planta: el plano x = cte o z = cte que contiene su pórtico. */
+export interface ExternalStructureAxis {
+  readonly id: string;
+  /** «Eje 1 · z = 0 m». */
+  readonly label: string;
+  /** Rótulo corto de la rejilla («1», «A»), si lo tiene. */
+  readonly short: string | null;
+  readonly direction: 'x' | 'z';
+  readonly coordinate: number;
+  readonly members: number;
 }
 
 export interface StructureColumnReinforcement {
@@ -230,6 +251,12 @@ export interface StructureColumnState {
   readonly stabilityIndex: number;
   /** Momento de diseño en el plano con mínimos y amplificaciones. */
   readonly designMomentKnm: number;
+  /**
+   * Flexión perpendicular al plano en el extremo que rige (sólo fuentes que la
+   * conocen, como un eje del Modelo 3D) y su momento de diseño amplificado.
+   */
+  readonly outOfPlaneKnm?: number;
+  readonly outOfPlaneDesignKnm?: number;
   readonly ratio: number;
   readonly status: 'pass' | 'fail' | 'warning';
 }
@@ -240,6 +267,8 @@ export interface StructureColumnDesign {
   readonly label: string;
   /** Eje (de izquierda a derecha) y entrepiso (de abajo hacia arriba), desde 0. */
   readonly axis: number;
+  /** Rótulo del eje: el de la rejilla de la fuente («B») o su número («2»). */
+  readonly axisLabel: string;
   readonly story: number;
   readonly result: ColumnDesignResult;
   readonly states: readonly StructureColumnState[];
@@ -703,13 +732,20 @@ export function designStructure(source: StructureSource, options: StructureDesig
     const topMoment = (caseIndex: number) => (upward ? 1 : -1) * at(caseIndex, index, xTop).moment;
     const bottomMoment = (caseIndex: number) => (upward ? 1 : -1) * at(caseIndex, index, xBottom).moment;
     const shear = (caseIndex: number) => at(caseIndex, index, xBottom).shear;
+    // Flexión perpendicular al plano, si la fuente la da (un eje del Modelo 3D):
+    // la columna se revisa en flexión biaxial con la misma selección de casos.
+    const biaxial = analysis.length > 0 && at(0, index, xBottom).outOfPlane !== undefined;
+    const outTop = (caseIndex: number) => (upward ? 1 : -1) * (at(caseIndex, index, xTop).outOfPlane?.moment ?? 0);
+    const outBottom = (caseIndex: number) => (upward ? 1 : -1) * (at(caseIndex, index, xBottom).outOfPlane?.moment ?? 0);
+    const outShear = (caseIndex: number) => at(caseIndex, index, xBottom).outOfPlane?.shear ?? 0;
     const psiTop = psiAt(top);
     const psiBottom = psiAt(bottom);
     const k = options.effectiveLengthFactor ?? (source.braced ? 1 : swayEffectiveLengthFactor(psiTop, psiBottom));
     const clearHeightM = Math.max(0.1, length - (beamDepthAt(top) + beamDepthAt(bottom)) / 2e3);
     const axis = axes.findIndex((value) => Math.abs(value - round((nodes[member.i]!.x + nodes[member.j]!.x) / 2)) < LEVEL_TOLERANCE / 2);
     const story = storyKeys.indexOf(storyKey(index));
-    const label = `Columna del eje ${axis + 1}, nivel ${Math.max(1, levelOf(nodes[top]!.y))}`;
+    const axisLabel = source.gridLabelAt?.(axes[axis] ?? nodes[member.i]!.x) ?? String(axis + 1);
+    const label = `Columna del eje ${axisLabel}, nivel ${Math.max(1, levelOf(nodes[top]!.y))}`;
     type Draft = Omit<StructureColumnState, 'ratio' | 'status' | 'designMomentKnm'> & { result: ColumnDesignResult };
     const states: Draft[] = [];
     const seen = new Set<string>();
@@ -724,6 +760,11 @@ export function designStructure(source: StructureSource, options: StructureDesig
           const atTop = superpose(topMoment, dead, live, variant.lateral, combination, variant.sign, direction).total * direction;
           const atBottom = superpose(bottomMoment, dead, live, variant.lateral, combination, variant.sign, direction).total * direction;
           candidates.push({ label: direction > 0 ? 'M máx. (+)' : 'M máx. (−)', values: atTop >= atBottom ? topMoment : bottomMoment, direction });
+          if (biaxial) {
+            const outAtTop = superpose(outTop, dead, live, variant.lateral, combination, variant.sign, direction).total * direction;
+            const outAtBottom = superpose(outBottom, dead, live, variant.lateral, combination, variant.sign, direction).total * direction;
+            candidates.push({ label: direction > 0 ? 'M⊥ máx. (+)' : 'M⊥ máx. (−)', values: outAtTop >= outAtBottom ? outTop : outBottom, direction });
+          }
         }
         const combinationLabel = variant.lateral === null ? combination.label
           : `${combination.label.replace(/\s*±\s*/, variant.sign > 0 ? ' + ' : ' − ')}${laterals.length > 1 ? ` · ${source.cases[variant.lateral]!.label}` : ''}${variant.sign > 0 ? ' (→)' : ' (←)'}`;
@@ -734,7 +775,11 @@ export function designStructure(source: StructureSource, options: StructureDesig
           const mt = pick(topMoment);
           const mb = pick(bottomMoment);
           const v = pick(shear);
-          const key = [p.total, mt.total, mb.total].map((value) => value.toFixed(3)).join('|');
+          const ot = biaxial ? pick(outTop) : null;
+          const ob = biaxial ? pick(outBottom) : null;
+          const out = ot && ob ? (Math.abs(ot.total) >= Math.abs(ob.total) ? ot : ob) : null;
+          const vOut = biaxial ? pick(outShear) : null;
+          const key = [p.total, mt.total, mb.total, out?.total ?? 0].map((value) => value.toFixed(3)).join('|');
           if (seen.has(key)) continue;
           seen.add(key);
           const topGoverns = Math.abs(mt.total) >= Math.abs(mb.total);
@@ -757,8 +802,8 @@ export function designStructure(source: StructureSource, options: StructureDesig
             maxAggregateMm: options.maxAggregateMm,
             axialKn: p.total,
             momentXKnm: source.braced ? Math.abs(m2.total) : Math.abs(nonSway),
-            momentYKnm: 0,
-            shearXKn: 0,
+            momentYKnm: out ? Math.abs(source.braced ? out.total : out.dead + out.live) : 0,
+            shearXKn: vOut ? Math.abs(vOut.total) : 0,
             shearYKn: Math.abs(v.total),
             unbracedLengthM: clearHeightM,
             effectiveLengthFactor: source.braced ? k : Math.max(1, k),
@@ -767,7 +812,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
             sustainedRatio: sustained,
             braced: source.braced,
             swayMomentXKnm: source.braced ? 0 : Math.abs(m2.lateral),
-            swayMomentYKnm: 0,
+            swayMomentYKnm: out && !source.braced ? Math.abs(out.lateral) : 0,
             stabilityIndex: q,
             group: options.group,
             groundFloor: story === 0 && lateral,
@@ -776,6 +821,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
           states.push({
             label: candidate.label, combination: combinationLabel, axialKn: p.total, topKnm: mt.total, bottomKnm: mb.total,
             swayKnm: m2.lateral, nonSwayKnm: nonSway, shearKn: v.total, sustainedRatio: sustained, stabilityIndex: q, result,
+            ...(out ? { outOfPlaneKnm: out.total } : {}),
           });
         }
       }
@@ -791,9 +837,13 @@ export function designStructure(source: StructureSource, options: StructureDesig
       memberIndex: index,
       label,
       axis,
+      axisLabel,
       story,
       result: states[governingState]!.result,
-      states: states.map(({ result, ...state }) => ({ ...state, designMomentKnm: result.magnification.x.designMomentKnm, ratio: result.governingRatio, status: result.status })),
+      states: states.map(({ result, ...state }) => ({
+        ...state, designMomentKnm: result.magnification.x.designMomentKnm, ratio: result.governingRatio, status: result.status,
+        ...(state.outOfPlaneKnm !== undefined ? { outOfPlaneDesignKnm: result.magnification.y.designMomentKnm } : {}),
+      })),
       governingState,
       effectiveLengthFactor: source.braced ? k : Math.max(1, k),
       psiTop,

@@ -51,7 +51,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   /** Vuelve al modo 2D de la mesa. */
   onOpenModel?: () => void;
   /** Abre el modo 3D de la mesa. */
-  onOpenSpace3D?: () => void;
+  onOpenSpace3D?: (axisId?: string) => void;
   /** Escribe el pórtico rápido en el Modelo 2D (deshacible en Modelo). */
   onCreateModel?: (spec: ConcreteFrameSpec) => void;
   /** Fuente de la estructura pedida desde fuera («Diseñar el modelo»). */

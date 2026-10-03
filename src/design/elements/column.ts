@@ -609,6 +609,22 @@ export interface ColumnDesignOptions {
   readonly demandSource?: string;
 }
 
+/**
+ * Diagramas de interacción ya calculados. Una estructura revisa cada columna
+ * en decenas de estados con la misma sección y el mismo armado: el diagrama
+ * sólo depende de ellos, no de la demanda. Los diagramas no se modifican.
+ */
+const CURVE_CACHE = new Map<string, InteractionCurve>();
+const CURVE_CACHE_LIMIT = 256;
+const cachedCurve = (key: string, compute: () => InteractionCurve): InteractionCurve => {
+  const hit = CURVE_CACHE.get(key);
+  if (hit) return hit;
+  const value = compute();
+  if (CURVE_CACHE.size >= CURVE_CACHE_LIMIT) CURVE_CACHE.delete(CURVE_CACHE.keys().next().value!);
+  CURVE_CACHE.set(key, value);
+  return value;
+};
+
 export function designColumn(input: ColumnDesignInput, options: ColumnDesignOptions = {}): ColumnDesignResult | ColumnDesignError {
   const demandSource = options.demandSource ?? CAPTURED_DEMAND;
   const rawErrors = validate(input);
@@ -635,10 +651,13 @@ export function designColumn(input: ColumnDesignInput, options: ColumnDesignOpti
   // φPn,máx = coeficiente · φ · P0 (NTC: PR0 = 0.65P0; NSR C.10.3.6.2: 0.75φP0; E.060 10.3.6.2: 0.80φP0).
   const maximumDesignAxialN = code.maximumAxialCoefficient * code.compressionFactor * squashN;
   // Circular: dos orientaciones del arreglo (una barra en la fibra extrema o entre dos); rige la menor resistencia.
+  const curve = (block: 'rect' | 'circle', depth: number, width: number, positions: readonly number[]) => cachedCurve(
+    [input.code, spiral ? 'spiral' : 'ties', block, depth, width, gross, positions.join(','), area, fc, fy, maximumDesignAxialN].join('|'),
+    () => interactionCurve(code, depth, block === 'circle' ? circularBlock(width) : rectangularBlock(width), gross, positions, area, fc, fy, maximumDesignAxialN));
   const circularCurves = circular ? [bars, circularBars(input, Math.PI / bars.length)].map((arrangement) =>
-    interactionCurve(code, b, circularBlock(b), gross, arrangement.map((bar) => bar.y), area, fc, fy, maximumDesignAxialN)) : [];
-  const aboutX = circular ? circularCurves[0]! : interactionCurve(code, h, rectangularBlock(b), gross, bars.map((bar) => bar.y), area, fc, fy, maximumDesignAxialN);
-  const aboutY = circular ? circularCurves[1]! : interactionCurve(code, b, rectangularBlock(h), gross, bars.map((bar) => bar.x), area, fc, fy, maximumDesignAxialN);
+    curve('circle', b, b, arrangement.map((bar) => bar.y))) : [];
+  const aboutX = circular ? circularCurves[0]! : curve('rect', h, b, bars.map((bar) => bar.y));
+  const aboutY = circular ? circularCurves[1]! : curve('rect', b, h, bars.map((bar) => bar.x));
   const cap = maximumDesignAxialN / 1e3;
   // Término de carga axial pura en Bresler: φP0 sin el coeficiente de φPn,máx.
   const pr0 = code.compressionFactor * squashN / 1e3;

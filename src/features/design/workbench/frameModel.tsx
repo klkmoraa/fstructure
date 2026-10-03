@@ -235,7 +235,7 @@ function structureReinforcementRows(result: StructureDesignResult): ReportRow[] 
     })),
     ...[...new Set(result.columns.map((column) => column.story))].reverse().map((story) => {
       const columns = result.columns.filter((column) => column.story === story);
-      const ties = columns.map((column) => `eje ${column.axis + 1} E ${rebarLabel(column.result.ties.diameterMm)} @ ${cm(column.result.ties.centerSpacingMm)}${column.result.ties.endLengthMm > 0 ? ` (@ ${cm(column.result.ties.endSpacingMm)} en Lo)` : ''}`);
+      const ties = columns.map((column) => `eje ${column.axisLabel} E ${rebarLabel(column.result.ties.diameterMm)} @ ${cm(column.result.ties.centerSpacingMm)}${column.result.ties.endLengthMm > 0 ? ` (@ ${cm(column.result.ties.endSpacingMm)} en Lo)` : ''}`);
       return { label: `Columnas del entrepiso ${story + 1}`, value: `${columnBarsText(result)} · ${ties.join(' · ')}` };
     }),
   ];
@@ -335,6 +335,7 @@ function structureData(outcome: Extract<StructureOutcome, { ok: true }>, draft: 
 }
 
 function structureTables(result: StructureDesignResult) {
+  const biaxial = result.columns.some((column) => column.states.some((state) => state.outOfPlaneKnm !== undefined));
   return [
     {
       title: 'Vigas (kN·m, kN, mm)',
@@ -346,11 +347,12 @@ function structureTables(result: StructureDesignResult) {
     },
     {
       title: 'Columnas: estado que rige (kN, kN·m)',
-      columns: ['Columna', 'Pu', 'M2', 'Mc', 'k', 'Rige'],
+      columns: biaxial ? ['Columna', 'Pu', 'M2', 'Mc', 'M⊥c', 'k', 'Rige'] : ['Columna', 'Pu', 'M2', 'Mc', 'k', 'Rige'],
       rows: [...result.columns].sort((a, b) => b.story - a.story || a.axis - b.axis).map((column) => {
         const state = column.states[column.governingState]!;
         return [column.label, formatNumber(state.axialKn, 0), formatNumber(Math.max(Math.abs(state.topKnm), Math.abs(state.bottomKnm))),
-          formatNumber(state.designMomentKnm), formatNumber(column.effectiveLengthFactor, 2), percent(column.result.governingRatio)];
+          formatNumber(state.designMomentKnm), ...(biaxial ? [formatNumber(state.outOfPlaneDesignKnm ?? 0)] : []),
+          formatNumber(column.effectiveLengthFactor, 2), percent(column.result.governingRatio)];
       }),
     },
     ...(result.braced || !result.stories.length ? [] : [{
@@ -385,7 +387,7 @@ export function structureReport(outcome: Extract<StructureOutcome, { ok: true }>
     memo: structureMemo(outcome),
     checks,
     notes,
-    outOfScope: outOfScopeChecks('frame', result.options.code),
+    outOfScope: outOfScopeChecks('frame', result.options.code, { biaxialColumns: result.source.kind === 'model3d' }),
     input: frame ? frame.input : { source: result.source, options: result.options, members: result.members.map((member) => ({ id: member.id, kind: member.kind, start: member.start, end: member.end })) },
     data: structureData(outcome, draft),
     reinforcement: structureReinforcementRows(result),

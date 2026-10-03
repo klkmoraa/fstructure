@@ -37,7 +37,7 @@ export interface WorkbenchChrome {
   /** Ejes diseñables del Modelo 3D del proyecto, por la misma frontera. */
   readonly modelAxes?: ExternalStructureAxes | null;
   /** Abre el modo 3D de la mesa (sólo dentro de la app). */
-  readonly onOpenSpace3D?: () => void;
+  readonly onOpenSpace3D?: (axisId?: string) => void;
   /** Fuente pedida al abrir el taller. */
   readonly startSource?: 'frame' | 'model' | 'model3d';
 }

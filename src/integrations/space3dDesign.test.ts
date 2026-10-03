@@ -4,6 +4,7 @@ import { designCode } from '../design/elements/codes';
 import { model2dDesignSource } from '../design/elements/model2dSource';
 import { designStructure, type StructureDesignOptions, type StructureSource } from '../design/elements/structure';
 import { parseSpace3DProject } from '../modules/space3d/space3d/data/codec';
+import { generateSpace3DBuilding } from '../modules/space3d/space3d/engine/buildingTemplate';
 import type { Space3DProjectV1, Space3DRestraints } from '../modules/space3d/space3d/model/types';
 import { space3dFromModel2d } from './model2dSpace3d';
 import { space3dDesignSource, space3dFramePlanes } from './space3dDesign';
@@ -142,6 +143,54 @@ describe('un eje del Modelo 3D como fuente de Estructura', () => {
     // Más compresión en la columna baja del eje central (axial negativo).
     expect(loaded.cases[0]!.at(column, 0).axial).toBeLessThan(plain.cases[0]!.at(column, 0).axial - 10);
     expect(source.cases.at(-1)!.kind).toBe('probe');
+  });
+
+  it('las columnas del eje reciben la flexión perpendicular del 3D y se revisan en flexión biaxial', () => {
+    const base = extruded(3, 5);
+    // Un sismo en z (perpendicular a los ejes 1, 2, 3): 20 kN por nudo libre.
+    const free = base.nodes.filter((node) => !node.restraints.uy);
+    const model = parseSpace3DProject(JSON.stringify({
+      ...base,
+      loadCases: [...base.loadCases, { id: 'SZ', name: 'Sismo Z', category: 'accidental', active: true }],
+      nodalLoads: [...base.nodalLoads, ...free.map((node) => ({ id: `SZ-${node.id}`, caseId: 'SZ', nodeId: node.id, fx: 0, fy: 0, fz: 20, mx: 0, my: 0, mz: 0 }))],
+    }));
+    const plain = designStructure(space3dDesignSource(base, 'z:0').create({ braced: false })!, options);
+    const withZ = designStructure(space3dDesignSource(model, 'z:0').create({ braced: false })!, options);
+    if (!plain.ok || !withZ.ok) throw new Error('el diseño falló');
+    const column = withZ.columns.find((item) => item.story === 0)!;
+    const before = plain.columns.find((item) => item.id === column.id)!;
+    const governing = column.states[column.governingState]!;
+    // Sin acción perpendicular, M⊥ sólo viene del peso de las vigas transversales
+    // que llegan al eje de borde; con el sismo Z, la columna baja la toma.
+    const outBefore = Math.max(...before.states.map((state) => Math.abs(state.outOfPlaneKnm ?? 0)));
+    const outAfter = Math.max(...column.states.map((state) => Math.abs(state.outOfPlaneKnm ?? 0)));
+    expect(outBefore).toBeLessThan(10);
+    expect(outAfter).toBeGreaterThan(Math.max(10, 3 * outBefore));
+    expect(column.states.some((state) => state.label.startsWith('M⊥'))).toBe(true);
+    expect(governing.outOfPlaneDesignKnm).toBeGreaterThan(0);
+    expect(column.result.governingRatio).toBeGreaterThan(before.result.governingRatio);
+  });
+
+  it('diseña un edificio generado en el 3D (con diafragmas, masas y espectros) en todos sus ejes', () => {
+    const model = generateSpace3DBuilding({
+      xSpacings: [6, 5], zSpacings: [5], storyHeights: [3.5, 3], columnSection: 'Concreto 40x40 cm', beamSection: 'Concreto 30x50 cm',
+      superDeadLoad: 4, liveLoad: 2, lateralCoefficient: 0.1,
+    });
+    expect(model.massSource).toBeDefined();
+    expect(model.responseSpectrumCases?.length).toBeGreaterThan(0);
+    const planes = space3dFramePlanes(model);
+    expect(planes.map((plane) => plane.short)).toEqual(['1', '2', 'A', 'B', 'C']);
+    for (const plane of planes) {
+      const external = space3dDesignSource(model, plane.id);
+      expect(external.errors).toEqual([]);
+      const result = designStructure(external.create({ braced: false })!, options);
+      if (!result.ok) throw new Error(`${plane.label}: ${result.errors.join(' | ')}`);
+      expect(result.columns.length).toBeGreaterThan(0);
+    }
+    // Las columnas del eje 1 se rotulan con la rejilla (A, B, C), no con su orden.
+    const axis1 = designStructure(space3dDesignSource(model, 'z:0').create({ braced: false })!, options);
+    if (!axis1.ok) throw new Error('eje 1');
+    expect(new Set(axis1.columns.map((column) => column.axisLabel))).toEqual(new Set(['A', 'B', 'C']));
   });
 
   it('dice por qué no puede diseñar', () => {

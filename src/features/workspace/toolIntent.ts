@@ -8,6 +8,8 @@
  */
 type ToolIntent =
   | { tool: 'space3d'; kind: 'generate' | 'example' | 'first-node' }
+  /** El modo 3D abre en una vista (el alzado de un eje que se diseña en Diseño). */
+  | { tool: 'space3d'; kind: 'view'; view: string }
   /** Diseño abierto desde un modo con modelo: la estructura se diseña con ese modelo. */
   | { tool: 'design'; kind: 'model' | 'model3d' }
   | { tool: 'fem'; kind: 'analyze' }

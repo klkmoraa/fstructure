@@ -28,6 +28,8 @@ export interface ExtrudeOptions {
   readonly frames: number;
   /** Separación entre pórticos, m. */
   readonly spacingM: number;
+  /** Un diafragma rígido por nivel (losa) cuando hay más de un pórtico. */
+  readonly diaphragms?: boolean;
 }
 
 export interface Space3DFromModel2D {
@@ -191,7 +193,21 @@ export function space3dFromModel2d(project: ProjectModel, options: ExtrudeOption
   if (project.members.some((member) => member.rigidOffsetI || member.rigidOffsetJ || member.rotationalSpringI !== undefined || member.rotationalSpringJ !== undefined)) {
     notes.push('Las zonas rígidas y los extremos semirrígidos no se trajeron.');
   }
-  if (frames > 1) notes.push(`Cada pórtico lleva las mismas cargas del 2D; las vigas transversales usan la sección de ${reference.label?.trim() || reference.id} y no tienen carga. Sin diafragmas: agrégalos en Definir si hay losa.`);
+  // Diafragmas: en cada nivel, los nudos que no son apoyo de todos los pórticos.
+  const levels = [...new Set(project.nodes.filter((node) => node.support.type === 'none').map((node) => Math.round(node.y * 1e6) / 1e6))].sort((a, b) => a - b);
+  const diaphragms = frames > 1 && options.diaphragms
+    ? levels.map((y, index) => ({
+      id: `D${index + 1}`,
+      name: `Nivel ${index + 1} · y = ${Number(y.toFixed(3))} m`,
+      nodeIds: nodes.filter((node) => Math.abs(node.y - y) <= 1e-6 && !Object.values(node.restraints).some(Boolean)).map((node) => node.id),
+    })).filter((diaphragm) => diaphragm.nodeIds.length > 1)
+    : [];
+  if (frames > 1) {
+    notes.push(`Cada pórtico lleva las mismas cargas del 2D; las vigas transversales usan la sección de ${reference.label?.trim() || reference.id} y no tienen carga.`);
+    notes.push(diaphragms.length
+      ? `Un diafragma rígido por nivel (${diaphragms.length}): la losa une los pórticos y las vigas no se acortan en su plano.`
+      : 'Sin diafragmas: cada pórtico se deforma por su cuenta; agrégalos en Definir si hay losa.');
+  }
   if (frames === 1) notes.push('Un pórtico solo se trae plano: sus nudos quedan restringidos fuera del plano.');
   notes.push('Iy y J se estiman con el rectángulo de cada sección.');
 
@@ -224,6 +240,7 @@ export function space3dFromModel2d(project: ProjectModel, options: ExtrudeOption
     nodalMasses: [],
     generatedLoadSources: [],
     movingLoadCases: [],
+    ...(diaphragms.length ? { diaphragms } : {}),
   };
   return { model, errors, notes };
 }

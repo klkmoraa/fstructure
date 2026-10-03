@@ -11,8 +11,11 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.
 - [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
 - [x] Mesa única 2D · 3D · Diseño: el Solver 3D es el modo 3D de FStructure, con transición animada, «Traer del 2D» y diseño de un eje del 3D en Estructura.
-- [ ] Diseño desde el 3D: revisar flexión biaxial y torsión de las columnas con las acciones fuera del plano (hoy sólo el plano del eje), y diseñar todos los ejes de una vez con la columna común a dos ejes.
-- [ ] Traer del 2D: llevar el material (f′c) del 2D al 3D y ofrecer diafragmas por nivel al extruir.
+- [x] Diseño desde el 3D: columnas en flexión biaxial, todos los ejes con planta (la columna común toma el mayor cociente), eje ~15× más rápido y «Editar en 3D» al alzado del eje.
+- [ ] Diseño desde el 3D: k e índice de estabilidad propios de la dirección perpendicular (hoy los del eje), torsión de vigas, y una memoria/PDF del edificio completo.
+- [ ] Todos los ejes en un worker: hoy cada eje bloquea ~0,5–1 s el hilo principal entre tareas.
+- [x] Traer del 2D: diafragma rígido por nivel al extruir.
+- [ ] Traer del 2D: llevar el f′c del material del 2D al 3D (el catálogo 3D sólo tiene 25 y 30 MPa).
 
 ## Diseño (de `docs/research/concrete-design`)
 
