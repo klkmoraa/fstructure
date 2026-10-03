@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
@@ -28,9 +28,9 @@ const openHome = (tool: string) => window.history.replaceState(null, '', `/?surf
 
 it('la búsqueda anunciada por / recibe el foco sin interrumpir la escritura', async () => {
   const user = userEvent.setup();
-  openHome('design');
+  openHome('fem');
   render(<App />);
-  await screen.findByTestId('design-welcome');
+  await screen.findByTestId('fem-welcome');
   const search = screen.getByRole('searchbox', { name: 'Buscar' });
   await user.keyboard('/');
   expect(document.activeElement).toBe(search);
@@ -69,34 +69,14 @@ it('Elementos finitos: «Analizar el caso de prueba» abre la mesa con el result
   expect((await screen.findByTestId('fem-analysis-result')).textContent).toContain('Análisis completado');
 });
 
-it('Diseño: la norma y el elemento elegidos en la bienvenida abren el taller', async () => {
+it('FStructure: «Diseño de concreto» abre la misma mesa en modo Diseño', async () => {
   const user = userEvent.setup();
-  openHome('design');
+  openHome('model2d');
   render(<App />);
-  await user.click(await screen.findByRole('button', { name: 'NSR-10' }));
-  await user.click(screen.getByRole('button', { name: /^Columna/ }));
-  const dock = await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' });
-  await waitFor(() => expect(within(dock).getByRole('radio', { name: 'Columna' }).getAttribute('aria-checked')).toBe('true'));
-  expect((screen.getByRole('combobox', { name: 'Norma de diseño' }) as HTMLSelectElement).value).toBe('nsr-10');
-});
-
-it('Diseño: «Continuar» aplica la norma elegida al último elemento', async () => {
-  const user = userEvent.setup();
-  openHome('design');
-  render(<App />);
-  await user.click(await screen.findByRole('button', { name: 'E.060 (2009)' }));
-  await user.click(screen.getByRole('button', { name: 'Continuar' }));
-  expect((await screen.findByRole('combobox', { name: 'Norma de diseño' }) as HTMLSelectElement).value).toBe('e060');
-  expect(within(screen.getByRole('radiogroup', { name: 'Elemento a diseñar' })).getByRole('radio', { name: 'Viga' }).getAttribute('aria-checked')).toBe('true');
-});
-
-it('Diseño: un proyecto nuevo conserva la norma elegida en la bienvenida', async () => {
-  const user = userEvent.setup();
-  openHome('design');
-  render(<App />);
-  await user.click(await screen.findByRole('button', { name: 'NSR-10' }));
-  await user.click(screen.getByRole('button', { name: 'Proyecto nuevo' }));
-  expect((await screen.findByRole('combobox', { name: 'Norma de diseño' }) as HTMLSelectElement).value).toBe('nsr-10');
+  await user.click(await screen.findByRole('button', { name: /Diseño de concreto/ }));
+  expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
+  expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+  expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
 });
 
 it('el logo de una mesa vuelve a la bienvenida de su herramienta', async () => {

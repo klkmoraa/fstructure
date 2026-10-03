@@ -12,16 +12,17 @@ import { LIVE_LOAD_USES, LONG_TERM_DURATIONS, formatNumber, isShortString, mpaFr
 import { stirrupText } from './beamModel';
 import type { DesignReport, ReportRow } from './designReport';
 import { FrameElevation } from './FrameDrawings';
+import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 
 /**
  * Estructura: del borrador del formulario a la entrada del motor y a la
- * memoria. La fuente es el pórtico que se genera aquí (`source: 'frame'`) o el
- * Modelo 2D del proyecto (`source: 'model'`), que llega por la frontera de la
- * app. Lo usan la mesa y la memoria del proyecto.
+ * memoria. La fuente es el Modelo 2D del proyecto (`source: 'model'`, la de
+ * siempre en la mesa de FStructure) o un pórtico paramétrico rápido
+ * (`source: 'frame'`). Lo usan la mesa y la memoria del proyecto.
  */
 export const FRAME_DEFAULTS = {
   tag: '', place: '',
-  source: 'frame',
+  source: 'model',
   base: 'fixed', braced: 'no', lateral: 'yes', selfWeight: 'yes',
   beamWidth: '30', beamHeight: '55', columnWidth: '45', columnHeight: '45', cover: '4',
   fc: '250', fy: '4200', fyv: '4200',
@@ -33,6 +34,8 @@ export const FRAME_DEFAULTS = {
   tributary: '4', slabDead: '4.5', slabLive: '1.9', wallLoad: '4',
 };
 export type FrameDraft = typeof FRAME_DEFAULTS;
+/** Borradores y memorias guardados antes de la fuente Modelo 2D eran pórticos generados. */
+export const FRAME_LEGACY = { source: 'frame' } as const satisfies Partial<FrameDraft>;
 
 export type BayDraft = { length: string };
 export type StoryDraft = { height: string; dead: string; live: string; lateral: string };
@@ -58,6 +61,25 @@ export const parseStories = (raw: unknown) => rowsOf<StoryDraft>(raw, ['height',
 const columnGroupOf = (value: string): ColumnGroup => value === 'A' || value === 'B1' ? value : 'B2';
 /** Grupo de la construcción: A con los factores del Grupo A; B1 y B2 con los del B. */
 const loadGroupOf = (value: string) => value === 'A' ? 'A' as const : 'B' as const;
+
+/**
+ * El pórtico rápido escrito como Modelo 2D: los mismos claros, niveles,
+ * secciones, concreto y cargas de servicio (con su sismo si está activo, aunque
+ * el marco se suponga arriostrado: eso es una hipótesis de diseño, no del modelo).
+ */
+export function frameModelSpec(codeId: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): ConcreteFrameSpec {
+  const input = frameToInput(codeId, draft, bays, stories);
+  return {
+    bays: input.bays,
+    stories: stories.map((story, index) => ({ ...input.stories[index]!, lateralKn: draft.lateral === 'yes' ? parseNumber(story.lateral) : 0 })),
+    base: input.base,
+    beam: input.beam,
+    column: input.column,
+    fcMpa: input.fcMpa,
+    elasticModulusKpa: designCode(codeId).elasticModulusMpa(input.fcMpa) * 1e3,
+    includeSelfWeight: input.includeSelfWeight,
+  };
+}
 
 export function frameToInput(codeId: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): FrameDesignInput {
   const code = designCode(codeId);

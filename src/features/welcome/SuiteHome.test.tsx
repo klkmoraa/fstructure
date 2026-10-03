@@ -16,12 +16,14 @@ const renderHome = (props: Partial<SuiteHomeProps> = {}) => {
 };
 
 describe('Inicio de FusionStructure', () => {
-  it('presenta las cuatro herramientas con código, estado y apertura directa', () => {
+  it('presenta las tres mesas con código, estado y apertura directa', () => {
     const { onOpenTool } = renderHome();
     const tools = screen.getByRole('navigation', { name: 'Herramientas' });
     const buttons = [...tools.querySelectorAll('button')];
-    expect(buttons.map((button) => button.querySelector('strong')?.textContent)).toEqual(['FStructure', 'Solver 3D', 'Elementos finitos', 'Diseño']);
-    expect(buttons.map((button) => button.querySelector('.fs-tool__code')?.textContent)).toEqual(['FS-A01', 'FS-A02', 'FS-A03', 'FS-A04']);
+    expect(buttons.map((button) => button.querySelector('strong')?.textContent)).toEqual(['FStructure', 'Solver 3D', 'Elementos finitos']);
+    expect(buttons.map((button) => button.querySelector('.fs-tool__code')?.textContent)).toEqual(['FS-A01', 'FS-A02', 'FS-A03']);
+    // Diseñar es parte de FStructure, no una mesa aparte.
+    expect(buttons[0]!.querySelector('.fs-tool__role')?.textContent).toMatch(/diseño de concreto/);
     fireEvent.click(screen.getByRole('button', { name: /Abrir Elementos finitos/ }));
     expect(onOpenTool).toHaveBeenCalledWith('fem');
   });

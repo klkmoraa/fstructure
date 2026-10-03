@@ -1,4 +1,4 @@
-import { ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, PenLine, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
@@ -6,6 +6,7 @@ import { barsText } from '../../../design/elements/beam';
 import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import { MAX_FRAME_BAYS, MAX_FRAME_STORIES } from '../../../design/elements/frame';
 import { rebarLabel } from '../../../design/elements/shared';
+import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 import type { ExternalStructureSource, StructureDesignResult } from '../../../design/elements/structure';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
 import { bastionTitle, meters, stirrupText } from './beamModel';
@@ -16,7 +17,7 @@ import {
 } from './common';
 import { FRAME_DIAGRAMS, FrameElevation, ratioBand, type FrameDiagramKind } from './FrameDrawings';
 import {
-  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, designFromDraft, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
+  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, designFromDraft, frameModelSpec, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
   type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome,
 } from './frameModel';
 import { useWorkbenchStorage } from './workbenchStorage';
@@ -116,11 +117,36 @@ function useDeferredOutcome(key: string, enabled: boolean, compute: () => Struct
   return enabled ? { outcome: state?.outcome ?? null, pending: state?.key !== key } : { outcome: null, pending: false };
 }
 
+/**
+ * Pórtico rápido → Modelo 2D: lo que se probó aquí se escribe en el modelo con
+ * sus casos y cargas, como un cambio que «Deshacer» revierte en Modelo. Si el
+ * modelo ya tiene barras, se pide confirmación antes de reemplazarlo.
+ */
+function QuickFrameCard({ spec, modelMembers, onCreate }: { spec: ConcreteFrameSpec | null; modelMembers: number; onCreate: (spec: ConcreteFrameSpec) => void }) {
+  const [confirming, setConfirming] = useState(false);
+  const apply = () => { if (spec) { setConfirming(false); onCreate(spec); } };
+  return <div className="dw-model-card" data-state="ready">
+    <strong>Pórtico rápido</strong>
+    <p>Prueba claros, niveles y secciones aquí. «Pasar al modelo» lo escribe en el Modelo 2D con sus casos y cargas para seguir modelando y diseñarlo desde ahí.</p>
+    {confirming
+      ? <div className="dw-model-confirm" role="group" aria-label="Confirmar reemplazo del modelo">
+        <p>{`Reemplaza el modelo actual (${modelMembers} ${modelMembers === 1 ? 'barra' : 'barras'}). En Modelo, «Deshacer» lo recupera.`}</p>
+        <div>
+          <button type="button" className="dw-inline-action" onClick={apply}>Reemplazar el modelo</button>
+          <button type="button" className="dw-inline-action" onClick={() => setConfirming(false)}>Cancelar</button>
+        </div>
+      </div>
+      : <button type="button" className="dw-inline-action" disabled={!spec} onClick={() => modelMembers > 0 ? setConfirming(true) : apply()}>
+        <ArrowRightLeft size={13} aria-hidden="true" />Pasar al modelo
+      </button>}
+  </div>;
+}
+
 function ModelSummary({ modelSource, onOpenModel, fcFromModel }: { modelSource: ExternalStructureSource | null; onOpenModel?: () => void; fcFromModel: boolean }) {
   if (!modelSource) {
     return <div className="dw-model-card" data-state="empty">
       <strong>Sin Modelo 2D</strong>
-      <p>Abre el taller desde un proyecto para diseñar su modelo, o genera un pórtico aquí.</p>
+      <p>Dibuja la estructura en Modelo, abre la plantilla «Pórtico de concreto» o arma un pórtico rápido y pásalo al modelo.</p>
     </div>;
   }
   const { summary } = modelSource;
@@ -133,13 +159,13 @@ function ModelSummary({ modelSource, onOpenModel, fcFromModel }: { modelSource: 
       <div><dt>Casos</dt><dd>{`${summary.deadCases} CM · ${summary.lateralCases} lateral · CV en ${summary.liveCases} ${summary.liveCases === 1 ? 'parte' : 'partes'}`}</dd></div>
     </dl>
     {summary.ignoredCases.length ? <p>{`No entran: ${summary.ignoredCases.join(', ')}.`}</p> : null}
-    <p>{fcFromModel ? `f′c del material del modelo: ${formatNumber(modelSource.fcMpa ?? 0, 1)} MPa.` : 'El modelo no declara f′c: se usa el de Materiales.'} Geometría, secciones y cargas se editan en el Modelo 2D.</p>
-    {onOpenModel ? <button type="button" className="dw-inline-action" onClick={onOpenModel}><ExternalLink size={13} aria-hidden="true" />Abrir el Modelo 2D</button> : null}
+    <p>{fcFromModel ? `f′c del material del modelo: ${formatNumber(modelSource.fcMpa ?? 0, 1)} MPa.` : 'El modelo no declara f′c: se usa el de Materiales.'} Geometría, secciones y cargas se editan en Modelo.</p>
+    {onOpenModel ? <button type="button" className="dw-inline-action" onClick={onOpenModel}><PenLine size={13} aria-hidden="true" />Editar en Modelo</button> : null}
   </div>;
 }
 
 export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
-  const { draft, set, reset, replace } = useStoredDraft('frame', FRAME_DEFAULTS);
+  const { draft, set, reset, replace } = useStoredDraft('frame', FRAME_DEFAULTS, FRAME_LEGACY);
   const storage = useWorkbenchStorage();
   const [bays, setBays] = useState<BayDraft[]>(() => readStored(storage, 'frame-bays', parseBays, DEFAULT_BAYS));
   const [stories, setStories] = useState<StoryDraft[]>(() => readStored(storage, 'frame-stories', parseStories, DEFAULT_STORIES));
@@ -148,7 +174,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const snapshot = useMemo(() => ({ draft, bays, stories }), [draft, bays, stories]);
   const applySnapshot = useCallback((next: typeof snapshot) => { replace(next.draft); setBays(next.bays); setStories(next.stories); }, [replace]);
   const history = useDraftHistory(snapshot, applySnapshot);
-  const { onHistory, startSource, modelSource = null, onOpenModel } = chrome;
+  const { onHistory, startSource, modelSource = null, onOpenModel, onCreateModel } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
   // «Diseñar el modelo» desde fuera abre la mesa con esa fuente.
   useEffect(() => {
@@ -159,7 +185,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const fromModel = draft.source === 'model';
   const lateral = draft.lateral === 'yes' && draft.braced !== 'yes';
 
-  // Pórtico generado: cálculo inmediato (diferido por React). Modelo 2D: cálculo después de pintar.
+  // Pórtico rápido: cálculo inmediato (diferido por React). Modelo 2D: cálculo después de pintar.
   const inputs = useMemo(() => ({ code: chrome.code, draft, bays, stories }), [chrome.code, draft, bays, stories]);
   const deferredInputs = useDeferredValue(inputs);
   const frameOutcome = useMemo(() => fromModel ? null : designFromDraft(deferredInputs.code, deferredInputs.draft as FrameDraft, deferredInputs.bays, deferredInputs.stories),
@@ -192,7 +218,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   ];
   const memberChecks = beam ? splitChecks(beam.result.checks) : column ? splitChecks(column.result.checks) : [[], []] as const;
   const fcFromModel = fromModel && modelSource?.fcMpa !== null && modelSource?.fcMpa !== undefined;
-  const name = fromModel ? 'Modelo 2D' : 'Pórtico';
+  const name = fromModel ? 'Modelo 2D' : 'Pórtico rápido';
   const supports = result?.columns.length ? 'columns' as const : 'ideal' as const;
   const verdict = result
     ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) }
@@ -209,8 +235,10 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="P-1" />
       <FieldGroup title="Origen de la estructura" columns={1}>
         <SegmentedControl label="Origen de la estructura" size="sm" value={fromModel ? 'model' : 'frame'} onValueChange={(value) => { set('source')(value); setPicked(null); }}
-          options={[{ value: 'frame', label: 'Pórtico generado' }, { value: 'model', label: 'Modelo 2D' }]} />
-        {fromModel ? <ModelSummary modelSource={modelSource} fcFromModel={fcFromModel} {...(onOpenModel ? { onOpenModel } : {})} /> : null}
+          options={[{ value: 'model', label: 'Modelo 2D' }, { value: 'frame', label: 'Pórtico rápido' }]} />
+        {fromModel ? <ModelSummary modelSource={modelSource} fcFromModel={fcFromModel} {...(onOpenModel ? { onOpenModel } : {})} />
+          : onCreateModel ? <QuickFrameCard spec={frameOutcome?.ok ? frameModelSpec(chrome.code as DesignCodeId, draft, bays, stories) : null} modelMembers={modelSource?.summary.members ?? 0}
+            onCreate={(spec) => { onCreateModel(spec); set('source')('model'); setPicked(null); setLoadNote(null); }} /> : null}
       </FieldGroup>
       {fromModel ? null : <>
         <FieldGroup title="Claros entre ejes" columns={1}>
@@ -351,7 +379,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       ? <div className="dw-model-wait" role="status"><span className="dw-model-wait__dot" aria-hidden="true" />Analizando el Modelo 2D con el solver de la app…</div>
       : <div className="dw-model-errors">
         <ErrorsPanel errors={outcome && !outcome.ok ? outcome.errors : []} />
-        {fromModel && onOpenModel ? <button type="button" className="dw-inline-action" onClick={onOpenModel}><ExternalLink size={13} aria-hidden="true" />Abrir el Modelo 2D</button> : null}
+        {fromModel && onOpenModel ? <button type="button" className="dw-inline-action" onClick={onOpenModel}><PenLine size={13} aria-hidden="true" />Editar en Modelo</button> : null}
       </div>}
     results={result && report ? <>
       <Verdict status={result.status} ratio={result.governingRatio} title={report.title} outOfScope={outOfScope.length}>

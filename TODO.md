@@ -6,7 +6,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 - [ ] FEM: colorear por desplazamiento y calidad; editor mínimo de placa, apoyos y cargas. Malla, von Mises y tablas ya se consultan en la mesa.
 - [ ] Proyectos por herramienta: miniatura generada de cada modelo 3D, malla FEM o elemento de Diseño; hoy usan la escena de la herramienta y el resumen de su rama local.
-- [ ] Mesas de FEM y Diseño con el lenguaje de la 2D (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM.
+- [ ] Mesa de FEM y modo Diseño con el lenguaje del modo Modelo (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM.
 - [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
 - [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.
 - [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
@@ -20,9 +20,9 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] Columnas zunchadas, de lindero con contratrabe, losas de cimentación y dados: necesitan cláusulas registradas (FR y φPn,máx del zuncho, αs de borde, ancho efectivo del patín).
 - [ ] Normas para ampliar el taller: torsión (NTC 5.8), losas, muros y combinaciones accidentales necesitan el texto oficial registrado con evidencia en `docs/design/normative-sources.json`.
 - [ ] Confirmar con la NTC 6.7.4 si el umbral de acero mínimo por penetración (6.7.6.1.2) usa el esfuerzo combinado con transferencia de momento; hoy usa vuv directo y la nota lo avisa.
-- [x] Modelar y diseñar: puente declarado `src/integrations/model2dDesign` (Modelo 2D → Diseño · Estructura), «Diseñar» en el 2D, fila en el Inicio, plantilla «Pórtico de concreto» y bandas de diagrama comunes (Lámina en Resultados del 2D).
-- [ ] Modelar y diseñar: llevar de vuelta al 2D el miembro elegido en Diseño (resaltarlo en el lienzo) y diseñar barras inclinadas o de acero; hoy se dicen «sin diseñar».
-- [ ] Modelo 2D en Diseño: llevar el análisis por casos a un worker; un 4 × 4 tarda ~1 s la primera vez (luego hay caché por revisión).
+- [x] Tres mesas: Diseño es el modo Diseño de FStructure (interruptor Modelo | Diseño), Estructura diseña el modelo por omisión, el pórtico rápido pasa al modelo (deshacible) y las bandas de diagrama son comunes (Lámina en Resultados).
+- [ ] Modelo y Diseño: resaltar en el lienzo el miembro elegido en Diseño (y abrir su diseño desde el Inspector), y diseñar barras inclinadas o de acero; hoy se dicen «sin diseñar».
+- [ ] Modo Diseño: llevar el análisis por casos del modelo a un worker; un 4 × 4 tarda ~1 s la primera vez (luego hay caché por revisión).
 - [x] Estructura (antes Pórtico): vigas y columnas analizadas juntas (viva alternada, acción lateral, k del nomograma, índice de estabilidad del marco) y cada miembro diseñado con los motores de viga y columna. Diagramas con valores por tramo, φVn y cursor de lectura.
 - [ ] Pórtico: proponer secciones (viga y columna mínimas que cumplen), secciones distintas por nivel, cargas puntuales y voladizos.
 - [ ] Pórtico: llevar el cálculo a un worker; un 5 × 5 con sismo tarda ~0.3 s en el hilo principal.
@@ -42,7 +42,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Pruebas (sólo si aportan)
 
-- [ ] Humo E2E de las cinco pantallas de entrada (Inicio y cuatro bienvenidas) con capturas en claro, oscuro y móvil.
+- [ ] Humo E2E de las cuatro pantallas de entrada (Inicio y tres bienvenidas) con capturas en claro, oscuro y móvil.
 - [ ] Matriz de importación/exportación: un archivo válido y uno inválido por formato.
 - [ ] Confirmar la entrega del PDF de Diseño en Safari: Chromium sin «compartir» ya descarga el PDF (probado con el del pórtico, 13 páginas con láminas).
 - [ ] Auditoría de dependencias en CI.

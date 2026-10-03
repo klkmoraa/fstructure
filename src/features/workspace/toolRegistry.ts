@@ -4,13 +4,9 @@ import type { ToolModuleDescriptor } from '../../shared/contracts';
 export const toolRegistry: readonly ToolModuleDescriptor[] = [
   {
     id: 'model2d', labelKey: 'navigation.model2d', maturity: 'experimental',
-    capabilities: ['planar-model-editing', 'planar-linear-analysis'],
+    // El modo Diseño de la misma mesa (`adapters/DesignSurface`) diseña el modelo y elementos sueltos de concreto.
+    capabilities: ['planar-model-editing', 'planar-linear-analysis', 'concrete-beam-column-footing-design', 'concrete-section-philosophies', 'concrete-reinforcement-takeoff'],
     load: () => import('./adapters/Model2DSurface').then((module) => module.default),
-  },
-  {
-    id: 'design', labelKey: 'design.title', maturity: 'experimental',
-    capabilities: ['concrete-beam-column-footing-design', 'concrete-section-philosophies', 'concrete-reinforcement-takeoff'],
-    load: () => import('./adapters/DesignSurface').then((module) => module.default),
   },
   {
     id: 'space3d', labelKey: 'space3d.title', maturity: 'experimental',

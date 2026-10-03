@@ -60,16 +60,18 @@ export const findDuplicateSourceViolations = (root) => {
 };
 
 /**
- * Territorio de cada herramienta aislada. El Modelo 2D es el resto de `src`: la
- * app y sus piezas comunes (Foundation, sistema de diseño, almacenamiento).
+ * Territorio de cada mesa. FStructure (`model2d`) es el resto de `src` —la app
+ * y sus piezas comunes (Foundation, sistema de diseño, almacenamiento)— más su
+ * modo Diseño (`src/design`, `src/features/design`), que se declara para que 3D
+ * y FEM no lo usen como si fuera común.
  *
  * Una herramienta puede usar piezas comunes, pero nunca el código de otra
  * herramienta. Los adaptadores de `src/features/workspace` son la única
- * frontera que las conoce a todas, y los puentes de datos declarados viven en
- * `src/integrations`.
+ * frontera que las conoce a todas, y un puente de datos entre mesas, si algún
+ * día hace falta, vive en `src/integrations`.
  */
 const TOOL_TERRITORIES = new Map([
-  ['design', ['src/design', 'src/features/design']],
+  ['model2d', ['src/design', 'src/features/design']],
   ['space3d', ['src/modules/space3d']],
   ['fem', ['src/modules/fem']],
 ]);
@@ -129,8 +131,6 @@ export const findToolIsolationViolations = (root) => {
       if (!specifier.startsWith('.')) continue;
       const targetPath = resolve(dirname(path), specifier);
       const target = territoryOf(resolvedRoot, targetPath);
-      // Desde el 2D sólo se vigila la interfaz ajena; `src/design` es biblioteca de cálculo.
-      if (isModel2DInterface && target === 'design' && !isInside(targetPath, join(resolvedRoot, 'src/features/design'))) continue;
       if (target && target !== owner) violations.push(`${relative(resolvedRoot, path)} -> ${specifier} (${owner} imports ${target})`);
     }
   }

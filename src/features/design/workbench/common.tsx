@@ -19,11 +19,17 @@ export function readStored<T>(storage: WorkbenchStorage, key: string, parse: (ra
 
 export const isShortString = (value: unknown): value is string => typeof value === 'string' && value.length <= 32;
 
-export function useStoredDraft<T extends Record<string, string>>(key: string, defaults: T) {
+/**
+ * Borrador de un formulario guardado en el taller. `legacy` da el valor de un
+ * campo nuevo para borradores guardados antes de que existiera (p. ej. la fuente
+ * de Estructura, que antes sólo podía ser el pórtico generado): lo guardado
+ * conserva su significado aunque cambie el valor por omisión.
+ */
+export function useStoredDraft<T extends Record<string, string>>(key: string, defaults: T, legacy?: Partial<T>) {
   const storage = useWorkbenchStorage();
   const [draft, setDraft] = useState<T>(() => readStored(storage, key, (raw) => {
     if (!raw || typeof raw !== 'object') return undefined;
-    const merged = { ...defaults };
+    const merged: T = { ...defaults, ...legacy } as T;
     for (const field of Object.keys(defaults) as (keyof T)[]) {
       const value = (raw as Record<string, unknown>)[field as string];
       if (isShortString(value)) merged[field] = value as T[keyof T];

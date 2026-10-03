@@ -1,6 +1,6 @@
 # FStructure — guía para agentes
 
-FStructure es la app de cálculo estructural de FusionStructure: cuatro herramientas aisladas (FS-A01 FStructure 2D, FS-A02 Solver 3D, FS-A03 Elementos finitos, FS-A04 Diseño) detrás de un Inicio común. Es un proyecto para **experimentar**: casi todo aquí es guía, no regla.
+FStructure es la app de cálculo estructural de FusionStructure: tres mesas aisladas (FS-A01 FStructure, FS-A02 Solver 3D, FS-A03 Elementos finitos) detrás de un Inicio común. FStructure modela y diseña en la misma mesa: el interruptor Modelo | Diseño de su barra (URL `mode=design`) pasa del 2D al diseño de concreto sobre el mismo proyecto. Es un proyecto para **experimentar**: casi todo aquí es guía, no regla.
 
 ## Cómo trabajamos
 
@@ -12,7 +12,7 @@ FStructure es la app de cálculo estructural de FusionStructure: cuatro herramie
 
 1. **No perder datos del usuario.** Lo guardado se migra con versión; nada se sobrescribe ni se descarta en silencio.
 2. **Nada sale del dispositivo** sin una acción explícita de la persona (sin telemetría ni red implícita).
-3. **Las herramientas no se mezclan.** Ninguna importa código de otra ni lee sus datos; `npm run architecture:check` lo vigila. El único paso de datos es un puente declarado en `src/integrations` que traduce a un contrato de la herramienta destino y sólo usa `src/features/workspace` (hoy: Modelo 2D → Diseño, «Modelar y diseñar»).
+3. **Las herramientas no se mezclan.** Ninguna importa código de otra ni lee sus datos; `npm run architecture:check` lo vigila. Diseño es parte de FS-A01 (su modo Diseño), no otra herramienta; si algún día dos mesas necesitan pasarse datos, se hace con un puente declarado en `src/integrations` que sólo usa `src/features/workspace`.
 4. **`main` publicable.** CI corre `npm run check` y no publica si falla.
 
 ## Pruebas: el mínimo que cubre el cambio
@@ -29,12 +29,11 @@ No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa.
 
 ## Mapa
 
-- `src/App.tsx`: rutas `?surface=welcome` (Inicio) · `?surface=home&tool=` (bienvenida) · `?tool=` (mesa).
+- `src/App.tsx`: rutas `?surface=welcome` (Inicio) · `?surface=home&tool=` (bienvenida) · `?tool=` (mesa) · `?tool=model2d&mode=design` (modo Diseño). Los enlaces viejos `tool=design` abren el modo Diseño.
 - `src/features/welcome/`: Inicio (`SuiteHome`) y bienvenida original de FStructure (`Model2DWelcome`).
-- `src/features/tool-home/`: bienvenida común de 3D, FEM y Diseño.
-- `src/features/workspace/`: `WorkspaceShell` (2D), `ToolShell` (3D/FEM/Diseño), `toolCatalog`, `toolIntent`, `toolNavigation`. Es la única carpeta que conoce las cuatro herramientas.
-- `src/integrations/`: puentes declarados entre herramientas (`model2dDesign`: Modelo 2D → `ExternalStructureSource` de Diseño).
-- FS-A01: `src/features`, `src/engine`, `src/commands`, `src/store` · FS-A02: `src/modules/space3d` · FS-A03: `src/modules/fem` · FS-A04: `src/design`, `src/features/design`.
+- `src/features/tool-home/`: bienvenida común de 3D y FEM.
+- `src/features/workspace/`: `WorkspaceShell` (modo Modelo), `ToolShell` (3D/FEM y `DesignModeShell`, el modo Diseño), `MesaModeSwitch`, `toolCatalog`, `toolIntent`. Es la única carpeta que conoce las tres herramientas.
+- FS-A01: `src/features`, `src/engine`, `src/commands`, `src/store`, y su modo Diseño en `src/design` (motores; `elements/model2dSource` traduce el modelo a la mesa Estructura) y `src/features/design` (taller) · FS-A02: `src/modules/space3d` · FS-A03: `src/modules/fem`.
 - Común: `src/foundation` (unidades, álgebra), `src/storage` (proyecto local), `src/design-system` (incluye las bandas de diagrama que comparten Diseño y el 2D), `src/workers`.
 
 ## Cómo está hecho (guía)

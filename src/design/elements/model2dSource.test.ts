@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createBlankProject, createConcreteFrameProject, createDefaultProject } from '../data/defaultProject';
-import { designCode, type DesignCodeId } from '../design/elements/codes';
-import { designFrame, type FrameDesignInput } from '../design/elements/frame';
-import { designStructure, type StructureDesignOptions } from '../design/elements/structure';
-import type { MemberLoad, MemberModel, NodeModel, ProjectModel } from '../types';
-import { model2dDesignSource } from './model2dDesign';
+import { createBlankProject, createConcreteFrameProject, createDefaultProject } from '../../data/defaultProject';
+import { designCode, type DesignCodeId } from './codes';
+import { designFrame, type FrameDesignInput } from './frame';
+import { designStructure, type StructureDesignOptions } from './structure';
+import type { MemberLoad, MemberModel, NodeModel, ProjectModel } from '../../types';
+import { model2dDesignSource } from './model2dSource';
+import { withConcreteFrame } from '../../data/concreteFrame';
 
 const code: DesignCodeId = 'nsr-10';
 const frameInput: FrameDesignInput = {
@@ -86,7 +87,7 @@ function modelOfFrame(): ProjectModel {
   };
 }
 
-describe('puente Modelo 2D → Diseño', () => {
+describe('el Modelo 2D como fuente de Estructura', () => {
   it('diseña igual el pórtico dibujado en el 2D que el generado por el taller', () => {
     const generated = designFrame(frameInput);
     if (!generated.ok) throw new Error(generated.errors.join('\n'));
@@ -180,5 +181,47 @@ describe('plantilla «Pórtico de concreto» del Modelo 2D', () => {
     expect(result.columns).toHaveLength(6);
     expect(result.lateral).toBe(true);
     expect(result.status).not.toBe('fail');
+  });
+});
+
+describe('pórtico rápido llevado al Modelo 2D', () => {
+  it('se diseña igual que el pórtico paramétrico (sin peso propio, mismas cargas)', () => {
+    const input: FrameDesignInput = { ...frameInput, includeSelfWeight: false };
+    const generated = designFrame(input);
+    if (!generated.ok) throw new Error(generated.errors.join('\n'));
+    const project = withConcreteFrame(createBlankProject(), {
+      bays: input.bays, stories: input.stories, base: input.base, beam: input.beam, column: input.column,
+      fcMpa: 25, elasticModulusKpa: designCode(code).elasticModulusMpa(25) * 1e3, includeSelfWeight: false,
+    });
+    expect(project.members).toHaveLength(10);
+    expect(project.loadCases.map((item) => item.id)).toEqual(['CM', 'CV', 'S']);
+    const external = model2dDesignSource(project);
+    expect(external.errors).toEqual([]);
+    const fromModel = designStructure(external.create({ braced: false })!, { ...options, includeSelfWeight: external.includesSelfWeight });
+    if (!fromModel.ok) throw new Error(fromModel.errors.join('\n'));
+    fromModel.beams.forEach((beam, index) => {
+      const reference = generated.beams[index]!.result;
+      expect(beam.result.extremes.negativeMomentKnm).toBeCloseTo(reference.extremes.negativeMomentKnm, 4);
+      expect(beam.result.governingRatio).toBeCloseTo(reference.governingRatio, 4);
+    });
+    fromModel.columns.forEach((column) => {
+      expect(column.result.governingRatio).toBeCloseTo(generated.columns.find((item) => item.label === column.label)!.result.governingRatio, 4);
+    });
+  });
+
+  it('conserva identidad y nombre del proyecto y vacía lo que dependía del modelo anterior', () => {
+    const before = { ...createDefaultProject(), name: 'Mi proyecto' };
+    const after = withConcreteFrame(before, {
+      bays: [6], stories: [{ heightM: 3, deadKnPerM: 10, liveKnPerM: 5, lateralKn: 0 }], base: 'pinned',
+      beam: { widthMm: 300, heightMm: 500 }, column: { widthMm: 400, heightMm: 400 }, fcMpa: 28, elasticModulusKpa: 2.5e7, includeSelfWeight: true,
+    });
+    expect(after.id).toBe(before.id);
+    expect(after.name).toBe('Mi proyecto');
+    expect(after.nodes.filter((node) => node.support.type === 'pin')).toHaveLength(2);
+    // Sin fuerza lateral no hay caso de sismo; las secciones y el concreto salen del catálogo.
+    expect(after.loadCases.some((item) => item.id === 'S')).toBe(false);
+    expect(after.members.find((member) => member.id === 'V11')!.sectionId).toBe('rect-concrete-300x500');
+    expect(after.members.every((member) => member.materialId === 'concrete-28mpa')).toBe(true);
+    expect(after.designAssignments).toEqual([]);
   });
 });

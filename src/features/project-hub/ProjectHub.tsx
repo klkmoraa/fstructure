@@ -268,7 +268,7 @@ export const ProjectHub = ({
         const presentation = recentProjectPresentation(tool, bundles.get(record.id)?.bundle, language);
         const toolScene = tool === 'model2d' ? null : toolIdentity(tool).scene;
         const meta = presentation.meta || (tool === 'model2d'
-          ? t('hub.meta', { members: record.project.members.length, nodes: record.project.nodes.length })
+          ? `${t('hub.meta', { members: record.project.members.length, nodes: record.project.nodes.length })}${presentation.design ? ` · ${language === 'es' ? 'Diseño' : 'Design'}: ${presentation.design}` : ''}`
           : language === 'es' ? 'Sin datos guardados de esta herramienta' : 'No saved data for this tool');
         return <div className="project-hub__entry" key={record.id}><article className="project-hub__row">
         <div className="project-hub__preview" aria-hidden="true">

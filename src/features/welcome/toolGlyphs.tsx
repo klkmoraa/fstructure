@@ -33,13 +33,6 @@ const GLYPHS: Record<ToolId, ReactNode> = {
     <circle cx="18" cy="20" r="2.2" fill="currentColor" stroke="none" />
     <circle cx="29" cy="29" r="2.2" fill="currentColor" stroke="none" />
   </>,
-  design: <>
-    <path d="M7 9h13M13.5 9v17M7 26h13" stroke="currentColor" />
-    <path d="M7 33h13M7 40h13" stroke="currentColor" opacity=".45" />
-    <path d="M27 42V22" stroke="currentColor" strokeWidth="7" strokeLinecap="butt" />
-    <path d="M38 42V14" stroke={accent} strokeWidth="7" strokeLinecap="butt" opacity=".85" />
-    <path d="M23 14h20" stroke={accent} strokeDasharray="3 3" />
-  </>,
 };
 
 export const ToolGlyph = ({ tool, size = 28 }: { tool: ToolId; size?: number }) => <svg

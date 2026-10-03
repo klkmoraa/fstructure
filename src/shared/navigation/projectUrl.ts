@@ -8,15 +8,25 @@ export interface ProjectUrlState {
   surface: 'welcome' | 'tool-home' | 'workspace';
   projectId: string;
   tool: ToolId;
+  /** Modo de la mesa de FStructure 2D: modelar (por omisión) o diseñar. */
+  mode?: MesaMode;
 }
 
+export type MesaMode = 'model' | 'design';
+
 const legacyTools = new Map<string, ToolId>([
-  ['workspace2d', 'model2d'], ['design', 'design'], ['workspace3d', 'space3d'], ['fem', 'fem'],
+  ['workspace2d', 'model2d'], ['design', 'model2d'], ['workspace3d', 'space3d'], ['fem', 'fem'],
 ]);
 
 export function isToolId(value: unknown): value is ToolId {
-  return value === 'model2d' || value === 'design' || value === 'space3d' || value === 'fem';
+  return value === 'model2d' || value === 'space3d' || value === 'fem';
 }
+
+/** Diseño fue una herramienta propia (`tool=design`); sus enlaces abren el modo Diseño de FStructure. */
+const isLegacyDesign = (params: URLSearchParams) => params.get('tool') === 'design' || params.get('surface') === 'design';
+
+export const sameRoute = (a: ProjectUrlState, b: ProjectUrlState) =>
+  a.surface === b.surface && a.projectId === b.projectId && a.tool === b.tool && (a.mode ?? 'model') === (b.mode ?? 'model');
 
 export function readProjectUrl(href: string, activeProjectId: string): ProjectUrlState {
   const params = new URL(href).searchParams;
@@ -30,7 +40,9 @@ export function readProjectUrl(href: string, activeProjectId: string): ProjectUr
   // Enlaces antiguos a las vistas del Inicio 2D (plantillas, aula…) abren la bienvenida de FStructure.
   if (surface === 'welcome' && params.has('view')) return { surface: 'tool-home', projectId, tool: 'model2d' };
   const workspace = params.has('tool') || legacy !== undefined || (params.has('project') && surface !== 'welcome');
-  return { surface: workspace ? 'workspace' : 'welcome', projectId, tool };
+  if (!workspace) return { surface: 'welcome', projectId, tool };
+  const design = tool === 'model2d' && (isLegacyDesign(params) || params.get('mode') === 'design');
+  return design ? { surface: 'workspace', projectId, tool, mode: 'design' } : { surface: 'workspace', projectId, tool };
 }
 
 export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, route: ProjectUrlState, mode: 'push' | 'replace'): void {
@@ -38,6 +50,7 @@ export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, r
   url.searchParams.delete('surface');
   url.searchParams.delete('project');
   url.searchParams.delete('tool');
+  url.searchParams.delete('mode');
   if (route.surface !== 'tool-home') url.searchParams.delete('view');
   if (route.surface === 'welcome') {
     url.searchParams.set('surface', 'welcome');
@@ -48,6 +61,7 @@ export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, r
   } else {
     url.searchParams.set('project', route.projectId);
     url.searchParams.set('tool', route.tool);
+    if (route.tool === 'model2d' && route.mode === 'design') url.searchParams.set('mode', 'design');
   }
   url.hash = '';
   if (url.href === browser.location.href) return;

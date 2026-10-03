@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight, ArrowUpRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, DraftingCompass, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import type { ProjectModel, ThemeMode } from '../../types';
@@ -35,6 +35,8 @@ interface Solver2DHomeProps {
   onOpenClassroom: () => void;
   onOpenImport: () => void;
   onOpenProjects: () => void;
+  /** Abre la mesa en modo Diseño (el mismo proyecto). */
+  onOpenDesign?: () => void;
   /** Lista de proyectos guardados. La inyecta la pantalla, no la resuelve aquí. */
   recents: ReactNode;
   /** Se dispara al acercarse a la acción principal para precargar el editor. */
@@ -44,7 +46,7 @@ interface Solver2DHomeProps {
 const copy = {
   es: {
     role: 'Solver 2D',
-    lead: 'Modela, analiza y comprende estructuras.',
+    lead: 'Modela, analiza, diseña y comprende estructuras.',
     leadStrong: 'Del trazo al diagrama.',
     open: 'Proyecto abierto',
     continue: 'Continuar',
@@ -54,7 +56,7 @@ const copy = {
     members: 'barras',
     loads: 'cargas',
     startTitle: 'Por dónde empezar',
-    startBody: 'Cuatro entradas al mismo editor.',
+    startBody: 'Cinco entradas a la misma mesa.',
     pathBlank: 'Modelo en blanco',
     pathBlankBody: 'Empieza con la rejilla vacía y coloca el primer nudo.',
     pathTemplate: 'Plantilla',
@@ -63,6 +65,8 @@ const copy = {
     pathClassroomBody: 'Un caso guiado que no te quita el control del modelo.',
     pathImport: 'Importar',
     pathImportBody: 'Trae un expediente, un JSON o un DXF y revísalo antes.',
+    pathDesign: 'Diseño de concreto',
+    pathDesignBody: 'Diseña el modelo o una viga, columna o zapata con NTC, NSR-10 o E.060.',
     recentTitle: 'Proyectos recientes',
     recentBody: 'Guardados en este dispositivo.',
     viewAll: 'Ver todos',
@@ -76,10 +80,10 @@ const copy = {
     capAnalysisBody: 'Reacciones, N-V-M, deformada y envolventes con unidades y supuestos a la vista.',
     capStudies: 'Estudios avanzados',
     capStudiesBody: 'Pandeo, modos y líneas de influencia. Se calculan y se explican; no sustituyen una revisión independiente.',
-    capDocs: 'Memorias y exportación',
-    capDocsBody: 'Memoria PDF, expediente portable, SVG, PNG, CSV y lista de materiales.',
-    capInterop: 'Interoperabilidad',
-    capInteropBody: 'Importación de un subconjunto DXF, enlaces compartibles y versiones locales.',
+    capDocs: 'Memorias e intercambio',
+    capDocsBody: 'Memoria PDF, expediente portable, SVG, PNG, CSV, lista de materiales, DXF y versiones locales.',
+    capDesign: 'Diseño de concreto',
+    capDesignBody: 'Modo Diseño: vigas y columnas del modelo, elementos sueltos y zapatas con tres normas, armado, memoria y PDF.',
     capLearning: 'Trazabilidad educativa',
     capLearningBody: 'Cada resultado puede abrir su método, sus unidades y sus límites.',
     note: 'FStructure es experimental. Un resultado numérico puede ser incorrecto por un modelo, una unidad, una hipótesis o una propiedad mal elegida: no sustituye el criterio de una persona responsable ni una revisión independiente.',
@@ -89,7 +93,7 @@ const copy = {
   },
   en: {
     role: '2D Solver',
-    lead: 'Model, analyse, and understand structures.',
+    lead: 'Model, analyse, design, and understand structures.',
     leadStrong: 'From line to diagram.',
     open: 'Open project',
     continue: 'Continue',
@@ -99,7 +103,7 @@ const copy = {
     members: 'members',
     loads: 'loads',
     startTitle: 'Where to start',
-    startBody: 'Four ways into the same editor.',
+    startBody: 'Five ways into the same workbench.',
     pathBlank: 'Blank model',
     pathBlankBody: 'Start with an empty grid and place the first node.',
     pathTemplate: 'Template',
@@ -108,6 +112,8 @@ const copy = {
     pathClassroomBody: 'A guided case that keeps you in control of the model.',
     pathImport: 'Import',
     pathImportBody: 'Bring in a record, a JSON, or a DXF and review it first.',
+    pathDesign: 'Concrete design',
+    pathDesignBody: 'Design the model or a beam, column, or footing with NTC, NSR-10, or E.060.',
     recentTitle: 'Recent projects',
     recentBody: 'Saved on this device.',
     viewAll: 'View all',
@@ -121,10 +127,10 @@ const copy = {
     capAnalysisBody: 'Reactions, N-V-M, deflected shape, and envelopes with units and assumptions in plain sight.',
     capStudies: 'Advanced studies',
     capStudiesBody: 'Buckling, modes, and influence lines. They are computed and explained; they do not replace an independent review.',
-    capDocs: 'Reports and export',
-    capDocsBody: 'PDF report, portable record, SVG, PNG, CSV, and bill of materials.',
-    capInterop: 'Interoperability',
-    capInteropBody: 'Import of a DXF subset, shareable links, and local versions.',
+    capDocs: 'Reports and exchange',
+    capDocsBody: 'PDF report, portable record, SVG, PNG, CSV, bill of materials, DXF, and local versions.',
+    capDesign: 'Concrete design',
+    capDesignBody: 'Design mode: the model’s beams and columns, single elements and footings with three codes, reinforcement, report, and PDF.',
     capLearning: 'Educational traceability',
     capLearningBody: 'Every result can open its method, its units, and its limits.',
     note: 'FStructure is experimental. A numeric result can be wrong because of a model, a unit, an assumption, or a badly chosen property: it does not replace the judgement of a responsible person or an independent review.',
@@ -144,6 +150,7 @@ export const Solver2DHome = ({
   onOpenClassroom,
   onOpenImport,
   onOpenProjects,
+  onOpenDesign,
   recents,
   onPreloadWorkspace,
 }: Solver2DHomeProps) => {
@@ -180,14 +187,15 @@ export const Solver2DHome = ({
     { id: 'template', icon: LayoutTemplate, tone: 'var(--sc-color-family-analisis)', label: text.pathTemplate, body: text.pathTemplateBody, action: onOpenTemplates },
     { id: 'classroom', icon: GraduationCap, tone: 'var(--sc-color-family-aprendizaje)', label: text.pathClassroom, body: text.pathClassroomBody, action: onOpenClassroom },
     { id: 'import', icon: Upload, tone: 'var(--sc-color-family-interop)', label: text.pathImport, body: text.pathImportBody, action: onOpenImport },
-  ] as const;
+    ...(onOpenDesign ? [{ id: 'design', icon: DraftingCompass, tone: 'var(--sc-color-family-analisis)', label: text.pathDesign, body: text.pathDesignBody, action: onOpenDesign }] : []),
+  ];
 
   const capabilities = [
     { id: 'model', state: 'available', label: text.capModel, body: text.capModelBody },
     { id: 'analysis', state: 'available', label: text.capAnalysis, body: text.capAnalysisBody },
     { id: 'studies', state: 'experimental', label: text.capStudies, body: text.capStudiesBody },
+    { id: 'design', state: 'experimental', label: text.capDesign, body: text.capDesignBody },
     { id: 'docs', state: 'available', label: text.capDocs, body: text.capDocsBody },
-    { id: 'interop', state: 'experimental', label: text.capInterop, body: text.capInteropBody },
     { id: 'learning', state: 'available', label: text.capLearning, body: text.capLearningBody },
   ] as const;
 

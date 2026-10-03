@@ -1,22 +1,20 @@
-import { standardMaterials } from '../data/standardMaterials';
-import { standardSections } from '../data/standardSections';
-import { evaluateDeformationAt, evaluateDiagramAt } from '../engine/diagram';
-import { withResolvedGeneratedLoads } from '../engine/generatedLoads';
-import { analyzeProject } from '../engine/solver';
+import { standardMaterials } from '../../data/standardMaterials';
+import { standardSections } from '../../data/standardSections';
+import { evaluateDeformationAt, evaluateDiagramAt } from '../../engine/diagram';
+import { withResolvedGeneratedLoads } from '../../engine/generatedLoads';
+import { analyzeProject } from '../../engine/solver';
 import {
   probeLoads,
   type ExternalStructureSource, type StructureCase, type StructureCaseResult, type StructureMember, type StructureNode, type StructureSource, type StructureSupport,
-} from '../design/elements/structure';
-import type { AnalysisResult, LoadCase, MemberModel, MemberResult, NodeModel, ProjectModel } from '../types';
+} from './structure';
+import type { AnalysisResult, LoadCase, MemberModel, MemberResult, NodeModel, ProjectModel } from '../../types';
 
 /**
- * Puente declarado Modelo 2D → Diseño (FS-A01 → FS-A04).
+ * El Modelo 2D como fuente de la mesa Estructura (modo Diseño de FStructure).
  *
- * Las herramientas no se importan entre sí ni leen sus datos. Este puente es la
- * excepción declarada: sólo lo usa la frontera de la app
- * (`src/features/workspace/adapters`), que entrega al taller de Diseño un
- * `ExternalStructureSource` —un contrato de `src/design`— y nunca el modelo.
- * El proyecto 2D no se modifica: el puente arma una proyección para el solver.
+ * Modelar y diseñar son la misma mesa: este adaptador traduce el modelo del
+ * proyecto a un `ExternalStructureSource` para `designStructure`. El proyecto
+ * no se modifica: se arma una proyección para el solver.
  *
  * Traducción:
  * - Barras `frame` de concreto: con inclinación hasta 30° son vigas; más

@@ -945,3 +945,6 @@
 @keyframes dw-model-pulse { from { opacity: .25; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .dw-model-wait__dot { animation: none; } }
 .dw-model-errors { display: grid; justify-items: center; gap: 12px; align-self: center; }
+.dw-model-confirm { display: grid; gap: 6px; }
+.dw-model-confirm p { color: var(--dw-ink); }
+.dw-model-confirm div { display: flex; flex-wrap: wrap; gap: 6px; }

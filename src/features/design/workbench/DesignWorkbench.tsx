@@ -15,14 +15,15 @@ import { memoText, reportHeading, type DesignReport } from './designReport';
 import type { Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { useWorkbenchStorage } from './workbenchStorage';
 import './designWorkbench.css';
+import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 
 type ElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'section';
 
 const icon = (children: ReactNode) => <svg className="dw-element-icon" viewBox="0 0 24 24" aria-hidden="true">{children}</svg>;
 const ELEMENTS: { id: ElementKind; label: string; icon: ReactNode }[] = [
+  { id: 'frame', label: 'Estructura', icon: icon(<><path d="M5 21.5V4.5M19 21.5V4.5M3 5h18M5 12.5h14" /><path d="M2.5 21.5h5M16.5 21.5h5" /></>) },
   { id: 'beam', label: 'Viga', icon: icon(<><rect x="2" y="8" width="20" height="5" rx="1" /><path d="M4 13l-2 4h4zM20 13l-2 4h4z" /></>) },
   { id: 'column', label: 'Columna', icon: icon(<><rect x="8.5" y="2" width="7" height="17" rx="1" /><path d="M4 21.5h16" /></>) },
-  { id: 'frame', label: 'Estructura', icon: icon(<><path d="M5 21.5V4.5M19 21.5V4.5M3 5h18M5 12.5h14" /><path d="M2.5 21.5h5M16.5 21.5h5" /></>) },
   { id: 'footing', label: 'Zapata', icon: icon(<><rect x="9.5" y="3" width="5" height="9" rx="1" /><rect x="3" y="12" width="18" height="6" rx="1" /></>) },
   { id: 'section', label: 'Secciones', icon: icon(<><path d="M8 2h8l6 6v8l-6 6H8l-6-6V8z" /><path d="M8 8h8v8H8z" /></>) },
 ];
@@ -41,12 +42,14 @@ const readRoom = (): Room => {
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
 
-export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, onOpenModel }: {
+export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, onOpenModel, onCreateModel }: {
   nativeTool?: boolean;
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
   modelSource?: ExternalStructureSource | null;
-  /** Abre el Modelo 2D. */
+  /** Vuelve al modo Modelo de la mesa. */
   onOpenModel?: () => void;
+  /** Escribe el pórtico rápido en el Modelo 2D (deshacible en Modelo). */
+  onCreateModel?: (spec: ConcreteFrameSpec) => void;
   /** Fuente de la estructura pedida desde fuera («Diseñar el modelo»). */
   startSource?: 'frame' | 'model';
   /** Nombre del proyecto abierto: encabeza la memoria. */
@@ -60,7 +63,8 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   const [element, setElementState] = useState<ElementKind>(() => {
     if (startElement) return startElement;
     const stored = storage.read('element');
-    return isElementKind(stored) ? stored : 'beam';
+    // En la mesa de FStructure se empieza por diseñar el modelo.
+    return isElementKind(stored) ? stored : 'frame';
   });
   const [code, setCodeState] = useState<DesignCodeId>(() => {
     if (isDesignCodeId(startCode)) return startCode;
@@ -233,6 +237,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource,
     ...(nativeTool ? { onVerdict } : {}),
     ...(onOpenModel ? { onOpenModel } : {}),
+    ...(onCreateModel ? { onCreateModel } : {}),
     ...(startSource ? { startSource } : {}),
   };
 

@@ -35,6 +35,8 @@ type WelcomeView = 'home' | 'projects' | 'templates' | 'library' | 'classroom' |
 interface Model2DWelcomeProps {
   /** Abre la mesa del Modelo 2D. */
   onOpenWorkspace: () => void;
+  /** Abre la misma mesa en modo Diseño. */
+  onOpenDesign?: () => void;
   /** Vuelve al Inicio de FusionStructure, donde se elige otra herramienta. */
   onOpenSuite: () => void;
 }
@@ -101,7 +103,7 @@ const readInitialWelcomeView = (): WelcomeView => {
  * llega desde el Inicio de FusionStructure y su primera entrada de navegación
  * devuelve allí.
  */
-export const Model2DWelcome = ({ onOpenWorkspace, onOpenSuite }: Model2DWelcomeProps) => {
+export const Model2DWelcome = ({ onOpenWorkspace, onOpenDesign, onOpenSuite }: Model2DWelcomeProps) => {
   const { project, replaceProject, updateProjectView } = useProject();
   const { language, t } = useI18n();
   const { theme } = useWorkspaceUI();
@@ -189,6 +191,7 @@ export const Model2DWelcome = ({ onOpenWorkspace, onOpenSuite }: Model2DWelcomeP
     onOpenClassroom={() => navigate('classroom')}
     onOpenImport={() => setImportOpen(true)}
     onOpenProjects={() => navigate('projects')}
+    {...(onOpenDesign ? { onOpenDesign } : {})}
     recents={<ProjectHub variant="recent" limit={3} filter={searchQuery} onOpen={(record) => openProject(record.project, undefined, record.revision)} />}
   />;
 

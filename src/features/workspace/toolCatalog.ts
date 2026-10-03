@@ -7,10 +7,11 @@ type ToolStatus = 'disponible' | 'experimental';
 /**
  * Identidad pública de cada herramienta, según el brandbook de FusionStructure.
  *
- * Las cuatro pertenecen a la familia Análisis (FS-A0x). El código y el nombre
+ * Las tres pertenecen a la familia Análisis (FS-A0x). El código y el nombre
  * son los del catálogo del brandbook; el estado es el del código de este
  * repositorio. Es la única fuente que leen el Inicio y la barra de cada
- * herramienta.
+ * herramienta. Diseño (antes FS-A04) vive dentro de FStructure como su modo
+ * «Diseño»: modelar y diseñar son la misma mesa.
  */
 interface ToolIdentity {
   id: ToolId;
@@ -29,7 +30,7 @@ export const TOOL_CATALOG: readonly ToolIdentity[] = [
     id: 'model2d',
     code: 'FS-A01',
     name: { es: 'FStructure', en: 'FStructure' },
-    role: { es: 'Modelo 2D · marcos, vigas y armaduras', en: '2D model · frames, beams, and trusses' },
+    role: { es: 'Modelo 2D y diseño de concreto · marcos, vigas, columnas y zapatas', en: '2D model and concrete design · frames, beams, columns, and footings' },
     status: 'disponible',
     scene: scene('model2d'),
   },
@@ -48,14 +49,6 @@ export const TOOL_CATALOG: readonly ToolIdentity[] = [
     role: { es: 'Placas y muros con TRI3 y QUAD4', en: 'Plates and walls with TRI3 and QUAD4' },
     status: 'experimental',
     scene: scene('fem'),
-  },
-  {
-    id: 'design',
-    code: 'FS-A04',
-    name: { es: 'Diseño', en: 'Design' },
-    role: { es: 'Vigas, columnas, pórticos y zapatas de concreto reforzado', en: 'Reinforced concrete beams, columns, frames, and footings' },
-    status: 'experimental',
-    scene: scene('design'),
   },
 ];
 

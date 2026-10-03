@@ -1,6 +1,10 @@
 import type * as React from 'react';
 
-export type ToolId = 'model2d' | 'design' | 'space3d' | 'fem';
+/**
+ * Las tres mesas de trabajo. Diseño ya no es una herramienta aparte: es el modo
+ * «Diseño» de la mesa de FStructure 2D (`model2d`).
+ */
+export type ToolId = 'model2d' | 'space3d' | 'fem';
 export type Maturity = 'available' | 'experimental' | 'planned' | 'unavailable';
 
 export interface ToolModuleDescriptor {

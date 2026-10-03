@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createConcreteFrameProject } from '../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../data/projectStorage';
-import { model2dDesignSource } from '../../integrations/model2dDesign';
+import { model2dDesignSource } from '../../design/elements/model2dSource';
 import { ProjectProvider } from '../../store/ProjectContext';
 import { DesignWorkbench } from '../design/workbench/DesignWorkbench';
 import { reportFromMemoryItem } from '../design/workbench/designMemory';
@@ -32,7 +32,7 @@ describe('modelar y diseñar: la mesa Estructura con el Modelo 2D', () => {
     const grid = within(results()).getByRole('table', { name: /Cociente que rige en cada miembro/ });
     await user.click(within(grid).getByRole('button', { name: /Viga del nivel 2/ }));
     expect(await screen.findByRole('img', { name: /Elevación de la viga de 2 claros/ })).toBeTruthy();
-    await user.click(screen.getAllByRole('button', { name: 'Abrir el Modelo 2D' })[0]!);
+    await user.click(screen.getAllByRole('button', { name: 'Editar en Modelo' })[0]!);
     expect(onOpenModel).toHaveBeenCalledTimes(1);
   });
 

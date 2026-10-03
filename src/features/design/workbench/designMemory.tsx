@@ -10,7 +10,7 @@ import { SECTION_DEFAULTS, sectionReportFromDraft } from './concreteStudioModel'
 import { verdictHeadline } from './common';
 import { reportHeading, stableJson, type DesignElementKind, type DesignReport } from './designReport';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
-import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, frameReportFromDraft, parseBays, parseStories } from './frameModel';
+import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, frameReportFromDraft, parseBays, parseStories } from './frameModel';
 import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
 
 /**
@@ -39,7 +39,7 @@ export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: Ext
   switch (item.element) {
     case 'beam': return beamReportFromDraft(code, merge(BEAM_DEFAULTS, item.fields), parseSpans(item.rows) ?? DEFAULT_SPANS);
     case 'column': return columnReportFromDraft(code, merge(COLUMN_DEFAULTS, item.fields));
-    case 'frame': return frameReportFromDraft(code, merge(FRAME_DEFAULTS, item.fields), parseBays(item.rows) ?? DEFAULT_BAYS, parseStories(item.levels) ?? DEFAULT_STORIES, modelSource);
+    case 'frame': return frameReportFromDraft(code, merge({ ...FRAME_DEFAULTS, ...FRAME_LEGACY }, item.fields), parseBays(item.rows) ?? DEFAULT_BAYS, parseStories(item.levels) ?? DEFAULT_STORIES, modelSource);
     case 'footing': return footingReportFromDraft(code, merge(FOOTING_DEFAULTS, item.fields));
     case 'section': return sectionReportFromDraft(code, merge(SECTION_DEFAULTS, item.fields));
   }

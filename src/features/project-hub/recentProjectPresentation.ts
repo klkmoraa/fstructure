@@ -2,7 +2,8 @@ import type { ToolId } from '../../shared/contracts';
 import type { JsonValue, UnifiedProjectBundleV1 } from '../../shared/project/unifiedProjectBundle';
 
 type Language = 'es' | 'en';
-type Presentation = { meta: string; preview: 'model2d' | 'tool' };
+/** `design`: lo último del modo Diseño de FStructure, que vive en la rama `design` del mismo proyecto. */
+type Presentation = { meta: string; preview: 'model2d' | 'tool'; design?: string };
 
 const object = (value: JsonValue | undefined): Record<string, JsonValue> | null =>
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, JsonValue> : null;
@@ -64,17 +65,13 @@ export const recentProjectPresentation = (
     return { meta: '', preview: 'model2d' };
   }
 
-  if (tool === 'design') {
-    const entries = designEntries(bundle?.design);
-    if (!entries || Object.keys(entries).length === 0) return { meta: '', preview: 'model2d' };
-    const philosophy = object(entries.section)?.philosophy;
-    const basis = entries.element === 'section'
-      ? philosophy === 'allowable' ? (language === 'es' ? 'Esfuerzos admisibles' : 'Allowable stress')
-        : philosophy === 'limit-state' ? (language === 'es' ? 'Estados límite' : 'Limit states')
-          : (language === 'es' ? 'Resistencia última' : 'Ultimate strength')
-      : designCodeLabel(entries);
-    return { meta: `${designElement(entries, language)} · ${basis}`, preview: 'tool' };
-  }
-
-  return { meta: '', preview: 'model2d' };
+  const entries = designEntries(bundle?.design);
+  if (!entries || Object.keys(entries).length === 0) return { meta: '', preview: 'model2d' };
+  const philosophy = object(entries.section)?.philosophy;
+  const basis = entries.element === 'section'
+    ? philosophy === 'allowable' ? (language === 'es' ? 'Esfuerzos admisibles' : 'Allowable stress')
+      : philosophy === 'limit-state' ? (language === 'es' ? 'Estados límite' : 'Limit states')
+        : (language === 'es' ? 'Resistencia última' : 'Ultimate strength')
+    : designCodeLabel(entries);
+  return { meta: '', preview: 'model2d', design: `${designElement(entries, language)} · ${basis}` };
 };

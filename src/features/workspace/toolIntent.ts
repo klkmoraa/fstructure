@@ -2,15 +2,14 @@
  * Intención de arranque de una herramienta, de un solo uso.
  *
  * La bienvenida de cada herramienta ofrece entradas concretas («Generar una
- * estructura», «Importar Gmsh 4.1», «Diseñar una columna»). La bienvenida deja
- * aquí la intención y la mesa la toma —y la borra— al montarse. Vive sólo en
- * memoria: una recarga abre la mesa sin intención, que es lo seguro.
+ * estructura», «Importar Gmsh 4.1»). La bienvenida deja aquí la intención y la
+ * mesa la toma —y la borra— al montarse. Vive sólo en memoria: una recarga abre
+ * la mesa sin intención, que es lo seguro.
  */
 type ToolIntent =
   | { tool: 'space3d'; kind: 'generate' | 'example' | 'first-node' }
   | { tool: 'fem'; kind: 'analyze' }
-  | { tool: 'fem'; kind: 'import-gmsh'; fileName: string; text: string }
-  | { tool: 'design'; kind: 'element'; element: 'beam' | 'column' | 'frame' | 'footing' | 'section'; code?: string; source?: 'frame' | 'model' };
+  | { tool: 'fem'; kind: 'import-gmsh'; fileName: string; text: string };
 
 let pending: ToolIntent | null = null;
 

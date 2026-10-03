@@ -3,7 +3,7 @@ import { Inspector } from '../inspector/Inspector';
 import { ResultsPanel } from '../results/ResultsPanel';
 import { Model2DTool } from './toolSurfaces';
 import { Model2DSurfaceContext } from './adapters/surfaceContexts';
-import { DraftingCompass, PanelRight } from 'lucide-react';
+import { PanelRight } from 'lucide-react';
 import { Console } from '../shell/Console';
 import { ThemeToggleButton } from './ThemeToggleButton';
 import { Instrument } from '../shell/Instrument';
@@ -19,8 +19,8 @@ import { withCanvasViewSettings } from '../view/canvasViewSettings';
 import { AppShellLayout } from './AppShellLayout';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { WorkspaceUtilities } from './WorkspaceUtilities';
-import { setToolIntent } from './toolIntent';
-import { useToolNavigation } from './toolNavigation';
+import { MesaModeSwitch } from './MesaModeSwitch';
+import type { MesaMode } from '../../shared/navigation/projectUrl';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
 import { SurfacePresentationProvider } from './SurfacePresentationProvider';
 import { useShellComposition } from './useShellComposition';
@@ -81,19 +81,20 @@ const focusStableLauncherIfUnclaimed = (selector: string): void => {
 };
 
 /**
- * Shell del Modelo 2D.
+ * Shell del Modelo 2D: el modo Modelo de la mesa de FStructure.
  *
- * Es la mesa de UNA herramienta. Diseño, Modelo 3D y FEM tienen su propio shell
- * (`ToolShell`): este no los monta ni importa su código. La única salida hacia
- * otra herramienta es «Diseñar», el flujo declarado Modelo 2D → Diseño: deja
- * una intención y navega; Diseño recibe el modelo por el puente de
- * `src/integrations`, nunca de aquí. Sus atajos globales (Ctrl/Cmd+K, deshacer y
- * rehacer) sólo existen mientras el Modelo 2D está abierto, así que nunca actúan
- * sobre el modelo 2D desde otra herramienta.
+ * El modo Diseño de la misma mesa es `DesignModeShell`; el interruptor
+ * Modelo | Diseño de la barra pasa de uno a otro sin cambiar de proyecto.
+ * Modelo 3D y FEM tienen su propio shell (`ToolShell`): este no los monta ni
+ * importa su código. Sus atajos globales (Ctrl/Cmd+K, deshacer y rehacer) sólo
+ * existen mientras el modo Modelo está abierto, así que nunca actúan sobre el
+ * modelo desde otra mesa.
  */
 type WorkspaceShellProps = {
   onOpenHome: () => void;
   projectId: string;
+  /** Interruptor Modelo | Diseño de la mesa. */
+  onModeChange?: (mode: MesaMode) => void;
 };
 type LayoutController = ReturnType<typeof useWorkspaceLayoutPreferences>;
 type PendingModelDoctorNotification = {
@@ -105,6 +106,7 @@ type PendingModelDoctorNotification = {
 
 const WorkspaceBrokerContent = ({
   onOpenHome,
+  onModeChange,
   projectId,
   shellRef,
   layoutController,
@@ -117,12 +119,6 @@ const WorkspaceBrokerContent = ({
   const [revisionBaseline, setRevisionBaseline] = useState<RevisionSnapshot | null>(null);
   const [editorLayers, dispatchEditorLayers] = useReducer(editorLayerReducer, undefined, createPersistedEditorLayerState);
   const { t, language } = useI18n();
-  const openTool = useToolNavigation();
-  /* Modelar y diseñar: Diseño abre su mesa Estructura con el Modelo 2D como fuente. */
-  const designModel = openTool ? () => {
-    setToolIntent({ tool: 'design', kind: 'element', element: 'frame', source: 'model' });
-    openTool('design');
-  } : null;
   const { project, analysis, isAnalyzing, storageIssue, storageMessage, renameProject, setActiveTool, setResultTab, updateProjectView, analyze, undo, redo, canUndo, canRedo } = useProject();
   const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
   const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
@@ -464,6 +460,7 @@ const WorkspaceBrokerContent = ({
     topbar={<WorkspaceTopBar
       language={language}
       tool="model2d"
+      modeSwitch={onModeChange ? <MesaModeSwitch mode="model" onChange={onModeChange} language={language} /> : undefined}
       projectName={project.name}
       storageState={!storageIssue ? 'ready' : storageIssue === 'recovered' ? 'recovered' : 'issue'}
       storageMessage={storageMessage}
@@ -528,9 +525,6 @@ const WorkspaceBrokerContent = ({
           className={'workspace-topbar__action-button workspace-topbar__inspector-button workspace-topbar__inspector-button--desktop' + (inspectorOpen ? ' is-active' : '')}
           aria-label={t('shell.showInspector')} aria-pressed={inspectorOpen} title={t('shell.showInspector')}
           onClick={(event) => toggleInspector(event.currentTarget)}><PanelRight size={17} aria-hidden="true" /><span>Panel</span></button>
-        {designModel ? <button type="button" className="workspace-topbar__action-button workspace-topbar__design-button"
-          aria-label={t('topbar.designHint')} title={t('topbar.designHint')} onClick={designModel}>
-          <DraftingCompass size={17} aria-hidden="true" /><span>{t('topbar.design')}</span></button> : null}
       </div>}
       themeControl={<ThemeToggleButton />}
       utilities={<WorkspaceUtilities onOpenInspector={(trigger) => {
@@ -538,7 +532,7 @@ const WorkspaceBrokerContent = ({
         // y el tirador del Inspector permite crecerla sólo si hace falta.
         setPreference('inspectorDetent', 'compact');
         openDetail(trigger);
-      }} onOpenUnitsEditor={(trigger) => openModel2DSurface('view', trigger)} {...(designModel ? { onDesignModel: designModel } : {})} />}
+      }} onOpenUnitsEditor={(trigger) => openModel2DSurface('view', trigger)} />}
     />}
     console={<Console
       layoutActions={{

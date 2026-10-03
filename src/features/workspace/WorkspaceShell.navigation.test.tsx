@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import App from '../../App';
-import { createBlankProject, createConcreteFrameProject, createDefaultProject } from '../../data/defaultProject';
+import { createConcreteFrameProject, createDefaultProject } from '../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../data/projectStorage';
 import { WORKSPACE_LAYOUT_STORAGE_KEY } from './useWorkspaceLayoutPreferences';
 
@@ -63,7 +63,7 @@ it('abre FEM en su propia mesa: sin lienzo, consola ni utilidades del Modelo 2D'
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('fem');
 }, TEST_TIMEOUT);
 
-it('los atajos del Modelo 2D no existen dentro de otra herramienta', async () => {
+it('los atajos del modo Modelo no existen en el modo Diseño ni en otra herramienta', async () => {
   const user = userEvent.setup();
   render(<App />);
   await screen.findByRole('application', undefined, LAZY);
@@ -82,11 +82,13 @@ it('los atajos del Modelo 2D no existen dentro de otra herramienta', async () =>
   await waitFor(() => expect(document.querySelector('[aria-modal="true"]')).toBeNull());
   await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: /Cómo usar FStructure/ })));
 
-  await openFromHome(user, 'Diseño');
+  await user.click(screen.getByRole('button', { name: 'Diseño' }));
   expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' }, LAZY)).toBeTruthy();
   fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(screen.queryByRole('listbox', { name: 'Paleta de comandos' })).toBeNull();
+  // La guía del modo Diseño es otra.
+  expect(screen.getByRole('button', { name: /Cómo diseñar en FStructure/ })).toBeTruthy();
 }, TEST_TIMEOUT);
 
 it('cambiar de herramienta desmonta la anterior y la recarga vuelve a la herramienta de la URL', async () => {
@@ -111,40 +113,30 @@ it('cambiar de herramienta desmonta la anterior y la recarga vuelve a la herrami
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
 }, TEST_TIMEOUT);
 
-it('modelar y diseñar: «Diseñar» lleva el Modelo 2D a la mesa Estructura y se vuelve al modelo', async () => {
+it('modelar y diseñar en la misma mesa: Diseño diseña el modelo, «Pasar al modelo» lo reemplaza y Deshacer lo recupera', async () => {
   localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createConcreteFrameProject()));
   const user = userEvent.setup();
   render(<App />);
   await screen.findByRole('application', undefined, LAZY);
-  await user.click(screen.getByRole('button', { name: /^Diseñar este modelo en concreto/ }));
+  await user.click(screen.getByRole('button', { name: 'Diseño' }));
+  // Se empieza por diseñar el modelo: Estructura con fuente Modelo 2D.
   expect(await screen.findByRole('heading', { name: 'Estructura' }, LAZY)).toBeTruthy();
-  expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
+  expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
   expect(screen.getByRole('radio', { name: 'Modelo 2D' }).getAttribute('aria-checked')).toBe('true');
   expect(await screen.findByRole('img', { name: /Utilización de el Modelo 2D: 2 líneas de viga y 6 columnas/ }, LAZY)).toBeTruthy();
-  // Diseño no tiene el lienzo ni los atajos del 2D; «Abrir el Modelo 2D» vuelve a él.
   expect(screen.queryByRole('application')).toBeNull();
-  await user.click(screen.getAllByRole('button', { name: 'Abrir el Modelo 2D' })[0]!);
-  expect(await screen.findByRole('application', undefined, LAZY)).toBeTruthy();
-  expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
-}, TEST_TIMEOUT);
-
-it('desde el Inicio, «Modelar y diseñar» diseña el modelo abierto, o lleva a modelarlo si está vacío', async () => {
-  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createConcreteFrameProject()));
-  window.history.replaceState(null, '', '/?surface=welcome');
-  const user = userEvent.setup();
-  const view = render(<App />);
-  await screen.findByTestId('suite-welcome', undefined, LAZY);
-  await user.click(screen.getByRole('button', { name: 'Modelar y diseñar: del Modelo 2D a Diseño' }));
-  expect(await screen.findByRole('heading', { name: 'Estructura' }, LAZY)).toBeTruthy();
+  // Un pórtico rápido de un claro reemplaza el modelo tras confirmar.
+  await user.click(screen.getByRole('radio', { name: 'Pórtico rápido' }));
+  await user.click(screen.getByRole('button', { name: 'Quitar claro 2' }));
+  await user.click(await screen.findByRole('button', { name: 'Pasar al modelo' }));
+  await user.click(screen.getByRole('button', { name: 'Reemplazar el modelo' }));
   expect(screen.getByRole('radio', { name: 'Modelo 2D' }).getAttribute('aria-checked')).toBe('true');
-  view.unmount();
-
-  globalThis.indexedDB = new IDBFactory();
-  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createBlankProject()));
-  window.history.replaceState(null, '', '/?surface=welcome');
-  render(<App />);
-  await screen.findByTestId('suite-welcome', undefined, LAZY);
-  await user.click(screen.getByRole('button', { name: 'Modelar y diseñar: del Modelo 2D a Diseño' }));
+  expect(await screen.findByRole('img', { name: /Utilización de el Modelo 2D: 2 líneas de viga y 4 columnas/ }, LAZY)).toBeTruthy();
+  // «Editar en Modelo» vuelve al dibujo; ahí Deshacer devuelve el modelo anterior.
+  await user.click(screen.getAllByRole('button', { name: 'Editar en Modelo' })[0]!);
   expect(await screen.findByRole('application', undefined, LAZY)).toBeTruthy();
-  expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+  expect(new URLSearchParams(window.location.search).has('mode')).toBe(false);
+  await user.click(screen.getByRole('button', { name: 'Deshacer' }));
+  await user.click(screen.getByRole('button', { name: 'Diseño' }));
+  expect(await screen.findByRole('img', { name: /Utilización de el Modelo 2D: 2 líneas de viga y 6 columnas/ }, LAZY)).toBeTruthy();
 }, TEST_TIMEOUT);

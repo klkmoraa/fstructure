@@ -82,7 +82,7 @@ test('rejects a tool importing another isolated tool, but allows shared pieces a
   const violations = findToolIsolationViolations(root);
   assert.equal(violations.length, 2);
   assert.ok(violations.some((item) => item.includes('fem imports space3d')));
-  assert.ok(violations.some((item) => item.includes('space3d imports design')));
+  assert.ok(violations.some((item) => item.includes('space3d imports model2d')));
   assert.ok(findSingleAppArchitectureViolations(root).some((item) => item.includes('fem imports space3d')));
 });
 

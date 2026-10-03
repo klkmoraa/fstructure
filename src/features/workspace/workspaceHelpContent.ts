@@ -3,7 +3,8 @@ import type { ToolId } from '../../shared/contracts';
 type Guide = { steps: readonly [string, string][]; controls: readonly [string, string][] };
 
 /** Vocabulario de los controles existentes. No importa ni accede a datos de las mesas. */
-export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = {
+/** Una guía por mesa y otra para el modo Diseño de FStructure. */
+export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'design', Guide>> = {
   es: {
     model2d: {
       steps: [
@@ -11,6 +12,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
         ['Asigna apoyos y propiedades', 'Selecciona un nudo o una barra y abre Panel para editar sus datos. La herramienta Apoyo se aplica sobre un nudo.'],
         ['Coloca las cargas', 'Carga puntual se coloca sobre un nudo; Carga distribuida y Momento tienen su propio control. Experiencia de cálculo reúne modo, casos y combinaciones.'],
         ['Analiza y revisa', 'Pulsa Analizar y después Resultados. Consulta reacciones, diagramas y deformada. Si el análisis falla, revisa el diagnóstico antes de cambiar el modelo.'],
+        ['Diseña', 'Cambia a Diseño en la barra: la mesa Estructura diseña en concreto las vigas y columnas del modelo con sus casos de carga. Modelo vuelve al dibujo.'],
         ['Conserva el trabajo', 'El menú de tres puntos reúne exportación, memoria PDF, unidades y hojas de datos. El nombre del proyecto se edita en la barra superior.'],
       ],
       controls: [
@@ -54,7 +56,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
     },
     design: {
       steps: [
-        ['Elige elemento y norma', 'Viga, Columna y Zapata están en el dock. La norma se elige sobre el dibujo y se aplica a este taller.'],
+        ['Elige elemento y norma', 'Estructura (el modelo), Viga, Columna, Zapata y Secciones están en el dock. La norma se elige sobre el dibujo y se aplica a todo el diseño.'],
         ['Completa Datos', 'Indica geometría, materiales, demandas y armado. Cada campo muestra su unidad. Las opciones menos frecuentes se despliegan dentro de su apartado.'],
         ['Revisa el cálculo', 'El cálculo se actualiza al editar: no necesitas un botón Analizar. Corrige los campos inválidos antes de consultar los resultados.'],
         ['Consulta Resultados', 'Cada comprobación indica demanda, capacidad y su referencia. Cumple lo evaluado requiere revisar también las comprobaciones fuera del alcance.'],
@@ -75,6 +77,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
         ['Set supports and properties', 'Select a node or member and open Panel to edit its data. Support applies to a node.'],
         ['Place loads', 'Point load applies to a node. Distributed load and Moment have their own tools. Calculation experience contains the mode, load cases and combinations.'],
         ['Analyze and inspect', 'Press Analyze, then Results to inspect reactions, diagrams and deformation. Review a failed analysis diagnosis before changing the model.'],
+        ['Design', 'Switch to Diseño in the top bar: Estructura designs the model’s concrete beams and columns with its load cases. Modelo returns to the drawing.'],
         ['Keep your work', 'The three-dot menu contains exports, PDF reports, units and datasheets. Edit the project name in the top bar.'],
       ],
       controls: [
@@ -118,7 +121,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
     },
     design: {
       steps: [
-        ['Choose an element and code', 'Viga, Columna and Zapata are in the dock. Choose the design code above the drawing.'],
+        ['Choose an element and code', 'Estructura (the model), Viga, Columna, Zapata and Secciones are in the dock. Choose the design code above the drawing.'],
         ['Fill in Datos', 'Enter geometry, materials, demands and reinforcement. Each field shows its unit; less frequent options expand in their section.'],
         ['Review the calculation', 'The calculation updates as you edit. Fix invalid fields before opening results.'],
         ['Inspect Resultados', 'Checks show demand, capacity and references. Cumple lo evaluado also requires reviewing out-of-scope checks.'],

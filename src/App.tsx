@@ -5,17 +5,17 @@ import './design-system/material.css';
 import { ProjectProvider, useProject } from './store/ProjectContext';
 import { ClassroomSessionProvider } from './store/ClassroomSessionContext';
 import WorkspaceShell from './features/workspace/WorkspaceShell';
-import ToolShell from './features/workspace/ToolShell';
+import ToolShell, { DesignModeShell } from './features/workspace/ToolShell';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 import { Model2DWelcome } from './features/welcome/Model2DWelcome';
 import { TOOL_HOMES } from './features/workspace/toolHomes';
 import { toolRegistry } from './features/workspace/toolRegistry';
 import { toolIdentity } from './features/workspace/toolCatalog';
-import { ToolNavigationContext } from './features/workspace/toolNavigation';
 import { useI18n } from './i18n/useI18n';
 import { rememberLastTool } from './features/welcome/lastTool';
 import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
 import type { ToolId } from './shared/contracts';
+import type { MesaMode } from './shared/navigation/projectUrl';
 
 const loadMotionFeatures = () => import('./design-system/motionFeatures')
   .then(({ default: features }) => features);
@@ -42,6 +42,14 @@ const FStructureSurface = () => {
   }, [navigate, route.projectId, route.tool]);
   const openCurrentToolHome = useCallback(() => openToolHome(route.tool), [openToolHome, route.tool]);
   const openCurrentWorkspace = useCallback(() => openTool(route.tool), [openTool, route.tool]);
+  /* Modelar y diseñar son la misma mesa de FStructure: el modo vive en la URL
+     (`mode=design`) para que recargar o compartir conserve dónde estabas. */
+  const setMesaMode = useCallback((mode: MesaMode) => {
+    navigate(mode === 'design'
+      ? { surface: 'workspace', projectId: route.projectId, tool: 'model2d', mode: 'design' }
+      : { surface: 'workspace', projectId: route.projectId, tool: 'model2d' });
+  }, [navigate, route.projectId]);
+  const openDesign = useCallback(() => setMesaMode('design'), [setMesaMode]);
 
   useEffect(() => {
     if (route.surface === 'workspace') rememberLastTool(route.tool);
@@ -91,17 +99,17 @@ const FStructureSurface = () => {
      herramienta desmonte la anterior por completo: ningún atajo, superficie,
      historial de interfaz ni estado de render sobrevive al cambio. */
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
-    <ToolNavigationContext.Provider value={openTool}>
     {route.surface === 'welcome'
       ? <WelcomeScreen onOpenToolHome={openToolHome} onResume={openTool} />
       : route.surface === 'tool-home'
         ? ToolHomeView
           ? <Suspense key={route.tool} fallback={<div className="workspace-loading" role="status">Cargando herramienta…</div>}><ToolHomeView onOpenWorkspace={openCurrentWorkspace} onOpenSuite={openSuite} /></Suspense>
-          : <Model2DWelcome key="model2d" onOpenWorkspace={openCurrentWorkspace} onOpenSuite={openSuite} />
+          : <Model2DWelcome key="model2d" onOpenWorkspace={openCurrentWorkspace} onOpenDesign={openDesign} onOpenSuite={openSuite} />
         : route.tool === 'model2d'
-          ? <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openCurrentToolHome} />
+          ? route.mode === 'design'
+            ? <DesignModeShell key="model2d-design" projectId={project.id} onOpenHome={openCurrentToolHome} onModeChange={setMesaMode} />
+            : <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openCurrentToolHome} onModeChange={setMesaMode} />
           : <ToolShell key={route.tool} tool={route.tool} projectId={project.id} onOpenHome={openCurrentToolHome} />}
-    </ToolNavigationContext.Provider>
   </ClassroomSessionProvider>;
 };
 

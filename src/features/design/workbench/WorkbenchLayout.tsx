@@ -4,6 +4,7 @@ import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureSource } from '../../../design/elements/structure';
 import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
+import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 
 export type WorkbenchPanel = 'inputs' | 'results';
 
@@ -29,9 +30,11 @@ export interface WorkbenchChrome {
   readonly onVerdict?: (verdict: Verdict) => void;
   /** Modelo 2D del proyecto, traducido por la frontera de la app. */
   readonly modelSource?: ExternalStructureSource | null;
-  /** Abre el Modelo 2D (sólo dentro de la app). */
+  /** Vuelve al modo Modelo de la mesa (sólo dentro de la app). */
   readonly onOpenModel?: () => void;
-  /** Fuente pedida al abrir el taller («Diseñar el modelo»). */
+  /** Escribe el pórtico rápido en el Modelo 2D como un cambio deshacible (sólo dentro de la app). */
+  readonly onCreateModel?: (spec: ConcreteFrameSpec) => void;
+  /** Fuente pedida al abrir el taller. */
   readonly startSource?: 'frame' | 'model';
 }
 

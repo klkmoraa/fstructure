@@ -15,11 +15,11 @@ const bundle = (overrides: Partial<UnifiedProjectBundleV1>): UnifiedProjectBundl
 
 describe('recentProjectPresentation', () => {
   it('muestra la filosofía experimental de una sección v3 guardada', () => {
-    const value = recentProjectPresentation('design', bundle({ design: {
+    const value = recentProjectPresentation('model2d', bundle({ design: {
       kind: 'fstructure-design-workbench', schemaVersion: 3,
       entries: { element: 'section', code: 'ntc-2023', section: { philosophy: 'allowable' } },
     } }), 'es');
-    expect(value).toEqual({ meta: 'Sección · Esfuerzos admisibles', preview: 'tool' });
+    expect(value).toEqual({ meta: '', preview: 'model2d', design: 'Sección · Esfuerzos admisibles' });
   });
 
   it('usa entidades 3D aunque el modelo 2D esté vacío', () => {
@@ -56,15 +56,15 @@ describe('recentProjectPresentation', () => {
     expect(value.preview).toBe('tool');
   });
 
-  it('lee elemento y norma desde el documento real del taller de Diseño', () => {
-    const value = recentProjectPresentation('design', bundle({
+  it('lee elemento y norma del modo Diseño desde el documento real del taller', () => {
+    const value = recentProjectPresentation('model2d', bundle({
       design: {
         kind: 'fstructure-design-workbench',
         schemaVersion: 2,
         entries: { element: 'column', code: 'ntc-2023' },
       },
     }), 'es');
-    expect(value.meta).toBe('Columna · NTC-CDMX 2023');
-    expect(value.preview).toBe('tool');
+    expect(value.design).toBe('Columna · NTC-CDMX 2023');
+    expect(value.preview).toBe('model2d');
   });
 });
