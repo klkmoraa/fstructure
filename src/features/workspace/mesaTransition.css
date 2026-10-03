@@ -6,12 +6,13 @@
 :root[data-mesa-transition] .workspace-topbar { view-transition-name: mesa-topbar; }
 :root[data-mesa-transition] .app-shell > .workspace { view-transition-name: mesa-stage; }
 
-::view-transition-group(mesa-stage) { animation-duration: var(--sc-motion-panel, 520ms); }
-::view-transition-group(mesa-topbar) { animation-duration: 240ms; }
+/* El giro del plano es un trazo (`trace`); la barra sólo se funde (`bridge`). */
+::view-transition-group(mesa-stage) { animation-duration: var(--sc-motion-trace); }
+::view-transition-group(mesa-topbar) { animation-duration: var(--sc-motion-bridge); }
 ::view-transition-old(mesa-stage),
 ::view-transition-new(mesa-stage) {
-  animation-duration: 560ms;
-  animation-timing-function: cubic-bezier(.2, .8, .2, 1);
+  animation-duration: var(--sc-motion-trace);
+  animation-timing-function: var(--sc-ease-standard);
   animation-fill-mode: both;
   /* La captura conserva su proporción: el plano gira sin deformarse. */
   height: 100%;
@@ -20,11 +21,11 @@
 
 /* 2D → 3D: el plano del dibujo se tiende hacia el fondo; el modelo espacial emerge. */
 :root[data-mesa-transition='lay']::view-transition-old(mesa-stage) { animation-name: mesa-plane-lay; transform-origin: 50% 92%; }
-:root[data-mesa-transition='lay']::view-transition-new(mesa-stage) { animation-name: mesa-space-rise; animation-delay: 90ms; }
+:root[data-mesa-transition='lay']::view-transition-new(mesa-stage) { animation-name: mesa-space-rise; animation-delay: var(--sc-motion-instant); }
 
 /* 3D → 2D: el modelo se aleja y el plano vuelve a levantarse. */
 :root[data-mesa-transition='raise']::view-transition-old(mesa-stage) { animation-name: mesa-space-recede; }
-:root[data-mesa-transition='raise']::view-transition-new(mesa-stage) { animation-name: mesa-plane-raise; transform-origin: 50% 92%; animation-delay: 60ms; }
+:root[data-mesa-transition='raise']::view-transition-new(mesa-stage) { animation-name: mesa-plane-raise; transform-origin: 50% 92%; animation-delay: var(--sc-motion-instant); }
 
 /* Hacia Diseño (o de vuelta): de lado, en el orden del interruptor. */
 :root[data-mesa-transition='forward']::view-transition-old(mesa-stage) { animation-name: mesa-slide-out-left; }
