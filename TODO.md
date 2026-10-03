@@ -20,8 +20,10 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] Columnas zunchadas, de lindero con contratrabe, losas de cimentación y dados: necesitan cláusulas registradas (FR y φPn,máx del zuncho, αs de borde, ancho efectivo del patín).
 - [ ] Normas para ampliar el taller: torsión (NTC 5.8), losas, muros y combinaciones accidentales necesitan el texto oficial registrado con evidencia en `docs/design/normative-sources.json`.
 - [ ] Confirmar con la NTC 6.7.4 si el umbral de acero mínimo por penetración (6.7.6.1.2) usa el esfuerzo combinado con transferencia de momento; hoy usa vuv directo y la nota lo avisa.
-- [ ] Vínculo con el modelo (selección de miembro y demandas concurrentes): choca con el aislamiento de herramientas; decidir si se abre un puente de datos declarado en `src/integrations`.
-- [x] Pórtico: vigas y columnas analizadas juntas (viva alternada, acción lateral, k del nomograma, índice de estabilidad del marco) y cada miembro diseñado con los motores de viga y columna. Diagramas con valores por tramo, φVn y cursor de lectura.
+- [x] Modelar y diseñar: puente declarado `src/integrations/model2dDesign` (Modelo 2D → Diseño · Estructura), «Diseñar» en el 2D, fila en el Inicio, plantilla «Pórtico de concreto» y bandas de diagrama comunes (Lámina en Resultados del 2D).
+- [ ] Modelar y diseñar: llevar de vuelta al 2D el miembro elegido en Diseño (resaltarlo en el lienzo) y diseñar barras inclinadas o de acero; hoy se dicen «sin diseñar».
+- [ ] Modelo 2D en Diseño: llevar el análisis por casos a un worker; un 4 × 4 tarda ~1 s la primera vez (luego hay caché por revisión).
+- [x] Estructura (antes Pórtico): vigas y columnas analizadas juntas (viva alternada, acción lateral, k del nomograma, índice de estabilidad del marco) y cada miembro diseñado con los motores de viga y columna. Diagramas con valores por tramo, φVn y cursor de lectura.
 - [ ] Pórtico: proponer secciones (viga y columna mínimas que cumplen), secciones distintas por nivel, cargas puntuales y voladizos.
 - [ ] Pórtico: llevar el cálculo a un worker; un 5 × 5 con sismo tarda ~0.3 s en el hilo principal.
 - [ ] Registrar con evidencia las combinaciones sísmicas de NSR-10 (B.2.4.2) y E.060 (9.2.3); hoy el pórtico las aplica como complementarias y lo dice.

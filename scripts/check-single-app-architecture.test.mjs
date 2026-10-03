@@ -85,3 +85,21 @@ test('rejects a tool importing another isolated tool, but allows shared pieces a
   assert.ok(violations.some((item) => item.includes('space3d imports design')));
   assert.ok(findSingleAppArchitectureViolations(root).some((item) => item.includes('fem imports space3d')));
 });
+
+test('only the workspace frontier uses declared integrations, and integrations never import tool interfaces', () => {
+  const root = project({
+    'src/integrations/model2dDesign.ts': "import '../design/elements/structure';\nimport '../engine/solver';\n",
+    'src/integrations/leaky.ts': "import '../features/design/workbench/FrameWorkbench';\n",
+    'src/features/workspace/adapters/DesignSurface.tsx': "import '../../../integrations/model2dDesign';\n",
+    'src/features/design/workbench/FrameWorkbench.tsx': "import '../../../integrations/model2dDesign';\n",
+    'src/features/results/ResultsPanel.tsx': "import '../../integrations/model2dDesign';\n",
+    'src/design/elements/structure.ts': 'export const a = 1;\n',
+    'src/engine/solver.ts': 'export const b = 2;\n',
+    'vite.config.ts': 'export default {};\n',
+  });
+  const violations = findToolIsolationViolations(root);
+  assert.equal(violations.length, 3);
+  assert.ok(violations.some((item) => item.includes('leaky.ts') && item.includes('integration imports a tool interface')));
+  assert.ok(violations.some((item) => item.startsWith('src/features/design/') && item.includes('only src/features/workspace may use integrations')));
+  assert.ok(violations.some((item) => item.startsWith('src/features/results/') && item.includes('only src/features/workspace may use integrations')));
+});

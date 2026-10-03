@@ -68,6 +68,8 @@ describe('standalone FStructure', () => {
     expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Make complexity legible.' })).toBeTruthy();
     expect(screen.getByRole('navigation', { name: 'Herramientas' }).querySelectorAll('button')).toHaveLength(4);
+    // Debajo del índice, el único flujo entre herramientas.
+    expect(screen.getByRole('button', { name: 'Modelar y diseñar: del Modelo 2D a Diseño' })).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: /^Continuar.*en FStructure/ }));
 

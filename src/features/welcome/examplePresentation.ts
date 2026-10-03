@@ -19,6 +19,10 @@ const exampleCopy: Record<string, { name: TranslationKey; description: Translati
     name: 'examples.frameName',
     description: 'examples.frameDescription',
   },
+  'Pórtico de concreto': {
+    name: 'examples.concreteFrameName',
+    description: 'examples.concreteFrameDescription',
+  },
   'Viga simplemente apoyada': {
     name: 'examples.simpleBeamName',
     description: 'examples.simpleBeamDescription',

@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { BeamDesignResult, BeamEnd, BeamSectionCut, BedSection } from '../../../design/elements/beam';
 import { barsText } from '../../../design/elements/beam';
 import { rebarLabel } from '../../../design/elements/shared';
+import { bandScale, DiagramBand as SharedDiagramBand, nearestStation, type DiagramBandProps } from '../../../design-system/components/diagramBands';
 import { formatNumber } from './common';
 
 const WIDTH = 820;
@@ -11,108 +12,11 @@ const PLOT = WIDTH - LEFT - RIGHT;
 /** Marco horizontal de las láminas de elevación, compartido con las zapatas combinadas. */
 export const ELEVATION_FRAME = Object.freeze({ width: WIDTH, left: LEFT, plot: PLOT });
 
-interface BandProps {
-  readonly xs: readonly number[];
-  readonly upper: readonly number[];
-  readonly lower?: readonly number[];
-  /** Resistencia provista, dibujada como escalón punteado sobre la demanda. */
-  readonly capacityUpper?: readonly number[];
-  readonly capacityLower?: readonly number[];
-  readonly top: number;
-  readonly height: number;
-  readonly scaleX: (x: number) => number;
-  /** `down`: los positivos se dibujan hacia abajo (momento del lado de la tensión). */
-  readonly positive: 'up' | 'down';
-  readonly tone: 'moment' | 'shear' | 'deformed' | 'axial';
-  readonly label: string;
-  readonly unit: string;
-  readonly nodesAtM: readonly number[];
-}
+type BandProps = Omit<DiagramBandProps, 'frame' | 'format'>;
 
-const pathOf = (xs: readonly number[], values: readonly number[], scaleX: (x: number) => number, y: (value: number) => number) =>
-  values.map((value, index) => `${index === 0 ? 'M' : 'L'}${scaleX(xs[index]!).toFixed(2)},${y(value).toFixed(2)}`).join(' ');
-
-/** Escala vertical de una banda: incluye el cero, la demanda y la resistencia. */
-function bandScale({ upper, lower, capacityUpper, capacityLower, top, height, positive }: Pick<BandProps, 'upper' | 'lower' | 'capacityUpper' | 'capacityLower' | 'top' | 'height' | 'positive'>) {
-  let max = 0;
-  let min = 0;
-  for (const series of [upper, lower, capacityUpper, capacityLower]) {
-    for (const value of series ?? []) {
-      if (value > max) max = value;
-      if (value < min) min = value;
-    }
-  }
-  const range = max - min || 1;
-  return (value: number) => positive === 'down' ? top + (value - min) / range * height : top + (max - value) / range * height;
-}
-
-const MIN_LABEL_GAP = 46;
-
-/**
- * Rótulos de una banda: el máximo y el mínimo de cada tramo entre apoyos y el
- * valor que rige en cada apoyo. Se descartan los que se encimarían con uno
- * mayor del mismo lado del eje.
- */
-function bandLabels(xs: readonly number[], series: readonly (readonly number[])[], nodesAtM: readonly number[], scaleX: (x: number) => number) {
-  const values = (index: number) => series.map((item) => item[index]!);
-  const all = series.flat();
-  const range = Math.max(...all, 0) - Math.min(...all, 0) || 1;
-  const threshold = range * 0.03;
-  const first = xs[0]!;
-  const last = xs[xs.length - 1]!;
-  const breaks = [...new Set([first, ...nodesAtM, last].map((x) => Math.round(x * 1e6) / 1e6))].sort((a, b) => a - b);
-  const candidates: { x: number; value: number }[] = [];
-  const consider = (indexes: readonly number[], pick: (a: number, b: number) => boolean) => {
-    let best: { x: number; value: number } | undefined;
-    for (const index of indexes) for (const value of values(index)) if (!best || pick(value, best.value)) best = { x: xs[index]!, value };
-    if (best && Math.abs(best.value) > threshold) candidates.push(best);
-  };
-  for (let segment = 0; segment < breaks.length - 1; segment += 1) {
-    const indexes = xs.flatMap((x, index) => x >= breaks[segment]! - 1e-9 && x <= breaks[segment + 1]! + 1e-9 ? [index] : []);
-    consider(indexes, (a, b) => a > b);
-    consider(indexes, (a, b) => a < b);
-  }
-  for (const node of nodesAtM) {
-    const indexes = xs.flatMap((x, index) => Math.abs(x - node) < 1e-6 ? [index] : []);
-    consider(indexes, (a, b) => Math.abs(a) > Math.abs(b));
-  }
-  const kept: { x: number; value: number }[] = [];
-  for (const candidate of candidates.sort((a, b) => Math.abs(b.value) - Math.abs(a.value))) {
-    const clash = kept.some((item) => Math.sign(item.value) === Math.sign(candidate.value) && Math.abs(scaleX(item.x) - scaleX(candidate.x)) < MIN_LABEL_GAP);
-    if (!clash) kept.push(candidate);
-  }
-  return kept;
-}
-
-export function DiagramBand({ xs, upper, lower, capacityUpper, capacityLower, top, height, scaleX, positive, tone, label, unit, nodesAtM }: BandProps) {
-  const y = bandScale({ upper, lower, capacityUpper, capacityLower, top, height, positive });
-  const axis = y(0);
-  const areaOf = (values: readonly number[]) =>
-    `M${scaleX(xs[0]!).toFixed(2)},${axis.toFixed(2)} ${values.map((value, index) => `L${scaleX(xs[index]!).toFixed(2)},${y(value).toFixed(2)}`).join(' ')} L${scaleX(xs[xs.length - 1]!).toFixed(2)},${axis.toFixed(2)} Z`;
-  const labels = bandLabels(xs, lower ? [upper, lower] : [upper], nodesAtM, scaleX);
-
-  return <g className={`dw-band dw-band--${tone}`}>
-    <text className="dw-band__label" x={10} y={top + height / 2 - 3}>{label}</text>
-    <text className="dw-band__unit" x={10} y={top + height / 2 + 12}>{unit}</text>
-    {nodesAtM.map((x) => <line key={x} className="dw-band__grid" x1={scaleX(x)} x2={scaleX(x)} y1={top - 4} y2={top + height + 4} />)}
-    <path className="dw-band__area" d={areaOf(upper)} />
-    {lower ? <path className="dw-band__area" d={areaOf(lower)} /> : null}
-    <line className="dw-band__axis" x1={LEFT} x2={LEFT + PLOT} y1={axis} y2={axis} />
-    {capacityUpper ? <path className="dw-band__capacity" d={pathOf(xs, capacityUpper, scaleX, y)} /> : null}
-    {capacityLower ? <path className="dw-band__capacity" d={pathOf(xs, capacityLower, scaleX, y)} /> : null}
-    <path className="dw-band__line" d={pathOf(xs, upper, scaleX, y)} />
-    {lower ? <path className="dw-band__line" d={pathOf(xs, lower, scaleX, y)} /> : null}
-    {labels.map((item) => {
-      const px = scaleX(item.x);
-      const py = y(item.value);
-      const below = py >= axis;
-      const anchor = px < LEFT + 40 ? 'start' : px > LEFT + PLOT - 40 ? 'end' : 'middle';
-      return <g key={`${item.x}-${item.value}`}>
-        <circle className="dw-band__dot" cx={px} cy={py} r={3} />
-        <text className="dw-band__value" x={px} y={below ? py + 15 : py - 7} textAnchor={anchor}>{formatNumber(item.value, 1)}</text>
-      </g>;
-    })}
-  </g>;
+/** Banda común (`design-system`) en el marco de las láminas de elevación. */
+export function DiagramBand(props: BandProps) {
+  return <SharedDiagramBand {...props} frame={ELEVATION_FRAME} format={(value) => formatNumber(value, 1)} />;
 }
 
 type SupportKind = 'pin' | 'roller' | 'fixed-left' | 'fixed-right';
@@ -183,7 +87,6 @@ function stirrupPositions(result: BeamDesignResult): number[] {
 }
 
 /** Índice de la estación más cercana a `x`; con estaciones repetidas (saltos), la del lado indicado. */
-const nearestStation = (xs: readonly number[], x: number) => xs.reduce((best, value, index) => Math.abs(value - x) < Math.abs(xs[best]! - x) - 1e-9 ? index : best, 0);
 
 /**
  * Elevación con cargas, apoyos y envolventes de momento, cortante y flecha.
@@ -246,7 +149,7 @@ export function BeamElevation({ result, interactive = false, supports = 'ideal' 
     deflection: diagram.deflectionMm[probe]!,
   } : null;
 
-  const drawing = <svg className={`dw-drawing${interactive ? ' dw-drawing--probe' : ''}`} viewBox={`0 0 ${WIDTH} ${height}`} role="img"
+  const drawing = <svg className={`dw-drawing${interactive ? ' fs-probe-target' : ''}`} viewBox={`0 0 ${WIDTH} ${height}`} role="img"
     tabIndex={interactive ? 0 : undefined}
     onPointerMove={interactive ? onPointer : undefined}
     onPointerDown={interactive ? onPointer : undefined}
@@ -291,23 +194,23 @@ export function BeamElevation({ result, interactive = false, supports = 'ideal' 
     {bands.map((band, index) => <DiagramBand key={band.tone} xs={diagram.xM} scaleX={scaleX} nodesAtM={result.nodesAtM}
       top={bandTop + index * (bandHeight + bandGap)} height={bandHeight} {...band} />)}
 
-    {probe !== null ? <g className="dw-probe" aria-hidden="true">
-      <line className="dw-probe__line" x1={scaleX(diagram.xM[probe]!)} x2={scaleX(diagram.xM[probe]!)} y1={beamTop - 8} y2={height - 6} />
+    {probe !== null ? <g className="fs-probe" aria-hidden="true">
+      <line className="fs-probe__line" x1={scaleX(diagram.xM[probe]!)} x2={scaleX(diagram.xM[probe]!)} y1={beamTop - 8} y2={height - 6} />
       {bands.map((band, index) => [band.upper, band.lower].filter((series): series is readonly number[] => Boolean(series)).map((series, position) =>
-        <circle key={`${index}-${position}`} className={`dw-probe__dot dw-probe__dot--${band.tone}`} cx={scaleX(diagram.xM[probe]!)} cy={scales[index]!(series[probe]!)} r={4} />))}
+        <circle key={`${index}-${position}`} className={`fs-probe__dot fs-probe__dot--${band.tone}`} cx={scaleX(diagram.xM[probe]!)} cy={scales[index]!(series[probe]!)} r={4} />))}
     </g> : null}
   </svg>;
   if (!interactive) return drawing;
-  return <div className="dw-probe-frame">
+  return <div className="fs-probe-frame">
     {drawing}
-    <p className="dw-probe-readout" aria-live="polite">
+    <p className="fs-probe-readout" aria-live="polite">
       {reading ? <>
         <span><b>x</b> {formatNumber(reading.x, 2)} m · claro {reading.span}</span>
         <span data-tone="moment"><b>M⁺u</b> {formatNumber(Math.max(0, reading.momentMax), 1)} / φMn {formatNumber(reading.capacityPositive, 1)}</span>
         <span data-tone="moment"><b>M⁻u</b> {formatNumber(Math.max(0, -reading.momentMin), 1)} / φMn {formatNumber(reading.capacityNegative, 1)} kN·m</span>
         <span data-tone="shear"><b>Vu</b> {formatNumber(reading.shear, 1)} / φVn {formatNumber(reading.shearCapacity, 1)} kN</span>
         <span data-tone="deformed"><b>Δ</b> {formatNumber(reading.deflection, 1)} mm</span>
-      </> : <span className="dw-probe-readout__hint">Toca o pasa el cursor sobre los diagramas para leer momento, cortante, resistencia y flecha en cada sección.</span>}
+      </> : <span className="fs-probe-readout__hint">Toca o pasa el cursor sobre los diagramas para leer momento, cortante, resistencia y flecha en cada sección.</span>}
     </p>
   </div>;
 }

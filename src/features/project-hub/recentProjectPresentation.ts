@@ -18,8 +18,8 @@ const designElement = (entries: Record<string, JsonValue>, language: Language) =
   const raw = entries.element;
   const element = raw === 'column' || raw === 'frame' || raw === 'footing' || raw === 'section' ? raw : 'beam';
   const labels = language === 'es'
-    ? { beam: 'Viga', column: 'Columna', frame: 'Pórtico', footing: 'Zapata', section: 'Sección' }
-    : { beam: 'Beam', column: 'Column', frame: 'Frame', footing: 'Footing', section: 'Section' };
+    ? { beam: 'Viga', column: 'Columna', frame: 'Estructura', footing: 'Zapata', section: 'Sección' }
+    : { beam: 'Beam', column: 'Column', frame: 'Structure', footing: 'Footing', section: 'Section' };
   return labels[element];
 };
 

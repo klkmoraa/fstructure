@@ -81,11 +81,40 @@ const territoryOf = (resolvedRoot, path) => {
   return null;
 };
 
+/**
+ * Los puentes de datos declarados (`src/integrations`) traducen los datos de
+ * una herramienta al contrato de otra. Sólo la frontera de
+ * `src/features/workspace` los usa: si una herramienta o la interfaz del Modelo
+ * 2D importara un puente, volvería a leer datos ajenos por la puerta de atrás.
+ * Un puente, a su vez, puede usar bibliotecas de cálculo y datos, nunca la
+ * interfaz de una herramienta (`src/features`, `src/modules`).
+ */
+const INTEGRATIONS = 'src/integrations';
+
 /** Reporta imports de producción que cruzan de una herramienta aislada a otra. */
 export const findToolIsolationViolations = (root) => {
   const resolvedRoot = resolve(root);
   const violations = [];
+  const integrations = join(resolvedRoot, INTEGRATIONS);
+  for (const path of filesUnder(integrations, isProductionTypeScript)) {
+    for (const specifier of dependencySpecifiersIn(readFileSync(path, 'utf8'), path)) {
+      if (!specifier.startsWith('.')) continue;
+      const targetPath = resolve(dirname(path), specifier);
+      if (isInside(targetPath, join(resolvedRoot, 'src/features')) || isInside(targetPath, join(resolvedRoot, 'src/modules'))) {
+        violations.push(`${relative(resolvedRoot, path)} -> ${specifier} (integration imports a tool interface)`);
+      }
+    }
+  }
   for (const path of filesUnder(join(resolvedRoot, 'src'), isProductionTypeScript)) {
+    if (isInside(path, integrations)) continue;
+    const insideWorkspace = isInside(path, join(resolvedRoot, 'src/features/workspace'));
+    if (!insideWorkspace) {
+      for (const specifier of dependencySpecifiersIn(readFileSync(path, 'utf8'), path)) {
+        if (specifier.startsWith('.') && isInside(resolve(dirname(path), specifier), integrations)) {
+          violations.push(`${relative(resolvedRoot, path)} -> ${specifier} (only src/features/workspace may use integrations)`);
+        }
+      }
+    }
     const territory = territoryOf(resolvedRoot, path);
     // La interfaz del Modelo 2D (`src/features`) tampoco puede cargar la
     // interfaz de otra herramienta. Sólo la frontera de `src/features/workspace`

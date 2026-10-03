@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import App from '../../App';
-import { createDefaultProject } from '../../data/defaultProject';
+import { createBlankProject, createConcreteFrameProject, createDefaultProject } from '../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../data/projectStorage';
 import { WORKSPACE_LAYOUT_STORAGE_KEY } from './useWorkspaceLayoutPreferences';
 
@@ -107,6 +107,44 @@ it('cambiar de herramienta desmonta la anterior y la recarga vuelve a la herrami
 
   view.unmount();
   render(<App />);
+  expect(await screen.findByRole('application', undefined, LAZY)).toBeTruthy();
+  expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+}, TEST_TIMEOUT);
+
+it('modelar y diseñar: «Diseñar» lleva el Modelo 2D a la mesa Estructura y se vuelve al modelo', async () => {
+  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createConcreteFrameProject()));
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByRole('application', undefined, LAZY);
+  await user.click(screen.getByRole('button', { name: /^Diseñar este modelo en concreto/ }));
+  expect(await screen.findByRole('heading', { name: 'Estructura' }, LAZY)).toBeTruthy();
+  expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
+  expect(screen.getByRole('radio', { name: 'Modelo 2D' }).getAttribute('aria-checked')).toBe('true');
+  expect(await screen.findByRole('img', { name: /Utilización de el Modelo 2D: 2 líneas de viga y 6 columnas/ }, LAZY)).toBeTruthy();
+  // Diseño no tiene el lienzo ni los atajos del 2D; «Abrir el Modelo 2D» vuelve a él.
+  expect(screen.queryByRole('application')).toBeNull();
+  await user.click(screen.getAllByRole('button', { name: 'Abrir el Modelo 2D' })[0]!);
+  expect(await screen.findByRole('application', undefined, LAZY)).toBeTruthy();
+  expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+}, TEST_TIMEOUT);
+
+it('desde el Inicio, «Modelar y diseñar» diseña el modelo abierto, o lleva a modelarlo si está vacío', async () => {
+  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createConcreteFrameProject()));
+  window.history.replaceState(null, '', '/?surface=welcome');
+  const user = userEvent.setup();
+  const view = render(<App />);
+  await screen.findByTestId('suite-welcome', undefined, LAZY);
+  await user.click(screen.getByRole('button', { name: 'Modelar y diseñar: del Modelo 2D a Diseño' }));
+  expect(await screen.findByRole('heading', { name: 'Estructura' }, LAZY)).toBeTruthy();
+  expect(screen.getByRole('radio', { name: 'Modelo 2D' }).getAttribute('aria-checked')).toBe('true');
+  view.unmount();
+
+  globalThis.indexedDB = new IDBFactory();
+  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createBlankProject()));
+  window.history.replaceState(null, '', '/?surface=welcome');
+  render(<App />);
+  await screen.findByTestId('suite-welcome', undefined, LAZY);
+  await user.click(screen.getByRole('button', { name: 'Modelar y diseñar: del Modelo 2D a Diseño' }));
   expect(await screen.findByRole('application', undefined, LAZY)).toBeTruthy();
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
 }, TEST_TIMEOUT);

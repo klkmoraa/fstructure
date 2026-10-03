@@ -19,7 +19,7 @@ const DOCUMENT_TITLE = 'Memoria de diseño · Experimental';
 const STATUS_TEXT: Record<ElementCheck['status'], string> = {
   pass: 'Cumple', fail: 'No cumple', warning: 'Revisar', info: 'Nota', 'out-of-scope': 'Sin evaluar',
 };
-const ELEMENT_NAME = { beam: 'Viga', column: 'Columna', frame: 'Pórtico', footing: 'Cimentación', section: 'Sección experimental' } as const;
+const ELEMENT_NAME = { beam: 'Viga', column: 'Columna', frame: 'Estructura', footing: 'Cimentación', section: 'Sección experimental' } as const;
 
 const number = (value: number | undefined, unit: string | undefined) =>
   value === undefined || !Number.isFinite(value) ? '—' : `${value.toLocaleString('es-MX', { maximumFractionDigits: unit === '' ? 2 : 1 })}${unit ? ` ${unit}` : ''}`;

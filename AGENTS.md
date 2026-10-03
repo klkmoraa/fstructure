@@ -12,7 +12,7 @@ FStructure es la app de cálculo estructural de FusionStructure: cuatro herramie
 
 1. **No perder datos del usuario.** Lo guardado se migra con versión; nada se sobrescribe ni se descarta en silencio.
 2. **Nada sale del dispositivo** sin una acción explícita de la persona (sin telemetría ni red implícita).
-3. **Las herramientas no se mezclan.** Ninguna importa código de otra ni lee sus datos; `npm run architecture:check` lo vigila.
+3. **Las herramientas no se mezclan.** Ninguna importa código de otra ni lee sus datos; `npm run architecture:check` lo vigila. El único paso de datos es un puente declarado en `src/integrations` que traduce a un contrato de la herramienta destino y sólo usa `src/features/workspace` (hoy: Modelo 2D → Diseño, «Modelar y diseñar»).
 4. **`main` publicable.** CI corre `npm run check` y no publica si falla.
 
 ## Pruebas: el mínimo que cubre el cambio
@@ -32,9 +32,10 @@ No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa.
 - `src/App.tsx`: rutas `?surface=welcome` (Inicio) · `?surface=home&tool=` (bienvenida) · `?tool=` (mesa).
 - `src/features/welcome/`: Inicio (`SuiteHome`) y bienvenida original de FStructure (`Model2DWelcome`).
 - `src/features/tool-home/`: bienvenida común de 3D, FEM y Diseño.
-- `src/features/workspace/`: `WorkspaceShell` (2D), `ToolShell` (3D/FEM/Diseño), `toolCatalog`, `toolIntent`. Es la única carpeta que conoce las cuatro herramientas.
+- `src/features/workspace/`: `WorkspaceShell` (2D), `ToolShell` (3D/FEM/Diseño), `toolCatalog`, `toolIntent`, `toolNavigation`. Es la única carpeta que conoce las cuatro herramientas.
+- `src/integrations/`: puentes declarados entre herramientas (`model2dDesign`: Modelo 2D → `ExternalStructureSource` de Diseño).
 - FS-A01: `src/features`, `src/engine`, `src/commands`, `src/store` · FS-A02: `src/modules/space3d` · FS-A03: `src/modules/fem` · FS-A04: `src/design`, `src/features/design`.
-- Común: `src/foundation` (unidades, álgebra), `src/storage` (proyecto local), `src/design-system`, `src/workers`.
+- Común: `src/foundation` (unidades, álgebra), `src/storage` (proyecto local), `src/design-system` (incluye las bandas de diagrama que comparten Diseño y el 2D), `src/workers`.
 
 ## Cómo está hecho (guía)
 

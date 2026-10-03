@@ -90,6 +90,7 @@ export const esResults = {
   'results.moment': 'Momento',
   'results.influence': 'Influencia',
   'results.loadingInfluence': 'Cargando línea de influencia',
+  'results.sheet': 'Lámina',
   'results.deformed': 'Deformada',
   'results.learn': 'Aprender',
   'results.readyTitle': 'El modelo está listo para analizarse',

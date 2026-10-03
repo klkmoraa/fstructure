@@ -10,7 +10,7 @@ type ToolIntent =
   | { tool: 'space3d'; kind: 'generate' | 'example' | 'first-node' }
   | { tool: 'fem'; kind: 'analyze' }
   | { tool: 'fem'; kind: 'import-gmsh'; fileName: string; text: string }
-  | { tool: 'design'; kind: 'element'; element: 'beam' | 'column' | 'frame' | 'footing' | 'section'; code?: string };
+  | { tool: 'design'; kind: 'element'; element: 'beam' | 'column' | 'frame' | 'footing' | 'section'; code?: string; source?: 'frame' | 'model' };
 
 let pending: ToolIntent | null = null;
 

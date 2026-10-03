@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ToolId } from '../../shared/contracts';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
+import { setToolIntent } from '../workspace/toolIntent';
 import { SuiteHome } from './SuiteHome';
 import { readLastTool } from './lastTool';
 
@@ -29,6 +30,12 @@ export const WelcomeScreen = ({ onOpenToolHome, onResume }: WelcomeScreenProps) 
     lastTool={lastTool}
     onOpenTool={onOpenToolHome}
     onResume={onResume}
+    onModelAndDesign={() => {
+      // Con modelo, se diseña de una vez; sin él, primero se modela (la mesa 2D tiene «Diseñar»).
+      if (!project.members.length) { onResume('model2d'); return; }
+      setToolIntent({ tool: 'design', kind: 'element', element: 'frame', source: 'model' });
+      onResume('design');
+    }}
     onLanguageChange={(next) => updateProjectView((current) => ({ ...current, settings: { ...current.settings, language: next } }))}
     onThemeChange={setTheme}
   />;

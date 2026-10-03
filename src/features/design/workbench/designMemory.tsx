@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Button } from '../../../design-system/components/controls';
 import { Dialog } from '../../../design-system/components/overlays';
 import { designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
+import type { ExternalStructureSource } from '../../../design/elements/structure';
 import { BEAM_DEFAULTS, beamReportFromDraft, parseSpans, DEFAULT_SPANS } from './beamModel';
 import { COLUMN_DEFAULTS, columnReportFromDraft } from './columnModel';
 import { SECTION_DEFAULTS, sectionReportFromDraft } from './concreteStudioModel';
@@ -17,7 +18,7 @@ import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type Workbenc
  * cálculo. Se guarda el borrador (no el resultado) y se recalcula al mostrar o
  * exportar, así que la memoria siempre sale con el motor vigente.
  */
-const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', frame: 'Pórtico', footing: 'Zapata', section: 'Sección' };
+const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', frame: 'Estructura', footing: 'Zapata', section: 'Sección' };
 /** Presupuesto del documento para la memoria; el resto queda para los borradores. */
 const MEMORY_BUDGET_CHARS = 180_000;
 
@@ -32,12 +33,13 @@ const merge = <T extends Record<string, string>>(defaults: T, fields: Record<str
 
 type MemoryReport = { readonly ok: true; readonly report: DesignReport } | { readonly ok: false; readonly errors: readonly string[] };
 
-export function reportFromMemoryItem(item: WorkbenchMemoryItem): MemoryReport {
+/** Recalcula un elemento guardado; una estructura del Modelo 2D usa el modelo vigente del proyecto. */
+export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: ExternalStructureSource | null = null): MemoryReport {
   const code: DesignCodeId = isDesignCodeId(item.code) ? item.code : 'ntc-2023';
   switch (item.element) {
     case 'beam': return beamReportFromDraft(code, merge(BEAM_DEFAULTS, item.fields), parseSpans(item.rows) ?? DEFAULT_SPANS);
     case 'column': return columnReportFromDraft(code, merge(COLUMN_DEFAULTS, item.fields));
-    case 'frame': return frameReportFromDraft(code, merge(FRAME_DEFAULTS, item.fields), parseBays(item.rows) ?? DEFAULT_BAYS, parseStories(item.levels) ?? DEFAULT_STORIES);
+    case 'frame': return frameReportFromDraft(code, merge(FRAME_DEFAULTS, item.fields), parseBays(item.rows) ?? DEFAULT_BAYS, parseStories(item.levels) ?? DEFAULT_STORIES, modelSource);
     case 'footing': return footingReportFromDraft(code, merge(FOOTING_DEFAULTS, item.fields));
     case 'section': return sectionReportFromDraft(code, merge(SECTION_DEFAULTS, item.fields));
   }
@@ -163,8 +165,10 @@ export function MemoryStatus({ memory, element, onSave, onOpen }: { memory: Desi
   </div>;
 }
 
-export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onExport, exporting, message }: {
+export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onExport, exporting, message, modelSource = null }: {
   open: boolean;
+  /** Modelo 2D vigente: las estructuras guardadas desde el modelo se recalculan con él. */
+  modelSource?: ExternalStructureSource | null;
   onOpenChange: (open: boolean) => void;
   memory: DesignMemory;
   element: DesignElementKind;
@@ -176,7 +180,7 @@ export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onEx
 }) {
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const rows = useMemo(() => open ? memory.items.map((item) => ({ item, outcome: reportFromMemoryItem(item) })) : [], [open, memory.items]);
+  const rows = useMemo(() => open ? memory.items.map((item) => ({ item, outcome: reportFromMemoryItem(item, modelSource) })) : [], [open, memory.items, modelSource]);
   const reports = rows.flatMap((row) => row.outcome.ok ? [row.outcome.report] : []);
   const invalid = rows.length - reports.length;
   const dirty = Boolean(memory.active && !memory.saved);

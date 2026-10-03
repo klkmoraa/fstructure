@@ -745,6 +745,7 @@ type Envelope = { max: number[]; min: number[] };
 function envelopeOf(analysis: BeamAnalysis, pick: (response: CaseResponse) => readonly number[], combinations: readonly LoadCombination[]): Envelope {
   const max: number[] = [];
   const min: number[] = [];
+  const laterals = analysis.laterals ?? [];
   for (let index = 0; index < analysis.stations.length; index += 1) {
     let high = Number.NEGATIVE_INFINITY;
     let low = Number.POSITIVE_INFINITY;
@@ -760,13 +761,12 @@ function envelopeOf(analysis: BeamAnalysis, pick: (response: CaseResponse) => re
         const value = pick(response)[index]!;
         if (value > 0) comboHigh += factors.live * value; else comboLow += factors.live * value;
       }
-      if (analysis.lateral && factors.lateral) {
-        const lateral = factors.lateral * Math.abs(pick(analysis.lateral)[index]!);
-        comboHigh += lateral;
-        comboLow -= lateral;
-      }
-      high = Math.max(high, comboHigh);
-      low = Math.min(low, comboLow);
+      // Con acciones laterales, cada una por separado y en el sentido que empeora.
+      const lateral = factors.lateral && laterals.length
+        ? Math.max(...laterals.map((response) => factors.lateral! * Math.abs(pick(response)[index]!)))
+        : 0;
+      high = Math.max(high, comboHigh + lateral);
+      low = Math.min(low, comboLow - lateral);
     }
     max.push(high);
     min.push(low);

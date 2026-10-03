@@ -65,6 +65,7 @@ const exampleAssets: Record<string, ThreeStructuralAssetId> = {
   'Práctica tipo Hibbeler · diagramas': 'beam:simply-supported',
   'Práctica tipo Hibbeler · armadura': 'truss:warren',
   'Pórtico de ejemplo': 'portal:single-bay',
+  'Pórtico de concreto': 'portal:two-story',
   'Viga simplemente apoyada': 'beam:simply-supported',
   'Armadura triangular': 'truss:warren',
 };

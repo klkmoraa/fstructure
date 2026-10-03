@@ -1,7 +1,7 @@
 import type { BeamDesignResult } from './beam';
 import type { ColumnDesignResult } from './column';
 import type { CombinedFootingResult } from './combinedFooting';
-import type { FrameDesignResult } from './frame';
+import type { StructureDesignResult } from './structure';
 import type { StripFootingResult } from './stripFooting';
 import type { FootingDesignResult } from './footing';
 import type { MatFoundationResult } from './matFoundation';
@@ -196,11 +196,12 @@ export function matFoundationTakeoff(result: MatFoundationResult): Takeoff {
 }
 
 /**
- * Pórtico: las vigas de cada nivel con su longitud total (los nudos van en la
- * viga) y las columnas en su altura libre, agrupadas por pieza igual.
+ * Estructura (pórtico o Modelo 2D): cada línea de viga con su longitud total
+ * (los nudos van en la viga) y las columnas en su altura libre, agrupadas por
+ * pieza igual.
  */
-export function frameTakeoff(result: FrameDesignResult): Takeoff {
-  const beamLines = result.beams.flatMap((beam) => beamTakeoff(beam.result).lines.map((item) => ({ ...item, mark: `Nivel ${beam.story + 1} · ${item.mark}` })));
+export function structureTakeoff(result: StructureDesignResult): Takeoff {
+  const beamLines = result.beams.flatMap((beam) => beamTakeoff(beam.result).lines.map((item) => ({ ...item, mark: `${beam.label} · ${item.mark}` })));
   const grouped = new Map<string, TakeoffLine>();
   for (const column of result.columns) {
     for (const item of columnTakeoff(column.result).lines) {

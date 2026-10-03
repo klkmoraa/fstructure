@@ -205,7 +205,8 @@ export const ToolHome = ({ tool, content, summary, onOpenWorkspace, onOpenSuite,
               <div><h2 id={`${tool}-start-title`}>{text.startTitle}</h2><p>{content.startBody[language]}</p></div>
               {content.pathsControl}
             </header>
-            <div className="solver2d-paths tool-home__paths" style={{ '--path-count': content.paths.length } as CSSProperties}>
+            {/* Más de cinco entradas no caben en un renglón: se reparten en dos. */}
+            <div className="solver2d-paths tool-home__paths" style={{ '--path-count': content.paths.length > 5 ? Math.ceil(content.paths.length / 2) : content.paths.length } as CSSProperties}>
               {content.paths.map((path, index) => {
                 const Icon = path.icon;
                 const inner = <>

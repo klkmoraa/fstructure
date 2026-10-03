@@ -79,7 +79,7 @@ describe('pórtico de vigas y columnas', () => {
     expect(result.checks.filter((check) => check.id.startsWith('beam-'))).toHaveLength(2);
     expect(result.checks.filter((check) => check.id.startsWith('column-'))).toHaveLength(6);
     // Las vigas trazan su demanda al pórtico.
-    expect(result.beams[0]!.result.checks.find((check) => check.id === 'flexure-negative')?.combination).toMatch(/^Pórtico · nivel 1/);
+    expect(result.beams[0]!.result.checks.find((check) => check.id === 'flexure-negative')?.combination).toMatch(/^Pórtico · viga del nivel 1/);
   });
 
   it('reproduce el solver 2D en un marco de un claro con la carga factorizada', () => {
@@ -97,7 +97,7 @@ describe('pórtico de vigas y columnas', () => {
     expect(result.beams[0]!.result.diagram.momentMinKnm[0]).toBeCloseTo(end.moment, 6);
     const column = engine.memberResults.find((member) => member.memberId === 'C1')!;
     const base = evaluateDiagramAt(column.diagramSegments, column.diagramJumps, 0, 'right')!;
-    const left = result.columns.find((item) => item.line === 0)!;
+    const left = result.columns.find((item) => item.axis === 0)!;
     const maxAxial = left.states.find((state) => state.label === 'Pu máx.')!;
     expect(maxAxial.axialKn).toBeCloseTo(-base.axial, 6);
   });
@@ -106,11 +106,11 @@ describe('pórtico de vigas y columnas', () => {
     const result = designFrame(frameInput({ bays: [5, 5] }));
     if (!result.ok) throw new Error(result.errors.join('\n'));
     for (const story of [0, 1]) {
-      const left = result.columns.find((item) => item.line === 0 && item.story === story)!;
-      const right = result.columns.find((item) => item.line === 2 && item.story === story)!;
+      const left = result.columns.find((item) => item.axis === 0 && item.story === story)!;
+      const right = result.columns.find((item) => item.axis === 2 && item.story === story)!;
       expect(left.result.governingRatio).toBeCloseTo(right.result.governingRatio, 6);
       expect(left.states[left.governingState]!.axialKn).toBeCloseTo(right.states[right.governingState]!.axialKn, 6);
-      expect(result.beams[story]!.bayRatios[0]).toBeCloseTo(result.beams[story]!.bayRatios[1]!, 6);
+      expect(result.beams[story]!.spanRatios[0]).toBeCloseTo(result.beams[story]!.spanRatios[1]!, 6);
     }
   });
 

@@ -344,3 +344,12 @@
 @media (prefers-reduced-motion: reduce) {
   .fs-suite *, .fs-suite *::before { transition: none !important; }
 }
+
+/* Flujo Modelo 2D → Diseño: una fila más bajo el índice, con las dos marcas. */
+.fs-suite__flow { display: grid; margin: 0 -14px; }
+.fs-tool--flow .fs-tool__copy strong { font-size: 19px; }
+.fs-tool__tile--flow { display: flex; align-items: center; justify-content: center; gap: 0; }
+@media (max-width: 560px) {
+  .fs-tool--flow .fs-tool__copy strong { font-size: 17px; }
+  .fs-tool__tile--flow svg { width: 18px; height: 18px; }
+}

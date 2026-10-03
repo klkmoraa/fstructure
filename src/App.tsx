@@ -11,6 +11,7 @@ import { Model2DWelcome } from './features/welcome/Model2DWelcome';
 import { TOOL_HOMES } from './features/workspace/toolHomes';
 import { toolRegistry } from './features/workspace/toolRegistry';
 import { toolIdentity } from './features/workspace/toolCatalog';
+import { ToolNavigationContext } from './features/workspace/toolNavigation';
 import { useI18n } from './i18n/useI18n';
 import { rememberLastTool } from './features/welcome/lastTool';
 import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
@@ -90,6 +91,7 @@ const FStructureSurface = () => {
      herramienta desmonte la anterior por completo: ningún atajo, superficie,
      historial de interfaz ni estado de render sobrevive al cambio. */
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
+    <ToolNavigationContext.Provider value={openTool}>
     {route.surface === 'welcome'
       ? <WelcomeScreen onOpenToolHome={openToolHome} onResume={openTool} />
       : route.surface === 'tool-home'
@@ -99,6 +101,7 @@ const FStructureSurface = () => {
         : route.tool === 'model2d'
           ? <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openCurrentToolHome} />
           : <ToolShell key={route.tool} tool={route.tool} projectId={project.id} onOpenHome={openCurrentToolHome} />}
+    </ToolNavigationContext.Provider>
   </ClassroomSessionProvider>;
 };
 

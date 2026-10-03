@@ -877,10 +877,10 @@
   min-width:0;
   flex:1 1 auto;
   display:grid;
-  /* Las seis magnitudes mantienen una celda propia. Ningún texto puede crecer
-     fuera de ella: en anchos estrechos el botón conserva el control y trunca
-     el rótulo antes de invadir a la magnitud vecina. */
-  grid-template-columns:repeat(6,minmax(0,152px));
+  /* Las siete vistas (con la Lámina) mantienen una celda propia. Ningún texto
+     puede crecer fuera de ella: en anchos estrechos el botón conserva el
+     control y trunca el rótulo antes de invadir a la vista vecina. */
+  grid-template-columns:repeat(7,minmax(0,152px));
   justify-content:start;
   gap:4px;
 }

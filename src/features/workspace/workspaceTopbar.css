@@ -1271,3 +1271,11 @@
 @media (max-width: 1023px) {
   .workspace-topbar__inspector-button--desktop { display: none; }
 }
+
+/* «Diseñar» (flujo Modelo 2D → Diseño): en teléfono le cede el sitio al nombre
+   del proyecto y vive en el menú «…» de utilidades. */
+@media (max-width: 560px) {
+  .workspace-topbar__design-button { display: none; }
+  /* Sin «Panel» (escritorio) ni «Diseñar», el grupo quedaría como una píldora vacía. */
+  .workspace-topbar__tool-group:not(:has(button:not(.workspace-topbar__inspector-button--desktop):not(.workspace-topbar__design-button))) { display: none; }
+}

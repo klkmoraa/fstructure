@@ -90,6 +90,7 @@ export const enResults = {
   'results.moment': 'Moment',
   'results.influence': 'Influence',
   'results.loadingInfluence': 'Loading influence line',
+  'results.sheet': 'Sheet',
   'results.deformed': 'Deformed',
   'results.learn': 'Learn',
   'results.readyTitle': 'The model is ready for analysis',

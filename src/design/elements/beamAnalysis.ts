@@ -50,10 +50,11 @@ export interface BeamAnalysis {
   /** Una respuesta por claro con la carga viva sólo en ese claro. */
   readonly livePerSpan: readonly CaseResponse[];
   /**
-   * Acción lateral (sismo o viento) de un pórtico, sin factores. Se suma en
-   * ambos sentidos con el factor `lateral` de cada combinación.
+   * Acciones laterales (sismo o viento) de una estructura, sin factores. Cada
+   * una es una alternativa: entra sola, en ambos sentidos, con el factor
+   * `lateral` de cada combinación.
    */
-  readonly lateral?: CaseResponse;
+  readonly laterals?: readonly CaseResponse[];
   readonly solverRuns: number;
 }
 

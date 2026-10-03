@@ -13,6 +13,7 @@ import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { ResultSummary } from './ResultSummary';
+import { MemberSheet } from './MemberSheet';
 import { NumericQualityCard } from './NumericQualityCard';
 import { deriveClassroomProgress, type ClassroomProgressStepId } from '../../education/classroomProgress';
 import { formatFixed, formatScientific } from '../../utils/numberFormat';
@@ -31,12 +32,18 @@ import './results.css';
  * contexto del objeto activo. Reacciones y «Entender» siguen siendo vistas
  * densas que se invocan cuando se necesitan.
  */
-const tabs: Array<{ id: ResultTab; labelKey: TranslationKey; color?: string; evidence?: EvidenceLayerId }> = [
+/**
+ * «Lámina» no es una magnitud del lienzo: apila N, V, M y la flecha del miembro
+ * como las láminas de Diseño y deja el lienzo como estaba.
+ */
+type PanelTabId = ResultTab | 'sheet';
+const tabs: Array<{ id: PanelTabId; labelKey: TranslationKey; color?: string; evidence?: EvidenceLayerId }> = [
   { id: 'summary', labelKey: 'results.summary' },
   { id: 'axial', labelKey: 'results.axial', color: 'axial', evidence: 'axial' },
   { id: 'shear', labelKey: 'results.shear', color: 'shear', evidence: 'shear' },
   { id: 'moment', labelKey: 'results.moment', color: 'moment', evidence: 'moment' },
   { id: 'deformed', labelKey: 'results.deformed', evidence: 'deformed' },
+  { id: 'sheet', labelKey: 'results.sheet' },
   { id: 'influence', labelKey: 'results.influence', color: 'influence' },
 ];
 
@@ -132,7 +139,10 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
   const selectedMemberId = resultContext.memberId;
   const memberResult = selectedMemberId ? analysis?.memberResults.find((result) => result.memberId === selectedMemberId) : undefined;
   const availableTabs = tabs;
-  const activeTab = availableTabs.find((tab) => tab.id === resultTab) ?? availableTabs[0];
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // Elegir una magnitud desde el lienzo (o la paleta) cierra la lámina.
+  useEffect(() => { setSheetOpen(false); }, [resultTab]);
+  const activeTab = (sheetOpen ? availableTabs.find((tab) => tab.id === 'sheet') : availableTabs.find((tab) => tab.id === resultTab)) ?? availableTabs[0];
   /**
    * Elegir una magnitud aquí es elegirla EN EL MODELO.
    *
@@ -143,6 +153,8 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
    * fichas y el shell la aplica en un único sitio.
    */
   const chooseTab = useCallback((tab: (typeof tabs)[number]) => {
+    if (tab.id === 'sheet') { setSheetOpen(true); return; }
+    setSheetOpen(false);
     if (tab.evidence) emitWorkspaceCommand('activate-evidence-layer', { layer: tab.evidence });
     else setResultTab(tab.id);
   }, [setResultTab]);
@@ -458,6 +470,7 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
         {analysis && !analysis.success ? <FailedResults onOpenModelDoctor={() => emitWorkspaceCommand('open-model-doctor')} /> : null}
         {analysis?.success && activeTab.id === 'summary' ? <ResultSummary /> : null}
         {analysis?.success && ['axial', 'shear', 'moment'].includes(activeTab.id) ? <DiagramView type={activeTab.id as 'axial' | 'shear' | 'moment'} memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
+        {analysis?.success && activeTab.id === 'sheet' ? <MemberSheet memberResult={memberResult} memberId={selectedMemberId ?? ''} /> : null}
         {analysis?.success && activeTab.id === 'deformed' ? <DeformationView memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
         {analysis?.success && activeTab.id === 'influence' ? <Suspense fallback={<div className="results-view-loading" role="status" aria-label={t('results.loadingInfluence')}><LoaderCircle className="spin" size={20} aria-hidden="true" /><span>{t('results.loadingInfluence')}</span></div>}>
           <LazyInfluenceLineView project={project} selection={selection ?? undefined} onCanvasStateChange={setInfluenceCanvasState} />

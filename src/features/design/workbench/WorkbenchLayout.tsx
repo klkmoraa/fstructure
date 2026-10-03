@@ -1,6 +1,7 @@
 import { ClipboardCheck, Maximize2, Minus, PenLine, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
+import type { ExternalStructureSource } from '../../../design/elements/structure';
 import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
 
@@ -26,6 +27,12 @@ export interface WorkbenchChrome {
    * las cuatro mesas dicen su estado— y deja de repetirse sobre el lienzo.
    */
   readonly onVerdict?: (verdict: Verdict) => void;
+  /** Modelo 2D del proyecto, traducido por la frontera de la app. */
+  readonly modelSource?: ExternalStructureSource | null;
+  /** Abre el Modelo 2D (sólo dentro de la app). */
+  readonly onOpenModel?: () => void;
+  /** Fuente pedida al abrir el taller («Diseñar el modelo»). */
+  readonly startSource?: 'frame' | 'model';
 }
 
 export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };

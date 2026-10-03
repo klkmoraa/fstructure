@@ -7,6 +7,7 @@
 import type { ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import tokensCss from '../../../design-system/tokens.css?raw';
+import bandsCss from '../../../design-system/components/diagramBands.css?raw';
 import workbenchCss from './designWorkbench.css?raw';
 import studioCss from './concreteStudio.css?raw';
 
@@ -22,7 +23,7 @@ function printStyles(): string {
   const root = /:root\s*\{[\s\S]*?\n\}/.exec(tokensCss)?.[0] ?? '';
   const workbench = /\.design-workbench\s*\{([\s\S]*?)\}/.exec(workbenchCss)?.[1] ?? '';
   const variables = workbench.split('\n').filter((line) => line.trim().startsWith('--')).join('\n');
-  return `${root}\nsvg {\n${variables}\n}\n${workbenchCss}\n${studioCss}`;
+  return `${root}\nsvg {\n${variables}\n}\n${bandsCss}\n${workbenchCss}\n${studioCss}`;
 }
 
 let cachedStyles: string | undefined;

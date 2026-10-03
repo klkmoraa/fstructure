@@ -19,14 +19,15 @@ afterEach(cleanup);
 
 const results = () => screen.getByRole('region', { name: 'Resultados' });
 
-describe('mesa del pórtico', () => {
+describe('mesa Estructura con el pórtico generado', () => {
   it('diseña vigas y columnas juntas y abre el miembro elegido', async () => {
     const user = userEvent.setup();
     render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" /></ProjectProvider>);
-    expect(screen.getByRole('heading', { name: 'Pórtico' })).toBeTruthy();
-    expect(await screen.findByRole('img', { name: /Pórtico de 2 claros y 2 niveles/ })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Estructura' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: 'Pórtico generado' }).getAttribute('aria-checked')).toBe('true');
+    expect(await screen.findByRole('img', { name: /Utilización de el pórtico: 2 líneas de viga y 6 columnas/ })).toBeTruthy();
     const grid = within(results()).getByRole('table', { name: /Cociente que rige en cada miembro/ });
-    // Dos niveles: viga y tres columnas por renglón.
+    // Dos niveles: una viga continua y tres columnas por renglón.
     expect(within(grid).getAllByRole('button')).toHaveLength(8);
     await user.click(within(grid).getByRole('button', { name: /Columna del eje 1, nivel 1/ }));
     expect(await screen.findByRole('img', { name: /Diagrama de interacción/ })).toBeTruthy();
@@ -34,11 +35,20 @@ describe('mesa del pórtico', () => {
     // Un claro más: la matriz crece con el eje nuevo.
     await user.click(screen.getByRole('button', { name: 'Agregar claro' }));
     expect(await within(within(results()).getByRole('table', { name: /Cociente que rige/ })).findByRole('button', { name: /Columna del eje 4, nivel 2/ })).toBeTruthy();
-    // El diagrama del pórtico se cambia y los miembros se eligen en el dibujo.
+    // El diagrama de la estructura se cambia y los miembros se eligen en el dibujo.
     await user.click(screen.getByRole('radio', { name: 'Momento' }));
     expect(screen.getByRole('img', { name: /Envolvente de momento en el pórtico/ })).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: /Viga del nivel 2, claro 1/ }));
+    await user.click(screen.getAllByRole('button', { name: /^Viga del nivel 2 · V2·1/ })[0]!);
     expect(await screen.findByRole('img', { name: /Elevación de la viga de 3 claros/ })).toBeTruthy();
+  });
+
+  it('sin Modelo 2D la fuente lo explica y no inventa resultados', async () => {
+    const user = userEvent.setup();
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" /></ProjectProvider>);
+    await user.click(screen.getByRole('radio', { name: 'Modelo 2D' }));
+    expect(screen.getByText('Sin Modelo 2D')).toBeTruthy();
+    expect(await screen.findByText(/No hay Modelo 2D en este proyecto/)).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: 'Claro 1 · L (m)' })).toBeNull();
   });
 
   it('sin fuerzas laterales no pide la columna F y el marco arriostrado no se desplaza', async () => {

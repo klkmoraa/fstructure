@@ -1,5 +1,7 @@
-import type { ProjectModel, ProjectSettings } from '../types';
+import type { MemberLoad, MemberModel, NodalLoad, NodeModel, ProjectModel, ProjectSettings } from '../types';
 import { createId } from '../utils/id';
+import { findStandardMaterial } from './standardMaterials';
+import { findStandardSection } from './standardSections';
 
 export const CURRENT_SCHEMA_VERSION = 8;
 
@@ -230,6 +232,61 @@ const createHibbelerStyleTrussPractice = (): ProjectModel => ({
   },
 });
 
+/**
+ * Pórtico de concreto de dos claros y dos niveles con sus casos separados
+ * (muerta con peso propio, viva y sismo) y secciones del catálogo: el punto de
+ * partida de «modelar y diseñar». Diseño lo lee tal cual por el puente declarado.
+ */
+export const createConcreteFrameProject = (): ProjectModel => {
+  const concrete = findStandardMaterial('concrete-28mpa')!;
+  const beam = findStandardSection('rect-concrete-300x500')!;
+  // Columnas de 45 × 45 (fuera del catálogo): el gancho de la viga necesita ese ancho.
+  const side = 0.45;
+  const column = { id: '', area: side * side, inertiaX: side ** 4 / 12 };
+  const xs = [0, 6, 11];
+  const ys = [0, 3.5, 6.5];
+  const nodes: NodeModel[] = ys.flatMap((y, level) => xs.map((x, axis) => ({
+    id: `N${axis + 1}${level}`, x, y, support: level === 0 ? { type: 'fixed' as const } : { type: 'none' as const },
+  })));
+  const member = (id: string, i: string, j: string, section: { id: string; area: number; inertiaX: number }): MemberModel => ({
+    id, i, j, type: 'frame', materialId: concrete.id, materialOrigin: 'catalog',
+    ...(section.id ? { sectionId: section.id, sectionOrigin: 'catalog' as const } : { sectionOrigin: 'custom' as const }),
+    E: concrete.elasticModulus, G: concrete.shearModulus, A: section.area, I: section.inertiaX, density: concrete.density,
+  });
+  const members: MemberModel[] = [
+    ...[1, 2].flatMap((level) => xs.map((_, axis) => member(`C${axis + 1}${level}`, `N${axis + 1}${level - 1}`, `N${axis + 1}${level}`, column))),
+    ...[1, 2].flatMap((level) => [1, 2].map((bay) => member(`V${bay}${level}`, `N${bay}${level}`, `N${bay + 1}${level}`, beam))),
+  ];
+  const uniform = (memberId: string, caseId: string, q: number): MemberLoad => ({
+    id: `${caseId}-${memberId}`, memberId, caseId, type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1,
+    qxStart: 0, qxEnd: 0, qyStart: -q, qyEnd: -q,
+  });
+  const beamLoads = { 1: { dead: 15, live: 7 }, 2: { dead: 12, live: 3 } } as const;
+  const lateral = { 1: 15, 2: 12 } as const;
+  return {
+    ...createBlankProject(),
+    id: createId(),
+    name: 'Pórtico de concreto',
+    nodes,
+    members,
+    loadCases: [
+      { id: 'CM', name: 'Carga muerta', category: 'permanent', active: true, selfWeightFactor: 1 },
+      { id: 'CV', name: 'Carga viva', category: 'variable', active: true, selfWeightFactor: 0 },
+      { id: 'S', name: 'Sismo', category: 'accidental', active: true, selfWeightFactor: 0 },
+    ],
+    combinations: [
+      { id: 'SERV', name: 'Servicio', factors: { CM: 1, CV: 1 } },
+      { id: 'U1', name: '1.2 CM + 1.6 CV', factors: { CM: 1.2, CV: 1.6 } },
+      { id: 'U2', name: '1.2 CM + 1.0 CV + 1.0 S', factors: { CM: 1.2, CV: 1, S: 1 } },
+    ],
+    memberLoads: ([1, 2] as const).flatMap((level) => [1, 2].flatMap((bay) => [
+      uniform(`V${bay}${level}`, 'CM', beamLoads[level].dead),
+      uniform(`V${bay}${level}`, 'CV', beamLoads[level].live),
+    ])),
+    nodalLoads: ([1, 2] as const).flatMap((level): NodalLoad[] => xs.map((_, axis) => ({ id: `S-N${axis + 1}${level}`, nodeId: `N${axis + 1}${level}`, caseId: 'S', fx: lateral[level], fy: 0, mz: 0 }))),
+  };
+};
+
 export const exampleProjects: Array<{ name: string; description: string; build: () => ProjectModel }> = [
   {
     name: 'Hibbeler · carga tributaria Fig. 2–11',
@@ -250,6 +307,11 @@ export const exampleProjects: Array<{ name: string; description: string; build: 
     name: 'Pórtico de ejemplo',
     description: 'Pórtico de 6 × 4 m con carga uniforme y cargas puntuales.',
     build: createDefaultProject,
+  },
+  {
+    name: 'Pórtico de concreto',
+    description: 'Dos claros y dos niveles con muerta, viva y sismo, listo para diseñar.',
+    build: createConcreteFrameProject,
   },
   {
     name: 'Viga simplemente apoyada',

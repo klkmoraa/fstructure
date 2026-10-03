@@ -469,19 +469,8 @@
 .dw-soil__head { fill: var(--dw-axial); }
 .dw-soil text { fill: var(--dw-muted); font-size: 10.5px; }
 
-.dw-band { --tone: var(--dw-ink); }
-.dw-band--moment { --tone: var(--dw-moment); }
-.dw-band--shear { --tone: var(--dw-shear); }
-.dw-band--deformed { --tone: var(--dw-deformed); }
-.dw-band__area { fill: var(--tone); opacity: .1; }
-.dw-band__line { fill: none; stroke: var(--tone); stroke-width: 1.8; stroke-linejoin: round; }
-.dw-band__capacity { fill: none; stroke: var(--dw-ink); stroke-width: 1.1; stroke-dasharray: 4 3; opacity: .75; }
-.dw-band__axis { stroke: var(--dw-ink); stroke-width: .9; opacity: .7; }
-.dw-band__grid { stroke: var(--sc-color-canvas-grid-strong, var(--dw-line)); stroke-width: 1; stroke-dasharray: 2 4; }
-.dw-band__dot { fill: var(--tone); }
-.dw-band__label { font-family: var(--sc-font-ui); font-weight: 600; font-size: 11.5px; fill: var(--tone) !important; }
-.dw-band__unit { font-size: 10px; fill: var(--dw-muted) !important; }
-.dw-band__value { font-weight: 600; font-size: 11px; }
+/* Las bandas de diagrama (`fs-band`) y el cursor de lectura (`fs-probe`) son
+   comunes: `src/design-system/components/diagramBands.css`. */
 
 .dw-chart__grid line { stroke: var(--sc-color-canvas-grid-strong, var(--dw-line)); stroke-width: .8; }
 .dw-chart__grid text { fill: var(--dw-muted); font-size: 10px; }
@@ -871,23 +860,6 @@
 .dw-action-note { margin: 0; color: var(--dw-muted); font-size: 11.5px; line-height: 1.4; }
 .dw-slab-apply { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font: 500 11.5px var(--sc-font-mono); color: var(--dw-muted); }
 
-/* ─── Cursor de lectura de los diagramas ─── */
-.dw-probe-frame { display: grid; gap: 8px; }
-.dw-drawing--probe { cursor: crosshair; touch-action: pan-y; border-radius: var(--sc-radius-data); }
-.dw-drawing--probe:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 4px; }
-.dw-probe__line { stroke: var(--dw-ink); stroke-width: 1; stroke-dasharray: 3 3; opacity: .55; }
-.dw-probe__dot { stroke: var(--sc-color-surface-1); stroke-width: 1.5; }
-.dw-probe__dot--moment { fill: var(--dw-moment); }
-.dw-probe__dot--shear { fill: var(--dw-shear); }
-.dw-probe__dot--deformed { fill: var(--dw-deformed); }
-.dw-probe__dot--axial { fill: var(--dw-axial); }
-.dw-probe-readout { display: flex; flex-wrap: wrap; gap: 4px 14px; min-height: 32px; margin: 0; padding: 7px 10px; border: 1px solid var(--dw-line); border-radius: var(--sc-radius-data); background: var(--sc-color-surface-1); color: var(--dw-ink); font: 500 11.5px/1.45 var(--sc-font-mono); }
-.dw-probe-readout b { font-family: var(--sc-font-ui); font-weight: 600; }
-.dw-probe-readout [data-tone='moment'] b { color: var(--fs-signal-moment-ink, var(--dw-moment)); }
-.dw-probe-readout [data-tone='shear'] b { color: var(--fs-signal-shear-ink, var(--dw-shear)); }
-.dw-probe-readout [data-tone='deformed'] b { color: var(--fs-signal-deformed-ink, var(--dw-deformed)); }
-.dw-probe-readout [data-tone='axial'] b { color: var(--fs-signal-axial-ink, var(--dw-axial)); }
-.dw-probe-readout__hint { color: var(--dw-muted); font-family: var(--sc-font-ui); }
 .dw-column-stub rect { fill: var(--sc-color-surface-2); stroke: var(--dw-ink); stroke-width: 1.1; }
 .dw-cloud circle { fill: var(--sc-color-surface-1); stroke: var(--dw-moment); stroke-width: 1.4; opacity: .9; }
 .dw-legend li[data-kind='cloud']::before { width: 7px; height: 7px; border: 1.4px solid var(--dw-moment); border-radius: var(--sc-radius-pill); background: var(--sc-color-surface-1); }
@@ -904,7 +876,6 @@
 .dw-frame[data-kind='shear'] .dw-frame__member,
 .dw-frame[data-kind='axial'] .dw-frame__member,
 .dw-frame[data-kind='deformed'] .dw-frame__member { stroke: var(--dw-muted); stroke-width: 2.4; }
-.dw-band--axial { --tone: var(--dw-axial); }
 .dw-frame__selected { stroke: var(--dw-ink); stroke-width: 12; stroke-linecap: round; opacity: .16; pointer-events: none; }
 .dw-frame__nodes circle { fill: var(--sc-color-surface-1); stroke: var(--dw-ink); stroke-width: 1.2; }
 .dw-frame__deformed path { fill: none; stroke: var(--dw-deformed); stroke-width: 2.2; stroke-linejoin: round; }
@@ -936,3 +907,41 @@
   .dw-frame-diagram__tabs { display: none !important; }
   .dw-frame-diagram__select { display: grid; }
 }
+.dw-frame__member[data-band='skip'] { stroke: var(--dw-subtle); stroke-dasharray: 5 4; stroke-width: 2; }
+.dw-frame-legend li[data-kind='skip']::before { border-top: 2px dashed var(--dw-subtle); }
+.dw-inline-action { display: inline-flex; align-items: center; justify-content: center; gap: 5px; }
+
+/* Fichas por nivel: vigas (V, VA, VB…) y columnas (C1, C2…) con su cociente. */
+.dw-member-grid td { padding: 0; }
+.dw-member-grid__chips { display: flex; flex-wrap: wrap; gap: 3px; }
+.dw-member-grid__chips button { display: grid; flex: 1 0 50px; justify-items: center; width: auto; padding: 3px 4px; line-height: 1.2; }
+.dw-member-grid__chips span { color: var(--dw-muted); font-weight: 500; font-size: 10px; }
+.dw-member-grid__chips b { font-weight: 600; }
+
+/* Fuente «Modelo 2D»: lo que se leyó del modelo y lo que no entra. */
+.dw-model-card { display: grid; gap: 8px; margin-top: 8px; padding: 10px 12px; border: 1px solid var(--dw-line); border-radius: var(--sc-radius-data); background: var(--sc-color-surface-1); color: var(--dw-muted); font-size: 11.5px; line-height: 1.45; }
+.dw-model-card[data-state='error'] { border-color: var(--dw-fail); }
+.dw-model-card strong { color: var(--dw-ink); font-size: 12.5px; overflow-wrap: anywhere; }
+.dw-model-card dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px 14px; margin: 0; }
+.dw-model-card dl > div { display: flex; justify-content: space-between; gap: 6px; }
+.dw-model-card dl > div:last-child { grid-column: 1 / -1; flex-direction: column; gap: 1px; }
+.dw-model-card dd { margin: 0; color: var(--dw-ink); font: 500 11.5px var(--sc-font-mono); }
+.dw-model-card p { margin: 0; }
+.dw-model-card .dw-inline-action { justify-self: start; }
+.dw-model-wait {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: center;
+  margin-top: 40px;
+  padding: 14px 16px;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--dw-muted);
+  font-size: 12.5px;
+}
+.dw-model-wait__dot { width: 8px; height: 8px; border-radius: var(--sc-radius-pill); background: var(--dw-muted); animation: dw-model-pulse 900ms var(--sc-ease-standard) infinite alternate; }
+@keyframes dw-model-pulse { from { opacity: .25; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dw-model-wait__dot { animation: none; } }
+.dw-model-errors { display: grid; justify-items: center; gap: 12px; align-self: center; }

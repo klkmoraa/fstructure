@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Columns3, LayoutGrid, RectangleHorizontal, Square, Shapes } from 'lucide-react';
+import { Columns3, LayoutGrid, RectangleHorizontal, Square, Shapes, Workflow } from 'lucide-react';
 import { ToolHome, type ToolHomeContent } from '../tool-home/ToolHome';
 import { setToolIntent } from '../workspace/toolIntent';
 import { useI18n } from '../../i18n/useI18n';
@@ -13,12 +13,12 @@ type Element = 'beam' | 'column' | 'frame' | 'footing' | 'section';
 const ELEMENT_LABEL: Record<Element, { es: string; en: string }> = {
   beam: { es: 'Viga', en: 'Beam' },
   column: { es: 'Columna', en: 'Column' },
-  frame: { es: 'Pórtico', en: 'Frame' },
+  frame: { es: 'Estructura', en: 'Structure' },
   footing: { es: 'Zapata', en: 'Footing' },
   section: { es: 'Secciones', en: 'Sections' },
 };
 
-const content = (onElement: (element: Element) => void, codeControl: ToolHomeContent['pathsControl']): ToolHomeContent => ({
+const content = (onElement: (element: Element, source?: 'frame' | 'model') => void, codeControl: ToolHomeContent['pathsControl']): ToolHomeContent => ({
   title: { es: 'Del esfuerzo al armado.', en: 'From force to reinforcement.' },
   lead: {
     es: 'Diseña elementos de concreto, edita el armado y explora secciones con tres filosofías de cálculo.',
@@ -36,7 +36,10 @@ const content = (onElement: (element: Element) => void, codeControl: ToolHomeCon
       action: () => onElement('column') },
     { id: 'frame', icon: LayoutGrid, label: { es: 'Pórtico: vigas y columnas', en: 'Frame: beams and columns' },
       body: { es: 'Claros y niveles juntos, viva alternada, sismo o viento, y cada miembro diseñado.', en: 'Bays and stories together, pattern live load, lateral load, and every member designed.' },
-      action: () => onElement('frame') },
+      action: () => onElement('frame', 'frame') },
+    { id: 'model', icon: Workflow, label: { es: 'Diseñar el Modelo 2D', en: 'Design the 2D model' },
+      body: { es: 'Las vigas y columnas que dibujaste en FStructure 2D, con sus casos de carga.', en: 'The beams and columns you drew in FStructure 2D, with their load cases.' },
+      action: () => onElement('frame', 'model') },
     { id: 'footing', icon: Square, label: { es: 'Zapata aislada', en: 'Isolated footing' },
       body: { es: 'Presión del suelo, punzonamiento, cortante y flexión.', en: 'Soil pressure, punching, shear, and flexure.' },
       action: () => onElement('footing') },
@@ -51,14 +54,14 @@ const content = (onElement: (element: Element) => void, codeControl: ToolHomeCon
       body: { es: 'Envolventes por carga viva alternada, acero longitudinal, bastones y estribos.', en: 'Pattern live-load envelopes, longitudinal steel, cut-off bars, and stirrups.' } },
     { id: 'column', state: 'experimental', label: { es: 'Columnas', en: 'Columns' },
       body: { es: 'Diagrama de interacción y revisión de la demanda contra la capacidad.', en: 'Interaction diagram and demand-to-capacity check.' } },
-    { id: 'frame', state: 'experimental', label: { es: 'Pórticos', en: 'Frames' },
-      body: { es: 'Vigas y columnas analizadas juntas: envolventes, k, índice de estabilidad y diseño de cada miembro.', en: 'Beams and columns analyzed together: envelopes, k, stability index, and every member designed.' } },
+    { id: 'frame', state: 'experimental', label: { es: 'Estructuras', en: 'Structures' },
+      body: { es: 'Un pórtico generado o el Modelo 2D: envolventes, k, índice de estabilidad y diseño de cada miembro.', en: 'A generated frame or the 2D model: envelopes, k, stability index, and every member designed.' } },
     { id: 'footing', state: 'experimental', label: { es: 'Zapatas', en: 'Footings' },
       body: { es: 'Dimensionamiento en planta, punzonamiento y armado en ambas direcciones.', en: 'Plan sizing, punching, and reinforcement in both directions.' } },
     { id: 'memo', state: 'available', label: { es: 'Memoria de cálculo', en: 'Calculation report' },
       body: { es: 'Revisión, diagramas y cantidades; guarda elementos y exporta el proyecto en PDF.', en: 'Checks, diagrams, and quantities; save elements and export the project as PDF.' } },
     { id: 'isolated', state: 'available', label: { es: 'Taller propio', en: 'Own workbench' },
-      body: { es: 'Los datos del taller se guardan en el proyecto y no dependen del Modelo 2D.', en: 'Workbench data is saved in the project and does not depend on the 2D model.' } },
+      body: { es: 'Los datos del taller se guardan en el proyecto. Del Modelo 2D sólo se lee la estructura, y nunca se modifica.', en: 'Workbench data is saved in the project. The 2D model is only read, never modified.' } },
   ],
   note: {
     es: 'Diseño es experimental. Propone un armado, no firma un plano: la revisión de una persona responsable sigue siendo obligatoria.',
@@ -82,8 +85,8 @@ export default function DesignHome({ onOpenWorkspace, onOpenSuite }: { onOpenWor
     { value: ELEMENT_LABEL[storedElement][language], label: en ? 'last element' : 'último elemento' },
     { value: storedElement === 'section' ? 'Experimental' : designCode(code).name, label: storedElement === 'section' ? (en ? 'model' : 'modelo') : (en ? 'code' : 'norma') },
   ];
-  const openElement = (element: Element) => {
-    setToolIntent({ tool: 'design', kind: 'element', element, code });
+  const openElement = (element: Element, source?: 'frame' | 'model') => {
+    setToolIntent({ tool: 'design', kind: 'element', element, code, ...(source ? { source } : {}) });
     onOpenWorkspace();
   };
   const continueDesign = () => openElement(storedElement);
