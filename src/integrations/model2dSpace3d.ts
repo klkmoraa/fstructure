@@ -1,3 +1,4 @@
+import { standardMaterials } from '../data/standardMaterials';
 import { standardSections } from '../data/standardSections';
 import { withResolvedGeneratedLoads } from '../engine/generatedLoads';
 import {
@@ -6,6 +7,7 @@ import {
   type Space3DProjectV1, type Space3DRestraints, type Space3DVector,
 } from '../modules/space3d/space3d/model/types';
 import { createSpace3DGrid } from '../modules/space3d/space3d/model/grid';
+import { SPACE3D_MATERIALS } from '../modules/space3d/space3d/model/sectionLibrary';
 import type { MemberLoad, MemberModel, NodeModel, ProjectModel } from '../types';
 
 /**
@@ -63,6 +65,23 @@ const rectangleOf = (member: MemberModel) => {
   return { width: member.A / Math.max(depth, 1e-12), depth };
 };
 
+/**
+ * El concreto del 2D viaja con su f′c: `concrete-fc{f′c}`, el id del catálogo
+ * del 3D si existe y, si no, el mismo patrón como material importado. E y G
+ * siguen siendo los del 2D; el id sólo nombra el material (y su f′c, que el
+ * modo Diseño lee al diseñar los ejes del 3D) y nunca cambia el peso propio.
+ */
+const materialOf = (member: MemberModel): Pick<Space3DFrameMember, 'materialId' | 'materialOrigin'> => {
+  const material = member.materialId ? standardMaterials.find((item) => item.id === member.materialId) : undefined;
+  if (material?.category !== 'CONCRETE') return {};
+  const fcMpa = Math.round(material.yieldStrength / 1e3 * 10) / 10;
+  const id = `concrete-fc${fcMpa}`;
+  const catalog = SPACE3D_MATERIALS.some((item) => item.id === id);
+  // Sin densidad propia, el material del catálogo del 3D le daría peso que el 2D no tiene.
+  if (catalog && !(member.density && member.density > 0)) return {};
+  return { materialId: id, materialOrigin: catalog ? 'catalog' : 'imported' };
+};
+
 /** Constante de torsión de St. Venant de un rectángulo (b ≤ h). */
 const torsionOf = (width: number, depth: number) => {
   const b = Math.min(width, depth);
@@ -103,6 +122,7 @@ export function space3dFromModel2d(project: ProjectModel, options: ExtrudeOption
       Iy: depth * width ** 3 / 12,
       J: torsionOf(width, depth),
       ...(member.density ? { density: member.density } : {}),
+      ...materialOf(member),
     };
   };
   const orientationFor = (a: NodeModel, b: NodeModel) => ({

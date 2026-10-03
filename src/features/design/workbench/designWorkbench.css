@@ -981,3 +981,5 @@
 .dw-building__error { color: var(--dw-fail); text-align: left !important; font-family: var(--sc-font-ui); white-space: normal; }
 .dw-building__pending { color: var(--dw-subtle); text-align: left !important; font-family: var(--sc-font-ui); }
 .dw-building__table .dw-inline-action { min-height: 28px; }
+.dw-building__save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.dw-building__save span { color: var(--dw-muted); font-size: 11px; line-height: 1.5; }

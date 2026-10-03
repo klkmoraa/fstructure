@@ -19,6 +19,9 @@ import type { UnifiedProjectSession } from '../../../storage/unifiedProjectSessi
 // Embedded legacy provider receives a non-persistent storage boundary. The session owns writes.
 const embeddedStorage = { getItem: () => null, setItem: () => undefined, removeItem: () => undefined };
 
+/** Vista del 3D de cada proyecto mientras dura la sesión: al volver al modo 3D se abre la misma. */
+const VIEW_MEMORY = new Map<string, string>();
+
 /**
  * Modo 3D de la mesa de FStructure.
  *
@@ -39,7 +42,8 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
   // Se lee sin consumir durante el render (StrictMode lo repite) y se consume al montar.
   const [intent] = useState(() => peekToolIntent('space3d'));
   const startIntent = intent && intent.kind !== 'view' ? intent.kind : undefined;
-  const startView = intent?.kind === 'view' ? intent.view : undefined;
+  const [startView] = useState(() => intent?.kind === 'view' ? intent.view : VIEW_MEMORY.get(project.id));
+  const rememberView = useCallback((viewId: string) => { VIEW_MEMORY.set(project.id, viewId); }, [project.id]);
   useEffect(() => { takeToolIntent('space3d'); }, []);
   const [branch] = useState(() => session?.currentBundle(project.id)?.space3d ?? null);
   const [sourceVersion] = useState(() => branch?.sourceVersion ?? crypto.randomUUID());
@@ -73,7 +77,7 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
     }} /> : null}
     <Space3DWorkspace language={project.settings.language} embedded storage={embeddedStorage}
       canonicalProject={canonicalProject} onProjectChange={save} startIntent={startIntent} incomingProject={incoming}
-      {...(startView ? { startView } : {})} />
+      {...(startView ? { startView } : {})} onViewChange={rememberView} />
   </>;
 }
 

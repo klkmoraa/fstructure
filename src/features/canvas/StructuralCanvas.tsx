@@ -233,6 +233,21 @@ const nextId = (prefix: string, ids: string[]) => {
   return `${prefix}${index}`;
 };
 
+/**
+ * Cámara de cada proyecto mientras dura la sesión: al volver de otro modo de la
+ * mesa (3D, Diseño) el dibujo queda con el mismo zoom y encuadre. Si la
+ * geometría cambió entretanto, se reencuadra como al abrir.
+ */
+const CAMERA_MEMORY = new Map<string, { readonly camera: Camera; readonly size: Size; readonly geometry: string }>();
+const geometryKey = (nodes: readonly { readonly x: number; readonly y: number }[]) => {
+  if (!nodes.length) return '0';
+  let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
+  for (const node of nodes) {
+    minX = Math.min(minX, node.x); maxX = Math.max(maxX, node.x); minY = Math.min(minY, node.y); maxY = Math.max(maxY, node.y);
+  }
+  return [nodes.length, minX, maxX, minY, maxY].map((value) => Number(value.toFixed(3))).join('|');
+};
+
 export const StructuralCanvas = ({
   onRequestInspector,
   layers,
@@ -346,6 +361,11 @@ export const StructuralCanvas = ({
   const longPressMotionRef = useRef<{ pointerId: number; start: ScreenPoint; current: ScreenPoint } | null>(null);
   const previousSizeRef = useRef<Size | null>(null);
   const fittedProjectRef = useRef<string | null>(null);
+  const memoryGeometry = useMemo(() => geometryKey(project.nodes), [project.nodes]);
+  useEffect(() => {
+    if (fittedProjectRef.current !== project.id || !size.width || !size.height) return;
+    CAMERA_MEMORY.set(project.id, { camera, size, geometry: memoryGeometry });
+  }, [camera, size, project.id, memoryGeometry]);
   const feedbackTimerRef = useRef<number | null>(null);
   const [canvasFeedback, setCanvasFeedback] = useState('');
 
@@ -811,6 +831,12 @@ export const StructuralCanvas = ({
     if (!project.nodes.length) return;
     if (fittedProjectRef.current !== project.id) {
       fittedProjectRef.current = project.id;
+      const remembered = CAMERA_MEMORY.get(project.id);
+      if (remembered && remembered.geometry === geometryKey(project.nodes)) {
+        const sameSize = remembered.size.width === currentSize.width && remembered.size.height === currentSize.height;
+        updateCamera(sameSize ? remembered.camera : cameraForViewportResize(remembered.camera, remembered.size, currentSize));
+        return;
+      }
       fitModel();
       return;
     }

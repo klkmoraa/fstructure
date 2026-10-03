@@ -84,6 +84,20 @@ export interface ColumnDesignInput {
   readonly group: ColumnGroup;
   /** Sólo NTC: columna de planta baja o del primer nivel sujeto a sismo (Lo ≥ H/2). */
   readonly groundFloor: boolean;
+  /**
+   * Restricción propia de la flexión alrededor de Y (la otra dirección de un
+   * marco espacial): k, índice de estabilidad, curvatura y altura libre de esa
+   * dirección. Sin ella, Y usa los mismos valores que X.
+   */
+  readonly alongY?: ColumnAxisRestraint;
+}
+
+export interface ColumnAxisRestraint {
+  readonly effectiveLengthFactor: number;
+  readonly stabilityIndex: number;
+  readonly curvature: 'single' | 'double';
+  readonly endMomentRatio: number;
+  readonly unbracedLengthM?: number;
 }
 
 export interface ColumnBar { readonly x: number; readonly y: number }
@@ -413,6 +427,13 @@ function validate(input: ColumnDesignInput): string[] {
     ['effectiveLengthFactor', 'Factor k'], ['maxAggregateMm', 'Agregado máximo'],
   ];
   for (const [key, label] of positive) if (!isPositiveFinite(input[key] as number)) errors.push(`${label} debe ser mayor que cero.`);
+  if (input.alongY) {
+    const y = input.alongY;
+    if (!isPositiveFinite(y.effectiveLengthFactor) || (!input.braced && y.effectiveLengthFactor < 1)) errors.push('El factor k en Y debe ser positivo (y al menos 1.0 en marcos con desplazamiento).');
+    if (!Number.isFinite(y.stabilityIndex) || y.stabilityIndex < 0) errors.push('El índice de estabilidad en Y debe ser cero o positivo.');
+    if (!Number.isFinite(y.endMomentRatio) || y.endMomentRatio < 0 || y.endMomentRatio > 1) errors.push('|M1/M2| en Y debe estar entre 0 y 1.');
+    if (y.unbracedLengthM !== undefined && !isPositiveFinite(y.unbracedLengthM)) errors.push('La altura libre en Y debe ser mayor que cero.');
+  }
   if (input.tieSpacingMm !== undefined && !isPositiveFinite(input.tieSpacingMm)) errors.push('Separación propia de estribos o paso del zuncho debe ser mayor que cero.');
   if (input.endTieSpacingMm !== undefined && !isPositiveFinite(input.endTieSpacingMm)) errors.push('Separación propia en extremos debe ser mayor que cero.');
   if (input.endTieSpacingMm !== undefined && (isSpiral(input) || designCode(input.code).column.ties !== 'ntc')) errors.push('La separación propia en extremos sólo aplica a columnas con estribos y zonas Lo de la NTC.');
@@ -671,7 +692,15 @@ export function designColumn(input: ColumnDesignInput, options: ColumnDesignOpti
     ? { depthMm: b, radiusMm: b / 4, inertiaMm4: Math.PI * b ** 4 / 64, areaMm2: gross }
     : { depthMm: h, radiusMm: rules.radiusOfGyration(h), inertiaMm4: b * h ** 3 / 12, areaMm2: gross };
   const sectionY: AxisSection = circular ? sectionX : { depthMm: b, radiusMm: rules.radiusOfGyration(b), inertiaMm4: h * b ** 3 / 12, areaMm2: gross };
-  const magnification = { x: magnify(code, input, sectionX, appliedX, swayX), y: magnify(code, input, sectionY, appliedY, swayY) };
+  const inputY: ColumnDesignInput = input.alongY ? {
+    ...input,
+    effectiveLengthFactor: input.alongY.effectiveLengthFactor,
+    stabilityIndex: input.alongY.stabilityIndex,
+    curvature: input.alongY.curvature,
+    endMomentRatio: input.alongY.endMomentRatio,
+    unbracedLengthM: input.alongY.unbracedLengthM ?? input.unbracedLengthM,
+  } : input;
+  const magnification = { x: magnify(code, input, sectionX, appliedX, swayX), y: magnify(code, inputY, sectionY, appliedY, swayY) };
 
   const uniaxial = (curve: InteractionCurve, moment: number) => {
     if (moment < TOLERANCE) {
@@ -818,7 +847,8 @@ export function designColumn(input: ColumnDesignInput, options: ColumnDesignOpti
 
   const limitFail = rules.slendernessLimit?.kind === 'fail' && effective > rules.slendernessLimit.value;
   const secondOrderNeeded = rules.slendernessLimit?.kind === 'second-order' && effective > rules.slendernessLimit.value;
-  const swayFail = !input.braced && (swayFactor > 1.5 || input.stabilityIndex > rules.maximumStabilityIndex);
+  const stabilityIndex = Math.max(input.stabilityIndex, input.alongY?.stabilityIndex ?? 0);
+  const swayFail = !input.braced && (swayFactor > 1.5 || stabilityIndex > rules.maximumStabilityIndex);
   const ratioFail = secondOrderRatio > rules.secondOrderRatioLimit + 1e-9;
   const anySlender = magnification.x.slender || magnification.y.slender;
   const radiusNote = circular ? 'r = D/4 de la sección bruta' : rules.radiusNote;
@@ -827,8 +857,8 @@ export function designColumn(input: ColumnDesignInput, options: ColumnDesignOpti
     : limitFail
       ? `kH/r = ${effective.toFixed(0)} > ${rules.slendernessLimit!.value}: la norma no admite esta esbeltez.`
       : swayFail
-        ? input.stabilityIndex > rules.maximumStabilityIndex
-          ? `Q = ${input.stabilityIndex.toFixed(2)} > ${rules.maximumStabilityIndex}: el entrepiso es inestable según la norma.`
+        ? stabilityIndex > rules.maximumStabilityIndex
+          ? `Q = ${stabilityIndex.toFixed(2)} > ${rules.maximumStabilityIndex}: el entrepiso es inestable según la norma.`
           : `δs = ${Number.isFinite(swayFactor) ? swayFactor.toFixed(2) : '∞'} > 1.5: se requiere ΣPu/ΣPc o un análisis de segundo orden (no implementados).`
         : ratioFail
           ? `Momento con efectos de segundo orden ${secondOrderRatio.toFixed(2)} veces el de primer orden (> ${rules.secondOrderRatioLimit}).`

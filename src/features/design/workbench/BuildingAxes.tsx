@@ -1,9 +1,10 @@
-import { X } from 'lucide-react';
+import { BookPlus, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
-import type { ExternalStructureAxes, ExternalStructureAxis } from '../../../design/elements/structure';
+import { summarizeExternalStructure, type ExternalStructureAxes, type ExternalStructureAxis, type StructureAxisSummary } from '../../../design/elements/structure';
+import { afterTransition } from '../../../design-system/afterTransition';
 import { ratioBand } from './FrameDrawings';
-import { designFromDraft, type FrameDraft } from './frameModel';
+import { structureOptions, type FrameDraft } from './frameModel';
 import { Plate } from './WorkbenchLayout';
 
 /**
@@ -13,38 +14,10 @@ import { Plate } from './WorkbenchLayout';
  * planta rige el mayor de sus cocientes en todos sus niveles y ejes.
  */
 
-type AxisSummary =
-  | {
-    readonly ok: true;
-    readonly ratio: number;
-    readonly status: 'pass' | 'fail' | 'warning';
-    readonly beams: number;
-    readonly columns: number;
-    readonly beamCount: number;
-    readonly columnCount: number;
-    /** Cociente de cada barra de columna del eje (id del modelo 3D). */
-    readonly columnRatios: readonly (readonly [string, number])[];
-  }
-  | { readonly ok: false; readonly error: string };
+type AxisSummary = StructureAxisSummary;
 
 const worst = (values: readonly number[]) => values.reduce((best, value) => Math.max(best, value), 0);
 const percent = (ratio: number) => Number.isFinite(ratio) ? `${Math.round(ratio * 100)} %` : '—';
-
-function summarize(code: DesignCodeId, draft: FrameDraft, axes: ExternalStructureAxes, axis: ExternalStructureAxis): AxisSummary {
-  const outcome = designFromDraft(code, { ...draft, source: 'model3d', axis: axis.id }, [], [], axes.source(axis.id));
-  if (!outcome.ok) return { ok: false, error: outcome.errors[0] ?? 'No se pudo diseñar.' };
-  const { result } = outcome;
-  return {
-    ok: true,
-    ratio: result.governingRatio,
-    status: result.status,
-    beams: worst(result.beams.map((beam) => beam.result.governingRatio)),
-    columns: worst(result.columns.map((column) => column.result.governingRatio)),
-    beamCount: result.beams.length,
-    columnCount: result.columns.length,
-    columnRatios: result.columns.map((column) => [column.id.replace(/^column-/, ''), column.result.governingRatio] as const),
-  };
-}
 
 let axesIdentity = 0;
 const identities = new WeakMap<ExternalStructureAxes, number>();
@@ -54,7 +27,11 @@ const identityOf = (axes: ExternalStructureAxes) => {
   return id;
 };
 
-/** Diseña los ejes uno por vez (un eje por tarea) y conserva lo ya calculado mientras avanza. */
+/**
+ * Diseña los ejes: en un worker si la fuente lo ofrece (la interfaz no se
+ * detiene), si no uno por tarea en el hilo principal. Conserva lo ya calculado
+ * mientras avanza.
+ */
 function useBuildingDesign(axes: ExternalStructureAxes, code: DesignCodeId, draft: FrameDraft) {
   // La clave omite lo que no cambia el cálculo: clave, ubicación, eje elegido y fuente.
   const { tag: _tag, place: _place, axis: _axis, source: _source, ...relevant } = draft;
@@ -64,21 +41,34 @@ function useBuildingDesign(axes: ExternalStructureAxes, code: DesignCodeId, draf
   latest.current = { axes, code, draft };
   useEffect(() => {
     let cancelled = false;
-    let index = 0;
     const results = new Map<string, AxisSummary>();
     setState({ key, results });
-    let handle = 0;
-    const step = () => {
-      const { axes: current, code: currentCode, draft: currentDraft } = latest.current;
-      const axis = current.axes[index];
-      if (cancelled || !axis) return;
-      index += 1;
-      results.set(axis.id, summarize(currentCode, currentDraft, current, axis));
+    const { axes: current, code: currentCode, draft: currentDraft } = latest.current;
+    const request = { options: structureOptions(currentCode, currentDraft), braced: currentDraft.braced === 'yes' };
+    const publish = (axisId: string, summary: AxisSummary) => {
+      if (cancelled) return;
+      results.set(axisId, summary);
       setState({ key, results: new Map(results) });
-      handle = window.setTimeout(step, 16);
     };
-    handle = window.setTimeout(step, 30);
-    return () => { cancelled = true; window.clearTimeout(handle); };
+    let cancelWork = () => undefined as void;
+    const cancelStart = afterTransition(() => {
+      if (current.designAll) {
+        cancelWork = current.designAll(request, publish);
+        return;
+      }
+      let index = 0;
+      let handle = 0;
+      const step = () => {
+        const axis = current.axes[index];
+        if (cancelled || !axis) return;
+        index += 1;
+        publish(axis.id, summarizeExternalStructure(current.source(axis.id), request.options, request.braced));
+        handle = window.setTimeout(step, 16);
+      };
+      step();
+      cancelWork = () => window.clearTimeout(handle);
+    });
+    return () => { cancelled = true; cancelStart(); cancelWork(); };
   }, [key]);
   return state.key === key ? state.results : new Map<string, AxisSummary>();
 }
@@ -137,7 +127,7 @@ function BuildingPlan({ axes, results, current, onOpen }: {
   </svg>;
 }
 
-export function BuildingAxes({ axes, code, draft, current, onOpen, onClose }: {
+export function BuildingAxes({ axes, code, draft, current, onOpen, onClose, onSaveAll }: {
   axes: ExternalStructureAxes;
   code: DesignCodeId;
   draft: FrameDraft;
@@ -145,7 +135,10 @@ export function BuildingAxes({ axes, code, draft, current, onOpen, onClose }: {
   current: string;
   onOpen: (axisId: string) => void;
   onClose: () => void;
+  /** Guarda todos los ejes en la memoria del proyecto (para el PDF del edificio). */
+  onSaveAll?: (axes: readonly { readonly id: string; readonly tag: string }[]) => 'saved' | 'full';
 }) {
+  const [saveNote, setSaveNote] = useState<string | null>(null);
   const results = useBuildingDesign(axes, code, draft);
   const done = axes.axes.filter((axis) => results.has(axis.id)).length;
   const governing = useMemo(() => axes.axes.reduce<{ axis: ExternalStructureAxis; ratio: number } | null>((best, axis) => {
@@ -177,6 +170,15 @@ export function BuildingAxes({ axes, code, draft, current, onOpen, onClose }: {
         })}</tbody>
       </table>
       <p className="dw-input-note">Cada eje se diseña con los mismos datos de la mesa y las acciones del modelo completo. En planta, cada columna toma el mayor cociente de sus tramos en sus dos ejes.</p>
+      {onSaveAll ? <div className="dw-building__save">
+        <button type="button" className="dw-inline-action" onClick={() => {
+          const outcome = onSaveAll(axes.axes.map((axis) => ({ id: axis.id, tag: axis.short ? `Eje ${axis.short}` : axis.label })));
+          setSaveNote(outcome === 'full'
+            ? 'La memoria no tiene espacio para todos los ejes: quita elementos antes de agregarlos.'
+            : `${axes.axes.length} ejes en la memoria del proyecto: Memoria → PDF exporta el edificio completo.`);
+        }}><BookPlus size={13} aria-hidden="true" />Guardar los {axes.axes.length} ejes en la memoria</button>
+        {saveNote ? <span role="status">{saveNote}</span> : null}
+      </div> : null}
     </div>
   </Plate>;
 }

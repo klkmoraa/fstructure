@@ -29,3 +29,29 @@ it('diseña todos los ejes uno por uno, dice cuál rige y abre el elegido', asyn
   await userEvent.click(screen.getByRole('button', { name: 'Abrir Eje B · x = 6 m' }));
   expect(onOpen).toHaveBeenCalledWith('x:6');
 }, 30_000);
+
+it('guarda cada eje en la memoria con su rótulo para la memoria de cálculo y el PDF', async () => {
+  const model = space3dFromModel2d(createConcreteFrameProject(), { frames: 2, spacingM: 5 }).model!;
+  const axes = space3dDesignAxes(model);
+  const onSaveAll = vi.fn(() => 'saved' as const);
+  render(<BuildingAxes axes={axes} code="ntc-2023" draft={{ ...FRAME_DEFAULTS, source: 'model3d' }} current="z:0" onOpen={() => undefined} onClose={() => undefined} onSaveAll={onSaveAll} />);
+  await userEvent.click(screen.getByRole('button', { name: `Guardar los ${axes.axes.length} ejes en la memoria` }));
+  expect(onSaveAll).toHaveBeenCalledWith(axes.axes.map((axis) => ({ id: axis.id, tag: `Eje ${axis.short}` })));
+  expect(screen.getByRole('status').textContent).toMatch(/memoria/i);
+});
+
+it('un eje guardado se recalcula en la memoria con el Modelo 3D vigente', async () => {
+  const { reportFromMemoryItem } = await import('./designMemory');
+  const { buildDesignMemoriaPdf } = await import('./designReportPdf');
+  const model = space3dFromModel2d(createConcreteFrameProject(), { frames: 2, spacingM: 5 }).model!;
+  const axes = space3dDesignAxes(model);
+  const outcome = reportFromMemoryItem({
+    id: 'e1', element: 'frame', code: 'ntc-2023', savedAt: '2026-10-03', fields: { ...FRAME_DEFAULTS, source: 'model3d', axis: 'z:5', tag: 'Eje 2' },
+  }, null, axes);
+  if (!outcome.ok) throw new Error(outcome.errors.join('\n'));
+  expect(outcome.report.tag).toBe('Eje 2');
+  const bytes = await buildDesignMemoriaPdf([outcome.report], { figures: false });
+  expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
+  // Sin el Modelo 3D, el eje no se inventa: la memoria dice por qué no se recalcula.
+  expect(reportFromMemoryItem({ id: 'e1', element: 'frame', code: 'ntc-2023', savedAt: '2026-10-03', fields: { ...FRAME_DEFAULTS, source: 'model3d', axis: 'z:5' } }).ok).toBe(false);
+}, 30_000);

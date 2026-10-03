@@ -27,7 +27,14 @@
 :root[data-mesa-transition='raise']::view-transition-old(mesa-stage) { animation-name: mesa-space-recede; }
 :root[data-mesa-transition='raise']::view-transition-new(mesa-stage) { animation-name: mesa-plane-raise; transform-origin: 50% 92%; animation-delay: var(--sc-motion-instant); }
 
-/* Hacia Diseño (o de vuelta): de lado, en el orden del interruptor. */
+/* Hacia Diseño (o de vuelta): de lado, en el orden del interruptor; un
+   deslizamiento corto (`reveal`), el giro del plano conserva el trazo. */
+:root[data-mesa-transition='forward']::view-transition-group(mesa-stage),
+:root[data-mesa-transition='forward']::view-transition-old(mesa-stage),
+:root[data-mesa-transition='forward']::view-transition-new(mesa-stage),
+:root[data-mesa-transition='back']::view-transition-group(mesa-stage),
+:root[data-mesa-transition='back']::view-transition-old(mesa-stage),
+:root[data-mesa-transition='back']::view-transition-new(mesa-stage) { animation-duration: var(--sc-motion-reveal); }
 :root[data-mesa-transition='forward']::view-transition-old(mesa-stage) { animation-name: mesa-slide-out-left; }
 :root[data-mesa-transition='forward']::view-transition-new(mesa-stage) { animation-name: mesa-slide-in-right; }
 :root[data-mesa-transition='back']::view-transition-old(mesa-stage) { animation-name: mesa-slide-out-right; }

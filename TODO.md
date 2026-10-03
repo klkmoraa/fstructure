@@ -12,10 +12,10 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
 - [x] Mesa única 2D · 3D · Diseño: el Solver 3D es el modo 3D de FStructure, con transición animada, «Traer del 2D» y diseño de un eje del 3D en Estructura.
 - [x] Diseño desde el 3D: columnas en flexión biaxial, todos los ejes con planta (la columna común toma el mayor cociente), eje ~15× más rápido y «Editar en 3D» al alzado del eje.
-- [ ] Diseño desde el 3D: k e índice de estabilidad propios de la dirección perpendicular (hoy los del eje), torsión de vigas, y una memoria/PDF del edificio completo.
-- [ ] Todos los ejes en un worker: hoy cada eje bloquea ~0,5–1 s el hilo principal entre tareas.
-- [x] Traer del 2D: diafragma rígido por nivel al extruir.
-- [ ] Traer del 2D: llevar el f′c del material del 2D al 3D (el catálogo 3D sólo tiene 25 y 30 MPa).
+- [x] Diseño desde el 3D: k e índice de estabilidad propios de la dirección perpendicular, torsión de vigas contra ¼·φ·Tcr, todos los ejes en un worker y el edificio completo en la memoria/PDF.
+- [ ] Diseño desde el 3D: diseñar el refuerzo por torsión (estribos cerrados y acero longitudinal) cuando Tu supera el umbral; necesita la cláusula registrada (NTC-C 5.8, C.11.5, 11.5).
+- [x] Traer del 2D: diafragma rígido por nivel al extruir y el f′c del concreto del 2D.
+- [ ] Modo 3D: conservar la cámara orbital al volver (hoy se conserva la vista elegida, pero el redimensionado del visor la reinicia).
 
 ## Diseño (de `docs/research/concrete-design`)
 

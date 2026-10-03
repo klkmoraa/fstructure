@@ -34,8 +34,8 @@ No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa.
 - `src/features/tool-home/`: bienvenida común (hoy la usa FEM).
 - `src/features/workspace/`: `WorkspaceShell` (modo 2D), `ToolShell` (FEM y `MesaModeShell`, los modos 3D y Diseño), `MesaModeSwitch`, `mesaTransition` (la animación entre modos), `toolCatalog`, `toolIntent`. Es la única carpeta que conoce todos los territorios; sus adaptadores (`adapters/Space3DSurface`, `adapters/DesignSurface`) usan los puentes.
 - FS-A01: `src/features`, `src/engine`, `src/commands`, `src/store`; su modo Diseño en `src/design` (motores; `elements/model2dSource` traduce el Modelo 2D a la mesa Estructura) y `src/features/design` (taller); su modo 3D en `src/modules/space3d` (territorio propio) · FS-A03: `src/modules/fem`.
-- `src/integrations/`: `model2dSpace3d` («Traer del 2D»: el pórtico 2D extruido en pórticos paralelos) y `space3dDesign` (cada eje x = cte o z = cte del 3D como fuente de Estructura, con las acciones del modelo completo, columnas en flexión biaxial y la planta para revisar todos los ejes).
-- Común: `src/foundation` (unidades, álgebra), `src/storage` (proyecto local), `src/design-system` (incluye las bandas de diagrama que comparten Diseño y el 2D), `src/workers`.
+- `src/integrations/`: `model2dSpace3d` («Traer del 2D»: el pórtico 2D extruido en pórticos paralelos, con su f′c) y `space3dDesign` (cada eje x = cte o z = cte del 3D como fuente de Estructura, con las acciones del modelo completo, columnas en flexión biaxial con k e índice de estabilidad propios fuera del plano, torsión de vigas y la planta para revisar todos los ejes). Todos los ejes se diseñan en el worker de la mesa (`src/features/workspace/adapters/space3dDesign.worker.ts`).
+- Común: `src/foundation` (unidades, álgebra), `src/storage` (proyecto local), `src/design-system` (incluye las bandas de diagrama que comparten Diseño y el 2D, y `afterTransition`: el trabajo pesado espera a que termine la animación entre modos), `src/workers`.
 
 ## Cómo está hecho (guía)
 

@@ -60,6 +60,16 @@ export interface StructureMember {
   readonly displayLiveKnPerM: number;
   /** Carga puntual de referencia del tramo (la mayor), para la lámina y las estaciones de la viga. */
   readonly displayPoint?: { readonly deadKn: number; readonly liveKn: number; readonly atM: number };
+  /**
+   * Columna de un marco espacial: su restricción en la dirección perpendicular
+   * al plano. ψ en cada extremo (con las vigas de esa dirección) y, si hay un
+   * pórtico en esa dirección, la rigidez lateral de su entrepiso.
+   */
+  readonly outOfPlane?: {
+    readonly psiTop: number;
+    readonly psiBottom: number;
+    readonly story?: { readonly stiffnessKnPerM: number; readonly heightM: number };
+  };
 }
 
 export type StructureCaseKind = 'dead' | 'live' | 'lateral' | 'probe';
@@ -82,6 +92,8 @@ export interface StructureAction {
    * conoce: un eje del Modelo 3D. Las columnas la revisan como flexión biaxial.
    */
   readonly outOfPlane?: { readonly moment: number; readonly shear: number };
+  /** Momento torsor, kN·m, cuando la fuente lo conoce (un eje del Modelo 3D). */
+  readonly torsion?: number;
 }
 
 export interface StructureCaseResult {
@@ -89,6 +101,11 @@ export interface StructureCaseResult {
   readonly nodeDisplacements: readonly (readonly [number, number, number])[];
   /** Acciones del miembro `memberIndex` a `x` m de su nudo i. */
   readonly at: (memberIndex: number, x: number) => StructureAction;
+  /**
+   * Compresión total de las columnas del entrepiso del pórtico perpendicular
+   * que contiene a la columna `memberIndex`, kN (para su índice de estabilidad).
+   */
+  readonly outOfPlaneStoryAxial?: (memberIndex: number) => number;
 }
 
 export type StructureAnalysisOutcome =
@@ -159,6 +176,48 @@ export interface ExternalStructureAxes {
   readonly columns: readonly { readonly x: number; readonly z: number; readonly memberIds: readonly string[] }[];
   /** La fuente de un eje; la misma instancia mientras el modelo no cambie. */
   source(axisId: string): ExternalStructureSource;
+  /**
+   * Diseña todos los ejes fuera del hilo principal (un worker) y entrega cada
+   * resumen al terminar su eje. Devuelve cómo cancelar. Opcional: sin él, la
+   * mesa diseña eje por eje en el hilo principal.
+   */
+  designAll?(request: { readonly options: StructureDesignOptions; readonly braced: boolean }, onAxis: (axisId: string, summary: StructureAxisSummary) => void): () => void;
+}
+
+/** Lo que la vista de todos los ejes necesita de cada eje diseñado. */
+export type StructureAxisSummary =
+  | {
+    readonly ok: true;
+    readonly ratio: number;
+    readonly status: 'pass' | 'fail' | 'warning';
+    readonly beams: number;
+    readonly columns: number;
+    readonly beamCount: number;
+    readonly columnCount: number;
+    /** Cociente de cada columna del eje (id del miembro de la fuente). */
+    readonly columnRatios: readonly (readonly [string, number])[];
+  }
+  | { readonly ok: false; readonly error: string };
+
+const worstOf = (values: readonly number[]) => values.reduce((best, value) => Math.max(best, value), 0);
+
+/** Diseña una fuente externa como lo hace la mesa (f′c y peso propio del modelo) y la resume. */
+export function summarizeExternalStructure(external: ExternalStructureSource, options: StructureDesignOptions, braced: boolean): StructureAxisSummary {
+  if (external.errors.length) return { ok: false, error: external.errors[0]! };
+  const source = external.create({ braced });
+  if (!source) return { ok: false, error: 'No se pudo armar la estructura.' };
+  const result = designStructure(source, { ...options, fcMpa: external.fcMpa ?? options.fcMpa, includeSelfWeight: external.includesSelfWeight });
+  if (!result.ok) return { ok: false, error: result.errors[0] ?? 'No se pudo diseñar.' };
+  return {
+    ok: true,
+    ratio: result.governingRatio,
+    status: result.status,
+    beams: worstOf(result.beams.map((beam) => beam.result.governingRatio)),
+    columns: worstOf(result.columns.map((column) => column.result.governingRatio)),
+    beamCount: result.beams.length,
+    columnCount: result.columns.length,
+    columnRatios: result.columns.map((column) => [column.id.replace(/^column-/, ''), column.result.governingRatio] as const),
+  };
 }
 
 /** Un eje en planta: el plano x = cte o z = cte que contiene su pórtico. */
@@ -257,6 +316,8 @@ export interface StructureColumnState {
    */
   readonly outOfPlaneKnm?: number;
   readonly outOfPlaneDesignKnm?: number;
+  /** Índice de estabilidad de la dirección perpendicular. */
+  readonly outOfPlaneStabilityIndex?: number;
   readonly ratio: number;
   readonly status: 'pass' | 'fail' | 'warning';
 }
@@ -277,6 +338,8 @@ export interface StructureColumnDesign {
   readonly psiTop: number;
   readonly psiBottom: number;
   readonly clearHeightM: number;
+  /** k y ψ de la dirección perpendicular, si la fuente los da. */
+  readonly outOfPlane?: { readonly effectiveLengthFactor: number; readonly psiTop: number; readonly psiBottom: number };
 }
 
 export interface StructureBeamDesign {
@@ -288,6 +351,11 @@ export interface StructureBeamDesign {
   readonly result: BeamDesignResult;
   /** Cociente que rige en cada tramo: flexión, cortante y flecha. */
   readonly spanRatios: readonly number[];
+  /**
+   * Torsión de la fuente (un eje del Modelo 3D): el Tu combinado mayor y el
+   * umbral de agrietamiento ¼·φ·Tcr bajo el cual puede despreciarse.
+   */
+  readonly torsion?: { readonly demandKnm: number; readonly thresholdKnm: number; readonly combination: string };
 }
 
 export interface StructureStoryResult {
@@ -606,6 +674,36 @@ export function designStructure(source: StructureSource, options: StructureDesig
 
   // Vigas: cada línea continua con el motor de la viga y la respuesta de la estructura.
   const lines = beamLines(nodes, members);
+  // Torsión de las vigas, si la fuente la da: Tu con las mismas combinaciones
+  // (la viva donde desfavorece) contra ¼·φ·Tcr, Tcr = 0.33√f′c·Acp²/pcp.
+  const hasTorsion = analysis.length > 0 && members.length > 0 && at(0, 0, 0).torsion !== undefined;
+  const torsionOf = (indexes: readonly number[], section: StructureSection) => {
+    if (!hasTorsion) return null;
+    let worst = { value: 0, combination: combinations[0]!.label };
+    for (const combination of combinations) {
+      for (const variant of variantsOf(combination, laterals)) {
+        for (const index of indexes) {
+          for (let step = 0; step <= 8; step += 1) {
+            const x = lengths[index]! * step / 8;
+            const values = (caseIndex: number) => at(caseIndex, index, x).torsion ?? 0;
+            for (const direction of [1, -1] as const) {
+              const total = Math.abs(superpose(values, dead, live, variant.lateral, combination, variant.sign, direction).total);
+              if (total > worst.value) {
+                worst = {
+                  value: total,
+                  combination: variant.lateral === null ? combination.label : `${combination.label.replace(/\s*±\s*/, variant.sign > 0 ? ' + ' : ' − ')}${variant.sign > 0 ? ' (→)' : ' (←)'}`,
+                };
+              }
+            }
+          }
+        }
+      }
+    }
+    const area = section.widthMm * section.heightMm;
+    const perimeter = 2 * (section.widthMm + section.heightMm);
+    const crackingKnm = 0.33 * Math.sqrt(options.fcMpa) * area ** 2 / perimeter / 1e6;
+    return { demandKnm: worst.value, thresholdKnm: code.shearFactor * crackingKnm / 4, combination: worst.combination };
+  };
   const membersAt = (node: number, kind: StructureMemberKind) => members.flatMap((member, index) => member.kind === kind && (member.i === node || member.j === node) ? [index] : []);
   const beams: StructureBeamDesign[] = [];
   const lineLevelCount = new Map<number, number>();
@@ -706,7 +804,8 @@ export function designStructure(source: StructureSource, options: StructureDesig
       const span2 = result.spans[span]!;
       return Math.max(worst, span2.checkedDeflectionMm / span2.deflectionLimitMm);
     });
-    beams.push({ id, label, level, memberIndexes: line.members.map(({ index }) => index), result, spanRatios });
+    const torsion = torsionOf(line.members.map(({ index }) => index), first.section);
+    beams.push({ id, label, level, memberIndexes: line.members.map(({ index }) => index), result, spanRatios, ...(torsion ? { torsion } : {}) });
   }
   beams.sort((a, b) => a.level - b.level || members[a.memberIndexes[0]!]!.label.localeCompare(members[b.memberIndexes[0]!]!.label));
 
@@ -741,6 +840,19 @@ export function designStructure(source: StructureSource, options: StructureDesig
     const psiTop = psiAt(top);
     const psiBottom = psiAt(bottom);
     const k = options.effectiveLengthFactor ?? (source.braced ? 1 : swayEffectiveLengthFactor(psiTop, psiBottom));
+    // Dirección perpendicular: k del nomograma con sus vigas y el índice de
+    // estabilidad del pórtico perpendicular con sus propias cargas verticales.
+    const perpendicular = member.outOfPlane;
+    const kOut = perpendicular ? options.effectiveLengthFactor ?? (source.braced ? 1 : swayEffectiveLengthFactor(perpendicular.psiTop, perpendicular.psiBottom)) : null;
+    const stabilityOut = (combination: LoadCombination, fallback: number) => {
+      const story = perpendicular?.story;
+      if (source.braced || !story || !(story.stiffnessKnPerM > 0) || !Number.isFinite(story.stiffnessKnPerM)) return fallback;
+      const axialOf = (caseIndex: number) => analysis[caseIndex]!.outOfPlaneStoryAxial?.(index);
+      if (axialOf(dead[0] ?? live[0] ?? 0) === undefined) return fallback;
+      const vertical = dead.reduce((sum, caseIndex) => sum + combination.dead * (axialOf(caseIndex) ?? 0), 0)
+        + live.reduce((sum, caseIndex) => sum + combination.live * (axialOf(caseIndex) ?? 0), 0);
+      return Math.max(0, vertical) / (story.stiffnessKnPerM * story.heightM);
+    };
     const clearHeightM = Math.max(0.1, length - (beamDepthAt(top) + beamDepthAt(bottom)) / 2e3);
     const axis = axes.findIndex((value) => Math.abs(value - round((nodes[member.i]!.x + nodes[member.j]!.x) / 2)) < LEVEL_TOLERANCE / 2);
     const story = storyKeys.indexOf(storyKey(index));
@@ -816,12 +928,21 @@ export function designStructure(source: StructureSource, options: StructureDesig
             stabilityIndex: q,
             group: options.group,
             groundFloor: story === 0 && lateral,
+            ...(out && ot && ob && kOut !== null ? {
+              alongY: {
+                effectiveLengthFactor: source.braced ? kOut : Math.max(1, kOut),
+                stabilityIndex: stabilityOut(combination, q),
+                curvature: ot.total * ob.total > 0 ? 'single' as const : 'double' as const,
+                endMomentRatio: Math.abs(out.total) > TOLERANCE ? Math.min(1, Math.abs((out === ot ? ob : ot).total) / Math.abs(out.total)) : 1,
+              },
+            } : {}),
           }, { demandSource: `${structureSourceName(source.kind)} · ${combinationLabel} · ${candidate.label}` });
           if (!result.ok) return { ok: false, errors: result.errors.map((error) => `${label}: ${error}`) };
           states.push({
             label: candidate.label, combination: combinationLabel, axialKn: p.total, topKnm: mt.total, bottomKnm: mb.total,
             swayKnm: m2.lateral, nonSwayKnm: nonSway, shearKn: v.total, sustainedRatio: sustained, stabilityIndex: q, result,
             ...(out ? { outOfPlaneKnm: out.total } : {}),
+            ...(out && kOut !== null ? { outOfPlaneStabilityIndex: stabilityOut(combination, q) } : {}),
           });
         }
       }
@@ -849,6 +970,9 @@ export function designStructure(source: StructureSource, options: StructureDesig
       psiTop,
       psiBottom,
       clearHeightM,
+      ...(perpendicular && kOut !== null ? {
+        outOfPlane: { effectiveLengthFactor: source.braced ? kOut : Math.max(1, kOut), psiTop: perpendicular.psiTop, psiBottom: perpendicular.psiBottom },
+      } : {}),
     });
   }
   columns.sort((a, b) => a.story - b.story || a.axis - b.axis);
@@ -1034,6 +1158,27 @@ export function designStructure(source: StructureSource, options: StructureDesig
       status: 'info',
       reference: complementary('Relación de resistencias de diseño'),
       note: `Menor ΣMc/ΣMv = ${worst.ratio.toFixed(2)} en ${worst.label.toLowerCase()}. Es orientativa (resistencias de diseño, sin detallado sísmico): la jerarquía de resistencias de la norma sísmica queda fuera del alcance.`,
+    });
+  }
+  const torsional = beams.filter((beam) => beam.torsion);
+  if (torsional.length) {
+    const ratioOf = (beam: StructureBeamDesign) => beam.torsion!.demandKnm / Math.max(beam.torsion!.thresholdKnm, TOLERANCE);
+    const worst = torsional.reduce((best, beam) => (ratioOf(beam) > ratioOf(best) ? beam : best), torsional[0]!);
+    const exceeding = torsional.filter((beam) => ratioOf(beam) > 1);
+    frameChecks.push({
+      id: 'torsion',
+      label: 'Torsión en vigas (umbral)',
+      status: exceeding.length ? 'warning' : 'pass',
+      ratio: ratioOf(worst),
+      demand: worst.torsion!.demandKnm,
+      capacity: worst.torsion!.thresholdKnm,
+      unit: 'kN·m',
+      reference: complementary('Umbral de torsión de agrietamiento ¼·φ·Tcr (Tcr = 0.33√f′c·Acp²/pcp); sin cláusula registrada'),
+      note: exceeding.length
+        ? `Tu supera el umbral en ${exceeding.map((beam) => beam.label.toLowerCase()).join(', ')}: la torsión no puede despreciarse y su diseño (estribos cerrados y acero longitudinal) no está implementado; revísala con la norma.`
+        : `Tu ≤ ¼·φ·Tcr en todas las vigas (la mayor, ${worst.label.toLowerCase()}: ${worst.torsion!.demandKnm.toFixed(1)} de ${worst.torsion!.thresholdKnm.toFixed(1)} kN·m): la torsión puede despreciarse.`,
+      location: worst.label,
+      combination: `${sourceName} · ${worst.torsion!.combination}`,
     });
   }
   const skipped = members.flatMap((member) => member.kind === 'other' ? [{ id: member.id, label: member.label, reason: member.reason ?? 'No se diseña en concreto.' }] : []);

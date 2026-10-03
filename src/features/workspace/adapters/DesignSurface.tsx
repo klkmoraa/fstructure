@@ -2,7 +2,7 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'r
 import { withConcreteFrame, type ConcreteFrameSpec } from '../../../data/concreteFrame';
 import { model2dDesignSource } from '../../../design/elements/model2dSource';
 import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
-import { space3dDesignAxes } from '../../../integrations/space3dDesign';
+import { space3dDesignAxesWithWorker } from './space3dDesignAll';
 import { peekToolIntent, setToolIntent, takeToolIntent } from '../toolIntent';
 import { DesignWorkbench } from '../../design/workbench/DesignWorkbench';
 import { browserWorkbenchStorage, createProjectWorkbenchStorage, WorkbenchStorageContext } from '../../design/workbench/workbenchStorage';
@@ -36,7 +36,8 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     if (!branch) return null;
     try { return parseSpace3DDraft(JSON.stringify(branch.model)); } catch { return null; }
   }, [session, projectId]);
-  const modelAxes = useMemo(() => space3d && space3d.members.length ? space3dDesignAxes(space3d) : null, [space3d]);
+  // «Revisar todos los ejes» diseña en un worker; la mesa sigue fluida.
+  const modelAxes = useMemo(() => space3d && space3d.members.length ? space3dDesignAxesWithWorker(space3d) : null, [space3d]);
   const [startSource] = useState(() => peekToolIntent('design')?.kind);
   // «Editar en 3D» desde un eje abre el modo 3D en el alzado de ese eje.
   const openSpace3D = useMemo(() => onOpenSpace3D ? (axisId?: string) => {

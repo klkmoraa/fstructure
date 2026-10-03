@@ -31,7 +31,8 @@ import type {
  *   por las vigas que llegan al eje sí llegan a sus columnas. Del resultado se
  *   leen las acciones en el plano del eje: axial, cortante y momento de flexión
  *   en el plano; las columnas también reciben la flexión perpendicular (y su
- *   cortante) para revisarse en flexión biaxial. La torsión no se diseña aquí.
+ *   cortante) para revisarse en flexión biaxial, y las vigas su torsor, que se
+ *   compara con el umbral de agrietamiento (su diseño no se implementa).
  * - **Casos por categoría**, como el Modelo 2D: permanente → muerta, variable →
  *   viva partida por barra cargada del eje (el resto del caso va junto) para
  *   alternarla, accidental → lateral. Inactivos y «otro» no entran.
@@ -139,6 +140,9 @@ const concreteOf = (member: Space3DFrameMember) => {
     const fc = /fc(\d+(?:\.\d+)?)/.exec(material.id);
     return { concrete: true, fcMpa: fc ? Number(fc[1]) : null };
   }
+  // Concreto traído del 2D con un f′c que el catálogo del 3D no tiene (`concrete-fc28`).
+  const imported = member.materialId ? /^concrete-fc(\d+(?:\.\d+)?)$/.exec(member.materialId) : null;
+  if (imported) return { concrete: true, fcMpa: Number(imported[1]) };
   return { concrete: member.E >= CONCRETE_E_RANGE_KPA[0] && member.E <= CONCRETE_E_RANGE_KPA[1], fcMpa: null };
 };
 
@@ -171,6 +175,8 @@ interface InPlaneStation {
   /** Flexión perpendicular al plano y su cortante (dM/dx), para las columnas. */
   readonly outMoment: number;
   readonly outShear: number;
+  /** Torsor, kN·m. */
+  readonly torsion: number;
   readonly x: number;
   readonly axial: number;
   readonly shear: number;
@@ -183,11 +189,11 @@ interface InPlaneStation {
 const inPlaneStation = (station: Space3DMemberStation, member: PlaneMember): InPlaneStation => member.bending === 'y'
   ? {
     x: station.x, axial: station.N, shear: -member.sign * station.Vy, moment: member.sign * station.Mz, u: station.u, v: member.sign * station.v,
-    outMoment: station.My, outShear: station.Vz,
+    outMoment: station.My, outShear: station.Vz, torsion: station.T,
   }
   : {
     x: station.x, axial: station.N, shear: -member.sign * station.Vz, moment: -member.sign * station.My, u: station.u, v: member.sign * station.w,
-    outMoment: station.Mz, outShear: -station.Vy,
+    outMoment: station.Mz, outShear: -station.Vy, torsion: station.T,
   };
 
 const ZERO_ACTION: StructureAction = { axial: 0, shear: 0, moment: 0, u: 0, v: 0 };
@@ -245,10 +251,11 @@ const sampleStations = ({ length, stations, xs, us, vs }: MemberSamples, x: numb
     return {
       axial: linear(a.axial, b.axial), shear: linear(a.shear, b.shear), moment: hermite(a.moment, a.shear, b.moment, b.shear), ...elastic,
       outOfPlane: { moment: hermite(a.outMoment, a.outShear, b.outMoment, b.outShear), shear: linear(a.outShear, b.outShear) },
+      torsion: linear(a.torsion, b.torsion),
     };
   }
   const last = stations.at(-1)!;
-  return { axial: last.axial, shear: last.shear, moment: last.moment, ...elastic, outOfPlane: { moment: last.outMoment, shear: last.outShear } };
+  return { axial: last.axial, shear: last.shear, moment: last.moment, ...elastic, outOfPlane: { moment: last.outMoment, shear: last.outShear }, torsion: last.torsion };
 };
 
 interface ProjectedCase {
@@ -353,7 +360,7 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
     }
   }
   if (rolled) notes.push('Hay barras con la sección girada respecto al plano del eje: se diseñan con la flexión del eje local más cercano.');
-  notes.push('Acciones del Modelo 3D completo. Vigas: flexión en el plano del eje. Columnas: flexión biaxial (la perpendicular amplificada con la k y el índice de estabilidad del eje). La torsión no se revisa.');
+  notes.push('Acciones del Modelo 3D completo. Vigas: flexión en el plano del eje. Columnas: flexión biaxial; la perpendicular se amplifica con su propia k (vigas de esa dirección) y el índice de estabilidad del pórtico perpendicular.');
 
   // Casos: muertos enteros, vivos partidos por barra del eje y laterales; el sondeo se agrega al crear la fuente.
   const active = (item: Space3DLoadCase) => item.active !== false;
@@ -482,6 +489,136 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
         nodeLinks: [],
         multiPointConstraints: [],
       };
+      // ── Dirección perpendicular de las columnas del eje ──
+      // ψ con las vigas de esa dirección, y el entrepiso del pórtico
+      // perpendicular (el plano x = cte o z = cte que pasa por la columna):
+      // su rigidez lateral con un sondeo de ese pórtico solo y sus columnas,
+      // para sumar su carga vertical en cada caso.
+      const perpendicularAxis: PlaneAxis = axis === 'z' ? 'x' : 'z';
+      const across: Space3DVector = axis === 'z' ? [0, 0, 1] : [1, 0, 0];
+      const up: Space3DVector = [0, 1, 0];
+      const adjacency = new Map<string, Space3DFrameMember[]>();
+      for (const member of model.members) {
+        for (const id of [member.i, member.j]) adjacency.set(id, [...(adjacency.get(id) ?? []), member]);
+      }
+      /** EI/L de la flexión cuya dirección transversal es `transverse`. */
+      const bendingStiffness = (member: Space3DFrameMember, transverse: Space3DVector) => {
+        const a = nodeById.get(member.i)!;
+        const b = nodeById.get(member.j)!;
+        const length = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+        try {
+          const basis = buildMemberOrientation([a.x, a.y, a.z], [b.x, b.y, b.z], member.orientation);
+          const inertia = Math.abs(dot(basis.y, transverse)) >= Math.abs(dot(basis.z, transverse)) ? member.Iz : member.Iy;
+          return length > 0 ? member.E * inertia / length : 0;
+        } catch {
+          return 0;
+        }
+      };
+      const directionOf = (member: Space3DFrameMember): Space3DVector => {
+        const a = nodeById.get(member.i)!;
+        const b = nodeById.get(member.j)!;
+        const length = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) || 1;
+        return [(b.x - a.x) / length, (b.y - a.y) / length, (b.z - a.z) / length];
+      };
+      const psiAcross = (nodeId: string) => {
+        const node = nodeById.get(nodeId)!;
+        const { restraints } = node;
+        if (restraints.ux || restraints.uy || restraints.uz) return (axis === 'z' ? restraints.rx : restraints.rz) ? 1 : 10;
+        let columns = 0;
+        let beams = 0;
+        for (const member of adjacency.get(nodeId) ?? []) {
+          if ((member.type ?? 'frame') !== 'frame') continue;
+          const direction = directionOf(member);
+          if (Math.abs(direction[1]) > 0.5) columns += bendingStiffness(member, across);
+          else if (Math.abs(dot(direction, across)) > 0.99) beams += bendingStiffness(member, up);
+        }
+        return beams > 0 ? columns / beams : 10;
+      };
+      const roundLevel = (value: number) => Math.round(value / 0.005) * 0.005;
+      type PerpendicularStory = { readonly stiffnessKnPerM: number; readonly heightM: number; readonly columns: readonly { readonly id: string; readonly bottomIsI: boolean }[] };
+      const perpendicularFrames = new Map<string, Map<string, PerpendicularStory>>();
+      const perpendicularStoriesAt = (coordinate: number): Map<string, PerpendicularStory> => {
+        const key = keyOf(coordinate).toFixed(6);
+        const cached = perpendicularFrames.get(key);
+        if (cached) return cached;
+        const stories = new Map<string, PerpendicularStory>();
+        perpendicularFrames.set(key, stories);
+        const frameMembers = model.members.filter((member) => {
+          const a = nodeById.get(member.i);
+          const b = nodeById.get(member.j);
+          return a && b && onPlane(a, perpendicularAxis, coordinate) && onPlane(b, perpendicularAxis, coordinate);
+        });
+        const columnsOf = frameMembers.filter((member) => (member.type ?? 'frame') === 'frame' && Math.abs(directionOf(member)[1]) > 0.5);
+        if (!columnsOf.length || frameMembers.length === columnsOf.length) return stories;
+        const frameNodeIds = new Set(frameMembers.flatMap((member) => [member.i, member.j]));
+        const frameNodes = model.nodes.filter((node) => frameNodeIds.has(node.id));
+        const levels = [...new Set(columnsOf.map((member) => roundLevel(Math.max(nodeById.get(member.i)!.y, nodeById.get(member.j)!.y))))].sort((a, b) => a - b);
+        const probeLoadsAcross = levels.flatMap((level) => {
+          const at = frameNodes.filter((node) => Math.abs(roundLevel(node.y) - level) < 0.0025);
+          return at.map((node) => ({ node, force: 1 / at.length }));
+        });
+        const frame: Space3DProjectV1 = {
+          ...full,
+          nodes: frameNodes.map((node) => ({
+            ...node,
+            restraints: perpendicularAxis === 'z' ? { ...node.restraints, uz: true, rx: true, ry: true } : { ...node.restraints, ux: true, ry: true, rz: true },
+          })),
+          members: frameMembers,
+          loadCases: [{ id: PROBE_CASE, name: 'Sondeo lateral', category: 'other', active: true, selfWeightFactor: 0 }],
+          memberLoads: [],
+          nodalLoads: probeLoadsAcross.map((item, index) => ({
+            id: `${PROBE_CASE}-x${index}`, caseId: PROBE_CASE, nodeId: item.node.id,
+            fx: perpendicularAxis === 'z' ? item.force : 0, fy: 0, fz: perpendicularAxis === 'z' ? 0 : item.force, mx: 0, my: 0, mz: 0,
+          })),
+          diaphragms: [],
+          nodeLinks: [],
+          multiPointConstraints: [],
+        };
+        const run = analyzeSpace3DProject(frame, PROBE_CASE, { stationSegments: 2 });
+        if (!run.success) return stories;
+        const along = (nodeId: string) => {
+          const d = run.nodeResults.find((result) => result.nodeId === nodeId)?.displacement;
+          return d ? (perpendicularAxis === 'z' ? d.ux : d.uz) : 0;
+        };
+        const groups = new Map<string, { bottom: number; top: number; columns: { id: string; bottomIsI: boolean; drift: number }[] }>();
+        for (const member of columnsOf) {
+          const a = nodeById.get(member.i)!;
+          const b = nodeById.get(member.j)!;
+          const bottomIsI = a.y <= b.y;
+          const [bottom, top] = bottomIsI ? [a, b] : [b, a];
+          const storyKey = `${roundLevel(bottom.y)}|${roundLevel(top.y)}`;
+          const group = groups.get(storyKey) ?? { bottom: bottom.y, top: top.y, columns: [] };
+          group.columns.push({ id: member.id, bottomIsI, drift: along(top.id) - along(bottom.id) });
+          groups.set(storyKey, group);
+        }
+        for (const [storyKey, group] of groups) {
+          const drift = group.columns.reduce((sum, column) => sum + column.drift, 0) / group.columns.length;
+          const shear = levels.filter((level) => level >= roundLevel(group.top) - 0.0025).length;
+          if (!(Math.abs(drift) > 1e-12)) continue;
+          stories.set(storyKey, { stiffnessKnPerM: shear / Math.abs(drift), heightM: group.top - group.bottom, columns: group.columns.map(({ id, bottomIsI }) => ({ id, bottomIsI })) });
+        }
+        return stories;
+      };
+      /** Para cada columna del eje: su entrepiso en el pórtico perpendicular, si existe. */
+      const perpendicularStoryOf = new Map<number, PerpendicularStory>();
+      const membersAcross: StructureMember[] = members.map((member, index) => {
+        if (member.kind !== 'column') return member;
+        const source = planeMembers[index]!.source;
+        const a = nodeById.get(source.i)!;
+        const b = nodeById.get(source.j)!;
+        const [bottom, top] = a.y <= b.y ? [a, b] : [b, a];
+        const stories = perpendicularStoriesAt(axis === 'z' ? a.x : a.z);
+        const story = stories.get(`${roundLevel(bottom.y)}|${roundLevel(top.y)}`);
+        if (story) perpendicularStoryOf.set(index, story);
+        return {
+          ...member,
+          outOfPlane: {
+            psiTop: psiAcross(top.id),
+            psiBottom: psiAcross(bottom.id),
+            ...(story ? { story: { stiffnessKnPerM: story.stiffnessKnPerM, heightM: story.heightM } } : {}),
+          },
+        };
+      });
       const cache = new Map<string, ReturnType<StructureSource['analyze']>>();
       const fullNodeIndex = new Map(full.nodes.map((node, index) => [node.id, index]));
       const planeNodeIndexes = planeNodes.map((node) => fullNodeIndex.get(node.id)!);
@@ -588,12 +725,32 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
             });
             return samplesOf(element.length, stations.map((station) => inPlaneStation(station, member)));
           };
+          // Compresión en la base de una columna con la solución y las cargas del caso.
+          const compressionOf = (memberId: string, bottomIsI: boolean) => {
+            const element = elementOf.get(memberId);
+            if (!element) return 0;
+            const uLocal = multiplyMatrixVector(element.transformation, element.dofIndices.map((index) => displacement[index] ?? 0));
+            const fixedEnd = load.elements.get(memberId)?.fixedEndForces ?? ZERO_END_FORCES;
+            const forces = multiplyMatrixVector(element.localStiffness, uLocal).map((value, index) => value + (fixedEnd[index] ?? 0));
+            return bottomIsI ? forces[0]! : -forces[6]!;
+          };
+          const storyAxial = new Map<PerpendicularStory, number>();
           results.push({
             nodeDisplacements: planeNodeIndexes.map((node) => inPlaneOfVector(displacement, node)),
             at: (memberIndex, x) => {
               if (memberIndex < 0 || memberIndex >= planeMembers.length) return ZERO_ACTION;
               const member = samples[memberIndex] ??= recover(memberIndex);
               return sampleStations(member, x);
+            },
+            outOfPlaneStoryAxial: (memberIndex) => {
+              const story = perpendicularStoryOf.get(memberIndex);
+              if (!story) return 0;
+              let total = storyAxial.get(story);
+              if (total === undefined) {
+                total = story.columns.reduce((sum, column) => sum + compressionOf(column.id, column.bottomIsI), 0);
+                storyAxial.set(story, total);
+              }
+              return total;
             },
           });
         }
@@ -604,7 +761,7 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
         kind: 'model3d',
         label: `Modelo 3D · ${model.name} · ${plane.label}`,
         nodes,
-        members,
+        members: membersAcross,
         cases: cases.map((item) => item.case),
         braced,
         notes,

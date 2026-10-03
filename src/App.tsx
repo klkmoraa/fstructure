@@ -8,6 +8,7 @@ import WorkspaceShell from './features/workspace/WorkspaceShell';
 import ToolShell, { MesaModeShell } from './features/workspace/ToolShell';
 import { runMesaTransition } from './features/workspace/mesaTransition';
 import { setToolIntent } from './features/workspace/toolIntent';
+import { preloadMesaMode } from './features/workspace/toolSurfaces';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 import { Model2DWelcome } from './features/welcome/Model2DWelcome';
 import { TOOL_HOMES } from './features/workspace/toolHomes';
@@ -74,6 +75,15 @@ const FStructureSurface = () => {
     const handle = window.setTimeout(preload, 600);
     return () => window.clearTimeout(handle);
   }, [route.surface, route.tool]);
+
+  /* En la mesa de FStructure, los otros dos modos se descargan cuando el
+     navegador queda en reposo: el primer cambio de modo no espera a la red. */
+  useEffect(() => {
+    if (route.surface !== 'workspace' || route.tool !== 'model2d' || typeof window.requestIdleCallback !== 'function') return;
+    const others = (['model', '3d', 'design'] as const).filter((mode) => mode !== (route.mode ?? 'model'));
+    const handle = window.requestIdleCallback(() => { others.forEach((mode) => { void preloadMesaMode(mode); }); }, { timeout: 4000 });
+    return () => window.cancelIdleCallback(handle);
+  }, [route.surface, route.tool, route.mode]);
 
   useEffect(() => {
     if (route.projectId === project.id) return;

@@ -193,10 +193,83 @@ describe('un eje del Modelo 3D como fuente de Estructura', () => {
     expect(new Set(axis1.columns.map((column) => column.axisLabel))).toEqual(new Set(['A', 'B', 'C']));
   });
 
+  it('la dirección perpendicular de una columna usa su propia k (ψ con sus vigas) y el índice de estabilidad del pórtico perpendicular', () => {
+    const base = extruded(3, 5);
+    const free = base.nodes.filter((node) => !node.restraints.uy);
+    // Un sismo en z para que la dirección perpendicular a los ejes 1–3 tenga desplazamiento.
+    const model = parseSpace3DProject(JSON.stringify({
+      ...base,
+      loadCases: [...base.loadCases, { id: 'SZ', name: 'Sismo Z', category: 'accidental', active: true }],
+      nodalLoads: [...base.nodalLoads, ...free.map((node) => ({ id: `SZ-${node.id}`, caseId: 'SZ', nodeId: node.id, fx: 0, fy: 0, fz: 15, mx: 0, my: 0, mz: 0 }))],
+    }));
+    const axis1 = designStructure(space3dDesignSource(model, 'z:0').create({ braced: false })!, options);
+    const axisA = designStructure(space3dDesignSource(model, 'x:0').create({ braced: false })!, options);
+    if (!axis1.ok || !axisA.ok) throw new Error('el diseño falló');
+    // Columna baja del eje 1 en el eje A (x = 0).
+    const column = axis1.columns.find((item) => item.story === 0 && item.axisLabel === 'A')!;
+    expect(column.outOfPlane).toBeDefined();
+    // Base empotrada: ψ = 1; arriba, columnas sobre vigas transversales.
+    expect(column.outOfPlane!.psiBottom).toBe(1);
+    expect(column.outOfPlane!.psiTop).toBeGreaterThan(0);
+    expect(column.outOfPlane!.effectiveLengthFactor).toBeGreaterThanOrEqual(1);
+    // El índice perpendicular es el del primer entrepiso del eje A diseñado por su cuenta.
+    const qOut = Math.max(...column.states.map((state) => state.outOfPlaneStabilityIndex ?? 0));
+    expect(qOut).toBeGreaterThan(0);
+    expect(qOut).toBeCloseTo(axisA.stories[0]!.stabilityIndex, 6);
+    // Y su k perpendicular es la k de la misma columna vista desde el eje A.
+    const sameColumn = axisA.columns.find((item) => item.story === 0 && item.axisLabel === '1')!;
+    expect(column.outOfPlane!.effectiveLengthFactor).toBeCloseTo(sameColumn.effectiveLengthFactor, 6);
+  });
+
+  it('lee la torsión de las vigas del 3D y la compara con el umbral ¼·φ·Tcr', () => {
+    const base = extruded(3, 5);
+    const plain = designStructure(space3dDesignSource(base, 'z:0').create({ braced: false })!, options);
+    if (!plain.ok) throw new Error('el diseño falló');
+    const quiet = plain.checks.find((check) => check.id === 'torsion')!;
+    expect(quiet.status).toBe('pass');
+    // Un par torsor de 30 kN·m en el centro de cada viga baja del eje 1 (losa en voladizo, por ejemplo).
+    const lowBeams = base.members.filter((member) => {
+      const a = base.nodes.find((node) => node.id === member.i)!;
+      const b = base.nodes.find((node) => node.id === member.j)!;
+      return a.z === 0 && b.z === 0 && a.y === b.y && a.y > 0 && a.y < 4;
+    });
+    const dead = base.loadCases.find((item) => item.category === 'permanent')!.id;
+    const model = parseSpace3DProject(JSON.stringify({
+      ...base,
+      memberLoads: [...base.memberLoads, ...lowBeams.map((member) => ({
+        id: `T-${member.id}`, memberId: member.id, caseId: dead, type: 'moment', coordinateSystem: 'local', lengthBasis: 'real',
+        start: 0.5, end: 0.5, position: 0.5, mx: 30, my: 0, mz: 0,
+      }))],
+    }));
+    const twisted = designStructure(space3dDesignSource(model, 'z:0').create({ braced: false })!, options);
+    if (!twisted.ok) throw new Error('el diseño falló');
+    const loud = twisted.checks.find((check) => check.id === 'torsion')!;
+    expect(loud.status).toBe('warning');
+    const beam = twisted.beams.find((item) => item.torsion && item.torsion.demandKnm > item.torsion.thresholdKnm)!;
+    // Viga empotrada a torsión en sus columnas: cada mitad toma la mitad del par, factorizado.
+    expect(beam.torsion!.demandKnm).toBeGreaterThan(15);
+    expect(beam.torsion!.demandKnm).toBeLessThan(30 * 1.5);
+    // Umbral de una viga de 30 × 50 con f′c = 25 MPa y φ = 0.75 (NSR-10).
+    const tcr = 0.33 * Math.sqrt(25) * (300 * 500) ** 2 / (2 * (300 + 500)) / 1e6;
+    expect(beam.torsion!.thresholdKnm).toBeCloseTo(0.75 * tcr / 4, 6);
+  });
+
+  it('el f′c del concreto del 2D llega al 3D y el diseño del eje lo usa', () => {
+    const project = portal();
+    const fc2d = model2dDesignSource(project).fcMpa;
+    expect(fc2d).not.toBeNull();
+    const model = extruded(2, 4);
+    expect(new Set(model.members.map((member) => member.materialId))).toEqual(new Set([`concrete-fc${fc2d}`]));
+    // El id sólo nombra el material: la densidad y el peso propio siguen siendo los del 2D.
+    expect(model.members[0]!.density).toBe(project.members[0]!.density);
+    expect(space3dDesignSource(model, 'z:0').fcMpa).toBe(fc2d);
+    expect(space3dDesignSource(model, 'z:4').fcMpa).toBe(fc2d);
+  });
+
   it('dice por qué no puede diseñar', () => {
     expect(space3dDesignSource(extruded(), 'z:7').errors[0]).toMatch(/ya no está/);
     const steel = extruded();
-    const external = space3dDesignSource({ ...steel, members: steel.members.map((member) => ({ ...member, E: 2e8 })) }, 'z:0');
+    const external = space3dDesignSource({ ...steel, members: steel.members.map(({ materialId: _id, materialOrigin: _origin, ...member }) => ({ ...member, E: 2e8 })) }, 'z:0');
     expect(external.errors[0]).toMatch(/no tiene barras de concreto/);
   });
 });

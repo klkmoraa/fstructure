@@ -36,6 +36,8 @@ export interface WorkbenchChrome {
   readonly onCreateModel?: (spec: ConcreteFrameSpec) => void;
   /** Ejes diseñables del Modelo 3D del proyecto, por la misma frontera. */
   readonly modelAxes?: ExternalStructureAxes | null;
+  /** Guarda en la memoria la Estructura de varios ejes del Modelo 3D. */
+  readonly onSaveAxes?: (axes: readonly { readonly id: string; readonly tag: string }[]) => 'saved' | 'full';
   /** Abre el modo 3D de la mesa (sólo dentro de la app). */
   readonly onOpenSpace3D?: (axisId?: string) => void;
   /** Fuente pedida al abrir el taller. */

@@ -239,6 +239,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   const memoryBar = <MemoryStatus memory={memory} element={element} onSave={saveToMemory} onOpen={() => setMemoryOpen(true)} />;
   const chrome: WorkbenchChrome = {
     elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource, modelAxes,
+    onSaveAxes: (axes) => memory.saveAxes(axes),
     ...(nativeTool ? { onVerdict } : {}),
     ...(onOpenModel ? { onOpenModel } : {}),
     ...(onOpenSpace3D ? { onOpenSpace3D } : {}),

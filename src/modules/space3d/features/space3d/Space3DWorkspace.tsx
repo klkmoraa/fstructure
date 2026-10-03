@@ -138,6 +138,8 @@ interface Space3DWorkspaceProps {
   readonly incomingProject?: Space3DIncomingProject | null;
   /** Vista con la que abre la mesa (`elev-z:1`, `plan:S2`); si no existe, la 3D. */
   readonly startView?: Space3DViewId;
+  /** Avisa la vista elegida, para que quien aloja la mesa la recuerde. */
+  readonly onViewChange?: (viewId: Space3DViewId) => void;
 }
 
 const ERROR_KEYS: Record<string, TranslationKey> = {
@@ -226,10 +228,10 @@ interface Space3DStudyFeedback {
 const LABELS_BY_DEFAULT_LIMIT = 30;
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView'> {}
+  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange'> {}
 
 const WorkspaceBody = ({
-  language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView,
+  language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange,
 }: WorkspaceBodyProps) => {
   // El inglés se carga bajo demanda; al llegar, la versión cambia y la mesa se traduce.
   const [catalogVersion, setCatalogVersion] = useState(0);
@@ -280,6 +282,9 @@ const WorkspaceBody = ({
   const [viewFitToken, setViewFitToken] = useState(0);
   const refitView = () => setViewFitToken((token) => token + 1);
   const [viewId, setViewId] = useState<Space3DViewId>(startView ?? '3d');
+  const viewChangeRef = useRef(onViewChange);
+  viewChangeRef.current = onViewChange;
+  useEffect(() => { viewChangeRef.current?.(viewId); }, [viewId]);
   const [split, setSplit] = useState(false);
   // Como en 2D, el lienzo manda: el explorador nace abierto sólo si sobra ancho.
   const [explorerOpen, setExplorerOpen] = useState(() => (

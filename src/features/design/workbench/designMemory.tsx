@@ -85,6 +85,11 @@ interface DesignMemory {
   remove(id: string): void;
   /** Carga un elemento guardado en la mesa (borrador, norma y elemento). */
   open(id: string): WorkbenchMemoryItem | undefined;
+  /**
+   * Guarda la Estructura de cada eje del Modelo 3D con el borrador vigente (un
+   * elemento por eje, con su clave «Eje 1»). Un eje que ya estaba se actualiza.
+   */
+  saveAxes(axes: readonly { readonly id: string; readonly tag: string }[]): 'saved' | 'full';
 }
 
 export function useDesignMemory(storage: WorkbenchStorage, element: DesignElementKind, code: DesignCodeId, revision: unknown): DesignMemory {
@@ -126,6 +131,34 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       const next = !asNew && active ? items.map((entry) => entry.id === item.id ? item : entry) : [...items, item];
       if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
       commit(next, item.id);
+      return 'saved';
+    },
+    saveAxes(axes) {
+      const draft = currentDraft(storage, 'frame');
+      const savedAt = new Date().toISOString();
+      const next = [...items];
+      // El eje abierto se guarda tal cual (con su clave) y queda como el activo de la memoria.
+      // Sin eje elegido, la mesa abre el primero (`axisOf`); aquí vale lo mismo.
+      // Un eje que ya no existe sigue siendo otro elemento: no se pisa.
+      const axisIdOf = (fields: Readonly<Record<string, string>>) => fields.axis ? fields.axis : axes[0]?.id;
+      const open = draft.fields.source === 'model3d' ? axisIdOf(draft.fields) : undefined;
+      let nextActive = activeId;
+      for (const axis of axes) {
+        const position = next.findIndex((item) => item.element === 'frame' && item.fields.source === 'model3d' && axisIdOf(item.fields) === axis.id);
+        const item: WorkbenchMemoryItem = {
+          id: position >= 0 ? next[position]!.id : newId(),
+          element: 'frame',
+          code,
+          savedAt,
+          fields: axis.id === open ? draft.fields : { ...draft.fields, source: 'model3d', axis: axis.id, tag: axis.tag },
+          ...(draft.rows ? { rows: draft.rows } : {}),
+          ...(draft.levels ? { levels: draft.levels } : {}),
+        };
+        if (position >= 0) next[position] = item; else next.push(item);
+        if (axis.id === open) nextActive = item.id;
+      }
+      if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
+      commit(next, nextActive);
       return 'saved';
     },
     remove(id) {

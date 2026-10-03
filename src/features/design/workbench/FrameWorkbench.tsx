@@ -20,6 +20,7 @@ import {
   DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraft, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
   type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome,
 } from './frameModel';
+import { afterTransition } from '../../../design-system/afterTransition';
 import { BuildingAxes } from './BuildingAxes';
 import { useWorkbenchStorage } from './workbenchStorage';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
@@ -112,8 +113,8 @@ function useDeferredOutcome(key: string, enabled: boolean, compute: () => Struct
   latest.current = compute;
   useEffect(() => {
     if (!enabled) return undefined;
-    const handle = window.setTimeout(() => setState({ key, outcome: latest.current() }), 30);
-    return () => window.clearTimeout(handle);
+    // Después de la transición de modo: el cálculo no entrecorta la animación.
+    return afterTransition(() => setState({ key, outcome: latest.current() }));
   }, [key, enabled]);
   return enabled ? { outcome: state?.outcome ?? null, pending: state?.key !== key } : { outcome: null, pending: false };
 }
@@ -239,7 +240,8 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const [building, setBuilding] = useState(false);
   const buildingView = from3d && building && modelAxes && modelAxes.axes.length > 1
     ? <BuildingAxes axes={modelAxes} code={chrome.code as DesignCodeId} draft={deferredInputs.draft as FrameDraft} current={axisOf(draft, modelAxes)}
-      onOpen={(axisId) => { set('axis')(axisId); setPicked(null); }} onClose={() => setBuilding(false)} />
+      onOpen={(axisId) => { set('axis')(axisId); setPicked(null); }} onClose={() => setBuilding(false)}
+      {...(chrome.onSaveAxes ? { onSaveAll: chrome.onSaveAxes } : {})} />
     : null;
   const supports = result?.columns.length ? 'columns' as const : 'ideal' as const;
   const verdict = result
@@ -437,6 +439,10 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           ...beam.result.bastions.map((bastion) => ({ kind: 'extra' as const, title: bastionTitle(bastion), detail: `${meters(bastion.startM)} → ${meters(bastion.endM)} m` })),
           ...beam.result.spans.map((span, index) => ({ kind: 'stirrup' as const, title: `Tramo ${index + 1} · ${stirrupText(span.stirrups, beam.result.stirrupDiameterMm)}` })),
         ]} /> : null}
+        {beam?.torsion ? <Summary rows={[
+          { label: 'Tu (torsión)', value: `${formatNumber(beam.torsion.demandKnm)} kN·m` },
+          { label: '¼·φ·Tcr', value: `${formatNumber(beam.torsion.thresholdKnm)} kN·m · ${beam.torsion.demandKnm > beam.torsion.thresholdKnm ? 'revisar torsión' : 'despreciable'}` },
+        ]} /> : null}
         {column ? <>
           <RebarList items={[
             { kind: 'bar', title: `${column.result.bars.length} ${rebarLabel(column.result.input.barDiameterMm)}`, detail: `ρ ${formatNumber(column.result.steelRatio * 100, 2)} % · ${formatNumber(column.result.input.widthMm / 10, 0)}×${formatNumber(column.result.input.depthMm / 10, 0)} cm` },
@@ -450,6 +456,13 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             ...(column.states[column.governingState]!.outOfPlaneDesignKnm !== undefined
               ? [{ label: 'Mc ⊥ (fuera del plano)', value: `${formatNumber(column.states[column.governingState]!.outOfPlaneDesignKnm!)} kN·m`, tone: 'moment' as const }] : []),
             { label: 'k · ψ', value: `${formatNumber(column.effectiveLengthFactor, 2)} · ${formatNumber(column.psiTop, 2)}/${formatNumber(column.psiBottom, 2)}` },
+            ...(column.outOfPlane ? [{
+              label: 'k⊥ · ψ⊥',
+              value: `${formatNumber(column.outOfPlane.effectiveLengthFactor, 2)} · ${formatNumber(column.outOfPlane.psiTop, 2)}/${formatNumber(column.outOfPlane.psiBottom, 2)}`,
+            }, {
+              label: 'Q⊥ (estabilidad)',
+              value: (column.states[column.governingState]!.outOfPlaneStabilityIndex ?? 0).toFixed(3),
+            }] : []),
           ]} />
         </> : null}
         <ReviewList checks={memberChecks[0]} outOfScope={[]} />
