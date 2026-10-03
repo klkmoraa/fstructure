@@ -81,7 +81,17 @@ const Space3DDynamicsDialog = lazy(() => import('./Space3DDynamicsDialog').then(
 type PendingReplace =
   | { readonly kind: 'example' }
   | { readonly kind: 'blank' }
-  | { readonly kind: 'generated'; readonly project: Space3DProjectV1 };
+  | { readonly kind: 'generated'; readonly project: Space3DProjectV1; readonly title?: string; readonly description?: string };
+
+/** Modelo que llega desde fuera de la mesa (otro modo de la app) para reemplazar el actual. */
+export interface Space3DIncomingProject {
+  readonly project: Space3DProjectV1;
+  /** Cambia en cada entrega: la misma entrega no se aplica dos veces. */
+  readonly nonce: number;
+  /** Texto de la confirmación, ya traducido por quien lo entrega. */
+  readonly title: string;
+  readonly description: string;
+}
 
 type InspectorPanel = 'model' | 'analysis';
 
@@ -121,6 +131,11 @@ interface Space3DWorkspaceProps {
    * un modelo que perder.
    */
   readonly startIntent?: 'generate' | 'example' | 'first-node';
+  /**
+   * Un modelo entregado desde fuera («Traer del 2D»). Se aplica como la
+   * estructura generada: con confirmación si hay algo que perder, y deshacible.
+   */
+  readonly incomingProject?: Space3DIncomingProject | null;
 }
 
 const ERROR_KEYS: Record<string, TranslationKey> = {
@@ -209,10 +224,10 @@ interface Space3DStudyFeedback {
 const LABELS_BY_DEFAULT_LIMIT = 30;
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent'> {}
+  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject'> {}
 
 const WorkspaceBody = ({
-  language, embedded = false, createViewport, onProjectChange, startIntent,
+  language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject,
 }: WorkspaceBodyProps) => {
   // El inglés se carga bajo demanda; al llegar, la versión cambia y la mesa se traduce.
   const [catalogVersion, setCatalogVersion] = useState(0);
@@ -588,11 +603,11 @@ const WorkspaceBody = ({
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [startIntent]);
 
-  const requestGeneratedReplace = (generatedProject: Space3DProjectV1) => {
+  const requestGeneratedReplace = (generatedProject: Space3DProjectV1, copy?: { title: string; description: string }) => {
     setGenerativeOpen(false);
     setBuildingOpen(false);
     if (hasContent) {
-      setPendingReplace({ kind: 'generated', project: generatedProject });
+      setPendingReplace({ kind: 'generated', project: generatedProject, ...copy });
       return;
     }
     replaceProject(generatedProject);
@@ -601,6 +616,15 @@ const WorkspaceBody = ({
     setEditorTarget(null);
     setLayers((current) => ({ ...current, labels: generatedProject.members.length <= LABELS_BY_DEFAULT_LIMIT }));
   };
+
+  const appliedIncoming = useRef<number | null>(null);
+  useEffect(() => {
+    if (!incomingProject || appliedIncoming.current === incomingProject.nonce) return;
+    appliedIncoming.current = incomingProject.nonce;
+    requestGeneratedReplace(incomingProject.project, { title: incomingProject.title, description: incomingProject.description });
+    // Cada entrega se aplica una vez, cuando llega.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingProject]);
 
   const confirmReplace = () => {
     if (!pendingReplace) return;
@@ -1561,12 +1585,12 @@ const WorkspaceBody = ({
       title={pendingReplace?.kind === 'example'
         ? t('space3d.confirmReplaceTitleExample')
         : pendingReplace?.kind === 'generated'
-          ? t('space3d.confirmReplaceTitleGenerated')
+          ? pendingReplace.title ?? t('space3d.confirmReplaceTitleGenerated')
           : t('space3d.confirmReplaceTitleBlank')}
       description={pendingReplace?.kind === 'example'
         ? t('space3d.confirmReplaceBodyExample')
         : pendingReplace?.kind === 'generated'
-          ? t('space3d.confirmReplaceBodyGenerated')
+          ? pendingReplace.description ?? t('space3d.confirmReplaceBodyGenerated')
           : t('space3d.confirmReplaceBodyBlank')}
       footer={<>
         <button type="button" className="space3d-button" onClick={() => setPendingReplace(null)}>

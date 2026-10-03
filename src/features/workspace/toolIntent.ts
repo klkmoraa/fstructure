@@ -8,6 +8,8 @@
  */
 type ToolIntent =
   | { tool: 'space3d'; kind: 'generate' | 'example' | 'first-node' }
+  /** Diseño abierto desde un modo con modelo: la estructura se diseña con ese modelo. */
+  | { tool: 'design'; kind: 'model' | 'model3d' }
   | { tool: 'fem'; kind: 'analyze' }
   | { tool: 'fem'; kind: 'import-gmsh'; fileName: string; text: string };
 

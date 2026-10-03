@@ -4,9 +4,16 @@ import { readProjectUrl, writeProjectUrl } from './projectUrl';
 
 describe('canonical project navigation', () => {
   it.each([
-    ['workspace2d', 'model2d'], ['workspace3d', 'space3d'], ['fem', 'fem'],
+    ['workspace2d', 'model2d'], ['fem', 'fem'],
   ])('migrates legacy %s preserving project identity', (surface, tool) => {
     expect(readProjectUrl(`https://example.test/app/?surface=${surface}&project=old`, 'active')).toEqual({ surface: 'workspace', projectId: 'old', tool });
+  });
+  it('opens old 3D links in the 3D mode of FStructure', () => {
+    expect(readProjectUrl('https://example.test/app/?surface=workspace3d&project=old', 'active')).toEqual({ surface: 'workspace', projectId: 'old', tool: 'model2d', mode: '3d' });
+    expect(readProjectUrl('https://example.test/app/?project=old&tool=space3d', 'active')).toEqual({ surface: 'workspace', projectId: 'old', tool: 'model2d', mode: '3d' });
+    expect(readProjectUrl('https://example.test/app/?surface=home&project=old&tool=space3d', 'active')).toEqual({ surface: 'tool-home', projectId: 'old', tool: 'model2d' });
+    expect(readProjectUrl('https://example.test/app/?project=old&tool=model2d&mode=3d', 'active')).toEqual({ surface: 'workspace', projectId: 'old', tool: 'model2d', mode: '3d' });
+    expect(readProjectUrl('https://example.test/app/?project=old&tool=model2d&mode=nope', 'active')).toEqual({ surface: 'workspace', projectId: 'old', tool: 'model2d' });
   });
   it('opens old Design links in the Design mode of FStructure', () => {
     expect(readProjectUrl('https://example.test/app/?surface=design&project=old', 'active')).toEqual({ surface: 'workspace', projectId: 'old', tool: 'model2d', mode: 'design' });

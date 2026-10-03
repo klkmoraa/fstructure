@@ -8,7 +8,7 @@ import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
 import { useShellComposition } from './useShellComposition';
 import { ShellInspectorHost, ShellInspectorTrigger, ShellSlotHost, ShellToolSlotsProvider } from './ShellToolSlots';
-import { DesignModeTool, FemTool, Space3DTool } from './toolSurfaces';
+import { DesignModeTool, FemTool, Space3DModeTool } from './toolSurfaces';
 import { MesaModeSwitch } from './MesaModeSwitch';
 import { LazySurface } from './LazySurface';
 import { toolIdentity } from './toolCatalog';
@@ -27,12 +27,15 @@ type ToolShellProps = {
   onOpenHome: () => void;
 };
 
-/** Lo que monta el shell: una herramienta aislada o el modo Diseño de FStructure. */
+/** Modos de FStructure que monta este shell: el 3D y el Diseño (el 2D tiene el suyo). */
+export type ShellMesaMode = Exclude<MesaMode, 'model'>;
+
+/** Lo que monta el shell: una herramienta aislada o un modo de la mesa de FStructure. */
 type SurfaceProps = {
-  variant: IsolatedToolId | 'design';
+  variant: IsolatedToolId | ShellMesaMode;
   projectId: string;
   onOpenHome: () => void;
-  /** Sólo en Diseño: vuelve al modo Modelo de la misma mesa. */
+  /** Interruptor 2D | 3D | Diseño de la mesa. */
   onModeChange?: (mode: MesaMode) => void;
 };
 
@@ -57,8 +60,10 @@ class ToolErrorBoundary extends Component<BoundaryProps, BoundaryState> {
 }
 
 const ToolContent = ({ variant, onModeChange }: Pick<SurfaceProps, 'variant' | 'onModeChange'>) => {
-  if (variant === 'design') return <LazySurface><DesignModeTool {...(onModeChange ? { onOpenModel: () => onModeChange('model') } : {})} /></LazySurface>;
-  return variant === 'space3d' ? <Space3DTool /> : <FemTool />;
+  if (variant === 'design') {
+    return <LazySurface><DesignModeTool {...(onModeChange ? { onOpenModel: () => onModeChange('model'), onOpenSpace3D: () => onModeChange('3d') } : {})} /></LazySurface>;
+  }
+  return variant === '3d' ? <Space3DModeTool /> : <FemTool />;
 };
 
 const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfaceProps) => {
@@ -67,8 +72,9 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
   const { t, language } = useI18n();
   const { project, storageIssue, storageMessage, renameProject } = useProject();
   const design = variant === 'design';
-  // El modo Diseño es FStructure: misma identidad, misma marca y la guía de diseño.
-  const tool: ToolId = design ? 'model2d' : variant;
+  const mesa = variant === 'design' || variant === '3d';
+  // Los modos 3D y Diseño son FStructure: misma identidad, misma marca y su propia guía.
+  const tool: ToolId = mesa ? 'model2d' : 'fem';
   const identity = toolIdentity(tool);
   const text = copy[language];
   const name = identity.name[language];
@@ -86,8 +92,8 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
       topbar={<WorkspaceTopBar
         language={language}
         tool={tool}
-        {...(design ? { helpTopic: 'design' as const } : {})}
-        modeSwitch={design && onModeChange ? <MesaModeSwitch mode="design" onChange={onModeChange} language={language} /> : undefined}
+        {...(mesa ? { helpTopic: design ? 'design' as const : 'space3d' as const } : {})}
+        modeSwitch={mesa && onModeChange ? <MesaModeSwitch mode={variant} onChange={onModeChange} language={language} /> : undefined}
         contextActive={false}
         contextualControls={<div className="workspace-topbar__tool-group" data-workspace-group="tool">
           <ShellSlotHost slot="controls" />
@@ -135,7 +141,8 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
         onAnalyze={() => undefined}
         onOpenResults={() => undefined}
       />}
-      workspace={<section className="native-workspace-mode" data-workspace-mode={variant} aria-label={design ? (language === 'es' ? `${name} · Diseño` : `${name} · Design`) : name}>
+      workspace={<section className="native-workspace-mode" data-workspace-mode={variant === '3d' ? 'space3d' : variant}
+        aria-label={design ? (language === 'es' ? `${name} · Diseño` : `${name} · Design`) : variant === '3d' ? `${name} · 3D` : name}>
         <ToolErrorBoundary fallback={(reset) => <div className="tool-shell__failure" role="alert">
           <strong>{text.failed}</strong>
           <p>{text.failedBody}</p>
@@ -161,7 +168,7 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
 };
 
 /**
- * Shell de una herramienta aislada —Modelo 3D o FEM—.
+ * Shell de una herramienta aislada (FEM).
  *
  * No monta nada del Modelo 2D: ni su consola, ni sus utilidades, ni sus atajos
  * de teclado, ni su bróker de superficies. La marca de la barra vuelve al Inicio,
@@ -172,12 +179,13 @@ const ToolShell = ({ tool, ...props }: ToolShellProps) => <ShellCompositionProvi
 </ShellCompositionProvider>;
 
 /**
- * Modo Diseño de FStructure: la misma mesa que el Modelo 2D, con el taller de
- * concreto en lugar del lienzo. Comparte proyecto, guardado y análisis; el
- * interruptor Modelo | Diseño de la barra vuelve al dibujo.
+ * Modos 3D y Diseño de FStructure: la misma mesa que el modo 2D, con el modelo
+ * espacial o el taller de concreto en lugar del lienzo plano. Comparten
+ * proyecto, guardado, barra y marca; el interruptor 2D | 3D | Diseño cambia de
+ * modo sin cambiar de mesa.
  */
-export const DesignModeShell = (props: Omit<SurfaceProps, 'variant'>) => <ShellCompositionProvider>
-  <ToolSurface variant="design" {...props} />
+export const MesaModeShell = ({ mode, ...props }: Omit<SurfaceProps, 'variant'> & { mode: ShellMesaMode }) => <ShellCompositionProvider>
+  <ToolSurface variant={mode} {...props} />
 </ShellCompositionProvider>;
 
 export default ToolShell;

@@ -9,7 +9,7 @@ import { ConcreteStudio } from './ConcreteStudio';
 import { FootingWorkbench } from './FootingWorkbench';
 import { FrameWorkbench } from './FrameWorkbench';
 import type { DraftHistory } from './common';
-import type { ExternalStructureSource } from '../../../design/elements/structure';
+import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { MemoryDialog, MemoryStatus, useDesignMemory } from './designMemory';
 import { memoText, reportHeading, type DesignReport } from './designReport';
 import type { Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
@@ -42,16 +42,20 @@ const readRoom = (): Room => {
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
 
-export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, onOpenModel, onCreateModel }: {
+export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel }: {
   nativeTool?: boolean;
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
   modelSource?: ExternalStructureSource | null;
-  /** Vuelve al modo Modelo de la mesa. */
+  /** Ejes diseñables del Modelo 3D del proyecto, traducidos por la misma frontera. */
+  modelAxes?: ExternalStructureAxes | null;
+  /** Vuelve al modo 2D de la mesa. */
   onOpenModel?: () => void;
+  /** Abre el modo 3D de la mesa. */
+  onOpenSpace3D?: () => void;
   /** Escribe el pórtico rápido en el Modelo 2D (deshacible en Modelo). */
   onCreateModel?: (spec: ConcreteFrameSpec) => void;
   /** Fuente de la estructura pedida desde fuera («Diseñar el modelo»). */
-  startSource?: 'frame' | 'model';
+  startSource?: 'frame' | 'model' | 'model3d';
   /** Nombre del proyecto abierto: encabeza la memoria. */
   projectName?: string;
   /** Elemento elegido en la bienvenida de Diseño; gana al último guardado. */
@@ -234,9 +238,10 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   </label>;
   const memoryBar = <MemoryStatus memory={memory} element={element} onSave={saveToMemory} onOpen={() => setMemoryOpen(true)} />;
   const chrome: WorkbenchChrome = {
-    elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource,
+    elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource, modelAxes,
     ...(nativeTool ? { onVerdict } : {}),
     ...(onOpenModel ? { onOpenModel } : {}),
+    ...(onOpenSpace3D ? { onOpenSpace3D } : {}),
     ...(onCreateModel ? { onCreateModel } : {}),
     ...(startSource ? { startSource } : {}),
   };
@@ -278,6 +283,6 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
         : element === 'footing' ? <FootingWorkbench key={loadCount} chrome={chrome} />
           : <ConcreteStudio key={loadCount} chrome={chrome} />}
     <MemoryDialog open={memoryOpen} onOpenChange={setMemoryOpen} memory={memory} element={element} onLoad={loadFromMemory}
-      onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} modelSource={modelSource} />
+      onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} modelSource={modelSource} modelAxes={modelAxes} />
   </div>;
 }

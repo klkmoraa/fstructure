@@ -24,7 +24,12 @@ beforeEach(() => {
   localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createDefaultProject()));
   localStorage.setItem(WORKSPACE_LAYOUT_STORAGE_KEY, JSON.stringify({ inspectorCollapsed: false }));
 });
-afterEach(cleanup);
+// Los guardados del proyecto terminan en segundo plano: se espera a que acaben
+// antes de que el entorno se desmonte (con la suite en paralelo llegan tarde).
+afterEach(async () => {
+  cleanup();
+  await new Promise((resolve) => setTimeout(resolve, 250));
+});
 
 // Cada mesa se carga en diferido; la primera importación en frío (y con toda
 // la suite en paralelo) tarda más que el segundo de espera por defecto.
@@ -91,18 +96,22 @@ it('los atajos del modo Modelo no existen en el modo Diseño ni en otra herramie
   expect(screen.getByRole('button', { name: /Cómo diseñar en FStructure/ })).toBeTruthy();
 }, TEST_TIMEOUT);
 
-it('cambiar de herramienta desmonta la anterior y la recarga vuelve a la herramienta de la URL', async () => {
+it('cambiar de modo desmonta el anterior y la recarga vuelve al modo de la URL', async () => {
   const user = userEvent.setup();
   const view = render(<App />);
   await screen.findByRole('application', undefined, LAZY);
   const projectId = new URLSearchParams(window.location.search).get('project');
 
-  await openFromHome(user, 'Solver 3D');
-  expect(new URLSearchParams(window.location.search).get('tool')).toBe('space3d');
+  await user.click(screen.getByRole('button', { name: 'Modelo 3D' }));
+  expect(await screen.findByRole('button', { name: 'Modelo 3D', pressed: true }, LAZY)).toBeTruthy();
+  expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+  expect(new URLSearchParams(window.location.search).get('mode')).toBe('3d');
   expect(new URLSearchParams(window.location.search).get('project')).toBe(projectId);
   expect(screen.queryByRole('application', { name: /2D/ })).toBeNull();
+  // La misma mesa: misma marca y mismo nombre de proyecto en la barra.
+  expect(document.querySelector('[data-workspace-topbar]')?.getAttribute('data-tool')).toBe('model2d');
 
-  await openFromHome(user, 'FStructure');
+  await user.click(screen.getByRole('button', { name: 'Modelo 2D' }));
   expect(await screen.findByRole('application', undefined, LAZY)).toBeTruthy();
   expect(screen.getAllByRole('application')).toHaveLength(1);
   expect(document.querySelector('[data-workspace-mode="space3d"]')).toBeNull();

@@ -101,18 +101,42 @@ it('reopens the pending 3D edit and never queues the older committed branch over
   expect(after.revision).toBe(before + 1);
 });
 
-it('abre aislado: sin rama 3D no deriva el modelo del 2D ni lo menciona', async () => {
+it('abre aislado: sin rama 3D no deriva el modelo del 2D; traerlo es una acción explícita', async () => {
   const repo = new IndexedDbUnifiedBundleRepository();
   const project = { ...createDefaultProject(), id: 'A' };
   await repo.saveBundle(createUnifiedProjectBundle(project, 'A-current'), 0);
   await start();
   expect(project.nodes.length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: new RegExp(`^${t('space3d.nodes')}`) }).textContent).toBe(`${t('space3d.nodes')}0`);
-  expect(screen.queryByText(/2D/)).toBeNull();
+  // La única mención del 2D es el botón «Traer del 2D».
+  expect(screen.getAllByText(/2D/).every((element) => element.closest('button')?.getAttribute('aria-label') === 'Traer el Modelo 2D al 3D')).toBe(true);
   expect(screen.queryByRole('button', { name: /derivar/i })).toBeNull();
   await addNode();
   await act(() => session.open('A'));
   const saved = (await repo.openBundle('A'))!.bundle.space3d!;
   expect(storedModel(saved.model).nodes).toHaveLength(1);
   expect(saved.sourceModel2D).toBeUndefined();
+});
+
+it('«Traer del 2D» reemplaza el 3D con confirmación, se guarda en la rama 3D y se deshace', async () => {
+  const { repo, model } = await seed('A', 17);
+  await start();
+  const two = { ...createDefaultProject() };
+  await userEvent.click(screen.getByRole('button', { name: 'Traer el Modelo 2D al 3D' }));
+  const frames = screen.getByRole('textbox', { name: 'Pórticos' });
+  await userEvent.clear(frames);
+  await userEvent.type(frames, '2');
+  await userEvent.click(screen.getByRole('button', { name: 'Traer al 3D' }));
+  // Había un modelo 3D: se pide confirmación antes de reemplazarlo.
+  await userEvent.click(await screen.findByRole('button', { name: t('space3d.confirmReplaceConfirm') }));
+  const count = () => screen.getByRole('button', { name: new RegExp(`^${t('space3d.nodes')}`) }).textContent;
+  await waitFor(() => expect(count()).toBe(`${t('space3d.nodes')}${two.nodes.length * 2}`));
+  await act(() => session.open('A'));
+  const saved = (await repo.openBundle('A'))!.bundle;
+  expect(storedModel(saved.space3d!.model).nodes).toHaveLength(two.nodes.length * 2);
+  expect(storedModel(saved.space3d!.model).id).toBe('space3d:A');
+  // El Modelo 2D no cambia.
+  expect(saved.model2d.nodes).toHaveLength(two.nodes.length);
+  await userEvent.click(screen.getByRole('button', { name: t('space3d.undo') }));
+  await waitFor(() => expect(count()).toBe(`${t('space3d.nodes')}${model.nodes.length}`));
 });

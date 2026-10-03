@@ -3,8 +3,8 @@ import type { ToolId } from '../../shared/contracts';
 type Guide = { steps: readonly [string, string][]; controls: readonly [string, string][] };
 
 /** Vocabulario de los controles existentes. No importa ni accede a datos de las mesas. */
-/** Una guía por mesa y otra para el modo Diseño de FStructure. */
-export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'design', Guide>> = {
+/** Una guía por mesa y una por cada modo de FStructure (3D y Diseño). */
+export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'space3d' | 'design', Guide>> = {
   es: {
     model2d: {
       steps: [
@@ -25,13 +25,15 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'design',
     },
     space3d: {
       steps: [
-        ['Prepara la geometría', 'Archivo permite crear un edificio, usar el generador o importar. Nudo y Barra en el dock permiten dibujar sobre el plano de trabajo.'],
+        ['Prepara la geometría', 'Archivo permite crear un edificio, usar el generador o importar. Traer del 2D repite el pórtico del modo 2D en pórticos paralelos unidos por vigas transversales (se deshace con Deshacer). Nudo y Barra en el dock dibujan sobre el plano de trabajo.'],
         ['Define el modelo', 'Definir reúne ejes y pisos, secciones, casos de carga y parámetros dinámicos.'],
         ['Selecciona y asigna', 'Elige nudos o barras y abre Asignar. Los comandos explican si requieren nudos o barras seleccionados.'],
         ['Calcula', 'Analizar utiliza el caso o combinación activo. La guía del modelo indica el siguiente paso y los resultados se invalidan al editar.'],
         ['Consulta los resultados', 'Elige la magnitud en la banda del lienzo. Panel abre datos y diagnósticos; Mostrar controla deformada, etiquetas y capas; Vista abre el explorador.'],
+        ['Diseña un eje', 'En Diseño · Estructura, el origen Modelo 3D diseña en concreto el pórtico de un eje (A, B… o 1, 2…) con las acciones del modelo completo. La categoría de cada caso (permanente, variable, accidental) decide cómo entra.'],
       ],
       controls: [
+        ['2D, 3D y Diseño', 'Son modos de la misma mesa: el proyecto, el guardado y la barra no cambian; sólo cambian las herramientas del modo.'],
         ['Vistas y plano de trabajo', 'La vista 3D, las plantas y los alzados cambian desde el selector del lienzo. Comprueba el plano activo antes de colocar un nudo.'],
         ['Selección', 'Selecciona en el lienzo o el explorador. La ficha de selección permite editar o quitar la selección.'],
         ['Deshacer y rehacer', 'Los botones de la barra recuperan ediciones de esta mesa.'],
@@ -56,7 +58,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'design',
     },
     design: {
       steps: [
-        ['Elige elemento y norma', 'Estructura (el modelo), Viga, Columna, Zapata y Secciones están en el dock. La norma se elige sobre el dibujo y se aplica a todo el diseño.'],
+        ['Elige elemento y norma', 'Estructura (el modelo), Viga, Columna, Zapata y Secciones están en el dock. La norma se elige sobre el dibujo y se aplica a todo el diseño. En Estructura, el origen es el Modelo 2D, un eje del Modelo 3D o un pórtico rápido; al llegar desde el modo 2D o 3D se toma ese modelo.'],
         ['Completa Datos', 'Indica geometría, materiales, demandas y armado. Cada campo muestra su unidad. Las opciones menos frecuentes se despliegan dentro de su apartado.'],
         ['Revisa el cálculo', 'El cálculo se actualiza al editar: no necesitas un botón Analizar. Corrige los campos inválidos antes de consultar los resultados.'],
         ['Consulta Resultados', 'Cada comprobación indica demanda, capacidad y su referencia. Cumple lo evaluado requiere revisar también las comprobaciones fuera del alcance.'],
@@ -90,13 +92,15 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'design',
     },
     space3d: {
       steps: [
-        ['Prepare geometry', 'File creates a building, opens the generator or imports a model. Node and Member in the dock draw on the working plane.'],
+        ['Prepare geometry', 'File creates a building, opens the generator or imports a model. From 2D repeats the 2D frame in parallel frames joined by transverse beams (Undo reverts it). Node and Member in the dock draw on the working plane.'],
         ['Define the model', 'Define contains axes and stories, sections, load cases and dynamic parameters.'],
         ['Select and assign', 'Select nodes or members, then open Assign. Commands explain the selection they need.'],
         ['Analyze', 'Analyze uses the active case or combination. The model guide suggests the next step; editing invalidates results.'],
         ['Inspect results', 'Select a quantity on the canvas rail. Panel opens data and diagnostics, Display controls deformation and layers, and View opens the explorer.'],
+        ['Design an axis', 'In Design · Estructura, the Modelo 3D source designs the concrete frame of one axis (A, B… or 1, 2…) with the actions of the whole model. Each case category (permanent, variable, accidental) decides how it enters.'],
       ],
       controls: [
+        ['2D, 3D and Design', 'They are modes of the same workspace: project, saving and the bar stay; only the mode tools change.'],
         ['Views and working plane', 'Use the canvas selector for 3D, plans and elevations. Check the active plane before placing a node.'],
         ['Selection', 'Select in the canvas or explorer. The selection card opens the editor or clears the selection.'],
         ['Undo and redo', 'The top bar restores edits made in this tool.'],
@@ -121,7 +125,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'design',
     },
     design: {
       steps: [
-        ['Choose an element and code', 'Estructura (the model), Viga, Columna, Zapata and Secciones are in the dock. Choose the design code above the drawing.'],
+        ['Choose an element and code', 'Estructura (the model), Viga, Columna, Zapata and Secciones are in the dock. Choose the design code above the drawing. Estructura designs the 2D model, one axis of the 3D model or a quick frame; arriving from the 2D or 3D mode picks that model.'],
         ['Fill in Datos', 'Enter geometry, materials, demands and reinforcement. Each field shows its unit; less frequent options expand in their section.'],
         ['Review the calculation', 'The calculation updates as you edit. Fix invalid fields before opening results.'],
         ['Inspect Resultados', 'Checks show demand, capacity and references. Cumple lo evaluado also requires reviewing out-of-scope checks.'],

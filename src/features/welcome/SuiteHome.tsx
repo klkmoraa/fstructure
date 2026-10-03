@@ -26,7 +26,7 @@ export interface SuiteHomeProps {
 const copy = {
   es: {
     kicker: 'FusionStructure · Análisis',
-    lead: 'Tres mesas de cálculo estructural. En FStructure se modela y se diseña en la misma.',
+    lead: 'Dos mesas de cálculo estructural. En FStructure se modela en 2D y 3D y se diseña en la misma mesa.',
     tools: 'Herramientas',
     open: (name: string) => `Abrir ${name}`,
     status: { disponible: 'Disponible', experimental: 'Experimental' },
@@ -41,7 +41,7 @@ const copy = {
   },
   en: {
     kicker: 'FusionStructure · Analysis',
-    lead: 'Three structural calculation workbenches. FStructure models and designs in the same one.',
+    lead: 'Two structural calculation workbenches. FStructure models in 2D and 3D and designs on the same one.',
     tools: 'Tools',
     open: (name: string) => `Open ${name}`,
     status: { disponible: 'Available', experimental: 'Experimental' },
@@ -61,9 +61,9 @@ const PORTAL = { day: './assets/suite/portal-day.png', night: './assets/suite/po
 /**
  * Inicio de FusionStructure.
  *
- * Un índice de tres herramientas y el pórtico. Pasar por una herramienta pone
- * su escena en el escenario; elegirla la abre aislada. FStructure modela y
- * diseña en la misma mesa. Nada compite con eso: sin barra de navegación, sin
+ * Un índice de herramientas y el pórtico. Pasar por una herramienta pone su
+ * escena en el escenario; elegirla la abre aislada. FStructure modela en 2D y
+ * 3D y diseña en la misma mesa. Nada compite con eso: sin barra de navegación, sin
  * tarjetas y sin avisos flotantes.
  */
 export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onResume, onLanguageChange, onThemeChange }: SuiteHomeProps) => {

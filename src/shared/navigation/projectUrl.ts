@@ -8,22 +8,33 @@ export interface ProjectUrlState {
   surface: 'welcome' | 'tool-home' | 'workspace';
   projectId: string;
   tool: ToolId;
-  /** Modo de la mesa de FStructure 2D: modelar (por omisión) o diseñar. */
+  /** Modo de la mesa de FStructure: modelo 2D (por omisión), modelo 3D o diseño. */
   mode?: MesaMode;
 }
 
-export type MesaMode = 'model' | 'design';
+export type MesaMode = 'model' | '3d' | 'design';
 
 const legacyTools = new Map<string, ToolId>([
-  ['workspace2d', 'model2d'], ['design', 'model2d'], ['workspace3d', 'space3d'], ['fem', 'fem'],
+  ['workspace2d', 'model2d'], ['design', 'model2d'], ['workspace3d', 'model2d'], ['fem', 'fem'],
 ]);
 
 export function isToolId(value: unknown): value is ToolId {
-  return value === 'model2d' || value === 'space3d' || value === 'fem';
+  return value === 'model2d' || value === 'fem';
 }
 
-/** Diseño fue una herramienta propia (`tool=design`); sus enlaces abren el modo Diseño de FStructure. */
-const isLegacyDesign = (params: URLSearchParams) => params.get('tool') === 'design' || params.get('surface') === 'design';
+/**
+ * Diseño y el Solver 3D fueron herramientas propias (`tool=design`,
+ * `tool=space3d`); sus enlaces abren el modo correspondiente de FStructure.
+ */
+const legacyMode = (params: URLSearchParams): MesaMode | null => {
+  const tool = params.get('tool');
+  const surface = params.get('surface');
+  if (tool === 'design' || (!params.has('tool') && surface === 'design')) return 'design';
+  if (tool === 'space3d' || (!params.has('tool') && surface === 'workspace3d')) return '3d';
+  return null;
+};
+
+const isMesaMode = (value: string | null): value is Exclude<MesaMode, 'model'> => value === '3d' || value === 'design';
 
 export const sameRoute = (a: ProjectUrlState, b: ProjectUrlState) =>
   a.surface === b.surface && a.projectId === b.projectId && a.tool === b.tool && (a.mode ?? 'model') === (b.mode ?? 'model');
@@ -41,8 +52,9 @@ export function readProjectUrl(href: string, activeProjectId: string): ProjectUr
   if (surface === 'welcome' && params.has('view')) return { surface: 'tool-home', projectId, tool: 'model2d' };
   const workspace = params.has('tool') || legacy !== undefined || (params.has('project') && surface !== 'welcome');
   if (!workspace) return { surface: 'welcome', projectId, tool };
-  const design = tool === 'model2d' && (isLegacyDesign(params) || params.get('mode') === 'design');
-  return design ? { surface: 'workspace', projectId, tool, mode: 'design' } : { surface: 'workspace', projectId, tool };
+  const requestedMode = params.get('mode');
+  const mode = tool === 'model2d' ? legacyMode(params) ?? (isMesaMode(requestedMode) ? requestedMode : null) : null;
+  return mode && mode !== 'model' ? { surface: 'workspace', projectId, tool, mode } : { surface: 'workspace', projectId, tool };
 }
 
 export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, route: ProjectUrlState, mode: 'push' | 'replace'): void {
@@ -61,7 +73,7 @@ export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, r
   } else {
     url.searchParams.set('project', route.projectId);
     url.searchParams.set('tool', route.tool);
-    if (route.tool === 'model2d' && route.mode === 'design') url.searchParams.set('mode', 'design');
+    if (route.tool === 'model2d' && route.mode && route.mode !== 'model') url.searchParams.set('mode', route.mode);
   }
   url.hash = '';
   if (url.href === browser.location.href) return;

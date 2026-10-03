@@ -1,6 +1,6 @@
 # FStructure — guía para agentes
 
-FStructure es la app de cálculo estructural de FusionStructure: tres mesas aisladas (FS-A01 FStructure, FS-A02 Solver 3D, FS-A03 Elementos finitos) detrás de un Inicio común. FStructure modela y diseña en la misma mesa: el interruptor Modelo | Diseño de su barra (URL `mode=design`) pasa del 2D al diseño de concreto sobre el mismo proyecto. Es un proyecto para **experimentar**: casi todo aquí es guía, no regla.
+FStructure es la app de cálculo estructural de FusionStructure: dos mesas aisladas (FS-A01 FStructure y FS-A03 Elementos finitos) detrás de un Inicio común. FStructure modela en 2D y en 3D y diseña en concreto en la misma mesa: el interruptor 2D | 3D | Diseño de su barra (URL `mode=3d`, `mode=design`) cambia sólo las herramientas del modo; el proyecto, el guardado y la barra son los mismos, y el paso 2D ↔ 3D se anima (el plano se tiende y el espacio emerge). El antiguo Solver 3D (FS-A02) es hoy el modo 3D. Es un proyecto para **experimentar**: casi todo aquí es guía, no regla.
 
 ## Cómo trabajamos
 
@@ -12,7 +12,7 @@ FStructure es la app de cálculo estructural de FusionStructure: tres mesas aisl
 
 1. **No perder datos del usuario.** Lo guardado se migra con versión; nada se sobrescribe ni se descarta en silencio.
 2. **Nada sale del dispositivo** sin una acción explícita de la persona (sin telemetría ni red implícita).
-3. **Las herramientas no se mezclan.** Ninguna importa código de otra ni lee sus datos; `npm run architecture:check` lo vigila. Diseño es parte de FS-A01 (su modo Diseño), no otra herramienta; si algún día dos mesas necesitan pasarse datos, se hace con un puente declarado en `src/integrations` que sólo usa `src/features/workspace`.
+3. **Los territorios no se mezclan.** El 2D con su Diseño, el 3D (`src/modules/space3d`) y FEM no importan código del otro ni leen sus datos; `npm run architecture:check` lo vigila. Los datos pasan sólo por puentes declarados en `src/integrations` (2D → 3D, eje del 3D → Diseño), que usa sólo `src/features/workspace` y que pueden usar el modelo, el motor y los datos del 3D, nunca su interfaz.
 4. **`main` publicable.** CI corre `npm run check` y no publica si falla.
 
 ## Pruebas: el mínimo que cubre el cambio
@@ -29,11 +29,12 @@ No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa.
 
 ## Mapa
 
-- `src/App.tsx`: rutas `?surface=welcome` (Inicio) · `?surface=home&tool=` (bienvenida) · `?tool=` (mesa) · `?tool=model2d&mode=design` (modo Diseño). Los enlaces viejos `tool=design` abren el modo Diseño.
+- `src/App.tsx`: rutas `?surface=welcome` (Inicio) · `?surface=home&tool=` (bienvenida) · `?tool=` (mesa) · `?tool=model2d&mode=3d` (modo 3D) · `?tool=model2d&mode=design` (modo Diseño). Los enlaces viejos `tool=space3d`/`surface=workspace3d` abren el modo 3D y `tool=design` el modo Diseño.
 - `src/features/welcome/`: Inicio (`SuiteHome`) y bienvenida original de FStructure (`Model2DWelcome`).
-- `src/features/tool-home/`: bienvenida común de 3D y FEM.
-- `src/features/workspace/`: `WorkspaceShell` (modo Modelo), `ToolShell` (3D/FEM y `DesignModeShell`, el modo Diseño), `MesaModeSwitch`, `toolCatalog`, `toolIntent`. Es la única carpeta que conoce las tres herramientas.
-- FS-A01: `src/features`, `src/engine`, `src/commands`, `src/store`, y su modo Diseño en `src/design` (motores; `elements/model2dSource` traduce el modelo a la mesa Estructura) y `src/features/design` (taller) · FS-A02: `src/modules/space3d` · FS-A03: `src/modules/fem`.
+- `src/features/tool-home/`: bienvenida común (hoy la usa FEM).
+- `src/features/workspace/`: `WorkspaceShell` (modo 2D), `ToolShell` (FEM y `MesaModeShell`, los modos 3D y Diseño), `MesaModeSwitch`, `mesaTransition` (la animación entre modos), `toolCatalog`, `toolIntent`. Es la única carpeta que conoce todos los territorios; sus adaptadores (`adapters/Space3DSurface`, `adapters/DesignSurface`) usan los puentes.
+- FS-A01: `src/features`, `src/engine`, `src/commands`, `src/store`; su modo Diseño en `src/design` (motores; `elements/model2dSource` traduce el Modelo 2D a la mesa Estructura) y `src/features/design` (taller); su modo 3D en `src/modules/space3d` (territorio propio) · FS-A03: `src/modules/fem`.
+- `src/integrations/`: `model2dSpace3d` («Traer del 2D»: el pórtico 2D extruido en pórticos paralelos) y `space3dDesign` (un eje x = cte o z = cte del 3D como fuente de Estructura, con las acciones del modelo completo).
 - Común: `src/foundation` (unidades, álgebra), `src/storage` (proyecto local), `src/design-system` (incluye las bandas de diagrama que comparten Diseño y el 2D), `src/workers`.
 
 ## Cómo está hecho (guía)

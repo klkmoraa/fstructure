@@ -10,6 +10,9 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
 - [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.
 - [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
+- [x] Mesa única 2D · 3D · Diseño: el Solver 3D es el modo 3D de FStructure, con transición animada, «Traer del 2D» y diseño de un eje del 3D en Estructura.
+- [ ] Diseño desde el 3D: revisar flexión biaxial y torsión de las columnas con las acciones fuera del plano (hoy sólo el plano del eje), y diseñar todos los ejes de una vez con la columna común a dos ejes.
+- [ ] Traer del 2D: llevar el material (f′c) del 2D al 3D y ofrecer diafragmas por nivel al extruir.
 
 ## Diseño (de `docs/research/concrete-design`)
 
@@ -42,7 +45,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Pruebas (sólo si aportan)
 
-- [ ] Humo E2E de las cuatro pantallas de entrada (Inicio y tres bienvenidas) con capturas en claro, oscuro y móvil.
+- [ ] Humo E2E de las pantallas de entrada (Inicio y dos bienvenidas) con capturas en claro, oscuro y móvil.
 - [ ] Matriz de importación/exportación: un archivo válido y uno inválido por formato.
 - [ ] Confirmar la entrega del PDF de Diseño en Safari: Chromium sin «compartir» ya descarga el PDF (probado con el del pórtico, 13 páginas con láminas).
 - [ ] Auditoría de dependencias en CI.

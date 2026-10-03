@@ -4,7 +4,7 @@ import type { ColumnGroup } from '../../../design/elements/column';
 import { MAX_FRAME_BAYS, MAX_FRAME_STORIES, designFrame, type FrameDesignInput, type FrameDesignResult } from '../../../design/elements/frame';
 import { outOfScopeChecks } from '../../../design/elements/scope';
 import { rebarLabel } from '../../../design/elements/shared';
-import { designStructure, type ExternalStructureSource, type StructureDesignOptions, type StructureDesignResult } from '../../../design/elements/structure';
+import { designStructure, structureSourceName, type ExternalStructureAxes, type ExternalStructureSource, type StructureDesignOptions, type StructureDesignResult } from '../../../design/elements/structure';
 import { structureTakeoff } from '../../../design/elements/takeoff';
 import { BeamElevation, BeamRebarDetail } from './BeamDrawings';
 import { InteractionChart } from './ColumnDrawings';
@@ -17,12 +17,15 @@ import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 /**
  * Estructura: del borrador del formulario a la entrada del motor y a la
  * memoria. La fuente es el Modelo 2D del proyecto (`source: 'model'`, la de
- * siempre en la mesa de FStructure) o un pórtico paramétrico rápido
- * (`source: 'frame'`). Lo usan la mesa y la memoria del proyecto.
+ * siempre en la mesa de FStructure), un eje del Modelo 3D (`source:
+ * 'model3d'`, con `axis`) o un pórtico paramétrico rápido (`source: 'frame'`).
+ * Lo usan la mesa y la memoria del proyecto.
  */
 export const FRAME_DEFAULTS = {
   tag: '', place: '',
   source: 'model',
+  /** Eje del Modelo 3D (`z:0`, `x:5`); vacío, el primero. */
+  axis: '',
   base: 'fixed', braced: 'no', lateral: 'yes', selfWeight: 'yes',
   beamWidth: '30', beamHeight: '55', columnWidth: '45', columnHeight: '45', cover: '4',
   fc: '250', fy: '4200', fyv: '4200',
@@ -166,14 +169,29 @@ export type StructureOutcome =
   | { readonly ok: false; readonly errors: readonly string[] };
 
 export const MODEL_MISSING = 'No hay Modelo 2D en este proyecto: modela la estructura en FStructure 2D o genera un pórtico aquí.';
+const MODEL3D_MISSING = 'No hay Modelo 3D en este proyecto: modela, genera o trae del 2D la estructura en el modo 3D.';
 
-/** Diseña la estructura del borrador con su fuente: el pórtico generado o el Modelo 2D. */
+/** La estructura viene de un modelo del proyecto (2D o un eje del 3D), no del pórtico rápido. */
+export const fromProjectModel = (draft: Pick<FrameDraft, 'source'>) => draft.source === 'model' || draft.source === 'model3d';
+
+/** El eje del borrador si sigue en el modelo; si no, el primero. */
+export const axisOf = (draft: Pick<FrameDraft, 'axis'>, axes: ExternalStructureAxes) =>
+  axes.axes.some((item) => item.id === draft.axis) ? draft.axis : axes.axes[0]?.id ?? '';
+
+/** La fuente externa que pide el borrador: el Modelo 2D, un eje del 3D o ninguna (pórtico rápido). */
+export function externalFor(draft: Pick<FrameDraft, 'source' | 'axis'>, model2d: ExternalStructureSource | null, axes: ExternalStructureAxes | null): ExternalStructureSource | null {
+  if (draft.source === 'model3d') return axes ? axes.source(axisOf(draft, axes)) : null;
+  return draft.source === 'model' ? model2d : null;
+}
+
+/** Diseña la estructura del borrador con su fuente: el pórtico generado, el Modelo 2D o un eje del 3D. */
 export function designFromDraft(codeId: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[], external?: ExternalStructureSource | null): StructureOutcome {
-  if (draft.source === 'model') {
-    if (!external) return { ok: false, errors: [MODEL_MISSING] };
+  if (fromProjectModel(draft)) {
+    const missing = draft.source === 'model3d' ? MODEL3D_MISSING : MODEL_MISSING;
+    if (!external) return { ok: false, errors: [missing] };
     if (external.errors.length) return { ok: false, errors: external.errors };
     const source = external.create({ braced: draft.braced === 'yes' });
-    if (!source) return { ok: false, errors: [MODEL_MISSING] };
+    if (!source) return { ok: false, errors: [missing] };
     const options = { ...structureOptions(codeId, draft, external.fcMpa ?? mpaFromKgcm2(draft.fc)), includeSelfWeight: external.includesSelfWeight };
     const result = designStructure(source, options);
     return result.ok ? { ok: true, result, frame: null } : result;
@@ -185,14 +203,15 @@ export function designFromDraft(codeId: DesignCodeId, draft: FrameDraft, bays: r
 const countText = (result: StructureDesignResult) => `${plural(result.beams.length, 'línea de viga', 'líneas de viga')} · ${plural(result.columns.length, 'columna', 'columnas')}`;
 
 export const describeStructure = (outcome: Extract<StructureOutcome, { ok: true }>) =>
-  outcome.frame ? describeFrame(outcome.frame.input) : `Modelo 2D · ${countText(outcome.result)}${outcome.result.braced ? ' · arriostrado' : ''}`;
+  outcome.frame ? describeFrame(outcome.frame.input) : `${structureSourceName(outcome.result.source.kind)} · ${countText(outcome.result)}${outcome.result.braced ? ' · arriostrado' : ''}`;
 
 const structureTitle = (outcome: Extract<StructureOutcome, { ok: true }>) => {
   if (outcome.frame) {
     const { input } = outcome.frame;
     return `Pórtico ${describeFrame(input)} · V ${formatNumber(input.beam.widthMm / 10, 0)}×${formatNumber(input.beam.heightMm / 10, 0)} · C ${formatNumber(input.column.widthMm / 10, 0)}×${formatNumber(input.column.heightMm / 10, 0)}`;
   }
-  return `Modelo 2D «${outcome.result.source.label.replace(/^Modelo 2D · /, '')}» · ${countText(outcome.result)}`;
+  const name = structureSourceName(outcome.result.source.kind);
+  return `${name} «${outcome.result.source.label.replace(`${name} · `, '')}» · ${countText(outcome.result)}`;
 };
 
 const columnBarsText = (result: StructureDesignResult) => {
@@ -225,6 +244,9 @@ function structureReinforcementRows(result: StructureDesignResult): ReportRow[] 
 const worstOf = <T extends { result: { governingRatio: number } }>(items: readonly T[]) =>
   items.length ? items.reduce((best, item) => item.result.governingRatio > best.result.governingRatio ? item : best) : undefined;
 
+/** Nombre del modelo de origen sin el prefijo de la fuente. */
+const modelName = (result: StructureDesignResult) => result.source.label.replace(`${structureSourceName(result.source.kind)} · `, '');
+
 function structureMemo(outcome: Extract<StructureOutcome, { ok: true }>): string {
   const { result, frame } = outcome;
   const worstBeam = worstOf(result.beams);
@@ -232,12 +254,12 @@ function structureMemo(outcome: Extract<StructureOutcome, { ok: true }>): string
   return [
     frame
       ? `PÓRTICO ${describeFrame(frame.input)} · claros ${frame.input.bays.join(' + ')} m · alturas ${frame.input.stories.map((story) => story.heightM).join(' + ')} m · ${designCode(result.options.code).name}`
-      : `MODELO 2D «${result.source.label.replace(/^Modelo 2D · /, '')}» · ${countText(result)} · ${designCode(result.options.code).name}`,
+      : `${structureSourceName(result.source.kind).toUpperCase()} «${modelName(result)}» · ${countText(result)} · ${designCode(result.options.code).name}`,
     frame
       ? `Vigas ${frame.input.beam.widthMm / 10}×${frame.input.beam.heightMm / 10} cm · columnas ${frame.input.column.widthMm / 10}×${frame.input.column.heightMm / 10} cm (h en el plano) · base ${frame.input.base === 'fixed' ? 'empotrada' : 'articulada'}`
       : `Secciones del modelo: ${[...new Set(result.members.filter((member) => member.kind !== 'other').map((member) => `${member.kind === 'beam' ? 'V' : 'C'} ${sectionText(frameSection(result, member.index))}`))].join(' · ')} cm`,
     `Combinaciones: ${result.combinations.map((combination) => combination.label).join(' · ')}; viva alternada ${frame ? 'por claro y nivel' : 'por barra cargada'}${result.lateral ? '; lateral en ambos sentidos' : ''}`,
-    `Análisis: ${result.loadCases} casos de carga superpuestos${frame ? '' : ' con el solver 2D'}`,
+    `Análisis: ${result.loadCases} casos de carga superpuestos${frame ? '' : result.source.kind === 'model3d' ? ' con el solver 3D (modelo completo, acciones en el plano del eje)' : ' con el solver 2D'}`,
     ...structureReinforcementRows(result).map((row) => `${row.label}: ${row.value}`),
     `Rige${worstBeam ? ` en vigas: ${worstBeam.label.toLowerCase()} (${percent(worstBeam.result.governingRatio)})` : ''}${worstColumn ? ` · en columnas: ${worstColumn.label.toLowerCase()} (${percent(worstColumn.result.governingRatio)})` : ''}`,
     ...(result.lateral ? result.stories.map((story) => `Entrepiso ${story.index + 1}: V = ${formatNumber(story.shearKn, 1)} kN · Δ = ${formatNumber(story.driftMm, 2)} mm (Δ/h = ${story.driftRatio.toFixed(4)}) · índice de estabilidad ${story.stabilityIndex.toFixed(3)}`) : []),
@@ -279,8 +301,8 @@ function structureData(outcome: Extract<StructureOutcome, { ok: true }>, draft: 
       { label: 'Peso propio', value: frame.input.includeSelfWeight ? `vigas ${formatNumber(frame.selfWeight.beamKnPerM, 2)} kN/m · columnas ${formatNumber(frame.selfWeight.columnKnPerM, 2)} kN/m` : 'no incluido' },
     ] },
   ] : [
-    { title: 'Origen: Modelo 2D', rows: [
-      { label: 'Modelo', value: result.source.label.replace(/^Modelo 2D · /, '') },
+    { title: `Origen: ${structureSourceName(result.source.kind)}`, rows: [
+      { label: result.source.kind === 'model3d' ? 'Modelo y eje' : 'Modelo', value: modelName(result) },
       { label: 'Miembros', value: `${countText(result)}${result.skipped.length ? ` · ${result.skipped.length} sin diseñar` : ''}` },
       { label: 'Casos', value: 'Permanentes como carga muerta, variables como viva alternada por barra y accidentales como acción lateral; las combinaciones son las de la norma.' },
       { label: 'Marco', value: result.braced ? 'arriostrado: sin amplificación por desplazamiento' : 'con desplazamiento lateral' },
@@ -306,7 +328,7 @@ function structureData(outcome: Extract<StructureOutcome, { ok: true }>, draft: 
       ...(result.lateral ? [{ label: 'Con acción lateral', value: options.lateralCombinations.map((combination) => combination.label).join(' · ') }] : []),
       { label: 'Viva sostenida', value: `${Math.round(options.sustainedLiveRatio * 100)} %${code.sustainedLive === 'use' ? ` (${LIVE_LOAD_USES.find((use) => use.value === draft.use)?.label ?? draft.use})` : ''}` },
       { label: 'Duración de la carga sostenida', value: `${LONG_TERM_DURATIONS.find((item) => item.value === draft.duration)?.label ?? draft.duration} (ξ = ${options.longTermXi})` },
-      ...(frame ? [{ label: 'Inercias del análisis', value: `vigas ${frame.input.beamInertiaFactor} Ig · columnas ${frame.input.columnInertiaFactor} Ig` }] : [{ label: 'Inercias del análisis', value: 'las del Modelo 2D' }]),
+      ...(frame ? [{ label: 'Inercias del análisis', value: `vigas ${frame.input.beamInertiaFactor} Ig · columnas ${frame.input.columnInertiaFactor} Ig` }] : [{ label: 'Inercias del análisis', value: `las del ${structureSourceName(result.source.kind)}` }]),
       { label: 'Longitud efectiva', value: options.effectiveLengthFactor !== null ? `k = ${options.effectiveLengthFactor} (propio)` : result.braced ? 'k = 1.0' : 'k del nomograma (al menos 1.0)' },
     ] },
   ];
@@ -351,7 +373,7 @@ export function structureReport(outcome: Extract<StructureOutcome, { ok: true }>
   const worstBeam = worstOf(result.beams);
   const worstColumn = worstOf(result.columns);
   const state = worstColumn?.states[worstColumn.governingState];
-  const name = frame ? 'Pórtico' : 'Modelo 2D';
+  const name = frame ? 'Pórtico' : structureSourceName(result.source.kind);
   return {
     element: 'frame',
     title: structureTitle(outcome),

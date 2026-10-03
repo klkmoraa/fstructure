@@ -22,8 +22,8 @@ describe('recentProjectPresentation', () => {
     expect(value).toEqual({ meta: '', preview: 'model2d', design: 'Sección · Esfuerzos admisibles' });
   });
 
-  it('usa entidades 3D aunque el modelo 2D esté vacío', () => {
-    const value = recentProjectPresentation('space3d', bundle({
+  it('suma el modelo 3D del proyecto a la tarjeta de FStructure', () => {
+    const value = recentProjectPresentation('model2d', bundle({
       space3d: { sourceProjectId: base.id, sourceVersion: 's3d', model: {
         schemaVersion: 4,
         id: 'space',
@@ -33,8 +33,8 @@ describe('recentProjectPresentation', () => {
         members: [{ id: 'm1' }, { id: 'm2' }],
       } },
     }), 'es');
-    expect(value.meta).toBe('2 barras · 3 nodos');
-    expect(value.preview).toBe('tool');
+    expect(value.space3d).toBe('2 barras · 3 nodos');
+    expect(value.preview).toBe('model2d');
   });
 
   it('resume la malla FEM guardada, no el modelo 2D', () => {

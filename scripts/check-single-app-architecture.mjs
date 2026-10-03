@@ -85,13 +85,20 @@ const territoryOf = (resolvedRoot, path) => {
 
 /**
  * Los puentes de datos declarados (`src/integrations`) traducen los datos de
- * una herramienta al contrato de otra. Sólo la frontera de
- * `src/features/workspace` los usa: si una herramienta o la interfaz del Modelo
- * 2D importara un puente, volvería a leer datos ajenos por la puerta de atrás.
- * Un puente, a su vez, puede usar bibliotecas de cálculo y datos, nunca la
- * interfaz de una herramienta (`src/features`, `src/modules`).
+ * un modo o una herramienta al contrato de otro (Modelo 2D → Modelo 3D, un eje
+ * del 3D → Diseño). Sólo la frontera de `src/features/workspace` los usa: si
+ * una herramienta o la interfaz del Modelo 2D importara un puente, volvería a
+ * leer datos ajenos por la puerta de atrás. Un puente, a su vez, puede usar
+ * bibliotecas de cálculo y datos —las comunes y las de modelo, motor y datos
+ * del 3D (`BRIDGEABLE_LIBRARIES`)—, nunca una interfaz (`src/features`, el
+ * resto de `src/modules`).
  */
 const INTEGRATIONS = 'src/integrations';
+const BRIDGEABLE_LIBRARIES = [
+  'src/modules/space3d/space3d/model',
+  'src/modules/space3d/space3d/engine',
+  'src/modules/space3d/space3d/data',
+];
 
 /** Reporta imports de producción que cruzan de una herramienta aislada a otra. */
 export const findToolIsolationViolations = (root) => {
@@ -102,7 +109,8 @@ export const findToolIsolationViolations = (root) => {
     for (const specifier of dependencySpecifiersIn(readFileSync(path, 'utf8'), path)) {
       if (!specifier.startsWith('.')) continue;
       const targetPath = resolve(dirname(path), specifier);
-      if (isInside(targetPath, join(resolvedRoot, 'src/features')) || isInside(targetPath, join(resolvedRoot, 'src/modules'))) {
+      const library = BRIDGEABLE_LIBRARIES.some((directory) => isInside(targetPath, join(resolvedRoot, directory)));
+      if (isInside(targetPath, join(resolvedRoot, 'src/features')) || (isInside(targetPath, join(resolvedRoot, 'src/modules')) && !library)) {
         violations.push(`${relative(resolvedRoot, path)} -> ${specifier} (integration imports a tool interface)`);
       }
     }

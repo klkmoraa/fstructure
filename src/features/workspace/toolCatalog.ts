@@ -7,11 +7,11 @@ type ToolStatus = 'disponible' | 'experimental';
 /**
  * Identidad pública de cada herramienta, según el brandbook de FusionStructure.
  *
- * Las tres pertenecen a la familia Análisis (FS-A0x). El código y el nombre
- * son los del catálogo del brandbook; el estado es el del código de este
- * repositorio. Es la única fuente que leen el Inicio y la barra de cada
- * herramienta. Diseño (antes FS-A04) vive dentro de FStructure como su modo
- * «Diseño»: modelar y diseñar son la misma mesa.
+ * Pertenecen a la familia Análisis (FS-A0x). El código y el nombre son los del
+ * catálogo del brandbook; el estado es el del código de este repositorio. Es
+ * la única fuente que leen el Inicio y la barra de cada herramienta. El Solver
+ * 3D (antes FS-A02) y Diseño (antes FS-A04) viven dentro de FStructure como sus
+ * modos «3D» y «Diseño»: modelar en 2D, en 3D y diseñar son la misma mesa.
  */
 interface ToolIdentity {
   id: ToolId;
@@ -30,17 +30,9 @@ export const TOOL_CATALOG: readonly ToolIdentity[] = [
     id: 'model2d',
     code: 'FS-A01',
     name: { es: 'FStructure', en: 'FStructure' },
-    role: { es: 'Modelo 2D y diseño de concreto · marcos, vigas, columnas y zapatas', en: '2D model and concrete design · frames, beams, columns, and footings' },
+    role: { es: 'Modelo 2D, modelo 3D y diseño de concreto en una sola mesa', en: '2D model, 3D model, and concrete design on one workbench' },
     status: 'disponible',
     scene: scene('model2d'),
-  },
-  {
-    id: 'space3d',
-    code: 'FS-A02',
-    name: { es: 'Solver 3D', en: '3D solver' },
-    role: { es: 'Marcos espaciales, seis grados de libertad por nudo', en: 'Space frames, six degrees of freedom per node' },
-    status: 'experimental',
-    scene: scene('space3d'),
   },
   {
     id: 'fem',

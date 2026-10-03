@@ -1,4 +1,4 @@
-import { ArrowRightLeft, PenLine, Plus, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, Box, PenLine, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
@@ -17,7 +17,7 @@ import {
 } from './common';
 import { FRAME_DIAGRAMS, FrameElevation, ratioBand, type FrameDiagramKind } from './FrameDrawings';
 import {
-  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, designFromDraft, frameModelSpec, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
+  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraft, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
   type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome,
 } from './frameModel';
 import { useWorkbenchStorage } from './workbenchStorage';
@@ -101,8 +101,8 @@ function MemberGrid({ result, selected, onSelect }: { result: StructureDesignRes
 }
 
 /**
- * Cálculo diferido de la estructura del Modelo 2D: su análisis con el solver
- * general puede tardar un segundo. Se calcula después de pintar y, mientras
+ * Cálculo diferido de la estructura de un modelo del proyecto (2D o un eje del
+ * 3D): su análisis con el solver general puede tardar un segundo. Se calcula después de pintar y, mientras
  * tanto, se conserva el último resultado.
  */
 function useDeferredOutcome(key: string, enabled: boolean, compute: () => StructureOutcome) {
@@ -142,16 +142,22 @@ function QuickFrameCard({ spec, modelMembers, onCreate }: { spec: ConcreteFrameS
   </div>;
 }
 
-function ModelSummary({ modelSource, onOpenModel, fcFromModel }: { modelSource: ExternalStructureSource | null; onOpenModel?: () => void; fcFromModel: boolean }) {
+function ModelSummary({ modelSource, onOpenModel, fcFromModel, space = false }: { modelSource: ExternalStructureSource | null; onOpenModel?: () => void; fcFromModel: boolean; space?: boolean }) {
+  const edit = onOpenModel ? <button type="button" className="dw-inline-action" onClick={onOpenModel}>
+    {space ? <Box size={13} aria-hidden="true" /> : <PenLine size={13} aria-hidden="true" />}{space ? 'Editar en 3D' : 'Editar en Modelo'}
+  </button> : null;
   if (!modelSource) {
     return <div className="dw-model-card" data-state="empty">
-      <strong>Sin Modelo 2D</strong>
-      <p>Dibuja la estructura en Modelo, abre la plantilla «Pórtico de concreto» o arma un pórtico rápido y pásalo al modelo.</p>
+      <strong>{space ? 'Sin Modelo 3D' : 'Sin Modelo 2D'}</strong>
+      <p>{space
+        ? 'Modela o genera la estructura en el modo 3D, o tráela del 2D; aquí se diseña cada eje (pórtico plano) del edificio.'
+        : 'Dibuja la estructura en Modelo, abre la plantilla «Pórtico de concreto» o arma un pórtico rápido y pásalo al modelo.'}</p>
+      {edit}
     </div>;
   }
   const { summary } = modelSource;
   return <div className="dw-model-card" data-state={modelSource.errors.length ? 'error' : 'ready'}>
-    <strong>{modelSource.label || 'Modelo 2D'}</strong>
+    <strong>{modelSource.label || (space ? 'Modelo 3D' : 'Modelo 2D')}</strong>
     <dl>
       <div><dt>Vigas</dt><dd>{summary.beams}</dd></div>
       <div><dt>Columnas</dt><dd>{summary.columns}</dd></div>
@@ -159,8 +165,10 @@ function ModelSummary({ modelSource, onOpenModel, fcFromModel }: { modelSource: 
       <div><dt>Casos</dt><dd>{`${summary.deadCases} CM · ${summary.lateralCases} lateral · CV en ${summary.liveCases} ${summary.liveCases === 1 ? 'parte' : 'partes'}`}</dd></div>
     </dl>
     {summary.ignoredCases.length ? <p>{`No entran: ${summary.ignoredCases.join(', ')}.`}</p> : null}
-    <p>{fcFromModel ? `f′c del material del modelo: ${formatNumber(modelSource.fcMpa ?? 0, 1)} MPa.` : 'El modelo no declara f′c: se usa el de Materiales.'} Geometría, secciones y cargas se editan en Modelo.</p>
-    {onOpenModel ? <button type="button" className="dw-inline-action" onClick={onOpenModel}><PenLine size={13} aria-hidden="true" />Editar en Modelo</button> : null}
+    <p>{fcFromModel ? `f′c del material del modelo: ${formatNumber(modelSource.fcMpa ?? 0, 1)} MPa.` : 'El modelo no declara f′c: se usa el de Materiales.'} {space
+      ? 'Las acciones salen del 3D completo; geometría, secciones y cargas se editan en el modo 3D.'
+      : 'Geometría, secciones y cargas se editan en Modelo.'}</p>
+    {edit}
   </div>;
 }
 
@@ -174,24 +182,27 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const snapshot = useMemo(() => ({ draft, bays, stories }), [draft, bays, stories]);
   const applySnapshot = useCallback((next: typeof snapshot) => { replace(next.draft); setBays(next.bays); setStories(next.stories); }, [replace]);
   const history = useDraftHistory(snapshot, applySnapshot);
-  const { onHistory, startSource, modelSource = null, onOpenModel, onCreateModel } = chrome;
+  const { onHistory, startSource, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
-  // «Diseñar el modelo» desde fuera abre la mesa con esa fuente.
+  // Al llegar desde un modo con modelo (2D o 3D), Estructura diseña ese modelo si
+  // estaba diseñando un modelo del proyecto; el pórtico rápido elegido se respeta.
   useEffect(() => {
-    if (startSource && startSource !== draft.source) replace({ ...draft, source: startSource });
+    if (startSource && startSource !== draft.source && (startSource === 'frame' || fromProjectModel(draft))) replace({ ...draft, source: startSource });
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const code = designCode(chrome.code);
-  const fromModel = draft.source === 'model';
+  const fromModel = fromProjectModel(draft);
+  const from3d = draft.source === 'model3d';
+  const external = useMemo(() => externalFor(draft, modelSource, modelAxes), [draft, modelSource, modelAxes]);
   const lateral = draft.lateral === 'yes' && draft.braced !== 'yes';
 
-  // Pórtico rápido: cálculo inmediato (diferido por React). Modelo 2D: cálculo después de pintar.
+  // Pórtico rápido: cálculo inmediato (diferido por React). Modelos del proyecto: cálculo después de pintar.
   const inputs = useMemo(() => ({ code: chrome.code, draft, bays, stories }), [chrome.code, draft, bays, stories]);
   const deferredInputs = useDeferredValue(inputs);
   const frameOutcome = useMemo(() => fromModel ? null : designFromDraft(deferredInputs.code, deferredInputs.draft as FrameDraft, deferredInputs.bays, deferredInputs.stories),
     [fromModel, deferredInputs]);
-  const modelKey = JSON.stringify([chrome.code, draft, modelSource?.revision ?? null]);
-  const model = useDeferredOutcome(modelKey, fromModel, () => designFromDraft(chrome.code as DesignCodeId, draft, bays, stories, modelSource));
+  const modelKey = JSON.stringify([chrome.code, draft, external?.revision ?? null]);
+  const model = useDeferredOutcome(modelKey, fromModel, () => designFromDraft(chrome.code as DesignCodeId, draft, bays, stories, external));
   const outcome: StructureOutcome | null = fromModel ? model.outcome : frameOutcome;
   const result = outcome?.ok ? outcome.result : null;
   const report = useMemo(() => outcome?.ok ? structureReport(outcome, deferredInputs.draft as FrameDraft) : null, [outcome, deferredInputs.draft]);
@@ -217,8 +228,9 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     ...(lateral ? [{ field: 'lateral' as const, label: 'F', unit: 'kN' }] : []),
   ];
   const memberChecks = beam ? splitChecks(beam.result.checks) : column ? splitChecks(column.result.checks) : [[], []] as const;
-  const fcFromModel = fromModel && modelSource?.fcMpa !== null && modelSource?.fcMpa !== undefined;
-  const name = fromModel ? 'Modelo 2D' : 'Pórtico rápido';
+  const fcFromModel = fromModel && external?.fcMpa !== null && external?.fcMpa !== undefined;
+  const name = from3d ? 'Modelo 3D' : fromModel ? 'Modelo 2D' : 'Pórtico rápido';
+  const openSource = from3d ? onOpenSpace3D : onOpenModel;
   const supports = result?.columns.length ? 'columns' as const : 'ideal' as const;
   const verdict = result
     ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) }
@@ -234,9 +246,12 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="P-1" />
       <FieldGroup title="Origen de la estructura" columns={1}>
-        <SegmentedControl label="Origen de la estructura" size="sm" value={fromModel ? 'model' : 'frame'} onValueChange={(value) => { set('source')(value); setPicked(null); }}
-          options={[{ value: 'model', label: 'Modelo 2D' }, { value: 'frame', label: 'Pórtico rápido' }]} />
-        {fromModel ? <ModelSummary modelSource={modelSource} fcFromModel={fcFromModel} {...(onOpenModel ? { onOpenModel } : {})} />
+        <SegmentedControl label="Origen de la estructura" size="sm" value={from3d ? 'model3d' : fromModel ? 'model' : 'frame'} onValueChange={(value) => { set('source')(value); setPicked(null); }}
+          options={[{ value: 'model', label: 'Modelo 2D' }, { value: 'model3d', label: 'Modelo 3D' }, { value: 'frame', label: 'Pórtico rápido' }]} />
+        {from3d && modelAxes?.axes.length ? <Select label="Eje del Modelo 3D" value={axisOf(draft, modelAxes)} onChange={(event) => { set('axis')(event.currentTarget.value); setPicked(null); }}>
+          {modelAxes.axes.map((axis) => <option key={axis.id} value={axis.id}>{`${axis.label} · ${axis.members} ${axis.members === 1 ? 'barra' : 'barras'}`}</option>)}
+        </Select> : null}
+        {fromModel ? <ModelSummary modelSource={external} fcFromModel={fcFromModel} space={from3d} {...(openSource ? { onOpenModel: openSource } : {})} />
           : onCreateModel ? <QuickFrameCard spec={frameOutcome?.ok ? frameModelSpec(chrome.code as DesignCodeId, draft, bays, stories) : null} modelMembers={modelSource?.summary.members ?? 0}
             onCreate={(spec) => { onCreateModel(spec); set('source')('model'); setPicked(null); setLoadNote(null); }} /> : null}
       </FieldGroup>
@@ -352,7 +367,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         </ul>
       </Plate>
       {beam ? <>
-        <Plate title={`${beam.label} · envolventes`} wide note={fromModel ? 'Demanda del Modelo 2D con la viva alternada por barra' : 'Demanda del pórtico con la viva alternada'}>
+        <Plate title={`${beam.label} · envolventes`} wide note={fromModel ? `Demanda del ${name} con la viva alternada por barra` : 'Demanda del pórtico con la viva alternada'}>
           <BeamElevation result={beam.result} interactive supports={supports} />
         </Plate>
         <Plate title={`${beam.label} · armado`} wide>
@@ -376,10 +391,12 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <Plate title="Armado en elevación"><ColumnElevation result={column.result} /></Plate>
       </> : null}
     </> : fromModel && model.pending
-      ? <div className="dw-model-wait" role="status"><span className="dw-model-wait__dot" aria-hidden="true" />Analizando el Modelo 2D con el solver de la app…</div>
+      ? <div className="dw-model-wait" role="status"><span className="dw-model-wait__dot" aria-hidden="true" />{from3d ? 'Analizando el Modelo 3D completo con el solver espacial…' : 'Analizando el Modelo 2D con el solver de la app…'}</div>
       : <div className="dw-model-errors">
         <ErrorsPanel errors={outcome && !outcome.ok ? outcome.errors : []} />
-        {fromModel && onOpenModel ? <button type="button" className="dw-inline-action" onClick={onOpenModel}><PenLine size={13} aria-hidden="true" />Editar en Modelo</button> : null}
+        {fromModel && openSource ? <button type="button" className="dw-inline-action" onClick={openSource}>
+          {from3d ? <Box size={13} aria-hidden="true" /> : <PenLine size={13} aria-hidden="true" />}{from3d ? 'Editar en 3D' : 'Editar en Modelo'}
+        </button> : null}
       </div>}
     results={result && report ? <>
       <Verdict status={result.status} ratio={result.governingRatio} title={report.title} outOfScope={outOfScope.length}>

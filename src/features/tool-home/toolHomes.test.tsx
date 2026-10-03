@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
@@ -40,26 +40,19 @@ it('la búsqueda anunciada por / recibe el foco sin interrumpir la escritura', a
   expect((search as HTMLInputElement).value).toBe('');
 });
 
-it('Solver 3D: «Generar una estructura» abre la mesa con el generador', async () => {
+it('FStructure: «Modelo 3D» abre la misma mesa en modo 3D con su arranque', async () => {
   const user = userEvent.setup();
-  openHome('space3d');
+  openHome('model2d');
   render(<App />);
-  await user.click(await screen.findByRole('button', { name: /Generar una estructura/ }));
-  expect(new URLSearchParams(window.location.search).get('surface')).toBeNull();
-  expect(new URLSearchParams(window.location.search).get('tool')).toBe('space3d');
-  // La mesa 3D se carga de forma diferida (three.js incluido): en jsdom y en frío
+  await user.click(await screen.findByRole('button', { name: /Modelo 3D/ }));
+  expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+  expect(new URLSearchParams(window.location.search).get('mode')).toBe('3d');
+  // El modo 3D se carga de forma diferida (three.js incluido): en jsdom y en frío
   // tarda más del segundo por defecto de `findBy*`.
+  await user.click(await screen.findByRole('button', { name: /Generar una estructura/ }, { timeout: 8000 }));
   expect(await screen.findByRole('textbox', { name: 'Descripción de la estructura a generar' }, { timeout: 8000 })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Modelo 3D' }).getAttribute('aria-pressed')).toBe('true');
 }, 20_000);
-
-it('Solver 3D: «Colocar un nudo» abre el modo de modelado sobre el proyecto actual', async () => {
-  const user = userEvent.setup();
-  openHome('space3d');
-  render(<App />);
-  await user.click(await screen.findByRole('button', { name: /Colocar un nudo/ }));
-  await waitFor(() => expect(document.querySelector('.space3d-modebar')?.getAttribute('data-tool')).toBe('node'));
-  expect(new URLSearchParams(window.location.search).get('tool')).toBe('space3d');
-});
 
 it('Elementos finitos: «Analizar el caso de prueba» abre la mesa con el resultado', async () => {
   const user = userEvent.setup();

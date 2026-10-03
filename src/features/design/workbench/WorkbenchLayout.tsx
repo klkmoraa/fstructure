@@ -1,7 +1,7 @@
 import { ClipboardCheck, Maximize2, Minus, PenLine, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
-import type { ExternalStructureSource } from '../../../design/elements/structure';
+import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
@@ -34,8 +34,12 @@ export interface WorkbenchChrome {
   readonly onOpenModel?: () => void;
   /** Escribe el pórtico rápido en el Modelo 2D como un cambio deshacible (sólo dentro de la app). */
   readonly onCreateModel?: (spec: ConcreteFrameSpec) => void;
+  /** Ejes diseñables del Modelo 3D del proyecto, por la misma frontera. */
+  readonly modelAxes?: ExternalStructureAxes | null;
+  /** Abre el modo 3D de la mesa (sólo dentro de la app). */
+  readonly onOpenSpace3D?: () => void;
   /** Fuente pedida al abrir el taller. */
-  readonly startSource?: 'frame' | 'model';
+  readonly startSource?: 'frame' | 'model' | 'model3d';
 }
 
 export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };

@@ -1,6 +1,9 @@
-import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { withConcreteFrame, type ConcreteFrameSpec } from '../../../data/concreteFrame';
 import { model2dDesignSource } from '../../../design/elements/model2dSource';
+import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
+import { space3dDesignAxes } from '../../../integrations/space3dDesign';
+import { peekToolIntent, takeToolIntent } from '../toolIntent';
 import { DesignWorkbench } from '../../design/workbench/DesignWorkbench';
 import { browserWorkbenchStorage, createProjectWorkbenchStorage, WorkbenchStorageContext } from '../../design/workbench/workbenchStorage';
 import { ProjectModelContext } from '../../../store/ProjectModelContext';
@@ -11,10 +14,12 @@ import { useSharedToolState } from '../../../store/SharedToolState';
  * `design` del bundle del proyecto abierto (la misma de siempre, así nada
  * guardado se pierde); sin sesión de proyecto, en el navegador.
  *
- * El taller recibe el Modelo 2D del proyecto ya traducido a su contrato
- * (`model2dDesignSource`), y «Abrir el Modelo 2D» vuelve al modo Modelo.
+ * El taller recibe los modelos del proyecto ya traducidos a su contrato: el
+ * Modelo 2D (`model2dDesignSource`) y los ejes del Modelo 3D guardado en la
+ * rama `space3d` (puente `src/integrations/space3dDesign`). Al llegar desde el
+ * modo 2D o 3D, Estructura diseña con ese modelo. «Editar» vuelve al modo.
  */
-export default function DesignSurface({ onOpenModel }: { onOpenModel?: () => void }) {
+export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenModel?: () => void; onOpenSpace3D?: () => void }) {
   const projectModel = useContext(ProjectModelContext);
   const project = projectModel?.project ?? null;
   const updateProject = projectModel?.updateProject;
@@ -25,6 +30,15 @@ export default function DesignSurface({ onOpenModel }: { onOpenModel?: () => voi
   useEffect(() => { latestProject.current = project; }, [project]);
   const projectId = project?.id ?? null;
   const modelSource = useMemo(() => project ? model2dDesignSource(project) : null, [project]);
+  // El modelo 3D se lee al entrar al modo (se edita en el modo 3D, que guarda en la sesión).
+  const space3d = useMemo(() => {
+    const branch = session && projectId ? session.currentBundle(projectId)?.space3d : null;
+    if (!branch) return null;
+    try { return parseSpace3DDraft(JSON.stringify(branch.model)); } catch { return null; }
+  }, [session, projectId]);
+  const modelAxes = useMemo(() => space3d && space3d.members.length ? space3dDesignAxes(space3d) : null, [space3d]);
+  const [startSource] = useState(() => peekToolIntent('design')?.kind);
+  useEffect(() => { takeToolIntent('design'); }, []);
   const storage = useMemo(() => {
     if (!session || !projectId) return null;
     return createProjectWorkbenchStorage(session.currentBundle(projectId)?.design, (document) => {
@@ -35,7 +49,8 @@ export default function DesignSurface({ onOpenModel }: { onOpenModel?: () => voi
   }, [session, projectId]);
   useEffect(() => () => storage?.dispose(), [storage]);
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
-    <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} {...(onOpenModel ? { onOpenModel } : {})}
+    <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
+      {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(onOpenSpace3D ? { onOpenSpace3D } : {})}
       {...(updateProject ? { onCreateModel: createModel } : {})} />
   </WorkbenchStorageContext.Provider>;
 }

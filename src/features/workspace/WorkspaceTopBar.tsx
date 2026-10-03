@@ -52,8 +52,8 @@ interface WorkspaceTopBarProps {
   tool?: ToolId;
   /** Modelo | Diseño de FStructure: primera pieza de las acciones. */
   modeSwitch?: ReactNode;
-  /** Guía del modo Diseño en lugar de la del modelo. */
-  helpTopic?: 'design';
+  /** Guía del modo 3D o Diseño en lugar de la del modelo 2D. */
+  helpTopic?: 'design' | 'space3d';
   language?: 'es' | 'en';
   contextualControls?: ReactNode;
   primaryAction?: ReactNode;

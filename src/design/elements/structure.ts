@@ -91,7 +91,7 @@ export type StructureAnalysisOutcome =
   | { readonly ok: false; readonly error: string };
 
 export interface StructureSource {
-  readonly kind: 'frame' | 'model2d';
+  readonly kind: 'frame' | 'model2d' | 'model3d';
   /** «Pórtico 2 claros × 2 niveles», «Modelo 2D · Pórtico de ejemplo». */
   readonly label: string;
   readonly nodes: readonly StructureNode[];
@@ -107,10 +107,13 @@ export interface StructureSource {
   readonly notes?: readonly string[];
 }
 
+/** «Pórtico», «Modelo 2D» o «Modelo 3D»: de dónde salió la estructura. */
+export const structureSourceName = (kind: StructureSource['kind']) => kind === 'model2d' ? 'Modelo 2D' : kind === 'model3d' ? 'Modelo 3D' : 'Pórtico';
+
 /**
- * Estructura que se arma fuera del taller —un Modelo 2D— y llega por la
- * frontera de la app (`src/features/workspace`). El taller sólo conoce este
- * contrato: nunca importa el modelo ni lo lee.
+ * Estructura que se arma fuera del taller —el Modelo 2D o un eje del Modelo
+ * 3D— y llega por la frontera de la app (`src/features/workspace`). El taller
+ * sólo conoce este contrato: nunca importa el modelo ni lo lee.
  */
 export interface ExternalStructureSource {
   /** Nombre del modelo de origen. */
@@ -135,6 +138,18 @@ export interface ExternalStructureSource {
   /** Por qué no se puede diseñar, si no se puede. */
   readonly errors: readonly string[];
   create(options: { readonly braced: boolean }): StructureSource | null;
+}
+
+/**
+ * Un modelo espacial (el Modelo 3D) visto como sus ejes diseñables: cada eje es
+ * un pórtico plano con su propia fuente. Llega por la misma frontera.
+ */
+export interface ExternalStructureAxes {
+  /** Nombre del modelo de origen. */
+  readonly label: string;
+  readonly axes: readonly { readonly id: string; readonly label: string; readonly members: number }[];
+  /** La fuente de un eje; la misma instancia mientras el modelo no cambie. */
+  source(axisId: string): ExternalStructureSource;
 }
 
 export interface StructureColumnReinforcement {
@@ -647,7 +662,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
       const cracked = source.analyze(overrides);
       return cracked.ok ? { ok: true, analysis: beamAnalysisOf(cracked.cases) } : { ok: false, error: cracked.error };
     };
-    const result = designBeam(beamInput, { analyze: provider, demandSource: `${source.kind === 'model2d' ? 'Modelo 2D' : 'Pórtico'} · ${label.toLowerCase()}` });
+    const result = designBeam(beamInput, { analyze: provider, demandSource: `${structureSourceName(source.kind)} · ${label.toLowerCase()}` });
     if (!result.ok) return { ok: false, errors: result.errors.map((error) => `${label}: ${error}`) };
     const spanRatios = line.members.map((_, span) => {
       const { startM, lengthM } = result.spans[span]!;
@@ -756,7 +771,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
             stabilityIndex: q,
             group: options.group,
             groundFloor: story === 0 && lateral,
-          }, { demandSource: `${source.kind === 'model2d' ? 'Modelo 2D' : 'Pórtico'} · ${combinationLabel} · ${candidate.label}` });
+          }, { demandSource: `${structureSourceName(source.kind)} · ${combinationLabel} · ${candidate.label}` });
           if (!result.ok) return { ok: false, errors: result.errors.map((error) => `${label}: ${error}`) };
           states.push({
             label: candidate.label, combination: combinationLabel, axialKn: p.total, topKnm: mt.total, bottomKnm: mb.total,
@@ -877,7 +892,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
     const pool = failing.length ? failing : checks.filter((check) => check.ratio !== undefined && Number.isFinite(check.ratio));
     return pool.reduce<ElementCheck | undefined>((best, check) => (!best || (check.ratio ?? 0) > (best.ratio ?? 0) ? check : best), undefined) ?? checks[0]!;
   };
-  const sourceName = source.kind === 'model2d' ? 'Modelo 2D' : 'Pórtico';
+  const sourceName = structureSourceName(source.kind);
   const memberChecks: ElementCheck[] = [
     ...beams.map((beam): ElementCheck => {
       const rule = governingCheck(beam.result.checks);
@@ -919,7 +934,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
     label: 'Combinaciones de carga',
     status: 'info',
     reference: refs.loadFactors,
-    note: `${options.combinations.map((item) => item.label).join(' · ')}; viva alternada ${source.kind === 'model2d' ? 'por barra cargada' : 'por claro y nivel'} (nula donde favorece)${code.usesStructureGroup ? `; ${options.combinations[0]!.favorableDead} en la muerta donde favorece` : ''}.`,
+    note: `${options.combinations.map((item) => item.label).join(' · ')}; viva alternada ${source.kind === 'frame' ? 'por claro y nivel' : 'por barra cargada'} (nula donde favorece)${code.usesStructureGroup ? `; ${options.combinations[0]!.favorableDead} en la muerta donde favorece` : ''}.`,
   }];
   if (lateral) {
     frameChecks.push({
