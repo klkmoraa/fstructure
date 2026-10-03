@@ -234,7 +234,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     </>}
     stage={result.ok ? <>
       <Plate title="Elevación y envolventes" wide>
-        <BeamElevation result={result} />
+        <BeamElevation result={result} interactive />
       </Plate>
       <Plate title="Armado longitudinal" wide>
         <BeamRebarDetail result={result} />

@@ -35,6 +35,18 @@ export interface LoadCombination {
   /** Factor de la carga muerta de un claro donde su efecto es favorable. */
   readonly favorableDead: number;
   readonly live: number;
+  /**
+   * Factor de la acción lateral (sismo o viento), que se aplica en ambos
+   * sentidos. Sin él la combinación es gravitacional.
+   */
+  readonly lateral?: number;
+}
+
+/** Combinaciones con acción lateral y de dónde salen sus factores. */
+export interface LateralCombinations {
+  readonly combinations: readonly LoadCombination[];
+  readonly reference: ClauseReference;
+  readonly note: string;
 }
 
 export interface DevelopmentOptions {
@@ -163,6 +175,8 @@ export interface DesignCode {
   /** La carga viva sostenida se obtiene de W/Wm (NTC-CyA) o se da como fracción. */
   readonly sustainedLive: 'use' | 'fraction';
   loadCombinations(group: StructureGroup): readonly LoadCombination[];
+  /** Combinaciones con la acción lateral (pórticos). */
+  lateralCombinations(group: StructureGroup): LateralCombinations;
   elasticModulusMpa(fcMpa: number): number;
   ruptureModulusMpa(fcMpa: number): number;
   readonly flexureFactor: FlexureFactor;
@@ -216,6 +230,12 @@ const NTC_2023: DesignCode = {
   usesStructureGroup: true,
   sustainedLive: 'use',
   loadCombinations: (group) => [ntcStructureCombination(group)],
+  // NTC-CyA 3.4.1 b) y c): 1.1 a todas las acciones de la combinación accidental, 0.9 a la que favorece.
+  lateralCombinations: () => ({
+    combinations: [{ label: '1.1 (CM + CV ± S)', dead: LOAD_FACTORS.accidental, favorableDead: LOAD_FACTORS.favorable, live: LOAD_FACTORS.accidental, lateral: LOAD_FACTORS.accidental }],
+    reference: ntcActions('3.4.1'),
+    note: 'La NTC pide la carga viva instantánea Wa en la combinación accidental; el taller usa la viva capturada (del lado seguro si es la máxima Wm).',
+  }),
   elasticModulusMpa: (fc) => classOneConcreteProperties(fc, 'limestone')?.elasticModulusMpa ?? 4_400 * Math.sqrt(fc),
   ruptureModulusMpa: (fc) => classOneConcreteProperties(fc, 'limestone')?.meanFlexuralTensileStrengthMpa ?? 0.63 * Math.sqrt(fc),
   flexureFactor: resistanceFactorForStrain,
@@ -369,6 +389,15 @@ const NSR_10: DesignCode = {
     { label: '1.4 D', dead: 1.4, favorableDead: 1.4, live: 0 },
     { label: '1.2 D + 1.6 L', dead: 1.2, favorableDead: 1.2, live: 1.6 },
   ],
+  // NSR-10 B.2.4.2 no está registrada en el taller: factores complementarios a la vista.
+  lateralCombinations: () => ({
+    combinations: [
+      { label: '1.2 D + 1.0 L ± 1.0 E', dead: 1.2, favorableDead: 1.2, live: 1, lateral: 1 },
+      { label: '0.9 D ± 1.0 E', dead: 0.9, favorableDead: 0.9, live: 0, lateral: 1 },
+    ],
+    reference: complementary('Factores de B.2.4.2 sin cláusula registrada'),
+    note: 'Las combinaciones con sismo de NSR-10 (B.2.4.2) no están registradas con evidencia en el taller: verifica los factores. E es la fuerza sísmica ya dividida entre R.',
+  }),
   elasticModulusMpa: (fc) => 4_700 * Math.sqrt(fc),
   ruptureModulusMpa: (fc) => 0.62 * Math.sqrt(fc),
   flexureFactor: nsrFlexureFactor,
@@ -506,6 +535,15 @@ const E060: DesignCode = {
   usesStructureGroup: false,
   sustainedLive: 'fraction',
   loadCombinations: () => [{ label: '1.4 CM + 1.7 CV', dead: 1.4, favorableDead: 1.4, live: 1.7 }],
+  // E.060 9.2.3 no está registrada en el taller: factores complementarios a la vista.
+  lateralCombinations: () => ({
+    combinations: [
+      { label: '1.25 (CM + CV) ± CS', dead: 1.25, favorableDead: 1.25, live: 1.25, lateral: 1 },
+      { label: '0.9 CM ± CS', dead: 0.9, favorableDead: 0.9, live: 0, lateral: 1 },
+    ],
+    reference: complementary('Factores de 9.2.3 sin cláusula registrada'),
+    note: 'Las combinaciones con sismo de E.060 (9.2.3) no están registradas con evidencia en el taller: verifica los factores. CS es la fuerza sísmica de diseño (E.030, ya reducida).',
+  }),
   elasticModulusMpa: (fc) => 4_700 * Math.sqrt(fc),
   ruptureModulusMpa: (fc) => 0.62 * Math.sqrt(fc),
   // 9.3.2.1: flexión sin carga axial 0.90 sin transición (el acero máximo es 0.75Asb).

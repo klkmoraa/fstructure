@@ -604,7 +604,13 @@ const aciCrossTies = (barsOnFace: number, clearSpacingMm: number) => {
 /** Columna: las solicitaciones se capturan a mano y se suponen de una misma combinación. */
 const CAPTURED_DEMAND = 'Pu, Mu y Vu capturados · concurrentes';
 
-export function designColumn(input: ColumnDesignInput): ColumnDesignResult | ColumnDesignError {
+export interface ColumnDesignOptions {
+  /** De dónde sale la demanda (p. ej. el estado de un pórtico); sin él, la captura concurrente. */
+  readonly demandSource?: string;
+}
+
+export function designColumn(input: ColumnDesignInput, options: ColumnDesignOptions = {}): ColumnDesignResult | ColumnDesignError {
+  const demandSource = options.demandSource ?? CAPTURED_DEMAND;
   const rawErrors = validate(input);
   if (rawErrors.length) return { ok: false, errors: rawErrors };
   const circular = isCircular(input);
@@ -819,7 +825,7 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
     tracedAt({ ...capacityCheck('strength', circular ? 'Flexocompresión (momento resultante)' : 'Flexocompresión', capacity.ratio, 1, '',
       circular ? refs.columnSection : refs.columnStrength,
       `${capacity.detail}${spiral ? ' · FR de columna zunchada (0.75 a 0.90).' : ''}`), demand: capacity.ratio, capacity: 1, unit: '' },
-    'Sección crítica con momentos amplificados', CAPTURED_DEMAND),
+    'Sección crítica con momentos amplificados', demandSource),
     { ...capacityCheck('ratio-min', `Cuantía mínima (${rules.ratioMin * 100} %)`, rules.ratioMin, ratio, '', refs.columnRatio), demand: rules.ratioMin * 100, capacity: ratio * 100, unit: '%' },
     { ...capacityCheck('ratio-max', `Cuantía máxima (${rules.ratioMax * 100} %)`, ratio, rules.ratioMax, '', refs.columnRatio), demand: ratio * 100, capacity: rules.ratioMax * 100, unit: '%' },
   ];
@@ -898,7 +904,7 @@ export function designColumn(input: ColumnDesignInput): ColumnDesignResult | Col
     checks.push(
       tracedAt(capacityCheck(`shear-${axis.toLowerCase()}`, `Cortante ${where}`, shear.demandKn, shear.strengthKn, 'kN', circular ? refs.circularShear : refs.columnShear,
         `${shear.legs} ramas${circular ? ` (Av = 2Ab del ${spiral ? 'zuncho' : 'estribo circular'})` : ''} · s = ${governingSpacing} mm · φVc = ${shear.concreteStrengthKn.toFixed(1)} kN · FR ${code.shearFactor}.${circular ? ' Sección circular: bw = D y d = 0.8D (criterio complementario).' : ''}`),
-      circular ? 'Resultante √(Vx² + Vy²)' : `Dirección ${axis}`, CAPTURED_DEMAND),
+      circular ? 'Resultante √(Vx² + Vy²)' : `Dirección ${axis}`, demandSource),
       capacityCheck(`shear-section-${axis.toLowerCase()}`, `Cortante máximo por sección ${where}`, shear.demandKn, shear.sectionStrengthKn, 'kN', refs.columnShearSection),
     );
   }

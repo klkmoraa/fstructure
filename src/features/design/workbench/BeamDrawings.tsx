@@ -1,3 +1,4 @@
+import { useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { BeamDesignResult, BeamEnd, BeamSectionCut, BedSection } from '../../../design/elements/beam';
 import { barsText } from '../../../design/elements/beam';
 import { rebarLabel } from '../../../design/elements/shared';
@@ -22,7 +23,7 @@ interface BandProps {
   readonly scaleX: (x: number) => number;
   /** `down`: los positivos se dibujan hacia abajo (momento del lado de la tensión). */
   readonly positive: 'up' | 'down';
-  readonly tone: 'moment' | 'shear' | 'deformed';
+  readonly tone: 'moment' | 'shear' | 'deformed' | 'axial';
   readonly label: string;
   readonly unit: string;
   readonly nodesAtM: readonly number[];
@@ -31,26 +32,64 @@ interface BandProps {
 const pathOf = (xs: readonly number[], values: readonly number[], scaleX: (x: number) => number, y: (value: number) => number) =>
   values.map((value, index) => `${index === 0 ? 'M' : 'L'}${scaleX(xs[index]!).toFixed(2)},${y(value).toFixed(2)}`).join(' ');
 
-export function DiagramBand({ xs, upper, lower, capacityUpper, capacityLower, top, height, scaleX, positive, tone, label, unit, nodesAtM }: BandProps) {
-  const demand = lower ? [...upper, ...lower] : upper;
-  const all = [...demand, ...(capacityUpper ?? []), ...(capacityLower ?? [])];
-  const max = Math.max(0, ...all);
-  const min = Math.min(0, ...all);
+/** Escala vertical de una banda: incluye el cero, la demanda y la resistencia. */
+function bandScale({ upper, lower, capacityUpper, capacityLower, top, height, positive }: Pick<BandProps, 'upper' | 'lower' | 'capacityUpper' | 'capacityLower' | 'top' | 'height' | 'positive'>) {
+  let max = 0;
+  let min = 0;
+  for (const series of [upper, lower, capacityUpper, capacityLower]) {
+    for (const value of series ?? []) {
+      if (value > max) max = value;
+      if (value < min) min = value;
+    }
+  }
   const range = max - min || 1;
-  const y = (value: number) => positive === 'down'
-    ? top + (value - min) / range * height
-    : top + (max - value) / range * height;
+  return (value: number) => positive === 'down' ? top + (value - min) / range * height : top + (max - value) / range * height;
+}
+
+const MIN_LABEL_GAP = 46;
+
+/**
+ * Rótulos de una banda: el máximo y el mínimo de cada tramo entre apoyos y el
+ * valor que rige en cada apoyo. Se descartan los que se encimarían con uno
+ * mayor del mismo lado del eje.
+ */
+function bandLabels(xs: readonly number[], series: readonly (readonly number[])[], nodesAtM: readonly number[], scaleX: (x: number) => number) {
+  const values = (index: number) => series.map((item) => item[index]!);
+  const all = series.flat();
+  const range = Math.max(...all, 0) - Math.min(...all, 0) || 1;
+  const threshold = range * 0.03;
+  const first = xs[0]!;
+  const last = xs[xs.length - 1]!;
+  const breaks = [...new Set([first, ...nodesAtM, last].map((x) => Math.round(x * 1e6) / 1e6))].sort((a, b) => a - b);
+  const candidates: { x: number; value: number }[] = [];
+  const consider = (indexes: readonly number[], pick: (a: number, b: number) => boolean) => {
+    let best: { x: number; value: number } | undefined;
+    for (const index of indexes) for (const value of values(index)) if (!best || pick(value, best.value)) best = { x: xs[index]!, value };
+    if (best && Math.abs(best.value) > threshold) candidates.push(best);
+  };
+  for (let segment = 0; segment < breaks.length - 1; segment += 1) {
+    const indexes = xs.flatMap((x, index) => x >= breaks[segment]! - 1e-9 && x <= breaks[segment + 1]! + 1e-9 ? [index] : []);
+    consider(indexes, (a, b) => a > b);
+    consider(indexes, (a, b) => a < b);
+  }
+  for (const node of nodesAtM) {
+    const indexes = xs.flatMap((x, index) => Math.abs(x - node) < 1e-6 ? [index] : []);
+    consider(indexes, (a, b) => Math.abs(a) > Math.abs(b));
+  }
+  const kept: { x: number; value: number }[] = [];
+  for (const candidate of candidates.sort((a, b) => Math.abs(b.value) - Math.abs(a.value))) {
+    const clash = kept.some((item) => Math.sign(item.value) === Math.sign(candidate.value) && Math.abs(scaleX(item.x) - scaleX(candidate.x)) < MIN_LABEL_GAP);
+    if (!clash) kept.push(candidate);
+  }
+  return kept;
+}
+
+export function DiagramBand({ xs, upper, lower, capacityUpper, capacityLower, top, height, scaleX, positive, tone, label, unit, nodesAtM }: BandProps) {
+  const y = bandScale({ upper, lower, capacityUpper, capacityLower, top, height, positive });
   const axis = y(0);
   const areaOf = (values: readonly number[]) =>
     `M${scaleX(xs[0]!).toFixed(2)},${axis.toFixed(2)} ${values.map((value, index) => `L${scaleX(xs[index]!).toFixed(2)},${y(value).toFixed(2)}`).join(' ')} L${scaleX(xs[xs.length - 1]!).toFixed(2)},${axis.toFixed(2)} Z`;
-
-  const labels: { x: number; value: number }[] = [];
-  const maxIndex = demand.indexOf(Math.max(...demand));
-  const minIndex = demand.indexOf(Math.min(...demand));
-  const demandRange = Math.max(...demand) - Math.min(...demand) || 1;
-  const xAt = (index: number) => xs[index % xs.length]!;
-  if (demand[maxIndex]! > demandRange * 0.02) labels.push({ x: xAt(maxIndex), value: demand[maxIndex]! });
-  if (demand[minIndex]! < -demandRange * 0.02) labels.push({ x: xAt(minIndex), value: demand[minIndex]! });
+  const labels = bandLabels(xs, lower ? [upper, lower] : [upper], nodesAtM, scaleX);
 
   return <g className={`dw-band dw-band--${tone}`}>
     <text className="dw-band__label" x={10} y={top + height / 2 - 3}>{label}</text>
@@ -98,8 +137,14 @@ const endSupport = (end: BeamEnd, side: 'left' | 'right', restrainsX: boolean): 
   return restrainsX ? 'pin' : 'roller';
 };
 
-function Supports({ result, scaleX, beamTop, beamHeight }: { result: BeamDesignResult; scaleX: (x: number) => number; beamTop: number; beamHeight: number }) {
+/** Cómo se dibujan los apoyos: ideales (viga aislada) o columnas del pórtico que la cruzan. */
+export type BeamSupportStyle = 'ideal' | 'columns';
+
+function Supports({ result, scaleX, beamTop, beamHeight, style = 'ideal' }: { result: BeamDesignResult; scaleX: (x: number) => number; beamTop: number; beamHeight: number; style?: BeamSupportStyle }) {
   const { leftEnd, rightEnd } = result.input;
+  if (style === 'columns') {
+    return <g className="dw-column-stub">{result.nodesAtM.map((x) => <rect key={x} x={scaleX(x) - 6} y={beamTop - 16} width={12} height={beamHeight + 32} />)}</g>;
+  }
   return <>{result.nodesAtM.map((x, index) => {
     const kind = index === 0 ? endSupport(leftEnd, 'left', true)
       : index === result.nodesAtM.length - 1 ? endSupport(rightEnd, 'right', leftEnd === 'free')
@@ -137,25 +182,76 @@ function stirrupPositions(result: BeamDesignResult): number[] {
   return positions;
 }
 
-export function BeamElevation({ result }: { result: BeamDesignResult }) {
+/** Índice de la estación más cercana a `x`; con estaciones repetidas (saltos), la del lado indicado. */
+const nearestStation = (xs: readonly number[], x: number) => xs.reduce((best, value, index) => Math.abs(value - x) < Math.abs(xs[best]! - x) - 1e-9 ? index : best, 0);
+
+/**
+ * Elevación con cargas, apoyos y envolventes de momento, cortante y flecha.
+ * Con `interactive`, un cursor lee los valores en cualquier sección (puntero,
+ * toque o flechas del teclado); sin él es la lámina estática de la memoria.
+ */
+export function BeamElevation({ result, interactive = false, supports = 'ideal' }: { result: BeamDesignResult; interactive?: boolean; supports?: BeamSupportStyle }) {
+  const [probe, setProbe] = useState<number | null>(null);
   const length = result.totalLengthM;
   const scaleX = (x: number) => LEFT + x / length * PLOT;
   const beamTop = 86;
   const beamHeight = 22;
   const { spans } = result.input;
+  const { diagram } = result;
   const maxLoad = Math.max(1e-9, ...spans.map((span) => span.deadKnPerM + span.liveKnPerM + result.selfWeightKnPerM));
+  const shearCapacityLower = diagram.shearCapacityKn.map((value) => -value);
   const bands = [
-    { upper: result.diagram.momentMaxKnm, lower: result.diagram.momentMinKnm, capacityUpper: result.diagram.capacityPositiveKnm, capacityLower: result.diagram.capacityNegativeKnm, positive: 'down' as const, tone: 'moment' as const, label: 'Momento', unit: 'kN·m' },
-    { upper: result.diagram.shearMaxKn, lower: result.diagram.shearMinKn, positive: 'up' as const, tone: 'shear' as const, label: 'Cortante', unit: 'kN' },
-    { upper: result.diagram.deflectionMm, positive: 'up' as const, tone: 'deformed' as const, label: 'Deflexión', unit: 'mm' },
+    { upper: diagram.momentMaxKnm, lower: diagram.momentMinKnm, capacityUpper: diagram.capacityPositiveKnm, capacityLower: diagram.capacityNegativeKnm, positive: 'down' as const, tone: 'moment' as const, label: 'Momento', unit: 'kN·m' },
+    { upper: diagram.shearMaxKn, lower: diagram.shearMinKn, capacityUpper: diagram.shearCapacityKn, capacityLower: shearCapacityLower, positive: 'up' as const, tone: 'shear' as const, label: 'Cortante', unit: 'kN' },
+    { upper: diagram.deflectionMm, positive: 'up' as const, tone: 'deformed' as const, label: 'Deflexión', unit: 'mm' },
   ];
   const bandTop = 180;
   const bandHeight = 100;
   const bandGap = 30;
   const height = bandTop + bands.length * (bandHeight + bandGap) - 10;
+  const scales = bands.map((band, index) => bandScale({ ...band, top: bandTop + index * (bandHeight + bandGap), height: bandHeight }));
 
-  return <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${height}`} role="img"
-    aria-label={`Elevación de la viga de ${spans.length} ${spans.length === 1 ? 'claro' : 'claros'}: momento máximo ${formatNumber(result.extremes.positiveMomentKnm)} kN·m, negativo ${formatNumber(result.extremes.negativeMomentKnm)} kN·m y cortante ${formatNumber(result.extremes.shearKn)} kN`}>
+  const stationAt = (event: PointerEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (!rect.width) return null;
+    const x = ((event.clientX - rect.left) / rect.width * WIDTH - LEFT) / PLOT * length;
+    return x < -0.02 * length || x > 1.02 * length ? null : nearestStation(diagram.xM, Math.min(length, Math.max(0, x)));
+  };
+  const onPointer = (event: PointerEvent<SVGSVGElement>) => {
+    const index = stationAt(event);
+    if (index !== null) setProbe(index);
+  };
+  const onKeyDown = (event: KeyboardEvent<SVGSVGElement>) => {
+    const xs = diagram.xM;
+    const current = probe ?? 0;
+    let next: number | null = current;
+    if (event.key === 'ArrowRight') next = xs.findIndex((x) => x > xs[current]! + length / 400);
+    else if (event.key === 'ArrowLeft') { const target = xs[current]! - length / 400; next = xs.reduce((best, x, index) => x < target ? index : best, -1); }
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = xs.length - 1;
+    else if (event.key === 'Escape') next = null;
+    else return;
+    event.preventDefault();
+    setProbe(next !== null && next < 0 ? current : next);
+  };
+  const reading = probe !== null ? {
+    x: diagram.xM[probe]!,
+    span: result.spans.findIndex((span) => diagram.xM[probe]! >= span.startM - 1e-9 && diagram.xM[probe]! <= span.startM + span.lengthM + 1e-9) + 1,
+    momentMax: diagram.momentMaxKnm[probe]!,
+    momentMin: diagram.momentMinKnm[probe]!,
+    capacityPositive: diagram.capacityPositiveKnm[probe]!,
+    capacityNegative: -diagram.capacityNegativeKnm[probe]!,
+    shear: Math.max(Math.abs(diagram.shearMaxKn[probe]!), Math.abs(diagram.shearMinKn[probe]!)),
+    shearCapacity: diagram.shearCapacityKn[probe]!,
+    deflection: diagram.deflectionMm[probe]!,
+  } : null;
+
+  const drawing = <svg className={`dw-drawing${interactive ? ' dw-drawing--probe' : ''}`} viewBox={`0 0 ${WIDTH} ${height}`} role="img"
+    tabIndex={interactive ? 0 : undefined}
+    onPointerMove={interactive ? onPointer : undefined}
+    onPointerDown={interactive ? onPointer : undefined}
+    onKeyDown={interactive ? onKeyDown : undefined}
+    aria-label={`Elevación de la viga de ${spans.length} ${spans.length === 1 ? 'claro' : 'claros'}: momento máximo ${formatNumber(result.extremes.positiveMomentKnm)} kN·m, negativo ${formatNumber(result.extremes.negativeMomentKnm)} kN·m y cortante ${formatNumber(result.extremes.shearKn)} kN${interactive ? '. Usa las flechas para leer los valores en cada sección' : ''}`}>
     <defs>
       <marker id="dw-arrow" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6">
         <path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" />
@@ -187,17 +283,37 @@ export function BeamElevation({ result }: { result: BeamDesignResult }) {
       </g>;
     })}
 
+    {supports === 'columns' ? <Supports result={result} scaleX={scaleX} beamTop={beamTop} beamHeight={beamHeight} style="columns" /> : null}
     <rect className="dw-beam" x={scaleX(0)} y={beamTop} width={PLOT} height={beamHeight} />
-    <Supports result={result} scaleX={scaleX} beamTop={beamTop} beamHeight={beamHeight} />
+    {supports === 'ideal' ? <Supports result={result} scaleX={scaleX} beamTop={beamTop} beamHeight={beamHeight} /> : null}
     <SpanDimensions result={result} scaleX={scaleX} y={152} />
 
-    {bands.map((band, index) => <DiagramBand key={band.tone} xs={result.diagram.xM} scaleX={scaleX} nodesAtM={result.nodesAtM}
+    {bands.map((band, index) => <DiagramBand key={band.tone} xs={diagram.xM} scaleX={scaleX} nodesAtM={result.nodesAtM}
       top={bandTop + index * (bandHeight + bandGap)} height={bandHeight} {...band} />)}
+
+    {probe !== null ? <g className="dw-probe" aria-hidden="true">
+      <line className="dw-probe__line" x1={scaleX(diagram.xM[probe]!)} x2={scaleX(diagram.xM[probe]!)} y1={beamTop - 8} y2={height - 6} />
+      {bands.map((band, index) => [band.upper, band.lower].filter((series): series is readonly number[] => Boolean(series)).map((series, position) =>
+        <circle key={`${index}-${position}`} className={`dw-probe__dot dw-probe__dot--${band.tone}`} cx={scaleX(diagram.xM[probe]!)} cy={scales[index]!(series[probe]!)} r={4} />))}
+    </g> : null}
   </svg>;
+  if (!interactive) return drawing;
+  return <div className="dw-probe-frame">
+    {drawing}
+    <p className="dw-probe-readout" aria-live="polite">
+      {reading ? <>
+        <span><b>x</b> {formatNumber(reading.x, 2)} m · claro {reading.span}</span>
+        <span data-tone="moment"><b>M⁺u</b> {formatNumber(Math.max(0, reading.momentMax), 1)} / φMn {formatNumber(reading.capacityPositive, 1)}</span>
+        <span data-tone="moment"><b>M⁻u</b> {formatNumber(Math.max(0, -reading.momentMin), 1)} / φMn {formatNumber(reading.capacityNegative, 1)} kN·m</span>
+        <span data-tone="shear"><b>Vu</b> {formatNumber(reading.shear, 1)} / φVn {formatNumber(reading.shearCapacity, 1)} kN</span>
+        <span data-tone="deformed"><b>Δ</b> {formatNumber(reading.deflection, 1)} mm</span>
+      </> : <span className="dw-probe-readout__hint">Toca o pasa el cursor sobre los diagramas para leer momento, cortante, resistencia y flecha en cada sección.</span>}
+    </p>
+  </div>;
 }
 
 /** Despiece longitudinal: corridas, bastones con su longitud y estribos por zonas. */
-export function BeamRebarDetail({ result }: { result: BeamDesignResult }) {
+export function BeamRebarDetail({ result, supports = 'ideal' }: { result: BeamDesignResult; supports?: BeamSupportStyle }) {
   const length = result.totalLengthM;
   const scaleX = (x: number) => LEFT + x / length * PLOT;
   const top = result.bastions.filter((bastion) => bastion.bed === 'top');
@@ -213,6 +329,7 @@ export function BeamRebarDetail({ result }: { result: BeamDesignResult }) {
 
   return <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${height}`} role="img"
     aria-label={`Despiece: corridas ${barsText(result.continuousTop.continuous)} arriba y ${barsText(result.continuousBottom.continuous)} abajo, ${top.length} bastones superiores y ${bottom.length} inferiores`}>
+    {supports === 'columns' ? <Supports result={result} scaleX={scaleX} beamTop={beamTop} beamHeight={beamHeight} style="columns" /> : null}
     <rect className="dw-beam" x={scaleX(0)} y={beamTop} width={PLOT} height={beamHeight} />
     {stirrupPositions(result).map((x) => <line key={x} className="dw-stirrup-tick" x1={scaleX(x)} x2={scaleX(x)} y1={beamTop + 3} y2={beamTop + beamHeight - 3} />)}
     <line className="dw-rebar" x1={scaleX(0) + 3} x2={scaleX(length) - 3} y1={topBar} y2={topBar} />
@@ -248,7 +365,7 @@ export function BeamRebarDetail({ result }: { result: BeamDesignResult }) {
       </g>;
     })}
 
-    <Supports result={result} scaleX={scaleX} beamTop={beamTop} beamHeight={beamHeight} />
+    {supports === 'ideal' ? <Supports result={result} scaleX={scaleX} beamTop={beamTop} beamHeight={beamHeight} /> : null}
     {result.spans.map((span) => {
       const size = rebarLabel(result.stirrupDiameterMm);
       const { denseSpacingMm, centerSpacingMm, denseZones } = span.stirrups;

@@ -53,7 +53,7 @@ export const TOOL_CATALOG: readonly ToolIdentity[] = [
     id: 'design',
     code: 'FS-A04',
     name: { es: 'Diseño', en: 'Design' },
-    role: { es: 'Vigas, columnas y zapatas de concreto reforzado', en: 'Reinforced concrete beams, columns, and footings' },
+    role: { es: 'Vigas, columnas, pórticos y zapatas de concreto reforzado', en: 'Reinforced concrete beams, columns, frames, and footings' },
     status: 'experimental',
     scene: scene('design'),
   },

@@ -10,16 +10,16 @@ const arrayLength = (value: JsonValue | undefined) => Array.isArray(value) ? val
 
 const designEntries = (value: JsonValue | undefined): Record<string, JsonValue> | null => {
   const document = object(value);
-  if (document?.kind !== 'fstructure-design-workbench' || ![1, 2, 3].includes(document.schemaVersion as number)) return null;
+  if (document?.kind !== 'fstructure-design-workbench' || ![1, 2, 3, 4].includes(document.schemaVersion as number)) return null;
   return object(document.entries);
 };
 
 const designElement = (entries: Record<string, JsonValue>, language: Language) => {
   const raw = entries.element;
-  const element = raw === 'column' || raw === 'footing' || raw === 'section' ? raw : 'beam';
+  const element = raw === 'column' || raw === 'frame' || raw === 'footing' || raw === 'section' ? raw : 'beam';
   const labels = language === 'es'
-    ? { beam: 'Viga', column: 'Columna', footing: 'Zapata', section: 'Sección' }
-    : { beam: 'Beam', column: 'Column', footing: 'Footing', section: 'Section' };
+    ? { beam: 'Viga', column: 'Columna', frame: 'Pórtico', footing: 'Zapata', section: 'Sección' }
+    : { beam: 'Beam', column: 'Column', frame: 'Frame', footing: 'Footing', section: 'Section' };
   return labels[element];
 };
 

@@ -20,8 +20,12 @@ export const WORKBENCH_DOCUMENT_KIND = 'fstructure-design-workbench';
  * v2: además, la memoria del proyecto (`memory`): elementos guardados con su
  * borrador para recalcularlos al exportar. Un documento v1 se lee tal cual.
  * v3: añade secciones y sus filosofías a la memoria; conserva v1 y v2.
+ * v4: añade pórticos: borradores de claros y niveles y, en la memoria,
+ * elementos `frame` con sus niveles (`levels`). Conserva v1 a v3.
  */
-const WORKBENCH_SCHEMA_VERSION = 3;
+const WORKBENCH_SCHEMA_VERSION = 4;
+const READABLE_VERSIONS = [1, 2, 3, 4];
+const ELEMENT_KINDS = ['beam', 'column', 'frame', 'footing', 'section'] as const;
 const MAX_DOCUMENT_CHARS = 240_000;
 const MAX_ENTRIES = 16;
 const MAX_FIELDS = 64;
@@ -43,21 +47,24 @@ const isRows = (value: unknown): value is Record<string, string>[] =>
 /** Elemento guardado en la memoria del proyecto: su borrador, la norma y cuándo se guardó. */
 export interface WorkbenchMemoryItem {
   readonly id: string;
-  readonly element: 'beam' | 'column' | 'footing' | 'section';
+  readonly element: (typeof ELEMENT_KINDS)[number];
   readonly code: string;
   readonly savedAt: string;
   readonly fields: Record<string, string>;
-  /** Filas del formulario (los claros de la viga). */
+  /** Filas del formulario (los claros de la viga o del pórtico). */
   readonly rows?: Record<string, string>[];
+  /** Niveles del pórtico. */
+  readonly levels?: Record<string, string>[];
 }
 
 export const isMemoryItem = (value: unknown): value is WorkbenchMemoryItem => {
   if (!isPlainObject(value)) return false;
   const keys = Object.keys(value);
-  if (keys.some((key) => !['id', 'element', 'code', 'savedAt', 'fields', 'rows'].includes(key))) return false;
-  return isShortString(value.id) && (value.element === 'beam' || value.element === 'column' || value.element === 'footing' || value.element === 'section')
+  if (keys.some((key) => !['id', 'element', 'code', 'savedAt', 'fields', 'rows', 'levels'].includes(key))) return false;
+  return isShortString(value.id) && (ELEMENT_KINDS as readonly unknown[]).includes(value.element)
     && isShortString(value.code) && isShortString(value.savedAt) && isRecord(value.fields)
-    && (value.rows === undefined || isRows(value.rows));
+    && (value.rows === undefined || isRows(value.rows))
+    && (value.levels === undefined || isRows(value.levels));
 };
 
 const isMemory = (value: unknown): value is WorkbenchMemoryItem[] =>
@@ -70,7 +77,7 @@ const isEntry = (key: string, value: unknown): value is JsonValue =>
 
 /** Lee un documento del taller; ante cualquier forma inesperada devuelve un borrador vacío, nunca lanza. */
 export function parseWorkbenchDocument(raw: unknown): Record<string, JsonValue> {
-  if (!isPlainObject(raw) || raw.kind !== WORKBENCH_DOCUMENT_KIND || ![1, 2, 3].includes(raw.schemaVersion as number) || !isPlainObject(raw.entries)) return {};
+  if (!isPlainObject(raw) || raw.kind !== WORKBENCH_DOCUMENT_KIND || !READABLE_VERSIONS.includes(raw.schemaVersion as number) || !isPlainObject(raw.entries)) return {};
   try {
     if (JSON.stringify(raw).length > MAX_DOCUMENT_CHARS) return {};
   } catch {

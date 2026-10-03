@@ -1,6 +1,7 @@
 import type { BeamDesignResult } from './beam';
 import type { ColumnDesignResult } from './column';
 import type { CombinedFootingResult } from './combinedFooting';
+import type { FrameDesignResult } from './frame';
 import type { StripFootingResult } from './stripFooting';
 import type { FootingDesignResult } from './footing';
 import type { MatFoundationResult } from './matFoundation';
@@ -192,4 +193,25 @@ export function matFoundationTakeoff(result: MatFoundationResult): Takeoff {
       Math.floor((across - 2 * cover) / layer.spacingMm) + 1, (along - 2 * cover + 2 * hook90Mm(db)) / 1e3);
   };
   return summarize([mesh('x', 'bottom'), mesh('y', 'bottom'), mesh('x', 'top'), mesh('y', 'top')], result.lengthXMm * result.lengthYMm * result.thicknessMm / 1e9);
+}
+
+/**
+ * Pórtico: las vigas de cada nivel con su longitud total (los nudos van en la
+ * viga) y las columnas en su altura libre, agrupadas por pieza igual.
+ */
+export function frameTakeoff(result: FrameDesignResult): Takeoff {
+  const beamLines = result.beams.flatMap((beam) => beamTakeoff(beam.result).lines.map((item) => ({ ...item, mark: `Nivel ${beam.story + 1} · ${item.mark}` })));
+  const grouped = new Map<string, TakeoffLine>();
+  for (const column of result.columns) {
+    for (const item of columnTakeoff(column.result).lines) {
+      const key = `${item.mark}|${item.pieceLengthM.toFixed(3)}`;
+      const previous = grouped.get(key);
+      grouped.set(key, previous
+        ? line(previous.mark, item.diameterMm, previous.count + item.count, item.pieceLengthM)
+        : line(`Columnas · ${item.mark}`, item.diameterMm, item.count, item.pieceLengthM));
+    }
+  }
+  const concrete = result.beams.reduce((total, beam) => total + beamTakeoff(beam.result).concreteM3, 0)
+    + result.columns.reduce((total, column) => total + columnTakeoff(column.result).concreteM3, 0);
+  return summarize([...beamLines, ...grouped.values()], concrete);
 }

@@ -87,6 +87,8 @@ describe('DesignWorkbench', () => {
     expect(screen.getByRole('radio', { name: 'Columna' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.getByRole('img', { name: /Diagrama de interacción/ })).toBeTruthy();
     await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('radio', { name: 'Pórtico' }).getAttribute('aria-checked')).toBe('true');
+    await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('img', { name: /Planta de zapata/ })).toBeTruthy();
     expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.element')!)).toBe('footing');
   });
@@ -94,7 +96,7 @@ describe('DesignWorkbench', () => {
   it('está aislado del Modelo 2D: sólo sus elementos propios', () => {
     renderWorkbench();
     const dock = screen.getByRole('radiogroup', { name: 'Elemento a diseñar' });
-    expect(within(dock).getAllByRole('radio')).toHaveLength(4);
+    expect(within(dock).getAllByRole('radio')).toHaveLength(5);
     expect(screen.queryByRole('radio', { name: 'Del modelo 2D' })).toBeNull();
   });
 

@@ -1,6 +1,6 @@
 # Taller de diseño de elementos — experimental
 
-La herramienta **Diseño** (FS-A04) abre un taller aislado con Viga, Columna, Zapata y Secciones. No lee el Modelo 2D: cada elemento se captura en el propio taller. Es una herramienta de revisión y aprendizaje; no certifica un diseño ni sustituye a la persona responsable del proyecto.
+La herramienta **Diseño** (FS-A04) abre un taller aislado con Viga, Columna, Pórtico, Zapata y Secciones. No lee el Modelo 2D: cada elemento se captura en el propio taller. Es una herramienta de revisión y aprendizaje; no certifica un diseño ni sustituye a la persona responsable del proyecto.
 
 ## Normas disponibles
 
@@ -17,6 +17,7 @@ La tabla resume las diferencias implementadas:
 | Tema | NTC-CDMX 2023 | NSR-10 | E.060 |
 | --- | --- | --- | --- |
 | Combinaciones | 1.3/1.5 (B), 1.5/1.7 (A), 0.9 favorable | 1.4D y 1.2D + 1.6L | 1.4CM + 1.7CV |
+| Con acción lateral (Pórtico) | 1.1 (CM + CV ± S), 0.9 favorable (CyA 3.4.1 b y c) | 1.2D + 1.0L ± 1.0E y 0.9D ± 1.0E, **complementarias** (B.2.4.2 sin registrar) | 1.25 (CM + CV) ± CS y 0.9CM ± CS, **complementarias** (9.2.3 sin registrar) |
 | φ en flexión | 0.65 → 0.90 entre εty y εty + 0.003 | 0.65 → 0.90 entre εty y 0.005 | 0.90 |
 | φ en flexocompresión | igual que en flexión | igual que en flexión | 0.70 → 0.90 cuando φPn baja de min(0.1f′cAg, φPb) |
 | φ en cortante y penetración | 0.75 (0.65 penetración con sismo) | 0.75 | 0.85 |
@@ -54,6 +55,19 @@ Decisión deliberada: la ec. 3.6.1 de la NTC escribe β1 = 0.85 hasta 30 MPa con
 **Columna rectangular con estribos.** Diagrama de interacción por compatibilidad con el φ de la norma, φPn,máx, momentos mínimos, Bresler (NTC 5.4.1.2, E.060 10.18, comentario CR10.3.6 de NSR) con contorno para carga axial baja, esbeltez en marcos arriostrados y con desplazamiento lateral (índice de estabilidad y momentos M2s), cuantías, cortante, estribos y traslape Clase B.
 
 **Zapata aislada rectangular.** Planta por presión admisible y núcleo, presión trapecial por momentos, flexión en el paño, cortante como viga a d, penetración con transferencia γv·M (y λs en la NTC), acero mínimo (con el adicional de NTC 6.7.6.1.2 cuando vuv > 0.17FRλs√f′c), banda central 2/(β + 1), separación máxima, peralte mínimo y anclaje recto o con gancho desde el paño.
+
+**Pórtico de vigas y columnas.** Marco plano de 1 a 5 claros y 1 a 5 niveles, base empotrada o articulada, con o sin desplazamiento lateral (arriostrado: cada nivel restringido por otro sistema). Se analiza con `src/design/frame/frameAnalysis.ts`, rigidez directa con una sola factorización para todos los casos, validada contra el solver 2D (`frameAnalysis.test.ts`): la muerta y la viva de cada claro de cada nivel van en casos separados, más el peso propio de las columnas, la acción lateral (repartida entre los nudos del nivel) y una carga unitaria por nivel que da la rigidez de cada entrepiso. `src/design/elements/frame.ts` superpone esos casos:
+
+- **Vigas.** Cada nivel se diseña con el motor de la viga continua (`designBeam` con un proveedor de análisis): la envolvente lleva la viva alternada por claro y nivel y, en las combinaciones laterales, la acción en ambos sentidos; la flecha vuelve a analizar el marco con las inercias agrietadas de esa viga. El ancho de apoyo para anclar es el peralte de la columna. Los momentos son al eje (del lado seguro).
+- **Columnas.** Por combinación y sentido de la acción lateral se arman cuatro estados concurrentes (Pu máx., Pu mín. y momento máximo en cada sentido) con Pu, M1, M2 y V de la misma selección de casos; βdns sale de la parte sostenida de cada estado. El motor de la columna revisa cada estado con la altura libre (entrepiso menos peralte de viga), M2ns y M2s separados, la curvatura y M1/M2 del análisis. k es 1.0 en marcos arriostrados y, con desplazamiento, el del nomograma de Jackson y Moreland con ψ = Σ(EI/L) columnas/Σ(EI/L) vigas (base empotrada ψ = 1, articulada ψ = 10; complementario), al menos 1.0, o el que se capture. El índice de estabilidad de cada entrepiso es ΣPu·Δ/(V·h) con la rigidez lateral del propio marco y la carga vertical factorizada de cada combinación.
+- **Conjunto.** La revisión lista una comprobación por miembro (lo que rige, con su ubicación y combinación), las combinaciones, la deriva elástica por entrepiso (informativa: la compara la norma de sismo), el índice de estabilidad, k y una relación ΣMc/ΣMv con resistencias de diseño por nudo, sólo informativa. El alcance declarado del pórtico suma nudos, segundo orden explícito, análisis sísmico, flexión fuera del plano, momentos al paño y torsión.
+- **Mesa.** Lámina del pórtico con utilización (gris hasta 60 %, tinta hasta 90 %, aviso hasta 100 % y error arriba), envolventes de momento (del lado de la tensión), cortante y axial con sus valores, y deformada lateral o de servicio; un clic, un toque o el teclado eligen el miembro. Una matriz Nivel × (Viga, C1…Cn) en Resultados hace lo mismo. Con una viga elegida se ven sus envolventes, armado y cortes; con una columna, su diagrama de interacción con la nube de estados del pórtico, la sección y la elevación. Los datos admiten cargas desde la losa por nivel, factores de inercia para el análisis y k propio.
+
+## Diagramas
+
+- Cada banda rotula el máximo y el mínimo de cada tramo y el valor de cada apoyo, descartando los que se enciman con uno mayor.
+- La banda de cortante dibuja la resistencia de diseño φVn con los estribos de cada zona, como la de momento dibuja φMn.
+- En la mesa, la elevación de la viga tiene un cursor de lectura: puntero, toque o flechas (Inicio/Fin, Escape) muestran x, el claro, M⁺u/φMn, M⁻u/φMn, Vu/φVn y Δ en la sección. La lámina de la memoria es la misma sin cursor.
 
 ## Tipos de elemento
 
@@ -106,13 +120,15 @@ Las hipótesis de compatibilidad se apoyan en el [manual de referencia LRFD de F
 
 ## Datos y persistencia
 
-Los borradores del taller (norma, elemento y datos de cada formulario) y la memoria del proyecto se guardan en la rama `design` del bundle unificado del proyecto abierto, como documento `fstructure-design-workbench` validado al leerlo (`workbenchStorage.ts`). La versión 2 añade `memory` (hasta 60 elementos); la versión 3 incluye secciones experimentales en esa memoria. Se leen documentos v1/v2/v3 y las siguientes escrituras usan v3 conservando sus borradores y elementos. No forman parte del modelo 2D: no cambian la procedencia (`sourceVersion`), no invalidan el análisis y no entran al historial de deshacer, igual que los estudios FEM. Sin sesión de proyecto (pruebas o vista aislada) se guardan en el navegador.
+Los borradores del taller (norma, elemento y datos de cada formulario) y la memoria del proyecto se guardan en la rama `design` del bundle unificado del proyecto abierto, como documento `fstructure-design-workbench` validado al leerlo (`workbenchStorage.ts`). La versión 2 añade `memory` (hasta 60 elementos); la versión 3 incluye secciones experimentales en esa memoria; la versión 4 añade pórticos: borradores `frame`, `frame-bays` y `frame-stories` y, en la memoria, elementos `frame` con `rows` (claros) y `levels` (niveles). Se leen documentos v1 a v4 y las siguientes escrituras usan v4 conservando sus borradores y elementos. No forman parte del modelo 2D: no cambian la procedencia (`sourceVersion`), no invalidan el análisis y no entran al historial de deshacer, igual que los estudios FEM. Sin sesión de proyecto (pruebas o vista aislada) se guardan en el navegador.
 
 ## Validación
 
 La ampliación de geometrías, filosofías, armado y diagramas tiene su [registro de validación del 2026-10-01](concrete-studio-validation-2026-10-01.md), con referencias numéricas, persistencia, revisión visual y exportación PDF.
 
 `validation/python/elements_oracle.py` recalcula columnas, zapatas y los bloques de las tres normas con algoritmos distintos a los del motor: bisección sobre el eje neutro acotando antes la raíz Pn = 0, integración numérica de presiones y una malla fina de acero. Sus fixtures (`validation/fixtures/elements/`) cubren la NTC (columna biaxial esbelta, zapata con sismo), NSR-10 (columna biaxial arriostrada, zapata con momentos) y E.060 (columna en marco con desplazamiento, zapata con momentos), además de φ, acero requerido, desarrollo y ganchos. Se contrastan desde TypeScript (`elements.fixtures.test.ts`) y desde Python (`npm run design:oracle`).
+
+El pórtico se valida en dos niveles: `frameAnalysis.test.ts` compara axial, cortante, momento y desplazamientos con el solver 2D en un marco de dos claros y dos niveles con apoyos mixtos; `frame.test.ts` compara la envolvente de la viga y la compresión de la columna con el solver 2D cargado con la combinación factorizada, la rigidez lateral, la deriva y el índice de estabilidad, la simetría, el marco arriostrado, las tres normas con acción lateral y el factor k contra el nomograma (ψA = ψB = 1 → 1.32).
 
 ## Fuera de alcance
 

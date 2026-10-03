@@ -158,6 +158,8 @@ export const LOAD_FACTORS = Object.freeze({
   A: Object.freeze({ dead: 1.5, live: 1.7 }),
   /** Acción cuyo efecto es favorable a la resistencia o a la estabilidad. */
   favorable: 0.9,
+  /** Combinaciones accidentales (sismo o viento): a todas las acciones que intervienen. */
+  accidental: 1.1,
 });
 export type StructureGroup = 'A' | 'B';
 

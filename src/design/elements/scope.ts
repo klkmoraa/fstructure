@@ -10,7 +10,7 @@ import { complementary, type ElementCheck } from './shared';
  * Las secciones citadas en la nota orientan al lector; no son cláusulas con
  * evidencia en el registro normativo, por eso la referencia es complementaria.
  */
-type ElementKind = 'beam' | 'column' | 'footing' | 'stripFooting' | 'combinedFooting' | 'strapFooting' | 'matFoundation';
+type ElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'stripFooting' | 'combinedFooting' | 'strapFooting' | 'matFoundation';
 
 interface ScopeItem {
   readonly id: string;
@@ -55,6 +55,20 @@ const SCOPE: Readonly<Record<ElementKind, readonly ScopeItem[]>> = {
       'nsr-10': 'Columnas rectangulares y circulares con estribos; el zuncho (sin cláusulas registradas de NSR-10) y las secciones L, T o huecas no se diseñan.',
       e060: 'Columnas rectangulares y circulares con estribos; el zuncho (sin cláusulas registradas de E.060) y las secciones L, T o huecas no se diseñan.',
     } },
+    DUCTILITY,
+    DEVELOPMENT_BRANCHES,
+  ],
+  frame: [
+    { id: 'joints', label: 'Nudos viga-columna', note: same('No se revisan el cortante ni el confinamiento del nudo ni el anclaje de las barras que lo cruzan; la relación de resistencias columna/viga se muestra sólo como información.') },
+    { id: 'second-order', label: 'Análisis de segundo orden', note: same('Análisis elástico de primer orden con amplificación de momentos (δs con el índice de estabilidad del propio marco); no hay análisis P-Δ explícito.') },
+    { id: 'seismic-analysis', label: 'Análisis sísmico y derivas permisibles', note: {
+      'ntc-2023': 'Las fuerzas laterales se capturan ya reducidas; el taller no calcula el espectro, las masas, la torsión ni compara la deriva con los límites de las NTC-Sismo.',
+      'nsr-10': 'Las fuerzas laterales se capturan ya reducidas (E = Fs/R); el taller no calcula el espectro, las masas ni compara la deriva con el Título A.',
+      e060: 'Las fuerzas laterales se capturan ya reducidas; el taller no calcula el espectro (E.030), las masas ni compara la deriva con sus límites.',
+    } },
+    { id: 'out-of-plane', label: 'Flexión fuera del plano', note: same('Las columnas se revisan fuera del plano sólo con la excentricidad mínima y la misma restricción lateral que en el plano.') },
+    { id: 'face-moments', label: 'Momentos al paño y zonas rígidas', note: same('Las vigas se diseñan con los momentos en el eje de las columnas (del lado seguro), sin reducirlos al paño ni modelar zonas rígidas.') },
+    { id: 'torsion', label: 'Torsión', note: { 'ntc-2023': 'No se revisa la torsión de las vigas (NTC-C 5.8).', 'nsr-10': 'No se revisa la torsión de las vigas (C.11.5).', e060: 'No se revisa la torsión de las vigas (11.5).' } },
     DUCTILITY,
     DEVELOPMENT_BRANCHES,
   ],

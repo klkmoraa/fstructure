@@ -21,6 +21,10 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] Normas para ampliar el taller: torsión (NTC 5.8), losas, muros y combinaciones accidentales necesitan el texto oficial registrado con evidencia en `docs/design/normative-sources.json`.
 - [ ] Confirmar con la NTC 6.7.4 si el umbral de acero mínimo por penetración (6.7.6.1.2) usa el esfuerzo combinado con transferencia de momento; hoy usa vuv directo y la nota lo avisa.
 - [ ] Vínculo con el modelo (selección de miembro y demandas concurrentes): choca con el aislamiento de herramientas; decidir si se abre un puente de datos declarado en `src/integrations`.
+- [x] Pórtico: vigas y columnas analizadas juntas (viva alternada, acción lateral, k del nomograma, índice de estabilidad del marco) y cada miembro diseñado con los motores de viga y columna. Diagramas con valores por tramo, φVn y cursor de lectura.
+- [ ] Pórtico: proponer secciones (viga y columna mínimas que cumplen), secciones distintas por nivel, cargas puntuales y voladizos.
+- [ ] Pórtico: llevar el cálculo a un worker; un 5 × 5 con sismo tarda ~0.3 s en el hilo principal.
+- [ ] Registrar con evidencia las combinaciones sísmicas de NSR-10 (B.2.4.2) y E.060 (9.2.3); hoy el pórtico las aplica como complementarias y lo dice.
 
 ## Limpieza
 
@@ -38,5 +42,5 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 - [ ] Humo E2E de las cinco pantallas de entrada (Inicio y cuatro bienvenidas) con capturas en claro, oscuro y móvil.
 - [ ] Matriz de importación/exportación: un archivo válido y uno inválido por formato.
-- [ ] Confirmar la entrega del PDF de Diseño en Safari/Chrome: la generación pasa las pruebas, pero el navegador integrado no confirmó compartir/descargar.
+- [ ] Confirmar la entrega del PDF de Diseño en Safari: Chromium sin «compartir» ya descarga el PDF (probado con el del pórtico, 13 páginas con láminas).
 - [ ] Auditoría de dependencias en CI.

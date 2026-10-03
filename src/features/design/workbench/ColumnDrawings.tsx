@@ -181,7 +181,10 @@ const ticks = (min: number, max: number, target: number) => {
   return values;
 };
 
-export function InteractionChart({ result, axis = 'both', showNominal = true }: { result: ColumnDesignResult; axis?: 'both' | 'x' | 'y'; showNominal?: boolean }) {
+/** Otros estados de demanda que se revisan con la misma sección (p. ej. las combinaciones de un pórtico). */
+export interface InteractionCloudPoint { readonly axialKn: number; readonly momentKnm: number; readonly label: string }
+
+export function InteractionChart({ result, axis = 'both', showNominal = true, cloud = [] }: { result: ColumnDesignResult; axis?: 'both' | 'x' | 'y'; showNominal?: boolean; cloud?: readonly InteractionCloudPoint[] }) {
   const W = 480;
   const H = 380;
   const pad = { left: 62, right: 20, top: 18, bottom: 44 };
@@ -190,9 +193,9 @@ export function InteractionChart({ result, axis = 'both', showNominal = true }: 
   const my = result.magnification.y.designMomentKnm;
   const magnified = result.magnification.x.factor > 1 || result.magnification.y.factor > 1;
   const curves = [result.aboutX.nominal, result.aboutY.nominal];
-  const maxM = Math.max(...curves.flat().map((point) => point.momentKnm), mx, my, Math.hypot(mx, my)) * 1.08 || 1;
-  const minP = Math.min(...curves.flat().map((point) => point.axialKn), axialKn) * 1.08;
-  const maxP = Math.max(...curves.flat().map((point) => point.axialKn), axialKn) * 1.05;
+  const maxM = Math.max(...curves.flat().map((point) => point.momentKnm), mx, my, Math.hypot(mx, my), ...cloud.map((point) => point.momentKnm)) * 1.08 || 1;
+  const minP = Math.min(...curves.flat().map((point) => point.axialKn), axialKn, ...cloud.map((point) => point.axialKn)) * 1.08;
+  const maxP = Math.max(...curves.flat().map((point) => point.axialKn), axialKn, ...cloud.map((point) => point.axialKn)) * 1.05;
   const sx = (m: number) => pad.left + m / maxM * (W - pad.left - pad.right);
   const sy = (p: number) => pad.top + (maxP - p) / (maxP - minP) * (H - pad.top - pad.bottom);
   const path = (points: readonly InteractionPoint[]) => points.map((point, index) => `${index ? 'L' : 'M'}${sx(point.momentKnm).toFixed(1)},${sy(point.axialKn).toFixed(1)}`).join(' ');
@@ -237,6 +240,9 @@ export function InteractionChart({ result, axis = 'both', showNominal = true }: 
     <circle className="dw-chart__balanced" cx={sx(balanced.momentKnm * balanced.phi)} cy={sy(balanced.axialKn * balanced.phi)} r={3.5}>
       <title>{`Falla balanceada · φ ${formatNumber(balanced.phi, 3)} · ${formatNumber(balanced.axialKn * balanced.phi, 0)} kN / ${formatNumber(balanced.momentKnm * balanced.phi, 1)} kN·m`}</title>
     </circle>
+    {cloud.length ? <g className="dw-cloud">{cloud.map((point, index) => <circle key={index} cx={sx(point.momentKnm)} cy={sy(point.axialKn)} r={3.2}>
+      <title>{`${point.label} · Pu ${formatNumber(point.axialKn, 0)} kN · Mu ${formatNumber(point.momentKnm, 1)} kN·m`}</title>
+    </circle>)}</g> : null}
     {demand.map((point, index) => <g key={point.id} className={`dw-demand dw-demand--${point.id}`}>
       <line x1={sx(0)} y1={sy(0)} x2={sx(point.m)} y2={sy(axialKn)} />
       <circle cx={sx(point.m)} cy={sy(axialKn)} r={5.5} />

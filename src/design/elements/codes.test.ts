@@ -6,6 +6,7 @@ import { designBeam, type BeamDesignInput } from './beam';
 import { DESIGN_CODE_IDS, designCode, type DesignCodeId } from './codes';
 import { designColumn, type ColumnDesignInput } from './column';
 import { designFooting, type FootingDesignInput } from './footing';
+import { designFrame } from './frame';
 import { barArea, betaOne, flexuralCapacity, requiredFlexuralSteelMm2, type ElementCheck } from './shared';
 
 const span = (lengthM: number, deadKnPerM = 20, liveKnPerM = 10) => ({ lengthM, deadKnPerM, liveKnPerM, pointDeadKn: 0, pointLiveKn: 0, pointAtM: lengthM / 2 });
@@ -310,6 +311,17 @@ describe('normative evidence of every cited clause', () => {
         ...ok(designColumn(columnFor(id, { braced: false, swayMomentXKnm: 40, stabilityIndex: 0.1, effectiveLengthFactor: 1.5, unbracedLengthM: 4 }))).checks,
         ...ok(designFooting(footingFor(id, { serviceMomentYKnm: 100, ultimateMomentYKnm: 150, seismicCombination: true }))).checks,
         ...ok(designFooting(footingFor(id, { sideXMm: 2_000, sideYMm: 2_000, serviceMomentYKnm: 400, ultimateMomentYKnm: 550 }))).checks,
+        ...(() => {
+          const lateral = code.lateralCombinations('B');
+          const frame = ok(designFrame({
+            code: id, bays: [5, 4], stories: [{ heightM: 3.5, deadKnPerM: 20, liveKnPerM: 9, lateralKn: 60 }, { heightM: 3, deadKnPerM: 16, liveKnPerM: 5, lateralKn: 40 }],
+            base: 'fixed', braced: false, beam: { widthMm: 300, heightMm: 550 }, column: { widthMm: 400, heightMm: 400 }, coverMm: 40, fcMpa: 25, fyMpa: 420, fyStirrupMpa: 420,
+            maxAggregateMm: 19, includeSelfWeight: true, combinations: code.loadCombinations('B'), lateralCombinations: lateral.combinations, lateralReference: lateral.reference,
+            sustainedLiveRatio: 0.4, longTermXi: 2, damagesNonstructural: false, beamBarDiameterMm: null, stirrupDiameterMm: null,
+            columnReinforcement: { barDiameterMm: 19.1, barsAlongWidth: 3, barsAlongDepth: 3, tieDiameterMm: 9.5 }, group: 'B2', beamInertiaFactor: 1, columnInertiaFactor: 1, effectiveLengthFactor: null,
+          }));
+          return [...frame.checks, ...frame.beams.flatMap((beam) => beam.result.checks), ...frame.columns.flatMap((column) => column.result.checks)];
+        })(),
       ];
       const references = [...checks.map((item) => item.reference), ...Object.values(code.refs)];
       for (const reference of references) {

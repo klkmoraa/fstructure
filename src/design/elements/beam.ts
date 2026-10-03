@@ -1,4 +1,4 @@
-import { analyzeBeam, type BeamAnalysis, type BeamEnd, type BeamSpanLoads, type CaseResponse } from './beamAnalysis';
+import { analyzeBeam, type BeamAnalysis, type BeamAnalysisOutcome, type BeamEnd, type BeamSpanLoads, type CaseResponse } from './beamAnalysis';
 import { designCode, isDesignCodeId, type BlockArea, type DesignCode, type DesignCodeId, type DevelopmentLength, type LoadCombination } from './codes';
 import {
   CONCRETE_UNIT_WEIGHT_KN_M3,
@@ -21,6 +21,20 @@ import {
 } from './shared';
 
 export type { BeamEnd, BeamSpanLoads };
+
+/**
+ * Análisis que sustituye al de la viga aislada: un pórtico entrega la
+ * respuesta de su viga muestreada en las estaciones de `buildStations`. Recibe
+ * la inercia de cada claro en m⁴ para el análisis de servicio con secciones
+ * agrietadas; sin ella, la de la sección bruta.
+ */
+export type BeamAnalysisProvider = (inertiaM4PerSpan?: readonly number[]) => BeamAnalysisOutcome;
+
+export interface BeamDesignOptions {
+  readonly analyze?: BeamAnalysisProvider;
+  /** De dónde sale la demanda, para la trazabilidad (p. ej. «Pórtico · nivel 2»). */
+  readonly demandSource?: string;
+}
 
 export interface BeamDesignInput {
   readonly code: DesignCodeId;
@@ -185,6 +199,8 @@ export interface SpanStirrups {
   readonly concreteStrengthKn: number;
   readonly strengthKn: number;
   readonly maximumSectionStrengthKn: number;
+  /** FR·Av·fyt·d en kN·mm: la aportación de los estribos a una separación s es este valor entre s. */
+  readonly steelStrengthKnMm: number;
   readonly impractical: boolean;
 }
 
@@ -219,6 +235,8 @@ export interface BeamDiagram {
   /** Resistencia de diseño provista en cada estación (φMn⁺ y −φMn⁻). */
   readonly capacityPositiveKnm: readonly number[];
   readonly capacityNegativeKnm: readonly number[];
+  /** Resistencia de diseño a cortante con los estribos de cada zona (FR·Vn). */
+  readonly shearCapacityKn: readonly number[];
   /** Flecha total de servicio con inercias agrietadas por claro, mm (negativa hacia abajo). */
   readonly deflectionMm: readonly number[];
 }
@@ -742,6 +760,11 @@ function envelopeOf(analysis: BeamAnalysis, pick: (response: CaseResponse) => re
         const value = pick(response)[index]!;
         if (value > 0) comboHigh += factors.live * value; else comboLow += factors.live * value;
       }
+      if (analysis.lateral && factors.lateral) {
+        const lateral = factors.lateral * Math.abs(pick(analysis.lateral)[index]!);
+        comboHigh += lateral;
+        comboLow -= lateral;
+      }
       high = Math.max(high, comboHigh);
       low = Math.min(low, comboLow);
     }
@@ -850,6 +873,7 @@ function designSpanStirrups(
       concreteStrengthKn: phi * concreteN / 1e3,
       strengthKn: strengthAt(spacingAt(analysis.stations[governing]!)),
       maximumSectionStrengthKn: phi * (concreteN + 0.66 * Math.sqrt(fc) * b * depthMm) / 1e3,
+      steelStrengthKnMm: phi * legArea * fyv * depthMm / 1e3,
       impractical: false,
     };
   }
@@ -865,6 +889,7 @@ function designSpanStirrups(
       concreteStrengthKn: phi * concreteN / 1e3,
       strengthKn: strengthAt(forcedSpacingMm),
       maximumSectionStrengthKn: phi * (concreteN + 0.66 * Math.sqrt(fc) * b * depthMm) / 1e3,
+      steelStrengthKnMm: phi * legArea * fyv * depthMm / 1e3,
       impractical: false,
     };
   }
@@ -879,6 +904,7 @@ function designSpanStirrups(
     concreteStrengthKn: phi * concreteN / 1e3,
     strengthKn: strengthAt(dense),
     maximumSectionStrengthKn: phi * (concreteN + 0.66 * Math.sqrt(fc) * b * depthMm) / 1e3,
+    steelStrengthKnMm: phi * legArea * fyv * depthMm / 1e3,
     impractical: needed < 50,
   };
 }
@@ -933,7 +959,7 @@ function designReinforcement(
 
 const largestBar = (section: BedSection) => Math.max(section.continuous.diameterMm, section.extra?.diameterMm ?? 0);
 
-export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesignError {
+export function designBeam(input: BeamDesignInput, options: BeamDesignOptions = {}): BeamDesignResult | BeamDesignError {
   const errors = validate(input);
   if (errors.length) return { ok: false, errors };
 
@@ -964,8 +990,11 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
     inertiaM4: grossInertia / 1e12,
   };
 
+  const analyze: BeamAnalysisProvider = options.analyze
+    ?? ((inertias) => analyzeBeam(inertias ? { ...baseAnalysisInput, inertiaM4PerSpan: inertias } : baseAnalysisInput));
+
   // 1 · Resistencia: análisis con sección bruta y envolvente factorizada.
-  const outcome = analyzeBeam(baseAnalysisInput);
+  const outcome = analyze();
   if (!outcome.ok) return { ok: false, errors: [outcome.error] };
   const { analysis } = outcome;
   const stations = analysis.stations;
@@ -987,6 +1016,11 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
   const { continuousTop, continuousBottom, bastions, stirrups, context } = reinforcement;
   const capacityPositive = stations.map((x) => sectionAt(x, 'bottom', continuousBottom, bastions).strengthKnm);
   const capacityNegative = stations.map((x) => -sectionAt(x, 'top', continuousTop, bastions).strengthKnm);
+  const shearCapacity = stations.map((x, index) => {
+    const item = stirrups[analysis.stationSpan[index]!]!;
+    const dense = item.denseZones.some((zone) => x >= zone.startM - TOLERANCE && x <= zone.endM + TOLERANCE);
+    return item.concreteStrengthKn + item.steelStrengthKnMm / (dense ? item.denseSpacingMm : item.centerSpacingMm);
+  });
 
   // 2 · Servicio: inercia efectiva por claro y un segundo análisis del solver con esas inercias.
   const modularRatio = STEEL_ELASTIC_MODULUS_MPA / ec;
@@ -1027,7 +1061,7 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
     inertias.push(inertia);
     longTermFactors.push(input.longTermXi / (1 + 50 * rhoPrime));
   });
-  const cracked = analyzeBeam({ ...baseAnalysisInput, inertiaM4PerSpan: inertias.map((value) => value / 1e12) });
+  const cracked = analyze(inertias.map((value) => value / 1e12));
   if (!cracked.ok) return { ok: false, errors: [cracked.error] };
   const serviceDeflection = envelopeOf(cracked.analysis, (response) => response.deflection, SERVICE);
   const liveDeflection = envelopeOf(cracked.analysis, (response) => response.deflection, LIVE_ONLY);
@@ -1120,7 +1154,7 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
   const combinationsText = input.combinations.map((combination) => combination.label).join(' · ');
 
   // Viga: la demanda es la envolvente de las combinaciones con la viva por claros (patrones).
-  const envelope = `Envolvente de ${combinationsText} · viva por claros`;
+  const envelope = `${options.demandSource ? `${options.demandSource} · ` : ''}Envolvente de ${combinationsText} · viva por claros`;
   const at = (index: number, bed: 'inferior' | 'superior') => `x = ${stations[index]!.toFixed(2)} m · lecho ${bed}`;
   const checks: ElementCheck[] = [
     capacityCheck('flexure-positive', 'Flexión positiva', Math.max(0, moment.max[positiveWorst.index]!), capacityPositive[positiveWorst.index]!, 'kN·m', input.flange ? refs.flexureT : refs.flexure,
@@ -1277,6 +1311,7 @@ export function designBeam(input: BeamDesignInput): BeamDesignResult | BeamDesig
       shearMinKn: shear.min,
       capacityPositiveKnm: capacityPositive,
       capacityNegativeKnm: capacityNegative,
+      shearCapacityKn: shearCapacity,
       deflectionMm,
     },
     spans,

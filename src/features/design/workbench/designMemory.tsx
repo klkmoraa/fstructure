@@ -9,6 +9,7 @@ import { SECTION_DEFAULTS, sectionReportFromDraft } from './concreteStudioModel'
 import { verdictHeadline } from './common';
 import { reportHeading, stableJson, type DesignElementKind, type DesignReport } from './designReport';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
+import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, frameReportFromDraft, parseBays, parseStories } from './frameModel';
 import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
 
 /**
@@ -16,7 +17,7 @@ import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type Workbenc
  * cálculo. Se guarda el borrador (no el resultado) y se recalcula al mostrar o
  * exportar, así que la memoria siempre sale con el motor vigente.
  */
-const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', footing: 'Zapata', section: 'Sección' };
+const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', frame: 'Pórtico', footing: 'Zapata', section: 'Sección' };
 /** Presupuesto del documento para la memoria; el resto queda para los borradores. */
 const MEMORY_BUDGET_CHARS = 180_000;
 
@@ -36,24 +37,36 @@ export function reportFromMemoryItem(item: WorkbenchMemoryItem): MemoryReport {
   switch (item.element) {
     case 'beam': return beamReportFromDraft(code, merge(BEAM_DEFAULTS, item.fields), parseSpans(item.rows) ?? DEFAULT_SPANS);
     case 'column': return columnReportFromDraft(code, merge(COLUMN_DEFAULTS, item.fields));
+    case 'frame': return frameReportFromDraft(code, merge(FRAME_DEFAULTS, item.fields), parseBays(item.rows) ?? DEFAULT_BAYS, parseStories(item.levels) ?? DEFAULT_STORIES);
     case 'footing': return footingReportFromDraft(code, merge(FOOTING_DEFAULTS, item.fields));
     case 'section': return sectionReportFromDraft(code, merge(SECTION_DEFAULTS, item.fields));
   }
 }
 
 /** Borrador vigente de un elemento, tal como lo guarda la mesa. */
-function currentDraft(storage: WorkbenchStorage, element: DesignElementKind): Pick<WorkbenchMemoryItem, 'fields' | 'rows'> {
+type MemoryDraft = Pick<WorkbenchMemoryItem, 'fields' | 'rows' | 'levels'>;
+
+function currentDraft(storage: WorkbenchStorage, element: DesignElementKind): MemoryDraft {
   const raw = storage.read(element);
   const fields = raw && typeof raw === 'object' && !Array.isArray(raw)
     ? Object.fromEntries(Object.entries(raw as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
     : {};
+  if (element === 'frame') {
+    const bays = storage.read('frame-bays');
+    const stories = storage.read('frame-stories');
+    return {
+      fields,
+      rows: Array.isArray(bays) ? bays as Record<string, string>[] : DEFAULT_BAYS.map((bay) => ({ ...bay })),
+      levels: Array.isArray(stories) ? stories as Record<string, string>[] : DEFAULT_STORIES.map((story) => ({ ...story })),
+    };
+  }
   if (element !== 'beam') return { fields };
   const rows = storage.read('beam-spans');
   return { fields, rows: Array.isArray(rows) ? rows as Record<string, string>[] : DEFAULT_SPANS.map((span) => ({ ...span })) };
 }
 
-const sameDraft = (item: WorkbenchMemoryItem, draft: Pick<WorkbenchMemoryItem, 'fields' | 'rows'>) =>
-  stableJson({ fields: item.fields, rows: item.rows ?? null }) === stableJson({ fields: draft.fields, rows: draft.rows ?? null });
+const sameDraft = (item: WorkbenchMemoryItem, draft: MemoryDraft) =>
+  stableJson({ fields: item.fields, rows: item.rows ?? null, levels: item.levels ?? null }) === stableJson({ fields: draft.fields, rows: draft.rows ?? null, levels: draft.levels ?? null });
 
 const newId = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replaceAll('-', '').slice(0, 12);
 
@@ -103,6 +116,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
         savedAt: new Date().toISOString(),
         fields: draft.fields,
         ...(draft.rows ? { rows: draft.rows } : {}),
+        ...(draft.levels ? { levels: draft.levels } : {}),
       };
       const next = !asNew && active ? items.map((entry) => entry.id === item.id ? item : entry) : [...items, item];
       if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
@@ -116,7 +130,10 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       const item = items.find((entry) => entry.id === id);
       if (!item) return undefined;
       storage.write(item.element, item.fields);
-      if (item.rows) storage.write('beam-spans', item.rows);
+      if (item.element === 'frame') {
+        if (item.rows) storage.write('frame-bays', item.rows);
+        if (item.levels) storage.write('frame-stories', item.levels);
+      } else if (item.rows) storage.write('beam-spans', item.rows);
       storage.write('element', item.element);
       if (isDesignCodeId(item.code)) storage.write('code', item.code);
       commit(items, item.id);

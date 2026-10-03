@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Columns3, RectangleHorizontal, Square, Shapes } from 'lucide-react';
+import { Columns3, LayoutGrid, RectangleHorizontal, Square, Shapes } from 'lucide-react';
 import { ToolHome, type ToolHomeContent } from '../tool-home/ToolHome';
 import { setToolIntent } from '../workspace/toolIntent';
 import { useI18n } from '../../i18n/useI18n';
@@ -9,10 +9,11 @@ import { createBlankProject } from '../../data/defaultProject';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../design/elements/codes';
 import { parseWorkbenchDocument } from './workbench/workbenchStorage';
 
-type Element = 'beam' | 'column' | 'footing' | 'section';
+type Element = 'beam' | 'column' | 'frame' | 'footing' | 'section';
 const ELEMENT_LABEL: Record<Element, { es: string; en: string }> = {
   beam: { es: 'Viga', en: 'Beam' },
   column: { es: 'Columna', en: 'Column' },
+  frame: { es: 'Pórtico', en: 'Frame' },
   footing: { es: 'Zapata', en: 'Footing' },
   section: { es: 'Secciones', en: 'Sections' },
 };
@@ -33,6 +34,9 @@ const content = (onElement: (element: Element) => void, codeControl: ToolHomeCon
     { id: 'column', icon: Columns3, label: { es: 'Columna', en: 'Column' },
       body: { es: 'Carga axial y momentos con su diagrama de interacción.', en: 'Axial load and moments with their interaction diagram.' },
       action: () => onElement('column') },
+    { id: 'frame', icon: LayoutGrid, label: { es: 'Pórtico: vigas y columnas', en: 'Frame: beams and columns' },
+      body: { es: 'Claros y niveles juntos, viva alternada, sismo o viento, y cada miembro diseñado.', en: 'Bays and stories together, pattern live load, lateral load, and every member designed.' },
+      action: () => onElement('frame') },
     { id: 'footing', icon: Square, label: { es: 'Zapata aislada', en: 'Isolated footing' },
       body: { es: 'Presión del suelo, punzonamiento, cortante y flexión.', en: 'Soil pressure, punching, shear, and flexure.' },
       action: () => onElement('footing') },
@@ -47,6 +51,8 @@ const content = (onElement: (element: Element) => void, codeControl: ToolHomeCon
       body: { es: 'Envolventes por carga viva alternada, acero longitudinal, bastones y estribos.', en: 'Pattern live-load envelopes, longitudinal steel, cut-off bars, and stirrups.' } },
     { id: 'column', state: 'experimental', label: { es: 'Columnas', en: 'Columns' },
       body: { es: 'Diagrama de interacción y revisión de la demanda contra la capacidad.', en: 'Interaction diagram and demand-to-capacity check.' } },
+    { id: 'frame', state: 'experimental', label: { es: 'Pórticos', en: 'Frames' },
+      body: { es: 'Vigas y columnas analizadas juntas: envolventes, k, índice de estabilidad y diseño de cada miembro.', en: 'Beams and columns analyzed together: envelopes, k, stability index, and every member designed.' } },
     { id: 'footing', state: 'experimental', label: { es: 'Zapatas', en: 'Footings' },
       body: { es: 'Dimensionamiento en planta, punzonamiento y armado en ambas direcciones.', en: 'Plan sizing, punching, and reinforcement in both directions.' } },
     { id: 'memo', state: 'available', label: { es: 'Memoria de cálculo', en: 'Calculation report' },
@@ -68,7 +74,7 @@ export default function DesignHome({ onOpenWorkspace, onOpenSuite }: { onOpenWor
   const draft = session?.currentBundle(project.id)?.design;
   const entries = useMemo(() => parseWorkbenchDocument(draft), [draft]);
   const storedCode = isDesignCodeId(entries.code) ? entries.code : 'ntc-2023';
-  const storedElement: Element = entries.element === 'column' || entries.element === 'footing' || entries.element === 'section' ? entries.element : 'beam';
+  const storedElement: Element = entries.element === 'column' || entries.element === 'frame' || entries.element === 'footing' || entries.element === 'section' ? entries.element : 'beam';
   const [code, setCode] = useState<DesignCodeId>(storedCode);
   const en = language === 'en';
 

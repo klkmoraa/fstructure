@@ -49,10 +49,15 @@ export interface BeamAnalysis {
   readonly deadPerSpan: readonly CaseResponse[];
   /** Una respuesta por claro con la carga viva sólo en ese claro. */
   readonly livePerSpan: readonly CaseResponse[];
+  /**
+   * Acción lateral (sismo o viento) de un pórtico, sin factores. Se suma en
+   * ambos sentidos con el factor `lateral` de cada combinación.
+   */
+  readonly lateral?: CaseResponse;
   readonly solverRuns: number;
 }
 
-type BeamAnalysisOutcome = { readonly ok: true; readonly analysis: BeamAnalysis } | { readonly ok: false; readonly error: string };
+export type BeamAnalysisOutcome = { readonly ok: true; readonly analysis: BeamAnalysis } | { readonly ok: false; readonly error: string };
 
 const STATIONS_PER_SPAN = 96;
 
@@ -127,7 +132,8 @@ function buildBeamProject(input: BeamAnalysisInput): ProjectModel {
   };
 }
 
-interface Station { readonly x: number; readonly span: number; readonly local: number; readonly side: 'left' | 'right' }
+export interface BeamStation { readonly x: number; readonly span: number; readonly local: number; readonly side: 'left' | 'right' }
+type Station = BeamStation;
 
 function sample(project: ProjectModel, result: AnalysisResult, stations: readonly Station[]): CaseResponse {
   const moment: number[] = [];
@@ -149,7 +155,7 @@ function sample(project: ProjectModel, result: AnalysisResult, stations: readonl
  * interiores y las cargas puntuales quedan duplicados (lado izquierdo y derecho)
  * para que los saltos del cortante se dibujen y se evalúen sin suavizarse.
  */
-function buildStations(input: BeamAnalysisInput): Station[] {
+export function buildStations(input: Pick<BeamAnalysisInput, 'spans'>): Station[] {
   const stations: Station[] = [];
   let start = 0;
   input.spans.forEach((span, index) => {

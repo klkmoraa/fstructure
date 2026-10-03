@@ -3,7 +3,7 @@ import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ElementCheck } from '../../../design/elements/shared';
 import type { Takeoff } from '../../../design/elements/takeoff';
 
-export type DesignElementKind = 'beam' | 'column' | 'footing' | 'section';
+export type DesignElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'section';
 
 export interface ReportRow { readonly label: string; readonly value: string }
 export interface ReportGroup { readonly title: string; readonly rows: readonly ReportRow[] }

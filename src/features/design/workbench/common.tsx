@@ -309,7 +309,7 @@ export function ValuesTable({ rows }: { rows: readonly { symbol: string; label: 
 
 export function RebarList({ items }: { items: readonly { kind: 'bar' | 'extra' | 'stirrup'; title: string; detail?: string }[] }) {
   return <ul className="dw-rebar-list">
-    {items.map((item) => <li key={item.title}>
+    {items.map((item, index) => <li key={`${index}-${item.title}`}>
       <span className={`dw-swatch dw-swatch--${item.kind}`} aria-hidden="true" />
       <div><strong>{item.title}</strong>{item.detail ? <small>{item.detail}</small> : null}</div>
     </li>)}
