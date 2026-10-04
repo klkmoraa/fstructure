@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { withConcreteFrame, type ConcreteFrameSpec } from '../../../data/concreteFrame';
+import { concreteFrameMembers, withConcreteFrame, withConcreteSections, type ConcreteFrameSpec } from '../../../data/concreteFrame';
+import type { ModelSection, ModelSectionsBridge } from '../../design/workbench/WorkbenchLayout';
 import { model2dDesignSource } from '../../../design/elements/model2dSource';
 import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
 import { space3dDesignAxesWithWorker } from './space3dDesignAll';
@@ -32,6 +33,26 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   useEffect(() => { latestProject.current = project; }, [project]);
   const projectId = project?.id ?? null;
   const modelSource = useMemo(() => project ? model2dDesignSource(project) : null, [project]);
+  // «Proponer» en Estructura con el Modelo 2D: cada candidato diseña el modelo con
+  // esas secciones sin tocarlo; aplicarlas es un solo cambio deshacible del 2D.
+  const modelSections = useMemo<ModelSectionsBridge | null>(() => {
+    if (!project || !updateProject) return null;
+    const { beams, columns } = concreteFrameMembers(project);
+    if (!beams.length || !columns.length) return null;
+    const mm = (beam: ModelSection, column: ModelSection) => ({
+      beam: { widthMm: beam.width * 10, heightMm: beam.height * 10 }, column: { widthMm: column.width * 10, heightMm: column.height * 10 },
+    });
+    const sum = (items: readonly { lengthM: number }[]) => items.reduce((total, item) => total + item.lengthM, 0);
+    return {
+      beams: beams.length,
+      columns: columns.length,
+      beamLengthM: sum(beams),
+      columnLengthM: sum(columns),
+      volumeM3: [...beams, ...columns].reduce((total, item) => total + item.lengthM * item.areaM2, 0),
+      variant: (beam, column) => model2dDesignSource(withConcreteSections(project, mm(beam, column))),
+      apply: (beam, column) => updateProject((current) => withConcreteSections(current, mm(beam, column))),
+    };
+  }, [project, updateProject]);
   // El modelo 3D se lee al entrar al modo (se edita en el modo 3D, que guarda en la sesión).
   const space3d = useMemo(() => {
     const branch = session && projectId ? session.currentBundle(projectId)?.space3d : null;
@@ -87,7 +108,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
     <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
       {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})}
-      {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers}
+      {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers} modelSections={modelSections}
       {...(updateProject ? { onCreateModel: createModel } : {})} />
   </WorkbenchStorageContext.Provider>;
 }

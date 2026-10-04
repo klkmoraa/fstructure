@@ -104,3 +104,66 @@ export const withConcreteFrame = (project: ProjectModel, spec: ConcreteFrameSpec
   movingLoadCases: [],
   designAssignments: [],
 });
+
+/** Secciones rectangulares de las vigas y las columnas de un pórtico, mm. */
+export interface ConcreteFrameSections {
+  readonly beam: { readonly widthMm: number; readonly heightMm: number };
+  readonly column: { readonly widthMm: number; readonly heightMm: number };
+}
+
+const CONCRETE_E_RANGE_KPA = [15e6, 50e6] as const;
+const isConcrete = (member: MemberModel) => {
+  const material = member.materialId ? standardMaterials.find((item) => item.id === member.materialId) : undefined;
+  return material ? material.category === 'CONCRETE' : member.E >= CONCRETE_E_RANGE_KPA[0] && member.E <= CONCRETE_E_RANGE_KPA[1];
+};
+
+/** Las barras de pórtico de concreto del modelo: horizontales (vigas) y verticales (columnas), con su longitud en m. */
+export function concreteFrameMembers(project: ProjectModel): { readonly beams: readonly { id: string; lengthM: number; areaM2: number }[]; readonly columns: readonly { id: string; lengthM: number; areaM2: number }[] } {
+  const nodes = new Map(project.nodes.map((node) => [node.id, node]));
+  const beams: { id: string; lengthM: number; areaM2: number }[] = [];
+  const columns: { id: string; lengthM: number; areaM2: number }[] = [];
+  for (const member of project.members) {
+    const a = nodes.get(member.i);
+    const b = nodes.get(member.j);
+    if (!a || !b || member.type !== 'frame' || !isConcrete(member)) continue;
+    const dx = Math.abs(b.x - a.x);
+    const dy = Math.abs(b.y - a.y);
+    const lengthM = Math.hypot(dx, dy);
+    if (!(lengthM > 0)) continue;
+    if (dy <= 1e-6 * lengthM) beams.push({ id: member.id, lengthM, areaM2: member.A });
+    else if (dx <= 1e-6 * lengthM) columns.push({ id: member.id, lengthM, areaM2: member.A });
+  }
+  return { beams, columns };
+}
+
+/**
+ * El modelo con una sección para todas sus vigas de concreto y otra para todas
+ * sus columnas (rectangulares: A e I en el plano, la del catálogo si coincide).
+ * Material, densidad, liberaciones y lo demás de cada barra no cambian; las
+ * barras inclinadas, de acero o armaduras quedan como estaban. Quien lo aplica
+ * lo hace como un cambio deshacible.
+ */
+export function withConcreteSections(project: ProjectModel, sections: ConcreteFrameSections): ProjectModel {
+  const { beams, columns } = concreteFrameMembers(project);
+  const role = new Map<string, 'beam' | 'column'>([...beams.map((item) => [item.id, 'beam'] as const), ...columns.map((item) => [item.id, 'column'] as const)]);
+  const sectionOf = ({ widthMm, heightMm }: { widthMm: number; heightMm: number }) => {
+    const width = widthMm / 1e3;
+    const depth = heightMm / 1e3;
+    const match = standardSections.find((section) => section.id.startsWith('rect-concrete-') && Math.abs(section.width - width) < 1e-6 && Math.abs(section.depth - depth) < 1e-6);
+    return { match, A: width * depth, I: width * depth ** 3 / 12 };
+  };
+  const beam = sectionOf(sections.beam);
+  const column = sectionOf(sections.column);
+  return {
+    ...project,
+    members: project.members.map((member) => {
+      const kind = role.get(member.id);
+      if (!kind) return member;
+      const section = kind === 'beam' ? beam : column;
+      const { sectionId: _previous, ...rest } = member;
+      return section.match
+        ? { ...rest, sectionId: section.match.id, sectionOrigin: 'catalog' as const, A: section.A, I: section.I }
+        : { ...rest, sectionOrigin: 'custom' as const, A: section.A, I: section.I };
+    }),
+  };
+}

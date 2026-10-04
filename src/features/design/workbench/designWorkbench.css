@@ -983,3 +983,15 @@
 .dw-building__table .dw-inline-action { min-height: 28px; }
 .dw-building__save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .dw-building__save span { color: var(--dw-muted); font-size: 11px; line-height: 1.5; }
+
+/* Propuesta de secciones del Modelo 2D: se lee y se aplica (o se descarta). */
+.dw-proposal {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--dw-line);
+  border-radius: var(--sc-radius-md, 10px);
+  background: var(--sc-color-surface-1);
+}
+.dw-proposal p { margin: 0; color: var(--dw-ink); font-size: 11.5px; line-height: 1.5; }
+.dw-proposal__actions { display: flex; flex-wrap: wrap; gap: 8px; }

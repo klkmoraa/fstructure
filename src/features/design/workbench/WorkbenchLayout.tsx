@@ -46,6 +46,24 @@ export interface WorkbenchChrome {
   readonly focusMember?: string;
   /** Selecciona esas barras en su modo y lo abre; con `axisId`, en el 3D. */
   readonly onShowMembers?: (memberIds: readonly string[], axisId?: string) => void;
+  /** Las vigas y columnas de concreto del Modelo 2D, para proponer sus secciones y escribirlas en él. */
+  readonly modelSections?: ModelSectionsBridge | null;
+}
+
+/** Secciones rectangulares, cm. */
+export interface ModelSection { readonly width: number; readonly height: number }
+
+export interface ModelSectionsBridge {
+  readonly beams: number;
+  readonly columns: number;
+  readonly beamLengthM: number;
+  readonly columnLengthM: number;
+  /** Volumen de concreto de esas barras con sus secciones actuales, m³. */
+  readonly volumeM3: number;
+  /** La fuente del modelo con esas secciones en todas sus vigas y columnas (sin cambiarlo). */
+  variant(beam: ModelSection, column: ModelSection): ExternalStructureSource;
+  /** Las escribe en el modelo, como un cambio deshacible en el modo 2D. */
+  apply(beam: ModelSection, column: ModelSection): void;
 }
 
 export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };

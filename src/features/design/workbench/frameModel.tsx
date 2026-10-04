@@ -133,7 +133,7 @@ export function frameToInput(codeId: DesignCodeId, draft: FrameDraft, bays: read
 const cm = (mm: number) => `${formatNumber(mm / 10, 0)} cm`;
 const kgcm2 = (value: string) => `${value} kg/cm² (${formatNumber(mpaFromKgcm2(value), 1)} MPa)`;
 const percent = (ratio: number) => Number.isFinite(ratio) ? `${Math.round(ratio * 100)} %` : '—';
-const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
 export const describeFrame = (input: FrameDesignInput) =>
   `${plural(input.bays.length, 'claro', 'claros')} × ${plural(input.stories.length, 'nivel', 'niveles')}${input.braced ? ' · arriostrado' : ''}`;

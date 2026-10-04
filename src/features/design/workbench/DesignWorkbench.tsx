@@ -12,7 +12,7 @@ import type { DraftHistory } from './common';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { MemoryDialog, MemoryStatus, useDesignMemory } from './designMemory';
 import { memoText, reportHeading, type DesignReport } from './designReport';
-import type { Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
+import type { ModelSectionsBridge, Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { useWorkbenchStorage } from './workbenchStorage';
 import './designWorkbench.css';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
@@ -42,7 +42,7 @@ const readRoom = (): Room => {
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
 
-export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, focusMember, onShowMembers }: {
+export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, focusMember, onShowMembers, modelSections = null }: {
   nativeTool?: boolean;
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
   modelSource?: ExternalStructureSource | null;
@@ -66,6 +66,8 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   focusMember?: string;
   /** «Ver en el Modelo» / «Ver en 3D»: selecciona las barras del elemento en su modo. */
   onShowMembers?: (memberIds: readonly string[], axisId?: string) => void;
+  /** Proponer y escribir las secciones de las vigas y columnas del Modelo 2D. */
+  modelSections?: ModelSectionsBridge | null;
 }) {
   const storage = useWorkbenchStorage();
   const [element, setElementState] = useState<ElementKind>(() => {
@@ -251,6 +253,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     ...(startSource ? { startSource } : {}),
     ...(focusMember ? { focusMember } : {}),
     ...(onShowMembers ? { onShowMembers } : {}),
+    modelSections,
   };
 
   return <div className="design-workbench" data-testid="design-workbench">

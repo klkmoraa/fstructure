@@ -61,7 +61,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'space3d'
       steps: [
         ['Elige elemento y norma', 'Estructura (el modelo), Viga, Columna, Zapata y Secciones están en el dock. La norma se elige sobre el dibujo y se aplica a todo el diseño. En Estructura, el origen es el Modelo 2D, un eje del Modelo 3D o un pórtico rápido; al llegar desde el modo 2D o 3D se toma ese modelo.'],
         ['Completa Datos', 'Indica geometría, materiales, demandas y armado. Cada campo muestra su unidad. Las opciones menos frecuentes se despliegan dentro de su apartado.'],
-        ['Revisa el cálculo', 'El cálculo se actualiza al editar: no necesitas un botón Analizar. Corrige los campos inválidos antes de consultar los resultados. «Proponer» busca secciones que cumplen (en el pórtico rápido, la viga y la columna con menos concreto).'],
+        ['Revisa el cálculo', 'El cálculo se actualiza al editar: no necesitas un botón Analizar. Corrige los campos inválidos antes de consultar los resultados. «Proponer» busca secciones que cumplen: la viga y la columna con menos concreto (en el Modelo 2D se aplican al modelo sólo con «Aplicar al modelo»).'],
         ['Consulta Resultados', 'Cada comprobación indica demanda, capacidad y su referencia. Cumple lo evaluado requiere revisar también las comprobaciones fuera del alcance.'],
         ['Guarda la memoria', 'Agregar conserva el elemento en la memoria del proyecto; Guardar actualiza una revisión abierta. Memoria reúne los elementos; PDF exporta el actual y Copiar memoria lleva su texto al portapapeles. Con el Modelo 3D, la vista de todos los ejes guarda el edificio entero de una vez.'],
       ],
@@ -129,7 +129,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'space3d'
       steps: [
         ['Choose an element and code', 'Estructura (the model), Viga, Columna, Zapata and Secciones are in the dock. Choose the design code above the drawing. Estructura designs the 2D model, one axis of the 3D model or a quick frame; arriving from the 2D or 3D mode picks that model.'],
         ['Fill in Datos', 'Enter geometry, materials, demands and reinforcement. Each field shows its unit; less frequent options expand in their section.'],
-        ['Review the calculation', 'The calculation updates as you edit. Fix invalid fields before opening results. «Proponer» searches sections that pass (in the quick frame, the beam and column with the least concrete).'],
+        ['Review the calculation', 'The calculation updates as you edit. Fix invalid fields before opening results. «Proponer» searches sections that pass: the beam and column with the least concrete (with the 2D model they are written only with «Aplicar al modelo»).'],
         ['Inspect Resultados', 'Checks show demand, capacity and references. Cumple lo evaluado also requires reviewing out-of-scope checks.'],
         ['Keep the report', 'Agregar saves the element in project memory; Guardar updates an opened review. Memoria lists saved elements; PDF exports the current one and Copiar memoria copies its text. With the 3D model, the all-axes view saves the whole building at once.'],
       ],

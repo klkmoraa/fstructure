@@ -17,12 +17,12 @@ import {
 } from './common';
 import { FRAME_DIAGRAMS, FrameElevation, ratioBand, type FrameDiagramKind } from './FrameDrawings';
 import {
-  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraft, designOfMember, memberIdsOf, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
+  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraft, designOfMember, memberIdsOf, plural, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
   type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome,
 } from './frameModel';
 import { afterTransition } from '../../../design-system/afterTransition';
 import { BuildingAxes } from './BuildingAxes';
-import { frameConcreteVolume, proposeFrameSections } from './frameProposal';
+import { frameConcreteVolume, proposeFrameSections, proposeModelSections, type SectionProposal } from './frameProposal';
 import { useWorkbenchStorage } from './workbenchStorage';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
@@ -244,16 +244,25 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const [sectionNote, setSectionNote] = useState<string | null>(null);
   const cancelProposal = useRef<(() => void) | null>(null);
   useEffect(() => () => cancelProposal.current?.(), []);
-  const proposalInputs = JSON.stringify([chrome.code, draft, bays, stories]);
+  // Con el Modelo 2D la propuesta se muestra y se aplica al modelo a pedido (reemplaza secciones).
+  const modelSections = fromModel && !from3d ? chrome.modelSections ?? null : null;
+  const [modelProposal, setModelProposal] = useState<SectionProposal | null>(null);
+  const proposalInputs = JSON.stringify([chrome.code, draft, bays, stories, external?.revision ?? null]);
   const proposalStart = useRef(proposalInputs);
   useEffect(() => {
-    if (proposalStart.current !== proposalInputs) { cancelProposal.current?.(); proposalStart.current = proposalInputs; }
+    if (proposalStart.current === proposalInputs) return;
+    cancelProposal.current?.();
+    proposalStart.current = proposalInputs;
+    setModelProposal(null);
   }, [proposalInputs]);
   const proposeSections = () => {
     cancelProposal.current?.();
     proposalStart.current = proposalInputs;
-    const steps = proposeFrameSections(chrome.code as DesignCodeId, draft, bays, stories);
-    const before = frameConcreteVolume(draft, bays, stories);
+    setModelProposal(null);
+    const steps = modelSections
+      ? proposeModelSections(chrome.code as DesignCodeId, draft, modelSections)
+      : proposeFrameSections(chrome.code as DesignCodeId, draft, bays, stories);
+    const before = modelSections ? modelSections.volumeM3 : frameConcreteVolume(draft, bays, stories);
     let timer: ReturnType<typeof setTimeout> | null = null;
     const stop = () => { if (timer !== null) clearTimeout(timer); cancelProposal.current = null; setProposing(null); };
     cancelProposal.current = stop;
@@ -268,6 +277,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       }
       stop();
       if (step.kind === 'failed') { setSectionNote(step.reason); return; }
+      if (modelSections) { setModelProposal(step.proposal); return; }
       const { beam: proposedBeam, column: proposedColumn, ratio, volumeM3, trials } = step.proposal;
       const bars = String(proposedColumn.barsPerFace);
       replace((current) => ({
@@ -280,6 +290,15 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     };
     setSectionNote(null);
     timer = setTimeout(tick, 0);
+  };
+  const applyModelProposal = () => {
+    if (!modelProposal || !modelSections) return;
+    const { beam: proposedBeam, column: proposedColumn } = modelProposal;
+    const bars = String(proposedColumn.barsPerFace);
+    modelSections.apply(proposedBeam, proposedColumn);
+    replace((current) => ({ ...current, barsWidth: bars, barsDepth: bars }));
+    setModelProposal(null);
+    setSectionNote(`Escritas en el Modelo 2D: ${plural(modelSections.beams, 'viga', 'vigas')} ${proposedBeam.width} × ${proposedBeam.height} y ${plural(modelSections.columns, 'columna', 'columnas')} ${proposedColumn.width} × ${proposedColumn.height} cm, con ${proposedColumn.barsPerFace} barras por cara. Deshacer en el modo 2D recupera las secciones anteriores.`);
   };
   const slab = frameSlabLoads(draft);
   const applySlab = () => {
@@ -375,7 +394,19 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           options={[{ value: 'no', label: 'Con desplazamiento' }, { value: 'yes', label: 'Arriostrado' }]} /></div>
         {fromModel ? <p className="dw-input-note">Arriostrado: otro sistema (muros, contravientos) impide el desplazamiento; no se amplifican momentos por desplazamiento ni entran las acciones laterales.</p> : null}
       </FieldGroup>
-      {fromModel ? null : <FieldGroup title="Secciones" action={<InlineAction label={proposing ? 'Buscando…' : 'Proponer'} disabled={proposing !== null}
+      {fromModel ? (modelSections ? <FieldGroup title="Secciones del modelo" columns={1} action={<InlineAction label={proposing ? 'Buscando…' : 'Proponer'} disabled={proposing !== null}
+        title="Una sección para todas las vigas y otra para todas las columnas de concreto del Modelo 2D: las de menor volumen que cumplen" onClick={proposeSections} />}>
+        <p className="dw-input-note">{plural(modelSections.beams, 'viga', 'vigas')} y {plural(modelSections.columns, 'columna', 'columnas')} de concreto · {formatNumber(modelSections.volumeM3, 2)} m³. «Proponer» busca una sección para todas las vigas y otra para todas las columnas; el modelo cambia sólo al aplicarla.</p>
+        {proposing ? <p className="dw-action-note" role="status" aria-live="polite">{proposing}</p>
+          : modelProposal ? <div className="dw-proposal" role="status">
+            <p>Vigas {modelProposal.beam.width} × {modelProposal.beam.height} y columnas {modelProposal.column.width} × {modelProposal.column.height} cm con {modelProposal.column.barsPerFace} barras por cara: rige {percent(modelProposal.ratio)}. {formatNumber(modelProposal.volumeM3, 2)} m³ de concreto (ahora {formatNumber(modelSections.volumeM3, 2)}), tras {modelProposal.trials} diseños.</p>
+            <div className="dw-proposal__actions">
+              <button type="button" className="dw-inline-action" onClick={applyModelProposal}>Aplicar al modelo</button>
+              <button type="button" className="dw-inline-action" onClick={() => setModelProposal(null)}>Descartar</button>
+            </div>
+          </div>
+          : <ActionNote text={sectionNote} />}
+      </FieldGroup> : null) : <FieldGroup title="Secciones" action={<InlineAction label={proposing ? 'Buscando…' : 'Proponer'} disabled={proposing !== null}
         title="Viga y columna con el menor volumen de concreto que cumplen (pasos de 5 cm, columnas al 1 %)" onClick={proposeSections} />}>
         <NumberField label="Viga b" unit="cm" value={draft.beamWidth} onChange={set('beamWidth')} />
         <NumberField label="Viga h" unit="cm" value={draft.beamHeight} onChange={set('beamHeight')} />

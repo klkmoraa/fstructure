@@ -1,6 +1,6 @@
 import type { DesignCodeId } from '../../../design/elements/codes';
-import type { StructureDesignResult } from '../../../design/elements/structure';
-import { designFromDraft, type BayDraft, type FrameDraft, type StoryDraft } from './frameModel';
+import type { ExternalStructureSource, StructureDesignResult } from '../../../design/elements/structure';
+import { designFromDraft, type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome } from './frameModel';
 import { parseNumber } from './common';
 
 /** Sección rectangular, cm. */
@@ -69,9 +69,20 @@ const failures = (result: StructureDesignResult) => {
   };
 };
 
+/** Lo que la búsqueda necesita de una estructura: cómo diseñarla con unas secciones y cuánto mide. */
+export interface SectionSearch {
+  /** Diseña con la viga y la columna (cm) y las barras por cara de la columna. */
+  readonly design: (beam: ProposedSection, column: ProposedSection, barsPerFace: number) => StructureOutcome;
+  /** Longitud total de vigas y de columnas, m (para el volumen de concreto). */
+  readonly beamLengthM: number;
+  readonly columnLengthM: number;
+  /** Varilla de las columnas, mm. */
+  readonly barDiameterMm: number;
+}
+
 /**
  * Busca la viga y la columna (en pasos de 5 cm) con el menor volumen de
- * concreto con el que el pórtico rápido cumple.
+ * concreto con el que la estructura cumple.
  *
  * 1. Crecer: desde 25 × 35 y 30 × 30, en cada diseño crece sólo lo que falla (el
  *    peralte de la viga hasta 3 veces su ancho, luego el ancho; la columna
@@ -81,18 +92,15 @@ const failures = (result: StructureDesignResult) => {
  *    columna y mover ±5 cm el ancho y ±10 cm el peralte de la viga (también pasar
  *    concreto de la columna a la viga), mientras siga cumpliendo y el volumen baje.
  *
- * Cada columna se arma con la varilla del borrador y las barras por cara que dan
- * al menos 1 % de cuantía. Las cargas, claros, niveles, materiales y el armado de
- * las vigas (automático o el elegido) no cambian.
+ * Cada columna se arma con la varilla dada y las barras por cara que dan al
+ * menos 1 % de cuantía.
  *
  * Es un generador: cada `next()` hace a lo más un diseño completo, para que la
  * mesa lo reparta en tareas y siga respondiendo.
  */
-export function* proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): Generator<ProposalStep, void, void> {
-  const barsPerFace = (c: number) => columnBarsPerFace(c, parseNumber(draft.columnBar));
-  const beamLength = bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0) * stories.length;
-  const columnLength = stories.reduce((sum, story) => sum + parseNumber(story.height), 0) * (bays.length + 1);
-  const volume = ({ b, h, c }: Candidate) => (beamLength * b * h + columnLength * c * c) / 1e4;
+export function* searchSections(search: SectionSearch): Generator<ProposalStep, void, void> {
+  const barsPerFace = (c: number) => columnBarsPerFace(c, search.barDiameterMm);
+  const volume = ({ b, h, c }: Candidate) => (search.beamLengthM * b * h + search.columnLengthM * c * c) / 1e4;
   const valid = ({ b, h, c }: Candidate) => b >= BEAM_MIN.width && b <= BEAM_MAX.width && h >= Math.max(BEAM_MIN.height, b) && h <= Math.min(BEAM_MAX.height, BEAM_MAX_ASPECT * b)
     && c >= COLUMN_MIN && c <= COLUMN_MAX;
 
@@ -106,12 +114,7 @@ export function* proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bay
     if (known) return known;
     trials += 1;
     yield { kind: 'trying', phase, beam: { width: candidate.b, height: candidate.h }, column: { width: candidate.c, height: candidate.c }, trial: trials };
-    const bars = String(barsPerFace(candidate.c));
-    const outcome = designFromDraft(code, {
-      ...draft, source: 'frame',
-      beamWidth: String(candidate.b), beamHeight: String(candidate.h),
-      columnWidth: String(candidate.c), columnHeight: String(candidate.c), barsWidth: bars, barsDepth: bars,
-    }, bays, stories);
+    const outcome = search.design({ width: candidate.b, height: candidate.h }, { width: candidate.c, height: candidate.c }, barsPerFace(candidate.c));
     const evaluation = outcome.ok
       ? { result: outcome.result, passes: outcome.result.status !== 'fail' && outcome.result.governingRatio <= 1 }
       : outcome.errors[0] ?? 'El pórtico no se pudo diseñar.';
@@ -186,4 +189,39 @@ export function* proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bay
       trials,
     },
   };
+}
+
+/**
+ * El pórtico rápido del borrador: sus cargas, claros, niveles, materiales y el
+ * armado de las vigas (automático o el elegido) no cambian.
+ */
+export function proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): Generator<ProposalStep, void, void> {
+  return searchSections({
+    beamLengthM: bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0) * stories.length,
+    columnLengthM: stories.reduce((sum, story) => sum + parseNumber(story.height), 0) * (bays.length + 1),
+    barDiameterMm: parseNumber(draft.columnBar),
+    design: (beam, column, bars) => designFromDraft(code, {
+      ...draft, source: 'frame',
+      beamWidth: String(beam.width), beamHeight: String(beam.height),
+      columnWidth: String(column.width), columnHeight: String(column.height), barsWidth: String(bars), barsDepth: String(bars),
+    }, bays, stories),
+  });
+}
+
+/**
+ * Una estructura del proyecto (el Modelo 2D): cada candidato se diseña con la
+ * fuente que entrega `variant`, el modelo con esas secciones en todas sus vigas
+ * y columnas de concreto. El modelo no cambia hasta aplicar la propuesta.
+ */
+export function proposeModelSections(code: DesignCodeId, draft: FrameDraft, model: {
+  readonly beamLengthM: number;
+  readonly columnLengthM: number;
+  readonly variant: (beam: ProposedSection, column: ProposedSection) => ExternalStructureSource;
+}): Generator<ProposalStep, void, void> {
+  return searchSections({
+    beamLengthM: model.beamLengthM,
+    columnLengthM: model.columnLengthM,
+    barDiameterMm: parseNumber(draft.columnBar),
+    design: (beam, column, bars) => designFromDraft(code, { ...draft, barsWidth: String(bars), barsDepth: String(bars) }, [], [], model.variant(beam, column)),
+  });
 }
