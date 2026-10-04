@@ -15,3 +15,7 @@ componentes reales, interfaces, herramientas y auditoría).
 - Lienzo editable (Claude Design): https://claude.ai/artifact/RQDCZQKA7yTZXdbmwSSdjf
 
 El código manda: si `src/` y este documento discrepan, se corrige el documento.
+
+- [Propuesta por nivel del 3D](assets/design-grupos-3d.jpg): comprueba todos los ejes, muestra el volumen candidato y sólo escribe al pulsar «Aplicar al 3D»; Deshacer pertenece al modo 3D.
+
+- [Propuesta 3D en móvil y tema Día](assets/design-grupos-3d-movil.jpg), comprobada a 390 × 844.

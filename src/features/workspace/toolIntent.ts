@@ -1,3 +1,5 @@
+import type { ConcreteSectionGroup } from '../../data/concreteFrame';
+
 /**
  * Intención de arranque de una herramienta, de un solo uso.
  *
@@ -9,7 +11,7 @@
 type ToolIntent =
   | { tool: 'space3d'; kind: 'generate' | 'example' | 'first-node' }
   /** El modo 3D abre en una vista (el alzado de un eje que se diseña en Diseño), con barras seleccionadas. */
-  | { tool: 'space3d'; kind: 'view'; view: string; members?: readonly string[] }
+  | { tool: 'space3d'; kind: 'view'; view: string; members?: readonly string[]; sections?: { beam: { width: number; height: number }; column: { width: number; height: number }; groups?: readonly ConcreteSectionGroup[]; sourceModel: string } }
   /**
    * Diseño abierto desde un modo con modelo: la estructura se diseña con ese
    * modelo. `member` (desde el Inspector) abre Estructura en el diseño de esa barra.

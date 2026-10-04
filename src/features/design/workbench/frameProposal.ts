@@ -1,7 +1,8 @@
 import type { ConcreteSectionGroup } from '../../../data/concreteFrame';
 import type { DesignCodeId } from '../../../design/elements/codes';
-import type { ExternalStructureSource, StructureDesignResult } from '../../../design/elements/structure';
+import type { StructureDesignResult } from '../../../design/elements/structure';
 import { designFromDraft, type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome } from './frameModel';
+import type { ModelSectionsBridge } from './WorkbenchLayout';
 import { parseNumber } from './common';
 
 /** Sección rectangular, cm. */
@@ -218,17 +219,13 @@ export function proposeUniformFrameSections(code: DesignCodeId, draft: FrameDraf
  * fuente que entrega `variant`, el modelo con esas secciones en todas sus vigas
  * y columnas de concreto. El modelo no cambia hasta aplicar la propuesta.
  */
-function proposeUniformModelSections(code: DesignCodeId, draft: FrameDraft, model: {
-  readonly beamLengthM: number;
-  readonly columnLengthM: number;
-  readonly groups?: readonly ConcreteSectionGroup[];
-  readonly variant: (beam: ProposedSection, column: ProposedSection, groups?: readonly ConcreteSectionGroup[]) => ExternalStructureSource;
-}): Generator<ProposalStep, void, void> {
+function proposeUniformModelSections(code: DesignCodeId, draft: FrameDraft, model: Pick<ModelSectionsBridge, 'beamLengthM' | 'columnLengthM' | 'variant' | 'groups' | 'evaluate'>): Generator<ProposalStep, void, void> {
   return searchSections({
     beamLengthM: model.beamLengthM,
     columnLengthM: model.columnLengthM,
     barDiameterMm: parseNumber(draft.columnBar),
-    design: (beam, column, bars) => designFromDraft(code, { ...draft, barsWidth: String(bars), barsDepth: String(bars) }, [], [], model.variant(beam, column)),
+    design: (beam, column, bars) => model.evaluate?.(code, { ...draft, proposalBars: 'yes', barsWidth: String(bars), barsDepth: String(bars) }, beam, column)
+      ?? designFromDraft(code, { ...draft, proposalBars: 'yes', barsWidth: String(bars), barsDepth: String(bars) }, [], [], model.variant(beam, column)),
   });
 }
 
@@ -294,13 +291,10 @@ export function proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bays
     (proposal) => designFromDraft(code, { ...draft, source: 'frame', proposalBars: 'yes' }, bays, frameProposalStories(plain, proposal)));
 }
 
-export function proposeModelSections(code: DesignCodeId, draft: FrameDraft, model: {
-  readonly beamLengthM: number; readonly columnLengthM: number;
-  readonly groups?: readonly ConcreteSectionGroup[];
-  readonly variant: (beam: ProposedSection, column: ProposedSection, groups?: readonly ConcreteSectionGroup[]) => ExternalStructureSource;
-}): Generator<ProposalStep, void, void> {
+export function proposeModelSections(code: DesignCodeId, draft: FrameDraft, model: Pick<ModelSectionsBridge, 'beamLengthM' | 'columnLengthM' | 'variant' | 'groups' | 'evaluate'>): Generator<ProposalStep, void, void> {
   const uniform = proposeUniformModelSections(code, draft, model);
   if (!model.groups?.length) return uniform;
   return trimSectionGroups(uniform, model.groups,
-    (proposal) => designFromDraft(code, { ...draft, proposalBars: 'yes' }, [], [], model.variant(proposal.beam, proposal.column, proposal.groups)));
+    (proposal) => model.evaluate?.(code, { ...draft, proposalBars: 'yes' }, proposal.beam, proposal.column, proposal.groups)
+      ?? designFromDraft(code, { ...draft, proposalBars: 'yes' }, [], [], model.variant(proposal.beam, proposal.column, proposal.groups)));
 }

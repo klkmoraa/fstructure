@@ -162,3 +162,7 @@ La fuente Modelo 2D se valida con `src/design/elements/model2dSource.test.ts`: e
 - Modificadores favorables de ganchos (ψr, ψc, 0.7 o 0.8), que se toman iguales a 1, y traslapes a compresión.
 
 La lista que ve la persona usuaria vive en `scope.ts`; si cambia el alcance, se cambia ahí y aquí.
+
+## Proponer y aplicar secciones del 3D
+
+En Estructura con origen Modelo 3D, «Proponer» comprueba todos los ejes del documento, incluidas ambas direcciones de las columnas compartidas. Muestra grupos de vigas por eje/elevación y columnas por entrepiso, con su volumen y la referencia uniforme. «Aplicar al 3D» vuelve al modelo y registra un único cambio deshacible; un documento fuente que haya cambiado invalida la aplicación. Cargas, apoyos, materiales y orientación se conservan. El puente declarado es `src/integrations/space3dSections.ts`. Detalles y límites: [propuestas por grupo](section-proposals.md).

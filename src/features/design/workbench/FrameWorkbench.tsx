@@ -252,7 +252,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const cancelProposal = useRef<(() => void) | null>(null);
   useEffect(() => () => cancelProposal.current?.(), []);
   // Con el Modelo 2D la propuesta se muestra y se aplica al modelo a pedido (reemplaza secciones).
-  const modelSections = fromModel && !from3d ? chrome.modelSections ?? null : null;
+  const modelSections = fromModel ? (from3d ? chrome.space3dSections : chrome.modelSections) ?? null : null;
   const [modelProposal, setModelProposal] = useState<SectionProposal | null>(null);
   const proposalInputs = JSON.stringify([chrome.code, draft, bays, stories, external?.revision ?? null]);
   const proposalStart = useRef(proposalInputs);
@@ -307,8 +307,8 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     replace((current) => ({ ...current, proposalBars: 'yes', barsWidth: bars, barsDepth: bars }));
     setModelProposal(null);
     setSectionNote(modelProposal.groups?.length
-      ? `Escritas por nivel en el Modelo 2D: ${modelProposal.groups.map((g) => `${g.label}: ${g.width}×${g.height} cm`).join('; ')}. Deshacer en el modo 2D recupera las secciones anteriores.`
-      : `Escritas en el Modelo 2D: ${plural(modelSections.beams, 'viga', 'vigas')} ${proposedBeam.width} × ${proposedBeam.height} y ${plural(modelSections.columns, 'columna', 'columnas')} ${proposedColumn.width} × ${proposedColumn.height} cm, con ${proposedColumn.barsPerFace} barras por cara. Deshacer en el modo 2D recupera las secciones anteriores.`);
+      ? `Escritas por nivel en el Modelo ${from3d ? '3D' : '2D'}: ${modelProposal.groups.map((g) => `${g.label}: ${g.width}×${g.height} cm`).join('; ')}. Deshacer en el modo ${from3d ? '3D' : '2D'} recupera las secciones anteriores.`
+      : `Escritas en el Modelo ${from3d ? '3D' : '2D'}: ${plural(modelSections.beams, 'viga', 'vigas')} ${proposedBeam.width} × ${proposedBeam.height} y ${plural(modelSections.columns, 'columna', 'columnas')} ${proposedColumn.width} × ${proposedColumn.height} cm, con ${proposedColumn.barsPerFace} barras por cara. Deshacer en el modo ${from3d ? '3D' : '2D'} recupera las secciones anteriores.`);
   };
   const setUniformSection = (field: 'beamWidth' | 'beamHeight' | 'columnWidth' | 'columnHeight') => (value: string) => {
     set(field)(value);
@@ -410,13 +410,13 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </FieldGroup>
       {fromModel ? (modelSections ? <FieldGroup title="Secciones del modelo" columns={1} action={<InlineAction label={proposing ? 'Buscando…' : 'Proponer'} disabled={proposing !== null}
         title="Secciones por nivel que cumplen y reducen el volumen respecto a la propuesta uniforme" onClick={proposeSections} />}>
-        <p className="dw-input-note">{plural(modelSections.beams, 'viga', 'vigas')} y {plural(modelSections.columns, 'columna', 'columnas')} de concreto · {formatNumber(modelSections.volumeM3, 2)} m³. «Proponer» ajusta las vigas de cada nivel y las columnas de cada entrepiso; el modelo cambia sólo al aplicarla.</p>
+        <p className="dw-input-note">{plural(modelSections.beams, 'viga', 'vigas')} y {plural(modelSections.columns, 'columna', 'columnas')} de concreto · {formatNumber(modelSections.volumeM3, 2)} m³. «Proponer» ajusta las vigas de cada nivel y las columnas de cada entrepiso; el modelo cambia sólo al aplicarla.{from3d ? ' Comprueba todos los ejes y ambas direcciones de las columnas compartidas.' : ''}</p>
         {proposing ? <p className="dw-action-note" role="status" aria-live="polite">{proposing}</p>
           : modelProposal ? <div className="dw-proposal" role="status">
             <p>{modelProposal.groups?.length ? 'Referencia uniforme · ' : ''}Vigas {modelProposal.beam.width} × {modelProposal.beam.height} y columnas {modelProposal.column.width} × {modelProposal.column.height} cm. Propuesta{modelProposal.groups?.length ? ' por nivel' : ''}: rige {percent(modelProposal.ratio)}. {formatNumber(modelProposal.volumeM3, 2)} m³ de concreto (ahora {formatNumber(modelSections.volumeM3, 2)}), tras {modelProposal.trials} diseños.</p>
             <ProposalGroups proposal={modelProposal} />
             <div className="dw-proposal__actions">
-              <button type="button" className="dw-inline-action" onClick={applyModelProposal}>Aplicar al modelo</button>
+              <button type="button" className="dw-inline-action" onClick={applyModelProposal}>{from3d ? 'Aplicar al 3D' : 'Aplicar al modelo'}</button>
               <button type="button" className="dw-inline-action" onClick={() => setModelProposal(null)}>Descartar</button>
             </div>
           </div>

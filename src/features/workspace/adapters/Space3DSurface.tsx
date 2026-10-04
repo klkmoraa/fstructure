@@ -8,6 +8,7 @@ import type { Space3DProjectV1 } from '../../../modules/space3d/space3d/model/ty
 import { createBlankSpace3DProject } from '../../../modules/space3d/space3d/model/defaultProject';
 import { Dialog } from '../../../design-system/components/overlays';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
+import { withSpace3dSections } from '../../../integrations/space3dSections';
 import { MAX_EXTRUDED_FRAMES, space3dFromModel2d } from '../../../integrations/model2dSpace3d';
 import { ShellContribution, ShellStatusChip } from '../ShellToolSlots';
 import { linkSpace3DToShell } from './space3dShellBridge';
@@ -42,6 +43,7 @@ export default function Space3DSurface() {
 
 function ProjectSpace3D({ project, session }: { project: ProjectModel; session?: UnifiedProjectSession | null }) {
   const [failure, setFailure] = useState<string | null>(null);
+  const [sectionFailure, setSectionFailure] = useState<string | null>(null);
   // Se lee sin consumir durante el render (StrictMode lo repite) y se consume al montar.
   const [intent] = useState(() => peekToolIntent('space3d'));
   const startIntent = intent && intent.kind !== 'view' ? intent.kind : undefined;
@@ -65,8 +67,19 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
   }, [session, project, sourceVersion]);
   const [bringOpen, setBringOpen] = useState(false);
   const [incoming, setIncoming] = useState<Space3DIncomingProject | null>(null);
+  useEffect(() => {
+    if (intent?.kind !== 'view' || !intent.sections) return;
+    const sections = intent.sections;
+    if (JSON.stringify(canonicalProject) !== sections.sourceModel) {
+      setSectionFailure('El modelo 3D cambió después de calcular la propuesta. Vuelve a Diseño para recalcularla.'); return;
+    }
+    const mm = (section: { width: number; height: number }) => ({ widthMm: section.width * 10, heightMm: section.height * 10 });
+    setIncoming({ project: withSpace3dSections(canonicalProject, { beam: mm(sections.beam), column: mm(sections.column) }, sections.groups),
+      nonce: 0, operation: 'sections', title: '', description: '' });
+  }, [intent, canonicalProject]);
   const es = project.settings.language !== 'en';
   return <>
+    {sectionFailure ? <ShellContribution slot="status"><ShellStatusChip tone="warn" label="Propuesta caducada" detail={sectionFailure} /></ShellContribution> : null}
     {failure ? <ShellContribution slot="status"><ShellStatusChip tone="warn" label="Sólo en memoria" detail={failure} /></ShellContribution> : null}
     <ShellContribution slot="controls">
       <button type="button" className="workspace-topbar__action-button" onClick={() => setBringOpen(true)}

@@ -17,6 +17,10 @@ import { translate } from '../../../modules/space3d/i18n/catalogs';
 import { ShellToolSlotsProvider, ShellSlotHost } from '../ShellToolSlots';
 import { linkSpace3DToShell } from './space3dShellBridge';
 import Space3DSurface from './Space3DSurface';
+import { setToolIntent } from '../toolIntent';
+import { withSpace3dSections } from '../../../integrations/space3dSections';
+import { space3dFromModel2d } from '../../../integrations/model2dSpace3d';
+import { createConcreteFrameProject } from '../../../data/defaultProject';
 
 // Only WebGL is unavailable in jsdom; model commands, React providers and IndexedDB are real.
 vi.mock('../../../modules/space3d/space3d/view/threeViewport', async (original) => ({
@@ -139,4 +143,25 @@ it('«Traer del 2D» reemplaza el 3D con confirmación, se guarda en la rama 3D 
   expect(saved.model2d.nodes).toHaveLength(two.nodes.length);
   await userEvent.click(screen.getByRole('button', { name: t('space3d.undo') }));
   await waitFor(() => expect(count()).toBe(`${t('space3d.nodes')}${model.nodes.length}`));
+});
+
+
+it('aplica las secciones del Diseño como un paso deshacible, guarda y reabre sin perder el original', async () => {
+  const repo = new IndexedDbUnifiedBundleRepository();
+  const project = { ...createConcreteFrameProject(), id: 'A' };
+  const model = { ...space3dFromModel2d(project, { frames: 1, spacingM: 0 }).model!, id: 'space3d:A' };
+  const bundle = createUnifiedProjectBundle(project, 'A-current');
+  bundle.space3d = linkSpace3DToShell('A', 'A-current', model);
+  await repo.saveBundle(bundle, 0);
+  setToolIntent({ tool: 'space3d', kind: 'view', view: '3d', sections: { beam: {width:35,height:55}, column: {width:45,height:45}, sourceModel: JSON.stringify(storedModel(model)) } });
+  await start();
+  await act(() => session.open('A'));
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(storedModel(withSpace3dSections(model, {beam:{widthMm:350,heightMm:550},column:{widthMm:450,heightMm:450}})));
+  await userEvent.click(screen.getByRole('button', {name:t('space3d.undo')}));
+  await act(() => session.open('A'));
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(model);
+  await userEvent.click(screen.getByRole('button', {name:'Switch tool'}));
+  await userEvent.click(screen.getByRole('button', {name:'Switch tool'}));
+  await act(() => session.open('A'));
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(model);
 });

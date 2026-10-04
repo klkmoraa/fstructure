@@ -4,6 +4,7 @@ import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
+import type { FrameDraft, StructureOutcome } from './frameModel';
 import type { ConcreteSectionGroup, ConcreteFrameSpec } from '../../../data/concreteFrame';
 
 export type WorkbenchPanel = 'inputs' | 'results';
@@ -48,6 +49,7 @@ export interface WorkbenchChrome {
   readonly onShowMembers?: (memberIds: readonly string[], axisId?: string) => void;
   /** Las vigas y columnas de concreto del Modelo 2D, para proponer sus secciones y escribirlas en él. */
   readonly modelSections?: ModelSectionsBridge | null;
+  readonly space3dSections?: ModelSectionsBridge | null;
 }
 
 /** Secciones rectangulares, cm. */
@@ -55,6 +57,8 @@ export interface ModelSection { readonly width: number; readonly height: number 
 
 export interface ModelSectionsBridge {
   readonly groups?: readonly ConcreteSectionGroup[];
+  /** Revisión del candidato completo (varios ejes, si procede). */
+  evaluate?(code: DesignCodeId, draft: FrameDraft, beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): StructureOutcome;
   readonly beams: number;
   readonly columns: number;
   readonly beamLengthM: number;

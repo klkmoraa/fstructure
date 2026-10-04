@@ -133,7 +133,7 @@ const supportOf = (node: Space3DNode, axis: PlaneAxis): StructureSupport => {
   return 'free';
 };
 
-const concreteOf = (member: Space3DFrameMember) => {
+export const space3dConcreteOf = (member: Space3DFrameMember) => {
   const material = member.materialId ? SPACE3D_MATERIALS.find((item) => item.id === member.materialId) : undefined;
   if (material) {
     if (material.category !== 'concrete') return { concrete: false, fcMpa: null, name: material.name };
@@ -351,7 +351,7 @@ export function space3dDesignSource(model: Space3DProjectV1, planeId: string): E
       displayLiveKnPerM: loads.live,
       ...(loads.point ? { displayPoint: loads.point } : {}),
     };
-    const material = concreteOf(member);
+    const material = space3dConcreteOf(member);
     if ((member.type ?? 'frame') !== 'frame') members.push({ ...base, kind: 'other', reason: member.type === 'truss' ? 'barra de armadura (sólo axial)' : 'brazo rígido' });
     else if (!material.concrete) members.push({ ...base, kind: 'other', reason: 'name' in material && material.name ? `material ${material.name}` : 'su módulo de elasticidad no es de concreto' });
     else {

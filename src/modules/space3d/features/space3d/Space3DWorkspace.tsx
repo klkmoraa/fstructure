@@ -90,6 +90,8 @@ export interface Space3DIncomingProject {
   readonly project: Space3DProjectV1;
   /** Cambia en cada entrega: la misma entrega no se aplica dos veces. */
   readonly nonce: number;
+  /** Secciones aprobadas en Diseño: reemplazo directo, un paso de historial. */
+  readonly operation?: 'sections';
   /** Texto de la confirmación, ya traducido por quien lo entrega. */
   readonly title: string;
   readonly description: string;
@@ -656,6 +658,7 @@ const WorkspaceBody = ({
   useEffect(() => {
     if (!incomingProject || appliedIncoming.current === incomingProject.nonce) return;
     appliedIncoming.current = incomingProject.nonce;
+    if (incomingProject.operation === 'sections') { replaceProject(incomingProject.project); return; }
     requestGeneratedReplace(incomingProject.project, { title: incomingProject.title, description: incomingProject.description });
     // Cada entrega se aplica una vez, cuando llega.
     // oxlint-disable-next-line react-hooks/exhaustive-deps

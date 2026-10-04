@@ -3,6 +3,9 @@ import { concreteFrameGroups, concreteFrameMembers, withConcreteFrame, withConcr
 import type { ModelSection, ModelSectionsBridge } from '../../design/workbench/WorkbenchLayout';
 import { model2dDesignSource } from '../../../design/elements/model2dSource';
 import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
+import { space3dSectionGroups, withSpace3dSections, designSpace3dSectionCandidate } from '../../../integrations/space3dSections';
+import { space3dDesignAxes } from '../../../integrations/space3dDesign';
+import { structureOptions } from '../../design/workbench/frameModel';
 import { space3dDesignAxesWithWorker } from './space3dDesignAll';
 import { peekToolIntent, setToolIntent, takeToolIntent } from '../toolIntent';
 import { DesignWorkbench } from '../../design/workbench/DesignWorkbench';
@@ -62,6 +65,30 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   }, [session, projectId]);
   // «Revisar todos los ejes» diseña en un worker; la mesa sigue fluida.
   const modelAxes = useMemo(() => space3d && space3d.members.length ? space3dDesignAxesWithWorker(space3d) : null, [space3d]);
+  const space3dSections = useMemo<ModelSectionsBridge | null>(() => {
+    if (!space3d || !onOpenSpace3D) return null;
+    const groups = space3dSectionGroups(space3d);
+    const beamGroups = groups.filter((g) => g.kind === 'beam'), columnGroups = groups.filter((g) => g.kind === 'column');
+    if (!beamGroups.length || !columnGroups.length) return null;
+    const eligible = new Set(groups.flatMap((g) => g.memberIds));
+    const nodes = new Map(space3d.nodes.map((n) => [n.id, n]));
+    const mm = (s: ModelSection) => ({ widthMm: s.width * 10, heightMm: s.height * 10 });
+    const candidate = (beam: ModelSection, column: ModelSection, assigned?: Parameters<typeof withSpace3dSections>[2]) => withSpace3dSections(space3d, { beam: mm(beam), column: mm(column) }, assigned);
+    return {
+      groups, beams: beamGroups.reduce((s, g) => s + g.memberIds.length, 0), columns: columnGroups.reduce((s, g) => s + g.memberIds.length, 0),
+      beamLengthM: beamGroups.reduce((s, g) => s + g.lengthM, 0), columnLengthM: columnGroups.reduce((s, g) => s + g.lengthM, 0),
+      volumeM3: space3d.members.reduce((s, m) => { const a = nodes.get(m.i)!, b = nodes.get(m.j)!; return s + (eligible.has(m.id) ? m.A * Math.hypot(a.x-b.x, a.y-b.y, a.z-b.z) : 0); }, 0),
+      variant: (beam, column, assigned) => { const axes = space3dDesignAxes(candidate(beam, column, assigned)); return axes.source(axes.axes[0]!.id)!; },
+      evaluate: (code, draft, beam, column, assigned) => {
+        const result = designSpace3dSectionCandidate(candidate(beam, column, assigned), structureOptions(code, draft), draft.braced === 'yes');
+        return result.ok ? { ok: true, result, frame: null } : result;
+      },
+      apply: (beam, column, assigned) => {
+        setToolIntent({ tool: 'space3d', kind: 'view', view: '3d', sections: { beam, column, ...(assigned ? { groups: assigned } : {}), sourceModel: JSON.stringify(space3d) } });
+        onOpenSpace3D();
+      },
+    };
+  }, [space3d, onOpenSpace3D]);
   const [intent] = useState(() => peekToolIntent('design'));
   const startSource = intent?.kind;
   const ui = useContext(WorkspaceUIContext);
@@ -109,7 +136,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
     <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
       {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})}
-      {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers} modelSections={modelSections}
+      {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers} modelSections={modelSections} space3dSections={space3dSections}
       {...(updateProject ? { onCreateModel: createModel } : {})} />
   </WorkbenchStorageContext.Provider>;
 }
