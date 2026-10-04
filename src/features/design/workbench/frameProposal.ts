@@ -1,3 +1,4 @@
+import type { ConcreteSectionGroup } from '../../../data/concreteFrame';
 import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureSource, StructureDesignResult } from '../../../design/elements/structure';
 import { designFromDraft, type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome } from './frameModel';
@@ -16,6 +17,8 @@ export interface SectionProposal {
   readonly volumeM3: number;
   /** Diseños completos que costó encontrarla. */
   readonly trials: number;
+  readonly groups?: readonly ConcreteSectionGroup[];
+  readonly uniformVolumeM3?: number;
 }
 
 export type ProposalStep =
@@ -39,9 +42,11 @@ interface Candidate { readonly b: number; readonly h: number; readonly c: number
 
 /** Volumen de concreto de vigas y columnas del pórtico rápido con las secciones del borrador, m³. */
 export function frameConcreteVolume(draft: Pick<FrameDraft, 'beamWidth' | 'beamHeight' | 'columnWidth' | 'columnHeight'>, bays: readonly BayDraft[], stories: readonly StoryDraft[]): number {
-  const beamLength = bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0) * stories.length;
-  const columnLength = stories.reduce((sum, story) => sum + parseNumber(story.height), 0) * (bays.length + 1);
-  return (beamLength * parseNumber(draft.beamWidth) * parseNumber(draft.beamHeight) + columnLength * parseNumber(draft.columnWidth) * parseNumber(draft.columnHeight)) / 1e4;
+  const beamLength = bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0);
+  return stories.reduce((volume, story) => volume + (
+    beamLength * parseNumber(story.beamWidth ?? draft.beamWidth) * parseNumber(story.beamHeight ?? draft.beamHeight)
+    + parseNumber(story.height) * (bays.length + 1) * parseNumber(story.columnWidth ?? draft.columnWidth) * parseNumber(story.columnHeight ?? draft.columnHeight)
+  ) / 1e4, 0);
 }
 
 /** Barras por cara (con esquinas) de una columna cuadrada de `c` cm para llegar al 1 % con la varilla dada. */
@@ -195,7 +200,7 @@ export function* searchSections(search: SectionSearch): Generator<ProposalStep, 
  * El pórtico rápido del borrador: sus cargas, claros, niveles, materiales y el
  * armado de las vigas (automático o el elegido) no cambian.
  */
-export function proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): Generator<ProposalStep, void, void> {
+export function proposeUniformFrameSections(code: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): Generator<ProposalStep, void, void> {
   return searchSections({
     beamLengthM: bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0) * stories.length,
     columnLengthM: stories.reduce((sum, story) => sum + parseNumber(story.height), 0) * (bays.length + 1),
@@ -213,10 +218,11 @@ export function proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bays
  * fuente que entrega `variant`, el modelo con esas secciones en todas sus vigas
  * y columnas de concreto. El modelo no cambia hasta aplicar la propuesta.
  */
-export function proposeModelSections(code: DesignCodeId, draft: FrameDraft, model: {
+function proposeUniformModelSections(code: DesignCodeId, draft: FrameDraft, model: {
   readonly beamLengthM: number;
   readonly columnLengthM: number;
-  readonly variant: (beam: ProposedSection, column: ProposedSection) => ExternalStructureSource;
+  readonly groups?: readonly ConcreteSectionGroup[];
+  readonly variant: (beam: ProposedSection, column: ProposedSection, groups?: readonly ConcreteSectionGroup[]) => ExternalStructureSource;
 }): Generator<ProposalStep, void, void> {
   return searchSections({
     beamLengthM: model.beamLengthM,
@@ -224,4 +230,77 @@ export function proposeModelSections(code: DesignCodeId, draft: FrameDraft, mode
     barDiameterMm: parseNumber(draft.columnBar),
     design: (beam, column, bars) => designFromDraft(code, { ...draft, barsWidth: String(bars), barsDepth: String(bars) }, [], [], model.variant(beam, column)),
   });
+}
+
+/** Ajuste por grupo desde una solución uniforme válida: descenso hasta que ningún paso de 5 cm ahorra y cumple. */
+export function* trimSectionGroups(uniform: Generator<ProposalStep, void, void>, groups: readonly ConcreteSectionGroup[],
+  design: (proposal: SectionProposal) => StructureOutcome): Generator<ProposalStep, void, void> {
+  let base: SectionProposal | null = null;
+  for (const step of uniform) {
+    if (step.kind === 'done') base = step.proposal;
+    else { yield step; if (step.kind === 'failed') return; }
+  }
+  if (!base) return;
+  let current: SectionProposal = { ...base, uniformVolumeM3: base.volumeM3, groups: groups.map((group) => ({ ...group, ...(group.kind === 'beam' ? base!.beam : base!.column) })) };
+  let trials = base.trials;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let i = 0; i < groups.length; i++) {
+      const group = current.groups![i]!;
+      const candidates = group.kind === 'column'
+        ? [{ width: group.width - STEP_CM, height: group.height - STEP_CM }]
+        : [{ width: group.width, height: group.height - STEP_CM }, { width: group.width - STEP_CM, height: group.height }];
+      for (const section of candidates) {
+        if (group.kind === 'column' ? section.width < COLUMN_MIN
+          : section.width < BEAM_MIN.width || section.height < Math.max(BEAM_MIN.height, section.width) || section.height > BEAM_MAX_ASPECT * section.width) continue;
+        if (++trials > 1200) { yield { kind: 'failed', reason: 'La búsqueda por grupo agotó su límite; no se aplicó ninguna sección.', trials }; return; }
+        yield { kind: 'trying', phase: 'trim', beam: current.beam, column: current.column, trial: trials };
+        const nextGroups = current.groups!.map((item, index) => index === i ? { ...item, ...section } : item);
+        const volumeM3 = nextGroups.reduce((sum, item) => sum + item.lengthM * item.width * item.height / 1e4, 0);
+        const outcome = design({ ...current, groups: nextGroups, volumeM3 });
+        if (outcome.ok && outcome.result.status !== 'fail' && outcome.result.governingRatio <= 1) {
+          current = { ...current, groups: nextGroups, volumeM3, ratio: outcome.result.governingRatio }; changed = true; break;
+        }
+      }
+    }
+  }
+  // Incluye la verificación final, incluso si todos los grupos están en el mínimo geométrico.
+  trials++;
+  yield { kind: 'trying', phase: 'trim', beam: current.beam, column: current.column, trial: trials };
+  const final = design(current);
+  if (!final.ok || final.result.status === 'fail' || final.result.governingRatio > 1) {
+    yield { kind: 'failed', reason: 'La propuesta por grupo no pasó la verificación final.', trials }; return;
+  }
+  yield { kind: 'done', proposal: { ...current, ratio: final.result.governingRatio, trials } };
+}
+
+export function frameProposalStories(stories: readonly StoryDraft[], proposal: SectionProposal): StoryDraft[] {
+  return stories.map((story, index) => {
+    const beam = proposal.groups?.find((group) => group.id === `beam:${index}`) ?? proposal.beam;
+    const column = proposal.groups?.find((group) => group.id === `column:${index}`) ?? proposal.column;
+    return { ...story, beamWidth: String(beam.width), beamHeight: String(beam.height), columnWidth: String(column.width), columnHeight: String(column.height) };
+  });
+}
+
+export function proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): Generator<ProposalStep, void, void> {
+  // La referencia uniforme ignora las secciones previamente propuestas por nivel.
+  const plain = stories.map(({ height, dead, live, lateral }) => ({ height, dead, live, lateral }));
+  const groups: ConcreteSectionGroup[] = plain.flatMap((story, index) => [
+    { id: `beam:${index}`, label: `Vigas N${index + 1}`, kind: 'beam' as const, memberIds: bays.map((_, b) => `V${index + 1}-${b + 1}`), lengthM: bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0), width: 0, height: 0 },
+    { id: `column:${index}`, label: `Columnas N${index}–N${index + 1}`, kind: 'column' as const, memberIds: Array.from({ length: bays.length + 1 }, (_, c) => `C${c + 1}-${index + 1}`), lengthM: parseNumber(story.height) * (bays.length + 1), width: 0, height: 0 },
+  ]);
+  return trimSectionGroups(proposeUniformFrameSections(code, draft, bays, plain), groups,
+    (proposal) => designFromDraft(code, { ...draft, source: 'frame', proposalBars: 'yes' }, bays, frameProposalStories(plain, proposal)));
+}
+
+export function proposeModelSections(code: DesignCodeId, draft: FrameDraft, model: {
+  readonly beamLengthM: number; readonly columnLengthM: number;
+  readonly groups?: readonly ConcreteSectionGroup[];
+  readonly variant: (beam: ProposedSection, column: ProposedSection, groups?: readonly ConcreteSectionGroup[]) => ExternalStructureSource;
+}): Generator<ProposalStep, void, void> {
+  const uniform = proposeUniformModelSections(code, draft, model);
+  if (!model.groups?.length) return uniform;
+  return trimSectionGroups(uniform, model.groups,
+    (proposal) => designFromDraft(code, { ...draft, proposalBars: 'yes' }, [], [], model.variant(proposal.beam, proposal.column, proposal.groups)));
 }

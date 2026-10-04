@@ -4,7 +4,7 @@ import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
-import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
+import type { ConcreteSectionGroup, ConcreteFrameSpec } from '../../../data/concreteFrame';
 
 export type WorkbenchPanel = 'inputs' | 'results';
 
@@ -54,6 +54,7 @@ export interface WorkbenchChrome {
 export interface ModelSection { readonly width: number; readonly height: number }
 
 export interface ModelSectionsBridge {
+  readonly groups?: readonly ConcreteSectionGroup[];
   readonly beams: number;
   readonly columns: number;
   readonly beamLengthM: number;
@@ -61,9 +62,9 @@ export interface ModelSectionsBridge {
   /** Volumen de concreto de esas barras con sus secciones actuales, m³. */
   readonly volumeM3: number;
   /** La fuente del modelo con esas secciones en todas sus vigas y columnas (sin cambiarlo). */
-  variant(beam: ModelSection, column: ModelSection): ExternalStructureSource;
+  variant(beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): ExternalStructureSource;
   /** Las escribe en el modelo, como un cambio deshacible en el modo 2D. */
-  apply(beam: ModelSection, column: ModelSection): void;
+  apply(beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): void;
 }
 
 export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };

@@ -29,7 +29,7 @@ export const FRAME_DEFAULTS = {
   base: 'fixed', braced: 'no', lateral: 'yes', selfWeight: 'yes',
   beamWidth: '30', beamHeight: '55', columnWidth: '45', columnHeight: '45', cover: '4',
   fc: '250', fy: '4200', fyv: '4200',
-  columnBar: '19.1', barsWidth: '3', barsDepth: '3', tie: '9.5',
+  proposalBars: 'no', columnBar: '19.1', barsWidth: '3', barsDepth: '3', tie: '9.5',
   group: 'B2', use: 'habitacion', sustained: '25', duration: '60',
   beamBar: 'auto', stirrup: 'auto', aggregate: '19', damages: 'no',
   beamInertia: '1', columnInertia: '1', k: '',
@@ -41,7 +41,7 @@ export type FrameDraft = typeof FRAME_DEFAULTS;
 export const FRAME_LEGACY = { source: 'frame' } as const satisfies Partial<FrameDraft>;
 
 export type BayDraft = { length: string };
-export type StoryDraft = { height: string; dead: string; live: string; lateral: string };
+export type StoryDraft = { height: string; dead: string; live: string; lateral: string; beamWidth?: string; beamHeight?: string; columnWidth?: string; columnHeight?: string };
 
 export const DEFAULT_BAYS: BayDraft[] = [{ length: '5' }, { length: '4' }];
 export const DEFAULT_STORIES: StoryDraft[] = [
@@ -59,7 +59,15 @@ const rowsOf = <T extends Record<string, string>>(raw: unknown, fields: readonly
   return rows.every(Boolean) ? rows as T[] : undefined;
 };
 export const parseBays = (raw: unknown) => rowsOf<BayDraft>(raw, ['length'], MAX_FRAME_BAYS);
-export const parseStories = (raw: unknown) => rowsOf<StoryDraft>(raw, ['height', 'dead', 'live', 'lateral'], MAX_FRAME_STORIES);
+export const parseStories = (raw: unknown): StoryDraft[] | undefined => {
+  const base = rowsOf<StoryDraft>(raw, ['height', 'dead', 'live', 'lateral'], MAX_FRAME_STORIES);
+  if (!base) return undefined;
+  for (let i = 0; i < base.length; i++) for (const key of ['beamWidth', 'beamHeight', 'columnWidth', 'columnHeight'] as const) {
+    const value = (raw as Record<string, unknown>[])[i]![key];
+    if (value !== undefined) { if (!isShortString(value)) return undefined; base[i]![key] = value; }
+  }
+  return base;
+};
 
 const columnGroupOf = (value: string): ColumnGroup => value === 'A' || value === 'B1' ? value : 'B2';
 /** Grupo de la construcción: A con los factores del Grupo A; B1 y B2 con los del B. */
@@ -98,6 +106,8 @@ export function frameToInput(codeId: DesignCodeId, draft: FrameDraft, bays: read
       deadKnPerM: parseNumber(story.dead),
       liveKnPerM: parseNumber(story.live),
       lateralKn: withLateral ? parseNumber(story.lateral) : 0,
+      ...(story.beamWidth !== undefined ? { beam: { widthMm: parseNumber(story.beamWidth) * 10, heightMm: parseNumber(story.beamHeight ?? draft.beamHeight) * 10 } } : {}),
+      ...(story.columnWidth !== undefined ? { column: { widthMm: parseNumber(story.columnWidth) * 10, heightMm: parseNumber(story.columnHeight ?? draft.columnHeight) * 10 } } : {}),
     })),
     base: draft.base === 'pinned' ? 'pinned' : 'fixed',
     braced: draft.braced === 'yes',
@@ -123,6 +133,7 @@ export function frameToInput(codeId: DesignCodeId, draft: FrameDraft, bays: read
       barsAlongDepth: parseNumber(draft.barsDepth),
       tieDiameterMm: parseNumber(draft.tie),
     },
+    automaticColumnBars: draft.proposalBars === 'yes',
     group: columnGroupOf(draft.group),
     beamInertiaFactor: parseNumber(draft.beamInertia),
     columnInertiaFactor: parseNumber(draft.columnInertia),
@@ -158,6 +169,7 @@ export function structureOptions(codeId: DesignCodeId, draft: FrameDraft, fcMpa 
     beamBarDiameterMm: input.beamBarDiameterMm,
     stirrupDiameterMm: input.stirrupDiameterMm,
     columnReinforcement: input.columnReinforcement,
+    automaticColumnBars: input.automaticColumnBars,
     group: input.group,
     effectiveLengthFactor: input.effectiveLengthFactor,
   };
@@ -231,11 +243,8 @@ const structureTitle = (outcome: Extract<StructureOutcome, { ok: true }>) => {
   return `${name} «${outcome.result.source.label.replace(`${name} · `, '')}» · ${countText(outcome.result)}`;
 };
 
-const columnBarsText = (result: StructureDesignResult) => {
-  const { columnReinforcement: bars } = result.options;
-  const count = 2 * bars.barsAlongWidth + 2 * Math.max(0, bars.barsAlongDepth - 2);
-  return `${count} ${rebarLabel(bars.barDiameterMm)}`;
-};
+const columnBarsText = (result: StructureDesignResult) => [...new Set(result.columns.map((column) =>
+  `${column.result.bars.length} ${rebarLabel(column.result.input.barDiameterMm)}`))].join(' / ');
 
 const sectionText = (section: { widthMm: number; heightMm: number }) => `${formatNumber(section.widthMm / 10, 0)}×${formatNumber(section.heightMm / 10, 0)}`;
 
@@ -253,7 +262,7 @@ function structureReinforcementRows(result: StructureDesignResult): ReportRow[] 
     ...[...new Set(result.columns.map((column) => column.story))].reverse().map((story) => {
       const columns = result.columns.filter((column) => column.story === story);
       const ties = columns.map((column) => `eje ${column.axisLabel} E ${rebarLabel(column.result.ties.diameterMm)} @ ${cm(column.result.ties.centerSpacingMm)}${column.result.ties.endLengthMm > 0 ? ` (@ ${cm(column.result.ties.endSpacingMm)} en Lo)` : ''}`);
-      return { label: `Columnas del entrepiso ${story + 1}`, value: `${columnBarsText(result)} · ${ties.join(' · ')}` };
+      return { label: `Columnas del entrepiso ${story + 1}`, value: `${columns.map((column) => `${column.result.bars.length} ${rebarLabel(column.result.input.barDiameterMm)}`).join(' / ')} · ${ties.join(' · ')}` };
     }),
   ];
 }

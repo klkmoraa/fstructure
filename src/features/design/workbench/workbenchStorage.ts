@@ -20,11 +20,12 @@ export const WORKBENCH_DOCUMENT_KIND = 'fstructure-design-workbench';
  * v2: además, la memoria del proyecto (`memory`): elementos guardados con su
  * borrador para recalcularlos al exportar. Un documento v1 se lee tal cual.
  * v3: añade secciones y sus filosofías a la memoria; conserva v1 y v2.
+ * v5: secciones por nivel en las filas y armado automático por sección; conserva v1 a v4.
  * v4: añade pórticos: borradores de claros y niveles y, en la memoria,
  * elementos `frame` con sus niveles (`levels`). Conserva v1 a v3.
  */
-const WORKBENCH_SCHEMA_VERSION = 4;
-const READABLE_VERSIONS = [1, 2, 3, 4];
+const WORKBENCH_SCHEMA_VERSION = 5;
+const READABLE_VERSIONS = [1, 2, 3, 4, 5];
 const ELEMENT_KINDS = ['beam', 'column', 'frame', 'footing', 'section'] as const;
 const MAX_DOCUMENT_CHARS = 240_000;
 const MAX_ENTRIES = 16;

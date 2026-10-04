@@ -262,6 +262,8 @@ export interface StructureDesignOptions {
   readonly beamBarDiameterMm: number | null;
   readonly stirrupDiameterMm: number | null;
   readonly columnReinforcement: StructureColumnReinforcement;
+  /** Barras por cara para al menos 1 % en cada sección propuesta. */
+  readonly automaticColumnBars?: boolean;
   readonly group: ColumnGroup;
   /** k propio de las columnas; `null`: 1.0 arriostrado, nomograma con desplazamiento. */
   readonly effectiveLengthFactor: number | null;
@@ -902,6 +904,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
           const ratio = Math.abs(m2.total) > TOLERANCE ? Math.min(1, Math.abs(m1.total) / Math.abs(m2.total)) : 1;
           const nonSway = m2.dead + m2.live;
           const sustained = p.total > TOLERANCE ? Math.min(1, Math.max(0, (p.dead + options.sustainedLiveRatio * p.live) / p.total)) : 0;
+          const automaticBars = Math.max(2, Math.ceil(0.01 * member.section.widthMm * member.section.heightMm / (Math.PI * options.columnReinforcement.barDiameterMm ** 2 / 4) / 4) + 1);
           const result = designColumn({
             code: options.code,
             widthMm: member.section.widthMm,
@@ -910,8 +913,8 @@ export function designStructure(source: StructureSource, options: StructureDesig
             fcMpa: options.fcMpa,
             fyMpa: options.fyMpa,
             barDiameterMm: options.columnReinforcement.barDiameterMm,
-            barsAlongWidth: options.columnReinforcement.barsAlongWidth,
-            barsAlongDepth: options.columnReinforcement.barsAlongDepth,
+            barsAlongWidth: options.automaticColumnBars ? automaticBars : options.columnReinforcement.barsAlongWidth,
+            barsAlongDepth: options.automaticColumnBars ? automaticBars : options.columnReinforcement.barsAlongDepth,
             tieDiameterMm: options.columnReinforcement.tieDiameterMm,
             maxAggregateMm: options.maxAggregateMm,
             axialKn: p.total,

@@ -12,7 +12,7 @@ export interface ConcreteFrameSpec {
   /** Claros entre ejes, de izquierda a derecha (m). */
   readonly bays: readonly number[];
   /** Niveles de abajo hacia arriba: altura (m), cargas de servicio sobre las vigas (kN/m) y fuerza lateral del nivel (kN). */
-  readonly stories: readonly { readonly heightM: number; readonly deadKnPerM: number; readonly liveKnPerM: number; readonly lateralKn: number }[];
+  readonly stories: readonly { readonly heightM: number; readonly deadKnPerM: number; readonly liveKnPerM: number; readonly lateralKn: number; readonly beam?: { widthMm: number; heightMm: number }; readonly column?: { widthMm: number; heightMm: number } }[];
   readonly base: 'fixed' | 'pinned';
   readonly beam: { readonly widthMm: number; readonly heightMm: number };
   readonly column: { readonly widthMm: number; readonly heightMm: number };
@@ -44,7 +44,6 @@ export function concreteFrameModel(spec: ConcreteFrameSpec): FrameParts {
     };
   };
   const beam = sectionOf(spec.beam);
-  const column = sectionOf(spec.column);
   const nodeId = (axis: number, level: number) => `N${axis + 1}${level}`;
   const nodes: NodeModel[] = ys.flatMap((y, level) => xs.map((x, axis) => ({
     id: nodeId(axis, level), x, y,
@@ -53,8 +52,8 @@ export function concreteFrameModel(spec: ConcreteFrameSpec): FrameParts {
   const member = (id: string, i: string, j: string, section: typeof beam): MemberModel => ({ id, i, j, type: 'frame', ...material, ...section });
   const levels = spec.stories.map((_, index) => index + 1);
   const members: MemberModel[] = [
-    ...levels.flatMap((level) => xs.map((_, axis) => member(`C${axis + 1}${level}`, nodeId(axis, level - 1), nodeId(axis, level), column))),
-    ...levels.flatMap((level) => spec.bays.map((_, bay) => member(`V${bay + 1}${level}`, nodeId(bay, level), nodeId(bay + 1, level), beam))),
+    ...levels.flatMap((level) => xs.map((_, axis) => member(`C${axis + 1}${level}`, nodeId(axis, level - 1), nodeId(axis, level), sectionOf(spec.stories[level - 1]!.column ?? spec.column)))),
+    ...levels.flatMap((level) => spec.bays.map((_, bay) => member(`V${bay + 1}${level}`, nodeId(bay, level), nodeId(bay + 1, level), sectionOf(spec.stories[level - 1]!.beam ?? spec.beam)))),
   ];
   const uniform = (memberId: string, caseId: string, q: number): MemberLoad => ({
     id: `${caseId}-${memberId}`, memberId, caseId, type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1,
@@ -143,7 +142,7 @@ export function concreteFrameMembers(project: ProjectModel): { readonly beams: r
  * barras inclinadas, de acero o armaduras quedan como estaban. Quien lo aplica
  * lo hace como un cambio deshacible.
  */
-export function withConcreteSections(project: ProjectModel, sections: ConcreteFrameSections): ProjectModel {
+export function withConcreteSections(project: ProjectModel, sections: ConcreteFrameSections, groups: readonly ConcreteSectionGroup[] = []): ProjectModel {
   const { beams, columns } = concreteFrameMembers(project);
   const role = new Map<string, 'beam' | 'column'>([...beams.map((item) => [item.id, 'beam'] as const), ...columns.map((item) => [item.id, 'column'] as const)]);
   const sectionOf = ({ widthMm, heightMm }: { widthMm: number; heightMm: number }) => {
@@ -152,6 +151,7 @@ export function withConcreteSections(project: ProjectModel, sections: ConcreteFr
     const match = standardSections.find((section) => section.id.startsWith('rect-concrete-') && Math.abs(section.width - width) < 1e-6 && Math.abs(section.depth - depth) < 1e-6);
     return { match, A: width * depth, I: width * depth ** 3 / 12 };
   };
+  const assigned = new Map(groups.flatMap((group) => group.memberIds.map((id) => [id, sectionOf({ widthMm: group.width * 10, heightMm: group.height * 10 })] as const)));
   const beam = sectionOf(sections.beam);
   const column = sectionOf(sections.column);
   return {
@@ -159,11 +159,41 @@ export function withConcreteSections(project: ProjectModel, sections: ConcreteFr
     members: project.members.map((member) => {
       const kind = role.get(member.id);
       if (!kind) return member;
-      const section = kind === 'beam' ? beam : column;
+      const section = assigned.get(member.id) ?? (kind === 'beam' ? beam : column);
       const { sectionId: _previous, ...rest } = member;
       return section.match
         ? { ...rest, sectionId: section.match.id, sectionOrigin: 'catalog' as const, A: section.A, I: section.I }
         : { ...rest, sectionOrigin: 'custom' as const, A: section.A, I: section.I };
     }),
   };
+}
+
+/** Contrato de datos de la propuesta por nivel, dimensiones en cm. */
+export interface ConcreteSectionGroup {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: 'beam' | 'column';
+  readonly memberIds: readonly string[];
+  readonly lengthM: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Agrupa vigas por elevación y columnas por extremos de entrepiso, sin depender del orden de las barras. */
+export function concreteFrameGroups(project: ProjectModel): ConcreteSectionGroup[] {
+  const nodes = new Map(project.nodes.map((node) => [node.id, node]));
+  const { beams, columns } = concreteFrameMembers(project);
+  const grouped = new Map<string, { kind: 'beam' | 'column'; ids: string[]; lengthM: number; bottom: number; top: number }>();
+  for (const [kind, items] of [['beam', beams], ['column', columns]] as const) for (const item of items) {
+    const member = project.members.find((m) => m.id === item.id)!;
+    const bottom = Math.min(nodes.get(member.i)!.y, nodes.get(member.j)!.y);
+    const top = Math.max(nodes.get(member.i)!.y, nodes.get(member.j)!.y);
+    const id = `${kind}:${bottom.toFixed(5)}:${top.toFixed(5)}`;
+    const group = grouped.get(id) ?? { kind, ids: [], lengthM: 0, bottom, top };
+    group.ids.push(item.id); group.lengthM += item.lengthM; grouped.set(id, group);
+  }
+  return [...grouped].sort((a, b) => a[1].top - b[1].top || a[0].localeCompare(b[0])).map(([id, g]) => ({
+    id, kind: g.kind, label: g.kind === 'beam' ? `Vigas a ${g.top} m` : `Columnas ${g.bottom}–${g.top} m`,
+    memberIds: g.ids, lengthM: g.lengthM, width: 0, height: 0,
+  }));
 }

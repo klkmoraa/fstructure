@@ -22,13 +22,13 @@ import {
 } from './frameModel';
 import { afterTransition } from '../../../design-system/afterTransition';
 import { BuildingAxes } from './BuildingAxes';
-import { frameConcreteVolume, proposeFrameSections, proposeModelSections, type SectionProposal } from './frameProposal';
+import { frameConcreteVolume, frameProposalStories, proposeFrameSections, proposeModelSections, type SectionProposal } from './frameProposal';
 import { useWorkbenchStorage } from './workbenchStorage';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 type RowColumn<T> = { field: keyof T & string; label: string; unit: string; min?: number };
 
-function RowsTable<T extends Record<string, string>>({ rows, columns, label, prefix, max, onChange, onAdd, onRemove, addLabel }: {
+function RowsTable<T extends Record<string, string | undefined>>({ rows, columns, label, prefix, max, onChange, onAdd, onRemove, addLabel }: {
   rows: readonly T[];
   columns: readonly RowColumn<T>[];
   /** «Claro», «Nivel». */
@@ -178,6 +178,13 @@ function ModelSummary({ modelSource, onOpenModel, fcFromModel, space = false }: 
   </div>;
 }
 
+function ProposalGroups({ proposal }: { proposal: SectionProposal }) {
+  return proposal.groups?.length ? <table className="dw-table" aria-label="Secciones propuestas por grupo">
+    <thead><tr><th scope="col">Grupo</th><th scope="col">b × h (cm)</th></tr></thead>
+    <tbody>{proposal.groups.map((group) => <tr key={group.id}><th scope="row">{group.label}</th><td>{group.width} × {group.height}</td></tr>)}</tbody>
+  </table> : null;
+}
+
 export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('frame', FRAME_DEFAULTS, FRAME_LEGACY);
   const storage = useWorkbenchStorage();
@@ -281,11 +288,12 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       const { beam: proposedBeam, column: proposedColumn, ratio, volumeM3, trials } = step.proposal;
       const bars = String(proposedColumn.barsPerFace);
       replace((current) => ({
-        ...current,
+        ...current, proposalBars: 'yes',
         beamWidth: String(proposedBeam.width), beamHeight: String(proposedBeam.height),
         columnWidth: String(proposedColumn.width), columnHeight: String(proposedColumn.height), barsWidth: bars, barsDepth: bars,
       }));
-      setSectionNote(`Viga ${proposedBeam.width} × ${proposedBeam.height} y columna ${proposedColumn.width} × ${proposedColumn.height} cm con ${proposedColumn.barsPerFace} barras por cara: rige ${percent(ratio)}. `
+      setStories(frameProposalStories(stories, step.proposal));
+      setSectionNote(`Por nivel · Viga ${proposedBeam.width} × ${proposedBeam.height} y columna ${proposedColumn.width} × ${proposedColumn.height} cm con ${proposedColumn.barsPerFace} barras por cara: rige ${percent(ratio)}. `
         + `${formatNumber(volumeM3, 2)} m³ de concreto (antes ${formatNumber(before, 2)}), tras ${trials} diseños. Ctrl+Z lo deshace.`);
     };
     setSectionNote(null);
@@ -295,10 +303,16 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     if (!modelProposal || !modelSections) return;
     const { beam: proposedBeam, column: proposedColumn } = modelProposal;
     const bars = String(proposedColumn.barsPerFace);
-    modelSections.apply(proposedBeam, proposedColumn);
-    replace((current) => ({ ...current, barsWidth: bars, barsDepth: bars }));
+    modelSections.apply(proposedBeam, proposedColumn, modelProposal.groups);
+    replace((current) => ({ ...current, proposalBars: 'yes', barsWidth: bars, barsDepth: bars }));
     setModelProposal(null);
-    setSectionNote(`Escritas en el Modelo 2D: ${plural(modelSections.beams, 'viga', 'vigas')} ${proposedBeam.width} × ${proposedBeam.height} y ${plural(modelSections.columns, 'columna', 'columnas')} ${proposedColumn.width} × ${proposedColumn.height} cm, con ${proposedColumn.barsPerFace} barras por cara. Deshacer en el modo 2D recupera las secciones anteriores.`);
+    setSectionNote(modelProposal.groups?.length
+      ? `Escritas por nivel en el Modelo 2D: ${modelProposal.groups.map((g) => `${g.label}: ${g.width}×${g.height} cm`).join('; ')}. Deshacer en el modo 2D recupera las secciones anteriores.`
+      : `Escritas en el Modelo 2D: ${plural(modelSections.beams, 'viga', 'vigas')} ${proposedBeam.width} × ${proposedBeam.height} y ${plural(modelSections.columns, 'columna', 'columnas')} ${proposedColumn.width} × ${proposedColumn.height} cm, con ${proposedColumn.barsPerFace} barras por cara. Deshacer en el modo 2D recupera las secciones anteriores.`);
+  };
+  const setUniformSection = (field: 'beamWidth' | 'beamHeight' | 'columnWidth' | 'columnHeight') => (value: string) => {
+    set(field)(value);
+    setStories((current) => current.map(({ height, dead, live, lateral: force }) => ({ height, dead, live, lateral: force })));
   };
   const slab = frameSlabLoads(draft);
   const applySlab = () => {
@@ -395,11 +409,12 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         {fromModel ? <p className="dw-input-note">Arriostrado: otro sistema (muros, contravientos) impide el desplazamiento; no se amplifican momentos por desplazamiento ni entran las acciones laterales.</p> : null}
       </FieldGroup>
       {fromModel ? (modelSections ? <FieldGroup title="Secciones del modelo" columns={1} action={<InlineAction label={proposing ? 'Buscando…' : 'Proponer'} disabled={proposing !== null}
-        title="Una sección para todas las vigas y otra para todas las columnas de concreto del Modelo 2D: las de menor volumen que cumplen" onClick={proposeSections} />}>
-        <p className="dw-input-note">{plural(modelSections.beams, 'viga', 'vigas')} y {plural(modelSections.columns, 'columna', 'columnas')} de concreto · {formatNumber(modelSections.volumeM3, 2)} m³. «Proponer» busca una sección para todas las vigas y otra para todas las columnas; el modelo cambia sólo al aplicarla.</p>
+        title="Secciones por nivel que cumplen y reducen el volumen respecto a la propuesta uniforme" onClick={proposeSections} />}>
+        <p className="dw-input-note">{plural(modelSections.beams, 'viga', 'vigas')} y {plural(modelSections.columns, 'columna', 'columnas')} de concreto · {formatNumber(modelSections.volumeM3, 2)} m³. «Proponer» ajusta las vigas de cada nivel y las columnas de cada entrepiso; el modelo cambia sólo al aplicarla.</p>
         {proposing ? <p className="dw-action-note" role="status" aria-live="polite">{proposing}</p>
           : modelProposal ? <div className="dw-proposal" role="status">
-            <p>Vigas {modelProposal.beam.width} × {modelProposal.beam.height} y columnas {modelProposal.column.width} × {modelProposal.column.height} cm con {modelProposal.column.barsPerFace} barras por cara: rige {percent(modelProposal.ratio)}. {formatNumber(modelProposal.volumeM3, 2)} m³ de concreto (ahora {formatNumber(modelSections.volumeM3, 2)}), tras {modelProposal.trials} diseños.</p>
+            <p>{modelProposal.groups?.length ? 'Referencia uniforme · ' : ''}Vigas {modelProposal.beam.width} × {modelProposal.beam.height} y columnas {modelProposal.column.width} × {modelProposal.column.height} cm. Propuesta{modelProposal.groups?.length ? ' por nivel' : ''}: rige {percent(modelProposal.ratio)}. {formatNumber(modelProposal.volumeM3, 2)} m³ de concreto (ahora {formatNumber(modelSections.volumeM3, 2)}), tras {modelProposal.trials} diseños.</p>
+            <ProposalGroups proposal={modelProposal} />
             <div className="dw-proposal__actions">
               <button type="button" className="dw-inline-action" onClick={applyModelProposal}>Aplicar al modelo</button>
               <button type="button" className="dw-inline-action" onClick={() => setModelProposal(null)}>Descartar</button>
@@ -407,19 +422,25 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           </div>
           : <ActionNote text={sectionNote} />}
       </FieldGroup> : null) : <FieldGroup title="Secciones" action={<InlineAction label={proposing ? 'Buscando…' : 'Proponer'} disabled={proposing !== null}
-        title="Viga y columna con el menor volumen de concreto que cumplen (pasos de 5 cm, columnas al 1 %)" onClick={proposeSections} />}>
-        <NumberField label="Viga b" unit="cm" value={draft.beamWidth} onChange={set('beamWidth')} />
-        <NumberField label="Viga h" unit="cm" value={draft.beamHeight} onChange={set('beamHeight')} />
-        <NumberField label="Columna b" unit="cm" value={draft.columnWidth} onChange={set('columnWidth')} hint="Fuera del plano" />
-        <NumberField label="Columna h" unit="cm" value={draft.columnHeight} onChange={set('columnHeight')} hint="En el plano del marco" />
+        title="Secciones por nivel con menos concreto que la propuesta uniforme, en pasos de 5 cm y columnas al 1 %" onClick={proposeSections} />}>
+        <NumberField label="Viga b" unit="cm" value={draft.beamWidth} onChange={setUniformSection('beamWidth')} />
+        <NumberField label="Viga h" unit="cm" value={draft.beamHeight} onChange={setUniformSection('beamHeight')} />
+        <NumberField label="Columna b" unit="cm" value={draft.columnWidth} onChange={setUniformSection('columnWidth')} hint="Fuera del plano" />
+        <NumberField label="Columna h" unit="cm" value={draft.columnHeight} onChange={setUniformSection('columnHeight')} hint="En el plano del marco" />
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
         <div className="dw-span-all">
           {proposing ? <p className="dw-action-note" role="status" aria-live="polite">{proposing}</p> : <ActionNote text={sectionNote} />}
         </div>
       </FieldGroup>}
+      {!fromModel && stories.some((story) => story.beamWidth) ? <FieldGroup title="Secciones por nivel" columns={1}>
+        {stories.map((story, index) => <p key={index} className="dw-input-note">N{index + 1}: V {story.beamWidth ?? draft.beamWidth} × {story.beamHeight ?? draft.beamHeight} · C {story.columnWidth ?? draft.columnWidth} × {story.columnHeight ?? draft.columnHeight} cm.</p>)}
+        <p className="dw-input-note">Los campos generales vuelven a secciones uniformes al editarlos.</p>
+        <button type="button" className="dw-inline-action" onClick={() => setStories(stories.map(({ height, dead, live, lateral: force }) => ({ height, dead, live, lateral: force })))}>Volver a secciones uniformes</button>
+      </FieldGroup> : null}
       <FieldGroup title="Armado de columnas">
         <BarSelect label="Varilla" value={draft.columnBar} onChange={set('columnBar')} minimumDiameterMm={12.7} />
         <BarSelect label="Estribo" value={draft.tie} onChange={set('tie')} />
+        {draft.proposalBars === 'yes' ? <p className="dw-input-note dw-span-all">Armado por sección: al menos 1 % en cada columna. <button type="button" className="dw-inline-action" onClick={() => set('proposalBars')('no')}>Usar barras indicadas</button></p> : null}
         <NumberField label="Barras cara b" unit="pzas" value={draft.barsWidth} onChange={set('barsWidth')} min={2} />
         <NumberField label="Barras cara h" unit="pzas" value={draft.barsDepth} onChange={set('barsDepth')} min={2} />
         {fromModel ? <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} /> : null}

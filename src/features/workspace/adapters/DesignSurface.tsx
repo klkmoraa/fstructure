@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { concreteFrameMembers, withConcreteFrame, withConcreteSections, type ConcreteFrameSpec } from '../../../data/concreteFrame';
+import { concreteFrameGroups, concreteFrameMembers, withConcreteFrame, withConcreteSections, type ConcreteFrameSpec } from '../../../data/concreteFrame';
 import type { ModelSection, ModelSectionsBridge } from '../../design/workbench/WorkbenchLayout';
 import { model2dDesignSource } from '../../../design/elements/model2dSource';
 import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
@@ -44,13 +44,14 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     });
     const sum = (items: readonly { lengthM: number }[]) => items.reduce((total, item) => total + item.lengthM, 0);
     return {
+      groups: concreteFrameGroups(project),
       beams: beams.length,
       columns: columns.length,
       beamLengthM: sum(beams),
       columnLengthM: sum(columns),
       volumeM3: [...beams, ...columns].reduce((total, item) => total + item.lengthM * item.areaM2, 0),
-      variant: (beam, column) => model2dDesignSource(withConcreteSections(project, mm(beam, column))),
-      apply: (beam, column) => updateProject((current) => withConcreteSections(current, mm(beam, column))),
+      variant: (beam, column, groups) => model2dDesignSource(withConcreteSections(project, mm(beam, column), groups)),
+      apply: (beam, column, groups) => updateProject((current) => withConcreteSections(current, mm(beam, column), groups)),
     };
   }, [project, updateProject]);
   // El modelo 3D se lee al entrar al modo (se edita en el modo 3D, que guarda en la sesión).

@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, designFromDraft, type FrameDraft } from './frameModel';
-import { columnBarsPerFace, proposeFrameSections, type ProposalStep } from './frameProposal';
+import { columnBarsPerFace, proposeUniformFrameSections, type ProposalStep } from './frameProposal';
 
 const draft: FrameDraft = { ...FRAME_DEFAULTS, source: 'frame' };
 const run = (code: 'ntc-2023' | 'nsr-10' | 'e060', base = draft, bays = DEFAULT_BAYS, stories = DEFAULT_STORIES) => {
-  const steps: ProposalStep[] = [...proposeFrameSections(code, base, bays, stories)];
+  const steps: ProposalStep[] = [...proposeUniformFrameSections(code, base, bays, stories)];
   return { steps, last: steps.at(-1)! };
 };
 const ratioWith = (code: 'ntc-2023' | 'nsr-10' | 'e060', beam: [number, number], column: number) => {
