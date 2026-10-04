@@ -12,16 +12,17 @@ import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
 import { bastionTitle, meters, stirrupText } from './beamModel';
 import { ColumnElevation, ColumnSection, InteractionChart } from './ColumnDrawings';
 import {
-  ActionNote, BarSelect, ChecksList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, IdentityGroup, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField, PanelSection,
+  ActionNote, BarSelect, InlineAction, ChecksList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, IdentityGroup, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField, PanelSection,
   RebarList, ReviewList, Summary, TakeoffSection, ValuesTable, Verdict, formatNumber, parseNumber, readStored, splitChecks, useDraftHistory, useStoredDraft,
 } from './common';
 import { FRAME_DIAGRAMS, FrameElevation, ratioBand, type FrameDiagramKind } from './FrameDrawings';
 import {
-  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraft, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
+  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraft, designOfMember, memberIdsOf, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
   type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome,
 } from './frameModel';
 import { afterTransition } from '../../../design-system/afterTransition';
 import { BuildingAxes } from './BuildingAxes';
+import { frameConcreteVolume, proposeFrameSections } from './frameProposal';
 import { useWorkbenchStorage } from './workbenchStorage';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
@@ -144,6 +145,9 @@ function QuickFrameCard({ spec, modelMembers, onCreate }: { spec: ConcreteFrameS
   </div>;
 }
 
+/** «Columna del eje B» → «columna del eje B»: sólo la inicial, los rótulos de la rejilla se conservan. */
+const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1);
+
 function ModelSummary({ modelSource, onOpenModel, fcFromModel, space = false }: { modelSource: ExternalStructureSource | null; onOpenModel?: () => void; fcFromModel: boolean; space?: boolean }) {
   const edit = onOpenModel ? <button type="button" className="dw-inline-action" onClick={onOpenModel}>
     {space ? <Box size={13} aria-hidden="true" /> : <PenLine size={13} aria-hidden="true" />}{space ? 'Editar en 3D' : 'Editar en Modelo'}
@@ -184,12 +188,20 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const snapshot = useMemo(() => ({ draft, bays, stories }), [draft, bays, stories]);
   const applySnapshot = useCallback((next: typeof snapshot) => { replace(next.draft); setBays(next.bays); setStories(next.stories); }, [replace]);
   const history = useDraftHistory(snapshot, applySnapshot);
-  const { onHistory, startSource, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel } = chrome;
+  const { onHistory, startSource, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, onShowMembers } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
+  // La barra elegida en el modo de origen: su diseño se abre cuando llega el resultado.
+  const focusRef = useRef(chrome.focusMember ?? null);
   // Al llegar desde un modo con modelo (2D o 3D), Estructura diseña ese modelo si
-  // estaba diseñando un modelo del proyecto; el pórtico rápido elegido se respeta.
+  // estaba diseñando un modelo del proyecto; el pórtico rápido elegido se respeta,
+  // salvo que se pida el diseño de una barra. En el 3D se abre el eje de esa barra.
   useEffect(() => {
-    if (startSource && startSource !== draft.source && (startSource === 'frame' || fromProjectModel(draft))) replace({ ...draft, source: startSource });
+    const focus = focusRef.current;
+    const source = startSource && (startSource === 'frame' || fromProjectModel(draft) || focus) ? startSource : draft.source;
+    const axes = focus && source === 'model3d' && modelAxes?.axesOfMember ? modelAxes.axesOfMember(focus) : [];
+    const axis = axes.length && modelAxes && !axes.includes(axisOf(draft, modelAxes)) ? axes[0]! : draft.axis;
+    if (source !== 'model' && source !== 'model3d') focusRef.current = null;
+    if (source !== draft.source || axis !== draft.axis) replace({ ...draft, source, axis });
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const code = designCode(chrome.code);
@@ -211,11 +223,64 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const outOfScope = report?.outOfScope ?? [];
   const [kind, setKind] = useState<FrameDiagramKind>('ratio');
   const [picked, setPicked] = useState<string | null>(null);
+  const [focusNote, setFocusNote] = useState<string | null>(null);
+  useEffect(() => {
+    const memberId = focusRef.current;
+    if (!memberId || !result || !fromModel) return;
+    focusRef.current = null;
+    const id = designOfMember(result, memberId);
+    if (id) { setPicked(id); setFocusNote(null); return; }
+    const skipped = result.skipped.find((item) => item.id === memberId);
+    setFocusNote(skipped ? `${skipped.label} no se diseña en concreto: ${skipped.reason}` : `La barra ${memberId} no está en ${from3d ? 'este eje' : 'el modelo diseñado'}.`);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
   const selected = !result ? null
     : picked && (result.beams.some((beam) => beam.id === picked) || result.columns.some((column) => column.id === picked)) ? picked : governingDesign(result);
   const beam = result?.beams.find((item) => item.id === selected);
   const column = result?.columns.find((item) => item.id === selected);
   const [loadNote, setLoadNote] = useState<string | null>(null);
+  // Proponer secciones: varios diseños completos, uno por tarea; un cambio de datos la cancela.
+  const [proposing, setProposing] = useState<string | null>(null);
+  const [sectionNote, setSectionNote] = useState<string | null>(null);
+  const cancelProposal = useRef<(() => void) | null>(null);
+  useEffect(() => () => cancelProposal.current?.(), []);
+  const proposalInputs = JSON.stringify([chrome.code, draft, bays, stories]);
+  const proposalStart = useRef(proposalInputs);
+  useEffect(() => {
+    if (proposalStart.current !== proposalInputs) { cancelProposal.current?.(); proposalStart.current = proposalInputs; }
+  }, [proposalInputs]);
+  const proposeSections = () => {
+    cancelProposal.current?.();
+    proposalStart.current = proposalInputs;
+    const steps = proposeFrameSections(chrome.code as DesignCodeId, draft, bays, stories);
+    const before = frameConcreteVolume(draft, bays, stories);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const stop = () => { if (timer !== null) clearTimeout(timer); cancelProposal.current = null; setProposing(null); };
+    cancelProposal.current = stop;
+    const tick = () => {
+      const next = steps.next();
+      if (next.done) { stop(); return; }
+      const step = next.value;
+      if (step.kind === 'trying') {
+        setProposing(`${step.phase === 'grow' ? 'Buscando' : 'Ajustando'} · diseño ${step.trial}: viga ${step.beam.width}×${step.beam.height}, columna ${step.column.width}×${step.column.height}`);
+        timer = setTimeout(tick, 0);
+        return;
+      }
+      stop();
+      if (step.kind === 'failed') { setSectionNote(step.reason); return; }
+      const { beam: proposedBeam, column: proposedColumn, ratio, volumeM3, trials } = step.proposal;
+      const bars = String(proposedColumn.barsPerFace);
+      replace((current) => ({
+        ...current,
+        beamWidth: String(proposedBeam.width), beamHeight: String(proposedBeam.height),
+        columnWidth: String(proposedColumn.width), columnHeight: String(proposedColumn.height), barsWidth: bars, barsDepth: bars,
+      }));
+      setSectionNote(`Viga ${proposedBeam.width} × ${proposedBeam.height} y columna ${proposedColumn.width} × ${proposedColumn.height} cm con ${proposedColumn.barsPerFace} barras por cara: rige ${percent(ratio)}. `
+        + `${formatNumber(volumeM3, 2)} m³ de concreto (antes ${formatNumber(before, 2)}), tras ${trials} diseños. Ctrl+Z lo deshace.`);
+    };
+    setSectionNote(null);
+    timer = setTimeout(tick, 0);
+  };
   const slab = frameSlabLoads(draft);
   const applySlab = () => {
     if (!slab) return;
@@ -310,12 +375,16 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           options={[{ value: 'no', label: 'Con desplazamiento' }, { value: 'yes', label: 'Arriostrado' }]} /></div>
         {fromModel ? <p className="dw-input-note">Arriostrado: otro sistema (muros, contravientos) impide el desplazamiento; no se amplifican momentos por desplazamiento ni entran las acciones laterales.</p> : null}
       </FieldGroup>
-      {fromModel ? null : <FieldGroup title="Secciones">
+      {fromModel ? null : <FieldGroup title="Secciones" action={<InlineAction label={proposing ? 'Buscando…' : 'Proponer'} disabled={proposing !== null}
+        title="Viga y columna con el menor volumen de concreto que cumplen (pasos de 5 cm, columnas al 1 %)" onClick={proposeSections} />}>
         <NumberField label="Viga b" unit="cm" value={draft.beamWidth} onChange={set('beamWidth')} />
         <NumberField label="Viga h" unit="cm" value={draft.beamHeight} onChange={set('beamHeight')} />
         <NumberField label="Columna b" unit="cm" value={draft.columnWidth} onChange={set('columnWidth')} hint="Fuera del plano" />
         <NumberField label="Columna h" unit="cm" value={draft.columnHeight} onChange={set('columnHeight')} hint="En el plano del marco" />
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
+        <div className="dw-span-all">
+          {proposing ? <p className="dw-action-note" role="status" aria-live="polite">{proposing}</p> : <ActionNote text={sectionNote} />}
+        </div>
       </FieldGroup>}
       <FieldGroup title="Armado de columnas">
         <BarSelect label="Varilla" value={draft.columnBar} onChange={set('columnBar')} minimumDiameterMm={12.7} />
@@ -429,7 +498,13 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         ]} />
       </Verdict>
       <PanelSection title="Miembros">
-        <MemberGrid result={result} selected={selected} onSelect={setPicked} />
+        <MemberGrid result={result} selected={selected} onSelect={(id) => { setPicked(id); setFocusNote(null); }} />
+        {focusNote ? <p className="dw-input-note" role="status">{focusNote}</p> : null}
+        {fromModel && selected && onShowMembers ? <button type="button" className="dw-inline-action dw-show-members"
+          onClick={() => onShowMembers(memberIdsOf(result, selected), from3d && modelAxes ? axisOf(draft, modelAxes) : undefined)}>
+          {from3d ? <Box size={13} aria-hidden="true" /> : <PenLine size={13} aria-hidden="true" />}
+          {from3d ? 'Ver en 3D' : 'Ver en el Modelo'} · {lowerFirst(beam?.label ?? column?.label ?? '')}
+        </button> : null}
         <p className="dw-footnote">Cociente que rige en cada viga y columna. Elige uno para ver su revisión y su lámina.{result.skipped.length ? ` ${result.skipped.length} ${result.skipped.length === 1 ? 'barra no se diseña' : 'barras no se diseñan'} en concreto (ver revisión).` : ''}</p>
       </PanelSection>
       {beam || column ? <PanelSection title={beam?.label ?? column!.label}>

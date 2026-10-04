@@ -801,6 +801,13 @@ export function space3dDesignAxes(model: Space3DProjectV1): ExternalStructureAxe
     label: model.name,
     axes: planes.map((plane) => ({ id: plane.id, label: plane.label, short: plane.short, direction: plane.axis, coordinate: plane.coordinate, members: plane.members })),
     columns: [...stacks.values()],
+    axesOfMember(memberId) {
+      const member = model.members.find((item) => item.id === memberId);
+      const a = member ? nodeById.get(member.i) : undefined;
+      const b = member ? nodeById.get(member.j) : undefined;
+      if (!a || !b) return [];
+      return planes.filter((plane) => onPlane(a, plane.axis, plane.coordinate) && onPlane(b, plane.axis, plane.coordinate)).map((plane) => plane.id);
+    },
     source(axisId) {
       let source = sources.get(axisId);
       if (!source) {

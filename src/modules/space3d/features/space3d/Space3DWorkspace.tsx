@@ -25,7 +25,7 @@ import { Space3DProjectProvider, useSpace3DProject, type Space3DSelection } from
 import { Dialog, Popover } from '../../../../design-system/components/overlays';
 import { Space3DCanvas, type Space3DCanvasDraft, type Space3DCanvasPick, type Space3DPickModifiers, type Space3DViewportFactory } from '../../space3d/view/Space3DCanvas';
 import { buildSpace3DSceneModel, space3DResultNoiseFloor, SPACE3D_SCOPE_3D, type Space3DResultMode } from '../../space3d/view/sceneModel';
-import { SPACE3D_DEFAULT_LAYERS, type Space3DLayerVisibility, type Space3DWindowPick } from '../../space3d/view/threeViewport';
+import { SPACE3D_DEFAULT_LAYERS, type Space3DCameraState, type Space3DLayerVisibility, type Space3DWindowPick } from '../../space3d/view/threeViewport';
 import type { Space3DViewPreset } from '../../space3d/view/cameraModel';
 import { resolveSpace3DGrid, space3DGridPointsAt, SPACE3D_GRID_TOLERANCE } from '../../space3d/model/grid';
 import { Space3DEntityEditor, type Space3DEditorTarget } from './Space3DEntityEditor';
@@ -84,6 +84,8 @@ type PendingReplace =
   | { readonly kind: 'generated'; readonly project: Space3DProjectV1; readonly title?: string; readonly description?: string };
 
 /** Modelo que llega desde fuera de la mesa (otro modo de la app) para reemplazar el actual. */
+export type { Space3DCameraState };
+
 export interface Space3DIncomingProject {
   readonly project: Space3DProjectV1;
   /** Cambia en cada entrega: la misma entrega no se aplica dos veces. */
@@ -140,6 +142,14 @@ interface Space3DWorkspaceProps {
   readonly startView?: Space3DViewId;
   /** Avisa la vista elegida, para que quien aloja la mesa la recuerde. */
   readonly onViewChange?: (viewId: Space3DViewId) => void;
+  /** Cámara con la que abre `startView` (la que tenía al salir). */
+  readonly startCamera?: Space3DCameraState | null;
+  /** Entrega la cámara de la vista abierta al desmontarse la mesa. */
+  readonly onCameraRelease?: (viewId: Space3DViewId, camera: Space3DCameraState) => void;
+  /** Barras seleccionadas al abrir (las de un elemento que se diseña en Diseño). */
+  readonly startSelection?: readonly string[];
+  /** Avisa las barras seleccionadas, para que Diseño abra la que se eligió aquí. */
+  readonly onSelectionChange?: (memberIds: readonly string[]) => void;
 }
 
 const ERROR_KEYS: Record<string, TranslationKey> = {
@@ -228,10 +238,10 @@ interface Space3DStudyFeedback {
 const LABELS_BY_DEFAULT_LIMIT = 30;
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange'> {}
+  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange' | 'startCamera' | 'onCameraRelease' | 'startSelection' | 'onSelectionChange'> {}
 
 const WorkspaceBody = ({
-  language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange,
+  language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange, startCamera, onCameraRelease, startSelection, onSelectionChange,
 }: WorkspaceBodyProps) => {
   // El inglés se carga bajo demanda; al llegar, la versión cambia y la mesa se traduce.
   const [catalogVersion, setCatalogVersion] = useState(0);
@@ -285,6 +295,11 @@ const WorkspaceBody = ({
   const viewChangeRef = useRef(onViewChange);
   viewChangeRef.current = onViewChange;
   useEffect(() => { viewChangeRef.current?.(viewId); }, [viewId]);
+  const viewIdRef = useRef(viewId);
+  viewIdRef.current = viewId;
+  const cameraReleaseRef = useRef(onCameraRelease);
+  cameraReleaseRef.current = onCameraRelease;
+  const releaseCamera = useCallback((camera: Space3DCameraState) => { cameraReleaseRef.current?.(viewIdRef.current, camera); }, []);
   const [split, setSplit] = useState(false);
   // Como en 2D, el lienzo manda: el explorador nace abierto sólo si sobra ancho.
   const [explorerOpen, setExplorerOpen] = useState(() => (
@@ -543,6 +558,19 @@ const WorkspaceBody = ({
     }
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [assignKind, openEditor, select]);
+
+  // Barras pedidas desde Diseño («Ver en 3D»): quedan seleccionadas al abrir.
+  const appliedStartSelection = useRef(false);
+  useEffect(() => {
+    if (appliedStartSelection.current || !startSelection?.length) return;
+    appliedStartSelection.current = true;
+    const members = startSelection.filter((id) => project.members.some((member) => member.id === id));
+    if (members.length) applySelection({ nodes: [], members }, { kind: 'member', id: members[0]! });
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const selectionChangeRef = useRef(onSelectionChange);
+  selectionChangeRef.current = onSelectionChange;
+  useEffect(() => { selectionChangeRef.current?.(selection.members); }, [selection]);
 
   const onCanvasSelect = useCallback((pick: Space3DSelection | null, modifiers?: Space3DPickModifiers) => {
     applySelection(applySpace3DPick(selection, pick, modifiers?.additive ?? false), pick);
@@ -1420,6 +1448,8 @@ const WorkspaceBody = ({
             viewLabels={viewLabels}
             activeView={activeView}
             refitToken={viewFitToken}
+            initialCamera={viewId === startView ? startCamera ?? null : null}
+            onCameraRelease={releaseCamera}
             zoomInLabel={t('space3d.zoomIn')}
             zoomOutLabel={t('space3d.zoomOut')}
             resetLabel={t('space3d.resetView')}

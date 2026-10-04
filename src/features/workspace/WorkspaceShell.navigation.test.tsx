@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
@@ -7,6 +7,7 @@ import App from '../../App';
 import { createConcreteFrameProject, createDefaultProject } from '../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../data/projectStorage';
 import { WORKSPACE_LAYOUT_STORAGE_KEY } from './useWorkspaceLayoutPreferences';
+import { emitWorkspaceCommand } from './workspaceCommands';
 
 class TestResizeObserver {
   observe() {}
@@ -148,4 +149,21 @@ it('modelar y diseñar en la misma mesa: Diseño diseña el modelo, «Pasar al m
   await user.click(screen.getByRole('button', { name: 'Deshacer' }));
   await user.click(screen.getByRole('button', { name: 'Diseño' }));
   expect(await screen.findByRole('img', { name: /Utilización de el Modelo 2D: 2 líneas de viga y 6 columnas/ }, LAZY)).toBeTruthy();
+}, TEST_TIMEOUT);
+
+it('«Diseñar» desde el Inspector abre Diseño en el diseño de esa barra y «Ver en el Modelo» la deja seleccionada', async () => {
+  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createConcreteFrameProject()));
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByRole('application', undefined, LAZY);
+  // Es lo que emite el botón «Diseñar» del Inspector con la barra C22 elegida.
+  emitWorkspaceCommand('open-member-design', { memberId: 'C22' });
+  const results = await screen.findByRole('region', { name: 'Resultados' }, LAZY);
+  expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
+  expect(await within(results).findByRole('heading', { name: /Columna del eje 2, nivel 2/ }, LAZY)).toBeTruthy();
+  await user.click(within(results).getByRole('button', { name: /Ver en el Modelo/ }));
+  await screen.findByRole('application', undefined, LAZY);
+  expect(new URLSearchParams(window.location.search).get('mode')).toBeNull();
+  // La barra vuelve seleccionada: el Inspector ofrece diseñarla otra vez.
+  expect(await screen.findByRole('button', { name: 'Diseñar' }, LAZY)).toBeTruthy();
 }, TEST_TIMEOUT);

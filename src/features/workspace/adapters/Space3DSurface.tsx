@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowDownToLine } from 'lucide-react';
 import { useProjectModel } from '../../../store/ProjectModelContext';
-import Space3DWorkspace, { type Space3DIncomingProject } from '../../../modules/space3d/features/space3d/Space3DWorkspace';
+import Space3DWorkspace, { type Space3DCameraState, type Space3DIncomingProject } from '../../../modules/space3d/features/space3d/Space3DWorkspace';
 import { useSharedToolState } from '../../../store/SharedToolState';
 import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
 import type { Space3DProjectV1 } from '../../../modules/space3d/space3d/model/types';
@@ -13,6 +13,7 @@ import { ShellContribution, ShellStatusChip } from '../ShellToolSlots';
 import { linkSpace3DToShell } from './space3dShellBridge';
 import './space3dBring.css';
 import { peekToolIntent, takeToolIntent } from '../toolIntent';
+import { rememberSpace3DSelection } from './mesaSelection';
 import type { ProjectModel } from '../../../types';
 import type { UnifiedProjectSession } from '../../../storage/unifiedProjectSession';
 
@@ -21,6 +22,8 @@ const embeddedStorage = { getItem: () => null, setItem: () => undefined, removeI
 
 /** Vista del 3D de cada proyecto mientras dura la sesión: al volver al modo 3D se abre la misma. */
 const VIEW_MEMORY = new Map<string, string>();
+/** Y la cámara que tenía esa vista al salir (órbita, desplazamiento y zoom). */
+const CAMERA_MEMORY = new Map<string, { viewId: string; camera: Space3DCameraState }>();
 
 /**
  * Modo 3D de la mesa de FStructure.
@@ -44,6 +47,13 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
   const startIntent = intent && intent.kind !== 'view' ? intent.kind : undefined;
   const [startView] = useState(() => intent?.kind === 'view' ? intent.view : VIEW_MEMORY.get(project.id));
   const rememberView = useCallback((viewId: string) => { VIEW_MEMORY.set(project.id, viewId); }, [project.id]);
+  const [startCamera] = useState(() => {
+    const saved = CAMERA_MEMORY.get(project.id);
+    return saved && saved.viewId === startView ? saved.camera : null;
+  });
+  const rememberCamera = useCallback((viewId: string, camera: Space3DCameraState) => { CAMERA_MEMORY.set(project.id, { viewId, camera }); }, [project.id]);
+  const [startSelection] = useState(() => intent?.kind === 'view' ? intent.members : undefined);
+  const rememberSelection = useCallback((memberIds: readonly string[]) => rememberSpace3DSelection(project.id, memberIds), [project.id]);
   useEffect(() => { takeToolIntent('space3d'); }, []);
   const [branch] = useState(() => session?.currentBundle(project.id)?.space3d ?? null);
   const [sourceVersion] = useState(() => branch?.sourceVersion ?? crypto.randomUUID());
@@ -77,7 +87,8 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
     }} /> : null}
     <Space3DWorkspace language={project.settings.language} embedded storage={embeddedStorage}
       canonicalProject={canonicalProject} onProjectChange={save} startIntent={startIntent} incomingProject={incoming}
-      {...(startView ? { startView } : {})} onViewChange={rememberView} />
+      {...(startView ? { startView } : {})} onViewChange={rememberView} startCamera={startCamera} onCameraRelease={rememberCamera}
+      {...(startSelection ? { startSelection } : {})} onSelectionChange={rememberSelection} />
   </>;
 }
 

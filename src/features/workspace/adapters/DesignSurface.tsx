@@ -7,6 +7,8 @@ import { peekToolIntent, setToolIntent, takeToolIntent } from '../toolIntent';
 import { DesignWorkbench } from '../../design/workbench/DesignWorkbench';
 import { browserWorkbenchStorage, createProjectWorkbenchStorage, WorkbenchStorageContext } from '../../design/workbench/workbenchStorage';
 import { ProjectModelContext } from '../../../store/ProjectModelContext';
+import { WorkspaceUIContext } from '../../../store/WorkspaceUIContext';
+import { space3dSelection } from './mesaSelection';
 import { useSharedToolState } from '../../../store/SharedToolState';
 
 /**
@@ -38,7 +40,19 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   }, [session, projectId]);
   // «Revisar todos los ejes» diseña en un worker; la mesa sigue fluida.
   const modelAxes = useMemo(() => space3d && space3d.members.length ? space3dDesignAxesWithWorker(space3d) : null, [space3d]);
-  const [startSource] = useState(() => peekToolIntent('design')?.kind);
+  const [intent] = useState(() => peekToolIntent('design'));
+  const startSource = intent?.kind;
+  const ui = useContext(WorkspaceUIContext);
+  // La barra que se abre: la pedida desde el Inspector («Diseñar en concreto»)
+  // o la que estaba seleccionada en el modo del que se llega.
+  const [focus] = useState(() => {
+    if (intent?.member) return { memberId: intent.member, explicit: true };
+    const selection = ui?.selection;
+    const memberId = intent?.kind === 'model'
+      ? selection?.kind === 'member' ? selection.id : selection?.kind === 'multi' ? selection.memberIds[0] : undefined
+      : intent?.kind === 'model3d' && projectId ? space3dSelection(projectId)[0] : undefined;
+    return memberId ? { memberId, explicit: false } : null;
+  });
   // «Editar en 3D» desde un eje abre el modo 3D en el alzado de ese eje.
   const openSpace3D = useMemo(() => onOpenSpace3D ? (axisId?: string) => {
     const axis = axisId ? modelAxes?.axes.find((item) => item.id === axisId) : undefined;
@@ -46,6 +60,21 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     onOpenSpace3D();
   } : undefined, [onOpenSpace3D, modelAxes]);
   useEffect(() => { takeToolIntent('design'); }, []);
+  // «Ver en el Modelo» / «Ver en 3D»: las barras de un elemento quedan seleccionadas al volver.
+  const setSelection = ui?.setSelection;
+  const showMembers = useMemo(() => (memberIds: readonly string[], axisId?: string) => {
+    if (!memberIds.length) return;
+    if (axisId !== undefined) {
+      if (!onOpenSpace3D) return;
+      const axis = modelAxes?.axes.find((item) => item.id === axisId);
+      setToolIntent({ tool: 'space3d', kind: 'view', view: axis?.short ? `elev-${axis.direction}:${axis.short}` : '3d', members: memberIds });
+      onOpenSpace3D();
+      return;
+    }
+    if (!onOpenModel || !setSelection) return;
+    setSelection(memberIds.length === 1 ? { kind: 'member', id: memberIds[0]! } : { kind: 'multi', nodeIds: [], memberIds: [...memberIds] });
+    onOpenModel();
+  }, [modelAxes, onOpenModel, onOpenSpace3D, setSelection]);
   const storage = useMemo(() => {
     if (!session || !projectId) return null;
     return createProjectWorkbenchStorage(session.currentBundle(projectId)?.design, (document) => {
@@ -58,6 +87,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
     <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
       {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})}
+      {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers}
       {...(updateProject ? { onCreateModel: createModel } : {})} />
   </WorkbenchStorageContext.Provider>;
 }

@@ -8,10 +8,13 @@
  */
 type ToolIntent =
   | { tool: 'space3d'; kind: 'generate' | 'example' | 'first-node' }
-  /** El modo 3D abre en una vista (el alzado de un eje que se diseña en Diseño). */
-  | { tool: 'space3d'; kind: 'view'; view: string }
-  /** Diseño abierto desde un modo con modelo: la estructura se diseña con ese modelo. */
-  | { tool: 'design'; kind: 'model' | 'model3d' }
+  /** El modo 3D abre en una vista (el alzado de un eje que se diseña en Diseño), con barras seleccionadas. */
+  | { tool: 'space3d'; kind: 'view'; view: string; members?: readonly string[] }
+  /**
+   * Diseño abierto desde un modo con modelo: la estructura se diseña con ese
+   * modelo. `member` (desde el Inspector) abre Estructura en el diseño de esa barra.
+   */
+  | { tool: 'design'; kind: 'model' | 'model3d'; member?: string }
   | { tool: 'fem'; kind: 'analyze' }
   | { tool: 'fem'; kind: 'import-gmsh'; fileName: string; text: string };
 

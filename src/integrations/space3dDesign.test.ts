@@ -7,7 +7,7 @@ import { parseSpace3DProject } from '../modules/space3d/space3d/data/codec';
 import { generateSpace3DBuilding } from '../modules/space3d/space3d/engine/buildingTemplate';
 import type { Space3DProjectV1, Space3DRestraints } from '../modules/space3d/space3d/model/types';
 import { space3dFromModel2d } from './model2dSpace3d';
-import { space3dDesignSource, space3dFramePlanes } from './space3dDesign';
+import { space3dDesignAxes, space3dDesignSource, space3dFramePlanes } from './space3dDesign';
 
 const code = 'nsr-10' as const;
 const options: StructureDesignOptions = {
@@ -264,6 +264,17 @@ describe('un eje del Modelo 3D como fuente de Estructura', () => {
     expect(model.members[0]!.density).toBe(project.members[0]!.density);
     expect(space3dDesignSource(model, 'z:0').fcMpa).toBe(fc2d);
     expect(space3dDesignSource(model, 'z:4').fcMpa).toBe(fc2d);
+  });
+
+  it('dice en qué ejes está cada barra: la viga en el suyo, la columna en sus dos', () => {
+    const model = extruded(2, 5);
+    const axes = space3dDesignAxes(model);
+    // Pórtico 2 (z = 5): la columna baja del eje A (x = 0) y la viga V11 de ese pórtico.
+    expect(axes.axesOfMember!('C11-2')).toEqual(['z:5', 'x:0']);
+    expect(axes.axesOfMember!('V11-2')).toEqual(['z:5']);
+    // Una viga transversal (a lo largo de z) está en el eje x de su nudo.
+    expect(axes.axesOfMember!('TN21-1')).toEqual(['x:6']);
+    expect(axes.axesOfMember!('no-existe')).toEqual([]);
   });
 
   it('dice por qué no puede diseñar', () => {

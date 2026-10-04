@@ -42,6 +42,7 @@ import './commandPalette.css';
 import '../canvas/mobileCanvasDensity.css';
 import './canvasChrome.css';
 import { emitWorkspaceCommand, onWorkspaceCommand } from './workspaceCommands';
+import { setToolIntent } from './toolIntent';
 import { isOwnHistoryScope } from './commandRegistry';
 import type { AnalysisResult } from '../../types';
 import type { RevisionSnapshot } from '../revision-comparison/revisionComparison';
@@ -221,6 +222,12 @@ const WorkspaceBrokerContent = ({
         setPendingModelDoctorNotification({ id, projectId: project.id, analysisAtRequest: analysis, hasStarted: false });
       }),
       onWorkspaceCommand('open-analysis-setup', () => openModel2DSurface('analysisSetup')),
+      // «Diseñar en concreto» desde el Inspector: el modo Diseño abre esa barra.
+      onWorkspaceCommand('open-member-design', ({ memberId }) => {
+        if (!onModeChange) return;
+        setToolIntent({ tool: 'design', kind: 'model', member: memberId });
+        onModeChange('design');
+      }),
       /* Una magnitud elegida en cualquier superficie se enciende en el LIENZO.
          El shell es el único que tiene el reductor de capas, así que aquí es
          donde `resultTab` y la capa `results` se mueven juntos. */
@@ -241,7 +248,7 @@ const WorkspaceBrokerContent = ({
       }),
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe());
-  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
+  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, onModeChange, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
 
   useEffect(() => {
     setModelDoctorAcknowledgedIds(new Set());

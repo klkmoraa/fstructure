@@ -7,7 +7,7 @@ import { ClassroomSessionProvider } from './store/ClassroomSessionContext';
 import WorkspaceShell from './features/workspace/WorkspaceShell';
 import ToolShell, { MesaModeShell } from './features/workspace/ToolShell';
 import { runMesaTransition } from './features/workspace/mesaTransition';
-import { setToolIntent } from './features/workspace/toolIntent';
+import { peekToolIntent, setToolIntent } from './features/workspace/toolIntent';
 import { preloadMesaMode } from './features/workspace/toolSurfaces';
 import { WelcomeScreen } from './features/welcome/WelcomeScreen';
 import { Model2DWelcome } from './features/welcome/Model2DWelcome';
@@ -51,7 +51,8 @@ const FStructureSurface = () => {
   const setMesaMode = useCallback((mode: MesaMode) => {
     const from = route.mode ?? 'model';
     // Diseño toma el modelo del modo del que llegas: el 2D o un eje del 3D.
-    if (mode === 'design' && from !== 'design') setToolIntent({ tool: 'design', kind: from === '3d' ? 'model3d' : 'model' });
+    // Una intención más precisa (el diseño de una barra) ya puesta se respeta.
+    if (mode === 'design' && from !== 'design' && !peekToolIntent('design')) setToolIntent({ tool: 'design', kind: from === '3d' ? 'model3d' : 'model' });
     runMesaTransition(from, mode, () => navigate(mode === 'model'
       ? { surface: 'workspace', projectId: route.projectId, tool: 'model2d' }
       : { surface: 'workspace', projectId: route.projectId, tool: 'model2d', mode }));

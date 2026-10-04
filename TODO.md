@@ -15,7 +15,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [x] Diseño desde el 3D: k e índice de estabilidad propios de la dirección perpendicular, torsión de vigas contra ¼·φ·Tcr, todos los ejes en un worker y el edificio completo en la memoria/PDF.
 - [ ] Diseño desde el 3D: diseñar el refuerzo por torsión (estribos cerrados y acero longitudinal) cuando Tu supera el umbral; necesita la cláusula registrada (NTC-C 5.8, C.11.5, 11.5).
 - [x] Traer del 2D: diafragma rígido por nivel al extruir y el f′c del concreto del 2D.
-- [ ] Modo 3D: conservar la cámara orbital al volver (hoy se conserva la vista elegida, pero el redimensionado del visor la reinicia).
+- [x] Modo 3D: la cámara orbital vuelve tal cual al regresar al modo y un redimensionado no la reencuadra.
 
 ## Diseño (de `docs/research/concrete-design`)
 
@@ -27,10 +27,12 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] Normas para ampliar el taller: torsión (NTC 5.8), losas, muros y combinaciones accidentales necesitan el texto oficial registrado con evidencia en `docs/design/normative-sources.json`.
 - [ ] Confirmar con la NTC 6.7.4 si el umbral de acero mínimo por penetración (6.7.6.1.2) usa el esfuerzo combinado con transferencia de momento; hoy usa vuv directo y la nota lo avisa.
 - [x] Tres mesas: Diseño es el modo Diseño de FStructure (interruptor Modelo | Diseño), Estructura diseña el modelo por omisión, el pórtico rápido pasa al modelo (deshacible) y las bandas de diagrama son comunes (Lámina en Resultados).
-- [ ] Modelo y Diseño: resaltar en el lienzo el miembro elegido en Diseño (y abrir su diseño desde el Inspector), y diseñar barras inclinadas o de acero; hoy se dicen «sin diseñar».
+- [x] Modelo y Diseño: «Diseñar» desde el Inspector (o la barra seleccionada en el 2D o el 3D) abre su diseño, y «Ver en el Modelo» / «Ver en 3D» la deja seleccionada.
+- [ ] Diseñar barras inclinadas o de acero; hoy se dicen «sin diseñar».
 - [ ] Modo Diseño: llevar el análisis por casos del modelo a un worker; un 4 × 4 tarda ~1 s la primera vez (luego hay caché por revisión).
 - [x] Estructura (antes Pórtico): vigas y columnas analizadas juntas (viva alternada, acción lateral, k del nomograma, índice de estabilidad del marco) y cada miembro diseñado con los motores de viga y columna. Diagramas con valores por tramo, φVn y cursor de lectura.
-- [ ] Pórtico: proponer secciones (viga y columna mínimas que cumplen), secciones distintas por nivel, cargas puntuales y voladizos.
+- [x] Pórtico rápido: proponer secciones (viga y columna con el menor volumen de concreto que cumplen, columnas al 1 %).
+- [ ] Proponer secciones también para el Modelo 2D y los ejes del 3D (escribir las secciones en el modelo, deshacible) y por nivel; pórtico con secciones distintas por nivel, cargas puntuales y voladizos.
 - [ ] Pórtico: llevar el cálculo a un worker; un 5 × 5 con sismo tarda ~0.3 s en el hilo principal.
 - [ ] Registrar con evidencia las combinaciones sísmicas de NSR-10 (B.2.4.2) y E.060 (9.2.3); hoy el pórtico las aplica como complementarias y lo dice.
 

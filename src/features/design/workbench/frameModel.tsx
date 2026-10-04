@@ -175,6 +175,23 @@ const MODEL3D_MISSING = 'No hay Modelo 3D en este proyecto: modela, genera o tra
 export const fromProjectModel = (draft: Pick<FrameDraft, 'source'>) => draft.source === 'model' || draft.source === 'model3d';
 
 /** El eje del borrador si sigue en el modelo; si no, el primero. */
+const memberIdAt = (result: StructureDesignResult, index: number) => result.members.find((member) => member.index === index)?.id;
+
+/** Las barras de la fuente que forman un elemento diseñado (los tramos de una viga continua, o la columna). */
+export function memberIdsOf(result: StructureDesignResult, designId: string): string[] {
+  const beam = result.beams.find((item) => item.id === designId);
+  const column = beam ? undefined : result.columns.find((item) => item.id === designId);
+  const indexes = beam ? beam.memberIndexes : column ? [column.memberIndex] : [];
+  return indexes.flatMap((index) => memberIdAt(result, index) ?? []);
+}
+
+/** El elemento diseñado (viga o columna) que contiene una barra de la fuente, si se diseña. */
+export function designOfMember(result: StructureDesignResult, memberId: string): string | null {
+  return result.beams.find((beam) => beam.memberIndexes.some((index) => memberIdAt(result, index) === memberId))?.id
+    ?? result.columns.find((column) => memberIdAt(result, column.memberIndex) === memberId)?.id
+    ?? null;
+}
+
 export const axisOf = (draft: Pick<FrameDraft, 'axis'>, axes: ExternalStructureAxes) =>
   axes.axes.some((item) => item.id === draft.axis) ? draft.axis : axes.axes[0]?.id ?? '';
 

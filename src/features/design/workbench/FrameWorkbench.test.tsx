@@ -42,6 +42,23 @@ describe('mesa Estructura con el pórtico rápido', () => {
     expect(await screen.findByRole('img', { name: /Elevación de la viga de 3 claros/ })).toBeTruthy();
   });
 
+  it('«Proponer» busca la viga y la columna con menos concreto que cumplen y Ctrl+Z las devuelve', async () => {
+    const user = userEvent.setup();
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="frame" /></ProjectProvider>);
+    const beamHeight = () => (screen.getByRole('textbox', { name: /Viga h/ }) as HTMLInputElement).value;
+    expect(beamHeight()).toBe('55');
+    await user.click(screen.getByRole('button', { name: 'Proponer' }));
+    const note = await screen.findByText(/Ctrl\+Z lo deshace/, undefined, { timeout: 10_000 });
+    const [, b, h, c] = /Viga (\d+) × (\d+) y columna (\d+) ×/.exec(note.textContent ?? '')!;
+    expect(beamHeight()).toBe(h);
+    expect((screen.getByRole('textbox', { name: /Viga b/ }) as HTMLInputElement).value).toBe(b);
+    expect((screen.getByRole('textbox', { name: /Columna h/ }) as HTMLInputElement).value).toBe(c);
+    // El resultado de la mesa cumple con lo propuesto.
+    expect(await within(results()).findByText(/Cumple/)).toBeTruthy();
+    await user.keyboard('{Control>}z{/Control}');
+    expect(beamHeight()).toBe('55');
+  }, 20_000);
+
   it('sin Modelo 2D la fuente lo explica y no inventa resultados', async () => {
     const user = userEvent.setup();
     render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="frame" /></ProjectProvider>);

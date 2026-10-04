@@ -42,6 +42,10 @@ export interface WorkbenchChrome {
   readonly onOpenSpace3D?: (axisId?: string) => void;
   /** Fuente pedida al abrir el taller. */
   readonly startSource?: 'frame' | 'model' | 'model3d';
+  /** Barra del modelo cuyo diseño se abre al llegar (la elegida en el 2D o el 3D). */
+  readonly focusMember?: string;
+  /** Selecciona esas barras en su modo y lo abre; con `axisId`, en el 3D. */
+  readonly onShowMembers?: (memberIds: readonly string[], axisId?: string) => void;
 }
 
 export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };

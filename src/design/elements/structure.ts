@@ -176,6 +176,8 @@ export interface ExternalStructureAxes {
   readonly columns: readonly { readonly x: number; readonly z: number; readonly memberIds: readonly string[] }[];
   /** La fuente de un eje; la misma instancia mientras el modelo no cambie. */
   source(axisId: string): ExternalStructureSource;
+  /** Los ejes cuyo plano contiene una barra del modelo (una columna está en dos). */
+  axesOfMember?(memberId: string): readonly string[];
   /**
    * Diseña todos los ejes fuera del hilo principal (un worker) y entrega cada
    * resumen al terminar su eje. Devuelve cómo cancelar. Opcional: sin él, la
