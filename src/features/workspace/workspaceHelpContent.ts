@@ -3,7 +3,8 @@ import type { ToolId } from '../../shared/contracts';
 type Guide = { steps: readonly [string, string][]; controls: readonly [string, string][] };
 
 /** Vocabulario de los controles existentes. No importa ni accede a datos de las mesas. */
-export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = {
+/** Una guía por mesa y una por cada modo de FStructure (3D y Diseño). */
+export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId | 'space3d' | 'design', Guide>> = {
   es: {
     model2d: {
       steps: [
@@ -11,6 +12,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
         ['Asigna apoyos y propiedades', 'Selecciona un nudo o una barra y abre Panel para editar sus datos. La herramienta Apoyo se aplica sobre un nudo.'],
         ['Coloca las cargas', 'Carga puntual se coloca sobre un nudo; Carga distribuida y Momento tienen su propio control. Experiencia de cálculo reúne modo, casos y combinaciones.'],
         ['Analiza y revisa', 'Pulsa Analizar y después Resultados. Consulta reacciones, diagramas y deformada. Si el análisis falla, revisa el diagnóstico antes de cambiar el modelo.'],
+        ['Diseña', 'Cambia a Diseño en la barra: la mesa Estructura diseña en concreto las vigas y columnas del modelo con sus casos de carga. Con una barra elegida, «Diseñar» en el Inspector abre su viga o columna; «Ver en el Modelo» la trae de vuelta seleccionada.'],
         ['Conserva el trabajo', 'El menú de tres puntos reúne exportación, memoria PDF, unidades y hojas de datos. El nombre del proyecto se edita en la barra superior.'],
       ],
       controls: [
@@ -18,18 +20,21 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
         ['Desplazar y zoom', 'Usa Desplazar para mover la vista. Los botones +, − y Ajustar cambian sólo la cámara.'],
         ['Cancelar', 'Escape cancela la acción activa. Deshacer recupera una edición del modelo.'],
         ['Buscar una acción', 'Ctrl/⌘ + K abre la búsqueda de comandos, herramientas y elementos.'],
+        ['Cambiar de modo', 'Alt + Mayús + 1, 2 o 3 abre el 2D, el 3D o Diseño; el 2D conserva su encuadre y el 3D su vista.'],
         ['Volver al inicio', 'La marca abre la bienvenida de esta herramienta. Desde ahí puedes volver a FusionStructure.'],
       ],
     },
     space3d: {
       steps: [
-        ['Prepara la geometría', 'Archivo permite crear un edificio, usar el generador o importar. Nudo y Barra en el dock permiten dibujar sobre el plano de trabajo.'],
+        ['Prepara la geometría', 'Archivo permite crear un edificio, usar el generador o importar. Traer del 2D repite el pórtico del modo 2D en pórticos paralelos unidos por vigas transversales (se deshace con Deshacer). Nudo y Barra en el dock dibujan sobre el plano de trabajo.'],
         ['Define el modelo', 'Definir reúne ejes y pisos, secciones, casos de carga y parámetros dinámicos.'],
         ['Selecciona y asigna', 'Elige nudos o barras y abre Asignar. Los comandos explican si requieren nudos o barras seleccionados.'],
         ['Calcula', 'Analizar utiliza el caso o combinación activo. La guía del modelo indica el siguiente paso y los resultados se invalidan al editar.'],
         ['Consulta los resultados', 'Elige la magnitud en la banda del lienzo. Panel abre datos y diagnósticos; Mostrar controla deformada, etiquetas y capas; Vista abre el explorador.'],
+        ['Diseña un eje', 'En Diseño · Estructura, el origen Modelo 3D diseña en concreto el pórtico de un eje (A, B… o 1, 2…) con las acciones del modelo completo (columnas en flexión biaxial con su propia k e índice de estabilidad fuera del plano; torsión de vigas contra su umbral). «Revisar los N ejes» diseña todos sin trabar la mesa, los resume en planta y «Guardar los N ejes en la memoria» deja el edificio listo para el PDF. Una barra seleccionada aquí abre su eje y su diseño; «Ver en 3D» vuelve con ella seleccionada. La categoría de cada caso (permanente, variable, accidental) decide cómo entra.'],
       ],
       controls: [
+        ['2D, 3D y Diseño', 'Son modos de la misma mesa: el proyecto, el guardado y la barra no cambian; sólo cambian las herramientas del modo. Alt + Mayús + 1, 2 o 3 cambia de modo desde el teclado.'],
         ['Vistas y plano de trabajo', 'La vista 3D, las plantas y los alzados cambian desde el selector del lienzo. Comprueba el plano activo antes de colocar un nudo.'],
         ['Selección', 'Selecciona en el lienzo o el explorador. La ficha de selección permite editar o quitar la selección.'],
         ['Deshacer y rehacer', 'Los botones de la barra recuperan ediciones de esta mesa.'],
@@ -54,11 +59,12 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
     },
     design: {
       steps: [
-        ['Elige elemento y norma', 'Viga, Columna y Zapata están en el dock. La norma se elige sobre el dibujo y se aplica a este taller.'],
+        ['Elige elemento y norma', 'Estructura (el modelo), Viga, Columna, Zapata y Secciones están en el dock. La norma se elige sobre el dibujo para el diseño de concreto. En Estructura, el origen es el Modelo 2D, un eje del Modelo 3D o un pórtico rápido; al llegar desde el modo 2D o 3D se toma ese modelo.'],
         ['Completa Datos', 'Indica geometría, materiales, demandas y armado. Cada campo muestra su unidad. Las opciones menos frecuentes se despliegan dentro de su apartado.'],
-        ['Revisa el cálculo', 'El cálculo se actualiza al editar: no necesitas un botón Analizar. Corrige los campos inválidos antes de consultar los resultados.'],
+        ['Revisa el cálculo', 'El cálculo se actualiza al editar: no necesitas un botón Analizar. El Modelo 2D y las propuestas calculan en segundo plano; editar cancela lo anterior y el PDF espera al resultado vigente. Corrige los campos inválidos antes de consultar los resultados. «Proponer» busca secciones que cumplen: vigas por nivel y columnas por entrepiso, con igual o menos concreto que la propuesta uniforme (en el Modelo 2D se escriben sólo con «Aplicar al modelo»; en el 3D comprueba todos los ejes y «Aplicar al 3D» las escribe como un cambio deshacible).'],
+        ['Acero e inclinación', 'Las vigas de concreto hasta 30° usan longitud real y acciones locales; la interacción con axial y los encuentros inclinados quedan pendientes. Acero muestra el componente existente de fluencia total NTC CDMX 2023: armadura A992 + I AISC en tensión pura. Elige una combinación del modelo con procedencia; la ficha siempre es no concluyente. «Guardar revisión de acero» conserva la selección y la recalcula al abrir; «PDF de acero» exporta demanda, resistencia, fuentes, límites y un modelo adjunto reproducible. Diseñar desde el Inspector abre también una barra de armadura.'],
         ['Consulta Resultados', 'Cada comprobación indica demanda, capacidad y su referencia. Cumple lo evaluado requiere revisar también las comprobaciones fuera del alcance.'],
-        ['Guarda la memoria', 'Agregar conserva el elemento en la memoria del proyecto; Guardar actualiza una revisión abierta. Memoria reúne los elementos; PDF exporta el actual y Copiar memoria lleva su texto al portapapeles.'],
+        ['Guarda la memoria', 'Agregar conserva el elemento en la memoria del proyecto; Guardar actualiza una revisión abierta. Memoria reúne los elementos; PDF exporta el actual y Copiar memoria lleva su texto al portapapeles. Con el Modelo 3D, la vista de todos los ejes guarda el edificio entero de una vez.'],
       ],
       controls: [
         ['Dibujo, Datos y Resultados', 'En teléfono cada vista ocupa la mesa. En escritorio puedes abrir los datos y los resultados junto al dibujo.'],
@@ -75,6 +81,7 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
         ['Set supports and properties', 'Select a node or member and open Panel to edit its data. Support applies to a node.'],
         ['Place loads', 'Point load applies to a node. Distributed load and Moment have their own tools. Calculation experience contains the mode, load cases and combinations.'],
         ['Analyze and inspect', 'Press Analyze, then Results to inspect reactions, diagrams and deformation. Review a failed analysis diagnosis before changing the model.'],
+        ['Design', 'Switch to Diseño in the top bar: Estructura designs the model’s concrete beams and columns with its load cases. With a member selected, «Diseñar» in the Inspector opens its beam or column; «Ver en el Modelo» brings it back selected.'],
         ['Keep your work', 'The three-dot menu contains exports, PDF reports, units and datasheets. Edit the project name in the top bar.'],
       ],
       controls: [
@@ -82,18 +89,21 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
         ['Pan and zoom', 'Pan moves the view. +, − and Fit affect the camera.'],
         ['Cancel', 'Escape cancels the current action. Undo restores a model edit.'],
         ['Find an action', 'Ctrl/⌘ + K opens command, tool and element search.'],
+        ['Switch mode', 'Alt + Shift + 1, 2 or 3 opens 2D, 3D or Design; 2D keeps its framing and 3D its view.'],
         ['Home', 'The mark opens this tool’s welcome screen, where you can return to FusionStructure.'],
       ],
     },
     space3d: {
       steps: [
-        ['Prepare geometry', 'File creates a building, opens the generator or imports a model. Node and Member in the dock draw on the working plane.'],
+        ['Prepare geometry', 'File creates a building, opens the generator or imports a model. From 2D repeats the 2D frame in parallel frames joined by transverse beams (Undo reverts it). Node and Member in the dock draw on the working plane.'],
         ['Define the model', 'Define contains axes and stories, sections, load cases and dynamic parameters.'],
         ['Select and assign', 'Select nodes or members, then open Assign. Commands explain the selection they need.'],
         ['Analyze', 'Analyze uses the active case or combination. The model guide suggests the next step; editing invalidates results.'],
         ['Inspect results', 'Select a quantity on the canvas rail. Panel opens data and diagnostics, Display controls deformation and layers, and View opens the explorer.'],
+        ['Design an axis', 'In Design · Estructura, the Modelo 3D source designs the concrete frame of one axis (A, B… or 1, 2…) with the actions of the whole model (columns in biaxial bending with their own out-of-plane k and stability index; beam torsion against its threshold). «Revisar los N ejes» designs every axis without blocking the workspace, summarises them in plan, and «Guardar los N ejes en la memoria» readies the whole building for the PDF. A member selected here opens its axis and its design; «Ver en 3D» returns with it selected. Each case category (permanent, variable, accidental) decides how it enters.'],
       ],
       controls: [
+        ['2D, 3D and Design', 'They are modes of the same workspace: project, saving and the bar stay; only the mode tools change. Alt + Shift + 1, 2 or 3 switches mode from the keyboard.'],
         ['Views and working plane', 'Use the canvas selector for 3D, plans and elevations. Check the active plane before placing a node.'],
         ['Selection', 'Select in the canvas or explorer. The selection card opens the editor or clears the selection.'],
         ['Undo and redo', 'The top bar restores edits made in this tool.'],
@@ -118,11 +128,12 @@ export const workspaceHelpContent: Record<'es' | 'en', Record<ToolId, Guide>> = 
     },
     design: {
       steps: [
-        ['Choose an element and code', 'Viga, Columna and Zapata are in the dock. Choose the design code above the drawing.'],
+        ['Choose an element and code', 'Estructura (the model), Viga, Columna, Zapata and Secciones are in the dock. Choose the design code above the drawing. Estructura designs the 2D model, one axis of the 3D model or a quick frame; arriving from the 2D or 3D mode picks that model.'],
         ['Fill in Datos', 'Enter geometry, materials, demands and reinforcement. Each field shows its unit; less frequent options expand in their section.'],
-        ['Review the calculation', 'The calculation updates as you edit. Fix invalid fields before opening results.'],
+        ['Review the calculation', 'The calculation updates as you edit. The 2D model and proposals calculate in the background; editing cancels the previous calculation and PDF export waits for the current result. Fix invalid fields before opening results. «Proponer» searches sections that pass: beams by level and columns by story, using no more concrete than the uniform proposal (with the 2D model they are written only with «Aplicar al modelo»; in 3D it checks every axis and «Aplicar al 3D» writes them as one undoable change).'],
+        ['Steel and inclination', 'Concrete beams up to 30° use actual length and local actions; axial interaction and inclined joints remain pending. Steel shows the existing NTC CDMX 2023 gross-yielding component: A992 truss + AISC I shape under pure tension. Select a traceable model combination; the review is always inconclusive. Save steel review stores the selection and recalculates it when reopened; Steel PDF exports demand, resistance, sources, limits and a reproducible attached model. Designing from the Inspector also opens a truss member.'],
         ['Inspect Resultados', 'Checks show demand, capacity and references. Cumple lo evaluado also requires reviewing out-of-scope checks.'],
-        ['Keep the report', 'Agregar saves the element in project memory; Guardar updates an opened review. Memoria lists saved elements; PDF exports the current one and Copiar memoria copies its text.'],
+        ['Keep the report', 'Agregar saves the element in project memory; Guardar updates an opened review. Memoria lists saved elements; PDF exports the current one and Copiar memoria copies its text. With the 3D model, the all-axes view saves the whole building at once.'],
       ],
       controls: [
         ['Views', 'Dibujo, Datos and Resultados use the whole phone workspace. Desktop allows panels beside the drawing.'],

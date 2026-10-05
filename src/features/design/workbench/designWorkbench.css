@@ -945,3 +945,53 @@
 @keyframes dw-model-pulse { from { opacity: .25; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .dw-model-wait__dot { animation: none; } }
 .dw-model-errors { display: grid; justify-items: center; gap: 12px; align-self: center; }
+.dw-model-confirm { display: grid; gap: 6px; }
+.dw-model-confirm p { color: var(--dw-ink); }
+.dw-model-confirm div { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ─── Edificio: todos los ejes del Modelo 3D (BuildingAxes) ─── */
+.dw-building { position: relative; display: grid; gap: 10px; }
+.dw-plate:has(.dw-building__close) figcaption { padding-right: 36px; }
+.dw-building__close { position: absolute; top: -30px; right: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--dw-line); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); color: var(--dw-muted); cursor: pointer; }
+.dw-building__close:hover { color: var(--dw-ink); }
+.dw-building-plan { width: 100%; max-width: calc(560px * var(--z)); max-height: calc(380px * var(--z)); justify-self: center; }
+.dw-building-plan__axis { cursor: pointer; outline: none; }
+.dw-building-plan__axis line { stroke: var(--dw-subtle); stroke-width: 1.5; stroke-dasharray: 6 4; }
+.dw-building-plan__axis line.dw-building-plan__hit { stroke: transparent; stroke-width: 16; stroke-dasharray: none; }
+.dw-building-plan__axis circle { fill: var(--sc-color-surface-1); stroke: var(--dw-subtle); stroke-width: 1.5; }
+.dw-building-plan__axis text { fill: var(--dw-muted); font: 600 10px var(--sc-font-mono); }
+.dw-building-plan__axis[data-band='mid'] :is(line:not(.dw-building-plan__hit), circle) { stroke: var(--dw-ink); }
+.dw-building-plan__axis[data-band='near'] :is(line:not(.dw-building-plan__hit), circle) { stroke: var(--fs-signal-attention); }
+.dw-building-plan__axis[data-band='fail'] :is(line:not(.dw-building-plan__hit), circle) { stroke: var(--dw-fail); }
+.dw-building-plan__axis[data-band='pending'] :is(line:not(.dw-building-plan__hit), circle) { opacity: .55; }
+.dw-building-plan__axis[data-current] line:not(.dw-building-plan__hit) { stroke-width: 3; stroke-dasharray: none; }
+.dw-building-plan__axis[data-current] text { fill: var(--dw-ink); }
+.dw-building-plan__axis:is(:hover, :focus-visible) line:not(.dw-building-plan__hit) { stroke-width: 3; }
+.dw-building-plan__axis:focus-visible circle { stroke-width: 3; }
+.dw-building-plan__column { fill: var(--sc-color-surface-1); stroke: var(--dw-ink); stroke-width: 1.5; }
+.dw-building-plan__column[data-band='low'] { fill: var(--dw-subtle); stroke: var(--dw-subtle); }
+.dw-building-plan__column[data-band='mid'] { fill: var(--dw-ink); }
+.dw-building-plan__column[data-band='near'] { fill: var(--fs-signal-attention); stroke: var(--fs-signal-attention); }
+.dw-building-plan__column[data-band='fail'] { fill: var(--dw-fail); stroke: var(--dw-fail); }
+.dw-building-plan__column[data-band='pending'] { stroke-dasharray: 2 2; }
+.dw-building__table td[data-band='low'] { color: var(--dw-muted); }
+.dw-building__table td[data-band='near'] { color: var(--fs-signal-attention-ink, var(--fs-signal-attention)); }
+.dw-building__table td[data-band='fail'] { color: var(--dw-fail); }
+.dw-building__table tr[data-active] th { color: var(--dw-ink); font-weight: 600; }
+.dw-building__error { color: var(--dw-fail); text-align: left !important; font-family: var(--sc-font-ui); white-space: normal; }
+.dw-building__pending { color: var(--dw-subtle); text-align: left !important; font-family: var(--sc-font-ui); }
+.dw-building__table .dw-inline-action { min-height: 28px; }
+.dw-building__save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.dw-building__save span { color: var(--dw-muted); font-size: 11px; line-height: 1.5; }
+
+/* Propuesta de secciones del Modelo 2D: se lee y se aplica (o se descarta). */
+.dw-proposal {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--dw-line);
+  border-radius: var(--sc-radius-md, 10px);
+  background: var(--sc-color-surface-1);
+}
+.dw-proposal p { margin: 0; color: var(--dw-ink); font-size: 11.5px; line-height: 1.5; }
+.dw-proposal__actions { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -20,6 +20,7 @@ type Group = 'node' | 'member' | 'support' | 'load';
 const EXPANDED_LIMIT = 12;
 
 const num = (value: number) => formatSpace3DNumber(value, { significantDigits: 4 });
+const MEMBER_LOAD_KEYS = { distributed: 'toolbar.distributedLoad', point: 'toolbar.pointLoad', moment: 'toolbar.moment' } as const;
 
 interface Space3DModelOutlineProps {
   readonly project: Space3DProjectV1;
@@ -128,7 +129,7 @@ export const Space3DModelOutline = ({
       <p className="space3d-outline-hint">{t('space3d.outlineSupportsHint')}</p>
     </OutlineGroup>
 
-    <OutlineGroup id="load" title={t('space3d.loads')} count={project.nodalLoads.length} t={t} empty={t('space3d.emptyLoads')}
+    <OutlineGroup id="load" title={t('space3d.loads')} count={project.nodalLoads.length + project.memberLoads.length} t={t} empty={t('space3d.emptyLoads')}
       add={{ label: t('space3d.addLoadAction'), onClick: onAddLoad, disabled: !canAddLoad, hint: t('space3d.newLoadHint') }}>
       <ul className="space3d-outline-list" aria-label={t('space3d.loads')}>
         {project.nodalLoads.map((load) => {
@@ -139,6 +140,12 @@ export const Space3DModelOutline = ({
             : `${num(moment)} ${t('space3d.unitMoment')}`;
           return row('load', load.id, `${t('space3d.loadOnNode', { node: load.nodeId })}, ${magnitude}`);
         })}
+        {project.memberLoads.map((load) => <li key={`member-load:${load.id}`}>
+          <button type="button" className="space3d-outline-row" onClick={() => onSelect({ kind: 'member', id: load.memberId })}>
+            <span className="space3d-outline-id">{load.id}</span>
+            <span className="space3d-outline-desc">{load.memberId} · {t(MEMBER_LOAD_KEYS[load.type])} · {load.caseId}</span>
+          </button>
+        </li>)}
       </ul>
     </OutlineGroup>
 

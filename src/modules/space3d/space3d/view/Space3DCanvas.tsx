@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AlertTriangle, ChevronDown, LocateFixed, Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
 import { SPACE3D_VIEW_PRESETS, type Space3DViewPreset } from './cameraModel';
-import { createSpace3DViewport, type Space3DLayerVisibility, type Space3DViewport, type Space3DWindowPick } from './threeViewport';
+import { createSpace3DViewport, type Space3DCameraState, type Space3DLayerVisibility, type Space3DViewport, type Space3DWindowPick } from './threeViewport';
 import type { Space3DSceneModel } from './sceneModel';
 import type { Space3DSelection } from '../store/Space3DProjectContext';
 import type { Space3DVector } from '../model/types';
@@ -84,6 +84,10 @@ interface Space3DCanvasProps {
    * conserva la cámara que la persona dejó.
    */
   readonly refitToken?: number;
+  /** Cámara con la que abre si su preset es el activo (la que dejó la persona al salir). */
+  readonly initialCamera?: Space3DCameraState | null;
+  /** Recibe la cámara al desmontarse el lienzo, para devolverla al volver. */
+  readonly onCameraRelease?: (camera: Space3DCameraState) => void;
   readonly zoomInLabel?: string;
   readonly zoomOutLabel?: string;
   readonly resetLabel?: string;
@@ -118,6 +122,8 @@ export const Space3DCanvas = ({
   activeView = 'isometric',
   onViewChange,
   refitToken = 0,
+  initialCamera = null,
+  onCameraRelease,
   zoomInLabel = 'Acercar',
   zoomOutLabel = 'Alejar',
   resetLabel = 'Restablecer vista',
@@ -174,6 +180,10 @@ export const Space3DCanvas = ({
     let releasing = false;
     const release = () => {
       releasing = true;
+      // La última cámara sirve al visor que se cree después (StrictMode, contexto
+      // perdido) y a quien aloja el lienzo, para devolverla al volver al modo.
+      const camera = viewportRef.current?.getCameraState?.();
+      if (camera) { cameraRef.current = camera; cameraReleaseRef.current?.(camera); }
       viewportRef.current?.dispose();
       viewportRef.current = null;
     };
@@ -198,6 +208,11 @@ export const Space3DCanvas = ({
       const observer = new ResizeObserver(() => viewport.resize());
       observer.observe(canvas);
       viewport.resize();
+      const saved = cameraRef.current;
+      if (saved && saved.preset === activeViewRef.current && viewport.setCameraState) {
+        viewport.setCameraState(saved);
+        restoredRef.current = true;
+      }
       return () => {
         observer.disconnect();
         canvas.removeEventListener('webglcontextlost', onContextLost);
@@ -215,6 +230,13 @@ export const Space3DCanvas = ({
 
   const modelRef = useRef(model);
   const layersRef = useRef(layers);
+  // Cámara con la que abre el próximo visor si su preset es el activo.
+  const cameraRef = useRef(initialCamera);
+  const restoredRef = useRef(false);
+  const activeViewRef = useRef(activeView);
+  activeViewRef.current = activeView;
+  const cameraReleaseRef = useRef(onCameraRelease);
+  cameraReleaseRef.current = onCameraRelease;
 
   const planeKey = draft?.plane ? `${draft.plane.axis}:${draft.plane.offset}:${draft.plane.step}` : '';
   const fromKey = draft?.from ? draft.from.join(',') : '';
@@ -241,6 +263,8 @@ export const Space3DCanvas = ({
   // El preset lo gobierna quien aloja el lienzo (comparte estado con la lista
   // de Vistas del panel lateral); este efecto sólo lo aplica a la cámara viva.
   useEffect(() => {
+    // El visor recién creado ya abrió con su cámara guardada: no se reencuadra.
+    if (restoredRef.current) { restoredRef.current = false; return; }
     viewportRef.current?.setView(activeView);
   }, [activeView]);
 
@@ -279,7 +303,7 @@ export const Space3DCanvas = ({
     <span><b>{model.nodes.length}</b> {copy.nodes}</span>
     <span><b>{model.members.length}</b> {copy.members}</span>
     <span><b>{model.supports.length}</b> {copy.supports}</span>
-    <span><b>{model.loads.length}</b> {copy.loads}</span>
+    <span><b>{model.loads.length + (model.memberLoads?.length ?? 0)}</b> {copy.loads}</span>
   </div>;
 
   return <div className="space3d-canvas">

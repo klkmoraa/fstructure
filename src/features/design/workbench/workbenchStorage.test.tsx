@@ -5,7 +5,7 @@ import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { DesignWorkbench } from './DesignWorkbench';
 import { WORKBENCH_DOCUMENT_KIND, WorkbenchStorageContext, createProjectWorkbenchStorage, parseWorkbenchDocument } from './workbenchStorage';
 
-const workbenchDoc = (entries: Record<string, unknown>, schemaVersion = 4) => ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion, entries });
+const workbenchDoc = (entries: Record<string, unknown>, schemaVersion = 6) => ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion, entries });
 
 afterEach(() => {
   vi.useRealTimers();
@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 describe('design workbench document', () => {
-  it('migrates v2 memory and retains the section studio draft and memory in v4', () => {
+  it('migrates v2 memory and retains the section studio draft and memory in v6', () => {
     const old = { id: 'a1', element: 'column', code: 'ntc-2023', savedAt: '2026-09-27', fields: { tag: 'C-1', width: '40' } };
     const section = { id: 'a2', element: 'section', code: 'ntc-2023', savedAt: '2026-10-01', fields: { tag: 'S-1', shape: 'octagonal', philosophy: 'allowable', cover: '4' } };
     const persist = vi.fn<(value: JsonValue) => void>();
@@ -22,7 +22,7 @@ describe('design workbench document', () => {
     storage.write('memory', [old, section]);
     storage.flush();
     const document = persist.mock.calls[0]?.[0] as { schemaVersion: number; entries: Record<string, JsonValue> };
-    expect(document.schemaVersion).toBe(4);
+    expect(document.schemaVersion).toBe(6);
     expect(parseWorkbenchDocument(document)).toEqual({ memory: [old, section], section: section.fields });
     storage.dispose();
   });
@@ -52,20 +52,20 @@ describe('design workbench document', () => {
     expect(parseWorkbenchDocument(workbenchDoc({ notMemory: memory })).notMemory).toBeUndefined();
   });
 
-  it('keeps v3 documents and stores frames with their bays and levels in v4', () => {
+  it('keeps v3 documents and stores frames with their bays and levels in v6', () => {
     const beam = { id: 'a1', element: 'beam', code: 'ntc-2023', savedAt: '2026-09-27', fields: { tag: 'V-1' }, rows: [{ length: '5' }] };
     const persist = vi.fn<(value: JsonValue) => void>();
     const storage = createProjectWorkbenchStorage(workbenchDoc({ code: 'e060', memory: [beam] }, 3), persist);
     const frame = {
-      id: 'a2', element: 'frame', code: 'e060', savedAt: '2026-10-03', fields: { tag: 'P-1', beamHeight: '55' },
-      rows: [{ length: '5' }, { length: '4' }], levels: [{ height: '3.5', dead: '22', live: '7.6', lateral: '60' }],
+      id: 'a2', element: 'frame', code: 'e060', savedAt: '2026-10-03', fields: { tag: 'P-1', beamHeight: '55', proposalBars: 'yes' },
+      rows: [{ length: '5' }, { length: '4' }], levels: [{ height: '3.5', dead: '22', live: '7.6', lateral: '60', beamWidth: '30', beamHeight: '45', columnWidth: '40', columnHeight: '40' }],
     };
     storage.write('frame-bays', frame.rows);
     storage.write('frame-stories', frame.levels);
     storage.write('memory', [beam, frame]);
     storage.flush();
     const document = persist.mock.calls[0]?.[0] as { schemaVersion: number };
-    expect(document.schemaVersion).toBe(4);
+    expect(document.schemaVersion).toBe(6);
     expect(parseWorkbenchDocument(document)).toEqual({ code: 'e060', memory: [beam, frame], 'frame-bays': frame.rows, 'frame-stories': frame.levels });
     // Un nivel con una forma inesperada invalida la memoria, no la reinterpreta.
     expect(parseWorkbenchDocument(workbenchDoc({ memory: [{ ...frame, levels: [{ height: 3 }] }] })).memory).toBeUndefined();
@@ -75,7 +75,7 @@ describe('design workbench document', () => {
   it('rejects foreign or oversized documents without throwing', () => {
     expect(parseWorkbenchDocument(null)).toEqual({});
     expect(parseWorkbenchDocument({ kind: 'other', schemaVersion: 1, entries: {} })).toEqual({});
-    expect(parseWorkbenchDocument({ ...workbenchDoc({}), schemaVersion: 5 })).toEqual({});
+    expect(parseWorkbenchDocument({ ...workbenchDoc({}), schemaVersion: 7 })).toEqual({});
     expect(parseWorkbenchDocument(workbenchDoc({ wide: Object.fromEntries(Array.from({ length: 70 }, (_, index) => [`f${index}`, 'x'])) }))).toEqual({});
     const fields = Object.fromEntries(Array.from({ length: 64 }, (_, index) => [`f${index}`.padEnd(32, 'k'), 'x'.repeat(32)]));
     const huge = { memory: Array.from({ length: 60 }, (_, index) => ({ id: `m${index}`, element: 'beam', code: 'ntc-2023', savedAt: '2026-09-27', fields })) };
@@ -109,4 +109,16 @@ describe('design workbench document', () => {
     expect(screen.getByRole('heading', { name: 'Columna' })).toBeTruthy();
     storage.dispose();
   });
+});
+
+ it('migra v5 sin perder borradores y rechaza memorias de acero inválidas', () => {
+  const persist = vi.fn();
+  const storage = createProjectWorkbenchStorage(workbenchDoc({ code: 'e060', 'frame-stories': [{ beamWidth: '30' }] }, 5), persist);
+  const selection = { memberId: 'barra-' + 'x'.repeat(150), combinationId: 'U', savedAt: '2026-10-04T10:00:00Z' };
+  storage.write('steel-memory', [selection]); storage.flush();
+  expect(parseWorkbenchDocument(persist.mock.calls[0]![0])).toEqual({ code: 'e060', 'frame-stories': [{ beamWidth: '30' }], 'steel-memory': [selection] });
+  for (const invalid of [[{ ...selection, savedAt: 'bad' }], [{ ...selection, result: 100 }], [selection, selection], 'bad', [{ ...selection, combinationId: '' }]]) {
+    expect(parseWorkbenchDocument(workbenchDoc({ 'steel-memory': invalid }))['steel-memory']).toBeUndefined();
+  }
+  storage.dispose();
 });

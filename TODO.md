@@ -6,10 +6,16 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 - [ ] FEM: colorear por desplazamiento y calidad; editor mínimo de placa, apoyos y cargas. Malla, von Mises y tablas ya se consultan en la mesa.
 - [ ] Proyectos por herramienta: miniatura generada de cada modelo 3D, malla FEM o elemento de Diseño; hoy usan la escena de la herramienta y el resumen de su rama local.
-- [ ] Mesas de FEM y Diseño con el lenguaje de la 2D (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM.
+- [ ] Mesa de FEM y modo Diseño con el lenguaje del modo Modelo (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM.
 - [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
 - [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.
 - [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
+- [x] Mesa única 2D · 3D · Diseño: el Solver 3D es el modo 3D de FStructure, con transición animada, «Traer del 2D» y diseño de un eje del 3D en Estructura.
+- [x] Diseño desde el 3D: columnas en flexión biaxial, todos los ejes con planta (la columna común toma el mayor cociente), eje ~15× más rápido y «Editar en 3D» al alzado del eje.
+- [x] Diseño desde el 3D: k e índice de estabilidad propios de la dirección perpendicular, torsión de vigas contra ¼·φ·Tcr, todos los ejes en un worker y el edificio completo en la memoria/PDF.
+- [ ] Diseño desde el 3D: diseñar el refuerzo por torsión (estribos cerrados y acero longitudinal) cuando Tu supera el umbral; necesita la cláusula registrada (NTC-C 5.8, C.11.5, 11.5).
+- [x] Traer del 2D: diafragma rígido por nivel al extruir y el f′c del concreto del 2D.
+- [x] Modo 3D: la cámara orbital vuelve tal cual al regresar al modo y un redimensionado no la reencuadra.
 
 ## Diseño (de `docs/research/concrete-design`)
 
@@ -20,11 +26,17 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] Columnas zunchadas, de lindero con contratrabe, losas de cimentación y dados: necesitan cláusulas registradas (FR y φPn,máx del zuncho, αs de borde, ancho efectivo del patín).
 - [ ] Normas para ampliar el taller: torsión (NTC 5.8), losas, muros y combinaciones accidentales necesitan el texto oficial registrado con evidencia en `docs/design/normative-sources.json`.
 - [ ] Confirmar con la NTC 6.7.4 si el umbral de acero mínimo por penetración (6.7.6.1.2) usa el esfuerzo combinado con transferencia de momento; hoy usa vuv directo y la nota lo avisa.
-- [x] Modelar y diseñar: puente declarado `src/integrations/model2dDesign` (Modelo 2D → Diseño · Estructura), «Diseñar» en el 2D, fila en el Inicio, plantilla «Pórtico de concreto» y bandas de diagrama comunes (Lámina en Resultados del 2D).
-- [ ] Modelar y diseñar: llevar de vuelta al 2D el miembro elegido en Diseño (resaltarlo en el lienzo) y diseñar barras inclinadas o de acero; hoy se dicen «sin diseñar».
-- [ ] Modelo 2D en Diseño: llevar el análisis por casos a un worker; un 4 × 4 tarda ~1 s la primera vez (luego hay caché por revisión).
+- [x] Tres mesas: Diseño es el modo Diseño de FStructure (interruptor Modelo | Diseño), Estructura diseña el modelo por omisión, el pórtico rápido pasa al modelo (deshacible) y las bandas de diagrama son comunes (Lámina en Resultados).
+- [x] Modelo y Diseño: «Diseñar» desde el Inspector (o la barra seleccionada en el 2D o el 3D) abre su diseño, y «Ver en el Modelo» / «Ver en 3D» la deja seleccionada.
+- [x] Alcance inicial de barras inclinadas/acero: vigas de concreto hasta 30° comprobadas con longitud real y acciones locales en las tres normas; acero de armadura A992 + I AISC en tensión pura usa la fluencia total NTC existente, con combinación del modelo, worker y selección desde el Inspector.
+- [x] Memoria y PDF del componente inicial de acero: selecciones por proyecto recalculadas, persistencia v6 compatible y PDF no concluyente con modelo adjunto reproducible.
+- [ ] Ampliar acero a fractura neta, conexiones, compresión/pandeo, flexión/cortante e interacciones con evidencia oficial. Definir el papel de diagonales de concreto fuera de la clasificación actual y verificar axial–flexión y encuentros inclinados.
+- [x] Modo Diseño: análisis por casos del Modelo 2D en worker, incluidos recálculos con inercia agrietada; mensajes sin funciones, caché por revisión y cancelación al editar. La búsqueda de propuestas del pórtico y los modelos 2D/3D también corre en worker.
 - [x] Estructura (antes Pórtico): vigas y columnas analizadas juntas (viva alternada, acción lateral, k del nomograma, índice de estabilidad del marco) y cada miembro diseñado con los motores de viga y columna. Diagramas con valores por tramo, φVn y cursor de lectura.
-- [ ] Pórtico: proponer secciones (viga y columna mínimas que cumplen), secciones distintas por nivel, cargas puntuales y voladizos.
+- [x] Proponer secciones: pórtico rápido y Modelo 2D (viga y columna con el menor volumen de concreto que cumplen, columnas al 1 %; en el modelo se aplica a pedido y se deshace en el 2D).
+- [x] Proponer secciones por nivel: vigas por elevación y columnas por entrepiso, menor o igual volumen que la propuesta uniforme, armado por sección y aplicación deshacible en el Modelo 2D; persistencia v5 compatible con v1–v4.
+- [x] Proponer secciones para todos los ejes del 3D, con columnas compartidas comprobadas en ambas direcciones, grupos por nivel y aplicación explícita deshacible en 3D.
+- [ ] Pórtico rápido con cargas puntuales y voladizos.
 - [ ] Pórtico: llevar el cálculo a un worker; un 5 × 5 con sismo tarda ~0.3 s en el hilo principal.
 - [ ] Registrar con evidencia las combinaciones sísmicas de NSR-10 (B.2.4.2) y E.060 (9.2.3); hoy el pórtico las aplica como complementarias y lo dice.
 
@@ -42,7 +54,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Pruebas (sólo si aportan)
 
-- [ ] Humo E2E de las cinco pantallas de entrada (Inicio y cuatro bienvenidas) con capturas en claro, oscuro y móvil.
+- [ ] Humo E2E de las pantallas de entrada (Inicio y dos bienvenidas) con capturas en claro, oscuro y móvil.
 - [ ] Matriz de importación/exportación: un archivo válido y uno inválido por formato.
 - [ ] Confirmar la entrega del PDF de Diseño en Safari: Chromium sin «compartir» ya descarga el PDF (probado con el del pórtico, 13 páginas con láminas).
 - [ ] Auditoría de dependencias en CI.

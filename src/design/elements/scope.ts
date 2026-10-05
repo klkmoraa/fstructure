@@ -120,8 +120,31 @@ const FLANGE: ScopeItem = {
 };
 
 /** Comprobaciones fuera de alcance del elemento, listas para mostrarse junto a las demás. */
-export function outOfScopeChecks(element: ElementKind, code: DesignCodeId, options: { readonly flange?: boolean } = {}): ElementCheck[] {
-  const items = options.flange ? [FLANGE, ...SCOPE[element]] : SCOPE[element];
+/** Estructura de un eje del Modelo 3D: las columnas ya llevan la flexión perpendicular del modelo. */
+const OUT_OF_PLANE_BIAXIAL: ScopeItem = {
+  id: 'out-of-plane',
+  label: 'Flexión fuera del plano',
+  note: same('Las columnas se revisan en flexión biaxial con los momentos del Modelo 3D; fuera del plano, k sale del nomograma con las vigas perpendiculares y el índice de estabilidad del pórtico perpendicular (si no hay pórtico en esa dirección, se usa el del eje). Las vigas sólo se diseñan en el plano.'),
+};
+
+/** Con un eje del Modelo 3D la torsión de las vigas se mide y se compara con su umbral, sin diseñarse. */
+const TORSION_THRESHOLD: ScopeItem = {
+  id: 'torsion',
+  label: 'Diseño por torsión',
+  note: {
+    'ntc-2023': 'Tu del Modelo 3D se compara con el umbral ¼·φ·Tcr (referencia complementaria); el refuerzo por torsión y su interacción con cortante y flexión (NTC-C 5.8) no se diseñan.',
+    'nsr-10': 'Tu del Modelo 3D se compara con el umbral ¼·φ·Tcr (referencia complementaria); el refuerzo por torsión (C.11.5) no se diseña.',
+    e060: 'Tu del Modelo 3D se compara con el umbral ¼·φ·Tcr (referencia complementaria); el refuerzo por torsión (11.5) no se diseña.',
+  },
+};
+
+export function outOfScopeChecks(element: ElementKind, code: DesignCodeId, options: { readonly flange?: boolean; readonly biaxialColumns?: boolean; readonly inclinedBeams?: boolean } = {}): ElementCheck[] {
+  const base = options.biaxialColumns
+    ? SCOPE[element].map((item) => item.id === 'out-of-plane' ? OUT_OF_PLANE_BIAXIAL : item.id === 'torsion' ? TORSION_THRESHOLD : item)
+    : SCOPE[element];
+  const withInclination = options.inclinedBeams ? [{ id: 'inclined-beam-axial', label: 'Interacción axial–flexión en vigas inclinadas',
+    note: same('Se usan la longitud real y las acciones locales del solver para flexión, cortante y flecha. No se revisa la interacción con el axial concurrente de la viga ni el detallado de sus encuentros inclinados.') }, ...base] : base;
+  const items = options.flange ? [FLANGE, ...withInclination] : withInclination;
   return items.map((item) => ({
     id: `scope-${item.id}`,
     label: item.label,

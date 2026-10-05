@@ -26,7 +26,7 @@ function ShapeIcon({ shape }: { shape: string }) {
 
 export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('section', SECTION_DEFAULTS);
-  const history = useDraftHistory(draft, replace);
+  const history = useDraftHistory(draft, replace, 'section');
   const { onHistory } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
   const [drawing, setDrawing] = useState<string>('section');

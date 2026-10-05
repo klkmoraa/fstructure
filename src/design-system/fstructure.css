@@ -255,7 +255,7 @@
 }
 
 .solver2d-stage::after {
-  content: 'FS-A01 · SOLVER 2D';
+  content: 'FS-A01 · 2D · 3D · DISEÑO';
   position: absolute;
   inset-inline-end: 18px;
   inset-block-end: 14px;

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createBlankProject, createConcreteFrameProject, createDefaultProject } from '../data/defaultProject';
-import { designCode, type DesignCodeId } from '../design/elements/codes';
-import { designFrame, type FrameDesignInput } from '../design/elements/frame';
-import { designStructure, type StructureDesignOptions } from '../design/elements/structure';
-import type { MemberLoad, MemberModel, NodeModel, ProjectModel } from '../types';
-import { model2dDesignSource } from './model2dDesign';
+import { createBlankProject, createConcreteFrameProject, createDefaultProject } from '../../data/defaultProject';
+import { designCode, type DesignCodeId } from './codes';
+import { designFrame, type FrameDesignInput } from './frame';
+import { designStructure, type StructureDesignOptions } from './structure';
+import type { MemberLoad, MemberModel, NodeModel, ProjectModel } from '../../types';
+import { model2dDesignSource } from './model2dSource';
+import { withConcreteFrame } from '../../data/concreteFrame';
+import { outOfScopeChecks } from './scope';
 
 const code: DesignCodeId = 'nsr-10';
 const frameInput: FrameDesignInput = {
@@ -86,7 +88,28 @@ function modelOfFrame(): ProjectModel {
   };
 }
 
-describe('puente Modelo 2D → Diseño', () => {
+describe('el Modelo 2D como fuente de Estructura', () => {
+  it.each(['ntc-2023', 'nsr-10', 'e060'] as const)('diseña flexión/cortante de una viga inclinada con longitud real (%s)', (selectedCode) => {
+    const length = Math.hypot(6, 2);
+    const project: ProjectModel = { ...createBlankProject(),
+      nodes: [{ id: 'A', x: 0, y: 0, support: { type: 'pin' } }, { id: 'B', x: 6, y: 2, support: { type: 'roller', angleDeg: 90 } }],
+      members: [{ id: 'V', i: 'A', j: 'B', type: 'frame', E: 25e6, A: .3 * .55, I: .3 * .55 ** 3 / 12 }],
+      loadCases: [{ id: 'D', name: 'Muerta', category: 'permanent', active: true, selfWeightFactor: 0 }],
+      memberLoads: [{ id: 'q', memberId: 'V', caseId: 'D', type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1, qyStart: -20, qyEnd: -20 }],
+    };
+    const source = model2dDesignSource(project).create({ braced: true })!;
+    expect(source.members[0]!.kind).toBe('beam');
+    const profile = designCode(selectedCode), combinations = profile.loadCombinations('B');
+    const result = designStructure(source, { ...options, code: selectedCode, includeSelfWeight: false, combinations, lateralCombinations: [] });
+    if (!result.ok) throw new Error(result.errors.join('\n'));
+    const beam = result.beams[0]!.result;
+    // Equilibrio estático independiente: q normal = q global cos(theta), M = qn L² / 8.
+    const factor = Math.max(...combinations.map((c) => c.dead));
+    expect(beam.extremes.positiveMomentKnm).toBeCloseTo(factor * 20 * (6 / length) * length ** 2 / 8, 6);
+    expect(beam.extremes.shearKn).toBeCloseTo(factor * 20 * (6 / length) * length / 2, 6);
+    expect(beam.spans[0]!.lengthM).toBeCloseTo(length, 8);
+    expect(outOfScopeChecks('frame', selectedCode, { inclinedBeams: true })).toContainEqual(expect.objectContaining({ id: 'scope-inclined-beam-axial', status: 'out-of-scope' }));
+  });
   it('diseña igual el pórtico dibujado en el 2D que el generado por el taller', () => {
     const generated = designFrame(frameInput);
     if (!generated.ok) throw new Error(generated.errors.join('\n'));
@@ -180,5 +203,47 @@ describe('plantilla «Pórtico de concreto» del Modelo 2D', () => {
     expect(result.columns).toHaveLength(6);
     expect(result.lateral).toBe(true);
     expect(result.status).not.toBe('fail');
+  });
+});
+
+describe('pórtico rápido llevado al Modelo 2D', () => {
+  it('se diseña igual que el pórtico paramétrico (sin peso propio, mismas cargas)', () => {
+    const input: FrameDesignInput = { ...frameInput, includeSelfWeight: false };
+    const generated = designFrame(input);
+    if (!generated.ok) throw new Error(generated.errors.join('\n'));
+    const project = withConcreteFrame(createBlankProject(), {
+      bays: input.bays, stories: input.stories, base: input.base, beam: input.beam, column: input.column,
+      fcMpa: 25, elasticModulusKpa: designCode(code).elasticModulusMpa(25) * 1e3, includeSelfWeight: false,
+    });
+    expect(project.members).toHaveLength(10);
+    expect(project.loadCases.map((item) => item.id)).toEqual(['CM', 'CV', 'S']);
+    const external = model2dDesignSource(project);
+    expect(external.errors).toEqual([]);
+    const fromModel = designStructure(external.create({ braced: false })!, { ...options, includeSelfWeight: external.includesSelfWeight });
+    if (!fromModel.ok) throw new Error(fromModel.errors.join('\n'));
+    fromModel.beams.forEach((beam, index) => {
+      const reference = generated.beams[index]!.result;
+      expect(beam.result.extremes.negativeMomentKnm).toBeCloseTo(reference.extremes.negativeMomentKnm, 4);
+      expect(beam.result.governingRatio).toBeCloseTo(reference.governingRatio, 4);
+    });
+    fromModel.columns.forEach((column) => {
+      expect(column.result.governingRatio).toBeCloseTo(generated.columns.find((item) => item.label === column.label)!.result.governingRatio, 4);
+    });
+  });
+
+  it('conserva identidad y nombre del proyecto y vacía lo que dependía del modelo anterior', () => {
+    const before = { ...createDefaultProject(), name: 'Mi proyecto' };
+    const after = withConcreteFrame(before, {
+      bays: [6], stories: [{ heightM: 3, deadKnPerM: 10, liveKnPerM: 5, lateralKn: 0 }], base: 'pinned',
+      beam: { widthMm: 300, heightMm: 500 }, column: { widthMm: 400, heightMm: 400 }, fcMpa: 28, elasticModulusKpa: 2.5e7, includeSelfWeight: true,
+    });
+    expect(after.id).toBe(before.id);
+    expect(after.name).toBe('Mi proyecto');
+    expect(after.nodes.filter((node) => node.support.type === 'pin')).toHaveLength(2);
+    // Sin fuerza lateral no hay caso de sismo; las secciones y el concreto salen del catálogo.
+    expect(after.loadCases.some((item) => item.id === 'S')).toBe(false);
+    expect(after.members.find((member) => member.id === 'V11')!.sectionId).toBe('rect-concrete-300x500');
+    expect(after.members.every((member) => member.materialId === 'concrete-28mpa')).toBe(true);
+    expect(after.designAssignments).toEqual([]);
   });
 });

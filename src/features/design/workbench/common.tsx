@@ -1,3 +1,5 @@
+import { parseNumber, isShortString } from './formNumbers';
+export { parseNumber, isShortString, LIVE_LOAD_USES, LONG_TERM_DURATIONS, sustainedRatioFor, xiFor, mpaFromKgcm2 } from './formNumbers';
 import { AlertTriangle, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, Info, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Field, SegmentedControl, Select } from '../../../design-system/components/controls';
@@ -7,23 +9,24 @@ import type { Takeoff } from '../../../design/elements/takeoff';
 import type { ReportAlternative } from './designReport';
 import { useWorkbenchStorage, type WorkbenchStorage } from './workbenchStorage';
 
-export const parseNumber = (value: string): number => {
-  const normalized = value.trim().replace(',', '.');
-  return normalized === '' ? Number.NaN : Number(normalized);
-};
-
 /** Lee un borrador guardado; es sólo una comodidad y la página funciona sin almacenamiento. */
 export function readStored<T>(storage: WorkbenchStorage, key: string, parse: (raw: unknown) => T | undefined, fallback: T): T {
   return parse(storage.read(key)) ?? fallback;
 }
 
-export const isShortString = (value: unknown): value is string => typeof value === 'string' && value.length <= 32;
 
-export function useStoredDraft<T extends Record<string, string>>(key: string, defaults: T) {
+
+/**
+ * Borrador de un formulario guardado en el taller. `legacy` da el valor de un
+ * campo nuevo para borradores guardados antes de que existiera (p. ej. la fuente
+ * de Estructura, que antes sólo podía ser el pórtico generado): lo guardado
+ * conserva su significado aunque cambie el valor por omisión.
+ */
+export function useStoredDraft<T extends Record<string, string>>(key: string, defaults: T, legacy?: Partial<T>) {
   const storage = useWorkbenchStorage();
   const [draft, setDraft] = useState<T>(() => readStored(storage, key, (raw) => {
     if (!raw || typeof raw !== 'object') return undefined;
-    const merged = { ...defaults };
+    const merged: T = { ...defaults, ...legacy } as T;
     for (const field of Object.keys(defaults) as (keyof T)[]) {
       const value = (raw as Record<string, unknown>)[field as string];
       if (isShortString(value)) merged[field] = value as T[keyof T];
@@ -53,17 +56,31 @@ const HISTORY_LIMIT = 100;
  * los cambios muy seguidos se agrupan. Aplicar un paso del historial no crea
  * uno nuevo.
  */
-export function useDraftHistory<T>(value: T, apply: (value: T) => void): DraftHistory {
-  const past = useRef<T[]>([]);
-  const future = useRef<T[]>([]);
+const RETAINED_HISTORIES = new WeakMap<object, Map<string, { past: unknown[]; future: unknown[]; present: unknown }>>();
+
+export function useDraftHistory<T>(value: T, apply: (value: T) => void, key?: string): DraftHistory {
+  const scope = useWorkbenchStorage().historyScope;
+  const [retained] = useState(() => {
+    const saved = scope && key ? RETAINED_HISTORIES.get(scope)?.get(key) : undefined;
+    return saved && JSON.stringify(saved.present) === JSON.stringify(value) ? saved : undefined;
+  });
+  const past = useRef<T[]>((retained?.past as T[] | undefined) ?? []);
+  const future = useRef<T[]>((retained?.future as T[] | undefined) ?? []);
   const previous = useRef(value);
   const lastChange = useRef(0);
   const applying = useRef(false);
-  const [counts, setCounts] = useState({ past: 0, future: 0 });
+  const [counts, setCounts] = useState({ past: past.current.length, future: future.current.length });
   const sync = () => setCounts({ past: past.current.length, future: future.current.length });
 
+  const remember = useCallback(() => {
+    if (!scope || !key) return;
+    let histories = RETAINED_HISTORIES.get(scope);
+    if (!histories) { histories = new Map(); RETAINED_HISTORIES.set(scope, histories); }
+    histories.set(key, { past: past.current, future: future.current, present: previous.current });
+  }, [scope, key]);
+  useEffect(() => () => remember(), [remember]);
   useEffect(() => {
-    if (Object.is(previous.current, value)) return;
+    if (JSON.stringify(previous.current) === JSON.stringify(value)) { applying.current = false; return; }
     if (applying.current) {
       applying.current = false;
     } else {
@@ -76,7 +93,8 @@ export function useDraftHistory<T>(value: T, apply: (value: T) => void): DraftHi
       sync();
     }
     previous.current = value;
-  }, [value]);
+    remember();
+  }, [value, remember]);
 
   const step = useCallback((from: { current: T[] }, to: { current: T[] }) => {
     const target = from.current[from.current.length - 1];
@@ -86,8 +104,10 @@ export function useDraftHistory<T>(value: T, apply: (value: T) => void): DraftHi
     applying.current = true;
     lastChange.current = 0;
     apply(target);
+    previous.current = target;
+    remember();
     sync();
-  }, [apply]);
+  }, [apply, remember]);
 
   return useMemo(() => ({
     canUndo: counts.past > 0,
@@ -116,35 +136,13 @@ export function BarSelect({ label, value, onChange, allowAuto = false, minimumDi
   </Select>;
 }
 
-/** Destinos de la tabla 6.1.2.2 de NTC-CyA 2023: W (media, para flechas diferidas) y Wm (máxima). */
-export const LIVE_LOAD_USES = [
-  { value: 'habitacion', label: 'Habitación', w: 0.8, wm: 1.9 },
-  { value: 'oficinas', label: 'Oficinas', w: 1.0, wm: 2.5 },
-  { value: 'aulas', label: 'Aulas', w: 1.0, wm: 2.5 },
-  { value: 'comunicacion', label: 'Pasillos y escaleras', w: 0.4, wm: 3.5 },
-] as const;
-export const sustainedRatioFor = (use: string) => {
-  const item = LIVE_LOAD_USES.find((entry) => entry.value === use) ?? LIVE_LOAD_USES[0];
-  return item.w / item.wm;
-};
-
-/** ξ de la tabla 13.4.4.1 según la duración de la carga sostenida. */
-export const LONG_TERM_DURATIONS = [
-  { value: '3', label: '3 meses', xi: 1.0 },
-  { value: '6', label: '6 meses', xi: 1.2 },
-  { value: '12', label: '12 meses', xi: 1.4 },
-  { value: '60', label: '5 años o más', xi: 2.0 },
-] as const;
-export const xiFor = (months: string) => (LONG_TERM_DURATIONS.find((entry) => entry.value === months) ?? LONG_TERM_DURATIONS[3]).xi;
-
 export function GroupSelect({ value, onChange, groups }: { value: string; onChange: (value: string) => void; groups: readonly { value: string; label: string }[] }) {
   return <Select label="Grupo de la construcción" value={value} onChange={(event) => onChange(event.currentTarget.value)}>
     {groups.map((group) => <option key={group.value} value={group.value}>{group.label}</option>)}
   </Select>;
 }
 
-const KGCM2_PER_MPA = 10.197_162;
-export const mpaFromKgcm2 = (value: string) => parseNumber(value) / KGCM2_PER_MPA;
+
 
 export function FieldGroup({ title, children, columns = 2, action }: { title: string; children: ReactNode; columns?: 1 | 2 | 3; action?: ReactNode }) {
   const id = useId();

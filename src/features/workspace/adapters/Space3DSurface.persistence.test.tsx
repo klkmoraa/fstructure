@@ -17,6 +17,10 @@ import { translate } from '../../../modules/space3d/i18n/catalogs';
 import { ShellToolSlotsProvider, ShellSlotHost } from '../ShellToolSlots';
 import { linkSpace3DToShell } from './space3dShellBridge';
 import Space3DSurface from './Space3DSurface';
+import { setToolIntent } from '../toolIntent';
+import { withSpace3dSections } from '../../../integrations/space3dSections';
+import { space3dFromModel2d } from '../../../integrations/model2dSpace3d';
+import { createConcreteFrameProject } from '../../../data/defaultProject';
 
 // Only WebGL is unavailable in jsdom; model commands, React providers and IndexedDB are real.
 vi.mock('../../../modules/space3d/space3d/view/threeViewport', async (original) => ({
@@ -63,6 +67,24 @@ async function addNode() {
 }
 const storedModel = (model: unknown) => parseSpace3DDraft(JSON.stringify(model));
 
+it('cuenta las cargas de barra en el lienzo, la lista y el siguiente paso del 3D', async () => {
+  const { repo, project, model } = await seed('A', 17);
+  const loaded = { ...model, nodalLoads: [], memberLoads: [{
+    id: 'ML1', memberId: model.members[0]!.id, caseId: 'LC1', type: 'distributed' as const,
+    coordinateSystem: 'global' as const, lengthBasis: 'real' as const,
+    start: 0, end: 1, qyStart: -12, qyEnd: -12,
+  }] };
+  const saved = (await repo.openBundle('A'))!;
+  saved.bundle.space3d = linkSpace3DToShell(project.id, 'A-current', loaded);
+  await repo.saveBundle(saved.bundle, saved.revision);
+  await start();
+  expect(screen.getByRole('button', { name: /^Cargas/ }).textContent).toBe('Cargas1');
+  expect(screen.getByRole('group', { name: t('space3d.canvasSummary') }).textContent).toContain('1 Cargas');
+  expect(screen.getByText('ML1')).toBeTruthy();
+  expect(screen.queryByText(t('space3d.guideAddLoadBody'))).toBeNull();
+  expect(screen.queryByRole('button', { name: t('space3d.guideAddLoadAction') })).toBeNull();
+});
+
 it('changes project identity inside 3D without carrying A state or history into B', async () => {
   const a = await seed('A', 17);
   const b = await seed('B', 29);
@@ -101,18 +123,70 @@ it('reopens the pending 3D edit and never queues the older committed branch over
   expect(after.revision).toBe(before + 1);
 });
 
-it('abre aislado: sin rama 3D no deriva el modelo del 2D ni lo menciona', async () => {
+it('abre aislado: sin rama 3D no deriva el modelo del 2D; traerlo es una acción explícita', async () => {
   const repo = new IndexedDbUnifiedBundleRepository();
   const project = { ...createDefaultProject(), id: 'A' };
   await repo.saveBundle(createUnifiedProjectBundle(project, 'A-current'), 0);
   await start();
   expect(project.nodes.length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: new RegExp(`^${t('space3d.nodes')}`) }).textContent).toBe(`${t('space3d.nodes')}0`);
-  expect(screen.queryByText(/2D/)).toBeNull();
+  // La única mención del 2D es el botón «Traer del 2D».
+  expect(screen.getAllByText(/2D/).every((element) => element.closest('button')?.getAttribute('aria-label') === 'Traer el Modelo 2D al 3D')).toBe(true);
   expect(screen.queryByRole('button', { name: /derivar/i })).toBeNull();
   await addNode();
   await act(() => session.open('A'));
   const saved = (await repo.openBundle('A'))!.bundle.space3d!;
   expect(storedModel(saved.model).nodes).toHaveLength(1);
   expect(saved.sourceModel2D).toBeUndefined();
+});
+
+it('la entrada desde 2D abre la preparación; reemplaza sólo con confirmación y permite deshacer', async () => {
+  const { repo, model } = await seed('A', 17);
+  setToolIntent({ tool: 'space3d', kind: 'bring-2d' });
+  await start();
+  const two = { ...createDefaultProject() };
+  expect(screen.getByRole('dialog', { name: 'Traer del 2D' })).toBeTruthy();
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(model);
+  const frames = screen.getByRole('textbox', { name: 'Pórticos' });
+  await userEvent.clear(frames);
+  await userEvent.type(frames, '2');
+  await userEvent.click(screen.getByRole('button', { name: 'Traer al 3D' }));
+  // Había un modelo 3D: se pide confirmación antes de reemplazarlo.
+  await userEvent.click(await screen.findByRole('button', { name: t('space3d.confirmReplaceConfirm') }));
+  const count = () => screen.getByRole('button', { name: new RegExp(`^${t('space3d.nodes')}`) }).textContent;
+  await waitFor(() => expect(count()).toBe(`${t('space3d.nodes')}${two.nodes.length * 2}`));
+  await act(() => session.open('A'));
+  const saved = (await repo.openBundle('A'))!.bundle;
+  expect(storedModel(saved.space3d!.model).nodes).toHaveLength(two.nodes.length * 2);
+  expect(storedModel(saved.space3d!.model).id).toBe('space3d:A');
+  // El Modelo 2D no cambia.
+  expect(saved.model2d.nodes).toHaveLength(two.nodes.length);
+  await userEvent.click(screen.getByRole('button', { name: t('space3d.undo') }));
+  await waitFor(() => expect(count()).toBe(`${t('space3d.nodes')}${model.nodes.length}`));
+});
+
+
+it('aplica las secciones del Diseño como un paso deshacible, guarda y reabre sin perder el original', async () => {
+  const repo = new IndexedDbUnifiedBundleRepository();
+  const project = { ...createConcreteFrameProject(), id: 'A' };
+  const model = { ...space3dFromModel2d(project, { frames: 1, spacingM: 0 }).model!, id: 'space3d:A' };
+  const bundle = createUnifiedProjectBundle(project, 'A-current');
+  bundle.space3d = linkSpace3DToShell('A', 'A-current', model);
+  await repo.saveBundle(bundle, 0);
+  setToolIntent({ tool: 'space3d', kind: 'view', view: '3d', sections: { beam: {width:35,height:55}, column: {width:45,height:45}, sourceModel: JSON.stringify(storedModel(model)) } });
+  await start();
+  await act(() => session.open('A'));
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(storedModel(withSpace3dSections(model, {beam:{widthMm:350,heightMm:550},column:{widthMm:450,heightMm:450}})));
+  await userEvent.click(screen.getByRole('button', {name:'Switch tool'}));
+  await userEvent.click(screen.getByRole('button', {name:'Switch tool'}));
+  await userEvent.click(screen.getByRole('button', {name:t('space3d.undo')}));
+  await act(() => session.open('A'));
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(model);
+  await userEvent.click(screen.getByRole('button', {name:'Switch tool'}));
+  await userEvent.click(screen.getByRole('button', {name:'Switch tool'}));
+  await act(() => session.open('A'));
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(model);
+  await userEvent.click(screen.getByRole('button', {name:t('space3d.redo')}));
+  await act(() => session.open('A'));
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(storedModel(withSpace3dSections(model, {beam:{widthMm:350,heightMm:550},column:{widthMm:450,heightMm:450}})));
 });

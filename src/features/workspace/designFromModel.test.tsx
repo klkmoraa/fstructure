@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createConcreteFrameProject } from '../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../data/projectStorage';
-import { model2dDesignSource } from '../../integrations/model2dDesign';
+import { model2dDesignSource } from '../../design/elements/model2dSource';
 import { ProjectProvider } from '../../store/ProjectContext';
 import { DesignWorkbench } from '../design/workbench/DesignWorkbench';
 import { reportFromMemoryItem } from '../design/workbench/designMemory';
@@ -23,16 +23,19 @@ describe('modelar y diseñar: la mesa Estructura con el Modelo 2D', () => {
   it('diseña las barras del modelo sin pedir su geometría y vuelve al 2D', async () => {
     const user = userEvent.setup();
     const onOpenModel = vi.fn();
-    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="model" modelSource={model2dDesignSource(project)} onOpenModel={onOpenModel} /></ProjectProvider>);
+    // El acceso desde 2D debe ganar al elemento y origen sueltos guardados.
+    localStorage.setItem('fstructure.design-workbench.element', JSON.stringify('beam'));
+    localStorage.setItem('fstructure.design-workbench.frame', JSON.stringify({ source: 'frame' }));
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startSource="model" modelSource={model2dDesignSource(project)} onOpenModel={onOpenModel} /></ProjectProvider>);
     expect(screen.getByRole('radio', { name: 'Modelo 2D' }).getAttribute('aria-checked')).toBe('true');
     // La geometría y las cargas son del modelo: el taller no las pide.
     expect(screen.queryByRole('textbox', { name: 'Claro 1 · L (m)' })).toBeNull();
-    expect(screen.getByText(/f′c del material del modelo: 28/)).toBeTruthy();
+    expect(screen.getByText(/f′c: 28.*MPa \(modelo\)/)).toBeTruthy();
     expect(await screen.findByRole('img', { name: /Utilización de el Modelo 2D: 2 líneas de viga y 6 columnas/ }, { timeout: 5000 })).toBeTruthy();
     const grid = within(results()).getByRole('table', { name: /Cociente que rige en cada miembro/ });
     await user.click(within(grid).getByRole('button', { name: /Viga del nivel 2/ }));
     expect(await screen.findByRole('img', { name: /Elevación de la viga de 2 claros/ })).toBeTruthy();
-    await user.click(screen.getAllByRole('button', { name: 'Abrir el Modelo 2D' })[0]!);
+    await user.click(screen.getAllByRole('button', { name: 'Editar en Modelo' })[0]!);
     expect(onOpenModel).toHaveBeenCalledTimes(1);
   });
 

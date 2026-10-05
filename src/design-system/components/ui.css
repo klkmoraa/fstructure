@@ -646,6 +646,8 @@
   transform: var(--sc-press-transform);
 }
 .sc-layer-toggle__icon { width: var(--sc-control-height-sm); height: var(--sc-control-height-sm); display: grid; place-items: center; border-radius: var(--sc-radius-sm); background: var(--sc-color-surface-2); color: var(--sc-color-action-primary); }
+/* Sin icono, el texto ocupa la columna flexible y el interruptor no se aprieta. */
+.sc-layer-toggle:not(:has(> .sc-layer-toggle__icon)) { grid-template-columns: minmax(0, 1fr) auto; }
 .sc-layer-toggle__copy { min-width: 0; display: grid; gap: 2px; }
 .sc-layer-toggle__copy strong { font-size: var(--sc-font-size-label); }
 .sc-layer-toggle__copy small { color: var(--sc-color-text-secondary); font-size: var(--sc-font-size-caption); line-height: var(--sc-line-height-compact); }

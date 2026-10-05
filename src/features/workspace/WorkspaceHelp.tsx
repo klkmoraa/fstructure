@@ -6,12 +6,16 @@ import { toolIdentity } from './toolCatalog';
 import { workspaceHelpContent } from './workspaceHelpContent';
 import './workspaceHelp.css';
 
-export function WorkspaceHelp({ tool, language }: { tool: ToolId; language: 'es' | 'en' }) {
+export function WorkspaceHelp({ tool, language, topic }: { tool: ToolId; language: 'es' | 'en'; topic?: 'design' | 'space3d' }) {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const name = toolIdentity(tool).name[language];
-  const title = language === 'es' ? `Cómo usar ${name}` : `How to use ${name}`;
-  const guide = workspaceHelpContent[language][tool];
+  const title = topic === 'design'
+    ? (language === 'es' ? `Cómo diseñar en ${name}` : `How to design in ${name}`)
+    : topic === 'space3d'
+      ? (language === 'es' ? `Cómo modelar en 3D en ${name}` : `How to model in 3D in ${name}`)
+      : (language === 'es' ? `Cómo usar ${name}` : `How to use ${name}`);
+  const guide = workspaceHelpContent[language][topic ?? tool];
   return <>
     <button ref={trigger} type="button" className="workspace-topbar__action-button workspace-help-trigger"
       aria-label={title} title={title} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}>
