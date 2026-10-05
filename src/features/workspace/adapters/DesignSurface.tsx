@@ -1,6 +1,8 @@
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { concreteFrameGroups, concreteFrameMembers, withConcreteFrame, withConcreteSections, type ConcreteFrameSpec } from '../../../data/concreteFrame';
 import type { ModelSection, ModelSectionsBridge } from '../../design/workbench/WorkbenchLayout';
+import { startProposalWorker } from '../../design/workbench/proposalWorker';
+import { model2dDesignSourceWithWorker } from './model2dDesignWorker';
 import { model2dDesignSource } from '../../../design/elements/model2dSource';
 import { parseSpace3DDraft } from '../../../modules/space3d/space3d/data/codec';
 import { space3dSectionGroups, withSpace3dSections, designSpace3dSectionCandidate } from '../../../integrations/space3dSections';
@@ -35,7 +37,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   const latestProject = useRef(project);
   useEffect(() => { latestProject.current = project; }, [project]);
   const projectId = project?.id ?? null;
-  const modelSource = useMemo(() => project ? model2dDesignSource(project) : null, [project]);
+  const modelSource = useMemo(() => project ? model2dDesignSourceWithWorker(project) : null, [project]);
   // «Proponer» en Estructura con el Modelo 2D: cada candidato diseña el modelo con
   // esas secciones sin tocarlo; aplicarlas es un solo cambio deshacible del 2D.
   const modelSections = useMemo<ModelSectionsBridge | null>(() => {
@@ -48,6 +50,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     const sum = (items: readonly { lengthM: number }[]) => items.reduce((total, item) => total + item.lengthM, 0);
     return {
       groups: concreteFrameGroups(project),
+      propose: (code, draft, onStep) => startProposalWorker(new URL('./modelSectionProposal.worker.ts', import.meta.url), { kind: 'model2d', model: project, code, draft }, onStep),
       beams: beams.length,
       columns: columns.length,
       beamLengthM: sum(beams),
@@ -75,6 +78,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     const mm = (s: ModelSection) => ({ widthMm: s.width * 10, heightMm: s.height * 10 });
     const candidate = (beam: ModelSection, column: ModelSection, assigned?: Parameters<typeof withSpace3dSections>[2]) => withSpace3dSections(space3d, { beam: mm(beam), column: mm(column) }, assigned);
     return {
+      propose: (code, draft, onStep) => startProposalWorker(new URL('./modelSectionProposal.worker.ts', import.meta.url), { kind: 'model3d', model: space3d, code, draft }, onStep),
       groups, beams: beamGroups.reduce((s, g) => s + g.memberIds.length, 0), columns: columnGroups.reduce((s, g) => s + g.memberIds.length, 0),
       beamLengthM: beamGroups.reduce((s, g) => s + g.lengthM, 0), columnLengthM: columnGroups.reduce((s, g) => s + g.lengthM, 0),
       volumeM3: space3d.members.reduce((s, m) => { const a = nodes.get(m.i)!, b = nodes.get(m.j)!; return s + (eligible.has(m.id) ? m.A * Math.hypot(a.x-b.x, a.y-b.y, a.z-b.z) : 0); }, 0),

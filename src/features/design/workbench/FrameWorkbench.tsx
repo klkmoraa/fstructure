@@ -17,12 +17,13 @@ import {
 } from './common';
 import { FRAME_DIAGRAMS, FrameElevation, ratioBand, type FrameDiagramKind } from './FrameDrawings';
 import {
-  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraft, designOfMember, memberIdsOf, plural, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
+  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraftAsync, designFromDraft, designOfMember, memberIdsOf, plural, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
   type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome,
 } from './frameModel';
 import { afterTransition } from '../../../design-system/afterTransition';
 import { BuildingAxes } from './BuildingAxes';
-import { frameConcreteVolume, frameProposalStories, proposeFrameSections, proposeModelSections, type SectionProposal } from './frameProposal';
+import { frameConcreteVolume, frameProposalStories, proposeFrameSections, proposeModelSections, type ProposalStep, type SectionProposal } from './frameProposal';
+import { startProposalWorker } from './proposalWorker';
 import { useWorkbenchStorage } from './workbenchStorage';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
@@ -108,16 +109,25 @@ function MemberGrid({ result, selected, onSelect }: { result: StructureDesignRes
  * 3D): su análisis con el solver general puede tardar un segundo. Se calcula después de pintar y, mientras
  * tanto, se conserva el último resultado.
  */
-function useDeferredOutcome(key: string, enabled: boolean, compute: () => StructureOutcome) {
+function useDeferredOutcome(key: string, enabled: boolean, compute: (signal: AbortSignal) => StructureOutcome | Promise<StructureOutcome>) {
   const [state, setState] = useState<{ key: string; outcome: StructureOutcome } | null>(null);
   const latest = useRef(compute);
   latest.current = compute;
   useEffect(() => {
     if (!enabled) return undefined;
     // Después de la transición de modo: el cálculo no entrecorta la animación.
-    return afterTransition(() => setState({ key, outcome: latest.current() }));
+    const controller = new AbortController();
+    const computeForKey = latest.current;
+    const cancel = afterTransition(() => {
+      void Promise.resolve().then(() => computeForKey(controller.signal)).then((outcome) => {
+        if (!controller.signal.aborted) setState({key,outcome});
+      }).catch((error:unknown) => {
+        if (!controller.signal.aborted) setState({key,outcome:{ok:false,errors:[error instanceof Error ? error.message : 'No se pudo diseñar.']}});
+      });
+    });
+    return () => {controller.abort();cancel();};
   }, [key, enabled]);
-  return enabled ? { outcome: state?.outcome ?? null, pending: state?.key !== key } : { outcome: null, pending: false };
+  return enabled ? { outcome: state?.key === key ? state.outcome : null, pending: state?.key !== key } : { outcome: null, pending: false };
 }
 
 /**
@@ -223,7 +233,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const frameOutcome = useMemo(() => fromModel ? null : designFromDraft(deferredInputs.code, deferredInputs.draft as FrameDraft, deferredInputs.bays, deferredInputs.stories),
     [fromModel, deferredInputs]);
   const modelKey = JSON.stringify([chrome.code, draft, external?.revision ?? null]);
-  const model = useDeferredOutcome(modelKey, fromModel, () => designFromDraft(chrome.code as DesignCodeId, draft, bays, stories, external));
+  const model = useDeferredOutcome(modelKey, fromModel, (signal) => designFromDraftAsync(chrome.code as DesignCodeId, draft, bays, stories, external, signal));
   const outcome: StructureOutcome | null = fromModel ? model.outcome : frameOutcome;
   const result = outcome?.ok ? outcome.result : null;
   const report = useMemo(() => outcome?.ok ? structureReport(outcome, deferredInputs.draft as FrameDraft) : null, [outcome, deferredInputs.draft]);
@@ -273,13 +283,9 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     let timer: ReturnType<typeof setTimeout> | null = null;
     const stop = () => { if (timer !== null) clearTimeout(timer); cancelProposal.current = null; setProposing(null); };
     cancelProposal.current = stop;
-    const tick = () => {
-      const next = steps.next();
-      if (next.done) { stop(); return; }
-      const step = next.value;
+    const accept = (step: ProposalStep) => {
       if (step.kind === 'trying') {
         setProposing(`${step.phase === 'grow' ? 'Buscando' : 'Ajustando'} · diseño ${step.trial}: viga ${step.beam.width}×${step.beam.height}, columna ${step.column.width}×${step.column.height}`);
-        timer = setTimeout(tick, 0);
         return;
       }
       stop();
@@ -296,8 +302,19 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       setSectionNote(`Por nivel · Viga ${proposedBeam.width} × ${proposedBeam.height} y columna ${proposedColumn.width} × ${proposedColumn.height} cm con ${proposedColumn.barsPerFace} barras por cara: rige ${percent(ratio)}. `
         + `${formatNumber(volumeM3, 2)} m³ de concreto (antes ${formatNumber(before, 2)}), tras ${trials} diseños. Ctrl+Z lo deshace.`);
     };
+    const tick = () => {
+      const next = steps.next();
+      if (next.done) { stop(); return; }
+      accept(next.value);
+      if (next.value.kind === 'trying') timer = setTimeout(tick, 0);
+    };
     setSectionNote(null);
-    timer = setTimeout(tick, 0);
+    setProposing('Iniciando búsqueda…');
+    const cancelWorker = modelSections
+      ? modelSections.propose?.(chrome.code as DesignCodeId, draft, accept)
+      : startProposalWorker(new URL('./frameProposal.worker.ts', import.meta.url), { code: chrome.code, draft, bays, stories }, accept);
+    if (cancelWorker) cancelProposal.current = () => { cancelWorker(); stop(); };
+    else timer = setTimeout(tick, 0);
   };
   const applyModelProposal = () => {
     if (!modelProposal || !modelSections) return;

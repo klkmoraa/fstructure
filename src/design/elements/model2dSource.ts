@@ -1,13 +1,12 @@
 import { standardMaterials } from '../../data/standardMaterials';
 import { standardSections } from '../../data/standardSections';
-import { evaluateDeformationAt, evaluateDiagramAt } from '../../engine/diagram';
 import { withResolvedGeneratedLoads } from '../../engine/generatedLoads';
-import { analyzeProject } from '../../engine/solver';
+import { analyzeModel2dCases, hydrateModel2dCases, type Model2dAnalysisRequest } from './model2dAnalysis';
 import {
   probeLoads,
-  type ExternalStructureSource, type StructureCase, type StructureCaseResult, type StructureMember, type StructureNode, type StructureSource, type StructureSupport,
+  type ExternalStructureSource, type StructureCase, type StructureMember, type StructureNode, type StructureSource, type StructureSupport,
 } from './structure';
-import type { AnalysisResult, LoadCase, MemberModel, MemberResult, NodeModel, ProjectModel } from '../../types';
+import type { LoadCase, MemberModel, NodeModel, ProjectModel } from '../../types';
 
 /**
  * El Modelo 2D como fuente de la mesa Estructura (modo Diseño de FStructure).
@@ -74,7 +73,7 @@ const revisionOf = (project: ProjectModel) => {
   return `${project.id}:${(hash >>> 0).toString(36)}:${text.length}`;
 };
 
-export function model2dDesignSource(project: ProjectModel): ExternalStructureSource {
+export function model2dDesignSource(project: ProjectModel, analyzeCases?: (request: Model2dAnalysisRequest) => ReturnType<StructureSource['analyze']>): ExternalStructureSource {
   const resolved = withResolvedGeneratedLoads(project);
   const nodeIndex = new Map(project.nodes.map((node, index) => [node.id, index]));
   const nodes: StructureNode[] = project.nodes.map((node) => ({ x: node.x, y: node.y, support: supportOf(node) }));
@@ -251,31 +250,8 @@ export function model2dDesignSource(project: ProjectModel): ExternalStructureSou
           const model: ProjectModel = overrides?.size
             ? { ...base, members: base.members.map((member, index) => overrides.has(index) ? { ...member, I: overrides.get(index)! } : member) }
             : base;
-          const results: StructureCaseResult[] = [];
-          for (const item of cases) {
-            const run: AnalysisResult = analyzeProject(model, { id: `design-${item.solverId}`, name: item.case.label, factors: { [item.solverId]: 1 } }, { includeEducationTrace: false });
-            if (!run.success) {
-              const outcome = { ok: false as const, error: `El Modelo 2D no se pudo resolver en «${item.case.label}»: ${run.issues.find((issue) => issue.severity === 'error')?.message ?? 'revisa apoyos y conexiones'}.` };
-              cache.set(key, outcome);
-              return outcome;
-            }
-            const byId = new Map(run.memberResults.map((result) => [result.memberId, result]));
-            const memberResults: (MemberResult | undefined)[] = model.members.map((member) => byId.get(member.id));
-            const displacements = new Map(run.nodeResults.map((result) => [result.nodeId, [result.ux, result.uy, result.rz] as const]));
-            results.push({
-              nodeDisplacements: model.nodes.map((node) => displacements.get(node.id) ?? [0, 0, 0] as const),
-              at: (memberIndex, x) => {
-                const result = memberResults[memberIndex];
-                if (!result) return { axial: 0, shear: 0, moment: 0, u: 0, v: 0 };
-                const length = result.diagramSegments.at(-1)?.x1 ?? result.length;
-                const local = Math.min(length, Math.max(0, x - (result.startOffset ?? 0)));
-                const point = evaluateDiagramAt(result.diagramSegments, result.diagramJumps, local, local <= 1e-12 ? 'right' : 'left');
-                const deformation = evaluateDeformationAt(result.deformationSegments, local);
-                return { axial: point?.axial ?? 0, shear: point?.shear ?? 0, moment: point?.moment ?? 0, u: deformation?.u ?? 0, v: deformation?.v ?? 0 };
-              },
-            });
-          }
-          const outcome = { ok: true as const, cases: results };
+          const request: Model2dAnalysisRequest = { model, cases: cases.map((item) => ({ solverId: item.solverId, label: item.case.label })) };
+          const outcome = analyzeCases ? analyzeCases(request) : hydrateModel2dCases(analyzeModel2dCases(request));
           if (cache.size > 24) cache.delete(cache.keys().next().value!);
           cache.set(key, outcome);
           return outcome;

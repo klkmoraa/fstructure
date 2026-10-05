@@ -29,7 +29,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [x] Tres mesas: Diseño es el modo Diseño de FStructure (interruptor Modelo | Diseño), Estructura diseña el modelo por omisión, el pórtico rápido pasa al modelo (deshacible) y las bandas de diagrama son comunes (Lámina en Resultados).
 - [x] Modelo y Diseño: «Diseñar» desde el Inspector (o la barra seleccionada en el 2D o el 3D) abre su diseño, y «Ver en el Modelo» / «Ver en 3D» la deja seleccionada.
 - [ ] Diseñar barras inclinadas o de acero; hoy se dicen «sin diseñar».
-- [ ] Modo Diseño: llevar el análisis por casos del modelo a un worker; un 4 × 4 tarda ~1 s la primera vez (luego hay caché por revisión).
+- [x] Modo Diseño: análisis por casos del Modelo 2D en worker, incluidos recálculos con inercia agrietada; mensajes sin funciones, caché por revisión y cancelación al editar. La búsqueda de propuestas del pórtico y los modelos 2D/3D también corre en worker.
 - [x] Estructura (antes Pórtico): vigas y columnas analizadas juntas (viva alternada, acción lateral, k del nomograma, índice de estabilidad del marco) y cada miembro diseñado con los motores de viga y columna. Diagramas con valores por tramo, φVn y cursor de lectura.
 - [x] Proponer secciones: pórtico rápido y Modelo 2D (viga y columna con el menor volumen de concreto que cumplen, columnas al 1 %; en el modelo se aplica a pedido y se deshace en el 2D).
 - [x] Proponer secciones por nivel: vigas por elevación y columnas por entrepiso, menor o igual volumen que la propuesta uniforme, armado por sección y aplicación deshacible en el Modelo 2D; persistencia v5 compatible con v1–v4.

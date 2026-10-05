@@ -19,3 +19,5 @@ El código manda: si `src/` y este documento discrepan, se corrige el documento.
 - [Propuesta por nivel del 3D](assets/design-grupos-3d.jpg): comprueba todos los ejes, muestra el volumen candidato y sólo escribe al pulsar «Aplicar al 3D»; Deshacer pertenece al modo 3D.
 
 - [Propuesta 3D en móvil y tema Día](assets/design-grupos-3d-movil.jpg), comprobada a 390 × 844.
+
+- Modelo 2D 4 × 4 con análisis por casos y propuesta en workers: [Día](assets/design-worker-4x4-dia.jpg), [Noche](assets/design-worker-4x4-noche.jpg), [móvil](assets/design-worker-4x4-movil.jpg). Se revisó edición durante el cálculo e invalidación de una propuesta terminada.

@@ -1,9 +1,9 @@
 import type { ConcreteSectionGroup } from '../../../data/concreteFrame';
 import type { DesignCodeId } from '../../../design/elements/codes';
 import type { StructureDesignResult } from '../../../design/elements/structure';
-import { designFromDraft, type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome } from './frameModel';
+import { designFromDraft, type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome } from './frameCalculation';
 import type { ModelSectionsBridge } from './WorkbenchLayout';
-import { parseNumber } from './common';
+import { parseNumber } from './formNumbers';
 
 /** Sección rectangular, cm. */
 export interface ProposedSection { readonly width: number; readonly height: number }

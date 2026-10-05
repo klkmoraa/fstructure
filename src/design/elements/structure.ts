@@ -162,6 +162,8 @@ export interface ExternalStructureSource {
   /** Por qué no se puede diseñar, si no se puede. */
   readonly errors: readonly string[];
   create(options: { readonly braced: boolean }): StructureSource | null;
+  /** Análisis asíncrono por casos; las funciones del diseño permanecen en el consumidor. */
+  designAsync?(options: StructureDesignOptions, braced: boolean, signal: AbortSignal): Promise<StructureDesignResult | StructureDesignError>;
 }
 
 /**

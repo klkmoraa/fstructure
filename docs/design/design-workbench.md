@@ -166,3 +166,13 @@ La lista que ve la persona usuaria vive en `scope.ts`; si cambia el alcance, se 
 ## Proponer y aplicar secciones del 3D
 
 En Estructura con origen Modelo 3D, «Proponer» comprueba todos los ejes del documento, incluidas ambas direcciones de las columnas compartidas. Muestra grupos de vigas por eje/elevación y columnas por entrepiso, con su volumen y la referencia uniforme. «Aplicar al 3D» vuelve al modelo y registra un único cambio deshacible; un documento fuente que haya cambiado invalida la aplicación. Cargas, apoyos, materiales y orientación se conservan. El puente declarado es `src/integrations/space3dSections.ts`. Detalles y límites: [propuestas por grupo](section-proposals.md).
+
+## Análisis del Modelo 2D en segundo plano
+
+`model2dDesignSourceWithWorker` conserva el contrato de la fuente. El diseño pide primero los casos con la rigidez base y luego los recálculos con la inercia agrietada que necesite cada línea de viga. El worker recibe el proyecto proyectado y los IDs de los casos; devuelve desplazamientos y coeficientes de diagramas, nunca las funciones del resultado de diseño. La mesa rehidrata los lectores y continúa el diseño, cediendo una tarea entre pasadas. La caché pertenece a la revisión del modelo y se limita a 24 análisis.
+
+Cada edición aborta y termina el worker anterior. Mientras falta el resultado vigente, la memoria y el PDF no pueden usar un resultado caducado. Un fallo del worker se muestra como error y permite reintentar; en entornos sin Worker se conserva el cálculo compatible después de la transición. `frameCalculation.ts` y `formNumbers.ts` aíslan las conversiones puras de las láminas React y del DOM.
+
+Las búsquedas de propuestas del pórtico rápido y modelos 2D/3D usan workers independientes. Sólo devuelven progreso y dimensiones serializables. Se cancelan al editar o salir; no escriben el modelo. Los entornos sin Worker mantienen el generador por tareas como compatibilidad.
+
+Verificación: comparación de acciones, desplazamientos, envolventes, flechas y derivas con la fuente original, incluido un Modelo 2D de 4 claros × 4 niveles; paquetes clonables; fallo del solver/worker y aborto antes de entregar resultados.

@@ -4,6 +4,7 @@ import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
+import type { ProposalStep } from './frameProposal';
 import type { FrameDraft, StructureOutcome } from './frameModel';
 import type { ConcreteSectionGroup, ConcreteFrameSpec } from '../../../data/concreteFrame';
 
@@ -57,6 +58,7 @@ export interface ModelSection { readonly width: number; readonly height: number 
 
 export interface ModelSectionsBridge {
   readonly groups?: readonly ConcreteSectionGroup[];
+  propose?(code: DesignCodeId, draft: FrameDraft, onStep: (step: ProposalStep) => void): (() => void) | null;
   /** Revisión del candidato completo (varios ejes, si procede). */
   evaluate?(code: DesignCodeId, draft: FrameDraft, beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): StructureOutcome;
   readonly beams: number;
