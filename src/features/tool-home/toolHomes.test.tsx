@@ -40,11 +40,11 @@ it('la búsqueda anunciada por / recibe el foco sin interrumpir la escritura', a
   expect((search as HTMLInputElement).value).toBe('');
 });
 
-it('FStructure: «Modelo 3D» abre la misma mesa en modo 3D con su arranque', async () => {
+it('FStructure: «Modelar 3D» abre la misma mesa en modo 3D con su arranque', async () => {
   const user = userEvent.setup();
   openHome('model2d');
   render(<App />);
-  await user.click(await screen.findByRole('button', { name: /Modelo 3D/ }));
+  await user.click(await screen.findByRole('button', { name: /Modelar 3D/ }));
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
   expect(new URLSearchParams(window.location.search).get('mode')).toBe('3d');
   // El modo 3D se carga de forma diferida (three.js incluido): en jsdom y en frío
@@ -62,12 +62,14 @@ it('Elementos finitos: «Analizar el caso de prueba» abre la mesa con el result
   expect((await screen.findByTestId('fem-analysis-result')).textContent).toContain('Análisis completado');
 });
 
-it('FStructure: «Diseño de concreto» abre la misma mesa en modo Diseño', async () => {
+it('FStructure: «Diseñar un elemento» abre una viga independiente en la misma mesa', async () => {
   const user = userEvent.setup();
   openHome('model2d');
   render(<App />);
-  await user.click(await screen.findByRole('button', { name: /Diseño de concreto/ }));
+  await user.click(await screen.findByRole('button', { name: /Diseñar un elemento/ }));
   expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
+  expect(screen.getByRole('radio', { name: 'Viga', exact: true }).getAttribute('aria-checked')).toBe('true');
+  expect(screen.getByText('Origen: Elemento suelto · Viga')).toBeTruthy();
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
   expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
 });
