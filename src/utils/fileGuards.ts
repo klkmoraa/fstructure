@@ -21,7 +21,7 @@ export const FILE_BUDGETS = {
   signatureBytes: 8,
 } as const;
 
-export const ARCHIVE_BUDGETS = {
+const ARCHIVE_BUDGETS = {
   /** A real expediente holds five entries; the ceiling only has to stop absurd inputs. */
   maxEntries: 32,
   maxEntryBytes: 64 * 1024 * 1024,
@@ -76,7 +76,7 @@ export const readSignature = async (
 export const hasSignature = (bytes: Uint8Array, signature: readonly number[]): boolean =>
   bytes.length >= signature.length && signature.every((byte, index) => bytes[index] === byte);
 
-export interface ArchiveEntryClaim {
+interface ArchiveEntryClaim {
   name: string;
   /** Compressed size as declared by the archive. */
   size: number;
@@ -84,7 +84,7 @@ export interface ArchiveEntryClaim {
   originalSize: number;
 }
 
-export interface ArchiveBudgetTracker {
+interface ArchiveBudgetTracker {
   /** Throws when the entry, or the archive so far, exceeds a budget. */
   accept(entry: ArchiveEntryClaim): void;
 }

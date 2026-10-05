@@ -32,9 +32,13 @@ import { emitWorkspaceCommand } from './workspaceCommands';
 const LazyPdfPreviewDialog = lazy(() => import('../pdf-preview/PdfPreviewDialog').then((module) => ({ default: module.PdfPreviewDialog })));
 
 /**
- * One compact, always-reachable home for the workspace controls that do not
+ * One compact, always-reachable home for the Model 2D controls that do not
  * belong to a selected element. Keeping them out of the Inspector means the
  * latter can remain a contextual editor instead of becoming a junk drawer.
+ *
+ * It belongs to the Model mode of FStructure: the other tools are isolated
+ * workbenches reached from Home, and Design is the other mode of this same
+ * workbench (top-bar switch).
  */
 export const WorkspaceUtilities = ({
   onOpenInspector,
@@ -148,7 +152,6 @@ export const WorkspaceUtilities = ({
     emitWorkspaceCommand('open-local-assistant', { trigger: triggerRef.current });
     setOpen(false);
   };
-
   const themeLabel = t(theme === 'dark' ? 'theme.light' : 'theme.dark');
   const unitOptions = UNIT_SYSTEM_PROFILES;
   const selectedUnit = isCustomUnitSystemId(project.settings.units)

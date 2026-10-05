@@ -1,5 +1,5 @@
-export interface ModeShapeDof { readonly ux: number; readonly uy: number; readonly rz: number }
-export interface ModelPoint { readonly x: number; readonly y: number }
+interface ModeShapeDof { readonly ux: number; readonly uy: number; readonly rz: number }
+interface ModelPoint { readonly x: number; readonly y: number }
 
 export const modeShapePoints = (
   start: ModelPoint, end: ModelPoint, startDof: ModeShapeDof, endDof: ModeShapeDof,

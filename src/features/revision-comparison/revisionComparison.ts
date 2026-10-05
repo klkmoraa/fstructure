@@ -4,11 +4,11 @@ import type { AnalysisRunRecord, AnalysisRunSnapshot } from '../../storage/analy
 
 export type RevisionSnapshot = AnalysisRunSnapshot;
 
-export type RevisionAnalysisState = 'fresh' | 'stale' | 'missing';
+type RevisionAnalysisState = 'fresh' | 'stale' | 'missing';
 export type RevisionChangeDomain = 'input' | 'state' | 'result';
 export type RevisionChangeCategory = 'geometry' | 'properties' | 'loads' | 'configuration' | 'analysis-state' | 'results';
 export type RevisionChangeType = 'added' | 'removed' | 'modified';
-export type ResultComparability = 'comparable' | 'qualified' | 'blocked';
+type ResultComparability = 'comparable' | 'qualified' | 'blocked';
 export type RevisionComparisonWarningCode =
   | 'display-units-changed'
   | 'identity-churn-unmatched'
@@ -23,8 +23,6 @@ export type RevisionComparisonWarningCode =
   | 'analysis-scenario-definition-changed'
   | 'limited-reliability'
   | 'correlation-not-causality';
-
-export type RevisionAnalysisBinding = NonNullable<AnalysisRunSnapshot['analysis']>;
 
 export const revisionSnapshotFromAnalysisRun = (record: AnalysisRunRecord): RevisionSnapshot => structuredClone(record.snapshot);
 
@@ -45,19 +43,19 @@ export interface RevisionChange {
   percentDelta?: number | null;
 }
 
-export interface RevisionComparisonWarning {
+interface RevisionComparisonWarning {
   code: RevisionComparisonWarningCode;
   severity: 'info' | 'warning';
 }
 
-export interface RevisionChangeSummary {
+interface RevisionChangeSummary {
   added: number;
   removed: number;
   modified: number;
   total: number;
 }
 
-export interface RevisionComparison {
+interface RevisionComparison {
   schemaVersion: 1;
   kind: 'fusionstructure-revision-comparison';
   baseRevisionId: string;
@@ -107,7 +105,7 @@ const sha256 = async (value: unknown): Promise<string> => {
   return [...new Uint8Array(digest)].map((item) => item.toString(16).padStart(2, '0')).join('');
 };
 
-export const resolveRevisionScenarioId = (project: ProjectModel, selectedScenarioId: string): string => (
+const resolveRevisionScenarioId = (project: ProjectModel, selectedScenarioId: string): string => (
   selectedScenarioId
   || project.loadCases.find((loadCase) => loadCase.active)?.id
   || project.loadCases[0]?.id
@@ -137,7 +135,7 @@ export const captureRevisionSnapshot = async (
   };
 };
 
-export const revisionAnalysisState = (snapshot: RevisionSnapshot): RevisionAnalysisState => {
+const revisionAnalysisState = (snapshot: RevisionSnapshot): RevisionAnalysisState => {
   if (!snapshot.analysis) return 'missing';
   return snapshot.analysis.projectSignature === analysisSignature(snapshot.project) ? 'fresh' : 'stale';
 };

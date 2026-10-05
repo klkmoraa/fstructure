@@ -15,7 +15,7 @@
  *  3. `-0` renders as `0`. A negative sign in front of a zero is noise, not information.
  */
 
-export interface NumberFormatPolicy {
+interface NumberFormatPolicy {
   /** Significant digits kept for display. */
   significantDigits: number;
   /** Below this magnitude the value switches to scientific notation. */
@@ -26,7 +26,7 @@ export interface NumberFormatPolicy {
   notAvailable: string;
 }
 
-export type NumberFormatContext =
+type NumberFormatContext =
   | 'canvas'
   | 'chart'
   | 'inspector'
@@ -42,7 +42,7 @@ export type NumberFormatContext =
  * The scientific window widens with the digit count so a preset never renders an
  * exponent it had no room to justify.
  */
-export const NUMBER_FORMATS: Record<NumberFormatContext, NumberFormatPolicy> = {
+const NUMBER_FORMATS: Record<NumberFormatContext, NumberFormatPolicy> = {
   canvas: { significantDigits: 4, scientificBelow: 1e-3, scientificAtOrAbove: 1e6, notAvailable: '—' },
   chart: { significantDigits: 4, scientificBelow: 1e-3, scientificAtOrAbove: 1e6, notAvailable: '—' },
   inspector: { significantDigits: 6, scientificBelow: 1e-4, scientificAtOrAbove: 1e7, notAvailable: '—' },
@@ -53,7 +53,7 @@ export const NUMBER_FORMATS: Record<NumberFormatContext, NumberFormatPolicy> = {
   clipboard: { significantDigits: 15, scientificBelow: 1e-6, scientificAtOrAbove: 1e15, notAvailable: '' },
 };
 
-export interface NumberFormatOptions extends Partial<NumberFormatPolicy> {
+interface NumberFormatOptions extends Partial<NumberFormatPolicy> {
   /** Hard cap on decimals, applied on top of the significant-digit rule. */
   maximumFractionDigits?: number;
 }

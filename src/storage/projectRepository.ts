@@ -5,7 +5,7 @@ import type { ProjectModel } from '../types';
 import { createId } from '../utils/id';
 import type { AnalysisRunRecord } from './analysisRuns';
 
-export type { AnalysisRunRecord, AnalysisRunSnapshot } from './analysisRuns';
+export type { AnalysisRunRecord,  } from './analysisRuns';
 
 const DATABASE_NAME = 'structureCo.projects';
 const DATABASE_VERSION = 2;
@@ -63,7 +63,7 @@ export interface ProjectRepository {
   setMeta(key: string, value: string): Promise<void>;
 }
 
-export class RepositoryConflictError extends Error {
+class RepositoryConflictError extends Error {
   readonly projectId: string;
   constructor(projectId: string) {
     super(`El proyecto ${projectId} cambió en otra pestaña; la edición local quedó en recuperación.`);
@@ -493,7 +493,7 @@ export const getProjectRepository = (): ProjectRepository => {
   return sharedRepository;
 };
 
-export type LegacyMigrationResult = { status: 'no-source' | 'migrated' | 'already-migrated' | 'conflict'; record?: StoredProjectRecord };
+type LegacyMigrationResult = { status: 'no-source' | 'migrated' | 'already-migrated' | 'conflict'; record?: StoredProjectRecord };
 
 export const migrateLegacyProject = async (repository: ProjectRepository, storage: StorageLike): Promise<LegacyMigrationResult> => {
   const raw = storage.getItem(PROJECT_STORAGE_KEY);

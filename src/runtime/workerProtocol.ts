@@ -73,3 +73,4 @@ export type StudiesWorkerResult =
 
 export type ParametricWorkerPayload = ParametricStudyRequest;
 export type ParametricWorkerResult = ParametricStudyResult;
+

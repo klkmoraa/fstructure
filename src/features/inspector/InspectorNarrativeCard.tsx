@@ -16,7 +16,7 @@ import {
 } from '../results/elasticDemand';
 import { describeReliabilityCheck, reliabilityCheckLabel } from '../results/reliabilityCopy';
 
-export interface InspectorNarrativeCardProps {
+interface InspectorNarrativeCardProps {
   member: MemberModel;
   result: MemberResult;
   /** El índice comparte la puerta de confiabilidad con el Resumen. */

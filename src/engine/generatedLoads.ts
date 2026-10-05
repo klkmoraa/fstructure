@@ -7,7 +7,7 @@ import type { GeneratedLoadSource, MemberInitialEffect, MemberLoad, MovingLoadCa
  * the project, so editing units or scenarios never bakes derived numbers into
  * the model.
  */
-export interface ResolvedGeneratedLoads {
+interface ResolvedGeneratedLoads {
   memberLoads: MemberLoad[];
   memberInitialEffects: MemberInitialEffect[];
 }
@@ -108,7 +108,7 @@ const resolveSource = (source: GeneratedLoadSource, project: ProjectModel): Reso
   };
 };
 
-export const resolveGeneratedLoads = (project: ProjectModel): ResolvedGeneratedLoads => {
+const resolveGeneratedLoads = (project: ProjectModel): ResolvedGeneratedLoads => {
   const memberLoads: MemberLoad[] = [];
   const memberInitialEffects: MemberInitialEffect[] = [];
   for (const source of project.generatedLoadSources ?? []) {

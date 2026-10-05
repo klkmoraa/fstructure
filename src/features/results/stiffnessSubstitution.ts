@@ -17,9 +17,9 @@
 import type { MemberModel } from '../../types';
 import { formatSignificant } from '../../utils/numberFormat';
 
-export type SubstitutionTermId = 'axial' | 'shearFlexural' | 'coupling' | 'flexuralNear' | 'flexuralFar';
+type SubstitutionTermId = 'axial' | 'shearFlexural' | 'coupling' | 'flexuralNear' | 'flexuralFar';
 
-export interface SubstitutionInput {
+interface SubstitutionInput {
   id: 'E' | 'A' | 'I' | 'L' | 'G' | 'As';
   /** Symbol as it appears inside the formulas. */
   symbol: string;
@@ -27,7 +27,7 @@ export interface SubstitutionInput {
   unit: string;
 }
 
-export interface SubstitutionTerm {
+interface SubstitutionTerm {
   id: SubstitutionTermId;
   /** Position in the 6×6 local matrix, 1-based, as the reader sees it in `MatrixView`. */
   entry: string;
@@ -39,7 +39,7 @@ export interface SubstitutionTerm {
   unit: string;
 }
 
-export interface StiffnessSubstitution {
+interface StiffnessSubstitution {
   theory: 'euler-bernoulli' | 'timoshenko';
   /** Shear flexibility factor Φ; zero whenever the element has no finite shear rigidity. */
   phi: number;

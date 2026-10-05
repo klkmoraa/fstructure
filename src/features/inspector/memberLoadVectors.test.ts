@@ -5,6 +5,7 @@ import { pointLoadPolarFromVector, pointLoadVectorFromPolar, splitPointLoadIntoC
 
 const pointProject = (): ProjectModel => ({
   id: 'P', name: 'P', schemaVersion: 1, settings: createDefaultSettings(), nodes: [], members: [], nodalLoads: [], combinations: [],
+  designAssignments: [],
   memberLoads: [{ id: 'P1', memberId: 'M1', caseId: 'LC1', type: 'point', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1, position: 0.5, px: 3, py: -4 }],
   loadCases: [{ id: 'LC1', name: 'Caso', active: true, category: 'permanent' }],
 });

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceTopBar, type WorkspaceTopBarLabels } from './WorkspaceTopBar';
+const workspaceTopbarCss = readFileSync('src/features/workspace/workspaceTopbar.css', 'utf8');
 
 const labels: WorkspaceTopBarLabels = {
   solverName: 'FStructure',
@@ -28,7 +30,92 @@ const labels: WorkspaceTopBarLabels = {
 
 afterEach(() => cleanup());
 
+const renderTopbar = () => render(<WorkspaceTopBar labels={labels} projectName="Modelo"
+  storageState="ready" analysisState="ready" resultsOpen={false} canUndo={false} canRedo={false}
+  onOpenHome={() => undefined} onRenameProject={() => undefined} onUndo={() => undefined}
+  onRedo={() => undefined} onAnalyze={() => undefined} onOpenResults={() => undefined} />);
+
+it('cancela el nombre con Escape y devuelve el foco al proyecto', async () => {
+  const user = userEvent.setup();
+  renderTopbar();
+  const trigger = screen.getByRole('button', { name: 'Nombre del proyecto: Modelo' });
+  await user.click(trigger);
+  await user.type(screen.getByRole('textbox'), ' cambiado');
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('textbox')).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  expect(screen.getByText('Modelo')).toBeTruthy();
+});
+
+it('abre ayuda de la mesa y Escape vuelve al control que la abrió', async () => {
+  const user = userEvent.setup();
+  renderTopbar();
+  const trigger = screen.getByRole('button', { name: 'Cómo usar FStructure' });
+  await user.click(trigger);
+  expect(screen.getByRole('dialog', { name: 'Cómo usar FStructure' })).toBeTruthy();
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await waitFor(() => expect(document.activeElement).toBe(trigger));
+});
+
 describe('WorkspaceTopBar', () => {
+  it('la marca vuelve al inicio y la barra no ofrece saltos a otras herramientas', async () => {
+    const user = userEvent.setup();
+    const onOpenHome = vi.fn();
+    render(<WorkspaceTopBar
+      labels={labels}
+      tool="model2d"
+      projectName="Modelo"
+      storageState="ready"
+      analysisState="ready"
+      resultsOpen={false}
+      canUndo={false}
+      canRedo={false}
+      onOpenHome={onOpenHome}
+      onRenameProject={vi.fn()}
+      onUndo={vi.fn()}
+      onRedo={vi.fn()}
+      onAnalyze={vi.fn()}
+      onOpenResults={vi.fn()}
+    />);
+
+    const brand = screen.getByRole('button', { name: labels.home });
+    expect(brand.getAttribute('aria-haspopup')).toBeNull();
+    await user.click(brand);
+    expect(onOpenHome).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Diseño$|^3D$|^2D$|^FEM$/ })).toBeNull();
+  });
+
+  it('una herramienta aislada pinta sus propios controles en lugar de los del Modelo 2D', () => {
+    render(<WorkspaceTopBar
+      labels={labels}
+      tool="fem"
+      contextActive={false}
+      primaryAction={<button type="button">Analizar FEM</button>}
+      toolStatus={<span role="status">Malla lista</span>}
+      projectName="Placa"
+      storageState="ready"
+      analysisState="ready"
+      resultsOpen={false}
+      canUndo={false}
+      canRedo={false}
+      onOpenHome={vi.fn()}
+      onRenameProject={vi.fn()}
+      onUndo={vi.fn()}
+      onRedo={vi.fn()}
+      onAnalyze={vi.fn()}
+      onOpenResults={vi.fn()}
+    />);
+
+    expect(screen.getByRole('banner').getAttribute('data-tool')).toBe('fem');
+    expect(screen.getByRole('button', { name: 'Analizar FEM' })).toBeTruthy();
+    expect(screen.getByText('Malla lista')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Deshacer' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Resultados' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Analizar' })).toBeNull();
+  });
+
   it('keeps project and analysis status visible without opening another surface', () => {
     render(
       <WorkspaceTopBar
@@ -223,4 +310,47 @@ describe('WorkspaceTopBar', () => {
     expect(screen.getByText('No se pudo analizar')).toBeTruthy();
     expect(screen.queryByText('Listo para analizar')).toBeNull();
   });
+
+  it('no recorta el editor de nombre fuera del grupo del proyecto', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <WorkspaceTopBar
+        labels={labels}
+        projectName="Modelo"
+        storageState="ready"
+        analysisState="ready"
+        resultsOpen={false}
+        canUndo={false}
+        canRedo={false}
+        onOpenHome={vi.fn()}
+        onRenameProject={vi.fn()}
+        onUndo={vi.fn()}
+        onRedo={vi.fn()}
+        onAnalyze={vi.fn()}
+        onOpenResults={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Nombre del proyecto: Modelo' }));
+    expect(screen.getByRole('form', { name: labels.editProject })).toBeTruthy();
+
+    const projectGroupRules = workspaceTopbarCss
+      .split('.workspace-topbar__project-group {')
+      .slice(1)
+      .map((section) => section.split('}')[0] ?? '');
+
+    expect(projectGroupRules.length).toBeGreaterThan(0);
+    expect(projectGroupRules.some((rule) => rule.includes('overflow: hidden'))).toBe(false);
+  });
+
+
+  it('mantiene el control de tema accesible en móvil para 3D, FEM y Diseño', () => {
+    const globalMobileThemeHide = /@media\s*\(max-width:\s*(?:480|360)px\)\s*\{\s*\.workspace-topbar__theme-button\s*\{\s*display:\s*none;?\s*\}\s*\}/g;
+    const scopedMobileThemeHide = /\.workspace-topbar\[data-tool=['"]model2d['"]\]\s+\.workspace-topbar__theme-button\s*\{\s*display:\s*none;?\s*\}/;
+
+    expect(workspaceTopbarCss.match(globalMobileThemeHide) ?? []).toHaveLength(0);
+    expect(scopedMobileThemeHide.test(workspaceTopbarCss)).toBe(true);
+  });
+
 });

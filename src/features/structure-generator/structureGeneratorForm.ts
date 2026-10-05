@@ -98,7 +98,7 @@ export type GeneratorFormField =
 
 export type GeneratorFormErrors = Readonly<Partial<Record<GeneratorFormField, string>>>;
 
-export type GeneratorFormParseResult =
+type GeneratorFormParseResult =
   | { readonly ok: true; readonly params: GeneratorParams }
   | { readonly ok: false; readonly errors: GeneratorFormErrors };
 
@@ -214,7 +214,7 @@ const parseNumber = (text: string): number | null => {
  * funcione igual que teclearla. La coma decimal no se admite aquí: sería
  * ambigua frente al separador de elementos.
  */
-export const parseSpacingList = (text: string): readonly (number | null)[] => text
+const parseSpacingList = (text: string): readonly (number | null)[] => text
   .split(/[\s,;]+/)
   .map((token) => token.trim())
   .filter((token) => token.length > 0)
@@ -248,7 +248,7 @@ const spacingErrorMessage = (draft: GeneratorSpacingDraft): string | null => {
  * porque el formulario está incompleto la mayor parte del tiempo que existe: un
  * campo a medio escribir no es una excepción, es el estado normal.
  */
-export const parseSpacingDraft = (
+const parseSpacingDraft = (
   draft: GeneratorSpacingDraft,
 ): { readonly ok: true; readonly spec: SpacingSpec } | { readonly ok: false; readonly error: string } => {
   const error = spacingErrorMessage(draft);

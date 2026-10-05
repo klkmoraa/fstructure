@@ -17,7 +17,7 @@ export interface CandidatePickerState {
 
 export type CandidatePickerCycle = 'next' | 'previous' | 'first' | 'last';
 
-export const shouldOpenCandidatePicker = (candidateCount: number): boolean => candidateCount > 1;
+const shouldOpenCandidatePicker = (candidateCount: number): boolean => candidateCount > 1;
 
 export const createCandidatePickerState = (
   candidates: readonly CandidateTarget[],

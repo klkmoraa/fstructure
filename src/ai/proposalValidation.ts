@@ -1,7 +1,7 @@
 import type { LocalProposal, ProposalQuantity, ProposedOperation } from './localCommandProposal';
 import { translatePhase2, type Phase2TranslationKey } from '../i18n/phase2Catalogs';
 
-export interface ProposalValidationFailure {
+interface ProposalValidationFailure {
   ok: false;
   /** Ruta del campo culpable, en notación de puntos. */
   path: string;
@@ -10,7 +10,7 @@ export interface ProposalValidationFailure {
   params?: Record<string, string | number>;
 }
 
-export type ProposalValidationOutcome<T> = { ok: true; value: T } | ProposalValidationFailure;
+type ProposalValidationOutcome<T> = { ok: true; value: T } | ProposalValidationFailure;
 
 const fail = (
   path: string,

@@ -17,7 +17,7 @@ export type SolutionMethodId = 'matrix-stiffness' | 'double-integration' | 'port
 
 export const DEFAULT_SOLUTION_METHOD: SolutionMethodId = 'matrix-stiffness';
 
-export interface SolutionMethodDefinition {
+interface SolutionMethodDefinition {
   id: SolutionMethodId;
   /** Translation key for the selector and the report heading. */
   labelKey: string;
@@ -148,18 +148,4 @@ export const SOLUTION_METHODS: readonly SolutionMethodDefinition[] = [
 export const applicableMethods = (project: ProjectModel): SolutionMethodDefinition[] => {
   const classification = classifyStructure(project);
   return SOLUTION_METHODS.filter((method) => method.applies(classification, project));
-};
-
-/**
- * The method to actually use: the stored choice when it still applies, the default otherwise.
- *
- * A project saved as a beam and later edited into a frame must not keep exporting a method
- * that no longer means anything, so the fallback is silent and automatic.
- */
-export const resolveSolutionMethod = (project: ProjectModel): SolutionMethodId => {
-  const requested = project.settings.solutionMethod;
-  if (!requested) return DEFAULT_SOLUTION_METHOD;
-  return applicableMethods(project).some((method) => method.id === requested)
-    ? requested
-    : DEFAULT_SOLUTION_METHOD;
 };

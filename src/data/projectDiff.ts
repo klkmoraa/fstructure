@@ -6,7 +6,7 @@ export interface DiffFieldChange { field: string; before: unknown; after: unknow
 export interface DiffChange { kind: DiffEntityKind; id: string; change: DiffChangeKind; fields: DiffFieldChange[]; }
 export interface ProjectDiff { changes: DiffChange[]; summary: Record<DiffChangeKind, number>; identical: boolean; }
 /** Por defecto el diff es exacto; una tolerancia sólo se usa cuando el llamador la declara. */
-export interface DiffOptions { numericTolerance?: number; }
+interface DiffOptions { numericTolerance?: number; }
 
 const COLLECTIONS = [
   ['node', 'nodes'], ['member', 'members'], ['nodalLoad', 'nodalLoads'], ['memberLoad', 'memberLoads'],

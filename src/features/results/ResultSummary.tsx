@@ -16,7 +16,7 @@ import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
 import { NumericQualityCard } from './NumericQualityCard';
 import { ElasticDemandCard } from './ElasticDemandCard';
 import { ResultExtremeCard } from './ResultExtremeCard';
-import { NtcSteelDesignCard } from '../design/NtcSteelDesignCard';
+import { NtcSteelDesignCard } from './NtcSteelDesignCard';
 import { useNumericCertificate } from '../../engine/useNumericCertificate';
 import { NumericCertificateCard } from './NumericCertificateCard';
 import type { ResultRef } from './provenance';

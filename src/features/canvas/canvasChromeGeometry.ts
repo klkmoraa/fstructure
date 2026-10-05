@@ -1,6 +1,6 @@
 import type { CanvasCamera, ViewportSize } from './canvasInteraction';
 
-export interface CanvasSafeInsets {
+interface CanvasSafeInsets {
   top: number;
   right: number;
   bottom: number;
@@ -14,7 +14,7 @@ export interface CanvasSafeRect {
   height: number;
 }
 
-export interface ModelBounds {
+interface ModelBounds {
   minX: number;
   maxX: number;
   minY: number;
@@ -36,7 +36,7 @@ const finiteAtLeast = (value: number, minimum: number, fallback: number): number
   Number.isFinite(value) ? Math.max(minimum, value) : fallback;
 
 /** Keeps fit inputs finite without changing valid model-space bounds. */
-export const finiteModelBounds = (bounds: ModelBounds): ModelBounds => {
+const finiteModelBounds = (bounds: ModelBounds): ModelBounds => {
   const values = [bounds.minX, bounds.maxX, bounds.minY, bounds.maxY];
   if (!values.every(Number.isFinite) || bounds.minX > bounds.maxX || bounds.minY > bounds.maxY) {
     return { ...FALLBACK_MODEL_BOUNDS };

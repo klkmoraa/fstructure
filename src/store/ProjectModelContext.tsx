@@ -10,6 +10,8 @@ import type { PreparedStructuralEdit } from '../data/structuralEditing';
  * switching tools, tabs or re-analyzing doesn't re-render model-only consumers.
  */
 export interface ProjectModelContextValue {
+  /** Canonical open boundary for unified composition. */
+  openUnifiedProject?: (id: string, isCurrent?: () => boolean) => Promise<boolean>;
   project: ProjectModel;
   canUndo: boolean;
   canRedo: boolean;

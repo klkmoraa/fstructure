@@ -27,12 +27,6 @@ export const clearNumber = (value: number, reference = 1, digits = 5): string =>
 
 export const quantityUnit = (quantity: DiagramQuantity): UnitQuantity => quantity === 'moment' ? 'moment' : 'force';
 
-export const quantitySymbol = (quantity: DiagramQuantity): 'N' | 'V' | 'M' => quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M';
-
-export const quantityTitle = (quantity: DiagramQuantity): string => quantity === 'axial'
-  ? 'Diagrama axial N'
-  : quantity === 'shear' ? 'Diagrama cortante V' : 'Diagrama de momento M';
-
 export const formatPolynomial = (
   project: ProjectModel,
   quantity: DiagramQuantity,
@@ -83,7 +77,7 @@ const loadBasisLabel = (basis: MemberLoad['lengthBasis']): string => basis === '
   ? 'proyección horizontal'
   : basis === 'vertical' ? 'proyección vertical' : 'longitud real';
 
-export const flexibleMemberLength = (index: ModelIndex, memberId: string): number | undefined => {
+const flexibleMemberLength = (index: ModelIndex, memberId: string): number | undefined => {
   const member = index.member(memberId);
   if (!member) return undefined;
   const ni = index.node(member.i);

@@ -1,7 +1,17 @@
 import type { ProjectModel, ProjectSettings } from '../types';
 import { createId } from '../utils/id';
+import { withConcreteFrame } from './concreteFrame';
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
+
+export const DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN = {
+  coverMm: 40,
+  longitudinalSteelYieldMpa: 420,
+  stirrupSteelYieldMpa: 420,
+  preferredLongitudinalDiametersMm: [12, 16, 20, 25, 32],
+  preferredStirrupDiametersMm: [8, 10, 12],
+  stirrupLegs: 2,
+} as const;
 
 const CUSTOM_MEMBER_IDENTITY = { materialOrigin: 'custom', sectionOrigin: 'custom' } as const;
 
@@ -46,6 +56,7 @@ export const createBlankProject = (): ProjectModel => ({
   nodalMasses: [],
   generatedLoadSources: [],
   movingLoadCases: [],
+  designAssignments: [],
   settings: createDefaultSettings(),
 });
 
@@ -107,6 +118,7 @@ export const createDefaultProject = (): ProjectModel => ({
   nodalMasses: [],
   generatedLoadSources: [],
   movingLoadCases: [],
+  designAssignments: [],
   settings: createDefaultSettings(),
 });
 
@@ -114,7 +126,7 @@ const HIBBELER_PEARSON_SAMPLE = 'https://www.pearsonhighered.com/assets/samplech
 const HIBBELER_PEARSON_11E = 'https://www.pearson.com/en-us/pearsonplus/p/9780138026394';
 
 /** Public Pearson sample, Fig. 2-11: 10 ft beam under 500 lb/ft tributary loading. */
-export const createHibbelerTributaryBeam = (): ProjectModel => {
+const createHibbelerTributaryBeam = (): ProjectModel => {
   const project = createDefaultProject();
   const length = 3.048; // 10 ft
   const distributedLoad = 7.29695146860337; // 0.500 kip/ft in kN/m
@@ -153,7 +165,7 @@ export const createHibbelerTributaryBeam = (): ProjectModel => {
   };
 };
 
-export const createHibbelerStyleDiagramPractice = (): ProjectModel => ({
+const createHibbelerStyleDiagramPractice = (): ProjectModel => ({
   ...createDefaultProject(),
   id: createId(),
   name: 'Práctica tipo Hibbeler · diagramas N-V-M',
@@ -184,7 +196,7 @@ export const createHibbelerStyleDiagramPractice = (): ProjectModel => ({
   },
 });
 
-export const createHibbelerStyleTrussPractice = (): ProjectModel => ({
+const createHibbelerStyleTrussPractice = (): ProjectModel => ({
   ...createDefaultProject(),
   id: createId(),
   name: 'Práctica tipo Hibbeler · armadura triangular',
@@ -219,6 +231,30 @@ export const createHibbelerStyleTrussPractice = (): ProjectModel => ({
   },
 });
 
+/**
+ * Pórtico de concreto de dos claros y dos niveles con sus casos separados
+ * (muerta con peso propio, viva y sismo), concreto de 28 MPa, vigas 30 × 50 del
+ * catálogo y columnas 45 × 45: listo para cambiar a Diseño y diseñarlo.
+ */
+export const createConcreteFrameProject = (): ProjectModel => withConcreteFrame({
+  ...createBlankProject(),
+  id: createId(),
+  name: 'Pórtico de concreto',
+}, {
+  bays: [6, 5],
+  stories: [
+    { heightM: 3.5, deadKnPerM: 15, liveKnPerM: 7, lateralKn: 45 },
+    { heightM: 3, deadKnPerM: 12, liveKnPerM: 3, lateralKn: 36 },
+  ],
+  base: 'fixed',
+  beam: { widthMm: 300, heightMm: 500 },
+  // Columnas de 45 × 45: el gancho de la viga necesita ese ancho.
+  column: { widthMm: 450, heightMm: 450 },
+  fcMpa: 28,
+  elasticModulusKpa: 24870062.324,
+  includeSelfWeight: true,
+});
+
 export const exampleProjects: Array<{ name: string; description: string; build: () => ProjectModel }> = [
   {
     name: 'Hibbeler · carga tributaria Fig. 2–11',
@@ -239,6 +275,11 @@ export const exampleProjects: Array<{ name: string; description: string; build: 
     name: 'Pórtico de ejemplo',
     description: 'Pórtico de 6 × 4 m con carga uniforme y cargas puntuales.',
     build: createDefaultProject,
+  },
+  {
+    name: 'Pórtico de concreto',
+    description: 'Dos claros y dos niveles con muerta, viva y sismo, listo para diseñar.',
+    build: createConcreteFrameProject,
   },
   {
     name: 'Viga simplemente apoyada',

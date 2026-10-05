@@ -275,6 +275,8 @@
 /* La paleta como hoja: en K0 sube desde el borde inferior, donde está el
    pulgar, en vez de caer desde arriba. */
 .command-palette-backdrop--sheet {
+  position: absolute;
+  inset: 0;
   align-items: end;
   padding: 0;
   background: transparent;
@@ -283,7 +285,8 @@
 
 .command-palette-backdrop--sheet .command-palette {
   width: 100%;
-  max-height: min(88dvh, 720px);
+  /* Su contenedor es la mesa disponible, después de la barra y el dock. */
+  max-height: min(100%, 720px);
   border-radius: var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0;
   padding-block-end: env(safe-area-inset-bottom);
   pointer-events: auto;

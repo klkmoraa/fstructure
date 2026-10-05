@@ -18,8 +18,3 @@
 
 /* La marca 2D conserva barra y deformada. Su marco de arcilla usa superficie
    y tinta neutras para no competir con las señales del modelo. */
-.fs-mark--solver2d .fs-mark__frame { fill: var(--sc-color-surface-1); stroke: var(--sc-color-text-muted); stroke-width: 1.5; }
-.fs-mark--solver2d .fs-mark__glyph { stroke: currentColor; }
-.fs-mark--solver2d .fs-mark__datum { stroke: var(--sc-color-text-muted); stroke-width: 2; }
-.fs-mark--solver2d .fs-mark__response { stroke-width: 2.6; }
-.fs-mark--solver2d .fs-mark__node { fill: currentColor; }

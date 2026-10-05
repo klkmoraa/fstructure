@@ -26,7 +26,6 @@ import {
   type LocalMemberLoad,
 } from './diagram';
 import { compareGeneralizedLoads, integrateIndependentMemberSourceLoads } from './loadAudit';
-import { profileEnd, profileStart } from './performanceProfiler';
 import { classifyAnalysisReliability } from './reliability';
 import {
   LinearAlgebraError,
@@ -44,7 +43,7 @@ import {
   type Matrix,
 } from '../foundation/linearAlgebra';
 
-export interface Geometry {
+interface Geometry {
   L: number;
   c: number;
   s: number;
@@ -351,7 +350,7 @@ export const trussLocalStiffness = (member: MemberModel, L: number): Matrix => {
   ];
 };
 
-export const transformMatrix = ({ c, s }: Geometry): Matrix => [
+const transformMatrix = ({ c, s }: Geometry): Matrix => [
   [c, s, 0, 0, 0, 0],
   [-s, c, 0, 0, 0, 0],
   [0, 0, 1, 0, 0, 0],
@@ -532,7 +531,7 @@ const initialEffectEquivalentLoad = (
   return [-axial, 0, -bending, axial, 0, bending];
 };
 
-export interface CondensationResult {
+interface CondensationResult {
   stiffness: Matrix;
   load: number[];
   released: number[];
@@ -1007,12 +1006,12 @@ export const selectedFactors = (project: ProjectModel, combination?: LoadCombina
   return factors;
 };
 
-export interface ResolvedMemberInitialEffect {
+interface ResolvedMemberInitialEffect {
   axialStrain: number;
   curvature: number;
 }
 
-export const resolveMemberInitialEffect = (
+const resolveMemberInitialEffect = (
   project: ProjectModel,
   memberId: string,
   combination?: LoadCombination | null,
@@ -1055,7 +1054,7 @@ const resolvePrescribedDisplacements = (
   }
   return resolved;
 };
-export interface ResolvedMemberLoads {
+interface ResolvedMemberLoads {
   member: MemberModel;
   geometry: Geometry;
   loads: LocalMemberLoad[];
@@ -1064,7 +1063,7 @@ export interface ResolvedMemberLoads {
 /** Resolve the exact local load model used by the stiffness solver and diagram engine.
  *  This is intentionally exported so educational cuts never duplicate load conversion logic.
  */
-export const resolveMemberLocalLoads = (
+const resolveMemberLocalLoads = (
   project: ProjectModel,
   memberId: string,
   combination?: LoadCombination | null,
@@ -1522,7 +1521,6 @@ export const analyzeProject = (
   const pDeltaActive = hasActivePDeltaForces(options?.pDeltaAxialForces);
   let mechanism: NonNullable<AnalysisResult['mechanism']> | undefined;
   try {
-    const assemblyStart = profileStart();
     const nodes = getNodeMap(project);
     const nodeIndex = new Map(project.nodes.map((node, index) => [node.id, index]));
     const ndof = project.nodes.length * 3;
@@ -1834,9 +1832,7 @@ export const analyzeProject = (
       for (let j = 0; j < naug; j += 1) row[j] = row[j] * scaleI * diagonalScale[j];
     }
     const scaledB = b.map((value, i) => value * diagonalScale[i]);
-    profileEnd('assembly', assemblyStart);
     let solved: ReturnType<typeof solveLinearSystem>;
-    const linearSolveStart = profileStart();
     try {
       solved = solveLinearSystem(scaledA, scaledB, { backend: options?.linearBackend });
     } catch (error) {
@@ -1877,7 +1873,6 @@ export const analyzeProject = (
       }
       throw error;
     }
-    profileEnd('linearSolve', linearSolveStart);
     const solution = solved.x.map((value, index) => value * diagonalScale[index]);
     const U = solution.slice(0, ndof);
     const lambda = solution.slice(ndof);
@@ -2031,7 +2026,6 @@ export const analyzeProject = (
       mz: normalizedActivityResidual(loadDifference.mz, loadMomentFamilyActivity, loadMomentFamilyActivity),
     };
     const resultantResidual = Math.max(normalizedDifference.fx, normalizedDifference.fy, normalizedDifference.mz);
-    const memberAuditStart = profileStart();
     const memberAudits = elementAssemblies.map((assembly) => {
       const independent = integrateIndependentMemberSourceLoads(project, assembly.member, factors);
       const sourceMechanical = independent?.mechanical ?? Array(6).fill(Number.NaN);
@@ -2067,7 +2061,6 @@ export const analyzeProject = (
       memberAudits,
       normalizedResidual: Math.max(resultantResidual, criticalMemberAudit?.normalizedResidual ?? 0),
     };
-    profileEnd('auditAndReliability', memberAuditStart);
     if (loadAudit.normalizedResidual > 1e-8) {
       issues.push({
         id: 'load-assembly-audit',
@@ -2097,7 +2090,6 @@ export const analyzeProject = (
       assembly.released.forEach((index) => { localEndForces[index] = 0; });
       if (includeEducationTrace) {
         const localLabels = [`${assembly.member.id}.ui`, `${assembly.member.id}.vi`, `${assembly.member.id}.θi`, `${assembly.member.id}.uj`, `${assembly.member.id}.vj`, `${assembly.member.id}.θj`];
-        const elementTraceStart = profileStart();
         elementTraces.push({
           memberId: assembly.member.id,
           dofIndices: [...assembly.indices],
@@ -2118,11 +2110,8 @@ export const analyzeProject = (
           localDisplacements: [...localD],
           localEndForces: [...localEndForces],
         });
-        profileEnd('educationTrace', elementTraceStart);
       }
-      const diagramsStart = profileStart();
       const exact = buildExactDiagrams(localEndForces, assembly.loads, assembly.geometry.L);
-      profileEnd('diagrams', diagramsStart);
       const EA = assembly.member.E * assembly.member.A;
       const EI = assembly.member.E * assembly.member.I;
       const shearRigidity = assembly.member.beamTheory === 'timoshenko'
@@ -2145,13 +2134,11 @@ export const analyzeProject = (
       };
       addConnectionSpringEnergy(assembly.member.rotationalSpringI, 2);
       addConnectionSpringEnergy(assembly.member.rotationalSpringJ, 5);
-      const deformationsStart = profileStart();
       const deformation = buildDeformationCurve(exact.segments, assembly.member, localD, {
         axialStrain: assembly.initialAxialStrain,
         curvature: assembly.initialCurvature,
         shearRigidity: Number.isFinite(shearRigidity) ? shearRigidity : undefined,
       });
-      profileEnd('deformations', deformationsStart);
       const axial = exact.points.map((point) => point.axial);
       const shear = exact.points.map((point) => point.shear);
       const moment = exact.points.map((point) => point.moment);
@@ -2349,7 +2336,6 @@ export const analyzeProject = (
       });
     }
 
-    const educationTraceStart = profileStart();
     const educationTrace: EducationTrace | undefined = includeEducationTrace ? (() => {
       const matrixDetail = ndof <= 90 ? 'full' as const : 'summary' as const;
       const reactionVector = project.nodes.flatMap((node) => {
@@ -2407,7 +2393,6 @@ export const analyzeProject = (
         },
       };
     })() : undefined;
-    profileEnd('educationTrace', educationTraceStart);
 
     // A zero computed residual does not imply more information than IEEE-754
     // double precision can carry. Include the condition-amplified round-off
@@ -2442,15 +2427,11 @@ export const analyzeProject = (
       loadAudit,
       educationTrace,
     };
-    const explanationStart = profileStart();
     const explanation = explanationSteps(project, partial);
-    profileEnd('explanation', explanationStart);
     const analysis: AnalysisResult = { ...partial, explanation };
     // Finishing is not the same as being trustworthy: classify the run against
     // every independent numeric check before publishing it.
-    const reliabilityStart = profileStart();
     const reliability = classifyAnalysisReliability(analysis);
-    profileEnd('auditAndReliability', reliabilityStart);
     return { ...analysis, reliability };
   } catch (error) {
     const numericalError = error instanceof LinearAlgebraError ? error : undefined;

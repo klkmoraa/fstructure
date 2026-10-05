@@ -58,7 +58,7 @@ const NUMERIC: Pick<PdfTableColumn, 'align'> = { align: 'right' };
 /** Height of a free-body figure. Tall enough for a truss, short enough that two share a page. */
 const SCENE_HEIGHT = 186;
 
-export type PdfMethodAvailability = Record<SolutionMethodId, { available: boolean; reasonKey?: string }>;
+type PdfMethodAvailability = Record<SolutionMethodId, { available: boolean; reasonKey?: string }>;
 
 /**
  * Applies the same load-aware checks as the actual procedure renderer. Geometry alone is not

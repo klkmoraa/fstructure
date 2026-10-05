@@ -53,7 +53,7 @@ import './structureGenerator.css';
  * cambio que deba poder ocurrir por rozar un botón mientras se teclea.
  */
 
-export interface StructureGeneratorPanelProps {
+interface StructureGeneratorPanelProps {
   form: GeneratorFormState;
   onFormChange: (form: GeneratorFormState) => void;
   errors: GeneratorFormErrors;
@@ -293,15 +293,6 @@ export const StructureGeneratorPanel = ({
       >{t(originPicking ? 'origin.picking' : 'origin.pick')}</Button>
       <small>{t('origin.pickHint')}</small>
     </div> : null}
-    <SegmentedControl
-      size="sm"
-      className="structure-generator__wide"
-      label={t('support.label')}
-      value={form.support}
-      options={GENERATOR_SUPPORT_CHOICES.map((choice) => ({ value: choice, label: t(`support.${choice}`) }))}
-      onValueChange={(value) => patch({ support: value as GeneratorFormState['support'] })}
-    />
-    <small className="structure-generator__hint">{t('support.hint')} {t(`support.detail.${form.support}` as never)}</small>
   </div>;
 
   const propertyFields = <div className="structure-generator__properties">
@@ -475,6 +466,15 @@ export const StructureGeneratorPanel = ({
 
       <div className="structure-generator__parameter-stage" data-generator-stage="parameters">
         {geometryFields}
+        <SegmentedControl
+          size="sm"
+          className="structure-generator__wide"
+          label={t('support.label')}
+          value={form.support}
+          options={GENERATOR_SUPPORT_CHOICES.map((choice) => ({ value: choice, label: t(`support.${choice}`) }))}
+          onValueChange={(value) => patch({ support: value as GeneratorFormState['support'] })}
+        />
+        <small className="structure-generator__hint">{t('support.hint')} {t(`support.detail.${form.support}` as never)}</small>
       </div>
 
       <Accordion

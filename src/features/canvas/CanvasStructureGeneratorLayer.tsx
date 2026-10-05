@@ -3,7 +3,7 @@ import type { StructureGenerationGhost } from '../../data/generators/generatorGh
 import type { Point2D } from '../../data/structuralEditing';
 import '../structure-generator/structureGenerator.css';
 
-export interface CanvasStructureGeneratorLayerProps {
+interface CanvasStructureGeneratorLayerProps {
   ghost: StructureGenerationGhost;
   /** Punto de inserción, para que se vea dónde se está anclando la geometría. */
   origin?: Point2D | null;

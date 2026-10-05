@@ -6,7 +6,7 @@ export interface Point2D {
   y: number;
 }
 
-export interface StructuralSelectionResolution {
+interface StructuralSelectionResolution {
   nodeIds: string[];
   selectedMemberIds: string[];
   affectedMemberIds: string[];
@@ -104,14 +104,14 @@ export const cleanCoordinate = (value: number): number => {
   return Math.abs(value - integer) <= COORDINATE_EPSILON ? integer : value;
 };
 
-export const translatePoint = (point: Point2D, delta: Point2D): Point2D => {
+const translatePoint = (point: Point2D, delta: Point2D): Point2D => {
   assertPoint(point, 'El punto');
   assertPoint(delta, 'El desplazamiento');
   return { x: cleanCoordinate(point.x + delta.x), y: cleanCoordinate(point.y + delta.y) };
 };
 
 /** Rotates a point counter-clockwise around an explicit center. */
-export const rotatePoint = (point: Point2D, center: Point2D, angleDeg: number): Point2D => {
+const rotatePoint = (point: Point2D, center: Point2D, angleDeg: number): Point2D => {
   assertPoint(point, 'El punto');
   assertPoint(center, 'El centro');
   assertFinite(angleDeg, 'El ángulo');
@@ -127,7 +127,7 @@ export const rotatePoint = (point: Point2D, center: Point2D, angleDeg: number): 
 };
 
 /** Reflects a point across the infinite line defined by two distinct points. */
-export const reflectPointAcrossLine = (point: Point2D, start: Point2D, end: Point2D): Point2D => {
+const reflectPointAcrossLine = (point: Point2D, start: Point2D, end: Point2D): Point2D => {
   assertPoint(point, 'El punto');
   assertPoint(start, 'El inicio del eje');
   assertPoint(end, 'El final del eje');

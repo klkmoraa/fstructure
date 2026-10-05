@@ -61,10 +61,6 @@ export const STRUCTURAL_ASSET_REGISTRY: readonly StructuralAssetVariant[] = Obje
     preset('connection', 'splice', 'Member splice', 'steel'),
 ]);
 
-export const STRUCTURAL_ASSET_IDS: readonly string[] = Object.freeze(
-  STRUCTURAL_ASSET_REGISTRY.map((asset) => asset.id),
-);
-
 const assetsById = new Map(STRUCTURAL_ASSET_REGISTRY.map((asset) => [asset.id, asset] as const));
 
 export const getStructuralAsset = (id: string): StructuralAssetVariant | undefined => assetsById.get(id);

@@ -22,7 +22,7 @@
 import { analyzeProject } from '../engine/solver';
 import { solveLinearSystem } from '../foundation/linearAlgebra';
 import type { AnalysisResult, LoadCombination, NodeModel, ProjectModel, SupportDefinition } from '../types';
-import { add, evaluate, integrate, scale, type Polynomial } from './polynomialAlgebra';
+import { add, evaluate, integrate, scale } from './polynomialAlgebra';
 import { buildBeamAxis, type BeamAxis } from './beamAxis';
 import { classifyStructure, type StructureClassification } from './structureClassification';
 
@@ -75,13 +75,13 @@ export interface DoubleIntegrationResult {
   maxDeflection: { x: number; value: number };
 }
 
-export interface DoubleIntegrationRejection {
+interface DoubleIntegrationRejection {
   applicable: false;
   /** Translation key explaining why, so the interface never invents a reason. */
   reasonKey: string;
 }
 
-export type DoubleIntegrationOutcome = DoubleIntegrationResult | DoubleIntegrationRejection;
+type DoubleIntegrationOutcome = DoubleIntegrationResult | DoubleIntegrationRejection;
 
 /** Transverse restraint of a support, in the sense the bending problem cares about. */
 const restrainsTransverse = (support: SupportDefinition): boolean => {
@@ -414,4 +414,4 @@ export const solveDoubleIntegration = (
   };
 };
 
-export type { Polynomial };
+;

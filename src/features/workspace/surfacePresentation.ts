@@ -18,6 +18,7 @@ export const BROKER_SURFACE_IDS = [
   'analysisSetup',
   'view',
   'results',
+  'design',
   'generator',
   /**
    * `dense` es la superficie invocada de los datos densos de Results
@@ -41,12 +42,13 @@ export type SurfaceId = (typeof BROKER_SURFACE_IDS)[number];
 export type SurfaceExtent = 'default' | 'peek';
 export type SurfaceStatus = 'closed' | 'active' | 'suspended';
 
-export const SURFACE_PRESENTATION_TABLE: Readonly<Record<ShellClass, Readonly<Record<SurfaceId, SurfacePresentation>>>> = {
+const SURFACE_PRESENTATION_TABLE: Readonly<Record<ShellClass, Readonly<Record<SurfaceId, SurfacePresentation>>>> = {
   X2: {
     detail: 'dock',
     analysisSetup: 'dock',
     view: 'dock',
     results: 'dock',
+    design: 'dock',
     generator: 'floating',
     dense: 'drawer',
     datasheet: 'drawer',
@@ -61,6 +63,7 @@ export const SURFACE_PRESENTATION_TABLE: Readonly<Record<ShellClass, Readonly<Re
     analysisSetup: 'inset',
     view: 'inset',
     results: 'inset',
+    design: 'drawer',
     generator: 'inset',
     dense: 'drawer',
     datasheet: 'drawer',
@@ -75,6 +78,7 @@ export const SURFACE_PRESENTATION_TABLE: Readonly<Record<ShellClass, Readonly<Re
     analysisSetup: 'sheet',
     view: 'sheet',
     results: 'sheet',
+    design: 'fullscreen',
     generator: 'sheet',
     dense: 'fullscreen',
     datasheet: 'fullscreen',
@@ -102,15 +106,16 @@ export const SURFACE_PRESENTATION_TABLE: Readonly<Record<ShellClass, Readonly<Re
  * ganar—. Lo único que cambia es que una apertura *derivada* ya no puede
  * desbancar a lo que el usuario está usando.
  */
-export const SURFACE_ACTIVITY_CLASSES = ['tool', 'layer'] as const;
+const SURFACE_ACTIVITY_CLASSES = ['tool', 'layer'] as const;
 
-export type SurfaceActivityClass = (typeof SURFACE_ACTIVITY_CLASSES)[number];
+type SurfaceActivityClass = (typeof SURFACE_ACTIVITY_CLASSES)[number];
 
-export const SURFACE_ACTIVITY_CLASS: Readonly<Record<SurfaceId, SurfaceActivityClass>> = {
+const SURFACE_ACTIVITY_CLASS: Readonly<Record<SurfaceId, SurfaceActivityClass>> = {
   detail: 'layer',
   analysisSetup: 'layer',
   view: 'layer',
   results: 'layer',
+  design: 'layer',
   generator: 'tool',
   dense: 'tool',
   datasheet: 'tool',
@@ -121,7 +126,7 @@ export const SURFACE_ACTIVITY_CLASS: Readonly<Record<SurfaceId, SurfaceActivityC
   candidatePicker: 'layer',
 };
 
-export const surfaceActivityClass = (surface: SurfaceId): SurfaceActivityClass => SURFACE_ACTIVITY_CLASS[surface];
+const surfaceActivityClass = (surface: SurfaceId): SurfaceActivityClass => SURFACE_ACTIVITY_CLASS[surface];
 
 export interface SurfaceIntent {
   open: boolean;
@@ -140,7 +145,7 @@ export interface SurfaceActivity extends SurfaceIntent {
   status: SurfaceStatus;
 }
 
-export type SurfaceActivityMap = Record<SurfaceId, SurfaceActivity>;
+type SurfaceActivityMap = Record<SurfaceId, SurfaceActivity>;
 
 const emptyIntent = (): SurfaceIntent => ({
   open: false,
@@ -249,12 +254,6 @@ export const resolveSurfaceActivity = (
 };
 
 /**
- * Las tres superficies que comparten la MISMA columna del inspector. No es una
- * lista de estilo: es la única celda de la retícula que las tres disputan.
- */
-export const INSPECTOR_SURFACE_IDS = ['detail', 'analysisSetup', 'view'] as const satisfies readonly SurfaceId[];
-
-/**
  * ¿Debe la retícula reservar la columna del inspector?
  *
  * La respuesta es `active`, nunca `open`. Son dos preguntas distintas y
@@ -288,22 +287,4 @@ export const setSurfaceExtent = (
       [surface]: { ...state.surfaces[surface], extent },
     },
   };
-};
-
-export const validateSurfaceCombination = (
-  shellClass: ShellClass,
-  activity: SurfaceActivityMap,
-): string[] => {
-  const errors: string[] = [];
-  const active = BROKER_SURFACE_IDS.filter((surface) => activity[surface].status === 'active');
-  if (shellClass === 'K0' && active.length > 1) errors.push('Compact admite una sola capa contextual activa.');
-  const modal = active.filter((surface) => isModalPresentation(activity[surface].presentation));
-  if (modal.length > 1) errors.push('drawer y fullscreen son mutuamente exclusivos.');
-  for (const surface of BROKER_SURFACE_IDS) {
-    const current = activity[surface];
-    if (current.extent === 'peek' && !isModalPresentation(current.presentation)) {
-      errors.push(`${surface}: peek requiere drawer o fullscreen.`);
-    }
-  }
-  return errors;
 };

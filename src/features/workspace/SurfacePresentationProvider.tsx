@@ -63,7 +63,7 @@ const findSemanticEquivalent = (root: HTMLElement, key: string | null): HTMLElem
   ].join(', ')) ?? root;
 };
 
-export interface SurfacePresentationProviderProps extends PropsWithChildren {
+interface SurfacePresentationProviderProps extends PropsWithChildren {
   shellClass: ShellClass;
   initialOpen?: readonly SurfaceId[];
   backgroundRef: RefObject<HTMLElement | null>;

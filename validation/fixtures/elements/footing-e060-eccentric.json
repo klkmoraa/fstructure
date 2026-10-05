@@ -1,0 +1,60 @@
+{
+  "name": "Zapata E.060 con momentos (9.2.1, 11.3.1.1, 11.12.2.1, 12.2, 15.7)",
+  "input": {
+    "code": "e060",
+    "columnWidthMm": 400,
+    "columnDepthMm": 500,
+    "deadKn": 700,
+    "liveKn": 350,
+    "combinations": [
+      {
+        "label": "1.4 CM + 1.7 CV",
+        "dead": 1.4,
+        "favorableDead": 1.4,
+        "live": 1.7
+      }
+    ],
+    "serviceMomentXKnm": 40,
+    "serviceMomentYKnm": 120,
+    "ultimateMomentXKnm": 60,
+    "ultimateMomentYKnm": 170,
+    "allowablePressureKpa": 180,
+    "fcMpa": 25,
+    "fyMpa": 420,
+    "thicknessMm": 650,
+    "sideXMm": 3000,
+    "sideYMm": 2200,
+    "coverMm": 75,
+    "barDiameterMm": 19.1,
+    "seismicCombination": false
+  },
+  "expected": {
+    "x": {
+      "effectiveDepthMm": 565.45,
+      "momentKnm": 511.72574074074123,
+      "barCount": 9,
+      "providedMm2": 2578.6899359012086,
+      "strengthKnm": 539.8785663741986,
+      "oneWayDemandKn": 448.5042323499999,
+      "oneWayStrengthKn": 898.7827750000002,
+      "developmentLengthMm": 617.0769230769231,
+      "hookLengthMm": 385.05600000000004
+    },
+    "y": {
+      "effectiveDepthMm": 546.35,
+      "momentKnm": 278.57097577009756,
+      "barCount": 13,
+      "providedMm2": 3724.774351857301,
+      "strengthKnm": 751.9660079893653,
+      "oneWayDemandKn": 236.85401520473332,
+      "oneWayStrengthKn": 1184.2136250000003,
+      "developmentLengthMm": 617.0769230769231,
+      "hookLengthMm": 385.05600000000004
+    },
+    "punching": {
+      "demandKn": 1334.13601125,
+      "demandStressMpa": 0.7102025227276164,
+      "strengthStressMpa": 1.4025
+    }
+  }
+}

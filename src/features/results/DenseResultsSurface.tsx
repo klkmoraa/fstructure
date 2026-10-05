@@ -19,7 +19,7 @@ import { ReactionsView } from './ReactionsView';
  * lee directamente dentro del panel de Resultados para mantenerla en el mismo
  * contexto que N/V/M y la deformada.
  */
-export interface DenseResultsSurfaceProps {
+interface DenseResultsSurfaceProps {
   open: boolean;
   view: DenseResultView;
   onViewChange: (view: DenseResultView) => void;

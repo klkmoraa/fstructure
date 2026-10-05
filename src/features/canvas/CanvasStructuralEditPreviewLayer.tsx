@@ -7,7 +7,7 @@ import {
   type StructuralEditGeometryPreview,
 } from '../../data/structuralEditing';
 
-export interface CanvasStructuralEditPreviewLayerProps {
+interface CanvasStructuralEditPreviewLayerProps {
   /** The real model is used only as a fallback for unchanged member endpoints. */
   project: ProjectModel;
   prepared?: PreparedStructuralEdit | null;

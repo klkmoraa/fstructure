@@ -10,7 +10,7 @@ import { formatInspectorValue } from './numericFormatting';
 import { resolveSectionGeometry, sectionShapeLayout } from './sectionGeometry';
 import { SectionShape, type SectionShapeVariant } from './SectionShape';
 
-export interface SectionViewer2DProps {
+interface SectionViewer2DProps {
   /** Área bruta del miembro (m²) tal como la tiene el modelo. */
   area: number;
   /** Inercia fuerte del miembro (m⁴). */

@@ -15,7 +15,7 @@ export interface ModalResult {
   totalMass: number; formulation: MassFormulation; converged: boolean; residual: number;
   issues: ValidationIssue[]; reason: string; freeDegreesOfFreedom: number;
 }
-export interface ModalOptions { modes?: number; formulation?: MassFormulation; maxIterations?: number; tolerance?: number }
+interface ModalOptions { modes?: number; formulation?: MassFormulation; maxIterations?: number; tolerance?: number }
 
 const failure = (reason: string, issues: ValidationIssue[] = []): ModalResult => ({
   success: false, modes: [], cumulativeMassRatioX: 0, cumulativeMassRatioY: 0, totalMass: 0,

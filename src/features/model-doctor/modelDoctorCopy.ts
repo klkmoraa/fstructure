@@ -1,7 +1,7 @@
 import { translate, type Language, type TranslationKey } from '../../i18n/catalogs';
 import type { ModelDoctorCategory, ModelDoctorSeverity } from './modelDoctorDiagnostics';
 
-export interface ModelDoctorCopy {
+interface ModelDoctorCopy {
   description: string;
   close: string;
   restore: string;

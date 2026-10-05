@@ -10,10 +10,10 @@ import {
 import { ChevronDown } from 'lucide-react';
 import { Spinner } from './feedback';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ControlSize = 'sm' | 'md' | 'touch';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ControlSize = 'sm' | 'md' | 'touch';
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ControlSize;
   loading?: boolean;
@@ -55,7 +55,7 @@ export function Button({
   </button>;
 }
 
-export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> {
+interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'> {
   label: string;
   variant?: ButtonVariant;
   size?: ControlSize;
@@ -99,7 +99,7 @@ interface FieldFrameProps {
   suffix?: ReactNode;
 }
 
-export interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'prefix'>, FieldFrameProps {
+interface FieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'prefix'>, FieldFrameProps {
   controlSize?: ControlSize;
   ref?: Ref<HTMLInputElement>;
 }
@@ -136,7 +136,7 @@ export function Field({
   </div>;
 }
 
-export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'prefix'>, FieldFrameProps {
+interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'prefix'>, FieldFrameProps {
   controlSize?: ControlSize;
   ref?: Ref<HTMLSelectElement>;
 }
@@ -174,13 +174,13 @@ export function Select({
   </div>;
 }
 
-export interface SegmentedOption {
+interface SegmentedOption {
   value: string;
   label: string;
   disabled?: boolean;
 }
 
-export interface SegmentedControlProps {
+interface SegmentedControlProps {
   label: string;
   value: string;
   options: readonly SegmentedOption[];

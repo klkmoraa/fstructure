@@ -2,35 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { COMPATIBILITY_ARTIFACT_DIGEST_ALGORITHM, digestCompatibilityArtifact } from '../compatibilityArtifactDigest';
 import { analyzeProject } from './solver';
 import { analyzeProjectPDelta } from './pDelta';
 import { readCorpusAssertion, availableSolver2dCorpus, resolveCorpusProject, unsupportedSolver2dCapabilities, solver2dCorpus, evaluateCorpusInvariant, corpusAssertionMatches } from './solver2dCorpus';
 import { serializeCanonicalResult } from './canonicalResult';
 
 describe('direct 2D numerical compatibility corpus', () => {
-  it('keeps the post-baseline manifest and artifact digests stable', () => {
+  it('documents the same corpus it executes', () => {
     const root = resolve(import.meta.dirname, '..', '..');
-    const manifest = JSON.parse(readFileSync(resolve(root, 'migration', 'solver2d-compatibility-manifest.json'), 'utf8')) as { caseCount: number; availableCaseCount: number; unsupportedCaseCount: number; artifacts: Array<{ path: string; digestAlgorithm: string; sha256: string }> };
+    const manifest = JSON.parse(readFileSync(resolve(root, 'validation', 'solver2d-compatibility-manifest.json'), 'utf8')) as { caseCount: number; availableCaseCount: number; unsupportedCaseCount: number };
     expect(manifest.caseCount).toBe(solver2dCorpus.length);
     expect(manifest.availableCaseCount).toBe(availableSolver2dCorpus.length);
     expect(manifest.unsupportedCaseCount).toBe(unsupportedSolver2dCapabilities.length);
-    for (const artifact of manifest.artifacts) {
-      expect(artifact.digestAlgorithm, artifact.path).toBe(COMPATIBILITY_ARTIFACT_DIGEST_ALGORITHM);
-      const digest = digestCompatibilityArtifact(readFileSync(resolve(root, artifact.path)));
-      expect(digest, artifact.path).toBe(artifact.sha256);
-    }
-  });
-
-  it('defines compatibility artifact digests independently of CRLF materialization while detecting content changes', () => {
-    const lf = Buffer.from('export const answer = 42;\n');
-    const crlf = Buffer.from('export const answer = 42;\r\n');
-    const cr = Buffer.from('export const answer = 42;\r');
-    const changed = Buffer.from('export const answer = 43;\r\n');
-
-    expect(digestCompatibilityArtifact(crlf)).toBe(digestCompatibilityArtifact(lf));
-    expect(digestCompatibilityArtifact(cr)).toBe(digestCompatibilityArtifact(lf));
-    expect(digestCompatibilityArtifact(changed)).not.toBe(digestCompatibilityArtifact(lf));
   });
 
   it('executes every available fixture and checks literal independent outputs', () => {

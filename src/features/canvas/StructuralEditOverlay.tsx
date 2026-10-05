@@ -8,13 +8,13 @@ import { Surface } from '../../design-system/components/surface';
 import { useI18n } from '../../i18n/useI18n';
 import type { StructuralEditDraft, StructuralEditKind } from './structuralEditUi';
 
-export interface StructuralEditCapabilities {
+interface StructuralEditCapabilities {
   structural: boolean;
   align: boolean;
   distribute: boolean;
 }
 
-export interface StructuralEditOverlayProps {
+interface StructuralEditOverlayProps {
   available: boolean;
   /** Prevent the contextual Repeat affordance from occupying the same canvas corner. */
   repeatAvailable?: boolean;

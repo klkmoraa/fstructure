@@ -85,12 +85,12 @@ export interface CantileverMethodResult {
   reactionGap: { force: number; moment: number };
 }
 
-export interface CantileverMethodRejection {
+interface CantileverMethodRejection {
   applicable: false;
   reasonKey: string;
 }
 
-export type CantileverMethodOutcome = CantileverMethodResult | CantileverMethodRejection;
+type CantileverMethodOutcome = CantileverMethodResult | CantileverMethodRejection;
 
 const NEAR_ZERO = 1e-9;
 

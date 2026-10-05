@@ -1,0 +1,60 @@
+{
+  "name": "Zapata rectangular con momentos y sismo (5.5.3.2.1, 5.6.2.1.1, 6.7.4.4.2.3, 6.7.6.1.2, 14.4.2.4)",
+  "input": {
+    "code": "ntc-2023",
+    "columnWidthMm": 400,
+    "columnDepthMm": 500,
+    "deadKn": 700,
+    "liveKn": 350,
+    "combinations": [
+      {
+        "label": "1.3 CM + 1.5 CV (Grupo B)",
+        "dead": 1.3,
+        "favorableDead": 0.9,
+        "live": 1.5
+      }
+    ],
+    "serviceMomentXKnm": 40,
+    "serviceMomentYKnm": 120,
+    "ultimateMomentXKnm": 60,
+    "ultimateMomentYKnm": 170,
+    "allowablePressureKpa": 180,
+    "fcMpa": 25,
+    "fyMpa": 420,
+    "thicknessMm": 600,
+    "sideXMm": 3000,
+    "sideYMm": 2200,
+    "coverMm": 75,
+    "barDiameterMm": 15.9,
+    "seismicCombination": true
+  },
+  "expected": {
+    "x": {
+      "effectiveDepthMm": 517.05,
+      "momentKnm": 472.29240740740676,
+      "barCount": 13,
+      "providedMm2": 2581.2346259506157,
+      "strengthKnm": 493.17596993847997,
+      "oneWayDemandKn": 440.08723457222226,
+      "oneWayStrengthKn": 298.69481095346737,
+      "developmentLengthMm": 636.0,
+      "hookLengthMm": 320.544
+    },
+    "y": {
+      "effectiveDepthMm": 501.15,
+      "momentKnm": 255.58233940646127,
+      "barCount": 17,
+      "providedMm2": 3375.460664704651,
+      "strengthKnm": 625.2421680208461,
+      "oneWayDemandKn": 249.37841039631877,
+      "oneWayStrengthKn": 397.5275325565141,
+      "developmentLengthMm": 636.0,
+      "hookLengthMm": 320.544
+    },
+    "punching": {
+      "demandKn": 1235.5409117651513,
+      "demandStressMpa": 0.7699630797624306,
+      "strengthStressMpa": 0.8704279084309762
+    }
+  }
+}

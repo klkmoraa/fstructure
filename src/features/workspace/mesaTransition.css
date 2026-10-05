@@ -1,0 +1,70 @@
+/*
+ * Transición entre modos de la mesa de FStructure (ver mesaTransition.ts).
+ * Sólo existe mientras dura: los nombres de transición se asignan bajo
+ * `data-mesa-transition`, así no afectan el pintado normal de la mesa.
+ */
+:root[data-mesa-transition] .workspace-topbar { view-transition-name: mesa-topbar; }
+:root[data-mesa-transition] .app-shell > .workspace { view-transition-name: mesa-stage; }
+
+/* El giro del plano es un trazo (`trace`); la barra sólo se funde (`bridge`). */
+::view-transition-group(mesa-stage) { animation-duration: var(--sc-motion-trace); }
+::view-transition-group(mesa-topbar) { animation-duration: var(--sc-motion-bridge); }
+::view-transition-old(mesa-stage),
+::view-transition-new(mesa-stage) {
+  animation-duration: var(--sc-motion-trace);
+  animation-timing-function: var(--sc-ease-standard);
+  animation-fill-mode: both;
+  /* La captura conserva su proporción: el plano gira sin deformarse. */
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 2D → 3D: el plano del dibujo se tiende hacia el fondo; el modelo espacial emerge. */
+:root[data-mesa-transition='lay']::view-transition-old(mesa-stage) { animation-name: mesa-plane-lay; transform-origin: 50% 92%; }
+:root[data-mesa-transition='lay']::view-transition-new(mesa-stage) { animation-name: mesa-space-rise; animation-delay: var(--sc-motion-instant); }
+
+/* 3D → 2D: el modelo se aleja y el plano vuelve a levantarse. */
+:root[data-mesa-transition='raise']::view-transition-old(mesa-stage) { animation-name: mesa-space-recede; }
+:root[data-mesa-transition='raise']::view-transition-new(mesa-stage) { animation-name: mesa-plane-raise; transform-origin: 50% 92%; animation-delay: var(--sc-motion-instant); }
+
+/* Hacia Diseño (o de vuelta): de lado, en el orden del interruptor; un
+   deslizamiento corto (`reveal`), el giro del plano conserva el trazo. */
+:root[data-mesa-transition='forward']::view-transition-group(mesa-stage),
+:root[data-mesa-transition='forward']::view-transition-old(mesa-stage),
+:root[data-mesa-transition='forward']::view-transition-new(mesa-stage),
+:root[data-mesa-transition='back']::view-transition-group(mesa-stage),
+:root[data-mesa-transition='back']::view-transition-old(mesa-stage),
+:root[data-mesa-transition='back']::view-transition-new(mesa-stage) { animation-duration: var(--sc-motion-reveal); }
+:root[data-mesa-transition='forward']::view-transition-old(mesa-stage) { animation-name: mesa-slide-out-left; }
+:root[data-mesa-transition='forward']::view-transition-new(mesa-stage) { animation-name: mesa-slide-in-right; }
+:root[data-mesa-transition='back']::view-transition-old(mesa-stage) { animation-name: mesa-slide-out-right; }
+:root[data-mesa-transition='back']::view-transition-new(mesa-stage) { animation-name: mesa-slide-in-left; }
+
+@keyframes mesa-plane-lay {
+  0% { opacity: 1; transform: perspective(1400px) rotateX(0) translateY(0) scale(1); }
+  70% { opacity: .55; }
+  100% { opacity: 0; transform: perspective(1400px) rotateX(64deg) translateY(10%) scale(.86); }
+}
+@keyframes mesa-space-rise {
+  0% { opacity: 0; transform: perspective(1400px) translateZ(-220px) rotateX(-10deg) scale(.96); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes mesa-space-recede {
+  0% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: perspective(1400px) translateZ(-260px) rotateX(-8deg) scale(.94); }
+}
+@keyframes mesa-plane-raise {
+  0% { opacity: 0; transform: perspective(1400px) rotateX(64deg) translateY(10%) scale(.86); }
+  35% { opacity: .6; }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes mesa-slide-out-left { to { opacity: 0; transform: translateX(-5%) scale(.985); } }
+@keyframes mesa-slide-in-right { from { opacity: 0; transform: translateX(5%) scale(.985); } }
+@keyframes mesa-slide-out-right { to { opacity: 0; transform: translateX(5%) scale(.985); } }
+@keyframes mesa-slide-in-left { from { opacity: 0; transform: translateX(-5%) scale(.985); } }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+}

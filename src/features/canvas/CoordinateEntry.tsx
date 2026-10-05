@@ -43,7 +43,7 @@ import type { UnitSystemId } from '../../foundation/units';
 import { parseLocalizedDecimal } from './quickEntry';
 import { formatFixed } from '../../utils/numberFormat';
 
-export type CoordinateMode = 'absolute' | 'relative' | 'polar';
+type CoordinateMode = 'absolute' | 'relative' | 'polar';
 
 /** Lo que el lienzo necesita para dibujar el punto antes de confirmarlo. */
 export interface CoordinatePreview {
@@ -60,7 +60,7 @@ export interface CoordinateOrigin {
   label: string;
 }
 
-export interface CoordinateEntryProps {
+interface CoordinateEntryProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** `member` cierra la barra en curso; `node` coloca un nudo suelto. */

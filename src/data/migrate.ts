@@ -1,7 +1,8 @@
-import { CURRENT_SCHEMA_VERSION, createDefaultSettings } from './defaultProject';
+import { CURRENT_SCHEMA_VERSION, DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN, createDefaultSettings } from './defaultProject';
 import type {
   LoadCase,
   LoadCombination,
+  MemberDesignAssignment,
   EducationalAssertion,
   GeneratedLoadSource,
   MemberInitialEffect,
@@ -23,7 +24,6 @@ import { createId } from '../utils/id';
 import { isUnitSystemId } from '../foundation/units';
 
 type JsonObject = Record<string, unknown>;
-const MAX_COLLECTION_ITEMS = 50_000;
 const MAX_TEXT_LENGTH = 20_000;
 
 const isObject = (value: unknown): value is JsonObject =>
@@ -39,7 +39,6 @@ const objectAt = (value: unknown, path: string): JsonObject =>
 const arrayAt = (value: unknown, path: string, fallback: unknown[] = []): unknown[] => {
   if (value === undefined) return fallback;
   if (!Array.isArray(value)) return fail(path, 'se esperaba una lista.');
-  if (value.length > MAX_COLLECTION_ITEMS) return fail(path, `excede el límite de ${MAX_COLLECTION_ITEMS} elementos.`);
   return value;
 };
 
@@ -469,6 +468,72 @@ const normalizeMemberInitialEffects = (
   });
 };
 
+const positiveNumberListAt = (value: unknown, path: string, fallback: readonly number[]): number[] => {
+  const values = arrayAt(value, path, [...fallback]).map((item, index) => finiteAt(item, `${path}[${index}]`));
+  if (values.length === 0) fail(path, 'debe incluir al menos un diámetro.');
+  values.forEach((diameter, index) => {
+    if (diameter <= 0) fail(`${path}[${index}]`, 'debe ser mayor que cero.');
+  });
+  if (new Set(values).size !== values.length) fail(path, 'no puede repetir diámetros.');
+  return values;
+};
+
+const normalizeDesignAssignments = (
+  input: unknown,
+  memberIds: Set<string>,
+  combinationIds: Set<string>,
+): MemberDesignAssignment[] => {
+  const ids = new Set<string>();
+  const assignedMemberIds = new Set<string>();
+  return arrayAt(input, 'designAssignments').map((item, index) => {
+    const path = `designAssignments[${index}]`;
+    const raw = objectAt(item, path);
+    const id = stringAt(raw.id, `${path}.id`, `DESIGN${index + 1}`);
+    uniqueId(id, ids, `${path}.id`);
+    const memberId = stringAt(raw.memberId, `${path}.memberId`);
+    if (!memberIds.has(memberId)) fail(`${path}.memberId`, `el miembro "${memberId}" no existe.`);
+    if (assignedMemberIds.has(memberId)) fail(`${path}.memberId`, `el miembro "${memberId}" ya tiene una asignación de diseño.`);
+    assignedMemberIds.add(memberId);
+    const ultimateCombinationId = stringAt(raw.ultimateCombinationId, `${path}.ultimateCombinationId`);
+    const serviceCombinationId = stringAt(raw.serviceCombinationId, `${path}.serviceCombinationId`);
+    if (!combinationIds.has(ultimateCombinationId)) fail(`${path}.ultimateCombinationId`, `la combinación "${ultimateCombinationId}" no existe.`);
+    if (!combinationIds.has(serviceCombinationId)) fail(`${path}.serviceCombinationId`, `la combinación "${serviceCombinationId}" no existe.`);
+    const coverMm = finiteAt(raw.coverMm, `${path}.coverMm`, DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN.coverMm);
+    const longitudinalSteelYieldMpa = finiteAt(raw.longitudinalSteelYieldMpa, `${path}.longitudinalSteelYieldMpa`, DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN.longitudinalSteelYieldMpa);
+    const stirrupSteelYieldMpa = finiteAt(raw.stirrupSteelYieldMpa, `${path}.stirrupSteelYieldMpa`, DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN.stirrupSteelYieldMpa);
+    if (coverMm <= 0) fail(`${path}.coverMm`, 'debe ser mayor que cero.');
+    if (longitudinalSteelYieldMpa <= 0) fail(`${path}.longitudinalSteelYieldMpa`, 'debe ser mayor que cero.');
+    if (stirrupSteelYieldMpa <= 0) fail(`${path}.stirrupSteelYieldMpa`, 'debe ser mayor que cero.');
+    const stirrupLegs: 2 | 4 = raw.stirrupLegs === undefined
+      ? DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN.stirrupLegs
+      : raw.stirrupLegs === 2 || raw.stirrupLegs === 4
+        ? raw.stirrupLegs
+        : fail(`${path}.stirrupLegs`, 'valor no permitido; use 2 o 4.');
+    return {
+      id,
+      memberId,
+      kind: enumAt(raw.kind, `${path}.kind`, ['reinforced-concrete-beam'] as const),
+      standardId: enumAt(raw.standardId, `${path}.standardId`, ['ntc-cdmx-2023-concrete'] as const),
+      ultimateCombinationId,
+      serviceCombinationId,
+      coverMm,
+      longitudinalSteelYieldMpa,
+      stirrupSteelYieldMpa,
+      preferredLongitudinalDiametersMm: positiveNumberListAt(
+        raw.preferredLongitudinalDiametersMm,
+        `${path}.preferredLongitudinalDiametersMm`,
+        DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN.preferredLongitudinalDiametersMm,
+      ),
+      preferredStirrupDiametersMm: positiveNumberListAt(
+        raw.preferredStirrupDiametersMm,
+        `${path}.preferredStirrupDiametersMm`,
+        DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN.preferredStirrupDiametersMm,
+      ),
+      stirrupLegs,
+    };
+  });
+};
+
 const normalizeNodeLinks = (input: unknown, nodeIds: Set<string>): NodeLink[] => {
   const ids = new Set<string>();
   return arrayAt(input, 'nodeLinks').map((item, index) => {
@@ -560,19 +625,27 @@ const normalizeGeneratedLoadSources = (input: unknown, memberIds: Set<string>, c
     const caseId = stringAt(raw.caseId, `${path}.caseId`);
     if (!caseIds.has(caseId)) fail(`${path}.caseId`, `el caso "${caseId}" no existe.`);
     if (kind === 'tributary-surface') {
+      const pressure = finiteAt(raw.pressure, `${path}.pressure`);
+      if (pressure < 0) fail(`${path}.pressure`, 'no puede ser negativa.');
       const tributaryWidth = finiteAt(raw.tributaryWidth, `${path}.tributaryWidth`);
       if (tributaryWidth < 0) fail(`${path}.tributaryWidth`, 'no puede ser negativa.');
-      return { id, kind, caseId, memberIds: selectedMemberIds, pressure: finiteAt(raw.pressure, `${path}.pressure`), tributaryWidth, direction: enumAt(raw.direction, `${path}.direction`, ['global-x', 'global-y'] as const), label };
+      return { id, kind, caseId, memberIds: selectedMemberIds, pressure, tributaryWidth, direction: enumAt(raw.direction, `${path}.direction`, ['global-x', 'global-y'] as const), label };
     }
-    if (kind === 'hydrostatic' || kind === 'soil-pressure') return {
-      id, kind, caseId, memberIds: selectedMemberIds,
-      referenceY: finiteAt(raw.referenceY, `${path}.referenceY`),
-      unitWeight: finiteAt(raw.unitWeight, `${path}.unitWeight`),
-      pressureAtReference: optionalFiniteAt(raw.pressureAtReference, `${path}.pressureAtReference`),
-      direction: enumAt(raw.direction, `${path}.direction`, ['global-x', 'global-y'] as const),
-      sign: raw.sign === undefined ? undefined : enumAt(String(raw.sign), `${path}.sign`, ['1', '-1'] as const) === '1' ? 1 : -1,
-      label,
-    };
+    if (kind === 'hydrostatic' || kind === 'soil-pressure') {
+      const unitWeight = finiteAt(raw.unitWeight, `${path}.unitWeight`);
+      if (unitWeight < 0) fail(`${path}.unitWeight`, 'no puede ser negativa.');
+      const pressureAtReference = optionalFiniteAt(raw.pressureAtReference, `${path}.pressureAtReference`);
+      if (pressureAtReference !== undefined && pressureAtReference < 0) fail(`${path}.pressureAtReference`, 'no puede ser negativa.');
+      return {
+        id, kind, caseId, memberIds: selectedMemberIds,
+        referenceY: finiteAt(raw.referenceY, `${path}.referenceY`),
+        unitWeight,
+        pressureAtReference,
+        direction: enumAt(raw.direction, `${path}.direction`, ['global-x', 'global-y'] as const),
+        sign: raw.sign === undefined ? undefined : enumAt(String(raw.sign), `${path}.sign`, ['1', '-1'] as const) === '1' ? 1 : -1,
+        label,
+      };
+    }
     if (kind === 'live-pattern' || kind === 'member-chain') return {
       id, kind, caseId, memberIds: selectedMemberIds, qx: optionalFiniteAt(raw.qx, `${path}.qx`), qy: finiteAt(raw.qy, `${path}.qy`),
       coordinateSystem: raw.coordinateSystem === undefined ? undefined : enumAt(raw.coordinateSystem, `${path}.coordinateSystem`, ['global', 'local'] as const),
@@ -673,6 +746,8 @@ export const normalizeProject = (input: unknown): ProjectModel => {
   const memberIds = new Set(members.map((member) => member.id));
   const loadCases = normalizeLoadCases(raw.loadCases);
   const caseIds = new Set(loadCases.map((loadCase) => loadCase.id));
+  const combinations = normalizeCombinations(raw.combinations, caseIds);
+  const combinationIds = new Set(combinations.map((combination) => combination.id));
 
   const educationalRaw = raw.educationalCase === undefined
     ? undefined
@@ -692,7 +767,7 @@ export const normalizeProject = (input: unknown): ProjectModel => {
     nodes,
     members,
     loadCases,
-    combinations: normalizeCombinations(raw.combinations, caseIds),
+    combinations,
     nodalLoads: normalizeNodalLoads(raw.nodalLoads, nodeIds, caseIds),
     prescribedDisplacements: normalizePrescribedDisplacements(raw.prescribedDisplacements, nodeIds, caseIds),
     memberLoads: normalizeMemberLoads(raw.memberLoads, memberIds, caseIds),
@@ -702,6 +777,7 @@ export const normalizeProject = (input: unknown): ProjectModel => {
     nodalMasses: normalizeNodalMasses(raw.nodalMasses, nodeIds),
     generatedLoadSources: normalizeGeneratedLoadSources(raw.generatedLoadSources, memberIds, caseIds),
     movingLoadCases: normalizeMovingLoadCases(raw.movingLoadCases, memberIds, nodeIds),
+    designAssignments: normalizeDesignAssignments(raw.designAssignments, memberIds, combinationIds),
     settings: normalizeSettings(raw.settings),
     educationalCase: educationalRaw ? {
       kind: enumAt(educationalRaw.kind, 'educationalCase.kind', ['attributed-example', 'original-practice'] as const),

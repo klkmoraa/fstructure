@@ -9,7 +9,7 @@ import { LoadCard, MemberCards, NodeCards, type FieldContext } from './Datasheet
 
 type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
 
-export interface DatasheetEditorPanelProps {
+interface DatasheetEditorPanelProps {
   /** Modelo real; sólo lo lee el lado «Antes» de cada transición. */
   project: ProjectModel;
   /** Modelo con el plan aplicado; es el que dibujan todos los previews. */

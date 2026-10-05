@@ -11,7 +11,7 @@ import { formatFixed } from '../../utils/numberFormat';
 import { onWorkspaceCommand } from '../workspace/workspaceCommands';
 import { CoordinateEntryTrigger } from './CoordinateEntry';
 
-export interface CanvasChromeProps {
+interface CanvasChromeProps {
   modeLabel: string;
   placementInstruction: string | null;
   showHelp: boolean;

@@ -1,0 +1,39 @@
+{
+  "name": "Columna E.060 en marco con desplazamiento lateral (10.13, 10.18, 9.3.2.2)",
+  "input": {
+    "code": "e060",
+    "widthMm": 400,
+    "depthMm": 500,
+    "coverMm": 40,
+    "fcMpa": 28,
+    "fyMpa": 420,
+    "barDiameterMm": 25.4,
+    "barsAlongWidth": 3,
+    "barsAlongDepth": 4,
+    "tieDiameterMm": 9.5,
+    "maxAggregateMm": 19,
+    "axialKn": 900,
+    "momentXKnm": 60,
+    "momentYKnm": 40,
+    "shearXKn": 0,
+    "shearYKn": 0,
+    "unbracedLengthM": 3.2,
+    "effectiveLengthFactor": 1.3,
+    "curvature": "double",
+    "endMomentRatio": 0.5,
+    "sustainedRatio": 0.5,
+    "braced": false,
+    "swayMomentXKnm": 80,
+    "swayMomentYKnm": 30,
+    "stabilityIndex": 0.12,
+    "group": "B2",
+    "groundFloor": false
+  },
+  "expected": {
+    "designMomentXKnm": 150.90909090909093,
+    "designMomentYKnm": 74.0909090909091,
+    "maximumDesignAxialKn": 3789.8420180232006,
+    "breslerLoadKn": 1601.9301826308358,
+    "ratio": 0.561822237796867
+  }
+}

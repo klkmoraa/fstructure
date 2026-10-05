@@ -1,0 +1,66 @@
+{
+  "name": "Zapata NSR-10 con momentos (C.9.2.1, C.11.2.1.1, C.11.11.2.1, C.12.2.2)",
+  "input": {
+    "code": "nsr-10",
+    "columnWidthMm": 400,
+    "columnDepthMm": 500,
+    "deadKn": 700,
+    "liveKn": 350,
+    "combinations": [
+      {
+        "label": "1.4 D",
+        "dead": 1.4,
+        "favorableDead": 1.4,
+        "live": 0
+      },
+      {
+        "label": "1.2 D + 1.6 L",
+        "dead": 1.2,
+        "favorableDead": 1.2,
+        "live": 1.6
+      }
+    ],
+    "serviceMomentXKnm": 40,
+    "serviceMomentYKnm": 120,
+    "ultimateMomentXKnm": 60,
+    "ultimateMomentYKnm": 170,
+    "allowablePressureKpa": 180,
+    "fcMpa": 25,
+    "fyMpa": 420,
+    "thicknessMm": 600,
+    "sideXMm": 3000,
+    "sideYMm": 2200,
+    "coverMm": 75,
+    "barDiameterMm": 15.9,
+    "seismicCombination": false
+  },
+  "expected": {
+    "x": {
+      "effectiveDepthMm": 517.05,
+      "momentKnm": 462.43407407407494,
+      "barCount": 13,
+      "providedMm2": 2581.2346259506157,
+      "strengthKnm": 493.17596993847997,
+      "oneWayDemandKn": 430.95281790555555,
+      "oneWayStrengthKn": 725.1626249999999,
+      "developmentLengthMm": 636.0,
+      "hookLengthMm": 320.544
+    },
+    "y": {
+      "effectiveDepthMm": 501.15,
+      "momentKnm": 249.83518031555127,
+      "barCount": 17,
+      "providedMm2": 3375.460664704651,
+      "strengthKnm": 625.2421680208461,
+      "oneWayDemandKn": 243.8285240326822,
+      "oneWayStrengthKn": 958.4493749999999,
+      "developmentLengthMm": 636.0,
+      "hookLengthMm": 320.544
+    },
+    "punching": {
+      "demandKn": 1205.4057675757576,
+      "demandStressMpa": 0.7545337772361732,
+      "strengthStressMpa": 1.2375
+    }
+  }
+}

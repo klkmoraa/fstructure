@@ -9,7 +9,7 @@ import type { SurfacePresentation } from './surfacePresentation';
 import { recordLocalMetric } from '../../analytics/localMetrics';
 import './commandPalette.css';
 
-export interface CommandPaletteProps {
+interface CommandPaletteProps {
   open: boolean;
   onClose: () => void;
   dispatchLayers: Dispatch<EditorLayerAction>;

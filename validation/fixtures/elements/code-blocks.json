@@ -1,0 +1,271 @@
+{
+  "name": "Bloques NSR-10 y E.060: φ por εt o constante, acero requerido, desarrollo y ganchos",
+  "flexure": [
+    {
+      "code": "nsr-10",
+      "areaMm2": 800,
+      "widthMm": 300,
+      "depthMm": 540,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "strengthKnm": 155.3268705882353
+    },
+    {
+      "code": "nsr-10",
+      "areaMm2": 2900,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "strengthKnm": 300.6595716024341
+    },
+    {
+      "code": "nsr-10",
+      "areaMm2": 3600,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "strengthKnm": 315.88348235294114
+    },
+    {
+      "code": "nsr-10",
+      "areaMm2": 1200,
+      "widthMm": 250,
+      "depthMm": 400,
+      "fyMpa": 420,
+      "fcMpa": 30,
+      "strengthKnm": 163.50945882352943
+    },
+    {
+      "code": "e060",
+      "areaMm2": 800,
+      "widthMm": 300,
+      "depthMm": 540,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "strengthKnm": 155.3268705882353
+    },
+    {
+      "code": "e060",
+      "areaMm2": 2900,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "strengthKnm": 377.6086588235294
+    },
+    {
+      "code": "e060",
+      "areaMm2": 3600,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "strengthKnm": 437.37712941176466
+    },
+    {
+      "code": "e060",
+      "areaMm2": 1200,
+      "widthMm": 250,
+      "depthMm": 400,
+      "fyMpa": 420,
+      "fcMpa": 30,
+      "strengthKnm": 163.50945882352943
+    }
+  ],
+  "required": [
+    {
+      "code": "nsr-10",
+      "momentKnm": 150,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "areaMm2": 972.7120659723435
+    },
+    {
+      "code": "nsr-10",
+      "momentKnm": 280,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "areaMm2": 1975.7484636111135
+    },
+    {
+      "code": "nsr-10",
+      "momentKnm": 400,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "areaMm2": null
+    },
+    {
+      "code": "e060",
+      "momentKnm": 150,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "areaMm2": 972.7120659723435
+    },
+    {
+      "code": "e060",
+      "momentKnm": 280,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "areaMm2": 1975.7484636111135
+    },
+    {
+      "code": "e060",
+      "momentKnm": 400,
+      "widthMm": 300,
+      "depthMm": 440,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "areaMm2": 3145.95828372506
+    }
+  ],
+  "development": [
+    {
+      "code": "nsr-10",
+      "diameterMm": 15.9,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": false,
+      "clearSpacingMm": 40,
+      "clearCoverMm": 50,
+      "minimumStirrups": true,
+      "lengthMm": 636.0
+    },
+    {
+      "code": "nsr-10",
+      "diameterMm": 25.4,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": true,
+      "clearSpacingMm": 20,
+      "clearCoverMm": 50,
+      "minimumStirrups": false,
+      "lengthMm": 2521.5272727272722
+    },
+    {
+      "code": "nsr-10",
+      "diameterMm": 25.4,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": false,
+      "clearSpacingMm": 30,
+      "clearCoverMm": 40,
+      "minimumStirrups": false,
+      "lengthMm": 1939.6363636363635
+    },
+    {
+      "code": "nsr-10",
+      "diameterMm": 9.5,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": false,
+      "clearSpacingMm": 100,
+      "clearCoverMm": 50,
+      "minimumStirrups": true,
+      "lengthMm": 380.0
+    },
+    {
+      "code": "nsr-10",
+      "diameterMm": 19.1,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": false,
+      "clearSpacingMm": 25,
+      "clearCoverMm": 30,
+      "minimumStirrups": true,
+      "lengthMm": 764.0
+    },
+    {
+      "code": "e060",
+      "diameterMm": 15.9,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": false,
+      "clearSpacingMm": 40,
+      "clearCoverMm": 50,
+      "minimumStirrups": true,
+      "lengthMm": 513.6923076923077
+    },
+    {
+      "code": "e060",
+      "diameterMm": 25.4,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": true,
+      "clearSpacingMm": 20,
+      "clearCoverMm": 50,
+      "minimumStirrups": false,
+      "lengthMm": 2821.444613536243
+    },
+    {
+      "code": "e060",
+      "diameterMm": 25.4,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": false,
+      "clearSpacingMm": 30,
+      "clearCoverMm": 40,
+      "minimumStirrups": false,
+      "lengthMm": 1778.5835247784703
+    },
+    {
+      "code": "e060",
+      "diameterMm": 9.5,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": false,
+      "clearSpacingMm": 100,
+      "clearCoverMm": 50,
+      "minimumStirrups": true,
+      "lengthMm": 306.9230769230769
+    },
+    {
+      "code": "e060",
+      "diameterMm": 19.1,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "topBar": false,
+      "clearSpacingMm": 25,
+      "clearCoverMm": 30,
+      "minimumStirrups": true,
+      "lengthMm": 617.0769230769231
+    }
+  ],
+  "hooks": [
+    {
+      "diameterMm": 9.5,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "lengthMm": 191.52
+    },
+    {
+      "diameterMm": 15.9,
+      "fyMpa": 420,
+      "fcMpa": 25,
+      "lengthMm": 320.544
+    },
+    {
+      "diameterMm": 25.4,
+      "fyMpa": 420,
+      "fcMpa": 28,
+      "lengthMm": 483.8549997674923
+    },
+    {
+      "diameterMm": 31.8,
+      "fyMpa": 420,
+      "fcMpa": 35,
+      "lengthMm": 541.8182508553953
+    }
+  ]
+}

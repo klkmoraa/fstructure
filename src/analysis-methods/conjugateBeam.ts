@@ -23,7 +23,7 @@
  */
 import { solveLinearSystem } from '../foundation/linearAlgebra';
 import type { AnalysisResult, LoadCombination, ProjectModel, SupportDefinition } from '../types';
-import { evaluate, integrate, scale, type Polynomial } from './polynomialAlgebra';
+import { evaluate, integrate, scale } from './polynomialAlgebra';
 import { buildBeamAxis, type BeamAxis } from './beamAxis';
 import { classifyStructure, type StructureClassification } from './structureClassification';
 
@@ -80,12 +80,12 @@ export interface ConjugateBeamResult {
   maxDeflection: { x: number; value: number };
 }
 
-export interface ConjugateBeamRejection {
+interface ConjugateBeamRejection {
   applicable: false;
   reasonKey: string;
 }
 
-export type ConjugateBeamOutcome = ConjugateBeamResult | ConjugateBeamRejection;
+type ConjugateBeamOutcome = ConjugateBeamResult | ConjugateBeamRejection;
 
 const restrainsTransverse = (support: SupportDefinition): boolean => {
   switch (support.type) {
@@ -311,4 +311,4 @@ export const solveConjugateBeam = (
   };
 };
 
-export type { Polynomial };
+;

@@ -15,7 +15,7 @@ export type BomWarning =
   | 'catalog-quantity-properties-drifted'
   | 'quantity-properties-unavailable';
 
-export interface StructuralBomOptions {
+interface StructuralBomOptions {
   readonly memberTypes?: readonly BomMemberType[];
   readonly identity?: BomIdentityFilter;
 }
@@ -272,7 +272,7 @@ const csvCell = (value: string | number): string => {
 
 const csvRow = (values: readonly (string | number)[]): string => values.map(csvCell).join(',');
 
-export const buildStructuralBomCsv = (bom: StructuralBom): string => {
+const buildStructuralBomCsv = (bom: StructuralBom): string => {
   const rows = [csvRow(CSV_HEADER)];
   for (const item of bom.rows) rows.push(csvRow([
     bom.schemaVersion,
@@ -305,11 +305,11 @@ const safeFilename = (name: string): string => name
   .replace(/\s+/g, '-')
   .toLowerCase() || 'fusionstructure';
 
-export const structuralBomCsvFilename = (project: Pick<ProjectModel, 'name'>): string => (
+const structuralBomCsvFilename = (project: Pick<ProjectModel, 'name'>): string => (
   `${safeFilename(project.name)}-bom-estructural.csv`
 );
 
-export const createStructuralBomCsvBlob = (bom: StructuralBom): Blob => (
+const createStructuralBomCsvBlob = (bom: StructuralBom): Blob => (
   new Blob([buildStructuralBomCsv(bom)], { type: 'text/csv;charset=utf-8' })
 );
 

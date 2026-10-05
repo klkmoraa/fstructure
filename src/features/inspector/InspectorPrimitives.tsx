@@ -117,7 +117,7 @@ export const InspectorPropertyGroup = ({
   </section>;
 };
 
-export interface InspectorDerivedRow {
+interface InspectorDerivedRow {
   label: string;
   value: ReactNode;
   description?: string;

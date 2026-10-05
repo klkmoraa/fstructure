@@ -1,6 +1,8 @@
-import { ChartNoAxesCombined, Check, CloudOff, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
+import { ChartNoAxesCombined, Check, CloudOff, Pencil, Play, Redo2, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FStructureMark } from '../../design-system/brand';
+import type { ToolId } from '../../shared/contracts';
+import { WorkspaceHelp } from './WorkspaceHelp';
 
 /**
  * Recuperar el respaldo con éxito no es un fallo de guardado.
@@ -10,14 +12,14 @@ import { FStructureMark } from '../../design-system/brand';
  * cosa y el texto la contraria. `Instrument` ya excluye `recovered` de su
  * predicado de error; aquí no lo hacía.
  */
-export type WorkspaceStorageState = 'ready' | 'recovered' | 'issue';
+type WorkspaceStorageState = 'ready' | 'recovered' | 'issue';
 /**
  * Un análisis que terminó MAL no es un modelo que no se ha corrido. Sin
  * `failed`, un `analysis.success === false` caía en `ready` y la barra decía
  * «Listo para analizar» encima de una corrida que falló: el estado más
  * importante quedaba escondido detrás del más inocuo.
  */
-export type WorkspaceAnalysisState = 'ready' | 'running' | 'resolved' | 'failed';
+type WorkspaceAnalysisState = 'ready' | 'running' | 'resolved' | 'failed';
 
 export interface WorkspaceTopBarLabels {
   solverName: string;
@@ -41,7 +43,21 @@ export interface WorkspaceTopBarLabels {
   actions: string;
 }
 
-export interface WorkspaceTopBarProps {
+interface WorkspaceTopBarProps {
+  /**
+   * Herramienta dueña de la barra. Sólo pinta su identidad: cada herramienta es
+   * una mesa aislada y la barra no ofrece saltos a las otras; se vuelve al
+   * Inicio desde la marca.
+   */
+  tool?: ToolId;
+  /** Modelo | Diseño de FStructure: primera pieza de las acciones. */
+  modeSwitch?: ReactNode;
+  /** Guía del modo 3D o Diseño en lugar de la del modelo 2D. */
+  helpTopic?: 'design' | 'space3d';
+  language?: 'es' | 'en';
+  contextualControls?: ReactNode;
+  primaryAction?: ReactNode;
+  toolStatus?: ReactNode;
   projectName: string;
   storageState: WorkspaceStorageState;
   storageMessage?: string | null;
@@ -59,19 +75,33 @@ export interface WorkspaceTopBarProps {
   onOpenResults: (trigger: HTMLElement | null) => void;
   /** Abre el modo de trabajo, casos y combinaciones de cálculo. */
   onOpenCalculationExperience?: (trigger: HTMLElement | null) => void;
-  /** Acciones secundarias del espacio: exportación, tema, unidades y hojas. */
+  /** Acciones secundarias del espacio: exportación, unidades y hojas. */
   utilities?: ReactNode;
+  /**
+   * Día / Noche. Va siempre junto a la acción primaria, en las cuatro mesas, para
+   * que cambiar de herramienta no cambie el lugar de los controles comunes.
+   */
+  themeControl?: ReactNode;
+  /**
+   * Muestra los comandos del Modelo 2D (historial, Resultados, cálculo). Las
+   * herramientas aisladas —Diseño, 3D y FEM— lo apagan y aportan los suyos por
+   * `contextualControls`, `primaryAction` y `toolStatus`.
+   */
+  contextActive?: boolean;
 }
 
 /**
- * Barra superior persistente del canvas 2D.
+ * Barra superior de una herramienta.
  *
+ * Cada herramienta monta la suya: la marca vuelve al Inicio —donde se elige
+ * otra herramienta— y el resto de la barra pertenece sólo a la mesa abierta.
  * Mantiene a la vista el contexto del proyecto, la salud del guardado y el
  * estado de la última corrida. Las acciones rápidas son botones reales —no
  * affordances que sólo aparecen al pasar el puntero— para que el mismo recorrido
  * funcione con teclado, touch y lector de pantalla.
  */
 export const WorkspaceTopBar = ({
+  tool = 'model2d', modeSwitch, helpTopic, language = 'es', contextualControls, primaryAction, toolStatus,
   projectName,
   storageState,
   storageMessage,
@@ -88,10 +118,14 @@ export const WorkspaceTopBar = ({
   onOpenResults,
   onOpenCalculationExperience,
   utilities,
+  themeControl,
+  contextActive = true,
 }: WorkspaceTopBarProps) => {
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
   const [draftName, setDraftName] = useState(projectName);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const projectButtonRef = useRef<HTMLButtonElement>(null);
+  const projectGroupRef = useRef<HTMLDivElement>(null);
   const storageFailed = storageState === 'issue';
   const storageRecovered = storageState === 'recovered';
   const storageLabel = storageFailed
@@ -116,14 +150,35 @@ export const WorkspaceTopBar = ({
     if (projectEditorOpen) nameInputRef.current?.focus({ preventScroll: true });
   }, [projectEditorOpen]);
 
+  useEffect(() => {
+    if (!projectEditorOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setProjectEditorOpen(false);
+      projectButtonRef.current?.focus({ preventScroll: true });
+    };
+    const onPointer = (event: PointerEvent) => {
+      if (event.target instanceof Node && !projectGroupRef.current?.contains(event.target)) setProjectEditorOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointer);
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('pointerdown', onPointer); };
+  }, [projectEditorOpen]);
+
+  const closeProjectEditor = () => {
+    setProjectEditorOpen(false);
+    projectButtonRef.current?.focus({ preventScroll: true });
+  };
+
   const saveProjectName = () => {
     const nextName = draftName.trim();
     if (nextName) onRenameProject(nextName);
-    setProjectEditorOpen(false);
+    closeProjectEditor();
   };
 
-  return <header className="workspace-topbar" data-workspace-topbar>
-    <div className="workspace-topbar__project-group" data-workspace-group="project">
+  return <header className="workspace-topbar" data-workspace-topbar data-tool={tool}>
+    <div ref={projectGroupRef} className="workspace-topbar__project-group" data-workspace-group="project">
       <button
         type="button"
         className="workspace-topbar__brand"
@@ -134,9 +189,10 @@ export const WorkspaceTopBar = ({
         <FStructureMark size={26} />
       </button>
       <button
+        ref={projectButtonRef}
         type="button"
         className="workspace-topbar__project"
-        onClick={() => setProjectEditorOpen(true)}
+        onClick={() => setProjectEditorOpen((current) => !current)}
         aria-label={labels.editProject + ': ' + projectName}
         title={labels.editProject}
         aria-expanded={projectEditorOpen}
@@ -145,6 +201,7 @@ export const WorkspaceTopBar = ({
           <span className="workspace-topbar__eyebrow">{labels.solverName}</span>
           <strong>{projectName}</strong>
         </span>
+        <Pencil className="workspace-topbar__rename-hint" size={12} aria-hidden="true" />
       </button>
 
       {projectEditorOpen ? <form className="workspace-topbar__project-editor" aria-label={labels.editProject} onSubmit={(event) => {
@@ -156,7 +213,7 @@ export const WorkspaceTopBar = ({
           <input ref={nameInputRef} value={draftName} onChange={(event) => setDraftName(event.currentTarget.value)} />
         </label>
         <div className="workspace-topbar__project-editor-actions">
-          <button type="button" onClick={() => setProjectEditorOpen(false)}>{labels.cancel}</button>
+          <button type="button" onClick={closeProjectEditor}>{labels.cancel}</button>
           <button type="submit" disabled={!draftName.trim()}>{labels.saveProject}</button>
         </div>
       </form> : null}
@@ -177,7 +234,7 @@ export const WorkspaceTopBar = ({
             {storageMessage ? <small>{storageMessage}</small> : null}
           </span>
         </span> : null}
-        <span
+        {contextActive ? <span
           className={'workspace-topbar__status-chip' + (analysisRunning ? ' is-running' : '') + (analysisFailed ? ' is-error' : '')}
           role="status"
           data-analysis-state={analysisState}
@@ -185,12 +242,13 @@ export const WorkspaceTopBar = ({
         >
           {analysisRunning ? <Play size={15} fill="currentColor" aria-hidden="true" /> : <ChartNoAxesCombined size={15} aria-hidden="true" />}
           <span><strong>{analysisLabel}</strong></span>
-        </span>
+        </span> : toolStatus}
       </div>
     </div>
 
     <nav className="workspace-topbar__actions" aria-label={labels.actions}>
-      <div className="workspace-topbar__model-group" data-workspace-group="model">
+      {modeSwitch}
+      {contextActive ? <div className="workspace-topbar__model-group" data-workspace-group="model">
         <div className="workspace-topbar__history-group">
           <button type="button" className="workspace-topbar__icon-button" onClick={onUndo} disabled={!canUndo} aria-label={labels.undo} title={labels.undo}>
             <Undo2 size={17} aria-hidden="true" />
@@ -205,8 +263,8 @@ export const WorkspaceTopBar = ({
             <span>{labels.results}</span>
           </button>
         </div>
-      </div>
-      {onOpenCalculationExperience ? <div className="workspace-topbar__experience-group" data-workspace-group="calculation-experience">
+      </div> : null}
+      {contextActive && onOpenCalculationExperience ? <div className="workspace-topbar__experience-group" data-workspace-group="calculation-experience">
         <button
           type="button"
           className="workspace-topbar__action-button workspace-topbar__experience-button"
@@ -219,12 +277,16 @@ export const WorkspaceTopBar = ({
         </button>
       </div> : null}
       {utilities}
-      <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
+      {contextualControls}
+      <WorkspaceHelp tool={tool} language={language} {...(helpTopic ? { topic: helpTopic } : {})} />
+      {themeControl}
+      {primaryAction}
+      {contextActive ? <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
         <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>
           <Play size={17} fill="currentColor" aria-hidden="true" />
           <span>{analysisRunning ? labels.analysisRunning : labels.analyze}</span>
         </button>
-      </div>
+      </div> : null}
     </nav>
   </header>;
 };

@@ -74,12 +74,12 @@ export interface ThreeMomentResult {
   momentResidual: number;
 }
 
-export interface ThreeMomentRejection {
+interface ThreeMomentRejection {
   applicable: false;
   reasonKey: string;
 }
 
-export type ThreeMomentOutcome = ThreeMomentResult | ThreeMomentRejection;
+type ThreeMomentOutcome = ThreeMomentResult | ThreeMomentRejection;
 
 const restrainsTransverse = (support: SupportDefinition): boolean => {
   switch (support.type) {
@@ -294,4 +294,4 @@ export const solveThreeMoment = (
   };
 };
 
-export type { Polynomial };
+;

@@ -1,12 +1,12 @@
 import type { ProjectModel, Selection, SupportType } from '../../types';
 import type { TranslationKey } from '../../i18n/catalogs';
 
-export interface SelectionQueryResult { nodeIds: string[]; memberIds: string[]; }
-export const EMPTY_SELECTION_QUERY_RESULT: SelectionQueryResult = { nodeIds: [], memberIds: [] };
-export type SelectionQueryId =
+interface SelectionQueryResult { nodeIds: string[]; memberIds: string[]; }
+const EMPTY_SELECTION_QUERY_RESULT: SelectionQueryResult = { nodeIds: [], memberIds: [] };
+type SelectionQueryId =
   | 'members.frame' | 'members.truss' | 'members.released' | 'members.loaded' | 'members.unloaded' | 'members.similar'
   | 'nodes.supported' | 'nodes.free' | 'nodes.loaded' | 'nodes.support.pin' | 'nodes.support.roller' | 'nodes.support.fixed';
-export interface SelectionQuery { id: SelectionQueryId; labelKey: TranslationKey; needsSelection?: boolean; run: (project: ProjectModel, selection: Selection) => SelectionQueryResult; }
+interface SelectionQuery { id: SelectionQueryId; labelKey: TranslationKey; needsSelection?: boolean; run: (project: ProjectModel, selection: Selection) => SelectionQueryResult; }
 
 const members = (project: ProjectModel, predicate: (member: ProjectModel['members'][number]) => boolean): SelectionQueryResult => ({ nodeIds: [], memberIds: project.members.filter(predicate).map((member) => member.id) });
 const nodes = (project: ProjectModel, predicate: (node: ProjectModel['nodes'][number]) => boolean): SelectionQueryResult => ({ nodeIds: project.nodes.filter(predicate).map((node) => node.id), memberIds: [] });

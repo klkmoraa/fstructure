@@ -1,0 +1,20 @@
+.mesa-journey-host { flex: 0 0 auto; }
+.mesa-journey { flex: 0 0 auto; display: flex; align-items: center; gap: 16px; padding: 8px 16px; border-bottom: 1px solid var(--border-soft); background: var(--surface); color: var(--text); font-size: 12px; }
+.mesa-journey__context { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-shrink: 0; }
+.mesa-journey__context span { color: var(--muted); }
+.mesa-journey p { flex: 1; margin: 0; color: var(--muted); line-height: 1.45; }
+.mesa-journey__actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.mesa-journey button { min-height: 36px; padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--sc-radius-control); background: var(--surface-2); color: var(--text); cursor: pointer; font: inherit; }
+.mesa-journey button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mesa-journey button:disabled { opacity: .5; cursor: default; }
+@media (min-width: 1024px) {
+  .app-shell:has(.console):has(> .mesa-journey) { grid-template-rows: auto auto minmax(0,1fr) 24px; grid-template-areas: "console topbar" "console journey" "console workspace" "console footer"; }
+  .app-shell:has(.console) > .mesa-journey { grid-area: journey; }
+  .app-shell[data-shell-class='X2']:has(.console):has(> .mesa-journey) { grid-template-areas: "topbar" "journey" "workspace" "footer"; }
+}
+@media (max-width: 760px) {
+  .mesa-journey { gap: 6px; flex-wrap: wrap; padding: 6px 10px; font-size: 11px; }
+  .mesa-journey p { flex-basis: 65%; }
+  .mesa-journey__actions { margin-left: auto; }
+  .mesa-journey button { min-height: 44px; padding: 6px 10px; }
+}

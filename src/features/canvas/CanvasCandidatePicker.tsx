@@ -2,7 +2,7 @@ import { useEffect, useRef, type KeyboardEvent } from 'react';
 import type { SurfacePresentation } from '../workspace/surfacePresentation';
 import type { CandidatePickerCycle, CandidatePickerState, CandidateTarget } from './candidatePicker';
 
-export interface CandidatePickerProps {
+interface CandidatePickerProps {
   state: CandidatePickerState;
   presentation: Extract<SurfacePresentation, 'floating' | 'sheet'>;
   onCycle: (direction: CandidatePickerCycle) => void;

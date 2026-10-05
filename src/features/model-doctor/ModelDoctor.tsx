@@ -23,7 +23,7 @@ import { presentModelDoctorFinding, type ContextualModelDoctorRepair } from './m
 import { prepareTopologyRepair, type TopologyRepairPreview } from './topologyRepairPreview';
 import './modelDoctor.css';
 
-export interface ModelDoctorProps {
+interface ModelDoctorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSurfaceReady?: (ready: boolean) => void;

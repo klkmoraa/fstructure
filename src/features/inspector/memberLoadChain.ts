@@ -1,7 +1,7 @@
 import type { MemberModel, NodeModel, ProjectModel } from '../../types';
 import { memberAxis, toGlobalVector } from '../../graphics/structureGeometry';
 
-export interface StraightChainMember {
+interface StraightChainMember {
   member: MemberModel;
   reversed: boolean;
   pathStart: number;

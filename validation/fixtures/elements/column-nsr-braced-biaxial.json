@@ -1,0 +1,39 @@
+{
+  "name": "Columna NSR-10 esbelta arriostrada con flexión biaxial (C.10.3.6.2, C.10.10.6, CR10.3.6)",
+  "input": {
+    "code": "nsr-10",
+    "widthMm": 450,
+    "depthMm": 450,
+    "coverMm": 40,
+    "fcMpa": 28,
+    "fyMpa": 420,
+    "barDiameterMm": 25.4,
+    "barsAlongWidth": 4,
+    "barsAlongDepth": 4,
+    "tieDiameterMm": 9.5,
+    "maxAggregateMm": 19,
+    "axialKn": 1500,
+    "momentXKnm": 120,
+    "momentYKnm": 80,
+    "shearXKn": 0,
+    "shearYKn": 0,
+    "unbracedLengthM": 4.5,
+    "effectiveLengthFactor": 1,
+    "curvature": "single",
+    "endMomentRatio": 0.6,
+    "sustainedRatio": 0.5,
+    "braced": true,
+    "swayMomentXKnm": 0,
+    "swayMomentYKnm": 0,
+    "stabilityIndex": 0,
+    "group": "B2",
+    "groundFloor": false
+  },
+  "expected": {
+    "designMomentXKnm": 123.08709002220145,
+    "designMomentYKnm": 82.05806001480097,
+    "maximumDesignAxialKn": 3523.937643827807,
+    "breslerLoadKn": 2422.5702364364042,
+    "ratio": 0.6191770944096535
+  }
+}

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BROKER_SURFACE_IDS,
   createSurfaceBrokerState,
   openSurfaceIntent,
   reservesInspectorColumn,
   resolveSurfaceActivity,
+  resolveSurfacePresentation,
 } from './surfacePresentation';
 
 describe('resolveSurfaceActivity', () => {
@@ -13,6 +15,15 @@ describe('resolveSurfaceActivity', () => {
     const activity = resolveSurfaceActivity('X2', state);
     expect(activity.results.status).toBe('active');
     expect(activity.detail.status).toBe('suspended');
+  });
+});
+
+describe('design surface presentation', () => {
+  it('registra Diseño como una capa excluyente y conserva su composición por clase', () => {
+    expect(BROKER_SURFACE_IDS).toContain('design');
+    expect(resolveSurfacePresentation('X2', 'design' as never)).toBe('dock');
+    expect(resolveSurfacePresentation('M1', 'design' as never)).toBe('drawer');
+    expect(resolveSurfacePresentation('K0', 'design' as never)).toBe('fullscreen');
   });
 });
 

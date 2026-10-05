@@ -1,10 +1,10 @@
 import {
-  cloneElement,
+  
   useEffect,
   useId,
   useLayoutEffect,
   useRef,
-  type ReactElement,
+  
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -12,27 +12,7 @@ import { Maximize2, X } from 'lucide-react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { useModalFocus } from './modalFocus';
 
-export interface TooltipProps {
-  content: ReactNode;
-  children: ReactElement<{ 'aria-describedby'?: string }>;
-  placement?: 'top' | 'right' | 'bottom' | 'left';
-  className?: string;
-}
-
-export const Tooltip = ({ content, children, placement = 'top', className = '' }: TooltipProps) => {
-  const id = useId();
-  const existingDescription = children.props['aria-describedby'];
-  const trigger = cloneElement(children, {
-    'aria-describedby': [existingDescription, id].filter(Boolean).join(' '),
-  });
-
-  return <span className={`sc-tooltip sc-tooltip--${placement}${className ? ` ${className}` : ''}`}>
-    {trigger}
-    <span id={id} role="tooltip" className="sc-tooltip__content">{content}</span>
-  </span>;
-};
-
-export interface PopoverProps {
+interface PopoverProps {
   label: string;
   trigger: ReactNode;
   children: ReactNode;
@@ -112,7 +92,7 @@ export const Popover = ({
   </div>;
 };
 
-export type ModalSurfaceExtent = 'default' | 'peek';
+type ModalSurfaceExtent = 'default' | 'peek';
 
 interface ModalSurfaceProps {
   open: boolean;
@@ -127,6 +107,8 @@ interface ModalSurfaceProps {
   className?: string;
   /** Explicit launcher used when another surface transfers focus during lazy loading. */
   returnFocusTo?: HTMLElement | null;
+  /** Element that receives focus on open; defaults to the first focusable control. */
+  initialFocus?: (container: HTMLElement) => HTMLElement | null;
   /** The broker owns focus return for retained workspace surfaces. */
   restoreFocus?: boolean;
   surfaceId?: string;
@@ -155,6 +137,7 @@ const ModalSurface = ({
   side = 'right',
   className = '',
   returnFocusTo,
+  initialFocus,
   restoreFocus = true,
   surfaceId,
   onSurfaceReady,
@@ -170,6 +153,7 @@ const ModalSurface = ({
     open,
     containerRef: surfaceRef,
     onEscape: () => onOpenChange(false),
+    initialFocus,
     restoreFocus,
     returnFocusTo,
     trapFocus: !peeked,
@@ -264,11 +248,11 @@ const ModalSurface = ({
   );
 };
 
-export interface DialogProps extends Omit<ModalSurfaceProps, 'kind' | 'side'> {}
+interface DialogProps extends Omit<ModalSurfaceProps, 'kind' | 'side'> {}
 
 export const Dialog = (props: DialogProps) => <ModalSurface {...props} kind="dialog" />;
 
-export interface DrawerProps extends Omit<ModalSurfaceProps, 'kind'> {
+interface DrawerProps extends Omit<ModalSurfaceProps, 'kind'> {
   side?: 'left' | 'right' | 'bottom';
   presentation?: 'drawer' | 'fullscreen';
 }

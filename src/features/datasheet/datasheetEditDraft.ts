@@ -37,18 +37,6 @@ export const stageDatasheetEdit = (
   raw: string,
 ): DatasheetEditDraft => ({ ...draft, [draftKey(rowId, fieldId)]: raw });
 
-export const unstageDatasheetEdit = (
-  draft: DatasheetEditDraft,
-  rowId: string,
-  fieldId: DatasheetFieldId,
-): DatasheetEditDraft => {
-  const key = draftKey(rowId, fieldId);
-  if (!(key in draft)) return draft;
-  const next = { ...draft };
-  delete next[key];
-  return next;
-};
-
 export const datasheetDraftCount = (draft: DatasheetEditDraft): number => Object.keys(draft).length;
 
 export type DatasheetEditErrorCode =

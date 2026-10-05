@@ -1,0 +1,107 @@
+.fusion-fem {
+  box-sizing: border-box;
+  display: grid;
+  grid-auto-rows: max-content;
+  align-content: start;
+  gap: 22px;
+  width: 100%;
+  max-width: 1080px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 28px 20px;
+  color: var(--sc-color-text-primary);
+}
+
+.fusion-fem__intro { max-width: 630px; }
+.fusion-fem__status { display: inline-flex; padding: 5px 9px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-control); color: var(--sc-color-text-secondary); font-size: 11px; }
+.fusion-fem h1 { margin: 16px 0 10px; font: 650 clamp(28px, 4vw, 38px)/.98 var(--sc-font-display); letter-spacing: -.045em; }
+.fusion-fem__intro p { max-width: 62ch; margin: 0; color: var(--sc-color-text-secondary); font-size: 15px; line-height: 1.65; }
+.fusion-fem__inspector { display: grid; gap: 5px; min-width: 180px; color: var(--sc-color-text-secondary); font-size: 12px; line-height: 1.35; }
+.fusion-fem__inspector strong { color: var(--sc-color-text-primary); font-size: 13px; }
+/* Dock flotante al pie de la mesa, con la misma forma que el de 2D, 3D y Diseño. */
+.fusion-fem__dock {
+  min-height: 54px;
+  position: sticky;
+  z-index: 4;
+  bottom: 14px;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  max-width: 100%;
+  padding: 5px 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border: 1px solid var(--sc-color-border-soft, var(--sc-color-border));
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-md, 0 8px 24px rgb(0 0 0 / 16%));
+}
+.fusion-fem__dock-divider { flex: none; width: 1px; height: 24px; margin: 0 4px; background: var(--sc-color-border); }
+.fusion-fem__dock-button { position: relative; display: inline-flex; flex: none; align-items: center; gap: 7px; min-height: 44px; padding: 0 12px; border: 0; border-radius: var(--sc-radius-control); background: transparent; color: var(--sc-color-text-primary); font: 500 12.5px var(--sc-font-ui); cursor: pointer; }
+.fusion-fem__dock-button:hover { background: var(--sc-color-surface-2); }
+.fusion-fem__dock-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; clip-path: inset(50%); }
+.fusion-fem__dock-button:focus-within,
+.fusion-fem__dock-button:focus-visible { outline: var(--sc-focus-ring-width-compact) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
+
+/* Franja de estado monoespaciada al pie del shell, como la de 2D y 3D. */
+.fusion-fem__statusbar { display: flex; align-items: center; gap: 12px; height: var(--fstructure-status-height, 28px); padding: 0 12px; overflow: hidden; background: var(--sc-color-surface-1); color: var(--sc-color-text-secondary); font: var(--sc-font-size-label, 11px) / 1 var(--sc-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fusion-fem__statusbar > span { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.fusion-fem__statusbar b { color: var(--sc-color-text-primary); }
+.fusion-fem__statusbar-help { flex: 1 1 auto !important; min-width: 0; overflow: hidden; color: var(--sc-color-text-muted); font-family: var(--sc-font-ui); text-overflow: ellipsis; }
+.fusion-fem__feedback { margin: 0; color: var(--sc-color-text-secondary); font-size: 12px; }
+.fusion-fem__result { display: grid; gap: 5px; width: min(620px, 100%); padding: 13px 15px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1); font-size: 13px; }
+.fusion-fem__result span { color: var(--sc-color-text-secondary); font-size: 12px; }
+.fusion-fem__result.is-success { border-color: color-mix(in srgb, var(--sc-color-state-success) 50%, var(--sc-color-border)); }
+.fusion-fem__result.is-failure { border-color: color-mix(in srgb, var(--sc-color-state-error) 50%, var(--sc-color-border)); }
+
+.fusion-fem__tabs .sc-tabs__list { width: 100%; display: flex; gap: 4px; padding: 4px; border-radius: var(--sc-radius-panel); background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); }
+.fusion-fem__tabs .sc-tabs__list button { flex: 1; min-height: 44px; padding: 8px 12px; border-radius: var(--sc-radius-control); font-size: 13px; }
+.fusion-fem__tabs .sc-tabs__panel { padding: 22px 0 0; }
+.fusion-fem__view { display: grid; gap: 22px; min-width: 0; }
+.fusion-fem__view h2 { margin: 0 0 6px; font: 600 22px/1.3 var(--sc-font-display); }
+.fusion-fem__view h3 { margin: 0 0 10px; font-size: 14px; }
+.fusion-fem__view p { margin: 0; color: var(--sc-color-text-secondary); font-size: 13px; line-height: 1.6; }
+.fusion-fem__view details { border-top: 1px solid var(--sc-color-border); }
+.fusion-fem__view summary { min-height: 44px; padding: 14px 4px; cursor: pointer; font-size: 13px; font-weight: 600; }
+.fusion-fem__view summary:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 2px; }
+.fusion-fem__facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 18px; border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1); }
+.fusion-fem__facts dt { color: var(--sc-color-text-secondary); font-size: 12px; line-height: 1.5; }
+.fusion-fem__facts dd { margin: 6px 0 0; font: 500 19px/1.3 var(--sc-font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.fusion-fem__facts dd small { font: 12px var(--sc-font-ui); color: var(--sc-color-text-secondary); }
+.fusion-fem__data-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.fusion-fem__data-grid > section { min-width: 0; }
+.fusion-fem__empty { display: grid; justify-items: start; gap: 14px; padding: 20px; border: 1px dashed var(--sc-color-border); border-radius: var(--sc-radius-card); }
+.fusion-fem__empty ul { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.fusion-fem__note { border-left: 2px solid var(--fs-signal-attention); padding: 8px 14px; }
+.fusion-fem__mesh { min-width: 0; margin: 0; padding: 14px; border-radius: var(--sc-radius-panel); background: var(--sc-color-surface-1); border: 1px solid var(--sc-color-border); }
+.fusion-fem__mesh svg { display: block; width: 100%; max-height: 360px; }
+.fusion-fem__mesh-element { fill: var(--fs-signal-axial); stroke: var(--sc-color-text-secondary); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.fusion-fem__mesh[data-field='von-mises'] .fusion-fem__mesh-element { fill: var(--fs-signal-yield); }
+.fusion-fem__mesh-node { fill: var(--sc-color-text-primary); }
+.fusion-fem__mesh text { fill: var(--sc-color-text-primary); font: 12px var(--sc-font-ui); }
+.fusion-fem__mesh figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 10px 4px 0; color: var(--sc-color-text-secondary); font-size: 12px; }
+.fusion-fem__mesh-legend { display: inline-flex; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; }
+.fusion-fem__mesh-legend i { width: 100px; height: 10px; border-radius: var(--sc-radius-control); background: linear-gradient(to right, color-mix(in srgb, var(--fs-signal-yield) 15%, var(--sc-color-surface-1)), color-mix(in srgb, var(--fs-signal-yield) 85%, var(--sc-color-surface-1))); }
+.fusion-fem__table-scroll { max-width: 100%; overflow-x: auto; border-radius: var(--sc-radius-card); border: 1px solid var(--sc-color-border); }
+.fusion-fem__table-scroll:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 2px; }
+.fusion-fem table { width: 100%; border-collapse: collapse; background: var(--sc-color-surface-1); font: 12px/1.5 var(--sc-font-ui); font-variant-numeric: tabular-nums; }
+.fusion-fem table caption { padding: 12px; color: var(--sc-color-text-secondary); text-align: left; font-size: 12px; }
+.fusion-fem th, .fusion-fem td { padding: 10px 12px; text-align: right; white-space: nowrap; border-top: 1px solid var(--sc-color-border); }
+.fusion-fem th { color: var(--sc-color-text-secondary); font-weight: 600; background: var(--sc-color-surface-2); }
+.fusion-fem th:first-child, .fusion-fem td:first-child { text-align: left; }
+.fusion-fem__pagination { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; color: var(--sc-color-text-secondary); font-size: 12px; }
+.fusion-fem__pagination button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-control); color: var(--sc-color-text-primary); background: var(--sc-color-surface-1); cursor: pointer; }
+.fusion-fem__pagination button:disabled { opacity: .45; cursor: default; }
+@media (max-width: 640px) {
+  .fusion-fem { width: 100%; gap: 18px; padding: 22px 14px; }
+  .fusion-fem__intro p { font-size: 13px; }
+  .fusion-fem__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fusion-fem__data-grid { grid-template-columns: 1fr; }
+  .fusion-fem__dock-button { padding-inline: 10px; font-size: 12px; }
+  .fusion-fem__dock-detail { display: none; }
+  .fusion-fem__statusbar-help { display: none !important; }
+  .fusion-fem__view h2 { font-size: 20px; }
+  .fusion-fem__mesh { padding: 8px; }
+}

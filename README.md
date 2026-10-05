@@ -1,42 +1,38 @@
 # FStructure
 
-Aplicación y motor estructural 2D de FusionStructure. La aplicación se publica
-en https://klkmoraa.github.io/fstructure/. El proyecto conserva el
-modelo, comandos, análisis, educación, exportaciones y persistencia propios de
-la superficie planar; Space 3D vive en un repositorio hermano.
+Aplicación web de cálculo estructural de FusionStructure. Publicada en
+https://klkmoraa.github.io/fstructure/. Local-first y **experimental**: no es
+software certificado ni sustituye la revisión de una persona responsable.
 
-## Estado
+## Mesas
 
-`Experimental`: el corpus numérico y las migraciones se validan en cada gate,
-pero el producto no es normativo ni software certificado para obra.
+El Inicio presenta dos mesas aisladas. Cada una abre su propia bienvenida y
+después su mesa de trabajo.
+
+| Código | Mesa | Qué hace | Código fuente |
+| --- | --- | --- | --- |
+| FS-A01 | FStructure | Una sola mesa con tres modos. **2D**: marcos, vigas y armaduras; lineal, P-Delta, pandeo, modos, influencia. **3D**: pórticos y armaduras espaciales al modo de ETABS/SAP2000 (rejilla de ejes y pisos, plantas y alzados, diafragmas rígidos, diagramas P·V2·V3·T·M2·M3; lineal, P-Delta, modal, espectro CQC y pandeo en un worker); «Traer del 2D» extruye el pórtico plano en pórticos paralelos. **Diseño**: vigas, columnas, zapatas y la estructura completa en concreto con NTC-CDMX 2023, NSR-10 y E.060, desde el Modelo 2D o desde un eje del Modelo 3D | `src/features`, `src/engine`, `src/design`, `src/features/design`; modo 3D en `src/modules/space3d` (licencia MIT propia) |
+| FS-A03 | Elementos finitos | Elasticidad lineal 2D con TRI3/QUAD4, Gmsh 4.1, JSON/VTK | `src/modules/fem` |
+
+El interruptor 2D | 3D | Diseño de la barra cambia sólo las herramientas del
+modo: proyecto, guardado y barra son los mismos. Los datos pasan entre modos
+sólo por los puentes declarados de `src/integrations`.
+
+Rutas: `?surface=welcome` (Inicio), `?surface=home&tool=<id>` (bienvenida),
+`?project=<id>&tool=<id>` (mesa) y `&mode=3d` o `&mode=design` (modo de
+FStructure).
 
 ## Desarrollo
 
-```text
+```sh
 npm ci
-npm run check
-npm run dev
+npm run dev       # servidor local
+npm run verify    # pruebas mínimas de lo que cambió
+npm run check     # gate completo (el que corre CI antes de publicar)
 ```
 
-La procedencia del corte y la separación de dominios están en
-[MIGRATION.md](MIGRATION.md).
+`npm run lint:design` revisa la guía visual y sólo avisa. Las escenas en
+arcilla del Inicio se regeneran con `node scripts/render-suite-scenes.mjs` con
+el servidor de desarrollo encendido.
 
-## Foundation local y flujo rápido
-
-Las unidades, el álgebra lineal y sus tipos numéricos se mantienen como código
-local en `src/foundation`, junto con sus pruebas. Este producto no consume el
-paquete archivado `@fusionstructure/foundation` ni dependencias o subpaths de
-productos hermanos.
-
-Para un cambio diario de Foundation, ejecuta el gate y las pruebas focalizadas
-en este repositorio:
-
-```text
-npm run architecture:check
-npm run architecture:test
-npm run test -- src/foundation/units.test.ts src/foundation/linearAlgebra.test.ts
-```
-
-Para una entrega, `npm run check` ejecuta primero el gate de arquitectura y su
-prueba, antes de la suite normal y el build. La validación y el Pull Request de
-un cambio local de Foundation pertenecen solamente a este repositorio.
+Cada push a `main` corre el gate y publica en la rama `gh-pages`.

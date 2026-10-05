@@ -255,7 +255,7 @@
 }
 
 .solver2d-stage::after {
-  content: 'FS-A01 · SOLVER 2D';
+  content: 'FS-A01 · 2D · 3D · DISEÑO';
   position: absolute;
   inset-inline-end: 18px;
   inset-block-end: 14px;
@@ -844,7 +844,7 @@
 /* Respuesta ------------------------------------------------------------- */
 
 @media (max-width: 1180px) and (min-width: 1024px) {
-  .workspace-topbar__status {
+  .workspace-topbar__status:not(:has(.workspace-topbar__tool-status)) {
     display: none;
   }
 }
@@ -971,7 +971,9 @@
     padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
   }
 
-  .workspace-topbar__status {
+  /* El estado del Modelo 2D vive en su franja inferior; el de 3D y FEM se
+     queda como un punto junto al nombre. */
+  .workspace-topbar__status:not(:has(.workspace-topbar__tool-status)) {
     display: none;
   }
 
@@ -987,13 +989,7 @@
     grid-template-columns: 1fr;
   }
 
-  .workspace-topbar__project {
-    max-width: 104px;
-  }
 
-  .workspace-topbar__project-copy strong {
-    max-width: 88px;
-  }
 }
 
 /* La presión no encoge ni desplaza la tecla: la superficie baja por materia.
@@ -1027,11 +1023,12 @@
 }
 
 .app-shell.workspace-screen .workspace-topbar :is(.workspace-topbar__icon-button, .workspace-topbar__action-button):active:not(:disabled) {
-  transform: none;
+  transform: var(--sc-press-transform);
   box-shadow: var(--sc-shadow-pressed);
 }
 
 .app-shell.workspace-screen .workspace-topbar .workspace-topbar__action-button.is-primary:active:not(:disabled) {
+  transform: var(--sc-press-transform);
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { MemberLoad, MemberModel, NodalLoad, NodeModel, ProjectModel, Selection } from '../../types';
 import { formatFixed } from '../../utils/numberFormat';
 
-export interface InspectorSelectionPreviewProps {
+interface InspectorSelectionPreviewProps {
   project: ProjectModel;
   selection: Selection;
   label: string;

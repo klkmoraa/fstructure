@@ -20,9 +20,12 @@
  */
 
 .solver2d-home {
+  min-width: 0;
+  width: 100%;
   max-width: 1280px;
   margin-inline: auto;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(28px, 3.8vw, 42px);
   padding: 0 0 26px;
 }
@@ -373,8 +376,16 @@
 }
 
 .solver2d-action svg { flex: none; }
-.solver2d-action:hover { background: var(--sc-color-surface-2); border-color: var(--sc-color-border-strong); box-shadow: var(--sc-shadow-raised); }
-.solver2d-action:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
+.solver2d-action:hover {
+  background: var(--sc-color-surface-2);
+  border-color: var(--sc-color-border-strong);
+  box-shadow: var(--sc-shadow-raised);
+  transform: translateY(-1px);
+}
+.solver2d-action:active {
+  transform: translateY(1.5px);
+  box-shadow: var(--sc-shadow-inset) !important;
+}
 .solver2d-action:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
 
 .solver2d-action--primary {
@@ -388,8 +399,13 @@
   border-color: var(--sc-color-action-hover);
   box-shadow: var(--sc-shadow-action-hover);
   color: var(--sc-color-action-foreground);
+  transform: translateY(-1px);
 }
-.solver2d-action--primary:active { background: var(--sc-color-action-pressed); box-shadow: var(--sc-shadow-action-pressed); }
+.solver2d-action--primary:active {
+  background: var(--sc-color-action-pressed);
+  box-shadow: inset 2px 2.5px 5px rgb(0 0 0 / 25%), inset -1.5px -1.5px 3px rgb(255 255 255 / 35%) !important;
+  transform: translateY(1.5px);
+}
 
 /* ------------------------------------------------------- Escena de portada
    El pórtico tridimensional, solo. Llevaba encima una hoja con el diagrama de
@@ -443,7 +459,7 @@
 @media (prefers-reduced-motion: no-preference) {
   .solver2d-stage:not(.is-static) .solver2d-stage__object .three-structural-image,
   .solver2d-stage:not(.is-static) .solver2d-stage__object svg {
-    animation: solver2d-float 7s var(--sc-ease-standard) 1.1s infinite;
+    animation: solver2d-float var(--sc-motion-ambient-loop) var(--sc-ease-standard) var(--sc-motion-ambient-delay) infinite;
   }
 }
 
@@ -454,7 +470,7 @@
 
 /* ------------------------------------------------------------------ Rutas */
 
-.solver2d-section { display: grid; gap: 14px; }
+.solver2d-section { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 
 .solver2d-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
 
@@ -486,7 +502,7 @@
 
 .solver2d-paths {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 11px;
   padding: 12px;
   border: 1px solid var(--sc-color-border-soft);
@@ -536,10 +552,14 @@
   border-color: var(--sc-color-border);
   background: var(--sc-color-surface-elevated);
   box-shadow: var(--sc-shadow-raised);
+  transform: translateY(-1px);
 }
 .solver2d-path:hover::before,
 .solver2d-path:focus-visible::before { opacity: 1; }
-.solver2d-path:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
+.solver2d-path:active {
+  transform: translateY(1.5px);
+  box-shadow: var(--sc-shadow-inset) !important;
+}
 .solver2d-path:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
 
 .solver2d-path__icon {
@@ -586,8 +606,6 @@
   background: var(--sc-color-surface-elevated);
   box-shadow: var(--sc-shadow-raised);
 }
-.solver2d-recents .project-hub__header,
-.solver2d-recents .project-hub__columns { display: none; }
 .solver2d-recents .project-hub__list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
 .solver2d-recents .project-hub__row {
   min-height: 76px;
@@ -821,3 +839,7 @@
   .solver2d-path { min-height: 0; }
   .solver2d-open__actions { display: grid; }
 }
+
+.solver2d-intents .solver2d-paths { grid-template-columns: repeat(4, minmax(0,1fr)); }
+@media (max-width: 1000px) { .solver2d-intents .solver2d-paths { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 480px) { .solver2d-intents .solver2d-paths { grid-template-columns: minmax(0,1fr); } }

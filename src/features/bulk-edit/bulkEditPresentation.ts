@@ -39,7 +39,7 @@ export const bulkPropertyLabel = (t: BulkEditTranslate, id: BulkPropertyId): str
  * prueba: `bulkEditCopy.test.ts` comprueba que cada opción declarada por un
  * descriptor tiene su clave en ambos idiomas.
  */
-export const bulkOptionLabel = (t: BulkEditTranslate, id: BulkPropertyId, value: string): string =>
+const bulkOptionLabel = (t: BulkEditTranslate, id: BulkPropertyId, value: string): string =>
   t(`option.${id}.${value}` as BulkEditCopyKey);
 
 /**
@@ -105,7 +105,7 @@ export const formatAggregatedValue = (
   }
 };
 
-export interface BulkPropertyOption {
+interface BulkPropertyOption {
   value: string;
   label: string;
   /** Agrupación opcional para catálogos largos. */
@@ -155,7 +155,7 @@ export const bulkCatalogOptions = (
     })));
 
 /** Opciones que el usuario puede fijar. No incluye `untouched` ni `clear`. */
-export const bulkPropertyOptions = (
+const bulkPropertyOptions = (
   state: BulkPropertyState,
   { t, language }: BulkFormatContext,
 ): readonly BulkPropertyOption[] => {
@@ -170,7 +170,7 @@ export const bulkPropertyOptions = (
   }
 };
 
-export interface BulkPropertyOptionGroup {
+interface BulkPropertyOptionGroup {
   /** `undefined` en las listas planas, que no llevan `optgroup`. */
   label?: string;
   options: readonly BulkPropertyOption[];
@@ -202,7 +202,7 @@ export const bulkPropertyOptionGroups = (
   ];
 };
 
-export interface BulkScopeRow {
+interface BulkScopeRow {
   kind: BulkEntityKind;
   selected: number;
   compatible: number;

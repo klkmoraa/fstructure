@@ -15,7 +15,7 @@ import {
 } from './dxfParser';
 import './dxfImport.css';
 
-export interface DxfImportDialogProps {
+interface DxfImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImported: () => void;

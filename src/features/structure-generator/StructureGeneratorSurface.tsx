@@ -35,7 +35,7 @@ import {
  * hay nada empezado. Lo único que se limpia es el ghost dibujado.
  */
 
-export interface StructureGeneratorSurfaceProps {
+interface StructureGeneratorSurfaceProps {
   /** Punto elegido en el lienzo; el token distingue dos elecciones del mismo punto. */
   pickedOrigin?: { readonly x: number; readonly y: number; readonly token: number } | null;
   originPicking?: boolean;

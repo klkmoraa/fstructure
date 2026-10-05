@@ -90,7 +90,7 @@ export const asWorkedEquation = (input: EquationInput): WorkedEquation => {
  * what it is not. `\mathrm` is TeX's own answer, and the interpunct has to be braced so it
  * keeps its spacing inside the upright run.
  */
-export const romanUnit = (unit: string): string => {
+const romanUnit = (unit: string): string => {
   const body = unit
     .replaceAll('·', '{\\cdot}')
     .replaceAll('²', '^{2}')
@@ -125,7 +125,7 @@ const bodyLines = (equation: WorkedEquation): string[] => {
  * of every row on the same vertical rule; measuring and stacking them here would reimplement
  * that badly.
  */
-export const buildAlignedLatex = (equation: WorkedEquation): string | undefined => {
+const buildAlignedLatex = (equation: WorkedEquation): string | undefined => {
   const lines = bodyLines(equation);
   if (!lines.length) return undefined;
   const lhs = translateExpression(equation.lhs);

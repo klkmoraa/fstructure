@@ -1,9 +1,9 @@
 import type { LoadCase, LoadCombination } from '../types';
 
-export type NormativeActionRole = 'permanent' | 'variable';
-export type NormativeStateLimit = 'service' | 'ultimate';
+type NormativeActionRole = 'permanent' | 'variable';
+type NormativeStateLimit = 'service' | 'ultimate';
 
-export interface NormativeCombinationRecipe {
+interface NormativeCombinationRecipe {
   readonly id: string;
   readonly label: string;
   readonly stateLimit: NormativeStateLimit;
@@ -11,7 +11,7 @@ export interface NormativeCombinationRecipe {
   readonly sourceSections: readonly string[];
 }
 
-export interface LoadCombinationStandardDataset {
+interface LoadCombinationStandardDataset {
   readonly schemaVersion: 1;
   readonly id: string;
   readonly revision: string;
@@ -38,12 +38,12 @@ export interface LoadCombinationStandardDataset {
   readonly recipes: readonly NormativeCombinationRecipe[];
 }
 
-export interface NormativeCaseMapping {
+interface NormativeCaseMapping {
   readonly permanentCaseId: string;
   readonly variableCaseId: string;
 }
 
-export interface NormativeCombinationDraft {
+interface NormativeCombinationDraft {
   readonly kind: 'normative-combination-draft';
   readonly draftId: string;
   readonly datasetId: string;
@@ -179,15 +179,6 @@ export const generateNormativeCombinationDrafts = (
 
   return deepFreeze(drafts) as readonly NormativeCombinationDraft[];
 };
-
-export const evaluateNormativeDraft = (
-  draft: NormativeCombinationDraft,
-  caseEffects: Readonly<Record<string, number>>,
-): number => Object.entries(draft.factors).reduce((total, [caseId, factor]) => {
-  const effect = caseEffects[caseId];
-  if (!Number.isFinite(effect)) throw new Error(`El efecto del caso ${caseId} debe ser finito.`);
-  return total + factor * effect;
-}, 0);
 
 /**
  * Converts an inspectable standards draft into the project's existing, editable

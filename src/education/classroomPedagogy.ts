@@ -3,12 +3,12 @@ import type { ProjectModel } from '../types';
 export type ClassroomStructureKind = 'beam' | 'truss' | 'frame';
 export type ClassroomPedagogyLevelId = 'fundamentals' | 'procedure' | 'verification';
 
-export interface ClassroomPedagogyLevel {
+interface ClassroomPedagogyLevel {
   id: ClassroomPedagogyLevelId;
   topics: string[];
 }
 
-export interface ClassroomPedagogy {
+interface ClassroomPedagogy {
   kind: ClassroomStructureKind;
   levels: ClassroomPedagogyLevel[];
 }
@@ -31,7 +31,7 @@ const topics: Record<ClassroomStructureKind, Record<ClassroomPedagogyLevelId, st
   },
 };
 
-export const classifyClassroomStructure = (project: ProjectModel): ClassroomStructureKind => {
+const classifyClassroomStructure = (project: ProjectModel): ClassroomStructureKind => {
   const physicalMembers = project.members.filter((member) => member.type !== 'rigid');
   if (physicalMembers.length > 0 && physicalMembers.every((member) => member.type === 'truss')) return 'truss';
   const ordinates = project.nodes.map((node) => node.y);

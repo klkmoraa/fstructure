@@ -12,14 +12,14 @@ import { translate, type Language, type TranslationKey } from '../../i18n/catalo
 type StripGeneratorPrefix<Key> = Key extends `generator.${infer Rest}` ? Rest : never;
 
 /** Las claves `generator.*` del catálogo, sin el prefijo. */
-export type StructureGeneratorCopyKey = StripGeneratorPrefix<TranslationKey>;
+type StructureGeneratorCopyKey = StripGeneratorPrefix<TranslationKey>;
 
-export type StructureGeneratorTranslate = (
+type StructureGeneratorTranslate = (
   key: StructureGeneratorCopyKey,
   variables?: Record<string, string | number>,
 ) => string;
 
-export const translateStructureGenerator = (
+const translateStructureGenerator = (
   language: Language,
   key: StructureGeneratorCopyKey,
   variables?: Record<string, string | number>,

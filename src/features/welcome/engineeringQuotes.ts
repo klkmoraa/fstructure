@@ -5,7 +5,7 @@
  * Eje temático: Simplificar lo complejo, honestidad estructural y claridad de pensamiento.
  */
 
-export type EngineeringQuoteCategory =
+type EngineeringQuoteCategory =
   | 'structural'
   | 'engineering'
   | 'simplicity'
@@ -15,7 +15,7 @@ export type EngineeringQuoteCategory =
   | 'software'
   | 'philosophy';
 
-export interface EngineeringQuote {
+interface EngineeringQuote {
   id: number;
   text: {
     es: string;

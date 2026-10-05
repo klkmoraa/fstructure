@@ -29,7 +29,7 @@ export interface ModelDoctorFinding {
   canAcknowledge: boolean;
 }
 
-export interface ModelDoctorReport {
+interface ModelDoctorReport {
   findings: ModelDoctorFinding[];
   counts: Record<ModelDoctorSeverity, number>;
   total: number;
