@@ -19,7 +19,7 @@ export type BulkEditTranslate = (
   variables?: Record<string, string | number>,
 ) => string;
 
-const translateBulkEdit = (
+export const translateBulkEdit = (
   language: Language,
   key: BulkEditCopyKey,
   variables?: Record<string, string | number>,

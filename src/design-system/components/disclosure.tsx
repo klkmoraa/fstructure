@@ -1,14 +1,14 @@
 import { useId, useRef, type ReactNode } from 'react';
 import { ChevronDown } from 'lucide-react';
 
-interface TabItem {
+export interface TabItem {
   id: string;
   label: string;
   content: ReactNode;
   disabled?: boolean;
 }
 
-interface TabsProps {
+export interface TabsProps {
   label: string;
   items: readonly TabItem[];
   value: string;
@@ -78,14 +78,14 @@ export const Tabs = ({
   </div>;
 };
 
-interface AccordionItem {
+export interface AccordionItem {
   id: string;
   title: string;
   content: ReactNode;
   disabled?: boolean;
 }
 
-interface AccordionProps {
+export interface AccordionProps {
   items: readonly AccordionItem[];
   expanded: readonly string[];
   onExpandedChange: (expanded: string[]) => void;

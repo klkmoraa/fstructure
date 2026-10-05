@@ -16,7 +16,7 @@ const download = (blob: Blob, filename: string) => {
 };
 
 /** Nombre estable y seguro, compartido por las rutas de descarga y guardado nativo. */
-const safeProjectFilename = (name: string): string => name
+export const safeProjectFilename = (name: string): string => name
   .normalize('NFKD')
   .replace(/[^a-zA-Z0-9 _-]/g, '')
   .trim()
@@ -52,7 +52,7 @@ export const exportSvgElement = (
   download(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }), filename);
 };
 
-interface PngExportOptions extends SvgExportOptions {
+export interface PngExportOptions extends SvgExportOptions {
   /** Device-independent multiplier. 1 = screen, 2 = high resolution, 3 = presentation. */
   scale?: number;
 }
@@ -60,7 +60,7 @@ interface PngExportOptions extends SvgExportOptions {
 /** Browsers refuse to read back canvases beyond roughly this area; fail loudly instead. */
 const MAX_RASTER_PIXELS = 64_000_000;
 
-const rasterScaleFor = (
+export const rasterScaleFor = (
   width: number,
   height: number,
   requested: number | undefined,

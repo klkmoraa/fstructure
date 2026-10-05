@@ -4,7 +4,7 @@ import type { Tool } from '../../types';
 export type ToolGroupId = 'navigate' | 'create' | 'loads' | 'inspect' | 'edit';
 export type MobileToolPlacement = 'primary' | 'loads' | 'more';
 
-interface ToolGroupDefinition {
+export interface ToolGroupDefinition {
   id: ToolGroupId;
   labelKey: TranslationKey;
 }
@@ -44,7 +44,7 @@ export const TOOL_REGISTRY: readonly ToolDefinition[] = [
   { id: 'delete', group: 'edit', labelKey: 'toolbar.delete', detailKey: 'toolbar.deleteDetail', shortcut: '⌫', mobile: 'more', classroomAdvanced: true, destructive: true },
 ] as const;
 
-const TOOL_SHORTCUTS = new Map<string, Tool>(
+export const TOOL_SHORTCUTS = new Map<string, Tool>(
   TOOL_REGISTRY.flatMap((definition) => definition.activationKey
     ? [[definition.activationKey, definition.id] as const]
     : []),

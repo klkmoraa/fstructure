@@ -21,7 +21,7 @@ export interface InfluenceTarget {
   side?: Exclude<LimitSide, 'continuous'>;
 }
 
-interface OrderedInfluenceMember {
+export interface OrderedInfluenceMember {
   memberId: string;
   startNodeId: string;
   endNodeId: string;
@@ -39,7 +39,7 @@ export interface OrderedInfluencePath {
   length: number;
 }
 
-interface InfluenceValidationPoint {
+export interface InfluenceValidationPoint {
   position: number;
   memberId: string;
   memberX: number;
@@ -61,7 +61,7 @@ export interface InfluenceSolverDiagnostics {
   worstReliability: ReliabilityLevel;
 }
 
-interface RejectedInfluenceInterval {
+export interface RejectedInfluenceInterval {
   pathStart: number;
   pathEnd: number;
   depth: number;
@@ -87,7 +87,7 @@ export interface InfluenceFitDiagnostics {
 }
 
 /** Acceptance limits applied to the piecewise-cubic reconstruction. */
-interface InfluenceFitLimits {
+export interface InfluenceFitLimits {
   /** An interval fails only when it exceeds both tolerances at a check point. */
   maxRelativeError: number;
   maxAbsoluteError: number;
@@ -101,14 +101,14 @@ interface InfluenceFitLimits {
  * sit far above double-precision round-off and far below any error that could
  * change an engineering decision.
  */
-const DEFAULT_INFLUENCE_FIT_LIMITS: InfluenceFitLimits = {
+export const DEFAULT_INFLUENCE_FIT_LIMITS: InfluenceFitLimits = {
   maxRelativeError: 1e-6,
   maxAbsoluteError: 1e-9,
   maxSubdivisions: 4,
 };
 
 /** Thrown when a line cannot meet its tolerance; it must never reach the app as valid. */
-class InfluenceFitError extends Error {
+export class InfluenceFitError extends Error {
   readonly fit: InfluenceFitDiagnostics;
 
   constructor(message: string, fit: InfluenceFitDiagnostics) {
@@ -217,7 +217,7 @@ const memberLength = (member: MemberModel, project: ProjectModel): number => {
 };
 
 /** Orders a selected set of frame members as one connected, open, non-branched chain. */
-const orderInfluencePath = (
+export const orderInfluencePath = (
   project: ProjectModel,
   memberIds: readonly string[],
   startNodeId?: string,
@@ -292,6 +292,9 @@ const orderInfluencePath = (
   }
   return { members: ordered, startNodeId: start, endNodeId: currentNode, length: distance };
 };
+
+/** Alias emphasizing that only frame members are accepted. */
+export const orderFramePath = orderInfluencePath;
 
 const pathMemberAt = (path: OrderedInfluencePath, position: number): OrderedInfluenceMember | undefined => {
   const tolerance = Math.max(1, path.length) * GEOMETRY_EPS;
@@ -445,7 +448,7 @@ const influenceCandidates = (line: Pick<InfluenceLine, 'segments' | 'path'>): In
   });
 
 /** Finds global min/max from polynomial endpoints and exact derivative roots. */
-const findInfluenceLineExtrema = (
+export const findInfluenceLineExtrema = (
   line: Pick<InfluenceLine, 'segments' | 'path'>,
 ): { minimum: InfluenceExtreme; maximum: InfluenceExtreme } => {
   const candidates = influenceCandidates(line);
@@ -762,6 +765,8 @@ export const analyzeAxleTrain = (
     maximum,
   };
 };
+
+export const buildAxleTrainEnvelope = analyzeAxleTrain;
 
 /** Evaluates a lateral train-response limit; outside its traversal domain the response is zero. */
 export const evaluateAxleTrain = (

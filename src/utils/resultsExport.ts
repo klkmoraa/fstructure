@@ -4,7 +4,7 @@ import { toDisplay, type UnitQuantity } from '../foundation/units';
 import { summarizeAnalysisResults } from '../engine/resultSummary';
 import { formatMachineNumber } from './numberFormat';
 
-interface ResultsCsvOptions {
+export interface ResultsCsvOptions {
   scenarioName?: string;
 }
 
@@ -33,7 +33,7 @@ const safeFilename = (name: string): string => name
  * Builds one rectangular, machine-readable CSV. Internal values are converted
  * to the project's display unit system; numeric cells never use locale commas.
  */
-const buildResultsCsv = (
+export const buildResultsCsv = (
   project: ProjectModel,
   analysis: AnalysisResult,
   options: ResultsCsvOptions = {},
@@ -102,9 +102,9 @@ const buildResultsCsv = (
   return `\uFEFF${rows.join('\r\n')}\r\n`;
 };
 
-const resultsCsvFilename = (project: ProjectModel): string => `${safeFilename(project.name)}-resultados.csv`;
+export const resultsCsvFilename = (project: ProjectModel): string => `${safeFilename(project.name)}-resultados.csv`;
 
-const createResultsCsvBlob = (
+export const createResultsCsvBlob = (
   project: ProjectModel,
   analysis: AnalysisResult,
   options?: ResultsCsvOptions,

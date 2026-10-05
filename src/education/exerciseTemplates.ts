@@ -16,7 +16,7 @@ export interface ClassroomExerciseParameters {
   loadPosition: number;
 }
 
-interface ClassroomExerciseField {
+export interface ClassroomExerciseField {
   key: ClassroomExerciseParameterKey;
   label: string;
   unit: string;
@@ -25,7 +25,7 @@ interface ClassroomExerciseField {
   step: number;
 }
 
-interface ClassroomExerciseTemplate {
+export interface ClassroomExerciseTemplate {
   id: ClassroomExerciseTemplateId;
   name: string;
   description: string;
@@ -52,9 +52,9 @@ const classroomBase = (name: string): ProjectModel => {
   };
 };
 
-const createBlankClassroomExercise = (): ProjectModel => classroomBase('Ejercicio sin título');
+export const createBlankClassroomExercise = (): ProjectModel => classroomBase('Ejercicio sin título');
 
-const createSimpleBeamExercise = (parameters: Partial<ClassroomExerciseParameters> = {}): ProjectModel => {
+export const createSimpleBeamExercise = (parameters: Partial<ClassroomExerciseParameters> = {}): ProjectModel => {
   const length = finitePositive(parameters.length, 8);
   const loadMagnitude = finitePositive(parameters.loadMagnitude, 40);
   const loadPosition = normalizedPosition(parameters.loadPosition);
@@ -76,7 +76,7 @@ const createSimpleBeamExercise = (parameters: Partial<ClassroomExerciseParameter
   };
 };
 
-const createCantileverExercise = (parameters: Partial<ClassroomExerciseParameters> = {}): ProjectModel => {
+export const createCantileverExercise = (parameters: Partial<ClassroomExerciseParameters> = {}): ProjectModel => {
   const length = finitePositive(parameters.length, 5);
   const loadMagnitude = finitePositive(parameters.loadMagnitude, 30);
   return {
@@ -94,7 +94,7 @@ const createCantileverExercise = (parameters: Partial<ClassroomExerciseParameter
   };
 };
 
-const createPortalFrameExercise = (parameters: Partial<ClassroomExerciseParameters> = {}): ProjectModel => {
+export const createPortalFrameExercise = (parameters: Partial<ClassroomExerciseParameters> = {}): ProjectModel => {
   const length = finitePositive(parameters.length, 6);
   const height = finitePositive(parameters.height, 4);
   const distributedLoadMagnitude = finitePositive(parameters.distributedLoadMagnitude, 15);
@@ -120,7 +120,7 @@ const createPortalFrameExercise = (parameters: Partial<ClassroomExerciseParamete
   };
 };
 
-const createTriangularTrussExercise = (parameters: Partial<ClassroomExerciseParameters> = {}): ProjectModel => {
+export const createTriangularTrussExercise = (parameters: Partial<ClassroomExerciseParameters> = {}): ProjectModel => {
   const length = finitePositive(parameters.length, 6);
   const height = finitePositive(parameters.height, 4);
   const loadMagnitude = finitePositive(parameters.loadMagnitude, 60);

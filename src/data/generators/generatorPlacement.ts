@@ -27,7 +27,7 @@ export interface PlacementWarning {
   readonly message: string;
 }
 
-interface PlacedGeneratedStructure {
+export interface PlacedGeneratedStructure {
   readonly nodes: readonly NodeModel[];
   readonly members: readonly MemberModel[];
   /** ID local del generador → ID asignado en el proyecto. */

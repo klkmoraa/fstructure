@@ -26,7 +26,7 @@ import type { AnalysisResult, LoadCombination, NodeModel, ProjectModel } from '.
 import { classifyStructure, type StructureClassification } from './structureClassification';
 import { axialForceOf, memberLength } from './virtualWork';
 
-interface SectionCutMember {
+export interface SectionCutMember {
   memberId: string;
   length: number;
   /** Value this method arrives at, kN, tension positive. */
@@ -52,12 +52,12 @@ export interface MethodOfSectionsResult {
   residual: number;
 }
 
-interface MethodOfSectionsRejection {
+export interface MethodOfSectionsRejection {
   applicable: false;
   reasonKey: string;
 }
 
-type MethodOfSectionsOutcome = MethodOfSectionsResult | MethodOfSectionsRejection;
+export type MethodOfSectionsOutcome = MethodOfSectionsResult | MethodOfSectionsRejection;
 
 type Member = ProjectModel['members'][number];
 

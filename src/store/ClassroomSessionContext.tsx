@@ -10,10 +10,10 @@ import {
 } from 'react';
 import type { DiagramQuantity } from '../types';
 
-type ClassroomRevealState = 'hidden' | 'predicting' | 'revealed';
-type ClassroomPredictionSign = 'positive' | 'negative' | 'zero' | 'changes';
-type ClassroomPredictions = Record<string, Partial<Record<DiagramQuantity, number>>>;
-type ClassroomSignPredictions = Record<string, Partial<Record<DiagramQuantity, ClassroomPredictionSign>>>;
+export type ClassroomRevealState = 'hidden' | 'predicting' | 'revealed';
+export type ClassroomPredictionSign = 'positive' | 'negative' | 'zero' | 'changes';
+export type ClassroomPredictions = Record<string, Partial<Record<DiagramQuantity, number>>>;
+export type ClassroomSignPredictions = Record<string, Partial<Record<DiagramQuantity, ClassroomPredictionSign>>>;
 
 interface ClassroomSessionState {
   projectId: string;
@@ -24,7 +24,7 @@ interface ClassroomSessionState {
   analysisRequested: boolean;
 }
 
-interface ClassroomSessionContextValue {
+export interface ClassroomSessionContextValue {
   revealState: ClassroomRevealState;
   predictions: ClassroomPredictions;
   signPredictions: ClassroomSignPredictions;
@@ -129,7 +129,7 @@ const updateNestedPrediction = <T,>(
   return { ...current, [memberId]: { ...memberPrediction, [quantity]: value } };
 };
 
-interface ClassroomSessionProviderProps {
+export interface ClassroomSessionProviderProps {
   projectId: string;
   children: ReactNode;
   initialRevealState?: ClassroomRevealState;

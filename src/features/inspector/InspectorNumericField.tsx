@@ -7,7 +7,7 @@ import {
   type InspectorNumberFormatOptions,
 } from './numericFormatting';
 
-interface InspectorNumericFieldProps {
+export interface InspectorNumericFieldProps {
   label: string;
   value: number;
   unit?: string;

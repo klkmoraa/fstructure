@@ -3,7 +3,7 @@ import { TriangleAlert } from 'lucide-react';
 import { Button } from './controls';
 import { EmptyState } from './feedback';
 
-interface ErrorBoundaryProps {
+export interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
 }

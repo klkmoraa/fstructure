@@ -12,7 +12,7 @@ interface DxfPair {
   line: number;
 }
 
-interface DxfPoint {
+export interface DxfPoint {
   x: number;
   y: number;
 }
@@ -46,7 +46,7 @@ export interface DxfInspection {
 
 export type DxfSourceUnit = 'mm' | 'cm' | 'm' | 'in' | 'ft' | 'us-ft';
 
-const DXF_UNIT_FACTORS: Record<DxfSourceUnit, number> = {
+export const DXF_UNIT_FACTORS: Record<DxfSourceUnit, number> = {
   mm: 0.001,
   cm: 0.01,
   m: 1,

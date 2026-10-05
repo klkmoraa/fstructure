@@ -54,17 +54,27 @@ export const ELASTIC_SATURATION_RATIO = 2;
 export type ElasticIndexGap = 'section-geometry' | 'yield-strength' | 'section-modulus';
 
 /** Lo que impide publicar η en toda la estructura, antes de mirar barra a barra. */
-type ElasticDemandBlocker = 'no-analysis' | 'unreliable' | 'no-evaluable-member';
+export type ElasticDemandBlocker = 'no-analysis' | 'unreliable' | 'no-evaluable-member';
+
+/**
+ * Cuánto del modelo entra realmente en la lectura.
+ *
+ * `partial` es la distinción que faltaba: con miembros no evaluables, el mayor η
+ * entre los evaluables **no gobierna la estructura** —el miembro más exigido
+ * puede ser justo uno de los que no se pudo leer— y llamarlo «gobernante»
+ * afirmaba algo que la lectura no sabe.
+ */
+export type ElasticCoverage = 'complete' | 'partial' | 'unavailable';
 
 /**
  * `limited` no es un resultado ordinario: el análisis pasó los controles
  * mínimos pero alguno quedó fuera de su margen cómodo, así que la lectura se
  * publica marcada, con la causa a la vista, y nunca como una medida corriente.
  */
-type ElasticDemandConfidence = 'reliable' | 'limited';
+export type ElasticDemandConfidence = 'reliable' | 'limited';
 
 /** Procedencia del Fy publicado: siempre un material del catálogo, por id. */
-interface ElasticYieldSource {
+export interface ElasticYieldSource {
   id: string;
   name: string;
   /** kN/m² */
@@ -72,14 +82,14 @@ interface ElasticYieldSource {
 }
 
 /** Procedencia del W publicado: siempre un perfil del catálogo, por id. */
-interface ElasticSectionSource {
+export interface ElasticSectionSource {
   id: string;
   name: string;
   /** m³ */
   sectionModulus: number;
 }
 
-interface MemberElasticIndex {
+export interface MemberElasticIndex {
   status: 'available';
   memberId: string;
   /** kN, máximo absoluto de la envolvente axial. */
@@ -101,16 +111,16 @@ interface MemberElasticIndex {
   section: ElasticSectionSource | null;
 }
 
-interface MemberElasticIndexGap {
+export interface MemberElasticIndexGap {
   status: 'unavailable';
   memberId: string;
   /** En orden estable: geometría, Fy, W. */
   gaps: ElasticIndexGap[];
 }
 
-type MemberElasticIndexReading = MemberElasticIndex | MemberElasticIndexGap;
+export type MemberElasticIndexReading = MemberElasticIndex | MemberElasticIndexGap;
 
-interface ElasticDemandAvailable {
+export interface ElasticDemandAvailable {
   status: 'available';
   coverage: 'complete' | 'partial';
   confidence: ElasticDemandConfidence;
@@ -134,7 +144,7 @@ interface ElasticDemandAvailable {
   unevaluated: ReadonlySet<string>;
 }
 
-interface ElasticDemandUnavailable {
+export interface ElasticDemandUnavailable {
   status: 'unavailable';
   coverage: 'unavailable';
   blocker: ElasticDemandBlocker;
@@ -155,10 +165,10 @@ interface ElasticDemandUnavailable {
   unevaluated: ReadonlySet<string>;
 }
 
-type ElasticDemandView = ElasticDemandAvailable | ElasticDemandUnavailable;
+export type ElasticDemandView = ElasticDemandAvailable | ElasticDemandUnavailable;
 
 /** Vista por miembro, la que consume el Inspector. Misma puerta que el Resumen. */
-type MemberElasticIndexView =
+export type MemberElasticIndexView =
   | {
     status: 'available';
     confidence: ElasticDemandConfidence;
@@ -182,7 +192,7 @@ const GAP_ORDER: ElasticIndexGap[] = ['section-geometry', 'yield-strength', 'sec
  * identificable. No se deduce de A e I: un W inventado publica un η que el
  * usuario no puede rastrear hasta un perfil concreto.
  */
-const memberSectionModulus = (member: MemberModel): ElasticSectionSource | null => {
+export const memberSectionModulus = (member: MemberModel): ElasticSectionSource | null => {
   if (member.sectionOrigin !== 'catalog' || !member.sectionId) return null;
   const section = findStandardSection(member.sectionId);
   if (!section || !(section.sectionModulusX > 0)) return null;
@@ -194,7 +204,7 @@ const memberSectionModulus = (member: MemberModel): ElasticSectionSource | null 
  * material no es identificable. Sin valor de reserva: coincidir en E con un
  * material del catálogo no es identidad.
  */
-const memberYieldStrength = (member: MemberModel): ElasticYieldSource | null => {
+export const memberYieldStrength = (member: MemberModel): ElasticYieldSource | null => {
   if (member.materialOrigin !== 'catalog' || !member.materialId) return null;
   const material = findStandardMaterial(member.materialId);
   if (!material || !(material.yieldStrength > 0)) return null;
@@ -208,7 +218,7 @@ const memberYieldStrength = (member: MemberModel): ElasticYieldSource | null => 
  * que entran. Que el corte del lienzo y los paneles compartan esta función es lo
  * que impide que la misma barra se lea distinto según dónde se la mire.
  */
-const sectionElasticIndex = (
+export const sectionElasticIndex = (
   member: MemberModel,
   axial: number,
   moment: number,
@@ -267,7 +277,7 @@ const sectionElasticIndex = (
  * más desfavorable posible y así se etiqueta en la interfaz, nunca como la
  * tensión real de un punto.
  */
-const memberElasticIndex = (
+export const memberElasticIndex = (
   member: MemberModel,
   result: MemberResult,
 ): MemberElasticIndexReading => sectionElasticIndex(
@@ -283,7 +293,7 @@ const memberElasticIndex = (
  * un residuo o un condicionamiento que invalida la lectura. `unreliable` y
  * `failed` bloquean η; `limited` la deja pasar marcada.
  */
-const elasticDemandGate = (
+export const elasticDemandGate = (
   analysis: AnalysisResult | null | undefined,
 ): {
   blocker: 'no-analysis' | 'unreliable' | null;
@@ -406,7 +416,7 @@ export const elasticDemandView = (
  * familia hasta `ELASTIC_SATURATION_RATIO`; más allá el color ya no puede
  * distinguir y `saturated` lo declara para que la leyenda lo diga en palabras.
  */
-interface ElasticIndexPaint {
+export interface ElasticIndexPaint {
   color: string;
   /** η ≥ 1: la estimación alcanza el Fy declarado. Nada más. */
   atReference: boolean;

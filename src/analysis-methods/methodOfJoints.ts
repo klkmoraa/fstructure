@@ -24,7 +24,7 @@ import type { AnalysisResult, LoadCombination, NodeModel, ProjectModel } from '.
 import { classifyStructure, type StructureClassification } from './structureClassification';
 import { axialForceOf, memberLength } from './virtualWork';
 
-interface JointStepMember {
+export interface JointStepMember {
   memberId: string;
   /** Value this method arrives at, kN, tension positive. */
   value: number;
@@ -48,12 +48,12 @@ export interface MethodOfJointsResult {
   residual: number;
 }
 
-interface MethodOfJointsRejection {
+export interface MethodOfJointsRejection {
   applicable: false;
   reasonKey: string;
 }
 
-type MethodOfJointsOutcome = MethodOfJointsResult | MethodOfJointsRejection;
+export type MethodOfJointsOutcome = MethodOfJointsResult | MethodOfJointsRejection;
 
 type Member = ProjectModel['members'][number];
 

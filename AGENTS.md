@@ -1,55 +1,71 @@
-# FStructure — guía para agentes
+# FusionStructure — reglas persistentes
 
-FStructure es la app de cálculo estructural de FusionStructure: dos mesas aisladas (FS-A01 FStructure y FS-A03 Elementos finitos) detrás de un Inicio común. FStructure modela en 2D y en 3D y diseña en concreto en la misma mesa: el interruptor 2D | 3D | Diseño de su barra (URL `mode=3d`, `mode=design`) cambia sólo las herramientas del modo; el proyecto, el guardado y la barra son los mismos, y el paso 2D ↔ 3D se anima (el plano se tiende y el espacio emerge). El antiguo Solver 3D (FS-A02) es hoy el modo 3D. Es un proyecto para **experimentar**: casi todo aquí es guía, no regla.
+Este archivo define cómo trabajar en este repositorio. FusionStructure es experimental: ninguna carpeta, módulo, solver, esquema, worker, persistencia o superficie visual debe tratarse como definitiva.
 
-## Cómo trabajamos
+## Autoridad
 
-- Español. Actuar sin preguntar: decidir, verificar y contar qué se hizo y qué quedó fuera.
-- Al cerrar algo verificado: commit en `main` y push. Cada push publica en GitHub Pages.
-- Lo pendiente vive en `TODO.md`.
+Cuando exista una discrepancia, el orden es:
 
-## Límites duros (los únicos)
+1. código ejecutable y pruebas;
+2. puertas automatizadas;
+3. documentación canónica;
+4. historial de Git;
+5. planes, ideas o conversaciones anteriores.
 
-1. **No perder datos del usuario.** Lo guardado se migra con versión; nada se sobrescribe ni se descarta en silencio.
-2. **Nada sale del dispositivo** sin una acción explícita de la persona (sin telemetría ni red implícita).
-3. **Los territorios no se mezclan.** El 2D con su Diseño, el 3D (`src/modules/space3d`) y FEM no importan código del otro ni leen sus datos; `npm run architecture:check` lo vigila. Los datos pasan sólo por puentes declarados en `src/integrations` (2D → 3D, eje del 3D → Diseño), que usa sólo `src/features/workspace` y que pueden usar el modelo, el motor y los datos del 3D, nunca su interfaz.
-4. **`main` publicable.** CI corre `npm run check` y no publica si falla.
+Un plan no demuestra que algo esté implementado. La implementación y sus pruebas sí aportan evidencia, aunque una puerta verde tampoco convierte una función experimental en software profesional certificado.
 
-## Pruebas: el mínimo que cubre el cambio
+## Sin áreas protegidas
 
-| Toco | Corro |
-| --- | --- |
-| cualquier cosa | `npm run verify` (typecheck + pruebas relacionadas con lo cambiado) |
-| CSS, copy, layout | mirarlo en el navegador; claro/oscuro, y móvil si cambió el layout |
-| solver, unidades, diseño | un caso pequeño con valor de referencia y tolerancia |
-| guardado/importación | abrir → guardar → reabrir, y un archivo inválido |
-| algo transversal o antes de un cambio grande | `npm run check` |
+No existe una política de archivos protegidos en este repositorio. Cualquier parte puede rediseñarse, reescribirse, reemplazarse o eliminarse cuando el cambio esté justificado y se actualicen sus referencias, migraciones, pruebas y documentación.
 
-No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa. `npm run deadcode` (knip) lista archivos, exportaciones y dependencias sin uso.
+Esta regla es técnica y de proceso. No significa que desaparezcan la licencia MIT, los derechos de autor o las licencias de dependencias y estándares externos.
 
-## Mapa
+## Calidad mínima
 
-- `src/App.tsx`: rutas `?surface=welcome` (Inicio) · `?surface=home&tool=` (bienvenida) · `?tool=` (mesa) · `?tool=model2d&mode=3d` (modo 3D) · `?tool=model2d&mode=design` (modo Diseño). Los enlaces viejos `tool=space3d`/`surface=workspace3d` abren el modo 3D y `tool=design` el modo Diseño.
-- `src/features/welcome/`: Inicio (`SuiteHome`) y bienvenida original de FStructure (`Model2DWelcome`).
-- `src/features/tool-home/`: bienvenida común (hoy la usa FEM).
-- `src/features/workspace/`: `WorkspaceShell` (modo 2D), `ToolShell` (FEM y `MesaModeShell`, los modos 3D y Diseño), `MesaModeSwitch`, `mesaTransition` (la animación entre modos), `toolCatalog`, `toolIntent`. Es la única carpeta que conoce todos los territorios; sus adaptadores (`adapters/Space3DSurface`, `adapters/DesignSurface`) usan los puentes y recuerdan por proyecto la vista y la cámara del 3D y su selección (`adapters/mesaSelection`), para que Diseño abra la barra elegida.
-- FS-A01: `src/features`, `src/engine`, `src/commands`, `src/store`; su modo Diseño en `src/design` (motores; `elements/model2dSource` traduce el Modelo 2D a la mesa Estructura) y `src/features/design` (taller); su modo 3D en `src/modules/space3d` (territorio propio) · FS-A03: `src/modules/fem`.
-- `src/integrations/`: `model2dSpace3d` («Traer del 2D»: el pórtico 2D extruido en pórticos paralelos, con su f′c) y `space3dDesign` (cada eje x = cte o z = cte del 3D como fuente de Estructura, con las acciones del modelo completo, columnas en flexión biaxial con k e índice de estabilidad propios fuera del plano, torsión de vigas y la planta para revisar todos los ejes). `space3dSections` adapta las propuestas de secciones a las propiedades A/Iy/Iz/J y comprueba todos los ejes; sólo el workspace lo aplica, como un cambio en el historial del 3D. El Modelo 2D analiza casos y recálculos agrietados mediante `model2dDesignWorker` y `model2dDesign.worker`; las funciones lectoras se reconstruyen con `src/design/elements/model2dAnalysis`. `frameCalculation` y `formNumbers` son conversiones puras del taller; los workers de propuestas sólo devuelven pasos y dimensiones. Todos los ejes se diseñan en el worker de la mesa (`src/features/workspace/adapters/space3dDesign.worker.ts`).
-- Común: `src/foundation` (unidades, álgebra), `src/storage` (proyecto local), `src/design-system` (incluye las bandas de diagrama que comparten Diseño y el 2D, y `afterTransition`: el trabajo pesado espera a que termine la animación entre modos), `src/workers`.
-- Acero del Modelo 2D: el workspace suministra `adapters/ModelSteelReview` al taller; `modelSteelAnalysis` usa el worker de análisis existente sin escribir el proyecto. Reutiliza `src/design/ntcSteel2023.ts` (sólo fluencia total de armadura A992 + I AISC en tensión pura), con su combinación y alcance propios. `NtcSteelDesignReview` también presenta ese componente en Resultados. `steelMemory` valida selecciones por proyecto (documento del taller v6 compatible con v1–v5); `adapters/steelReviewPdf` exporta la revisión no concluyente y adjunta su modelo, sólo por acción explícita.
+La validación por defecto debe ser proporcional al cambio y consumir el mínimo tiempo posible.
 
-## Cómo está hecho (guía)
+- No ejecutar `npm run check`, la suite completa ni pruebas no relacionadas por rutina.
+- Para UI, estilos, copy, composición y refactors sin impacto de dominio: usar únicamente la comprobación más barata que detecte errores del cambio, normalmente build o typecheck y, cuando aporte valor, una revisión visual puntual.
+- Para solver, matemáticas, unidades, cargas, combinaciones, análisis, import/export estructural o resultados: ejecutar sólo las pruebas focalizadas directamente relacionadas y añadir un caso pequeño de referencia cuando cambie el comportamiento numérico.
+- Para persistencia, migraciones, undo/redo o formato de proyecto: ejecutar sólo las pruebas focalizadas del flujo tocado y comprobar que un proyecto existente puede abrirse/guardarse sin pérdida.
+- Ejecutar la suite completa únicamente si el usuario la pide expresamente, si se prepara una release importante o si un cambio transversal hace imposible aislar una verificación menor.
+- No crear pruebas nuevas para cambios puramente visuales salvo que exista una regresión concreta que valga la pena fijar.
+- Indicar brevemente qué se verificó y qué no; no presentar como validado aquello que no se ejecutó.
 
-- Unidades internas en metros y kN; se convierte sólo al mostrar o exportar.
-- Un resultado es derivado: si cambian sus entradas, se invalida.
-- El cálculo pesado va en workers con mensajes serializables.
-- Lo no probado se muestra como **Experimental** en la interfaz.
+La ausencia de una prueba no es evidencia de que la función funcione, pero tampoco justifica ejecutar pruebas irrelevantes.
 
-## Marca
+## Dirección de producto
 
-- Canon: [FusionStructureBrand](https://klkmoraa.github.io/FusionStructureBrand/). Brandbook de la familia: `docs/brandbook/` (abrir `index.html`).
-- FStructure es familia **Análisis**: cambia sólo el acento. `#ED4B46` / `#FF8E80` en relleno, `#C23A33` como texto en Día, `#14171A` sobre el acento. Todo lo demás (neutros, tipo, radios, materia, movimiento, señales, voz) es del canon.
-- La marca es la ménsula con la franja roja; el verde `#1AA57A` sólo aparece cuando se nombra a FusionStructure.
-- Los resultados usan las seis señales (N, M, V, Δ, Fy, !); el acento nunca pinta un resultado.
-- Tokens en `src/design-system/tokens.css`. Si un valor contradice el canon, se corrige aquí o se propone en el canon; si el experimento pide romperlo, se dice por qué en el commit.
-- Si cambia la interfaz de una mesa, actualiza las capturas y la ficha de `docs/brandbook/`.
+El producto se organiza alrededor de un proyecto común. Las futuras superficies deben poder relacionarse con:
+
+- identidad, contexto, ubicación, unidades y fases;
+- modelo físico y modelo analítico;
+- entradas, hipótesis, resultados y procedencia;
+- documentos, revisiones, incidencias y aprobaciones;
+- cantidades, costos, recursos y programa;
+- campo, seguridad, cambios y expediente final;
+- educación, ejemplos y explicaciones.
+
+Una feature nueva debe declarar qué entidad del proyecto modifica, qué validaciones necesita, cómo se deshace, cómo se guarda, cómo se exporta y cómo se prueba.
+
+## Trabajo experimental
+
+- Diferenciar siempre `Disponible`, `Experimental`, `Planeado` y `No comprometido`.
+- No esconder limitaciones detrás de una interfaz pulida.
+- No describir el producto como patentado, certificado, protegido o listo para obra si no existe evidencia específica.
+- Mantener las unidades y las conversiones explícitas.
+- Tratar resultados derivados como resultados versionados, no como datos de entrada.
+- Preferir formatos abiertos y adaptadores aislados.
+- Evitar que la interfaz sea la única fuente de reglas de negocio.
+
+## Foundation local
+
+- `src/foundation` es propiedad local y exclusiva de este repositorio: aquí viven las unidades, el álgebra lineal, los tipos numéricos y sus pruebas.
+- No agregar `@fusionstructure/foundation` ni imports o dependencias hacia productos hermanos, incluidos sus subpaths internos. Los consumidores de este producto usan las fuentes locales de `src/foundation`.
+- Un cambio local de Foundation requiere únicamente la verificación mínima y focalizada de este repositorio. No requiere una publicación, prueba o PR coordinados en un producto hermano.
+
+## Flujo de cierre
+
+El usuario autorizó actualizar el repositorio en esta sesión. Para cambios posteriores, no hacer push ni abrir un Pull Request salvo que se solicite explícitamente en esa sesión.
+
+Si el cambio toca una superficie crítica, dejar una nota de decisión o una prueba reproducible. Si una verificación falla, reportar el fallo exacto y no presentarlo como éxito.

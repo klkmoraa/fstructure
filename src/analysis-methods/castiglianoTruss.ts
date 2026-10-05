@@ -58,12 +58,12 @@ export interface CastiglianoTrussResult {
   forceResidual: number;
 }
 
-interface CastiglianoTrussRejection {
+export interface CastiglianoTrussRejection {
   applicable: false;
   reasonKey: string;
 }
 
-type CastiglianoTrussOutcome = CastiglianoTrussResult | CastiglianoTrussRejection;
+export type CastiglianoTrussOutcome = CastiglianoTrussResult | CastiglianoTrussRejection;
 
 const SUBSCRIPTS = ['₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'];
 const subscript = (index: number): string => {

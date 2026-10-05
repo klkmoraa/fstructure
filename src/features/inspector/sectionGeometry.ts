@@ -14,7 +14,7 @@ import type { MemberPropertyOrigin } from '../../types';
  * visor del Inspector y la vista previa de la edición múltiple.
  */
 
-interface SectionGeometryInput {
+export interface SectionGeometryInput {
   /** Área bruta (m²) tal como la tiene el modelo. */
   area: number;
   /** Inercia fuerte (m⁴). */
@@ -59,7 +59,7 @@ export const resolveSectionGeometry = ({
   };
 };
 
-interface SectionShapeBox {
+export interface SectionShapeBox {
   width: number;
   height: number;
   padding: number;

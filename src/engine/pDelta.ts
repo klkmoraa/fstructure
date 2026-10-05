@@ -11,7 +11,7 @@ import { classifyAnalysisReliability } from './reliability';
 import { analyzeProject, selectedFactors } from './solver';
 import { analyzeProjectWithActiveSet, conditionalMembers, conditionalNodeLinks } from './activeSet';
 
-const DEFAULT_PDELTA_CONFIG: PDeltaConfig = {
+export const DEFAULT_PDELTA_CONFIG: PDeltaConfig = {
   maxLoadSteps: 12,
   maxIterationsPerStep: 30,
   equilibriumTolerance: 1e-6,
@@ -20,7 +20,7 @@ const DEFAULT_PDELTA_CONFIG: PDeltaConfig = {
   minimumStep: 1 / 64,
 };
 
-const resolvePDeltaConfig = (project: ProjectModel): PDeltaConfig => ({
+export const resolvePDeltaConfig = (project: ProjectModel): PDeltaConfig => ({
   ...DEFAULT_PDELTA_CONFIG,
   ...project.settings.pDeltaConfig,
 });
@@ -43,7 +43,7 @@ const CRITICAL_FACTOR_WARNING = 1.25;
  * imported projects, none of which pass through the TopBar number fields.
  * Returns the offending descriptions, empty when the configuration is usable.
  */
-const validatePDeltaConfig = (config: PDeltaConfig): string[] => {
+export const validatePDeltaConfig = (config: PDeltaConfig): string[] => {
   const problems: string[] = [];
   const positiveInteger = (value: number, label: string, max: number) => {
     if (!Number.isFinite(value) || !Number.isInteger(value) || value < 1 || value > max) {

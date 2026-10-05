@@ -2,13 +2,13 @@ import type { UnitSystemId } from './foundation/units';
 import type { LinearSolverDiagnostics } from './foundation/linearAlgebra';
 
 /** @deprecated Import neutral unit types directly from `foundation/units`. */
-export type {  UnitSystemId } from './foundation/units';
+export type { BuiltInUnitSystemId, UnitSystemId } from './foundation/units';
 /** @deprecated Import neutral numerical types directly from `foundation/linearAlgebra`. */
 export type {
-  
+  LinearSolverBackend,
   LinearSolverDiagnostics,
-  
-  
+  LinearSolverFallbackReason,
+  LinearSolverPolicy,
 } from './foundation/linearAlgebra';
 
 export type ThemeMode = 'light' | 'dark';
@@ -340,23 +340,6 @@ export interface ProjectSettings {
   pDeltaConfig?: Partial<PDeltaConfig>;
 }
 
-export interface ReinforcedConcreteBeamAssignment {
-  id: string;
-  memberId: string;
-  kind: 'reinforced-concrete-beam';
-  standardId: 'ntc-cdmx-2023-concrete';
-  ultimateCombinationId: string;
-  serviceCombinationId: string;
-  coverMm: number;
-  longitudinalSteelYieldMpa: number;
-  stirrupSteelYieldMpa: number;
-  preferredLongitudinalDiametersMm: number[];
-  preferredStirrupDiametersMm: number[];
-  stirrupLegs: 2 | 4;
-}
-
-export type MemberDesignAssignment = ReinforcedConcreteBeamAssignment;
-
 export interface ProjectModel {
   schemaVersion: number;
   id: string;
@@ -380,7 +363,6 @@ export interface ProjectModel {
   generatedLoadSources?: GeneratedLoadSource[];
   /** Saved moving-load definitions for the influence-line workflow. */
   movingLoadCases?: MovingLoadCase[];
-  designAssignments: MemberDesignAssignment[];
   settings: ProjectSettings;
   educationalCase?: {
     kind: 'attributed-example' | 'original-practice';

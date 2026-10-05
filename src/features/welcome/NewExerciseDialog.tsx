@@ -17,7 +17,7 @@ import { useWorkspaceUI } from '../../store/ProjectContext';
 import { ThreeStructuralImage, type ThreeStructuralAssetId } from '../structural-assets';
 import './newExerciseDialog.css';
 
-interface NewExerciseDialogProps {
+export interface NewExerciseDialogProps {
   open: boolean;
   onClose: () => void;
   onCreate: (project: ProjectModel) => void;

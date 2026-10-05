@@ -13,13 +13,13 @@ import type { EigenAssembly } from './eigenAssembly';
 const KILOGRAM_TO_MEGAGRAM = 1e-3;
 
 /** Masa por longitud en Mg/m; un miembro sin densidad o área no aporta masa. */
-const linearMass = (member: MemberModel): number =>
+export const linearMass = (member: MemberModel): number =>
   (member.density ?? 0) > 0 && member.A > 0
     ? member.density! * member.A * KILOGRAM_TO_MEGAGRAM
     : 0;
 
 /** Matriz de masa consistente de un elemento de pórtico plano Euler-Bernoulli. */
-const frameConsistentMass = (massPerLength: number, length: number): Matrix => {
+export const frameConsistentMass = (massPerLength: number, length: number): Matrix => {
   const factor = (massPerLength * length) / 420;
   const lengthSquared = length * length;
   return [
@@ -33,7 +33,7 @@ const frameConsistentMass = (massPerLength: number, length: number): Matrix => {
 };
 
 /** Matriz de masa consistente para una barra de dos fuerzas. */
-const trussConsistentMass = (massPerLength: number, length: number): Matrix => {
+export const trussConsistentMass = (massPerLength: number, length: number): Matrix => {
   const factor = (massPerLength * length) / 6;
   return [
     [2 * factor, 0, 0, factor, 0, 0],
@@ -46,7 +46,7 @@ const trussConsistentMass = (massPerLength: number, length: number): Matrix => {
 };
 
 /** Masa concentrada: la mitad de la masa lineal del elemento en cada nudo. */
-const lumpedMass = (massPerLength: number, length: number): Matrix => {
+export const lumpedMass = (massPerLength: number, length: number): Matrix => {
   const half = (massPerLength * length) / 2;
   return [
     [half, 0, 0, 0, 0, 0],
@@ -59,7 +59,7 @@ const lumpedMass = (massPerLength: number, length: number): Matrix => {
 };
 
 export type MassFormulation = 'consistent' | 'lumped';
-interface AssembledMass { M: Matrix; totalMass: number; masslessMemberIds: string[] }
+export interface AssembledMass { M: Matrix; totalMass: number; masslessMemberIds: string[] }
 
 /** Ensambla sobre los mismos GDL, excentricidades y miembros del estudio propio. */
 export const assembleMass = (assembly: EigenAssembly, formulation: MassFormulation = 'consistent'): AssembledMass => {

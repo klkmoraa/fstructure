@@ -25,7 +25,7 @@ import type { InfluenceCanvasState } from '../../store/ProjectContext';
 import { useI18n } from '../../i18n/useI18n';
 import { formatFixed, formatScientific, formatSignificant } from '../../utils/numberFormat';
 
-interface InfluenceLineViewProps {
+export interface InfluenceLineViewProps {
   project: ProjectModel;
   selection?: Selection;
   onCanvasStateChange?: (state: InfluenceCanvasState | null) => void;

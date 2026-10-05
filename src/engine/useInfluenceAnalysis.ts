@@ -15,9 +15,9 @@ import {
   type WorkerResponseEnvelope,
 } from '../runtime/workerProtocol';
 
-type InfluenceAnalysisInput = ProtocolInfluenceAnalysisInput;
+export type InfluenceAnalysisInput = ProtocolInfluenceAnalysisInput;
 
-interface InfluenceAnalysisOutput {
+export interface InfluenceAnalysisOutput {
   line: InfluenceLine;
   axleTrain: AxleTrainEnvelope | null;
 }

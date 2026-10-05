@@ -14,10 +14,7 @@ describe('WorkspaceUtilities', () => {
 
     render(
       <ProjectProvider>
-        <WorkspaceUtilities
-          onOpenInspector={vi.fn()}
-          onOpenUnitsEditor={onOpenUnitsEditor}
-        />
+        <WorkspaceUtilities onOpenInspector={vi.fn()} onOpenUnitsEditor={onOpenUnitsEditor} />
       </ProjectProvider>,
     );
 
@@ -28,21 +25,5 @@ describe('WorkspaceUtilities', () => {
 
     await user.click(screen.getByRole('button', { name: /Personalizar unidades…/ }));
     expect(onOpenUnitsEditor).toHaveBeenCalledOnce();
-  });
-
-  it('pertenece sólo al Modelo 2D: no ofrece saltos a otras herramientas', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <ProjectProvider>
-        <WorkspaceUtilities onOpenInspector={vi.fn()} />
-      </ProjectProvider>,
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Herramientas del espacio de trabajo' }));
-
-    expect(screen.queryByRole('region', { name: 'Herramientas integradas' })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Modelo 3D/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^FEM/ })).toBeNull();
   });
 });

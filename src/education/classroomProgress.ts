@@ -1,13 +1,13 @@
 import type { AnalysisResult, ProjectModel, Tool } from '../types';
 
 export type ClassroomProgressStepId = 'geometry' | 'supports' | 'loads' | 'analysis';
-type ClassroomProgressStepState = 'complete' | 'current' | 'pending' | 'attention';
+export type ClassroomProgressStepState = 'complete' | 'current' | 'pending' | 'attention';
 
-type ClassroomProgressAction =
+export type ClassroomProgressAction =
   | { kind: 'tool'; tool: Tool; label: string }
   | { kind: 'analyze'; label: string };
 
-interface ClassroomProgressStep {
+export interface ClassroomProgressStep {
   id: ClassroomProgressStepId;
   title: string;
   description: string;
@@ -16,7 +16,7 @@ interface ClassroomProgressStep {
   action: ClassroomProgressAction;
 }
 
-interface ClassroomProgress {
+export interface ClassroomProgress {
   steps: ClassroomProgressStep[];
   currentStep: ClassroomProgressStep;
   completedSteps: number;

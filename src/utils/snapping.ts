@@ -17,9 +17,9 @@ export interface SnapSegment {
   end: SnapTarget;
 }
 
-type SnapModeToggles = Partial<Record<SnapKind, boolean>>;
+export type SnapModeToggles = Partial<Record<SnapKind, boolean>>;
 
-interface SnapOptions {
+export interface SnapOptions {
   enabled: boolean;
   gridSize: number;
   pixelsPerUnit: number;
@@ -31,26 +31,26 @@ interface SnapOptions {
   priority?: SnapKind[];
 }
 
-interface SnapResult {
+export interface SnapResult {
   point: SnapTarget;
   kind: SnapKind | 'none';
   distancePixels: number;
   candidate?: SnapCandidate;
 }
 
-interface IntersectionCandidateOptions {
+export interface IntersectionCandidateOptions {
   epsilon?: number;
   /** End intersections normally duplicate node snaps, so they are excluded by default. */
   includeEndpoints?: boolean;
 }
 
-interface PerpendicularCandidateOptions {
+export interface PerpendicularCandidateOptions {
   epsilon?: number;
   /** Includes a projection on the segment extension rather than only on the finite member. */
   includeExtensions?: boolean;
 }
 
-const DEFAULT_SNAP_PRIORITY: SnapKind[] = [
+export const DEFAULT_SNAP_PRIORITY: SnapKind[] = [
   'node',
   'intersection',
   'midpoint',
@@ -395,3 +395,7 @@ export const resolveSnap = (point: SnapTarget, options: SnapOptions): SnapResult
     distancePixels: Math.sqrt(squaredDistance(point, gridPoint)) * pixelsPerUnit,
   };
 };
+
+/** Backwards-compatible point-only API used by the current canvas. */
+export const snapModelPoint = (point: SnapTarget, options: SnapOptions): SnapTarget =>
+  resolveSnap(point, options).point;

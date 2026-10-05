@@ -19,7 +19,7 @@ export interface ViewportSize {
   height: number;
 }
 
-interface CanvasPointerProfile {
+export interface CanvasPointerProfile {
   kind: 'mouse' | 'touch' | 'pen';
   dragThreshold: number;
   canDragNode: boolean;
@@ -28,13 +28,13 @@ interface CanvasPointerProfile {
   minimumHitTarget: number;
 }
 
-const MIN_CAMERA_SCALE = 15;
-const MAX_CAMERA_SCALE = 260;
+export const MIN_CAMERA_SCALE = 15;
+export const MAX_CAMERA_SCALE = 260;
 export const LONG_PRESS_MS = 480;
 /** Smaller than the 9 px touch-pan threshold: any deliberate slow pan cancels long press. */
 export const LONG_PRESS_JITTER_PX = 3;
 
-const clampCameraScale = (scale: number): number =>
+export const clampCameraScale = (scale: number): number =>
   Math.min(MAX_CAMERA_SCALE, Math.max(MIN_CAMERA_SCALE, scale));
 
 export const screenToModelPoint = (point: ScreenPoint, camera: CanvasCamera): ModelPoint => ({
@@ -42,7 +42,7 @@ export const screenToModelPoint = (point: ScreenPoint, camera: CanvasCamera): Mo
   y: (camera.y - point.y) / camera.scale,
 });
 
-const cameraFromAnchor = (
+export const cameraFromAnchor = (
   modelAnchor: ModelPoint,
   screenAnchor: ScreenPoint,
   scale: number,
@@ -150,7 +150,7 @@ export const cameraForPinch = (
   );
 };
 
-const dragThreshold = (pointerType: string): number => {
+export const dragThreshold = (pointerType: string): number => {
   return canvasPointerProfile(pointerType).dragThreshold;
 };
 

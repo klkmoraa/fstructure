@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="format-detection" content="telephone=no" />
     <meta name="description" content="FStructure · solver estructural 2D experimental" />
-    <title>FusionStructure · Diseño y análisis estructural</title>
+    <title>FStructure · Solver 2D</title>
     <script>
       (function() {
         var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -26,56 +26,6 @@
         document.write('<link rel="icon" type="image/svg+xml" href="' + svgIcon + '" id="dynamic-fav-svg">');
         document.write('<link rel="icon" type="image/png" sizes="32x32" href="' + png32 + '" id="dynamic-fav-32">');
         document.write('<meta name="theme-color" content="' + themeClr + '" id="dynamic-theme-color">');
-      })();
-    </script>
-
-    <script>
-      // Recover once when a cached Pages document references hashed assets
-      // removed by a newer deployment.
-      (function() {
-        var retryKey = 'fstructure.asset-retry';
-        var retryParam = '__fs_reload';
-        var params = new URLSearchParams(window.location.search);
-        var isRetry = params.has(retryParam);
-
-        function clearRetry() {
-          try { sessionStorage.removeItem(retryKey); } catch (_) {}
-        }
-
-        function recoverFromStaleAsset() {
-          if (isRetry) return;
-          try {
-            if (sessionStorage.getItem(retryKey) === '1') return;
-            sessionStorage.setItem(retryKey, '1');
-          } catch (_) {}
-          var retryUrl = new URL(window.location.href);
-          retryUrl.searchParams.set(retryParam, Date.now().toString());
-          window.location.replace(retryUrl.toString());
-        }
-
-        window.addEventListener('vite:preloadError', function(event) {
-          event.preventDefault();
-          recoverFromStaleAsset();
-        });
-
-        window.addEventListener('error', function(event) {
-          var target = event.target;
-          if (!target || !target.tagName) return;
-          var tag = target.tagName.toUpperCase();
-          var rel = typeof target.rel === 'string' ? target.rel : '';
-          if (tag === 'SCRIPT' || (tag === 'LINK' && (rel === 'stylesheet' || rel === 'modulepreload'))) {
-            recoverFromStaleAsset();
-          }
-        }, true);
-
-        if (isRetry) {
-          var cleanUrl = new URL(window.location.href);
-          cleanUrl.searchParams.delete(retryParam);
-          window.history.replaceState(window.history.state, '', cleanUrl.toString());
-          window.addEventListener('load', clearRetry, { once: true });
-        } else {
-          clearRetry();
-        }
       })();
     </script>
 

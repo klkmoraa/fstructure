@@ -17,7 +17,7 @@ import {
 } from './structuralBom';
 import './structuralBom.css';
 
-interface StructuralBomPanelProps {
+export interface StructuralBomPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   presentation?: Extract<SurfacePresentation, 'drawer' | 'fullscreen'>;

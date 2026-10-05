@@ -1,13 +1,12 @@
 import type { CSSProperties, ReactNode, Ref } from 'react';
 import { isToolRailCompact, type ShellClass } from './shellComposition';
 
-interface AppShellLayoutProps {
+export interface AppShellLayoutProps {
   projectId: string;
   skipLabel: string;
   console: ReactNode;
   /** Barra superior persistente del canvas 2D. */
   topbar?: ReactNode;
-  journey?: ReactNode;
   workspace: ReactNode;
   inspector: ReactNode;
   instrument?: ReactNode;
@@ -36,7 +35,6 @@ export function AppShellLayout({
   skipLabel,
   console,
   topbar,
-  journey,
   workspace,
   inspector,
   instrument,
@@ -63,7 +61,6 @@ export function AppShellLayout({
     <a className="app-shell-skip-link" href="#workspace-canvas">{skipLabel}</a>
     {console}
     {topbar}
-    {journey}
     <div className="workspace">
       <main id="workspace-canvas" className="center-stage" tabIndex={-1}>
         {workspace}

@@ -59,10 +59,3 @@ describe('comando de tema', () => {
     expect(command.aliases).toContain('theme');
   });
 });
-
-describe('aislamiento de herramientas', () => {
-  it('la paleta del Modelo 2D no abre Diseño: esa herramienta se elige en el Inicio', () => {
-    const commands = buildCommands(contextoDe('light', () => undefined));
-    expect(commands.find((item) => item.id === 'design:concrete-beam')).toBeUndefined();
-  });
-});

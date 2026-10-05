@@ -59,12 +59,12 @@ export interface KaniResult {
   momentResidual: number;
 }
 
-interface KaniRejection {
+export interface KaniRejection {
   applicable: false;
   reasonKey: string;
 }
 
-type KaniOutcome = KaniResult | KaniRejection;
+export type KaniOutcome = KaniResult | KaniRejection;
 
 const restrainsRotation = (support: SupportDefinition): boolean =>
   support.type === 'fixed' || (support.type === 'custom' && Boolean(support.restrainR));

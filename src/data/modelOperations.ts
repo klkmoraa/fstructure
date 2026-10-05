@@ -98,7 +98,7 @@ export type ModelClipboard =
   | { kind: 'multi'; nodes: NodeModel[]; members: MemberModel[]; nodalLoads: NodalLoad[]; memberLoads: MemberLoad[]; prescribedDisplacements: PrescribedDisplacement[]; initialEffects: MemberInitialEffect[] };
 
 type ModelSelection = Exclude<Selection, null>;
-type StructuralSelection = Exclude<ModelSelection, { kind: 'nodalLoad' } | { kind: 'memberLoad' }>;
+export type StructuralSelection = Exclude<ModelSelection, { kind: 'nodalLoad' } | { kind: 'memberLoad' }>;
 
 export const structuralSelectionFromIds = (nodeIds: Iterable<string>, memberIds: Iterable<string>): Selection => {
   const nodes = [...new Set(nodeIds)];
@@ -130,7 +130,6 @@ export const deleteStructuralSelection = (project: ProjectModel, selection: Stru
   project.memberLoads = project.memberLoads.filter((load) => !memberIds.has(load.memberId));
   project.prescribedDisplacements = (project.prescribedDisplacements ?? []).filter((item) => !nodeIds.has(item.nodeId));
   project.memberInitialEffects = (project.memberInitialEffects ?? []).filter((effect) => !memberIds.has(effect.memberId));
-  project.designAssignments = project.designAssignments.filter((assignment) => !memberIds.has(assignment.memberId));
 };
 
 /** Creates a detached, serializable snapshot of the selected structural object. */
@@ -396,6 +395,16 @@ const splitMember = (project: ProjectModel, memberId: string, ratio: number, exi
 export const splitMemberAt = (project: ProjectModel, memberId: string, ratio: number): SplitMemberResult =>
   splitMember(project, memberId, ratio);
 
+export const splitMemberAtNode = (project: ProjectModel, memberId: string, nodeId: string): SplitMemberResult => {
+  const member = project.members.find((item) => item.id === memberId);
+  const node = project.nodes.find((item) => item.id === nodeId);
+  if (!member) throw new Error(`No existe el miembro ${memberId}.`);
+  if (!node) throw new Error(`No existe el nodo ${nodeId}.`);
+  const ratio = memberInteriorRatioAtPoint(project, member, node);
+  if (ratio === null) throw new Error(`El nodo ${nodeId} no está dentro del miembro ${memberId}.`);
+  return splitMember(project, memberId, ratio, nodeId);
+};
+
 const supportIsNeutral = (node: NodeModel): boolean => node.support.type === 'none' && !supportHasStiffness(node);
 
 const supportsCanMerge = (first: NodeModel, second: NodeModel): boolean =>
@@ -496,7 +505,7 @@ export const repairProjectTopology = (project: ProjectModel): TopologyRepairRepo
   return report;
 };
 
-interface EnsureNodeResult {
+export interface EnsureNodeResult {
   nodeId: string;
   created: boolean;
   splitMemberId?: string;
@@ -504,13 +513,13 @@ interface EnsureNodeResult {
 
 export type MemberCreationTemplate = Omit<MemberModel, 'id' | 'i' | 'j'>;
 
-interface CreateMemberAtPointInput {
+export interface CreateMemberAtPointInput {
   startNodeId: string;
   point: { x: number; y: number };
   template: MemberCreationTemplate;
 }
 
-interface CreateMemberAtPointResult {
+export interface CreateMemberAtPointResult {
   memberId: string;
   nodeId: string;
   created: boolean;

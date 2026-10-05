@@ -16,7 +16,7 @@ export interface SelectionEnvelope {
   height: number;
 }
 
-interface SelectionEnvelopeBounds {
+export interface SelectionEnvelopeBounds {
   x: number;
   y: number;
   width: number;

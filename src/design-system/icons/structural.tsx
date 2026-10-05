@@ -4,7 +4,7 @@
  */
 import type { SVGProps } from 'react';
 
-interface StructuralGlyphProps extends SVGProps<SVGSVGElement> {
+export interface StructuralGlyphProps extends SVGProps<SVGSVGElement> {
   size?: number;
 }
 

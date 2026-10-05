@@ -11,7 +11,7 @@ import type { EditorLayerAction, EditorLayerState } from './editorLayers';
  */
 export type EvidenceLayerId = 'axial' | 'shear' | 'moment' | 'deformed' | 'heatmap';
 
-interface EvidenceLayerDefinition {
+export interface EvidenceLayerDefinition {
   id: EvidenceLayerId;
   labelKey: TranslationKey;
   /**

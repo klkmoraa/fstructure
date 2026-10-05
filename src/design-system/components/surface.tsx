@@ -12,7 +12,7 @@ import { createElement, type ComponentPropsWithoutRef, type ElementType, type Re
  */
 export type SurfaceLevel = 'flat' | 'inset' | 'raised' | 'floating' | 'sheet' | 'modal';
 
-type SurfaceTag = 'div' | 'section' | 'article' | 'aside' | 'button' | 'header' | 'nav';
+export type SurfaceTag = 'div' | 'section' | 'article' | 'aside' | 'button' | 'header' | 'nav';
 
 type SurfaceOwnProps<Tag extends SurfaceTag> = {
   level?: SurfaceLevel;
@@ -27,7 +27,7 @@ type SurfaceOwnProps<Tag extends SurfaceTag> = {
   ref?: Ref<HTMLElement>;
 };
 
-type SurfaceProps<Tag extends SurfaceTag = 'div'> = SurfaceOwnProps<Tag>
+export type SurfaceProps<Tag extends SurfaceTag = 'div'> = SurfaceOwnProps<Tag>
   & Omit<ComponentPropsWithoutRef<Tag>, keyof SurfaceOwnProps<Tag>>;
 
 /**

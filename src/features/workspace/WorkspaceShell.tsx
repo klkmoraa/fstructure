@@ -1,11 +1,8 @@
 import { lazy, useCallback, useEffect, useMemo, useReducer, useRef, useState, type RefObject } from 'react';
 import { Inspector } from '../inspector/Inspector';
 import { ResultsPanel } from '../results/ResultsPanel';
-import { Model2DTool } from './toolSurfaces';
-import { Model2DSurfaceContext } from './adapters/surfaceContexts';
-import { PanelRight } from 'lucide-react';
+import { StructuralCanvas } from '../canvas/StructuralCanvas';
 import { Console } from '../shell/Console';
-import { ThemeToggleButton } from './ThemeToggleButton';
 import { Instrument } from '../shell/Instrument';
 import { ClassroomGuide } from '../classroom/ClassroomGuide';
 import { ToastNotification } from './ToastNotification';
@@ -19,9 +16,6 @@ import { withCanvasViewSettings } from '../view/canvasViewSettings';
 import { AppShellLayout } from './AppShellLayout';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { WorkspaceUtilities } from './WorkspaceUtilities';
-import { MesaJourney } from './MesaJourney';
-import { MesaModeSwitch } from './MesaModeSwitch';
-import type { MesaMode } from '../../shared/navigation/projectUrl';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
 import { SurfacePresentationProvider } from './SurfacePresentationProvider';
 import { useShellComposition } from './useShellComposition';
@@ -41,15 +35,12 @@ import './workspaceTopbar.css';
    el empaquetador resuelve el duplicado. */
 import './commandPalette.css';
 import '../canvas/mobileCanvasDensity.css';
-import './canvasChrome.css';
 import { emitWorkspaceCommand, onWorkspaceCommand } from './workspaceCommands';
-import { setToolIntent } from './toolIntent';
 import { isOwnHistoryScope } from './commandRegistry';
 import type { AnalysisResult } from '../../types';
 import type { RevisionSnapshot } from '../revision-comparison/revisionComparison';
 import { DataSurfaceRetainedStateProvider } from './DataSurfaceRetainedState';
 import { LazySurface } from './LazySurface';
-import { ShellToolSlotsProvider, ShellSlotHost, ShellMobileSurface } from './ShellToolSlots';
 
 const LazyCommandPalette = lazy(() => import('./CommandPalette').then((module) => ({ default: module.CommandPalette })));
 const LazyLocalCommandAssistant = lazy(() => import('../ai/LocalCommandAssistant').then((module) => ({ default: module.LocalCommandAssistant })));
@@ -82,22 +73,7 @@ const focusStableLauncherIfUnclaimed = (selector: string): void => {
   });
 };
 
-/**
- * Shell del Modelo 2D: el modo Modelo de la mesa de FStructure.
- *
- * El modo Diseño de la misma mesa es `DesignModeShell`; el interruptor
- * Modelo | Diseño de la barra pasa de uno a otro sin cambiar de proyecto.
- * Modelo 3D y FEM tienen su propio shell (`ToolShell`): este no los monta ni
- * importa su código. Sus atajos globales (Ctrl/Cmd+K, deshacer y rehacer) sólo
- * existen mientras el modo Modelo está abierto, así que nunca actúan sobre el
- * modelo desde otra mesa.
- */
-type WorkspaceShellProps = {
-  onOpenHome: () => void;
-  projectId: string;
-  /** Interruptor Modelo | Diseño de la mesa. */
-  onModeChange?: (mode: MesaMode) => void;
-};
+type WorkspaceShellProps = { onOpenHome: () => void; projectId: string };
 type LayoutController = ReturnType<typeof useWorkspaceLayoutPreferences>;
 type PendingModelDoctorNotification = {
   id: number;
@@ -108,7 +84,6 @@ type PendingModelDoctorNotification = {
 
 const WorkspaceBrokerContent = ({
   onOpenHome,
-  onModeChange,
   projectId,
   shellRef,
   layoutController,
@@ -120,7 +95,7 @@ const WorkspaceBrokerContent = ({
   const [dataSurfaceStateEpoch, setDataSurfaceStateEpoch] = useState(0);
   const [revisionBaseline, setRevisionBaseline] = useState<RevisionSnapshot | null>(null);
   const [editorLayers, dispatchEditorLayers] = useReducer(editorLayerReducer, undefined, createPersistedEditorLayerState);
-  const { t, language } = useI18n();
+  const { t } = useI18n();
   const { project, analysis, isAnalyzing, storageIssue, storageMessage, renameProject, setActiveTool, setResultTab, updateProjectView, analyze, undo, redo, canUndo, canRedo } = useProject();
   const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
   const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
@@ -128,14 +103,11 @@ const WorkspaceBrokerContent = ({
   const modelDoctorNotificationIdRef = useRef(0);
   const pendingModelDoctorNotificationIdRef = useRef<number | null>(null);
   const reportedAnalysisRef = useRef<AnalysisResult | null>(null);
-  const { activeTool, setSelection } = useWorkspaceUI();
+  const { activeTool } = useWorkspaceUI();
   const { preferences: layout, setPreference, togglePreference } = layoutController;
   const { shellClass } = useShellComposition();
   const broker = useSurfacePresentation();
   const { openSurface, closeSurface, toggleSurface, markSurfaceReady, setSurfaceExtent } = broker;
-  const openModel2DSurface = useCallback((surface: SurfaceId, trigger?: HTMLElement | null) => {
-    openSurface(surface, trigger);
-  }, [openSurface]);
   const detail = broker.stateFor('detail');
   const analysisSetup = broker.stateFor('analysisSetup');
   const view = broker.stateFor('view');
@@ -198,23 +170,21 @@ const WorkspaceBrokerContent = ({
         // Ctrl/Cmd+K ya respeta esta exclusión; el lanzador visible debe pasar
         // por la misma autoridad para no montar una segunda capa sobre Doctor
         // o Datasheet.
-        if (canOpenPalette && !document.querySelector('[aria-modal="true"]')) openModel2DSurface('palette');
+        if (canOpenPalette) openSurface('palette');
       }),
-      onWorkspaceCommand('open-model-doctor', () => openModel2DSurface('doctor')),
+      onWorkspaceCommand('open-model-doctor', () => openSurface('doctor')),
       onWorkspaceCommand('open-local-assistant', ({ trigger }) => {
         localAssistantTriggerRef.current = trigger ?? null;
         closeSurface('palette');
         setLocalAssistantOpen(true);
       }),
-      onWorkspaceCommand('open-datasheet', () => openModel2DSurface('datasheet')),
-      onWorkspaceCommand('open-structural-bom', () => openModel2DSurface('bom')),
-      onWorkspaceCommand('open-revision-comparison', () => openModel2DSurface('comparison')),
-      onWorkspaceCommand('open-results', (payload) => {
-        openModel2DSurface('results', payload?.trigger);
-      }),
+      onWorkspaceCommand('open-datasheet', () => openSurface('datasheet')),
+      onWorkspaceCommand('open-structural-bom', () => openSurface('bom')),
+      onWorkspaceCommand('open-revision-comparison', () => openSurface('comparison')),
+      onWorkspaceCommand('open-results', (payload) => openSurface('results', payload?.trigger)),
       onWorkspaceCommand('toggle-results', (payload) => {
         if (results.open) closeSurface('results');
-        else openModel2DSurface('results', payload?.trigger);
+        else openSurface('results', payload?.trigger);
       }),
       onWorkspaceCommand('analysis-requested', () => {
         const id = modelDoctorNotificationIdRef.current + 1;
@@ -222,34 +192,28 @@ const WorkspaceBrokerContent = ({
         pendingModelDoctorNotificationIdRef.current = id;
         setPendingModelDoctorNotification({ id, projectId: project.id, analysisAtRequest: analysis, hasStarted: false });
       }),
-      onWorkspaceCommand('open-analysis-setup', () => openModel2DSurface('analysisSetup')),
-      // «Diseñar en concreto» desde el Inspector: el modo Diseño abre esa barra.
-      onWorkspaceCommand('open-member-design', ({ memberId }) => {
-        if (!onModeChange) return;
-        setToolIntent({ tool: 'design', kind: 'model', member: memberId });
-        onModeChange('design');
-      }),
+      onWorkspaceCommand('open-analysis-setup', () => openSurface('analysisSetup')),
       /* Una magnitud elegida en cualquier superficie se enciende en el LIENZO.
          El shell es el único que tiene el reductor de capas, así que aquí es
          donde `resultTab` y la capa `results` se mueven juntos. */
       onWorkspaceCommand('activate-evidence-layer', ({ layer }) => {
         activateEvidenceLayer(layer, { setResultTab, dispatchLayers: dispatchEditorLayers, revealResultOverlay });
       }),
-      onWorkspaceCommand('open-view-settings', () => openModel2DSurface('view')),
+      onWorkspaceCommand('open-view-settings', () => openSurface('view')),
       /* Los lanzadores de Influencia previos se conservan, pero ahora llevan a
          la pestaña residente: la línea se lee junto a N/V/M, sin drawer. */
       onWorkspaceCommand('open-dense-results', ({ view: requestedView, trigger }) => {
         if (requestedView === 'influence') {
           setResultTab('influence');
-          openModel2DSurface('results', trigger);
+          openSurface('results', trigger);
           return;
         }
         setDenseView(requestedView);
-        openModel2DSurface('dense', trigger);
+        openSurface('dense', trigger);
       }),
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe());
-  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, onModeChange, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
+  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, openSurface, project.id, results.open, revealResultOverlay, setResultTab]);
 
   useEffect(() => {
     setModelDoctorAcknowledgedIds(new Set());
@@ -329,7 +293,6 @@ const WorkspaceBrokerContent = ({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== 'k' || !(event.ctrlKey || event.metaKey) || event.altKey) return;
-      if (document.querySelector('[aria-modal="true"]')) return;
       if (datasheet.status === 'active' || bom.status === 'active' || comparison.status === 'active' || doctor.status === 'active') return;
       event.preventDefault();
       toggleSurface('palette', document.activeElement instanceof HTMLElement ? document.activeElement : null);
@@ -384,7 +347,7 @@ const WorkspaceBrokerContent = ({
   }, [shellRef]);
 
   const setResultsOpen = useCallback((open: boolean, trigger?: HTMLElement | null) => {
-    if (open) openModel2DSurface('results', trigger);
+    if (open) openSurface('results', trigger);
     else {
       closeSurface('results');
       setDataSurfaceStateEpoch((epoch) => epoch + 1);
@@ -394,7 +357,7 @@ const WorkspaceBrokerContent = ({
       // bróker sí pudo devolver el foco al botón que abrió Resultados.
       focusStableLauncherIfUnclaimed('.utility-more-button');
     }
-  }, [closeSurface, openModel2DSurface]);
+  }, [closeSurface, openSurface]);
   const openDetail = useCallback((trigger?: HTMLElement | null) => {
     setPreference('inspectorCollapsed', false);
     setPreference('inspectorCompact', false);
@@ -406,15 +369,15 @@ const WorkspaceBrokerContent = ({
     setPreference('inspectorCompact', false);
   }, [closeSurface, setPreference]);
   const setDatasheetOpen = useCallback((open: boolean) => {
-    if (open) openModel2DSurface('datasheet');
+    if (open) openSurface('datasheet');
     else { closeSurface('datasheet'); setDataSurfaceStateEpoch((epoch) => epoch + 1); }
-  }, [closeSurface, openModel2DSurface]);
+  }, [closeSurface, openSurface]);
   const setDoctorOpen = useCallback((open: boolean) => {
-    if (open) openModel2DSurface('doctor');
+    if (open) openSurface('doctor');
     else { closeSurface('doctor'); setDataSurfaceStateEpoch((epoch) => epoch + 1); }
-  }, [closeSurface, openModel2DSurface]);
+  }, [closeSurface, openSurface]);
   const setBomOpen = useCallback((open: boolean) => {
-    if (open) openModel2DSurface('bom');
+    if (open) openSurface('bom');
     else {
       closeSurface('bom');
       setDataSurfaceStateEpoch((epoch) => epoch + 1);
@@ -423,15 +386,15 @@ const WorkspaceBrokerContent = ({
       // persistente es el respaldo de la composición vigente.
       focusStableLauncherIfUnclaimed('.topbar-export-trigger, .utility-more-button');
     }
-  }, [closeSurface, openModel2DSurface]);
+  }, [closeSurface, openSurface]);
   const setComparisonOpen = useCallback((open: boolean) => {
-    if (open) openModel2DSurface('comparison');
+    if (open) openSurface('comparison');
     else closeSurface('comparison');
-  }, [closeSurface, openModel2DSurface]);
+  }, [closeSurface, openSurface]);
   const setDenseOpen = useCallback((open: boolean) => {
-    if (open) openModel2DSurface('dense');
+    if (open) openSurface('dense');
     else { closeSurface('dense'); setDataSurfaceStateEpoch((epoch) => epoch + 1); }
-  }, [closeSurface, openModel2DSurface]);
+  }, [closeSurface, openSurface]);
   const markDenseReady = useCallback((ready: boolean) => markSurfaceReady('dense', ready), [markSurfaceReady]);
   const markDatasheetReady = useCallback((ready: boolean) => markSurfaceReady('datasheet', ready), [markSurfaceReady]);
   const markBomReady = useCallback((ready: boolean) => markSurfaceReady('bom', ready), [markSurfaceReady]);
@@ -447,15 +410,7 @@ const WorkspaceBrokerContent = ({
   const restoreComparison = useCallback(() => setSurfaceExtent('comparison', 'default'), [setSurfaceExtent]);
   const peekDoctor = useCallback(() => setSurfaceExtent('doctor', 'peek'), [setSurfaceExtent]);
   const restoreDoctor = useCallback(() => setSurfaceExtent('doctor', 'default'), [setSurfaceExtent]);
-  // El mismo interruptor del panel en la barra superior (escritorio) y en el
-  // dock de la consola (teléfono): abre el inspector o cierra el que esté abierto.
-  const toggleInspector = (trigger?: HTMLElement | null) => {
-    if (layout.fullCanvas) setPreference('fullCanvas', false);
-    if (detail.open) closeDetail();
-    else if (analysisSetup.open) closeSurface('analysisSetup');
-    else if (view.open) closeSurface('view');
-    else openDetail(trigger);
-  };
+
   return <DataSurfaceRetainedStateProvider resetVersion={dataSurfaceStateEpoch}><AppShellLayout
     ref={shellRef}
     projectId={projectId}
@@ -466,9 +421,6 @@ const WorkspaceBrokerContent = ({
     inspectorWidth={layout.inspectorWidth}
     fullCanvas={layout.fullCanvas}
     topbar={<WorkspaceTopBar
-      language={language}
-      tool="model2d"
-      modeSwitch={onModeChange ? <MesaModeSwitch mode="model" onChange={onModeChange} language={language} /> : undefined}
       projectName={project.name}
       storageState={!storageIssue ? 'ready' : storageIssue === 'recovered' ? 'recovered' : 'issue'}
       storageMessage={storageMessage}
@@ -484,7 +436,7 @@ const WorkspaceBrokerContent = ({
       canUndo={canUndo}
       canRedo={canRedo}
       labels={{
-        solverName: `FS-A01 · ${SOLVER_2D.name}`,
+        solverName: SOLVER_2D.name,
         project: t('topbar.currentProject'),
         home: t('navigation.home'),
         editProject: t('project.name'),
@@ -527,46 +479,25 @@ const WorkspaceBrokerContent = ({
       // con `aria-pressed`. Se usa el mismo comando que el riel de la consola,
       // que además devuelve el foco a quien lo pulsó.
       onOpenResults={(trigger) => emitWorkspaceCommand('toggle-results', { trigger })}
-      onOpenCalculationExperience={(trigger) => openModel2DSurface('analysisSetup', trigger)}
-      contextualControls={<div className="workspace-topbar__tool-group" data-workspace-group="tool">
-        <button type="button"
-          className={'workspace-topbar__action-button workspace-topbar__inspector-button workspace-topbar__inspector-button--desktop' + (inspectorOpen ? ' is-active' : '')}
-          aria-label={t('shell.showInspector')} aria-pressed={inspectorOpen} title={t('shell.showInspector')}
-          onClick={(event) => toggleInspector(event.currentTarget)}><PanelRight size={17} aria-hidden="true" /><span>Panel</span></button>
-      </div>}
-      themeControl={<ThemeToggleButton />}
+      onOpenCalculationExperience={(trigger) => openSurface('analysisSetup', trigger)}
       utilities={<WorkspaceUtilities onOpenInspector={(trigger) => {
         // La utilidad abre una consulta contextual: en móvil empieza compacta
         // y el tirador del Inspector permite crecerla sólo si hace falta.
         setPreference('inspectorDetent', 'compact');
         openDetail(trigger);
-      }} onOpenUnitsEditor={(trigger) => openModel2DSurface('view', trigger)} />}
+      }} onOpenUnitsEditor={(trigger) => openSurface('view', trigger)} />}
     />}
-    journey={<MesaJourney mode="2D" source={language === 'es' ? 'Origen: Modelo 2D' : 'Source: 2D model'}
-      hint={language === 'es'
-        ? !project.members.length ? 'Dibuja o genera un marco.'
-          : !project.nodes.some((node) => node.support.type !== 'none') ? 'Faltan apoyos.'
-          : !project.nodalLoads.length && !project.memberLoads.length ? activeTool === 'distributedLoad' ? 'Elige una barra para cargarla.' : 'Añade cargas.'
-          : analysis?.success ? 'Resultados disponibles.'
-          : 'Listo para analizar.'
-        : !project.members.length ? 'Draw or generate a frame.' : analysis?.success ? 'Results available.' : 'Check supports and loads.'}>
-      {!project.members.length ? <button type="button" onClick={() => emitWorkspaceCommand('open-structure-generator')}>{language === 'es' ? 'Generar un marco' : 'Generate a frame'}</button>
-        : !project.nodes.some((node) => node.support.type !== 'none') ? <button type="button" onClick={() => { setSelection(null); setActiveTool('support'); closeSurface('detail'); }}>{language === 'es' ? 'Añadir apoyos' : 'Add supports'}</button>
-        : !project.nodalLoads.length && !project.memberLoads.length ? <button type="button" onClick={() => { setSelection(null); setActiveTool('distributedLoad'); closeSurface('detail'); }}>{language === 'es' ? 'Añadir cargas' : 'Add loads'}</button>
-        : analysis?.success ? <>
-          <button type="button" onClick={() => emitWorkspaceCommand('open-results', {})}>{language === 'es' ? 'Ver resultados' : 'View results'}</button>
-        </> : <button type="button" disabled={isAnalyzing} onClick={() => { emitWorkspaceCommand('analysis-requested'); analyze(); }}>{language === 'es' ? 'Analizar marco' : 'Analyse frame'}</button>}
-      {project.members.length > 0 ? <button type="button" onClick={(event) => openModel2DSurface('analysisSetup', event.currentTarget)}>{language === 'es' ? 'Casos de carga' : 'Load cases'}</button> : null}
-      {project.members.length > 0 && onModeChange ? <div className="mesa-journey__connections" role="group" aria-label={language === 'es' ? 'Continuar en otra herramienta' : 'Continue in another tool'}>
-        <button type="button" onClick={() => { setToolIntent({ tool: 'design', kind: 'model' }); onModeChange('design'); }}>{language === 'es' ? 'Diseñar este marco' : 'Design this frame'}</button>
-        <button type="button" onClick={() => { setToolIntent({ tool: 'space3d', kind: 'bring-2d' }); onModeChange('3d'); }}>{language === 'es' ? 'Crear 3D desde este marco' : 'Create 3D from this frame'}</button>
-      </div> : null}
-    </MesaJourney>}
     console={<Console
       layoutActions={{
         inspectorCollapsed: !inspectorOpen,
         fullCanvas: layout.fullCanvas,
-        onToggleInspector: toggleInspector,
+        onToggleInspector: (trigger) => {
+          if (layout.fullCanvas) setPreference('fullCanvas', false);
+          if (detail.open) closeDetail();
+          else if (analysisSetup.open) closeSurface('analysisSetup');
+          else if (view.open) closeSurface('view');
+          else openDetail(trigger);
+        },
         onToggleFullCanvas: () => {
           if (!layout.fullCanvas) {
             closeSurface('detail');
@@ -587,14 +518,12 @@ const WorkspaceBrokerContent = ({
         emitWorkspaceCommand('analysis-requested');
         analyze();
       }} /> : null}
-      <Model2DSurfaceContext value={{ layers: editorLayers, dispatchLayers: dispatchEditorLayers, onRequestInspector: () => openDetail() }}>
-        <LazySurface><Model2DTool /></LazySurface>
-      </Model2DSurfaceContext>
-      {broker.isRetained('results') ? <ShellMobileSurface><ResultsPanel
+      <StructuralCanvas layers={editorLayers} dispatchLayers={dispatchEditorLayers} onRequestInspector={() => openDetail()} />
+      {broker.isRetained('results') ? <ResultsPanel
         presentation={results.presentation as 'dock' | 'inset' | 'sheet'}
         status={results.status}
         onOpenChange={setResultsOpen}
-      /></ShellMobileSurface> : null}
+      /> : null}
       <ToastNotification />
       {broker.isRetained('palette') ? <LazySurface><LazyCommandPalette
         open={palette.status === 'active'}
@@ -662,13 +591,13 @@ const WorkspaceBrokerContent = ({
         onRestore={restoreDoctor}
       /></LazySurface> : null}
     </>}
-    inspector={<ShellMobileSurface><div className="workspace-surfaces" data-workspace-right-slot>
+    inspector={<div className="workspace-surfaces" data-workspace-right-slot>
       {broker.isRetained('detail') ? <Inspector surface="detail" className={detail.presentation === 'sheet' && detail.status === 'active' ? 'mobile-open' : ''} desktopWidth={layout.inspectorWidth} presentation={detail.presentation as 'dock' | 'inset' | 'sheet'} status={detail.status} onClose={closeDetail} compact={detail.presentation !== 'sheet' && layout.inspectorCompact} onExpand={() => setPreference('inspectorCompact', false)} onDesktopWidthChange={(width) => setPreference('inspectorWidth', width)} mobileDetent={layout.inspectorDetent} onMobileDetentChange={(detent) => setPreference('inspectorDetent', detent)} onMobileDetentCycle={cycleInspectorDetent} /> : null}
       {broker.isRetained('analysisSetup') ? <Inspector surface="analysisSetup" className={analysisSetup.presentation === 'sheet' && analysisSetup.status === 'active' ? 'mobile-open' : ''} presentation={analysisSetup.presentation as 'dock' | 'inset' | 'sheet'} status={analysisSetup.status} onClose={() => closeSurface('analysisSetup')} mobileDetent={layout.inspectorDetent} onMobileDetentChange={(detent) => setPreference('inspectorDetent', detent)} onMobileDetentCycle={cycleInspectorDetent} activeTool={activeTool} onActiveToolChange={setActiveTool} /> : null}
       {broker.isRetained('view') ? <Inspector surface="view" className={view.presentation === 'sheet' && view.status === 'active' ? 'mobile-open' : ''} presentation={view.presentation as 'dock' | 'inset' | 'sheet'} status={view.status} onClose={() => closeSurface('view')} mobileDetent={layout.inspectorDetent} onMobileDetentChange={(detent) => setPreference('inspectorDetent', detent)} onMobileDetentCycle={cycleInspectorDetent} /> : null}
-    </div></ShellMobileSurface>}
-    floatingActions={<ShellSlotHost slot="mobile" />}
-    instrument={<>{storageIssue ? <p className="shell-storage-notice" role="status">{storageMessage}</p> : null}<Instrument /></>}
+    </div>}
+    floatingActions={undefined}
+    instrument={<Instrument />}
   /></DataSurfaceRetainedStateProvider>;
 };
 
@@ -687,13 +616,13 @@ const WorkspaceSurface = (props: WorkspaceShellProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return <ShellToolSlotsProvider tool="model2d" mobile={shellClass === 'K0'}><SurfacePresentationProvider shellClass={shellClass} initialOpen={initialOpen} backgroundRef={shellRef}>
+  return <SurfacePresentationProvider shellClass={shellClass} initialOpen={initialOpen} backgroundRef={shellRef}>
     <WorkspaceBrokerContent {...props} shellRef={shellRef} layoutController={layoutController} />
-  </SurfacePresentationProvider></ShellToolSlotsProvider>;
+  </SurfacePresentationProvider>;
 };
 
-const WorkspaceShell = (props: WorkspaceShellProps) => <ShellCompositionProvider>
-  <WorkspaceSurface {...props} />
-</ShellCompositionProvider>;
+export const WorkspaceShell = (props: WorkspaceShellProps) => (
+  <ShellCompositionProvider><WorkspaceSurface {...props} /></ShellCompositionProvider>
+);
 
 export default WorkspaceShell;

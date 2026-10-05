@@ -88,12 +88,12 @@ export interface PortalMethodResult {
   reactionGap: { force: number; moment: number };
 }
 
-interface PortalMethodRejection {
+export interface PortalMethodRejection {
   applicable: false;
   reasonKey: string;
 }
 
-type PortalMethodOutcome = PortalMethodResult | PortalMethodRejection;
+export type PortalMethodOutcome = PortalMethodResult | PortalMethodRejection;
 
 const NEAR_ZERO = 1e-9;
 

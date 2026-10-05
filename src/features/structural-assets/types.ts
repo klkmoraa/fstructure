@@ -65,7 +65,9 @@ export interface StructuralAssetVariant {
   readonly material: StructuralAssetMaterial;
 }
 
-interface StructuralAssetRenderOptions {
+export type StructuralAssetPreset = StructuralAssetVariant;
+
+export interface StructuralAssetRenderOptions {
   readonly detail?: StructuralAssetDetail;
   readonly decorative?: boolean;
   readonly title?: string;

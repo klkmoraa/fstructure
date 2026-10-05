@@ -15,7 +15,7 @@ import type { TranslationKey } from '../../i18n/catalogs';
 import type { ReliabilityCheck, ReliabilityCheckId, ReliabilityLevel } from '../../types';
 import { formatScientific } from '../../utils/numberFormat';
 
-type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
+export type Translate = (key: TranslationKey, variables?: Record<string, string | number>) => string;
 
 /**
  * Las cuatro palabras con las que el producto nombra la fiabilidad. Viven aquí
@@ -30,7 +30,7 @@ export const reliabilityLevelLabelKey: Record<ReliabilityLevel, TranslationKey> 
   failed: 'reliability.levelUnavailable',
 };
 
-const reliabilityCheckLabelKey: Record<ReliabilityCheckId, TranslationKey> = {
+export const reliabilityCheckLabelKey: Record<ReliabilityCheckId, TranslationKey> = {
   condition: 'reliability.checkCondition',
   'backward-error': 'reliability.checkBackwardError',
   'forward-error': 'reliability.checkForwardError',

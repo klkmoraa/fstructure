@@ -82,8 +82,8 @@ export const proposeLocalCommand = (request: ProposalRequest): LocalProposal => 
 /** Frontera estricta para cualquier proveedor futuro: no convierte ni ignora datos externos. */
 export { validateLocalProposal } from './proposalValidation';
 
-type ProposalPreparationCode = 'stale-snapshot' | 'unknown-id' | 'bad-units' | 'no-effect' | 'compile-error';
-interface ProposalPreparationFailure {
+export type ProposalPreparationCode = 'stale-snapshot' | 'unknown-id' | 'bad-units' | 'no-effect' | 'compile-error';
+export interface ProposalPreparationFailure {
   ok: false;
   code: ProposalPreparationCode;
   reason: string;
@@ -130,7 +130,7 @@ const commandFor = (project: ProjectModel, operation: ProposedOperation): Projec
 };
 
 export type PreparedLocalProposal = { proposal: Extract<LocalProposal, { status: 'ready' }>; command: ProjectCommand; diff: ProjectDiff };
-type ProposalPreparationOutcome = { ok: true; value: PreparedLocalProposal } | ProposalPreparationFailure;
+export type ProposalPreparationOutcome = { ok: true; value: PreparedLocalProposal } | ProposalPreparationFailure;
 export const prepareLocalProposal = (project: ProjectModel, snapshotHash: string, proposal: Extract<LocalProposal, { status: 'ready' }>): ProposalPreparationOutcome => {
   if (proposal.snapshotHash !== snapshotHash) return preparationFailure('stale-snapshot', 'proposal.error.staleSnapshot');
   const command = commandFor(project, proposal.operation);
@@ -145,8 +145,8 @@ export const prepareLocalProposal = (project: ProjectModel, snapshotHash: string
   }
 };
 
-type ProposalConfirmationCode = 'mismatched-proposal' | 'mismatched-snapshot' | 'project-changed';
-type ProposalConfirmationOutcome =
+export type ProposalConfirmationCode = 'mismatched-proposal' | 'mismatched-snapshot' | 'project-changed';
+export type ProposalConfirmationOutcome =
   | { ok: true; command: ProjectCommand }
   | { ok: false; code: ProposalConfirmationCode; reason: string; key: Phase2TranslationKey };
 

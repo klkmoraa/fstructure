@@ -3,7 +3,7 @@ import type { SupportType } from '../../types';
 
 export type SupportPlacementType = Extract<SupportType, 'none' | 'pin' | 'roller' | 'fixed' | 'custom'>;
 
-interface SupportPlacementPopoverProps {
+export interface SupportPlacementPopoverProps {
   nodeId: string;
   anchor: { x: number; y: number };
   viewport: { width: number; height: number };

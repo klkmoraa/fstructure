@@ -5,7 +5,7 @@ import { analyzeBuckling } from '../engine/buckling';
 import { analyzeModal } from '../engine/modal';
 import { handleAnalysisWorkerRequest } from '../engine/analysisWorkerProtocol';
 import { runParametricStudy } from '../engine/parametricStudy';
-import type { AnalysisResult,   ProjectModel } from '../types';
+import type { AnalysisResult, ProjectModel } from '../types';
 import {
   WORKER_PROTOCOL_VERSION,
   type AnalysisWorkerPayload,
@@ -17,8 +17,6 @@ import {
   type StudiesWorkerResult,
   type ParametricWorkerPayload,
   type ParametricWorkerResult,
-  
-  
   type WorkerDomain,
   type WorkerRequestEnvelope,
   type WorkerResponseEnvelope,
@@ -130,4 +128,3 @@ export const handleParametricEnvelope = (
     return domainError('parametric', request.requestId, error, 'No se pudo completar el estudio paramétrico.');
   }
 };
-

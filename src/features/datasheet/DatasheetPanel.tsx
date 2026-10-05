@@ -100,7 +100,7 @@ const buildSelection = (
   return { kind: 'multi', nodeIds, memberIds };
 };
 
-interface DatasheetPanelProps {
+export interface DatasheetPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   returnFocusTo?: HTMLElement | null;

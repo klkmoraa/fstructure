@@ -1,6 +1,6 @@
 import { formatFixed } from '../../utils/numberFormat';
 
-interface CanvasTouchLoupeProps {
+export interface CanvasTouchLoupeProps {
   /** Punto dentro del lienzo, en píxeles locales del host. */
   screenX: number;
   screenY: number;

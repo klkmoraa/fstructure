@@ -5,7 +5,7 @@ export interface InspectorNumberFormatOptions {
   significantDigits?: number;
 }
 
-type InspectorNumberParseResult =
+export type InspectorNumberParseResult =
   | { ok: true; value: number }
   | { ok: false; reason: 'empty' | 'invalid' | 'non-finite' };
 

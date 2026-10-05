@@ -1,6 +1,6 @@
 import type { AnalysisResult, DiagramQuantity } from '../../types';
 
-type ProvenanceStatus = 'resolved' | 'insufficient-evidence';
+export type ProvenanceStatus = 'resolved' | 'insufficient-evidence';
 export type ResultQuantity = 'R' | 'U' | 'N' | 'V' | 'M';
 
 export interface ResultRef {
@@ -12,7 +12,7 @@ export interface ResultRef {
   position?: { x: number; side?: 'left' | 'right' | 'continuous' };
 }
 
-interface ExplanationAnchor {
+export interface ExplanationAnchor {
   status: ProvenanceStatus;
   ref: ResultRef;
   value: number | null;

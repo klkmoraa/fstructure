@@ -37,8 +37,6 @@ const PDF_GLYPHS = new Map<string, string>([
   ['→', '->'], ['←', '<-'], ['↔', '<->'], ['⇒', '=>'], ['⇐', '<='], ['√', 'sqrt'], ['∫', 'Integral'],
   ['∞', 'inf'], ['∂', 'd'], ['∇', 'grad'], ['∥', '||'], ['⊗', '(x)'], ['⊕', '(+)'],
   ['“', '"'], ['”', '"'], ['‘', "'"], ['’', "'"], ['…', '...'], ['⟨', '<'], ['⟩', '>'],
-  // Primas y signos volados de la notación de concreto (f′c, M⁺, M⁻) y marcas de lista.
-  ['′', "'"], ['″', '"'], ['⁺', '+'], ['⁻', '-'], ['◇', '*'], ['○', 'o'], ['✓', 'ok'], ['✗', 'x'],
 ]);
 
 /** WinAnsi covers Latin-1, so `á é í ó ú ñ ü ¿ ¡ °` survive; anything above it does not. */

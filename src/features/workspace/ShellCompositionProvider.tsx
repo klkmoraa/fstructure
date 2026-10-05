@@ -8,7 +8,7 @@ import { ShellCompositionContext, readShellViewport } from './useShellCompositio
  * genera decenas de `resize` por segundo y ninguno commitea hasta que el tamaño
  * se queda quieto.
  */
-const SHELL_STABLE_COMMIT_MS = 120;
+export const SHELL_STABLE_COMMIT_MS = 120;
 
 /**
  * La máquina de estados que publica la clase de composición, una sola vez para

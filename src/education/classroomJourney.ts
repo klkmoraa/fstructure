@@ -2,8 +2,8 @@ import type { AnalysisResult, ProjectModel, Tool } from '../types';
 import { deriveClassroomProgress } from './classroomProgress';
 
 export type ClassroomJourneyStepId = 'build' | 'define' | 'analyze' | 'compare' | 'conclude';
-type ClassroomJourneyStepState = 'complete' | 'current' | 'pending' | 'attention';
-type ClassroomJourneyAction =
+export type ClassroomJourneyStepState = 'complete' | 'current' | 'pending' | 'attention';
+export type ClassroomJourneyAction =
   | { kind: 'tool'; tool: Tool }
   | { kind: 'analyze' }
   | { kind: 'compare' }
@@ -16,7 +16,7 @@ export interface ClassroomJourneyStep {
   action: ClassroomJourneyAction;
 }
 
-interface ClassroomJourneyInput {
+export interface ClassroomJourneyInput {
   /** Legacy session fields are accepted only so old callers can open safely. */
   hasPredictions?: boolean;
   analysisRequested: boolean;

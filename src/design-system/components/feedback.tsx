@@ -1,9 +1,9 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { CheckCircle2, CircleAlert, Info, TriangleAlert, X } from 'lucide-react';
 
-type FeedbackTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
+export type FeedbackTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
 
-interface SpinnerProps extends HTMLAttributes<HTMLSpanElement> {
+export interface SpinnerProps extends HTMLAttributes<HTMLSpanElement> {
   size?: 'sm' | 'md' | 'lg';
   label?: string;
   decorative?: boolean;
@@ -27,7 +27,19 @@ export const Spinner = ({
   </span>
 );
 
-interface BannerProps extends HTMLAttributes<HTMLElement> {
+export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+  tone?: FeedbackTone;
+  dot?: boolean;
+}
+
+export const Badge = ({ tone = 'neutral', dot = false, className = '', children, ...props }: BadgeProps) => (
+  <span {...props} className={`sc-badge sc-badge--${tone}${className ? ` ${className}` : ''}`}>
+    {dot ? <span className="sc-badge__dot" aria-hidden="true" /> : null}
+    {children}
+  </span>
+);
+
+export interface BannerProps extends HTMLAttributes<HTMLElement> {
   tone?: Exclude<FeedbackTone, 'neutral'>;
   title: string;
   icon?: ReactNode;
@@ -69,7 +81,7 @@ export const Banner = ({
   </section>
 );
 
-interface EmptyStateProps extends HTMLAttributes<HTMLElement> {
+export interface EmptyStateProps extends HTMLAttributes<HTMLElement> {
   title: string;
   description?: ReactNode;
   icon?: ReactNode;
@@ -94,4 +106,20 @@ export const EmptyState = ({
     </div>
     {action ? <div className="sc-empty-state__action">{action}</div> : null}
   </section>
+);
+
+export interface DividerProps extends HTMLAttributes<HTMLDivElement> {
+  orientation?: 'horizontal' | 'vertical';
+  label?: string;
+}
+
+export const Divider = ({ orientation = 'horizontal', label, className = '', ...props }: DividerProps) => (
+  <div
+    {...props}
+    className={`sc-divider sc-divider--${orientation}${label ? ' sc-divider--labeled' : ''}${className ? ` ${className}` : ''}`}
+    role="separator"
+    aria-orientation={orientation}
+  >
+    {label ? <span>{label}</span> : null}
+  </div>
 );

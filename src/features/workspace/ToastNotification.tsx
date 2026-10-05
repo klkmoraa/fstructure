@@ -4,7 +4,7 @@ import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { useI18n } from '../../i18n/useI18n';
 import { onWorkspaceCommand } from './workspaceCommands';
 
-interface ToastItem {
+export interface ToastItem {
   id: string;
   message: string;
   description?: string;

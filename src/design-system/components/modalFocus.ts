@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 
-interface ModalFocusOptions<T extends HTMLElement> {
+export interface ModalFocusOptions<T extends HTMLElement> {
   open: boolean;
   containerRef: RefObject<T | null>;
   onEscape: () => void;

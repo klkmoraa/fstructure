@@ -40,7 +40,7 @@ export interface DatasheetPasteReport {
   droppedReadOnly: number;
 }
 
-interface DatasheetReviewPanelProps {
+export interface DatasheetReviewPanelProps {
   plan: DatasheetEditPlan;
   /** Presente sólo cuando el borrador viene de un pegado. */
   paste: DatasheetPasteReport | null;

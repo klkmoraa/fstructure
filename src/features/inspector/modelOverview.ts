@@ -1,6 +1,6 @@
 import type { ProjectModel } from '../../types';
 
-interface ModelOverviewData {
+export interface ModelOverviewData {
   readonly empty: boolean;
   readonly nodes: number;
   readonly members: number;

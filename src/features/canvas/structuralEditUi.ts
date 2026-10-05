@@ -10,7 +10,7 @@ import {
 } from '../../data/structuralEditing';
 
 export type StructuralEditKind = StructuralEditRequest['kind'];
-type MirrorAxisKind = 'horizontal' | 'vertical' | 'arbitrary';
+export type MirrorAxisKind = 'horizontal' | 'vertical' | 'arbitrary';
 
 export interface StructuralEditFields {
   deltaX: string;
@@ -40,7 +40,7 @@ export interface StructuralEditDraft {
   fields: StructuralEditFields;
 }
 
-interface PointerEditGesture {
+export interface PointerEditGesture {
   start: Point2D;
   current: Point2D;
 }
