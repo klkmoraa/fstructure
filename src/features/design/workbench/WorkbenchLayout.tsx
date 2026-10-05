@@ -51,6 +51,8 @@ export interface WorkbenchChrome {
   /** Las vigas y columnas de concreto del Modelo 2D, para proponer sus secciones y escribirlas en él. */
   readonly modelSections?: ModelSectionsBridge | null;
   readonly space3dSections?: ModelSectionsBridge | null;
+  /** Revisión adicional suministrada por el workspace, independiente del concreto. */
+  readonly modelReview?: ReactNode;
 }
 
 /** Secciones rectangulares, cm. */
@@ -232,7 +234,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
           <X size={16} aria-hidden="true" />
         </button>
       </header>
-      <div className="dw-panel__body">{chrome.memoryBar}{results}</div>
+      <div className="dw-panel__body">{report ? chrome.memoryBar : null}{results}</div>
     </section>
 
     {/* Escritorio: barra flotante. Móvil: el elemento arriba y las vistas como pestañas abajo. */}

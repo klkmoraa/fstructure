@@ -138,11 +138,13 @@ const TORSION_THRESHOLD: ScopeItem = {
   },
 };
 
-export function outOfScopeChecks(element: ElementKind, code: DesignCodeId, options: { readonly flange?: boolean; readonly biaxialColumns?: boolean } = {}): ElementCheck[] {
+export function outOfScopeChecks(element: ElementKind, code: DesignCodeId, options: { readonly flange?: boolean; readonly biaxialColumns?: boolean; readonly inclinedBeams?: boolean } = {}): ElementCheck[] {
   const base = options.biaxialColumns
     ? SCOPE[element].map((item) => item.id === 'out-of-plane' ? OUT_OF_PLANE_BIAXIAL : item.id === 'torsion' ? TORSION_THRESHOLD : item)
     : SCOPE[element];
-  const items = options.flange ? [FLANGE, ...base] : base;
+  const withInclination = options.inclinedBeams ? [{ id: 'inclined-beam-axial', label: 'Interacción axial–flexión en vigas inclinadas',
+    note: same('Se usan la longitud real y las acciones locales del solver para flexión, cortante y flecha. No se revisa la interacción con el axial concurrente de la viga ni el detallado de sus encuentros inclinados.') }, ...base] : base;
+  const items = options.flange ? [FLANGE, ...withInclination] : withInclination;
   return items.map((item) => ({
     id: `scope-${item.id}`,
     label: item.label,

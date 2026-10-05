@@ -681,7 +681,7 @@ export const InspectorProperties = () => {
         <Pencil size={15} aria-hidden="true" />
         <span>{t('contextualActions.structuralEdit')}</span>
       </button>
-      {selectedMember?.type === 'frame' ? <button type="button" className="inspector-selection-edit" title={t('contextualActions.designMemberHint')}
+      {selectedMember && (selectedMember.type === 'frame' || selectedMember.type === 'truss') ? <button type="button" className="inspector-selection-edit" title={t('contextualActions.designMemberHint')}
         onClick={() => emitWorkspaceCommand('open-member-design', { memberId: selectedMember.id })}>
         <DraftingCompass size={15} aria-hidden="true" />
         <span>{t('contextualActions.designMember')}</span>

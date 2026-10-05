@@ -6,6 +6,7 @@ import { designStructure, type StructureDesignOptions } from './structure';
 import type { MemberLoad, MemberModel, NodeModel, ProjectModel } from '../../types';
 import { model2dDesignSource } from './model2dSource';
 import { withConcreteFrame } from '../../data/concreteFrame';
+import { outOfScopeChecks } from './scope';
 
 const code: DesignCodeId = 'nsr-10';
 const frameInput: FrameDesignInput = {
@@ -88,6 +89,27 @@ function modelOfFrame(): ProjectModel {
 }
 
 describe('el Modelo 2D como fuente de Estructura', () => {
+  it.each(['ntc-2023', 'nsr-10', 'e060'] as const)('diseña flexión/cortante de una viga inclinada con longitud real (%s)', (selectedCode) => {
+    const length = Math.hypot(6, 2);
+    const project: ProjectModel = { ...createBlankProject(),
+      nodes: [{ id: 'A', x: 0, y: 0, support: { type: 'pin' } }, { id: 'B', x: 6, y: 2, support: { type: 'roller', angleDeg: 90 } }],
+      members: [{ id: 'V', i: 'A', j: 'B', type: 'frame', E: 25e6, A: .3 * .55, I: .3 * .55 ** 3 / 12 }],
+      loadCases: [{ id: 'D', name: 'Muerta', category: 'permanent', active: true, selfWeightFactor: 0 }],
+      memberLoads: [{ id: 'q', memberId: 'V', caseId: 'D', type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1, qyStart: -20, qyEnd: -20 }],
+    };
+    const source = model2dDesignSource(project).create({ braced: true })!;
+    expect(source.members[0]!.kind).toBe('beam');
+    const profile = designCode(selectedCode), combinations = profile.loadCombinations('B');
+    const result = designStructure(source, { ...options, code: selectedCode, includeSelfWeight: false, combinations, lateralCombinations: [] });
+    if (!result.ok) throw new Error(result.errors.join('\n'));
+    const beam = result.beams[0]!.result;
+    // Equilibrio estático independiente: q normal = q global cos(theta), M = qn L² / 8.
+    const factor = Math.max(...combinations.map((c) => c.dead));
+    expect(beam.extremes.positiveMomentKnm).toBeCloseTo(factor * 20 * (6 / length) * length ** 2 / 8, 6);
+    expect(beam.extremes.shearKn).toBeCloseTo(factor * 20 * (6 / length) * length / 2, 6);
+    expect(beam.spans[0]!.lengthM).toBeCloseTo(length, 8);
+    expect(outOfScopeChecks('frame', selectedCode, { inclinedBeams: true })).toContainEqual(expect.objectContaining({ id: 'scope-inclined-beam-axial', status: 'out-of-scope' }));
+  });
   it('diseña igual el pórtico dibujado en el 2D que el generado por el taller', () => {
     const generated = designFrame(frameInput);
     if (!generated.ok) throw new Error(generated.errors.join('\n'));

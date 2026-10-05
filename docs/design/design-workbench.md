@@ -142,7 +142,7 @@ Las hipótesis de compatibilidad se apoyan en el [manual de referencia LRFD de F
 
 ## Datos y persistencia
 
-Los borradores del taller (norma, elemento y datos de cada formulario) y la memoria del proyecto se guardan en la rama `design` del bundle unificado del proyecto abierto, como documento `fstructure-design-workbench` validado al leerlo (`workbenchStorage.ts`). La versión 2 añade `memory` (hasta 60 elementos); la versión 3 incluye secciones experimentales en esa memoria; la versión 4 añade pórticos: borradores `frame`, `frame-bays` y `frame-stories` y, en la memoria, elementos `frame` con `rows` (claros) y `levels` (niveles). Se leen documentos v1 a v4 y las siguientes escrituras usan v4 conservando sus borradores y elementos. No forman parte del modelo 2D: no cambian la procedencia (`sourceVersion`), no invalidan el análisis y no entran al historial de deshacer, igual que los estudios FEM. Sin sesión de proyecto (pruebas o vista aislada) se guardan en el navegador.
+Los borradores del taller (norma, elemento y datos de cada formulario) y la memoria del proyecto se guardan en la rama `design` del bundle unificado del proyecto abierto, como documento `fstructure-design-workbench` validado al leerlo (`workbenchStorage.ts`). La versión 2 añade `memory` (hasta 60 elementos); la versión 3 incluye secciones experimentales en esa memoria; la versión 4 añade pórticos: borradores `frame`, `frame-bays` y `frame-stories` y, en la memoria, elementos `frame` con `rows` (claros) y `levels` (niveles). La versión 5 añade secciones opcionales por nivel al pórtico. Se leen documentos v1 a v5 y las siguientes escrituras usan v5 conservando sus borradores y elementos. No forman parte del modelo 2D: no cambian la procedencia (`sourceVersion`), no invalidan el análisis y no entran al historial de deshacer, igual que los estudios FEM. Sin sesión de proyecto (pruebas o vista aislada) se guardan en el navegador.
 
 ## Validación
 
@@ -176,3 +176,17 @@ Cada edición aborta y termina el worker anterior. Mientras falta el resultado v
 Las búsquedas de propuestas del pórtico rápido y modelos 2D/3D usan workers independientes. Sólo devuelven progreso y dimensiones serializables. Se cancelan al editar o salir; no escriben el modelo. Los entornos sin Worker mantienen el generador por tareas como compatibilidad.
 
 Verificación: comparación de acciones, desplazamientos, envolventes, flechas y derivas con la fuente original, incluido un Modelo 2D de 4 claros × 4 niveles; paquetes clonables; fallo del solver/worker y aborto antes de entregar resultados.
+
+## Barras inclinadas y primer componente de acero
+
+El Modelo 2D clasifica como vigas de concreto las barras de pórtico hasta 30° respecto a la horizontal; las más empinadas entran como columnas. Las vigas usan la longitud real y las acciones locales del solver para flexión, cortante y flecha. Una viga simplemente apoyada de 6 × 2 m con carga vertical por longitud real se contrasta por equilibrio: q normal = q cos(θ), M = q normal L²/8 y V = q normal L/2 en las tres normas. Su revisión declara pendiente la interacción con el axial concurrente y el detallado de encuentros inclinados; no se generaliza esa clasificación a cualquier diagonal estructural.
+
+«Diseñar» también aparece en barras de armadura. El workspace entrega al taller la revisión inicial de acero del motor existente `ntcSteel2023.ts`: fluencia de la sección total, NTC Acero CDMX 2023 §5.3.1.a, sólo para armadura A992 con perfil I AISC e identidades explícitas de catálogo. La revisión usa una combinación del modelo elegida en la propia ficha, con factores y procedencia visibles; no genera combinaciones ni toma las del taller de concreto. Analiza el modelo completo en el worker existente y luego evalúa la barra seleccionada o todas las de acero. Cambiar modelo/combinación cancela el resultado anterior; consultar la ficha no escribe datos ni repara topología.
+
+La ficha presenta demanda, resistencia, cociente, ecuación, sustitución, fuente y cobertura, conservando siempre el estado **No concluyente**. Fractura neta, conexiones, compresión/pandeo, flexión/cortante e interacciones quedan pendientes. Acero no entra todavía en la memoria/PDF de concreto; un modelo sólo de acero no puede exportar ese informe. «Ver en el Modelo» conserva la selección.
+
+Referencia independiente: tensión pura de 100 kN, horizontal e inclinada, W6x9 con A = 0.0017290288 m² y Fy = 345000 kN/m² → Rt,y = 0.9 Fy A = 536.8634424 kN. `ntcSteel2023.test.ts` cubre ese valor, compresión, falta de identidad/procedencia y área divergente; `ModelSteelReview.test.tsx` cubre la selección, el cambio de combinación, ausencia de escrituras y cancelación. El caso sintético no es una plantilla normativa de combinaciones.
+
+No se incorporaron ecuaciones nuevas de torsión ni combinaciones sísmicas NSR-10/E.060: siguen en TODO hasta registrar el texto oficial aplicable y su evidencia en `normative-sources.json`.
+
+La persistencia actual del taller es **v5**: admite v1–v4, conserva los borradores y añade secciones opcionales por nivel a las historias del pórtico. Las escrituras nuevas usan v5.

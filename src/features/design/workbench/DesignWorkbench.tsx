@@ -42,7 +42,7 @@ const readRoom = (): Room => {
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
 
-export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null }: {
+export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
   nativeTool?: boolean;
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
   modelSource?: ExternalStructureSource | null;
@@ -69,6 +69,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   /** Proponer y escribir las secciones de las vigas y columnas del Modelo 2D. */
   modelSections?: ModelSectionsBridge | null;
   space3dSections?: ModelSectionsBridge | null;
+  modelReview?: ReactNode;
 }) {
   const storage = useWorkbenchStorage();
   const [element, setElementState] = useState<ElementKind>(() => {
@@ -254,7 +255,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     ...(startSource ? { startSource } : {}),
     ...(focusMember ? { focusMember } : {}),
     ...(onShowMembers ? { onShowMembers } : {}),
-    modelSections, space3dSections,
+    modelSections, space3dSections, ...(modelReview ? { modelReview } : {}),
   };
 
   return <div className="design-workbench" data-testid="design-workbench">

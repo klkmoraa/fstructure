@@ -65,7 +65,7 @@ export const esModeling = {
   'contextualActions.title': 'Acciones de la selección',
   'contextualActions.structuralEdit': 'Editar selección',
   'contextualActions.designMember': 'Diseñar',
-  'contextualActions.designMemberHint': 'Abre el modo Diseño en la viga o columna de esta barra',
+  'contextualActions.designMemberHint': 'Abre el modo Diseño y la revisión disponible para esta barra',
   'contextualActions.copyReady': 'Copia estructural lista para pegar.',
   'contextualActions.pasteReady': 'Se pegó la copia estructural.',
   'contextualActions.pasteFallback': 'No se pudo usar el portapapeles del sistema; se usó la copia interna de FusionStructure.',

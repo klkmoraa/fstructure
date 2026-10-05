@@ -21,3 +21,5 @@ El código manda: si `src/` y este documento discrepan, se corrige el documento.
 - [Propuesta 3D en móvil y tema Día](assets/design-grupos-3d-movil.jpg), comprobada a 390 × 844.
 
 - Modelo 2D 4 × 4 con análisis por casos y propuesta en workers: [Día](assets/design-worker-4x4-dia.jpg), [Noche](assets/design-worker-4x4-noche.jpg), [móvil](assets/design-worker-4x4-movil.jpg). Se revisó edición durante el cálculo e invalidación de una propuesta terminada.
+
+- Acero en modo Diseño: [Día](assets/design-acero-dia.jpg), [Noche](assets/design-acero-noche.jpg), [móvil](assets/design-acero-movil.jpg). Caso analítico independiente de 100 kN; componente de fluencia total, combinación del modelo, selección T1 y límites visibles. Se comprobó el desplazamiento móvil hasta las comprobaciones pendientes y el regreso a T1 en el 2D.

@@ -107,7 +107,7 @@ function MemberGrid({ result, selected, onSelect }: { result: StructureDesignRes
 /**
  * Cálculo diferido de la estructura de un modelo del proyecto (2D o un eje del
  * 3D): su análisis con el solver general puede tardar un segundo. Se calcula después de pintar y, mientras
- * tanto, se conserva el último resultado.
+ * tanto, no se publica un resultado de entradas anteriores.
  */
 function useDeferredOutcome(key: string, enabled: boolean, compute: (signal: AbortSignal) => StructureOutcome | Promise<StructureOutcome>) {
   const [state, setState] = useState<{ key: string; outcome: StructureOutcome } | null>(null);
@@ -177,7 +177,7 @@ function ModelSummary({ modelSource, onOpenModel, fcFromModel, space = false }: 
     <dl>
       <div><dt>Vigas</dt><dd>{summary.beams}</dd></div>
       <div><dt>Columnas</dt><dd>{summary.columns}</dd></div>
-      <div><dt>Sin diseñar</dt><dd>{summary.skipped}</dd></div>
+      <div><dt>Fuera del concreto</dt><dd>{summary.skipped}</dd></div>
       <div><dt>Casos</dt><dd>{`${summary.deadCases} CM · ${summary.lateralCases} lateral · CV en ${summary.liveCases} ${summary.liveCases === 1 ? 'parte' : 'partes'}`}</dd></div>
     </dl>
     {summary.ignoredCases.length ? <p>{`No entran: ${summary.ignoredCases.join(', ')}.`}</p> : null}
@@ -359,12 +359,14 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       {...(chrome.onSaveAxes ? { onSaveAll: chrome.onSaveAxes } : {})} />
     : null;
   const supports = result?.columns.length ? 'columns' as const : 'ideal' as const;
-  const verdict = result
+  const modelReview = fromModel && !from3d ? chrome.modelReview : null;
+  const steelOnly = Boolean(modelReview && external?.summary.beams === 0 && external?.summary.columns === 0);
+  const verdict = steelOnly ? { status: 'warning' as const, label: 'Acero · revisión parcial' } : result
     ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) }
     : { status: 'error' as const, label: fromModel && model.pending ? 'Analizando el modelo…' : 'Datos incompletos' };
 
   return <WorkbenchLayout
-    chrome={chrome}
+    chrome={steelOnly ? { ...chrome, codeControl: <span className="dw-badge">Acero · NTC CDMX 2023</span> } : chrome}
     title="Estructura"
     report={report}
     onReset={() => { reset(); setBays(DEFAULT_BAYS); setStories(DEFAULT_STORIES); setPicked(null); }}
@@ -383,10 +385,11 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             <LayoutGrid size={13} aria-hidden="true" />{building ? 'Ocultar todos los ejes' : `Revisar los ${modelAxes.axes.length} ejes`}
           </button> : null}
         </> : null}
-        {fromModel ? <ModelSummary modelSource={external} fcFromModel={fcFromModel} space={from3d} {...(openSource ? { onOpenModel: openSource } : {})} />
+        {steelOnly ? <p className="dw-input-note">El modelo tiene barras de acero. La revisión disponible aparece en el dibujo con su combinación y alcance propios.</p> : fromModel ? <ModelSummary modelSource={external} fcFromModel={fcFromModel} space={from3d} {...(openSource ? { onOpenModel: openSource } : {})} />
           : onCreateModel ? <QuickFrameCard spec={frameOutcome?.ok ? frameModelSpec(chrome.code as DesignCodeId, draft, bays, stories) : null} modelMembers={modelSource?.summary.members ?? 0}
             onCreate={(spec) => { onCreateModel(spec); set('source')('model'); setPicked(null); setLoadNote(null); }} /> : null}
       </FieldGroup>
+      {!steelOnly ? <>
       {fromModel ? null : <>
         <FieldGroup title="Claros entre ejes" columns={1}>
           <RowsTable rows={bays} columns={[{ field: 'length', label: 'L', unit: 'm', min: 0.5 }]} label="Claro" max={MAX_FRAME_BAYS} addLabel="Agregar claro"
@@ -501,8 +504,9 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <LayerToggle label="Vigas con muros frágiles" checked={draft.damages === 'yes'} onCheckedChange={(checked) => set('damages')(checked ? 'yes' : 'no')} />
         </div>
       </MoreOptions>
+      </> : null}
     </>}
-    stage={<>{buildingView}{result ? <>
+    stage={<>{modelReview}{buildingView}{result ? <>
       <Plate title={name} wide note={`${result.loadCases} casos superpuestos · ${result.combinations.length} combinaciones${fromModel && model.pending ? ' · recalculando…' : ''}`}>
         <div className="dw-span-all dw-frame-diagram">
           <SegmentedControl className="dw-frame-diagram__tabs" label="Diagrama de la estructura" size="sm" value={kind} onValueChange={(value) => setKind(value as FrameDiagramKind)} options={FRAME_DIAGRAMS} />
@@ -514,7 +518,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <ul className="dw-legend dw-frame-legend">
           {kind === 'ratio' ? <>
             <li data-kind="low">≤ 60 %</li><li data-kind="mid">60–90 %</li><li data-kind="near">90–100 %</li><li data-kind="fail">&gt; 100 %</li>
-            {result.skipped.length ? <li data-kind="skip">Sin diseñar</li> : null}
+            {result.skipped.length ? <li data-kind="skip">Fuera del diseño de concreto</li> : null}
           </> : kind === 'deformed'
             ? <li data-kind="y">{result.lateral ? 'Deformada con la acción lateral, exagerada' : 'Deformada de servicio (CM + CV), exagerada'}</li>
             : <li data-kind={kind === 'moment' ? 'demand' : 'x'}>{kind === 'moment' ? 'Envolvente del lado de la tensión' : 'Envolvente máxima y mínima'}</li>}
@@ -548,7 +552,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <Plate title="Sección"><ColumnSection result={column.result} /></Plate>
         <Plate title="Armado en elevación"><ColumnElevation result={column.result} /></Plate>
       </> : null}
-    </> : fromModel && model.pending
+    </> : steelOnly ? null : fromModel && model.pending
       ? <div className="dw-model-wait" role="status"><span className="dw-model-wait__dot" aria-hidden="true" />{from3d ? 'Analizando el Modelo 3D completo con el solver espacial…' : 'Analizando el Modelo 2D con el solver de la app…'}</div>
       : <div className="dw-model-errors">
         <ErrorsPanel errors={outcome && !outcome.ok ? outcome.errors : []} />
@@ -638,6 +642,6 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         </table>)}
         <ChecksList checks={report.notes} />
       </Disclosure>
-    </> : null}
+    </> : steelOnly ? <p className="dw-input-note">La revisión de acero está en Dibujo. No se ha concluido el diseño de las barras.</p> : null}
   />;
 }
