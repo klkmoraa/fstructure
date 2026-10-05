@@ -82,7 +82,7 @@ test('rejects a tool importing another isolated tool, but allows shared pieces a
   const violations = findToolIsolationViolations(root);
   assert.equal(violations.length, 2);
   assert.ok(violations.some((item) => item.includes('fem imports space3d')));
-  assert.ok(violations.some((item) => item.includes('space3d imports model2d')));
+  assert.ok(violations.some((item) => item.includes('space3d imports design')));
   assert.ok(findSingleAppArchitectureViolations(root).some((item) => item.includes('fem imports space3d')));
 });
 
@@ -90,11 +90,6 @@ test('only the workspace frontier uses declared integrations, and integrations n
   const root = project({
     'src/integrations/model2dDesign.ts': "import '../design/elements/structure';\nimport '../engine/solver';\n",
     'src/integrations/leaky.ts': "import '../features/design/workbench/FrameWorkbench';\n",
-    'src/integrations/space3dDesign.ts': "import '../modules/space3d/space3d/engine/solver';\nimport '../modules/space3d/space3d/model/types';\n",
-    'src/integrations/viewer.ts': "import '../modules/space3d/space3d/view/Space3DCanvas';\n",
-    'src/modules/space3d/space3d/engine/solver.ts': 'export const c = 3;\n',
-    'src/modules/space3d/space3d/model/types.ts': 'export const d = 4;\n',
-    'src/modules/space3d/space3d/view/Space3DCanvas.tsx': 'export const e = 5;\n',
     'src/features/workspace/adapters/DesignSurface.tsx': "import '../../../integrations/model2dDesign';\n",
     'src/features/design/workbench/FrameWorkbench.tsx': "import '../../../integrations/model2dDesign';\n",
     'src/features/results/ResultsPanel.tsx': "import '../../integrations/model2dDesign';\n",
@@ -103,11 +98,8 @@ test('only the workspace frontier uses declared integrations, and integrations n
     'vite.config.ts': 'export default {};\n',
   });
   const violations = findToolIsolationViolations(root);
-  // El motor y el modelo del 3D son bibliotecas que un puente puede usar; su visor no.
-  assert.equal(violations.length, 4);
+  assert.equal(violations.length, 3);
   assert.ok(violations.some((item) => item.includes('leaky.ts') && item.includes('integration imports a tool interface')));
-  assert.ok(violations.some((item) => item.includes('viewer.ts') && item.includes('integration imports a tool interface')));
-  assert.ok(!violations.some((item) => item.includes('space3dDesign.ts')));
   assert.ok(violations.some((item) => item.startsWith('src/features/design/') && item.includes('only src/features/workspace may use integrations')));
   assert.ok(violations.some((item) => item.startsWith('src/features/results/') && item.includes('only src/features/workspace may use integrations')));
 });

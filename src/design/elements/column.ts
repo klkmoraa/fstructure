@@ -84,20 +84,6 @@ export interface ColumnDesignInput {
   readonly group: ColumnGroup;
   /** Sólo NTC: columna de planta baja o del primer nivel sujeto a sismo (Lo ≥ H/2). */
   readonly groundFloor: boolean;
-  /**
-   * Restricción propia de la flexión alrededor de Y (la otra dirección de un
-   * marco espacial): k, índice de estabilidad, curvatura y altura libre de esa
-   * dirección. Sin ella, Y usa los mismos valores que X.
-   */
-  readonly alongY?: ColumnAxisRestraint;
-}
-
-export interface ColumnAxisRestraint {
-  readonly effectiveLengthFactor: number;
-  readonly stabilityIndex: number;
-  readonly curvature: 'single' | 'double';
-  readonly endMomentRatio: number;
-  readonly unbracedLengthM?: number;
 }
 
 export interface ColumnBar { readonly x: number; readonly y: number }
@@ -427,13 +413,6 @@ function validate(input: ColumnDesignInput): string[] {
     ['effectiveLengthFactor', 'Factor k'], ['maxAggregateMm', 'Agregado máximo'],
   ];
   for (const [key, label] of positive) if (!isPositiveFinite(input[key] as number)) errors.push(`${label} debe ser mayor que cero.`);
-  if (input.alongY) {
-    const y = input.alongY;
-    if (!isPositiveFinite(y.effectiveLengthFactor) || (!input.braced && y.effectiveLengthFactor < 1)) errors.push('El factor k en Y debe ser positivo (y al menos 1.0 en marcos con desplazamiento).');
-    if (!Number.isFinite(y.stabilityIndex) || y.stabilityIndex < 0) errors.push('El índice de estabilidad en Y debe ser cero o positivo.');
-    if (!Number.isFinite(y.endMomentRatio) || y.endMomentRatio < 0 || y.endMomentRatio > 1) errors.push('|M1/M2| en Y debe estar entre 0 y 1.');
-    if (y.unbracedLengthM !== undefined && !isPositiveFinite(y.unbracedLengthM)) errors.push('La altura libre en Y debe ser mayor que cero.');
-  }
   if (input.tieSpacingMm !== undefined && !isPositiveFinite(input.tieSpacingMm)) errors.push('Separación propia de estribos o paso del zuncho debe ser mayor que cero.');
   if (input.endTieSpacingMm !== undefined && !isPositiveFinite(input.endTieSpacingMm)) errors.push('Separación propia en extremos debe ser mayor que cero.');
   if (input.endTieSpacingMm !== undefined && (isSpiral(input) || designCode(input.code).column.ties !== 'ntc')) errors.push('La separación propia en extremos sólo aplica a columnas con estribos y zonas Lo de la NTC.');
@@ -630,22 +609,6 @@ export interface ColumnDesignOptions {
   readonly demandSource?: string;
 }
 
-/**
- * Diagramas de interacción ya calculados. Una estructura revisa cada columna
- * en decenas de estados con la misma sección y el mismo armado: el diagrama
- * sólo depende de ellos, no de la demanda. Los diagramas no se modifican.
- */
-const CURVE_CACHE = new Map<string, InteractionCurve>();
-const CURVE_CACHE_LIMIT = 256;
-const cachedCurve = (key: string, compute: () => InteractionCurve): InteractionCurve => {
-  const hit = CURVE_CACHE.get(key);
-  if (hit) return hit;
-  const value = compute();
-  if (CURVE_CACHE.size >= CURVE_CACHE_LIMIT) CURVE_CACHE.delete(CURVE_CACHE.keys().next().value!);
-  CURVE_CACHE.set(key, value);
-  return value;
-};
-
 export function designColumn(input: ColumnDesignInput, options: ColumnDesignOptions = {}): ColumnDesignResult | ColumnDesignError {
   const demandSource = options.demandSource ?? CAPTURED_DEMAND;
   const rawErrors = validate(input);
@@ -672,13 +635,10 @@ export function designColumn(input: ColumnDesignInput, options: ColumnDesignOpti
   // φPn,máx = coeficiente · φ · P0 (NTC: PR0 = 0.65P0; NSR C.10.3.6.2: 0.75φP0; E.060 10.3.6.2: 0.80φP0).
   const maximumDesignAxialN = code.maximumAxialCoefficient * code.compressionFactor * squashN;
   // Circular: dos orientaciones del arreglo (una barra en la fibra extrema o entre dos); rige la menor resistencia.
-  const curve = (block: 'rect' | 'circle', depth: number, width: number, positions: readonly number[]) => cachedCurve(
-    [input.code, spiral ? 'spiral' : 'ties', block, depth, width, gross, positions.join(','), area, fc, fy, maximumDesignAxialN].join('|'),
-    () => interactionCurve(code, depth, block === 'circle' ? circularBlock(width) : rectangularBlock(width), gross, positions, area, fc, fy, maximumDesignAxialN));
   const circularCurves = circular ? [bars, circularBars(input, Math.PI / bars.length)].map((arrangement) =>
-    curve('circle', b, b, arrangement.map((bar) => bar.y))) : [];
-  const aboutX = circular ? circularCurves[0]! : curve('rect', h, b, bars.map((bar) => bar.y));
-  const aboutY = circular ? circularCurves[1]! : curve('rect', b, h, bars.map((bar) => bar.x));
+    interactionCurve(code, b, circularBlock(b), gross, arrangement.map((bar) => bar.y), area, fc, fy, maximumDesignAxialN)) : [];
+  const aboutX = circular ? circularCurves[0]! : interactionCurve(code, h, rectangularBlock(b), gross, bars.map((bar) => bar.y), area, fc, fy, maximumDesignAxialN);
+  const aboutY = circular ? circularCurves[1]! : interactionCurve(code, b, rectangularBlock(h), gross, bars.map((bar) => bar.x), area, fc, fy, maximumDesignAxialN);
   const cap = maximumDesignAxialN / 1e3;
   // Término de carga axial pura en Bresler: φP0 sin el coeficiente de φPn,máx.
   const pr0 = code.compressionFactor * squashN / 1e3;
@@ -692,15 +652,7 @@ export function designColumn(input: ColumnDesignInput, options: ColumnDesignOpti
     ? { depthMm: b, radiusMm: b / 4, inertiaMm4: Math.PI * b ** 4 / 64, areaMm2: gross }
     : { depthMm: h, radiusMm: rules.radiusOfGyration(h), inertiaMm4: b * h ** 3 / 12, areaMm2: gross };
   const sectionY: AxisSection = circular ? sectionX : { depthMm: b, radiusMm: rules.radiusOfGyration(b), inertiaMm4: h * b ** 3 / 12, areaMm2: gross };
-  const inputY: ColumnDesignInput = input.alongY ? {
-    ...input,
-    effectiveLengthFactor: input.alongY.effectiveLengthFactor,
-    stabilityIndex: input.alongY.stabilityIndex,
-    curvature: input.alongY.curvature,
-    endMomentRatio: input.alongY.endMomentRatio,
-    unbracedLengthM: input.alongY.unbracedLengthM ?? input.unbracedLengthM,
-  } : input;
-  const magnification = { x: magnify(code, input, sectionX, appliedX, swayX), y: magnify(code, inputY, sectionY, appliedY, swayY) };
+  const magnification = { x: magnify(code, input, sectionX, appliedX, swayX), y: magnify(code, input, sectionY, appliedY, swayY) };
 
   const uniaxial = (curve: InteractionCurve, moment: number) => {
     if (moment < TOLERANCE) {
@@ -847,8 +799,7 @@ export function designColumn(input: ColumnDesignInput, options: ColumnDesignOpti
 
   const limitFail = rules.slendernessLimit?.kind === 'fail' && effective > rules.slendernessLimit.value;
   const secondOrderNeeded = rules.slendernessLimit?.kind === 'second-order' && effective > rules.slendernessLimit.value;
-  const stabilityIndex = Math.max(input.stabilityIndex, input.alongY?.stabilityIndex ?? 0);
-  const swayFail = !input.braced && (swayFactor > 1.5 || stabilityIndex > rules.maximumStabilityIndex);
+  const swayFail = !input.braced && (swayFactor > 1.5 || input.stabilityIndex > rules.maximumStabilityIndex);
   const ratioFail = secondOrderRatio > rules.secondOrderRatioLimit + 1e-9;
   const anySlender = magnification.x.slender || magnification.y.slender;
   const radiusNote = circular ? 'r = D/4 de la sección bruta' : rules.radiusNote;
@@ -857,8 +808,8 @@ export function designColumn(input: ColumnDesignInput, options: ColumnDesignOpti
     : limitFail
       ? `kH/r = ${effective.toFixed(0)} > ${rules.slendernessLimit!.value}: la norma no admite esta esbeltez.`
       : swayFail
-        ? stabilityIndex > rules.maximumStabilityIndex
-          ? `Q = ${stabilityIndex.toFixed(2)} > ${rules.maximumStabilityIndex}: el entrepiso es inestable según la norma.`
+        ? input.stabilityIndex > rules.maximumStabilityIndex
+          ? `Q = ${input.stabilityIndex.toFixed(2)} > ${rules.maximumStabilityIndex}: el entrepiso es inestable según la norma.`
           : `δs = ${Number.isFinite(swayFactor) ? swayFactor.toFixed(2) : '∞'} > 1.5: se requiere ΣPu/ΣPc o un análisis de segundo orden (no implementados).`
         : ratioFail
           ? `Momento con efectos de segundo orden ${secondOrderRatio.toFixed(2)} veces el de primer orden (> ${rules.secondOrderRatioLimit}).`

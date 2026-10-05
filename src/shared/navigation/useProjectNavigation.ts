@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { readProjectUrl, sameRoute, writeProjectUrl, type ProjectUrlState } from './projectUrl';
+import { readProjectUrl, writeProjectUrl, type ProjectUrlState } from './projectUrl';
 
 /** History is the durable route; popstate and project opens update the same state. */
 export function useProjectNavigation(activeProjectId: string) {
@@ -7,7 +7,7 @@ export function useProjectNavigation(activeProjectId: string) {
   const previousProjectId = useRef(activeProjectId);
   const navigate = useCallback((next: ProjectUrlState, mode: 'push' | 'replace' = 'push') => {
     writeProjectUrl(window, next, mode);
-    setRoute((current) => sameRoute(current, next) ? current : next);
+    setRoute((current) => current.surface === next.surface && current.projectId === next.projectId && current.tool === next.tool ? current : next);
   }, []);
 
   useEffect(() => {

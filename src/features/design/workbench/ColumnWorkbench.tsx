@@ -15,7 +15,7 @@ import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './Wo
 
 export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('column', COLUMN_DEFAULTS);
-  const history = useDraftHistory(draft, replace, 'column');
+  const history = useDraftHistory(draft, replace);
   const { onHistory } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
   const code = designCode(chrome.code);

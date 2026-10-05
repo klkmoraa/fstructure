@@ -3,14 +3,14 @@ import { useCallback, useMemo, useState } from 'react';
 import { Button } from '../../../design-system/components/controls';
 import { Dialog } from '../../../design-system/components/overlays';
 import { designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
-import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
+import type { ExternalStructureSource } from '../../../design/elements/structure';
 import { BEAM_DEFAULTS, beamReportFromDraft, parseSpans, DEFAULT_SPANS } from './beamModel';
 import { COLUMN_DEFAULTS, columnReportFromDraft } from './columnModel';
 import { SECTION_DEFAULTS, sectionReportFromDraft } from './concreteStudioModel';
 import { verdictHeadline } from './common';
 import { reportHeading, stableJson, type DesignElementKind, type DesignReport } from './designReport';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
-import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, externalFor, frameReportFromDraft, parseBays, parseStories } from './frameModel';
+import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, frameReportFromDraft, parseBays, parseStories } from './frameModel';
 import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
 
 /**
@@ -33,16 +33,13 @@ const merge = <T extends Record<string, string>>(defaults: T, fields: Record<str
 
 type MemoryReport = { readonly ok: true; readonly report: DesignReport } | { readonly ok: false; readonly errors: readonly string[] };
 
-/** Recalcula un elemento guardado; una estructura del Modelo 2D o de un eje del 3D usa el modelo vigente del proyecto. */
-export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: ExternalStructureSource | null = null, modelAxes: ExternalStructureAxes | null = null): MemoryReport {
+/** Recalcula un elemento guardado; una estructura del Modelo 2D usa el modelo vigente del proyecto. */
+export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: ExternalStructureSource | null = null): MemoryReport {
   const code: DesignCodeId = isDesignCodeId(item.code) ? item.code : 'ntc-2023';
   switch (item.element) {
     case 'beam': return beamReportFromDraft(code, merge(BEAM_DEFAULTS, item.fields), parseSpans(item.rows) ?? DEFAULT_SPANS);
     case 'column': return columnReportFromDraft(code, merge(COLUMN_DEFAULTS, item.fields));
-    case 'frame': {
-      const draft = merge({ ...FRAME_DEFAULTS, ...FRAME_LEGACY }, item.fields);
-      return frameReportFromDraft(code, draft, parseBays(item.rows) ?? DEFAULT_BAYS, parseStories(item.levels) ?? DEFAULT_STORIES, externalFor(draft, modelSource, modelAxes));
-    }
+    case 'frame': return frameReportFromDraft(code, merge(FRAME_DEFAULTS, item.fields), parseBays(item.rows) ?? DEFAULT_BAYS, parseStories(item.levels) ?? DEFAULT_STORIES, modelSource);
     case 'footing': return footingReportFromDraft(code, merge(FOOTING_DEFAULTS, item.fields));
     case 'section': return sectionReportFromDraft(code, merge(SECTION_DEFAULTS, item.fields));
   }
@@ -85,11 +82,6 @@ interface DesignMemory {
   remove(id: string): void;
   /** Carga un elemento guardado en la mesa (borrador, norma y elemento). */
   open(id: string): WorkbenchMemoryItem | undefined;
-  /**
-   * Guarda la Estructura de cada eje del Modelo 3D con el borrador vigente (un
-   * elemento por eje, con su clave «Eje 1»). Un eje que ya estaba se actualiza.
-   */
-  saveAxes(axes: readonly { readonly id: string; readonly tag: string }[]): 'saved' | 'full';
 }
 
 export function useDesignMemory(storage: WorkbenchStorage, element: DesignElementKind, code: DesignCodeId, revision: unknown): DesignMemory {
@@ -133,34 +125,6 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       commit(next, item.id);
       return 'saved';
     },
-    saveAxes(axes) {
-      const draft = currentDraft(storage, 'frame');
-      const savedAt = new Date().toISOString();
-      const next = [...items];
-      // El eje abierto se guarda tal cual (con su clave) y queda como el activo de la memoria.
-      // Sin eje elegido, la mesa abre el primero (`axisOf`); aquí vale lo mismo.
-      // Un eje que ya no existe sigue siendo otro elemento: no se pisa.
-      const axisIdOf = (fields: Readonly<Record<string, string>>) => fields.axis ? fields.axis : axes[0]?.id;
-      const open = draft.fields.source === 'model3d' ? axisIdOf(draft.fields) : undefined;
-      let nextActive = activeId;
-      for (const axis of axes) {
-        const position = next.findIndex((item) => item.element === 'frame' && item.fields.source === 'model3d' && axisIdOf(item.fields) === axis.id);
-        const item: WorkbenchMemoryItem = {
-          id: position >= 0 ? next[position]!.id : newId(),
-          element: 'frame',
-          code,
-          savedAt,
-          fields: axis.id === open ? draft.fields : { ...draft.fields, source: 'model3d', axis: axis.id, tag: axis.tag },
-          ...(draft.rows ? { rows: draft.rows } : {}),
-          ...(draft.levels ? { levels: draft.levels } : {}),
-        };
-        if (position >= 0) next[position] = item; else next.push(item);
-        if (axis.id === open) nextActive = item.id;
-      }
-      if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
-      commit(next, nextActive);
-      return 'saved';
-    },
     remove(id) {
       commit(items.filter((item) => item.id !== id), id === activeId ? '' : activeId);
     },
@@ -201,12 +165,10 @@ export function MemoryStatus({ memory, element, onSave, onOpen }: { memory: Desi
   </div>;
 }
 
-export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onExport, exporting, message, modelSource = null, modelAxes = null }: {
+export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onExport, exporting, message, modelSource = null }: {
   open: boolean;
   /** Modelo 2D vigente: las estructuras guardadas desde el modelo se recalculan con él. */
   modelSource?: ExternalStructureSource | null;
-  /** Ejes del Modelo 3D vigente, igual. */
-  modelAxes?: ExternalStructureAxes | null;
   onOpenChange: (open: boolean) => void;
   memory: DesignMemory;
   element: DesignElementKind;
@@ -218,7 +180,7 @@ export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onEx
 }) {
   const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const rows = useMemo(() => open ? memory.items.map((item) => ({ item, outcome: reportFromMemoryItem(item, modelSource, modelAxes) })) : [], [open, memory.items, modelSource, modelAxes]);
+  const rows = useMemo(() => open ? memory.items.map((item) => ({ item, outcome: reportFromMemoryItem(item, modelSource) })) : [], [open, memory.items, modelSource]);
   const reports = rows.flatMap((row) => row.outcome.ok ? [row.outcome.report] : []);
   const invalid = rows.length - reports.length;
   const dirty = Boolean(memory.active && !memory.saved);

@@ -1,12 +1,9 @@
 import { ClipboardCheck, Maximize2, Minus, PenLine, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
-import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
+import type { ExternalStructureSource } from '../../../design/elements/structure';
 import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
-import type { ProposalStep } from './frameProposal';
-import type { FrameDraft, StructureOutcome } from './frameModel';
-import type { ConcreteSectionGroup, ConcreteFrameSpec } from '../../../data/concreteFrame';
 
 export type WorkbenchPanel = 'inputs' | 'results';
 
@@ -32,47 +29,10 @@ export interface WorkbenchChrome {
   readonly onVerdict?: (verdict: Verdict) => void;
   /** Modelo 2D del proyecto, traducido por la frontera de la app. */
   readonly modelSource?: ExternalStructureSource | null;
-  /** Vuelve al modo Modelo de la mesa (sólo dentro de la app). */
+  /** Abre el Modelo 2D (sólo dentro de la app). */
   readonly onOpenModel?: () => void;
-  /** Escribe el pórtico rápido en el Modelo 2D como un cambio deshacible (sólo dentro de la app). */
-  readonly onCreateModel?: (spec: ConcreteFrameSpec) => void;
-  /** Ejes diseñables del Modelo 3D del proyecto, por la misma frontera. */
-  readonly modelAxes?: ExternalStructureAxes | null;
-  /** Guarda en la memoria la Estructura de varios ejes del Modelo 3D. */
-  readonly onSaveAxes?: (axes: readonly { readonly id: string; readonly tag: string }[]) => 'saved' | 'full';
-  /** Abre el modo 3D de la mesa (sólo dentro de la app). */
-  readonly onOpenSpace3D?: (axisId?: string) => void;
-  /** Fuente pedida al abrir el taller. */
-  readonly startSource?: 'frame' | 'model' | 'model3d';
-  /** Barra del modelo cuyo diseño se abre al llegar (la elegida en el 2D o el 3D). */
-  readonly focusMember?: string;
-  /** Selecciona esas barras en su modo y lo abre; con `axisId`, en el 3D. */
-  readonly onShowMembers?: (memberIds: readonly string[], axisId?: string) => void;
-  /** Las vigas y columnas de concreto del Modelo 2D, para proponer sus secciones y escribirlas en él. */
-  readonly modelSections?: ModelSectionsBridge | null;
-  readonly space3dSections?: ModelSectionsBridge | null;
-  /** Revisión adicional suministrada por el workspace, independiente del concreto. */
-  readonly modelReview?: ReactNode;
-}
-
-/** Secciones rectangulares, cm. */
-export interface ModelSection { readonly width: number; readonly height: number }
-
-export interface ModelSectionsBridge {
-  readonly groups?: readonly ConcreteSectionGroup[];
-  propose?(code: DesignCodeId, draft: FrameDraft, onStep: (step: ProposalStep) => void): (() => void) | null;
-  /** Revisión del candidato completo (varios ejes, si procede). */
-  evaluate?(code: DesignCodeId, draft: FrameDraft, beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): StructureOutcome;
-  readonly beams: number;
-  readonly columns: number;
-  readonly beamLengthM: number;
-  readonly columnLengthM: number;
-  /** Volumen de concreto de esas barras con sus secciones actuales, m³. */
-  readonly volumeM3: number;
-  /** La fuente del modelo con esas secciones en todas sus vigas y columnas (sin cambiarlo). */
-  variant(beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): ExternalStructureSource;
-  /** Las escribe en el modelo, como un cambio deshacible en el modo 2D. */
-  apply(beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): void;
+  /** Fuente pedida al abrir el taller («Diseñar el modelo»). */
+  readonly startSource?: 'frame' | 'model';
 }
 
 export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };
@@ -234,7 +194,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
           <X size={16} aria-hidden="true" />
         </button>
       </header>
-      <div className="dw-panel__body">{report ? chrome.memoryBar : null}{results}</div>
+      <div className="dw-panel__body">{chrome.memoryBar}{results}</div>
     </section>
 
     {/* Escritorio: barra flotante. Móvil: el elemento arriba y las vistas como pestañas abajo. */}

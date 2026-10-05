@@ -81,9 +81,8 @@ export interface Space3DControlsLike {
   mouseButtons?: { LEFT?: number | null; MIDDLE?: number | null; RIGHT?: number | null };
   touches?: { ONE?: number | null; TWO?: number | null };
   update(): void;
-  /** `start`: la persona empieza a orbitar, desplazar o acercar. */
-  addEventListener(type: 'change' | 'start', listener: () => void): void;
-  removeEventListener(type: 'change' | 'start', listener: () => void): void;
+  addEventListener(type: 'change', listener: () => void): void;
+  removeEventListener(type: 'change', listener: () => void): void;
   dispose(): void;
 }
 
@@ -109,15 +108,6 @@ export interface Space3DWindowPick {
   readonly members: readonly string[];
 }
 
-/** Cámara de una vista: para devolverla tal cual al volver al modo. */
-export interface Space3DCameraState {
-  readonly preset: Space3DViewPreset;
-  readonly position: readonly [number, number, number];
-  readonly target: readonly [number, number, number];
-  readonly up: readonly [number, number, number];
-  readonly zoom: number;
-}
-
 export interface Space3DViewport {
   readonly scene: Scene;
   readonly camera: PerspectiveCamera | OrthographicCamera;
@@ -125,10 +115,6 @@ export interface Space3DViewport {
   setModel(model: Space3DSceneModel): void;
   setLayers(layers: Space3DLayerVisibility): void;
   setView(preset: Space3DViewPreset): void;
-  /** La cámara actual (posición, objetivo, zoom) de la vista activa. */
-  getCameraState?(): Space3DCameraState;
-  /** Vuelve a una cámara guardada: la vista de su preset, en la posición que tenía. */
-  setCameraState?(state: Space3DCameraState): void;
   zoomBy(factor: number): void;
   resize(): void;
   render(): void;
@@ -1243,13 +1229,8 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
 
   const ORTHOGRAPHIC_VIEWS: ReadonlySet<Space3DViewPreset> = new Set(['front', 'top', 'side']);
 
-  // La persona movió la cámara: un redimensionado ya no la reencuadra, sólo
-  // ajusta la proyección (abrir un panel no tira la vista que dejó).
-  let userMoved = false;
-
   const setView = (preset: Space3DViewPreset) => {
     activeView = preset;
-    userMoved = false;
     const placement = computeSpace3DCameraPlacement(model.bounds, preset);
     const plane = ORTHOGRAPHIC_VIEWS.has(preset);
     camera = plane ? orthographic : perspective;
@@ -1304,45 +1285,10 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
       buildGrid();
       buildModel();
     }
-    if (!userMoved) { setView(activeView); return; }
-    const aspect = width / height;
-    if (camera instanceof PerspectiveCamera) camera.aspect = aspect;
-    else {
-      const halfHeight = (camera.top - camera.bottom) / 2;
-      camera.left = -halfHeight * aspect;
-      camera.right = halfHeight * aspect;
-    }
-    camera.updateProjectionMatrix();
-    controls.update();
-    render();
-  };
-
-  const getCameraState = (): Space3DCameraState => ({
-    preset: activeView,
-    position: [camera.position.x, camera.position.y, camera.position.z],
-    target: [controls.target.x, controls.target.y, controls.target.z],
-    up: [camera.up.x, camera.up.y, camera.up.z],
-    zoom: camera.zoom,
-  });
-
-  const setCameraState = (state: Space3DCameraState) => {
-    const finite = [...state.position, ...state.target, ...state.up, state.zoom].every(Number.isFinite);
-    setView(state.preset);
-    if (!finite || !(state.zoom > 0)) return;
-    camera.position.set(...state.position);
-    camera.up.set(...state.up);
-    controls.target.set(...state.target);
-    camera.zoom = state.zoom;
-    camera.updateProjectionMatrix();
-    controls.update();
-    camera.lookAt(controls.target);
-    camera.updateMatrixWorld(true);
-    userMoved = true;
-    render();
+    setView(activeView);
   };
 
   const zoomBy = (factor: number) => {
-    userMoved = true;
     if (camera instanceof OrthographicCamera) {
       camera.zoom = MathUtils.clamp(camera.zoom / factor, 0.02, 200);
       camera.updateProjectionMatrix();
@@ -1565,9 +1511,7 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
   };
 
   const onControlsChange = () => requestRender();
-  const onControlsStart = () => { userMoved = true; };
   controls.addEventListener('change', onControlsChange);
-  controls.addEventListener('start', onControlsStart);
 
   buildWorldAxes();
   buildGrid();
@@ -1610,8 +1554,6 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
       requestRender();
     },
     setView(preset) { if (!disposed) setView(preset); },
-    getCameraState,
-    setCameraState(state) { if (!disposed) setCameraState(state); },
     zoomBy(factor) { if (!disposed) zoomBy(factor); },
     resize() { if (!disposed) resize(); },
     render() { render(); },
@@ -1630,7 +1572,6 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
       frame = 0;
       animationFrame = 0;
       controls.removeEventListener('change', onControlsChange);
-      controls.removeEventListener('start', onControlsStart);
       themeObserver?.disconnect();
       controls.dispose();
       disposeObject(scene);

@@ -15,7 +15,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { applySpace3DCommand, Space3DCommandError, type Space3DCommand } from '../data/commands';
-import { parseSpace3DDraft, parseSpace3DProject, serializeSpace3DProject, Space3DCodecError } from '../data/codec';
+import { parseSpace3DProject, serializeSpace3DProject, Space3DCodecError } from '../data/codec';
 import { loadSpace3DProject, saveSpace3DProject, type Space3DStorageLike } from '../data/storage';
 import { createBlankSpace3DProject, createSpace3DPortalExample } from '../model/defaultProject';
 import { Space3DAnalysisCancelledError, Space3DWorkerClient, createSpace3DWorkerClient } from '../runtime/workerClient';
@@ -74,7 +74,7 @@ interface Space3DProjectContextValue {
 
 const Space3DProjectContext = createContext<Space3DProjectContextValue | null>(null);
 
-export interface Space3DHistory {
+interface History {
   readonly past: readonly Space3DProjectV1[];
   readonly present: Space3DProjectV1;
   readonly future: readonly Space3DProjectV1[];
@@ -98,7 +98,7 @@ const targetExists = (project: Space3DProjectV1, targetId: string): boolean =>
   project.loadCases.some((item) => item.id === targetId)
   || project.loadCombinations.some((item) => item.id === targetId);
 
-const push = (history: Space3DHistory, next: Space3DProjectV1): Space3DHistory => ({
+const push = (history: History, next: Space3DProjectV1): History => ({
   past: [...history.past, history.present].slice(-HISTORY_LIMIT),
   present: next,
   future: [],
@@ -111,16 +111,13 @@ interface Space3DProjectProviderProps {
   readonly initialProject?: Space3DProjectV1;
   /** Aísla el almacenamiento de un Space 3D derivado del de uno independiente. */
   readonly namespace?: string;
-  readonly retainedHistory?: Space3DHistory | null;
-  readonly onHistoryChange?: (history: Space3DHistory) => void;
 }
 
-export const Space3DProjectProvider = ({ children, storage, client, initialProject, namespace, retainedHistory, onHistoryChange }: Space3DProjectProviderProps) => {
+export const Space3DProjectProvider = ({ children, storage, client, initialProject, namespace }: Space3DProjectProviderProps) => {
   const storageRef = useRef<Space3DStorageLike | null | undefined>(storage);
   storageRef.current = storage;
 
-  const [history, setHistory] = useState<Space3DHistory>(() => retainedHistory && initialProject
-    && JSON.stringify(parseSpace3DDraft(JSON.stringify(retainedHistory.present))) === JSON.stringify(parseSpace3DDraft(JSON.stringify(initialProject))) ? retainedHistory : ({
+  const [history, setHistory] = useState<History>(() => ({
     past: [],
     present: initialProject ?? loadSpace3DProject(storage, namespace) ?? createSpace3DPortalExample(),
     future: [],
@@ -166,7 +163,6 @@ export const Space3DProjectProvider = ({ children, storage, client, initialProje
     };
   }, []);
 
-  useEffect(() => { onHistoryChange?.(history); }, [history, onHistoryChange]);
   const project = history.present;
   // El historial guarda proyectos, no el objetivo. Deshacer una sustitución vuelve
   // a un proyecto donde el caso guardado puede no existir —"ROOF" sobre un pórtico

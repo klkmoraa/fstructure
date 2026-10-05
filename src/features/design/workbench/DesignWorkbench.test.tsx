@@ -14,15 +14,14 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-// El taller abre en Estructura; estas pruebas parten de la viga continua.
-const renderWorkbench = () => render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider>);
+const renderWorkbench = () => render(<ProjectProvider><DesignWorkbench nativeTool={false} /></ProjectProvider>);
 const results = () => screen.getByRole('region', { name: 'Resultados' });
 
 describe('DesignWorkbench', () => {
   it('responde a un fallo al copiar sin perder el formulario', async () => {
     const user = userEvent.setup();
     vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
-    render(<ProjectProvider><ShellToolSlotsProvider mobile={false}><ShellSlotHost slot="action" /><DesignWorkbench startElement="beam" /></ShellToolSlotsProvider></ProjectProvider>);
+    render(<ProjectProvider><ShellToolSlotsProvider mobile={false}><ShellSlotHost slot="action" /><DesignWorkbench /></ShellToolSlotsProvider></ProjectProvider>);
     await user.click(await screen.findByRole('button', { name: 'Copiar memoria de cálculo' }));
     expect(await screen.findByRole('alert')).toHaveProperty('textContent', expect.stringMatching(/No se pudo copiar/));
     expect((screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement).value).toBe('5');
@@ -84,20 +83,21 @@ describe('DesignWorkbench', () => {
     const user = userEvent.setup();
     renderWorkbench();
     await user.click(screen.getByRole('radio', { name: 'Viga' }));
-    await user.keyboard('{ArrowLeft}');
-    expect(screen.getByRole('radio', { name: 'Estructura' }).getAttribute('aria-checked')).toBe('true');
-    await user.keyboard('{ArrowRight}{ArrowRight}');
+    await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('radio', { name: 'Columna' }).getAttribute('aria-checked')).toBe('true');
     expect(screen.getByRole('img', { name: /Diagrama de interacción/ })).toBeTruthy();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('radio', { name: 'Estructura' }).getAttribute('aria-checked')).toBe('true');
     await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('img', { name: /Planta de zapata/ })).toBeTruthy();
     expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.element')!)).toBe('footing');
   });
 
-  it('ofrece los cinco elementos, Estructura primero', () => {
+  it('está aislado del Modelo 2D: sólo sus elementos propios', () => {
     renderWorkbench();
     const dock = screen.getByRole('radiogroup', { name: 'Elemento a diseñar' });
-    expect(within(dock).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Estructura', 'Viga', 'Columna', 'Zapata', 'Secciones']);
+    expect(within(dock).getAllByRole('radio')).toHaveLength(5);
+    expect(screen.queryByRole('radio', { name: 'Del modelo 2D' })).toBeNull();
   });
 
   it('filtra la revisión y enseña lo que queda sin evaluar con su ubicación', async () => {

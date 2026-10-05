@@ -50,10 +50,6 @@ interface WorkspaceTopBarProps {
    * Inicio desde la marca.
    */
   tool?: ToolId;
-  /** Modelo | Diseño de FStructure: primera pieza de las acciones. */
-  modeSwitch?: ReactNode;
-  /** Guía del modo 3D o Diseño en lugar de la del modelo 2D. */
-  helpTopic?: 'design' | 'space3d';
   language?: 'es' | 'en';
   contextualControls?: ReactNode;
   primaryAction?: ReactNode;
@@ -101,7 +97,7 @@ interface WorkspaceTopBarProps {
  * funcione con teclado, touch y lector de pantalla.
  */
 export const WorkspaceTopBar = ({
-  tool = 'model2d', modeSwitch, helpTopic, language = 'es', contextualControls, primaryAction, toolStatus,
+  tool = 'model2d', language = 'es', contextualControls, primaryAction, toolStatus,
   projectName,
   storageState,
   storageMessage,
@@ -247,7 +243,6 @@ export const WorkspaceTopBar = ({
     </div>
 
     <nav className="workspace-topbar__actions" aria-label={labels.actions}>
-      {modeSwitch}
       {contextActive ? <div className="workspace-topbar__model-group" data-workspace-group="model">
         <div className="workspace-topbar__history-group">
           <button type="button" className="workspace-topbar__icon-button" onClick={onUndo} disabled={!canUndo} aria-label={labels.undo} title={labels.undo}>
@@ -278,7 +273,7 @@ export const WorkspaceTopBar = ({
       </div> : null}
       {utilities}
       {contextualControls}
-      <WorkspaceHelp tool={tool} language={language} {...(helpTopic ? { topic: helpTopic } : {})} />
+      <WorkspaceHelp tool={tool} language={language} />
       {themeControl}
       {primaryAction}
       {contextActive ? <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">

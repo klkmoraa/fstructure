@@ -7,11 +7,10 @@ import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
 import { formatFixed } from '../../utils/numberFormat';
 import './ntcSteelDesignCard.css';
-import type { AnalysisResult, ProjectModel } from '../../types';
 
 const copy = {
   es: {
-    title: 'Fluencia de la sección total',
+    title: 'Diseño normativo separado',
     eyebrow: 'Acero · NTC CDMX 2023',
     inconclusive: 'No concluyente',
     unavailable: 'Diseño no disponible',
@@ -19,9 +18,9 @@ const copy = {
     unavailableCombination: 'Selecciona y analiza una combinación última NTC CDMX 2023 con procedencia completa.',
     unavailableReliability: 'El análisis debe tener calidad numérica confiable antes de alimentar el módulo de diseño.',
     unavailableIdentity: 'Asigna identidades de catálogo compatibles; no se reconoce material o sección por sus números.',
-    unavailableFamily: 'El alcance inicial sólo evalúa barras de armadura con A992 y perfiles I AISC.',
+    unavailableFamily: 'El primer slice sólo evalúa barras truss con A992 y perfiles I AISC.',
     unavailableDrift: 'Las propiedades numéricas ya no coinciden con la sección identificada; revisa el miembro.',
-    unavailableDemand: 'El alcance inicial exige tensión axial pura y positiva.',
+    unavailableDemand: 'El primer slice exige una demanda de tensión axial pura y positiva.',
     within: 'Dentro de este componente',
     outside: 'Fuera de este componente',
     ratio: 'Ratio del componente',
@@ -31,15 +30,14 @@ const copy = {
     coverage: 'Cobertura inicial',
     coverageValue: (evaluated: number, total: number) => `${evaluated}/${total} evaluables`,
     trace: 'Ecuación y sustitución',
-    missing: 'Comprobaciones pendientes',
+    missing: 'Checks ausentes',
     fracture: 'Fractura de la sección neta no evaluada.',
     connection: 'Conexión, agujeros y excentricidad no evaluados.',
-    other: 'Compresión, pandeo, flexión, cortante e interacciones no evaluados.',
     conclusion: 'El estado del componente no concluye el diseño del miembro ni del proyecto.',
     source: 'Fuente oficial · página PDF 325 · página impresa 84',
   },
   en: {
-    title: 'Gross-section yielding',
+    title: 'Separate code design',
     eyebrow: 'Steel · NTC CDMX 2023',
     inconclusive: 'Inconclusive',
     unavailable: 'Design unavailable',
@@ -47,9 +45,9 @@ const copy = {
     unavailableCombination: 'Select and analyze a fully traceable NTC CDMX 2023 ultimate combination.',
     unavailableReliability: 'The analysis must have reliable numerical quality before it can feed code design.',
     unavailableIdentity: 'Assign compatible catalog identities; material and section are never recognized from numbers.',
-    unavailableFamily: 'The initial scope only evaluates truss members with A992 and AISC I shapes.',
+    unavailableFamily: 'The first slice only evaluates truss members with A992 and AISC I shapes.',
     unavailableDrift: 'Numeric properties no longer match the identified section; review the member.',
-    unavailableDemand: 'The initial scope requires pure, positive axial tension.',
+    unavailableDemand: 'The first slice requires a pure, positive axial-tension demand.',
     within: 'Within this component',
     outside: 'Outside this component',
     ratio: 'Component ratio',
@@ -62,7 +60,6 @@ const copy = {
     missing: 'Missing checks',
     fracture: 'Net-section fracture was not evaluated.',
     connection: 'Connection, holes, and eccentricity were not evaluated.',
-    other: 'Compression, buckling, bending, shear, and interactions were not evaluated.',
     conclusion: 'The component state does not conclude the design of the member or project.',
     source: 'Official source · PDF page 325 · printed page 84',
   },
@@ -79,16 +76,15 @@ const blockerCopy = (blocker: NtcSteelDesignBlocker | undefined, language: 'es' 
   return text.unavailableGeneric;
 };
 
-export const NtcSteelDesignReview = ({ project, analysis, combinationId }: {
-  project: ProjectModel; analysis: AnalysisResult | null; combinationId: string;
-}) => {
+export const NtcSteelDesignCard = () => {
+  const { project, analysis, selectedCombinationId } = useProject();
   const { language } = useI18n();
   const text = copy[language];
   const summary = useMemo(() => summarizeNtcSteelTensionDesign({
     project,
     analysis,
-    combinationId,
-  }), [analysis, project, combinationId]);
+    combinationId: selectedCombinationId,
+  }), [analysis, project, selectedCombinationId]);
 
   if (summary.status === 'unavailable') {
     return <section
@@ -154,13 +150,8 @@ export const NtcSteelDesignReview = ({ project, analysis, combinationId }: {
 
     <div className="ntc-design-card__missing" role="note">
       <TriangleAlert size={16} aria-hidden="true" />
-      <div><strong>{text.missing}</strong><ul><li>{text.fracture}</li><li>{text.connection}</li><li>{text.other}</li></ul></div>
+      <div><strong>{text.missing}</strong><ul><li>{text.fracture}</li><li>{text.connection}</li></ul></div>
     </div>
     <small className="ntc-design-card__limit">{text.conclusion}</small>
   </section>;
-};
-
-export const NtcSteelDesignCard = () => {
-  const { project, analysis, selectedCombinationId } = useProject();
-  return <NtcSteelDesignReview project={project} analysis={analysis} combinationId={selectedCombinationId} />;
 };

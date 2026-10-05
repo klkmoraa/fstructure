@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight, ArrowUpRight, Box, DraftingCompass, FilePlus2, PenLine, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import type { ProjectModel, ThemeMode } from '../../types';
@@ -35,10 +35,6 @@ interface Solver2DHomeProps {
   onOpenClassroom: () => void;
   onOpenImport: () => void;
   onOpenProjects: () => void;
-  /** Abre la mesa en modo Diseño (el mismo proyecto). */
-  onOpenDesign?: () => void;
-  /** Abre la mesa en modo 3D (el mismo proyecto). */
-  onOpenSpace3D?: () => void;
   /** Lista de proyectos guardados. La inyecta la pantalla, no la resuelve aquí. */
   recents: ReactNode;
   /** Se dispara al acercarse a la acción principal para precargar el editor. */
@@ -47,8 +43,8 @@ interface Solver2DHomeProps {
 
 const copy = {
   es: {
-    role: '2D · 3D · Diseño',
-    lead: 'Modela en 2D y 3D, analiza, diseña y comprende estructuras.',
+    role: 'Solver 2D',
+    lead: 'Modela, analiza y comprende estructuras.',
     leadStrong: 'Del trazo al diagrama.',
     open: 'Proyecto abierto',
     continue: 'Continuar',
@@ -57,8 +53,8 @@ const copy = {
     nodes: 'nudos',
     members: 'barras',
     loads: 'cargas',
-    startTitle: 'Recursos para empezar',
-    startBody: 'Plantillas, archivos y recursos de aprendizaje.',
+    startTitle: 'Por dónde empezar',
+    startBody: 'Cuatro entradas al mismo editor.',
     pathBlank: 'Modelo en blanco',
     pathBlankBody: 'Empieza con la rejilla vacía y coloca el primer nudo.',
     pathTemplate: 'Plantilla',
@@ -67,10 +63,6 @@ const copy = {
     pathClassroomBody: 'Un caso guiado que no te quita el control del modelo.',
     pathImport: 'Importar',
     pathImportBody: 'Trae un expediente, un JSON o un DXF y revísalo antes.',
-    pathSpace3D: 'Modelo 3D',
-    pathSpace3DBody: 'Edificios y marcos espaciales en la misma mesa; trae tu pórtico 2D o genera uno.',
-    pathDesign: 'Diseño de concreto',
-    pathDesignBody: 'Diseña el modelo 2D o 3D, o una viga, columna o zapata con NTC, NSR-10 o E.060.',
     recentTitle: 'Proyectos recientes',
     recentBody: 'Guardados en este dispositivo.',
     viewAll: 'Ver todos',
@@ -81,23 +73,23 @@ const copy = {
     capModel: 'Modelado y edición',
     capModelBody: 'Nudos, barras, apoyos, cargas, casos y combinaciones, con selección, snapping y deshacer.',
     capAnalysis: 'Análisis lineal y P-Delta',
-    capAnalysisBody: 'Reacciones, N-V-M, deformada y envolventes; cada resultado abre su método, sus unidades y sus límites.',
-    capSpace3D: 'Modelo 3D',
-    capSpace3DBody: 'Marcos espaciales con seis grados de libertad por nudo, diafragmas, modal, espectro y derivas.',
+    capAnalysisBody: 'Reacciones, N-V-M, deformada y envolventes con unidades y supuestos a la vista.',
     capStudies: 'Estudios avanzados',
     capStudiesBody: 'Pandeo, modos y líneas de influencia. Se calculan y se explican; no sustituyen una revisión independiente.',
-    capDocs: 'Memorias e intercambio',
-    capDocsBody: 'Memoria PDF, expediente portable, SVG, PNG, CSV, lista de materiales, DXF y versiones locales.',
-    capDesign: 'Diseño de concreto',
-    capDesignBody: 'Modo Diseño: vigas y columnas del modelo 2D o de un eje del 3D, elementos sueltos y zapatas con tres normas, armado, memoria y PDF.',
+    capDocs: 'Memorias y exportación',
+    capDocsBody: 'Memoria PDF, expediente portable, SVG, PNG, CSV y lista de materiales.',
+    capInterop: 'Interoperabilidad',
+    capInteropBody: 'Importación de un subconjunto DXF, enlaces compartibles y versiones locales.',
+    capLearning: 'Trazabilidad educativa',
+    capLearningBody: 'Cada resultado puede abrir su método, sus unidades y sus límites.',
     note: 'FStructure es experimental. Un resultado numérico puede ser incorrecto por un modelo, una unidad, una hipótesis o una propiedad mal elegida: no sustituye el criterio de una persona responsable ni una revisión independiente.',
     dismissQuote: 'Cerrar reflexión',
     creatorLabel: 'Creador:',
     about: 'Acerca de FStructure',
   },
   en: {
-    role: '2D · 3D · Design',
-    lead: 'Model in 2D and 3D, analyse, design, and understand structures.',
+    role: '2D Solver',
+    lead: 'Model, analyse, and understand structures.',
     leadStrong: 'From line to diagram.',
     open: 'Open project',
     continue: 'Continue',
@@ -106,8 +98,8 @@ const copy = {
     nodes: 'nodes',
     members: 'members',
     loads: 'loads',
-    startTitle: 'Starting resources',
-    startBody: 'Templates, files and learning resources.',
+    startTitle: 'Where to start',
+    startBody: 'Four ways into the same editor.',
     pathBlank: 'Blank model',
     pathBlankBody: 'Start with an empty grid and place the first node.',
     pathTemplate: 'Template',
@@ -116,10 +108,6 @@ const copy = {
     pathClassroomBody: 'A guided case that keeps you in control of the model.',
     pathImport: 'Import',
     pathImportBody: 'Bring in a record, a JSON, or a DXF and review it first.',
-    pathSpace3D: '3D model',
-    pathSpace3DBody: 'Buildings and space frames on the same workbench; bring your 2D frame or generate one.',
-    pathDesign: 'Concrete design',
-    pathDesignBody: 'Design the 2D or 3D model, or a beam, column, or footing with NTC, NSR-10, or E.060.',
     recentTitle: 'Recent projects',
     recentBody: 'Saved on this device.',
     viewAll: 'View all',
@@ -130,15 +118,15 @@ const copy = {
     capModel: 'Modelling and editing',
     capModelBody: 'Nodes, members, supports, loads, cases, and combinations, with selection, snapping, and undo.',
     capAnalysis: 'Linear and P-Delta analysis',
-    capAnalysisBody: 'Reactions, N-V-M, deflected shape, and envelopes; every result opens its method, units, and limits.',
-    capSpace3D: '3D model',
-    capSpace3DBody: 'Space frames with six degrees of freedom per node, diaphragms, modal, spectrum, and drifts.',
+    capAnalysisBody: 'Reactions, N-V-M, deflected shape, and envelopes with units and assumptions in plain sight.',
     capStudies: 'Advanced studies',
     capStudiesBody: 'Buckling, modes, and influence lines. They are computed and explained; they do not replace an independent review.',
-    capDocs: 'Reports and exchange',
-    capDocsBody: 'PDF report, portable record, SVG, PNG, CSV, bill of materials, DXF, and local versions.',
-    capDesign: 'Concrete design',
-    capDesignBody: 'Design mode: beams and columns of the 2D model or a 3D frame line, single elements and footings with three codes, reinforcement, report, and PDF.',
+    capDocs: 'Reports and export',
+    capDocsBody: 'PDF report, portable record, SVG, PNG, CSV, and bill of materials.',
+    capInterop: 'Interoperability',
+    capInteropBody: 'Import of a DXF subset, shareable links, and local versions.',
+    capLearning: 'Educational traceability',
+    capLearningBody: 'Every result can open its method, its units, and its limits.',
     note: 'FStructure is experimental. A numeric result can be wrong because of a model, a unit, an assumption, or a badly chosen property: it does not replace the judgement of a responsible person or an independent review.',
     dismissQuote: 'Dismiss quote',
     creatorLabel: 'Creator:',
@@ -156,8 +144,6 @@ export const Solver2DHome = ({
   onOpenClassroom,
   onOpenImport,
   onOpenProjects,
-  onOpenDesign,
-  onOpenSpace3D,
   recents,
   onPreloadWorkspace,
 }: Solver2DHomeProps) => {
@@ -194,15 +180,15 @@ export const Solver2DHome = ({
     { id: 'template', icon: LayoutTemplate, tone: 'var(--sc-color-family-analisis)', label: text.pathTemplate, body: text.pathTemplateBody, action: onOpenTemplates },
     { id: 'classroom', icon: GraduationCap, tone: 'var(--sc-color-family-aprendizaje)', label: text.pathClassroom, body: text.pathClassroomBody, action: onOpenClassroom },
     { id: 'import', icon: Upload, tone: 'var(--sc-color-family-interop)', label: text.pathImport, body: text.pathImportBody, action: onOpenImport },
-  ];
+  ] as const;
 
   const capabilities = [
     { id: 'model', state: 'available', label: text.capModel, body: text.capModelBody },
     { id: 'analysis', state: 'available', label: text.capAnalysis, body: text.capAnalysisBody },
     { id: 'studies', state: 'experimental', label: text.capStudies, body: text.capStudiesBody },
-    { id: 'space3d', state: 'experimental', label: text.capSpace3D, body: text.capSpace3DBody },
-    { id: 'design', state: 'experimental', label: text.capDesign, body: text.capDesignBody },
     { id: 'docs', state: 'available', label: text.capDocs, body: text.capDocsBody },
+    { id: 'interop', state: 'experimental', label: text.capInterop, body: text.capInteropBody },
+    { id: 'learning', state: 'available', label: text.capLearning, body: text.capLearningBody },
   ] as const;
 
   const quoteToast = typeof document !== 'undefined' ? createPortal(
@@ -260,18 +246,6 @@ export const Solver2DHome = ({
 
   return <div className={`solver2d-home${reducedMotion ? ' is-static' : ''}`}>
     {quoteToast}
-
-    <section className="solver2d-section solver2d-intents" aria-label={language === 'es' ? 'Elige cómo trabajar' : 'Choose your workflow'}>
-      <header className="solver2d-section__head"><div><h2>{language === 'es' ? '¿Qué quieres hacer?' : 'What would you like to do?'}</h2><p>{language === 'es' ? 'Cada modo funciona por separado. Cambia de modo cuando lo necesites; tu proyecto se conserva.' : 'Each mode works independently. Switch whenever you need; your project is kept.'}</p></div></header>
-      <div className="solver2d-paths">
-        {[
-          { label: language === 'es' ? 'Modelar 2D' : 'Model in 2D', body: language === 'es' ? 'Dibujar → apoyos y cargas → analizar → resultados.' : 'Draw → supports and loads → analyse → results.', Icon: PenLine, action: onContinue },
-          ...(onOpenSpace3D ? [{ label: language === 'es' ? 'Modelar 3D' : 'Model in 3D', body: language === 'es' ? 'Crear un marco o edificio → analizar → resultados.' : 'Create a frame or building → analyse → results.', Icon: Box, action: onOpenSpace3D }] : []),
-          ...(onOpenDesign ? [{ label: language === 'es' ? 'Diseñar un elemento' : 'Design an element', body: language === 'es' ? 'Viga, columna, zapata o pórtico rápido, sin modelo.' : 'Beam, column, footing or quick frame, without a model.', Icon: DraftingCompass, action: onOpenDesign }] : []),
-          { label: language === 'es' ? 'Modelar y diseñar' : 'Model and design', body: language === 'es' ? 'Elegir 2D o 3D → analizar → Diseño → Proponer → aplicar y volver al modelo.' : 'Choose 2D or 3D → analyse → Design → Propose → apply and return.', Icon: ArrowRight, action: onContinue },
-        ].map(({ label, body, Icon, action }) => <button key={label} type="button" className="solver2d-path" onClick={action}><span className="solver2d-path__icon"><Icon size={18} /></span><strong>{label}</strong><span className="solver2d-path__body">{body}</span><ArrowUpRight className="solver2d-path__go" size={15} /></button>)}
-      </div>
-    </section>
 
     <section className="solver2d-hero" aria-labelledby="solver2d-hero-name">
       <div className="solver2d-hero__copy">

@@ -26,7 +26,7 @@ interface FootingProps { readonly chrome: WorkbenchChrome; readonly draft: Footi
 
 export function FootingWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('footing', FOOTING_DEFAULTS);
-  const history = useDraftHistory(draft, replace, 'footing');
+  const history = useDraftHistory(draft, replace);
   const { onHistory } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
   const type = footingType(draft);

@@ -15,15 +15,15 @@ const bundle = (overrides: Partial<UnifiedProjectBundleV1>): UnifiedProjectBundl
 
 describe('recentProjectPresentation', () => {
   it('muestra la filosofía experimental de una sección v3 guardada', () => {
-    const value = recentProjectPresentation('model2d', bundle({ design: {
+    const value = recentProjectPresentation('design', bundle({ design: {
       kind: 'fstructure-design-workbench', schemaVersion: 3,
       entries: { element: 'section', code: 'ntc-2023', section: { philosophy: 'allowable' } },
     } }), 'es');
-    expect(value).toEqual({ meta: '', preview: 'model2d', design: 'Sección · Esfuerzos admisibles' });
+    expect(value).toEqual({ meta: 'Sección · Esfuerzos admisibles', preview: 'tool' });
   });
 
-  it('suma el modelo 3D del proyecto a la tarjeta de FStructure', () => {
-    const value = recentProjectPresentation('model2d', bundle({
+  it('usa entidades 3D aunque el modelo 2D esté vacío', () => {
+    const value = recentProjectPresentation('space3d', bundle({
       space3d: { sourceProjectId: base.id, sourceVersion: 's3d', model: {
         schemaVersion: 4,
         id: 'space',
@@ -33,8 +33,8 @@ describe('recentProjectPresentation', () => {
         members: [{ id: 'm1' }, { id: 'm2' }],
       } },
     }), 'es');
-    expect(value.space3d).toBe('2 barras · 3 nodos');
-    expect(value.preview).toBe('model2d');
+    expect(value.meta).toBe('2 barras · 3 nodos');
+    expect(value.preview).toBe('tool');
   });
 
   it('resume la malla FEM guardada, no el modelo 2D', () => {
@@ -56,15 +56,15 @@ describe('recentProjectPresentation', () => {
     expect(value.preview).toBe('tool');
   });
 
-  it('lee elemento y norma del modo Diseño desde el documento real del taller', () => {
-    const value = recentProjectPresentation('model2d', bundle({
+  it('lee elemento y norma desde el documento real del taller de Diseño', () => {
+    const value = recentProjectPresentation('design', bundle({
       design: {
         kind: 'fstructure-design-workbench',
         schemaVersion: 2,
         entries: { element: 'column', code: 'ntc-2023' },
       },
     }), 'es');
-    expect(value.design).toBe('Columna · NTC-CDMX 2023');
-    expect(value.preview).toBe('model2d');
+    expect(value.meta).toBe('Columna · NTC-CDMX 2023');
+    expect(value.preview).toBe('tool');
   });
 });

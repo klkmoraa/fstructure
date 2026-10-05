@@ -4,23 +4,21 @@ Aplicación web de cálculo estructural de FusionStructure. Publicada en
 https://klkmoraa.github.io/fstructure/. Local-first y **experimental**: no es
 software certificado ni sustituye la revisión de una persona responsable.
 
-## Mesas
+## Herramientas
 
-El Inicio presenta dos mesas aisladas. Cada una abre su propia bienvenida y
-después su mesa de trabajo.
+El Inicio presenta cuatro herramientas aisladas. Cada una abre su propia
+bienvenida y después su mesa de trabajo; ninguna comparte datos ni interfaz con
+otra.
 
-| Código | Mesa | Qué hace | Código fuente |
+| Código | Herramienta | Qué hace | Código fuente |
 | --- | --- | --- | --- |
-| FS-A01 | FStructure | Una sola mesa con tres modos. **2D**: marcos, vigas y armaduras; lineal, P-Delta, pandeo, modos, influencia. **3D**: pórticos y armaduras espaciales al modo de ETABS/SAP2000 (rejilla de ejes y pisos, plantas y alzados, diafragmas rígidos, diagramas P·V2·V3·T·M2·M3; lineal, P-Delta, modal, espectro CQC y pandeo en un worker); «Traer del 2D» extruye el pórtico plano en pórticos paralelos. **Diseño**: vigas, columnas, zapatas y la estructura completa en concreto con NTC-CDMX 2023, NSR-10 y E.060, desde el Modelo 2D o desde un eje del Modelo 3D | `src/features`, `src/engine`, `src/design`, `src/features/design`; modo 3D en `src/modules/space3d` (licencia MIT propia) |
+| FS-A01 | FStructure | Modelo 2D: marcos, vigas y armaduras; lineal, P-Delta, pandeo, modos, influencia | `src/features`, `src/engine` |
+| FS-A02 | Solver 3D | Pórticos y armaduras espaciales al modo de ETABS/SAP2000: rejilla de ejes y pisos, plantas y alzados, asignar a una selección, cargas en barra y peso propio, liberaciones, diafragmas rígidos, diagramas P·V2·V3·T·M2·M3; lineal, P-Delta, modal (Lanczos con verificación de Sturm), espectro de respuesta CQC con derivas y cortantes por piso, y pandeo, todo en perfil y en un worker | `src/modules/space3d` (licencia MIT propia) |
 | FS-A03 | Elementos finitos | Elasticidad lineal 2D con TRI3/QUAD4, Gmsh 4.1, JSON/VTK | `src/modules/fem` |
+| FS-A04 | Diseño | Vigas, columnas y zapatas de concreto con NTC-CDMX 2023, NSR-10 y E.060 | `src/design`, `src/features/design` |
 
-El interruptor 2D | 3D | Diseño de la barra cambia sólo las herramientas del
-modo: proyecto, guardado y barra son los mismos. Los datos pasan entre modos
-sólo por los puentes declarados de `src/integrations`.
-
-Rutas: `?surface=welcome` (Inicio), `?surface=home&tool=<id>` (bienvenida),
-`?project=<id>&tool=<id>` (mesa) y `&mode=3d` o `&mode=design` (modo de
-FStructure).
+Rutas: `?surface=welcome` (Inicio), `?surface=home&tool=<id>` (bienvenida) y
+`?project=<id>&tool=<id>` (mesa).
 
 ## Desarrollo
 

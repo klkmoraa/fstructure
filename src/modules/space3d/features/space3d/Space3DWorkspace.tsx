@@ -19,13 +19,13 @@ import {
   ChevronDown, CircleStop, Grid3x3, Layers, Minus, Play, Plus, Redo2, Tag, Trash2, Undo2, Weight, X,
 } from 'lucide-react';
 import { NodeGlyph, SupportGlyph } from '../../../../design-system/icons/structural';
-import { Space3DProjectProvider, useSpace3DProject, type Space3DSelection, type Space3DHistory } from '../../space3d/store/Space3DProjectContext';
+import { Space3DProjectProvider, useSpace3DProject, type Space3DSelection } from '../../space3d/store/Space3DProjectContext';
 // Space 3D contributes content to the canonical shell; it does not carry a
 // second component library or token set.
 import { Dialog, Popover } from '../../../../design-system/components/overlays';
 import { Space3DCanvas, type Space3DCanvasDraft, type Space3DCanvasPick, type Space3DPickModifiers, type Space3DViewportFactory } from '../../space3d/view/Space3DCanvas';
 import { buildSpace3DSceneModel, space3DResultNoiseFloor, SPACE3D_SCOPE_3D, type Space3DResultMode } from '../../space3d/view/sceneModel';
-import { SPACE3D_DEFAULT_LAYERS, type Space3DCameraState, type Space3DLayerVisibility, type Space3DWindowPick } from '../../space3d/view/threeViewport';
+import { SPACE3D_DEFAULT_LAYERS, type Space3DLayerVisibility, type Space3DWindowPick } from '../../space3d/view/threeViewport';
 import type { Space3DViewPreset } from '../../space3d/view/cameraModel';
 import { resolveSpace3DGrid, space3DGridPointsAt, SPACE3D_GRID_TOLERANCE } from '../../space3d/model/grid';
 import { Space3DEntityEditor, type Space3DEditorTarget } from './Space3DEntityEditor';
@@ -81,21 +81,7 @@ const Space3DDynamicsDialog = lazy(() => import('./Space3DDynamicsDialog').then(
 type PendingReplace =
   | { readonly kind: 'example' }
   | { readonly kind: 'blank' }
-  | { readonly kind: 'generated'; readonly project: Space3DProjectV1; readonly title?: string; readonly description?: string };
-
-/** Modelo que llega desde fuera de la mesa (otro modo de la app) para reemplazar el actual. */
-export type { Space3DCameraState };
-
-export interface Space3DIncomingProject {
-  readonly project: Space3DProjectV1;
-  /** Cambia en cada entrega: la misma entrega no se aplica dos veces. */
-  readonly nonce: number;
-  /** Secciones aprobadas en Diseño: reemplazo directo, un paso de historial. */
-  readonly operation?: 'sections';
-  /** Texto de la confirmación, ya traducido por quien lo entrega. */
-  readonly title: string;
-  readonly description: string;
-}
+  | { readonly kind: 'generated'; readonly project: Space3DProjectV1 };
 
 type InspectorPanel = 'model' | 'analysis';
 
@@ -122,9 +108,6 @@ function EmbeddedInspector({ embedded, expanded, children }: { embedded: boolean
 
 interface Space3DWorkspaceProps {
   readonly canonicalProject?: Space3DProjectV1;
-  readonly retainedHistory?: Space3DHistory | null;
-  readonly onHistoryChange?: (history: Space3DHistory) => void;
-  readonly onOpenDesign?: () => void;
   readonly onProjectChange?: (project: Space3DProjectV1) => void;
   readonly language: Language;
   /** Render the 3D surface inside the global workbench shell. */
@@ -138,23 +121,6 @@ interface Space3DWorkspaceProps {
    * un modelo que perder.
    */
   readonly startIntent?: 'generate' | 'example' | 'first-node';
-  /**
-   * Un modelo entregado desde fuera («Traer del 2D»). Se aplica como la
-   * estructura generada: con confirmación si hay algo que perder, y deshacible.
-   */
-  readonly incomingProject?: Space3DIncomingProject | null;
-  /** Vista con la que abre la mesa (`elev-z:1`, `plan:S2`); si no existe, la 3D. */
-  readonly startView?: Space3DViewId;
-  /** Avisa la vista elegida, para que quien aloja la mesa la recuerde. */
-  readonly onViewChange?: (viewId: Space3DViewId) => void;
-  /** Cámara con la que abre `startView` (la que tenía al salir). */
-  readonly startCamera?: Space3DCameraState | null;
-  /** Entrega la cámara de la vista abierta al desmontarse la mesa. */
-  readonly onCameraRelease?: (viewId: Space3DViewId, camera: Space3DCameraState) => void;
-  /** Barras seleccionadas al abrir (las de un elemento que se diseña en Diseño). */
-  readonly startSelection?: readonly string[];
-  /** Avisa las barras seleccionadas, para que Diseño abra la que se eligió aquí. */
-  readonly onSelectionChange?: (memberIds: readonly string[]) => void;
 }
 
 const ERROR_KEYS: Record<string, TranslationKey> = {
@@ -243,10 +209,10 @@ interface Space3DStudyFeedback {
 const LABELS_BY_DEFAULT_LIMIT = 30;
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'onOpenDesign' | 'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange' | 'startCamera' | 'onCameraRelease' | 'startSelection' | 'onSelectionChange'> {}
+  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent'> {}
 
 const WorkspaceBody = ({
-  onOpenDesign, language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange, startCamera, onCameraRelease, startSelection, onSelectionChange,
+  language, embedded = false, createViewport, onProjectChange, startIntent,
 }: WorkspaceBodyProps) => {
   // El inglés se carga bajo demanda; al llegar, la versión cambia y la mesa se traduce.
   const [catalogVersion, setCatalogVersion] = useState(0);
@@ -296,15 +262,7 @@ const WorkspaceBody = ({
   // lienzo reencuadra sólo entonces. Una edición normal conserva la cámara.
   const [viewFitToken, setViewFitToken] = useState(0);
   const refitView = () => setViewFitToken((token) => token + 1);
-  const [viewId, setViewId] = useState<Space3DViewId>(startView ?? '3d');
-  const viewChangeRef = useRef(onViewChange);
-  viewChangeRef.current = onViewChange;
-  useEffect(() => { viewChangeRef.current?.(viewId); }, [viewId]);
-  const viewIdRef = useRef(viewId);
-  viewIdRef.current = viewId;
-  const cameraReleaseRef = useRef(onCameraRelease);
-  cameraReleaseRef.current = onCameraRelease;
-  const releaseCamera = useCallback((camera: Space3DCameraState) => { cameraReleaseRef.current?.(viewIdRef.current, camera); }, []);
+  const [viewId, setViewId] = useState<Space3DViewId>('3d');
   const [split, setSplit] = useState(false);
   // Como en 2D, el lienzo manda: el explorador nace abierto sólo si sobra ancho.
   const [explorerOpen, setExplorerOpen] = useState(() => (
@@ -564,19 +522,6 @@ const WorkspaceBody = ({
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [assignKind, openEditor, select]);
 
-  // Barras pedidas desde Diseño («Ver en 3D»): quedan seleccionadas al abrir.
-  const appliedStartSelection = useRef(false);
-  useEffect(() => {
-    if (appliedStartSelection.current || !startSelection?.length) return;
-    appliedStartSelection.current = true;
-    const members = startSelection.filter((id) => project.members.some((member) => member.id === id));
-    if (members.length) applySelection({ nodes: [], members }, { kind: 'member', id: members[0]! });
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const selectionChangeRef = useRef(onSelectionChange);
-  selectionChangeRef.current = onSelectionChange;
-  useEffect(() => { selectionChangeRef.current?.(selection.members); }, [selection]);
-
   const onCanvasSelect = useCallback((pick: Space3DSelection | null, modifiers?: Space3DPickModifiers) => {
     applySelection(applySpace3DPick(selection, pick, modifiers?.additive ?? false), pick);
   }, [applySelection, selection]);
@@ -643,11 +588,11 @@ const WorkspaceBody = ({
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [startIntent]);
 
-  const requestGeneratedReplace = (generatedProject: Space3DProjectV1, copy?: { title: string; description: string }) => {
+  const requestGeneratedReplace = (generatedProject: Space3DProjectV1) => {
     setGenerativeOpen(false);
     setBuildingOpen(false);
     if (hasContent) {
-      setPendingReplace({ kind: 'generated', project: generatedProject, ...copy });
+      setPendingReplace({ kind: 'generated', project: generatedProject });
       return;
     }
     replaceProject(generatedProject);
@@ -656,16 +601,6 @@ const WorkspaceBody = ({
     setEditorTarget(null);
     setLayers((current) => ({ ...current, labels: generatedProject.members.length <= LABELS_BY_DEFAULT_LIMIT }));
   };
-
-  const appliedIncoming = useRef<number | null>(null);
-  useEffect(() => {
-    if (!incomingProject || appliedIncoming.current === incomingProject.nonce) return;
-    appliedIncoming.current = incomingProject.nonce;
-    if (incomingProject.operation === 'sections') { replaceProject(incomingProject.project); return; }
-    requestGeneratedReplace(incomingProject.project, { title: incomingProject.title, description: incomingProject.description });
-    // Cada entrega se aplica una vez, cuando llega.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [incomingProject]);
 
   const confirmReplace = () => {
     if (!pendingReplace) return;
@@ -1374,14 +1309,6 @@ const WorkspaceBody = ({
         <button type="button" className="workspace-topbar__icon-button" onClick={undo} disabled={!canUndo} aria-label={t('space3d.undo')} title={t('space3d.undo')}><Undo2 size={17} aria-hidden="true" /></button>
         <button type="button" className="workspace-topbar__icon-button" onClick={redo} disabled={!canRedo} aria-label={t('space3d.redo')} title={t('space3d.redo')}><Redo2 size={17} aria-hidden="true" /></button>
       </ShellContribution>
-      <ShellContribution slot="journey"><section className="mesa-journey" aria-label="Modo, origen y siguiente paso">
-        <div className="mesa-journey__context"><strong>3D</strong><span>{language === 'es' ? 'Origen: Modelo 3D' : 'Source: 3D model'}</span></div>
-        <p>{language === 'es' ? !hasContent ? 'Crea un marco o edificio, añade apoyos y cargas y analiza.' : currentAnalysis ? 'Consulta deformada y esfuerzos, o continúa con el diseño de sus ejes.' : 'Revisa apoyos y cargas. Analiza para obtener los resultados.' : 'Model → supports and loads → analyse → results → optional design.'}</p>
-        <div className="mesa-journey__actions">
-          {currentAnalysis ? <button type="button" onClick={(event) => { setResultMode('moment'); setPanel('analysis'); shellInspector?.reveal(event.currentTarget); }}>{language === 'es' ? 'Ver resultados del 3D' : 'View 3D results'}</button> : null}
-          {hasContent && onOpenDesign ? <button type="button" onClick={onOpenDesign}>{language === 'es' ? 'Diseñar los ejes' : 'Design frame lines'}</button> : null}
-        </div>
-      </section></ShellContribution>
       <ShellContribution slot="action">{analyzeButton('workspace-topbar__action-button is-primary')}</ShellContribution>
       <ShellContribution slot="status"><ShellStatusChip tone={SHELL_TONES[analysisState] ?? 'neutral'} label={stateLabel} badge={t('space3d.badge')} /></ShellContribution>
     </> : <header className="space3d-localbar">
@@ -1462,8 +1389,6 @@ const WorkspaceBody = ({
             viewLabels={viewLabels}
             activeView={activeView}
             refitToken={viewFitToken}
-            initialCamera={viewId === startView ? startCamera ?? null : null}
-            onCameraRelease={releaseCamera}
             zoomInLabel={t('space3d.zoomIn')}
             zoomOutLabel={t('space3d.zoomOut')}
             resetLabel={t('space3d.resetView')}
@@ -1636,12 +1561,12 @@ const WorkspaceBody = ({
       title={pendingReplace?.kind === 'example'
         ? t('space3d.confirmReplaceTitleExample')
         : pendingReplace?.kind === 'generated'
-          ? pendingReplace.title ?? t('space3d.confirmReplaceTitleGenerated')
+          ? t('space3d.confirmReplaceTitleGenerated')
           : t('space3d.confirmReplaceTitleBlank')}
       description={pendingReplace?.kind === 'example'
         ? t('space3d.confirmReplaceBodyExample')
         : pendingReplace?.kind === 'generated'
-          ? pendingReplace.description ?? t('space3d.confirmReplaceBodyGenerated')
+          ? t('space3d.confirmReplaceBodyGenerated')
           : t('space3d.confirmReplaceBodyBlank')}
       footer={<>
         <button type="button" className="space3d-button" onClick={() => setPendingReplace(null)}>
@@ -1690,8 +1615,8 @@ const WorkspaceBody = ({
 };
 
 /** Monta el store del modelo 3D con el proyecto guardado de la herramienta o uno en blanco. */
-const Space3DWorkspace = ({ storage, client, canonicalProject, retainedHistory, onHistoryChange, ...rest }: Space3DWorkspaceProps) => (
-  <Space3DProjectProvider storage={storage} client={client} initialProject={canonicalProject} retainedHistory={retainedHistory} onHistoryChange={onHistoryChange}>
+const Space3DWorkspace = ({ storage, client, canonicalProject, ...rest }: Space3DWorkspaceProps) => (
+  <Space3DProjectProvider storage={storage} client={client} initialProject={canonicalProject}>
     <WorkspaceBody {...rest} />
   </Space3DProjectProvider>
 );

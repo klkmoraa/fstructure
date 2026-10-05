@@ -1,6 +1,6 @@
 # FStructure — guía para agentes
 
-FStructure es la app de cálculo estructural de FusionStructure: dos mesas aisladas (FS-A01 FStructure y FS-A03 Elementos finitos) detrás de un Inicio común. FStructure modela en 2D y en 3D y diseña en concreto en la misma mesa: el interruptor 2D | 3D | Diseño de su barra (URL `mode=3d`, `mode=design`) cambia sólo las herramientas del modo; el proyecto, el guardado y la barra son los mismos, y el paso 2D ↔ 3D se anima (el plano se tiende y el espacio emerge). El antiguo Solver 3D (FS-A02) es hoy el modo 3D. Es un proyecto para **experimentar**: casi todo aquí es guía, no regla.
+FStructure es la app de cálculo estructural de FusionStructure: cuatro herramientas aisladas (FS-A01 FStructure 2D, FS-A02 Solver 3D, FS-A03 Elementos finitos, FS-A04 Diseño) detrás de un Inicio común. Es un proyecto para **experimentar**: casi todo aquí es guía, no regla.
 
 ## Cómo trabajamos
 
@@ -12,7 +12,7 @@ FStructure es la app de cálculo estructural de FusionStructure: dos mesas aisla
 
 1. **No perder datos del usuario.** Lo guardado se migra con versión; nada se sobrescribe ni se descarta en silencio.
 2. **Nada sale del dispositivo** sin una acción explícita de la persona (sin telemetría ni red implícita).
-3. **Los territorios no se mezclan.** El 2D con su Diseño, el 3D (`src/modules/space3d`) y FEM no importan código del otro ni leen sus datos; `npm run architecture:check` lo vigila. Los datos pasan sólo por puentes declarados en `src/integrations` (2D → 3D, eje del 3D → Diseño), que usa sólo `src/features/workspace` y que pueden usar el modelo, el motor y los datos del 3D, nunca su interfaz.
+3. **Las herramientas no se mezclan.** Ninguna importa código de otra ni lee sus datos; `npm run architecture:check` lo vigila. El único paso de datos es un puente declarado en `src/integrations` que traduce a un contrato de la herramienta destino y sólo usa `src/features/workspace` (hoy: Modelo 2D → Diseño, «Modelar y diseñar»).
 4. **`main` publicable.** CI corre `npm run check` y no publica si falla.
 
 ## Pruebas: el mínimo que cubre el cambio
@@ -29,14 +29,13 @@ No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa.
 
 ## Mapa
 
-- `src/App.tsx`: rutas `?surface=welcome` (Inicio) · `?surface=home&tool=` (bienvenida) · `?tool=` (mesa) · `?tool=model2d&mode=3d` (modo 3D) · `?tool=model2d&mode=design` (modo Diseño). Los enlaces viejos `tool=space3d`/`surface=workspace3d` abren el modo 3D y `tool=design` el modo Diseño.
+- `src/App.tsx`: rutas `?surface=welcome` (Inicio) · `?surface=home&tool=` (bienvenida) · `?tool=` (mesa).
 - `src/features/welcome/`: Inicio (`SuiteHome`) y bienvenida original de FStructure (`Model2DWelcome`).
-- `src/features/tool-home/`: bienvenida común (hoy la usa FEM).
-- `src/features/workspace/`: `WorkspaceShell` (modo 2D), `ToolShell` (FEM y `MesaModeShell`, los modos 3D y Diseño), `MesaModeSwitch`, `mesaTransition` (la animación entre modos), `toolCatalog`, `toolIntent`. Es la única carpeta que conoce todos los territorios; sus adaptadores (`adapters/Space3DSurface`, `adapters/DesignSurface`) usan los puentes y recuerdan por proyecto la vista y la cámara del 3D y su selección (`adapters/mesaSelection`), para que Diseño abra la barra elegida.
-- FS-A01: `src/features`, `src/engine`, `src/commands`, `src/store`; su modo Diseño en `src/design` (motores; `elements/model2dSource` traduce el Modelo 2D a la mesa Estructura) y `src/features/design` (taller); su modo 3D en `src/modules/space3d` (territorio propio) · FS-A03: `src/modules/fem`.
-- `src/integrations/`: `model2dSpace3d` («Traer del 2D»: el pórtico 2D extruido en pórticos paralelos, con su f′c) y `space3dDesign` (cada eje x = cte o z = cte del 3D como fuente de Estructura, con las acciones del modelo completo, columnas en flexión biaxial con k e índice de estabilidad propios fuera del plano, torsión de vigas y la planta para revisar todos los ejes). `space3dSections` adapta las propuestas de secciones a las propiedades A/Iy/Iz/J y comprueba todos los ejes; sólo el workspace lo aplica, como un cambio en el historial del 3D. El Modelo 2D analiza casos y recálculos agrietados mediante `model2dDesignWorker` y `model2dDesign.worker`; las funciones lectoras se reconstruyen con `src/design/elements/model2dAnalysis`. `frameCalculation` y `formNumbers` son conversiones puras del taller; los workers de propuestas sólo devuelven pasos y dimensiones. Todos los ejes se diseñan en el worker de la mesa (`src/features/workspace/adapters/space3dDesign.worker.ts`).
-- Común: `src/foundation` (unidades, álgebra), `src/storage` (proyecto local), `src/design-system` (incluye las bandas de diagrama que comparten Diseño y el 2D, y `afterTransition`: el trabajo pesado espera a que termine la animación entre modos), `src/workers`.
-- Acero del Modelo 2D: el workspace suministra `adapters/ModelSteelReview` al taller; `modelSteelAnalysis` usa el worker de análisis existente sin escribir el proyecto. Reutiliza `src/design/ntcSteel2023.ts` (sólo fluencia total de armadura A992 + I AISC en tensión pura), con su combinación y alcance propios. `NtcSteelDesignReview` también presenta ese componente en Resultados. `steelMemory` valida selecciones por proyecto (documento del taller v6 compatible con v1–v5); `adapters/steelReviewPdf` exporta la revisión no concluyente y adjunta su modelo, sólo por acción explícita.
+- `src/features/tool-home/`: bienvenida común de 3D, FEM y Diseño.
+- `src/features/workspace/`: `WorkspaceShell` (2D), `ToolShell` (3D/FEM/Diseño), `toolCatalog`, `toolIntent`, `toolNavigation`. Es la única carpeta que conoce las cuatro herramientas.
+- `src/integrations/`: puentes declarados entre herramientas (`model2dDesign`: Modelo 2D → `ExternalStructureSource` de Diseño).
+- FS-A01: `src/features`, `src/engine`, `src/commands`, `src/store` · FS-A02: `src/modules/space3d` · FS-A03: `src/modules/fem` · FS-A04: `src/design`, `src/features/design`.
+- Común: `src/foundation` (unidades, álgebra), `src/storage` (proyecto local), `src/design-system` (incluye las bandas de diagrama que comparten Diseño y el 2D), `src/workers`.
 
 ## Cómo está hecho (guía)
 

@@ -1,6 +1,0 @@
-/* «Traer del 2D» en el modo 3D (ver Space3DSurface). */
-.space3d-bring { display: grid; gap: var(--sc-space-3); }
-.space3d-bring__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sc-space-3); }
-.space3d-bring__summary { margin: 0; font-variant-numeric: tabular-nums; color: var(--sc-color-text-primary); }
-.space3d-bring__notes { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; color: var(--sc-color-text-muted); font-size: var(--sc-font-size-caption); }
-@media (max-width: 520px) { .space3d-bring__fields { grid-template-columns: 1fr; } }
