@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
+import { isSteelMemory } from '../../../design/steelMemory';
 
 /**
  * Dónde viven los borradores del taller de diseño (norma, elemento y datos de
@@ -10,6 +11,8 @@ import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
  * entran al historial de deshacer, igual que los estudios FEM.
  */
 export interface WorkbenchStorage {
+  /** Identidad de sesión para conservar deshacer al salir del modo. */
+  readonly historyScope?: object;
   read(key: string): unknown;
   write(key: string, value: JsonValue): void;
 }
@@ -22,9 +25,11 @@ export const WORKBENCH_DOCUMENT_KIND = 'fstructure-design-workbench';
  * v3: añade secciones y sus filosofías a la memoria; conserva v1 y v2.
  * v4: añade pórticos: borradores de claros y niveles y, en la memoria,
  * elementos `frame` con sus niveles (`levels`). Conserva v1 a v3.
+ * v5: secciones por nivel en las filas y armado automático por sección.
+ * v6: selecciones de revisión de acero, sin resultados ni copias del modelo. Conserva v1 a v5.
  */
-const WORKBENCH_SCHEMA_VERSION = 4;
-const READABLE_VERSIONS = [1, 2, 3, 4];
+const WORKBENCH_SCHEMA_VERSION = 6;
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6];
 const ELEMENT_KINDS = ['beam', 'column', 'frame', 'footing', 'section'] as const;
 const MAX_DOCUMENT_CHARS = 240_000;
 const MAX_ENTRIES = 16;
@@ -73,7 +78,8 @@ const isMemory = (value: unknown): value is WorkbenchMemoryItem[] =>
 
 /** Cadenas cortas, registros de cadenas, listas cortas de registros (los claros) y la memoria del proyecto. */
 const isEntry = (key: string, value: unknown): value is JsonValue =>
-  isShortString(value) || isRecord(value) || isRows(value) || (key === 'memory' && isMemory(value));
+  key === 'steel-memory' ? isSteelMemory(value)
+    : isShortString(value) || isRecord(value) || isRows(value) || (key === 'memory' && isMemory(value));
 
 /** Lee un documento del taller; ante cualquier forma inesperada devuelve un borrador vacío, nunca lanza. */
 export function parseWorkbenchDocument(raw: unknown): Record<string, JsonValue> {
@@ -100,7 +106,7 @@ export const browserWorkbenchStorage: WorkbenchStorage = {
   read(key) {
     try {
       const raw = window.localStorage.getItem(BROWSER_PREFIX + key);
-      if (!raw || raw.length > (key === 'memory' ? MAX_DOCUMENT_CHARS : 8_000)) return undefined;
+      if (!raw || raw.length > ((key === 'memory' || key === 'steel-memory') ? MAX_DOCUMENT_CHARS : 8_000)) return undefined;
       try {
         return JSON.parse(raw) as unknown;
       } catch {
@@ -130,6 +136,7 @@ export function createProjectWorkbenchStorage(
   initial: unknown,
   persist: (document: JsonValue) => void,
   delayMs = 600,
+  historyScope?: object,
 ): ProjectWorkbenchStorage {
   const entries = parseWorkbenchDocument(initial);
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -142,6 +149,7 @@ export function createProjectWorkbenchStorage(
     persist(workbenchDocument(entries));
   };
   return {
+    historyScope,
     read: (key) => entries[key],
     write(key, value) {
       if (!KEY.test(key) || !isEntry(key, value)) return;

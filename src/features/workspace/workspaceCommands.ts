@@ -76,6 +76,8 @@ interface WorkspaceCommands {
   'open-revision-comparison': void;
   /** Open the contextual structural-editing surface for the current selection. */
   'open-structural-edit': void;
+  /** Abre el modo Diseño de la mesa en el diseño de una barra del Modelo 2D. */
+  'open-member-design': { memberId: string };
   /** Open the local, review-first command assistant. */
   'open-local-assistant': { trigger?: HTMLElement | null };
   /**

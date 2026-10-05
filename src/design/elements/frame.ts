@@ -25,6 +25,8 @@ export const MAX_FRAME_BAYS = 5;
 export const MAX_FRAME_STORIES = 5;
 
 export interface FrameStory {
+  readonly beam?: FrameSection;
+  readonly column?: FrameSection;
   readonly heightM: number;
   /** Carga de servicio sobre las vigas del nivel, kN/m, sin peso propio. */
   readonly deadKnPerM: number;
@@ -66,6 +68,7 @@ export interface FrameDesignInput {
   readonly beamBarDiameterMm: number | null;
   readonly stirrupDiameterMm: number | null;
   readonly columnReinforcement: FrameColumnReinforcement;
+  readonly automaticColumnBars?: boolean;
   readonly group: ColumnGroup;
   /** Factores sobre la inercia bruta para el análisis (1 = sección bruta). */
   readonly beamInertiaFactor: number;
@@ -121,27 +124,29 @@ export function frameSource(input: FrameDesignInput): StructureSource & { readon
   input.stories.forEach((story) => ys.push(ys[ys.length - 1]! + story.heightM));
   const node = (line: number, level: number) => level * lines + line;
   const e = designCode(input.code).elasticModulusMpa(input.fcMpa) * 1e3;
-  const columnInertia = sectionInertia(input.column) * input.columnInertiaFactor;
-  const beamInertia = sectionInertia(input.beam) * input.beamInertiaFactor;
   const nodes: StructureNode[] = ys.flatMap((y, level) => xs.map((x) => ({ x, y, support: level === 0 ? (input.base === 'fixed' ? 'fixed' : 'pinned') : 'free' })));
   const members: StructureMember[] = [];
   const frameMembers: FrameMember[] = [];
-  input.stories.forEach((_, story) => {
+  input.stories.forEach((level, story) => {
+    const column = level.column ?? input.column;
+    const columnInertia = sectionInertia(column) * input.columnInertiaFactor;
     for (let line = 0; line < lines; line += 1) {
       members.push({
         id: `C${line + 1}-${story + 1}`, label: `C${line + 1}·N${story + 1}`, i: node(line, story), j: node(line, story + 1), kind: 'column',
-        section: input.column, flexuralStiffnessKnM2: e * columnInertia, displayDeadKnPerM: 0, displayLiveKnPerM: 0,
+        section: column, flexuralStiffnessKnM2: e * columnInertia, displayDeadKnPerM: 0, displayLiveKnPerM: 0,
       });
-      frameMembers.push({ i: node(line, story), j: node(line, story + 1), elasticModulusKpa: e, areaM2: sectionArea(input.column), inertiaM4: columnInertia });
+      frameMembers.push({ i: node(line, story), j: node(line, story + 1), elasticModulusKpa: e, areaM2: sectionArea(column), inertiaM4: columnInertia });
     }
   });
   input.stories.forEach((story, s) => {
+    const beam = story.beam ?? input.beam;
+    const beamInertia = sectionInertia(beam) * input.beamInertiaFactor;
     input.bays.forEach((__, bay) => {
       members.push({
         id: `V${s + 1}-${bay + 1}`, label: `V${s + 1}·${bay + 1}`, i: node(bay, s + 1), j: node(bay + 1, s + 1), kind: 'beam',
-        section: input.beam, flexuralStiffnessKnM2: e * beamInertia, displayDeadKnPerM: story.deadKnPerM, displayLiveKnPerM: story.liveKnPerM,
+        section: beam, flexuralStiffnessKnM2: e * beamInertia, displayDeadKnPerM: story.deadKnPerM, displayLiveKnPerM: story.liveKnPerM,
       });
-      frameMembers.push({ i: node(bay, s + 1), j: node(bay + 1, s + 1), elasticModulusKpa: e, areaM2: sectionArea(input.beam), inertiaM4: beamInertia });
+      frameMembers.push({ i: node(bay, s + 1), j: node(bay + 1, s + 1), elasticModulusKpa: e, areaM2: sectionArea(beam), inertiaM4: beamInertia });
     });
   });
   const selfWeight = input.includeSelfWeight
@@ -154,13 +159,13 @@ export function frameSource(input: FrameDesignInput): StructureSource & { readon
   members.forEach((member, index) => {
     if (member.kind !== 'beam') return;
     cases.push({ id: `D-${member.id}`, label: `CM ${member.label}`, kind: 'dead' });
-    loads.push({ id: `D-${member.id}`, gravity: { [index]: member.displayDeadKnPerM + selfWeight.beamKnPerM } });
+    loads.push({ id: `D-${member.id}`, gravity: { [index]: member.displayDeadKnPerM + (input.includeSelfWeight ? CONCRETE_UNIT_WEIGHT_KN_M3 * sectionArea(member.section) : 0) } });
     cases.push({ id: `L-${member.id}`, label: `CV ${member.label}`, kind: 'live' });
     loads.push({ id: `L-${member.id}`, gravity: { [index]: member.displayLiveKnPerM } });
   });
   if (selfWeight.columnKnPerM > 0) {
     cases.push({ id: 'D-col', label: 'Peso propio de columnas', kind: 'dead' });
-    loads.push({ id: 'D-col', gravity: Object.fromEntries(members.flatMap((member, index) => member.kind === 'column' ? [[index, selfWeight.columnKnPerM]] : [])) });
+    loads.push({ id: 'D-col', gravity: Object.fromEntries(members.flatMap((member, index) => member.kind === 'column' ? [[index, CONCRETE_UNIT_WEIGHT_KN_M3 * sectionArea(member.section)]] : [])) });
   }
   // Fuerza de cada nivel repartida entre sus nudos (diafragma rígido).
   if (lateral) {
@@ -227,6 +232,7 @@ export function designFrame(input: FrameDesignInput): FrameDesignResult | FrameD
     beamBarDiameterMm: input.beamBarDiameterMm,
     stirrupDiameterMm: input.stirrupDiameterMm,
     columnReinforcement: input.columnReinforcement,
+    automaticColumnBars: input.automaticColumnBars,
     group: input.group,
     effectiveLengthFactor: input.effectiveLengthFactor,
   });

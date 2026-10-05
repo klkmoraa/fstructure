@@ -1,0 +1,7 @@
+.model-steel-review { width: min(100%, 820px); display: grid; gap: var(--sc-space-4); color: var(--text); }
+.model-steel-review header h2 { font-size: var(--sc-font-size-panel); margin: 0 0 var(--sc-space-2); }
+.model-steel-review header p { margin: 0; color: var(--muted); }
+.model-steel-review__controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sc-space-3); }
+.model-steel-review__controls label { display: grid; gap: var(--sc-space-2); min-width: 0; }
+.model-steel-review__controls select { min-width: 0; width: 100%; min-height: 44px; padding: var(--sc-space-2); border: 1px solid var(--border); border-radius: var(--sc-radius-md); background: var(--surface); color: var(--text); }
+@media (max-width: 760px) { .model-steel-review__controls { grid-template-columns: 1fr; } }

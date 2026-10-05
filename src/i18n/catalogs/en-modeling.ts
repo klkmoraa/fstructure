@@ -64,6 +64,8 @@ export const enModeling = {
   'canvas.repeatWaiting': '{tool}: choose the destination and confirm',
   'contextualActions.title': 'Selection actions',
   'contextualActions.structuralEdit': 'Edit selection',
+  'contextualActions.designMember': 'Design',
+  'contextualActions.designMemberHint': 'Opens Design mode and the available review for this member',
   'contextualActions.copyReady': 'Structural copy is ready to paste.',
   'contextualActions.pasteReady': 'The structural copy was pasted.',
   'contextualActions.pasteFallback': 'The system clipboard could not be used; FusionStructure used its in-app copy.',

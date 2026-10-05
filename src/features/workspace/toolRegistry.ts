@@ -4,18 +4,10 @@ import type { ToolModuleDescriptor } from '../../shared/contracts';
 export const toolRegistry: readonly ToolModuleDescriptor[] = [
   {
     id: 'model2d', labelKey: 'navigation.model2d', maturity: 'experimental',
-    capabilities: ['planar-model-editing', 'planar-linear-analysis'],
+    // Los modos 3D (`adapters/Space3DSurface`) y Diseño (`adapters/DesignSurface`) son parte de la misma mesa.
+    capabilities: ['planar-model-editing', 'planar-linear-analysis', 'spatial-model-editing', 'planar-handoff-review',
+      'concrete-beam-column-footing-design', 'concrete-section-philosophies', 'concrete-reinforcement-takeoff'],
     load: () => import('./adapters/Model2DSurface').then((module) => module.default),
-  },
-  {
-    id: 'design', labelKey: 'design.title', maturity: 'experimental',
-    capabilities: ['concrete-beam-column-footing-design', 'concrete-section-philosophies', 'concrete-reinforcement-takeoff'],
-    load: () => import('./adapters/DesignSurface').then((module) => module.default),
-  },
-  {
-    id: 'space3d', labelKey: 'space3d.title', maturity: 'experimental',
-    capabilities: ['spatial-model-editing', 'planar-handoff-review'],
-    load: () => import('./adapters/Space3DSurface').then((module) => module.default),
   },
   {
     id: 'fem', labelKey: 'navigation.fem', maturity: 'experimental',

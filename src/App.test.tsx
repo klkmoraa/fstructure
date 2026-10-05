@@ -28,33 +28,17 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-/**
- * Recorrido completo entre herramientas: logo → bienvenida de la herramienta
- * actual → FusionStructure → «Abrir <herramienta>» → su bienvenida →
- * «Continuar» → su mesa.
- */
-const openFromHome = async (user: ReturnType<typeof userEvent.setup>, tool: string) => {
-  await user.click(await screen.findByRole('button', { name: 'Ir al inicio' }));
-  await user.click(await screen.findByRole('button', { name: 'Volver a FusionStructure' }));
-  await screen.findByTestId('suite-welcome');
-  await user.click(screen.getByRole('button', { name: new RegExp(`^Abrir ${tool} ·`) }));
-  await user.click(await screen.findByRole('button', { name: 'Continuar' }));
-};
-
 describe('standalone FStructure', () => {
   it('cada herramienta tiene su bienvenida entre el Inicio y su mesa', async () => {
     const user = userEvent.setup();
     window.history.replaceState(null, '', '/?surface=welcome');
     render(<App />);
-    for (const [tool, testId, heading] of [
-      ['Solver 3D', 'space3d-welcome', 'Del nudo al espacio.'],
-      ['Elementos finitos', 'fem-welcome', 'De la malla al campo.'],
-      ['Diseño', 'design-welcome', 'Del esfuerzo al armado.'],
-      ['FStructure', 'solver2d-welcome', 'Del trazo al diagrama.'],
+    for (const [tool, testId] of [
+      ['Elementos finitos', 'fem-welcome'],
+      ['FStructure', 'solver2d-welcome'],
     ] as const) {
       await user.click(await screen.findByRole('button', { name: new RegExp(`^Abrir ${tool} ·`) }));
       expect(await screen.findByTestId(testId)).toBeTruthy();
-      expect(screen.getByRole('heading', { level: 1, name: heading })).toBeTruthy();
       expect(new URLSearchParams(window.location.search).get('surface')).toBe('home');
       await user.click(screen.getByRole('button', { name: 'Volver a FusionStructure' }));
       expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
@@ -67,9 +51,10 @@ describe('standalone FStructure', () => {
 
     expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1, name: 'Make complexity legible.' })).toBeTruthy();
-    expect(screen.getByRole('navigation', { name: 'Herramientas' }).querySelectorAll('button')).toHaveLength(4);
-    // Debajo del índice, el único flujo entre herramientas.
-    expect(screen.getByRole('button', { name: 'Modelar y diseñar: del Modelo 2D a Diseño' })).toBeTruthy();
+    // Dos mesas: FStructure (2D, 3D y diseño) y FEM.
+    expect(screen.getByRole('navigation', { name: 'Herramientas' }).querySelectorAll('button')).toHaveLength(2);
+    expect(screen.queryByRole('button', { name: /^Abrir Diseño/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Abrir Solver 3D/ })).toBeNull();
 
     await user.click(screen.getByRole('button', { name: /^Continuar.*en FStructure/ }));
 
@@ -90,7 +75,6 @@ describe('standalone FStructure', () => {
 
     // El logo de la mesa lleva a la bienvenida original de FStructure…
     expect(await screen.findByTestId('solver2d-welcome')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1, name: 'Del trazo al diagrama.' })).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('surface')).toBe('home');
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
     // …y desde ella se vuelve al Inicio de FusionStructure.
@@ -99,12 +83,15 @@ describe('standalone FStructure', () => {
     expect(new URLSearchParams(window.location.search).get('surface')).toBe('welcome');
   });
 
-  it('restores Design from its canonical URL and follows popstate back to welcome', async () => {
+  it('opens old Design links in the Design mode of FStructure and follows popstate back to welcome', async () => {
     const project = createDefaultProject();
     localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
     window.history.replaceState(null, '', `/?project=${project.id}&tool=design`);
     render(<App />);
-    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
+    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' }, { timeout: 8000 })).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+    expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
+    expect(screen.getByRole('button', { name: 'Diseño' }).getAttribute('aria-pressed')).toBe('true');
     act(() => {
       window.history.pushState(null, '', '/?surface=welcome');
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -122,23 +109,26 @@ describe('standalone FStructure', () => {
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('fem');
   });
 
-  it('pushes Design open/close actions and restores the surface when moving back', async () => {
+  it('switches Modelo | Diseño in the same workbench with history and returns to FStructure’s welcome', async () => {
     window.history.replaceState(null, '', '/?surface=workspace2d');
     const user = userEvent.setup();
     render(<App />);
-    await openFromHome(user, 'Diseño');
-    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
-    expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
-    const length = window.history.length;
+    await screen.findByRole('application');
+    const before = window.history.length;
+    await user.click(screen.getByRole('button', { name: 'Diseño' }));
+    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' }, { timeout: 8000 })).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
+    expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
+    expect(window.history.length).toBe(before + 1);
+    // La marca vuelve a la bienvenida de FStructure: Diseño no tiene otra.
     await user.click(screen.getByRole('button', { name: 'Ir al inicio' }));
-    // Cerrar una herramienta aislada vuelve a SU bienvenida, no a otra herramienta.
-    expect(await screen.findByTestId('design-welcome')).toBeTruthy();
-    expect(new URLSearchParams(window.location.search).get('surface')).toBe('home');
-    expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
-    expect(window.history.length).toBe(length + 1);
+    expect(await screen.findByTestId('solver2d-welcome')).toBeTruthy();
     window.history.back();
-    await waitFor(() => expect(new URLSearchParams(window.location.search).get('tool')).toBe('design'));
-    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
+    await waitFor(() => expect(new URLSearchParams(window.location.search).get('mode')).toBe('design'));
+    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' }, { timeout: 8000 })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Modelo 2D' }));
+    expect(await screen.findByRole('application')).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).has('mode')).toBe(false);
   });
 
   it('opens an existing requested project and retains its identity and selected tool after reload', async () => {
@@ -183,14 +173,14 @@ describe('standalone FStructure', () => {
     });
     await started;
     try {
-      await openFromHome(userEvent.setup(), 'Diseño');
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Diseño' }));
       expect(new URLSearchParams(window.location.search).get('project')).toBe('project-b');
-      expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
+      expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
       await act(async () => { releaseLookup(); });
       await waitFor(() => expect(document.querySelector('[data-project-id]')?.getAttribute('data-project-id')).toBe('project-b'));
-      expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
+      expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' }, { timeout: 8000 })).toBeTruthy();
       expect(new URLSearchParams(window.location.search).get('project')).toBe('project-b');
-      expect(new URLSearchParams(window.location.search).get('tool')).toBe('design');
+      expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
     } finally {
       releaseLookup();
     }

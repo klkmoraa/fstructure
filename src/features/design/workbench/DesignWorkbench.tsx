@@ -1,5 +1,6 @@
 import { BookOpen, Check, ChevronDown, Copy, FileDown, PanelRight, Redo2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { MesaJourney } from '../../workspace/MesaJourney';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
 import { ShellContribution, ShellStatusChip, type ShellStatusTone } from '../../workspace/ShellToolSlots';
@@ -9,20 +10,21 @@ import { ConcreteStudio } from './ConcreteStudio';
 import { FootingWorkbench } from './FootingWorkbench';
 import { FrameWorkbench } from './FrameWorkbench';
 import type { DraftHistory } from './common';
-import type { ExternalStructureSource } from '../../../design/elements/structure';
+import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { MemoryDialog, MemoryStatus, useDesignMemory } from './designMemory';
 import { memoText, reportHeading, type DesignReport } from './designReport';
-import type { Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
+import type { ModelSectionsBridge, Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { useWorkbenchStorage } from './workbenchStorage';
 import './designWorkbench.css';
+import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 
 type ElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'section';
 
 const icon = (children: ReactNode) => <svg className="dw-element-icon" viewBox="0 0 24 24" aria-hidden="true">{children}</svg>;
 const ELEMENTS: { id: ElementKind; label: string; icon: ReactNode }[] = [
+  { id: 'frame', label: 'Estructura', icon: icon(<><path d="M5 21.5V4.5M19 21.5V4.5M3 5h18M5 12.5h14" /><path d="M2.5 21.5h5M16.5 21.5h5" /></>) },
   { id: 'beam', label: 'Viga', icon: icon(<><rect x="2" y="8" width="20" height="5" rx="1" /><path d="M4 13l-2 4h4zM20 13l-2 4h4z" /></>) },
   { id: 'column', label: 'Columna', icon: icon(<><rect x="8.5" y="2" width="7" height="17" rx="1" /><path d="M4 21.5h16" /></>) },
-  { id: 'frame', label: 'Estructura', icon: icon(<><path d="M5 21.5V4.5M19 21.5V4.5M3 5h18M5 12.5h14" /><path d="M2.5 21.5h5M16.5 21.5h5" /></>) },
   { id: 'footing', label: 'Zapata', icon: icon(<><rect x="9.5" y="3" width="5" height="9" rx="1" /><rect x="3" y="12" width="18" height="6" rx="1" /></>) },
   { id: 'section', label: 'Secciones', icon: icon(<><path d="M8 2h8l6 6v8l-6 6H8l-6-6V8z" /><path d="M8 8h8v8H8z" /></>) },
 ];
@@ -41,26 +43,42 @@ const readRoom = (): Room => {
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
 
-export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, onOpenModel }: {
+export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
   nativeTool?: boolean;
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
   modelSource?: ExternalStructureSource | null;
-  /** Abre el Modelo 2D. */
+  /** Ejes diseñables del Modelo 3D del proyecto, traducidos por la misma frontera. */
+  modelAxes?: ExternalStructureAxes | null;
+  /** Vuelve al modo 2D de la mesa. */
   onOpenModel?: () => void;
+  /** Abre el modo 3D de la mesa. */
+  onOpenSpace3D?: (axisId?: string) => void;
+  /** Escribe el pórtico rápido en el Modelo 2D (deshacible en Modelo). */
+  onCreateModel?: (spec: ConcreteFrameSpec) => void;
   /** Fuente de la estructura pedida desde fuera («Diseñar el modelo»). */
-  startSource?: 'frame' | 'model';
+  startSource?: 'frame' | 'model' | 'model3d';
   /** Nombre del proyecto abierto: encabeza la memoria. */
   projectName?: string;
   /** Elemento elegido en la bienvenida de Diseño; gana al último guardado. */
   startElement?: ElementKind;
   /** Norma elegida en la bienvenida de Diseño. */
   startCode?: string;
+  /** Barra del modelo cuyo diseño abre Estructura (la elegida en el 2D o el 3D). */
+  focusMember?: string;
+  /** «Ver en el Modelo» / «Ver en 3D»: selecciona las barras del elemento en su modo. */
+  onShowMembers?: (memberIds: readonly string[], axisId?: string) => void;
+  /** Proponer y escribir las secciones de las vigas y columnas del Modelo 2D. */
+  modelSections?: ModelSectionsBridge | null;
+  space3dSections?: ModelSectionsBridge | null;
+  modelReview?: ReactNode;
 }) {
   const storage = useWorkbenchStorage();
   const [element, setElementState] = useState<ElementKind>(() => {
     if (startElement) return startElement;
+    if (startSource === 'model' || startSource === 'model3d') return 'frame';
     const stored = storage.read('element');
-    return isElementKind(stored) ? stored : 'beam';
+    // En la mesa de FStructure se empieza por diseñar el modelo.
+    return isElementKind(stored) ? stored : 'frame';
   });
   const [code, setCodeState] = useState<DesignCodeId>(() => {
     if (isDesignCodeId(startCode)) return startCode;
@@ -230,13 +248,23 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   </label>;
   const memoryBar = <MemoryStatus memory={memory} element={element} onSave={saveToMemory} onOpen={() => setMemoryOpen(true)} />;
   const chrome: WorkbenchChrome = {
-    elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource,
+    elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource, modelAxes,
+    onSaveAxes: (axes) => memory.saveAxes(axes),
     ...(nativeTool ? { onVerdict } : {}),
     ...(onOpenModel ? { onOpenModel } : {}),
+    ...(onOpenSpace3D ? { onOpenSpace3D } : {}),
+    ...(onCreateModel ? { onCreateModel } : {}),
     ...(startSource ? { startSource } : {}),
+    ...(focusMember ? { focusMember } : {}),
+    ...(onShowMembers ? { onShowMembers } : {}),
+    modelSections, space3dSections, ...(modelReview ? { modelReview } : {}),
   };
 
   return <div className="design-workbench" data-testid="design-workbench">
+    {nativeTool && element !== 'frame' ? <ShellContribution slot="journey"><MesaJourney mode="Diseño" source={`Origen: Elemento suelto · ${ELEMENTS.find((item) => item.id === element)?.label}`}>
+      <button type="button" onClick={() => setPanel('inputs', true)}>Editar datos</button>
+      <button type="button" disabled={!report} onClick={() => setPanel('results', true)}>Ver comprobaciones</button>
+    </MesaJourney></ShellContribution> : null}
     {exportMessage && !memoryOpen ? <p className="dw-action-feedback" role="alert">{exportMessage}<button type="button" aria-label="Cerrar aviso" onClick={() => setExportMessage(null)}>×</button></p> : null}
     {nativeTool ? <ShellContribution slot="controls">
       <button type="button" className="workspace-topbar__icon-button dw-topbar-history" onClick={() => history.current?.undo()} disabled={!historyFlags.canUndo}
@@ -273,6 +301,6 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
         : element === 'footing' ? <FootingWorkbench key={loadCount} chrome={chrome} />
           : <ConcreteStudio key={loadCount} chrome={chrome} />}
     <MemoryDialog open={memoryOpen} onOpenChange={setMemoryOpen} memory={memory} element={element} onLoad={loadFromMemory}
-      onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} modelSource={modelSource} />
+      onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} modelSource={modelSource} modelAxes={modelAxes} />
   </div>;
 }

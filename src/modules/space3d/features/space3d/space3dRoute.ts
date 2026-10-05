@@ -57,7 +57,7 @@ export const deriveSpace3DGuide = (
     nodes: project.nodes.length,
     members: project.members.length,
     supports: project.nodes.filter(isSupported).length,
-    loads: project.nodalLoads.length,
+    loads: project.nodalLoads.length + project.memberLoads.length,
   };
   const done: Record<Space3DGuideStepId, boolean> = {
     geometry: counts.nodes >= 2 && counts.members >= 1,

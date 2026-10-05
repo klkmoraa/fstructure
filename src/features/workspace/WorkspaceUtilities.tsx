@@ -4,7 +4,6 @@ import {
   ChevronDown,
   ClipboardList,
   Download,
-  DraftingCompass,
   Eye,
   FileText,
   Moon,
@@ -37,19 +36,16 @@ const LazyPdfPreviewDialog = lazy(() => import('../pdf-preview/PdfPreviewDialog'
  * belong to a selected element. Keeping them out of the Inspector means the
  * latter can remain a contextual editor instead of becoming a junk drawer.
  *
- * It belongs to Model 2D only: the other tools are isolated workbenches and are
- * reached from Home. The one exception is the declared Model 2D → Design flow
- * («Diseñar»), which the shell passes in as `onDesignModel`.
+ * It belongs to the Model mode of FStructure: the other tools are isolated
+ * workbenches reached from Home, and Design is the other mode of this same
+ * workbench (top-bar switch).
  */
 export const WorkspaceUtilities = ({
   onOpenInspector,
   onOpenUnitsEditor,
-  onDesignModel,
 }: {
   onOpenInspector: (trigger?: HTMLElement | null) => void;
   onOpenUnitsEditor?: (trigger?: HTMLElement | null) => void;
-  /** Modelar y diseñar: abre Diseño con este modelo. */
-  onDesignModel?: () => void;
 }) => {
   const { project, updateProjectView } = useProjectModel();
   const { analysis, ensureEducationTrace, selectedCombinationId } = useProjectAnalysis();
@@ -183,9 +179,6 @@ export const WorkspaceUtilities = ({
           <button className="workspace-utilities__action is-featured" type="button" onClick={() => void openPdf()} disabled={preparingPdf}>
             <FileText size={18} aria-hidden="true" /><span><strong>{preparingPdf ? t('workspace.utilityPdfPreparing') : t('portable.previewLabel')}</strong><small>{t('workspace.utilityPdfDescription')}</small></span>
           </button>
-          {onDesignModel ? <button className="workspace-utilities__action" type="button" onClick={() => { setOpen(false); onDesignModel(); }}>
-            <DraftingCompass size={17} aria-hidden="true" /><span><strong>{t('topbar.design')}</strong><small>{t('workspace.utilityDesignDescription')}</small></span>
-          </button> : null}
           <button className="workspace-utilities__action" type="button" onClick={() => openSurface('open-datasheet')}>
             <Sheet size={17} aria-hidden="true" /><span><strong>{t('datasheet.title')}</strong><small>{t('workspace.utilityDatasheetDescription')}</small></span>
           </button>

@@ -3,7 +3,6 @@ import { ArrowRight, ArrowUpRight, Moon, Sun } from 'lucide-react';
 import type { ToolId } from '../../shared/contracts';
 import type { ProjectModel, ThemeMode } from '../../types';
 import { TOOL_CATALOG, toolIdentity } from '../workspace/toolCatalog';
-import { ENGINEERING_QUOTES } from './engineeringQuotes';
 import { BrandMark, ToolGlyph } from './toolGlyphs';
 import './suite.css';
 
@@ -19,8 +18,6 @@ export interface SuiteHomeProps {
   onOpenTool: (tool: ToolId) => void;
   /** Continúa el proyecto abierto en la mesa de una herramienta. */
   onResume: (tool: ToolId) => void;
-  /** Modelar y diseñar: el flujo declarado Modelo 2D → Diseño. */
-  onModelAndDesign?: () => void;
   onLanguageChange: (language: Language) => void;
   onThemeChange: (theme: ThemeMode) => void;
 }
@@ -28,16 +25,12 @@ export interface SuiteHomeProps {
 const copy = {
   es: {
     kicker: 'FusionStructure · Análisis',
-    lead: 'Cuatro herramientas de cálculo estructural. Cada una abre sola, en su propia mesa.',
+    lead: 'Modelado, análisis y diseño estructural.',
     tools: 'Herramientas',
     open: (name: string) => `Abrir ${name}`,
     status: { disponible: 'Disponible', experimental: 'Experimental' },
     resume: 'Continuar',
     resumeIn: (tool: string) => `en ${tool}`,
-    flowCode: 'FS-A01 → FS-A04',
-    flowName: 'Modelar y diseñar',
-    flowRole: 'Dibuja en 2D y diseña sus vigas y columnas',
-    flowLabel: 'Modelar y diseñar: del Modelo 2D a Diseño',
     theme: { light: 'Día', dark: 'Noche' },
     themeLabel: 'Cambiar tema',
     languageLabel: 'Idioma',
@@ -47,16 +40,12 @@ const copy = {
   },
   en: {
     kicker: 'FusionStructure · Analysis',
-    lead: 'Four structural calculation tools. Each one opens on its own workbench.',
+    lead: 'Structural modelling, analysis and design.',
     tools: 'Tools',
     open: (name: string) => `Open ${name}`,
     status: { disponible: 'Available', experimental: 'Experimental' },
     resume: 'Continue',
     resumeIn: (tool: string) => `in ${tool}`,
-    flowCode: 'FS-A01 → FS-A04',
-    flowName: 'Model and design',
-    flowRole: 'Draw in 2D and design its beams and columns',
-    flowLabel: 'Model and design: from the 2D model to Design',
     theme: { light: 'Day', dark: 'Night' },
     themeLabel: 'Change theme',
     languageLabel: 'Language',
@@ -71,16 +60,15 @@ const PORTAL = { day: './assets/suite/portal-day.png', night: './assets/suite/po
 /**
  * Inicio de FusionStructure.
  *
- * Un índice de cuatro herramientas y el pórtico. Pasar por una herramienta
- * pone su escena en el escenario; elegirla la abre aislada. Debajo, el único
- * flujo entre herramientas: modelar en 2D y diseñar ese modelo. Nada compite
- * con eso: sin barra de navegación, sin tarjetas y sin avisos flotantes.
+ * Un índice de herramientas y el pórtico. Pasar por una herramienta pone su
+ * escena en el escenario; elegirla la abre aislada. FStructure modela en 2D y
+ * 3D y diseña en la misma mesa. Nada compite con eso: sin barra de navegación, sin
+ * tarjetas y sin avisos flotantes.
  */
-export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onResume, onModelAndDesign, onLanguageChange, onThemeChange }: SuiteHomeProps) => {
+export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onResume, onLanguageChange, onThemeChange }: SuiteHomeProps) => {
   const text = copy[language];
   const mode = theme === 'dark' ? 'night' : 'day';
   const [preview, setPreview] = useState<ToolId | null>(null);
-  const [quote] = useState(() => ENGINEERING_QUOTES[Math.floor(Math.random() * ENGINEERING_QUOTES.length)] ?? ENGINEERING_QUOTES[0]);
   const last = toolIdentity(lastTool);
   const scenes = [{ id: 'portal', src: PORTAL[mode] }, ...TOOL_CATALOG.map((tool) => ({ id: tool.id, src: tool.scene[mode] }))];
   const shown = preview ?? 'portal';
@@ -126,25 +114,6 @@ export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onRe
             <ArrowRight className="fs-tool__go" size={18} aria-hidden="true" />
           </button>)}
         </nav>
-        {onModelAndDesign ? <div className="fs-suite__flow" onMouseLeave={() => setPreview(null)}>
-          <button
-            type="button"
-            className="fs-tool fs-tool--flow"
-            aria-label={text.flowLabel}
-            onClick={onModelAndDesign}
-            onMouseEnter={() => setPreview('design')}
-            onFocus={() => setPreview('design')}
-            onBlur={() => setPreview(null)}
-          >
-            <span className="fs-tool__tile fs-tool__tile--flow" aria-hidden="true"><ToolGlyph tool="model2d" size={21} /><ToolGlyph tool="design" size={21} /></span>
-            <span className="fs-tool__copy">
-              <span className="fs-tool__meta"><span className="fs-tool__code">{text.flowCode}</span></span>
-              <strong>{text.flowName}</strong>
-              <span className="fs-tool__role">{text.flowRole}</span>
-            </span>
-            <ArrowRight className="fs-tool__go" size={18} aria-hidden="true" />
-          </button>
-        </div> : null}
 
         <button type="button" className="fs-suite__resume" onClick={() => onResume(lastTool)}>
           <span>{text.resume}</span>
@@ -169,7 +138,6 @@ export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onRe
     </div>
 
     <footer className="fs-suite__foot">
-      <blockquote className="fs-suite__quote">“{quote.text[language]}” <cite>{quote.author}</cite></blockquote>
       <p className="fs-suite__note">{text.note} · Cristian Mora · <a href="https://github.com/klkmoraa/fstructure" target="_blank" rel="noopener noreferrer">GitHub<ArrowUpRight size={12} aria-hidden="true" /></a></p>
     </footer>
   </main>;

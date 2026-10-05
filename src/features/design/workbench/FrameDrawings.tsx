@@ -145,7 +145,7 @@ export function FrameElevation({ result, kind, selected, onSelect }: {
     onSelect?.(designId);
   };
   const percent = (ratio: number) => Number.isFinite(ratio) ? `${Math.round(ratio * 100)} %` : '—';
-  const name = result.source.kind === 'model2d' ? 'el Modelo 2D' : 'el pórtico';
+  const name = result.source.kind === 'model2d' ? 'el Modelo 2D' : result.source.kind === 'model3d' ? 'el eje del Modelo 3D' : 'el pórtico';
   const description = kind === 'ratio'
     ? `Utilización de ${name}: ${result.beams.length} líneas de viga y ${result.columns.length} columnas; máxima ${percent(result.governingRatio)}`
     : kind === 'deformed'

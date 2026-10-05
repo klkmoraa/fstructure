@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   Anchor,
   CircleDot,
+  DraftingCompass,
   Layers3,
   Minus,
   MoveDown,
@@ -680,6 +681,11 @@ export const InspectorProperties = () => {
         <Pencil size={15} aria-hidden="true" />
         <span>{t('contextualActions.structuralEdit')}</span>
       </button>
+      {selectedMember && (selectedMember.type === 'frame' || selectedMember.type === 'truss') ? <button type="button" className="inspector-selection-edit" title={t('contextualActions.designMemberHint')}
+        onClick={() => emitWorkspaceCommand('open-member-design', { memberId: selectedMember.id })}>
+        <DraftingCompass size={15} aria-hidden="true" />
+        <span>{t('contextualActions.designMember')}</span>
+      </button> : null}
     </div> : null}
 
     {selection?.kind === 'multi' ? <>
@@ -749,9 +755,9 @@ export const InspectorProperties = () => {
             <SectionPresetSelector units={units} selectedId={selectedMember.sectionId} origin={selectedMember.sectionOrigin} onSelect={applySectionPreset} />
             <PersonalSectionSelector units={units} onSelect={applyPersonalSection} />
             <MemberFavoritesPanel project={project} member={selectedMember} language={language} units={units} executeProjectCommand={executeProjectCommand} />
-            <PhysicalNumberField label="E" value={selectedMember.E} units={units} quantity="elasticModulus" resetKey={`${selectionKey}:E`} hint={t('inspector.domainValidatesE')} onCommit={(value) => updateMember('E', value)} />
-            <PhysicalNumberField label="A" value={selectedMember.A} units={units} quantity="area" resetKey={`${selectionKey}:A`} hint={t('inspector.domainValidatesA')} onCommit={(value) => updateMember('A', value)} />
-            <PhysicalNumberField label="I" value={selectedMember.I} units={units} quantity="inertia" resetKey={`${selectionKey}:I`} hint={selectedMember.type === 'frame' ? t('inspector.domainValidatesI') : t('inspector.inertiaCompatibilityHint')} onCommit={(value) => updateMember('I', value)} />
+            <PhysicalNumberField label="E" value={selectedMember.E} units={units} quantity="elasticModulus" resetKey={`${selectionKey}:E`} onCommit={(value) => updateMember('E', value)} />
+            <PhysicalNumberField label="A" value={selectedMember.A} units={units} quantity="area" resetKey={`${selectionKey}:A`} onCommit={(value) => updateMember('A', value)} />
+            <PhysicalNumberField label="I" value={selectedMember.I} units={units} quantity="inertia" resetKey={`${selectionKey}:I`} hint={selectedMember.type === 'frame' ? undefined : t('inspector.inertiaCompatibilityHint')} onCommit={(value) => updateMember('I', value)} />
           </> : null}
           {selectedMember.type !== 'rigid' && classroomMode ? <InspectorLockedState title={t('inspector.materialLockedClassroom')}>{t('inspector.materialLockedClassroomBody')}</InspectorLockedState> : null}
           {selectedMember.type === 'rigid' ? <InspectorLockedState title={t('inspector.noEditableStiffness')}>{t('inspector.noEditableStiffnessBody')}</InspectorLockedState> : null}

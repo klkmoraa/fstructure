@@ -66,3 +66,28 @@ describe('separación de refuerzo transversal elegida por la persona', () => {
     expect(designColumn({ ...spiral, endTieSpacingMm: 75 }).ok).toBe(false);
   });
 });
+
+describe('restricción propia en la dirección Y (marco espacial)', () => {
+  const sway: ColumnDesignInput = {
+    ...base, code: 'nsr-10', braced: false, effectiveLengthFactor: 1.2, stabilityIndex: 0.05, unbracedLengthM: 4,
+    momentXKnm: 60, momentYKnm: 40, swayMomentXKnm: 30, swayMomentYKnm: 30,
+  };
+  it('con los mismos valores que X, Y da el mismo resultado que sin ella', () => {
+    const plain = ok(sway);
+    const same = ok({ ...sway, alongY: { effectiveLengthFactor: 1.2, stabilityIndex: 0.05, curvature: 'single', endMomentRatio: 1 } });
+    expect(same.magnification.y.designMomentKnm).toBeCloseTo(plain.magnification.y.designMomentKnm, 9);
+    expect(same.governingRatio).toBeCloseTo(plain.governingRatio, 9);
+  });
+  it('un índice de estabilidad mayor en Y amplifica sólo el momento de esa dirección (δs = 1/(1 − Q))', () => {
+    const plain = ok(sway);
+    const loose = ok({ ...sway, alongY: { effectiveLengthFactor: 2, stabilityIndex: 0.2, curvature: 'double', endMomentRatio: 0.5 } });
+    expect(loose.magnification.x.designMomentKnm).toBeCloseTo(plain.magnification.x.designMomentKnm, 9);
+    expect(loose.magnification.y.swayFactor).toBeCloseTo(1 / (1 - 0.2), 9);
+    expect(loose.magnification.y.designMomentKnm).toBeGreaterThan(plain.magnification.y.designMomentKnm);
+    expect(loose.governingRatio).toBeGreaterThan(plain.governingRatio);
+  });
+  it('rechaza una k menor que 1 en Y si el marco se desplaza', () => {
+    const result = designColumn({ ...sway, alongY: { effectiveLengthFactor: 0.8, stabilityIndex: 0, curvature: 'single', endMomentRatio: 1 } });
+    expect(result.ok).toBe(false);
+  });
+});

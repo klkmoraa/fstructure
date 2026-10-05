@@ -11,17 +11,19 @@ const project: ProjectModel = { ...createDefaultProject(), name: 'Nave Norte' };
 
 const renderHome = (props: Partial<SuiteHomeProps> = {}) => {
   const handlers = { onOpenTool: vi.fn(), onResume: vi.fn(), onLanguageChange: vi.fn(), onThemeChange: vi.fn() };
-  render(<SuiteHome language="es" theme="dark" project={project} lastTool="space3d" {...handlers} {...props} />);
+  render(<SuiteHome language="es" theme="dark" project={project} lastTool="fem" {...handlers} {...props} />);
   return handlers;
 };
 
 describe('Inicio de FusionStructure', () => {
-  it('presenta las cuatro herramientas con código, estado y apertura directa', () => {
+  it('presenta las mesas con código, estado y apertura directa', () => {
     const { onOpenTool } = renderHome();
     const tools = screen.getByRole('navigation', { name: 'Herramientas' });
     const buttons = [...tools.querySelectorAll('button')];
-    expect(buttons.map((button) => button.querySelector('strong')?.textContent)).toEqual(['FStructure', 'Solver 3D', 'Elementos finitos', 'Diseño']);
-    expect(buttons.map((button) => button.querySelector('.fs-tool__code')?.textContent)).toEqual(['FS-A01', 'FS-A02', 'FS-A03', 'FS-A04']);
+    expect(buttons.map((button) => button.querySelector('strong')?.textContent)).toEqual(['FStructure', 'Elementos finitos']);
+    expect(buttons.map((button) => button.querySelector('.fs-tool__code')?.textContent)).toEqual(['FS-A01', 'FS-A03']);
+    // El 3D y el diseño son modos de FStructure, no mesas aparte.
+    expect(buttons[0]!.querySelector('.fs-tool__role')?.textContent).toMatch(/modelo 3D y diseño de concreto/);
     fireEvent.click(screen.getByRole('button', { name: /Abrir Elementos finitos/ }));
     expect(onOpenTool).toHaveBeenCalledWith('fem');
   });
@@ -38,17 +40,17 @@ describe('Inicio de FusionStructure', () => {
     const stage = document.querySelector('.fs-suite__stage')!;
     expect(stage.getAttribute('data-preview')).toBe('portal');
     expect(stage.querySelector('img.is-shown')?.getAttribute('src')).toBe('./assets/suite/portal-day.png');
-    fireEvent.mouseEnter(screen.getByRole('button', { name: /Abrir Solver 3D/ }));
-    expect(stage.getAttribute('data-preview')).toBe('space3d');
-    expect(stage.querySelector('img.is-shown')?.getAttribute('src')).toBe('./assets/suite/space3d-day.png');
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /Abrir Elementos finitos/ }));
+    expect(stage.getAttribute('data-preview')).toBe('fem');
+    expect(stage.querySelector('img.is-shown')?.getAttribute('src')).toBe('./assets/suite/fem-day.png');
     fireEvent.mouseLeave(screen.getByRole('navigation', { name: 'Herramientas' }));
     expect(stage.getAttribute('data-preview')).toBe('portal');
   });
 
   it('continúa el proyecto abierto directamente en la mesa de la última herramienta', () => {
     const { onOpenTool, onResume } = renderHome();
-    fireEvent.click(screen.getByRole('button', { name: /Continuar\s*Nave Norte\s*en Solver 3D/ }));
-    expect(onResume).toHaveBeenCalledWith('space3d');
+    fireEvent.click(screen.getByRole('button', { name: /Continuar\s*Nave Norte\s*en Elementos finitos/ }));
+    expect(onResume).toHaveBeenCalledWith('fem');
     expect(onOpenTool).not.toHaveBeenCalled();
   });
 

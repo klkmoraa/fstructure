@@ -82,7 +82,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   useEffect(() => storage.write('beam-spans', spans.map((span) => ({ ...span }))), [spans, storage]);
   const snapshot = useMemo(() => ({ draft, spans }), [draft, spans]);
   const applySnapshot = useCallback((next: typeof snapshot) => { replace(next.draft); setSpans(next.spans); }, [replace]);
-  const history = useDraftHistory(snapshot, applySnapshot);
+  const history = useDraftHistory(snapshot, applySnapshot, 'beam');
   const { onHistory } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
   const code = designCode(chrome.code);

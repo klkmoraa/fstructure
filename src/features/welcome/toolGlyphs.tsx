@@ -20,25 +20,12 @@ const GLYPHS: Record<ToolId, ReactNode> = {
     <circle cx="9" cy="14" r="2.6" fill="currentColor" stroke="none" />
     <circle cx="39" cy="14" r="2.6" fill="currentColor" stroke="none" />
   </>,
-  space3d: <>
-    <path d="M24 8 40 16v16l-16 8-16-8V16z" stroke="currentColor" />
-    <path d="M24 8v16m0 0 16-8m-16 8-16-8m16 8v16" stroke="currentColor" opacity=".55" />
-    <circle cx="24" cy="24" r="3.4" fill={accent} stroke="none" />
-    <path d="M24 24 36 18M24 24l-9 9M24 24v-9" stroke={accent} />
-  </>,
   fem: <>
     <path d="M8 10h32v28H8z" stroke="currentColor" />
     <path d="M18 10v28M29 10v28M8 20h32M8 29h32" stroke="currentColor" opacity=".5" />
     <path d="M18 20h11v9H18z" fill={accent} stroke="none" opacity=".9" />
     <circle cx="18" cy="20" r="2.2" fill="currentColor" stroke="none" />
     <circle cx="29" cy="29" r="2.2" fill="currentColor" stroke="none" />
-  </>,
-  design: <>
-    <path d="M7 9h13M13.5 9v17M7 26h13" stroke="currentColor" />
-    <path d="M7 33h13M7 40h13" stroke="currentColor" opacity=".45" />
-    <path d="M27 42V22" stroke="currentColor" strokeWidth="7" strokeLinecap="butt" />
-    <path d="M38 42V14" stroke={accent} strokeWidth="7" strokeLinecap="butt" opacity=".85" />
-    <path d="M23 14h20" stroke={accent} strokeDasharray="3 3" />
   </>,
 };
 

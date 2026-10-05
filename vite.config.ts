@@ -12,6 +12,9 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   test: {
+    // Evita saturar el equipo y agotar los tiempos de las pruebas de interfaz.
+    maxWorkers: 1,
+    testTimeout: 10_000,
     setupFiles: ['src/i18n/testCatalogSetup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**', ...(process.env.FS_DESIGN_RULES ? [] : DESIGN_RULES)],

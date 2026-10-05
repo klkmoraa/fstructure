@@ -298,6 +298,8 @@
    aviso, un error) va en el título, no en la barra. */
 .workspace-topbar__tool-status {
   max-width: 320px;
+  min-width: 0;
+  flex: 0 1 auto;
   gap: 7px;
   padding-inline: 10px 6px;
 }
@@ -1272,10 +1274,28 @@
   .workspace-topbar__inspector-button--desktop { display: none; }
 }
 
-/* «Diseñar» (flujo Modelo 2D → Diseño): en teléfono le cede el sitio al nombre
-   del proyecto y vive en el menú «…» de utilidades. */
+/* En teléfono, sin «Panel» (es de escritorio) el grupo quedaría como una píldora vacía. */
 @media (max-width: 560px) {
-  .workspace-topbar__design-button { display: none; }
-  /* Sin «Panel» (escritorio) ni «Diseñar», el grupo quedaría como una píldora vacía. */
-  .workspace-topbar__tool-group:not(:has(button:not(.workspace-topbar__inspector-button--desktop):not(.workspace-topbar__design-button))) { display: none; }
+  .workspace-topbar__tool-group:not(:has(button:not(.workspace-topbar__inspector-button--desktop))) { display: none; }
+}
+
+/* Modelo | Diseño: los dos modos de la mesa de FStructure. */
+.workspace-topbar__mode-group { flex: none; }
+/* El estado de una herramienta llega por su ranura: que la ranura encoja deja
+   que la frase se recorte con elipsis antes que la insignia «Experimental». */
+.workspace-topbar__status > .shell-tool-slot--status { display: flex; min-width: 0; }
+/* En teléfono quedan sólo los botones de los otros dos modos: un toque cambia de modo. */
+@media (max-width: 560px) {
+  .workspace-topbar__mode-button.is-active { display: none; }
+}
+/* Con el interruptor de modo, la barra de un teléfono angosto aprieta sus
+   botones y deja sólo la marca: el nombre del proyecto (que ahí cabía como
+   «Pro…») se ve y se renombra en Proyectos del Inicio, y no tapa los modos. */
+@media (max-width: 420px) {
+  .workspace-topbar:has(.workspace-topbar__mode-group) .workspace-topbar__actions { gap: 2px; }
+  .workspace-topbar:has(.workspace-topbar__mode-group) .workspace-topbar__icon-button,
+  .workspace-topbar:has(.workspace-topbar__mode-group) .workspace-topbar__action-button { min-width: 34px; padding-inline: 0; }
+  .workspace-topbar:has(.workspace-topbar__mode-group) :is(.workspace-topbar__model-group, .workspace-topbar__mode-group, .workspace-topbar__tool-group, .workspace-topbar__calculate-group) { padding: 2px; }
+  .workspace-topbar:has(.workspace-topbar__mode-group) .workspace-topbar__project-group { flex: none; }
+  .workspace-topbar:has(.workspace-topbar__mode-group) .workspace-topbar__project { display: none; }
 }
