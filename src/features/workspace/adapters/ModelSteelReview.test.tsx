@@ -48,3 +48,42 @@ it('cancelar termina el worker y no devuelve un resultado caducado', async () =>
   controller.abort();
   await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
 });
+
+it('guarda y reabre sólo la selección; recalcula la demanda del modelo vigente', async () => {
+  vi.stubGlobal('Worker', FakeWorker);
+  const { createProjectWorkbenchStorage, WorkbenchStorageContext } = await import('../../design/workbench/workbenchStorage');
+  const persist = vi.fn();
+  const storage = createProjectWorkbenchStorage(undefined, persist);
+  const project = steelTensionProject();
+  const view = render(<WorkbenchStorageContext.Provider value={storage}><ModelSteelReview project={project} focusMember="T1" /></WorkbenchStorageContext.Provider>);
+  await waitFor(() => expect((screen.getByRole('button', { name: 'Guardar revisión de acero' }) as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar revisión de acero' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Guardar revisión de acero' }));
+  storage.flush();
+  const document = persist.mock.calls[0]![0];
+  expect(document.schemaVersion).toBe(6);
+  expect(document.entries['steel-memory']).toEqual([{ memberId: 'T1', combinationId: 'U', savedAt: expect.any(String) }]);
+  view.unmount(); storage.dispose();
+  const reopened = createProjectWorkbenchStorage(document, () => undefined);
+  project.nodalLoads[0]!.fx = 200;
+  render(<WorkbenchStorageContext.Provider value={reopened}><ModelSteelReview project={project} /></WorkbenchStorageContext.Provider>);
+  fireEvent.click(screen.getByText(/Memoria de acero/));
+  fireEvent.click(screen.getByRole('button', { name: /T1 ·/ }));
+  await waitFor(() => expect(screen.getByTestId('ntc-steel-design-card').textContent).toContain('200'));
+  expect((screen.getByLabelText('Barra de acero') as HTMLSelectElement).value).toBe('T1');
+  reopened.dispose();
+});
+
+it('una referencia guardada ausente bloquea el PDF y nunca cambia a todas las barras', async () => {
+  vi.stubGlobal('Worker', FakeWorker);
+  const { createProjectWorkbenchStorage, WorkbenchStorageContext, WORKBENCH_DOCUMENT_KIND } = await import('../../design/workbench/workbenchStorage');
+  const storage = createProjectWorkbenchStorage({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 6, entries: { 'steel-memory': [{ memberId: 'eliminada', combinationId: 'U', savedAt: '2026-10-04' }, { memberId: 'T1', combinationId: 'eliminada', savedAt: '2026-10-04' }] } }, () => undefined);
+  render(<WorkbenchStorageContext.Provider value={storage}><ModelSteelReview project={steelTensionProject()} /></WorkbenchStorageContext.Provider>);
+  fireEvent.click(screen.getByText(/Memoria de acero/));
+  expect((screen.getByRole('button', { name: /T1 · eliminada/ }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole('button', { name: /^eliminada ·/ }));
+  expect(screen.getByRole('alert').textContent).toContain('ya no es');
+  expect((screen.getByRole('button', { name: 'PDF de acero' }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByLabelText('Barra de acero') as HTMLSelectElement).value).toBe('eliminada');
+  storage.dispose();
+});
