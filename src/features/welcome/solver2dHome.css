@@ -20,9 +20,12 @@
  */
 
 .solver2d-home {
+  min-width: 0;
+  width: 100%;
   max-width: 1280px;
   margin-inline: auto;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: clamp(28px, 3.8vw, 42px);
   padding: 0 0 26px;
 }
@@ -467,7 +470,7 @@
 
 /* ------------------------------------------------------------------ Rutas */
 
-.solver2d-section { display: grid; gap: 14px; }
+.solver2d-section { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 
 .solver2d-section__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
 
@@ -836,3 +839,7 @@
   .solver2d-path { min-height: 0; }
   .solver2d-open__actions { display: grid; }
 }
+
+.solver2d-intents .solver2d-paths { grid-template-columns: repeat(4, minmax(0,1fr)); }
+@media (max-width: 1000px) { .solver2d-intents .solver2d-paths { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 480px) { .solver2d-intents .solver2d-paths { grid-template-columns: minmax(0,1fr); } }

@@ -56,17 +56,31 @@ const HISTORY_LIMIT = 100;
  * los cambios muy seguidos se agrupan. Aplicar un paso del historial no crea
  * uno nuevo.
  */
-export function useDraftHistory<T>(value: T, apply: (value: T) => void): DraftHistory {
-  const past = useRef<T[]>([]);
-  const future = useRef<T[]>([]);
+const RETAINED_HISTORIES = new WeakMap<object, Map<string, { past: unknown[]; future: unknown[]; present: unknown }>>();
+
+export function useDraftHistory<T>(value: T, apply: (value: T) => void, key?: string): DraftHistory {
+  const scope = useWorkbenchStorage().historyScope;
+  const [retained] = useState(() => {
+    const saved = scope && key ? RETAINED_HISTORIES.get(scope)?.get(key) : undefined;
+    return saved && JSON.stringify(saved.present) === JSON.stringify(value) ? saved : undefined;
+  });
+  const past = useRef<T[]>((retained?.past as T[] | undefined) ?? []);
+  const future = useRef<T[]>((retained?.future as T[] | undefined) ?? []);
   const previous = useRef(value);
   const lastChange = useRef(0);
   const applying = useRef(false);
-  const [counts, setCounts] = useState({ past: 0, future: 0 });
+  const [counts, setCounts] = useState({ past: past.current.length, future: future.current.length });
   const sync = () => setCounts({ past: past.current.length, future: future.current.length });
 
+  const remember = useCallback(() => {
+    if (!scope || !key) return;
+    let histories = RETAINED_HISTORIES.get(scope);
+    if (!histories) { histories = new Map(); RETAINED_HISTORIES.set(scope, histories); }
+    histories.set(key, { past: past.current, future: future.current, present: previous.current });
+  }, [scope, key]);
+  useEffect(() => () => remember(), [remember]);
   useEffect(() => {
-    if (Object.is(previous.current, value)) return;
+    if (JSON.stringify(previous.current) === JSON.stringify(value)) { applying.current = false; return; }
     if (applying.current) {
       applying.current = false;
     } else {
@@ -79,7 +93,8 @@ export function useDraftHistory<T>(value: T, apply: (value: T) => void): DraftHi
       sync();
     }
     previous.current = value;
-  }, [value]);
+    remember();
+  }, [value, remember]);
 
   const step = useCallback((from: { current: T[] }, to: { current: T[] }) => {
     const target = from.current[from.current.length - 1];
@@ -89,8 +104,10 @@ export function useDraftHistory<T>(value: T, apply: (value: T) => void): DraftHi
     applying.current = true;
     lastChange.current = 0;
     apply(target);
+    previous.current = target;
+    remember();
     sync();
-  }, [apply]);
+  }, [apply, remember]);
 
   return useMemo(() => ({
     canUndo: counts.past > 0,

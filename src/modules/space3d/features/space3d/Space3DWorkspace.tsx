@@ -19,7 +19,7 @@ import {
   ChevronDown, CircleStop, Grid3x3, Layers, Minus, Play, Plus, Redo2, Tag, Trash2, Undo2, Weight, X,
 } from 'lucide-react';
 import { NodeGlyph, SupportGlyph } from '../../../../design-system/icons/structural';
-import { Space3DProjectProvider, useSpace3DProject, type Space3DSelection } from '../../space3d/store/Space3DProjectContext';
+import { Space3DProjectProvider, useSpace3DProject, type Space3DSelection, type Space3DHistory } from '../../space3d/store/Space3DProjectContext';
 // Space 3D contributes content to the canonical shell; it does not carry a
 // second component library or token set.
 import { Dialog, Popover } from '../../../../design-system/components/overlays';
@@ -122,6 +122,9 @@ function EmbeddedInspector({ embedded, expanded, children }: { embedded: boolean
 
 interface Space3DWorkspaceProps {
   readonly canonicalProject?: Space3DProjectV1;
+  readonly retainedHistory?: Space3DHistory | null;
+  readonly onHistoryChange?: (history: Space3DHistory) => void;
+  readonly onOpenDesign?: () => void;
   readonly onProjectChange?: (project: Space3DProjectV1) => void;
   readonly language: Language;
   /** Render the 3D surface inside the global workbench shell. */
@@ -240,10 +243,10 @@ interface Space3DStudyFeedback {
 const LABELS_BY_DEFAULT_LIMIT = 30;
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange' | 'startCamera' | 'onCameraRelease' | 'startSelection' | 'onSelectionChange'> {}
+  'onOpenDesign' | 'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange' | 'startCamera' | 'onCameraRelease' | 'startSelection' | 'onSelectionChange'> {}
 
 const WorkspaceBody = ({
-  language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange, startCamera, onCameraRelease, startSelection, onSelectionChange,
+  onOpenDesign, language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange, startCamera, onCameraRelease, startSelection, onSelectionChange,
 }: WorkspaceBodyProps) => {
   // El inglés se carga bajo demanda; al llegar, la versión cambia y la mesa se traduce.
   const [catalogVersion, setCatalogVersion] = useState(0);
@@ -1371,6 +1374,14 @@ const WorkspaceBody = ({
         <button type="button" className="workspace-topbar__icon-button" onClick={undo} disabled={!canUndo} aria-label={t('space3d.undo')} title={t('space3d.undo')}><Undo2 size={17} aria-hidden="true" /></button>
         <button type="button" className="workspace-topbar__icon-button" onClick={redo} disabled={!canRedo} aria-label={t('space3d.redo')} title={t('space3d.redo')}><Redo2 size={17} aria-hidden="true" /></button>
       </ShellContribution>
+      <ShellContribution slot="journey"><section className="mesa-journey" aria-label="Modo, origen y siguiente paso">
+        <div className="mesa-journey__context"><strong>3D</strong><span>{language === 'es' ? 'Origen: Modelo 3D' : 'Source: 3D model'}</span></div>
+        <p>{language === 'es' ? !hasContent ? 'Crea un marco o edificio, añade apoyos y cargas y analiza.' : currentAnalysis ? 'Consulta deformada y esfuerzos, o continúa con el diseño de sus ejes.' : 'Revisa apoyos y cargas. Analiza para obtener los resultados.' : 'Model → supports and loads → analyse → results → optional design.'}</p>
+        <div className="mesa-journey__actions">
+          {currentAnalysis ? <button type="button" onClick={(event) => { setResultMode('moment'); setPanel('analysis'); shellInspector?.reveal(event.currentTarget); }}>{language === 'es' ? 'Ver resultados del 3D' : 'View 3D results'}</button> : null}
+          {hasContent && onOpenDesign ? <button type="button" onClick={onOpenDesign}>{language === 'es' ? 'Diseñar los ejes' : 'Design frame lines'}</button> : null}
+        </div>
+      </section></ShellContribution>
       <ShellContribution slot="action">{analyzeButton('workspace-topbar__action-button is-primary')}</ShellContribution>
       <ShellContribution slot="status"><ShellStatusChip tone={SHELL_TONES[analysisState] ?? 'neutral'} label={stateLabel} badge={t('space3d.badge')} /></ShellContribution>
     </> : <header className="space3d-localbar">
@@ -1679,8 +1690,8 @@ const WorkspaceBody = ({
 };
 
 /** Monta el store del modelo 3D con el proyecto guardado de la herramienta o uno en blanco. */
-const Space3DWorkspace = ({ storage, client, canonicalProject, ...rest }: Space3DWorkspaceProps) => (
-  <Space3DProjectProvider storage={storage} client={client} initialProject={canonicalProject}>
+const Space3DWorkspace = ({ storage, client, canonicalProject, retainedHistory, onHistoryChange, ...rest }: Space3DWorkspaceProps) => (
+  <Space3DProjectProvider storage={storage} client={client} initialProject={canonicalProject} retainedHistory={retainedHistory} onHistoryChange={onHistoryChange}>
     <WorkspaceBody {...rest} />
   </Space3DProjectProvider>
 );

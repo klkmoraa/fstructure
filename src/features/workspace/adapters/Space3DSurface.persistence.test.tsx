@@ -157,6 +157,8 @@ it('aplica las secciones del Diseño como un paso deshacible, guarda y reabre si
   await start();
   await act(() => session.open('A'));
   expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(storedModel(withSpace3dSections(model, {beam:{widthMm:350,heightMm:550},column:{widthMm:450,heightMm:450}})));
+  await userEvent.click(screen.getByRole('button', {name:'Switch tool'}));
+  await userEvent.click(screen.getByRole('button', {name:'Switch tool'}));
   await userEvent.click(screen.getByRole('button', {name:t('space3d.undo')}));
   await act(() => session.open('A'));
   expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(model);
@@ -164,4 +166,7 @@ it('aplica las secciones del Diseño como un paso deshacible, guarda y reabre si
   await userEvent.click(screen.getByRole('button', {name:'Switch tool'}));
   await act(() => session.open('A'));
   expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(model);
+  await userEvent.click(screen.getByRole('button', {name:t('space3d.redo')}));
+  await act(() => session.open('A'));
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(storedModel(withSpace3dSections(model, {beam:{widthMm:350,heightMm:550},column:{widthMm:450,heightMm:450}})));
 });

@@ -63,7 +63,7 @@ const ToolContent = ({ variant, onModeChange }: Pick<SurfaceProps, 'variant' | '
   if (variant === 'design') {
     return <LazySurface><DesignModeTool {...(onModeChange ? { onOpenModel: () => onModeChange('model'), onOpenSpace3D: () => onModeChange('3d') } : {})} /></LazySurface>;
   }
-  return variant === '3d' ? <Space3DModeTool /> : <FemTool />;
+  return variant === '3d' ? <Space3DModeTool {...(onModeChange ? { onOpenDesign: () => onModeChange('design') } : {})} /> : <FemTool />;
 };
 
 const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfaceProps) => {
@@ -141,6 +141,7 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
         onAnalyze={() => undefined}
         onOpenResults={() => undefined}
       />}
+      journey={mesa ? <div className="mesa-journey-host"><ShellSlotHost slot="journey" /></div> : null}
       workspace={<section className="native-workspace-mode" data-workspace-mode={variant === '3d' ? 'space3d' : variant}
         aria-label={design ? (language === 'es' ? `${name} · Diseño` : `${name} · Design`) : variant === '3d' ? `${name} · 3D` : name}>
         <ToolErrorBoundary fallback={(reset) => <div className="tool-shell__failure" role="alert">

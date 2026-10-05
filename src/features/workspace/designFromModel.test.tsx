@@ -23,7 +23,10 @@ describe('modelar y diseñar: la mesa Estructura con el Modelo 2D', () => {
   it('diseña las barras del modelo sin pedir su geometría y vuelve al 2D', async () => {
     const user = userEvent.setup();
     const onOpenModel = vi.fn();
-    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="model" modelSource={model2dDesignSource(project)} onOpenModel={onOpenModel} /></ProjectProvider>);
+    // El acceso desde 2D debe ganar al elemento y origen sueltos guardados.
+    localStorage.setItem('fstructure.design-workbench.element', JSON.stringify('beam'));
+    localStorage.setItem('fstructure.design-workbench.frame', JSON.stringify({ source: 'frame' }));
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startSource="model" modelSource={model2dDesignSource(project)} onOpenModel={onOpenModel} /></ProjectProvider>);
     expect(screen.getByRole('radio', { name: 'Modelo 2D' }).getAttribute('aria-checked')).toBe('true');
     // La geometría y las cargas son del modelo: el taller no las pide.
     expect(screen.queryByRole('textbox', { name: 'Claro 1 · L (m)' })).toBeNull();

@@ -57,7 +57,7 @@ const FStructureSurface = () => {
       ? { surface: 'workspace', projectId: route.projectId, tool: 'model2d' }
       : { surface: 'workspace', projectId: route.projectId, tool: 'model2d', mode }));
   }, [navigate, route.projectId, route.mode]);
-  const openDesign = useCallback(() => setMesaMode('design'), [setMesaMode]);
+  const openDesign = useCallback(() => { setToolIntent({ tool: 'design', kind: 'frame', element: 'beam' }); setMesaMode('design'); }, [setMesaMode]);
   const openSpace3D = useCallback(() => setMesaMode('3d'), [setMesaMode]);
 
   useEffect(() => {

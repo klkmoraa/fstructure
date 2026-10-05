@@ -13,6 +13,8 @@ import { MAX_EXTRUDED_FRAMES, space3dFromModel2d } from '../../../integrations/m
 import { ShellContribution, ShellStatusChip } from '../ShellToolSlots';
 import { linkSpace3DToShell } from './space3dShellBridge';
 import './space3dBring.css';
+import '../mesaJourney.css';
+import type { Space3DHistory } from '../../../modules/space3d/space3d/store/Space3DProjectContext';
 import { peekToolIntent, takeToolIntent } from '../toolIntent';
 import { rememberSpace3DSelection } from './mesaSelection';
 import type { ProjectModel } from '../../../types';
@@ -22,6 +24,8 @@ import type { UnifiedProjectSession } from '../../../storage/unifiedProjectSessi
 const embeddedStorage = { getItem: () => null, setItem: () => undefined, removeItem: () => undefined };
 
 /** Vista del 3D de cada proyecto mientras dura la sesión: al volver al modo 3D se abre la misma. */
+const HISTORY_MEMORY = new WeakMap<UnifiedProjectSession, Map<string, Space3DHistory>>();
+
 const VIEW_MEMORY = new Map<string, string>();
 /** Y la cámara que tenía esa vista al salir (órbita, desplazamiento y zoom). */
 const CAMERA_MEMORY = new Map<string, { viewId: string; camera: Space3DCameraState }>();
@@ -35,13 +39,20 @@ const CAMERA_MEMORY = new Map<string, { viewId: string; camera: Space3DCameraSta
  * por el puente `src/integrations/model2dSpace3d`) que reemplaza el modelo 3D
  * con confirmación y se deshace con Deshacer.
  */
-export default function Space3DSurface() {
+export default function Space3DSurface({ onOpenDesign }: { onOpenDesign?: () => void }) {
   const { project } = useProjectModel();
   const session = useSharedToolState()?.session;
-  return <ProjectSpace3D key={project.id} project={project} session={session} />;
+  return <ProjectSpace3D key={project.id} project={project} session={session} onOpenDesign={onOpenDesign} />;
 }
 
-function ProjectSpace3D({ project, session }: { project: ProjectModel; session?: UnifiedProjectSession | null }) {
+function ProjectSpace3D({ project, session, onOpenDesign }: { project: ProjectModel; session?: UnifiedProjectSession | null; onOpenDesign?: () => void }) {
+  const retainedHistory = session ? HISTORY_MEMORY.get(session)?.get(project.id) : undefined;
+  const rememberHistory = useCallback((history: Space3DHistory) => {
+    if (!session) return;
+    let projects = HISTORY_MEMORY.get(session);
+    if (!projects) { projects = new Map(); HISTORY_MEMORY.set(session, projects); }
+    projects.set(project.id, history);
+  }, [session, project.id]);
   const [failure, setFailure] = useState<string | null>(null);
   const [sectionFailure, setSectionFailure] = useState<string | null>(null);
   // Se lee sin consumir durante el render (StrictMode lo repite) y se consume al montar.
@@ -99,7 +110,7 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
       });
     }} /> : null}
     <Space3DWorkspace language={project.settings.language} embedded storage={embeddedStorage}
-      canonicalProject={canonicalProject} onProjectChange={save} startIntent={startIntent} incomingProject={incoming}
+      canonicalProject={canonicalProject} retainedHistory={retainedHistory} onHistoryChange={rememberHistory} onOpenDesign={onOpenDesign} onProjectChange={save} startIntent={startIntent} incomingProject={incoming}
       {...(startView ? { startView } : {})} onViewChange={rememberView} startCamera={startCamera} onCameraRelease={rememberCamera}
       {...(startSelection ? { startSelection } : {})} onSelectionChange={rememberSelection} />
   </>;

@@ -11,6 +11,8 @@ import { isSteelMemory } from '../../../design/steelMemory';
  * entran al historial de deshacer, igual que los estudios FEM.
  */
 export interface WorkbenchStorage {
+  /** Identidad de sesión para conservar deshacer al salir del modo. */
+  readonly historyScope?: object;
   read(key: string): unknown;
   write(key: string, value: JsonValue): void;
 }
@@ -134,6 +136,7 @@ export function createProjectWorkbenchStorage(
   initial: unknown,
   persist: (document: JsonValue) => void,
   delayMs = 600,
+  historyScope?: object,
 ): ProjectWorkbenchStorage {
   const entries = parseWorkbenchDocument(initial);
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -146,6 +149,7 @@ export function createProjectWorkbenchStorage(
     persist(workbenchDocument(entries));
   };
   return {
+    historyScope,
     read: (key) => entries[key],
     write(key, value) {
       if (!KEY.test(key) || !isEntry(key, value)) return;

@@ -25,6 +25,8 @@ import { BuildingAxes } from './BuildingAxes';
 import { frameConcreteVolume, frameProposalStories, proposeFrameSections, proposeModelSections, type ProposalStep, type SectionProposal } from './frameProposal';
 import { startProposalWorker } from './proposalWorker';
 import { useWorkbenchStorage } from './workbenchStorage';
+import { MesaJourney } from '../../workspace/MesaJourney';
+import { ShellContribution } from '../../workspace/ShellToolSlots';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 type RowColumn<T> = { field: keyof T & string; label: string; unit: string; min?: number };
@@ -204,7 +206,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   useEffect(() => storage.write('frame-stories', stories.map((story) => ({ ...story }))), [stories, storage]);
   const snapshot = useMemo(() => ({ draft, bays, stories }), [draft, bays, stories]);
   const applySnapshot = useCallback((next: typeof snapshot) => { replace(next.draft); setBays(next.bays); setStories(next.stories); }, [replace]);
-  const history = useDraftHistory(snapshot, applySnapshot);
+  const history = useDraftHistory(snapshot, applySnapshot, 'frame');
   const { onHistory, startSource, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, onShowMembers } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
   // La barra elegida en el modo de origen: su diseño se abre cuando llega el resultado.
@@ -214,7 +216,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   // salvo que se pida el diseño de una barra. En el 3D se abre el eje de esa barra.
   useEffect(() => {
     const focus = focusRef.current;
-    const source = startSource && (startSource === 'frame' || fromProjectModel(draft) || focus) ? startSource : draft.source;
+    const source = startSource ?? draft.source;
     const axes = focus && source === 'model3d' && modelAxes?.axesOfMember ? modelAxes.axesOfMember(focus) : [];
     const axis = axes.length && modelAxes && !axes.includes(axisOf(draft, modelAxes)) ? axes[0]! : draft.axis;
     if (source !== 'model' && source !== 'model3d') focusRef.current = null;
@@ -273,6 +275,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     setModelProposal(null);
   }, [proposalInputs]);
   const proposeSections = () => {
+    chrome.setPanel('inputs', true);
     cancelProposal.current?.();
     proposalStart.current = proposalInputs;
     setModelProposal(null);
@@ -365,7 +368,13 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) }
     : { status: 'error' as const, label: fromModel && model.pending ? 'Analizando el modelo…' : 'Datos incompletos' };
 
-  return <WorkbenchLayout
+  return <><ShellContribution slot="journey"><MesaJourney mode="Diseño" source={`Origen: ${fromModel ? name : 'Elemento suelto · Pórtico rápido'}${from3d && modelAxes ? ` · ${modelAxes.axes.find((axis) => axis.id === axisOf(draft, modelAxes))?.label ?? ''}` : ''}`}
+    hint={modelProposal && modelSections ? `Propuesta por nivel: ${formatNumber(modelProposal.volumeM3, 2)} m³ (actual ${formatNumber(modelSections.volumeM3, 2)}). Revisa las secciones en Datos; aplicar es deshacible en ${from3d ? '3D' : '2D'}.` : fromModel ? !external || external.errors.length ? 'Revisa el modelo de origen, o elige Pórtico rápido para diseñar sin modelo.' : 'Revisa vigas y columnas → Proponer → aplicar las secciones → volver al modelo.' : 'Edita claros, niveles y cargas. El cálculo se actualiza al editar; consulta Resultados.'}>
+    <button type="button" onClick={() => chrome.setPanel('inputs', true)}>Origen y datos</button>
+    {result ? <button type="button" onClick={() => chrome.setPanel('results', true)}>Ver comprobaciones</button> : null}
+    {fromModel && modelSections ? modelProposal ? <button type="button" onClick={applyModelProposal}>{from3d ? 'Aplicar al 3D' : 'Aplicar al modelo'}</button> : <button type="button" disabled={proposing !== null} onClick={proposeSections}>{proposing ? 'Buscando…' : 'Proponer secciones'}</button> : null}
+    {fromModel && openSource ? <button type="button" onClick={openSource}>{from3d ? 'Volver al 3D' : 'Volver al 2D'}</button> : null}
+  </MesaJourney></ShellContribution><WorkbenchLayout
     chrome={steelOnly ? { ...chrome, codeControl: <span className="dw-badge">Acero · NTC CDMX 2023</span> } : chrome}
     title="Estructura"
     report={report}
@@ -643,5 +652,5 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <ChecksList checks={report.notes} />
       </Disclosure>
     </> : steelOnly ? <p className="dw-input-note">La revisión de acero está en Dibujo. No se ha concluido el diseño de las barras.</p> : null}
-  />;
+  /></>;
 }

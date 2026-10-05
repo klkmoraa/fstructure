@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowRight, ArrowUpRight, Box, DraftingCompass, FilePlus2, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Box, DraftingCompass, FilePlus2, PenLine, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
 import { AnimatePresence, m, useReducedMotion } from 'motion/react';
 import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import type { ProjectModel, ThemeMode } from '../../types';
@@ -47,7 +47,7 @@ interface Solver2DHomeProps {
 
 const copy = {
   es: {
-    role: 'Solver 2D',
+    role: '2D · 3D · Diseño',
     lead: 'Modela en 2D y 3D, analiza, diseña y comprende estructuras.',
     leadStrong: 'Del trazo al diagrama.',
     open: 'Proyecto abierto',
@@ -57,8 +57,8 @@ const copy = {
     nodes: 'nudos',
     members: 'barras',
     loads: 'cargas',
-    startTitle: 'Por dónde empezar',
-    startBody: 'Seis entradas a la misma mesa.',
+    startTitle: 'Recursos para empezar',
+    startBody: 'Plantillas, archivos y recursos de aprendizaje.',
     pathBlank: 'Modelo en blanco',
     pathBlankBody: 'Empieza con la rejilla vacía y coloca el primer nudo.',
     pathTemplate: 'Plantilla',
@@ -96,7 +96,7 @@ const copy = {
     about: 'Acerca de FStructure',
   },
   en: {
-    role: '2D Solver',
+    role: '2D · 3D · Design',
     lead: 'Model in 2D and 3D, analyse, design, and understand structures.',
     leadStrong: 'From line to diagram.',
     open: 'Open project',
@@ -106,8 +106,8 @@ const copy = {
     nodes: 'nodes',
     members: 'members',
     loads: 'loads',
-    startTitle: 'Where to start',
-    startBody: 'Six ways into the same workbench.',
+    startTitle: 'Starting resources',
+    startBody: 'Templates, files and learning resources.',
     pathBlank: 'Blank model',
     pathBlankBody: 'Start with an empty grid and place the first node.',
     pathTemplate: 'Template',
@@ -194,8 +194,6 @@ export const Solver2DHome = ({
     { id: 'template', icon: LayoutTemplate, tone: 'var(--sc-color-family-analisis)', label: text.pathTemplate, body: text.pathTemplateBody, action: onOpenTemplates },
     { id: 'classroom', icon: GraduationCap, tone: 'var(--sc-color-family-aprendizaje)', label: text.pathClassroom, body: text.pathClassroomBody, action: onOpenClassroom },
     { id: 'import', icon: Upload, tone: 'var(--sc-color-family-interop)', label: text.pathImport, body: text.pathImportBody, action: onOpenImport },
-    ...(onOpenSpace3D ? [{ id: 'space3d', icon: Box, tone: 'var(--sc-color-family-modelo)', label: text.pathSpace3D, body: text.pathSpace3DBody, action: onOpenSpace3D }] : []),
-    ...(onOpenDesign ? [{ id: 'design', icon: DraftingCompass, tone: 'var(--sc-color-family-analisis)', label: text.pathDesign, body: text.pathDesignBody, action: onOpenDesign }] : []),
   ];
 
   const capabilities = [
@@ -262,6 +260,18 @@ export const Solver2DHome = ({
 
   return <div className={`solver2d-home${reducedMotion ? ' is-static' : ''}`}>
     {quoteToast}
+
+    <section className="solver2d-section solver2d-intents" aria-label={language === 'es' ? 'Elige cómo trabajar' : 'Choose your workflow'}>
+      <header className="solver2d-section__head"><div><h2>{language === 'es' ? '¿Qué quieres hacer?' : 'What would you like to do?'}</h2><p>{language === 'es' ? 'Cada modo funciona por separado. Cambia de modo cuando lo necesites; tu proyecto se conserva.' : 'Each mode works independently. Switch whenever you need; your project is kept.'}</p></div></header>
+      <div className="solver2d-paths">
+        {[
+          { label: language === 'es' ? 'Modelar 2D' : 'Model in 2D', body: language === 'es' ? 'Dibujar → apoyos y cargas → analizar → resultados.' : 'Draw → supports and loads → analyse → results.', Icon: PenLine, action: onContinue },
+          ...(onOpenSpace3D ? [{ label: language === 'es' ? 'Modelar 3D' : 'Model in 3D', body: language === 'es' ? 'Crear un marco o edificio → analizar → resultados.' : 'Create a frame or building → analyse → results.', Icon: Box, action: onOpenSpace3D }] : []),
+          ...(onOpenDesign ? [{ label: language === 'es' ? 'Diseñar un elemento' : 'Design an element', body: language === 'es' ? 'Viga, columna, zapata o pórtico rápido, sin modelo.' : 'Beam, column, footing or quick frame, without a model.', Icon: DraftingCompass, action: onOpenDesign }] : []),
+          { label: language === 'es' ? 'Modelar y diseñar' : 'Model and design', body: language === 'es' ? 'Elegir 2D o 3D → analizar → Diseño → Proponer → aplicar y volver al modelo.' : 'Choose 2D or 3D → analyse → Design → Propose → apply and return.', Icon: ArrowRight, action: onContinue },
+        ].map(({ label, body, Icon, action }) => <button key={label} type="button" className="solver2d-path" onClick={action}><span className="solver2d-path__icon"><Icon size={18} /></span><strong>{label}</strong><span className="solver2d-path__body">{body}</span><ArrowUpRight className="solver2d-path__go" size={15} /></button>)}
+      </div>
+    </section>
 
     <section className="solver2d-hero" aria-labelledby="solver2d-hero-name">
       <div className="solver2d-hero__copy">

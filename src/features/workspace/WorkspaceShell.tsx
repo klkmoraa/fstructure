@@ -19,6 +19,7 @@ import { withCanvasViewSettings } from '../view/canvasViewSettings';
 import { AppShellLayout } from './AppShellLayout';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { WorkspaceUtilities } from './WorkspaceUtilities';
+import { MesaJourney } from './MesaJourney';
 import { MesaModeSwitch } from './MesaModeSwitch';
 import type { MesaMode } from '../../shared/navigation/projectUrl';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
@@ -127,7 +128,7 @@ const WorkspaceBrokerContent = ({
   const modelDoctorNotificationIdRef = useRef(0);
   const pendingModelDoctorNotificationIdRef = useRef<number | null>(null);
   const reportedAnalysisRef = useRef<AnalysisResult | null>(null);
-  const { activeTool } = useWorkspaceUI();
+  const { activeTool, setSelection } = useWorkspaceUI();
   const { preferences: layout, setPreference, togglePreference } = layoutController;
   const { shellClass } = useShellComposition();
   const broker = useSurfacePresentation();
@@ -541,6 +542,22 @@ const WorkspaceBrokerContent = ({
         openDetail(trigger);
       }} onOpenUnitsEditor={(trigger) => openModel2DSurface('view', trigger)} />}
     />}
+    journey={<MesaJourney mode="2D" source={language === 'es' ? 'Origen: Modelo 2D' : 'Source: 2D model'}
+      hint={language === 'es'
+        ? !project.members.length ? 'Empieza con nudos y barras o genera un marco. Después añade apoyos y cargas.'
+          : !project.nodes.some((node) => node.support.type !== 'none') ? 'Añade apoyos para que el marco sea estable.'
+          : !project.nodalLoads.length && !project.memberLoads.length ? activeTool === 'distributedLoad' ? 'Toca una barra y define su carga. Después elige el caso y analiza.' : 'Añade cargas, elige el caso y analiza el marco.'
+          : analysis?.success ? 'Consulta los diagramas y reacciones. Puedes continuar con el diseño de vigas y columnas.'
+          : 'Analiza para obtener diagramas, deformada y reacciones.'
+        : 'Draw → supports and loads → analyse → results → optional design.'}>
+      {!project.members.length ? <button type="button" onClick={() => emitWorkspaceCommand('open-structure-generator')}>{language === 'es' ? 'Generar un marco' : 'Generate a frame'}</button>
+        : !project.nodes.some((node) => node.support.type !== 'none') ? <button type="button" onClick={() => { setSelection(null); setActiveTool('support'); closeSurface('detail'); }}>{language === 'es' ? 'Añadir apoyos' : 'Add supports'}</button>
+        : !project.nodalLoads.length && !project.memberLoads.length ? <button type="button" onClick={() => { setSelection(null); setActiveTool('distributedLoad'); closeSurface('detail'); }}>{language === 'es' ? 'Añadir cargas' : 'Add loads'}</button>
+        : analysis?.success ? <>
+          <button type="button" onClick={() => emitWorkspaceCommand('open-results', {})}>{language === 'es' ? 'Ver resultados' : 'View results'}</button>
+          {onModeChange ? <button type="button" onClick={() => { setToolIntent({ tool: 'design', kind: 'model' }); onModeChange('design'); }}>{language === 'es' ? 'Diseñar este marco' : 'Design this frame'}</button> : null}
+        </> : <button type="button" disabled={isAnalyzing} onClick={() => { emitWorkspaceCommand('analysis-requested'); analyze(); }}>{language === 'es' ? 'Analizar marco' : 'Analyse frame'}</button>}
+    </MesaJourney>}
     console={<Console
       layoutActions={{
         inspectorCollapsed: !inspectorOpen,

@@ -28,6 +28,8 @@ import { ModelSteelReview, isSteelReviewCandidate } from './ModelSteelReview';
  * rama `space3d` (puente `src/integrations/space3dDesign`). Al llegar desde el
  * modo 2D o 3D, Estructura diseña con ese modelo. «Editar» vuelve al modo.
  */
+const HISTORY_SCOPES = new WeakMap<object, Map<string, object>>();
+
 export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenModel?: () => void; onOpenSpace3D?: () => void }) {
   const projectModel = useContext(ProjectModelContext);
   const project = projectModel?.project ?? null;
@@ -131,16 +133,21 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   }, [modelAxes, onOpenModel, onOpenSpace3D, setSelection]);
   const storage = useMemo(() => {
     if (!session || !projectId) return null;
+    let scopes = HISTORY_SCOPES.get(session);
+    if (!scopes) { scopes = new Map(); HISTORY_SCOPES.set(session, scopes); }
+    let scope = scopes.get(projectId);
+    if (!scope) { scope = {}; scopes.set(projectId, scope); }
     return createProjectWorkbenchStorage(session.currentBundle(projectId)?.design, (document) => {
       const current = latestProject.current;
       // El estado de guardado del proyecto (barra de estado) informa cualquier fallo.
       if (current) void session.saveDesign(current, document).catch(() => undefined);
-    });
+    }, 600, scope);
   }, [session, projectId]);
   useEffect(() => () => storage?.dispose(), [storage]);
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
     <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
       {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})}
+      {...(intent?.element ? { startElement: intent.element } : {})}
       {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers} modelSections={modelSections} space3dSections={space3dSections}
       {...(project?.members.some(isSteelReviewCandidate) ? { modelReview: <ModelSteelReview project={project} {...(focus ? { focusMember: focus.memberId } : {})} onShowMembers={showMembers} /> } : {})}
       {...(updateProject ? { onCreateModel: createModel } : {})} />

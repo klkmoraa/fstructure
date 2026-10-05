@@ -7,7 +7,7 @@ import { PanelRight, X } from 'lucide-react';
  * franja de estado y su dock móvil: una herramienta aislada los ocupa sin
  * conocer el shell.
  */
-type Slot = 'controls' | 'action' | 'status' | 'inspector' | 'mobile' | 'statusbar' | 'dock';
+type Slot = 'controls' | 'action' | 'status' | 'inspector' | 'mobile' | 'statusbar' | 'dock' | 'journey';
 interface Slots {
   hosts: Partial<Record<Slot, HTMLElement | null>>;
   register: (slot: Slot, host: HTMLElement | null) => void;

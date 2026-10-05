@@ -1,5 +1,6 @@
 import { BookOpen, Check, ChevronDown, Copy, FileDown, PanelRight, Redo2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { MesaJourney } from '../../workspace/MesaJourney';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
 import { ShellContribution, ShellStatusChip, type ShellStatusTone } from '../../workspace/ShellToolSlots';
@@ -74,6 +75,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   const storage = useWorkbenchStorage();
   const [element, setElementState] = useState<ElementKind>(() => {
     if (startElement) return startElement;
+    if (startSource === 'model' || startSource === 'model3d') return 'frame';
     const stored = storage.read('element');
     // En la mesa de FStructure se empieza por diseñar el modelo.
     return isElementKind(stored) ? stored : 'frame';
@@ -259,6 +261,11 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   };
 
   return <div className="design-workbench" data-testid="design-workbench">
+    {nativeTool && element !== 'frame' ? <ShellContribution slot="journey"><MesaJourney mode="Diseño" source={`Origen: Elemento suelto · ${ELEMENTS.find((item) => item.id === element)?.label}`}
+      hint="Edita geometría, materiales y cargas. El cálculo se actualiza al editar; revisa las comprobaciones y guarda el elemento en Memoria.">
+      <button type="button" onClick={() => setPanel('inputs', true)}>Editar datos</button>
+      <button type="button" disabled={!report} onClick={() => setPanel('results', true)}>Ver comprobaciones</button>
+    </MesaJourney></ShellContribution> : null}
     {exportMessage && !memoryOpen ? <p className="dw-action-feedback" role="alert">{exportMessage}<button type="button" aria-label="Cerrar aviso" onClick={() => setExportMessage(null)}>×</button></p> : null}
     {nativeTool ? <ShellContribution slot="controls">
       <button type="button" className="workspace-topbar__icon-button dw-topbar-history" onClick={() => history.current?.undo()} disabled={!historyFlags.canUndo}
