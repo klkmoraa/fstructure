@@ -30,7 +30,7 @@ describe('modelar y diseñar: la mesa Estructura con el Modelo 2D', () => {
     expect(screen.getByRole('radio', { name: 'Modelo 2D' }).getAttribute('aria-checked')).toBe('true');
     // La geometría y las cargas son del modelo: el taller no las pide.
     expect(screen.queryByRole('textbox', { name: 'Claro 1 · L (m)' })).toBeNull();
-    expect(screen.getByText(/f′c del material del modelo: 28/)).toBeTruthy();
+    expect(screen.getByText(/f′c: 28.*MPa \(modelo\)/)).toBeTruthy();
     expect(await screen.findByRole('img', { name: /Utilización de el Modelo 2D: 2 líneas de viga y 6 columnas/ }, { timeout: 5000 })).toBeTruthy();
     const grid = within(results()).getByRole('table', { name: /Cociente que rige en cada miembro/ });
     await user.click(within(grid).getByRole('button', { name: /Viga del nivel 2/ }));

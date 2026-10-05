@@ -202,7 +202,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
           <X size={16} aria-hidden="true" />
         </button>
       </header>
-      <div className="dw-panel__body"><p className="dw-input-note">El cálculo se actualiza al editar. Revisa las unidades de cada campo.</p>{inputs}</div>
+      <div className="dw-panel__body">{inputs}</div>
     </form>
 
     <section className="dw-stage" aria-label="Lámina de diseño">

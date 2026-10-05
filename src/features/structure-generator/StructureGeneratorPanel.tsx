@@ -425,7 +425,7 @@ export const StructureGeneratorPanel = ({
     <header className="structure-generator__header">
       <div>
         <strong>{t('title')}</strong>
-        <span>{reviewing ? t('review.description') : t('description')}</span>
+        {reviewing ? <span>{t('review.description')}</span> : null}
       </div>
       <IconButton label={t('close')} size="touch" onClick={onCancel}><X size={18} /></IconButton>
     </header>
@@ -474,7 +474,7 @@ export const StructureGeneratorPanel = ({
           options={GENERATOR_SUPPORT_CHOICES.map((choice) => ({ value: choice, label: t(`support.${choice}`) }))}
           onValueChange={(value) => patch({ support: value as GeneratorFormState['support'] })}
         />
-        <small className="structure-generator__hint">{t('support.hint')} {t(`support.detail.${form.support}` as never)}</small>
+        <small className="structure-generator__hint">{t(`support.detail.${form.support}` as never)}</small>
       </div>
 
       <Accordion

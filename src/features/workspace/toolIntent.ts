@@ -9,7 +9,7 @@ import type { ConcreteSectionGroup } from '../../data/concreteFrame';
  * la mesa sin intención, que es lo seguro.
  */
 type ToolIntent =
-  | { tool: 'space3d'; kind: 'generate' | 'example' | 'first-node' }
+  | { tool: 'space3d'; kind: 'generate' | 'example' | 'first-node' | 'bring-2d' }
   /** El modo 3D abre en una vista (el alzado de un eje que se diseña en Diseño), con barras seleccionadas. */
   | { tool: 'space3d'; kind: 'view'; view: string; members?: readonly string[]; sections?: { beam: { width: number; height: number }; column: { width: number; height: number }; groups?: readonly ConcreteSectionGroup[]; sourceModel: string } }
   /**

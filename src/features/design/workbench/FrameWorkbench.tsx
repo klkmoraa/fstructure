@@ -142,7 +142,7 @@ function QuickFrameCard({ spec, modelMembers, onCreate }: { spec: ConcreteFrameS
   const apply = () => { if (spec) { setConfirming(false); onCreate(spec); } };
   return <div className="dw-model-card" data-state="ready">
     <strong>Pórtico rápido</strong>
-    <p>Prueba claros, niveles y secciones aquí. «Pasar al modelo» lo escribe en el Modelo 2D con sus casos y cargas para seguir modelando y diseñarlo desde ahí.</p>
+    <p>Crea un modelo 2D con este pórtico y sus cargas.</p>
     {confirming
       ? <div className="dw-model-confirm" role="group" aria-label="Confirmar reemplazo del modelo">
         <p>{`Reemplaza el modelo actual (${modelMembers} ${modelMembers === 1 ? 'barra' : 'barras'}). En Modelo, «Deshacer» lo recupera.`}</p>
@@ -168,8 +168,8 @@ function ModelSummary({ modelSource, onOpenModel, fcFromModel, space = false }: 
     return <div className="dw-model-card" data-state="empty">
       <strong>{space ? 'Sin Modelo 3D' : 'Sin Modelo 2D'}</strong>
       <p>{space
-        ? 'Modela o genera la estructura en el modo 3D, o tráela del 2D; aquí se diseña cada eje (pórtico plano) del edificio.'
-        : 'Dibuja la estructura en Modelo, abre la plantilla «Pórtico de concreto» o arma un pórtico rápido y pásalo al modelo.'}</p>
+        ? 'Crea un modelo en 3D para diseñar sus ejes.'
+        : 'Crea un marco en 2D o elige Pórtico rápido.'}</p>
       {edit}
     </div>;
   }
@@ -182,10 +182,8 @@ function ModelSummary({ modelSource, onOpenModel, fcFromModel, space = false }: 
       <div><dt>Fuera del concreto</dt><dd>{summary.skipped}</dd></div>
       <div><dt>Casos</dt><dd>{`${summary.deadCases} CM · ${summary.lateralCases} lateral · CV en ${summary.liveCases} ${summary.liveCases === 1 ? 'parte' : 'partes'}`}</dd></div>
     </dl>
-    {summary.ignoredCases.length ? <p>{`No entran: ${summary.ignoredCases.join(', ')}.`}</p> : null}
-    <p>{fcFromModel ? `f′c del material del modelo: ${formatNumber(modelSource.fcMpa ?? 0, 1)} MPa.` : 'El modelo no declara f′c: se usa el de Materiales.'} {space
-      ? 'Las acciones salen del 3D completo; geometría, secciones y cargas se editan en el modo 3D.'
-      : 'Geometría, secciones y cargas se editan en Modelo.'}</p>
+    {summary.ignoredCases.length ? <p>{`No entran: ${summary.ignoredCases.join(', ')}. Revisa su categoría y activación en ${space ? '3D' : '2D → Casos de carga'}.`}</p> : null}
+    <p>{fcFromModel ? `f′c: ${formatNumber(modelSource.fcMpa ?? 0, 1)} MPa (modelo).` : 'Sin f′c en el modelo: se usa Materiales.'}</p>
     {edit}
   </div>;
 }
@@ -369,7 +367,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     : { status: 'error' as const, label: fromModel && model.pending ? 'Analizando el modelo…' : 'Datos incompletos' };
 
   return <><ShellContribution slot="journey"><MesaJourney mode="Diseño" source={`Origen: ${fromModel ? name : 'Elemento suelto · Pórtico rápido'}${from3d && modelAxes ? ` · ${modelAxes.axes.find((axis) => axis.id === axisOf(draft, modelAxes))?.label ?? ''}` : ''}`}
-    hint={modelProposal && modelSections ? `Propuesta por nivel: ${formatNumber(modelProposal.volumeM3, 2)} m³ (actual ${formatNumber(modelSections.volumeM3, 2)}). Revisa las secciones en Datos; aplicar es deshacible en ${from3d ? '3D' : '2D'}.` : fromModel ? !external || external.errors.length ? 'Revisa el modelo de origen, o elige Pórtico rápido para diseñar sin modelo.' : 'Revisa vigas y columnas → Proponer → aplicar las secciones → volver al modelo.' : 'Edita claros, niveles y cargas. El cálculo se actualiza al editar; consulta Resultados.'}>
+    hint={modelProposal && modelSections ? `Propuesta: ${formatNumber(modelProposal.volumeM3, 2)} m³ · actual: ${formatNumber(modelSections.volumeM3, 2)} m³.` : fromModel && (!external || external.errors.length) ? 'Revisa los datos del modelo.' : undefined}>
     <button type="button" onClick={() => chrome.setPanel('inputs', true)}>Origen y datos</button>
     {result ? <button type="button" onClick={() => chrome.setPanel('results', true)}>Ver comprobaciones</button> : null}
     {fromModel && modelSections ? modelProposal ? <button type="button" onClick={applyModelProposal}>{from3d ? 'Aplicar al 3D' : 'Aplicar al modelo'}</button> : <button type="button" disabled={proposing !== null} onClick={proposeSections}>{proposing ? 'Buscando…' : 'Proponer secciones'}</button> : null}
@@ -439,7 +437,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </FieldGroup>
       {fromModel ? (modelSections ? <FieldGroup title="Secciones del modelo" columns={1} action={<InlineAction label={proposing ? 'Buscando…' : 'Proponer'} disabled={proposing !== null}
         title="Secciones por nivel que cumplen y reducen el volumen respecto a la propuesta uniforme" onClick={proposeSections} />}>
-        <p className="dw-input-note">{plural(modelSections.beams, 'viga', 'vigas')} y {plural(modelSections.columns, 'columna', 'columnas')} de concreto · {formatNumber(modelSections.volumeM3, 2)} m³. «Proponer» ajusta las vigas de cada nivel y las columnas de cada entrepiso; el modelo cambia sólo al aplicarla.{from3d ? ' Comprueba todos los ejes y ambas direcciones de las columnas compartidas.' : ''}</p>
+        <p className="dw-input-note">{plural(modelSections.beams, 'viga', 'vigas')} y {plural(modelSections.columns, 'columna', 'columnas')} de concreto · {formatNumber(modelSections.volumeM3, 2)} m³. Propuestas por nivel; aplica para cambiar el modelo.{from3d ? ' Comprueba todos los ejes y ambas direcciones de las columnas compartidas.' : ''}</p>
         {proposing ? <p className="dw-action-note" role="status" aria-live="polite">{proposing}</p>
           : modelProposal ? <div className="dw-proposal" role="status">
             <p>{modelProposal.groups?.length ? 'Referencia uniforme · ' : ''}Vigas {modelProposal.beam.width} × {modelProposal.beam.height} y columnas {modelProposal.column.width} × {modelProposal.column.height} cm. Propuesta{modelProposal.groups?.length ? ' por nivel' : ''}: rige {percent(modelProposal.ratio)}. {formatNumber(modelProposal.volumeM3, 2)} m³ de concreto (ahora {formatNumber(modelSections.volumeM3, 2)}), tras {modelProposal.trials} diseños.</p>

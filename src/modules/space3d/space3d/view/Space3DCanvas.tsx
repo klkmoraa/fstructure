@@ -303,7 +303,7 @@ export const Space3DCanvas = ({
     <span><b>{model.nodes.length}</b> {copy.nodes}</span>
     <span><b>{model.members.length}</b> {copy.members}</span>
     <span><b>{model.supports.length}</b> {copy.supports}</span>
-    <span><b>{model.loads.length}</b> {copy.loads}</span>
+    <span><b>{model.loads.length + (model.memberLoads?.length ?? 0)}</b> {copy.loads}</span>
   </div>;
 
   return <div className="space3d-canvas">

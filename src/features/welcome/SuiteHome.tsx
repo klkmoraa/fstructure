@@ -3,7 +3,6 @@ import { ArrowRight, ArrowUpRight, Moon, Sun } from 'lucide-react';
 import type { ToolId } from '../../shared/contracts';
 import type { ProjectModel, ThemeMode } from '../../types';
 import { TOOL_CATALOG, toolIdentity } from '../workspace/toolCatalog';
-import { ENGINEERING_QUOTES } from './engineeringQuotes';
 import { BrandMark, ToolGlyph } from './toolGlyphs';
 import './suite.css';
 
@@ -26,7 +25,7 @@ export interface SuiteHomeProps {
 const copy = {
   es: {
     kicker: 'FusionStructure · Análisis',
-    lead: 'Dos mesas de cálculo estructural. En FStructure se modela en 2D y 3D y se diseña en la misma mesa.',
+    lead: 'Modelado, análisis y diseño estructural.',
     tools: 'Herramientas',
     open: (name: string) => `Abrir ${name}`,
     status: { disponible: 'Disponible', experimental: 'Experimental' },
@@ -41,7 +40,7 @@ const copy = {
   },
   en: {
     kicker: 'FusionStructure · Analysis',
-    lead: 'Two structural calculation workbenches. FStructure models in 2D and 3D and designs on the same one.',
+    lead: 'Structural modelling, analysis and design.',
     tools: 'Tools',
     open: (name: string) => `Open ${name}`,
     status: { disponible: 'Available', experimental: 'Experimental' },
@@ -70,7 +69,6 @@ export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onRe
   const text = copy[language];
   const mode = theme === 'dark' ? 'night' : 'day';
   const [preview, setPreview] = useState<ToolId | null>(null);
-  const [quote] = useState(() => ENGINEERING_QUOTES[Math.floor(Math.random() * ENGINEERING_QUOTES.length)] ?? ENGINEERING_QUOTES[0]);
   const last = toolIdentity(lastTool);
   const scenes = [{ id: 'portal', src: PORTAL[mode] }, ...TOOL_CATALOG.map((tool) => ({ id: tool.id, src: tool.scene[mode] }))];
   const shown = preview ?? 'portal';
@@ -140,7 +138,6 @@ export const SuiteHome = ({ language, theme, project, lastTool, onOpenTool, onRe
     </div>
 
     <footer className="fs-suite__foot">
-      <blockquote className="fs-suite__quote">“{quote.text[language]}” <cite>{quote.author}</cite></blockquote>
       <p className="fs-suite__note">{text.note} · Cristian Mora · <a href="https://github.com/klkmoraa/fstructure" target="_blank" rel="noopener noreferrer">GitHub<ArrowUpRight size={12} aria-hidden="true" /></a></p>
     </footer>
   </main>;

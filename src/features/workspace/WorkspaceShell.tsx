@@ -544,19 +544,23 @@ const WorkspaceBrokerContent = ({
     />}
     journey={<MesaJourney mode="2D" source={language === 'es' ? 'Origen: Modelo 2D' : 'Source: 2D model'}
       hint={language === 'es'
-        ? !project.members.length ? 'Empieza con nudos y barras o genera un marco. Después añade apoyos y cargas.'
-          : !project.nodes.some((node) => node.support.type !== 'none') ? 'Añade apoyos para que el marco sea estable.'
-          : !project.nodalLoads.length && !project.memberLoads.length ? activeTool === 'distributedLoad' ? 'Toca una barra y define su carga. Después elige el caso y analiza.' : 'Añade cargas, elige el caso y analiza el marco.'
-          : analysis?.success ? 'Consulta los diagramas y reacciones. Puedes continuar con el diseño de vigas y columnas.'
-          : 'Analiza para obtener diagramas, deformada y reacciones.'
-        : 'Draw → supports and loads → analyse → results → optional design.'}>
+        ? !project.members.length ? 'Dibuja o genera un marco.'
+          : !project.nodes.some((node) => node.support.type !== 'none') ? 'Faltan apoyos.'
+          : !project.nodalLoads.length && !project.memberLoads.length ? activeTool === 'distributedLoad' ? 'Elige una barra para cargarla.' : 'Añade cargas.'
+          : analysis?.success ? 'Resultados disponibles.'
+          : 'Listo para analizar.'
+        : !project.members.length ? 'Draw or generate a frame.' : analysis?.success ? 'Results available.' : 'Check supports and loads.'}>
       {!project.members.length ? <button type="button" onClick={() => emitWorkspaceCommand('open-structure-generator')}>{language === 'es' ? 'Generar un marco' : 'Generate a frame'}</button>
         : !project.nodes.some((node) => node.support.type !== 'none') ? <button type="button" onClick={() => { setSelection(null); setActiveTool('support'); closeSurface('detail'); }}>{language === 'es' ? 'Añadir apoyos' : 'Add supports'}</button>
         : !project.nodalLoads.length && !project.memberLoads.length ? <button type="button" onClick={() => { setSelection(null); setActiveTool('distributedLoad'); closeSurface('detail'); }}>{language === 'es' ? 'Añadir cargas' : 'Add loads'}</button>
         : analysis?.success ? <>
           <button type="button" onClick={() => emitWorkspaceCommand('open-results', {})}>{language === 'es' ? 'Ver resultados' : 'View results'}</button>
-          {onModeChange ? <button type="button" onClick={() => { setToolIntent({ tool: 'design', kind: 'model' }); onModeChange('design'); }}>{language === 'es' ? 'Diseñar este marco' : 'Design this frame'}</button> : null}
         </> : <button type="button" disabled={isAnalyzing} onClick={() => { emitWorkspaceCommand('analysis-requested'); analyze(); }}>{language === 'es' ? 'Analizar marco' : 'Analyse frame'}</button>}
+      {project.members.length > 0 ? <button type="button" onClick={(event) => openModel2DSurface('analysisSetup', event.currentTarget)}>{language === 'es' ? 'Casos de carga' : 'Load cases'}</button> : null}
+      {project.members.length > 0 && onModeChange ? <div className="mesa-journey__connections" role="group" aria-label={language === 'es' ? 'Continuar en otra herramienta' : 'Continue in another tool'}>
+        <button type="button" onClick={() => { setToolIntent({ tool: 'design', kind: 'model' }); onModeChange('design'); }}>{language === 'es' ? 'Diseñar este marco' : 'Design this frame'}</button>
+        <button type="button" onClick={() => { setToolIntent({ tool: 'space3d', kind: 'bring-2d' }); onModeChange('3d'); }}>{language === 'es' ? 'Crear 3D desde este marco' : 'Create 3D from this frame'}</button>
+      </div> : null}
     </MesaJourney>}
     console={<Console
       layoutActions={{

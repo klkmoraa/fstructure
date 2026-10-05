@@ -1376,7 +1376,7 @@ const WorkspaceBody = ({
       </ShellContribution>
       <ShellContribution slot="journey"><section className="mesa-journey" aria-label="Modo, origen y siguiente paso">
         <div className="mesa-journey__context"><strong>3D</strong><span>{language === 'es' ? 'Origen: Modelo 3D' : 'Source: 3D model'}</span></div>
-        <p>{language === 'es' ? !hasContent ? 'Crea un marco o edificio, añade apoyos y cargas y analiza.' : currentAnalysis ? 'Consulta deformada y esfuerzos, o continúa con el diseño de sus ejes.' : 'Revisa apoyos y cargas. Analiza para obtener los resultados.' : 'Model → supports and loads → analyse → results → optional design.'}</p>
+        <p>{language === 'es' ? !hasContent ? 'Crea un marco o edificio.' : currentAnalysis ? 'Resultados disponibles.' : 'Revisa apoyos y cargas.' : !hasContent ? 'Create a frame or building.' : currentAnalysis ? 'Results available.' : 'Check supports and loads.'}</p>
         <div className="mesa-journey__actions">
           {currentAnalysis ? <button type="button" onClick={(event) => { setResultMode('moment'); setPanel('analysis'); shellInspector?.reveal(event.currentTarget); }}>{language === 'es' ? 'Ver resultados del 3D' : 'View 3D results'}</button> : null}
           {hasContent && onOpenDesign ? <button type="button" onClick={onOpenDesign}>{language === 'es' ? 'Diseñar los ejes' : 'Design frame lines'}</button> : null}

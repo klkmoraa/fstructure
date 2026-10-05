@@ -67,6 +67,24 @@ async function addNode() {
 }
 const storedModel = (model: unknown) => parseSpace3DDraft(JSON.stringify(model));
 
+it('cuenta las cargas de barra en el lienzo, la lista y el siguiente paso del 3D', async () => {
+  const { repo, project, model } = await seed('A', 17);
+  const loaded = { ...model, nodalLoads: [], memberLoads: [{
+    id: 'ML1', memberId: model.members[0]!.id, caseId: 'LC1', type: 'distributed' as const,
+    coordinateSystem: 'global' as const, lengthBasis: 'real' as const,
+    start: 0, end: 1, qyStart: -12, qyEnd: -12,
+  }] };
+  const saved = (await repo.openBundle('A'))!;
+  saved.bundle.space3d = linkSpace3DToShell(project.id, 'A-current', loaded);
+  await repo.saveBundle(saved.bundle, saved.revision);
+  await start();
+  expect(screen.getByRole('button', { name: /^Cargas/ }).textContent).toBe('Cargas1');
+  expect(screen.getByRole('group', { name: t('space3d.canvasSummary') }).textContent).toContain('1 Cargas');
+  expect(screen.getByText('ML1')).toBeTruthy();
+  expect(screen.queryByText(t('space3d.guideAddLoadBody'))).toBeNull();
+  expect(screen.queryByRole('button', { name: t('space3d.guideAddLoadAction') })).toBeNull();
+});
+
 it('changes project identity inside 3D without carrying A state or history into B', async () => {
   const a = await seed('A', 17);
   const b = await seed('B', 29);
@@ -122,11 +140,13 @@ it('abre aislado: sin rama 3D no deriva el modelo del 2D; traerlo es una acción
   expect(saved.sourceModel2D).toBeUndefined();
 });
 
-it('«Traer del 2D» reemplaza el 3D con confirmación, se guarda en la rama 3D y se deshace', async () => {
+it('la entrada desde 2D abre la preparación; reemplaza sólo con confirmación y permite deshacer', async () => {
   const { repo, model } = await seed('A', 17);
+  setToolIntent({ tool: 'space3d', kind: 'bring-2d' });
   await start();
   const two = { ...createDefaultProject() };
-  await userEvent.click(screen.getByRole('button', { name: 'Traer el Modelo 2D al 3D' }));
+  expect(screen.getByRole('dialog', { name: 'Traer del 2D' })).toBeTruthy();
+  expect(storedModel((await repo.openBundle('A'))!.bundle.space3d!.model)).toEqual(model);
   const frames = screen.getByRole('textbox', { name: 'Pórticos' });
   await userEvent.clear(frames);
   await userEvent.type(frames, '2');

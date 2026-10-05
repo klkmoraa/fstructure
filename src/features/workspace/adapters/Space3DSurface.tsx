@@ -57,7 +57,7 @@ function ProjectSpace3D({ project, session, onOpenDesign }: { project: ProjectMo
   const [sectionFailure, setSectionFailure] = useState<string | null>(null);
   // Se lee sin consumir durante el render (StrictMode lo repite) y se consume al montar.
   const [intent] = useState(() => peekToolIntent('space3d'));
-  const startIntent = intent && intent.kind !== 'view' ? intent.kind : undefined;
+  const startIntent = intent && intent.kind !== 'view' && intent.kind !== 'bring-2d' ? intent.kind : undefined;
   const [startView] = useState(() => intent?.kind === 'view' ? intent.view : VIEW_MEMORY.get(project.id));
   const rememberView = useCallback((viewId: string) => { VIEW_MEMORY.set(project.id, viewId); }, [project.id]);
   const [startCamera] = useState(() => {
@@ -76,7 +76,7 @@ function ProjectSpace3D({ project, session, onOpenDesign }: { project: ProjectMo
     // The session publishes failures to the persistent shell, even after this adapter unmounts.
     void session.saveSpace3D(project, linkSpace3DToShell(project.id, sourceVersion, model)).catch(() => undefined);
   }, [session, project, sourceVersion]);
-  const [bringOpen, setBringOpen] = useState(false);
+  const [bringOpen, setBringOpen] = useState(() => intent?.kind === 'bring-2d');
   const [incoming, setIncoming] = useState<Space3DIncomingProject | null>(null);
   useEffect(() => {
     if (intent?.kind !== 'view' || !intent.sections) return;

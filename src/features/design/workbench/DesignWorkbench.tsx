@@ -261,8 +261,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   };
 
   return <div className="design-workbench" data-testid="design-workbench">
-    {nativeTool && element !== 'frame' ? <ShellContribution slot="journey"><MesaJourney mode="Diseño" source={`Origen: Elemento suelto · ${ELEMENTS.find((item) => item.id === element)?.label}`}
-      hint="Edita geometría, materiales y cargas. El cálculo se actualiza al editar; revisa las comprobaciones y guarda el elemento en Memoria.">
+    {nativeTool && element !== 'frame' ? <ShellContribution slot="journey"><MesaJourney mode="Diseño" source={`Origen: Elemento suelto · ${ELEMENTS.find((item) => item.id === element)?.label}`}>
       <button type="button" onClick={() => setPanel('inputs', true)}>Editar datos</button>
       <button type="button" disabled={!report} onClick={() => setPanel('results', true)}>Ver comprobaciones</button>
     </MesaJourney></ShellContribution> : null}

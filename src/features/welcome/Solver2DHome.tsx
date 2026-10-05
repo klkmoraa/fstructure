@@ -1,11 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
-import { ArrowRight, ArrowUpRight, Box, DraftingCompass, FilePlus2, PenLine, GraduationCap, LayoutTemplate, Play, Upload, X } from 'lucide-react';
-import { AnimatePresence, m, useReducedMotion } from 'motion/react';
-import { SOLVER_2D } from '../../design-system/moduleIdentity';
+import type { ReactNode } from 'react';
+import { ArrowRight, ArrowUpRight, Box, DraftingCompass, FilePlus2, PenLine, GraduationCap, LayoutTemplate, Play, Upload } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
 import type { ProjectModel, ThemeMode } from '../../types';
-import { ThreeStructuralImage } from '../structural-assets';
-import { ENGINEERING_QUOTES } from './engineeringQuotes';
 import './solver2dHome.css';
 
 const GitHubIcon = ({ size = 14 }: { size?: number }) => (
@@ -26,7 +22,7 @@ const GitHubIcon = ({ size = 14 }: { size?: number }) => (
 
 interface Solver2DHomeProps {
   language: 'es' | 'en';
-  /** Tema activo. La escena de portada tiene un render por tema, no un filtro. */
+  /** Tema del contenedor de bienvenida. */
   theme: ThemeMode;
   project: ProjectModel;
   onContinue: () => void;
@@ -47,35 +43,21 @@ interface Solver2DHomeProps {
 
 const copy = {
   es: {
-    role: '2D · 3D · Diseño',
-    lead: 'Modela en 2D y 3D, analiza, diseña y comprende estructuras.',
-    leadStrong: 'Del trazo al diagrama.',
     open: 'Proyecto abierto',
     continue: 'Continuar',
     create: 'Nuevo modelo',
-    stageAlt: 'Pórtico de un vano en tres dimensiones, con sus placas base y sus anclajes',
     nodes: 'nudos',
     members: 'barras',
     loads: 'cargas',
     startTitle: 'Recursos para empezar',
-    startBody: 'Plantillas, archivos y recursos de aprendizaje.',
-    pathBlank: 'Modelo en blanco',
-    pathBlankBody: 'Empieza con la rejilla vacía y coloca el primer nudo.',
     pathTemplate: 'Plantilla',
-    pathTemplateBody: 'Abre una estructura preparada y adáptala.',
+    pathTemplateBody: 'Ejemplos 2D.',
     pathClassroom: 'Aula',
-    pathClassroomBody: 'Un caso guiado que no te quita el control del modelo.',
+    pathClassroomBody: 'Ejercicios guiados.',
     pathImport: 'Importar',
-    pathImportBody: 'Trae un expediente, un JSON o un DXF y revísalo antes.',
-    pathSpace3D: 'Modelo 3D',
-    pathSpace3DBody: 'Edificios y marcos espaciales en la misma mesa; trae tu pórtico 2D o genera uno.',
-    pathDesign: 'Diseño de concreto',
-    pathDesignBody: 'Diseña el modelo 2D o 3D, o una viga, columna o zapata con NTC, NSR-10 o E.060.',
+    pathImportBody: 'Expediente, JSON o DXF.',
     recentTitle: 'Proyectos recientes',
-    recentBody: 'Guardados en este dispositivo.',
     viewAll: 'Ver todos',
-    capabilityTitle: 'Qué hace FStructure',
-    capabilityBody: 'Cada capacidad lleva su estado declarado.',
     available: 'Disponible',
     experimental: 'Experimental',
     capModel: 'Modelado y edición',
@@ -90,41 +72,26 @@ const copy = {
     capDocsBody: 'Memoria PDF, expediente portable, SVG, PNG, CSV, lista de materiales, DXF y versiones locales.',
     capDesign: 'Diseño de concreto',
     capDesignBody: 'Modo Diseño: vigas y columnas del modelo 2D o de un eje del 3D, elementos sueltos y zapatas con tres normas, armado, memoria y PDF.',
-    note: 'FStructure es experimental. Un resultado numérico puede ser incorrecto por un modelo, una unidad, una hipótesis o una propiedad mal elegida: no sustituye el criterio de una persona responsable ni una revisión independiente.',
-    dismissQuote: 'Cerrar reflexión',
+    note: 'Experimental. Los resultados requieren revisión profesional.',
     creatorLabel: 'Creador:',
     about: 'Acerca de FStructure',
   },
   en: {
-    role: '2D · 3D · Design',
-    lead: 'Model in 2D and 3D, analyse, design, and understand structures.',
-    leadStrong: 'From line to diagram.',
     open: 'Open project',
     continue: 'Continue',
     create: 'New model',
-    stageAlt: 'Single-bay portal frame in three dimensions, with its base plates and anchors',
     nodes: 'nodes',
     members: 'members',
     loads: 'loads',
     startTitle: 'Starting resources',
-    startBody: 'Templates, files and learning resources.',
-    pathBlank: 'Blank model',
-    pathBlankBody: 'Start with an empty grid and place the first node.',
     pathTemplate: 'Template',
-    pathTemplateBody: 'Open a prepared structure and adapt it.',
+    pathTemplateBody: '2D examples.',
     pathClassroom: 'Classroom',
-    pathClassroomBody: 'A guided case that keeps you in control of the model.',
+    pathClassroomBody: 'Guided exercises.',
     pathImport: 'Import',
-    pathImportBody: 'Bring in a record, a JSON, or a DXF and review it first.',
-    pathSpace3D: '3D model',
-    pathSpace3DBody: 'Buildings and space frames on the same workbench; bring your 2D frame or generate one.',
-    pathDesign: 'Concrete design',
-    pathDesignBody: 'Design the 2D or 3D model, or a beam, column, or footing with NTC, NSR-10, or E.060.',
+    pathImportBody: 'Record, JSON or DXF.',
     recentTitle: 'Recent projects',
-    recentBody: 'Saved on this device.',
     viewAll: 'View all',
-    capabilityTitle: 'What FStructure does',
-    capabilityBody: 'Every capability carries its declared state.',
     available: 'Available',
     experimental: 'Experimental',
     capModel: 'Modelling and editing',
@@ -139,8 +106,7 @@ const copy = {
     capDocsBody: 'PDF report, portable record, SVG, PNG, CSV, bill of materials, DXF, and local versions.',
     capDesign: 'Concrete design',
     capDesignBody: 'Design mode: beams and columns of the 2D model or a 3D frame line, single elements and footings with three codes, reinforcement, report, and PDF.',
-    note: 'FStructure is experimental. A numeric result can be wrong because of a model, a unit, an assumption, or a badly chosen property: it does not replace the judgement of a responsible person or an independent review.',
-    dismissQuote: 'Dismiss quote',
+    note: 'Experimental. Results require professional review.',
     creatorLabel: 'Creator:',
     about: 'About FStructure',
   },
@@ -148,7 +114,6 @@ const copy = {
 
 export const Solver2DHome = ({
   language,
-  theme,
   project,
   onContinue,
   onCreateBlank,
@@ -164,33 +129,11 @@ export const Solver2DHome = ({
   const text = copy[language];
   const reducedMotion = useReducedMotion() ?? false;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
-  const [activeQuote] = useState(() => {
-    const index = Math.floor(Math.random() * ENGINEERING_QUOTES.length);
-    return ENGINEERING_QUOTES[index] ?? ENGINEERING_QUOTES[0];
-  });
-  const [quoteVisible, setQuoteVisible] = useState(false);
-
-  useEffect(() => {
-    const delayTimer = window.setTimeout(() => {
-      setQuoteVisible(true);
-    }, 1000);
-    return () => window.clearTimeout(delayTimer);
-  }, []);
-
-  useEffect(() => {
-    if (!quoteVisible) return undefined;
-    const dismissTimer = window.setTimeout(() => {
-      setQuoteVisible(false);
-    }, 12000);
-    return () => window.clearTimeout(dismissTimer);
-  }, [quoteVisible]);
-
   const paths = [
     // Una ruta de entrada no es un resultado del solver: lleva el color de la
     // familia del brandbook a la que pertenece lo que abre, no el de una señal
     // de dominio. Con la señal prestada, «Empezar en blanco» compartía color
     // con una carga aplicada y no significaba nada.
-    { id: 'blank', icon: FilePlus2, tone: 'var(--sc-color-family-modelo)', label: text.pathBlank, body: text.pathBlankBody, action: onCreateBlank },
     { id: 'template', icon: LayoutTemplate, tone: 'var(--sc-color-family-analisis)', label: text.pathTemplate, body: text.pathTemplateBody, action: onOpenTemplates },
     { id: 'classroom', icon: GraduationCap, tone: 'var(--sc-color-family-aprendizaje)', label: text.pathClassroom, body: text.pathClassroomBody, action: onOpenClassroom },
     { id: 'import', icon: Upload, tone: 'var(--sc-color-family-interop)', label: text.pathImport, body: text.pathImportBody, action: onOpenImport },
@@ -205,80 +148,20 @@ export const Solver2DHome = ({
     { id: 'docs', state: 'available', label: text.capDocs, body: text.capDocsBody },
   ] as const;
 
-  const quoteToast = typeof document !== 'undefined' ? createPortal(
-    <AnimatePresence>
-      {quoteVisible ? (
-        <m.aside
-          key={activeQuote.id}
-          className="solver2d-quote-toast"
-          role="status"
-          aria-live="polite"
-          initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 40, scale: 0.90 }}
-          animate={reducedMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-          exit={
-            reducedMotion
-              ? { opacity: 0 }
-              : { opacity: 0, y: 24, scale: 0.94, transition: { duration: 0.28, ease: [0.32, 0.72, 0, 1] } }
-          }
-          transition={
-            reducedMotion
-              ? { duration: 0.01 }
-              : { type: 'spring', stiffness: 350, damping: 25, mass: 0.8 }
-          }
-        >
-          <div className="solver2d-quote-toast__body">
-            <blockquote className="solver2d-quote-toast__text">
-              “{activeQuote.text[language]}”
-            </blockquote>
-            <cite className="solver2d-quote-toast__author">
-              — {activeQuote.author}
-            </cite>
-          </div>
-          <button
-            type="button"
-            className="solver2d-quote-toast__close"
-            onClick={() => setQuoteVisible(false)}
-            aria-label={text.dismissQuote}
-          >
-            <X size={14} aria-hidden="true" />
-          </button>
-          <div className="solver2d-quote-toast__progress" aria-hidden="true">
-            <m.div
-              className="solver2d-quote-toast__bar"
-              initial={reducedMotion ? { scaleX: 0 } : { scaleX: 1 }}
-              animate={{ scaleX: 0 }}
-              transition={reducedMotion ? { duration: 0.01 } : { duration: 12, ease: 'linear' }}
-              style={{ transformOrigin: 'left center' }}
-              onAnimationComplete={() => setQuoteVisible(false)}
-            />
-          </div>
-        </m.aside>
-      ) : null}
-    </AnimatePresence>,
-    document.body,
-  ) : null;
-
   return <div className={`solver2d-home${reducedMotion ? ' is-static' : ''}`}>
-    {quoteToast}
 
     <section className="solver2d-section solver2d-intents" aria-label={language === 'es' ? 'Elige cómo trabajar' : 'Choose your workflow'}>
-      <header className="solver2d-section__head"><div><h2>{language === 'es' ? '¿Qué quieres hacer?' : 'What would you like to do?'}</h2><p>{language === 'es' ? 'Cada modo funciona por separado. Cambia de modo cuando lo necesites; tu proyecto se conserva.' : 'Each mode works independently. Switch whenever you need; your project is kept.'}</p></div></header>
+      <header className="solver2d-section__head"><div><h1>{language === 'es' ? '¿Qué quieres hacer?' : 'What would you like to do?'}</h1></div></header>
       <div className="solver2d-paths">
         {[
-          { label: language === 'es' ? 'Modelar 2D' : 'Model in 2D', body: language === 'es' ? 'Dibujar → apoyos y cargas → analizar → resultados.' : 'Draw → supports and loads → analyse → results.', Icon: PenLine, action: onContinue },
-          ...(onOpenSpace3D ? [{ label: language === 'es' ? 'Modelar 3D' : 'Model in 3D', body: language === 'es' ? 'Crear un marco o edificio → analizar → resultados.' : 'Create a frame or building → analyse → results.', Icon: Box, action: onOpenSpace3D }] : []),
-          ...(onOpenDesign ? [{ label: language === 'es' ? 'Diseñar un elemento' : 'Design an element', body: language === 'es' ? 'Viga, columna, zapata o pórtico rápido, sin modelo.' : 'Beam, column, footing or quick frame, without a model.', Icon: DraftingCompass, action: onOpenDesign }] : []),
-          { label: language === 'es' ? 'Modelar y diseñar' : 'Model and design', body: language === 'es' ? 'Elegir 2D o 3D → analizar → Diseño → Proponer → aplicar y volver al modelo.' : 'Choose 2D or 3D → analyse → Design → Propose → apply and return.', Icon: ArrowRight, action: onContinue },
+          { label: language === 'es' ? 'Modelar 2D' : 'Model in 2D', body: language === 'es' ? 'Marcos planos.' : 'Plane frames.', Icon: PenLine, action: onContinue },
+          ...(onOpenSpace3D ? [{ label: language === 'es' ? 'Modelar 3D' : 'Model in 3D', body: language === 'es' ? 'Marcos y edificios.' : 'Frames and buildings.', Icon: Box, action: onOpenSpace3D }] : []),
+          ...(onOpenDesign ? [{ label: language === 'es' ? 'Diseñar un elemento' : 'Design an element', body: language === 'es' ? 'Vigas, columnas, zapatas y pórticos.' : 'Beams, columns, footings and frames.', Icon: DraftingCompass, action: onOpenDesign }] : []),
         ].map(({ label, body, Icon, action }) => <button key={label} type="button" className="solver2d-path" onClick={action}><span className="solver2d-path__icon"><Icon size={18} /></span><strong>{label}</strong><span className="solver2d-path__body">{body}</span><ArrowUpRight className="solver2d-path__go" size={15} /></button>)}
       </div>
     </section>
 
-    <section className="solver2d-hero" aria-labelledby="solver2d-hero-name">
-      <div className="solver2d-hero__copy">
-        <span className="solver2d-hero__eyebrow" style={{ '--reveal-step': 0 } as React.CSSProperties}>{SOLVER_2D.product}<b>·</b>{text.role}</span>
-        <h1 id="solver2d-hero-name" className="solver2d-hero__name" style={{ '--reveal-step': 1 } as React.CSSProperties}>{text.leadStrong}</h1>
-        <p className="solver2d-hero__lead" style={{ '--reveal-step': 2 } as React.CSSProperties}>{text.lead}</p>
-
+    <section className="solver2d-current" aria-label={text.open}>
         <div className="solver2d-open" style={{ '--reveal-step': 3 } as React.CSSProperties} onPointerEnter={onPreloadWorkspace} onFocusCapture={onPreloadWorkspace}>
           <div className="solver2d-open__head">
             <span className="solver2d-open__label">{text.open}</span>
@@ -298,22 +181,11 @@ export const Solver2DHome = ({
             </button>
           </div>
         </div>
-      </div>
-      {/* La escena es el objeto y nada más. La hoja de análisis que se apoyaba
-          sobre él tapaba media estructura: dos lecturas compitiendo por el
-          mismo sitio, y la que perdía era justamente la que da la escala. */}
-      <div className="solver2d-hero__stage" style={{ '--reveal-step': 2 } as React.CSSProperties}>
-        <div className={`solver2d-stage${reducedMotion ? ' is-static' : ''}`} data-theme={theme}>
-          <div className="solver2d-stage__object">
-            <ThreeStructuralImage assetId="portal:single-bay" theme={theme} alt={text.stageAlt} eager render="three" />
-          </div>
-        </div>
-      </div>
     </section>
 
-    <section className="solver2d-section" aria-labelledby="solver2d-start-title">
+    <section className="solver2d-section solver2d-resources" aria-labelledby="solver2d-start-title">
       <header className="solver2d-section__head">
-        <div><h2 id="solver2d-start-title">{text.startTitle}</h2><p>{text.startBody}</p></div>
+        <div><h2 id="solver2d-start-title">{text.startTitle}</h2></div>
       </header>
       <div className="solver2d-paths">
         {paths.map(({ id, icon: Icon, tone, label, body, action }, index) => (
@@ -335,16 +207,14 @@ export const Solver2DHome = ({
 
     <section className="solver2d-section" aria-labelledby="solver2d-recent-title">
       <header className="solver2d-section__head">
-        <div><h2 id="solver2d-recent-title">{text.recentTitle}</h2><p>{text.recentBody}</p></div>
+        <div><h2 id="solver2d-recent-title">{text.recentTitle}</h2></div>
         <button type="button" className="solver2d-section__link" onClick={onOpenProjects}>{text.viewAll}<ArrowRight size={15} /></button>
       </header>
       <div className="solver2d-recents">{recents}</div>
     </section>
 
-    <section className="solver2d-section" aria-labelledby="solver2d-capability-title">
-      <header className="solver2d-section__head">
-        <div><h2 id="solver2d-capability-title">{text.capabilityTitle}</h2><p>{text.capabilityBody}</p></div>
-      </header>
+    <details className="solver2d-section solver2d-scope">
+      <summary>{language === 'es' ? 'Funciones y alcance' : 'Features and scope'}</summary>
       <div className="solver2d-capabilities">
         {capabilities.map(({ id, state, label, body }, index) => (
           <article key={id} className="solver2d-capability" style={{ '--reveal-step': index } as React.CSSProperties}>
@@ -354,8 +224,8 @@ export const Solver2DHome = ({
           </article>
         ))}
       </div>
-      <p className="solver2d-note">{text.note}</p>
-    </section>
+    </details>
+    <p className="solver2d-note">{text.note}</p>
 
     <footer className="solver2d-footer" aria-label={text.about}>
       <p className="solver2d-footer__credit">

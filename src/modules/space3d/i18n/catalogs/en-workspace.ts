@@ -641,7 +641,7 @@ export const enWorkspace = {
   'space3d.guideResultsBody': 'Pick deformed shape, axial, shear or moment in the bar at the bottom of the canvas.',
   'space3d.guideResultsAction': 'Show deformed shape',
   'space3d.emptyCanvasTitle': 'Start your 3D model',
-  'space3d.emptyCanvasBody': 'Choose how to begin. Everything you do can be undone.',
+  'space3d.emptyCanvasBody': 'Generate a structure or place nodes and members.',
   'space3d.emptyGenerate': 'Generate a structure',
   'space3d.emptyGenerateHint': 'Frames, trusses, towers, domes or bridges from a few dimensions.',
   'space3d.emptyExample': 'Open the example',

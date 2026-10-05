@@ -1,32 +1,33 @@
 # Recorrido de uso · 2D, 3D y Diseño
 
-Revisión del 4 de octubre de 2026, con `npm run dev`, en el navegador de Codex. Se trabajó con proyectos de prueba nuevos; no se alteraron los ejemplos ni los motores.
+Revisión del 4 de octubre de 2026 con `npm run dev` y el navegador de Codex. La segunda revisión adopta tres entradas y conexiones dentro de cada herramienta, según la elección del usuario.
 
-## Atascos encontrados y correcciones
+## Atascos y cambios
 
-| Flujo | Atasco observado | Cambio |
+| Lugar | Atasco | Cambio |
 | --- | --- | --- |
-| Bienvenida | Las rutas de trabajo se mezclaban con plantillas, importación y Aula; «Solver 2D» ocultaba el alcance de la mesa. En tableta, una columna ancha recortaba la última opción. | Cuatro elecciones explícitas al principio: Modelar 2D, Modelar 3D, Diseñar un elemento y Modelar y diseñar. Recursos después; anchura contenida. En móvil las cuatro elecciones caben en la primera pantalla. |
-| Solo 2D | Lienzo vacío sin secuencia; los apoyos del generador estaban en un acordeón de colocación. Activar cargas sobre una selección múltiple dejaba el inspector estorbando el dibujo. | Guía permanente con el siguiente paso: generar/dibujar, apoyos, cargas, analizar y resultados. Apoyos visibles en el generador. Los accesos a apoyos/cargas limpian la selección y cierran el inspector. |
-| Solo 3D | Había guía de creación y análisis, pero al llegar a resultados no se ofrecía la continuación a Diseño. | Modo y origen permanentes, acceso a resultados y «Diseñar los ejes». La creación de edificio sigue dentro del propio 3D. |
-| Solo Diseño | La entrada podía recuperar el último formulario y su fuente, aunque se hubiera pedido un elemento independiente. El origen se perdía al cerrar Datos. | «Diseñar un elemento» abre una viga independiente. Viga, columna, zapata y pórtico rápido muestran su origen y acceso directo a Datos/Comprobaciones. |
-| 2D → Diseño / 3D → Diseño | Un formulario suelto o pórtico rápido guardado podía prevalecer sobre el modelo solicitado. | La intención explícita abre Estructura con el modelo correcto; la banda identifica Modelo 2D o Modelo 3D y su eje. |
-| Diseño → Proponer → aplicar → regresar | Proponer y el regreso quedaban dentro de Datos. El historial del 3D y de los formularios desaparecía al desmontar el modo. | Proponer, aplicar y regresar visibles en la banda. El historial se conserva por proyecto y formulario durante la sesión; Deshacer/Rehacer funciona después de salir y volver. |
+| Bienvenida | Cuatro recorridos, presentación repetida y frases flotantes ocupaban espacio antes de trabajar. | Tres entradas: Modelar 2D, Modelar 3D y Diseñar un elemento. Recursos compactos y funciones en un desplegable cerrado. |
+| 2D | Los pasos para cargar, analizar y continuar estaban dispersos. La clasificación del caso necesaria para Diseño quedaba escondida. | Siguiente paso visible y acceso a Casos de carga. La persona elige la categoría; no se modifica automáticamente. |
+| 2D → 3D | Para extruir el marco había que entrar al 3D y buscar Traer del 2D. | Crear 3D desde este marco abre directamente la preparación. Reemplazar un 3D existente conserva la confirmación y Deshacer. |
+| 3D | Tras transferir cargas de barra, el resumen mostraba cero cargas y la guía pedía añadirlas. | Lienzo, lista y guía cuentan tanto cargas nodales como cargas de barra. La lista permite localizar la barra cargada. |
+| Diseño | El origen y las acciones importantes quedaban dentro de Datos; había instrucciones repetidas. | Origen permanente, datos, comprobaciones, propuesta, aplicación y regreso accesibles. Se recortó texto sin quitar los límites del cálculo. |
+| Conexiones | Un formulario previo podía prevalecer sobre el modelo solicitado. | La entrada explícita desde 2D o 3D abre Estructura con el modelo correspondiente. La entrada independiente abre una viga suelta. |
 
-## Recorridos comprobados
+## Evidencia en el navegador
 
-- **2D independiente:** proyecto vacío → marco de un vano de 6 m y altura de 4 m, bases empotradas → carga de −12 kN/m en la viga → análisis → diagramas y reacciones. Las reacciones verticales suman 72 kN, igual a la carga aplicada. El cambio de sección propuesto desde Diseño se aplicó y se deshizo en 2D.
-- **3D independiente:** proyecto con 2D vacío → Nuevo edificio, un vano de 5 × 4 m y altura de 3 m → 8 nudos, 8 barras y 24 cargas → análisis → deformada, esfuerzos y resultados. Después se abrió el diseño de sus ejes.
-- **Diseño independiente:** proyecto nuevo sin barras → bienvenida «Diseñar un elemento» → viga, columna, zapata y pórtico rápido → diagramas y comprobaciones, sin construir un modelo.
-- **Conservación del formulario:** base de viga de 25 a 30 cm → salir al 2D → volver a Diseño/Viga → conserva 30 cm → Deshacer vuelve a 25 cm → Rehacer recupera 30 cm.
-- **Puentes:** modelo 2D → Diseño y modelo extruido al 3D → Diseño → Proponer → aplicar las secciones → regresar. En 3D se salió y volvió antes de Deshacer; Rehacer siguió disponible. El test compara las propiedades completas con el modelo original y la propuesta.
-- **Responsive:** Día/Noche y Diseño a 390 × 844; origen visible con paneles cerrados. Bienvenida móvil: las cuatro opciones visibles, sin recorte horizontal. También se corrigió y revisó el recorte del ancho de tableta.
+- **Solo 2D:** marco de 6 m × 4 m, bases empotradas y carga de −12 kN/m en la viga. Reacciones verticales: 36 + 36 = 72 kN, igual a la carga aplicada. Los resultados se consultan sin cambiar de modo.
+- **2D → Diseño:** caso clasificado como permanente; propuesta de secciones de 2.10 a 1.25 m³. Aplicar modifica el 2D y Deshacer recupera 2.10 m³.
+- **2D → 3D → Diseño:** dos pórticos, separados 5 m: 8 nudos, 8 barras, 4 apoyos y 2 cargas distribuidas. Análisis 3D: suma de reacciones verticales de 144 kN. Diseño identifica Modelo 3D y su eje. Propuesta de 5.70 a 3.37 m³; Aplicar regresa al 3D. Después de salir al 2D y volver, Deshacer recupera 5.70 m³. El 2D conserva sus 4 nudos, 3 barras y carga original.
+- **Herramientas independientes:** en la primera revisión se recorrieron Nuevo edificio con el 2D vacío y viga, columna, zapata y pórtico rápido sin modelo. En la segunda se revisan de nuevo las tres entradas y la fuente independiente de Diseño.
+- **Pantallas:** bienvenida y mesas en Día/Noche; bienvenida y Diseño a 390 × 844. Origen y acciones visibles con paneles cerrados, sin desbordamiento horizontal.
 
 ## Verificación mínima
 
-Se ejecutó `npm run verify` (tipos, lint y 151 pruebas relacionadas). Una prueba detectó la pérdida del historial del 3D al reabrir tras una propuesta; se corrigió la comparación entre borradores normalizados y se repitió únicamente ese caso, que pasó. También pasaron los casos dirigidos de entrada desde el modelo y navegación/bienvenida, la prueba de historial de formularios y `npm run architecture:check`. No se añadieron pruebas de estilo ni de texto. La puerta de calidad de publicación detectó además dos pruebas de navegación que todavía buscaban las entradas anteriores («Modelo 3D» y «Diseño de concreto»). Se actualizaron esas mismas pruebas a las rutas nuevas y se confirmó que la entrada independiente abre una viga suelta; se repitieron sólo esos dos casos y pasaron. La publicación utiliza la puerta de calidad obligatoria del repositorio.
+`npm run verify`: tipos y 133 pruebas relacionadas; tres selectores de texto antiguos se ajustaron y se repitieron sólo esos casos. También pasó `npm run architecture:check`.
 
-Los borradores siguen en el documento existente del proyecto, sin cambio de esquema. Deshacer/Rehacer se conserva entre modos durante la sesión; no se promete conservar el historial tras recargar el navegador. Las propuestas no escriben hasta pulsar Aplicar; los reemplazos conservan su confirmación. Los límites experimentales de cálculo y diseño permanecen visibles.
+Se modificó una prueba existente para comprobar que el acceso desde 2D abre la preparación sin escribir antes de confirmar. Se añadió una regresión para el conteo de cargas de barra en el 3D, observando primero el fallo y después el resultado correcto. Los casos dirigidos de persistencia/ruta pasaron, junto con tipos y lint de los archivos afectados. No se añadieron pruebas de estilo o copy. La publicación conserva la puerta de calidad obligatoria del repositorio.
+
+Los borradores usan el documento existente, sin cambio de esquema. Deshacer/Rehacer se conserva entre modos durante la sesión; el historial no se conserva tras recargar. Las propuestas escriben sólo al pulsar Aplicar. Los límites experimentales permanecen visibles.
 
 ## Capturas
 

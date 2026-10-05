@@ -33,13 +33,12 @@ describe('standalone FStructure', () => {
     const user = userEvent.setup();
     window.history.replaceState(null, '', '/?surface=welcome');
     render(<App />);
-    for (const [tool, testId, heading] of [
-      ['Elementos finitos', 'fem-welcome', 'De la malla al campo.'],
-      ['FStructure', 'solver2d-welcome', 'Del trazo al diagrama.'],
+    for (const [tool, testId] of [
+      ['Elementos finitos', 'fem-welcome'],
+      ['FStructure', 'solver2d-welcome'],
     ] as const) {
       await user.click(await screen.findByRole('button', { name: new RegExp(`^Abrir ${tool} ·`) }));
       expect(await screen.findByTestId(testId)).toBeTruthy();
-      expect(screen.getByRole('heading', { level: 1, name: heading })).toBeTruthy();
       expect(new URLSearchParams(window.location.search).get('surface')).toBe('home');
       await user.click(screen.getByRole('button', { name: 'Volver a FusionStructure' }));
       expect(await screen.findByTestId('suite-welcome')).toBeTruthy();
@@ -76,7 +75,6 @@ describe('standalone FStructure', () => {
 
     // El logo de la mesa lleva a la bienvenida original de FStructure…
     expect(await screen.findByTestId('solver2d-welcome')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1, name: 'Del trazo al diagrama.' })).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('surface')).toBe('home');
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
     // …y desde ella se vuelve al Inicio de FusionStructure.
