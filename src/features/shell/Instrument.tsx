@@ -60,7 +60,7 @@ export const Instrument = () => {
   const solved = analysis?.success === true;
   const analysisState = isAnalyzing ? t('analysis.running') : solved ? t('analysis.statusResolved') : t('analysis.statusReady');
 
-  return <footer className="instrument" aria-label={t('canvas.viewStatus')}>
+  return <footer className="instrument" data-mesa-foot="" aria-label={t('canvas.viewStatus')}>
     <span className="instrument__coordinates" title={t('canvas.coordinates')}><Crosshair size={13} />{canvasReadout}</span>
     <span className="instrument__scale" title={t('canvas.scale')}><ZoomIn size={13} />{canvasScale}</span>
     <span className="instrument__counts" title={t('inspector.nodes')}><b>{project.nodes.length}</b> N</span>

@@ -238,7 +238,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
     </section>
 
     {/* Escritorio: barra flotante. Móvil: el elemento arriba y las vistas como pestañas abajo. */}
-    <div className="dw-dock">
+    <div className="dw-dock" data-mesa-dock="">
       {chrome.elements}
       <span className="dw-dock__divider" aria-hidden="true" />
       <div className="dw-views" role="group" aria-label="Vistas">

@@ -6,6 +6,29 @@
 :root[data-mesa-transition] .workspace-topbar { view-transition-name: mesa-topbar; }
 :root[data-mesa-transition] .app-shell > .workspace { view-transition-name: mesa-stage; }
 
+/* Cada pieza del chrome común (mesaChrome.css) se anima por separado: proyecto
+   y selector de modo no se mueven, la píldora del modo activo se desliza de un
+   botón al otro, las acciones se funden y el dock y el pie se transforman en su
+   sitio en vez de girar con el lienzo. */
+:root[data-mesa-transition] .workspace-topbar__project-group { view-transition-name: mesa-id; }
+:root[data-mesa-transition] .workspace-topbar__mode-group { view-transition-name: mesa-mode; }
+:root[data-mesa-transition] .workspace-topbar__mode-button.is-active { view-transition-name: mesa-mode-pill; }
+:root[data-mesa-transition] .workspace-topbar__actions { view-transition-name: mesa-actions; }
+:root[data-mesa-transition] [data-mesa-dock] { view-transition-name: mesa-dock; }
+:root[data-mesa-transition] [data-mesa-foot] { view-transition-name: mesa-foot; }
+
+::view-transition-group(mesa-id),
+::view-transition-group(mesa-mode) { animation-duration: 0s; }
+::view-transition-group(mesa-mode-pill) { animation-duration: var(--sc-motion-reveal); animation-timing-function: var(--sc-ease-standard); }
+::view-transition-group(mesa-actions) { animation-duration: var(--sc-motion-bridge); }
+::view-transition-group(mesa-dock),
+::view-transition-group(mesa-foot) { animation-duration: var(--sc-motion-reveal); animation-timing-function: var(--sc-ease-standard); }
+/* Una píldora que cambia de sitio no debe fundirse: la vieja y la nueva son la misma pieza. */
+::view-transition-old(mesa-mode-pill),
+::view-transition-new(mesa-mode-pill) { animation-duration: var(--sc-motion-reveal); height: 100%; }
+::view-transition-old(mesa-actions) { animation-duration: var(--sc-motion-quick); }
+::view-transition-new(mesa-actions) { animation-duration: var(--sc-motion-bridge); animation-delay: var(--sc-motion-instant); animation-fill-mode: both; }
+
 /* El giro del plano es un trazo (`trace`); la barra sólo se funde (`bridge`). */
 ::view-transition-group(mesa-stage) { animation-duration: var(--sc-motion-trace); }
 ::view-transition-group(mesa-topbar) { animation-duration: var(--sc-motion-bridge); }

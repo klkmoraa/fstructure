@@ -169,7 +169,7 @@ export function BuildingAxes({ axes, code, draft, current, onOpen, onClose, onSa
           </tr>;
         })}</tbody>
       </table>
-      <p className="dw-input-note">Cada eje se diseña con los mismos datos de la mesa y las acciones del modelo completo. En planta, cada columna toma el mayor cociente de sus tramos en sus dos ejes.</p>
+      <p className="dw-input-note" title="Cada eje se diseña con los mismos datos de la mesa y las acciones del modelo completo.">En planta, cada columna toma el mayor cociente de sus tramos en ambos ejes.</p>
       {onSaveAll ? <div className="dw-building__save">
         <button type="button" className="dw-inline-action" onClick={() => {
           const outcome = onSaveAll(axes.axes.map((axis) => ({ id: axis.id, tag: axis.short ? `Eje ${axis.short}` : axis.label })));

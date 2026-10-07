@@ -55,7 +55,7 @@ const DockButton = ({ icon, label, name, title, active, pressed, disabled, onCli
 
 export const Space3DDock = ({ t, tool, onTool, hasNodes, onGenerate, explorer, onExplorer, split, onSplit }: Space3DDockProps) => {
   const shortcut = (label: string, key: string) => `${label} (${t('space3d.shortcut', { key })})`;
-  return <nav className="space3d-dock" aria-label={t('space3d.dock.label')}>
+  return <nav className="space3d-dock" data-mesa-dock="" aria-label={t('space3d.dock.label')}>
     <div className="space3d-dock-group">
       <DockButton icon={<MousePointer2 size={18} aria-hidden="true" />} label={t('space3d.toolSelect')} title={shortcut(t('space3d.toolSelect'), 'V')}
         active={tool === 'select'} onClick={() => onTool('select')} />

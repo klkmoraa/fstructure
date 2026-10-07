@@ -12,10 +12,6 @@
   color: var(--sc-color-text-primary);
 }
 
-/* Franja de estado monoespaciada al pie del shell, como la de 2D y 3D. */
-.fusion-fem__statusbar { display: flex; align-items: center; gap: 12px; height: var(--fstructure-status-height, 28px); padding: 0 12px; overflow: hidden; background: var(--sc-color-surface-1); color: var(--sc-color-text-secondary); font: var(--sc-font-size-label, 11px) / 1 var(--sc-font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.fusion-fem__statusbar > span { flex: none; display: inline-flex; align-items: center; gap: 4px; }
-.fusion-fem__statusbar b { color: var(--sc-color-text-primary); }
 .fusion-fem__statusbar-help { flex: 1 1 auto !important; min-width: 0; overflow: hidden; color: var(--sc-color-text-muted); font-family: var(--sc-font-ui); text-overflow: ellipsis; }
 .fusion-fem__feedback { margin: 0; color: var(--sc-color-text-secondary); font-size: 12px; }
 .fusion-fem__result { display: grid; gap: 5px; width: min(620px, 100%); padding: 13px 15px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1); font-size: 13px; }

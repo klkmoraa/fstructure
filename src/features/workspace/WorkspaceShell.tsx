@@ -40,6 +40,7 @@ import './workspaceTopbar.css';
 import './commandPalette.css';
 import '../canvas/mobileCanvasDensity.css';
 import './canvasChrome.css';
+import './mesaChrome.css';
 import { emitWorkspaceCommand, onWorkspaceCommand } from './workspaceCommands';
 import { setToolIntent } from './toolIntent';
 import { isOwnHistoryScope } from './commandRegistry';

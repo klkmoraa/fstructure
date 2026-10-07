@@ -125,7 +125,7 @@ const FStructureSurface = () => {
           : <Model2DWelcome key="model2d" onOpenWorkspace={openCurrentWorkspace} onOpenDesign={openDesign} onOpenSpace3D={openSpace3D} onOpenSuite={openSuite} />
         : route.tool === 'model2d'
           ? route.mode === 'design' || route.mode === '3d'
-            ? <MesaModeShell key={`model2d-${route.mode}`} mode={route.mode} projectId={project.id} onOpenHome={openCurrentToolHome} onModeChange={setMesaMode} />
+            ? <MesaModeShell key="model2d-mesa" mode={route.mode} projectId={project.id} onOpenHome={openCurrentToolHome} onModeChange={setMesaMode} />
             : <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openCurrentToolHome} onModeChange={setMesaMode} />
           : <ToolShell key={route.tool} tool={route.tool} projectId={project.id} onOpenHome={openCurrentToolHome} />}
   </ClassroomSessionProvider>;

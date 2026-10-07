@@ -232,6 +232,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
         aria-checked={element === item.id}
         tabIndex={element === item.id ? 0 : -1}
         label={item.label}
+        title={item.label}
         icon={item.icon}
         active={element === item.id}
         className="dw-dock__button"
@@ -273,6 +274,15 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     </ShellContribution> : null}
     {nativeTool && verdict ? <ShellContribution slot="status">
       <ShellStatusChip tone={VERDICT_TONE[verdict.status]} label={verdict.label} badge="Experimental" />
+    </ShellContribution> : null}
+    {nativeTool ? <ShellContribution slot="statusbar">
+      <footer className="mesa-statusbar" data-mesa-foot="" aria-label="Estado de Diseño">
+        <span><b>{ELEMENTS.find((item) => item.id === element)?.label}</b></span>
+        <span>{designCode(code).name}</span>
+        <span className="mesa-statusbar__grow">{memory.items.length} {memory.items.length === 1 ? 'elemento' : 'elementos'} en la memoria</span>
+        <span>{verdict ? verdict.label : 'Sin revisar'}</span>
+        <span>Local</span>
+      </footer>
     </ShellContribution> : null}
     {nativeTool ? <ShellContribution slot="action">
       <button type="button" className="workspace-topbar__action-button" data-mobile-hide disabled={!report} onClick={copyMemo}

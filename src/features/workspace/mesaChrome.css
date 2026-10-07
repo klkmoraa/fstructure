@@ -1,0 +1,102 @@
+/*
+ * Chrome común de las mesas (2D, 3D, Diseño y FEM).
+ *
+ * Las cuatro mesas comparten la misma geometría —barra, tarjeta del lienzo,
+ * dock y pie—, de modo que al cambiar de modo cada pieza queda en su sitio y
+ * sólo cambia su contenido. Es lo que permite que la transición de vista
+ * (mesaTransition.css) anime cada pieza por separado en vez de fundir pantallas
+ * enteras. Cualquier valor que se repita entre mesas vive aquí, no en cada una.
+ */
+
+:root {
+  --mesa-bar-h: 58px;
+  --mesa-foot-h: 24px;
+  --mesa-dock-key: 38px;
+  --mesa-dock-lift: 17px;
+  --mesa-dock-shadow: var(--sc-shadow-lifted);
+}
+
+/* --- Barra: la misma altura en todas ------------------------------------------ */
+/* La fila del shell del 2D salía de los 64 px del Inicio y dejaba 6 px de hueco. */
+.app-shell { --fstructure-header-height: var(--mesa-bar-h); }
+@media (min-width: 761px) {
+  .app-shell .workspace-topbar {
+    height: var(--mesa-bar-h);
+    min-height: var(--mesa-bar-h);
+    box-sizing: border-box;
+  }
+}
+
+/* --- Pie de estado: una sola franja ------------------------------------------- */
+.app-shell [data-mesa-foot] {
+  height: var(--mesa-foot-h);
+  min-height: var(--mesa-foot-h);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: 0 12px;
+  border: 0;
+  border-top: 1px solid var(--sc-color-border-soft);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-secondary);
+  font: var(--sc-font-size-label, 11px) / 1 var(--sc-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.app-shell [data-mesa-foot] > span { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.app-shell [data-mesa-foot] b { color: var(--sc-color-text-primary); font-weight: var(--sc-font-weight-bold); }
+.app-shell [data-mesa-foot] .mesa-statusbar__grow { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--sc-color-text-muted); font-family: var(--sc-font-ui); text-overflow: ellipsis; }
+
+/* --- Dock: la misma pieza en las tres mesas ------------------------------------ */
+@media (min-width: 761px) {
+  .app-shell.workspace-screen[data-shell-class] [data-mesa-dock][data-mesa-dock] {
+    border: 1px solid var(--sc-color-border-soft);
+    border-radius: var(--sc-radius-panel);
+    background: var(--sc-color-surface-1);
+    box-shadow: var(--mesa-dock-shadow);
+    padding: 5px 6px;
+  }
+
+  /* Reposo: iconos de 38 px; la herramienta o el elemento activo dice su nombre. */
+  .app-shell .dw-dock .sc-tool-button {
+    width: var(--mesa-dock-key);
+    min-width: var(--mesa-dock-key);
+    height: var(--mesa-dock-key);
+    min-height: var(--mesa-dock-key);
+    padding: 0;
+    display: inline-grid;
+    place-items: center;
+    border: 1px solid transparent;
+    background: transparent;
+    box-shadow: none;
+    color: var(--sc-color-text-secondary);
+  }
+  .app-shell .dw-dock .sc-tool-button:hover:not(:disabled) { background: var(--sc-color-surface-2); color: var(--sc-color-text-primary); transform: none; }
+  .app-shell .dw-dock .sc-tool-button .sc-tool-button__copy { display: none; }
+  .app-shell .dw-dock .sc-tool-button[aria-checked='true'] {
+    width: auto;
+    padding: 0 12px 0 9px;
+    grid-template-columns: 20px auto;
+    gap: 7px;
+    border-color: var(--sc-color-action-primary);
+    background: var(--sc-color-action-primary);
+    color: var(--sc-color-action-foreground);
+    box-shadow: var(--sc-shadow-selected);
+  }
+  .app-shell .dw-dock .sc-tool-button[aria-checked='true'] .sc-tool-button__copy { display: inline-block; white-space: nowrap; }
+  .app-shell .dw-dock .sc-tool-button[aria-checked='true'] .sc-tool-button__copy strong { color: inherit; font-size: var(--sc-font-size-caption); font-weight: var(--sc-font-weight-bold); }
+}
+
+/* Escritorio: el borde inferior del dock queda a la misma distancia del borde de la tarjeta. */
+@media (min-width: 1024px) {
+  .app-shell .dw-dock[data-mesa-dock] { bottom: calc(var(--mesa-dock-lift) - 1px); }
+  /* El escenario 3D termina 17 px antes que el lienzo (su banda de resultados): el dock baja hasta ese borde. */
+  .app-shell .space3d-stages > .space3d-dock[data-mesa-dock] { bottom: 0; }
+}
+
+@media (max-width: 760px) {
+  .app-shell [data-mesa-foot] .mesa-statusbar__grow { display: none; }
+  .app-shell [data-mesa-foot] { gap: 10px; padding-inline: 10px; }
+}

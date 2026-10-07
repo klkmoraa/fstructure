@@ -180,7 +180,7 @@ function ModelSummary({ modelSource, onOpenModel, fcFromModel, space = false }: 
       <div><dt>Fuera del concreto</dt><dd>{summary.skipped}</dd></div>
       <div><dt>Casos</dt><dd>{`${summary.deadCases} CM · ${summary.lateralCases} lateral · CV en ${summary.liveCases} ${summary.liveCases === 1 ? 'parte' : 'partes'}`}</dd></div>
     </dl>
-    {summary.ignoredCases.length ? <p>{`No entran: ${summary.ignoredCases.join(', ')}. Revisa su categoría y activación en ${space ? '3D' : '2D → Casos de carga'}.`}</p> : null}
+    {summary.ignoredCases.length ? <p title={`Revisa su categoría y activación en ${space ? '3D' : '2D → Casos de carga'}.`}>{`No entran: ${summary.ignoredCases.join(', ')}.`}</p> : null}
     <p>{fcFromModel ? `f′c: ${formatNumber(modelSource.fcMpa ?? 0, 1)} MPa (modelo).` : 'Sin f′c en el modelo: se usa Materiales.'}</p>
     {edit}
   </div>;
@@ -384,7 +384,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             <LayoutGrid size={13} aria-hidden="true" />{building ? 'Ocultar todos los ejes' : `Revisar los ${modelAxes.axes.length} ejes`}
           </button> : null}
         </> : null}
-        {steelOnly ? <p className="dw-input-note">El modelo tiene barras de acero. La revisión disponible aparece en el dibujo con su combinación y alcance propios.</p> : fromModel ? <ModelSummary modelSource={external} fcFromModel={fcFromModel} space={from3d} {...(openSource ? { onOpenModel: openSource } : {})} />
+        {steelOnly ? <p className="dw-input-note" title="La revisión disponible aparece en el dibujo con su combinación y alcance propios.">Barras de acero: revisión parcial en el dibujo.</p> : fromModel ? <ModelSummary modelSource={external} fcFromModel={fcFromModel} space={from3d} {...(openSource ? { onOpenModel: openSource } : {})} />
           : onCreateModel ? <QuickFrameCard spec={frameOutcome?.ok ? frameModelSpec(chrome.code as DesignCodeId, draft, bays, stories) : null} modelMembers={modelSource?.summary.members ?? 0}
             onCreate={(spec) => { onCreateModel(spec); set('source')('model'); setPicked(null); setLoadNote(null); }} /> : null}
       </FieldGroup>
@@ -401,7 +401,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             onChange={(index, field, value) => setStories((current) => current.map((story, position) => position === index ? { ...story, [field]: value } : story))}
             onAdd={() => setStories((current) => [...current, { ...current[current.length - 1]! }])}
             onRemove={(index) => setStories((current) => current.filter((_, position) => position !== index))} />
-          <p className="dw-input-note">N1 es el primer nivel sobre la base. CM y CV son de servicio sobre las vigas, sin su peso propio{lateral ? '; F es la fuerza lateral de diseño del nivel (sismo ya reducido o viento)' : ''}.</p>
+          <p className="dw-input-note" title="N1 es el primer nivel sobre la base. CM y CV son de servicio sobre las vigas, sin su peso propio. F es la fuerza lateral de diseño del nivel (sismo ya reducido o viento).">N1: primer nivel · CM y CV de servicio, sin peso propio{lateral ? ' · F lateral de diseño' : ''}.</p>
           <Disclosure label="Cargas desde la losa">
             <div className="dw-group__grid" data-columns={2}>
               <NumberField label="Ancho tributario" unit="m" value={draft.tributary} onChange={set('tributary')} />
@@ -425,11 +425,11 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           options={[{ value: 'fixed', label: 'Empotrada' }, { value: 'pinned', label: 'Articulada' }]} /></div>}
         <div className="dw-end"><span aria-hidden="true">Marco</span><SegmentedControl label="Desplazamiento lateral del marco" size="sm" value={draft.braced === 'yes' ? 'yes' : 'no'} onValueChange={set('braced')}
           options={[{ value: 'no', label: 'Con desplazamiento' }, { value: 'yes', label: 'Arriostrado' }]} /></div>
-        {fromModel ? <p className="dw-input-note">Arriostrado: otro sistema (muros, contravientos) impide el desplazamiento; no se amplifican momentos por desplazamiento ni entran las acciones laterales.</p> : null}
+        {fromModel ? <p className="dw-input-note" title="Otro sistema (muros, contravientos) impide el desplazamiento: no se amplifican momentos por desplazamiento ni entran las acciones laterales.">Arriostrado: no se amplifica ni entra la acción lateral.</p> : null}
       </FieldGroup>
       {fromModel ? (modelSections ? <FieldGroup title="Secciones del modelo" columns={1} action={<InlineAction label={proposing ? 'Buscando…' : 'Proponer'} disabled={proposing !== null}
         title="Secciones por nivel que cumplen y reducen el volumen respecto a la propuesta uniforme" onClick={proposeSections} />}>
-        <p className="dw-input-note">{plural(modelSections.beams, 'viga', 'vigas')} y {plural(modelSections.columns, 'columna', 'columnas')} de concreto · {formatNumber(modelSections.volumeM3, 2)} m³. Propuestas por nivel; aplica para cambiar el modelo.{from3d ? ' Comprueba todos los ejes y ambas direcciones de las columnas compartidas.' : ''}</p>
+        <p className="dw-input-note">{plural(modelSections.beams, 'viga', 'vigas')} y {plural(modelSections.columns, 'columna', 'columnas')} de concreto · {formatNumber(modelSections.volumeM3, 2)} m³.</p>
         {proposing ? <p className="dw-action-note" role="status" aria-live="polite">{proposing}</p>
           : modelProposal ? <div className="dw-proposal" role="status">
             <p>{modelProposal.groups?.length ? 'Referencia uniforme · ' : ''}Vigas {modelProposal.beam.width} × {modelProposal.beam.height} y columnas {modelProposal.column.width} × {modelProposal.column.height} cm. Propuesta{modelProposal.groups?.length ? ' por nivel' : ''}: rige {percent(modelProposal.ratio)}. {formatNumber(modelProposal.volumeM3, 2)} m³ de concreto (ahora {formatNumber(modelSections.volumeM3, 2)}), tras {modelProposal.trials} diseños.</p>
@@ -453,7 +453,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </FieldGroup>}
       {!fromModel && stories.some((story) => story.beamWidth) ? <FieldGroup title="Secciones por nivel" columns={1}>
         {stories.map((story, index) => <p key={index} className="dw-input-note">N{index + 1}: V {story.beamWidth ?? draft.beamWidth} × {story.beamHeight ?? draft.beamHeight} · C {story.columnWidth ?? draft.columnWidth} × {story.columnHeight ?? draft.columnHeight} cm.</p>)}
-        <p className="dw-input-note">Los campos generales vuelven a secciones uniformes al editarlos.</p>
+        <p className="dw-input-note">Editar los campos generales restablece secciones uniformes.</p>
         <button type="button" className="dw-inline-action" onClick={() => setStories(stories.map(({ height, dead, live, lateral: force }) => ({ height, dead, live, lateral: force })))}>Volver a secciones uniformes</button>
       </FieldGroup> : null}
       <FieldGroup title="Armado de columnas">
@@ -463,7 +463,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <NumberField label="Barras cara b" unit="pzas" value={draft.barsWidth} onChange={set('barsWidth')} min={2} />
         <NumberField label="Barras cara h" unit="pzas" value={draft.barsDepth} onChange={set('barsDepth')} min={2} />
         {fromModel ? <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} /> : null}
-        <p className="dw-input-note dw-span-all">Las vigas se arman solas por línea continua (corridas, bastones y estribos por tramo).</p>
+        <p className="dw-input-note dw-span-all" title="Corridas, bastones y estribos por tramo.">Vigas armadas por línea continua.</p>
       </FieldGroup>
       <FieldGroup title="Materiales">
         {fcFromModel ? null : <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />}
@@ -641,6 +641,6 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         </table>)}
         <ChecksList checks={report.notes} />
       </Disclosure>
-    </> : steelOnly ? <p className="dw-input-note">La revisión de acero está en Dibujo. No se ha concluido el diseño de las barras.</p> : null}
+    </> : steelOnly ? <p className="dw-input-note">Revisión de acero en Dibujo; diseño sin concluir.</p> : null}
   /></>;
 }

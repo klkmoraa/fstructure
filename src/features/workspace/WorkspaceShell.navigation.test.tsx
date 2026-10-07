@@ -123,6 +123,32 @@ it('cambiar de modo desmonta el anterior y la recarga vuelve al modo de la URL',
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
 }, TEST_TIMEOUT);
 
+it('3D y Diseño comparten el mismo shell: la barra no se vuelve a montar al pasar de uno a otro', async () => {
+  window.history.replaceState(null, '', '/?tool=model2d&mode=3d');
+  const user = userEvent.setup();
+  render(<App />);
+  await screen.findByRole('button', { name: 'Modelo 3D', pressed: true }, LAZY);
+  const shell = document.querySelector('.app-shell');
+  const bar = document.querySelector('[data-workspace-topbar]');
+  const modes = bar?.querySelector('.workspace-topbar__mode-group');
+  expect(bar).toBeTruthy();
+
+  await user.click(screen.getByRole('button', { name: 'Diseño' }));
+  expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' }, LAZY)).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Diseño', pressed: true })).toBeTruthy();
+  expect(document.querySelector('.app-shell')).toBe(shell);
+  expect(document.querySelector('[data-workspace-topbar]')).toBe(bar);
+  expect(document.querySelector('.workspace-topbar__mode-group')).toBe(modes);
+  // El pie de estado es el de Diseño y la mesa 3D ya no está.
+  expect(screen.getByRole('contentinfo', { name: 'Estado de Diseño' })).toBeTruthy();
+  expect(document.querySelector('.space3d-screen')).toBeNull();
+
+  await user.click(screen.getByRole('button', { name: 'Modelo 3D' }));
+  await screen.findByRole('button', { name: 'Modelo 3D', pressed: true }, LAZY);
+  expect(document.querySelector('[data-workspace-topbar]')).toBe(bar);
+  expect(screen.queryByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeNull();
+}, TEST_TIMEOUT);
+
 it('modelar y diseñar en la misma mesa: Diseño diseña el modelo, «Pasar al modelo» lo reemplaza y Deshacer lo recupera', async () => {
   localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createConcreteFrameProject()));
   const user = userEvent.setup();

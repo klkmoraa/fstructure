@@ -1308,7 +1308,7 @@ const WorkspaceBody = ({
     : tool === 'support' ? 'space3d.toolSupport' : tool === 'load' ? 'space3d.load' : 'space3d.toolSelect');
   // Franja de estado con la voz de la de 2D: lectura del modelo a la izquierda,
   // herramienta, unidades y estado del cálculo a la derecha.
-  const statusBar = <footer className="space3d-status" aria-label={t('space3d.title')}>
+  const statusBar = <footer className="space3d-status" data-mesa-foot="" aria-label={t('space3d.title')}>
     <span className="space3d-status-counts" title={t('space3d.canvasSummary')}>
       <span><b>{project.nodes.length}</b> N</span>
       <span><b>{project.members.length}</b> B</span>

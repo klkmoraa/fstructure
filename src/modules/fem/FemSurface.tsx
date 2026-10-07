@@ -202,7 +202,7 @@ export function FemSurface() {
       <button type="button" className="workspace-topbar__action-button" onClick={exportJson} aria-label="Exportar FEM JSON" title="Descargar el estudio y su análisis en JSON"><FileJson size={17} aria-hidden="true" /><span>JSON</span></button>
       <button type="button" className="workspace-topbar__action-button" onClick={exportVtk} aria-label="Exportar VTK" title="Descargar la malla y sus campos en VTK"><Box size={17} aria-hidden="true" /><span>VTK</span></button>
     </ShellContribution>
-    <ShellContribution slot="statusbar"><footer className="fusion-fem__statusbar" aria-label="Estado de Elementos finitos">
+    <ShellContribution slot="statusbar"><footer className="fusion-fem__statusbar" data-mesa-foot="" aria-label="Estado de Elementos finitos">
       <span><b>{document.nodes.length}</b> nudos <b>{document.elements.length}</b> elementos</span>
       <span>{document.name}</span>
       <span className="fusion-fem__statusbar-help">TRI3/QUAD4 · elasticidad lineal 2D</span>

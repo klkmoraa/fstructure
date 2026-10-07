@@ -17,6 +17,7 @@ import '../../design-system/components/ui.css';
 import './phase1.css';
 import './workspaceTopbar.css';
 import './nativeWorkspaceMode.css';
+import './mesaChrome.css';
 
 /** Herramientas que viven fuera del Modelo 2D, cada una en su propia mesa. */
 type IsolatedToolId = Exclude<ToolId, 'model2d'>;
@@ -143,7 +144,7 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
       />}
       workspace={<section className="native-workspace-mode" data-workspace-mode={variant === '3d' ? 'space3d' : variant}
         aria-label={design ? (language === 'es' ? `${name} · Diseño` : `${name} · Design`) : variant === '3d' ? `${name} · 3D` : name}>
-        <ToolErrorBoundary fallback={(reset) => <div className="tool-shell__failure" role="alert">
+        <ToolErrorBoundary key={variant} fallback={(reset) => <div className="tool-shell__failure" role="alert">
           <strong>{text.failed}</strong>
           <p>{text.failedBody}</p>
           <div>

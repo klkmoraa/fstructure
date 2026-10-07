@@ -24,9 +24,9 @@ export const SECTION_SHAPES = [
   { value: 'hexagon', label: 'Hexagonal' }, { value: 'triangle', label: 'Triangular' },
 ] as const;
 export const SECTION_PHILOSOPHIES = [
-  { value: 'allowable', short: 'EA', label: 'Esfuerzos admisibles', description: 'Compara esfuerzos elásticos en sección fisurada con límites de concreto y acero. Usa solicitaciones de servicio.' },
-  { value: 'ultimate', short: 'RU', label: 'Resistencia última', description: 'Compatibilidad de deformaciones y bloque de compresión. Reduce la resistencia nominal con φ; usa solicitaciones últimas.' },
-  { value: 'limit-state', short: 'EL', label: 'Estados límite', description: 'Compatibilidad de deformaciones con resistencias fc/γc y fy/γs. Esta revisión cubre resistencia de la sección; servicio queda sin evaluar.' },
+  { value: 'allowable', short: 'EA', label: 'Esfuerzos admisibles', description: 'Esfuerzos elásticos en sección fisurada; solicitaciones de servicio.' },
+  { value: 'ultimate', short: 'RU', label: 'Resistencia última', description: 'Resistencia nominal con φ; solicitaciones últimas.' },
+  { value: 'limit-state', short: 'EL', label: 'Estados límite', description: 'Resistencias fc/γc y fy/γs; servicio sin evaluar.' },
 ] as const;
 export const SECTION_PRESETS = [
   { value: 'beam', label: 'Flexión de viga' }, { value: 'column', label: 'Columna corta' },

@@ -486,6 +486,7 @@ export const ToolRail = () => {
         className={`toolbar tool-rail${isFloatingDock ? ' is-floating-dock' : ' is-compact'}${desktopDockCollapsed ? ' is-dock-collapsed' : ''}${mobileMenu ? ' mobile-menu-open' : ''}`}
         aria-label={t('toolbar.label')}
         data-tool-rail={isFloatingDock ? 'dock' : 'compact'}
+        data-mesa-dock={isFloatingDock ? '' : undefined}
         /* La hoja expande una sola etiqueta: la herramienta activa. */
         data-tool-rail-labels={showActiveLabel && !desktopDockCollapsed ? 'active' : undefined}
       >

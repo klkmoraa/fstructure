@@ -76,7 +76,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
           {SECTION_PRESETS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
         </Select>
         <SegmentedControl label="Nivel de edición" size="sm" value={draft.level} onValueChange={set('level')} options={[{ value: 'simple', label: 'Simple' }, { value: 'advanced', label: 'Avanzado' }]} />
-        {draft.preset === 'slab' ? <p className="cs-philosophy-note">Franja de losa: revisión de sección por metro. Introduce M y V de una franja de 1 m; la longitud sólo cuantifica material.</p> : null}
+        {draft.preset === 'slab' ? <p className="cs-philosophy-note">Franja de 1 m: introduce M y V por metro.</p> : null}
       </FieldGroup>
       <FieldGroup title="Filosofía" columns={1}>
         <Select label="Método de diseño" value={draft.philosophy} onChange={(event) => set('philosophy')(event.currentTarget.value)}>
@@ -124,7 +124,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
       </FieldGroup>
       {advanced ? <FieldGroup title="Factores ajustables">
         {draft.philosophy === 'ultimate' ? <NumberField label="Reducción de resistencia φ" value={draft.phi} unit="×" onChange={set('phi')} /> : draft.philosophy === 'limit-state' ? <><NumberField label="Factor del concreto γc" value={draft.gammaConcrete} unit="×" min={1} onChange={set('gammaConcrete')} /><NumberField label="Factor del acero γs" value={draft.gammaSteel} unit="×" min={1} onChange={set('gammaSteel')} /></> : <><NumberField label="Límite concreto / f′c" value={draft.allowableConcrete} unit="×" onChange={set('allowableConcrete')} /><NumberField label="Límite acero / fy" value={draft.allowableSteel} unit="×" onChange={set('allowableSteel')} /></>}
-        <p className="cs-philosophy-note">Parámetros académicos editables; no representan una norma o una categoría de ductilidad seleccionada.</p>
+        <p className="cs-philosophy-note">Parámetros editables; no son una norma.</p>
       </FieldGroup> : null}
       <Disclosure label="Clave y ubicación"><IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="S-1" /></Disclosure>
     </>}
