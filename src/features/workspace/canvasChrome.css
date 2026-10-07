@@ -324,3 +324,17 @@
    sólo se pinta el aviso mientras se coloca algo o con la ayuda activada. */
 .app-shell.workspace-screen .canvas-mode-badge:not(.placing-load):not(.has-context),
 .app-shell.workspace-screen .canvas-view-chips { display: none; }
+
+/* Teléfono en horizontal (K0 con la consola abajo): el lienzo ocupa toda la fila.
+   La regla de «barra de herramientas a la izquierda» de phase2.css ya no tiene
+   columna que reservar y lo mandaba a la columna del inspector (320 px). */
+@media (max-width: 1023px) {
+  .app-shell.workspace-screen[data-shell-class='K0'] > .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .app-shell.workspace-screen[data-shell-class='K0'] > .workspace > .center-stage {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}

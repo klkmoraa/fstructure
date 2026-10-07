@@ -1108,14 +1108,17 @@
   position: absolute;
   z-index: 8;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
   padding: 72px var(--sc-space-4) var(--sc-space-6);
+  overflow-y: auto;
   pointer-events: none;
 }
 
+/* `margin: auto` centra la tarjeta y, si no cabe (teléfono en horizontal), deja
+   que la pila se desplace en vez de recortar su arranque. */
 .space3d-empty-card {
   width: min(420px, 100%);
+  margin: auto;
   pointer-events: auto;
 }
 
@@ -2757,12 +2760,10 @@
 
   .space3d-empty-stage {
     padding: 116px 12px 14px;
-    align-items: start;
-    overflow-y: auto;
   }
   .space3d-empty-card {
     width: min(380px, calc(100% - 52px));
-    margin-right: auto;
+    margin: 0 auto 0 0;
   }
   .space3d-empty-card h2 { font-size: 19px; }
   .space3d-guide--compact { border-radius: var(--sc-radius-md); }

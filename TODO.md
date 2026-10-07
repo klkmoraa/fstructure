@@ -4,6 +4,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
+- [ ] Lienzo y dock: unificar el pie de las mesas (dock del 2D con icono, del 3D con «Seleccionar» y pestañas de Diseño) y revisar el resto del texto explicativo del taller de Diseño.
 - [ ] FEM: colorear por desplazamiento y calidad; editor mínimo de placa, apoyos y cargas. Malla, von Mises y tablas ya se consultan en la mesa.
 - [ ] Proyectos por herramienta: miniatura generada de cada modelo 3D, malla FEM o elemento de Diseño; hoy usan la escena de la herramienta y el resumen de su rama local.
 - [ ] Mesa de FEM y modo Diseño con el lenguaje del modo Modelo (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM.
