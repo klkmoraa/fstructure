@@ -78,8 +78,8 @@ interface WorkspaceTopBarProps {
   /** Acciones secundarias del espacio: exportación, unidades y hojas. */
   utilities?: ReactNode;
   /**
-   * Muestra los comandos del Modelo 2D (historial, Resultados, cálculo). Las
-   * herramientas aisladas —Diseño, 3D y FEM— lo apagan y aportan los suyos por
+   * Muestra los comandos del Modelo 2D (historial, Resultados, cálculo). Los modos
+   * 3D y Diseño lo apagan y aportan los suyos por
    * `contextualControls`, `primaryAction` y `toolStatus`.
    */
   contextActive?: boolean;

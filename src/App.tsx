@@ -1,23 +1,18 @@
-import { Suspense, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { LazyMotion, MotionConfig } from 'motion/react';
 import './styles.css';
 import './design-system/material.css';
 import { ProjectProvider, useProject } from './store/ProjectContext';
 import { ClassroomSessionProvider } from './store/ClassroomSessionContext';
 import WorkspaceShell from './features/workspace/WorkspaceShell';
-import ToolShell, { MesaModeShell } from './features/workspace/ToolShell';
+import { MesaModeShell } from './features/workspace/ToolShell';
 import { runMesaTransition } from './features/workspace/mesaTransition';
 import { peekToolIntent, setToolIntent } from './features/workspace/toolIntent';
 import { preloadMesaMode } from './features/workspace/toolSurfaces';
-import { WelcomeScreen } from './features/welcome/WelcomeScreen';
-import { Model2DWelcome } from './features/welcome/Model2DWelcome';
-import { TOOL_HOMES } from './features/workspace/toolHomes';
+import { HomePage } from './features/welcome/HomePage';
 import { toolRegistry } from './features/workspace/toolRegistry';
-import { toolIdentity } from './features/workspace/toolCatalog';
 import { useI18n } from './i18n/useI18n';
-import { rememberLastTool } from './features/welcome/lastTool';
 import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
-import type { ToolId } from './shared/contracts';
 import type { MesaMode } from './shared/navigation/projectUrl';
 
 const loadMotionFeatures = () => import('./design-system/motionFeatures')
@@ -28,23 +23,18 @@ const FStructureSurface = () => {
   const { route, navigate } = useProjectNavigation(project.id);
   const { language } = useI18n();
   useEffect(() => {
-    document.title = route.surface === 'welcome' ? 'FusionStructure · Análisis estructural'
-      : `${toolIdentity(route.tool).name[language]} · ${route.surface === 'workspace' ? project.name : language === 'es' ? 'Inicio' : 'Home'} · FusionStructure`;
-  }, [route.surface, route.tool, project.name, language]);
-  const openTool = useCallback((tool: ToolId) => {
-    navigate({ surface: 'workspace', projectId: route.projectId, tool });
+    document.title = route.surface === 'welcome' ? 'FStructure · FusionStructure'
+      : `${project.name} · FStructure`;
+  }, [route.surface, project.name, language]);
+  /* Una sola portada (la Home) y la mesa. El logo de la mesa vuelve a la Home. */
+  const openHome = useCallback(() => {
+    navigate({ surface: 'welcome', projectId: route.projectId, tool: 'model2d' });
   }, [navigate, route.projectId]);
-  /* Inicio de FusionStructure → bienvenida de la herramienta → mesa. El logo
-     de una mesa vuelve a la bienvenida de SU herramienta; desde ahí se vuelve
-     a FusionStructure. */
-  const openToolHome = useCallback((tool: ToolId) => {
-    navigate({ surface: 'tool-home', projectId: route.projectId, tool });
+  const openWorkspace = useCallback((mode: MesaMode = 'model') => {
+    navigate(mode === 'model'
+      ? { surface: 'workspace', projectId: route.projectId, tool: 'model2d' }
+      : { surface: 'workspace', projectId: route.projectId, tool: 'model2d', mode });
   }, [navigate, route.projectId]);
-  const openSuite = useCallback(() => {
-    navigate({ surface: 'welcome', projectId: route.projectId, tool: route.tool });
-  }, [navigate, route.projectId, route.tool]);
-  const openCurrentToolHome = useCallback(() => openToolHome(route.tool), [openToolHome, route.tool]);
-  const openCurrentWorkspace = useCallback(() => openTool(route.tool), [openTool, route.tool]);
   /* 2D, 3D y Diseño son la misma mesa de FStructure: el modo vive en la URL
      (`mode=3d`, `mode=design`) para que recargar o compartir conserve dónde
      estabas, y el cambio se anima como un solo espacio que gira o se desliza. */
@@ -57,25 +47,22 @@ const FStructureSurface = () => {
       ? { surface: 'workspace', projectId: route.projectId, tool: 'model2d' }
       : { surface: 'workspace', projectId: route.projectId, tool: 'model2d', mode }));
   }, [navigate, route.projectId, route.mode]);
-  const openDesign = useCallback(() => { setToolIntent({ tool: 'design', kind: 'frame', element: 'beam' }); setMesaMode('design'); }, [setMesaMode]);
-  const openSpace3D = useCallback(() => setMesaMode('3d'), [setMesaMode]);
+  // Desde la Home, Diseño abre el taller en una viga suelta; el 3D, el modelo espacial.
+  const openDesign = useCallback(() => { setToolIntent({ tool: 'design', kind: 'frame', element: 'beam' }); openWorkspace('design'); }, [openWorkspace]);
+  const openSpace3D = useCallback(() => openWorkspace('3d'), [openWorkspace]);
 
-  useEffect(() => {
-    if (route.surface === 'workspace') rememberLastTool(route.tool);
-  }, [route.surface, route.tool]);
-
-  /* Desde la bienvenida, la mesa se abre casi siempre: su código se descarga en
+  /* Desde la Home, la mesa se abre casi siempre: su código se descarga en
      segundo plano para que «Continuar» no espere a la red (en móvil eran segundos). */
   useEffect(() => {
-    if (route.surface !== 'tool-home') return;
-    const preload = () => { void toolRegistry.find((tool) => tool.id === route.tool)?.load().catch(() => undefined); };
+    if (route.surface !== 'welcome') return;
+    const preload = () => { void toolRegistry[0]?.load().catch(() => undefined); };
     if (typeof window.requestIdleCallback === 'function') {
       const handle = window.requestIdleCallback(preload, { timeout: 2000 });
       return () => window.cancelIdleCallback(handle);
     }
     const handle = window.setTimeout(preload, 600);
     return () => window.clearTimeout(handle);
-  }, [route.surface, route.tool]);
+  }, [route.surface]);
 
   /* En la mesa de FStructure, los otros dos modos se descargan cuando el
      navegador queda en reposo: el primer cambio de modo no espera a la red. */
@@ -112,22 +99,14 @@ const FStructureSurface = () => {
     return () => { cancelled = true; };
   }, [route, project.id, replaceProject, openUnifiedProject, navigate]);
 
-  const ToolHomeView = route.tool === 'model2d' ? null : TOOL_HOMES[route.tool];
-  /* Cada herramienta monta SU shell. La `key` garantiza que abrir otra
-     herramienta desmonte la anterior por completo: ningún atajo, superficie,
-     historial de interfaz ni estado de render sobrevive al cambio. */
+  /* La `key` garantiza que salir de la mesa desmonte todo lo suyo: ningún atajo,
+     superficie, historial de interfaz ni estado de render sobrevive en la Home. */
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
     {route.surface === 'welcome'
-      ? <WelcomeScreen onOpenToolHome={openToolHome} onResume={openTool} />
-      : route.surface === 'tool-home'
-        ? ToolHomeView
-          ? <Suspense key={route.tool} fallback={<div className="workspace-loading" role="status">Cargando herramienta…</div>}><ToolHomeView onOpenWorkspace={openCurrentWorkspace} onOpenSuite={openSuite} /></Suspense>
-          : <Model2DWelcome key="model2d" onOpenWorkspace={openCurrentWorkspace} onOpenDesign={openDesign} onOpenSpace3D={openSpace3D} onOpenSuite={openSuite} />
-        : route.tool === 'model2d'
-          ? route.mode === 'design' || route.mode === '3d'
-            ? <MesaModeShell key="model2d-mesa" mode={route.mode} projectId={project.id} onOpenHome={openCurrentToolHome} onModeChange={setMesaMode} />
-            : <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openCurrentToolHome} onModeChange={setMesaMode} />
-          : <ToolShell key={route.tool} tool={route.tool} projectId={project.id} onOpenHome={openCurrentToolHome} />}
+      ? <HomePage key="home" onOpenWorkspace={() => openWorkspace()} onOpenSpace3D={openSpace3D} onOpenDesign={openDesign} />
+      : route.mode === 'design' || route.mode === '3d'
+        ? <MesaModeShell key="model2d-mesa" mode={route.mode} projectId={project.id} onOpenHome={openHome} onModeChange={setMesaMode} />
+        : <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openHome} onModeChange={setMesaMode} />}
   </ClassroomSessionProvider>;
 };
 

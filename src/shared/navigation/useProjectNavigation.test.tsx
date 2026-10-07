@@ -10,7 +10,7 @@ function Navigation({ projectId = 'active' }: { projectId?: string }) {
   return <>
     <output aria-label="route">{route.surface}/{route.projectId}/{route.tool}{route.mode ? `/${route.mode}` : ''}</output>
     <button onClick={() => navigate({ surface: 'workspace', projectId, tool: 'model2d', mode: 'design' })}>Design</button>
-    <button onClick={() => navigate({ surface: 'workspace', projectId, tool: 'fem' })}>FEM</button>
+    <button onClick={() => navigate({ surface: 'workspace', projectId, tool: 'model2d', mode: '3d' })}>3D</button>
   </>;
 }
 
@@ -19,14 +19,14 @@ it('restores real browser back/forward entries and the same route after a reload
   const view = render(<Navigation />);
   expect(screen.getByLabelText('route').textContent).toBe('workspace/active/model2d');
   fireEvent.click(screen.getByText('Design'));
-  fireEvent.click(screen.getByText('FEM'));
+  fireEvent.click(screen.getByText('3D'));
   window.history.back();
   await waitFor(() => expect(screen.getByLabelText('route').textContent).toBe('workspace/active/model2d/design'));
   window.history.forward();
-  await waitFor(() => expect(screen.getByLabelText('route').textContent).toBe('workspace/active/fem'));
+  await waitFor(() => expect(screen.getByLabelText('route').textContent).toBe('workspace/active/model2d/3d'));
   view.unmount();
   render(<Navigation />);
-  expect(screen.getByLabelText('route').textContent).toBe('workspace/active/fem');
+  expect(screen.getByLabelText('route').textContent).toBe('workspace/active/model2d/3d');
 });
 
 it('updates the URL when the active project changes without adding a history entry or losing the tool', () => {

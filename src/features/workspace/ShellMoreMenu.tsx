@@ -6,7 +6,7 @@ import { OPEN_HELP_EVENT } from './WorkspaceHelp';
 import './workspaceUtilities.css';
 
 /**
- * Menú «⋯» de las mesas que no tienen uno propio (3D, Diseño, FEM): el tema, y la
+ * Menú «⋯» de las mesas que no tienen uno propio (3D y Diseño): el tema, y la
  * guía en teléfono. El 2D tiene el suyo, con el documento y la vista.
  */
 export function ShellMoreMenu() {

@@ -37,25 +37,6 @@ describe('recentProjectPresentation', () => {
     expect(value.preview).toBe('model2d');
   });
 
-  it('resume la malla FEM guardada, no el modelo 2D', () => {
-    const value = recentProjectPresentation('fem', bundle({
-      fem: [{ document: { kind: 'fem-document', schemaVersion: 1, id: 'study', nodes: [{}, {}, {}, {}], elements: [{}, {}, {}] } }],
-    }), 'es');
-    expect(value.meta).toBe('4 nodos · 3 elementos');
-    expect(value.preview).toBe('tool');
-  });
-
-  it('ignora un snapshot FEM ajeno al final y usa el último estudio FEM reconocible', () => {
-    const value = recentProjectPresentation('fem', bundle({
-      fem: [
-        { document: { kind: 'fem-document', schemaVersion: 1, id: 'study', nodes: [{}, {}], elements: [{}] } },
-        { foreign: true },
-      ],
-    }), 'es');
-    expect(value.meta).toBe('2 nodos · 1 elementos');
-    expect(value.preview).toBe('tool');
-  });
-
   it('lee elemento y norma del modo Diseño desde el documento real del taller', () => {
     const value = recentProjectPresentation('model2d', bundle({
       design: {

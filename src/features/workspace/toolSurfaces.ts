@@ -19,4 +19,3 @@ export const Space3DModeTool = lazy(loadSpace3DMode);
  */
 export const preloadMesaMode = (mode: 'model' | '3d' | 'design'): Promise<unknown> =>
   (mode === '3d' ? loadSpace3DMode() : mode === 'design' ? loadDesignMode() : Promise.resolve()).catch(() => undefined);
-export const FemTool = surface('fem');

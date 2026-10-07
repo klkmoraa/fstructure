@@ -1,5 +1,5 @@
 /**
- * Renderiza las escenas del Inicio a PNG transparente, en día y noche.
+ * Renderiza las escenas de la Home a PNG transparente, en día y noche.
  *
  * Requiere el servidor de desarrollo (`npm run dev`) en http://localhost:5173:
  * la escena se construye con el mismo código three.js de la app, dentro de un
@@ -19,7 +19,6 @@ const scenes = [
   { file: 'portal', source: 'catalog', id: 'portal:single-bay', size: [1500, 1100] },
   { file: 'model2d', source: 'suite', id: 'suite:model2d', size: [960, 640] },
   { file: 'space3d', source: 'catalog', id: 'space-frame:two-story', size: [960, 640] },
-  { file: 'fem', source: 'suite', id: 'suite:fem', size: [960, 640] },
   { file: 'design', source: 'suite', id: 'suite:design', size: [960, 640] },
 ];
 

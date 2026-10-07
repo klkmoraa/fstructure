@@ -84,10 +84,9 @@ const focusStableLauncherIfUnclaimed = (selector: string): void => {
 /**
  * Shell del Modelo 2D: el modo Modelo de la mesa de FStructure.
  *
- * El modo Diseño de la misma mesa es `DesignModeShell`; el interruptor
- * Modelo | Diseño de la barra pasa de uno a otro sin cambiar de proyecto.
- * Modelo 3D y FEM tienen su propio shell (`ToolShell`): este no los monta ni
- * importa su código. Sus atajos globales (Ctrl/Cmd+K, deshacer y rehacer) sólo
+ * Los modos 3D y Diseño de la misma mesa viven en `MesaModeShell`
+ * (`ToolShell`); el interruptor 2D | 3D | Diseño pasa de uno a otro sin
+ * cambiar de proyecto. Este shell no los monta ni importa su código. Sus atajos globales (Ctrl/Cmd+K, deshacer y rehacer) sólo
  * existen mientras el modo Modelo está abierto, así que nunca actúan sobre el
  * modelo desde otra mesa.
  */

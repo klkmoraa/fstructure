@@ -5,9 +5,10 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 ## Producto
 
 - [x] Chrome común de las mesas (`mesaChrome.css`): barra, tarjeta, dock y pie con la misma geometría; la transición de modo anima cada pieza por separado y 3D ↔ Diseño comparten shell.
-- [ ] FEM: colorear por desplazamiento y calidad; editor mínimo de placa, apoyos y cargas. Malla, von Mises y tablas ya se consultan en la mesa.
-- [ ] Proyectos por herramienta: miniatura generada de cada modelo 3D, malla FEM o elemento de Diseño; hoy usan la escena de la herramienta y el resumen de su rama local.
-- [ ] Mesa de FEM y modo Diseño con el lenguaje del modo Modelo (la de 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado), y deshacer/rehacer en FEM.
+- [ ] Proyectos por herramienta: miniatura generada de cada modelo 3D o elemento de Diseño; hoy usan la escena de la herramienta y el resumen de su rama local.
+- [ ] Modo Diseño con el lenguaje del modo Modelo (el 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado).
+- [x] Una sola Home (FEM retirado): proyecto abierto, tarjetas 2D · 3D · Diseño, recientes y secciones en la URL.
+- [ ] Exportar o reabrir los estudios FEM que quedaron guardados en proyectos viejos (hoy se conservan intactos en el registro, sin interfaz).
 - [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
 - [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.
 - [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
@@ -48,14 +49,14 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Rendimiento y distribución
 
-- [ ] Bajar el bundle inicial; cargar las citas (190 KB) sólo donde se muestran.
-- [ ] Escenas del Inicio en WebP.
+- [ ] Bajar el bundle inicial (las citas de la portada ya no se cargan).
+- [ ] Escenas de la Home en WebP.
 - [ ] PWA: instalación, offline y actualización coherentes.
 - [ ] Publicar con el flujo oficial de Pages (artefacto) en vez de escribir en `gh-pages`.
 
 ## Pruebas (sólo si aportan)
 
-- [ ] Humo E2E de las pantallas de entrada (Inicio y dos bienvenidas) con capturas en claro, oscuro y móvil.
+- [ ] Humo E2E de las pantallas de entrada (Home y sus secciones) con capturas en claro, oscuro y móvil.
 - [ ] Matriz de importación/exportación: un archivo válido y uno inválido por formato.
 - [ ] Confirmar la entrega del PDF de Diseño en Safari: Chromium sin «compartir» ya descarga el PDF (probado con el del pórtico, 13 páginas con láminas).
 - [ ] Auditoría de dependencias en CI.

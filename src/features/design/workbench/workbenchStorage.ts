@@ -8,7 +8,7 @@ import { isSteelMemory } from '../../../design/steelMemory';
  * bundle unificado; sin proyecto (pruebas, vista aislada) en el navegador.
  *
  * Los borradores no forman parte del modelo 2D: no invalidan el análisis ni
- * entran al historial de deshacer, igual que los estudios FEM.
+ * entran al historial de deshacer, igual que los modelos 3D.
  */
 export interface WorkbenchStorage {
   /** Identidad de sesión para conservar deshacer al salir del modo. */

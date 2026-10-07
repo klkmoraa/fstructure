@@ -9,9 +9,4 @@ export const toolRegistry: readonly ToolModuleDescriptor[] = [
       'concrete-beam-column-footing-design', 'concrete-section-philosophies', 'concrete-reinforcement-takeoff'],
     load: () => import('./adapters/Model2DSurface').then((module) => module.default),
   },
-  {
-    id: 'fem', labelKey: 'navigation.fem', maturity: 'experimental',
-    capabilities: ['fem-linear-elasticity', 'fem-tri3-quad4', 'fem-gmsh41-import', 'fem-quality-fields'],
-    load: () => import('../../modules/fem/FemSurface').then((module) => module.FemSurface),
-  },
 ];

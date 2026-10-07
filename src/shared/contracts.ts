@@ -1,10 +1,11 @@
 import type * as React from 'react';
 
 /**
- * Las mesas del Inicio. FStructure (`model2d`) reúne el modelo 2D, el modelo 3D
- * y el diseño como modos de la misma mesa; Elementos finitos sigue aparte.
+ * La mesa de FStructure (`model2d`): el modelo 2D, el modelo 3D y el diseño son
+ * modos de la misma mesa. Elementos finitos (FS-A03) se retiró de la app; los
+ * estudios que hubiera guardados siguen intactos en el expediente del proyecto.
  */
-export type ToolId = 'model2d' | 'fem';
+export type ToolId = 'model2d';
 export type Maturity = 'available' | 'experimental' | 'planned' | 'unavailable';
 
 export interface ToolModuleDescriptor {

@@ -1,5 +1,5 @@
 /*
- * Chrome común de las mesas (2D, 3D, Diseño y FEM).
+ * Chrome común de las mesas (2D, 3D y Diseño).
  *
  * Las cuatro mesas comparten la misma geometría —barra, tarjeta del lienzo,
  * dock y pie—, de modo que al cambiar de modo cada pieza queda en su sitio y

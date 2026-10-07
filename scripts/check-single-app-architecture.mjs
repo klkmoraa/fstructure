@@ -62,8 +62,8 @@ export const findDuplicateSourceViolations = (root) => {
 /**
  * Territorio de cada mesa. FStructure (`model2d`) es el resto de `src` —la app
  * y sus piezas comunes (Foundation, sistema de diseño, almacenamiento)— más su
- * modo Diseño (`src/design`, `src/features/design`), que se declara para que 3D
- * y FEM no lo usen como si fuera común.
+ * modo Diseño (`src/design`, `src/features/design`), que se declara para que el
+ * 3D no lo use como si fuera común.
  *
  * Una herramienta puede usar piezas comunes, pero nunca el código de otra
  * herramienta. Los adaptadores de `src/features/workspace` son la única
@@ -73,7 +73,6 @@ export const findDuplicateSourceViolations = (root) => {
 const TOOL_TERRITORIES = new Map([
   ['model2d', ['src/design', 'src/features/design']],
   ['space3d', ['src/modules/space3d']],
-  ['fem', ['src/modules/fem']],
 ]);
 
 const territoryOf = (resolvedRoot, path) => {

@@ -1,0 +1,433 @@
+/*
+ * Home de FStructure: la única portada.
+ *
+ * Una columna en teléfono y dos en escritorio, todo con anchos fluidos (nada
+ * fijo que pueda desbordar). Materia del canon: superficies de arcilla, radios
+ * de tarjeta y el acento de la familia Análisis sólo en la acción principal.
+ */
+
+.fh {
+  --fh-gutter: clamp(16px, 4vw, 48px);
+  --fh-max: 1180px;
+  /* La raíz de la app no desplaza: la Home lleva su propio scroll. */
+  height: 100%;
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  background: var(--sc-color-bg-app);
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-ui);
+}
+
+/* --- Barra ------------------------------------------------------------------ */
+
+.fh-bar {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: calc(10px + env(safe-area-inset-top)) var(--fh-gutter) 10px;
+  background: color-mix(in srgb, var(--sc-color-bg-app) 88%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.fh-brand {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.fh-brand strong { font-family: var(--sc-font-display); font-size: 19px; letter-spacing: -.02em; }
+.fh-brand .fs-mark--fstructure .fs-mark__register { fill: var(--fs-family-analisis); }
+.fh-brand:hover { background: var(--sc-color-surface-inset); }
+
+.fh-prefs { display: flex; align-items: center; gap: 8px; }
+
+.fh-segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.fh-segmented button {
+  min-width: 44px;
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--sc-radius-pill);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: 600 12px/1 var(--sc-font-mono);
+  letter-spacing: .06em;
+  cursor: pointer;
+}
+
+.fh-segmented button[aria-pressed='true'] { background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); color: var(--sc-color-text-primary); }
+
+.fh-icon-button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
+  color: var(--sc-color-text-secondary);
+  cursor: pointer;
+}
+
+.fh-icon-button:hover { color: var(--sc-color-text-primary); }
+
+/* --- Cuerpo ----------------------------------------------------------------- */
+
+.fh-body {
+  width: 100%;
+  max-width: calc(var(--fh-max) + 2 * var(--fh-gutter));
+  flex: 1;
+  margin: 0 auto;
+  padding: 8px var(--fh-gutter) 40px;
+  display: grid;
+  gap: clamp(32px, 5vw, 56px);
+  align-content: start;
+}
+
+/* --- Portada ---------------------------------------------------------------- */
+
+.fh-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.fh-hero__copy { display: grid; gap: 16px; min-width: 0; }
+
+.fh-hero__title {
+  max-width: 14ch;
+  margin: 0;
+  font: 650 clamp(34px, 6vw, 60px) / 1.02 var(--sc-font-display);
+  letter-spacing: -.035em;
+  text-wrap: balance;
+}
+
+.fh-hero__lead {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--sc-color-text-secondary);
+  font-size: clamp(15px, 1.6vw, 18px);
+  line-height: 1.5;
+}
+
+.fh-hero__stage { order: -1; margin: 0; }
+.fh-hero__stage img { display: block; width: min(100%, 320px); height: auto; margin: 0 auto; }
+
+/* Proyecto abierto: la acción de todos los días. */
+.fh-current {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+  padding: 16px;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+}
+
+.fh-current__info { display: grid; gap: 4px; min-width: 0; }
+
+.fh-current__label {
+  color: var(--fs-family-analisis-text, var(--fs-family-analisis));
+  font: 700 11px/1 var(--sc-font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.fh-current__name {
+  overflow: hidden;
+  font: 600 20px/1.25 var(--sc-font-display);
+  letter-spacing: -.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fh-current__counts { color: var(--sc-color-text-muted); font: 12px/1.4 var(--sc-font-mono); }
+.fh-current__counts b { color: var(--sc-color-text-primary); }
+
+.fh-current__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.fh-button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  font: 600 15px/1 var(--sc-font-ui);
+  cursor: pointer;
+  transition: transform var(--sc-motion-quick) var(--sc-ease-standard), box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+.fh-button:hover { box-shadow: var(--sc-shadow-xs); }
+.fh-button:active { transform: translateY(1px); }
+
+.fh-button--primary {
+  border-color: var(--fs-family-analisis);
+  background: var(--fs-family-analisis);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-action);
+}
+
+/* --- Secciones -------------------------------------------------------------- */
+
+.fh-section { display: grid; gap: 14px; min-width: 0; align-content: start; }
+.fh-section__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fh-section__title { min-height: 40px; display: flex; align-items: center; margin: 0; font: 600 20px/1.2 var(--sc-font-display); letter-spacing: -.015em; }
+
+.fh-link {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: 600 14px/1 var(--sc-font-ui);
+  cursor: pointer;
+}
+
+.fh-link:hover { color: var(--sc-color-text-primary); }
+
+/* Los tres modos de la mesa, con su escena en arcilla. */
+.fh-modes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+
+.fh-mode {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 10px 44px 10px 10px;
+  border: 0;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--sc-motion-quick) var(--sc-ease-standard), box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+.fh-mode:hover { transform: translateY(-2px); box-shadow: var(--sc-shadow-lifted); }
+.fh-mode:active { transform: translateY(0); }
+
+.fh-mode__scene {
+  aspect-ratio: 3 / 2;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: calc(var(--sc-radius-card) - 6px);
+  background: var(--sc-color-surface-inset);
+}
+
+.fh-mode__scene img { width: 108%; height: auto; }
+
+.fh-mode__copy { display: grid; gap: 4px; min-width: 0; }
+.fh-mode__copy strong { font: 600 18px/1.2 var(--sc-font-display); letter-spacing: -.01em; }
+.fh-mode__copy > span:last-child { color: var(--sc-color-text-secondary); font-size: 13.5px; line-height: 1.35; }
+.fh-mode__go { position: absolute; right: 16px; top: 50%; color: var(--sc-color-text-muted); transform: translateY(-50%); }
+
+/* Recientes y accesos. */
+.fh-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(32px, 5vw, 56px); }
+
+.fh-links { display: grid; gap: 8px; }
+
+.fh-links__item {
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px 8px 8px;
+  border: 0;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
+  color: var(--sc-color-text-primary);
+  font: 600 15px/1.2 var(--sc-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+
+.fh-links__item:hover { box-shadow: var(--sc-shadow-raised); }
+.fh-links__icon { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--sc-color-surface-inset); color: var(--sc-color-text-secondary); }
+.fh-links__go { color: var(--sc-color-text-muted); }
+.fh-links__text { display: grid; gap: 3px; min-width: 0; }
+.fh-links__text small { color: var(--sc-color-text-muted); font-size: 12.5px; font-weight: 400; }
+.fh-links--wide { max-width: 560px; }
+
+/* --- Páginas (proyectos, plantillas, aula, biblioteca, importar) ------------ */
+
+.fh-page { display: grid; gap: 20px; min-width: 0; }
+.fh-page__head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.fh-page__title { flex: 1 1 auto; margin: 0; font: 650 clamp(26px, 4vw, 36px)/1.1 var(--sc-font-display); letter-spacing: -.03em; }
+
+.fh-back {
+  flex-basis: 100%;
+  width: max-content;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: -6px;
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: var(--sc-radius-pill);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: 600 14px/1 var(--sc-font-ui);
+  cursor: pointer;
+}
+
+.fh-back:hover { background: var(--sc-color-surface-inset); color: var(--sc-color-text-primary); }
+
+.fh-search {
+  flex: 1 1 260px;
+  max-width: 360px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 14px;
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+  color: var(--sc-color-text-muted);
+}
+
+.fh-search input { min-width: 0; flex: 1; border: 0; background: transparent; color: var(--sc-color-text-primary); font: 15px var(--sc-font-ui); outline: 0; }
+.fh-search:focus-within { outline: 2px solid var(--sc-color-focus); outline-offset: 2px; }
+.fh-search button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; }
+
+.fh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+
+.fh-card {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px 10px 14px;
+  border: 0;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--sc-motion-quick) var(--sc-ease-standard), box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
+}
+
+.fh-card:hover { transform: translateY(-2px); box-shadow: var(--sc-shadow-lifted); }
+.fh-card__scene { aspect-ratio: 16 / 10; display: grid; place-items: center; overflow: hidden; margin-bottom: 6px; border-radius: calc(var(--sc-radius-card) - 6px); background: var(--sc-color-surface-inset); }
+.fh-card__scene > * { width: 100%; height: 100%; object-fit: contain; }
+.fh-card > strong { padding-inline: 4px; font: 600 16px/1.25 var(--sc-font-display); }
+.fh-card > span:not(.fh-card__scene):not(.fh-card__action) { padding-inline: 4px; color: var(--sc-color-text-secondary); font-size: 13px; line-height: 1.4; }
+.fh-card__action { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; padding-inline: 4px; color: var(--sc-color-text-secondary); font-size: 13px; font-weight: 600; }
+.fh-card--accent { outline: 2px solid color-mix(in srgb, var(--fs-family-analisis) 50%, transparent); outline-offset: -2px; }
+
+/* --- Pie -------------------------------------------------------------------- */
+
+.fh-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 20px;
+  padding: 18px var(--fh-gutter) calc(18px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--sc-color-border-soft);
+  color: var(--sc-color-text-muted);
+  font: 12px/1.5 var(--sc-font-mono);
+}
+
+.fh-foot a { display: inline-flex; align-items: center; gap: 2px; color: var(--sc-color-text-secondary); }
+
+/* Foco visible en todo lo que se toca. */
+.fh :is(button, a):focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 2px; }
+
+/* --- Escritorio ------------------------------------------------------------- */
+
+@media (min-width: 760px) {
+  .fh-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(24px, 4vw, 56px); padding-top: clamp(8px, 3vw, 32px); }
+  .fh-hero__stage { order: 0; }
+  .fh-hero__stage img { width: 100%; max-width: 620px; }
+  .fh-current { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 18px 18px 18px 22px; }
+  .fh-current__actions { grid-template-columns: auto auto; }
+
+  .fh-modes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .fh-mode { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 12px; padding: 12px 12px 18px; }
+  .fh-mode__scene img { width: 92%; }
+  .fh-mode__copy { padding-inline: 6px; }
+  .fh-mode__go { top: auto; bottom: 20px; transform: none; }
+
+  .fh-split { grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); }
+  .fh-back { flex-basis: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fh * { transition: none !important; }
+}
+
+/* --- Piezas reutilizadas dentro de la Home ----------------------------------- */
+
+/* Proyectos: lista vertical, sin marco alrededor (la Home ya es el marco). */
+.fh .project-hub--full { padding: 0; border: 0; background: transparent; }
+.fh .project-hub--recent .project-hub__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: visible;
+  padding: 0;
+}
+.fh .project-hub--recent .project-hub__row { min-width: 0; min-height: 84px; }
+
+@media (max-width: 700px) {
+  /* En teléfono «Abrir» es un icono: el nombre del proyecto necesita el ancho. */
+  .fh .project-hub--full .project-hub__open {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+    gap: 0;
+    font-size: 0;
+  }
+}
+
+/* Biblioteca: el título de la página ya la nombra. */
+.fh .personal-library__header > div > p,
+.fh .personal-library__header > div > span { display: none; }
+.fh .personal-library__header h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

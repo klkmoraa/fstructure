@@ -2,15 +2,15 @@ import * as THREE from 'three';
 import { createMaterialKit, roundedMember, segmentMember, type MaterialKit, type StructuralRenderTheme } from './threePortalAssets';
 
 /**
- * Escenas de presentación de las cuatro herramientas.
+ * Escenas de presentación de los modos de FStructure en la Home.
  *
  * Usan el mismo kit acromático, la misma luz y la misma cámara que el pórtico
  * del catálogo: arcilla separada por valor, nunca por color. Se renderizan una
  * vez a PNG con `scripts/render-suite-scenes.mjs` y la app sirve la imagen, así
- * que no cuestan WebGL en el Inicio.
+ * que no cuestan WebGL en la Home.
  */
-export type SuiteSceneId = 'suite:model2d' | 'suite:design' | 'suite:fem';
-export const SUITE_SCENE_IDS: readonly SuiteSceneId[] = ['suite:model2d', 'suite:design', 'suite:fem'];
+export type SuiteSceneId = 'suite:model2d' | 'suite:design';
+export const SUITE_SCENE_IDS: readonly SuiteSceneId[] = ['suite:model2d', 'suite:design'];
 
 const cone = (kit: MaterialKit, position: readonly [number, number, number], length = 0.5) => {
   const group = new THREE.Group();
@@ -76,62 +76,9 @@ const buildDesign = (kit: MaterialKit) => {
   return group;
 };
 
-/** FS-A03 · placa con perforación, mallada con triángulos, empotrada a la izquierda y cargada. */
-const buildFem = (kit: MaterialKit) => {
-  const group = new THREE.Group();
-  const w = 3.6; const d = 2.2; const t = 0.14;
-  const hole = { x: 0.55, z: 0, r: 0.42 };
-  const shape = new THREE.Shape();
-  shape.moveTo(-w / 2, -d / 2); shape.lineTo(w / 2, -d / 2); shape.lineTo(w / 2, d / 2); shape.lineTo(-w / 2, d / 2); shape.closePath();
-  const opening = new THREE.Path();
-  opening.absarc(hole.x, hole.z, hole.r, 0, Math.PI * 2, true);
-  shape.holes.push(opening);
-  const geometry = new THREE.ExtrudeGeometry(shape, { depth: t, bevelEnabled: false, curveSegments: 48 });
-  geometry.rotateX(-Math.PI / 2);
-  const plate = new THREE.Mesh(geometry, kit.base);
-  plate.castShadow = true;
-  plate.receiveShadow = true;
-  plate.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 20), kit.edge));
-  plate.position.y = 0.2;
-  group.add(plate);
-
-  // Malla triangular dibujada sobre la cara superior; se omite dentro del hueco.
-  const nx = 12; const nz = 8; const y = 0.2 + t + 0.004;
-  const inside = (x: number, z: number) => Math.hypot(x - hole.x, z - hole.z) < hole.r + 0.08;
-  const points: number[] = [];
-  const at = (i: number, j: number) => [-w / 2 + (w * i) / nx, -d / 2 + (d * j) / nz] as const;
-  const push = (a: readonly [number, number], b: readonly [number, number]) => {
-    if (inside((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) || inside(...a) || inside(...b)) return;
-    points.push(a[0], y, a[1], b[0], y, b[1]);
-  };
-  for (let i = 0; i <= nx; i += 1) for (let j = 0; j <= nz; j += 1) {
-    if (i < nx) push(at(i, j), at(i + 1, j));
-    if (j < nz) push(at(i, j), at(i, j + 1));
-    if (i < nx && j < nz) push(at(i, j), at(i + 1, j + 1));
-  }
-  const mesh = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(points, 3)), kit.edge);
-  group.add(mesh);
-  // Anillo de elementos refinados alrededor del hueco: concentración de tensiones.
-  const ring: number[] = [];
-  for (const radius of [hole.r + 0.12, hole.r + 0.26]) for (let k = 0; k < 28; k += 1) {
-    const a0 = (k / 28) * Math.PI * 2; const a1 = ((k + 1) / 28) * Math.PI * 2;
-    ring.push(hole.x + radius * Math.cos(a0), y, hole.z + radius * Math.sin(a0), hole.x + radius * Math.cos(a1), y, hole.z + radius * Math.sin(a1));
-    ring.push(hole.x + hole.r * Math.cos(a0), y, hole.z + hole.r * Math.sin(a0), hole.x + (hole.r + 0.26) * Math.cos(a0), y, hole.z + (hole.r + 0.26) * Math.sin(a0));
-  }
-  group.add(new THREE.LineSegments(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(ring, 3)), kit.edge));
-
-  group.add(roundedMember([0.34, 1.1, d + 0.3], [-w / 2 - 0.17, 0.3, 0], kit.concrete, kit.edge, 0.04));
-  for (const z of [-0.7, 0, 0.7]) {
-    const arrow = cone(kit, [w / 2 + 0.34, 0.27, z], 0.42);
-    arrow.rotation.z = Math.PI / 2;
-    group.add(arrow);
-  }
-  return group;
-};
-
 export const buildSuiteScene = (id: SuiteSceneId, theme: StructuralRenderTheme) => {
   const kit = createMaterialKit(theme);
-  const group = id === 'suite:model2d' ? buildModel2D(kit) : id === 'suite:design' ? buildDesign(kit) : buildFem(kit);
+  const group = id === 'suite:model2d' ? buildModel2D(kit) : buildDesign(kit);
   group.name = id;
   return group;
 };

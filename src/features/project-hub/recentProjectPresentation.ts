@@ -3,7 +3,7 @@ import type { JsonValue, UnifiedProjectBundleV1 } from '../../shared/project/uni
 
 type Language = 'es' | 'en';
 /** `space3d` y `design`: los modos 3D y Diseño de FStructure, en las ramas `space3d` y `design` del mismo proyecto. */
-type Presentation = { meta: string; preview: 'model2d' | 'tool'; space3d?: string; design?: string };
+type Presentation = { meta: string; preview: 'model2d'; space3d?: string; design?: string };
 
 const object = (value: JsonValue | undefined): Record<string, JsonValue> | null =>
   value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, JsonValue> : null;
@@ -35,25 +35,10 @@ const designCodeLabel = (entries: Record<string, JsonValue>) => {
 /** Presentation data for recent cards must come from the selected tool branch,
  * never from an unrelated empty 2D authority model. */
 export const recentProjectPresentation = (
-  tool: ToolId,
+  _tool: ToolId,
   bundle: UnifiedProjectBundleV1 | null | undefined,
   language: Language,
 ): Presentation => {
-  if (tool === 'fem') {
-    const studies = bundle?.fem ?? [];
-    for (let index = studies.length - 1; index >= 0; index -= 1) {
-      const document = object(object(studies[index])?.document);
-      if (document?.kind !== 'fem-document' || document.schemaVersion !== 1 || !Array.isArray(document.nodes) || !Array.isArray(document.elements)) continue;
-      const nodes = document.nodes.length;
-      const elements = document.elements.length;
-      return {
-        meta: language === 'es' ? `${nodes} nodos · ${elements} elementos` : `${nodes} nodes · ${elements} elements`,
-        preview: 'tool',
-      };
-    }
-    return { meta: '', preview: 'model2d' };
-  }
-
   // FStructure: el modelo 2D da la tarjeta; su 3D y su diseño, si existen, se suman.
   const model3d = object(bundle?.space3d?.model);
   const members3d = arrayLength(model3d?.members);

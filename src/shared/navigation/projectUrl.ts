@@ -1,11 +1,12 @@
 import type { ToolId } from '../contracts';
 
 /**
- * `welcome` es el Inicio de FusionStructure; `tool-home`, la bienvenida propia
- * de una herramienta; `workspace`, su mesa de trabajo.
+ * `welcome` es la Home (la única portada de la app); `workspace`, la mesa de
+ * FStructure. Las portadas que hubo antes (`surface=home`, el Inicio de
+ * FusionStructure y la bienvenida de FEM) abren hoy la misma Home.
  */
 export interface ProjectUrlState {
-  surface: 'welcome' | 'tool-home' | 'workspace';
+  surface: 'welcome' | 'workspace';
   projectId: string;
   tool: ToolId;
   /** Modo de la mesa de FStructure: modelo 2D (por omisión), modelo 3D o diseño. */
@@ -15,11 +16,11 @@ export interface ProjectUrlState {
 export type MesaMode = 'model' | '3d' | 'design';
 
 const legacyTools = new Map<string, ToolId>([
-  ['workspace2d', 'model2d'], ['design', 'model2d'], ['workspace3d', 'model2d'], ['fem', 'fem'],
+  ['workspace2d', 'model2d'], ['design', 'model2d'], ['workspace3d', 'model2d'],
 ]);
 
-export function isToolId(value: unknown): value is ToolId {
-  return value === 'model2d' || value === 'fem';
+function isToolId(value: unknown): value is ToolId {
+  return value === 'model2d';
 }
 
 /**
@@ -47,9 +48,9 @@ export function readProjectUrl(href: string, activeProjectId: string): ProjectUr
   const canonical = params.get('tool');
   const tool = params.has('tool') ? (isToolId(canonical) ? canonical : 'model2d') : legacy ?? 'model2d';
   const surface = params.get('surface');
-  if (surface === 'home') return { surface: 'tool-home', projectId, tool };
-  // Enlaces antiguos a las vistas del Inicio 2D (plantillas, aula…) abren la bienvenida de FStructure.
-  if (surface === 'welcome' && params.has('view')) return { surface: 'tool-home', projectId, tool: 'model2d' };
+  // La bienvenida de una herramienta (`surface=home`) y el Inicio son hoy la misma Home.
+  // FEM se retiró: sus enlaces (`tool=fem`, `surface=fem`) abren la Home.
+  if (surface === 'home' || surface === 'welcome' || surface === 'fem' || canonical === 'fem') return { surface: 'welcome', projectId, tool };
   const workspace = params.has('tool') || legacy !== undefined || (params.has('project') && surface !== 'welcome');
   if (!workspace) return { surface: 'welcome', projectId, tool };
   const requestedMode = params.get('mode');
@@ -63,14 +64,11 @@ export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, r
   url.searchParams.delete('project');
   url.searchParams.delete('tool');
   url.searchParams.delete('mode');
-  if (route.surface !== 'tool-home') url.searchParams.delete('view');
   if (route.surface === 'welcome') {
+    // La sección abierta de la Home (`view`) es suya: se conserva al recargar.
     url.searchParams.set('surface', 'welcome');
-  } else if (route.surface === 'tool-home') {
-    url.searchParams.set('surface', 'home');
-    url.searchParams.set('project', route.projectId);
-    url.searchParams.set('tool', route.tool);
   } else {
+    url.searchParams.delete('view');
     url.searchParams.set('project', route.projectId);
     url.searchParams.set('tool', route.tool);
     if (route.tool === 'model2d' && route.mode && route.mode !== 'model') url.searchParams.set('mode', route.mode);

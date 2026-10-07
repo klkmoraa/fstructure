@@ -268,7 +268,7 @@
   transition: var(--sc-transition-control);
 }
 
-.sc-home .new-exercise-submit { color: #fff; }
+.fh .new-exercise-submit { color: #fff; }
 
 .new-exercise-submit:hover { background: var(--sc-color-action-hover); }
 .new-exercise-submit:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }

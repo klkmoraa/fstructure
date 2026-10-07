@@ -87,13 +87,13 @@ describe('WorkspaceTopBar', () => {
     expect(screen.queryByRole('button', { name: /^Diseño$|^3D$|^2D$|^FEM$/ })).toBeNull();
   });
 
-  it('una herramienta aislada pinta sus propios controles en lugar de los del Modelo 2D', () => {
+  it('un modo con su propia acción la pinta en lugar de los controles del Modelo 2D', () => {
     render(<WorkspaceTopBar
       labels={labels}
-      tool="fem"
+      tool="model2d"
       contextActive={false}
-      primaryAction={<button type="button">Analizar FEM</button>}
-      toolStatus={<span role="status">Malla lista</span>}
+      primaryAction={<button type="button">Analizar 3D</button>}
+      toolStatus={<span role="status">Modelo listo</span>}
       projectName="Placa"
       storageState="ready"
       analysisState="ready"
@@ -108,9 +108,8 @@ describe('WorkspaceTopBar', () => {
       onOpenResults={vi.fn()}
     />);
 
-    expect(screen.getByRole('banner').getAttribute('data-tool')).toBe('fem');
-    expect(screen.getByRole('button', { name: 'Analizar FEM' })).toBeTruthy();
-    expect(screen.getByText('Malla lista')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Analizar 3D' })).toBeTruthy();
+    expect(screen.getByText('Modelo listo')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Deshacer' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Resultados' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Analizar' })).toBeNull();

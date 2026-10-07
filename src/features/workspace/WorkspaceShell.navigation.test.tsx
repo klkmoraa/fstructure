@@ -37,39 +37,7 @@ afterEach(async () => {
 const LAZY = { timeout: 8000 };
 const TEST_TIMEOUT = 30_000;
 
-/**
- * Recorrido completo entre herramientas: logo → bienvenida de la herramienta
- * actual → FusionStructure → «Abrir <herramienta>» → su bienvenida →
- * «Continuar» → su mesa.
- */
-const openFromHome = async (user: ReturnType<typeof userEvent.setup>, tool: string) => {
-  await user.click(await screen.findByRole('button', { name: 'Ir al inicio' }));
-  await user.click(await screen.findByRole('button', { name: 'Volver a FusionStructure' }));
-  await screen.findByTestId('suite-welcome', undefined, LAZY);
-  await user.click(screen.getByRole('button', { name: new RegExp(`^Abrir ${tool} ·`) }));
-  await user.click(await screen.findByRole('button', { name: tool === 'Elementos finitos' ? 'Abrir ejemplo' : 'Continuar' }, LAZY));
-};
-
-it('abre FEM en su propia mesa: sin lienzo, consola ni utilidades del Modelo 2D', async () => {
-  const user = userEvent.setup();
-  render(<App />);
-  await screen.findByRole('application', undefined, LAZY);
-  await openFromHome(user, 'Elementos finitos');
-
-  expect(await screen.findByRole('heading', { name: 'Elementos finitos' }, LAZY)).toBeTruthy();
-  const femAction = screen.getByRole('button', { name: 'Analizar FEM' });
-  await user.click(femAction);
-  expect((await screen.findByTestId('fem-analysis-result', undefined, LAZY)).textContent).toContain('Análisis completado');
-
-  expect(screen.queryByRole('application')).toBeNull();
-  expect(document.querySelectorAll('[data-workspace-topbar]')).toHaveLength(1);
-  expect(document.querySelector('[data-workspace-topbar]')?.getAttribute('data-tool')).toBe('fem');
-  expect(screen.queryByRole('button', { name: 'Herramientas del espacio de trabajo' })).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Deshacer' })).toBeNull();
-  expect(new URLSearchParams(window.location.search).get('tool')).toBe('fem');
-}, TEST_TIMEOUT);
-
-it('los atajos del modo Modelo no existen en el modo Diseño ni en otra herramienta', async () => {
+it('los atajos del modo Modelo no existen en el modo Diseño', async () => {
   const user = userEvent.setup();
   render(<App />);
   await screen.findByRole('application', undefined, LAZY);

@@ -70,8 +70,7 @@ test('allows distinct modules and ignores test files', () => {
 
 test('rejects a tool importing another isolated tool, but allows shared pieces and adapters', () => {
   const root = project({
-    'src/modules/fem/FemSurface.tsx': "import '../space3d/space3d/model/types';\nimport '../../foundation/linearAlgebra';\n",
-    'src/modules/space3d/space3d/model/types.ts': "import '../../../../design/elements/beam';\n",
+    'src/modules/space3d/space3d/model/types.ts': "import '../../../../design/elements/beam';\nimport '../../../../foundation/linearAlgebra';\n",
     'src/design/elements/beam.ts': "import '../../foundation/units';\n",
     'src/features/design/Workbench.tsx': "import '../../design/elements/beam';\n",
     'src/features/workspace/adapters/Space3DSurface.tsx': "import '../../../modules/space3d/space3d/model/types';\n",
@@ -80,10 +79,9 @@ test('rejects a tool importing another isolated tool, but allows shared pieces a
     'vite.config.ts': 'export default {};\n',
   });
   const violations = findToolIsolationViolations(root);
-  assert.equal(violations.length, 2);
-  assert.ok(violations.some((item) => item.includes('fem imports space3d')));
+  assert.equal(violations.length, 1);
   assert.ok(violations.some((item) => item.includes('space3d imports model2d')));
-  assert.ok(findSingleAppArchitectureViolations(root).some((item) => item.includes('fem imports space3d')));
+  assert.ok(findSingleAppArchitectureViolations(root).some((item) => item.includes('space3d imports model2d')));
 });
 
 test('only the workspace frontier uses declared integrations, and integrations never import tool interfaces', () => {

@@ -25,7 +25,7 @@ interface ToolIdentity {
 
 const scene = (file: string) => ({ day: `./assets/suite/${file}-day.png`, night: `./assets/suite/${file}-night.png` });
 
-export const TOOL_CATALOG: readonly ToolIdentity[] = [
+const TOOL_CATALOG: readonly ToolIdentity[] = [
   {
     id: 'model2d',
     code: 'FS-A01',
@@ -33,14 +33,6 @@ export const TOOL_CATALOG: readonly ToolIdentity[] = [
     role: { es: 'Modelo 2D, modelo 3D y diseño de concreto en una sola mesa', en: '2D model, 3D model, and concrete design on one workbench' },
     status: 'disponible',
     scene: scene('model2d'),
-  },
-  {
-    id: 'fem',
-    code: 'FS-A03',
-    name: { es: 'Elementos finitos', en: 'Finite elements' },
-    role: { es: 'Placas y muros con TRI3 y QUAD4', en: 'Plates and walls with TRI3 and QUAD4' },
-    status: 'experimental',
-    scene: scene('fem'),
   },
 ];
 
