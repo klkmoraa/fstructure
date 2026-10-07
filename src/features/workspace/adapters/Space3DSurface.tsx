@@ -13,7 +13,6 @@ import { MAX_EXTRUDED_FRAMES, space3dFromModel2d } from '../../../integrations/m
 import { ShellContribution, ShellStatusChip } from '../ShellToolSlots';
 import { linkSpace3DToShell } from './space3dShellBridge';
 import './space3dBring.css';
-import '../mesaJourney.css';
 import type { Space3DHistory } from '../../../modules/space3d/space3d/store/Space3DProjectContext';
 import { peekToolIntent, takeToolIntent } from '../toolIntent';
 import { rememberSpace3DSelection } from './mesaSelection';
@@ -39,13 +38,13 @@ const CAMERA_MEMORY = new Map<string, { viewId: string; camera: Space3DCameraSta
  * por el puente `src/integrations/model2dSpace3d`) que reemplaza el modelo 3D
  * con confirmación y se deshace con Deshacer.
  */
-export default function Space3DSurface({ onOpenDesign }: { onOpenDesign?: () => void }) {
+export default function Space3DSurface() {
   const { project } = useProjectModel();
   const session = useSharedToolState()?.session;
-  return <ProjectSpace3D key={project.id} project={project} session={session} onOpenDesign={onOpenDesign} />;
+  return <ProjectSpace3D key={project.id} project={project} session={session} />;
 }
 
-function ProjectSpace3D({ project, session, onOpenDesign }: { project: ProjectModel; session?: UnifiedProjectSession | null; onOpenDesign?: () => void }) {
+function ProjectSpace3D({ project, session }: { project: ProjectModel; session?: UnifiedProjectSession | null }) {
   const retainedHistory = session ? HISTORY_MEMORY.get(session)?.get(project.id) : undefined;
   const rememberHistory = useCallback((history: Space3DHistory) => {
     if (!session) return;
@@ -93,7 +92,7 @@ function ProjectSpace3D({ project, session, onOpenDesign }: { project: ProjectMo
     {sectionFailure ? <ShellContribution slot="status"><ShellStatusChip tone="warn" label="Propuesta caducada" detail={sectionFailure} /></ShellContribution> : null}
     {failure ? <ShellContribution slot="status"><ShellStatusChip tone="warn" label="Sólo en memoria" detail={failure} /></ShellContribution> : null}
     <ShellContribution slot="controls">
-      <button type="button" className="workspace-topbar__action-button" onClick={() => setBringOpen(true)}
+      <button type="button" className="workspace-topbar__action-button" data-wide-label onClick={() => setBringOpen(true)}
         aria-label={es ? 'Traer el Modelo 2D al 3D' : 'Bring the 2D model into 3D'} title={es ? 'Extruir el pórtico del Modelo 2D en pórticos paralelos' : 'Extrude the 2D frame into parallel frames'}>
         <ArrowDownToLine size={17} aria-hidden="true" /><span>{es ? 'Traer del 2D' : 'From 2D'}</span>
       </button>
@@ -110,7 +109,7 @@ function ProjectSpace3D({ project, session, onOpenDesign }: { project: ProjectMo
       });
     }} /> : null}
     <Space3DWorkspace language={project.settings.language} embedded storage={embeddedStorage}
-      canonicalProject={canonicalProject} retainedHistory={retainedHistory} onHistoryChange={rememberHistory} onOpenDesign={onOpenDesign} onProjectChange={save} startIntent={startIntent} incomingProject={incoming}
+      canonicalProject={canonicalProject} retainedHistory={retainedHistory} onHistoryChange={rememberHistory} onProjectChange={save} startIntent={startIntent} incomingProject={incoming}
       {...(startView ? { startView } : {})} onViewChange={rememberView} startCamera={startCamera} onCameraRelease={rememberCamera}
       {...(startSelection ? { startSelection } : {})} onSelectionChange={rememberSelection} />
   </>;

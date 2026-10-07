@@ -14,10 +14,7 @@ describe('WorkspaceUtilities', () => {
 
     render(
       <ProjectProvider>
-        <WorkspaceUtilities
-          onOpenInspector={vi.fn()}
-          onOpenUnitsEditor={onOpenUnitsEditor}
-        />
+        <WorkspaceUtilities onOpenUnitsEditor={onOpenUnitsEditor} />
       </ProjectProvider>,
     );
 
@@ -35,7 +32,7 @@ describe('WorkspaceUtilities', () => {
 
     render(
       <ProjectProvider>
-        <WorkspaceUtilities onOpenInspector={vi.fn()} />
+        <WorkspaceUtilities />
       </ProjectProvider>,
     );
 

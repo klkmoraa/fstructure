@@ -23,7 +23,7 @@ export const PersonalSectionSelector = ({ units, onSelect }: {
 
   return <>
     <label className="select-field">
-      <span>{t('inspector.personalSection')}<small>{t('inspector.personalSectionHint')}</small></span>
+      <span title={t('inspector.personalSectionHint')}>{t('inspector.personalSection')}</span>
       <select aria-label={t('inspector.personalSection')} value="" onFocus={reload} onChange={(event) => {
         const section = sections.find((item) => item.id === event.target.value);
         if (section) onSelect(section);

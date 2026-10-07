@@ -70,7 +70,7 @@ export const MaterialPresetSelector = ({
         : t('inspector.identityLegacy');
   return (
     <label className={`select-field${disabled ? ' is-disabled' : ''}`}>
-      <span>{t('inspector.materialPreset')}<small>{t('inspector.materialPresetHint')}</small></span>
+      <span title={t('inspector.materialPresetHint')}>{t('inspector.materialPreset')}</span>
       <select
         value={activeId}
         data-identity-origin={origin ?? 'legacy'}

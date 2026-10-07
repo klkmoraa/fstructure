@@ -6,7 +6,6 @@ interface InspectorSelectionPreviewProps {
   project: ProjectModel;
   selection: Selection;
   label: string;
-  caption: string;
 }
 
 const VIEW_WIDTH = 220;
@@ -123,7 +122,7 @@ const nodalComponents = (load: NodalLoad) => [
  * distribuida, arco del momento, y la estación normalizada donde el modelo la
  * coloca. Todo sale de los datos que ya tiene el proyecto; no se estima nada.
  */
-export const InspectorSelectionPreview = ({ project, selection, label, caption }: InspectorSelectionPreviewProps) => {
+export const InspectorSelectionPreview = ({ project, selection, label }: InspectorSelectionPreviewProps) => {
   const scene = useMemo(() => {
     if (!selection || selection.kind === 'multi') return null;
     const nodes = new Map(project.nodes.map((node) => [node.id, node]));
@@ -278,6 +277,5 @@ export const InspectorSelectionPreview = ({ project, selection, label, caption }
       {renderNodalLoad()}
       {renderMemberLoad()}
     </svg>
-    <figcaption>{caption}</figcaption>
   </figure>;
 };

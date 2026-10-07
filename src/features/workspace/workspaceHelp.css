@@ -11,12 +11,7 @@
 .workspace-help__controls dt { margin-bottom: 4px; font-size: 13px; font-weight: 600; }
 .workspace-help__controls dd { margin: 0; color: var(--sc-color-text-secondary); font-size: 13px; line-height: 1.6; }
 .workspace-help__controls summary:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 3px; }
-@media (max-width: 1240px) {
-  .workspace-help-trigger span { display: none; }
-  .workspace-help-trigger { flex: none; width: 36px; padding-inline: 0; justify-content: center; }
-}
 @media (max-width: 760px) {
-  .workspace-help-trigger { width: 44px; min-width: 44px; min-height: 44px; }
   .workspace-help .sc-modal-surface__header { padding: 18px; }
   .workspace-help .sc-modal-surface__body { padding: 18px; }
 }

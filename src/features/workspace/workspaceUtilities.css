@@ -1,0 +1,228 @@
+/* Menú «⋯» de la barra: lo que no es el modelo seleccionado (documento, vista,
+   unidades) en una lista corta, sin explicaciones. En teléfono se abre como una
+   hoja bajo la barra. */
+.workspace-utilities { position: relative; flex: none; }
+
+.workspace-utilities__panel {
+  position: absolute;
+  z-index: calc(var(--sc-z-topbar, 30) + 4);
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(300px, calc(100vw - 20px));
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  border: var(--sc-depth-raised-border);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-lg);
+  color: var(--sc-color-text-primary);
+}
+
+.workspace-utilities__list { display: grid; gap: 1px; }
+
+.workspace-utilities__item {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  font-size: var(--sc-font-size-control);
+  text-align: left;
+}
+
+.workspace-utilities__item svg { flex: none; color: var(--sc-color-text-secondary); }
+.workspace-utilities__item:hover:not(:disabled),
+.workspace-utilities__item:focus-visible { background: var(--sc-color-surface-inset); }
+.workspace-utilities__item:disabled { opacity: .5; }
+
+.workspace-utilities__group {
+  display: grid;
+  gap: 6px;
+  padding: 8px 4px 2px;
+  border-top: 1px solid var(--sc-color-border-soft);
+}
+
+.workspace-utilities__label {
+  padding-inline: 6px;
+  color: var(--sc-color-text-muted);
+  font-family: var(--sc-font-mono);
+  font-size: var(--sc-font-size-label);
+  font-weight: var(--sc-font-weight-bold);
+  letter-spacing: var(--sc-tracking-eyebrow);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.workspace-utilities__chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+
+.workspace-utilities__chips button {
+  min-width: 0;
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: 6px 2px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: var(--sc-font-weight-semibold);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.workspace-utilities__chips button:hover,
+.workspace-utilities__chips button:focus-visible { border-color: var(--sc-color-border); color: var(--sc-color-text-primary); }
+
+.workspace-utilities__unit-picker { position: relative; padding-inline: 2px; }
+
+.workspace-utilities__unit-trigger {
+  width: 100%;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+.workspace-utilities__unit-options {
+  position: absolute;
+  z-index: 2;
+  inset-inline: 2px;
+  bottom: calc(100% + 4px);
+  max-height: min(300px, calc(100dvh - var(--topbar-h, 62px) - 200px));
+  display: grid;
+  gap: 2px;
+  padding: 4px;
+  border: var(--sc-depth-floating-border);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-lg);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.workspace-utilities__unit-options button {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--sc-radius-sm);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: inherit;
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-semibold);
+  text-align: left;
+}
+
+.workspace-utilities__unit-options button:hover,
+.workspace-utilities__unit-options button:focus-visible,
+.workspace-utilities__unit-options button[aria-selected='true'] { background: var(--sc-color-surface-inset); color: var(--sc-color-text-primary); }
+
+.workspace-utilities__unit-custom-active {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--sc-radius-sm);
+  background: var(--sc-color-surface-inset);
+  color: var(--fs-family-analisis);
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-bold);
+}
+
+.workspace-utilities__customize-units {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: inherit;
+  font-size: var(--sc-font-size-caption);
+  text-align: left;
+}
+
+.workspace-utilities__customize-units:hover,
+.workspace-utilities__customize-units:focus-visible { background: var(--sc-color-surface-inset); color: var(--sc-color-text-primary); }
+
+.workspace-utilities__footer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 4px;
+  padding: 8px 2px 2px;
+  border-top: 1px solid var(--sc-color-border-soft);
+}
+
+.workspace-utilities__footer button {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-text-secondary);
+  font: inherit;
+  font-size: var(--sc-font-size-caption);
+  font-weight: var(--sc-font-weight-semibold);
+}
+
+.workspace-utilities__footer button:hover,
+.workspace-utilities__footer button:focus-visible { border-color: var(--sc-color-border); color: var(--sc-color-text-primary); }
+
+.workspace-utilities__error {
+  margin: 0;
+  padding: 8px 9px;
+  border: 1px solid color-mix(in srgb, var(--sc-color-state-error) 36%, var(--sc-color-border));
+  border-radius: var(--sc-radius-sm);
+  background: color-mix(in srgb, var(--sc-color-state-error) 8%, var(--sc-color-surface-1));
+  color: var(--sc-color-state-error-foreground);
+  font-size: var(--sc-font-size-caption);
+  line-height: 1.35;
+}
+
+/* En escritorio la guía tiene su propio botón en la barra; el menú la ofrece
+   sólo donde ese botón se retira (teléfono). */
+@media (min-width: 761px) { .workspace-utilities .workspace-utilities__phone-only { display: none; } }
+
+@media (max-width: 760px) {
+  .workspace-utilities__panel {
+    position: fixed;
+    top: calc(var(--topbar-h) + 4px);
+    right: max(8px, env(safe-area-inset-right));
+    width: min(340px, calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    max-height: calc(100dvh - var(--topbar-h) - 16px - env(safe-area-inset-bottom));
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .workspace-utilities__item { min-height: 44px; }
+}

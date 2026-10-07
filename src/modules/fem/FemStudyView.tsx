@@ -25,7 +25,7 @@ type StudyProps = { document: FemDocumentV1; analysis: FemAnalysisResult | null;
 
 function ModelView({ document }: Pick<StudyProps, 'document'>) {
   return <div className="fusion-fem__view">
-    <header><h2>{document.name}</h2><p>{document.analysis === 'plane-stress' ? 'Esfuerzo plano' : document.analysis === 'plane-strain' ? 'Deformación plana' : document.analysis} · unidades m y kN</p></header>
+    <header><h2>{document.name}</h2><p>{document.analysis === 'plane-stress' ? 'Esfuerzo plano' : document.analysis === 'plane-strain' ? 'Deformación plana' : document.analysis} · {document.nodes.length} nodos · {document.elements.length} elementos · m y kN</p></header>
     <dl className="fusion-fem__facts">
       <div><dt>Módulo E</dt><dd>{femNumber(document.material.E)} <small>kN/m²</small></dd></div>
       <div><dt>Poisson ν</dt><dd>{femNumber(document.material.nu)}</dd></div>
@@ -36,13 +36,12 @@ function ModelView({ document }: Pick<StudyProps, 'document'>) {
       <section><h3>Apoyos</h3>{document.restraints.length ? <StudyTable caption="Restricciones por nudo" headings={['Nudo', 'X', 'Y']} rows={document.restraints} cells={(restraint) => [restraint.nodeId, restraint.ux ? 'Fijo' : 'Libre', restraint.uy ? 'Fijo' : 'Libre']} /> : <p className="fusion-fem__empty">Esta malla no tiene apoyos. El análisis necesita restricciones para impedir el movimiento rígido.</p>}</section>
       <section><h3>Cargas</h3>{document.loads.length ? <StudyTable caption="Cargas por nudo · kN" headings={['Nudo', 'Fx', 'Fy']} rows={document.loads} cells={(load) => [load.nodeId, femNumber(load.fx), femNumber(load.fy)]} /> : <p className="fusion-fem__empty">No hay cargas en el estudio importado.</p>}</section>
     </div>
-    <p className="fusion-fem__note">Importar Gmsh trae la geometría de la malla. Esta mesa consulta los datos del estudio; el editor de apoyos y cargas está pendiente.</p>
   </div>;
 }
 
 function MeshView({ document }: Pick<StudyProps, 'document'>) {
   return <div className="fusion-fem__view">
-    <header><h2>Malla del estudio</h2><p>Revisa la conectividad y las coordenadas antes de analizar.</p></header>
+    <header><h2>Malla del estudio</h2></header>
     <FemMesh document={document} />
     <details><summary>Coordenadas de los nudos</summary><StudyTable caption="Nudos · m" headings={['Nudo', 'X', 'Y']} rows={document.nodes} cells={(node) => [node.id, femNumber(node.x), femNumber(node.y)]} /></details>
     <details><summary>Conectividad de los elementos</summary><StudyTable caption="Elementos de la malla" headings={['Elemento', 'Tipo', 'Nudos']} rows={document.elements} cells={(element) => [element.id, element.type, element.nodeIds.join(', ')]} /></details>
@@ -51,12 +50,12 @@ function MeshView({ document }: Pick<StudyProps, 'document'>) {
 
 function ResultsView({ document, analysis, onAnalyze, onReview }: StudyProps & { onReview: () => void }) {
   return <div className="fusion-fem__view">
-    {!analysis ? <div className="fusion-fem__empty"><h2>El estudio aún no tiene resultados</h2><p>Revisa Modelo y Malla, y analiza para consultar los campos y el equilibrio.</p><button type="button" className="sc-button sc-button--primary" onClick={onAnalyze}>Analizar el estudio</button></div>
+    {!analysis ? <div className="fusion-fem__empty"><h2>El estudio aún no tiene resultados</h2><p>Analiza para consultar los campos y el equilibrio.</p><button type="button" className="sc-button sc-button--primary" onClick={onAnalyze}>Analizar el estudio</button></div>
       : !analysis.success ? <div className="fusion-fem__empty"><h2>Revisa el estudio antes de continuar</h2><p>{analysis.reason}</p>
         {analysis.issues.length ? <ul>{analysis.issues.map((issue, index) => <li key={index}>{issue.id ? `${issue.entity} ${issue.id}: ` : ''}{issue.code} · {issue.field}</li>)}</ul> : null}
         <button type="button" className="sc-button" onClick={onReview}>Revisar modelo</button></div>
         : <>
-          <header><h2>Resultados del estudio</h2><p>Elasticidad lineal 2D. Valores por elemento y por nudo del análisis actual.</p></header>
+          <header><h2>Resultados del estudio</h2></header>
           <FemMesh document={document} analysis={analysis} />
           <dl className="fusion-fem__facts">
             <div><dt>Residuo relativo</dt><dd>{femNumber(analysis.relativeResidual)}</dd></div>

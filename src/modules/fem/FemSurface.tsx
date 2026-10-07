@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Download, Play, Upload } from 'lucide-react';
+import { Box, FileJson, Play, Upload } from 'lucide-react';
 import { FemStudyView } from './FemStudyView';
 import './femSurface.css';
 import { ShellContribution, ShellStatusChip } from '../../features/workspace/ShellToolSlots';
@@ -186,11 +186,22 @@ export function FemSurface() {
     ? { tone: 'neutral' as const, label: 'Listo' }
     : analysis.success ? { tone: 'ok' as const, label: 'Resuelto' } : { tone: 'error' as const, label: 'Revisar' };
 
+  const fileInput = useRef<HTMLInputElement>(null);
   return <section className="fusion-fem" aria-labelledby="fem-title">
+    <h1 id="fem-title" className="sr-only">Elementos finitos</h1>
     {/* La acción primaria dice el verbo, como en 2D y 3D; el nombre accesible conserva el dominio. */}
     <ShellContribution slot="action"><button type="button" className="workspace-topbar__action-button is-primary" onClick={runAnalysis} aria-label="Analizar FEM">
       <Play size={16} fill="currentColor" aria-hidden="true" /> <span>Analizar</span>
     </button></ShellContribution>
+    {/* Importar y exportar viven en la barra, como los controles de las otras mesas. */}
+    <ShellContribution slot="controls">
+      <button type="button" className="workspace-topbar__action-button" data-wide-label onClick={() => fileInput.current?.click()} title="Importar malla Gmsh 4.1">
+        <Upload size={17} aria-hidden="true" /><span>Importar Gmsh 4.1</span>
+      </button>
+      <input ref={fileInput} type="file" accept=".msh,text/plain" aria-label="Importar Gmsh 4.1" className="sr-only" tabIndex={-1} onChange={(event) => void importGmsh(event)} />
+      <button type="button" className="workspace-topbar__action-button" onClick={exportJson} aria-label="Exportar FEM JSON" title="Descargar el estudio y su análisis en JSON"><FileJson size={17} aria-hidden="true" /><span>JSON</span></button>
+      <button type="button" className="workspace-topbar__action-button" onClick={exportVtk} aria-label="Exportar VTK" title="Descargar la malla y sus campos en VTK"><Box size={17} aria-hidden="true" /><span>VTK</span></button>
+    </ShellContribution>
     <ShellContribution slot="statusbar"><footer className="fusion-fem__statusbar" aria-label="Estado de Elementos finitos">
       <span><b>{document.nodes.length}</b> nudos <b>{document.elements.length}</b> elementos</span>
       <span>{document.name}</span>
@@ -199,38 +210,11 @@ export function FemSurface() {
       <span>Local</span>
     </footer></ShellContribution>
     <ShellContribution slot="status"><ShellStatusChip tone={status.tone} label={status.label} badge="Experimental" detail={feedback ?? undefined} /></ShellContribution>
-    <ShellContribution slot="inspector">
-      <div className="fusion-fem__inspector">
-        <strong>Modelo local</strong>
-        <span>{document.nodes.length} nodos · {document.elements.length} elementos</span>
-        <span>{document.name}</span>
-        {analysis ? <>
-          <span>{analysis.success ? 'Análisis completado' : analysis.reason}</span>
-          {analysis.success && analysis.equilibrium.normalized !== null ? <span>Equilibrio {analysis.equilibrium.normalized.toExponential(2)}</span> : null}
-        </> : <span>TRI3/QUAD4 · elasticidad lineal</span>}
-      </div>
-    </ShellContribution>
-    <header className="fusion-fem__intro">
-      <span className="fusion-fem__status">Experimental · en este dispositivo</span>
-      <h1 id="fem-title">Elementos finitos</h1>
-      <p>Revisa el modelo y su malla, analiza y consulta los campos. Elasticidad lineal 2D con TRI3 y QUAD4.</p>
-    </header>
     {feedback ? <p className="fusion-fem__feedback" role="status">{feedback}</p> : null}
     {analysis ? <div className={`fusion-fem__result ${analysis.success ? 'is-success' : 'is-failure'}`} role="status" data-testid="fem-analysis-result">
       <strong>{analysis.success ? 'Análisis completado' : 'Análisis detenido'}</strong>
       <span>{analysis.success && analysis.relativeResidual !== null ? `${analysis.stresses.length} campos de tensión · residuo ${analysis.relativeResidual.toExponential(2)}` : analysis.reason}</span>
     </div> : null}
     <FemStudyView document={document} analysis={analysis} onAnalyze={runAnalysis} />
-    {/* Barra flotante al pie, como el dock de 2D, 3D y Diseño. */}
-    <div className="fusion-fem__dock" role="toolbar" aria-label="Intercambio FEM">
-      <label className="fusion-fem__dock-button">
-        <Upload size={17} aria-hidden="true" />
-        <span>Importar<span className="fusion-fem__dock-detail"> Gmsh 4.1</span></span>
-        <input type="file" accept=".msh,text/plain" aria-label="Importar Gmsh 4.1" onChange={(event) => void importGmsh(event)} />
-      </label>
-      <span className="fusion-fem__dock-divider" aria-hidden="true" />
-      <button type="button" className="fusion-fem__dock-button" onClick={exportJson} aria-label="Exportar FEM JSON" title="Descargar el estudio y su análisis en JSON"><Download size={17} aria-hidden="true" /><span>JSON</span></button>
-      <button type="button" className="fusion-fem__dock-button" onClick={exportVtk} aria-label="Exportar VTK" title="Descargar la malla y sus campos en VTK"><Download size={17} aria-hidden="true" /><span>VTK</span></button>
-    </div>
   </section>;
 }

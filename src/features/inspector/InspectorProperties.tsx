@@ -670,7 +670,6 @@ export const InspectorProperties = () => {
         project={project}
         selection={selection}
         label={t('inspector.selectionPreview')}
-        caption={t('inspector.selectionPreviewCaption')}
       /> : null}
     </div>
 

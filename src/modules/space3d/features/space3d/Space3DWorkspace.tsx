@@ -124,7 +124,6 @@ interface Space3DWorkspaceProps {
   readonly canonicalProject?: Space3DProjectV1;
   readonly retainedHistory?: Space3DHistory | null;
   readonly onHistoryChange?: (history: Space3DHistory) => void;
-  readonly onOpenDesign?: () => void;
   readonly onProjectChange?: (project: Space3DProjectV1) => void;
   readonly language: Language;
   /** Render the 3D surface inside the global workbench shell. */
@@ -243,10 +242,10 @@ interface Space3DStudyFeedback {
 const LABELS_BY_DEFAULT_LIMIT = 30;
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'onOpenDesign' | 'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange' | 'startCamera' | 'onCameraRelease' | 'startSelection' | 'onSelectionChange'> {}
+  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange' | 'startCamera' | 'onCameraRelease' | 'startSelection' | 'onSelectionChange'> {}
 
 const WorkspaceBody = ({
-  onOpenDesign, language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange, startCamera, onCameraRelease, startSelection, onSelectionChange,
+  language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange, startCamera, onCameraRelease, startSelection, onSelectionChange,
 }: WorkspaceBodyProps) => {
   // El inglés se carga bajo demanda; al llegar, la versión cambia y la mesa se traduce.
   const [catalogVersion, setCatalogVersion] = useState(0);
@@ -966,7 +965,7 @@ const WorkspaceBody = ({
     onClick={() => { void runSelectedAnalysis(); }}
     disabled={analysisBlocked}
   >
-    <Play size={17} aria-hidden="true" /><span>{runningAny ? t('space3d.analyzing') : t('space3d.analyze')}</span>
+    <Play size={17} fill="currentColor" aria-hidden="true" /><span>{runningAny ? t('space3d.analyzing') : t('space3d.analyze')}</span>
   </button>;
 
   const layersControl = <Popover
@@ -1374,14 +1373,6 @@ const WorkspaceBody = ({
         <button type="button" className="workspace-topbar__icon-button" onClick={undo} disabled={!canUndo} aria-label={t('space3d.undo')} title={t('space3d.undo')}><Undo2 size={17} aria-hidden="true" /></button>
         <button type="button" className="workspace-topbar__icon-button" onClick={redo} disabled={!canRedo} aria-label={t('space3d.redo')} title={t('space3d.redo')}><Redo2 size={17} aria-hidden="true" /></button>
       </ShellContribution>
-      <ShellContribution slot="journey"><section className="mesa-journey" aria-label="Modo, origen y siguiente paso">
-        <div className="mesa-journey__context"><strong>3D</strong><span>{language === 'es' ? 'Origen: Modelo 3D' : 'Source: 3D model'}</span></div>
-        <p>{language === 'es' ? !hasContent ? 'Crea un marco o edificio.' : currentAnalysis ? 'Resultados disponibles.' : 'Revisa apoyos y cargas.' : !hasContent ? 'Create a frame or building.' : currentAnalysis ? 'Results available.' : 'Check supports and loads.'}</p>
-        <div className="mesa-journey__actions">
-          {currentAnalysis ? <button type="button" onClick={(event) => { setResultMode('moment'); setPanel('analysis'); shellInspector?.reveal(event.currentTarget); }}>{language === 'es' ? 'Ver resultados del 3D' : 'View 3D results'}</button> : null}
-          {hasContent && onOpenDesign ? <button type="button" onClick={onOpenDesign}>{language === 'es' ? 'Diseñar los ejes' : 'Design frame lines'}</button> : null}
-        </div>
-      </section></ShellContribution>
       <ShellContribution slot="action">{analyzeButton('workspace-topbar__action-button is-primary')}</ShellContribution>
       <ShellContribution slot="status"><ShellStatusChip tone={SHELL_TONES[analysisState] ?? 'neutral'} label={stateLabel} badge={t('space3d.badge')} /></ShellContribution>
     </> : <header className="space3d-localbar">
@@ -1480,23 +1471,18 @@ const WorkspaceBody = ({
           {!hasContent && tool === 'select' ? <div className="space3d-empty-stage">
             <div className="space3d-empty-card">
               <h2>{t('space3d.emptyCanvasTitle')}</h2>
-              <p>{t('space3d.emptyCanvasBody')}</p>
               <div className="space3d-empty-options">
                 <button type="button" className="space3d-empty-option space3d-empty-option--primary" onClick={() => setBuildingOpen(true)}>
                   <span className="space3d-empty-option-title">{t('space3d.building.title')}</span>
-                  <span className="space3d-empty-option-hint">{t('space3d.building.description')}</span>
                 </button>
                 <button type="button" className="space3d-empty-option" onClick={() => setGenerativeOpen(true)}>
                   <span className="space3d-empty-option-title">{t('space3d.emptyGenerate')}</span>
-                  <span className="space3d-empty-option-hint">{t('space3d.emptyGenerateHint')}</span>
                 </button>
                 <button type="button" className="space3d-empty-option" onClick={() => requestReplace('example')}>
                   <span className="space3d-empty-option-title">{t('space3d.emptyExample')}</span>
-                  <span className="space3d-empty-option-hint">{t('space3d.emptyExampleHint')}</span>
                 </button>
                 <button type="button" className="space3d-empty-option" onClick={() => enterTool('node')}>
                   <span className="space3d-empty-option-title"><NodeGlyph size={16} />{t('space3d.emptyNode')}</span>
-                  <span className="space3d-empty-option-hint">{t('space3d.emptyNodeHint')}</span>
                 </button>
               </div>
             </div>

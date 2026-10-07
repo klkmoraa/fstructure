@@ -12,7 +12,7 @@ import { DesignModeTool, FemTool, Space3DModeTool } from './toolSurfaces';
 import { MesaModeSwitch } from './MesaModeSwitch';
 import { LazySurface } from './LazySurface';
 import { toolIdentity } from './toolCatalog';
-import { ThemeToggleButton } from './ThemeToggleButton';
+import { ShellMoreMenu } from './ShellMoreMenu';
 import '../../design-system/components/ui.css';
 import './phase1.css';
 import './workspaceTopbar.css';
@@ -63,7 +63,7 @@ const ToolContent = ({ variant, onModeChange }: Pick<SurfaceProps, 'variant' | '
   if (variant === 'design') {
     return <LazySurface><DesignModeTool {...(onModeChange ? { onOpenModel: () => onModeChange('model'), onOpenSpace3D: () => onModeChange('3d') } : {})} /></LazySurface>;
   }
-  return variant === '3d' ? <Space3DModeTool {...(onModeChange ? { onOpenDesign: () => onModeChange('design') } : {})} /> : <FemTool />;
+  return variant === '3d' ? <Space3DModeTool /> : <FemTool />;
 };
 
 const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfaceProps) => {
@@ -78,8 +78,8 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
   const identity = toolIdentity(tool);
   const text = copy[language];
   const name = identity.name[language];
-  // Diseño lleva sus datos y resultados sobre su propio lienzo; no usa el inspector del shell.
-  const hasInspector = !design;
+  // Diseño lleva sus datos y resultados sobre su propio lienzo y FEM los suyos en pestañas: sólo el 3D usa el inspector del shell.
+  const hasInspector = variant === '3d';
 
   return <ShellToolSlotsProvider tool={variant} mobile={shellClass === 'K0'}>
     <AppShellLayout
@@ -101,7 +101,7 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
         </div>}
         primaryAction={<ShellSlotHost slot="action" />}
         toolStatus={<ShellSlotHost slot="status" />}
-        themeControl={<ThemeToggleButton />}
+        utilities={<ShellMoreMenu />}
         projectName={project.name}
         storageState={!storageIssue ? 'ready' : storageIssue === 'recovered' ? 'recovered' : 'issue'}
         storageMessage={storageMessage}
@@ -141,7 +141,6 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
         onAnalyze={() => undefined}
         onOpenResults={() => undefined}
       />}
-      journey={mesa ? <div className="mesa-journey-host"><ShellSlotHost slot="journey" /></div> : null}
       workspace={<section className="native-workspace-mode" data-workspace-mode={variant === '3d' ? 'space3d' : variant}
         aria-label={design ? (language === 'es' ? `${name} · Diseño` : `${name} · Design`) : variant === '3d' ? `${name} · 3D` : name}>
         <ToolErrorBoundary fallback={(reset) => <div className="tool-shell__failure" role="alert">

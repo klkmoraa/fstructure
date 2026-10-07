@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import {
   Check,
   ChevronDown,
+  CircleHelp,
   ClipboardList,
   Download,
   Eye,
@@ -9,7 +10,6 @@ import {
   Moon,
   MoreHorizontal,
   MoveDown,
-  PanelRight,
   PencilRuler,
   RotateCcw,
   Sheet,
@@ -18,7 +18,6 @@ import {
   Sparkles,
   Stethoscope,
   Sun,
-  X,
 } from 'lucide-react';
 import { APP_VERSION } from '../../appVersion';
 import { useI18n } from '../../i18n/useI18n';
@@ -28,6 +27,8 @@ import { UNIT_SYSTEM_PROFILES, unitSystemLabel } from '../../engine/units';
 import type { CalculationReportOptions } from '../../utils/calculationPdf';
 import type { PdfPreviewArtifact } from '../pdf-preview/PdfPreviewDialog';
 import { emitWorkspaceCommand } from './workspaceCommands';
+import { OPEN_HELP_EVENT } from './WorkspaceHelp';
+import './workspaceUtilities.css';
 
 const LazyPdfPreviewDialog = lazy(() => import('../pdf-preview/PdfPreviewDialog').then((module) => ({ default: module.PdfPreviewDialog })));
 
@@ -41,10 +42,8 @@ const LazyPdfPreviewDialog = lazy(() => import('../pdf-preview/PdfPreviewDialog'
  * workbench (top-bar switch).
  */
 export const WorkspaceUtilities = ({
-  onOpenInspector,
   onOpenUnitsEditor,
 }: {
-  onOpenInspector: (trigger?: HTMLElement | null) => void;
   onOpenUnitsEditor?: (trigger?: HTMLElement | null) => void;
 }) => {
   const { project, updateProjectView } = useProjectModel();
@@ -136,16 +135,8 @@ export const WorkspaceUtilities = ({
     updateProjectView((draft) => ({ ...draft, settings: { ...draft.settings, units } }));
     setUnitPickerOpen(false);
   };
-  const openSurface = (command: 'open-datasheet' | 'open-view-settings') => {
-    emitWorkspaceCommand(command);
-    setOpen(false);
-  };
   const openTool = (tool: 'pointLoad' | 'distributedLoad' | 'moment') => {
     setActiveTool(tool);
-    setOpen(false);
-  };
-  const openCommand = (command: 'open-analysis-setup' | 'open-structural-bom' | 'open-model-doctor') => {
-    emitWorkspaceCommand(command);
     setOpen(false);
   };
   const openAssistant = () => {
@@ -157,6 +148,11 @@ export const WorkspaceUtilities = ({
   const selectedUnit = isCustomUnitSystemId(project.settings.units)
     ? { id: project.settings.units, label: unitSystemLabel(project.settings.units) }
     : unitOptions.find((item) => item.id === project.settings.units) ?? unitOptions[0];
+  const run = (action: () => void) => () => { action(); setOpen(false); setUnitPickerOpen(false); };
+  const item = (Icon: typeof FileText, label: string, onClick: () => void, extra?: { disabled?: boolean }) =>
+    <button type="button" role="menuitem" className="workspace-utilities__item" onClick={onClick} disabled={extra?.disabled}>
+      <Icon size={17} aria-hidden="true" /><span>{label}</span>
+    </button>;
   return <div className="workspace-utilities" ref={menuRef}>
     <button
       ref={triggerRef}
@@ -169,54 +165,25 @@ export const WorkspaceUtilities = ({
       aria-haspopup="dialog"
     ><MoreHorizontal size={19} aria-hidden="true" /></button>
     {open ? <section className="workspace-utilities__panel" role="dialog" aria-label={t('topbar.utilities')}>
-      <header>
-        <div><strong>{t('topbar.utilities')}</strong><span>{t('workspace.utilitiesSubtitle')}</span></div>
-        <button type="button" onClick={() => setOpen(false)} aria-label={t('toolbar.close')}><X size={17} aria-hidden="true" /></button>
-      </header>
-      <section className="workspace-utilities__section" aria-label={t('workspace.utilityModelSection')}>
-        <span className="workspace-utilities__section-label">{t('workspace.utilityModelSection')}</span>
-        <div className="workspace-utilities__actions">
-          <button className="workspace-utilities__action is-featured" type="button" onClick={() => void openPdf()} disabled={preparingPdf}>
-            <FileText size={18} aria-hidden="true" /><span><strong>{preparingPdf ? t('workspace.utilityPdfPreparing') : t('portable.previewLabel')}</strong><small>{t('workspace.utilityPdfDescription')}</small></span>
-          </button>
-          <button className="workspace-utilities__action" type="button" onClick={() => openSurface('open-datasheet')}>
-            <Sheet size={17} aria-hidden="true" /><span><strong>{t('datasheet.title')}</strong><small>{t('workspace.utilityDatasheetDescription')}</small></span>
-          </button>
-          <button className="workspace-utilities__action" type="button" onClick={() => openCommand('open-structural-bom')}>
-            <ClipboardList size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityBom')}</strong><small>{t('workspace.utilityBomDescription')}</small></span>
-          </button>
-          <button className="workspace-utilities__action" type="button" onClick={(event) => { onOpenInspector(event.currentTarget); setOpen(false); }}>
-            <PanelRight size={17} aria-hidden="true" /><span><strong>{t('inspector.open')}</strong><small>{t('workspace.utilityInspectorDescription')}</small></span>
-          </button>
-          <button className="workspace-utilities__action" type="button" onClick={() => openSurface('open-view-settings')}>
-            <Eye size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityLayers')}</strong><small>{t('workspace.utilityLayersDescription')}</small></span>
-          </button>
-          <button className="workspace-utilities__action" type="button" onClick={() => openCommand('open-model-doctor')}>
-            <Stethoscope size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityDoctor')}</strong><small>{t('workspace.utilityDoctorDescription')}</small></span>
-          </button>
-          <button className="workspace-utilities__action" type="button" onClick={openAssistant}>
-            <Sparkles size={17} aria-hidden="true" /><span><strong>{t('workspace.utilityAssistant')}</strong><small>{t('workspace.utilityAssistantDescription')}</small></span>
-          </button>
+      <div className="workspace-utilities__list" role="menu">
+        {item(FileText, preparingPdf ? t('workspace.utilityPdfPreparing') : t('portable.previewLabel'), () => void openPdf(), { disabled: preparingPdf })}
+        {item(Sheet, t('datasheet.title'), run(() => emitWorkspaceCommand('open-datasheet')))}
+        {item(ClipboardList, t('workspace.utilityBom'), run(() => emitWorkspaceCommand('open-structural-bom')))}
+        {item(Stethoscope, t('workspace.utilityDoctor'), run(() => emitWorkspaceCommand('open-model-doctor')))}
+        {item(Eye, t('workspace.utilityLayers'), run(() => emitWorkspaceCommand('open-view-settings')))}
+        {item(Sparkles, t('workspace.utilityAssistant'), run(openAssistant))}
+        {item(SlidersHorizontal, t('workspace.utilityLoadSetup'), run(() => emitWorkspaceCommand('open-analysis-setup')))}
+      </div>
+      <div className="workspace-utilities__group" role="group" aria-label={t('workspace.utilityLoadsSection')}>
+        <span className="workspace-utilities__label">{t('workspace.utilityLoadsSection')}</span>
+        <div className="workspace-utilities__chips" aria-label={t('toolbar.loads')}>
+          <button type="button" onClick={() => openTool('pointLoad')}><MoveDown size={16} aria-hidden="true" />{t('toolbar.pointLoad')}</button>
+          <button type="button" onClick={() => openTool('distributedLoad')}><Sigma size={16} aria-hidden="true" />{t('toolbar.distributedLoad')}</button>
+          <button type="button" onClick={() => openTool('moment')}><RotateCcw size={16} aria-hidden="true" />{t('toolbar.moment')}</button>
         </div>
-      </section>
-      <section className="workspace-utilities__section" aria-label={t('workspace.utilityLoadsSection')}>
-        <div className="workspace-utilities__section-heading">
-          <span className="workspace-utilities__section-label">{t('workspace.utilityLoadsSection')}</span>
-          <button type="button" className="workspace-utilities__setup" onClick={() => openCommand('open-analysis-setup')}>
-            <SlidersHorizontal size={15} aria-hidden="true" />{t('workspace.utilityLoadSetup')}
-          </button>
-        </div>
-        <div className="workspace-utilities__load-actions" aria-label={t('toolbar.loads')}>
-          <button type="button" onClick={() => openTool('pointLoad')}><MoveDown size={17} aria-hidden="true" /><span>{t('toolbar.pointLoad')}</span></button>
-          <button type="button" onClick={() => openTool('distributedLoad')}><Sigma size={17} aria-hidden="true" /><span>{t('toolbar.distributedLoad')}</span></button>
-          <button type="button" onClick={() => openTool('moment')}><RotateCcw size={17} aria-hidden="true" /><span>{t('toolbar.moment')}</span></button>
-        </div>
-      </section>
-      <section className="workspace-utilities__units" aria-label={t('units.label')}>
-        <div className="workspace-utilities__units-copy">
-          <span>{t('units.label')}</span>
-          <small>{t('workspace.utilityUnitsDescription')}</small>
-        </div>
+      </div>
+      <div className="workspace-utilities__group" role="group" aria-label={t('units.label')}>
+        <span className="workspace-utilities__label">{t('units.label')}</span>
         <div className="workspace-utilities__unit-picker">
           <button
             type="button"
@@ -247,17 +214,15 @@ export const WorkspaceUtilities = ({
             setOpen(false);
             setUnitPickerOpen(false);
           }}
-        >
-          <PencilRuler size={16} aria-hidden="true" />
-          <span><strong>{t('workspace.utilityCustomizeUnits')}</strong><small>{t('workspace.utilityCustomizeUnitsDescription')}</small></span>
-        </button> : null}
-      </section>
+        ><PencilRuler size={15} aria-hidden="true" />{t('workspace.utilityCustomizeUnits')}</button> : null}
+      </div>
       <div className="workspace-utilities__footer">
         <button type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-          {theme === 'dark' ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />} {themeLabel}
+          {theme === 'dark' ? <Sun size={16} aria-hidden="true" /> : <Moon size={16} aria-hidden="true" />}{themeLabel}
         </button>
-        <button type="button" onClick={() => { emitWorkspaceCommand('export-svg'); setOpen(false); }}><Download size={16} aria-hidden="true" /> SVG</button>
-        <button type="button" onClick={() => { emitWorkspaceCommand('export-png'); setOpen(false); }}><Download size={16} aria-hidden="true" /> PNG</button>
+        <button type="button" className="workspace-utilities__phone-only" onClick={run(() => window.dispatchEvent(new Event(OPEN_HELP_EVENT)))}><CircleHelp size={16} aria-hidden="true" />{t('workspace.utilityHelp')}</button>
+        <button type="button" onClick={run(() => emitWorkspaceCommand('export-svg'))}><Download size={16} aria-hidden="true" />SVG</button>
+        <button type="button" onClick={run(() => emitWorkspaceCommand('export-png'))}><Download size={16} aria-hidden="true" />PNG</button>
       </div>
       {exportError ? <p className="workspace-utilities__error" role="alert">{exportError}</p> : null}
     </section> : null}

@@ -1120,17 +1120,12 @@
 }
 
 .space3d-empty-card h2 {
-  margin: 0;
+  margin: 0 0 var(--sc-space-4);
   font-family: var(--sc-font-display);
   font-size: 22px;
   font-weight: var(--sc-font-weight-semibold);
   letter-spacing: var(--sc-tracking-tight, -0.01em);
   line-height: 1.2;
-}
-
-.space3d-empty-card > p {
-  margin: var(--sc-space-2) 0 var(--sc-space-5);
-  color: var(--sc-color-text-secondary);
 }
 
 .space3d-empty-options { display: grid; gap: var(--sc-space-2); }
@@ -1139,6 +1134,8 @@
   display: grid;
   gap: 2px;
   padding: var(--sc-space-3) var(--sc-space-4);
+  min-height: 44px;
+  align-content: center;
   border: var(--sc-border-width) solid var(--sc-color-border-soft);
   border-radius: var(--sc-radius-md);
   background: var(--sc-color-surface-1);

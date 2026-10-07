@@ -1,6 +1,5 @@
 import { BookOpen, Check, ChevronDown, Copy, FileDown, PanelRight, Redo2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { MesaJourney } from '../../workspace/MesaJourney';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
 import { ShellContribution, ShellStatusChip, type ShellStatusTone } from '../../workspace/ShellToolSlots';
@@ -261,17 +260,13 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   };
 
   return <div className="design-workbench" data-testid="design-workbench">
-    {nativeTool && element !== 'frame' ? <ShellContribution slot="journey"><MesaJourney mode="Diseño" source={`Origen: Elemento suelto · ${ELEMENTS.find((item) => item.id === element)?.label}`}>
-      <button type="button" onClick={() => setPanel('inputs', true)}>Editar datos</button>
-      <button type="button" disabled={!report} onClick={() => setPanel('results', true)}>Ver comprobaciones</button>
-    </MesaJourney></ShellContribution> : null}
     {exportMessage && !memoryOpen ? <p className="dw-action-feedback" role="alert">{exportMessage}<button type="button" aria-label="Cerrar aviso" onClick={() => setExportMessage(null)}>×</button></p> : null}
     {nativeTool ? <ShellContribution slot="controls">
-      <button type="button" className="workspace-topbar__icon-button dw-topbar-history" onClick={() => history.current?.undo()} disabled={!historyFlags.canUndo}
+      <button type="button" className="workspace-topbar__icon-button" onClick={() => history.current?.undo()} disabled={!historyFlags.canUndo}
         aria-label="Deshacer" title="Deshacer (Ctrl/⌘ Z)"><Undo2 size={17} aria-hidden="true" /></button>
-      <button type="button" className="workspace-topbar__icon-button dw-topbar-history" onClick={() => history.current?.redo()} disabled={!historyFlags.canRedo}
+      <button type="button" className="workspace-topbar__icon-button" onClick={() => history.current?.redo()} disabled={!historyFlags.canRedo}
         aria-label="Rehacer" title="Rehacer (Ctrl/⌘ Mayús Z)"><Redo2 size={17} aria-hidden="true" /></button>
-      <button type="button" className={'workspace-topbar__action-button workspace-topbar__inspector-button' + (anyPanelOpen ? ' is-active' : '')}
+      <button type="button" className={'workspace-topbar__action-button workspace-topbar__inspector-button' + (anyPanelOpen ? ' is-active' : '')} data-mobile-hide
         aria-label="Paneles de datos y resultados" aria-pressed={anyPanelOpen} title="Panel" onClick={togglePanels}>
         <PanelRight size={17} aria-hidden="true" /><span>Panel</span>
       </button>
@@ -280,18 +275,18 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
       <ShellStatusChip tone={VERDICT_TONE[verdict.status]} label={verdict.label} badge="Experimental" />
     </ShellContribution> : null}
     {nativeTool ? <ShellContribution slot="action">
-      <button type="button" className="workspace-topbar__action-button" onClick={() => setMemoryOpen(true)}
+      <button type="button" className="workspace-topbar__action-button" data-mobile-hide disabled={!report} onClick={copyMemo}
+        aria-label={copied ? 'Memoria copiada' : 'Copiar memoria de cálculo'} title={copied ? 'Memoria copiada' : 'Copiar memoria de cálculo'}>
+        {copied ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
+        <span>{copied ? 'Copiada' : 'Copiar'}</span>
+      </button>
+      <button type="button" className="workspace-topbar__action-button" data-wide-label onClick={() => setMemoryOpen(true)}
         aria-label={`Memoria del proyecto, ${memory.items.length} ${memory.items.length === 1 ? 'elemento' : 'elementos'}`} title="Memoria del proyecto">
         <BookOpen size={17} aria-hidden="true" /><span>Memoria{memory.items.length ? ` · ${memory.items.length}` : ''}</span>
       </button>
-      <button type="button" className="workspace-topbar__action-button" disabled={!report || exporting} onClick={() => report && exportPdf([report], reportHeading(report))}
+      <button type="button" className="workspace-topbar__action-button is-primary" disabled={!report || exporting} onClick={() => report && exportPdf([report], reportHeading(report))}
         aria-label="Exportar este elemento en PDF" title="Memoria en PDF de este elemento">
         <FileDown size={17} aria-hidden="true" /><span>{exporting ? 'Generando…' : 'PDF'}</span>
-      </button>
-      <button type="button" className="workspace-topbar__action-button is-primary" disabled={!report} onClick={copyMemo}
-        aria-label={copied ? 'Memoria copiada' : 'Copiar memoria de cálculo'}>
-        {copied ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
-        <span>{copied ? 'Copiada' : 'Copiar memoria'}</span>
       </button>
     </ShellContribution> : null}
 

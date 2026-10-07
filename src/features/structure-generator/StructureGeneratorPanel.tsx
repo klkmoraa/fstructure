@@ -425,7 +425,6 @@ export const StructureGeneratorPanel = ({
     <header className="structure-generator__header">
       <div>
         <strong>{t('title')}</strong>
-        {reviewing ? <span>{t('review.description')}</span> : null}
       </div>
       <IconButton label={t('close')} size="touch" onClick={onCancel}><X size={18} /></IconButton>
     </header>
@@ -437,7 +436,6 @@ export const StructureGeneratorPanel = ({
       {summaryList}
       {warningList}
       {decisions > 0 ? <p className="structure-generator__decisions">{t('review.decisions', { count: decisions })}</p> : null}
-      <p className="structure-generator__note">{t('previewNote')}</p>
       {error ? <p className="structure-generator__error" role="alert">{error}</p> : null}
     </div> : <div className="structure-generator__body">
       <div className="structure-generator__families" role="radiogroup" aria-label={t('familyLabel')} data-generator-stage="family">

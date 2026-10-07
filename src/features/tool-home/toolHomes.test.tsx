@@ -69,7 +69,6 @@ it('FStructure: «Diseñar un elemento» abre una viga independiente en la misma
   await user.click(await screen.findByRole('button', { name: /Diseñar un elemento/ }));
   expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeTruthy();
   expect(screen.getByRole('radio', { name: 'Viga' }).getAttribute('aria-checked')).toBe('true');
-  expect(screen.getByText('Origen: Elemento suelto · Viga')).toBeTruthy();
   expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');
   expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
 });

@@ -34,8 +34,8 @@ const renderSurface = () => {
   localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
   render(<ProjectProvider unified><ShellToolSlotsProvider mobile={false}>
     <ShellSlotHost slot="action" />
+    <ShellSlotHost slot="controls" />
     <ShellSlotHost slot="status" />
-    <ShellSlotHost slot="inspector" />
     <FemSurface />
   </ShellToolSlotsProvider></ProjectProvider>);
   return project;
@@ -60,10 +60,10 @@ it('imports Gmsh into the unified project and restores the FEM study after remou
 
   cleanup();
   render(<ProjectProvider unified><ShellToolSlotsProvider mobile={false}>
-    <ShellSlotHost slot="action" /><ShellSlotHost slot="status" /><ShellSlotHost slot="inspector" />
+    <ShellSlotHost slot="action" /><ShellSlotHost slot="controls" /><ShellSlotHost slot="status" />
     <FemSurface />
   </ShellToolSlotsProvider></ProjectProvider>);
-  expect(await screen.findByText('3 nodos · 1 elementos')).toBeTruthy();
+  expect(await screen.findByText(/3 nodos · 1 elementos/)).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Exportar FEM JSON' })).toBeTruthy();
   expect(screen.getByRole('button', { name: 'Exportar VTK' })).toBeTruthy();
 });

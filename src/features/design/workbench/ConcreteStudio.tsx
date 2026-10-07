@@ -70,7 +70,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
     caption={`${philosophy.short} · ${SECTION_SHAPES.find((item) => item.value === draft.shape)?.label ?? 'Sección'} · experimental`}
     verdict={result.status === 'ok' ? { status: sectionStatus(result), label: sectionVerdict(result) } : { status: 'error', label: 'Revisa los datos' }}
     inputs={<>
-      <div className="cs-intro"><span className="cs-experimental"><CircleDashed size={12} aria-hidden="true" />LABORATORIO DE SECCIONES</span><p>Del cálculo de flexión a la interacción axial. Define la forma, compara filosofías y ajusta tu armado.</p></div>
+      <div className="cs-intro"><span className="cs-experimental"><CircleDashed size={12} aria-hidden="true" />LABORATORIO DE SECCIONES</span></div>
       <FieldGroup title="Punto de partida" columns={1}>
         <Select label="Tipo de cálculo" value={draft.preset} onChange={(event) => { replace(sectionPreset(event.currentTarget.value, draft)); setActionNote(null); }}>
           {SECTION_PRESETS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
@@ -82,7 +82,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
         <Select label="Método de diseño" value={draft.philosophy} onChange={(event) => set('philosophy')(event.currentTarget.value)}>
           {SECTION_PHILOSOPHIES.map((item) => <option key={item.value} value={item.value}>{item.short} · {item.label}</option>)}
         </Select>
-        <p className="cs-philosophy-note">{philosophy.description} Cambiar el método conserva los números introducidos: revisa su base de carga.</p>
+        <p className="cs-philosophy-note">{philosophy.description}</p>
         {draft.philosophy !== 'allowable' ? <Select label="Base de las solicitaciones" value={draft.demandBasis} onChange={(event) => set('demandBasis')(event.currentTarget.value)}>
           <option value="factored">Últimas · ya factorizadas</option><option value="service">Servicio · aplicar factor global</option>
         </Select> : null}
@@ -116,7 +116,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
         </Select></div>
         <BarSelect label={draft.tieType === 'spiral' ? 'Diámetro del zuncho' : 'Diámetro del estribo'} value={draft.tie} onChange={set('tie')} />
         <NumberField label={draft.tieType === 'spiral' ? 'Paso manual' : 'Separación manual'} value={draft.tieSpacing} unit="cm" onChange={set('tieSpacing')} />
-        {result.status === 'ok' ? <div className="dw-span-all"><button type="button" className="dw-inline-action" onClick={() => { set('tieSpacing')(String(Math.round(result.detailing.proposedTieSpacingMm) / 10)); setActionNote('Separación geométrica aplicada. El modelo no diseña cortante ni confinamiento sísmico.'); }}>Usar sugerencia · {formatNumber(result.detailing.proposedTieSpacingMm / 10, 1)} cm</button><p className="cs-philosophy-note">Sugerencia geométrica. Requiere revisar cortante, confinamiento, soporte lateral y detalle sísmico.</p></div> : null}
+        {result.status === 'ok' ? <div className="dw-span-all"><button type="button" className="dw-inline-action" onClick={() => { set('tieSpacing')(String(Math.round(result.detailing.proposedTieSpacingMm) / 10)); setActionNote('Separación geométrica aplicada. El modelo no diseña cortante ni confinamiento sísmico.'); }}>Usar sugerencia · {formatNumber(result.detailing.proposedTieSpacingMm / 10, 1)} cm</button></div> : null}
       </FieldGroup>
       <FieldGroup title="Concreto y acero">
         <NumberField label="Resistencia f′c" value={draft.fc} unit="kg/cm²" onChange={set('fc')} />

@@ -24,19 +24,19 @@ const STATE_KEYS = {
   pending: 'space3d.guideStatePending',
 } as const satisfies Record<string, TranslationKey>;
 
-interface NextCopy { readonly title: TranslationKey; readonly body?: TranslationKey; readonly action?: TranslationKey }
+interface NextCopy { readonly title: TranslationKey; readonly action?: TranslationKey }
 
 const NEXT_COPY: Record<Space3DGuideAction, NextCopy> = {
-  start: { title: 'space3d.guideStartTitle', body: 'space3d.guideStartBody', action: 'space3d.guideStartAction' },
-  'add-node': { title: 'space3d.guideAddNodeTitle', body: 'space3d.guideAddNodeBody', action: 'space3d.guideAddNodeAction' },
-  'add-member': { title: 'space3d.guideAddMemberTitle', body: 'space3d.guideAddMemberBody', action: 'space3d.guideAddMemberAction' },
-  'add-support': { title: 'space3d.guideAddSupportTitle', body: 'space3d.guideAddSupportBody', action: 'space3d.guideAddSupportAction' },
-  'add-load': { title: 'space3d.guideAddLoadTitle', body: 'space3d.guideAddLoadBody', action: 'space3d.guideAddLoadAction' },
-  analyze: { title: 'space3d.guideAnalyzeTitle', body: 'space3d.guideAnalyzeBody', action: 'space3d.analyze' },
-  running: { title: 'space3d.guideRunningTitle', body: 'space3d.guideRunningBody' },
-  reanalyze: { title: 'space3d.guideReanalyzeTitle', body: 'space3d.guideReanalyzeBody', action: 'space3d.guideReanalyzeAction' },
-  'review-failure': { title: 'space3d.guideFailureTitle', body: 'space3d.guideFailureBody', action: 'space3d.guideFailureAction' },
-  'explore-results': { title: 'space3d.guideResultsTitle', body: 'space3d.guideResultsBody', action: 'space3d.guideResultsAction' },
+  start: { title: 'space3d.guideStartTitle', action: 'space3d.guideStartAction' },
+  'add-node': { title: 'space3d.guideAddNodeTitle', action: 'space3d.guideAddNodeAction' },
+  'add-member': { title: 'space3d.guideAddMemberTitle', action: 'space3d.guideAddMemberAction' },
+  'add-support': { title: 'space3d.guideAddSupportTitle', action: 'space3d.guideAddSupportAction' },
+  'add-load': { title: 'space3d.guideAddLoadTitle', action: 'space3d.guideAddLoadAction' },
+  analyze: { title: 'space3d.guideAnalyzeTitle', action: 'space3d.analyze' },
+  running: { title: 'space3d.guideRunningTitle' },
+  reanalyze: { title: 'space3d.guideReanalyzeTitle', action: 'space3d.guideReanalyzeAction' },
+  'review-failure': { title: 'space3d.guideFailureTitle', action: 'space3d.guideFailureAction' },
+  'explore-results': { title: 'space3d.guideResultsTitle', action: 'space3d.guideResultsAction' },
 };
 
 interface Space3DGuideProps {
@@ -64,7 +64,6 @@ export const Space3DGuide = ({ guide, t, analysisLabel, onAction, compact = fals
     loads: count(guide.counts.loads, 'space3d.guideLoadsCaptionOne', 'space3d.guideLoadsCaption'),
     analysis: analysisLabel,
   };
-  const body = copy.body ? t(copy.body) : null;
 
   // Con el lienzo vacío las tres formas de empezar ya están en el centro del
   // lienzo; repetir aquí una sola de ellas la haría parecer la única.
@@ -101,14 +100,12 @@ export const Space3DGuide = ({ guide, t, analysisLabel, onAction, compact = fals
       </li>)}
     </ol>
 
-    <div className="space3d-next" data-action={guide.next} role="status">
-      <p className="space3d-next-label">{t('space3d.guideNextLabel')}</p>
+    {guide.next === 'start' ? null : <div className="space3d-next" data-action={guide.next} role="status">
       <p className="space3d-next-title">
         {guide.next === 'running' ? <Loader2 size={16} aria-hidden="true" className="space3d-spin" /> : null}
         {t(copy.title)}
       </p>
-      {body ? <p className="space3d-next-body">{body}</p> : null}
-    </div>
+    </div>}
     {action}
   </section>;
 };

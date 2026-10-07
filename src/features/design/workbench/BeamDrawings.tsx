@@ -210,7 +210,7 @@ export function BeamElevation({ result, interactive = false, supports = 'ideal' 
         <span data-tone="moment"><b>M⁻u</b> {formatNumber(Math.max(0, -reading.momentMin), 1)} / φMn {formatNumber(reading.capacityNegative, 1)} kN·m</span>
         <span data-tone="shear"><b>Vu</b> {formatNumber(reading.shear, 1)} / φVn {formatNumber(reading.shearCapacity, 1)} kN</span>
         <span data-tone="deformed"><b>Δ</b> {formatNumber(reading.deflection, 1)} mm</span>
-      </> : <span className="fs-probe-readout__hint">Toca o pasa el cursor sobre los diagramas para leer momento, cortante, resistencia y flecha en cada sección.</span>}
+      </> : <span className="fs-probe-readout__hint">Toca un diagrama para leer cada sección.</span>}
     </p>
   </div>;
 }

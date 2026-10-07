@@ -64,7 +64,7 @@ export const SectionPresetSelector = ({
         : t('inspector.identityLegacy');
   return (
     <label className={`select-field${disabled ? ' is-disabled' : ''}`}>
-      <span>{t('inspector.sectionPreset')}<small>{t('inspector.sectionPresetHint')}</small></span>
+      <span title={t('inspector.sectionPresetHint')}>{t('inspector.sectionPreset')}</span>
       <select
         value={activeId}
         data-identity-origin={origin ?? 'legacy'}

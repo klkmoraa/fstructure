@@ -5,7 +5,6 @@ import { Model2DTool } from './toolSurfaces';
 import { Model2DSurfaceContext } from './adapters/surfaceContexts';
 import { PanelRight } from 'lucide-react';
 import { Console } from '../shell/Console';
-import { ThemeToggleButton } from './ThemeToggleButton';
 import { Instrument } from '../shell/Instrument';
 import { ClassroomGuide } from '../classroom/ClassroomGuide';
 import { ToastNotification } from './ToastNotification';
@@ -19,7 +18,6 @@ import { withCanvasViewSettings } from '../view/canvasViewSettings';
 import { AppShellLayout } from './AppShellLayout';
 import { WorkspaceTopBar } from './WorkspaceTopBar';
 import { WorkspaceUtilities } from './WorkspaceUtilities';
-import { MesaJourney } from './MesaJourney';
 import { MesaModeSwitch } from './MesaModeSwitch';
 import type { MesaMode } from '../../shared/navigation/projectUrl';
 import { ShellCompositionProvider } from './ShellCompositionProvider';
@@ -128,7 +126,7 @@ const WorkspaceBrokerContent = ({
   const modelDoctorNotificationIdRef = useRef(0);
   const pendingModelDoctorNotificationIdRef = useRef<number | null>(null);
   const reportedAnalysisRef = useRef<AnalysisResult | null>(null);
-  const { activeTool, setSelection } = useWorkspaceUI();
+  const { activeTool } = useWorkspaceUI();
   const { preferences: layout, setPreference, togglePreference } = layoutController;
   const { shellClass } = useShellComposition();
   const broker = useSurfacePresentation();
@@ -530,38 +528,12 @@ const WorkspaceBrokerContent = ({
       onOpenCalculationExperience={(trigger) => openModel2DSurface('analysisSetup', trigger)}
       contextualControls={<div className="workspace-topbar__tool-group" data-workspace-group="tool">
         <button type="button"
-          className={'workspace-topbar__action-button workspace-topbar__inspector-button workspace-topbar__inspector-button--desktop' + (inspectorOpen ? ' is-active' : '')}
+          className={'workspace-topbar__action-button workspace-topbar__inspector-button workspace-topbar__inspector-button--desktop' + (inspectorOpen ? ' is-active' : '')} data-mobile-hide
           aria-label={t('shell.showInspector')} aria-pressed={inspectorOpen} title={t('shell.showInspector')}
           onClick={(event) => toggleInspector(event.currentTarget)}><PanelRight size={17} aria-hidden="true" /><span>Panel</span></button>
       </div>}
-      themeControl={<ThemeToggleButton />}
-      utilities={<WorkspaceUtilities onOpenInspector={(trigger) => {
-        // La utilidad abre una consulta contextual: en móvil empieza compacta
-        // y el tirador del Inspector permite crecerla sólo si hace falta.
-        setPreference('inspectorDetent', 'compact');
-        openDetail(trigger);
-      }} onOpenUnitsEditor={(trigger) => openModel2DSurface('view', trigger)} />}
+      utilities={<WorkspaceUtilities onOpenUnitsEditor={(trigger) => openModel2DSurface('view', trigger)} />}
     />}
-    journey={<MesaJourney mode="2D" source={language === 'es' ? 'Origen: Modelo 2D' : 'Source: 2D model'}
-      hint={language === 'es'
-        ? !project.members.length ? 'Dibuja o genera un marco.'
-          : !project.nodes.some((node) => node.support.type !== 'none') ? 'Faltan apoyos.'
-          : !project.nodalLoads.length && !project.memberLoads.length ? activeTool === 'distributedLoad' ? 'Elige una barra para cargarla.' : 'Añade cargas.'
-          : analysis?.success ? 'Resultados disponibles.'
-          : 'Listo para analizar.'
-        : !project.members.length ? 'Draw or generate a frame.' : analysis?.success ? 'Results available.' : 'Check supports and loads.'}>
-      {!project.members.length ? <button type="button" onClick={() => emitWorkspaceCommand('open-structure-generator')}>{language === 'es' ? 'Generar un marco' : 'Generate a frame'}</button>
-        : !project.nodes.some((node) => node.support.type !== 'none') ? <button type="button" onClick={() => { setSelection(null); setActiveTool('support'); closeSurface('detail'); }}>{language === 'es' ? 'Añadir apoyos' : 'Add supports'}</button>
-        : !project.nodalLoads.length && !project.memberLoads.length ? <button type="button" onClick={() => { setSelection(null); setActiveTool('distributedLoad'); closeSurface('detail'); }}>{language === 'es' ? 'Añadir cargas' : 'Add loads'}</button>
-        : analysis?.success ? <>
-          <button type="button" onClick={() => emitWorkspaceCommand('open-results', {})}>{language === 'es' ? 'Ver resultados' : 'View results'}</button>
-        </> : <button type="button" disabled={isAnalyzing} onClick={() => { emitWorkspaceCommand('analysis-requested'); analyze(); }}>{language === 'es' ? 'Analizar marco' : 'Analyse frame'}</button>}
-      {project.members.length > 0 ? <button type="button" onClick={(event) => openModel2DSurface('analysisSetup', event.currentTarget)}>{language === 'es' ? 'Casos de carga' : 'Load cases'}</button> : null}
-      {project.members.length > 0 && onModeChange ? <div className="mesa-journey__connections" role="group" aria-label={language === 'es' ? 'Continuar en otra herramienta' : 'Continue in another tool'}>
-        <button type="button" onClick={() => { setToolIntent({ tool: 'design', kind: 'model' }); onModeChange('design'); }}>{language === 'es' ? 'Diseñar este marco' : 'Design this frame'}</button>
-        <button type="button" onClick={() => { setToolIntent({ tool: 'space3d', kind: 'bring-2d' }); onModeChange('3d'); }}>{language === 'es' ? 'Crear 3D desde este marco' : 'Create 3D from this frame'}</button>
-      </div> : null}
-    </MesaJourney>}
     console={<Console
       layoutActions={{
         inspectorCollapsed: !inspectorOpen,

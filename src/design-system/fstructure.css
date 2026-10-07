@@ -715,92 +715,6 @@
   }
 }
 
-.workspace-topbar {
-  min-height: var(--fstructure-header-height);
-  padding: 0 clamp(16px, 3vw, 40px);
-  border-block-end: 0;
-  background: var(--sc-color-bg-app);
-}
-
-.workspace-topbar__project-group {
-  flex: 1 1 auto;
-}
-
-.workspace-topbar__brand {
-  width: 38px;
-  min-width: 38px;
-  min-height: 38px;
-  padding: 0;
-  border: 0;
-  border-radius: var(--sc-radius-control);
-  background: transparent;
-  box-shadow: none;
-}
-
-.workspace-topbar__brand .fs-mark--fstructure .fs-mark__register {
-  fill: var(--fs-family-analisis);
-}
-
-.workspace-topbar__project {
-  min-height: 40px;
-  padding: 4px 8px;
-  border: 0;
-  border-radius: var(--sc-radius-control);
-  background: transparent;
-  box-shadow: none;
-}
-
-.workspace-topbar__project:hover,
-.workspace-topbar__project:focus-visible,
-.workspace-topbar__brand:hover,
-.workspace-topbar__brand:focus-visible {
-  border-color: transparent;
-  background: var(--sc-color-surface-inset);
-  box-shadow: none;
-}
-
-.workspace-topbar__eyebrow {
-  color: var(--fs-family-analisis);
-  font-family: var(--sc-font-mono);
-  letter-spacing: .06em;
-}
-
-.workspace-topbar__project-copy strong {
-  font-family: var(--sc-font-display);
-}
-
-.workspace-topbar__status-chip {
-  border-radius: var(--sc-radius-pill);
-}
-
-.workspace-topbar__model-group,
-.workspace-topbar__experience-group,
-.workspace-topbar__calculate-group {
-  min-height: 40px;
-  border-radius: var(--sc-radius-pill);
-}
-
-.workspace-topbar__icon-button,
-.workspace-topbar__action-button {
-  min-height: 32px;
-  border-radius: var(--sc-radius-pill);
-}
-
-.workspace-topbar__action-button.is-primary,
-.workspace-topbar__project-editor-actions button[type='submit'] {
-  border-color: var(--fs-family-analisis);
-  background: var(--fs-family-analisis);
-  color: var(--sc-color-action-foreground);
-  box-shadow: var(--sc-shadow-action);
-}
-
-.workspace-topbar__action-button.is-active {
-  border-color: color-mix(in srgb, var(--fs-family-analisis) 45%, transparent);
-  background: color-mix(in srgb, var(--fs-family-analisis) 10%, var(--sc-color-surface-1));
-  color: var(--fs-family-analisis);
-  box-shadow: var(--sc-shadow-inset);
-}
-
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active),
 .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active) {
   --tool-color: var(--sc-color-action-foreground);
@@ -842,12 +756,6 @@
 }
 
 /* Respuesta ------------------------------------------------------------- */
-
-@media (max-width: 1180px) and (min-width: 1024px) {
-  .workspace-topbar__status:not(:has(.workspace-topbar__tool-status)) {
-    display: none;
-  }
-}
 
 @media (min-width: 861px) and (max-width: 1100px) {
   .solver2d-hero {
@@ -965,22 +873,6 @@
   .solver2d-path {
     min-height: 132px;
   }
-
-  .workspace-topbar {
-    min-height: var(--topbar-h);
-    padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 6px max(8px, env(safe-area-inset-left));
-  }
-
-  /* El estado del Modelo 2D vive en su franja inferior; el de 3D y FEM se
-     queda como un punto junto al nombre. */
-  .workspace-topbar__status:not(:has(.workspace-topbar__tool-status)) {
-    display: none;
-  }
-
-  .workspace-topbar__model-group,
-  .workspace-topbar__calculate-group {
-    box-shadow: var(--sc-shadow-inset);
-  }
 }
 
 @media (max-width: 420px) {
@@ -1020,19 +912,6 @@
   background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);
   box-shadow: var(--sc-shadow-selected);
-}
-
-.app-shell.workspace-screen .workspace-topbar :is(.workspace-topbar__icon-button, .workspace-topbar__action-button):active:not(:disabled) {
-  transform: var(--sc-press-transform);
-  box-shadow: var(--sc-shadow-pressed);
-}
-
-.app-shell.workspace-screen .workspace-topbar .workspace-topbar__action-button.is-primary:active:not(:disabled) {
-  transform: var(--sc-press-transform);
-  border-color: var(--sc-color-action-primary);
-  background: var(--sc-color-action-primary);
-  color: var(--sc-color-action-foreground);
-  box-shadow: var(--sc-shadow-pressed);
 }
 
 @media (prefers-reduced-motion: reduce) {

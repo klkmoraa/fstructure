@@ -820,10 +820,6 @@
 .dw-memory__confirm { display: grid; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-left: 2px solid var(--dw-warn); background: var(--sc-color-surface-inset); font-size: 12.5px; }
 .dw-memory__confirm p { margin: 0; }
 .dw-memory__confirm div { display: flex; flex-wrap: wrap; gap: 6px; }
-@media (max-width: 840px) {
-  /* En tablets y teléfonos el nombre del proyecto y acciones pesan más que deshacer. */
-  .workspace-topbar .dw-topbar-history { display: none; }
-}
 @media (max-width: 480px) {
   .dw-memory .sc-modal-surface__footer .sc-button { flex: 1 1 100%; justify-content: center; }
 }

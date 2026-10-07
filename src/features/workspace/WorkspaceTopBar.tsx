@@ -78,11 +78,6 @@ interface WorkspaceTopBarProps {
   /** Acciones secundarias del espacio: exportación, unidades y hojas. */
   utilities?: ReactNode;
   /**
-   * Día / Noche. Va siempre junto a la acción primaria, en las cuatro mesas, para
-   * que cambiar de herramienta no cambie el lugar de los controles comunes.
-   */
-  themeControl?: ReactNode;
-  /**
    * Muestra los comandos del Modelo 2D (historial, Resultados, cálculo). Las
    * herramientas aisladas —Diseño, 3D y FEM— lo apagan y aportan los suyos por
    * `contextualControls`, `primaryAction` y `toolStatus`.
@@ -118,7 +113,6 @@ export const WorkspaceTopBar = ({
   onOpenResults,
   onOpenCalculationExperience,
   utilities,
-  themeControl,
   contextActive = true,
 }: WorkspaceTopBarProps) => {
   const [projectEditorOpen, setProjectEditorOpen] = useState(false);
@@ -235,19 +229,21 @@ export const WorkspaceTopBar = ({
           </span>
         </span> : null}
         {contextActive ? <span
-          className={'workspace-topbar__status-chip' + (analysisRunning ? ' is-running' : '') + (analysisFailed ? ' is-error' : '')}
+          className="workspace-topbar__status-chip workspace-topbar__tool-status"
           role="status"
           data-analysis-state={analysisState}
+          data-tone={analysisRunning ? 'running' : analysisFailed ? 'error' : analysisState === 'resolved' ? 'ok' : 'neutral'}
           title={analysisLabel}
         >
-          {analysisRunning ? <Play size={15} fill="currentColor" aria-hidden="true" /> : <ChartNoAxesCombined size={15} aria-hidden="true" />}
-          <span><strong>{analysisLabel}</strong></span>
+          <span className="workspace-topbar__status-dot" aria-hidden="true" />
+          <span className="workspace-topbar__tool-status-copy"><strong>{analysisLabel}</strong></span>
         </span> : toolStatus}
       </div>
     </div>
 
+    {modeSwitch}
+
     <nav className="workspace-topbar__actions" aria-label={labels.actions}>
-      {modeSwitch}
       {contextActive ? <div className="workspace-topbar__model-group" data-workspace-group="model">
         <div className="workspace-topbar__history-group">
           <button type="button" className="workspace-topbar__icon-button" onClick={onUndo} disabled={!canUndo} aria-label={labels.undo} title={labels.undo}>
@@ -258,7 +254,7 @@ export const WorkspaceTopBar = ({
           </button>
         </div>
         <div className="workspace-topbar__results-group" data-workspace-group="results">
-          <button type="button" className={'workspace-topbar__action-button' + (resultsOpen ? ' is-active' : '')} onClick={(event) => onOpenResults(event.currentTarget)} aria-label={labels.results} aria-pressed={resultsOpen}>
+          <button type="button" className={'workspace-topbar__action-button' + (resultsOpen ? ' is-active' : '')} data-wide-label onClick={(event) => onOpenResults(event.currentTarget)} aria-label={labels.results} aria-pressed={resultsOpen} title={labels.results}>
             <ChartNoAxesCombined size={17} aria-hidden="true" />
             <span>{labels.results}</span>
           </button>
@@ -276,10 +272,9 @@ export const WorkspaceTopBar = ({
           <span>{labels.calculationExperience}</span>
         </button>
       </div> : null}
-      {utilities}
       {contextualControls}
       <WorkspaceHelp tool={tool} language={language} {...(helpTopic ? { topic: helpTopic } : {})} />
-      {themeControl}
+      {utilities}
       {primaryAction}
       {contextActive ? <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
         <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>

@@ -25,8 +25,6 @@ import { BuildingAxes } from './BuildingAxes';
 import { frameConcreteVolume, frameProposalStories, proposeFrameSections, proposeModelSections, type ProposalStep, type SectionProposal } from './frameProposal';
 import { startProposalWorker } from './proposalWorker';
 import { useWorkbenchStorage } from './workbenchStorage';
-import { MesaJourney } from '../../workspace/MesaJourney';
-import { ShellContribution } from '../../workspace/ShellToolSlots';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 type RowColumn<T> = { field: keyof T & string; label: string; unit: string; min?: number };
@@ -366,13 +364,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) }
     : { status: 'error' as const, label: fromModel && model.pending ? 'Analizando el modelo…' : 'Datos incompletos' };
 
-  return <><ShellContribution slot="journey"><MesaJourney mode="Diseño" source={`Origen: ${fromModel ? name : 'Elemento suelto · Pórtico rápido'}${from3d && modelAxes ? ` · ${modelAxes.axes.find((axis) => axis.id === axisOf(draft, modelAxes))?.label ?? ''}` : ''}`}
-    hint={modelProposal && modelSections ? `Propuesta: ${formatNumber(modelProposal.volumeM3, 2)} m³ · actual: ${formatNumber(modelSections.volumeM3, 2)} m³.` : fromModel && (!external || external.errors.length) ? 'Revisa los datos del modelo.' : undefined}>
-    <button type="button" onClick={() => chrome.setPanel('inputs', true)}>Origen y datos</button>
-    {result ? <button type="button" onClick={() => chrome.setPanel('results', true)}>Ver comprobaciones</button> : null}
-    {fromModel && modelSections ? modelProposal ? <button type="button" onClick={applyModelProposal}>{from3d ? 'Aplicar al 3D' : 'Aplicar al modelo'}</button> : <button type="button" disabled={proposing !== null} onClick={proposeSections}>{proposing ? 'Buscando…' : 'Proponer secciones'}</button> : null}
-    {fromModel && openSource ? <button type="button" onClick={openSource}>{from3d ? 'Volver al 3D' : 'Volver al 2D'}</button> : null}
-  </MesaJourney></ShellContribution><WorkbenchLayout
+  return <><WorkbenchLayout
     chrome={steelOnly ? { ...chrome, codeControl: <span className="dw-badge">Acero · NTC CDMX 2023</span> } : chrome}
     title="Estructura"
     report={report}

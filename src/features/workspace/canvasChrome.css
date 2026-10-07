@@ -319,3 +319,8 @@
   }
   .app-shell.workspace-screen[data-shell-class='K0'] .inspector-panel[data-surface-presentation='sheet']::before { content: none; }
 }
+
+/* El nombre de la herramienta ya lo dice el dock, y SNAP/GRID son estado fijo:
+   sólo se pinta el aviso mientras se coloca algo o con la ayuda activada. */
+.app-shell.workspace-screen .canvas-mode-badge:not(.placing-load):not(.has-context),
+.app-shell.workspace-screen .canvas-view-chips { display: none; }
