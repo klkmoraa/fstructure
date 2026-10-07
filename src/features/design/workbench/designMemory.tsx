@@ -233,7 +233,7 @@ export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onEx
   };
 
   return <Dialog open={open} onOpenChange={(next) => { setPending(null); onOpenChange(next); }} title="Memoria del proyecto"
-    description="Elementos guardados para la memoria de cálculo. Se recalculan con el motor vigente al abrirlos o exportarlos."
+    description="Se recalculan al abrirlos o exportarlos."
     className="dw-memory"
     footer={<>
       {memory.active ? <Button variant="secondary" onClick={() => save(true)} disabled={exporting} leadingIcon={<Plus size={15} aria-hidden="true" />}>Guardar como nuevo</Button> : null}
@@ -274,7 +274,7 @@ export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onEx
           </td>
         </tr>;
       })}</tbody>
-    </table> : <p className="dw-memory__empty">Aún no hay elementos. Diseña uno, dale una clave y agrégalo: la memoria reúne todos en un solo PDF con índice, totales de acero y concreto y bloque de responsiva.</p>}
+    </table> : <p className="dw-memory__empty">Aún no hay elementos. Diseña uno y agrégalo.</p>}
     {invalid ? <p className="dw-footnote">{`${invalid} ${invalid === 1 ? 'elemento no se puede calcular y queda' : 'elementos no se pueden calcular y quedan'} fuera del PDF.`}</p> : null}
   </Dialog>;
 }

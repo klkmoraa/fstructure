@@ -85,7 +85,7 @@
 
 .fs-suite__segmented,
 .fs-suite__chip {
-  min-height: 34px;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--s-line-strong);
@@ -102,8 +102,8 @@
 }
 .fs-suite__segmented { padding: 3px; gap: 2px; }
 .fs-suite__segmented button {
-  min-width: 36px;
-  min-height: 26px;
+  min-width: 40px;
+  min-height: 34px;
   border: 0;
   border-radius: 999px;
   background: transparent;

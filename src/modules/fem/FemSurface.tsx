@@ -111,7 +111,7 @@ export function FemSurface() {
         setDocument(base);
         setAnalysis(next);
         if (session) void session.saveFem(project, persistedStudy(base, next)).then(
-          () => setFeedback(next.success ? 'Resultado FEM guardado en el proyecto local.' : 'Diagnóstico FEM guardado en el proyecto local.'),
+          () => undefined,
           (error: unknown) => setFeedback(`Estudio FEM sólo en memoria: ${error instanceof Error ? error.message : String(error)}`),
         );
         return;
@@ -152,9 +152,8 @@ export function FemSurface() {
   const runAnalysis = useCallback(() => {
     const next = analyzeFemDocument(document);
     setAnalysis(next);
-    void persistStudy(document, next).then((saved) => {
-      if (saved) setFeedback(next.success ? 'Resultado FEM guardado en el proyecto local.' : 'Diagnóstico FEM guardado en el proyecto local.');
-    });
+    setFeedback(null);
+    void persistStudy(document, next);
   }, [document, persistStudy]);
 
   const importGmsh = useCallback(async (event: ChangeEvent<HTMLInputElement>) => {
