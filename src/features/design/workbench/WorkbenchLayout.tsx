@@ -160,7 +160,7 @@ function useStageZoom() {
  * pantalla completa —Dibujo, Datos, Resultados— con pestañas fijas abajo y el
  * elemento arriba.
  */
-export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption, results, report, onReset }: {
+export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption, results, report, onReset, noReview = false }: {
   chrome: WorkbenchChrome;
   title: string;
   inputs: ReactNode;
@@ -171,6 +171,8 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
   results: ReactNode;
   report: DesignReport | null;
   onReset: () => void;
+  /** Sin datos que revisar (el modelo de origen aún no existe): el lienzo ya ofrece las salidas. */
+  noReview?: boolean;
 }) {
   const { onReport, onVerdict, panels, setPanel } = chrome;
   useEffect(() => onReport(report), [report, onReport]);
@@ -219,7 +221,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
         {caption ? <span className="dw-badge dw-badge--caption">{caption}</span> : null}
       </div>
       <div className="dw-hud dw-hud--end">{chrome.codeControl}</div>
-      {!canShowResults ? <div className="dw-review-inputs"><button type="button" onClick={reviewInputs}>Revisar datos</button></div> : null}
+      {!canShowResults && !noReview ? <div className="dw-review-inputs"><button type="button" onClick={reviewInputs}>Revisar datos</button></div> : null}
       <div className="dw-zoom" role="group" aria-label="Zoom del lienzo" data-zoomed={zoom !== 1}>
         <button type="button" className="dw-zoom__step" onClick={() => setZoom(zoom / 1.25)} disabled={zoom <= ZOOM_MIN} aria-label="Alejar" title="Alejar"><Minus size={16} aria-hidden="true" /></button>
         <button type="button" onClick={() => setZoom(1)} disabled={zoom === 1} aria-label="Tamaño normal" title="Tamaño normal"><Maximize2 size={15} aria-hidden="true" /></button>

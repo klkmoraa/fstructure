@@ -943,6 +943,12 @@
 @keyframes dw-model-pulse { from { opacity: .25; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .dw-model-wait__dot { animation: none; } }
 .dw-model-errors { display: grid; justify-items: center; gap: 12px; align-self: center; }
+.dw-model-empty { display: grid; justify-items: center; gap: 16px; align-self: center; width: min(100%, 420px); margin-top: 32px; padding: 22px 18px; border-radius: var(--sc-radius-card); background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-raised); text-align: center; }
+.dw-model-empty strong { color: var(--dw-ink); font-size: 16px; font-weight: 600; line-height: 1.35; }
+.dw-model-empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; width: 100%; }
+.dw-model-empty__actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border: 1px solid var(--dw-line); border-radius: var(--sc-radius-pill); background: var(--sc-color-surface-1); color: var(--dw-ink); font: inherit; font-size: 14px; font-weight: 600; box-shadow: var(--sc-shadow-xs); cursor: pointer; white-space: nowrap; }
+.dw-model-empty__actions .dw-model-empty__primary { flex-basis: 100%; border-color: transparent; background: var(--sc-color-action-primary); color: #14171A; }
+.dw-model-empty__actions button:focus-visible { outline: 2px solid var(--sc-color-focus, var(--fs-family-analisis)); outline-offset: 2px; }
 .dw-model-confirm { display: grid; gap: 6px; }
 .dw-model-confirm p { color: var(--dw-ink); }
 .dw-model-confirm div { display: flex; flex-wrap: wrap; gap: 6px; }

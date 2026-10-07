@@ -197,7 +197,7 @@ export const axisOf = (draft: Pick<FrameDraft, 'axis'>, axes: ExternalStructureA
 
 /** La fuente externa que pide el borrador: el Modelo 2D, un eje del 3D o ninguna (pórtico rápido). */
 export function externalFor(draft: Pick<FrameDraft, 'source' | 'axis'>, model2d: ExternalStructureSource | null, axes: ExternalStructureAxes | null): ExternalStructureSource | null {
-  if (draft.source === 'model3d') return axes ? axes.source(axisOf(draft, axes)) : null;
+  if (draft.source === 'model3d') return axes?.axes.length ? axes.source(axisOf(draft, axes)) : null;
   return draft.source === 'model' ? model2d : null;
 }
 

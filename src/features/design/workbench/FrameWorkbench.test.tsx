@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../../data/projectStorage';
 import { ProjectProvider } from '../../../store/ProjectContext';
@@ -20,6 +20,22 @@ afterEach(cleanup);
 const results = () => screen.getByRole('region', { name: 'Resultados' });
 
 describe('mesa Estructura con el pórtico rápido', () => {
+  it('un modelo sin pórticos no detiene la mesa: abre el pórtico rápido y, si se elige, ofrece salidas', async () => {
+    const user = userEvent.setup();
+    const empty3d = { label: '3D', axes: [], columns: [], source: () => { throw new Error('sin ejes'); } };
+    const onOpenSpace3D = vi.fn();
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="model3d" modelAxes={empty3d} onOpenSpace3D={onOpenSpace3D} /></ProjectProvider>);
+    expect(screen.getByRole('radio', { name: 'Pórtico rápido' }).getAttribute('aria-checked')).toBe('true');
+    expect(await screen.findByRole('img', { name: /Utilización de el pórtico/ })).toBeTruthy();
+    // Elegir el 3D vacío no muestra un error: ofrece modelar aquí o en el 3D.
+    await user.click(screen.getByRole('radio', { name: 'Modelo 3D' }));
+    expect(screen.queryByText('Revisa los datos')).toBeNull();
+    await user.click(await screen.findByRole('button', { name: 'Modelar en 3D' }));
+    expect(onOpenSpace3D).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button', { name: 'Pórtico rápido' }));
+    expect(screen.getByRole('radio', { name: 'Pórtico rápido' }).getAttribute('aria-checked')).toBe('true');
+  });
+
   it('diseña vigas y columnas juntas y abre el miembro elegido', async () => {
     const user = userEvent.setup();
     render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="frame" /></ProjectProvider>);
@@ -59,12 +75,12 @@ describe('mesa Estructura con el pórtico rápido', () => {
     expect(beamHeight()).toBe('55');
   }, 20_000);
 
-  it('sin Modelo 2D la fuente lo explica y no inventa resultados', async () => {
+  it('sin Modelo 2D ofrece modelar aquí y no inventa resultados', async () => {
     const user = userEvent.setup();
     render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="frame" /></ProjectProvider>);
     await user.click(screen.getByRole('radio', { name: 'Modelo 2D' }));
     expect(screen.getByText('Sin Modelo 2D')).toBeTruthy();
-    expect(await screen.findByText(/No hay Modelo 2D en este proyecto/)).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Pórtico rápido' })).toBeTruthy();
     expect(screen.queryByRole('textbox', { name: 'Claro 1 · L (m)' })).toBeNull();
   });
 

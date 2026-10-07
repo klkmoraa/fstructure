@@ -193,6 +193,9 @@ function ProposalGroups({ proposal }: { proposal: SectionProposal }) {
   </table> : null;
 }
 
+/** Un modelo del proyecto se puede diseñar cuando existe y no trae errores propios (vacío, sin pórticos, sin concreto). */
+const usableSource = (source: ExternalStructureSource | null | undefined) => Boolean(source && !source.errors.length);
+
 export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('frame', FRAME_DEFAULTS, FRAME_LEGACY);
   const storage = useWorkbenchStorage();
@@ -210,9 +213,16 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   // Al llegar desde un modo con modelo (2D o 3D), Estructura diseña ese modelo si
   // estaba diseñando un modelo del proyecto; el pórtico rápido elegido se respeta,
   // salvo que se pida el diseño de una barra. En el 3D se abre el eje de esa barra.
+  // Un modelo que todavía no se puede diseñar (vacío, sin pórticos o sin concreto)
+  // no detiene la mesa: se toma el otro modelo o, si tampoco, el pórtico rápido.
   useEffect(() => {
     const focus = focusRef.current;
-    const source = startSource ?? draft.source;
+    // Un 2D de acero no se diseña aquí en concreto, pero sí tiene su revisión: también cuenta.
+    const usable2d = usableSource(modelSource) || Boolean(chrome.modelReview);
+    const usable3d = Boolean(modelAxes?.axes.length);
+    let source = startSource ?? draft.source;
+    if (source === 'model3d' && !usable3d) source = usable2d ? 'model' : 'frame';
+    else if (source === 'model' && !usable2d) source = usable3d ? 'model3d' : 'frame';
     const axes = focus && source === 'model3d' && modelAxes?.axesOfMember ? modelAxes.axesOfMember(focus) : [];
     const axis = axes.length && modelAxes && !axes.includes(axisOf(draft, modelAxes)) ? axes[0]! : draft.axis;
     if (source !== 'model' && source !== 'model3d') focusRef.current = null;
@@ -367,6 +377,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   return <><WorkbenchLayout
     chrome={steelOnly ? { ...chrome, codeControl: <span className="dw-badge">Acero · NTC CDMX 2023</span> } : chrome}
     title="Estructura"
+    noReview={fromModel && !steelOnly && !model.pending && !usableSource(external)}
     report={report}
     onReset={() => { reset(); setBays(DEFAULT_BAYS); setStories(DEFAULT_STORIES); setPicked(null); }}
     verdict={verdict}
@@ -553,6 +564,22 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </> : null}
     </> : steelOnly ? null : fromModel && model.pending
       ? <div className="dw-model-wait" role="status"><span className="dw-model-wait__dot" aria-hidden="true" />{from3d ? 'Analizando el Modelo 3D completo con el solver espacial…' : 'Analizando el Modelo 2D con el solver de la app…'}</div>
+      : fromModel && !usableSource(external) ? <div className="dw-model-empty">
+        <strong>{from3d ? 'El 3D aún no tiene pórticos' : !external?.summary.members ? 'El 2D está vacío' : 'El 2D aún no tiene vigas ni columnas de concreto con cargas'}</strong>
+        <div className="dw-model-empty__actions">
+          <button type="button" className="dw-model-empty__primary" onClick={() => { set('source')('frame'); setPicked(null); }}>
+            <LayoutGrid size={15} aria-hidden="true" />Pórtico rápido
+          </button>
+          {from3d && (usableSource(modelSource) || chrome.modelReview) ? <button type="button" onClick={() => { set('source')('model'); setPicked(null); }}>
+            <PenLine size={15} aria-hidden="true" />Usar el 2D
+          </button> : !from3d && modelAxes?.axes.length ? <button type="button" onClick={() => { set('source')('model3d'); setPicked(null); }}>
+            <Box size={15} aria-hidden="true" />Usar el 3D
+          </button> : null}
+          {openSource ? <button type="button" onClick={openSource}>
+            {from3d ? <Box size={15} aria-hidden="true" /> : <PenLine size={15} aria-hidden="true" />}{from3d ? 'Modelar en 3D' : 'Modelar en 2D'}
+          </button> : null}
+        </div>
+      </div>
       : <div className="dw-model-errors">
         <ErrorsPanel errors={outcome && !outcome.ok ? outcome.errors : []} />
         {fromModel && openSource ? <button type="button" className="dw-inline-action" onClick={openSource}>
