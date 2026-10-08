@@ -198,7 +198,7 @@ export function Verdict({ status, ratio, title, outOfScope = 0, children }: {
     </div>
     {outOfScope > 0 ? <p className="dw-verdict__scope">
       <CircleDashed size={13} aria-hidden="true" />
-      Revisión incompleta: {outOfScope} {outOfScope === 1 ? 'verificación queda' : 'verificaciones quedan'} fuera del alcance del taller.
+      Revisión incompleta: {outOfScope} {outOfScope === 1 ? 'verificación' : 'verificaciones'} sin evaluar.
     </p> : null}
     {children}
   </section>;

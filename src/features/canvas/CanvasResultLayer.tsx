@@ -331,7 +331,7 @@ const CanvasResultLayerImpl = ({
     if (Math.abs(result.rx) > 1e-8) {
       const direction = Math.sign(result.rx);
       const length = 48;
-      descriptions.push(`Rx = ${formatFixed(toDisplay(result.rx, units, 'force'), 3)} ${forceLabel}`);
+      descriptions.push(`Rx = ${formatFixed(toDisplay(result.rx, units, 'force'), 2)} ${forceLabel}`);
       elements.push(
         <line key="rx" data-reaction-component="rx" x1={p.x - direction * (sideClearance + length)} y1={p.y} x2={p.x - direction * sideClearance} y2={p.y} markerEnd="url(#arrow-reaction)" />,
       );
@@ -339,7 +339,7 @@ const CanvasResultLayerImpl = ({
     if (Math.abs(result.ry) > 1e-8) {
       const screenDirection = -Math.sign(result.ry);
       const length = 48;
-      descriptions.push(`Ry = ${formatFixed(toDisplay(result.ry, units, 'force'), 3)} ${forceLabel}`);
+      descriptions.push(`Ry = ${formatFixed(toDisplay(result.ry, units, 'force'), 2)} ${forceLabel}`);
       elements.push(
         screenDirection < 0
           ? <line key="ry" data-reaction-component="ry" x1={p.x} y1={p.y + bottomClearance + length} x2={p.x} y2={p.y + bottomClearance} markerEnd="url(#arrow-reaction)" />
@@ -352,7 +352,7 @@ const CanvasResultLayerImpl = ({
       const path = clockwise
         ? `M ${p.x - 22} ${p.y - 10} A ${r} ${r} 0 1 0 ${p.x + 20} ${p.y - 14}`
         : `M ${p.x + 22} ${p.y - 10} A ${r} ${r} 0 1 1 ${p.x - 20} ${p.y - 14}`;
-      descriptions.push(`Mᵣ = ${formatFixed(toDisplay(result.rm, units, 'moment'), 3)} ${momentLabel}`);
+      descriptions.push(`Mᵣ = ${formatFixed(toDisplay(result.rm, units, 'moment'), 2)} ${momentLabel}`);
       elements.push(<path key="moment" d={path} markerEnd="url(#arrow-reaction)" />);
     }
     return elements.length ? <g key={node.id} className="reaction-symbol" data-node-id={node.id}><title>{descriptions.join(' · ')}</title>{elements}</g> : null;

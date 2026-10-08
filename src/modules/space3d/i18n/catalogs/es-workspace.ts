@@ -359,7 +359,7 @@ export const esWorkspace = {
   'space3d.dock.label': 'Herramientas de dibujo',
   'space3d.dock.generate': 'Generar estructura',
   'space3d.band.label': 'Centro analítico',
-  'space3d.band.open': 'Abrir resultados',
+  'space3d.band.open': 'Resultados',
   'space3d.band.displacement': 'Δ máx {value} mm · nudo {id}',
   'space3d.band.reaction': 'ΣR vertical {value} kN',
   'space3d.band.governing': '{name} gobernante {value} {unit} · {id}',

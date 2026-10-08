@@ -134,9 +134,9 @@ describe('DesignWorkbench', () => {
     const user = userEvent.setup();
     renderWorkbench();
     await user.type(screen.getByRole('textbox', { name: 'Clave' }), 'V-9');
-    await user.click(await within(results()).findByRole('button', { name: 'Agregar' }));
-    expect(await within(results()).findByText('Guardado en la memoria como V-9')).toBeTruthy();
-    await user.click(within(results()).getByRole('button', { name: /Guardado en la memoria/ }));
+    await user.click(await within(results()).findByRole('button', { name: 'Guardar' }));
+    expect(await within(results()).findByText('Guardado · V-9')).toBeTruthy();
+    await user.click(within(results()).getByRole('button', { name: /Guardado · V-9/ }));
     const dialog = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
     expect(within(dialog).getByText(/V-9 · Viga 25 × 50 cm/)).toBeTruthy();
     expect(within(dialog).getByRole('button', { name: /Exportar memoria \(1\)/ })).toBeTruthy();

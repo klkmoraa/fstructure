@@ -904,6 +904,7 @@
 @media (max-width: 760px) {
   .dw-frame-diagram__tabs { display: none !important; }
   .dw-frame-diagram__select { display: grid; }
+  .dw-frame-diagram__select select { min-height: 40px; }
 }
 .dw-frame__member[data-band='skip'] { stroke: var(--dw-subtle); stroke-dasharray: 5 4; stroke-width: 2; }
 .dw-frame-legend li[data-kind='skip']::before { border-top: 2px dashed var(--dw-subtle); }

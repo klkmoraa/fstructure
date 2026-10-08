@@ -189,14 +189,14 @@ const savedDate = (iso: string) => {
 /** Estado de la memoria sobre los resultados: guardado, con cambios o fuera de la memoria. */
 export function MemoryStatus({ memory, element, onSave, onOpen }: { memory: DesignMemory; element: DesignElementKind; onSave: () => void; onOpen: () => void }) {
   const text = memory.active
-    ? memory.saved ? `Guardado en la memoria${memory.active.fields.tag ? ` como ${memory.active.fields.tag}` : ''}` : 'Cambios sin guardar en la memoria'
-    : `${ELEMENT_LABEL[element]} fuera de la memoria del proyecto`;
+    ? memory.saved ? `Guardado${memory.active.fields.tag ? ` · ${memory.active.fields.tag}` : ''}` : 'Cambios sin guardar'
+    : `${ELEMENT_LABEL[element]} sin guardar`;
   return <div className="dw-memory-status" data-state={memory.active ? memory.saved ? 'saved' : 'dirty' : 'none'}>
     <button type="button" className="dw-memory-status__open" onClick={onOpen} title="Abrir la memoria del proyecto">
       <i aria-hidden="true" /><span>{text}</span>
     </button>
     {memory.saved ? null : <button type="button" className="dw-memory-status__save" onClick={onSave}>
-      <Save size={13} aria-hidden="true" />{memory.active ? 'Guardar' : 'Agregar'}
+      <Save size={13} aria-hidden="true" />Guardar
     </button>}
   </div>;
 }

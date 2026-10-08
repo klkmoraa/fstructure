@@ -22,7 +22,9 @@ import { ProvenanceCard } from './ProvenanceCard';
  *    elevación, el mismo color de tarjeta y la misma estructura. No hay prop
  *    para subir de nivel, ni clase que dependa del signo o de un umbral.
  * 2. **La fiabilidad es una línea propia**, en texto, nunca un color aplicado
- *    sobre el número. Por eso se distingue en escala de grises.
+ *    sobre el número. Por eso se distingue en escala de grises. Sólo aparece
+ *    cuando avisa algo (limitada, poco fiable, no disponible): «Confiable» en
+ *    cada tarjeta era ruido.
  * 3. **El contenido de un `raised` no es otra tarjeta**: la procedencia entra
  *    en nivel `flat`, que es lo que corresponde dentro de un marco.
  *
@@ -83,10 +85,10 @@ const ResultExtremeCardComponent = ({
         <dd>{position}</dd>
       </div>
       {/* Línea propia, en texto: es la prueba de escala de grises del slice. */}
-      <div className="result-extreme-card__reliability">
+      {reliability !== 'reliable' ? <div className="result-extreme-card__reliability">
         <dt>{t('reliability.lineLabel')}</dt>
         <dd data-reliability={reliability}>{t(reliabilityLevelLabelKey[reliability])}</dd>
-      </div>
+      </div> : null}
     </dl>
     {onLocate ? <button type="button" className="result-extreme-card__locate" onClick={onLocate}>
       <LocateFixed size={14} aria-hidden="true" />

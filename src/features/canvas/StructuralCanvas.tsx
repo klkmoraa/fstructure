@@ -2410,13 +2410,13 @@ export const StructuralCanvas = ({
       const { bottom: bottomClearance, side: sideClearance } = reactionClearanceFor(node.support.type);
       if (Math.abs(result.rx) > 1e-8) {
         const direction = Math.sign(result.rx);
-        smartLabelCandidates.push({ id: `reaction:${node.id}:rx`, text: `Rx = ${formatFixed(toDisplay(result.rx, units, 'force'), 3)} ${forceLabel}`, anchor: { x: point.x - direction * (sideClearance + 24), y: point.y - 14 }, priority: 1, tone: 'reaction', preferredOffset: { x: 0, y: 0 } });
+        smartLabelCandidates.push({ id: `reaction:${node.id}:rx`, text: `Rx = ${formatFixed(toDisplay(result.rx, units, 'force'), 2)} ${forceLabel}`, anchor: { x: point.x - direction * (sideClearance + 24), y: point.y - 14 }, priority: 1, tone: 'reaction', preferredOffset: { x: 0, y: 0 } });
       }
       if (Math.abs(result.ry) > 1e-8) {
-        smartLabelCandidates.push({ id: `reaction:${node.id}:ry`, text: `Ry = ${formatFixed(toDisplay(result.ry, units, 'force'), 3)} ${forceLabel}`, anchor: { x: point.x + 18, y: point.y + bottomClearance + 24 }, priority: 1, tone: 'reaction', preferredOffset: { x: 0, y: 0 } });
+        smartLabelCandidates.push({ id: `reaction:${node.id}:ry`, text: `Ry = ${formatFixed(toDisplay(result.ry, units, 'force'), 2)} ${forceLabel}`, anchor: { x: point.x + 18, y: point.y + bottomClearance + 24 }, priority: 1, tone: 'reaction', preferredOffset: { x: 0, y: 0 } });
       }
       if (Math.abs(result.rm) > 1e-8) {
-        smartLabelCandidates.push({ id: `reaction:${node.id}:rm`, text: `Mᵣ = ${formatFixed(toDisplay(result.rm, units, 'moment'), 3)} ${momentLabel}`, anchor: { x: point.x, y: point.y - 38 }, priority: 1, tone: 'moment', preferredOffset: { x: 0, y: 0 } });
+        smartLabelCandidates.push({ id: `reaction:${node.id}:rm`, text: `Mᵣ = ${formatFixed(toDisplay(result.rm, units, 'moment'), 2)} ${momentLabel}`, anchor: { x: point.x, y: point.y - 38 }, priority: 1, tone: 'moment', preferredOffset: { x: 0, y: 0 } });
       }
     }
 
@@ -2442,7 +2442,9 @@ export const StructuralCanvas = ({
             .filter((candidate) => candidate.quantity === quantity && candidate.kind === kind)
             .sort((first, second) => first.x - second.x)[0];
           return point ? [{ ...point, kind }] : [];
-        }).filter((point, index, all) => index === 0 || Math.abs(point.x - all[index - 1].x) > Math.max(1, length) * 1e-7 || Math.abs(point.value - all[index - 1].value) > Math.max(1, Math.abs(point.value)) * 1e-7);
+        }).filter((point, index, all) => index === 0 || Math.abs(point.x - all[index - 1].x) > Math.max(1, length) * 1e-7 || Math.abs(point.value - all[index - 1].value) > Math.max(1, Math.abs(point.value)) * 1e-7)
+          // Un extremo nulo («M mín 0.00» en un apoyo) no dice nada y se encimaba con el apoyo.
+          .filter((point) => Math.abs(point.value) > globalDiagramMax * 0.005);
         for (const point of extrema) {
           const grossX = (result.startOffset ?? 0) + point.x;
           const baseX = ni.x + tx * grossX;

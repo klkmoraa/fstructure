@@ -359,7 +359,7 @@ export const enWorkspace = {
   'space3d.dock.label': 'Drawing tools',
   'space3d.dock.generate': 'Generate structure',
   'space3d.band.label': 'Analysis centre',
-  'space3d.band.open': 'Open results',
+  'space3d.band.open': 'Results',
   'space3d.band.displacement': 'Δ max {value} mm · node {id}',
   'space3d.band.reaction': 'Vertical ΣR {value} kN',
   'space3d.band.governing': 'Governing {name} {value} {unit} · {id}',

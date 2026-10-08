@@ -126,6 +126,8 @@
 
 /* ─── Móvil (K0) ─── */
 @media (max-width: 1023px) {
+  /* La ficha activa (Axial · Cortante · Momento) ya nombra el diagrama: la leyenda lo repetía. */
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-result-legend { display: none; }
   /* Barra inferior: una franja plana; ninguna pieza con caja propia que se corte. */
   .app-shell.workspace-screen[data-shell-class='K0'] > .console {
     align-items: center;

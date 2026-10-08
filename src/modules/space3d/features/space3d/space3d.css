@@ -2841,3 +2841,9 @@
     padding-right: 0;
   }
 }
+
+/* Teléfono: la banda dice sólo el dato (sin rótulo) y puede usar dos renglones. */
+@media (max-width: 760px) {
+  .space3d-results-band-label { display: none; }
+  .space3d-results-band-copy strong { display: -webkit-box; white-space: normal; line-height: 1.3; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+}

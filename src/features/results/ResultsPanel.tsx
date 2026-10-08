@@ -527,6 +527,7 @@ const DiagramView = ({ type, memberResult, memberId, isMobile }: { type: Diagram
   if (!memberResult?.diagramSegments.length) return <div className="empty-small">{t('results.selectMember')}</div>;
   const min = type === 'axial' ? memberResult.minAxial : type === 'shear' ? memberResult.minShear : memberResult.minMoment;
   const max = type === 'axial' ? memberResult.maxAxial : type === 'shear' ? memberResult.maxShear : memberResult.maxMoment;
+  const peak = Math.max(Math.abs(min), Math.abs(max), 1e-9);
   const maxAbs = Math.max(Math.abs(min), Math.abs(max), Math.abs(envelope?.minimum.value ?? 0), Math.abs(envelope?.maximum.value ?? 0), 1e-9);
   const L = memberResult.length;
   const pinnedX = resultCursor?.memberId === memberId && resultCursor.pinned ? Math.max(0, Math.min(L, resultCursor.x)) : null;
@@ -577,6 +578,8 @@ const DiagramView = ({ type, memberResult, memberId, isMobile }: { type: Diagram
     return commands.join(' ');
   };
   const label = type === 'axial' ? t('results.axialDiagram') : type === 'shear' ? t('results.shearDiagram') : t('results.momentDiagram');
+  // Las tarjetas dicen la magnitud corta («Momento · Máx.»); el título largo queda en el gráfico.
+  const shortLabel = type === 'axial' ? t('results.axial') : type === 'shear' ? t('results.shear') : t('results.moment');
   const unit = type === 'moment' ? unitLabel(units, 'moment') : unitLabel(units, 'force');
   const quantity = type === 'moment' ? 'moment' as const : 'force' as const;
   const displayValue = (value: number) => toDisplay(value, units, quantity);
@@ -649,22 +652,23 @@ const DiagramView = ({ type, memberResult, memberId, isMobile }: { type: Diagram
         lectura del cursor no es un extremo — sigue siendo lectura, y vive
         junto al gráfico. */}
     <ResultMetricRail isMobile={isMobile} className="diagram-focus-cards">
-      <ResultExtremeCard
-        label={`${label} · ${t('results.maximum')}`}
-        value={formatFixed(displayValue(max), 3)}
+      {/* Un extremo nulo (el mínimo de una viga simple en sus apoyos) no es dato: no ocupa tarjeta. */}
+      {Math.abs(max) > peak * 0.005 || Math.abs(min) <= peak * 0.005 ? <ResultExtremeCard
+        label={`${shortLabel} · ${t('results.maximum')}`}
+        value={formatFixed(displayValue(max), 2)}
         unit={unit}
         position={maxPoint ? `${memberId} · x ${formatFixed(toDisplay(maxPoint.x, units, 'length'), 2)} ${lengthUnit}` : memberId}
         reliability={reliability}
         accent={colorClass}
-      />
-      <ResultExtremeCard
-        label={`${label} · ${t('results.minimum')}`}
-        value={formatFixed(displayValue(min), 3)}
+      /> : null}
+      {Math.abs(min) > peak * 0.005 ? <ResultExtremeCard
+        label={`${shortLabel} · ${t('results.minimum')}`}
+        value={formatFixed(displayValue(min), 2)}
         unit={unit}
         position={minPoint ? `${memberId} · x ${formatFixed(toDisplay(minPoint.x, units, 'length'), 2)} ${lengthUnit}` : memberId}
         reliability={reliability}
         accent={colorClass}
-      />
+     /> : null}
       {cursorPoint ? <div className="diagram-cursor-readout diagram-cursor-metric"><span>{t('results.cursorValue')}</span><strong>{formatFixed(displayValue(cursorPoint[type]), 3)} {unit}</strong><small>x {formatFixed(toDisplay(cursorPoint.x, units, 'length'), 2)} {lengthUnit}</small></div> : null}
     </ResultMetricRail>
     <div className={`diagram-chart ${colorClass}`} data-testid="diagram-chart"><div className="diagram-chart-heading"><label><span>{t('results.member')}</span><select aria-label={t('results.memberForDiagram')} value={memberId} onChange={(event) => { setSelection({ kind: 'member', id: event.target.value }); setResultCursor(null); }}>{memberOptions.map((member) => <option key={member.memberId} value={member.memberId}>{member.memberId}</option>)}</select></label><strong>{label}</strong><button className="envelope-toggle" aria-pressed={envelopeMode} disabled={envelopeBusy} title={t('results.compareAllCases')} onClick={() => { if (!envelopeScenarios) runEnvelopeAnalysis(); setEnvelopeMode((current) => !current); }}>{envelopeBusy ? '…' : 'Env.'}</button><small>{envelopeMode ? t('results.scenarioCount', { count: envelope?.includedScenarioIds.length ?? 0 }) : pinnedX === null ? t('results.pointerHint') : t('results.pinnedHint')}</small></div><span id={cursorHelpId} className="sr-only">{t('results.chartKeyboardHelp')}</span><svg tabIndex={0} role="img" aria-label={diagramAriaLabel} aria-describedby={cursorHelpId} aria-keyshortcuts="ArrowLeft ArrowRight Home End Escape" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" onKeyDown={movePinnedByKeyboard} onPointerMove={(event) => setHoverX(pointerX(event))} onPointerDown={(event) => pinAt(pointerX(event))} onPointerLeave={() => setHoverX(null)}>
