@@ -49,9 +49,10 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Rendimiento y distribución
 
-- [ ] Bajar el bundle inicial (las citas de la portada ya no se cargan).
+- [x] Bajar el bundle inicial: la mesa, three.js y los diálogos de la Home se cargan aparte (JS inicial 452 → 149 KB gzip, CSS 225 → 15 KB al quitar dos fuentes incrustadas sin uso).
 - [ ] Escenas de la Home en WebP.
-- [ ] PWA: instalación, offline y actualización coherentes.
+- [x] PWA sin conexión: `sw.js` (generado en `vite.config.ts`) guarda la Home, la mesa y los workers; PDF, imágenes y fuentes al usarse. Una versión nueva toma el control al cerrar la app.
+- [ ] Aviso discreto «Nueva versión lista · Recargar» cuando hay un service worker en espera.
 - [ ] Publicar con el flujo oficial de Pages (artefacto) en vez de escribir en `gh-pages`.
 
 ## Pruebas (sólo si aportan)

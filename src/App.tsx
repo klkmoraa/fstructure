@@ -1,11 +1,9 @@
-import { useCallback, useEffect } from 'react';
+import { Suspense, lazy, useCallback, useEffect } from 'react';
 import { LazyMotion, MotionConfig } from 'motion/react';
 import './styles.css';
 import './design-system/material.css';
 import { ProjectProvider, useProject } from './store/ProjectContext';
 import { ClassroomSessionProvider } from './store/ClassroomSessionContext';
-import WorkspaceShell from './features/workspace/WorkspaceShell';
-import { MesaModeShell } from './features/workspace/ToolShell';
 import { runMesaTransition } from './features/workspace/mesaTransition';
 import { peekToolIntent, setToolIntent } from './features/workspace/toolIntent';
 import { preloadMesaMode } from './features/workspace/toolSurfaces';
@@ -17,6 +15,15 @@ import type { MesaMode } from './shared/navigation/projectUrl';
 
 const loadMotionFeatures = () => import('./design-system/motionFeatures')
   .then(({ default: features }) => features);
+
+/* La mesa (2D, 3D y Diseño) se descarga aparte: la Home abre sin su peso y la
+   pide en segundo plano en cuanto el navegador queda libre. */
+const loadWorkspaceShell = () => import('./features/workspace/WorkspaceShell');
+const loadMesaModeShell = () => import('./features/workspace/ToolShell');
+const WorkspaceShell = lazy(loadWorkspaceShell);
+const MesaModeShell = lazy(() => loadMesaModeShell().then((module) => ({ default: module.MesaModeShell })));
+const preloadShells = () => { void loadWorkspaceShell().catch(() => undefined); void loadMesaModeShell().catch(() => undefined); };
+const ShellLoading = () => <div className="app-shell-loading" role="status" aria-label="Cargando la mesa" />;
 
 const FStructureSurface = () => {
   const { project, analysis, replaceProject, openUnifiedProject } = useProject();
@@ -55,7 +62,7 @@ const FStructureSurface = () => {
      segundo plano para que «Continuar» no espere a la red (en móvil eran segundos). */
   useEffect(() => {
     if (route.surface !== 'welcome') return;
-    const preload = () => { void toolRegistry[0]?.load().catch(() => undefined); };
+    const preload = () => { preloadShells(); void toolRegistry[0]?.load().catch(() => undefined); };
     if (typeof window.requestIdleCallback === 'function') {
       const handle = window.requestIdleCallback(preload, { timeout: 2000 });
       return () => window.cancelIdleCallback(handle);
@@ -69,7 +76,7 @@ const FStructureSurface = () => {
   useEffect(() => {
     if (route.surface !== 'workspace' || route.tool !== 'model2d' || typeof window.requestIdleCallback !== 'function') return;
     const others = (['model', '3d', 'design'] as const).filter((mode) => mode !== (route.mode ?? 'model'));
-    const handle = window.requestIdleCallback(() => { others.forEach((mode) => { void preloadMesaMode(mode); }); }, { timeout: 4000 });
+    const handle = window.requestIdleCallback(() => { preloadShells(); others.forEach((mode) => { void preloadMesaMode(mode); }); }, { timeout: 4000 });
     return () => window.cancelIdleCallback(handle);
   }, [route.surface, route.tool, route.mode]);
 
@@ -104,9 +111,11 @@ const FStructureSurface = () => {
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
     {route.surface === 'welcome'
       ? <HomePage key="home" onOpenWorkspace={() => openWorkspace()} onOpenSpace3D={openSpace3D} onOpenDesign={openDesign} />
-      : route.mode === 'design' || route.mode === '3d'
-        ? <MesaModeShell key="model2d-mesa" mode={route.mode} projectId={project.id} onOpenHome={openHome} onModeChange={setMesaMode} />
-        : <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openHome} onModeChange={setMesaMode} />}
+      : <Suspense fallback={<ShellLoading />}>
+        {route.mode === 'design' || route.mode === '3d'
+          ? <MesaModeShell key="model2d-mesa" mode={route.mode} projectId={project.id} onOpenHome={openHome} onModeChange={setMesaMode} />
+          : <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openHome} onModeChange={setMesaMode} />}
+      </Suspense>}
   </ClassroomSessionProvider>;
 };
 

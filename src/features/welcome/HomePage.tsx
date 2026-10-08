@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { Suspense, lazy, useRef, useState, type CSSProperties } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,15 +21,17 @@ import { classroomExerciseTemplates, type ClassroomExerciseTemplateId } from '..
 import { useI18n } from '../../i18n/useI18n';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
 import { exportProjectJson } from '../../utils/export';
-import { DxfImportDialog } from '../../import/dxf/DxfImportDialog';
-import { PortableImportCenter } from '../import-export/PortableImportCenter';
-import { PersonalLibraryView } from '../library/PersonalLibraryView';
 import { ProjectHub } from '../project-hub/ProjectHub';
 import { ThreeStructuralImage, type ThreeStructuralAssetId } from '../structural-assets';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
-import { NewExerciseDialog } from './NewExerciseDialog';
 import { presentExample } from './examplePresentation';
 import './home.css';
+
+// Lo que sólo se abre a pedido (biblioteca, importar, ejercicio nuevo) llega al abrirlo.
+const DxfImportDialog = lazy(() => import('../../import/dxf/DxfImportDialog').then((module) => ({ default: module.DxfImportDialog })));
+const PortableImportCenter = lazy(() => import('../import-export/PortableImportCenter').then((module) => ({ default: module.PortableImportCenter })));
+const PersonalLibraryView = lazy(() => import('../library/PersonalLibraryView').then((module) => ({ default: module.PersonalLibraryView })));
+const NewExerciseDialog = lazy(() => import('./NewExerciseDialog').then((module) => ({ default: module.NewExerciseDialog })));
 
 type HomeView = 'home' | 'projects' | 'templates' | 'library' | 'classroom' | 'import';
 
@@ -257,7 +259,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
           <span className="fh-card__action">{text.openTemplate}<ArrowRight size={14} aria-hidden="true" /></span>
         </button>)}
       </div>
-        : view === 'library' ? <PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} />
+        : view === 'library' ? <Suspense fallback={null}><PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} /></Suspense>
           : <div className="fh-links fh-links--wide">
             <button type="button" className="fh-links__item" onClick={() => setImportOpen(true)}><span className="fh-links__icon" aria-hidden="true"><FileUp size={18} /></span><span className="fh-links__text"><strong>{text.importPortable}</strong><small>{text.importPortableBody}</small></span><ArrowRight className="fh-links__go" size={16} aria-hidden="true" /></button>
             <button type="button" className="fh-links__item" onClick={() => setDxfOpen(true)}><span className="fh-links__icon" aria-hidden="true"><Upload size={18} /></span><span className="fh-links__text"><strong>{text.importDxf}</strong><small>{text.importDxfBody}</small></span><ArrowRight className="fh-links__go" size={16} aria-hidden="true" /></button>
@@ -301,9 +303,11 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
       </footer>
     </main>
 
+    <Suspense fallback={null}>
     {importOpen ? <PortableImportCenter open currentProjectName={project.name} onClose={() => setImportOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { setImportOpen(false); openProject(outcome.project, outcome.restoredAnalysis); }} /> : null}
-    <DxfImportDialog open={dxfOpen} onOpenChange={setDxfOpen} onImported={() => { setDxfOpen(false); onOpenWorkspace(); }} />
-    <NewExerciseDialog open={exerciseOpen} initialTemplateId={exerciseTemplate} onClose={() => setExerciseOpen(false)} onCreate={(next) => { setExerciseOpen(false); openProject(next); }} />
+    {dxfOpen ? <DxfImportDialog open onOpenChange={setDxfOpen} onImported={() => { setDxfOpen(false); onOpenWorkspace(); }} /> : null}
+    {exerciseOpen ? <NewExerciseDialog open initialTemplateId={exerciseTemplate} onClose={() => setExerciseOpen(false)} onCreate={(next) => { setExerciseOpen(false); openProject(next); }} /> : null}
+    </Suspense>
   </>;
 };
 

@@ -43,6 +43,8 @@ No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa.
 - Un resultado es derivado: si cambian sus entradas, se invalida.
 - El cálculo pesado va en workers con mensajes serializables.
 - Lo no probado se muestra como **Experimental** en la interfaz.
+- La Home carga ligera: la mesa (`WorkspaceShell`, `MesaModeShell`), three.js y los diálogos de la Home van en `lazy()`; no importar estos estáticamente desde `App` o la Home.
+- Sin conexión: `vite.config.ts` genera `sw.js` desde `scripts/sw.template.js` (precarga el código salvo PDF; sólo lee del mismo origen, nunca envía datos).
 
 ## Marca
 

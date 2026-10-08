@@ -9,7 +9,7 @@
     <script>
       (function() {
         var isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        var v = '3';
+        var v = '4';
         var manifest = isDark ? './site-dark.webmanifest?v=' + v : './site.webmanifest?v=' + v;
         var touch512 = isDark ? './icon-512-dark.png?v=' + v : './icon-512.png?v=' + v;
         var touch192 = isDark ? './icon-192-dark.png?v=' + v : './icon-192.png?v=' + v;
@@ -80,8 +80,8 @@
     </script>
 
     <!-- Static Fallbacks for Browsers and Media Queries -->
-    <link rel="manifest" href="./site-dark.webmanifest?v=3" media="(prefers-color-scheme: dark)" />
-    <link rel="manifest" href="./site.webmanifest?v=3" media="(prefers-color-scheme: light)" />
+    <link rel="manifest" href="./site-dark.webmanifest?v=4" media="(prefers-color-scheme: dark)" />
+    <link rel="manifest" href="./site.webmanifest?v=4" media="(prefers-color-scheme: light)" />
 
     <link rel="apple-touch-icon" sizes="512x512" href="./icon-512-dark.png?v=3" media="(prefers-color-scheme: dark)" />
     <link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png?v=3" media="(prefers-color-scheme: light)" />
@@ -109,7 +109,7 @@
       if (window.matchMedia) {
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
           var dark = e.matches;
-          var v = '3';
+          var v = '4';
           var m = document.getElementById('app-manifest');
           if (m) m.href = dark ? './site-dark.webmanifest?v=' + v : './site.webmanifest?v=' + v;
           var t512 = document.getElementById('touch-icon-512');

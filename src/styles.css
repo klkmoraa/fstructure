@@ -138,3 +138,6 @@ button, input, select, textarea, summary, [role='button'], [role='tab'] {
     animation-duration: 0.001ms !important;
   }
 }
+
+/* Mientras llega el código de la mesa: el mismo fondo, sin parpadeo blanco. */
+.app-shell-loading { height: 100dvh; background: var(--sc-color-bg-app, var(--sc-color-surface-0, #f7f6f1)); }

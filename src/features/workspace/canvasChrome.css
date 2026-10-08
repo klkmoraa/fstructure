@@ -124,6 +124,14 @@
   }
 }
 
+/* Escritorio con Resultados abierto: las pestañas del panel ya eligen N, V, M o la
+   deformada; las mismas fichas sobre el lienzo (y la leyenda) sobraban. Quedan
+   Fluencia y ACM, que sólo existen sobre el lienzo. */
+.app-shell.workspace-screen:not([data-shell-class='K0']):has(.results-panel:not(.desktop-collapsed):not([hidden])) .canvas-host :is(
+  .canvas-evidence-layer:is([data-evidence-layer='axial'], [data-evidence-layer='shear'], [data-evidence-layer='moment'], [data-evidence-layer='deformed']),
+  .canvas-result-legend
+) { display: none; }
+
 /* ─── Móvil (K0) ─── */
 @media (max-width: 1023px) {
   /* La ficha activa (Axial · Cortante · Momento) ya nombra el diagrama: la leyenda lo repetía. */
