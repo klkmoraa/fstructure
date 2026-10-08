@@ -68,19 +68,22 @@ describe('dock dinámico', () => {
     expect(screen.queryByRole('dialog', { name: 'Más herramientas' })).toBeNull();
   });
 
-  it('el valor de una carga se escribe en el teclado propio y conserva su sentido', async () => {
+  it('el valor de una carga se escribe con el teclado del teléfono y conserva su sentido', async () => {
     const user = userEvent.setup();
     montar();
     await user.click(screen.getByRole('button', { name: 'elegir NL1' }));
     await user.click(screen.getByRole('button', { name: 'Valor de NL1' }));
-    await user.click(screen.getByRole('button', { name: '3' }));
-    await user.click(screen.getByRole('button', { name: '5' }));
-    await user.click(screen.getByRole('button', { name: 'Aplicar' }));
+    const campo = screen.getByRole('textbox', { name: 'Valor de NL1' }) as HTMLInputElement;
+    // El campo es del sistema: teclado completo, no sólo cifras.
+    expect(campo.readOnly).toBe(false);
+    expect(campo.getAttribute('inputmode')).toBe('text');
+    expect(document.activeElement).toBe(campo);
+    await user.type(campo, '35 kN{Enter}');
     // 20 kN hacia abajo → 35 kN hacia abajo.
     expect(screen.getByLabelText('NL1 fy').textContent).toBe('-35');
 
     await user.click(screen.getByRole('button', { name: 'Valor de NL1' }));
-    await user.click(screen.getAllByRole('button', { name: 'Invertir sentido' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Invertir sentido' }));
     expect(screen.getByLabelText('NL1 fy').textContent).toBe('35');
   });
 
@@ -88,7 +91,7 @@ describe('dock dinámico', () => {
     const user = userEvent.setup();
     montar();
     await user.click(screen.getByRole('button', { name: 'elegir NL1' }));
-    act(() => emitWorkspaceCommand('edit-load-value'));
-    expect(screen.getByRole('group', { name: 'Valor de NL1' })).toBeTruthy();
+    act(() => emitWorkspaceCommand('edit-load-value', { id: 'NL1' }));
+    expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Valor de NL1' }));
   });
 });

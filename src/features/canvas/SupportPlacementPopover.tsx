@@ -182,7 +182,7 @@ export const SupportPlacementPopover = ({
         <span className="support-placement-angle-control">
           <input
             type="text"
-            inputMode="decimal"
+            inputMode="text"
             autoComplete="off"
             value={angleText}
             aria-label={rollerAngleLabel}

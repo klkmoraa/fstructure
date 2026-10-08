@@ -1345,16 +1345,18 @@ export const StructuralCanvas = ({
     }
   }, [activeTool, capturePointer, clearLongPressTimer, localScreenPoint, onRequestInspector, openCandidatePicker, selectStructuralTarget, setActiveTool, transitionInteraction]);
 
-  const completeLoadPlacement = () => {
+  const completeLoadPlacement = (id: string) => {
     setActiveTool('select');
+    // En el teléfono la carga se ajusta en el dock —su valor con el teclado del
+    // teléfono y su sentido—, sin una hoja que tape la carga recién puesta. Se
+    // pide en el mismo toque: fuera de él el teclado no sube.
+    if (compactCanvasChrome) {
+      emitWorkspaceCommand('edit-load-value', { id });
+      return;
+    }
     // Open after the click sequence so the newly mounted backdrop cannot receive
-    // the matching pointerup/click. En el teléfono la carga se ajusta en el
-    // dock —su valor y su sentido con el teclado propio—, sin una hoja que tape
-    // la carga recién puesta.
-    window.requestAnimationFrame(() => {
-      if (compactCanvasChrome) emitWorkspaceCommand('edit-load-value');
-      else onRequestInspector?.();
-    });
+    // the matching pointerup/click.
+    window.requestAnimationFrame(() => onRequestInspector?.());
   };
 
   const openSupportPlacement = useCallback((nodeId: string, client: ScreenPoint, initialType: SupportPlacementType = 'pin', initialAngleDeg = 90, initialPresetId?: string) => {
@@ -1470,7 +1472,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'nodalLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement();
+      completeLoadPlacement(id);
       return;
     }
     if (tool === 'moment') {
@@ -1485,7 +1487,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'nodalLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement();
+      completeLoadPlacement(id);
       return;
     }
     if (tool === 'distributedLoad') {
@@ -1534,7 +1536,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'memberLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement();
+      completeLoadPlacement(id);
       return;
     }
     if (tool === 'pointLoad') {
@@ -1554,7 +1556,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'memberLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement();
+      completeLoadPlacement(id);
       return;
     }
     if (tool === 'moment') {
@@ -1574,7 +1576,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'memberLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement();
+      completeLoadPlacement(id);
       return;
     }
     if (tool === 'cut') {
@@ -1735,6 +1737,10 @@ export const StructuralCanvas = ({
       return;
     }
     if (event.pointerType !== 'touch') return;
+    // Sin el `mousedown` de compatibilidad que el navegador emite tras un toque:
+    // enfocaba el objeto tocado y le quitaba el foco al campo que el dock acaba
+    // de abrir, y el teclado del teléfono se cerraba al instante. `click` sigue.
+    event.preventDefault();
     // A fresh primary contact starts a new touch sequence. Some mobile engines
     // may omit one of the final pointer events after a pinch; discard any stale
     // bookkeeping so the next one-finger drag cannot be mistaken for a pinch.

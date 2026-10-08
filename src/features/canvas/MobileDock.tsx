@@ -17,7 +17,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
@@ -28,7 +28,6 @@ import { readCanvasViewSettings, withCanvasViewSettings } from '../view/canvasVi
 import { emitWorkspaceCommand, onWorkspaceCommand } from '../workspace/workspaceCommands';
 import { StructuralToolIcon } from './StructuralToolIcon';
 import { TOOL_REGISTRY } from './toolRegistry';
-import { NumericKeypad, applyKeypadKey } from './NumericKeypad';
 import { readLoadQuickValue, withLoadFlipped, withLoadMagnitude, type LoadQuickValue } from './loadQuickValue';
 import { parseLocalizedDecimal } from './quickEntry';
 import { fromDisplay, toDisplay } from '../../foundation/units';
@@ -119,6 +118,11 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   const [moreOpen, setMoreOpen] = useState(false);
   const [placement, setPlacement] = useState<{ memberStart: string | null; coordinateEntryOpen: boolean }>({ memberStart: null, coordinateEntryOpen: false });
   const [valueEditor, setValueEditor] = useState<{ id: string; draft: string } | null>(null);
+  const valueInputRef = useRef<HTMLInputElement>(null);
+  // El teclado del teléfono sólo sube si el foco llega dentro del toque. Al
+  // colocar una carga el editor aún no existe: este campo invisible recibe el
+  // foco en el mismo toque y lo cede al del valor en cuanto aparece.
+  const focusProxyRef = useRef<HTMLInputElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const classroom = project.settings.calculationMode === 'classroom';
@@ -131,9 +135,14 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   useEffect(() => {
     setValueEditor((current) => current && current.id === loadValueId ? current : null);
   }, [loadValueId]);
-  useEffect(() => onWorkspaceCommand('edit-load-value', () => {
-    if (loadValueId) setValueEditor({ id: loadValueId, draft: '' });
-  }), [loadValueId]);
+  useEffect(() => onWorkspaceCommand('edit-load-value', ({ id }) => {
+    focusProxyRef.current?.focus({ preventScroll: true });
+    setValueEditor({ id, draft: '' });
+  }), []);
+  const editorVisible = Boolean(valueEditor && loadValue && valueEditor.id === loadValue.id);
+  useLayoutEffect(() => {
+    if (editorVisible) valueInputRef.current?.focus({ preventScroll: true });
+  }, [editorVisible]);
   useEffect(() => { if (isLoadTool(activeTool)) setLastLoad(activeTool); }, [activeTool]);
 
   useEffect(() => {
@@ -207,7 +216,11 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
         </DockKey>)}
       </div> : null}
       {placing ? <>
-        <DockKey className="mdock__key--sm" label={t('dock.keypad')} pressed={placement.coordinateEntryOpen} onClick={() => emitWorkspaceCommand('toggle-coordinate-entry')}>
+        <DockKey className="mdock__key--sm" label={t('dock.keypad')} pressed={placement.coordinateEntryOpen} onClick={() => {
+          // Al abrir, el teclado del teléfono sube en este mismo toque.
+          if (!placement.coordinateEntryOpen) focusProxyRef.current?.focus({ preventScroll: true });
+          emitWorkspaceCommand('toggle-coordinate-entry');
+        }}>
           <CoordinateEntryGlyph size={19} />
         </DockKey>
         <DockKey className="mdock__key--sm" label={t('dock.snap')} pressed={view.snap} onClick={() => updateProjectView((draft) => withCanvasViewSettings(draft, { snap: !view.snap }))}>
@@ -226,7 +239,7 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
     const units = project.settings.units;
     context = <>
       {loadValue ? <button type="button" className="mdock__chip mdock__chip--value" data-tone="load"
-        aria-label={t('dock.loadValue', { load: chip.label })} aria-expanded={Boolean(valueEditor)}
+        aria-label={t('dock.loadValue', { load: chip.label })} aria-expanded={editorVisible}
         onClick={() => setValueEditor({ id: loadValue.id, draft: '' })}>
         <LoadDirectionGlyph value={loadValue} />
         <span>{formatFixed(toDisplay(loadValue.magnitude, units, loadValue.quantity), 2)}</span>
@@ -255,39 +268,56 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   }
 
   const applyLoadValue = (draft: string) => {
-    const typed = parseLocalizedDecimal(draft);
+    const unit = loadValue ? unitLabel(project.settings.units, loadValue.quantity) : undefined;
+    const typed = parseLocalizedDecimal(draft, unit);
     if (typed !== null && loadValue && selection) {
       const magnitude = fromDisplay(Math.abs(typed), project.settings.units, loadValue.quantity);
       updateProject((next) => withLoadMagnitude(next, selection, magnitude));
     }
     setValueEditor(null);
   };
-  const editor = valueEditor && loadValue && selection ? <div className="mdock__editor" role="group" aria-label={t('dock.loadValue', { load: loadValue.id })}>
-    <div className="mdock__editor-head">
-      <button type="button" className="mdock__key mdock__key--sm" aria-label={t('dock.flip')} title={t('dock.flip')}
-        onClick={() => updateProject((next) => withLoadFlipped(next, selection))}>
-        <LoadDirectionGlyph value={loadValue} size={20} />
-      </button>
-      <output className="mdock__editor-field" aria-live="polite">
-        <span className={valueEditor.draft ? undefined : 'is-placeholder'}>{valueEditor.draft || formatFixed(toDisplay(loadValue.magnitude, project.settings.units, loadValue.quantity), 2)}</span>
-        <small>{unitLabel(project.settings.units, loadValue.quantity)}</small>
-      </output>
-      <button type="button" className="mdock__key mdock__key--sm" aria-label={t('toolbar.close')} onClick={() => setValueEditor(null)}>
-        <X size={18} strokeWidth={2} aria-hidden="true" />
-      </button>
-    </div>
-    <NumericKeypad
-      label={t('coord.keypad')}
-      enterLabel={t('dock.apply')}
-      labels={{ backspace: t('coord.backspace'), sign: t('dock.flip'), decimal: t('coord.decimal') }}
-      onPress={(key) => {
-        if (key === 'enter') applyLoadValue(valueEditor.draft);
-        // La magnitud es siempre positiva: ± invierte el sentido de la carga.
-        else if (key === 'sign') updateProject((next) => withLoadFlipped(next, selection));
-        else setValueEditor({ ...valueEditor, draft: applyKeypadKey(valueEditor.draft, key) });
-      }}
-    />
-  </div> : null;
+  // El dock se convierte en el campo del valor, con el teclado del teléfono:
+  // ↵ (o ✓) aplica, la flecha invierte el sentido y × lo deja como estaba.
+  const editor = editorVisible && valueEditor && loadValue && selection ? <form
+    className="mdock__editor"
+    aria-label={t('dock.loadValue', { load: loadValue.id })}
+    onSubmit={(event) => { event.preventDefault(); applyLoadValue(valueEditor.draft); }}
+  >
+    <button type="button" className="mdock__key mdock__key--sm mdock__key--flip" aria-label={t('dock.flip')} title={t('dock.flip')}
+      onPointerDown={(event) => event.preventDefault()}
+      onClick={() => updateProject((next) => withLoadFlipped(next, selection))}>
+      <LoadDirectionGlyph value={loadValue} size={20} />
+    </button>
+    <label className="mdock__editor-field">
+      <input
+        ref={valueInputRef}
+        type="text"
+        inputMode="text"
+        enterKeyHint="done"
+        autoComplete="off"
+        autoCapitalize="off"
+        autoCorrect="off"
+        spellCheck={false}
+        aria-label={t('dock.loadValue', { load: loadValue.id })}
+        placeholder={formatFixed(toDisplay(loadValue.magnitude, project.settings.units, loadValue.quantity), 2)}
+        value={valueEditor.draft}
+        onChange={(event) => setValueEditor({ ...valueEditor, draft: event.target.value })}
+        onKeyDown={(event) => {
+          if (event.key !== 'Escape') return;
+          event.preventDefault();
+          event.stopPropagation();
+          setValueEditor(null);
+        }}
+      />
+      <small>{unitLabel(project.settings.units, loadValue.quantity)}</small>
+    </label>
+    <button type="submit" className="mdock__key mdock__key--sm mdock__key--apply" aria-label={t('dock.apply')} title={t('dock.apply')}>
+      <Check size={19} strokeWidth={2.2} aria-hidden="true" />
+    </button>
+    <button type="button" className="mdock__key mdock__key--sm" aria-label={t('toolbar.close')} onClick={() => setValueEditor(null)}>
+      <X size={18} strokeWidth={2} aria-hidden="true" />
+    </button>
+  </form> : null;
 
   const secondaryTools = SECONDARY_TOOLS.filter((tool) => {
     const definition = TOOL_REGISTRY.find((item) => item.id === tool);
@@ -342,6 +372,12 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
         </button>
       </div>
     </nav>
+    <input ref={focusProxyRef} className="mdock__focus-proxy" type="text" inputMode="text" tabIndex={-1} aria-hidden="true"
+      onFocus={(event) => {
+        // Si nadie toma el foco a tiempo, el teclado no se queda abierto solo.
+        const proxy = event.currentTarget;
+        window.setTimeout(() => { if (document.activeElement === proxy) proxy.blur(); }, 400);
+      }} />
     {sheet}
   </>;
 };

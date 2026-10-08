@@ -123,14 +123,14 @@ export const StructuralEditOverlay = ({
 
       <div className="structural-edit-fields">
         {draft.kind === 'move' ? <>
-          <UnitField label={t('canvas.structuralEditDeltaX')} value={draft.fields.deltaX} unit={lengthUnit} onValueChange={set('deltaX')} />
-          <UnitField label={t('canvas.structuralEditDeltaY')} value={draft.fields.deltaY} unit={lengthUnit} onValueChange={set('deltaY')} />
+          <UnitField inputMode="text" label={t('canvas.structuralEditDeltaX')} value={draft.fields.deltaX} unit={lengthUnit} onValueChange={set('deltaX')} />
+          <UnitField inputMode="text" label={t('canvas.structuralEditDeltaY')} value={draft.fields.deltaY} unit={lengthUnit} onValueChange={set('deltaY')} />
         </> : null}
 
         {draft.kind === 'rotate' ? <>
-          <UnitField label={t('canvas.structuralEditCenterX')} value={draft.fields.centerX} unit={lengthUnit} onValueChange={set('centerX')} />
-          <UnitField label={t('canvas.structuralEditCenterY')} value={draft.fields.centerY} unit={lengthUnit} onValueChange={set('centerY')} />
-          <Field label={t('canvas.structuralEditAngle')} value={draft.fields.angleDeg} suffix="°" inputMode="decimal" onChange={(event) => set('angleDeg')(event.target.value)} />
+          <UnitField inputMode="text" label={t('canvas.structuralEditCenterX')} value={draft.fields.centerX} unit={lengthUnit} onValueChange={set('centerX')} />
+          <UnitField inputMode="text" label={t('canvas.structuralEditCenterY')} value={draft.fields.centerY} unit={lengthUnit} onValueChange={set('centerY')} />
+          <Field label={t('canvas.structuralEditAngle')} value={draft.fields.angleDeg} suffix="°" inputMode="text" onChange={(event) => set('angleDeg')(event.target.value)} />
         </> : null}
 
         {draft.kind === 'mirror' ? <>
@@ -158,10 +158,10 @@ export const StructuralEditOverlay = ({
             size="sm"
           />
           {draft.fields.mirrorAxis === 'arbitrary' ? <>
-            <UnitField label={t('canvas.structuralEditAxisStartX')} value={draft.fields.axisStartX} unit={lengthUnit} onValueChange={set('axisStartX')} />
-            <UnitField label={t('canvas.structuralEditAxisStartY')} value={draft.fields.axisStartY} unit={lengthUnit} onValueChange={set('axisStartY')} />
-            <UnitField label={t('canvas.structuralEditAxisEndX')} value={draft.fields.axisEndX} unit={lengthUnit} onValueChange={set('axisEndX')} />
-            <UnitField label={t('canvas.structuralEditAxisEndY')} value={draft.fields.axisEndY} unit={lengthUnit} onValueChange={set('axisEndY')} />
+            <UnitField inputMode="text" label={t('canvas.structuralEditAxisStartX')} value={draft.fields.axisStartX} unit={lengthUnit} onValueChange={set('axisStartX')} />
+            <UnitField inputMode="text" label={t('canvas.structuralEditAxisStartY')} value={draft.fields.axisStartY} unit={lengthUnit} onValueChange={set('axisStartY')} />
+            <UnitField inputMode="text" label={t('canvas.structuralEditAxisEndX')} value={draft.fields.axisEndX} unit={lengthUnit} onValueChange={set('axisEndX')} />
+            <UnitField inputMode="text" label={t('canvas.structuralEditAxisEndY')} value={draft.fields.axisEndY} unit={lengthUnit} onValueChange={set('axisEndY')} />
           </> : <UnitField
             className="structural-edit-wide-field"
             label={t('canvas.structuralEditAxisCoordinate')}
@@ -172,9 +172,9 @@ export const StructuralEditOverlay = ({
         </> : null}
 
         {draft.kind === 'linear-array' ? <>
-          <Field label={t('canvas.structuralEditDirectionX')} value={draft.fields.directionX} inputMode="decimal" onChange={(event) => set('directionX')(event.target.value)} />
-          <Field label={t('canvas.structuralEditDirectionY')} value={draft.fields.directionY} inputMode="decimal" onChange={(event) => set('directionY')(event.target.value)} />
-          <UnitField label={t('canvas.structuralEditSpacing')} value={draft.fields.spacing} unit={lengthUnit} onValueChange={set('spacing')} />
+          <Field label={t('canvas.structuralEditDirectionX')} value={draft.fields.directionX} inputMode="text" onChange={(event) => set('directionX')(event.target.value)} />
+          <Field label={t('canvas.structuralEditDirectionY')} value={draft.fields.directionY} inputMode="text" onChange={(event) => set('directionY')(event.target.value)} />
+          <UnitField inputMode="text" label={t('canvas.structuralEditSpacing')} value={draft.fields.spacing} unit={lengthUnit} onValueChange={set('spacing')} />
           <Field label={t('canvas.structuralEditCount')} value={draft.fields.count} type="number" min={2} max={500} step={1} onChange={(event) => set('count')(event.target.value)} />
         </> : null}
 

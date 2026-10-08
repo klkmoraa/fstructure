@@ -168,39 +168,24 @@ describe('CoordinateEntry · el punto que produce', () => {
   });
 });
 
-describe('CoordinateEntry · el teclado propio', () => {
-  it('en compacto los campos no invocan el teclado del sistema', () => {
-    // Ésta es toda la razón de tener teclado propio: el nativo taparía la
-    // previsualización y empujaría la hoja fuera de la pantalla.
+describe('CoordinateEntry · el teclado del teléfono', () => {
+  it('en compacto los campos usan el teclado completo del sistema', () => {
     montar({ compact: true });
     for (const campo of campos()) {
-      expect(campo.readOnly).toBe(true);
-      expect(campo.getAttribute('inputmode')).toBe('none');
+      expect(campo.readOnly).toBe(false);
+      expect(campo.getAttribute('inputmode')).toBe('text');
     }
   });
 
-  it('las teclas escriben en el campo con el foco, y el signo alterna', async () => {
+  it('↵ en X pasa a Y, ↵ en Y coloca, y acepta la unidad escrita', async () => {
     const { onPlace } = montar({ compact: true });
     const [x, y] = campos();
-    await userEvent.click(x);
-    await userEvent.click(screen.getByRole('button', { name: '4' }));
-    await userEvent.click(screen.getByRole('button', { name: /signo/i }));
-    await userEvent.click(y);
-    await userEvent.click(screen.getByRole('button', { name: '7' }));
-    await userEvent.click(screen.getByRole('button', { name: /separador decimal/i }));
-    await userEvent.click(screen.getByRole('button', { name: '5' }));
-    await userEvent.click(screen.getByRole('button', { name: /colocar/i }));
-    expect(onPlace).toHaveBeenCalledWith({ x: -4, y: 7.5 });
-  });
-
-  it('no acepta un segundo separador decimal', async () => {
-    montar({ compact: true });
-    const [x] = campos();
-    await userEvent.click(x);
-    await userEvent.click(screen.getByRole('button', { name: '1' }));
-    await userEvent.click(screen.getByRole('button', { name: /separador decimal/i }));
-    await userEvent.click(screen.getByRole('button', { name: '2' }));
-    await userEvent.click(screen.getByRole('button', { name: /separador decimal/i }));
-    expect(campos()[0].value).toBe('1,2');
+    await userEvent.type(x, '4,5 m{Enter}');
+    expect(document.activeElement).toBe(y);
+    await userEvent.type(y, '-2{Enter}');
+    expect(onPlace).toHaveBeenCalledWith({ x: 4.5, y: -2 });
+    // Colocar y seguir: vuelve a X con los campos vacíos.
+    expect(campos().map((campo) => campo.value)).toEqual(['', '']);
+    expect(document.activeElement).toBe(campos()[0]);
   });
 });

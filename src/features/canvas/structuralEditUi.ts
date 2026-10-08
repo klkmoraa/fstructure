@@ -55,16 +55,23 @@ const displayNumber = (value: number): string => {
   });
 };
 
+/** Con el teclado completo se escribe «-1,5» o «2 m»: coma decimal y unidad detrás. */
+const typedNumber = (text: string): number => {
+  const trimmed = text.trim().replace(/\s*(?:[a-zA-Zµ°]+[²³]?)$/, '');
+  if (!/\d/.test(trimmed)) return Number.NaN;
+  return Number(!trimmed.includes('.') && trimmed.split(',').length === 2 ? trimmed.replace(',', '.') : trimmed);
+};
+
 const internalLength = (project: ProjectModel, text: string, label: string): number => {
   if (!text.trim()) throw new Error(`${label} requiere un valor.`);
-  const value = Number(text);
+  const value = typedNumber(text);
   if (!Number.isFinite(value)) throw new Error(`${label} debe ser numérico y finito.`);
   return fromDisplay(value, project.settings.units, 'length');
 };
 
 const finiteNumber = (text: string, label: string): number => {
   if (!text.trim()) throw new Error(`${label} requiere un valor.`);
-  const value = Number(text);
+  const value = typedNumber(text);
   if (!Number.isFinite(value)) throw new Error(`${label} debe ser numérico y finito.`);
   return value;
 };

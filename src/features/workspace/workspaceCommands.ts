@@ -95,8 +95,8 @@ interface WorkspaceCommands {
   'canvas-placement-state': { memberStart: string | null; coordinateEntryOpen: boolean };
   /** Cierra la cadena de barras en curso sin cambiar de herramienta. */
   'end-member-chain': void;
-  /** Abre en el dock del teléfono el valor de la carga seleccionada (tras colocarla). */
-  'edit-load-value': void;
+  /** Abre en el dock del teléfono el valor de la carga recién colocada. */
+  'edit-load-value': { id: string };
   /** Show a toast notification on screen. */
   'show-toast': {
     message: string;

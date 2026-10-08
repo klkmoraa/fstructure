@@ -94,7 +94,7 @@ export function UnitField({
         ref={ref}
         id={id}
         type="text"
-        inputMode="decimal"
+        inputMode={props.inputMode ?? 'decimal'}
         value={value}
         aria-describedby={messageId}
         aria-errormessage={error ? messageId : undefined}

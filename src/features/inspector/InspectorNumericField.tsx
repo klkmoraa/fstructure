@@ -76,7 +76,7 @@ export const InspectorNumericField = ({
   const isDisabled = disabled || Boolean(lockedReason);
 
   const validationMessage = (candidate: string) => {
-    const parsed = parseInspectorNumber(candidate);
+    const parsed = parseInspectorNumber(candidate, unit);
     if (!parsed.ok) return parsed.reason === 'empty' ? resolvedEmptyMessage : resolvedInvalidMessage;
     return validate?.(parsed.value);
   };
@@ -98,7 +98,7 @@ export const InspectorNumericField = ({
       return;
     }
 
-    const parsed = parseInspectorNumber(text);
+    const parsed = parseInspectorNumber(text, unit);
     const nextError = !parsed.ok
       ? parsed.reason === 'empty' ? resolvedEmptyMessage : resolvedInvalidMessage
       : validate?.(parsed.value);
@@ -131,7 +131,7 @@ export const InspectorNumericField = ({
   const toggleSign = () => {
     const draft = text.trim();
     const nextText = draft.startsWith('-') ? draft.slice(1) : `-${draft || '0'}`;
-    const parsed = parseInspectorNumber(nextText);
+    const parsed = parseInspectorNumber(nextText, unit);
     const nextError = !parsed.ok
       ? parsed.reason === 'empty' ? resolvedEmptyMessage : resolvedInvalidMessage
       : validate?.(parsed.value);
@@ -162,7 +162,12 @@ export const InspectorNumericField = ({
             ref={inputRef}
             id={inputId}
             type="text"
-            inputMode="decimal"
+            // Teclado completo: el decimal del teléfono no trae el signo menos
+            // y no deja escribir la unidad.
+            inputMode="text"
+            enterKeyHint="done"
+            autoCapitalize="off"
+            autoCorrect="off"
             autoComplete="off"
             spellCheck={false}
             step={step}

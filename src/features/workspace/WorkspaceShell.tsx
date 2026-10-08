@@ -379,6 +379,9 @@ const WorkspaceBrokerContent = ({
       shell.style.setProperty('--sc-visual-viewport-height', `${viewport.height}px`);
       shell.style.setProperty('--sc-visual-viewport-top', `${viewport.offsetTop}px`);
       shell.style.setProperty('--sc-visual-viewport-bottom', `${bottom}px`);
+      // El teclado del teléfono está arriba: el dock se aparta y lo que se
+      // escribe sube por encima del teclado (ver `mobileDock.css`).
+      shell.toggleAttribute('data-keyboard', bottom > 120);
     };
     syncViewport();
     viewport.addEventListener('resize', syncViewport);

@@ -18,11 +18,10 @@
  * mirando deja la previsualización sin trabajo, y una trampa de foco impide
  * seguir picando. Se cierra con Escape y con su propio botón.
  *
- * EL TECLADO PROPIO. En un teléfono el teclado del sistema tapa media pantalla
- * y con ella la previsualización. El panel trae doce teclas —dígitos, coma,
- * signo y borrar— y sus campos son de sólo lectura para el sistema
- * (`inputMode: 'none'`), así que el teclado nativo no sube. En pantalla ancha
- * hay teclado físico y las teclas no aparecen.
+ * EL TECLADO DEL TELÉFONO. Los campos usan el teclado del sistema, el
+ * completo: se puede escribir «3,5» o «3,5 m». En el teléfono el panel sube con
+ * el teclado (ver `mobileDock.css`) para que el campo y «Colocar» sigan a la
+ * vista, y ↵ pasa de X a Y y coloca sin cerrar el teclado.
  *
  * TRES MODOS. Absoluto escribe el punto; Relativo lo escribe respecto a un
  * nudo de referencia; Polar lo escribe como distancia y ángulo desde ese mismo
@@ -42,7 +41,6 @@ import { fromDisplay, toDisplay } from '../../foundation/units';
 import type { UnitSystemId } from '../../foundation/units';
 import { parseLocalizedDecimal } from './quickEntry';
 import { formatFixed } from '../../utils/numberFormat';
-import { NumericKeypad, applyKeypadKey, type KeypadKey } from './NumericKeypad';
 
 type CoordinateMode = 'absolute' | 'relative' | 'polar';
 
@@ -81,7 +79,7 @@ interface CoordinateEntryProps {
    *  nudo seleccionado — dibujar la medida ahí haría leer un desplazamiento
    *  relativo donde el panel dice «desde el origen del modelo». */
   onPreviewChange: (preview: CoordinatePreview | null) => void;
-  /** K0: añade el teclado propio y ancla el panel al borde inferior. */
+  /** K0: ancla el panel al borde inferior, por encima del teclado. */
   compact: boolean;
 }
 
@@ -106,6 +104,7 @@ export const CoordinateEntry = ({
   const [focused, setFocused] = useState<Field>('first');
   const [error, setError] = useState('');
   const firstRef = useRef<HTMLInputElement>(null);
+  const secondRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Sin nudo de referencia no hay desde dónde medir: el modo vuelve solo a
@@ -117,8 +116,8 @@ export const CoordinateEntry = ({
 
   /** El punto que definen los dos campos, o `null` si aún no son dos números. */
   const resolve = (): { x: number; y: number } | null => {
-    const first = parseLocalizedDecimal(values.first);
-    const second = parseLocalizedDecimal(values.second);
+    const first = parseLocalizedDecimal(values.first, lengthLabel);
+    const second = parseLocalizedDecimal(values.second, mode === 'polar' ? '°' : lengthLabel);
     if (first === null || second === null) return null;
     if (mode === 'absolute') {
       return { x: fromDisplay(first, units, 'length'), y: fromDisplay(second, units, 'length') };
@@ -181,9 +180,6 @@ export const CoordinateEntry = ({
     setError('');
   };
 
-  /** Una tecla del teclado propio escribe en el campo que tenga el foco. */
-  const press = (key: Exclude<KeypadKey, 'enter'>) => setField(focused, applyKeypadKey(values[focused], key));
-
   const submit = async () => {
     const point = resolve();
     if (!point) {
@@ -200,16 +196,6 @@ export const CoordinateEntry = ({
     setError('');
     setFocused('first');
     firstRef.current?.focus({ preventScroll: true });
-  };
-
-  /** ↵ del teclado propio: con el segundo campo por escribir, pasa a él; con
-   *  los dos escritos, coloca. Así «3 ↵ 0 ↵» pone un nudo sin buscar botones. */
-  const advanceOrSubmit = () => {
-    if (focused === 'first' && values.second.trim() === '' && values.first.trim() !== '') {
-      setFocused('second');
-      return;
-    }
-    void submit();
   };
 
   const polar = mode === 'polar';
@@ -242,6 +228,10 @@ export const CoordinateEntry = ({
           type="button"
           disabled={!option.enabled}
           aria-pressed={mode === option.id}
+          // Cambiar de modo no se lleva el foco del campo: el teclado del
+          // teléfono sigue arriba.
+          onPointerDown={(event) => event.preventDefault()}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => { setMode(option.id); setError(''); }}
         >{option.label}</button>)}
       </div>
@@ -258,22 +248,25 @@ export const CoordinateEntry = ({
       >
         <span>{field === 'first' ? firstLabel : secondLabel}</span>
         <input
-          ref={field === 'first' ? firstRef : undefined}
+          ref={field === 'first' ? firstRef : secondRef}
           type="text"
-          // En compacto el teclado del sistema taparía la previsualización, y
-          // el panel trae el suyo. En ancho hay teclado físico.
-          inputMode={compact ? 'none' : 'decimal'}
-          readOnly={compact}
+          // El teclado completo del teléfono: se puede escribir la unidad.
+          inputMode="text"
+          enterKeyHint={field === 'first' ? 'next' : 'go'}
           autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
           value={values[field]}
           onFocus={() => setFocused(field)}
           onChange={(event) => setField(field, event.target.value)}
           onKeyDown={(event) => {
             if (event.key !== 'Enter') return;
             event.preventDefault();
+            // ↵ en X pasa a Y si falta; si no, coloca. El teclado no se cierra.
             if (field === 'first' && values.second.trim() === '' && values.first.trim() !== '') {
               setFocused('second');
-              (event.currentTarget.closest('.coordinate-entry__fields')?.querySelectorAll('input')[1] as HTMLInputElement | undefined)?.focus({ preventScroll: true });
+              secondRef.current?.focus({ preventScroll: true });
               return;
             }
             void submit();
@@ -293,16 +286,10 @@ export const CoordinateEntry = ({
 
     {error ? <p className="coordinate-entry__error" role="alert">{error}</p> : null}
 
-    {compact ? <NumericKeypad
-      label={t('coord.keypad')}
-      enterLabel={placeLabel}
-      enterAdvances={focused === 'first' && values.second.trim() === '' && values.first.trim() !== ''}
-      labels={{ backspace: t('coord.backspace'), sign: t('coord.sign'), decimal: t('coord.decimal') }}
-      onPress={(key) => { if (key === 'enter') advanceOrSubmit(); else press(key); }}
-    /> : <button type="button" className="coordinate-entry__place" onClick={() => { void submit(); }}>
+    <button type="button" className="coordinate-entry__place" onClick={() => { void submit(); }}>
       <Plus size={15} aria-hidden="true" />
       {placeLabel}
-    </button>}
+    </button>
   </div>;
 };
 

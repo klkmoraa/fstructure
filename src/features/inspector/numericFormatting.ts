@@ -33,9 +33,16 @@ export const formatInspectorValue = (
  */
 export const serializeInspectorNumber = (value: number): string => serializeNumber(value);
 
-/** Accepts decimal/scientific input only; blank, hexadecimal and Infinity are rejected. */
-export const parseInspectorNumber = (text: string): InspectorNumberParseResult => {
-  const normalized = text.trim();
+/**
+ * Accepts decimal/scientific input only; blank, hexadecimal and Infinity are rejected.
+ * Con el teclado completo del teléfono se escribe «3,5» y a veces la unidad
+ * («3,5 m»): la coma decimal se lee como punto y la unidad del campo se ignora.
+ */
+export const parseInspectorNumber = (text: string, unit?: string): InspectorNumberParseResult => {
+  let normalized = text.trim();
+  const suffix = unit?.trim().toLowerCase();
+  if (suffix && normalized.toLowerCase().endsWith(suffix)) normalized = normalized.slice(0, -suffix.length).trim();
+  if (!normalized.includes('.') && normalized.split(',').length === 2) normalized = normalized.replace(',', '.');
   if (normalized === '') return { ok: false, reason: 'empty' };
   if (!DECIMAL_NUMBER_PATTERN.test(normalized)) return { ok: false, reason: 'invalid' };
 

@@ -7,8 +7,8 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [x] Chrome común de las mesas (`mesaChrome.css`): barra, tarjeta, dock y pie con la misma geometría; la transición de modo anima cada pieza por separado y 3D ↔ Diseño comparten shell.
 - [ ] Proyectos por herramienta: miniatura generada de cada modelo 3D o elemento de Diseño; hoy usan la escena de la herramienta y el resumen de su rama local.
 - [ ] Modo Diseño con el lenguaje del modo Modelo (el 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado).
-- [x] 2D en teléfono: dock dinámico con cápsula contextual (coordenadas con teclado propio, ajuste, P · q · M, valor y sentido de la carga, acciones de la selección), barras encadenadas, apoyos en mosaicos, Inspector en filas con «Avanzado» por fila, sin zoom de página ni reencuadres solos.
-- [ ] Llevar el dock dinámico (cápsula contextual y teclado propio) al 3D y a Diseño en teléfono.
+- [x] 2D en teléfono: dock dinámico con cápsula contextual (coordenadas y valor de la carga con el teclado completo del teléfono, ajuste, P · q · M, sentido de la carga, acciones de la selección), barras encadenadas, apoyos en mosaicos, Inspector en filas con «Avanzado» por fila, sin zoom de página ni reencuadres solos.
+- [ ] Llevar el dock dinámico (cápsula contextual) al 3D y a Diseño en teléfono.
 - [x] Una sola Home (FEM retirado): proyecto abierto, tarjetas 2D · 3D · Diseño, recientes y secciones en la URL.
 - [ ] Exportar o reabrir los estudios FEM que quedaron guardados en proyectos viejos (hoy se conservan intactos en el registro, sin interfaz).
 - [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
