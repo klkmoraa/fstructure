@@ -1,6 +1,5 @@
 import {
   BoxSelect,
-  ChevronRight,
   CircleDot,
   Component,
   Crosshair,
@@ -162,45 +161,6 @@ const RegisteredToolButton = ({
   />;
 };
 
-const PaletteToolButton = ({
-  definition,
-  label,
-  detail,
-  active,
-  onSelect,
-}: {
-  definition: ToolDefinition;
-  label: string;
-  detail: string;
-  active: boolean;
-  onSelect: (tool: Tool) => void;
-}) => (
-  <button
-    className={`mobile-palette-tool tool-${definition.id}${active ? ' active' : ''}${definition.destructive ? ' destructive' : ''}`}
-    onClick={() => onSelect(definition.id)}
-    aria-label={`${label}. ${detail}`}
-    role="menuitemradio"
-    aria-checked={active}
-    aria-keyshortcuts={definition.activationKey?.toUpperCase() ?? 'Delete Backspace'}
-    data-tool-id={definition.id}
-    data-tool-group={definition.group}
-  >
-    <span className="mobile-palette-icon" aria-hidden="true"><ToolGlyph definition={definition} size={23} /></span>
-    <span className="mobile-palette-copy"><strong>{label}</strong><small>{detail}</small></span>
-    <ChevronRight size={19} aria-hidden="true" />
-    <kbd>{definition.shortcut}</kbd>
-  </button>
-);
-
-/** The portal sheet owns inertness; restore it synchronously when it closes. */
-const setAppShellMobileInert = (inert: boolean) => {
-  const background = document.querySelector<HTMLElement>('.app-shell');
-  if (!background) return;
-  background.inert = inert;
-  if (inert) background.setAttribute('aria-hidden', 'true');
-  else background.removeAttribute('aria-hidden');
-};
-
 /**
  * Único componente del riel de herramientas (CRI-98): su forma la decide la
  * clase de composición resuelta por el shell (`useShellComposition`), nunca
@@ -211,17 +171,11 @@ const setAppShellMobileInert = (inert: boolean) => {
 export const ToolRail = () => {
   const { activeTool, setActiveTool, project, selection } = useProject();
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [mobileMenu, setMobileMenu] = useState<'loads' | 'more' | null>(null);
   const [desktopDockCollapsed, setDesktopDockCollapsed] = useState(false);
-  const loadMenuButtonRef = useRef<HTMLButtonElement>(null);
-  const moreMenuButtonRef = useRef<HTMLButtonElement>(null);
-  const mobileDockRef = useRef<HTMLElement>(null);
-  const paletteRef = useRef<HTMLElement>(null);
   const { shellClass } = useShellComposition();
   const surfacePresentation = useContext(SurfacePresentationContext);
   const generatorOpen = surfacePresentation?.stateFor('generator').open ?? false;
   const generatorWasOpenRef = useRef(generatorOpen);
-  const previousShellClassRef = useRef(shellClass);
   /** Expanded (`X2`) lleva etiqueta; Medium (`M1`) y Compact (`K0`) son icon-only. */
   const compact = shellClass !== 'X2';
   const { t } = useI18n();
@@ -232,14 +186,6 @@ export const ToolRail = () => {
     ? TOOL_REGISTRY.filter((tool) => !tool.classroomAdvanced)
     : TOOL_REGISTRY
   ).filter((tool) => !HIDDEN_RAIL_TOOL_IDS.has(tool.id));
-  const mobilePrimaryTools = visibleTools.filter((tool) => tool.mobile === 'primary');
-  const mobilePaletteTools = mobileMenu === 'loads' || mobileMenu === 'more'
-    ? visibleTools.filter((tool) => tool.mobile === mobileMenu)
-    : [];
-  const loadToolActive = visibleTools.some((tool) => tool.mobile === 'loads' && tool.id === activeTool);
-  const moreToolActive = visibleTools.some((tool) => tool.mobile === 'more' && tool.id === activeTool);
-  const loadGroupHighlighted = mobileMenu ? mobileMenu === 'loads' : loadToolActive;
-  const moreGroupHighlighted = mobileMenu ? mobileMenu !== 'loads' : moreToolActive;
   const canEditSelection = selection?.kind === 'node'
     || selection?.kind === 'member'
     || (selection?.kind === 'multi' && (selection.nodeIds.length > 0 || selection.memberIds.length > 0));
@@ -256,162 +202,7 @@ export const ToolRail = () => {
     setActiveTool('select');
   }, [generatorOpen, setActiveTool]);
 
-  const selectTool = (tool: Tool) => {
-    setActiveTool(tool);
-    if (mobileMenu) closeMobileMenu();
-    else setMobileMenu(null);
-  };
-
-  const openStructuralEditFromMobile = () => {
-    closeMobileMenu(false);
-    window.requestAnimationFrame(() => emitWorkspaceCommand('open-structural-edit'));
-  };
-
-  const openStructureGeneratorFromMobile = () => {
-    closeMobileMenu(false);
-    window.requestAnimationFrame(() => emitWorkspaceCommand('open-structure-generator'));
-  };
-
-  const closeMobileMenu = (restoreFocus = true) => {
-    const closingMenu = mobileMenu;
-    setMobileMenu(null);
-    // Do not wait for the effect cleanup: the selected portal action may open
-    // an immediate canvas interaction on the following animation frame.
-    setAppShellMobileInert(false);
-    if (!restoreFocus || !closingMenu) return;
-    window.requestAnimationFrame(() => {
-      (closingMenu === 'loads' ? loadMenuButtonRef : moreMenuButtonRef).current?.focus();
-    });
-  };
-
-  useEffect(() => {
-    if (!mobileMenu) return undefined;
-    const palette = paletteRef.current;
-    setAppShellMobileInert(true);
-    const focusFrame = window.requestAnimationFrame(() => paletteRef.current?.querySelector<HTMLButtonElement>('.mobile-palette-tool')?.focus());
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        closeMobileMenu();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const focusable = [...(palette?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? [])];
-      if (!focusable.length) {
-        event.preventDefault();
-        palette?.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !palette?.contains(document.activeElement))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || !palette?.contains(document.activeElement))) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.cancelAnimationFrame(focusFrame);
-      document.removeEventListener('keydown', onKeyDown);
-      setAppShellMobileInert(false);
-    };
-    // closeMobileMenu intentionally captures the currently open sheet.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mobileMenu]);
-
-  // Las hojas de herramientas sólo existen como presentación en Compact: al
-  // salir de `K0` dejan de tener destino. Igual que el `change` de la media
-  // query que sustituye, sólo reacciona al CAMBIO de clase — montar la barra ya
-  // fuera de Compact no puede cerrar una hoja que el usuario acaba de abrir.
-  useEffect(() => {
-    if (previousShellClassRef.current === shellClass) return;
-    previousShellClassRef.current = shellClass;
-    if (shellClass !== 'K0') setMobileMenu(null);
-  }, [shellClass]);
-
-  /* En K0 el riel es un carril desplazable dentro de la banda de la consola, y
-     no entra entero: pasadas cuatro o cinco teclas, el resto queda fuera de
-     vista. Si la herramienta activa es una de las que quedaron fuera —porque se
-     eligió desde la paleta de comandos, desde el teclado, o porque el carril se
-     desplazó después—, la banda no muestra ninguna tecla encendida y lo que se
-     lee es «no hay herramienta activa», que es falso.
-     `block:'nearest'` y no `center`: sólo se mueve cuando de verdad hace
-     falta, así que elegir una tecla visible no arrastra el carril bajo el dedo. */
-  useEffect(() => {
-    const dock = mobileDockRef.current;
-    if (!dock || shellClass !== 'K0') return;
-    const activa = dock.querySelector('.tool-button.active, .tool-button.is-active');
-    activa?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  }, [activeTool, shellClass]);
-
-  const paletteTitle = mobileMenu === 'loads' ? t('toolbar.addLoad') : t('toolbar.moreSheetTitle');
-  const paletteDescription = mobileMenu === 'loads' ? t('toolbar.loadSheetDescription') : t('toolbar.moreSheetDescription');
-  const paletteGroups = TOOL_GROUPS.filter((group) =>
-    mobilePaletteTools.some((tool) => tool.group === group.id)
-      || (group.id === 'edit' && canEditSelection)
-      // Generar no es una herramienta del registro y no depende de la
-      // selección, pero pertenece a «Crear»: sin esto su grupo no existiría en
-      // la hoja y la única vía en compacto sería la paleta de comandos.
-      || (group.id === 'create' && mobileMenu === 'more'),
-  );
-  const mobilePalette = mobileMenu && typeof document !== 'undefined' ? createPortal(<>
-    <button type="button" className="mobile-tool-sheet-backdrop" aria-hidden="true" tabIndex={-1} onPointerDown={() => closeMobileMenu()} />
-    <section
-      ref={paletteRef}
-      className={`mobile-tool-palette mobile-tool-palette-${mobileMenu}`}
-      role="dialog"
-      aria-modal="true"
-      aria-label={paletteTitle}
-      aria-describedby="mobile-tool-palette-description"
-      tabIndex={-1}
-    >
-      <div className="mobile-tool-palette-handle" aria-hidden="true" />
-      <header className="mobile-tool-palette-header">
-        <div><strong>{paletteTitle}</strong><span id="mobile-tool-palette-description">{paletteDescription}</span></div>
-        <button type="button" className="mobile-tool-palette-close" onClick={() => closeMobileMenu()}>{t('toolbar.close')}</button>
-      </header>
-      <div className="mobile-tool-palette-list" role="menu" aria-label={paletteTitle}>
-        {paletteGroups.map((group) => <div key={group.id} className="mobile-palette-group" role="group" aria-label={t(group.labelKey)}>
-          <h3>{t(group.labelKey)}</h3>
-          {toolsInGroup(group.id, mobilePaletteTools).map((definition) => <PaletteToolButton
-            key={definition.id}
-            definition={definition}
-            label={t(definition.labelKey)}
-            detail={definition.detailKey ? t(definition.detailKey) : ''}
-            active={activeTool === definition.id}
-            onSelect={selectTool}
-          />)}
-          {group.id === 'create' ? <button
-            className="mobile-palette-tool tool-structure-generator"
-            type="button"
-            role="menuitem"
-            aria-label={t('generator.launcher')}
-            onClick={openStructureGeneratorFromMobile}
-            data-structure-generator-command
-          >
-            <span className="mobile-palette-icon" aria-hidden="true"><Grid3x3 size={23} strokeWidth={1.8} /></span>
-            <span className="mobile-palette-copy"><strong>{t('generator.launcher')}</strong></span>
-            <ChevronRight size={19} aria-hidden="true" />
-          </button> : null}
-          {group.id === 'edit' && canEditSelection ? <button
-            className="mobile-palette-tool tool-structural-edit"
-            type="button"
-            role="menuitem"
-            aria-label={t('canvas.structuralEditLauncher')}
-            onClick={openStructuralEditFromMobile}
-            data-structural-edit-command
-          >
-            <span className="mobile-palette-icon" aria-hidden="true"><Move size={23} strokeWidth={1.8} /></span>
-            <span className="mobile-palette-copy"><strong>{t('canvas.structuralEditLauncher')}</strong></span>
-            <ChevronRight size={19} aria-hidden="true" />
-          </button> : null}
-        </div>)}
-      </div>
-    </section>
-  </>, document.body) : null;
+  const selectTool = (tool: Tool) => setActiveTool(tool);
 
   const renderDockGroup = (dockGroup: (typeof DESKTOP_DOCK_GROUPS)[number]) => {
     const groupTools = visibleTools.filter((tool) => dockGroup.sourceGroups.includes(tool.group));
@@ -483,7 +274,7 @@ export const ToolRail = () => {
   return (
     <>
       <aside
-        className={`toolbar tool-rail${isFloatingDock ? ' is-floating-dock' : ' is-compact'}${desktopDockCollapsed ? ' is-dock-collapsed' : ''}${mobileMenu ? ' mobile-menu-open' : ''}`}
+        className={`toolbar tool-rail${isFloatingDock ? ' is-floating-dock' : ' is-compact'}${desktopDockCollapsed ? ' is-dock-collapsed' : ''}`}
         aria-label={t('toolbar.label')}
         data-tool-rail={isFloatingDock ? 'dock' : 'compact'}
         data-mesa-dock={isFloatingDock ? '' : undefined}
@@ -567,40 +358,7 @@ export const ToolRail = () => {
         <div className="toolbar-spacer" />
         <div className="selection-tip"><BoxSelect size={18} /><span>{t('toolbar.tip')}</span></div>
 
-        <nav className="mobile-tool-dock" aria-label={t('toolbar.primary')} ref={mobileDockRef}>
-          {mobilePrimaryTools.map((definition) => <RegisteredToolButton
-            key={definition.id}
-            definition={definition}
-            label={t(definition.labelKey)}
-            active={activeTool === definition.id}
-            className="mobile-dock-tool"
-            onSelect={selectTool}
-          />)}
-          <button
-            ref={loadMenuButtonRef}
-            className={`sc-tool-button sc-tool-button--load mobile-tool-group tool-button tool-pointLoad mobile-dock-tool${loadGroupHighlighted ? ' is-active' : ''}`}
-            aria-label={t('toolbar.loads')}
-            aria-expanded={mobileMenu === 'loads'}
-            aria-haspopup="dialog"
-            onClick={() => setMobileMenu((current) => current === 'loads' ? null : 'loads')}
-          >
-            <span className="sc-tool-button__icon" aria-hidden="true"><StructuralToolIcon tool="pointLoad" /></span>
-            <span className="sc-tool-button__copy"><strong>{t('toolbar.loadsShort')}</strong></span>
-          </button>
-          <button
-            ref={moreMenuButtonRef}
-            className={`sc-tool-button sc-tool-button--navigation mobile-tool-group tool-button mobile-dock-tool${moreGroupHighlighted ? ' is-active' : ''}`}
-            aria-label={t('toolbar.more')}
-            aria-expanded={mobileMenu === 'more'}
-            aria-haspopup="dialog"
-            onClick={() => setMobileMenu((current) => current === 'more' ? null : 'more')}
-          >
-            <span className="sc-tool-button__icon" aria-hidden="true"><MoreHorizontal size={22} strokeWidth={1.8} /></span>
-            <span className="sc-tool-button__copy"><strong>{t('toolbar.moreShort')}</strong></span>
-          </button>
-        </nav>
       </aside>
-      {mobilePalette}
     </>
   );
 };

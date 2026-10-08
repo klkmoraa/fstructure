@@ -82,7 +82,6 @@
   transition: opacity var(--sc-motion-quick) var(--sc-ease-standard);
 }
 
-
 .console__foot { width: 44px; display: grid; justify-items: center; gap: 1px; }
 
 .console__body {
@@ -166,39 +165,14 @@
   }
   .console__tools { scroll-snap-align: start; }
 
-
   .console__tools,
   .console__tools .toolbar { display: flex; flex: none; width: max-content; gap: 0; }
   /* `order` y no `row-reverse`: invertir el eje de un carril desplazable lo
      arranca en su extremo contrario y deja las herramientas fuera de vista. */
   .console__tools { order: 1; }
   .console__tools .desktop-tool-list { display: none; }
-  .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock {
-    display: flex;
-    flex: none;
-    width: max-content;
-    max-width: none;
-    padding: 2px;
-    gap: 2px;
-    overflow: visible;
-  }
-  .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock .tool-button {
-    width: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    height: 44px;
-    flex-basis: 44px;
-  }
 
-  @media (max-width: 380px) {
-    .app-shell[data-shell-class='K0'] .console__tools .mobile-tool-dock .tool-button {
-      width: 38px;
-      min-width: 38px;
-      height: 38px;
-      min-height: 38px;
-      flex-basis: 38px;
-    }
-  }
+  
 
   .console__tools .toolbar { height: 52px; min-height: 52px; }
   .console__foot > button { height: 44px; min-height: 44px; margin-block: 4px; }

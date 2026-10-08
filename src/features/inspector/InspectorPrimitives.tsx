@@ -1,14 +1,14 @@
 import type { LucideIcon } from 'lucide-react';
-import { CircleHelp, LockKeyhole, PencilLine } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { ChevronRight, CircleHelp, LockKeyhole } from 'lucide-react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useI18n } from '../../i18n/useI18n';
-import { Accordion } from '../../design-system/components/disclosure';
-import { Drawer } from '../../design-system/components/overlays';
 import { unitLabel } from '../../engine/units';
 import { fromDisplay, toDisplay, type UnitQuantity } from '../../foundation/units';
 import type { UnitSystemId } from '../../foundation/units';
-import { useShellComposition } from '../workspace/useShellComposition';
 import { InspectorNumericField } from './InspectorNumericField';
+
+/** Dentro de «Avanzado» cada grupo es una fila que se despliega. */
+const CollapsibleGroupsContext = createContext(false);
 
 export interface InspectorSummaryMetric {
   label: string;
@@ -90,28 +90,45 @@ export const InspectorSelectionSummary = ({
   </section>;
 };
 
+/**
+ * Un grupo de propiedades. Fuera de «Avanzado» es una sección con su título;
+ * dentro, una fila con su valor a la vista que se despliega al tocarla: lo que
+ * hay se lee sin abrir nada, y sólo se abre lo que se va a cambiar.
+ */
 export const InspectorPropertyGroup = ({
   title,
   mode = 'editable',
+  summary,
   children,
   className = '',
 }: {
   title: string;
   description?: string;
   mode?: 'editable' | 'derived';
+  /** El valor que se ve con la fila cerrada (sólo dentro de «Avanzado»). */
+  summary?: ReactNode;
   children: ReactNode;
   className?: string;
 }) => {
-  const { t } = useI18n();
+  const collapsible = useContext(CollapsibleGroupsContext);
+  const [open, setOpen] = useState(false);
+  if (collapsible) {
+    return <details
+      className={`inspector-property-group is-${mode} is-collapsible${className ? ` ${className}` : ''}`}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary className="inspector-property-group__row">
+        <span className="inspector-property-group__title">{title}</span>
+        {summary !== undefined && summary !== null ? <span className="inspector-property-group__summary">{summary}</span> : null}
+        <ChevronRight size={16} aria-hidden="true" className="inspector-property-group__chevron" />
+      </summary>
+      {open ? <div className="inspector-property-group__body">{children}</div> : null}
+    </details>;
+  }
   return <section className={`inspector-property-group is-${mode}${className ? ` ${className}` : ''}`}>
     <header className="inspector-property-group__header">
-      <div>
-        <h3>{title}</h3>
-      </div>
-      <span className="inspector-property-group__mode">
-        {mode === 'editable' ? <PencilLine size={13} aria-hidden="true" /> : <LockKeyhole size={13} aria-hidden="true" />}
-        {mode === 'editable' ? t('inspector.editable') : t('inspector.calculated')}
-      </span>
+      <h3>{title}</h3>
     </header>
     <div className="inspector-property-group__body">{children}</div>
   </section>;
@@ -139,60 +156,33 @@ export const InspectorLockedState = ({ title, children }: { title: string; child
   </div>
 );
 
-export const InspectorHelper = ({ children, tone = 'info' }: { children: ReactNode; tone?: 'info' | 'warning' }) => (
-  <div className={`inspector-helper is-${tone}`} role={tone === 'warning' ? 'status' : undefined}>
+/**
+ * Una convención o una aclaración. Las advertencias se ven siempre; el resto
+ * queda tras un ⓘ y se lee a petición, sin párrafos fijos entre los campos.
+ */
+export const InspectorHelper = ({ children, tone = 'info' }: { children: ReactNode; tone?: 'info' | 'warning' }) => {
+  const { t } = useI18n();
+  if (tone === 'warning') return <div className="inspector-helper is-warning" role="status">
     <CircleHelp size={16} aria-hidden="true" />
     <span>{children}</span>
-  </div>
-);
+  </div>;
+  return <details className="inspector-helper is-info">
+    <summary aria-label={t('inspector.moreInfo')} title={t('inspector.moreInfo')}><CircleHelp size={15} aria-hidden="true" /></summary>
+    <span>{children}</span>
+  </details>;
+};
 
-export const InspectorAdvancedProperties = ({
-  id,
-  expanded,
-  onExpandedChange,
-  children,
-}: {
-  id: string;
-  expanded: readonly string[];
-  onExpandedChange: (expanded: string[]) => void;
-  children: ReactNode;
-}) => {
+/**
+ * «Avanzado»: una lista de filas, una por grupo, con su valor a la vista. Antes
+ * era un acordeón que en el teléfono sólo decía que había más cosas y abría
+ * todo a pantalla completa; ahora se ve qué hay y se abre sólo una fila.
+ */
+export const InspectorAdvancedProperties = ({ children }: { children: ReactNode }) => {
   const { t } = useI18n();
-  const { shellClass } = useShellComposition();
-  const isCompactMobile = shellClass === 'K0';
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editorLauncher, setEditorLauncher] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    if (!isCompactMobile) setEditorOpen(false);
-  }, [isCompactMobile]);
-  const editorContent = <div className="inspector-advanced__content">{children}</div>;
-  return <>
-    <Accordion
-      multiple
-      className="inspector-advanced"
-      expanded={expanded}
-      onExpandedChange={onExpandedChange}
-      items={[{
-        id,
-        title: t('inspector.advancedProperties'),
-        content: isCompactMobile ? <div className="inspector-advanced__summary">
-          <p>{t('inspector.advancedMobileSummary')}</p>
-          <button type="button" className="inspector-advanced__edit" onClick={(event) => {
-            setEditorLauncher(event.currentTarget);
-            setEditorOpen(true);
-          }}>{t('inspector.editAll')}</button>
-        </div> : editorContent,
-      }]}
-    />
-    {isCompactMobile ? <Drawer
-      open={editorOpen}
-      onOpenChange={setEditorOpen}
-      presentation="fullscreen"
-      title={t('inspector.advancedProperties')}
-      description={t('inspector.advancedEditorDescription')}
-      closeLabel={t('toolbar.close')}
-      returnFocusTo={editorLauncher}
-      className="inspector-advanced-editor"
-    >{editorContent}</Drawer> : null}
-  </>;
+  return <section className="inspector-advanced" aria-label={t('inspector.advancedProperties')}>
+    <h3 className="inspector-advanced__title">{t('inspector.advancedShort')}</h3>
+    <div className="inspector-advanced__list">
+      <CollapsibleGroupsContext value>{children}</CollapsibleGroupsContext>
+    </div>
+  </section>;
 };

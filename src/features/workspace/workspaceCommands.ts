@@ -85,6 +85,18 @@ interface WorkspaceCommands {
    * creates geometry rather than transforming what is already there.
    */
   'open-structure-generator': void;
+  /** Abre o cierra la entrada por coordenadas del lienzo (el dock del teléfono la lanza). */
+  'toggle-coordinate-entry': void;
+  /**
+   * El lienzo publica lo que está colocando: el nudo desde el que sigue la barra
+   * en curso y si la entrada por coordenadas está abierta. El dock dinámico lo
+   * refleja sin conocer el estado interno del lienzo.
+   */
+  'canvas-placement-state': { memberStart: string | null; coordinateEntryOpen: boolean };
+  /** Cierra la cadena de barras en curso sin cambiar de herramienta. */
+  'end-member-chain': void;
+  /** Abre en el dock del teléfono el valor de la carga seleccionada (tras colocarla). */
+  'edit-load-value': void;
   /** Show a toast notification on screen. */
   'show-toast': {
     message: string;

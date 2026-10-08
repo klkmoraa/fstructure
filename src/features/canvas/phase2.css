@@ -1,5 +1,5 @@
 .desktop-tool-list { display:contents; }
-.mobile-tool-dock, .mobile-tool-palette, .mobile-tool-sheet-backdrop, .results-mobile-toggle { display:none; }
+.results-mobile-toggle { display:none; }
 .selection-tip { color: var(--subtle); font-size: var(--sc-font-size-label); line-height: 1.4; padding: 10px; display: flex; gap: 8px; align-items: flex-start; }
 .classroom-journey.is-compact .classroom-journey__steps { grid-template-columns:1fr; }.classroom-journey.is-compact .classroom-journey__steps small { display:block; }
 .canvas-host { min-height: 180px; flex: 1 1 auto; position: relative; overflow: hidden; background: var(--canvas-bg); }
@@ -214,8 +214,7 @@
   border-radius:var(--sc-radius-sheet);
 }
 /* El teclado propio es táctil en todo el rango compacto, no sólo en teléfono. */
-.coordinate-entry[data-coordinate-entry='sheet'] .coordinate-entry__keypad button { min-height:46px; font-size:var(--sc-font-size-display-md); }
-.coordinate-entry[data-coordinate-entry='sheet'] .coordinate-entry__fields input { height:46px; }
+.coordinate-entry[data-coordinate-entry='sheet'] .coordinate-entry__fields input { height:44px; }
 
 /* El disparador acompaña a los controles de cámara, que en compacto se pasan
    al borde derecho en fila (regla de `@media (max-width:1023px)`). */
@@ -226,8 +225,8 @@
     bottom:calc(12px + var(--sc-control-height-md) + 8px);
   }
 }
-.coordinate-entry__head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-.coordinate-entry__head strong { font-size:var(--sc-font-size-control); font-weight:var(--sc-font-weight-bold); }
+.coordinate-entry__head { display:flex; align-items:center; gap:6px; }
+.coordinate-entry__head > .coordinate-entry__modes { flex:1 1 auto; min-width:0; }
 
 .coordinate-entry__modes {
   display:grid;
@@ -258,16 +257,21 @@
    puede, y desaparecer no enseña qué le falta. */
 .coordinate-entry__modes button:disabled { color:var(--sc-color-text-disabled); cursor:default; }
 
+/* El nudo desde el que se mide, como ficha: el nombre basta. */
 .coordinate-entry__origin {
-  margin:0;
-  color:var(--sc-color-text-muted);
-  font-size:var(--sc-font-size-caption);
-  line-height:var(--sc-line-height-compact);
+  flex:none;
+  height:26px;
+  display:inline-flex;
+  align-items:center;
+  padding:0 9px;
+  border-radius:13px;
+  background:color-mix(in srgb,var(--sc-color-selection-stroke) 16%,transparent);
+  color:var(--sc-color-text-primary);
+  font:var(--sc-font-weight-semibold) var(--sc-font-size-label)/1 var(--sc-font-ui);
 }
 
-/* Dos campos y, en compacto, la tecla de borrar: es la que los edita. */
-.coordinate-entry__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
-.coordinate-entry__fields:has(.coordinate-entry__erase) { grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto; }
+/* Dos campos lado a lado: X e Y se leen como una pareja. */
+.coordinate-entry__fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
 .coordinate-entry__fields label {
   min-width:0;
   display:grid;
@@ -296,35 +300,6 @@
   font-variant-numeric:var(--sc-numeric-variant);
   text-align:end;
 }
-
-.coordinate-entry__keypad { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
-.coordinate-entry__keypad button {
-  min-height:var(--sc-control-height-touch);
-  border:var(--sc-depth-raised-border);
-  border-radius:var(--sc-radius-control);
-  background:var(--sc-color-surface-1);
-  box-shadow:var(--sc-depth-raised-shadow);
-  color:var(--sc-color-text-primary);
-  cursor:pointer;
-  font-size:var(--sc-font-size-screen);
-  font-variant-numeric:var(--sc-numeric-variant);
-  font-weight:var(--sc-font-weight-semibold);
-  transition:var(--sc-transition-control);
-}
-.coordinate-entry__keypad button:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
-
-.coordinate-entry__erase {
-  width:var(--sc-control-height-touch);
-  display:grid;
-  place-items:center;
-  border:var(--sc-depth-raised-border);
-  border-radius:var(--sc-radius-control);
-  background:var(--sc-color-surface-1);
-  box-shadow:var(--sc-depth-raised-shadow);
-  color:var(--sc-color-text-secondary);
-  cursor:pointer;
-}
-.coordinate-entry__erase:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 
 /* La lectura del destino resuelto. Tabular porque es una cifra que se compara
    con la del lienzo, no una frase. */
@@ -389,11 +364,15 @@
   .canvas-coordinate-trigger { width:var(--sc-control-height-touch); height:var(--sc-control-height-touch); border-radius:var(--sc-radius-panel); }
 
   .coordinate-entry[data-coordinate-entry='sheet'] {
-    left:max(7px,env(safe-area-inset-left));
-    right:max(7px,env(safe-area-inset-right));
-    bottom:7px;
-    width:auto;
-    max-height:calc(100% - 14px);
+    left:50%;
+    right:auto;
+    bottom:calc(var(--mdock-lift,0px) + 8px);
+    width:min(calc(100% - 16px),460px);
+    max-height:calc(100% - 16px);
+    padding:8px;
+    gap:6px;
+    transform:translateX(-50%);
+    border-radius:22px;
   }
 }
 
@@ -459,96 +438,36 @@ button,
     overflow:visible;
   }
   .desktop-tool-list,.toolbar-spacer,.selection-tip { display:none; }
-  .mobile-tool-dock {
-    display:grid;
-    grid-template-columns:repeat(6,minmax(0,1fr));
-    align-items:stretch;
-    gap:2px;
-    width:100%;
-  }
-  .mobile-tool-dock .tool-button {
-    min-width:0;
-    width:100%;
-    height:54px;
-    min-height:54px;
-    padding:4px 2px 3px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:3px;
-    border:0;
-    border-radius:var(--sc-radius-card);
-  }
-  .mobile-tool-dock .tool-button svg { width:21px; height:21px; flex:0 0 auto; }
-  .mobile-tool-dock .tool-button > span:not(.sc-tool-button__icon) { display:block; max-width:100%; overflow:hidden; text-overflow:ellipsis; font-size:var(--sc-font-size-label); line-height:1.05; font-weight:650; white-space:nowrap; }
-  .mobile-tool-dock .tool-button kbd { display:none; }
-  .mobile-tool-dock .tool-button.active {
-    color:var(--accent);
-    background:var(--sc-color-surface-inset);
-    box-shadow:var(--sc-shadow-pressed);
-  }
-  .mobile-tool-group { --tool-color:var(--accent); }
 
-  .mobile-tool-sheet-backdrop {
-    position:fixed;
-    z-index:var(--sc-z-sheet);
-    inset:var(--topbar-h) 0 calc(64px + env(safe-area-inset-bottom)) 0;
-    display:block;
-    background:var(--sc-color-overlay-sheet);
-    border:0;
-  }
-  .mobile-tool-palette {
-    position:fixed;
-    z-index:calc(var(--sc-z-sheet) + 1);
-    left:max(8px,env(safe-area-inset-left));
-    right:max(8px,env(safe-area-inset-right));
-    bottom:calc(64px + env(safe-area-inset-bottom));
-    display:flex;
-    flex-direction:column;
-    gap:9px;
-    max-height:calc(100dvh - var(--topbar-h) - 74px - env(safe-area-inset-bottom));
-    padding:8px 12px 12px;
-    overflow-y:auto;
-    overscroll-behavior:contain;
-    border-radius:var(--sc-radius-panel) 18px 0 0;
-  }
-  .mobile-tool-palette-handle { width:42px; height:4px; margin:0 auto 1px; flex:0 0 auto; border-radius:var(--sc-radius-control); background:var(--border); }
-  .mobile-tool-palette-header { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:12px; }
-  .mobile-tool-palette-header>div { display:grid; min-width:0; gap:3px; }
-  .mobile-tool-palette-header strong { color:var(--text); font-size:17px; line-height:1.2; letter-spacing:-.02em; }
-  .mobile-tool-palette-header span { color:var(--muted); font-size:var(--sc-font-size-label); line-height:1.4; }
-  .mobile-tool-palette-close { min-width:54px; min-height:44px; margin:-5px -5px 0 0; padding:0 7px; border:0; border-radius:var(--sc-radius-card); background:transparent; color:var(--accent); font-size:12px; font-weight:700; }
-  .mobile-tool-palette-close:hover { background:var(--accent-soft); color:var(--accent-on-soft); }
-  .mobile-tool-palette-list { display:grid; gap:6px; }
-  .mobile-palette-tool {
-    --tool-color:var(--accent);
-    width:100%;
-    min-height:62px;
-    display:grid;
-    grid-template-columns:44px minmax(0,1fr) 22px;
-    align-items:center;
-    gap:11px;
-    padding:7px 10px 7px 8px;
-    border:1px solid var(--border-soft);
-    border-radius:var(--sc-radius-card);
-    background:var(--surface);
-    color:var(--text);
-    text-align:left;
-  }
-  .mobile-palette-tool:hover { border-color:color-mix(in srgb,var(--tool-color) 38%,var(--border)); background:color-mix(in srgb,var(--tool-color) 6%,var(--surface)); }
-  .mobile-palette-tool.active { border-color:color-mix(in srgb,var(--tool-color) 52%,var(--border)); background:color-mix(in srgb,var(--tool-color) 10%,var(--surface)); }
-  .mobile-palette-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:var(--sc-radius-card); background:color-mix(in srgb,var(--tool-color) 10%,var(--surface)); color:var(--tool-color); }
-  .mobile-palette-icon svg { width:23px; height:23px; }
-  .mobile-palette-copy { display:grid; min-width:0; gap:3px; }
-  .mobile-palette-copy strong { font-size:13px; line-height:1.15; }
-  .mobile-palette-copy small { color:var(--muted); font-size:var(--sc-font-size-label); line-height:1.35; white-space:normal; }
-  .mobile-palette-tool>svg { color:var(--subtle); }
-  .mobile-palette-tool kbd { display:none; }
-  .mobile-palette-tool.tool-pointLoad { --tool-color:var(--sc-color-tool-point-load); }
-  .mobile-palette-tool.tool-distributedLoad { --tool-color:var(--sc-color-tool-distributed-load); }
-  .mobile-palette-tool.tool-moment { --tool-color:var(--sc-color-tool-moment); }
-  .mobile-palette-tool.tool-delete { --tool-color:var(--sc-color-tool-destructive); }
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+
+  
 
   .results-mobile-toggle {
     display:grid;
@@ -607,18 +526,11 @@ button,
     padding:max(4px,env(safe-area-inset-top)) 4px max(4px,env(safe-area-inset-bottom));
     --toolbar-border-width:0 1px 0 0;
   }
-  .mobile-tool-dock { grid-template-columns:1fr; align-content:center; gap:2px; }
-  .mobile-tool-dock .tool-button { height:48px; min-height:48px; }
-  .mobile-tool-dock .tool-button > span:not(.sc-tool-button__icon) { display:none; }
-  .mobile-tool-sheet-backdrop { inset:var(--topbar-h) 0 0 60px; }
-  .mobile-tool-palette {
-    left:68px;
-    right:auto;
-    bottom:max(8px,env(safe-area-inset-bottom));
-    width:min(360px,calc(100vw - 84px));
-    max-height:calc(100dvh - var(--topbar-h) - 16px);
-    border-radius:var(--sc-radius-panel);
-  }
+
+  
+
+  
+
   .center-stage { grid-column:2; grid-row:1; }
   .inspector-panel {
     left:auto;
@@ -635,7 +547,6 @@ button,
   .results-panel.mobile-collapsed { min-height:50px; max-height:50px; height:50px!important; }
 }
 .canvas-host { contain:layout paint; }
-.mobile-tool-palette { animation:native-menu-in var(--motion-standard) var(--ease-native) both; transform-origin:top right; }
 
 @media (max-width:1023px) {
   .inspector-panel {
@@ -654,7 +565,7 @@ button,
     transition-delay:0s;
   }
   .mobile-inspector-close { width:44px!important; height:44px!important; }
-  .mobile-tool-dock .tool-button > span:not(.sc-tool-button__icon) { font-size:var(--sc-font-size-label); }
+
 }
 
 /* Phase 2: non-negotiable legibility and target floor --------------------- */
@@ -717,20 +628,19 @@ button,
 }
 .tool-group-actions { display:grid; gap:2px; }
 /* Reposo/hover/activo: gramática `.sc-tool-button` de `ui.css` (CRI-98). */
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-select,
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-pan { --tool-color:var(--sc-color-tool-navigation); }
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-node,
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-member,
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-support,
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-split { --tool-color:var(--sc-color-tool-structure); }
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-pointLoad { --tool-color:var(--sc-color-tool-point-load); }
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-distributedLoad { --tool-color:var(--sc-color-tool-distributed-load); }
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-moment { --tool-color:var(--sc-color-tool-moment); }
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-dimension { --tool-color:var(--sc-color-tool-dimension); }
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-cut { --tool-color:var(--sc-color-tool-cut); }
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button).tool-delete { --tool-color:var(--sc-color-tool-destructive); }
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button):disabled svg,
-:is(.tool-button,.mobile-palette-tool,.load-tool-grid button):disabled .mobile-palette-icon { color:var(--tool-color); }
+:is(.tool-button, .load-tool-grid button).tool-select,
+:is(.tool-button, .load-tool-grid button).tool-pan { --tool-color:var(--sc-color-tool-navigation); }
+:is(.tool-button, .load-tool-grid button).tool-node,
+:is(.tool-button, .load-tool-grid button).tool-member,
+:is(.tool-button, .load-tool-grid button).tool-support,
+:is(.tool-button, .load-tool-grid button).tool-split { --tool-color:var(--sc-color-tool-structure); }
+:is(.tool-button, .load-tool-grid button).tool-pointLoad { --tool-color:var(--sc-color-tool-point-load); }
+:is(.tool-button, .load-tool-grid button).tool-distributedLoad { --tool-color:var(--sc-color-tool-distributed-load); }
+:is(.tool-button, .load-tool-grid button).tool-moment { --tool-color:var(--sc-color-tool-moment); }
+:is(.tool-button, .load-tool-grid button).tool-dimension { --tool-color:var(--sc-color-tool-dimension); }
+:is(.tool-button, .load-tool-grid button).tool-cut { --tool-color:var(--sc-color-tool-cut); }
+:is(.tool-button, .load-tool-grid button).tool-delete { --tool-color:var(--sc-color-tool-destructive); }
+:is(.tool-button, .load-tool-grid button):disabled svg { color:var(--tool-color); }
 .desktop-advanced-toggle { margin-top:2px; }
 .selection-tip { padding:8px 9px; }
 
@@ -770,24 +680,11 @@ button,
 
 @media (max-width:1023px) {
   .desktop-tool-list { display:none; }
-  .mobile-tool-dock .tool-button.active {
-    color:var(--accent);
-    background:var(--sc-color-surface-inset);
-    box-shadow:var(--sc-shadow-pressed);
-  }
-  .mobile-tool-palette-list { gap:10px; }
-  .mobile-palette-group { display:grid; gap:6px; }
-  .mobile-palette-group + .mobile-palette-group { padding-top:9px; border-top:1px solid var(--border-soft); }
-  .mobile-palette-group h3 {
-    margin:0;
-    padding:0 4px;
-    color:var(--subtle);
-    font-size:10px;
-    font-weight:750;
-    line-height:18px;
-    letter-spacing:.075em;
-    text-transform:uppercase;
-  }
+
+  
+
+  
+
 }
 
 /* Phase 3: canvas chrome and reserved safe zones ------------------------- */

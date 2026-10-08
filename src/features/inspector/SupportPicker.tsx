@@ -306,7 +306,7 @@ export const SupportPicker = ({
           </div>
         ) : null}
 
-        <div className="support-detail__section">
+        <div className={`support-detail__section${support.type === 'custom' ? '' : ' is-dof'}`}>
           <h4>{t('inspector.supportDegreesOfFreedom')}</h4>
           {support.type === 'custom' ? (
             <div className="checkbox-grid" role="group" aria-label={t('inspector.restrictedDegreesOfFreedom')}>

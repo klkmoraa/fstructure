@@ -17,6 +17,7 @@ import type { SurfacePresentation, SurfaceStatus } from '../workspace/surfacePre
 import { ViewFavoritesPanel } from '../library/ViewFavoritesPanel';
 import { UnitSystemEditor } from './UnitSystemEditor';
 import './inspector.css';
+import './inspectorFlow.css';
 
 const NumberField = ({
   label,
@@ -111,6 +112,10 @@ const InspectorContent = ({
   const { t } = useI18n();
   const [tab, setTab] = useState<'inspector' | 'loads' | 'display'>('inspector');
   const panelRef = useRef<HTMLElement>(null);
+  // Arrastre de la hoja por su cabecera: hacia arriba crece, hacia abajo
+  // encoge y, desde la altura mínima, se cierra. Un toque sigue ciclando.
+  const sheetDragRef = useRef<{ pointerId: number; startY: number; moved: boolean } | null>(null);
+  const suppressHandleClickRef = useRef(false);
   const sheet = presentation === 'sheet';
   const [resizeOrigin, setResizeOrigin] = useState<{ clientX: number; width: number } | null>(null);
 
@@ -175,6 +180,29 @@ const InspectorContent = ({
     const nextIndex = (currentIndex + direction + inspectorDetents.length) % inspectorDetents.length;
     onMobileDetentChange(inspectorDetents[nextIndex]);
   };
+  const stepDetent = (direction: 1 | -1) => {
+    if (!onMobileDetentChange) {
+      moveDetent(direction);
+      return;
+    }
+    const index = inspectorDetents.indexOf(mobileDetent);
+    const next = inspectorDetents[Math.max(0, Math.min(inspectorDetents.length - 1, index + direction))];
+    if (next !== mobileDetent) onMobileDetentChange(next);
+  };
+  const endSheetDrag = (event: ReactPointerEvent<HTMLDivElement>, cancelled: boolean) => {
+    const drag = sheetDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    sheetDragRef.current = null;
+    panelRef.current?.style.removeProperty('--sheet-drag');
+    if (!drag.moved || cancelled) return;
+    suppressHandleClickRef.current = true;
+    window.setTimeout(() => { suppressHandleClickRef.current = false; }, 0);
+    const dy = event.clientY - drag.startY;
+    if (dy > 56) {
+      if (mobileDetent === 'compact') onClose?.();
+      else stepDetent(-1);
+    } else if (dy < -56) stepDetent(1);
+  };
   const onDetentHandleKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'PageUp') {
       event.preventDefault();
@@ -236,12 +264,33 @@ const InspectorContent = ({
         onPointerUp={() => setResizeOrigin(null)}
         onPointerCancel={() => setResizeOrigin(null)}
       /> : null}
-      {sheet && (onMobileDetentChange || onMobileDetentCycle || onClose) ? <div className="inspector-sheet-controls">
+      {sheet && (onMobileDetentChange || onMobileDetentCycle || onClose) ? <div
+        className="inspector-sheet-controls"
+        onPointerDown={(event) => {
+          if (event.button !== 0 || (event.target as HTMLElement).closest('.mobile-inspector-close')) return;
+          sheetDragRef.current = { pointerId: event.pointerId, startY: event.clientY, moved: false };
+        }}
+        onPointerMove={(event) => {
+          const drag = sheetDragRef.current;
+          if (!drag || drag.pointerId !== event.pointerId) return;
+          const dy = event.clientY - drag.startY;
+          if (!drag.moved && Math.abs(dy) > 8) {
+            drag.moved = true;
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }
+          if (drag.moved) panelRef.current?.style.setProperty('--sheet-drag', `${Math.max(-24, dy)}px`);
+        }}
+        onPointerUp={(event) => endSheetDrag(event, false)}
+        onPointerCancel={(event) => endSheetDrag(event, true)}
+      >
         {onMobileDetentChange || onMobileDetentCycle ? <button
             type="button"
             className="inspector-sheet-handle"
             aria-label={`${t('inspector.detentGroup')}: ${detentLabel(mobileDetent)}`}
-            onClick={() => moveDetent(1)}
+            onClick={() => {
+              if (suppressHandleClickRef.current) return;
+              moveDetent(1);
+            }}
             onKeyDown={onDetentHandleKeyDown}
           >
             <GripHorizontal size={22} aria-hidden="true" />

@@ -13,6 +13,7 @@ import { MesaModeSwitch } from './MesaModeSwitch';
 import { LazySurface } from './LazySurface';
 import { toolIdentity } from './toolCatalog';
 import { ShellMoreMenu } from './ShellMoreMenu';
+import { usePageZoomGuard } from './usePageZoomGuard';
 import '../../design-system/components/ui.css';
 import './phase1.css';
 import './workspaceTopbar.css';
@@ -60,6 +61,7 @@ const ToolContent = ({ variant, onModeChange }: Pick<SurfaceProps, 'variant' | '
 
 const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfaceProps) => {
   const shellRef = useRef<HTMLDivElement>(null);
+  usePageZoomGuard();
   const { shellClass } = useShellComposition();
   const { t, language } = useI18n();
   const { project, storageIssue, storageMessage, renameProject } = useProject();

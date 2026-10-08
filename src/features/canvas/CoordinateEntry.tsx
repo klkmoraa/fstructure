@@ -34,7 +34,7 @@
  * nodo más cercano sería descartar lo que la persona acaba de teclear.
  */
 import { useEffect, useId, useRef, useState } from 'react';
-import { ArrowRight, Delete, Plus, X } from 'lucide-react';
+import { ArrowRight, Plus, X } from 'lucide-react';
 import { useI18n } from '../../i18n/useI18n';
 import { CoordinateEntryGlyph } from '../../design-system/icons/structural';
 import { IconButton } from '../../design-system/components/controls';
@@ -42,6 +42,7 @@ import { fromDisplay, toDisplay } from '../../foundation/units';
 import type { UnitSystemId } from '../../foundation/units';
 import { parseLocalizedDecimal } from './quickEntry';
 import { formatFixed } from '../../utils/numberFormat';
+import { NumericKeypad, applyKeypadKey, type KeypadKey } from './NumericKeypad';
 
 type CoordinateMode = 'absolute' | 'relative' | 'polar';
 
@@ -86,8 +87,6 @@ interface CoordinateEntryProps {
 
 type Field = 'first' | 'second';
 
-/** Las teclas del teclado propio, en el orden en que se dibujan. */
-const KEYPAD = ['7', '8', '9', '4', '5', '6', '1', '2', '3'] as const;
 
 export const CoordinateEntry = ({
   open,
@@ -183,15 +182,7 @@ export const CoordinateEntry = ({
   };
 
   /** Una tecla del teclado propio escribe en el campo que tenga el foco. */
-  const press = (key: string) => {
-    setField(focused, (() => {
-      const current = values[focused];
-      if (key === 'backspace') return current.slice(0, -1);
-      if (key === 'sign') return current.startsWith('-') ? current.slice(1) : `-${current}`;
-      if (key === ',' && /[.,]/.test(current)) return current;
-      return current + key;
-    })());
-  };
+  const press = (key: Exclude<KeypadKey, 'enter'>) => setField(focused, applyKeypadKey(values[focused], key));
 
   const submit = async () => {
     const point = resolve();
@@ -211,6 +202,16 @@ export const CoordinateEntry = ({
     firstRef.current?.focus({ preventScroll: true });
   };
 
+  /** ↵ del teclado propio: con el segundo campo por escribir, pasa a él; con
+   *  los dos escritos, coloca. Así «3 ↵ 0 ↵» pone un nudo sin buscar botones. */
+  const advanceOrSubmit = () => {
+    if (focused === 'first' && values.second.trim() === '' && values.first.trim() !== '') {
+      setFocused('second');
+      return;
+    }
+    void submit();
+  };
+
   const polar = mode === 'polar';
   const relative = mode === 'relative';
   const firstLabel = polar ? 'L' : relative ? 'ΔX' : 'X';
@@ -223,38 +224,32 @@ export const CoordinateEntry = ({
     { id: 'polar', label: t('coord.polar'), enabled: originAvailable },
   ];
 
+  const placeLabel = t(target === 'node' ? 'coord.placeAndContinue' : 'canvas.createMember');
+
   return <div
     ref={panelRef}
     id={panelId}
     className="coordinate-entry"
     data-coordinate-entry={compact ? 'sheet' : 'anchored'}
+    data-target={target}
     role="group"
-    aria-label={t('coord.title')}
+    aria-label={t(target === 'node' ? 'canvas.nodeByCoordinates' : 'canvas.memberEndpoint')}
   >
     <header className="coordinate-entry__head">
-      <strong>{t(target === 'node' ? 'canvas.nodeByCoordinates' : 'canvas.memberEndpoint')}</strong>
-      <IconButton size="sm" label={t('coord.close')} onClick={() => onOpenChange(false)}><X size={14} /></IconButton>
+      <div className="coordinate-entry__modes" role="group" aria-label={t('coord.mode')}>
+        {modes.map((option) => <button
+          key={option.id}
+          type="button"
+          disabled={!option.enabled}
+          aria-pressed={mode === option.id}
+          onClick={() => { setMode(option.id); setError(''); }}
+        >{option.label}</button>)}
+      </div>
+      {/* La referencia se nombra siempre que se use: un «Δ» sin decir respecto
+          a qué es una cifra sin sujeto. Basta el nombre del nudo. */}
+      {mode !== 'absolute' && origin ? <span className="coordinate-entry__origin" title={t('coord.fromNode', { node: origin.label })}>{origin.label}</span> : null}
+      <IconButton size="sm" label={t('coord.close')} onClick={() => onOpenChange(false)}><X size={15} /></IconButton>
     </header>
-
-    <div className="coordinate-entry__modes" role="group" aria-label={t('coord.mode')}>
-      {modes.map((option) => <button
-        key={option.id}
-        type="button"
-        disabled={!option.enabled}
-        aria-pressed={mode === option.id}
-        onClick={() => { setMode(option.id); setError(''); }}
-      >{option.label}</button>)}
-    </div>
-
-    {/* La referencia se nombra siempre que se use: un «Δ» sin decir respecto a
-        qué es una cifra sin sujeto. */}
-    <p className="coordinate-entry__origin">
-      {mode === 'absolute'
-        ? t('coord.fromOrigin')
-        : origin
-          ? t('coord.fromNode', { node: origin.label })
-          : t('coord.needsOrigin')}
-    </p>
 
     <div className="coordinate-entry__fields">
       {(['first', 'second'] as const).map((field) => <label
@@ -273,42 +268,41 @@ export const CoordinateEntry = ({
           value={values[field]}
           onFocus={() => setFocused(field)}
           onChange={(event) => setField(field, event.target.value)}
-          onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void submit(); } }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') return;
+            event.preventDefault();
+            if (field === 'first' && values.second.trim() === '' && values.first.trim() !== '') {
+              setFocused('second');
+              (event.currentTarget.closest('.coordinate-entry__fields')?.querySelectorAll('input')[1] as HTMLInputElement | undefined)?.focus({ preventScroll: true });
+              return;
+            }
+            void submit();
+          }}
         />
         <small>{field === 'first' ? lengthLabel : secondUnit}</small>
       </label>)}
-      {/* Borrar edita un campo, así que vive con los campos. Sola en una cuarta
-          fila del teclado dejaba dos huecos y 52px de hoja por nada. */}
-      {compact ? <button
-        type="button"
-        className="coordinate-entry__erase"
-        onClick={() => press('backspace')}
-        aria-label={t('coord.backspace')}
-      ><Delete size={17} /></button> : null}
     </div>
 
-    {/* En relativo y en polar los campos NO dicen dónde acaba el punto. Y en un
-        teléfono la hoja tapa buena parte del lienzo, así que el fantasma puede
-        quedar detrás de ella. Esta línea hace comprobable el destino sin
-        depender de verlo. */}
-    {resolved ? <p className="coordinate-entry__resolved">
+    {/* En relativo y en polar los campos NO dicen dónde acaba el punto, y en un
+        teléfono el fantasma puede quedar detrás de la hoja. Esta línea hace
+        comprobable el destino sin depender de verlo. */}
+    {resolved && mode !== 'absolute' ? <p className="coordinate-entry__resolved">
       <ArrowRight size={13} aria-hidden="true" />
       X {formatFixed(toDisplay(resolved.x, units, 'length'), 3)} · Y {formatFixed(toDisplay(resolved.y, units, 'length'), 3)} {lengthLabel}
     </p> : null}
 
-    {compact ? <div className="coordinate-entry__keypad" role="group" aria-label={t('coord.keypad')}>
-      {KEYPAD.map((key) => <button key={key} type="button" onClick={() => press(key)}>{key}</button>)}
-      <button type="button" onClick={() => press('sign')} aria-label={t('coord.sign')}>±</button>
-      <button type="button" onClick={() => press('0')}>0</button>
-      <button type="button" onClick={() => press(',')} aria-label={t('coord.decimal')}>,</button>
-    </div> : null}
-
     {error ? <p className="coordinate-entry__error" role="alert">{error}</p> : null}
 
-    <button type="button" className="coordinate-entry__place" onClick={() => { void submit(); }}>
+    {compact ? <NumericKeypad
+      label={t('coord.keypad')}
+      enterLabel={placeLabel}
+      enterAdvances={focused === 'first' && values.second.trim() === '' && values.first.trim() !== ''}
+      labels={{ backspace: t('coord.backspace'), sign: t('coord.sign'), decimal: t('coord.decimal') }}
+      onPress={(key) => { if (key === 'enter') advanceOrSubmit(); else press(key); }}
+    /> : <button type="button" className="coordinate-entry__place" onClick={() => { void submit(); }}>
       <Plus size={15} aria-hidden="true" />
-      {t(target === 'node' ? 'coord.placeAndContinue' : 'canvas.createMember')}
-    </button>
+      {placeLabel}
+    </button>}
   </div>;
 };
 

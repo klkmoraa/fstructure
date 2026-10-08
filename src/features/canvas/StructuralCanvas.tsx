@@ -315,6 +315,21 @@ export const StructuralCanvas = ({
   // en unidades de modelo, para que el lienzo lo dibuje antes de confirmarlo.
   const [coordinateEntryOpen, setCoordinateEntryOpen] = useState(false);
   const [coordinatePreview, setCoordinatePreview] = useState<CoordinatePreview | null>(null);
+  // La barra en curso pertenece a la herramienta Barra: al cambiar de
+  // herramienta se suelta, en vez de quedarse esperando su nudo destino. El
+  // ref lo consulta la creación asíncrona: si la herramienta cambió mientras
+  // se creaba la barra, la cadena no se reabre.
+  const activeToolRef = useRef(activeTool);
+  useEffect(() => {
+    activeToolRef.current = activeTool;
+    if (activeTool !== 'member') setMemberStart(null);
+  }, [activeTool]);
+  // El dock del teléfono refleja lo que se está colocando y abre el teclado.
+  useEffect(() => {
+    emitWorkspaceCommand('canvas-placement-state', { memberStart, coordinateEntryOpen });
+  }, [coordinateEntryOpen, memberStart]);
+  useEffect(() => onWorkspaceCommand('toggle-coordinate-entry', () => setCoordinateEntryOpen((current) => !current)), []);
+  useEffect(() => onWorkspaceCommand('end-member-chain', () => setMemberStart(null)), []);
   const [candidatePicker, setCandidatePicker] = useState<CandidatePickerState | null>(null);
   const [supportPlacement, setSupportPlacement] = useState<{
     nodeId: string;
@@ -361,6 +376,7 @@ export const StructuralCanvas = ({
   const longPressMotionRef = useRef<{ pointerId: number; start: ScreenPoint; current: ScreenPoint } | null>(null);
   const previousSizeRef = useRef<Size | null>(null);
   const fittedProjectRef = useRef<string | null>(null);
+  const emptyProjectIdRef = useRef<string | null>(null);
   const memoryGeometry = useMemo(() => geometryKey(project.nodes), [project.nodes]);
   useEffect(() => {
     if (fittedProjectRef.current !== project.id || !size.width || !size.height) return;
@@ -764,48 +780,69 @@ export const StructuralCanvas = ({
     updateCamera(decorated === bounds ? first : cameraToFitBounds(decorated, viewport, fitInsets));
   }, [loadDecorationDrawn, project.nodes.length, size, updateCamera, visibleFitBounds]);
 
-  /* Las hojas K0 flotan sobre el canvas y por eso no disparan ResizeObserver
-     en su anfitrión. Al abrirse, medimos su techo real y encuadramos el modelo
-     contra el rectángulo que sigue visible; al cerrarse recuperamos el encuadre
-     completo. El observer también cubre cambios de detent y altura. */
+  /* Las hojas K0 flotan sobre el lienzo. Antes, al abrirse o cerrarse —y cada
+     vez que cambiaba el modelo con una abierta, porque el efecto dependía de
+     `fitModel`— el lienzo se reencuadraba solo: añadir un nudo hacía zoom.
+     Ahora la escala no cambia nunca por una hoja: si al abrirse (o al crecer)
+     tapa la selección, la vista sólo se desplaza lo justo para dejarla a la
+     vista encima de ella. */
+  const sheetWasOpenRef = useRef(false);
+  const selectionAnchorRef = useRef<ModelPoint | null>(null);
+  selectionAnchorRef.current = (() => {
+    if (!selection) return null;
+    if (selection.kind === 'node') return nodeMap.get(selection.id) ?? null;
+    const memberMidpoint = (memberId: string) => {
+      const member = memberMap.get(memberId);
+      const ni = member ? nodeMap.get(member.i) : undefined;
+      const nj = member ? nodeMap.get(member.j) : undefined;
+      return ni && nj ? { x: (ni.x + nj.x) / 2, y: (ni.y + nj.y) / 2 } : null;
+    };
+    if (selection.kind === 'member') return memberMidpoint(selection.id);
+    if (selection.kind === 'nodalLoad') {
+      const load = project.nodalLoads.find((item) => item.id === selection.id);
+      return load ? nodeMap.get(load.nodeId) ?? null : null;
+    }
+    if (selection.kind === 'memberLoad') {
+      const load = project.memberLoads.find((item) => item.id === selection.id);
+      return load ? memberMidpoint(load.memberId) : null;
+    }
+    const firstNode = selection.nodeIds[0] ? nodeMap.get(selection.nodeIds[0]) : undefined;
+    return firstNode ?? (selection.memberIds[0] ? memberMidpoint(selection.memberIds[0]) : null);
+  })();
   useEffect(() => {
-    if (!canvasMeasured || !compactCanvasChrome) return undefined;
+    const opened = compactContextSheetOpen && !sheetWasOpenRef.current;
+    sheetWasOpenRef.current = compactContextSheetOpen;
+    if (!opened || !canvasMeasured) return undefined;
     let sheetObserver: ResizeObserver | null = null;
-    const reframe = () => {
+    const revealSelection = () => {
       const host = hostRef.current;
-      if (!host || !compactContextSheetOpen) {
-        fitModel();
-        return;
-      }
+      const anchor = selectionAnchorRef.current;
       const sheet = document.querySelector<HTMLElement>(
         '[data-surface-presentation="sheet"][data-surface-status="active"]:not([hidden])',
       );
-      if (!sheet) {
-        fitModel();
-        return;
-      }
+      if (!host || !anchor || !sheet) return;
       const hostRect = host.getBoundingClientRect();
-      const sheetRect = sheet.getBoundingClientRect();
-      const bottomReserve = Math.max(0, hostRect.bottom - Math.max(hostRect.top, sheetRect.top) + 12);
-      /* Sin el riel de evidencia, 52px cubren el único control que permanece
-         arriba (Capas) y centran el pórtico en la ventana visible. */
-      fitModel(bottomReserve, 52);
+      const visibleBottom = Math.min(hostRect.height, sheet.getBoundingClientRect().top - hostRect.top) - 28;
+      const current = cameraRef.current;
+      const screenY = current.y - anchor.y * current.scale;
+      if (screenY <= visibleBottom) return;
+      const target = Math.max(72, visibleBottom * 0.55);
+      updateCamera((camera) => ({ ...camera, y: camera.y - (screenY - target) }));
     };
     const frame = window.requestAnimationFrame(() => {
-      reframe();
-      if (!compactContextSheetOpen) return;
+      revealSelection();
       const sheet = document.querySelector<HTMLElement>(
         '[data-surface-presentation="sheet"][data-surface-status="active"]:not([hidden])',
       );
       if (!sheet) return;
-      sheetObserver = new ResizeObserver(reframe);
+      sheetObserver = new ResizeObserver(revealSelection);
       sheetObserver.observe(sheet);
     });
     return () => {
       window.cancelAnimationFrame(frame);
       sheetObserver?.disconnect();
     };
-  }, [canvasMeasured, compactCanvasChrome, compactContextSheetOpen, fitModel]);
+  }, [canvasMeasured, compactContextSheetOpen, updateCamera]);
 
   const navigateMinimapTo = useCallback((point: ModelPoint) => {
     updateCamera((current) => cameraToCenterPoint(point, current.scale, size));
@@ -828,9 +865,19 @@ export const StructuralCanvas = ({
     const currentSize = { width: size.width, height: size.height };
     previousSizeRef.current = currentSize;
 
-    if (!project.nodes.length) return;
+    if (!project.nodes.length) {
+      emptyProjectIdRef.current = project.id;
+      return;
+    }
     if (fittedProjectRef.current !== project.id) {
       fittedProjectRef.current = project.id;
+      // El primer nudo que la persona coloca en un proyecto vacío no reencuadra:
+      // el lienzo saltaba (centraba y ampliaba) justo bajo el dedo. Cargar,
+      // importar o generar un modelo sí se encuadra.
+      const placedByHand = emptyProjectIdRef.current === project.id
+        && (activeToolRef.current === 'node' || activeToolRef.current === 'member');
+      emptyProjectIdRef.current = null;
+      if (placedByHand) return;
       const remembered = CAMERA_MEMORY.get(project.id);
       if (remembered && remembered.geometry === geometryKey(project.nodes)) {
         const sameSize = remembered.size.width === currentSize.width && remembered.size.height === currentSize.height;
@@ -995,8 +1042,11 @@ export const StructuralCanvas = ({
       point,
       template,
     });
-    if (result?.kind === 'member.createAtPoint') memberId = result.memberId;
-    setMemberStart(null);
+    let endNodeId: string | null = null;
+    if (result?.kind === 'member.createAtPoint') { memberId = result.memberId; endNodeId = result.nodeId; }
+    // Encadenar: el extremo recién puesto es el inicio de la siguiente barra.
+    // Picar ese mismo nudo, Escape o Terminar cierran la cadena.
+    setMemberStart(memberId && activeToolRef.current === 'member' ? endNodeId : null);
     if (memberId) setSelection({ kind: 'member', id: memberId });
     setRepeatRecipe(null);
     return memberId !== '';
@@ -1295,12 +1345,16 @@ export const StructuralCanvas = ({
     }
   }, [activeTool, capturePointer, clearLongPressTimer, localScreenPoint, onRequestInspector, openCandidatePicker, selectStructuralTarget, setActiveTool, transitionInteraction]);
 
-  const completeLoadPlacement = (label: string) => {
+  const completeLoadPlacement = () => {
     setActiveTool('select');
-    showCanvasFeedback(t('canvas.loadAdded', { load: label }));
     // Open after the click sequence so the newly mounted backdrop cannot receive
-    // the matching pointerup/click.
-    window.requestAnimationFrame(() => onRequestInspector?.());
+    // the matching pointerup/click. En el teléfono la carga se ajusta en el
+    // dock —su valor y su sentido con el teclado propio—, sin una hoja que tape
+    // la carga recién puesta.
+    window.requestAnimationFrame(() => {
+      if (compactCanvasChrome) emitWorkspaceCommand('edit-load-value');
+      else onRequestInspector?.();
+    });
   };
 
   const openSupportPlacement = useCallback((nodeId: string, client: ScreenPoint, initialType: SupportPlacementType = 'pin', initialAngleDeg = 90, initialPresetId?: string) => {
@@ -1334,10 +1388,14 @@ export const StructuralCanvas = ({
     });
     setSelection({ kind: 'node', id: pending.nodeId });
     setSupportPlacement(null);
-    setActiveTool('select');
-    onRequestInspector?.();
+    // En el teléfono la herramienta sigue puesta: el siguiente nudo se toca y
+    // ya. En escritorio el inspector muestra el apoyo recién elegido.
+    if (!compactCanvasChrome) {
+      setActiveTool('select');
+      onRequestInspector?.();
+    }
     window.requestAnimationFrame(() => svgRef.current?.focus({ preventScroll: true }));
-  }, [onRequestInspector, setActiveTool, setSelection, supportPlacement, updateProject]);
+  }, [compactCanvasChrome, onRequestInspector, setActiveTool, setSelection, supportPlacement, updateProject]);
 
   const cancelSupportPlacement = useCallback(() => {
     setSupportPlacement(null);
@@ -1382,7 +1440,7 @@ export const StructuralCanvas = ({
         nodes: [],
         member: { id, i: memberStart, j: node.id, ...template },
       });
-      setMemberStart(null);
+      setMemberStart(node.id);
       setRepeatRecipe(null);
       setSelection({ kind: 'member', id });
       return;
@@ -1412,7 +1470,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'nodalLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement(t('toolbar.pointLoad'));
+      completeLoadPlacement();
       return;
     }
     if (tool === 'moment') {
@@ -1427,7 +1485,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'nodalLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement(t('toolbar.moment'));
+      completeLoadPlacement();
       return;
     }
     if (tool === 'distributedLoad') {
@@ -1476,7 +1534,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'memberLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement(t('toolbar.distributedLoad'));
+      completeLoadPlacement();
       return;
     }
     if (tool === 'pointLoad') {
@@ -1496,7 +1554,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'memberLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement(t('toolbar.pointLoad'));
+      completeLoadPlacement();
       return;
     }
     if (tool === 'moment') {
@@ -1516,7 +1574,7 @@ export const StructuralCanvas = ({
       });
       setSelection({ kind: 'memberLoad', id });
       setRepeatRecipe(null);
-      completeLoadPlacement(t('toolbar.moment'));
+      completeLoadPlacement();
       return;
     }
     if (tool === 'cut') {
@@ -2065,6 +2123,12 @@ export const StructuralCanvas = ({
           setDuplicateDraft(null);
           return;
         }
+        // Con una cadena de barras en curso, Escape sólo la cierra: la
+        // herramienta sigue puesta para empezar otra. El segundo Escape sale.
+        if (memberStart && activeTool === 'member') {
+          setMemberStart(null);
+          return;
+        }
         cancelActiveInteraction();
         setMemberStart(null);
         setCoordinateEntryOpen(false);
@@ -2094,7 +2158,7 @@ export const StructuralCanvas = ({
       window.removeEventListener('blur', cancelActiveInteraction);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [activateRepeat, cancelActiveInteraction, cancelStructuralEdit, cancelSupportPlacement, candidatePicker, closeCandidatePicker, compactCanvasChrome, copyStructuralSelection, deleteSelection, duplicateDraft, editCapabilities.structural, pasteStructuralSelection, repeatCandidate, selection, setActiveTool, setSelection, startDuplicate, structuralEditDraft, supportPlacement]);
+  }, [activateRepeat, activeTool, cancelActiveInteraction, cancelStructuralEdit, cancelSupportPlacement, candidatePicker, closeCandidatePicker, compactCanvasChrome, copyStructuralSelection, deleteSelection, duplicateDraft, editCapabilities.structural, memberStart, pasteStructuralSelection, repeatCandidate, selection, setActiveTool, setSelection, startDuplicate, structuralEditDraft, supportPlacement]);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -2926,7 +2990,7 @@ export const StructuralCanvas = ({
           max: formatFixed(demandLegend.maxRatio ?? 0, 2),
         })}</small> : null}
       </div> : null}
-      {memberStart ? <div className="canvas-hint" role="status"><span>{t('canvas.touchDestinationNode')}</span><button type="button" onClick={() => setMemberStart(null)} aria-label={t('canvas.cancelMemberCreation')}><X size={14} /></button></div> : null}
+      {memberStart ? <div className="canvas-hint" role="status" aria-label={t('canvas.touchDestinationNode')}><span className="canvas-hint__chain">{memberStart} →</span><button type="button" onClick={() => setMemberStart(null)} aria-label={t('canvas.cancelMemberCreation')}><X size={14} /></button></div> : null}
       <CoordinateEntry
         open={coordinateEntryOpen}
         onOpenChange={setCoordinateEntryOpen}

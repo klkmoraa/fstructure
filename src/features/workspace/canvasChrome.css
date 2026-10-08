@@ -137,82 +137,20 @@
   /* La ficha activa (Axial · Cortante · Momento) ya nombra el diagrama: la leyenda lo repetía. */
   .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .canvas-result-legend { display: none; }
   /* Barra inferior: una franja plana; ninguna pieza con caja propia que se corte. */
-  .app-shell.workspace-screen[data-shell-class='K0'] > .console {
-    align-items: center;
-    border-top: 1px solid var(--sc-color-border-soft);
-    background: var(--sc-color-surface-1);
-    box-shadow: none;
-  }
-  .app-shell.workspace-screen[data-shell-class='K0'] .console .toolbar,
-  .app-shell.workspace-screen[data-shell-class='K0'] .console .tool-rail {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-  .app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock {
-    align-items: center;
-    gap: 2px;
-    padding: 0 6px;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-  .app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button {
-    min-height: 44px;
-    height: 44px;
-    border-radius: var(--sc-radius-control);
-  }
-  .app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button:not(.active, .is-active) {
-    border-color: transparent;
-    background: transparent;
-    box-shadow: none;
-  }
+
+  
+
+  
+
   /* La barra de dominio de 2 px es del riel vertical de escritorio; en la tecla
      roja del móvil sólo se veía como una raya oscura. */
   .app-shell.workspace-screen[data-shell-class='K0'] .tool-rail .tool-button::before { content: none; }
 
   /* Inspector: la misma tecla que las herramientas, separada por un filete. */
-  .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot {
-    align-self: center;
-    align-items: center;
-    height: 32px;
-    padding: 0 6px 0 4px;
-    border: 0;
-    background: transparent;
-    box-shadow: inset 1px 0 0 var(--sc-color-border-soft);
-  }
-  .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot > button {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
-    min-height: 44px;
-    padding: 0;
-    display: grid;
-    place-items: center;
-    border: 0;
-    border-radius: var(--sc-radius-control);
-    background: transparent;
-    box-shadow: none;
-    color: var(--sc-color-text-secondary);
-    transition:
-      background-color var(--sc-motion-control) var(--sc-ease-standard),
-      color var(--sc-motion-control) var(--sc-ease-standard),
-      transform var(--sc-motion-control) var(--sc-ease-press);
-  }
-  .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot > button:active:not(:disabled) {
-    transform: var(--sc-press-transform);
-  }
+
+  
+
   /* Abierto: el mismo tinte suave que una pestaña elegida, no un bloque cuadrado. */
-  .app-shell.workspace-screen[data-shell-class='K0'] > .console .console__foot > button:is([aria-pressed='true'], [aria-expanded='true'], .active, .is-active) {
-    border-radius: var(--sc-radius-card);
-    background: color-mix(in srgb, var(--sc-color-action-primary) 14%, transparent);
-    box-shadow: none;
-    color: var(--sc-color-action-primary);
-  }
 
   /* Resultados «enfocados»: empiezan bajo la barra superior; antes ésta les
      tapaba la cabecera (salir del enfoque y cerrar) y no había cómo achicarlos. */
@@ -346,5 +284,13 @@
   .app-shell.workspace-screen[data-shell-class='K0'] > .workspace > .center-stage {
     grid-column: 1;
     grid-row: 1;
+  }
+}
+
+/* Con el inspector en su columna, las utilidades siguen al borde del lienzo y
+   no quedan encima del panel (se medían contra la ventana). */
+@media (min-width: 1024px) {
+  .app-shell.workspace-screen[data-shell-class]:not([data-inspector-collapsed]) > .console.console .console__foot {
+    right: calc(21px + var(--chrome-gap) + var(--inspector-w, 320px));
   }
 }

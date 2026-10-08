@@ -75,9 +75,11 @@ export const CanvasChrome = ({
   }, [onFit]);
 
   return <>
-    <div className={`canvas-mode-badge${placementInstruction ? ' placing-load has-context' : showHelp ? ' has-context' : ''}`} role="status" aria-live="polite" data-canvas-chrome="mode">
+    <div className={`canvas-mode-badge${placementInstruction ? ' placing-load' : showHelp ? ' has-context' : ''}`} role="status" aria-live="polite" data-canvas-chrome="mode" title={placementInstruction ?? undefined}>
       <strong>{modeLabel}</strong>
-      {placementInstruction ? <span className="canvas-action-instruction">{placementInstruction}</span> : showHelp ? <>
+      {/* La herramienta se nombra; la instrucción queda para el lector y el
+          título, no como un párrafo encima del lienzo. */}
+      {placementInstruction ? <span className="canvas-action-instruction sr-only">{placementInstruction}</span> : showHelp ? <>
         <span className="desktop-gesture-hint">{t('canvas.gestureDesktop')}</span>
         <span className="touch-gesture-hint">{t('canvas.gestureTouch')}</span>
       </> : null}

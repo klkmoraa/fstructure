@@ -126,8 +126,8 @@
     gap: 4px;
   }
 
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.toolbar-spacer, .selection-tip, .mobile-tool-dock),
-  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock :is(.toolbar-spacer, .selection-tip, .mobile-tool-dock) {
+  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.toolbar-spacer, .selection-tip),
+  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock :is(.toolbar-spacer, .selection-tip) {
     display: none;
   }
 
@@ -394,9 +394,7 @@
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active),
 .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled),
 .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active),
-.app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled),
-.app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active, .is-active),
-.app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active, .is-active):hover:not(:disabled) {
+.app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled) {
   --tool-color: var(--sc-color-action-foreground);
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-action-primary);
@@ -481,8 +479,7 @@
    El Brandbook resuelve el gesto con `shadow-inset`; conservar el tamaño evita
    el rebote óptico que se sentía al tocar una herramienta en K0. */
 .app-shell.workspace-screen[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button,
-.app-shell.workspace-screen[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button,
-.app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button {
+.app-shell.workspace-screen[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button {
   transition:
     background-color var(--sc-motion-fast) var(--sc-ease-standard),
     border-color var(--sc-motion-fast) var(--sc-ease-standard),
@@ -491,16 +488,14 @@
 }
 
 .app-shell.workspace-screen[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:active:not(:disabled),
-.app-shell.workspace-screen[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:active:not(:disabled),
-.app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button:active:not(:disabled) {
+.app-shell.workspace-screen[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:active:not(:disabled) {
   transform: none;
   background: var(--sc-color-surface-inset);
   box-shadow: var(--sc-shadow-pressed);
 }
 
 .app-shell.workspace-screen[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):active:not(:disabled),
-.app-shell.workspace-screen[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):active:not(:disabled),
-.app-shell.workspace-screen[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active, .is-active):active:not(:disabled) {
+.app-shell.workspace-screen[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):active:not(:disabled) {
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Anchor,
+  ChevronRight,
   CircleDot,
   DraftingCompass,
   Layers3,
@@ -41,7 +42,6 @@ import { InspectorNarrativeCard } from './InspectorNarrativeCard';
 import { ModelOverviewPanel } from './ModelOverviewPanel';
 import { InspectorNumericField } from './InspectorNumericField';
 import { InspectorSelectionPreview } from './InspectorSelectionPreview';
-import { readExpandedSectionsForSurface, writeExpandedSectionsForSurface } from './inspectorPreferences';
 import { MaterialPresetSelector } from './MaterialPresetSelector';
 import { formatInspectorValue } from './numericFormatting';
 import { SectionPresetSelector } from './SectionPresetSelector';
@@ -62,15 +62,6 @@ import {
   InspectorSelectionSummary,
   type InspectorSummaryMetric,
 } from './InspectorPrimitives';
-
-const usePersistentInspectorSections = () => {
-  const [expanded, setExpanded] = useState<string[]>(() => readExpandedSectionsForSurface('detail'));
-  const updateExpanded = useCallback((next: string[]) => {
-    setExpanded(next);
-    writeExpandedSectionsForSurface('detail', next);
-  }, []);
-  return [expanded, updateExpanded] as const;
-};
 
 const SelectField = ({
   label,
@@ -158,7 +149,6 @@ export const InspectorProperties = () => {
   const { selection, setSelection } = useWorkspaceUI();
   const { language, t } = useI18n();
   const { resultsVisible } = useClassroomSession();
-  const [expandedSections, setExpandedSections] = usePersistentInspectorSections();
   const [memberLoadPositionMode, setMemberLoadPositionMode] = useState<'meters' | 'percent'>('meters');
   const [pointLoadDirectionMode, setPointLoadDirectionMode] = useState<'polar' | 'components'>('polar');
   const units = project.settings.units;
@@ -501,14 +491,14 @@ export const InspectorProperties = () => {
   }
 
   const renderNodeAdvanced = selectedNode ? <>
-    <InspectorPropertyGroup title={t('inspector.connection')} description={t('inspector.nodeRotationDescription')}>
+    <InspectorPropertyGroup title={t('inspector.internalHinge')} summary={selectedNode.internalHinge ? t('inspector.yes') : t('inspector.no')}>
       <label className="toggle-row">
-        <span>{t('inspector.internalHinge')}<small>{t('inspector.internalHingeHelp')}</small></span>
+        <span title={t('inspector.internalHingeHelp')}>{t('inspector.internalHinge')}</span>
         <input type="checkbox" checked={selectedNode.internalHinge ?? false} onChange={(event) => updateNode('internalHinge', event.target.checked)} />
       </label>
     </InspectorPropertyGroup>
 
-    {!classroomMode ? <InspectorPropertyGroup title="Vínculos, contacto y fricción" description="Conecta este nodo al terreno o a otro nodo; los contactos se resuelven por conjunto activo.">
+    {!classroomMode ? <InspectorPropertyGroup title="Vínculos, contacto y fricción" summary={selectedNodeLinks.length || '—'}>
       <div className="section-heading"><span className="section-description">{selectedNodeLinks.length ? `${selectedNodeLinks.length} vínculo(s) definido(s)` : 'Sin vínculos especiales'}</span><button type="button" className="mini-button" aria-label="Agregar vínculo" onClick={() => updateProject((draft) => {
         draft.nodeLinks ??= [];
         let index = 1; while (draft.nodeLinks.some((item) => item.id === `LINK${index}`)) index += 1;
@@ -529,7 +519,7 @@ export const InspectorProperties = () => {
       <InspectorHelper>Una dirección positiva sale de este nodo. En vínculos nodo–nodo, la deformación se mide en el extremo final menos el inicial.</InspectorHelper>
     </InspectorPropertyGroup> : null}
 
-    {!classroomMode ? <InspectorPropertyGroup title="Restricciones y masas" description="Compatibilidad entre nodos y masa adicional para el estudio modal.">
+    {!classroomMode ? <InspectorPropertyGroup title="Restricciones y masas" summary={selectedNodeConstraints.length + selectedNodeMasses.length || '—'}>
       <div className="section-heading"><span className="section-description">{selectedNodeConstraints.length ? `${selectedNodeConstraints.length} restricción(es) multipunto` : 'Sin restricción multipunto'}</span><button type="button" className="mini-button" aria-label="Agregar restricción multipunto" disabled={project.nodes.length < 2} onClick={() => updateProject((draft) => {
         const other = draft.nodes.find((node) => node.id !== selectedNode.id); if (!other) return draft;
         draft.multiPointConstraints ??= []; let index = 1; while (draft.multiPointConstraints.some((item) => item.id === `MPC${index}`)) index += 1;
@@ -552,7 +542,7 @@ export const InspectorProperties = () => {
       </div>)}</div>
     </InspectorPropertyGroup> : null}
 
-    {!classroomMode && selectedNode.support.type !== 'none' ? <InspectorPropertyGroup title={t('inspector.settlementsByCase')} description={t('inspector.settlementsDescription')}>
+    {!classroomMode && selectedNode.support.type !== 'none' ? <InspectorPropertyGroup title={t('inspector.settlementsByCase')} summary={selectedNodePrescribed.length || '—'}>
       <div className="section-heading">
         <span className="section-description">{selectedNodePrescribed.length > 0 ? t('inspector.definedCount', { count: selectedNodePrescribed.length }) : t('inspector.noSettlements')}</span>
         <button type="button" className="mini-button" aria-label={t('inspector.addPrescribedDisplacement')} onClick={() => updateProject((draft) => {
@@ -581,17 +571,16 @@ export const InspectorProperties = () => {
       </div>)}</div>
       <InspectorHelper>{t('inspector.settlementFactorHelp')}</InspectorHelper>
     </InspectorPropertyGroup> : null}
-    {!classroomMode && selectedNode.support.type === 'none' ? <InspectorLockedState title={t('inspector.settlementsUnavailable')}>{t('inspector.settlementsUnavailableBody')}</InspectorLockedState> : null}
     {classroomMode ? <InspectorLockedState title={t('inspector.settlementsLockedClassroom')}>{t('inspector.settlementsLockedClassroomBody')}</InspectorLockedState> : null}
   </> : null;
 
   const renderMemberAdvanced = selectedMember ? <>
     {selectedMember.type === 'rigid' ? <InspectorLockedState title={t('inspector.mechanicalPropertiesLocked')}>{t('inspector.rigidHelp')}</InspectorLockedState> : <>
-      {!classroomMode ? <InspectorPropertyGroup title={t('inspector.complementaryMaterial')} description={t('inspector.lessFrequentMemberProperties')}>
+      {!classroomMode ? <InspectorPropertyGroup title={t('inspector.complementaryMaterial')} summary={selectedMember.density === undefined ? '—' : formatPhysical(selectedMember.density, units, 'density')}>
         <PhysicalNumberField label="ρ" value={selectedMember.density ?? 0} units={units} quantity="density" resetKey={`${selectionKey}:density`} validate={nonNegative} hint={selectedMember.density === undefined ? t('inspector.explicitValueSaveHint') : undefined} onCommit={(value) => updateMember('density', value)} />
       </InspectorPropertyGroup> : null}
 
-      {!classroomMode ? <InspectorPropertyGroup title={t('inspector.axialBehavior')} description={t('inspector.axialBehaviorHelp')}>
+      {!classroomMode ? <InspectorPropertyGroup title={t('inspector.axialBehavior')} summary={t(selectedMember.axialBehavior === 'tension-only' ? 'inspector.axialBehaviorTension' : selectedMember.axialBehavior === 'compression-only' ? 'inspector.axialBehaviorCompression' : 'inspector.axialBehaviorBoth')}>
         <SelectField label={t('inspector.axialBehavior')} value={selectedMember.axialBehavior ?? 'both'} onChange={(value) => updateMember('axialBehavior', value)}>
           <option value="both">{t('inspector.axialBehaviorBoth')}</option>
           <option value="tension-only">{t('inspector.axialBehaviorTension')}</option>
@@ -599,7 +588,7 @@ export const InspectorProperties = () => {
         </SelectField>
       </InspectorPropertyGroup> : null}
 
-      {selectedMember.type === 'frame' && !classroomMode ? <InspectorPropertyGroup title={t('inspector.beamTheory')} description={t('inspector.memberDeformationModel')}>
+      {selectedMember.type === 'frame' && !classroomMode ? <InspectorPropertyGroup title={t('inspector.beamTheory')} summary={selectedMember.beamTheory === 'timoshenko' ? 'Timoshenko' : 'Euler-Bernoulli'}>
         <SelectField label={t('inspector.theory')} value={selectedMember.beamTheory ?? 'euler-bernoulli'} onChange={(value) => updateMember('beamTheory', value)}>
           <option value="euler-bernoulli">{t('inspector.eulerBernoulli')}</option><option value="timoshenko">{t('inspector.timoshenko')}</option>
         </SelectField>
@@ -609,7 +598,7 @@ export const InspectorProperties = () => {
         </> : null}
       </InspectorPropertyGroup> : null}
 
-      {!classroomMode ? <InspectorPropertyGroup title={t('inspector.temperatureInitialStrain')} description={t('inspector.loadCaseDependentEffects')}>
+      {!classroomMode ? <InspectorPropertyGroup title={t('inspector.temperatureInitialStrain')} summary={selectedMemberEffects.length || '—'}>
         <div className="section-heading">
           <span className="section-description">{selectedMemberEffects.length > 0 ? t('inspector.definedCount', { count: selectedMemberEffects.length }) : t('inspector.noInitialEffects')}</span>
           <button type="button" className="mini-button" aria-label={t('inspector.addInitialEffect')} onClick={() => updateProject((draft) => {
@@ -639,7 +628,7 @@ export const InspectorProperties = () => {
         <InspectorHelper>{t('inspector.initialEffectsSignHelp')}</InspectorHelper>
       </InspectorPropertyGroup> : <InspectorLockedState title={t('inspector.advancedLockedClassroom')}>{t('inspector.advancedLockedClassroomBody')}</InspectorLockedState>}
 
-      {selectedMember.type === 'frame' ? <InspectorPropertyGroup title={t('inspector.connections')} description={t('inspector.endConnectionsDescription')}>
+      {selectedMember.type === 'frame' ? <InspectorPropertyGroup title={t('inspector.connections')} summary={[selectedMember.rotationalSpringI, selectedMember.rotationalSpringJ].filter((value) => value !== undefined).length + [selectedMember.rigidOffsetI, selectedMember.rigidOffsetJ].filter((value) => (value ?? 0) > 0).length || '—'}>
         {!classroomMode ? <>
           <h4 className="subsection-title">{t('inspector.semiRigidConnections')}</h4>
           <label className="toggle-row"><span>{t('inspector.enableAtI')}</span><input type="checkbox" checked={selectedMember.rotationalSpringI !== undefined} onChange={(event) => updateMember('useRotationalSpringI', event.target.checked)} /></label>
@@ -700,8 +689,10 @@ export const InspectorProperties = () => {
 
     {selectedNode ? <>
       <InspectorPropertyGroup title={t('inspector.frequentProperties')} description={t('inspector.nodeFrequentDescription')}>
-        <PhysicalNumberField label="X" value={selectedNode.x} units={units} quantity="length" resetKey={`${selectionKey}:x`} onCommit={(value) => updateNode('x', value)} />
-        <PhysicalNumberField label="Y" value={selectedNode.y} units={units} quantity="length" resetKey={`${selectionKey}:y`} onCommit={(value) => updateNode('y', value)} />
+        <div className="inspector-pair">
+          <PhysicalNumberField label="X" value={selectedNode.x} units={units} quantity="length" resetKey={`${selectionKey}:x`} onCommit={(value) => updateNode('x', value)} />
+          <PhysicalNumberField label="Y" value={selectedNode.y} units={units} quantity="length" resetKey={`${selectionKey}:y`} onCommit={(value) => updateNode('y', value)} />
+        </div>
         <SupportPicker
           support={selectedNode.support}
           selectionKey={selectionKey}
@@ -720,9 +711,8 @@ export const InspectorProperties = () => {
           }}
         />
       </InspectorPropertyGroup>
-      <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived" description={t('inspector.derivedReadOnlyDescription')}>
+      {nodeResult && (!classroomMode || resultsVisible) ? <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived">
         <InspectorDerivedList rows={[
-          { label: 'ID', value: selectedNode.id, description: t('inspector.modelIdentifier') },
           ...(nodeResult && (!classroomMode || resultsVisible) ? [
             ...(!classroomMode ? [
               { label: 'Ux', value: formatPhysical(nodeResult.ux, units, 'length') },
@@ -734,8 +724,8 @@ export const InspectorProperties = () => {
             { label: 'M', value: formatPhysical(nodeResult.rm, units, 'moment') },
           ] : []),
         ]} />
-      </InspectorPropertyGroup>
-      <InspectorAdvancedProperties id="advanced-node" expanded={expandedSections} onExpandedChange={setExpandedSections}>{renderNodeAdvanced}</InspectorAdvancedProperties>
+      </InspectorPropertyGroup> : null}
+      <InspectorAdvancedProperties>{renderNodeAdvanced}</InspectorAdvancedProperties>
       <InspectorIssues issues={selectedIssues} />
     </> : null}
 
@@ -746,27 +736,53 @@ export const InspectorProperties = () => {
       const angle = ni && nj ? Math.atan2(nj.y - ni.y, nj.x - ni.x) * 180 / Math.PI : Number.NaN;
       return <>
         <InspectorPropertyGroup title={t('inspector.frequentProperties')} description={t('inspector.memberFrequentDescription')}>
-          <SelectField label={t('inspector.element')} value={selectedMember.type} onChange={(value) => updateMember('type', value)}>
-            <option value="frame">{t('inspector.frame')}</option><option value="truss">{t('inspector.truss')}</option><option value="rigid">{t('inspector.rigid')}</option>
-          </SelectField>
+          <div className="inspector-segmented-row">
+            <span>{t('inspector.elementShort')}</span>
+            <div className="segmented-control" role="group" aria-label={t('inspector.element')}>
+              {([['frame', 'inspector.frameShort', 'inspector.frame'], ['truss', 'inspector.trussShort', 'inspector.truss'], ['rigid', 'inspector.rigidShort', 'inspector.rigid']] as const).map(([value, short, full]) => <button
+                key={value}
+                type="button"
+                aria-pressed={selectedMember.type === value}
+                className={selectedMember.type === value ? 'active' : ''}
+                title={t(full)}
+                onClick={() => updateMember('type', value)}
+              >{t(short)}</button>)}
+            </div>
+          </div>
           {selectedMember.type !== 'rigid' && !classroomMode ? <>
             <MaterialPresetSelector units={units} selectedId={selectedMember.materialId} origin={selectedMember.materialOrigin} onSelect={applyMaterialPreset} />
             <SectionPresetSelector units={units} selectedId={selectedMember.sectionId} origin={selectedMember.sectionOrigin} onSelect={applySectionPreset} />
-            <PersonalSectionSelector units={units} onSelect={applyPersonalSection} />
-            <MemberFavoritesPanel project={project} member={selectedMember} language={language} units={units} executeProjectCommand={executeProjectCommand} />
+            <details className="inspector-disclosure">
+              <summary><span>{t('inspector.library')}</span><ChevronRight size={16} aria-hidden="true" /></summary>
+              <div className="inspector-disclosure__body">
+                <PersonalSectionSelector units={units} onSelect={applyPersonalSection} />
+                <MemberFavoritesPanel project={project} member={selectedMember} language={language} units={units} executeProjectCommand={executeProjectCommand} />
+              </div>
+            </details>
             <PhysicalNumberField label="E" value={selectedMember.E} units={units} quantity="elasticModulus" resetKey={`${selectionKey}:E`} onCommit={(value) => updateMember('E', value)} />
             <PhysicalNumberField label="A" value={selectedMember.A} units={units} quantity="area" resetKey={`${selectionKey}:A`} onCommit={(value) => updateMember('A', value)} />
             <PhysicalNumberField label="I" value={selectedMember.I} units={units} quantity="inertia" resetKey={`${selectionKey}:I`} hint={selectedMember.type === 'frame' ? undefined : t('inspector.inertiaCompatibilityHint')} onCommit={(value) => updateMember('I', value)} />
           </> : null}
           {selectedMember.type !== 'rigid' && classroomMode ? <InspectorLockedState title={t('inspector.materialLockedClassroom')}>{t('inspector.materialLockedClassroomBody')}</InspectorLockedState> : null}
           {selectedMember.type === 'rigid' ? <InspectorLockedState title={t('inspector.noEditableStiffness')}>{t('inspector.noEditableStiffnessBody')}</InspectorLockedState> : null}
-          {selectedMember.type === 'frame' ? <div className="checkbox-grid" role="group" aria-label="Liberaciones de extremo locales">
-            <label><input type="checkbox" checked={selectedMember.releases?.iAxial ?? false} onChange={(event) => updateMember('iAxial', event.target.checked)} /> Axial i</label>
-            <label><input type="checkbox" checked={selectedMember.releases?.iShear ?? false} onChange={(event) => updateMember('iShear', event.target.checked)} /> Cortante i</label>
-            <label><input type="checkbox" checked={selectedMember.releases?.iMoment ?? false} onChange={(event) => updateMember('iMoment', event.target.checked)} /> {t('inspector.momentI')}</label>
-            <label><input type="checkbox" checked={selectedMember.releases?.jAxial ?? false} onChange={(event) => updateMember('jAxial', event.target.checked)} /> Axial j</label>
-            <label><input type="checkbox" checked={selectedMember.releases?.jShear ?? false} onChange={(event) => updateMember('jShear', event.target.checked)} /> Cortante j</label>
-            <label><input type="checkbox" checked={selectedMember.releases?.jMoment ?? false} onChange={(event) => updateMember('jMoment', event.target.checked)} /> {t('inspector.momentJ')}</label>
+          {selectedMember.type === 'frame' ? <div className="inspector-releases" role="group" aria-label={t('inspector.releases')}>
+            <span className="inspector-releases__title">{t('inspector.releases')}</span>
+            {(['i', 'j'] as const).map((end) => <div key={end} className="inspector-releases__end" role="group" aria-label={t('inspector.releaseEnd', { end })}>
+              <span className="inspector-releases__label">{end}</span>
+              {([['Axial', 'N', t('results.axial')], ['Shear', 'V', t('results.shear')], ['Moment', 'M', t('results.moment')]] as const).map(([action, glyph, name]) => {
+                const key = `${end}${action}` as 'iAxial' | 'iShear' | 'iMoment' | 'jAxial' | 'jShear' | 'jMoment';
+                const released = selectedMember.releases?.[key] ?? false;
+                return <button
+                  key={key}
+                  type="button"
+                  className="inspector-release"
+                  aria-pressed={released}
+                  aria-label={t('inspector.releaseToggle', { action: name, end })}
+                  title={t('inspector.releaseToggle', { action: name, end })}
+                  onClick={() => updateMember(key, !released)}
+                >{glyph}</button>;
+              })}
+            </div>)}
           </div> : null}
         </InspectorPropertyGroup>
         {selectedMember.type !== 'rigid' && selectedMember.A > 0 && selectedMember.I > 0 ? <SectionViewer2D
@@ -784,7 +800,7 @@ export const InspectorProperties = () => {
           analysis={analysis}
           units={units}
         /> : null}
-        <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived" description={t('inspector.memberDerivedDescription')}>
+        <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived">
           <InspectorDerivedList rows={[
             { label: t('inspector.nodeI'), value: selectedMember.i },
             { label: t('inspector.nodeJ'), value: selectedMember.j },
@@ -797,7 +813,7 @@ export const InspectorProperties = () => {
             ] : []),
           ]} />
         </InspectorPropertyGroup>
-        <InspectorAdvancedProperties id="advanced-member" expanded={expandedSections} onExpandedChange={setExpandedSections}>{renderMemberAdvanced}</InspectorAdvancedProperties>
+        <InspectorAdvancedProperties>{renderMemberAdvanced}</InspectorAdvancedProperties>
         <InspectorIssues issues={selectedIssues} />
       </>;
     })() : null}
@@ -811,10 +827,6 @@ export const InspectorProperties = () => {
         <PhysicalNumberField label={t('inspector.momentMz')} value={selectedNodalLoad.mz} units={units} quantity="moment" resetKey={`${selectionKey}:mz`} signed onCommit={(value) => updateNodalLoad('mz', value)} />
         <InspectorHelper>{t('inspector.nodalLoadSignHelp')}</InspectorHelper>
       </InspectorPropertyGroup>
-      <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived"><InspectorDerivedList rows={[{ label: 'ID', value: selectedNodalLoad.id }, { label: t('inspector.node'), value: selectedNodalLoad.nodeId }]} /></InspectorPropertyGroup>
-      <InspectorAdvancedProperties id="advanced-nodal-load" expanded={expandedSections} onExpandedChange={setExpandedSections}>
-        <InspectorLockedState title={t('inspector.modelRelationship')}>{t('inspector.modelRelationshipBody')}</InspectorLockedState>
-      </InspectorAdvancedProperties>
       <InspectorIssues issues={selectedIssues} />
     </> : null}
 
@@ -827,6 +839,7 @@ export const InspectorProperties = () => {
           {[{ value: 'global', label: t('inspector.global') }, { value: 'local', label: t('inspector.local') }].map((option) => <button type="button" key={option.value} aria-pressed={selectedMemberLoad.coordinateSystem === option.value} className={selectedMemberLoad.coordinateSystem === option.value ? 'active' : ''} onClick={() => updateMemberLoad('coordinateSystem', option.value)}>{option.label}</button>)}
         </div>
         {selectedMemberLoad.type === 'distributed' ? <SelectField label={t('inspector.base')} value={selectedMemberLoad.lengthBasis} onChange={(value) => updateMemberLoad('lengthBasis', value)}><option value="real">{t('inspector.realLength')}</option><option value="horizontal">{t('inspector.horizontalProjection')}</option><option value="vertical">{t('inspector.verticalProjection')}</option></SelectField> : null}
+        {selectedMemberLoad.type === 'distributed' && selectedMemberLoad.lengthBasis !== 'real' ? <InspectorHelper>{t('inspector.loadBasisConversionHelp')}</InspectorHelper> : null}
         {selectedMemberLoad.type !== 'moment' ? <div className="segmented-control" role="group" aria-label="Unidad de posición">
           <button type="button" aria-pressed={memberLoadPositionMode === 'meters'} className={memberLoadPositionMode === 'meters' ? 'active' : ''} onClick={() => setMemberLoadPositionMode('meters')}>Metros</button>
           <button type="button" aria-pressed={memberLoadPositionMode === 'percent'} className={memberLoadPositionMode === 'percent' ? 'active' : ''} onClick={() => setMemberLoadPositionMode('percent')}>%</button>
@@ -878,12 +891,6 @@ export const InspectorProperties = () => {
           <PhysicalNumberField label="M" value={selectedMemberLoad.moment ?? 0} units={units} quantity="moment" resetKey={`${selectionKey}:moment`} signed onCommit={(value) => updateMemberLoad('moment', value)} />
         </> : null}
       </InspectorPropertyGroup>
-      <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived"><InspectorDerivedList rows={[{ label: 'ID', value: selectedMemberLoad.id }, { label: t('inspector.member'), value: selectedMemberLoad.memberId }]} /></InspectorPropertyGroup>
-      <InspectorAdvancedProperties id="advanced-member-load" expanded={expandedSections} onExpandedChange={setExpandedSections}>
-        <InspectorPropertyGroup title={t('inspector.interpretation')} description={t('inspector.loadGeometryConvention')}>
-          <InspectorHelper tone="warning">{t('inspector.loadBasisConversionHelp')}</InspectorHelper>
-        </InspectorPropertyGroup>
-      </InspectorAdvancedProperties>
       <InspectorIssues issues={selectedIssues} />
     </> : null}
 

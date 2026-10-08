@@ -76,8 +76,7 @@
 .sc-surface[data-level='floating'],
 [data-level='floating'],
 .sc-toast-card,
-.import-center-dialog,
-.mobile-tool-palette {
+.import-center-dialog {
   background: var(--sc-color-surface-floating);
   border: 1px solid var(--sc-color-border);
   box-shadow: var(--sc-shadow-lg);

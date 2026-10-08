@@ -79,30 +79,11 @@ describe('ToolRail surface handoff', () => {
     const node = container.querySelector<HTMLButtonElement>('[data-tool-id="node"]');
     expect(container.querySelector('.desktop-tool-list .tool-command-palette')).toBeNull();
     expect(container.querySelector('[data-tool-id="dimension"]')).toBeNull();
-    expect(container.querySelector('.mobile-tool-dock [data-tool-id="pan"]')).not.toBeNull();
     expect(select?.classList.contains('is-compact')).toBe(false);
     expect(node?.classList.contains('is-compact')).toBe(true);
 
     await user.click(node!);
     expect(select?.classList.contains('is-compact')).toBe(true);
     expect(node?.classList.contains('is-compact')).toBe(false);
-  });
-
-  it('no vuelve a introducir la paleta de comandos dentro de Más herramientas', async () => {
-    const user = userEvent.setup();
-    const backgroundRef = createRef<HTMLDivElement>();
-    render(
-      <ShellCompositionContext.Provider value={{ shellClass: 'K0', phone: true }}>
-        <ProjectProvider>
-          <SurfacePresentationProvider shellClass="K0" backgroundRef={backgroundRef}>
-            <div ref={backgroundRef}><ToolRail /></div>
-          </SurfacePresentationProvider>
-        </ProjectProvider>
-      </ShellCompositionContext.Provider>,
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Más herramientas' }));
-
-    expect(screen.queryByRole('button', { name: 'Abrir la paleta de comandos' })).toBeNull();
   });
 });

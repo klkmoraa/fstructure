@@ -5,6 +5,7 @@ import { Model2DTool } from './toolSurfaces';
 import { Model2DSurfaceContext } from './adapters/surfaceContexts';
 import { PanelRight } from 'lucide-react';
 import { Console } from '../shell/Console';
+import { MobileDock } from '../canvas/MobileDock';
 import { Instrument } from '../shell/Instrument';
 import { ClassroomGuide } from '../classroom/ClassroomGuide';
 import { ToastNotification } from './ToastNotification';
@@ -49,6 +50,7 @@ import type { RevisionSnapshot } from '../revision-comparison/revisionComparison
 import { DataSurfaceRetainedStateProvider } from './DataSurfaceRetainedState';
 import { LazySurface } from './LazySurface';
 import { ShellToolSlotsProvider, ShellSlotHost, ShellMobileSurface } from './ShellToolSlots';
+import { usePageZoomGuard } from './usePageZoomGuard';
 
 const LazyCommandPalette = lazy(() => import('./CommandPalette').then((module) => ({ default: module.CommandPalette })));
 const LazyLocalCommandAssistant = lazy(() => import('../ai/LocalCommandAssistant').then((module) => ({ default: module.LocalCommandAssistant })));
@@ -181,6 +183,12 @@ const WorkspaceBrokerContent = ({
     };
   }, [layout.inspectorDetent, setPreference]);
 
+  // Una hoja que se pide para leer o editar no nace en su altura mínima, donde
+  // sólo cabe la cabecera.
+  const ensureReadableDetent = useCallback(() => {
+    if (shellClass === 'K0' && layout.inspectorDetent === 'compact') setPreference('inspectorDetent', 'medium');
+  }, [layout.inspectorDetent, setPreference, shellClass]);
+
   const cycleInspectorDetent = useCallback((direction: 1 | -1) => {
     const next = nextAvailableInspectorDetent(layout.inspectorDetent, direction, {
       width: window.innerWidth,
@@ -220,7 +228,7 @@ const WorkspaceBrokerContent = ({
         pendingModelDoctorNotificationIdRef.current = id;
         setPendingModelDoctorNotification({ id, projectId: project.id, analysisAtRequest: analysis, hasStarted: false });
       }),
-      onWorkspaceCommand('open-analysis-setup', () => openModel2DSurface('analysisSetup')),
+      onWorkspaceCommand('open-analysis-setup', () => { ensureReadableDetent(); openModel2DSurface('analysisSetup'); }),
       // «Diseñar en concreto» desde el Inspector: el modo Diseño abre esa barra.
       onWorkspaceCommand('open-member-design', ({ memberId }) => {
         if (!onModeChange) return;
@@ -233,7 +241,7 @@ const WorkspaceBrokerContent = ({
       onWorkspaceCommand('activate-evidence-layer', ({ layer }) => {
         activateEvidenceLayer(layer, { setResultTab, dispatchLayers: dispatchEditorLayers, revealResultOverlay });
       }),
-      onWorkspaceCommand('open-view-settings', () => openModel2DSurface('view')),
+      onWorkspaceCommand('open-view-settings', () => { ensureReadableDetent(); openModel2DSurface('view'); }),
       /* Los lanzadores de Influencia previos se conservan, pero ahora llevan a
          la pestaña residente: la línea se lee junto a N/V/M, sin drawer. */
       onWorkspaceCommand('open-dense-results', ({ view: requestedView, trigger }) => {
@@ -247,7 +255,7 @@ const WorkspaceBrokerContent = ({
       }),
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe());
-  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, onModeChange, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
+  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, ensureReadableDetent, onModeChange, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
 
   useEffect(() => {
     setModelDoctorAcknowledgedIds(new Set());
@@ -534,7 +542,13 @@ const WorkspaceBrokerContent = ({
       </div>}
       utilities={<WorkspaceUtilities onOpenUnitsEditor={(trigger) => openModel2DSurface('view', trigger)} />}
     />}
-    console={<Console
+    console={shellClass === 'K0' ? <MobileDock
+      inspectorOpen={inspectorOpen}
+      onOpenInspector={() => {
+        if (!inspectorOpen) ensureReadableDetent();
+        toggleInspector();
+      }}
+    /> : <Console
       layoutActions={{
         inspectorCollapsed: !inspectorOpen,
         fullCanvas: layout.fullCanvas,
@@ -646,6 +660,7 @@ const WorkspaceBrokerContent = ({
 
 const WorkspaceSurface = (props: WorkspaceShellProps) => {
   const shellRef = useRef<HTMLDivElement>(null);
+  usePageZoomGuard();
   const layoutController = useWorkspaceLayoutPreferences();
   const { shellClass } = useShellComposition();
   // Results is never resident, in any class (CRI-100): state and reliability

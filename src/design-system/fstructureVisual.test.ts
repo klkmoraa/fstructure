@@ -38,7 +38,7 @@ describe('composición visual de FStructure', () => {
 
   it('hunde las herramientas sin encoger ni desplazar su caja', () => {
     const css = readFileSync(visualPath, 'utf8');
-    expect(css).toContain(".mobile-tool-dock .tool-button:active:not(:disabled)");
+    expect(css).toContain(".tool-rail.is-floating-dock .tool-button:active:not(:disabled)");
     expect(css).toContain('box-shadow: var(--sc-shadow-pressed);');
     expect(css).toContain('transform: none;');
   });

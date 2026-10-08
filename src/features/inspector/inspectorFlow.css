@@ -1,0 +1,321 @@
+/*
+ * Inspector · capa de flujo (2026-10).
+ *
+ * Menos texto y menos cajas: cada propiedad es una fila (nombre a la izquierda,
+ * valor a la derecha), los grupos sólo llevan su título y «Avanzado» es una
+ * lista de filas con su valor a la vista que se despliegan al tocarlas. Va
+ * después de `inspector.css` y gana por especificidad (`.inspector-panel …`).
+ */
+
+/* --- Cabecera de la selección --------------------------------------------- */
+.inspector-panel .inspector-selection-header { position: static; padding-bottom: 8px; }
+.inspector-panel .inspector-summary { gap: 8px; padding: 10px 12px; }
+.inspector-panel .inspector-summary__identity { grid-template-columns: 36px minmax(0, 1fr); gap: 10px; }
+.inspector-panel .inspector-summary__preview { width: 36px; height: 36px; }
+.inspector-panel .inspector-summary__identity strong { font-size: 16px; }
+.inspector-panel .inspector-summary__identity small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inspector-panel .inspector-selection-preview { max-height: 132px; overflow: hidden; }
+.inspector-panel .inspector-selection-preview svg { max-height: 104px; }
+.inspector-panel .inspector-selection-actions { gap: 6px; padding-bottom: 4px; }
+.inspector-panel .inspector-selection-edit { min-height: 36px; border-radius: 18px; font-size: 12px; }
+
+/* --- Grupos: un título discreto y filas ------------------------------------ */
+.inspector-panel .inspector-property-group { padding: 12px 0; }
+.inspector-panel .inspector-property-group.is-derived { background: none; }
+.inspector-panel .inspector-property-group__header { margin-bottom: 6px; }
+.inspector-panel .inspector-property-group__header h3 {
+  color: var(--sc-color-text-muted);
+  font: var(--sc-font-weight-bold, 700) 11px/1.2 var(--sc-font-ui);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.inspector-panel .inspector-property-group .field-row,
+.inspector-panel .inspector-property-group .select-field,
+.inspector-panel .inspector-property-group .toggle-row,
+.inspector-panel .effect-card .field-row,
+.inspector-panel .effect-card .select-field {
+  grid-template-columns: minmax(72px, .8fr) minmax(0, 1.5fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 2px 0;
+}
+.inspector-panel .inspector-property-group .toggle-row { grid-template-columns: minmax(0, 1fr) auto; }
+.inspector-panel .inspector-property-group .inspector-numeric-field > label { padding-top: 0; }
+.inspector-panel .inspector-numeric-field__control { min-height: 40px; border-radius: 12px; }
+.inspector-panel .inspector-numeric-field__control input {
+  font-family: var(--sc-font-ui);
+  font-size: 15px !important;
+  font-variant-numeric: tabular-nums;
+}
+.inspector-panel .select-field select { min-height: 40px; border-radius: 12px; font-size: 14px; }
+
+/* X e Y van juntos: una pareja se lee en una línea. */
+.inspector-panel .inspector-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.inspector-panel .inspector-pair > .field-row { grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+.inspector-panel .inspector-pair > .field-row > label { min-width: 14px; color: var(--sc-color-text-secondary); font-weight: 700; }
+
+/* Tipo de elemento: segmentado, no un desplegable. */
+.inspector-panel .inspector-segmented-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.inspector-panel .inspector-segmented-row .segmented-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border-radius: 13px;
+}
+.inspector-panel .inspector-segmented-row .segmented-control button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inspector-panel .inspector-segmented-row .segmented-control button[aria-pressed='true'] {
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--sc-color-text-primary);
+}
+
+/* Liberaciones: por extremo, N · V · M. Encendida = liberada. */
+.inspector-panel .inspector-releases {
+  display: grid;
+  grid-template-columns: minmax(72px, .8fr) minmax(0, 1.5fr);
+  grid-template-rows: repeat(2, auto);
+  align-items: center;
+  gap: 6px 10px;
+  padding: 6px 0 2px;
+  font-size: 13px;
+}
+.inspector-panel .inspector-releases__title { grid-row: 1 / span 2; }
+.inspector-panel .inspector-releases__end {
+  display: grid;
+  grid-template-columns: 22px repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 6px;
+}
+.inspector-panel .inspector-releases__label {
+  color: var(--sc-color-text-muted);
+  font: 700 12px/1 var(--sc-font-mono);
+  text-align: center;
+}
+.inspector-panel .inspector-release {
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: 10px;
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--sc-color-text-secondary);
+  font: 700 13px/1 var(--sc-font-mono);
+  cursor: pointer;
+}
+.inspector-panel .inspector-release[aria-pressed='true'] {
+  border-color: var(--sc-color-structure-release, var(--sc-color-action-primary));
+  background: color-mix(in srgb, var(--sc-color-structure-release, var(--sc-color-action-primary)) 18%, var(--sc-color-surface-inset));
+  box-shadow: var(--sc-shadow-pressed);
+  color: var(--sc-color-text-primary);
+}
+.inspector-panel .inspector-release:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
+
+/* Disclosure secundario (favoritos, secciones personales). */
+.inspector-panel .inspector-disclosure { margin-top: 2px; border-radius: 12px; }
+.inspector-panel .inspector-disclosure > summary,
+.inspector-panel .inspector-property-group.is-collapsible > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 2px;
+  color: var(--sc-color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.inspector-panel .inspector-disclosure > summary::-webkit-details-marker,
+.inspector-panel .inspector-property-group.is-collapsible > summary::-webkit-details-marker { display: none; }
+.inspector-panel .inspector-disclosure > summary > span { flex: 1 1 auto; min-width: 0; color: var(--sc-color-text-secondary); font-weight: 550; }
+.inspector-panel .inspector-disclosure > summary > svg,
+.inspector-panel .inspector-property-group__chevron {
+  flex: none;
+  color: var(--sc-color-text-muted);
+  transition: transform var(--sc-motion-fast, 140ms) var(--sc-ease-standard);
+}
+.inspector-panel .inspector-disclosure[open] > summary > svg,
+.inspector-panel .inspector-property-group.is-collapsible[open] .inspector-property-group__chevron { transform: rotate(90deg); }
+.inspector-panel .inspector-disclosure__body { display: grid; gap: 6px; padding: 2px 0 8px; }
+.inspector-panel .member-favorites { padding: 10px; border-radius: 14px; }
+.inspector-panel .member-favorites header h3 { margin: 0 0 6px; font-size: 12px; }
+
+/* --- Avanzado: filas con su valor ------------------------------------------ */
+.inspector-panel .inspector-advanced { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--sc-color-border-soft); }
+.inspector-panel .inspector-advanced__title {
+  margin: 0 0 4px;
+  color: var(--sc-color-text-muted);
+  font: var(--sc-font-weight-bold, 700) 11px/1.2 var(--sc-font-ui);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.inspector-panel .inspector-advanced__list {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: 14px;
+  background: var(--sc-color-surface-1);
+}
+.inspector-panel .inspector-advanced__list > .inspector-property-group.is-collapsible { padding: 0; border-bottom: 1px solid var(--sc-color-border-soft); }
+.inspector-panel .inspector-advanced__list > .inspector-property-group.is-collapsible:last-child { border-bottom: 0; }
+.inspector-panel .inspector-property-group.is-collapsible > summary { padding: 0 12px; }
+.inspector-panel .inspector-property-group.is-collapsible > summary:active { background: var(--sc-color-surface-inset); }
+.inspector-panel .inspector-property-group.is-collapsible > summary:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: -2px; }
+.inspector-panel .inspector-property-group__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inspector-panel .inspector-property-group__summary {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  color: var(--sc-color-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inspector-panel .inspector-property-group.is-collapsible > .inspector-property-group__body {
+  padding: 2px 12px 12px;
+  animation: inspector-row-open 180ms var(--sc-ease-standard) both;
+}
+@keyframes inspector-row-open { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.inspector-panel .inspector-advanced .effect-card { padding: 8px; border-radius: 12px; }
+.inspector-panel .inspector-advanced .section-heading { min-height: 36px; }
+.inspector-panel .inspector-advanced .section-heading .section-description { font-size: 12px; color: var(--sc-color-text-muted); }
+.inspector-panel .inspector-advanced .mini-button { width: 36px; height: 36px; border-radius: 12px; }
+.inspector-panel .inspector-advanced .subsection-title { margin: 10px 0 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .inspector-panel .inspector-property-group.is-collapsible > .inspector-property-group__body { animation: none; }
+}
+
+/* --- Ayudas: tras un ⓘ ------------------------------------------------------ */
+.inspector-panel .inspector-helper.is-info {
+  display: block;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.inspector-panel .inspector-helper.is-info > summary {
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: var(--sc-color-text-muted);
+  list-style: none;
+  cursor: pointer;
+}
+.inspector-panel .inspector-helper.is-info > summary::-webkit-details-marker { display: none; }
+.inspector-panel .inspector-helper.is-info[open] > summary { color: var(--sc-color-text-primary); background: var(--sc-color-surface-inset); }
+.inspector-panel .inspector-helper.is-info > span {
+  display: block;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* --- Pie: eliminar ----------------------------------------------------------- */
+.inspector-panel .inspector-selection-danger .danger-button { border-radius: 14px; }
+
+/* --- Teléfono: la hoja flota sobre el dock ---------------------------------- */
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .inspector-panel[data-surface-presentation='sheet'] {
+  left: 8px;
+  right: 8px;
+  bottom: calc(var(--console-band, 66px) + var(--sc-visual-viewport-bottom, 0px));
+  width: auto;
+  max-height: calc(var(--sc-visual-viewport-height, 100dvh) - var(--console-band, 66px) - 110px);
+  border-radius: 22px;
+  box-shadow: var(--sc-shadow-modal, var(--sc-shadow-sheet));
+}
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .inspector-panel.mobile-open[data-mobile-detent='compact'] { height: min(34dvh, 300px); }
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .inspector-panel.mobile-open[data-mobile-detent='medium'] { height: min(52dvh, 520px); }
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .inspector-panel.mobile-open[data-mobile-detent='large'] {
+  height: calc(var(--sc-visual-viewport-height, 100dvh) - var(--console-band, 66px) - 110px);
+}
+/* El dock ya edita, diseña y elimina la selección: la hoja no lo repite. */
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .inspector-panel :is(.inspector-selection-actions, .inspector-selection-danger, .inspector-selection-preview) { display: none; }
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .inspector-sheet-controls { touch-action: none; cursor: grab; }
+.inspector-panel[data-surface-presentation='sheet'] { translate: 0 var(--sheet-drag, 0px); }
+
+/* --- Segmentados del inspector: el mismo carril compacto en todos ---------- */
+.inspector-panel .inspector-property-group .segmented-control {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 2px;
+  margin: 4px 0;
+  padding: 3px;
+  border-radius: 13px;
+}
+.inspector-panel .inspector-property-group .segmented-control button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--sc-color-text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  transform: none;
+}
+.inspector-panel .inspector-property-group .segmented-control button:is(.active, [aria-pressed='true']) {
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  color: var(--sc-color-text-primary);
+}
+
+/* --- Apoyos: los mosaicos ya dicen qué restringe cada uno ------------------ */
+.inspector-panel .support-picker__legend,
+.inspector-panel .support-picker__tip,
+.inspector-panel .support-detail__header,
+.inspector-panel .support-detail__note,
+.inspector-panel .support-detail__dof-sentence,
+.inspector-panel .support-detail__count,
+.inspector-panel .support-detail__section.is-dof { display: none; }
+.inspector-panel .support-detail:not(:has(> .support-detail__section:not(.is-dof), > .inspector-helper, > .inspector-locked-state)) { display: none; }
+.inspector-panel .support-picker__library { min-height: 40px; border-radius: 12px; font-size: 12px; }
+
+/* --- Menos párrafos: el control ya dice qué es ----------------------------- */
+.inspector-panel p.section-description,
+.inspector-panel .unit-system-editor__custom > p,
+.inspector-panel .load-starter > p,
+.inspector-panel .load-tool-grid small,
+.inspector-panel .inspector-summary.is-empty small { display: none; }
+
+/* El suelo táctil de 44 px es del renglón entero (la etiqueta envuelve el
+   interruptor); aplicado al propio interruptor lo volvía un círculo. */
+.inspector-panel .toggle-row input[type='checkbox'] { min-width: 0; min-height: 0; width: 44px; height: 26px; }

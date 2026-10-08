@@ -1,0 +1,439 @@
+/*
+ * Dock dinámico del teléfono (K0).
+ *
+ * Una pieza flotante al pie de la mesa: la fila de herramientas y, encima, la
+ * cápsula que cambia con lo que se hace. Las reglas van con su propio prefijo
+ * (`mdock`) para que ninguna de las capas heredadas del riel (`.tool-button`,
+ * `.mobile-tool-dock`, `.console button`) pueda torcerla.
+ */
+
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) {
+  --mdock-key: 44px;
+  --mdock-pad: 4px;
+  --mdock-bar: calc(var(--mdock-key) + var(--mdock-pad) * 2);
+  --mdock-bottom: max(8px, calc(env(safe-area-inset-bottom) - 14px));
+  --mdock-context: 44px;
+  /* Lo que el lienzo cede a la cápsula cuando aparece: su altura y su aire. */
+  --mdock-lift: 0px;
+  /* Las hojas (inspector, resultados) se apoyan sobre el dock, nunca debajo. */
+  --console-band: calc(var(--mdock-bar) + var(--mdock-bottom) + 6px);
+  padding-bottom: var(--console-band);
+}
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock[data-context]) {
+  --mdock-lift: calc(var(--mdock-context) + 8px);
+}
+
+.mdock {
+  position: fixed;
+  z-index: 46;
+  left: 50%;
+  bottom: var(--mdock-bottom, 8px);
+  width: min(calc(100% - 16px), 460px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.mdock > * { pointer-events: auto; }
+
+/* --- Fila de herramientas ------------------------------------------------- */
+.mdock__bar {
+  position: relative;
+  z-index: 1;
+  height: var(--mdock-bar, 52px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: var(--mdock-pad, 4px);
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: calc(var(--mdock-key, 44px) / 2 + var(--mdock-pad, 4px));
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-lifted);
+}
+
+.mdock__key {
+  flex: 1 1 0;
+  min-width: 0;
+  height: var(--mdock-key, 44px);
+  min-height: var(--mdock-key, 44px);
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: calc(var(--mdock-key, 44px) / 2);
+  background: transparent;
+  box-shadow: none;
+  color: var(--sc-color-text-secondary);
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--sc-motion-fast) var(--sc-ease-standard),
+    color var(--sc-motion-fast) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-fast) var(--sc-ease-standard),
+    transform var(--sc-motion-fast) var(--sc-ease-press);
+}
+.mdock__key > svg { width: 22px; height: 22px; flex: none; }
+.mdock__key:active:not(:disabled) { transform: scale(.94); }
+.mdock__key:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: -2px; }
+.mdock__key[aria-pressed='true'] {
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-selected);
+}
+.mdock__key.is-tinted,
+.mdock__key[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--sc-color-action-primary) 16%, transparent);
+  color: var(--sc-color-action-ink);
+}
+
+.mdock__rule {
+  flex: none;
+  width: 1px;
+  height: 24px;
+  margin-inline: 2px;
+  background: var(--sc-color-border-soft);
+}
+
+/* --- Cápsula contextual --------------------------------------------------- */
+.mdock__context {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  width: max-content;
+  max-width: 100%;
+  height: var(--mdock-context, 44px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: calc(var(--mdock-context, 44px) / 2);
+  background: var(--sc-color-surface-floating);
+  box-shadow: var(--sc-shadow-floating, var(--sc-shadow-lifted));
+  transform: translateX(-50%);
+  transform-origin: 50% 100%;
+  animation: mdock-context-in 220ms var(--sc-ease-emphasized, cubic-bezier(.2, .9, .3, 1.1)) both;
+}
+@keyframes mdock-context-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(.92); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+.mdock__grow { flex: 1 1 auto; min-width: 6px; }
+
+.mdock__chip {
+  flex: none;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px 0 10px;
+  border-radius: 18px;
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-text-primary);
+  font: var(--sc-font-weight-semibold, 600) 13px/1 var(--sc-font-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mdock__chip > svg { width: 17px; height: 17px; flex: none; color: var(--sc-color-text-secondary); }
+
+.mdock__key--sm {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  border-radius: 19px;
+}
+.mdock__key--sm > svg { width: 19px; height: 19px; }
+.mdock__key--done {
+  width: 44px;
+  background: var(--sc-color-surface-2);
+  color: var(--sc-color-text-primary);
+}
+.mdock__key--danger { color: var(--sc-color-tool-destructive, var(--sc-color-state-error)); }
+
+.mdock__segment {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 0 2px;
+}
+
+/* Con una hoja abierta (propiedades, resultados) la cápsula cede su sitio. */
+.app-shell[data-shell-class='K0']:has(.inspector-panel.mobile-open, .results-panel[data-surface-status='active']:not(.mobile-collapsed)) .mdock__context {
+  display: none;
+}
+
+/* --- Hoja «Más» ----------------------------------------------------------- */
+.mdock-sheet__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  border: 0;
+  background: var(--sc-color-overlay-soft, rgba(0, 0, 0, .3));
+  animation: mdock-fade 160ms var(--sc-ease-standard) both;
+}
+.mdock-sheet {
+  position: fixed;
+  z-index: 61;
+  left: 50%;
+  bottom: calc(var(--mdock-bottom, 8px) + var(--mdock-bar, 52px) + 8px);
+  width: min(calc(100% - 16px), 460px);
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: 22px;
+  background: var(--sc-color-surface-floating);
+  box-shadow: var(--sc-shadow-modal, var(--sc-shadow-lifted));
+  transform: translateX(-50%);
+  transform-origin: 85% 100%;
+  animation: mdock-sheet-in 220ms var(--sc-ease-emphasized, cubic-bezier(.2, .9, .3, 1.1)) both;
+}
+@keyframes mdock-sheet-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px) scale(.94); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes mdock-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.mdock-sheet__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+.mdock-tile {
+  min-width: 0;
+  min-height: 72px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: var(--sc-font-weight-medium, 500) 11px/1.15 var(--sc-font-ui);
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.mdock-tile > span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.mdock-tile__icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-text-secondary);
+}
+.mdock-tile__icon > svg { width: 22px; height: 22px; }
+.mdock-tile:active { background: var(--sc-color-surface-inset); }
+.mdock-tile:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: -2px; }
+.mdock-tile.is-active .mdock-tile__icon { background: var(--sc-color-action-primary); color: var(--sc-color-action-foreground); }
+.mdock-tile.is-danger .mdock-tile__icon { color: var(--sc-color-tool-destructive, var(--sc-color-state-error)); }
+
+@media (max-width: 370px) {
+  .app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) { --mdock-key: 42px; --mdock-pad: 3px; }
+  .mdock__chip { padding-inline: 8px 10px; }
+  .mdock__key--sm { width: 36px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mdock__context, .mdock-sheet, .mdock-sheet__scrim { animation: none; }
+}
+
+/* --- El lienzo cede el pie a la cápsula ----------------------------------- */
+.app-shell.workspace-screen[data-shell-class='K0'] .canvas-host :is(.canvas-controls, .canvas-status, .canvas-minimap, .canvas-feedback) {
+  translate: 0 calc(-1 * var(--mdock-lift, 0px));
+  transition: translate var(--sc-motion-standard, 220ms) var(--sc-ease-standard);
+}
+.app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .global-axes {
+  translate: 0 calc(-1 * var(--mdock-lift, 0px));
+  transition: translate var(--sc-motion-standard, 220ms) var(--sc-ease-standard);
+}
+
+/* El dock ya nombra la herramienta, la barra en curso y abre las coordenadas:
+   el lienzo no los repite. */
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .canvas-host :is(.canvas-mode-badge, .canvas-hint, .canvas-coordinate-launcher) {
+  display: none;
+}
+
+/* --- Valor de la carga: ficha y editor ------------------------------------ */
+.mdock__chip--value {
+  border: 0;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--sc-color-load-point) 16%, var(--sc-color-surface-inset));
+  -webkit-tap-highlight-color: transparent;
+}
+.mdock__chip--value > svg { color: var(--sc-color-load-point); }
+.mdock__chip--value small { color: var(--sc-color-text-secondary); font-weight: var(--sc-font-weight-medium, 500); font-size: 11px; }
+.mdock__chip--value:active { transform: scale(.97); }
+.mdock__chip--value:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
+
+.mdock__editor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: 22px;
+  background: var(--sc-color-surface-floating);
+  box-shadow: var(--sc-shadow-floating, var(--sc-shadow-lifted));
+  transform-origin: 50% 100%;
+  animation: mdock-editor-in 220ms var(--sc-ease-emphasized, cubic-bezier(.2, .9, .3, 1.1)) both;
+}
+@keyframes mdock-editor-in {
+  from { opacity: 0; transform: translateY(10px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.mdock__editor-head { display: flex; align-items: center; gap: 6px; }
+.mdock__editor-head > .mdock__key--sm:first-child {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--sc-color-load-point) 16%, var(--sc-color-surface-inset));
+  color: var(--sc-color-load-point);
+}
+.mdock__editor-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 44px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--sc-color-focus);
+  border-radius: 14px;
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+  color: var(--sc-color-text-primary);
+  font: var(--sc-font-weight-semibold, 600) 20px/1 var(--sc-font-ui);
+  font-variant-numeric: tabular-nums;
+}
+.mdock__editor-field .is-placeholder { color: var(--sc-color-text-muted); }
+.mdock__editor-field small { color: var(--sc-color-text-secondary); font-size: 12px; font-weight: var(--sc-font-weight-medium, 500); }
+@media (prefers-reduced-motion: reduce) { .mdock__editor { animation: none; } }
+
+/* --- Apoyo al tocar un nudo: mosaicos con su dibujo ----------------------- */
+.app-shell .support-placement-popover {
+  width: min(272px, calc(100% - 16px));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 18px;
+  background: var(--sc-color-surface-floating);
+  box-shadow: var(--sc-shadow-floating, var(--sc-shadow-lg));
+}
+.app-shell .support-placement-popover header strong { font-size: 13px; }
+.app-shell .support-placement-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+.app-shell .support-placement-grid > .support-placement-options { display: contents; }
+.app-shell .support-placement-grid .support-placement-options button {
+  min-width: 0;
+  min-height: 62px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-text-primary);
+  font: var(--sc-font-weight-semibold, 600) 10px/1.1 var(--sc-font-ui);
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.app-shell .support-placement-grid .support-placement-options button > span:last-child {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-shell .support-placement-grid .support-placement-options button.active {
+  border-color: var(--sc-color-action-primary);
+  background: color-mix(in srgb, var(--sc-color-action-primary) 14%, var(--sc-color-surface-inset));
+  color: var(--sc-color-text-primary);
+}
+.app-shell .support-placement-glyph { display: grid; place-items: center; width: 44px; height: 34px; overflow: hidden; color: var(--sc-color-text-secondary); }
+.app-shell .support-placement-glyph svg { width: 44px; height: 44px; }
+.app-shell .support-placement-angle { font-size: 12px; }
+.app-shell .support-placement-angle-control { border-radius: 10px; }
+.app-shell .support-placement-angle-control input { height: 36px; font-size: 14px; }
+
+/* En el teléfono la elección sube desde el dock: no tapa el nudo ni se sale. */
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .support-placement-popover {
+  left: 50% !important;
+  top: auto !important;
+  bottom: calc(var(--mdock-lift, 0px) + 8px);
+  width: min(calc(100% - 16px), 460px);
+  max-height: calc(100% - 24px);
+  transform: translateX(-50%);
+  border-radius: 22px;
+}
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .support-placement-grid .support-placement-options button { min-height: 70px; font-size: 11px; }
+
+/* Con el dock, el pie de estado sobra en K0: el estado vive en la barra y el
+   pie quedaba entre el lienzo y el dock, tapado por la cápsula. */
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) > .instrument { display: none; }
+
+/* Teléfono en horizontal: el lienzo es bajo y la cápsula queda centrada, lejos
+   de los controles de los bordes; nada tiene que subir. Las hojas de valores se
+   apoyan a la derecha, a toda la altura del lienzo. */
+@media (max-height: 500px) {
+  .app-shell.workspace-screen[data-shell-class='K0']:has(.mdock[data-context]) { --mdock-lift: 0px; }
+  .app-shell.workspace-screen[data-shell-class='K0']:has(.coordinate-entry, .support-placement-popover) .mdock__context { display: none; }
+  /* Coordenadas: campos a la izquierda y teclado a la derecha, en una franja baja. */
+  .app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .coordinate-entry[data-coordinate-entry='sheet'] {
+    z-index: 32;
+    top: auto;
+    bottom: 6px;
+    width: min(600px, calc(100% - 16px));
+    max-height: calc(100% - 12px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    grid-auto-flow: dense;
+    align-items: start;
+    column-gap: 8px;
+  }
+  .app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .coordinate-entry[data-coordinate-entry='sheet'] > :not(.num-keypad) { grid-column: 1; }
+  .app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .coordinate-entry[data-coordinate-entry='sheet'] > .num-keypad { grid-column: 2; grid-row: 1 / span 4; grid-auto-rows: 34px; gap: 4px; }
+  .app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .coordinate-entry[data-coordinate-entry='sheet'] .coordinate-entry__fields { grid-template-columns: 1fr; }
+  .app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .support-placement-popover {
+    top: 8px !important;
+    bottom: 8px;
+    left: auto !important;
+    right: max(8px, env(safe-area-inset-right));
+    width: min(380px, calc(100% - 16px));
+    max-height: none;
+    overflow-y: auto;
+    transform: none;
+  }
+  .mdock__editor {
+    position: fixed;
+    left: auto;
+    right: max(8px, env(safe-area-inset-right));
+    top: 8px;
+    bottom: calc(var(--mdock-bottom, 8px) + var(--mdock-bar, 52px) + 8px);
+    width: min(360px, calc(100vw - 16px));
+    overflow-y: auto;
+  }
+}
+
+/* La barra en curso: tocar la ficha cierra la cadena sin soltar la herramienta. */
+.mdock__chip--chain {
+  border: 0;
+  cursor: pointer;
+  background: color-mix(in srgb, var(--sc-color-action-primary) 14%, var(--sc-color-surface-inset));
+  -webkit-tap-highlight-color: transparent;
+}
+.mdock__chip--chain > svg:last-child { width: 14px; height: 14px; color: var(--sc-color-text-secondary); }
+.mdock__chip--chain:active { transform: scale(.97); }
+.mdock__chip--chain:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }

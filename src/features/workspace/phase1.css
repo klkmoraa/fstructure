@@ -217,8 +217,7 @@
 .select-field select:focus-visible { box-shadow:var(--sc-shadow-pressed), 0 0 0 var(--sc-focus-ring-width) color-mix(in srgb, var(--focus) 34%, transparent); }
 
 .import-center-dialog,
-.sc-toast-card,
-.mobile-tool-palette {
+.sc-toast-card {
   background:var(--sc-color-surface-1);
   border:var(--sc-surface-edge);
   box-shadow:var(--sc-shadow-lg);
@@ -229,7 +228,6 @@
 .import-center-dialog,
 .new-exercise-dialog,
 .sc-toast-card,
-.mobile-tool-palette,
 .inspector-panel.mobile-open {
   background:var(--surface);
   /* Era `color-mix(..., white)`, y `white` es ciego al tema: en Día lavaba un
@@ -612,7 +610,7 @@
   gap:4px;
 }
 
-.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.toolbar-spacer,.selection-tip,.mobile-tool-dock) {
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.toolbar-spacer, .selection-tip) {
   display:none;
 }
 
@@ -1108,26 +1106,6 @@
   box-shadow:var(--sc-shadow-sheet);
 }
 
-.app-shell[data-shell-class='K0'] .mobile-tool-dock {
-  gap:4px;
-  padding:2px;
-  border-radius:var(--sc-radius-card);
-  background:var(--sc-color-surface-inset);
-  box-shadow:var(--sc-shadow-inset);
-}
-
-.app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button {
-  min-width:44px;
-  min-height:50px;
-  border:1px solid var(--sc-color-border-soft);
-  background:var(--sc-color-surface-1);
-  box-shadow:var(--sc-shadow-xs);
-}
-
-.app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:active:not(:disabled) {
-  background:var(--sc-color-surface-pressed);
-}
-
 .app-shell[data-shell-class='K0'] .inspector-panel[data-surface-presentation='sheet']::before {
   width:52px;
   height:5px;
@@ -1581,73 +1559,15 @@
     box-shadow:none;
   }
 
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock {
-    width:fit-content;
-    max-width:100%;
-    display:flex;
-    align-items:center;
-    gap:3px;
-    margin:0 auto;
-    padding:3px;
-    overflow-x:auto;
-    overscroll-behavior-x:contain;
-    scroll-snap-type:x proximity;
-    border:var(--sc-surface-edge);
-    border-radius:var(--sc-radius-pill);
-    background:var(--sc-color-surface-1);
-    box-shadow:var(--sc-shadow-md);
-    scrollbar-width:none;
-  }
-
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock::-webkit-scrollbar {
-    display:none;
-  }
-
   /* El riel táctil usa el MISMO radio que cualquier otro control: un botón de
      44px y otro de 28px son los dos controles. El círculo que había aquí era la
      única forma del sistema que no salía de la escala. */
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button {
-    width:44px;
-    min-width:44px;
-    height:44px;
-    min-height:44px;
-    flex:0 0 44px;
-    scroll-snap-align:center;
-    padding:0;
-    border:1px solid transparent;
-    border-radius:var(--sc-radius-control);
-    background:transparent;
-    box-shadow:none;
-  }
-
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button > span:not(.sc-tool-button__icon) {
-    display:none;
-  }
-
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button :is(svg,.sc-tool-button__icon) {
-    width:19px;
-    height:19px;
-  }
-
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:hover:not(:disabled) {
-    background:var(--sc-color-surface-elevated);
-    box-shadow:var(--sc-shadow-xs);
-  }
 
   /* La composición táctil declara su propio reposo transparente unas líneas más
      arriba, con la misma especificidad que la definición compartida y después
      que ella: sin repetir aquí el estado activo, la inversión a tinta se
      perdía. Los valores son los mismos; la única fuente sigue siendo
      `.app-shell .tool-rail .tool-button:is(.active,.is-active)`. */
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active,.is-active) {
-    border-color:var(--sc-color-action-primary);
-    background:var(--sc-color-action-primary);
-  }
-
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:active:not(:disabled) {
-    background:var(--sc-color-surface-pressed);
-    transform:var(--sc-press-transform);
-  }
 
   /* CRI-120 · el estado hundido usa scale(.98), que reduce visualmente el
      target activo de 44px a 43px en WebKit. Conservamos el desplazamiento de
@@ -1655,20 +1575,10 @@
      propio token —no en un literal— para que `prefers-reduced-motion` lo siga
      alcanzando: un `transform` literal en un estado pulsado sobrevive a la
      preferencia y es exactamente lo que prohíbe CRI-105. */
-  @media (pointer:coarse) {
-    .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:is(.active,.is-active),
-    .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button:active:not(:disabled) {
-      transform:var(--sc-press-transform-flat);
-    }
-  }
 
   /* CRI-121 · el azul técnico original del botón Carga cae a 3.22:1 en
      Noche. Se conserva el hue, pero se mezcla con la tinta de interfaz para
      que el control siga siendo legible en ambos fondos y estados de tema. */
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-pointLoad {
-    --tool-color:color-mix(in srgb,var(--sc-color-tool-point-load) 70%,var(--sc-color-text-primary));
-    --sc-tool-color:color-mix(in srgb,var(--sc-color-tool-point-load) 70%,var(--sc-color-text-primary));
-  }
 
   /* «Enfocar» y «✕» se suben a la fila del título en vez de gastar una fila
      propia. Medido en un teléfono: la barra ocupaba 53px de un panel de 464,
@@ -1885,7 +1795,6 @@
 @media (prefers-reduced-motion:reduce) {
   .app-shell .tool-rail-surface-launcher .sc-popover__trigger,
   .app-shell .tool-rail-surface-launcher__menu button,
-  .app-shell[data-shell-class='K0'] .mobile-tool-dock .tool-button,
   .app-shell[data-shell-class='K0'] .inspector-advanced__edit {
     transition:none;
     transform:none;

@@ -69,9 +69,10 @@ const DEFAULT_PREFERENCES: WorkspaceLayoutPreferences = {
   inspectorCompact: false,
   fullCanvas: false,
   inspectorWidth: DEFAULT_INSPECTOR_WIDTH,
-  // En teléfono el detalle nace como una consulta breve y no como una hoja
-  // que se come el lienzo. El tirador siempre permite subirlo a medio/grande.
-  inspectorDetent: 'compact',
+  // En teléfono la hoja nace a media altura: en la mínima sólo cabía la
+  // cabecera y había que subirla para editar nada. Se arrastra a la mínima o a
+  // la grande desde su asa, y la elección se recuerda.
+  inspectorDetent: 'medium',
 };
 
 /** Lo que hubiera en la clave y este lector ya no gobierna. Se conserva tal cual. */
