@@ -115,6 +115,11 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     if (axis?.short) setToolIntent({ tool: 'space3d', kind: 'view', view: `elev-${axis.direction}:${axis.short}` });
     onOpenSpace3D();
   } : undefined, [onOpenSpace3D, modelAxes]);
+  // «Crear edificio»: el 3D abre con su plantilla de edificio, en concreto, lista para aceptar.
+  const createBuilding = useMemo(() => onOpenSpace3D ? () => {
+    setToolIntent({ tool: 'space3d', kind: 'concrete-building' });
+    onOpenSpace3D();
+  } : undefined, [onOpenSpace3D]);
   useEffect(() => { takeToolIntent('design'); }, []);
   // «Ver en el Modelo» / «Ver en 3D»: las barras de un elemento quedan seleccionadas al volver.
   const setSelection = ui?.setSelection;
@@ -146,7 +151,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   useEffect(() => () => storage?.dispose(), [storage]);
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
     <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
-      {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})}
+      {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})} {...(createBuilding ? { onCreateBuilding: createBuilding } : {})}
       {...(intent?.element ? { startElement: intent.element } : {})}
       {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers} modelSections={modelSections} space3dSections={space3dSections}
       {...(project?.members.some(isSteelReviewCandidate) ? { modelReview: <ModelSteelReview project={project} {...(focus ? { focusMember: focus.memberId } : {})} onShowMembers={showMembers} /> } : {})}

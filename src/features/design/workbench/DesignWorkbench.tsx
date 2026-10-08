@@ -42,7 +42,7 @@ const readRoom = (): Room => {
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
 
-export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
+export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateBuilding, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
   nativeTool?: boolean;
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
   modelSource?: ExternalStructureSource | null;
@@ -52,6 +52,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   onOpenModel?: () => void;
   /** Abre el modo 3D de la mesa. */
   onOpenSpace3D?: (axisId?: string) => void;
+  onCreateBuilding?: () => void;
   /** Escribe el pórtico rápido en el Modelo 2D (deshacible en Modelo). */
   onCreateModel?: (spec: ConcreteFrameSpec) => void;
   /** Fuente de la estructura pedida desde fuera («Diseñar el modelo»). */
@@ -253,6 +254,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     ...(nativeTool ? { onVerdict } : {}),
     ...(onOpenModel ? { onOpenModel } : {}),
     ...(onOpenSpace3D ? { onOpenSpace3D } : {}),
+    ...(onCreateBuilding ? { onCreateBuilding } : {}),
     ...(onCreateModel ? { onCreateModel } : {}),
     ...(startSource ? { startSource } : {}),
     ...(focusMember ? { focusMember } : {}),

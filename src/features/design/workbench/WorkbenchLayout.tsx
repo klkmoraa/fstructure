@@ -42,6 +42,8 @@ export interface WorkbenchChrome {
   readonly onSaveAxes?: (axes: readonly { readonly id: string; readonly tag: string }[]) => 'saved' | 'full';
   /** Abre el modo 3D de la mesa (sólo dentro de la app). */
   readonly onOpenSpace3D?: (axisId?: string) => void;
+  /** Abre el modo 3D con «Nuevo edificio» listo: el 3D sin pórticos se resuelve con un toque. */
+  readonly onCreateBuilding?: () => void;
   /** Fuente pedida al abrir el taller. */
   readonly startSource?: 'frame' | 'model' | 'model3d';
   /** Barra del modelo cuyo diseño se abre al llegar (la elegida en el 2D o el 3D). */

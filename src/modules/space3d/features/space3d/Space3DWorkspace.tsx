@@ -136,7 +136,7 @@ interface Space3DWorkspaceProps {
    * mismas acciones del arranque vacío: el ejemplo pide confirmación si ya hay
    * un modelo que perder.
    */
-  readonly startIntent?: 'generate' | 'example' | 'first-node';
+  readonly startIntent?: 'generate' | 'example' | 'first-node' | 'concrete-building';
   /**
    * Un modelo entregado desde fuera («Traer del 2D»). Se aplica como la
    * estructura generada: con confirmación si hay algo que perder, y deshacible.
@@ -326,6 +326,7 @@ const WorkspaceBody = ({
   const [shownMode, setShownMode] = useState<number | null>(null);
   const [generativeOpen, setGenerativeOpen] = useState(false);
   const [buildingOpen, setBuildingOpen] = useState(false);
+  const [buildingMaterial, setBuildingMaterial] = useState<'steel' | 'concrete'>('steel');
   const [defineDialog, setDefineDialog] = useState<'grid' | 'sections' | 'loads' | 'dynamics' | null>(null);
   const [spectrumCaseChoice, setSpectrumCaseChoice] = useState<string | null>(null);
   const [spectrumResult, setSpectrumResult] = useState<Space3DResponseSpectrumResult | null>(null);
@@ -636,6 +637,7 @@ const WorkspaceBody = ({
     if (!startIntent || startIntentApplied.current) return;
     startIntentApplied.current = true;
     if (startIntent === 'generate') setGenerativeOpen(true);
+    else if (startIntent === 'concrete-building') { setBuildingMaterial('concrete'); setBuildingOpen(true); }
     else if (startIntent === 'first-node') enterTool('node');
     else requestReplace('example');
     // La intención se aplica una sola vez, al abrir la mesa.
@@ -645,6 +647,7 @@ const WorkspaceBody = ({
   const requestGeneratedReplace = (generatedProject: Space3DProjectV1, copy?: { title: string; description: string }) => {
     setGenerativeOpen(false);
     setBuildingOpen(false);
+    setBuildingMaterial('steel');
     if (hasContent) {
       setPendingReplace({ kind: 'generated', project: generatedProject, ...copy });
       return;
@@ -1646,7 +1649,7 @@ const WorkspaceBody = ({
       t={t}
     />
     <Suspense fallback={null}>
-      {buildingOpen ? <Space3DBuildingDialog open onOpenChange={setBuildingOpen} t={t} onCreate={requestGeneratedReplace} /> : null}
+      {buildingOpen ? <Space3DBuildingDialog open onOpenChange={(next) => { setBuildingOpen(next); if (!next) setBuildingMaterial('steel'); }} t={t} material={buildingMaterial} onCreate={requestGeneratedReplace} /> : null}
       {defineDialog === 'grid' ? <Space3DGridDialog open onOpenChange={(open) => setDefineDialog(open ? 'grid' : null)} t={t} grid={grid} onSubmit={submit} /> : null}
       {defineDialog === 'loads' ? <Space3DLoadsDialog open onOpenChange={(open) => setDefineDialog(open ? 'loads' : null)} t={t} project={project} onSubmit={submit} /> : null}
       {defineDialog === 'dynamics' ? <Space3DDynamicsDialog

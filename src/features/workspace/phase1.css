@@ -465,7 +465,7 @@
 .inspector-panel[data-surface-presentation='sheet'] { position:fixed; z-index:var(--sc-z-sheet,50); inset:auto 0 calc(var(--console-band,60px) + 8px + var(--sc-visual-viewport-bottom,0px)); display:flex; width:100%; height:min(58dvh,540px); max-height:calc(var(--sc-visual-viewport-height,100dvh) - 76px); clip-path:none; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
 .results-panel[data-surface-presentation='dock'] { position:relative; inset:auto; width:auto; }
 .results-panel[data-surface-presentation='inset'] { position:absolute; z-index:8; inset:auto 8px 8px; width:auto; height:min(42dvh,320px)!important; border-radius:var(--sc-radius-lg); }
-.results-panel[data-surface-presentation='sheet'] { position:absolute; z-index:8; inset:auto 0 0; width:100%; height:min(55dvh,500px)!important; border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
+.results-panel[data-surface-presentation='sheet'] { position:absolute; z-index:8; inset:auto 0 0; width:100%; height:min(55dvh,500px); /* La altura viva (40 % o la que se arrastre) va en línea; antes este !important la anulaba y la hoja tapaba el modelo. */ border-radius:var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0; }
 /* La variante en hoja de la paleta vive con el resto de sus reglas, en
    `commandPalette.css`: separarla de su base fue lo que dejó a la paleta sin
    estilo cuando se retiró la hoja que la alojaba. */

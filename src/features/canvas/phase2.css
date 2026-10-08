@@ -2077,7 +2077,8 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
    y el algoritmo de disposición conserva sus guías cuando dos valores cercanos
    necesitan apartarse. */
 .smart-label:is([data-smart-label^='result:'],[data-smart-label^='reaction:']) rect { fill:none; stroke:none; }
-.smart-label:is([data-smart-label^='result:'],[data-smart-label^='reaction:']) text { font-size:9px; font-weight:700; }
+.smart-label:is([data-smart-label^='result:'],[data-smart-label^='reaction:']) text { font-size:9px; font-weight:700; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:3.5px; stroke-linejoin:round; }
+/* Sin caja, pero con halo del color del lienzo: las flechas de carga y la curva ya no cruzan el número. */
 .member-dimension { color:var(--dimension); fill:none; stroke:currentColor; stroke-width:.7; opacity:.58; vector-effect:non-scaling-stroke; }
 .member-dimension-extension { stroke-dasharray:2 4; opacity:.78; }
 .member-dimension-line { stroke-width:.8; stroke-dasharray:3 3; }

@@ -36,6 +36,17 @@ describe('mesa Estructura con el pórtico rápido', () => {
     expect(screen.getByRole('radio', { name: 'Pórtico rápido' }).getAttribute('aria-checked')).toBe('true');
   });
 
+  it('con el 3D vacío, «Crear edificio» abre el 3D con su plantilla', async () => {
+    const user = userEvent.setup();
+    const empty3d = { label: '3D', axes: [], columns: [], source: () => { throw new Error('sin ejes'); } };
+    const onCreateBuilding = vi.fn();
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="frame" modelAxes={empty3d} onOpenSpace3D={vi.fn()} onCreateBuilding={onCreateBuilding} /></ProjectProvider>);
+    await user.click(screen.getByRole('radio', { name: 'Modelo 3D' }));
+    await user.click(await screen.findByRole('button', { name: 'Crear edificio' }));
+    expect(onCreateBuilding).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('button', { name: 'Modelar en 3D' })).toBeNull();
+  });
+
   it('diseña vigas y columnas juntas y abre el miembro elegido', async () => {
     const user = userEvent.setup();
     render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="frame" /></ProjectProvider>);

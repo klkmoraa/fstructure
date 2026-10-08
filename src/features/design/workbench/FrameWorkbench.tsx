@@ -1,4 +1,4 @@
-import { ArrowRightLeft, Box, LayoutGrid, PenLine, Plus, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, Box, Building2, LayoutGrid, PenLine, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
@@ -565,9 +565,12 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     </> : steelOnly ? null : fromModel && model.pending
       ? <div className="dw-model-wait" role="status"><span className="dw-model-wait__dot" aria-hidden="true" />{from3d ? 'Analizando el Modelo 3D completo con el solver espacial…' : 'Analizando el Modelo 2D con el solver de la app…'}</div>
       : fromModel && !usableSource(external) ? <div className="dw-model-empty">
-        <strong>{from3d ? 'El 3D aún no tiene pórticos' : !external?.summary.members ? 'El 2D está vacío' : 'El 2D aún no tiene vigas ni columnas de concreto con cargas'}</strong>
+        <strong>{from3d ? modelAxes?.axes.length ? 'El 3D no tiene vigas ni columnas de concreto' : 'El 3D aún no tiene pórticos' : !external?.summary.members ? 'El 2D está vacío' : 'El 2D aún no tiene vigas ni columnas de concreto con cargas'}</strong>
         <div className="dw-model-empty__actions">
-          <button type="button" className="dw-model-empty__primary" onClick={() => { set('source')('frame'); setPicked(null); }}>
+          {from3d && chrome.onCreateBuilding ? <button type="button" className="dw-model-empty__primary" onClick={chrome.onCreateBuilding}>
+            <Building2 size={15} aria-hidden="true" />Crear edificio
+          </button> : null}
+          <button type="button" className={from3d && chrome.onCreateBuilding ? undefined : 'dw-model-empty__primary'} onClick={() => { set('source')('frame'); setPicked(null); }}>
             <LayoutGrid size={15} aria-hidden="true" />Pórtico rápido
           </button>
           {from3d && (usableSource(modelSource) || chrome.modelReview) ? <button type="button" onClick={() => { set('source')('model'); setPicked(null); }}>
@@ -575,7 +578,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           </button> : !from3d && modelAxes?.axes.length ? <button type="button" onClick={() => { set('source')('model3d'); setPicked(null); }}>
             <Box size={15} aria-hidden="true" />Usar el 3D
           </button> : null}
-          {openSource ? <button type="button" onClick={openSource}>
+          {openSource && !(from3d && chrome.onCreateBuilding) ? <button type="button" onClick={openSource}>
             {from3d ? <Box size={15} aria-hidden="true" /> : <PenLine size={15} aria-hidden="true" />}{from3d ? 'Modelar en 3D' : 'Modelar en 2D'}
           </button> : null}
         </div>

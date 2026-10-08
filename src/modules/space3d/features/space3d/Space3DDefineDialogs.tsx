@@ -307,16 +307,18 @@ interface BuildingDialogProps {
   readonly onOpenChange: (open: boolean) => void;
   readonly t: Translate;
   readonly onCreate: (project: Space3DProjectV1) => void;
+  /** Material de partida: concreto cuando el edificio se pide para diseñarlo en concreto. */
+  readonly material?: 'steel' | 'concrete';
 }
 
 const COLUMN_SECTIONS = SPACE3D_SECTION_CATALOG.filter((section) => section.shape !== 'pipe').map((section) => section.name);
 
-export const Space3DBuildingDialog = ({ open, onOpenChange, t, onCreate }: BuildingDialogProps) => {
+export const Space3DBuildingDialog = ({ open, onOpenChange, t, onCreate, material = 'steel' }: BuildingDialogProps) => {
   const [x, setX] = useState('3*6');
   const [z, setZ] = useState('2*5');
   const [stories, setStories] = useState('4 3*3.2');
-  const [column, setColumn] = useState('W14x90');
-  const [beam, setBeam] = useState('W18x50');
+  const [column, setColumn] = useState(material === 'concrete' ? 'Concreto 50x50 cm' : 'W14x90');
+  const [beam, setBeam] = useState(material === 'concrete' ? 'Concreto 30x60 cm' : 'W18x50');
   const [dead, setDead] = useState('2.5');
   const [live, setLive] = useState('2');
   const [lateral, setLateral] = useState('0.1');
