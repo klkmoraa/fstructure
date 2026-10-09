@@ -6,6 +6,7 @@ import { BEAM_DEFAULTS, beamReportFromDraft, parseSpans, DEFAULT_SPANS } from '.
 import { COLUMN_DEFAULTS, columnReportFromDraft } from './columnModel';
 import { SECTION_DEFAULTS, sectionReportFromDraft } from './concreteStudioModel';
 import { stableJson, type DesignElementKind, type DesignReport } from './designReport';
+import { EMPTY_BEAM_DETAILS, isBeamDetailDraft } from './beamDetailDraft';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
 import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, externalFor, frameReportFromDraft, parseBays, parseStories } from './frameModel';
 import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
@@ -47,7 +48,7 @@ export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: Ext
 }
 
 /** Borrador vigente de un elemento, tal como lo guarda la mesa. */
-type MemoryDraft = Pick<WorkbenchMemoryItem, 'fields' | 'rows' | 'levels'>;
+type MemoryDraft = Pick<WorkbenchMemoryItem, 'fields' | 'rows' | 'levels' | 'details'>;
 
 const ELEMENT_DEFAULT_FIELDS: Record<DesignElementKind, Record<string, string>> = {
   beam: BEAM_DEFAULTS,
@@ -73,7 +74,12 @@ function currentDraft(storage: WorkbenchStorage, element: DesignElementKind): Me
   }
   if (element !== 'beam') return { fields };
   const rows = storage.read('beam-spans');
-  return { fields, rows: Array.isArray(rows) ? rows as Record<string, string>[] : DEFAULT_SPANS.map((span) => ({ ...span })) };
+  const rawDetails = storage.read('beam-details');
+  return {
+    fields,
+    rows: Array.isArray(rows) ? rows as Record<string, string>[] : DEFAULT_SPANS.map((span) => ({ ...span })),
+    details: isBeamDetailDraft(rawDetails) ? rawDetails : EMPTY_BEAM_DETAILS,
+  };
 }
 
 /** Sólo conserva borradores que ya existen en storage; los defaults iniciales no son piezas. */
@@ -81,7 +87,7 @@ function hasStoredDraft(storage: WorkbenchStorage, element: DesignElementKind): 
   const raw = storage.read(element);
   if (raw && typeof raw === 'object' && !Array.isArray(raw)
     && Object.values(raw as Record<string, unknown>).some((value) => typeof value === 'string')) return true;
-  if (element === 'beam') return Array.isArray(storage.read('beam-spans'));
+  if (element === 'beam') return Array.isArray(storage.read('beam-spans')) || isBeamDetailDraft(storage.read('beam-details'));
   if (element === 'frame') return Array.isArray(storage.read('frame-bays')) || Array.isArray(storage.read('frame-stories'));
   return false;
 }
@@ -90,8 +96,9 @@ const sameDraft = (item: WorkbenchMemoryItem, draft: MemoryDraft) => {
   const defaultRows = item.element === 'beam' ? DEFAULT_SPANS : item.element === 'frame' ? DEFAULT_BAYS : undefined;
   const defaultLevels = item.element === 'frame' ? DEFAULT_STORIES : undefined;
   const normalizeFields = (fields: Record<string, string>) => ({ ...ELEMENT_DEFAULT_FIELDS[item.element], ...fields });
-  return stableJson({ fields: normalizeFields(item.fields), rows: item.rows ?? defaultRows ?? null, levels: item.levels ?? defaultLevels ?? null })
-    === stableJson({ fields: normalizeFields(draft.fields), rows: draft.rows ?? defaultRows ?? null, levels: draft.levels ?? defaultLevels ?? null });
+  const normalizeDetails = (details: WorkbenchMemoryItem['details']) => item.element === 'beam' ? details ?? EMPTY_BEAM_DETAILS : null;
+  return stableJson({ fields: normalizeFields(item.fields), rows: item.rows ?? defaultRows ?? null, levels: item.levels ?? defaultLevels ?? null, details: normalizeDetails(item.details) })
+    === stableJson({ fields: normalizeFields(draft.fields), rows: draft.rows ?? defaultRows ?? null, levels: draft.levels ?? defaultLevels ?? null, details: normalizeDetails(draft.details) });
 };
 
 const newId = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replaceAll('-', '').slice(0, 12);
@@ -182,6 +189,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
         fields: structuredClone(draft.fields),
         ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
         ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
+        ...(draft.details ? { details: structuredClone(draft.details) } : {}),
       };
       const next = !asNew && active ? items.map((entry) => entry.id === item.id ? item : entry) : [...items, item];
       return commit(next, item.id) ? 'saved' : 'full';
@@ -206,6 +214,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
           fields: axis.id === open ? draft.fields : { ...draft.fields, source: 'model3d', axis: axis.id, tag: axis.tag },
           ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
           ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
+          ...(draft.details ? { details: structuredClone(draft.details) } : {}),
         };
         if (position >= 0) next[position] = item; else next.push(item);
         if (axis.id === open) nextActive = item.id;
@@ -245,6 +254,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
         writes[start.element === 'frame' ? 'frame-bays' : 'beam-spans'] = start.rows;
       }
       if (start.levels) writes['frame-stories'] = start.levels;
+      if (start.element === 'beam') writes['beam-details'] = EMPTY_BEAM_DETAILS as unknown as Parameters<WorkbenchStorage['write']>[1];
       return commit(next, '', writes) ? 'started' : 'full';
     },
     remove(id) {
@@ -277,6 +287,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
         writes['frame-stories'] = structuredClone(item.levels ?? DEFAULT_STORIES);
       } else if (item.element === 'beam') {
         writes['beam-spans'] = structuredClone(item.rows ?? DEFAULT_SPANS) as unknown as Parameters<WorkbenchStorage['write']>[1];
+        writes['beam-details'] = structuredClone(item.details ?? EMPTY_BEAM_DETAILS) as unknown as Parameters<WorkbenchStorage['write']>[1];
       }
       if (isDesignCodeId(item.code)) writes.code = item.code;
       if (!commit(next, item.id, writes)) return 'full';

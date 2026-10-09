@@ -14,7 +14,7 @@ afterEach(() => {
 });
 
 describe('design workbench document', () => {
-  it('migrates v2 memory and retains the section studio draft and memory in v6', () => {
+  it('migrates v2 memory and retains the section studio draft and memory in v7', () => {
     const old = { id: 'a1', element: 'column', code: 'ntc-2023', savedAt: '2026-09-27', fields: { tag: 'C-1', width: '40' } };
     const section = { id: 'a2', element: 'section', code: 'ntc-2023', savedAt: '2026-10-01', fields: { tag: 'S-1', shape: 'octagonal', philosophy: 'allowable', cover: '4' } };
     const persist = vi.fn<(value: JsonValue) => void>();
@@ -23,7 +23,7 @@ describe('design workbench document', () => {
     storage.write('memory', [old, section]);
     storage.flush();
     const document = persist.mock.calls[0]?.[0] as { schemaVersion: number; entries: Record<string, JsonValue> };
-    expect(document.schemaVersion).toBe(6);
+    expect(document.schemaVersion).toBe(7);
     expect(parseWorkbenchDocument(document)).toEqual({ memory: [old, section], section: section.fields });
     storage.dispose();
   });
@@ -53,7 +53,7 @@ describe('design workbench document', () => {
     expect(parseWorkbenchDocument(workbenchDoc({ notMemory: memory })).notMemory).toBeUndefined();
   });
 
-  it('keeps v3 documents and stores frames with their bays and levels in v6', () => {
+  it('keeps v3 documents and stores frames with their bays and levels in v7', () => {
     const beam = { id: 'a1', element: 'beam', code: 'ntc-2023', savedAt: '2026-09-27', fields: { tag: 'V-1' }, rows: [{ length: '5' }] };
     const persist = vi.fn<(value: JsonValue) => void>();
     const storage = createProjectWorkbenchStorage(workbenchDoc({ code: 'e060', memory: [beam] }, 3), persist);
@@ -66,7 +66,7 @@ describe('design workbench document', () => {
     storage.write('memory', [beam, frame]);
     storage.flush();
     const document = persist.mock.calls[0]?.[0] as { schemaVersion: number };
-    expect(document.schemaVersion).toBe(6);
+    expect(document.schemaVersion).toBe(7);
     expect(parseWorkbenchDocument(document)).toEqual({ code: 'e060', memory: [beam, frame], 'frame-bays': frame.rows, 'frame-stories': frame.levels });
     // Un nivel con una forma inesperada invalida la memoria, no la reinterpreta.
     expect(parseWorkbenchDocument(workbenchDoc({ memory: [{ ...frame, levels: [{ height: 3 }] }] })).memory).toBeUndefined();
@@ -76,7 +76,7 @@ describe('design workbench document', () => {
   it('rejects foreign or oversized documents without throwing', () => {
     expect(parseWorkbenchDocument(null)).toEqual({});
     expect(parseWorkbenchDocument({ kind: 'other', schemaVersion: 1, entries: {} })).toEqual({});
-    expect(parseWorkbenchDocument({ ...workbenchDoc({}), schemaVersion: 7 })).toEqual({});
+    expect(parseWorkbenchDocument({ ...workbenchDoc({}), schemaVersion: 8 })).toEqual({});
     expect(parseWorkbenchDocument(workbenchDoc({ wide: Object.fromEntries(Array.from({ length: 97 }, (_, index) => [`f${index}`, 'x'])) }))).toEqual({});
     const fields = Object.fromEntries(Array.from({ length: 96 }, (_, index) => [`f${index}`.padEnd(32, 'k'), 'x'.repeat(32)]));
     const huge = { memory: Array.from({ length: 60 }, (_, index) => ({ id: `m${index}`, element: 'beam', code: 'ntc-2023', savedAt: '2026-09-27', fields })) };
@@ -98,7 +98,7 @@ describe('design workbench document', () => {
     storage.dispose();
   });
 
-  it.each([1, 2, 3, 4, 5, 6])('retains workshop document compatibility for schema v%d', (schemaVersion) => {
+  it.each([1, 2, 3, 4, 5, 6, 7])('retains workshop document compatibility for schema v%d', (schemaVersion) => {
     expect(parseWorkbenchDocument(workbenchDoc({ code: 'e060', beam: { width: '30' } }, schemaVersion))).toEqual({ code: 'e060', beam: { width: '30' } });
   });
 
@@ -113,7 +113,7 @@ describe('design workbench document', () => {
     expect(persist).not.toHaveBeenCalled();
     vi.advanceTimersByTime(500);
     expect(persist).toHaveBeenCalledTimes(1);
-    expect(persist).toHaveBeenLastCalledWith(workbenchDoc({ code: 'e060', element: 'column', column: { width: '40' } }));
+    expect(persist).toHaveBeenLastCalledWith(workbenchDoc({ code: 'e060', element: 'column', column: { width: '40' } }, 7));
     storage.write('code', 'ntc-2023');
     storage.flush();
     expect(persist).toHaveBeenCalledTimes(2);
@@ -133,6 +133,31 @@ describe('design workbench document', () => {
     storage.flush();
     expect(persist).not.toHaveBeenCalled();
     storage.dispose();
+  });
+
+  it('exports v6 entries in v7 without losing legacy fields', () => {
+    const persist = vi.fn<(value: JsonValue) => void>();
+    const storage = createProjectWorkbenchStorage(workbenchDoc({ beam: { legacy: 'yes' } }, 6), persist, 0);
+    storage.write('beam-details', { kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] } as unknown as JsonValue);
+    storage.flush();
+    const document = persist.mock.calls[0]?.[0] as { schemaVersion: number; entries: Record<string, JsonValue> };
+    expect(document.schemaVersion).toBe(7);
+    expect(document.entries.beam).toEqual({ legacy: 'yes' });
+    expect(parseWorkbenchDocument(document)['beam-details']).toEqual({ kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] });
+    storage.dispose();
+  });
+
+  it('accepts only bounded structured beam details and rejects other element keys', () => {
+    const empty = { kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] };
+    const load = { id: 'L', span: '1', kind: 'point', category: 'dead', start: '0', end: '0', startValue: '', endValue: '' };
+    expect(parseWorkbenchDocument(workbenchDoc({ 'beam-details': empty }, 7))['beam-details']).toEqual(empty);
+    expect(parseWorkbenchDocument(workbenchDoc({ 'column-details': empty }, 7))['column-details']).toBeUndefined();
+    const columnWithDetails = [{ id: 'C1', element: 'column', code: 'ntc-2023', savedAt: '2026-10-09', fields: {}, details: empty }];
+    expect(parseWorkbenchDocument(workbenchDoc({ memory: columnWithDetails }, 7)).memory).toBeUndefined();
+    const tooMany = { ...empty, loads: Array.from({ length: 33 }, () => load) };
+    const tooLong = { ...empty, loads: [{ ...load, startValue: '1'.repeat(33) }] };
+    expect(parseWorkbenchDocument(workbenchDoc({ 'beam-details': tooMany }, 7))['beam-details']).toBeUndefined();
+    expect(parseWorkbenchDocument(workbenchDoc({ 'beam-details': tooLong }, 7))['beam-details']).toBeUndefined();
   });
 
   it('opens the workbench with the code stored in the project', () => {

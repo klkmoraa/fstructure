@@ -129,6 +129,56 @@ it('reconoce como equivalente la pieza antigua que omite sus claros por defecto'
   expect(result.current.items[0]?.id).toBe('beam-legacy');
 });
 
+it('guardar, abrir y duplicar conserva el detalle incompleto de una viga', () => {
+  const details = {
+    kind: 'beam', version: 1,
+    loads: [{ id: 'L1', span: '1', kind: 'point', category: 'dead', start: '0.5', end: '0.5', startValue: '', endValue: '' }],
+    bastions: [{ id: 'B1', bed: 'top', count: '2', diameterMm: '15.9', startM: '0', endM: '1.2' }],
+    stirrupZones: [{ span: '1', endSpacingMm: '100', endLengthM: '1', centerSpacingMm: '200' }],
+  };
+  const storage = memoryStorage({ beam: { tag: 'Viga' }, 'beam-details': details, 'beam-spans': DEFAULT_SPANS });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.save()).toBe('saved'); });
+  const saved = result.current.active!;
+  expect(saved.details).toEqual(details);
+
+  storage.data['beam-details'] = { kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] };
+  act(() => { expect(result.current.open(saved.id)).toEqual(saved); });
+  expect(storage.read('beam-details')).toEqual(details);
+
+  act(() => { expect(result.current.duplicate(saved.id)).toBe('duplicated'); });
+  expect(result.current.items.at(-1)?.details).toEqual(details);
+});
+
+it('trata el detalle de viga ausente como el borrador canónico vacío al comparar', () => {
+  const emptyDetails = { kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] };
+  const item = savedItem('beam-empty', { tag: 'V-1' }, { details: emptyDetails });
+  const storage = memoryStorage({ beam: { tag: 'V-1' }, 'beam-spans': DEFAULT_SPANS, element: 'beam', memory: [item] });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.start(DESIGN_STARTS.find((entry) => entry.id === 'piece-footing')!)).toBe('started'); });
+
+  expect(result.current.items).toHaveLength(1);
+});
+
+it('un preflight de memoria llena evita todas las escrituras y cambios al abrir una viga', () => {
+  const details = { kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] };
+  const target = savedItem('target', { tag: 'V-guardada' }, { details });
+  const fillers = Array.from({ length: 59 }, (_, index) => savedItem(`f${index}`, { tag: `V-${index}` }));
+  const storage = memoryStorage({ memory: [target, ...fillers], 'memory-active': 'target', beam: { tag: 'V actual' }, 'beam-details': { kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] } });
+  const writes: string[] = [];
+  storage.write = (key, value) => { writes.push(key); storage.data[key] = value; };
+  const before = structuredClone(storage.data);
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.open('target')).toBe('full'); });
+
+  expect(writes).toEqual([]);
+  expect(storage.data).toEqual(before);
+  expect(result.current.items).toHaveLength(60);
+});
+
 it('start no crea una pieza vacía para un destino que todavía no tiene borrador', () => {
   const beam = { tag: 'V-1', width: '25' };
   const storage = memoryStorage({ beam, element: 'beam' });
@@ -454,7 +504,7 @@ it('conserva el id de ejercicio en borrador, memoria de proyecto y al reabrir si
 
   storage.flush();
   const document = writes.at(-1) as { schemaVersion: number; entries: Record<string, unknown> };
-  expect(document.schemaVersion).toBe(6);
+  expect(document.schemaVersion).toBe(7);
   expect((document.entries.memory as WorkbenchMemoryItem[])[0]?.fields.exercise).toBe(recipe.id);
   storage.write('beam', { ...recipe.fields, exercise: '' });
   act(() => { expect(result.current.open(saved.id)).toBeTruthy(); });

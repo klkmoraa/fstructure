@@ -61,7 +61,7 @@ it('guarda y reabre sólo la selección; recalcula la demanda del modelo vigente
   fireEvent.click(screen.getByRole('button', { name: 'Guardar revisión de acero' }));
   storage.flush();
   const document = persist.mock.calls[0]![0];
-  expect(document.schemaVersion).toBe(6);
+  expect(document.schemaVersion).toBe(7);
   expect(document.entries['steel-memory']).toEqual([{ memberId: 'T1', combinationId: 'U', savedAt: expect.any(String) }]);
   view.unmount(); storage.dispose();
   const reopened = createProjectWorkbenchStorage(document, () => undefined);

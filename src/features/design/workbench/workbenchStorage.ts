@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { isSteelMemory } from '../../../design/steelMemory';
+import { isBeamDetailDraft } from './beamDetailDraft';
 
 /**
  * Dónde viven los borradores del taller de diseño (norma, elemento y datos de
@@ -29,9 +30,10 @@ export const WORKBENCH_DOCUMENT_KIND = 'fstructure-design-workbench';
  * elementos `frame` con sus niveles (`levels`). Conserva v1 a v3.
  * v5: secciones por nivel en las filas y armado automático por sección.
  * v6: selecciones de revisión de acero, sin resultados ni copias del modelo. Conserva v1 a v5.
+ * v7: detalle estructurado de viga, con borradores incompletos. Conserva v1 a v6.
  */
-const WORKBENCH_SCHEMA_VERSION = 6;
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6];
+const WORKBENCH_SCHEMA_VERSION = 7;
+const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7];
 const ELEMENT_KINDS = ['beam', 'column', 'frame', 'footing', 'section'] as const;
 const MAX_DOCUMENT_CHARS = 240_000;
 const MAX_ENTRIES = 16;
@@ -62,16 +64,19 @@ export interface WorkbenchMemoryItem {
   readonly rows?: Record<string, string>[];
   /** Niveles del pórtico. */
   readonly levels?: Record<string, string>[];
+  /** Detalle editable v1 de una viga; no aplica a los demás elementos. */
+  readonly details?: import('./beamDetailDraft').BeamDetailDraft;
 }
 
 export const isMemoryItem = (value: unknown): value is WorkbenchMemoryItem => {
   if (!isPlainObject(value)) return false;
   const keys = Object.keys(value);
-  if (keys.some((key) => !['id', 'element', 'code', 'savedAt', 'fields', 'rows', 'levels'].includes(key))) return false;
+  if (keys.some((key) => !['id', 'element', 'code', 'savedAt', 'fields', 'rows', 'levels', 'details'].includes(key))) return false;
   return isShortString(value.id) && (ELEMENT_KINDS as readonly unknown[]).includes(value.element)
     && isShortString(value.code) && isShortString(value.savedAt) && isRecord(value.fields)
     && (value.rows === undefined || isRows(value.rows))
-    && (value.levels === undefined || isRows(value.levels));
+    && (value.levels === undefined || isRows(value.levels))
+    && (value.details === undefined || (value.element === 'beam' && isBeamDetailDraft(value.details)));
 };
 
 const isMemory = (value: unknown): value is WorkbenchMemoryItem[] =>
@@ -80,7 +85,8 @@ const isMemory = (value: unknown): value is WorkbenchMemoryItem[] =>
 
 /** Cadenas cortas, registros de cadenas, listas cortas de registros (los claros) y la memoria del proyecto. */
 const isEntry = (key: string, value: unknown): value is JsonValue =>
-  key === 'steel-memory' ? isSteelMemory(value)
+  key === 'beam-details' ? isBeamDetailDraft(value)
+    : key === 'steel-memory' ? isSteelMemory(value)
     : isShortString(value) || isRecord(value) || isRows(value) || (key === 'memory' && isMemory(value));
 
 /** Lee un documento del taller; ante cualquier forma inesperada devuelve un borrador vacío, nunca lanza. */
