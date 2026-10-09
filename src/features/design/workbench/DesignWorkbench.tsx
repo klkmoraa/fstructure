@@ -1,4 +1,4 @@
-import { BookOpen, Check, ChevronDown, Copy, FileDown, PanelRight, Redo2, Undo2 } from 'lucide-react';
+import { BookOpen, Check, ChevronDown, Copy, FileDown, PanelRight, Plus, Redo2, Undo2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
@@ -14,6 +14,8 @@ import { MemoryDialog, MemoryStatus, useDesignMemory } from './designMemory';
 import { memoText, reportHeading, type DesignReport } from './designReport';
 import type { ModelSectionsBridge, Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { useWorkbenchStorage } from './workbenchStorage';
+import { DesignStartDialog } from './DesignStartDialog';
+import type { DesignStart } from './designStarts';
 import './designWorkbench.css';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 
@@ -42,7 +44,7 @@ const readRoom = (): Room => {
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
 
-export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateBuilding, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
+export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, startPicker = false, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateBuilding, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
   nativeTool?: boolean;
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
   modelSource?: ExternalStructureSource | null;
@@ -63,6 +65,8 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   startElement?: ElementKind;
   /** Norma elegida en la bienvenida de Diseño. */
   startCode?: string;
+  /** Abre el selector inicial, sin elegir una pieza ni cambiar el origen guardado. */
+  startPicker?: boolean;
   /** Barra del modelo cuyo diseño abre Estructura (la elegida en el 2D o el 3D). */
   focusMember?: string;
   /** «Ver en el Modelo» / «Ver en 3D»: selecciona las barras del elemento en su modo. */
@@ -97,6 +101,8 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const memory = useDesignMemory(storage, element, code, report);
   const [memoryOpen, setMemoryOpen] = useState(false);
+  const [startOpen, setStartOpen] = useState(() => startPicker);
+  const [initialIntentConsumed, setInitialIntentConsumed] = useState(false);
   // Abrir un elemento de la memoria vuelve a montar su formulario para que lea el borrador cargado.
   const [loadCount, setLoadCount] = useState(0);
   // Deshacer/rehacer del formulario activo; cada elemento entrega el suyo al montarse.
@@ -207,10 +213,28 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   const loadFromMemory = (id: string) => {
     const item = memory.open(id);
     if (!item) return;
+    setInitialIntentConsumed(true);
     setElementState(item.element);
     if (isDesignCodeId(item.code)) setCodeState(item.code);
     setLoadCount((count) => count + 1);
     setMemoryOpen(false);
+  };
+
+  const startRecipe = (start: DesignStart): 'started' | 'full' => {
+    const result = memory.start(start);
+    if (result === 'full') return 'full';
+    // La receta es la nueva fuente de verdad: no se reaplican el origen ni la
+    // barra que venían del modo anterior al volver a montar el formulario.
+    setInitialIntentConsumed(true);
+    setElementState(start.element);
+    setReport(null);
+    setVerdict(null);
+    setCopied(false);
+    history.current = null;
+    setHistoryFlags({ canUndo: false, canRedo: false });
+    setLoadCount((count) => count + 1);
+    setStartOpen(false);
+    return 'started';
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -225,7 +249,8 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     setFocusRequest((count) => count + 1);
   };
 
-  const elements = <div className="dw-dock__group" role="radiogroup" aria-label="Elemento a diseñar">
+  const elements = <div className="dw-dock__elements">
+    <div className="dw-dock__group" role="radiogroup" aria-label="Elemento a diseñar">
       {ELEMENTS.map((item, index) => <ToolButton
         key={item.id}
         ref={(node) => { buttons.current[index] = node; }}
@@ -240,6 +265,10 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
         onClick={() => setElement(item.id)}
         onKeyDown={(event) => onKeyDown(event, index)}
       />)}
+    </div>
+    <button type="button" className="dw-dock__new-design" aria-label="Nuevo diseño" title="Nuevo diseño" onClick={() => setStartOpen(true)}>
+      <Plus size={16} aria-hidden="true" /><span>Nuevo</span>
+    </button>
   </div>;
   const codeControl = <label className="dw-code-chip" title={`${designCode(code).name} · ${designCode(code).country}`}>
     <select aria-label="Norma de diseño" value={code} onChange={(event) => setCode(event.currentTarget.value)}>
@@ -256,8 +285,9 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     ...(onOpenSpace3D ? { onOpenSpace3D } : {}),
     ...(onCreateBuilding ? { onCreateBuilding } : {}),
     ...(onCreateModel ? { onCreateModel } : {}),
-    ...(startSource ? { startSource } : {}),
-    ...(focusMember ? { focusMember } : {}),
+    ...(!initialIntentConsumed && startSource ? { startSource } : {}),
+    ...(!initialIntentConsumed && focusMember ? { focusMember } : {}),
+    ...(startPicker && startOpen && !initialIntentConsumed ? { deferSourceNormalization: true } : {}),
     ...(onShowMembers ? { onShowMembers } : {}),
     modelSections, space3dSections, ...(modelReview ? { modelReview } : {}),
   };
@@ -307,6 +337,17 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
         : element === 'frame' ? <FrameWorkbench key={loadCount} chrome={chrome} />
         : element === 'footing' ? <FootingWorkbench key={loadCount} chrome={chrome} />
           : <ConcreteStudio key={loadCount} chrome={chrome} />}
+    <DesignStartDialog open={startOpen} onOpenChange={setStartOpen}
+      hasModel2d={Boolean(modelSource && !modelSource.errors.length && modelSource.summary.beams + modelSource.summary.columns > 0)}
+      hasModel3d={Boolean(modelAxes?.axes.some((axis) => {
+        try {
+          const source = modelAxes.source(axis.id);
+          return !source.errors.length && source.summary.beams + source.summary.columns > 0;
+        } catch { return false; }
+      }))}
+      code={code} projectName={projectName} onStart={startRecipe} onOpenModel={onOpenModel}
+      onOpenSpace3D={onOpenSpace3D ? () => onOpenSpace3D() : undefined} onCreateBuilding={onCreateBuilding}
+      onOpenMemory={() => { setStartOpen(false); setMemoryOpen(true); }} />
     <MemoryDialog open={memoryOpen} onOpenChange={setMemoryOpen} memory={memory} element={element} onLoad={loadFromMemory}
       onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} modelSource={modelSource} modelAxes={modelAxes} />
   </div>;

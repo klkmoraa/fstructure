@@ -7,6 +7,7 @@ import { PROJECT_STORAGE_KEY } from '../../../data/projectStorage';
 import { ProjectProvider } from '../../../store/ProjectContext';
 import { DesignWorkbench } from './DesignWorkbench';
 import { ShellSlotHost, ShellToolSlotsProvider } from '../../workspace/ShellToolSlots';
+import { WorkbenchStorageContext } from './workbenchStorage';
 
 beforeEach(() => {
   localStorage.clear();
@@ -129,6 +130,69 @@ describe('DesignWorkbench', () => {
     renderWorkbench();
     const dock = screen.getByRole('radiogroup', { name: 'Elemento a diseñar' });
     expect(within(dock).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Estructura', 'Viga', 'Columna', 'Zapata', 'Secciones']);
+  });
+
+  it('abre Nuevo diseño desde el dock y cancelar conserva el borrador vigente', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    const length = screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement;
+    await user.clear(length);
+    await user.type(length, '7');
+    await user.click(screen.getByRole('button', { name: 'Nuevo diseño' }));
+    expect(await screen.findByRole('dialog', { name: 'Nuevo diseño' })).toBeTruthy();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Nuevo diseño' })).toBeNull();
+    expect((screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement).value).toBe('7');
+  });
+
+  it('abre el selector inicial y cancelar no cambia el origen guardado del pórtico', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('fstructure.design-workbench.frame', JSON.stringify({ source: 'model', tag: 'Actual' }));
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startPicker modelSource={null} /></ProjectProvider>);
+    expect(await screen.findByRole('dialog', { name: 'Nuevo diseño' })).toBeTruthy();
+    await user.keyboard('{Escape}');
+    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.frame')!).source).toBe('model');
+  });
+
+  it('inicia una receta con campos y claros reales y conserva la pieza anterior en memoria', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Norma de diseño' }), 'e060');
+    const length = screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement;
+    await user.clear(length);
+    await user.type(length, '7');
+    await user.click(screen.getByRole('button', { name: 'Nuevo diseño' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo diseño' });
+    await user.click(within(dialog).getByRole('tab', { name: 'Ejercicio' }));
+    await user.click(await within(dialog).findByRole('button', { name: /Viga simplemente apoyada/ }));
+    expect(screen.queryByRole('dialog', { name: 'Nuevo diseño' })).toBeNull();
+    expect((screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement).value).toBe('5');
+    expect((screen.getByRole('textbox', { name: 'Claro 1 · CM (kN/m)' }) as HTMLInputElement).value).toBe('10');
+    expect(screen.getByRole('combobox', { name: 'Norma de diseño' })).toHaveProperty('value', 'e060');
+    const memory = JSON.parse(localStorage.getItem('fstructure.design-workbench.memory')!);
+    expect(memory).toEqual(expect.arrayContaining([expect.objectContaining({
+      element: 'beam', fields: expect.objectContaining({ tag: '', selfWeight: 'yes' }),
+      rows: expect.arrayContaining([expect.objectContaining({ length: '7' })]),
+    })]));
+  });
+
+  it('mantiene abierto el selector y el formulario al no haber presupuesto para conservarlos', async () => {
+    const user = userEvent.setup();
+    const entries: Record<string, unknown> = {};
+    const storage = {
+      read: (key: string) => entries[key],
+      write: (key: string, value: unknown) => { entries[key] = structuredClone(value); },
+      canWrite: () => false,
+    };
+    render(<WorkbenchStorageContext.Provider value={storage as never}><ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider></WorkbenchStorageContext.Provider>);
+    await user.click(screen.getByRole('button', { name: 'Nuevo diseño' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo diseño' });
+    await user.click(within(dialog).getByRole('tab', { name: 'Pieza' }));
+    await user.click(await within(dialog).findByRole('button', { name: /Zapata aislada/ }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/No hay espacio suficiente para conservar/i);
+    expect(screen.getByRole('dialog', { name: 'Nuevo diseño' })).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Claro 1 · L (m)' })).toHaveProperty('value', '5');
+    expect(screen.getByRole('button', { name: 'Abrir memoria del proyecto' })).toBeTruthy();
   });
 
   it('filtra la revisión y enseña lo que queda sin evaluar con su ubicación', async () => {

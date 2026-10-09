@@ -46,6 +46,8 @@ export interface WorkbenchChrome {
   readonly onCreateBuilding?: () => void;
   /** Fuente pedida al abrir el taller. */
   readonly startSource?: 'frame' | 'model' | 'model3d';
+  /** La Home muestra el selector antes de decidir el origen del pórtico. */
+  readonly deferSourceNormalization?: boolean;
   /** Barra del modelo cuyo diseño se abre al llegar (la elegida en el 2D o el 3D). */
   readonly focusMember?: string;
   /** Selecciona esas barras en su modo y lo abre; con `axisId`, en el 3D. */

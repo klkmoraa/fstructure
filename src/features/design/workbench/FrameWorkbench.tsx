@@ -195,7 +195,8 @@ function ProposalGroups({ proposal }: { proposal: SectionProposal }) {
 }
 
 /** Un modelo del proyecto se puede diseñar cuando existe y no trae errores propios (vacío, sin pórticos, sin concreto). */
-const usableSource = (source: ExternalStructureSource | null | undefined) => Boolean(source && !source.errors.length);
+const usableSource = (source: ExternalStructureSource | null | undefined) =>
+  Boolean(source && !source.errors.length && source.summary.beams + source.summary.columns > 0);
 
 export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('frame', FRAME_DEFAULTS, FRAME_LEGACY);
@@ -207,7 +208,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const snapshot = useMemo(() => ({ draft, bays, stories }), [draft, bays, stories]);
   const applySnapshot = useCallback((next: typeof snapshot) => { replace(next.draft); setBays(next.bays); setStories(next.stories); }, [replace]);
   const history = useDraftHistory(snapshot, applySnapshot, 'frame');
-  const { onHistory, startSource, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, onShowMembers } = chrome;
+  const { onHistory, startSource, deferSourceNormalization = false, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, onShowMembers } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
   // La barra elegida en el modo de origen: su diseño se abre cuando llega el resultado.
   const focusRef = useRef(chrome.focusMember ?? null);
@@ -217,10 +218,13 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   // Un modelo que todavía no se puede diseñar (vacío, sin pórticos o sin concreto)
   // no detiene la mesa: se toma el otro modelo o, si tampoco, el pórtico rápido.
   useEffect(() => {
+    if (deferSourceNormalization) return;
     const focus = focusRef.current;
     // Un 2D de acero no se diseña aquí en concreto, pero sí tiene su revisión: también cuenta.
     const usable2d = usableSource(modelSource) || Boolean(chrome.modelReview);
-    const usable3d = Boolean(modelAxes?.axes.length);
+    const usable3d = Boolean(modelAxes?.axes.some((axis) => {
+      try { return usableSource(modelAxes.source(axis.id)); } catch { return false; }
+    }));
     let source = startSource ?? draft.source;
     if (source === 'model3d' && !usable3d) source = usable2d ? 'model' : 'frame';
     else if (source === 'model' && !usable2d) source = usable3d ? 'model3d' : 'frame';
@@ -228,6 +232,8 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     const axis = axes.length && modelAxes && !axes.includes(axisOf(draft, modelAxes)) ? axes[0]! : draft.axis;
     if (source !== 'model' && source !== 'model3d') focusRef.current = null;
     if (source !== draft.source || axis !== draft.axis) replace({ ...draft, source, axis });
+  // La decisión de no normalizar sólo se lee al montar. Al cerrar el picker no
+  // se ejecuta este efecto otra vez; un montaje posterior vuelve al flujo normal.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const code = designCode(chrome.code);

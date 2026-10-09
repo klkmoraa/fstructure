@@ -97,7 +97,10 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     };
   }, [space3d, onOpenSpace3D]);
   const [intent] = useState(() => peekToolIntent('design'));
-  const startSource = intent?.kind;
+  // Home abre el selector antes de elegir origen: no debe aplicar `frame`
+  // hasta que la persona seleccione una receta.
+  const startPicker = intent?.picker === true;
+  const startSource = startPicker ? undefined : intent?.kind;
   const ui = useContext(WorkspaceUIContext);
   // La barra que se abre: la pedida desde el Inspector («Diseñar en concreto»)
   // o la que estaba seleccionada en el modo del que se llega.
@@ -152,6 +155,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
     <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
       {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})} {...(createBuilding ? { onCreateBuilding: createBuilding } : {})}
+      {...(startPicker ? { startPicker } : {})}
       {...(intent?.element ? { startElement: intent.element } : {})}
       {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers} modelSections={modelSections} space3dSections={space3dSections}
       {...(project?.members.some(isSteelReviewCandidate) ? { modelReview: <ModelSteelReview project={project} {...(focus ? { focusMember: focus.memberId } : {})} onShowMembers={showMembers} /> } : {})}

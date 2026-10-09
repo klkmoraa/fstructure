@@ -1,0 +1,120 @@
+.dw-start-dialog {
+  width: min(940px, calc(100vw - 32px));
+  max-height: min(820px, calc(100dvh - 32px));
+}
+.dw-start-dialog .sc-modal-surface__body { min-height: 0; overflow: auto; }
+.dw-start__tab-content { min-width: 0; }
+.dw-start__category-note { margin: 0 0 var(--sc-space-4); color: var(--sc-color-text-secondary); font-size: var(--sc-font-size-body); line-height: 1.55; }
+.dw-start__cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sc-space-3); align-items: stretch; }
+.dw-start-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: var(--sc-space-4);
+  border: var(--sc-border-width) solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
+}
+.dw-start-card__top { display: flex; align-items: center; justify-content: space-between; gap: var(--sc-space-2); color: var(--sc-color-text-secondary); font-size: var(--sc-font-size-xs); }
+.dw-start-card__icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: var(--sc-radius-control); background: var(--sc-color-surface-2); color: var(--sc-color-action-ink); }
+.dw-start-card h3 { margin: var(--sc-space-3) 0 var(--sc-space-2); color: var(--sc-color-text-primary); font-size: var(--sc-font-size-body); line-height: 1.35; }
+.dw-start-card > p { margin: 0; color: var(--sc-color-text-secondary); font-size: var(--sc-font-size-body); line-height: 1.55; }
+.dw-start-card__reference { margin-top: var(--sc-space-3) !important; padding: var(--sc-space-2) var(--sc-space-3); border-left: 2px solid var(--sc-color-border-strong); background: var(--sc-color-surface-2); color: var(--sc-color-text-primary) !important; }
+.dw-start-card__choose {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-2);
+  margin-top: auto;
+  padding: var(--sc-space-3) 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--sc-color-action-ink);
+  font: 600 var(--sc-font-size-body)/1.3 var(--sc-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.dw-start-card__choose:hover { color: var(--sc-color-action-primary); }
+.dw-start-card__choose:focus-visible, .dw-start-card__actions button:focus-visible, .dw-start__full button:focus-visible {
+  outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
+  outline-offset: 2px;
+}
+.dw-start-card__unavailable { margin-top: auto; padding-top: var(--sc-space-3); }
+.dw-start-card__unavailable p { margin: 0; color: var(--sc-color-text-secondary); font-size: var(--sc-font-size-xs); line-height: 1.5; }
+.dw-start-card__disabled { min-height: 40px; margin-top: var(--sc-space-2); padding: 0 var(--sc-space-3); border: var(--sc-border-width) solid var(--sc-color-border-soft); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-2); color: var(--sc-color-text-secondary); font: 600 var(--sc-font-size-xs)/1.3 var(--sc-font-ui); }
+.dw-start-card__actions { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); margin-top: var(--sc-space-3); }
+.dw-start-card__actions button, .dw-start__full button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sc-space-2);
+  padding: 0 var(--sc-space-3);
+  border: var(--sc-border-width) solid var(--sc-color-border);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  font: 600 var(--sc-font-size-xs)/1.35 var(--sc-font-ui);
+  cursor: pointer;
+}
+.dw-start-card__actions button:hover, .dw-start__full button:hover { background: var(--sc-color-surface-2); }
+.dw-start__full { display: flex; align-items: center; justify-content: space-between; gap: var(--sc-space-3); margin-top: var(--sc-space-2); padding: var(--sc-space-3); border: var(--sc-border-width) solid var(--sc-color-state-warning); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-2); }
+.dw-start__full p { margin: 0; color: var(--sc-color-text-primary); font-size: var(--sc-font-size-body); line-height: 1.5; }
+.dw-start__full button { flex: none; }
+.dw-dock__new-design {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-left: var(--sc-space-2);
+  padding: 0 var(--sc-space-3);
+  border: var(--sc-border-width) solid var(--sc-color-border);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  font: 600 var(--sc-font-size-xs)/1.2 var(--sc-font-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.dw-dock__new-design:hover { background: var(--sc-color-surface-2); }
+.dw-dock__new-design:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
+.dw-dock__elements { display: flex; align-items: center; gap: 4px; }
+@media (max-width: 760px) {
+  .dw-start-dialog { width: 100vw; max-height: 100dvh; border-radius: 0; }
+  .dw-start__cards { grid-template-columns: 1fr; gap: var(--sc-space-2); }
+  .dw-start-card { padding: var(--sc-space-3); }
+  .dw-start__full { align-items: stretch; flex-direction: column; }
+  .dw-start__full button { width: 100%; }
+  .dw-dock__elements {
+    grid-row: 1;
+    grid-column: 1;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 2px;
+    margin: 6px 8px;
+    padding: 3px;
+    border-radius: var(--sc-radius-card);
+    background: var(--sc-color-surface-inset, var(--sc-color-surface-2));
+    box-shadow: var(--sc-shadow-inset);
+  }
+  .dw-dock__elements .dw-dock__group {
+    grid-row: 1;
+    grid-column: 1 / 6;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 2px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .dw-dock__elements .dw-dock__new-design { grid-row: 1; grid-column: 6; width: 100%; min-width: 0; min-height: 52px; flex-direction: column; gap: 3px; margin: 0; padding: 4px 1px; border-color: transparent; background: transparent; font-size: 9px; white-space: nowrap; }
+  .dw-dock__new-design span { overflow: hidden; max-width: 100%; text-overflow: ellipsis; }
+}
+@media (min-width: 761px) and (max-width: 1020px) { .dw-start__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

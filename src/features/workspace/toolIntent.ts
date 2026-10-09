@@ -16,7 +16,7 @@ type ToolIntent =
    * Diseño abierto desde un modo con modelo: la estructura se diseña con ese
    * modelo. `member` (desde el Inspector) abre Estructura en el diseño de esa barra.
    */
-  | { tool: 'design'; kind: 'model' | 'model3d' | 'frame'; member?: string; element?: 'beam' | 'column' | 'footing' | 'frame' };
+  | { tool: 'design'; kind: 'model' | 'model3d' | 'frame'; member?: string; element?: 'beam' | 'column' | 'footing' | 'frame'; picker?: boolean };
 
 let pending: ToolIntent | null = null;
 
