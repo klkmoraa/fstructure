@@ -23,13 +23,17 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Diseño (de `docs/research/concrete-design`)
 
-- [x] Entrada Proyecto / Pieza / Ejercicio desde Home y «Nuevo diseño» en la mesa: 23 arranques editables, modelos existentes, vivienda de un nivel, edificio de tres niveles y seis ejercicios con hipótesis visibles.
+- [x] Entrada Proyecto / Pieza / Ejercicio desde Home y «Nuevo diseño» en la mesa: 20 arranques editables: cuatro proyectos, trece piezas y tres formularios para problemas propios, sin respuestas prefabricadas.
 - [x] Iniciar otra pieza conserva borradores completos e incompletos en Memoria, sin sobrescribir lo guardado; aborta antes de escribir si no cabe. Persistencia de los 79 campos de cimentación y compatibilidad del taller v1–v6.
 - [x] Materiales con resistencias sugeridas editables, catálogo transversal desde #2, fy transversal visible y configuraciones rápidas de apoyos de viga con rodillo explícito. Las revisiones pendientes conservan ese estado en dibujos, cantidades y PDF.
 - [x] Memoria: abrir conserva borradores actual y destino; duplicar cualquier fila mantiene el activo; todas las mutaciones verifican presupuestos antes de escribir.
 - [x] Memoria organizada: búsqueda, filtros por tipo/norma/estado, resumen de alcance y PDF completo o selección sin perder filas ocultas seleccionadas.
-- [x] Aula: guía persistente en las tres vigas de referencia, comparación CM + CV de servicio con valores editados, suspensión de hipótesis y ocultar/deshacer.
-- [ ] Extender las guías educativas a columnas y cimentaciones con referencias independientes, y preparar una entrega de Aula que incluya el planteamiento y la comparación de servicio; el PDF actual sigue siendo de diseño.
+- [x] Aula: resolver una sección o columna con datos propios y construir un modelo vacío; se retiran ejemplos y guías visibles sin borrar sus campos heredados.
+- [x] Formularios reunidos: geometría, materiales y acciones juntos; armado con propuesta, detalles avanzados desplegables y clave/ubicación secundarios.
+- [x] Proponer acero de sección/columna mantiene las dimensiones y acciones; catálogo o diámetro elegido en sección, mínimo As entre candidatos factibles y búsqueda cancelable en worker.
+- [x] Grupos separados en secciones rectangulares/cuadradas: 1–3 barras por esquina y 0–3 por cara, coordenadas físicas y revisión entre todos los pares; máximo tres como preferencia de composición.
+- [x] Vigas: cálculo y dibujo comparten barras físicas de dos capas, incluso corridas sin bastones; el peralte efectivo usa su centroide real.
+- [ ] Paquetes de barras en contacto: registrar límites, separación equivalente, diámetro transversal y confinamiento de cada norma antes de habilitarlos; los grupos actuales contienen barras separadas.
 - [ ] Registrar y verificar el alcance normativo de estribos de viga menores de 9.5 mm para cada perfil. Hoy se pueden capturar y se declaran como aceptación pendiente; las columnas conservan sus comprobaciones existentes.
 - [x] Calculadora experimental de seis secciones, tres filosofías, flexión/N–M, armado por lechos/perímetro, recubrimiento, cantidades y memoria PDF. El momento perpendicular pendiente se declara sin aprobarlo.
 - [x] Separación propia de estribos y paso del zuncho en las columnas existentes, revisión de cortante y límites, grapas y elevación ligadas al cálculo.
