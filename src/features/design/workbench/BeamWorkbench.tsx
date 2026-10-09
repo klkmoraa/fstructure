@@ -183,9 +183,13 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <p className="dw-beam-details__sum">Las cargas nuevas se suman a CM/CV, cargas puntuales y peso propio ya capturados.</p>
           <BeamDetailEditor details={detailsDraft} spans={spans}
             onChange={(next) => {
+              if (!storedDetails.setDetails(next)) {
+                setDetailsNote('El cambio fue rechazado por falta de espacio y no se guardó; se conservó el detalle anterior. Libera espacio y vuelve a intentarlo.');
+                return false;
+              }
               setDetailsDraft(next);
-              if (storedDetails.setDetails(next)) setDetailsNote(null);
-              else setDetailsNote('El borrador queda visible en esta sesión, pero el documento no tiene capacidad para guardarlo. Libera espacio antes de salir.');
+              setDetailsNote(null);
+              return true;
             }}
             onActivateOwn={(kind) => replace({ ...draft, rebarMode: 'own', ...(kind === 'bastion' ? { ownBastions: 'custom' } : {}) })} />
           <ActionNote text={detailsNote} />

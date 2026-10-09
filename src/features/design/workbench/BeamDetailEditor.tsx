@@ -60,13 +60,17 @@ function RegionElevation({ details, spans, selected, onSelect, onKeyDown }: {
 
 /** Editor de acciones y regiones físicas; conserva cadenas vacías/incorrectas hasta corregirlas. */
 export function BeamDetailEditor({ details, spans, onChange, onActivateOwn }: {
-  details: BeamDetailDraft; spans: readonly SpanDraft[]; onChange: (next: BeamDetailDraft) => void; onActivateOwn: (kind: 'bastion' | 'zone') => void;
+  details: BeamDetailDraft; spans: readonly SpanDraft[]; onChange: (next: BeamDetailDraft) => boolean; onActivateOwn: (kind: 'bastion' | 'zone') => void;
 }) {
   const [selected, setSelected] = useState('');
   const parsed = useMemo(() => parseBeamDetails(details, spans), [details, spans]);
   const updateLoad = (index: number, patch: Record<string, string>) => onChange({ ...details, loads: details.loads.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) });
-  const updateBastion = (index: number, patch: Record<string, string>) => { onActivateOwn('bastion'); onChange({ ...details, bastions: details.bastions.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) }); };
-  const updateZone = (index: number, patch: Record<string, string>) => { onActivateOwn('zone'); onChange({ ...details, stirrupZones: details.stirrupZones.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) }); };
+  const updateBastion = (index: number, patch: Record<string, string>) => {
+    if (onChange({ ...details, bastions: details.bastions.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) })) onActivateOwn('bastion');
+  };
+  const updateZone = (index: number, patch: Record<string, string>) => {
+    if (onChange({ ...details, stirrupZones: details.stirrupZones.map((row, rowIndex) => rowIndex === index ? { ...row, ...patch } : row) })) onActivateOwn('zone');
+  };
   const moveRegion = (event: KeyboardEvent<SVGRectElement>, id: string) => {
     if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
     event.preventDefault();
@@ -96,7 +100,9 @@ export function BeamDetailEditor({ details, spans, onChange, onActivateOwn }: {
       </div>)}
     </section>
     <section aria-label="Bastones propios">
-      <div className="dw-beam-details__heading"><strong>Bastones</strong><button type="button" className="dw-add" onClick={() => { onActivateOwn('bastion'); onChange({ ...details, bastions: [...details.bastions, { id: nextId(), bed: 'top', count: '', diameterMm: '', startM: '', endM: '' }] }); }}><Plus size={14} aria-hidden="true" />Agregar bastón</button></div>
+      <div className="dw-beam-details__heading"><strong>Bastones</strong><button type="button" className="dw-add" onClick={() => {
+        if (onChange({ ...details, bastions: [...details.bastions, { id: nextId(), bed: 'top', count: '', diameterMm: '', startM: '', endM: '' }] })) onActivateOwn('bastion');
+      }}><Plus size={14} aria-hidden="true" />Agregar bastón</button></div>
       {details.bastions.map((row, index) => <div className="dw-beam-detail-row" key={row.id} aria-label={`Bastón ${index + 1}`}>
         <label><span>Lecho</span><select aria-label={`Lecho bastón ${index + 1}`} value={row.bed} onChange={(event) => updateBastion(index, { bed: event.currentTarget.value as typeof row.bed })}><option value="top">Superior</option><option value="bottom">Inferior</option></select></label>
         {field('Barras', row.count, (count) => updateBastion(index, { count }), 'pzas', !Number.isInteger(parseNumber(row.count)) || parseNumber(row.count) < 1)}
@@ -107,7 +113,9 @@ export function BeamDetailEditor({ details, spans, onChange, onActivateOwn }: {
       </div>)}
     </section>
     <section aria-label="Zonas de estribos">
-      <div className="dw-beam-details__heading"><strong>Zonas de estribos</strong><button type="button" className="dw-add" disabled={details.stirrupZones.length >= spans.length} onClick={() => { onActivateOwn('zone'); onChange({ ...details, stirrupZones: [...details.stirrupZones, { span: String(details.stirrupZones.length + 1), endSpacingMm: '', endLengthM: '', centerSpacingMm: '' }] }); }}><Plus size={14} aria-hidden="true" />Agregar zona</button></div>
+      <div className="dw-beam-details__heading"><strong>Zonas de estribos</strong><button type="button" className="dw-add" disabled={details.stirrupZones.length >= spans.length} onClick={() => {
+        if (onChange({ ...details, stirrupZones: [...details.stirrupZones, { span: String(details.stirrupZones.length + 1), endSpacingMm: '', endLengthM: '', centerSpacingMm: '' }] })) onActivateOwn('zone');
+      }}><Plus size={14} aria-hidden="true" />Agregar zona</button></div>
       {details.stirrupZones.map((row, index) => <div className="dw-beam-detail-row" key={`zone-${index}`} aria-label={`Zona de estribos ${index + 1}`}>
         <label><span>Claro</span><select aria-label={`Claro zona de estribos ${index + 1}`} value={row.span} onChange={(event) => updateZone(index, { span: event.currentTarget.value })}>{spans.map((_, spanIndex) => <option key={spanIndex} value={String(spanIndex + 1)}>{spanIndex + 1}</option>)}</select></label>
         {field('Separación extremos', row.endSpacingMm, (endSpacingMm) => updateZone(index, { endSpacingMm }), 'mm', !(parseNumber(row.endSpacingMm) >= 50))}

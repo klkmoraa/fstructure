@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../../data/defaultProject';
@@ -8,6 +8,8 @@ import { ProjectProvider } from '../../../store/ProjectContext';
 import { DesignWorkbench } from './DesignWorkbench';
 import { ShellSlotHost, ShellToolSlotsProvider } from '../../workspace/ShellToolSlots';
 import { WorkbenchStorageContext } from './workbenchStorage';
+import { DEFAULT_SPANS } from './beamModel';
+import { EMPTY_BEAM_DETAILS } from './beamDetailDraft';
 import { FOOTING_DEFAULTS, footingToInput } from './footingModel';
 import { SECTION_DEFAULTS } from './concreteStudioModel';
 
@@ -373,6 +375,80 @@ describe('DesignWorkbench', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
     expect(await within(dialog).findByRole('status')).toHaveProperty('textContent', expect.stringMatching(/No hay espacio suficiente para guardar/i));
     expect(screen.getByRole('textbox', { name: 'Claro 1 · L (m)' })).toHaveProperty('value', '5');
+  });
+
+  it('rechaza atómicamente un detalle sin desincronizar reporte, memoria, historial ni transiciones', async () => {
+    const user = userEvent.setup();
+    const details = { kind: 'beam', version: 1, loads: [{ id: 'p1', span: '1', kind: 'point', category: 'dead', start: '2.5', end: '', startValue: '10', endValue: '10' }], bastions: [], stirrupZones: [] };
+    const data: Record<string, unknown> = {
+      beam: { tag: 'V-1' }, 'beam-details': details, 'beam-spans': [{ ...DEFAULT_SPANS[0]! }], element: 'beam', 'memory-active': 'v1',
+      memory: [{ id: 'v1', element: 'beam', code: 'ntc-2023', savedAt: '2026-10-09', fields: { tag: 'V-1' }, rows: [{ ...DEFAULT_SPANS[0]! }], details }],
+    };
+    const storage = {
+      read: (key: string) => data[key],
+      write: (key: string, value: unknown) => { data[key] = structuredClone(value); },
+      canWrite: (writes: Record<string, unknown>) => {
+        const next = writes['beam-details'] as typeof details | undefined;
+        return !next?.loads.some((load) => load.startValue === '20');
+      },
+    };
+    render(<WorkbenchStorageContext.Provider value={storage as never}><ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider></WorkbenchStorageContext.Provider>);
+
+    await user.click(screen.getByRole('button', { name: 'Cargas generales y detalle físico' }));
+    const load = screen.getByRole('textbox', { name: 'P (kN)' }) as HTMLInputElement;
+    const momentBefore = within(results()).getByText(/Mu positivo/).parentElement?.textContent;
+    fireEvent.change(load, { target: { value: '20' } });
+
+    expect(load.value).toBe('10');
+    expect(data['beam-details']).toEqual(details);
+    expect(within(results()).getByText(/Mu positivo/).parentElement?.textContent).toBe(momentBefore);
+    expect(await screen.findByText(/cambio fue rechazado por falta de espacio y no se guardó/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Guardado · V-1' })).toBeTruthy();
+
+    await user.click(screen.getByRole('heading', { name: 'Viga' }));
+    await user.keyboard('{Control>}z{/Control}');
+    expect(load.value).toBe('10');
+    expect(data['beam-details']).toEqual(details);
+
+    await user.click(screen.getByRole('button', { name: 'Guardado · V-1' }));
+    const savedDialog = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
+    await user.click(within(savedDialog).getByRole('button', { name: 'Guardar como nuevo' }));
+    expect((data.memory as Array<{ details: typeof details }>)[1]?.details).toEqual(details);
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Nuevo diseño' }));
+    const startDialog = await screen.findByRole('dialog', { name: 'Nuevo diseño' });
+    await user.click(within(startDialog).getByRole('tab', { name: 'Pieza' }));
+    await user.click(await within(startDialog).findByRole('button', { name: 'Iniciar diseño: Viga apoyada' }));
+    expect(data['beam-details']).toMatchObject({ kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] });
+
+    await user.click(screen.getByRole('button', { name: 'Viga sin guardar' }));
+    const memoryDialog = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
+    await user.click(within(memoryDialog).getAllByRole('button', { name: 'Abrir V-1' })[0]!);
+    await user.click(screen.getByRole('button', { name: 'Cargas generales y detalle físico' }));
+    expect((await screen.findByRole('textbox', { name: 'P (kN)' }) as HTMLInputElement).value).toBe('10');
+    expect(data['beam-details']).toEqual(details);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'P (kN)' }), { target: { value: '' } });
+    expect((screen.getByRole('textbox', { name: 'P (kN)' }) as HTMLInputElement).value).toBe('');
+    expect(data['beam-details']).toMatchObject({ loads: [{ startValue: '', endValue: '' }] });
+  });
+
+  it('no activa armado propio si se rechaza agregar una región física', async () => {
+    const user = userEvent.setup();
+    const data: Record<string, unknown> = { beam: { rebarMode: 'auto' }, 'beam-details': EMPTY_BEAM_DETAILS };
+    const storage = {
+      read: (key: string) => data[key],
+      write: (key: string, value: unknown) => { data[key] = structuredClone(value); },
+      canWrite: (writes: Record<string, unknown>) => {
+        const next = writes['beam-details'] as { bastions?: unknown[] } | undefined;
+        return !next?.bastions?.length;
+      },
+    };
+    render(<WorkbenchStorageContext.Provider value={storage as never}><ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider></WorkbenchStorageContext.Provider>);
+    await user.click(screen.getByRole('button', { name: 'Cargas generales y detalle físico' }));
+    await user.click(screen.getByRole('button', { name: 'Agregar bastón' }));
+    expect(data.beam).toMatchObject({ rebarMode: 'auto' });
+    expect(data['beam-details']).toMatchObject({ bastions: [] });
   });
 
   it('ofrece columnas circulares con zuncho, vigas T y los cinco tipos de cimentación', async () => {

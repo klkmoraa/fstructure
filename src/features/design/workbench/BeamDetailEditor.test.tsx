@@ -15,7 +15,8 @@ describe('BeamDetailEditor', () => {
     const activated = vi.fn();
     function Harness() {
       const [details, setDetails] = useState(EMPTY_BEAM_DETAILS);
-      return <BeamDetailEditor details={details} spans={DEFAULT_SPANS.slice(0, 1)} onChange={setDetails} onActivateOwn={activated} />;
+      const onChange = (next: typeof EMPTY_BEAM_DETAILS) => { setDetails(next); return true; };
+      return <BeamDetailEditor details={details} spans={DEFAULT_SPANS.slice(0, 1)} onChange={onChange} onActivateOwn={activated} />;
     }
     render(<Harness />);
     await user.click(screen.getByRole('button', { name: 'Agregar carga' }));
