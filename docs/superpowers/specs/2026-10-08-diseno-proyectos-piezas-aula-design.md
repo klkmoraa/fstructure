@@ -38,7 +38,7 @@ Los arranques de pieza/ejercicio conservan la norma actual. Cambiar de elemento 
 
 Antes de un arranque que sustituya un borrador, conservar en memoria tanto el borrador abierto como el del tipo de destino si son distintos. Preservar también borradores con datos incompletos: la memoria puede recuperarlos aunque no calcule. No duplicar instantáneas equivalentes ni sobrescribir una pieza guardada al crear otra. Una memoria llena o sin presupuesto para conservar el trabajo aborta el arranque antes de cualquier escritura y deja los campos actuales intactos.
 
-La operación usa el mismo formato de memoria v6 y sus presupuestos actuales; no se necesita migración destructiva. Abrir una entrada existente y guardar como nuevo mantienen el comportamiento actual. El diálogo puede cerrarse para continuar el trabajo vigente. El acceso Nuevo diseño existe también en teléfono y en la vista aislada usada por pruebas.
+La operación usa el mismo formato de memoria v6, sus límites de 60 piezas y sus presupuestos totales de tamaño; no se necesita migración destructiva. El límite de campos por registro pasa de 64 a 96: el formulario de cimentaciones ya tiene 79 campos y el límite antiguo impide guardarlo completo. Abrir una entrada existente y guardar como nuevo mantienen el comportamiento actual. El diálogo puede cerrarse para continuar el trabajo vigente. El acceso Nuevo diseño existe también en teléfono y en la vista aislada usada por pruebas.
 
 ## Validación y entrega
 

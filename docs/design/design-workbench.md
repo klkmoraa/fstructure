@@ -2,9 +2,35 @@
 
 Diseño ya no es una herramienta aparte: es el **modo Diseño** de la mesa de FStructure (FS-A01). El interruptor **2D | 3D | Diseño** de la barra cambia de modo sin cambiar de proyecto. El dock ofrece Estructura (el Modelo 2D o un eje del Modelo 3D, primero y por omisión), Viga, Columna, Zapata y Secciones; los cuatro últimos se capturan en el propio taller (ver [Modelar y diseñar](#modelar-y-diseñar)). Es una herramienta de revisión y aprendizaje; no certifica un diseño ni sustituye a la persona responsable del proyecto.
 
+## Elegir el trabajo
+
+Desde la Home, **Diseño** abre una entrada con **Proyecto**, **Pieza** y **Ejercicio**. **Nuevo diseño** permite volver a ella desde la mesa. Cerrar el diálogo conserva el trabajo vigente; cambiar desde el modo 2D o 3D continúa abriendo directamente el diseño del modelo o de la barra seleccionada.
+
+- **Proyecto:** revisar el Modelo 2D o los ejes del Modelo 3D, o empezar con un pórtico editable de vivienda o de edificio. Las secciones propuestas se aplican al modelo sólo mediante la acción explícita existente. Las cimentaciones siguen con captura propia: no se vinculan automáticamente a los apoyos del edificio.
+- **Pieza:** vigas apoyadas, continuas, en voladizo, T y L; columnas rectangulares/circulares; los cinco tipos de cimentación y el estudio de sección. Los valores iniciales se pueden editar y no implican que el diseño cumpla.
+- **Ejercicio:** problemas de viga, columna, zapata y pórtico con datos iniciales e hipótesis. Las referencias de estática de las vigas son de servicio: se comparan con las cargas indicadas, sin confundirlas con la envolvente factorizada de la norma elegida.
+
+| Ejercicio de viga | Datos de servicio, sin peso propio | Momento de referencia |
+| --- | --- | --- |
+| Simplemente apoyada | L = 5 m; q = 10 kN/m | qL²/8 = 31.25 kN·m |
+| Voladizo | L = 2 m; q = 5 kN/m | qL²/2 = 10 kN·m en magnitud |
+| Carga puntual al centro | L = 4 m; P = 10 kN | PL/4 = 10 kN·m |
+
+Los resultados de diseño incluyen las combinaciones de la norma actual; por eso su demanda última puede diferir de estos valores de servicio.
+
+Al iniciar otro diseño se conservan los borradores afectados como piezas recuperables en **Memoria**, incluso si sus datos están incompletos. Las instantáneas equivalentes no se duplican; una pieza nueva no sobrescribe otra guardada. Si no cabe el respaldo dentro del límite de la memoria, la operación se detiene y mantiene el formulario. La memoria admite 60 piezas por proyecto y exporta sus resultados recalculados; los borradores de cimentación ya admiten todos los campos del formulario.
+
+## Materiales, refuerzo y apoyos
+
+Los materiales ofrecen resistencias sugeridas y un valor numérico editable en kg/cm². Las sugerencias no certifican un grado comercial ni sustituyen los datos del material. Las vigas y los pórticos permiten especificar por separado el fy transversal; cambiar una sugerencia usa la misma conversión y motor que escribir el número.
+
+El catálogo longitudinal se conserva. El catálogo transversal añade **#2, nominal 6.4 mm**, a las opciones existentes; no modifica la selección automática. Las columnas siguen comprobando su diámetro mínimo por norma. Las vigas y contratrabes con diámetro transversal menor de 9.5 mm añaden una advertencia complementaria de aceptación normativa pendiente, que también llega al informe del conjunto. Elegir el diámetro no equivale a aprobarlo.
+
+La viga distingue **apoyo**, **rodillo**, **empotre** y **extremo libre**. Un rodillo no estabiliza horizontalmente el modelo; una viga con dos extremos en rodillo sin otro punto de estabilización se rechaza. Los dibujos representan las restricciones que usa el análisis. Los esquemas rápidos conservan los claros y sus cargas; continua puede añadir un segundo claro y los cambios se pueden deshacer.
+
 ## Normas disponibles
 
-El selector **Norma de diseño**, arriba de cada formulario, aplica una de tres normas a los tres elementos. Cada perfil vive en `src/design/elements/codes.ts`:
+El selector **Norma de diseño**, arriba de cada formulario, aplica uno de tres perfiles a vigas, columnas, cimentaciones y Estructura. Secciones conserva sus filosofías experimentales propias. Cada perfil vive en `src/design/elements/codes.ts`:
 
 | Norma | Documento oficial registrado | Cláusulas |
 | --- | --- | --- |
@@ -46,6 +72,8 @@ Los PDF no se versionan. Los extractos de E.060 transcriben la coma decimal como
 
 `complementary` marca lo que no proviene de una cláusula verificada y la interfaz lo muestra en cursiva con «◇». Quedan: la presión admisible del suelo (dato del estudio geotécnico), la estática del núcleo y de la presión última, la separación práctica mínima de estribos (5 cm), el aviso de columna en tensión y, sólo en E.060, el Jc de sección rectangular (la norma no da la expresión; NTC y NSR sí, en su comentario).
 
+La advertencia de estribos de viga menores de 9.5 mm también es complementaria: identifica una aceptación pendiente y no atribuye ese umbral a una cláusula registrada. Los dibujos del conjunto y sus resúmenes conservan la revisión pendiente aunque su cociente numérico esté dentro del límite.
+
 Decisión deliberada: la ec. 3.6.1 de la NTC escribe β1 = 0.85 hasta 30 MPa con un salto a 0.836; el código usa el umbral continuo de 28 MPa (como NSR y E.060), que da un β1 menor entre 28 y 30 MPa, del lado seguro. El bloque `implementation` de la cláusula 3.6.1 transcribe la norma (30 MPa) y el campo hermano `engineDeviation` declara la desviación del motor, para que el registro no se lea como comportamiento del código.
 
 ## Alcance por elemento
@@ -65,7 +93,7 @@ Decisión deliberada: la ec. 3.6.1 de la NTC escribe β1 = 0.85 hasta 30 MPa con
 
 ## Modelar y diseñar
 
-Son la misma mesa. El Inicio tiene dos mesas (FStructure y FEM); FStructure tiene tres modos —2D, 3D y Diseño— con URL `?tool=model2d`, `&mode=3d` y `&mode=design`. Los enlaces antiguos `tool=design` abren el modo Diseño y `tool=space3d` el 3D; los borradores y la memoria siguen en la rama `design` del proyecto y el modelo 3D en la rama `space3d`, sin migración.
+Son la misma mesa. La Home ofrece 2D, 3D y Diseño; FStructure conserva esos tres modos con URL `?tool=model2d`, `&mode=3d` y `&mode=design`. FEM se retiró de la interfaz y sus estudios guardados se conservan en el proyecto. Los enlaces antiguos `tool=design` abren el modo Diseño y `tool=space3d` el 3D; los borradores y la memoria siguen en la rama `design` del proyecto y el modelo 3D en la rama `space3d`, sin migración.
 
 - **Entradas.** El interruptor 2D | 3D | Diseño de la barra (en teléfono, los botones de los otros dos modos); «Diseño de concreto» y «Modelo 3D» en la bienvenida de FStructure. Al llegar a Diseño desde el 2D o el 3D, Estructura diseña ese modelo (si estaba en un modelo; un pórtico rápido elegido se respeta). «Editar en Modelo» o «Editar en 3D» vuelven al modo.
 - **Fluidez entre modos.** La transición dura `--sc-motion-reveal` y el trabajo pesado del modo que llega (el cálculo de Estructura, «Revisar los N ejes») espera a que termine (`src/design-system/afterTransition.ts`), así la animación no se traba. Los otros modos se precargan cuando el navegador está libre. El 2D conserva su encuadre por proyecto mientras su geometría no cambie y el 3D la vista elegida (planta, alzado o 3D) con su cámara: órbita, desplazamiento y zoom vuelven tal cual, y abrir un panel o redimensionar el visor ya no la reencuadra si la persona la movió (sólo elegir una vista o sustituir el modelo lo hacen); Alt + Mayús + 1, 2 o 3 cambia de modo desde el teclado (no dentro de campos ni con un diálogo abierto).
@@ -96,7 +124,7 @@ La presentación de los diagramas también se comparte: las bandas apiladas con 
 - **Viga rectangular, T o L.** Con patín, `widthMm` es el alma bw y `flange` da el ancho efectivo bf (lo fija quien diseña) y el espesor hf. Con momento positivo la resistencia sale del equilibrio del bloque equivalente de 3.6.1 en patín y alma, y el acero máximo con la regla de cada norma aplicada a ese bloque (`maximumSteelForBlock`); con negativo rige el alma rectangular. La inercia bruta, la agrietada (eje neutro en patín o alma) y Mcr por signo usan la sección T. El peso propio es el del alma bajo la losa: la losa va en la carga muerta. Fuera de alcance: ancho efectivo de norma, acero mínimo con patín en tensión y cortante entre alma y losa.
 - **Columna rectangular o circular.** La circular usa `widthMm` como D, barras en la circunferencia y estribo circular; la interacción integra el segmento circular comprimido (contrastada con una integración por fibras) y rige la peor de dos orientaciones del arreglo. Flexión con el momento resultante √(Mx² + My²), r = D/4, cortante resultante con bw = D y d = 0.8D (complementario). El zuncho no se diseña.
 - **Zapata aislada, corrida o combinada.** Corrida (`stripFooting.ts`): por metro de muro, voladizo desde el paño (mampostería: a la mitad entre eje y paño, complementario), cortante a d, acero transversal y de distribución. Combinada (`combinedFooting.ts`): dos columnas alineadas, longitud que centra la resultante de servicio (borde izquierdo al paño o voladizo dado), zapata rígida con presión lineal, envolventes de V y M a lo largo, penetración por columna con perímetro de borde o esquina (αs 30/20, complementario), bandas transversales de ancho c + d (complementario). Con NTC, si el cortante sin estribos no alcanza, el lecho en tensión sube hasta ρ = 0.5 % antes de engrosar; cada lecho sube de diámetro para dejar al menos 10 cm entre barras.
-- **Varillas.** Catálogo #2.5 a #11 para barras y estribos.
+- **Varillas.** Catálogo longitudinal #2.5 a #11; el transversal añade #2 nominal de 6.4 mm. La comprobación del diámetro depende del elemento y la norma, y las selecciones pendientes de aceptación se muestran como revisión pendiente.
 
 ## Diseño más fácil
 
@@ -120,7 +148,7 @@ La presentación de los diagramas también se comparte: las bandas apiladas con 
 
 ## Secciones y tres filosofías de cálculo
 
-**Secciones** es el cuarto elemento del taller. Calcula una sección aislada de concreto con carga axial y flexión en una dirección: cuadrada, rectangular, circular, triangular, hexagonal u octagonal. Los polígonos se integran con su geometría real; la circular usa integrales analíticas. El recubrimiento se mide a la cara exterior del refuerzo transversal. Las coordenadas de las barras, los estribos y las grapas que se dibujan provienen del motor.
+**Secciones** es el estudio experimental de sección del taller. Calcula una sección aislada de concreto con carga axial y flexión en una dirección: cuadrada, rectangular, circular, triangular, hexagonal u octagonal. Los polígonos se integran con su geometría real; la circular usa integrales analíticas. El recubrimiento se mide a la cara exterior del refuerzo transversal. Las coordenadas de las barras, los estribos y las grapas que se dibujan provienen del motor.
 
 Tiene ejemplos editables de flexión de viga, columna corta, franja de losa por metro y pedestal; dos niveles de captura, simple y avanzado; acero perimetral o por lechos en rectángulos; estribo cerrado, cerrado con grapas y hélice circular. La búsqueda de armado propone un número de barras del diámetro actual que cubre axial/flexión y separación geométrica, manteniendo visibles sus limitaciones. La sugerencia transversal es geométrica: para calcular cortante y detallado normativo se usan los elementos Viga y Columna.
 
