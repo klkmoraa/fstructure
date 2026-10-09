@@ -209,10 +209,20 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
       setExporting(false);
     }
   };
-  const saveToMemory = () => { if (memory.save() === 'full') setMemoryOpen(true); };
+  const saveToMemory = () => {
+    if (memory.save() === 'full') {
+      setExportMessage('No hay espacio suficiente para guardar la pieza. Quita elementos o libera espacio en el documento.');
+      setMemoryOpen(true);
+    }
+  };
   const loadFromMemory = (id: string) => {
     const item = memory.open(id);
+    if (item === 'full') {
+      setExportMessage('No hay espacio suficiente para abrir esta pieza y conservar los borradores actuales. Quita elementos o libera espacio en el documento.');
+      return;
+    }
     if (!item) return;
+    setExportMessage(null);
     setInitialIntentConsumed(true);
     setElementState(item.element);
     if (isDesignCodeId(item.code)) setCodeState(item.code);

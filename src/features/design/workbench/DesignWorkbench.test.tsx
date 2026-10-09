@@ -254,6 +254,45 @@ describe('DesignWorkbench', () => {
     expect(within(dialog).getByText(/Aún no hay elementos/)).toBeTruthy();
   });
 
+  it('mantiene Memoria abierta y muestra un aviso si abrir no puede conservar el borrador actual', async () => {
+    const user = userEvent.setup();
+    const data: Record<string, unknown> = {
+      memory: [{ id: 'target', element: 'footing', code: 'ntc-2023', savedAt: '2026-10-01', fields: { tag: 'Z guardada' } }],
+      beam: { tag: 'V actual', width: '25' },
+    };
+    const storage = {
+      read: (key: string) => data[key],
+      write: (key: string, value: unknown) => { data[key] = structuredClone(value); },
+      canWrite: () => false,
+    };
+    render(<WorkbenchStorageContext.Provider value={storage as never}><ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider></WorkbenchStorageContext.Provider>);
+
+    await user.click(screen.getByRole('button', { name: 'Viga sin guardar' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
+    await user.click(within(dialog).getByRole('button', { name: 'Abrir Z guardada' }));
+
+    expect(screen.getByRole('dialog', { name: 'Memoria del proyecto' })).toBeTruthy();
+    expect(await within(dialog).findByRole('status')).toHaveProperty('textContent', expect.stringMatching(/No hay espacio suficiente.*conservar los borradores/i));
+    expect(screen.getByRole('textbox', { name: 'Claro 1 · L (m)' })).toHaveProperty('value', '5');
+  });
+
+  it('abre Memoria y explica que hace falta liberar almacenamiento si guardar queda bloqueado', async () => {
+    const user = userEvent.setup();
+    const data: Record<string, unknown> = {};
+    const storage = {
+      read: (key: string) => data[key],
+      write: (key: string, value: unknown) => { data[key] = structuredClone(value); },
+      canWrite: () => false,
+    };
+    render(<WorkbenchStorageContext.Provider value={storage as never}><ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider></WorkbenchStorageContext.Provider>);
+
+    await user.click(await within(results()).findByRole('button', { name: 'Guardar' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
+    expect(await within(dialog).findByRole('status')).toHaveProperty('textContent', expect.stringMatching(/No hay espacio suficiente para guardar/i));
+    expect(screen.getByRole('textbox', { name: 'Claro 1 · L (m)' })).toHaveProperty('value', '5');
+  });
+
   it('ofrece columnas circulares con zuncho, vigas T y los cinco tipos de cimentación', async () => {
     const user = userEvent.setup();
     renderWorkbench();

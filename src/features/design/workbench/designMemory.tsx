@@ -1,4 +1,4 @@
-import { FileDown, FolderOpen, Plus, Save, Trash2 } from 'lucide-react';
+import { Copy, FileDown, FolderOpen, Plus, Save, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Button } from '../../../design-system/components/controls';
 import { Dialog } from '../../../design-system/components/overlays';
@@ -99,6 +99,23 @@ const sameDraft = (item: WorkbenchMemoryItem, draft: MemoryDraft) => {
 
 const newId = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replaceAll('-', '').slice(0, 12);
 
+const uniqueId = (items: readonly WorkbenchMemoryItem[]) => {
+  const ids = new Set(items.map((item) => item.id));
+  let id = newId();
+  while (ids.has(id)) id = newId();
+  return id;
+};
+
+const uniqueCopyTag = (tag: string | undefined, items: readonly WorkbenchMemoryItem[]) => {
+  const used = new Set(items.map((item) => item.fields.tag).filter((value): value is string => Boolean(value)));
+  const base = (tag ?? '').trim();
+  for (let copy = 1; ; copy += 1) {
+    const suffix = copy === 1 ? ' · copia' : ` · copia ${copy}`;
+    const candidate = `${base.slice(0, Math.max(0, 32 - suffix.length)).trimEnd()}${suffix}`;
+    if (!used.has(candidate)) return candidate;
+  }
+};
+
 interface DesignMemory {
   readonly items: readonly WorkbenchMemoryItem[];
   readonly activeId: string;
@@ -106,9 +123,11 @@ interface DesignMemory {
   readonly saved: boolean;
   readonly active: WorkbenchMemoryItem | undefined;
   save(asNew?: boolean): 'saved' | 'full';
-  remove(id: string): void;
+  remove(id: string): 'removed' | 'full' | 'missing';
   /** Carga un elemento guardado en la mesa (borrador, norma y elemento). */
-  open(id: string): WorkbenchMemoryItem | undefined;
+  open(id: string): WorkbenchMemoryItem | 'full' | undefined;
+  /** Crea una copia independiente sin abrirla ni cambiar la pieza activa. */
+  duplicate(id: string): 'duplicated' | 'full' | 'missing';
   /**
    * Guarda la Estructura de cada eje del Modelo 3D con el borrador vigente (un
    * elemento por eje, con su clave «Eje 1»). Un eje que ya estaba se actualiza.
@@ -127,11 +146,24 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
     const raw = storage.read('memory-active');
     return typeof raw === 'string' ? raw : '';
   });
-  const commit = useCallback((next: WorkbenchMemoryItem[], nextActive: string) => {
+  const commit = useCallback((next: WorkbenchMemoryItem[], nextActive: string, additionalWrites: Record<string, Parameters<WorkbenchStorage['write']>[1]> = {}) => {
+    if (next.length > MAX_MEMORY_ITEMS || !next.every(isMemoryItem)
+      || new Set(next.map((item) => item.id)).size !== next.length) return false;
+    try {
+      if (JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return false;
+    } catch {
+      return false;
+    }
+    const writes = {
+      ...additionalWrites,
+      memory: next as unknown as Parameters<WorkbenchStorage['write']>[1],
+      'memory-active': nextActive,
+    };
+    if (storage.canWrite && !storage.canWrite(writes)) return false;
     setItems(next);
     setActiveId(nextActive);
-    storage.write('memory', next as unknown as Parameters<WorkbenchStorage['write']>[1]);
-    storage.write('memory-active', nextActive);
+    for (const [key, value] of Object.entries(writes)) storage.write(key, value);
+    return true;
   }, [storage]);
   const active = items.find((item) => item.id === activeId && item.element === element);
   // `revision` cambia con cada resultado de la mesa: el borrador se vuelve a leer.
@@ -146,18 +178,16 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
     save(asNew = false) {
       const draft = currentDraft(storage, element);
       const item: WorkbenchMemoryItem = {
-        id: !asNew && active ? active.id : newId(),
+        id: !asNew && active ? active.id : uniqueId(items),
         element,
         code,
         savedAt: new Date().toISOString(),
-        fields: draft.fields,
-        ...(draft.rows ? { rows: draft.rows } : {}),
-        ...(draft.levels ? { levels: draft.levels } : {}),
+        fields: structuredClone(draft.fields),
+        ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
+        ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
       };
       const next = !asNew && active ? items.map((entry) => entry.id === item.id ? item : entry) : [...items, item];
-      if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
-      commit(next, item.id);
-      return 'saved';
+      return commit(next, item.id) ? 'saved' : 'full';
     },
     saveAxes(axes) {
       const draft = currentDraft(storage, 'frame');
@@ -172,20 +202,18 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       for (const axis of axes) {
         const position = next.findIndex((item) => item.element === 'frame' && item.fields.source === 'model3d' && axisIdOf(item.fields) === axis.id);
         const item: WorkbenchMemoryItem = {
-          id: position >= 0 ? next[position]!.id : newId(),
+          id: position >= 0 ? next[position]!.id : uniqueId(next),
           element: 'frame',
           code,
           savedAt,
           fields: axis.id === open ? draft.fields : { ...draft.fields, source: 'model3d', axis: axis.id, tag: axis.tag },
-          ...(draft.rows ? { rows: draft.rows } : {}),
-          ...(draft.levels ? { levels: draft.levels } : {}),
+          ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
+          ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
         };
         if (position >= 0) next[position] = item; else next.push(item);
         if (axis.id === open) nextActive = item.id;
       }
-      if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
-      commit(next, nextActive);
-      return 'saved';
+      return commit(next, nextActive) ? 'saved' : 'full';
     },
     start(start) {
       const preserve = new Map<DesignElementKind, MemoryDraft>();
@@ -198,17 +226,13 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
         const duplicate = next.some((item) => item.element === kind && item.code === code && sameDraft(item, draft));
         if (duplicate) continue;
         next.push({
-          id: newId(), element: kind, code, savedAt,
-          fields: draft.fields,
-          ...(draft.rows ? { rows: draft.rows } : {}),
-          ...(draft.levels ? { levels: draft.levels } : {}),
+          id: uniqueId(next), element: kind, code, savedAt,
+          fields: structuredClone(draft.fields),
+          ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
+          ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
         });
       }
-      if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
-
       const writes: Record<string, Parameters<WorkbenchStorage['write']>[1]> = {
-        memory: next as unknown as Parameters<WorkbenchStorage['write']>[1],
-        'memory-active': '',
         element: start.element,
       };
       if (start.source) {
@@ -224,30 +248,52 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
         writes[start.element === 'frame' ? 'frame-bays' : 'beam-spans'] = start.rows;
       }
       if (start.levels) writes['frame-stories'] = start.levels;
-      if (storage.canWrite && !storage.canWrite(writes)) return 'full';
-
-      commit(next, '');
-      for (const [key, value] of Object.entries(writes)) {
-        if (key === 'memory' || key === 'memory-active') continue;
-        storage.write(key, value);
-      }
-      return 'started';
+      return commit(next, '', writes) ? 'started' : 'full';
     },
     remove(id) {
-      commit(items.filter((item) => item.id !== id), id === activeId ? '' : activeId);
+      if (!items.some((item) => item.id === id)) return 'missing';
+      return commit(items.filter((item) => item.id !== id), id === activeId ? '' : activeId) ? 'removed' : 'full';
     },
     open(id) {
       const item = items.find((entry) => entry.id === id);
       if (!item) return undefined;
-      storage.write(item.element, item.fields);
+      const preserve = new Map<DesignElementKind, MemoryDraft>();
+      if (hasStoredDraft(storage, element)) preserve.set(element, currentDraft(storage, element));
+      if (!preserve.has(item.element) && hasStoredDraft(storage, item.element)) preserve.set(item.element, currentDraft(storage, item.element));
+      const next = [...items];
+      const savedAt = new Date().toISOString();
+      for (const [kind, draft] of preserve) {
+        if (next.some((entry) => entry.element === kind && entry.code === code && sameDraft(entry, draft))) continue;
+        next.push({
+          id: uniqueId(next), element: kind, code, savedAt,
+          fields: structuredClone(draft.fields),
+          ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
+          ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
+        });
+      }
+      const writes: Record<string, Parameters<WorkbenchStorage['write']>[1]> = {
+        [item.element]: structuredClone(item.fields),
+        element: item.element,
+      };
       if (item.element === 'frame') {
-        if (item.rows) storage.write('frame-bays', item.rows);
-        if (item.levels) storage.write('frame-stories', item.levels);
-      } else if (item.rows) storage.write('beam-spans', item.rows);
-      storage.write('element', item.element);
-      if (isDesignCodeId(item.code)) storage.write('code', item.code);
-      commit(items, item.id);
+        writes['frame-bays'] = structuredClone(item.rows ?? DEFAULT_BAYS);
+        writes['frame-stories'] = structuredClone(item.levels ?? DEFAULT_STORIES);
+      } else if (item.element === 'beam') {
+        writes['beam-spans'] = structuredClone(item.rows ?? DEFAULT_SPANS) as unknown as Parameters<WorkbenchStorage['write']>[1];
+      }
+      if (isDesignCodeId(item.code)) writes.code = item.code;
+      if (!commit(next, item.id, writes)) return 'full';
       return item;
+    },
+    duplicate(id) {
+      const source = items.find((item) => item.id === id);
+      if (!source) return 'missing';
+      const fields = structuredClone(source.fields);
+      fields.tag = uniqueCopyTag(fields.tag, items);
+      const copy: WorkbenchMemoryItem = {
+        ...structuredClone(source), id: uniqueId(items), savedAt: new Date().toISOString(), fields,
+      };
+      return commit([...items, copy], activeId) ? 'duplicated' : 'full';
     },
   };
 }
@@ -288,23 +334,26 @@ export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onEx
   exporting: boolean;
   message: string | null;
 }) {
-  const [pending, setPending] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const rows = useMemo(() => open ? memory.items.map((item) => ({ item, outcome: reportFromMemoryItem(item, modelSource, modelAxes) })) : [], [open, memory.items, modelSource, modelAxes]);
   const reports = rows.flatMap((row) => row.outcome.ok ? [row.outcome.report] : []);
   const invalid = rows.length - reports.length;
-  const dirty = Boolean(memory.active && !memory.saved);
-
   const save = (asNew = false) => {
-    setNotice(memory.save(asNew) === 'full' ? `La memoria admite hasta ${MAX_MEMORY_ITEMS} elementos: quita alguno antes de agregar otro.` : null);
+    setNotice(memory.save(asNew) === 'full' ? `No hay espacio suficiente para guardar. La memoria admite hasta ${MAX_MEMORY_ITEMS} elementos y el documento tiene un límite de almacenamiento.` : null);
   };
   const load = (id: string) => {
-    if (dirty && pending !== id) { setPending(id); return; }
-    setPending(null);
     onLoad(id);
   };
+  const duplicate = (id: string) => {
+    const outcome = memory.duplicate(id);
+    setNotice(outcome === 'full' ? 'No hay espacio suficiente para duplicar esta pieza. Quita elementos o libera espacio en el documento.' : null);
+  };
+  const remove = (id: string) => {
+    const outcome = memory.remove(id);
+    setNotice(outcome === 'full' ? 'No hay espacio suficiente para actualizar la memoria en este documento.' : null);
+  };
 
-  return <Dialog open={open} onOpenChange={(next) => { setPending(null); onOpenChange(next); }} title="Memoria del proyecto"
+  return <Dialog open={open} onOpenChange={onOpenChange} title="Memoria del proyecto"
     description="Se recalculan al abrirlos o exportarlos."
     className="dw-memory"
     footer={<>
@@ -317,14 +366,6 @@ export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onEx
       </Button>
     </>}>
     {notice || message ? <p className="dw-memory__notice" role="status">{notice ?? message}</p> : null}
-    {pending ? <div className="dw-memory__confirm" role="alert">
-      <p>{`El elemento abierto tiene cambios sin guardar${memory.active?.fields.tag ? ` (${memory.active.fields.tag})` : ''}.`}</p>
-      <div>
-        <Button size="sm" variant="secondary" onClick={() => { memory.save(false); const id = pending; setPending(null); onLoad(id); }}>Guardar y abrir</Button>
-        <Button size="sm" variant="secondary" onClick={() => { const id = pending; setPending(null); onLoad(id); }}>Abrir sin guardar</Button>
-        <Button size="sm" variant="ghost" onClick={() => setPending(null)}>Cancelar</Button>
-      </div>
-    </div> : null}
     {rows.length ? <table className="dw-table dw-memory__table" aria-label="Elementos de la memoria">
       <thead><tr><th scope="col">Elemento</th><th scope="col">Estado</th><th scope="col"><span className="sr-only">Acciones</span></th></tr></thead>
       <tbody>{rows.map(({ item, outcome }) => {
@@ -340,7 +381,10 @@ export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onEx
             <button type="button" className="dw-icon-button" onClick={() => load(item.id)} aria-label={`Abrir ${item.fields.tag || ELEMENT_LABEL[item.element]}`} title="Abrir en la mesa">
               <FolderOpen size={15} aria-hidden="true" />
             </button>
-            <button type="button" className="dw-icon-button" onClick={() => memory.remove(item.id)} aria-label={`Quitar ${item.fields.tag || ELEMENT_LABEL[item.element]} de la memoria`} title="Quitar de la memoria">
+            <button type="button" className="dw-icon-button" onClick={() => duplicate(item.id)} aria-label={`Duplicar ${item.fields.tag || ELEMENT_LABEL[item.element]}`} title="Duplicar pieza">
+              <Copy size={15} aria-hidden="true" />
+            </button>
+            <button type="button" className="dw-icon-button" onClick={() => remove(item.id)} aria-label={`Quitar ${item.fields.tag || ELEMENT_LABEL[item.element]} de la memoria`} title="Quitar de la memoria">
               <Trash2 size={15} aria-hidden="true" />
             </button>
           </td>

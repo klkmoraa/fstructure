@@ -2,11 +2,11 @@
 import { act, renderHook } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { useDesignMemory } from './designMemory';
-import { FRAME_DEFAULTS } from './frameModel';
+import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS } from './frameModel';
 import { BEAM_DEFAULTS, DEFAULT_SPANS } from './beamModel';
 import { FOOTING_DEFAULTS } from './footingModel';
 import { DESIGN_STARTS } from './designStarts';
-import { createProjectWorkbenchStorage, WORKBENCH_DOCUMENT_KIND, type WorkbenchStorage } from './workbenchStorage';
+import { createProjectWorkbenchStorage, WORKBENCH_DOCUMENT_KIND, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
 
 const memoryStorage = (initial: Record<string, unknown>): WorkbenchStorage & { data: Record<string, unknown> } => {
   const data = { ...initial };
@@ -14,6 +14,22 @@ const memoryStorage = (initial: Record<string, unknown>): WorkbenchStorage & { d
 };
 
 const AXES = [{ id: 'z:0', tag: 'Eje 1' }, { id: 'z:5', tag: 'Eje 2' }, { id: 'x:0', tag: 'Eje A' }];
+
+const savedItem = (id: string, fields: Record<string, string>, overrides: Record<string, unknown> = {}): WorkbenchMemoryItem => ({
+  id, element: 'beam', code: 'ntc-2023', savedAt: '2026-10-01', fields, rows: DEFAULT_SPANS, ...overrides,
+} as unknown as WorkbenchMemoryItem);
+
+const largeEntries = (valueLength = 32) => {
+  const wideRecord = Object.fromEntries(Array.from({ length: 96 }, (_, index) => [`f${index}`.padEnd(31, 'k'), 'x'.repeat(valueLength)]));
+  const eightRows = Array.from({ length: 8 }, () => ({ ...wideRecord }));
+  return {
+    beam: { tag: 'V incompleta', width: '25' },
+    footing: { ...FOOTING_DEFAULTS, tag: 'Z existente' },
+    code: 'ntc-2023', element: 'beam',
+    'large-a': eightRows, 'large-b': eightRows, 'large-c': eightRows, 'large-d': eightRows,
+    'small-a': [{ ...wideRecord }], 'small-b': [{ ...wideRecord }], 'small-c': [{ ...wideRecord }], 'small-d': [{ ...wideRecord }],
+  };
+};
 
 it('guardar los ejes agrega uno por eje, deja activo el abierto y al repetirlo los actualiza sin duplicar', () => {
   const storage = memoryStorage({ frame: { ...FRAME_DEFAULTS, source: 'model3d', axis: '', tag: 'P-7' } });
@@ -157,15 +173,8 @@ it('start aborta antes de escribir si preservar los borradores excede el presupu
 });
 
 it('start aborta atómicamente cuando el documento combinado rebasaría 240k y se reabre intacto', () => {
-  const wideRecord = Object.fromEntries(Array.from({ length: 96 }, (_, index) => [`f${index}`.padEnd(31, 'k'), 'x'.repeat(32)]));
-  const eightRows = Array.from({ length: 8 }, () => ({ ...wideRecord }));
-  const entries = {
-    beam: { tag: 'V incompleta', width: '25' },
-    footing: { ...FOOTING_DEFAULTS, tag: 'Z existente' },
-    code: 'ntc-2023', element: 'beam',
-    'large-a': eightRows, 'large-b': eightRows, 'large-c': eightRows, 'large-d': eightRows,
-    'small-a': [{ ...wideRecord }], 'small-b': [{ ...wideRecord }], 'small-c': [{ ...wideRecord }], 'small-d': [{ ...wideRecord }],
-  };
+  const entries = largeEntries();
+  const eightRows = entries['large-a'];
   const initial = { kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 6, entries };
   expect(JSON.stringify(initial).length).toBeLessThan(240_000);
   let persisted: unknown = structuredClone(initial);
@@ -188,6 +197,208 @@ it('start aborta atómicamente cuando el documento combinado rebasaría 240k y s
   expect(reopened.read('large-a')).toEqual(eightRows);
   storage.dispose();
   reopened.dispose();
+});
+
+it('saveAxes y open abortan antes de persistir si el documento válido está cerca de 240k', () => {
+  const entries = largeEntries();
+  for (const key of Object.keys(entries['small-d'][0]!).slice(0, 22)) delete entries['small-d'][0]![key];
+  entries['small-d'][0]!.nearA = 'x'.repeat(32);
+  entries['small-d'][0]!.nearB = 'x'.repeat(32);
+  const current = savedItem('saved-beam', { ...BEAM_DEFAULTS, tag: 'V guardada' });
+  const initial = { kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 6, entries: { ...entries, memory: [current], 'memory-active': '' } };
+  expect(JSON.stringify(initial).length).toBeGreaterThan(239_000);
+  expect(JSON.stringify(initial).length).toBeLessThan(240_000);
+  let persisted: unknown = structuredClone(initial);
+  const persist = vi.fn((document: unknown) => { persisted = document; });
+  const storage = createProjectWorkbenchStorage(initial, persist, 60_000);
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'e060', 0));
+  const beforeItems = structuredClone(result.current.items);
+  const beforeActive = result.current.activeId;
+  const beforeDraft = structuredClone(storage.read('beam'));
+
+  act(() => {
+    expect(result.current.saveAxes(AXES)).toBe('full');
+    expect(result.current.open(current.id)).toBe('full');
+  });
+  storage.flush();
+
+  expect(persist).not.toHaveBeenCalled();
+  expect(result.current.items).toEqual(beforeItems);
+  expect(result.current.activeId).toBe(beforeActive);
+  expect(storage.read('beam')).toEqual(beforeDraft);
+  expect(storage.read('memory')).toEqual([current]);
+  expect(persisted).toEqual(initial);
+  storage.dispose();
+});
+
+it('todas las mutaciones respetan canWrite=false sin escribir ni cambiar el estado en memoria', () => {
+  const item = savedItem('current', { ...BEAM_DEFAULTS, tag: 'V-1' });
+  const data: Record<string, unknown> = { beam: { ...BEAM_DEFAULTS }, memory: [item], 'memory-active': item.id };
+  const writes: string[] = [];
+  const storage: WorkbenchStorage = { read: (key) => data[key], write: (key, value) => { writes.push(key); data[key] = value; }, canWrite: () => false };
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'e060', 0));
+  const beforeItems = structuredClone(result.current.items);
+
+  act(() => {
+    expect(result.current.save()).toBe('full');
+    expect(result.current.saveAxes(AXES)).toBe('full');
+    expect(result.current.remove(item.id)).toBe('full');
+    expect(result.current.open(item.id)).toBe('full');
+    expect(result.current.duplicate(item.id)).toBe('full');
+  });
+
+  expect(writes).toEqual([]);
+  expect(data).toEqual({ beam: { ...BEAM_DEFAULTS }, memory: [item], 'memory-active': item.id });
+  expect(result.current.items).toEqual(beforeItems);
+  expect(result.current.activeId).toBe(item.id);
+});
+
+it('open conserva borradores incompletos actual y destino con la norma vigente, sin tocar piezas guardadas', () => {
+  const current = { tag: 'V incompleta', width: '25', fc: 'dato pendiente' };
+  const targetDraft = { ...FOOTING_DEFAULTS, tag: 'Z destino incompleta', dead: 'pendiente' };
+  const target = savedItem('footing-target', { ...targetDraft, dead: 'saved distinto' }, { element: 'footing', rows: undefined });
+  const untouched = savedItem('untouched', { ...BEAM_DEFAULTS, tag: 'V guardada' });
+  const storage = memoryStorage({ beam: current, footing: targetDraft, element: 'beam', code: 'e060', memory: [target, untouched], 'memory-active': 'untouched' });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'e060', 0));
+
+  act(() => { expect(result.current.open(target.id)).toEqual(target); });
+
+  expect(result.current.items).toHaveLength(4);
+  expect(result.current.items[0]).toEqual(target);
+  expect(result.current.items[1]).toEqual(untouched);
+  expect(result.current.items.slice(2).map((item) => item.fields.tag)).toEqual(['V incompleta', 'Z destino incompleta']);
+  expect(result.current.items.slice(2).every((item) => item.code === 'e060')).toBe(true);
+  expect(storage.read('beam')).toEqual(current);
+  expect(storage.read('footing')).toEqual(target.fields);
+  expect(storage.read('code')).toBe('ntc-2023');
+  expect(storage.read('memory-active')).toBe(target.id);
+  expect((storage.read('memory') as WorkbenchMemoryItem[])[0]).toEqual(target);
+  expect((storage.read('memory') as WorkbenchMemoryItem[])[1]).toEqual(untouched);
+});
+
+it('open deduplica snapshots equivalentes de ambos borradores antes de cargar la pieza', () => {
+  const draft = { ...BEAM_DEFAULTS, tag: 'V-1' };
+  const saved = savedItem('beam-saved', draft);
+  const target = savedItem('footing-saved', { ...FOOTING_DEFAULTS, tag: 'Z-1' }, { element: 'footing', rows: undefined });
+  const storage = memoryStorage({ beam: draft, footing: target.fields, element: 'beam', code: 'ntc-2023', memory: [saved, target] });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.open(target.id)).toEqual(target); });
+
+  expect(result.current.items.map((item) => item.id)).toEqual(['beam-saved', 'footing-saved']);
+});
+
+it('open carga filas y niveles por defecto si la pieza guardada legacy los omitía', () => {
+  const target = savedItem('legacy-frame', { ...FRAME_DEFAULTS, tag: 'P-legacy' }, { element: 'frame', rows: undefined, levels: undefined });
+  const staleRows = [{ length: '99' }];
+  const staleLevels = [{ height: '99' }];
+  const storage = memoryStorage({ beam: { tag: 'borrador' }, 'beam-spans': staleRows, frame: { tag: 'anterior' }, 'frame-bays': staleRows, 'frame-stories': staleLevels,
+    element: 'beam', code: 'ntc-2023', memory: [target] });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { result.current.open(target.id); });
+
+  expect(storage.read('frame-bays')).toEqual(expect.any(Array));
+  expect(storage.read('frame-bays')).toEqual(DEFAULT_BAYS);
+  expect(storage.read('frame-stories')).toEqual(DEFAULT_STORIES);
+  expect(storage.read('frame-bays')).not.toEqual(staleRows);
+  expect(storage.read('frame-stories')).not.toEqual(staleLevels);
+});
+
+it('open usa claros por defecto al cargar una viga legacy que los omitía', () => {
+  const target = savedItem('legacy-beam', { ...BEAM_DEFAULTS, tag: 'V-legacy' }, { rows: undefined });
+  const staleRows = [{ length: '99' }];
+  const storage = memoryStorage({ beam: { tag: 'V anterior' }, 'beam-spans': staleRows, element: 'beam', memory: [target] });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { result.current.open(target.id); });
+
+  expect(storage.read('beam-spans')).toEqual(DEFAULT_SPANS);
+  expect(storage.read('beam-spans')).not.toEqual(staleRows);
+});
+
+it('open aborta al exceder el límite de piezas al conservar el borrador actual', () => {
+  const target = savedItem('target', { ...BEAM_DEFAULTS, tag: 'V guardada' });
+  const fillers = Array.from({ length: 59 }, (_, index) => ({ id: `f${index}`, element: 'column', code: 'ntc-2023', savedAt: '2026-10-01', fields: { tag: `C-${index}` } }));
+  const storage = memoryStorage({ beam: { tag: 'V actual incompleta' }, element: 'beam', memory: [target, ...fillers] });
+  const writes: string[] = [];
+  storage.write = (key, value) => { writes.push(key); storage.data[key] = value; };
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.open(target.id)).toBe('full'); });
+
+  expect(writes).toEqual([]);
+  expect(storage.read('beam')).toEqual({ tag: 'V actual incompleta' });
+  expect(result.current.items).toHaveLength(60);
+});
+
+it('duplicate copia una pieza incompleta sin cambiar el activo y crea datos profundamente independientes', () => {
+  const source = savedItem('source', { tag: 'P-7', width: 'dato pendiente', source: 'model3d', axis: 'z:5' }, {
+    element: 'frame', rows: [{ length: '5', nested: 'original' }], levels: [{ height: '3' }], code: 'e060',
+  });
+  const storage = memoryStorage({ memory: [source], 'memory-active': source.id, frame: source.fields });
+  const { result } = renderHook(() => useDesignMemory(storage, 'frame', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.duplicate(source.id)).toBe('duplicated'); });
+
+  const copy = result.current.items.find((item) => item.id !== source.id)!;
+  expect(copy).toMatchObject({ element: source.element, code: source.code, fields: { ...source.fields, tag: 'P-7 · copia' }, rows: source.rows, levels: source.levels });
+  expect(copy.id).not.toBe(source.id);
+  expect(copy.savedAt).not.toBe(source.savedAt);
+  expect(result.current.activeId).toBe(source.id);
+  expect(storage.read('memory-active')).toBe(source.id);
+  expect(storage.read('frame')).toEqual(source.fields);
+  expect(copy.fields).not.toBe(source.fields);
+  expect(copy.rows).not.toBe(source.rows);
+  expect(copy.levels).not.toBe(source.levels);
+  expect(copy.rows?.[0]).not.toBe(source.rows?.[0]);
+});
+
+it('duplicate asigna claves únicas de hasta 32 caracteres a copias repetidas de cualquier fila', () => {
+  const source = savedItem('source', { tag: '12345678901234567890123456789012', width: 'dato pendiente' });
+  const storage = memoryStorage({ memory: [source] });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.duplicate(source.id)).toBe('duplicated'); });
+  act(() => { expect(result.current.duplicate(source.id)).toBe('duplicated'); });
+
+  const tags = result.current.items.map((item) => item.fields.tag!);
+  expect(new Set(tags).size).toBe(tags.length);
+  expect(tags[1]).toContain(' · copia');
+  expect(tags[2]).toContain(' · copia 2');
+  expect(tags.every((tag) => tag.length <= 32)).toBe(true);
+});
+
+it('duplicate devuelve full sin cambiar piezas cuando el presupuesto de memoria está lleno', () => {
+  const source = savedItem('source', { ...BEAM_DEFAULTS, tag: 'V-1' });
+  const fillers = Array.from({ length: 59 }, (_, index) => savedItem(`f${index}`, { tag: `V-${index + 2}` }));
+  const storage = memoryStorage({ memory: [source, ...fillers], 'memory-active': source.id });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+  const before = structuredClone(result.current.items);
+
+  act(() => { expect(result.current.duplicate(source.id)).toBe('full'); });
+
+  expect(result.current.items).toEqual(before);
+  expect(storage.read('memory')).toEqual(before);
+  expect(result.current.activeId).toBe(source.id);
+});
+
+it('duplicate respeta el presupuesto de caracteres aunque queden menos de 60 piezas', () => {
+  const fields = Object.fromEntries([
+    ['tag', 'V-1'],
+    ...Array.from({ length: 95 }, (_, index) => [`f${index}`.padEnd(31, 'k'), 'x'.repeat(32)]),
+  ]);
+  const items = Array.from({ length: 26 }, (_, index) => savedItem(`m${index}`, { ...fields, tag: index === 0 ? 'V-1' : `V-${index}` }));
+  expect(items.length).toBeLessThan(60);
+  expect(JSON.stringify(items).length).toBeLessThan(180_000);
+  const storage = memoryStorage({ memory: items });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+  const before = structuredClone(result.current.items);
+
+  act(() => { expect(result.current.duplicate(items[0]!.id)).toBe('full'); });
+
+  expect(result.current.items).toEqual(before);
+  expect(storage.read('memory')).toEqual(before);
 });
 
 it('un arranque de modelo conserva materiales propios, código y los demás campos del pórtico', () => {
