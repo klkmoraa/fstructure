@@ -77,6 +77,6 @@
 - [x] Browser: mixed beam/footing/frame memory, search/filter/select/copy, complete vs selection PDF with actual downloaded text, incomplete draft opening, save/reload; invalid import leaves model intact.
 - [x] Browser: three beam references, edit L/q, suspension, hide/undo and reopen guide, no page errors; desktop day/night and 390×844 overflow/touch checks. Update brandbook screenshots and inspect them.
 - [x] Correct stale v5 documentation to v6; document new behavior and remaining new-engine work; mark only delivered TODOs.
-- [ ] Run npm run verify -- dacd6699eb343376fe66e47d63b9eac50678d921 and npm run check; record exact outputs.
-- [ ] Independent whole-change review with Luna high, one final fix wave/scoped rereview if needed, covering checks and clean task workspace cleanup.
-- [ ] Final verified commit to main, fast-forward push and actual gh-pages deploy commit confirmation.
+- [x] Run npm run verify -- dacd6699eb343376fe66e47d63b9eac50678d921 and npm run check; record exact outputs.
+- [x] Independent whole-change review with Luna high, one final fix wave/scoped rereview if needed, covering checks and clean task workspace cleanup.
+- [x] Prepare the final verified commit for main and fast-forward publication. Confirm the actual gh-pages deploy commit before reporting delivery.

@@ -32,3 +32,21 @@ Día/Noche en 1440 × 1000 y 390 × 844: guía sin desbordamiento horizontal, si
 ## Importación inválida
 
 En el mismo proyecto, se entregó un JSON `{"broken":true}` al importador real. Mostró «el archivo debe contener las listas nodes y members»; se comparó el modelo antes/después mediante JSON canónico: permaneció intacto, con nueve nodos y diez barras, sin errores de página.
+
+
+## Cierre de revisión
+
+Las revisiones independientes por tarea y la revisión integral detectaron una expectativa de apertura antigua, el lookup heredado de ids de ejercicio, una brecha de cobertura de selección y una nota de compatibilidad desactualizada. La prueba de apertura ahora verifica el respaldo automático; el evaluator sólo acepta ids propios del catálogo. Chromium abrió y recargó documentos válidos con `constructor`, `toString`, `__proto__` y `hasOwnProperty`: sin guía, sin errores de página y conservando diez barras. La regresión de Memoria cambia una fuente Modelo 2D válida a ausente y de vuelta: la fila inválida se excluye de ambas exportaciones y su selección no reaparece sola al recuperar la fuente. La nota de persistencia distingue v5/v6 y lectura v1–v6.
+
+«Ocultar guía» mide 85.5 × 40 px en teléfono; las acciones de fila de Memoria miden 40 × 40 px. Los informes de revisión no ejecutaron suites: la verificación reproducible corresponde a los comandos del gate y a Chromium real, cuyos resultados se registran a continuación.
+
+
+## Verificación automática
+
+- `npm run verify -- dacd6699eb343376fe66e47d63b9eac50678d921`: salida 0; typecheck, lint de 19 archivos, 38 suites/318 pruebas relacionadas y 5 referencias del oráculo Python aprobadas.
+- `npm run check`: salida 0; lint, TypeScript, comprobación de fronteras, 20 pruebas de arquitectura, 167 suites/1,168 pruebas, 5 referencias del oráculo Python y build Vite aprobados.
+- `git diff --check`: salida 0. Las capturas y el diálogo se revisaron en Chromium real, Día/Noche y teléfono; ambos PDF se descargaron y sus contenidos se verificaron.
+
+Los gates mantienen avisos existentes de lint, canvas no implementado en jsdom e importación dinámica/tamaño de chunks durante build; no fallaron los comandos y el navegador real no registró errores. No se añadieron dependencias ni nuevas ecuaciones normativas. La revisión integral y su única rerevisión acotada cerraron los hallazgos implementables; el alcance de los fixtures CM + CV queda documentado arriba.
+
+La publicación usa el workflow existente: `main` → gate de calidad → commit `deploy: <SHA de main>` en `gh-pages`. La entrega se cierra tras confirmar ese commit remoto con `FETCH_HEAD`.
