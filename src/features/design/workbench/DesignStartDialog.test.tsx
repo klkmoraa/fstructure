@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DesignStartDialog } from './DesignStartDialog';
@@ -52,6 +52,8 @@ describe('DesignStartDialog', () => {
   it('cambia de categoría con las flechas de las pestañas', async () => {
     const user = userEvent.setup();
     renderDialog();
+    const close = screen.getByRole('button', { name: 'Cerrar nuevo diseño' });
+    await waitFor(() => expect(document.activeElement).toBe(close));
     const project = screen.getByRole('tab', { name: 'Proyecto' });
     await user.click(project);
     await user.keyboard('{ArrowRight}');
