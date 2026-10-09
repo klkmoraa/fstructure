@@ -54,4 +54,28 @@ describe('layoutBeamBed', () => {
   it('returns no layout when two layers cannot meet minimum clear spacing', () => {
     expect(layoutBeamBed({ ...geometry, widthMm: 100, continuous: { count: 6, diameterMm: 31.8 }, extra: null })).toBeNull();
   });
+
+  it('rejects a second layer that protrudes past the opposite cover and stirrup', () => {
+    const bars = layoutBeamBed({
+      widthMm: 300,
+      heightMm: 100,
+      coverMm: 10,
+      stirrupDiameterMm: 6.4,
+      minimumClearSpacingMm: 31.8,
+      continuous: { count: 6, diameterMm: 31.8 },
+      extra: null,
+    });
+
+    expect(bars).toBeNull();
+  });
+
+  it('rejects non-finite or non-positive beam geometry', () => {
+    const valid = { ...geometry, continuous: { count: 2, diameterMm: 19.1 }, extra: null };
+
+    expect(layoutBeamBed({ ...valid, widthMm: Number.NaN })).toBeNull();
+    expect(layoutBeamBed({ ...valid, heightMm: 0 })).toBeNull();
+    expect(layoutBeamBed({ ...valid, coverMm: -1 })).toBeNull();
+    expect(layoutBeamBed({ ...valid, stirrupDiameterMm: Number.POSITIVE_INFINITY })).toBeNull();
+    expect(layoutBeamBed({ ...valid, minimumClearSpacingMm: 0 })).toBeNull();
+  });
 });

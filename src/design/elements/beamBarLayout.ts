@@ -17,17 +17,27 @@ export interface BeamBarPlacement {
 }
 
 export function layoutBeamBed(input: BeamBarLayoutInput): readonly BeamBarPlacement[] | null {
-  const { widthMm, coverMm, stirrupDiameterMm, minimumClearSpacingMm, continuous, extra } = input;
+  const { widthMm, heightMm, coverMm, stirrupDiameterMm, minimumClearSpacingMm, continuous, extra } = input;
+  const extraCount = extra?.count ?? 0;
+  const geometry = [widthMm, heightMm, coverMm, stirrupDiameterMm, minimumClearSpacingMm];
+  if (geometry.some((value) => !Number.isFinite(value))
+    || widthMm <= 0 || heightMm <= 0 || coverMm < 0 || stirrupDiameterMm <= 0 || minimumClearSpacingMm <= 0
+    || !Number.isSafeInteger(continuous.count) || continuous.count < 1
+    || !Number.isSafeInteger(extraCount) || extraCount < 0
+    || !Number.isFinite(continuous.diameterMm) || continuous.diameterMm <= 0
+    || (extraCount > 0 && (!Number.isFinite(extra?.diameterMm) || extra!.diameterMm <= 0))) return null;
+
+  const maxDiameter = Math.max(continuous.diameterMm, extraCount > 0 ? extra!.diameterMm : 0);
+  const inside = widthMm - 2 * (coverMm + stirrupDiameterMm);
+  if (!Number.isFinite(inside) || inside <= 0) return null;
+  const perLayer = Math.floor((inside + minimumClearSpacingMm) / (maxDiameter + minimumClearSpacingMm));
+  const total = continuous.count + extraCount;
+  if (perLayer < 2 || total > 2 * perLayer) return null;
+
   const groups = [
     ...Array.from({ length: continuous.count }, () => ({ diameterMm: continuous.diameterMm, kind: 'continuous' as const })),
-    ...Array.from({ length: extra?.count ?? 0 }, () => ({ diameterMm: extra!.diameterMm, kind: 'extra' as const })),
+    ...Array.from({ length: extraCount }, () => ({ diameterMm: extra!.diameterMm, kind: 'extra' as const })),
   ];
-  if (!groups.length || groups.some(({ diameterMm }) => !Number.isFinite(diameterMm) || diameterMm <= 0)) return null;
-
-  const maxDiameter = Math.max(...groups.map(({ diameterMm }) => diameterMm));
-  const inside = widthMm - 2 * (coverMm + stirrupDiameterMm);
-  const perLayer = Math.floor((inside + minimumClearSpacingMm) / (maxDiameter + minimumClearSpacingMm));
-  if (perLayer < 2 || groups.length > 2 * perLayer) return null;
 
   const placements: BeamBarPlacement[] = [];
   const firstCount = Math.min(groups.length, perLayer);
@@ -53,5 +63,7 @@ export function layoutBeamBed(input: BeamBarLayoutInput): readonly BeamBarPlacem
       });
     }
   });
+  const farFaceLimitMm = heightMm - coverMm - stirrupDiameterMm;
+  if (placements.some((bar) => bar.fromFaceMm + bar.diameterMm / 2 > farFaceLimitMm + 1e-9)) return null;
   return placements;
 }
