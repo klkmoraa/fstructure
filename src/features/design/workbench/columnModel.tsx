@@ -245,3 +245,33 @@ export function proposeColumn(codeId: DesignCodeId, draft: ColumnDraft): Partial
   }
   return fallback;
 }
+
+export function proposeColumnReinforcement(codeId: DesignCodeId, draft: ColumnDraft): Partial<ColumnDraft> | null {
+  const actions = [draft.axial, draft.momentX, draft.momentY, draft.shearX, draft.shearY, draft.swayX, draft.swayY, draft.stability];
+  if (actions.some((value) => !Number.isFinite(parseNumber(value)))) return null;
+
+  const circular = circularDraft(draft);
+  const rules = designCode(codeId).column;
+  const capturedTie = parseNumber(draft.tie);
+  let best: { readonly fields: Partial<ColumnDraft>; readonly steelAreaMm2: number } | null = null;
+  const counts = circular
+    ? Array.from({ length: 27 }, (_, index) => index + 4)
+    : Array.from({ length: 11 }, (_, index) => index + 2);
+  const widthCounts = counts;
+  const depthCounts = circular ? [2] : counts;
+
+  for (const bar of PROPOSED_BARS) {
+    const tie = Math.max(Number.isFinite(capturedTie) ? capturedTie : 0, rules.minimumTieDiameter(bar));
+    for (const widthCount of widthCounts) {
+      for (const depthCount of depthCounts) {
+        const fields: Partial<ColumnDraft> = circular
+          ? { bar: String(bar), barCount: String(widthCount), ...(tie !== capturedTie ? { tie: String(tie) } : {}) }
+          : { bar: String(bar), barsWidth: String(widthCount), barsDepth: String(depthCount), ...(tie !== capturedTie ? { tie: String(tie) } : {}) };
+        const trial = designColumn(columnToInput(codeId, { ...draft, ...fields }));
+        if (!trial.ok || trial.status === 'fail') continue;
+        if (!best || trial.steelAreaMm2 < best.steelAreaMm2) best = { fields, steelAreaMm2: trial.steelAreaMm2 };
+      }
+    }
+  }
+  return best?.fields ?? null;
+}

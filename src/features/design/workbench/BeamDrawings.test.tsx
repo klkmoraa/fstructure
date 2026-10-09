@@ -3,7 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { designBeam, type BeamDesignInput } from '../../../design/elements/beam';
 import { designCode } from '../../../design/elements/codes';
-import { BeamElevation } from './BeamDrawings';
+import { BeamElevation, BeamSection } from './BeamDrawings';
 
 afterEach(cleanup);
 
@@ -38,5 +38,30 @@ describe('BeamElevation supports', () => {
     expect(supports[0]!.querySelector('path')).toBeNull();
     expect(supports[1]!.querySelector('path')).toBeTruthy();
     expect(supports[1]!.querySelector('line:not(.dw-support__hatch)')).toBeTruthy();
+  });
+});
+
+describe('BeamSection bar distribution', () => {
+  it('draws six real continuous bars on two layers without throwing', () => {
+    const result = designBeam({
+      ...input,
+      provided: {
+        top: { count: 6, diameterMm: 19.1 },
+        bottom: { count: 6, diameterMm: 19.1 },
+        bastions: 'none',
+        stirrupSpacingMm: null,
+      },
+    });
+    if (!result.ok) throw new Error(result.errors.join('\n'));
+
+    const { container } = render(<BeamSection result={result} cut={result.cuts[0]!} />);
+    const bars = container.querySelectorAll('.dw-bar:not(.dw-bar--extra)');
+    expect(bars).toHaveLength(12);
+    const topLayerYs = new Set(Array.from(bars).slice(0, 6).map((bar) => bar.getAttribute('cy')));
+    expect(topLayerYs.size).toBe(2);
+    const firstLayerCentroid = input.coverMm + result.stirrupDiameterMm + 19.1 / 2;
+    const secondLayerCentroid = firstLayerCentroid + 19.1 + 25;
+    const expectedBottomDepth = input.heightMm - (4 * firstLayerCentroid + 2 * secondLayerCentroid) / 6;
+    expect(result.continuousBottom.effectiveDepthMm).toBeCloseTo(expectedBottomDepth, 8);
   });
 });

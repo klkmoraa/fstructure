@@ -1,6 +1,8 @@
 import { useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { BeamDesignResult, BeamEnd, BeamSectionCut, BedSection } from '../../../design/elements/beam';
 import { barsText } from '../../../design/elements/beam';
+import { designCode } from '../../../design/elements/codes';
+import { layoutBeamBed } from '../../../design/elements/beamBarLayout';
 import { rebarLabel } from '../../../design/elements/shared';
 import { bandScale, DiagramBand as SharedDiagramBand, nearestStation, type DiagramBandProps } from '../../../design-system/components/diagramBands';
 import { formatNumber } from './common';
@@ -286,30 +288,23 @@ export function BeamRebarDetail({ result, supports = 'ideal' }: { result: BeamDe
 }
 
 function bedBars(section: BedSection, input: BeamDesignResult['input'], stirrupDiameterMm: number) {
-  const { widthMm: b, heightMm: h, coverMm } = input;
+  const { widthMm: b, heightMm: h } = input;
   const maxDiameter = Math.max(section.continuous.diameterMm, section.extra?.diameterMm ?? 0);
-  const total = section.continuous.count + (section.extra?.count ?? 0);
-  const first = Math.min(total, section.perLayer);
-  const inside = b - 2 * (coverMm + stirrupDiameterMm);
-  const spacing = (inside - maxDiameter) / Math.max(1, first - 1);
-  const bars: { x: number; y: number; d: number; kind: 'continuous' | 'extra' }[] = [];
-  const yOf = (layer: number) => {
-    const offset = coverMm + stirrupDiameterMm + maxDiameter / 2 + layer * (maxDiameter + Math.max(25, maxDiameter));
-    return section.bed === 'bottom' ? h - offset : offset;
-  };
-  for (let index = 0; index < first; index += 1) {
-    const corner = index === 0 || index === first - 1;
-    bars.push({
-      x: coverMm + stirrupDiameterMm + maxDiameter / 2 + index * spacing,
-      y: yOf(0),
-      d: corner ? section.continuous.diameterMm : section.extra?.diameterMm ?? section.continuous.diameterMm,
-      kind: corner ? 'continuous' : 'extra',
-    });
-  }
-  for (let index = 0; index < total - first; index += 1) {
-    bars.push({ x: coverMm + stirrupDiameterMm + maxDiameter / 2 + index * spacing, y: yOf(1), d: section.extra!.diameterMm, kind: 'extra' });
-  }
-  return bars;
+  const bars = layoutBeamBed({
+    widthMm: b,
+    heightMm: h,
+    coverMm: input.coverMm,
+    stirrupDiameterMm,
+    minimumClearSpacingMm: designCode(input.code).beam.minimumClearSpacing(maxDiameter, input.maxAggregateMm),
+    continuous: section.continuous,
+    extra: section.extra,
+  });
+  return (bars ?? []).map((bar) => ({
+    x: bar.xMm,
+    y: section.bed === 'bottom' ? h - bar.fromFaceMm : bar.fromFaceMm,
+    d: bar.diameterMm,
+    kind: bar.kind,
+  }));
 }
 
 const bedText = (section: BedSection) => section.extra ? `${barsText(section.continuous)} + ${barsText(section.extra)}` : barsText(section.continuous);

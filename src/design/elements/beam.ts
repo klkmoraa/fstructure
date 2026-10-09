@@ -1,4 +1,5 @@
 import { analyzeBeam, type BeamAnalysis, type BeamAnalysisOutcome, type BeamEnd, type BeamSpanLoads, type CaseResponse } from './beamAnalysis';
+import { layoutBeamBed } from './beamBarLayout';
 import { designCode, isDesignCodeId, type BlockArea, type DesignCode, type DesignCodeId, type DevelopmentLength, type LoadCombination } from './codes';
 import {
   CONCRETE_UNIT_WEIGHT_KN_M3,
@@ -396,17 +397,21 @@ function evaluateSection(context: SectionContext, bed: 'top' | 'bottom', continu
   const inside = b - 2 * (input.coverMm + ds);
   const perLayer = Math.floor((inside + minimumClear) / (maxDiameter + minimumClear));
   const total = continuous.count + (extra?.count ?? 0);
-  if (perLayer < 2 || total > 2 * perLayer) return undefined;
   const firstCount = Math.min(total, perLayer);
-  const secondCount = total - firstCount;
-  const firstCentroid = input.coverMm + ds + maxDiameter / 2;
-  const secondCentroid = firstCentroid + maxDiameter + Math.max(25, maxDiameter);
-  const continuousArea = continuous.count * barArea(continuous.diameterMm);
-  const extraArea = extra ? extra.count * barArea(extra.diameterMm) : 0;
-  const area = continuousArea + extraArea;
-  // Los bastones que no caben en la primera capa van a la segunda.
-  const extraInSecond = extra ? secondCount * barArea(extra.diameterMm) : 0;
-  const centroid = ((area - extraInSecond) * firstCentroid + extraInSecond * secondCentroid) / area;
+  if (perLayer < 2 || total > 2 * perLayer) return undefined;
+  const bars = layoutBeamBed({
+    widthMm: b,
+    heightMm: input.heightMm,
+    coverMm: input.coverMm,
+    stirrupDiameterMm: ds,
+    minimumClearSpacingMm: minimumClear,
+    continuous,
+    extra,
+  });
+  if (!bars) return undefined;
+  const area = bars.reduce((sum, bar) => sum + barArea(bar.diameterMm), 0);
+  const centroid = bars.reduce((sum, bar) => sum + barArea(bar.diameterMm) * bar.fromFaceMm, 0) / area;
+  const firstCentroid = Math.min(...bars.map((bar) => bar.fromFaceMm));
   const depth = input.heightMm - centroid;
   const extremeDepth = input.heightMm - firstCentroid;
   if (depth <= 0) return undefined;
@@ -426,7 +431,7 @@ function evaluateSection(context: SectionContext, bed: 'top' | 'bottom', continu
     continuous,
     extra,
     perLayer,
-    layers: secondCount > 0 ? 2 : 1,
+    layers: bars.some((bar) => bar.layer === 2) ? 2 : 1,
     areaMm2: area,
     requiredMm2: required,
     minimumMm2: minimum,
@@ -435,7 +440,7 @@ function evaluateSection(context: SectionContext, bed: 'top' | 'bottom', continu
     extremeDepthMm: extremeDepth,
     strengthKnm: capacity.strengthKnm,
     resistanceFactor: capacity.resistanceFactor,
-    clearSpacingMm: (inside - firstCount * maxDiameter) / (firstCount - 1),
+    clearSpacingMm: (inside - firstCount * maxDiameter) / Math.max(1, firstCount - 1),
     minimumClearSpacingMm: minimumClear,
     inadmissible: area < required - TOLERANCE || area > maximum + TOLERANCE,
   };
