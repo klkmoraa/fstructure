@@ -220,4 +220,4 @@ Referencia independiente: tensión pura de 100 kN, horizontal e inclinada, W6x9 
 
 No se incorporaron ecuaciones nuevas de torsión ni combinaciones sísmicas NSR-10/E.060: siguen en TODO hasta registrar el texto oficial aplicable y su evidencia en `normative-sources.json`.
 
-La persistencia actual del taller es **v6**: admite v1–v5, conserva los borradores y añade secciones opcionales por nivel a las historias del pórtico. Añade `steel-memory`, validado como selecciones de barra/combinación/fecha, sin alterar los borradores anteriores. Las escrituras nuevas usan v6.
+La persistencia actual del taller es **v6**: admite la lectura de v1–v6 y conserva los borradores. La v5 introdujo secciones opcionales por nivel en las historias del pórtico; la v6 añade `steel-memory`, validado como selecciones de barra/combinación/fecha, sin alterar los borradores anteriores. Las escrituras nuevas usan v6.

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DesignMemoryDialog } from './DesignMemoryDialog';
@@ -8,10 +8,19 @@ import { BEAM_DEFAULTS } from './beamModel';
 import type { DesignElementKind, DesignReport } from './designReport';
 import { DEFAULT_SPANS } from './beamModel';
 import type { WorkbenchMemoryItem, WorkbenchStorage } from './workbenchStorage';
+import type { ExternalStructureSource } from '../../../design/elements/structure';
+import { createConcreteFrameProject } from '../../../data/defaultProject';
+import { model2dDesignSource } from '../../../design/elements/model2dSource';
+import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS } from './frameModel';
 
 const saved = (id: string, tag: string, fc = BEAM_DEFAULTS.fc): WorkbenchMemoryItem => ({
   id, element: 'beam', code: 'ntc-2023', savedAt: '2026-10-01', fields: { ...BEAM_DEFAULTS, tag, fc }, rows: DEFAULT_SPANS.map((span) => ({ ...span })) as Record<string, string>[],
 });
+const savedModelFrame: WorkbenchMemoryItem = {
+  id: 'model-frame', element: 'frame', code: 'ntc-2023', savedAt: '2026-10-01',
+  fields: { ...FRAME_DEFAULTS, tag: 'Marco modelo', source: 'model' },
+  rows: DEFAULT_BAYS as unknown as Record<string, string>[], levels: DEFAULT_STORIES as unknown as Record<string, string>[],
+};
 const storageFor = (items: WorkbenchMemoryItem[], state: { writable: boolean }) => {
   const data: Record<string, unknown> = { memory: items, 'memory-active': items[0]?.id ?? '' };
   const storage: WorkbenchStorage = {
@@ -21,11 +30,11 @@ const storageFor = (items: WorkbenchMemoryItem[], state: { writable: boolean }) 
   return { storage, data };
 };
 
-function Harness({ initial, state, onExport }: { initial: WorkbenchMemoryItem[]; state: { writable: boolean }; onExport: (reports: readonly DesignReport[]) => void }) {
+function Harness({ initial, state, onExport, modelSource = null }: { initial: WorkbenchMemoryItem[]; state: { writable: boolean }; onExport: (reports: readonly DesignReport[]) => void; modelSource?: ExternalStructureSource | null }) {
   const { storage } = storageForRef(initial, state);
   const memory = useDesignMemory(storage, 'beam' as DesignElementKind, 'ntc-2023', 0);
   const [message, setMessage] = React.useState<string | null>(null);
-  return <DesignMemoryDialog open onOpenChange={() => {}} memory={memory} element="beam"
+  return <DesignMemoryDialog open onOpenChange={() => {}} memory={memory} element="beam" modelSource={modelSource}
     onLoad={(id) => { setMessage(memory.open(id) === 'full' ? 'No cabe abrir esta pieza.' : null); }}
     onClearMessage={() => setMessage(null)} onExport={onExport} exporting={false} message={message} />;
 }
@@ -37,10 +46,10 @@ function storageForRef(initial: WorkbenchMemoryItem[], state: { writable: boolea
 import React from 'react';
 
 afterEach(cleanup);
-const renderDialog = (items: WorkbenchMemoryItem[], state = { writable: true }, onExport = vi.fn()) => {
+const renderDialog = (items: WorkbenchMemoryItem[], state = { writable: true }, onExport = vi.fn(), modelSource: ExternalStructureSource | null = null) => {
   const user = userEvent.setup();
-  render(<Harness initial={items} state={state} onExport={onExport} />);
-  return { user, onExport };
+  const view = render(<Harness initial={items} state={state} onExport={onExport} modelSource={modelSource} />);
+  return { user, onExport, ...view };
 };
 
 describe('DesignMemoryDialog', () => {
@@ -61,6 +70,28 @@ describe('DesignMemoryDialog', () => {
     expect(screen.getByText('0 seleccionados')).toBeTruthy();
     await user.click(full);
     expect(onExport).toHaveBeenLastCalledWith([expect.objectContaining({ tag: 'V-Árbol' }), expect.objectContaining({ tag: 'V-Zapato' })]);
+  });
+
+  it('poda la selección cuando la fuente del Modelo 2D se vuelve inválida y no la restaura al regresar', async () => {
+    const source = model2dDesignSource(createConcreteFrameProject());
+    const { user, onExport, rerender } = renderDialog([savedModelFrame], { writable: true }, vi.fn(), source);
+    expect(screen.getByRole('checkbox', { name: 'Seleccionar Marco modelo' })).toBeTruthy();
+    await user.click(screen.getByRole('checkbox', { name: 'Seleccionar Marco modelo' }));
+    expect(screen.getByText('1 seleccionados')).toBeTruthy();
+
+    rerender(<Harness initial={[savedModelFrame]} state={{ writable: true }} onExport={onExport} modelSource={null} />);
+    await waitFor(() => expect(screen.getByText('0 seleccionados')).toBeTruthy());
+    expect(screen.queryByRole('checkbox', { name: 'Seleccionar Marco modelo' })).toBeNull();
+    const selectionExport = screen.getByRole('button', { name: 'Exportar selección (0)' }) as HTMLButtonElement;
+    const allExport = screen.getByRole('button', { name: 'Exportar memoria (0)' }) as HTMLButtonElement;
+    expect(selectionExport.disabled).toBe(true);
+    expect(allExport.disabled).toBe(true);
+    expect(onExport).not.toHaveBeenCalled();
+
+    rerender(<Harness initial={[savedModelFrame]} state={{ writable: true }} onExport={onExport} modelSource={source} />);
+    expect(screen.getByRole('checkbox', { name: 'Seleccionar Marco modelo' })).toHaveProperty('checked', false);
+    expect(screen.getByText('0 seleccionados')).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Exportar selección (0)' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('distingue lista vacía de búsqueda sin coincidencias y permite restablecer filtros', async () => {

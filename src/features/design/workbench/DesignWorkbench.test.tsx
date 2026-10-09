@@ -236,6 +236,13 @@ describe('DesignWorkbench', () => {
     expect(screen.getAllByText('54.00 kN·m')).toHaveLength(2);
   });
 
+  it('ignora ids de ejercicio heredados en borradores del taller sin romper la viga', () => {
+    localStorage.setItem('fstructure.design-workbench.beam', JSON.stringify({ exercise: 'constructor' }));
+    renderWorkbench();
+    expect(screen.getByRole('heading', { name: 'Viga' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Viga simplemente apoyada' })).toBeNull();
+  });
+
   it('mantiene abierto el selector y el formulario al no haber presupuesto para conservarlos', async () => {
     const user = userEvent.setup();
     const entries: Record<string, unknown> = {};

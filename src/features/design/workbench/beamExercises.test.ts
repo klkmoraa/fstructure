@@ -53,9 +53,8 @@ describe('referencias de ejercicios de viga', () => {
     if (point.status === 'comparable') expect(point.solverKnm).toBeCloseTo(10, 6);
   });
 
-  it('no produce guía para un ejercicio vacío o desconocido', () => {
-    expect(evaluateBeamExercise('ntc-2023', { ...BEAM_DEFAULTS, exercise: '' }, [])).toBeNull();
-    expect(evaluateBeamExercise('ntc-2023', { ...BEAM_DEFAULTS, exercise: 'exercise-beam-other' }, [])).toBeNull();
+  it.each(['', 'exercise-beam-other', 'constructor', 'toString', '__proto__', 'hasOwnProperty'])('no produce guía para el id desconocido %s', (exercise) => {
+    expect(evaluateBeamExercise('ntc-2023', { ...BEAM_DEFAULTS, exercise }, [])).toBeNull();
   });
 
   it.each([

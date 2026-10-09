@@ -30,8 +30,8 @@ const invalid = (recipe: ExerciseRecipe, reason: string): BeamExerciseEvaluation
 
 /** Evalúa la referencia educativa únicamente mientras el borrador cumple sus hipótesis. */
 export function evaluateBeamExercise(code: DesignCodeId, draft: BeamDraft, spans: readonly SpanDraft[]): BeamExerciseEvaluation | null {
-  const recipe = RECIPES[draft.exercise];
-  if (!recipe) return null;
+  if (!Object.hasOwn(RECIPES, draft.exercise)) return null;
+  const recipe = RECIPES[draft.exercise]!;
 
   const input = beamToInput(code, draft, spans);
   const numbers = input.spans.flatMap((span) => [span.lengthM, span.deadKnPerM, span.liveKnPerM,
