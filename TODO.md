@@ -23,6 +23,13 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Diseño (de `docs/research/concrete-design`)
 
+Próxima ampliación investigada: [proyecto, armado y resolución propia · 9 de octubre](docs/research/ampliacion-concreto-2026-10-09.md). Prioridades propuestas, aún no implementadas:
+
+- [ ] Resolver y editar acero: objetivos del ejercicio, As requerida/mínima/proporcionada en la primera familia verificada, editor de bastones/estribos y alternativas constructivas.
+- [ ] Revisión de pieza vinculada al edificio: procedencia, demanda concurrente, estación y revisión; navegador por planta/eje y aviso de origen desactualizado.
+- [ ] Reacciones del apoyo a zapata aislada y despiece por marca/diámetro/nivel, con CSV/SVG y ampliación del PDF existente.
+- [ ] Primera losa maciza unidireccional con reparto de carga y verificaciones completas; después secciones libres, equilibrio biaxial y servicio, con normas y referencias por familia.
+
 - [x] Entrada Proyecto / Pieza / Ejercicio desde Home y «Nuevo diseño» en la mesa: 20 arranques editables: cuatro proyectos, trece piezas y tres formularios para problemas propios, sin respuestas prefabricadas.
 - [x] Iniciar otra pieza conserva borradores completos e incompletos en Memoria, sin sobrescribir lo guardado; aborta antes de escribir si no cabe. Persistencia de los 79 campos de cimentación y compatibilidad del taller v1–v6.
 - [x] Materiales con resistencias sugeridas editables, catálogo transversal desde #2, fy transversal visible y configuraciones rápidas de apoyos de viga con rodillo explícito. Las revisiones pendientes conservan ese estado en dibujos, cantidades y PDF.
