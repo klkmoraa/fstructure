@@ -15,6 +15,8 @@ export interface WorkbenchStorage {
   readonly historyScope?: object;
   read(key: string): unknown;
   write(key: string, value: JsonValue): void;
+  /** Preflight de todas las entradas que cambiarían juntas en un documento. */
+  canWrite?(writes: Readonly<Record<string, JsonValue>>): boolean;
 }
 
 export const WORKBENCH_DOCUMENT_KIND = 'fstructure-design-workbench';
@@ -151,6 +153,19 @@ export function createProjectWorkbenchStorage(
   return {
     historyScope,
     read: (key) => entries[key],
+    canWrite(writes) {
+      try {
+        const next = { ...entries };
+        for (const [key, value] of Object.entries(writes)) {
+          if (!KEY.test(key) || !isEntry(key, value)) return false;
+          next[key] = structuredClone(value);
+        }
+        return Object.keys(next).length <= MAX_ENTRIES
+          && JSON.stringify(workbenchDocument(next)).length <= MAX_DOCUMENT_CHARS;
+      } catch {
+        return false;
+      }
+    },
     write(key, value) {
       if (!KEY.test(key) || !isEntry(key, value)) return;
       if (JSON.stringify(entries[key]) === JSON.stringify(value)) return;

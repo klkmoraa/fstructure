@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
-import { expect, it } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import { useDesignMemory } from './designMemory';
 import { FRAME_DEFAULTS } from './frameModel';
 import { FOOTING_DEFAULTS } from './footingModel';
 import { DEFAULT_SPANS } from './beamModel';
 import { DESIGN_STARTS } from './designStarts';
-import type { WorkbenchStorage } from './workbenchStorage';
+import { createProjectWorkbenchStorage, WORKBENCH_DOCUMENT_KIND, type WorkbenchStorage } from './workbenchStorage';
 
 const memoryStorage = (initial: Record<string, unknown>): WorkbenchStorage & { data: Record<string, unknown> } => {
   const data = { ...initial };
@@ -127,6 +127,40 @@ it('start aborta antes de escribir si preservar los borradores excede el presupu
 
   expect(writes).toEqual([]);
   expect(data).toEqual(before);
+});
+
+it('start aborta atómicamente cuando el documento combinado rebasaría 240k y se reabre intacto', () => {
+  const wideRecord = Object.fromEntries(Array.from({ length: 96 }, (_, index) => [`f${index}`.padEnd(31, 'k'), 'x'.repeat(32)]));
+  const eightRows = Array.from({ length: 8 }, () => ({ ...wideRecord }));
+  const entries = {
+    beam: { tag: 'V incompleta', width: '25' },
+    footing: { ...FOOTING_DEFAULTS, tag: 'Z existente' },
+    code: 'ntc-2023', element: 'beam',
+    'large-a': eightRows, 'large-b': eightRows, 'large-c': eightRows, 'large-d': eightRows,
+    'small-a': [{ ...wideRecord }], 'small-b': [{ ...wideRecord }], 'small-c': [{ ...wideRecord }], 'small-d': [{ ...wideRecord }],
+  };
+  const initial = { kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 6, entries };
+  expect(JSON.stringify(initial).length).toBeLessThan(240_000);
+  let persisted: unknown = structuredClone(initial);
+  const persist = vi.fn((document: unknown) => { persisted = document; });
+  const storage = createProjectWorkbenchStorage(initial, persist, 60_000);
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.start(DESIGN_STARTS.find((item) => item.id === 'piece-footing')!)).toBe('full'); });
+  storage.flush();
+
+  expect(persist).not.toHaveBeenCalled();
+  expect(storage.read('beam')).toEqual(entries.beam);
+  expect(storage.read('footing')).toEqual(entries.footing);
+  expect(storage.read('element')).toBe('beam');
+  expect(storage.read('memory-active')).toBeUndefined();
+  expect(storage.read('memory')).toBeUndefined();
+  const reopened = createProjectWorkbenchStorage(persisted, vi.fn());
+  expect(reopened.read('beam')).toEqual(entries.beam);
+  expect(reopened.read('footing')).toEqual(entries.footing);
+  expect(reopened.read('large-a')).toEqual(eightRows);
+  storage.dispose();
+  reopened.dispose();
 });
 
 it('un arranque de modelo conserva materiales propios, código y los demás campos del pórtico', () => {

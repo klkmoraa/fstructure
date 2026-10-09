@@ -197,21 +197,31 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       }
       if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
 
-      commit(next, '');
+      const writes: Record<string, Parameters<WorkbenchStorage['write']>[1]> = {
+        memory: next as unknown as Parameters<WorkbenchStorage['write']>[1],
+        'memory-active': '',
+        element: start.element,
+      };
       if (start.source) {
         const existing = storage.read('frame');
         const fields = existing && typeof existing === 'object' && !Array.isArray(existing)
           ? Object.fromEntries(Object.entries(existing as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
           : {};
-        storage.write('frame', { ...fields, source: start.source } as unknown as Parameters<WorkbenchStorage['write']>[1]);
+        writes.frame = { ...fields, source: start.source };
       } else {
-        storage.write(start.element, start.fields);
+        writes[start.element] = start.fields;
       }
       if (start.rows) {
-        storage.write(start.element === 'frame' ? 'frame-bays' : 'beam-spans', start.rows);
+        writes[start.element === 'frame' ? 'frame-bays' : 'beam-spans'] = start.rows;
       }
-      if (start.levels) storage.write('frame-stories', start.levels);
-      storage.write('element', start.element);
+      if (start.levels) writes['frame-stories'] = start.levels;
+      if (storage.canWrite && !storage.canWrite(writes)) return 'full';
+
+      commit(next, '');
+      for (const [key, value] of Object.entries(writes)) {
+        if (key === 'memory' || key === 'memory-active') continue;
+        storage.write(key, value);
+      }
       return 'started';
     },
     remove(id) {

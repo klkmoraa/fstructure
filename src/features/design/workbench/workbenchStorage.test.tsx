@@ -122,6 +122,19 @@ describe('design workbench document', () => {
     expect(persist).toHaveBeenCalledTimes(2);
   });
 
+  it('preflights all combined entries without changing a full 16-entry document', () => {
+    const entries = Object.fromEntries(Array.from({ length: 16 }, (_, index) => [`extra-${index}`, `v${index}`]));
+    const persist = vi.fn<(value: JsonValue) => void>();
+    const storage = createProjectWorkbenchStorage(workbenchDoc(entries), persist);
+
+    expect(storage.canWrite?.({ memory: [], 'memory-active': '' })).toBe(false);
+    expect(storage.read('extra-0')).toBe('v0');
+    expect(storage.read('memory')).toBeUndefined();
+    storage.flush();
+    expect(persist).not.toHaveBeenCalled();
+    storage.dispose();
+  });
+
   it('opens the workbench with the code stored in the project', () => {
     const storage = createProjectWorkbenchStorage(workbenchDoc({ code: 'nsr-10', element: 'column' }), () => undefined);
     render(<WorkbenchStorageContext.Provider value={storage}><DesignWorkbench nativeTool={false} /></WorkbenchStorageContext.Provider>);
