@@ -14,6 +14,37 @@ afterEach(() => cleanup());
 const chrome: WorkbenchChrome = { elements: null, codeControl: null, code: 'ntc-2023', panels: { inputs: true, results: true }, setPanel: vi.fn(), onReport: vi.fn() };
 
 describe('ConcreteStudio modelo y diagramas', () => {
+  it('adapta grupos de zonas y valida conteos antes de calcular o reportar', () => {
+    expect(SECTION_DEFAULTS.cornerBarCount).toBe('1');
+    expect(SECTION_DEFAULTS.faceBarCount).toBe('1');
+    const draft = { ...SECTION_DEFAULTS, preset: 'custom', shape: 'rectangle', width: '60', height: '60', barLayout: 'zones', cornerBarCount: '3', faceBarCount: '3' };
+    const input = sectionInput(draft);
+    expect(input.barLayout).toBe('zones');
+    expect(input.barCount).toBe(24);
+    expect(input.cornerBarCount).toBe(3);
+    expect(input.faceBarCount).toBe(3);
+    expect(sectionDraftErrors(draft)).toEqual([]);
+    expect(sectionDraftErrors({ ...draft, cornerBarCount: '1.5' }).length).toBeGreaterThan(0);
+    expect(sectionDraftErrors({ ...draft, faceBarCount: '4' }).length).toBeGreaterThan(0);
+    expect(sectionDraftErrors({ ...draft, shape: 'circle' }).length).toBeGreaterThan(0);
+    const custom = sectionPreset('custom', { ...SECTION_DEFAULTS, width: '71', axial: '123', barLayout: 'zones', cornerBarCount: '2', faceBarCount: '1' });
+    expect(custom.width).toBe('71');
+    expect(custom.axial).toBe('123');
+    expect(custom.cornerBarCount).toBe('2');
+    expect(custom.faceBarCount).toBe('1');
+  });
+
+  it('reporta la distribución experimental de zonas y el criterio de separación geométrica', () => {
+    const report = sectionReportFromDraft('ntc-2023', { ...SECTION_DEFAULTS, preset: 'custom', shape: 'square', width: '60', height: '60', barLayout: 'zones', cornerBarCount: '3', faceBarCount: '3' });
+    expect(report.ok).toBe(true);
+    if (!report.ok) return;
+    expect(report.report.memo).toContain('3 por esquina');
+    expect(report.report.memo).toContain('3 por cara');
+    expect(report.report.memo).toContain('criterio geométrico experimental');
+    expect(report.report.reinforcement[0].value).toContain('zonas');
+    expect(report.report.figures.some(({ title }) => title.includes('Sección'))).toBe(true);
+  });
+
   it('convierte unidades y no modifica demanda al cambiar de filosofía sin factor explícito', () => {
     const direct = sectionInput({ ...SECTION_DEFAULTS, axial: '100', moment: '-20', philosophy: 'ultimate' });
     const partial = sectionInput({ ...SECTION_DEFAULTS, axial: '100', moment: '-20', philosophy: 'limit-state' });

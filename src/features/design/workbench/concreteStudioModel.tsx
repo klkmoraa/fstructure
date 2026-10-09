@@ -9,7 +9,7 @@ import type { DesignReport } from './designReport';
 export const SECTION_DEFAULTS = {
   tag: '', place: '', preset: 'column', level: 'simple',
   shape: 'square', width: '40', height: '40', cover: '4',
-  fc: '250', fy: '4200', bar: '19.1', barCount: '8', barLayout: 'perimeter', topBarCount: '2', bottomBarCount: '4',
+  fc: '250', fy: '4200', bar: '19.1', barCount: '8', barLayout: 'perimeter', topBarCount: '2', bottomBarCount: '4', cornerBarCount: '1', faceBarCount: '1',
   tie: '9.5', tieType: 'closed', tieSpacing: '15', length: '3',
   philosophy: 'ultimate', demandBasis: 'factored', loadFactor: '1.4',
   axial: '900', moment: '80', shear: '0', angle: '0',
@@ -34,6 +34,7 @@ export const SECTION_PRESETS = [
 ] as const;
 
 export function sectionPreset(preset: string, current: SectionDraft): SectionDraft {
+  if (preset === 'custom') return { ...current, preset: 'custom' };
   const identity = { tag: current.tag, place: current.place, philosophy: current.philosophy, level: current.level };
   const base = { ...SECTION_DEFAULTS, ...identity, preset };
   if (preset === 'beam') return { ...base, shape: 'rectangle', width: '30', height: '55', barLayout: 'layers', topBarCount: '2', bottomBarCount: '4', cover: '3', axial: '0', moment: '90', shear: '40', length: '5' };
@@ -49,10 +50,15 @@ export function sectionDraftErrors(draft: SectionDraft): string[] {
   const errors: string[] = [];
   if (!SECTION_SHAPES.some((item) => item.value === draft.shape)) errors.push('Selecciona una forma de sección válida.');
   if (!SECTION_PHILOSOPHIES.some((item) => item.value === draft.philosophy)) errors.push('Selecciona una filosofía de cálculo válida.');
-  if (!SECTION_PRESETS.some((item) => item.value === draft.preset)) errors.push('Selecciona un tipo de cálculo válido.');
+  if (!SECTION_PRESETS.some((item) => item.value === draft.preset) && draft.preset !== 'custom') errors.push('Selecciona un tipo de cálculo válido.');
   if (!['simple', 'advanced'].includes(draft.level)) errors.push('Selecciona un nivel de edición válido.');
   if (!['closed', 'cross-tie', 'spiral'].includes(draft.tieType)) errors.push('Selecciona un refuerzo transversal válido.');
-  if (!['perimeter', 'layers'].includes(draft.barLayout)) errors.push('Selecciona una distribución longitudinal válida.');
+  if (!['perimeter', 'layers', 'zones'].includes(draft.barLayout)) errors.push('Selecciona una distribución longitudinal válida.');
+  if (draft.barLayout === 'zones') {
+    if (!['square', 'rectangle'].includes(draft.shape)) errors.push('Los grupos por zonas sólo se ofrecen en secciones cuadradas o rectangulares.');
+    const corner = parseNumber(draft.cornerBarCount); const face = parseNumber(draft.faceBarCount);
+    if (!Number.isInteger(corner) || corner < 1 || corner > 3 || !Number.isInteger(face) || face < 0 || face > 3) errors.push('Las zonas requieren 1–3 barras por esquina y 0–3 por cara, en cantidades enteras.');
+  }
   if (!['service', 'factored'].includes(draft.demandBasis)) errors.push('Selecciona la base de las solicitaciones.');
   if (draft.philosophy !== 'allowable' && draft.demandBasis === 'service' && (!Number.isFinite(parseNumber(draft.loadFactor)) || parseNumber(draft.loadFactor) < 1)) errors.push('El factor global de demanda debe ser un número mayor o igual que 1.');
   return errors;
@@ -69,9 +75,10 @@ export const sectionInput = (draft: SectionDraft): SectionStudioInput => {
     heightMm: parseNumber(draft.height) * 10,
     coverMm: parseNumber(draft.cover) * 10,
     fcMpa: mpaFromKgcm2(draft.fc), fyMpa: mpaFromKgcm2(draft.fy),
-    barDiameterMm: parseNumber(draft.bar), barCount: parseNumber(draft.barCount),
-    barLayout: draft.barLayout === 'layers' ? 'layers' : 'perimeter',
+    barDiameterMm: parseNumber(draft.bar), barCount: draft.barLayout === 'zones' ? 4 * (parseNumber(draft.cornerBarCount) + parseNumber(draft.faceBarCount)) : parseNumber(draft.barCount),
+    barLayout: draft.barLayout === 'layers' ? 'layers' : draft.barLayout === 'zones' ? 'zones' : 'perimeter',
     topBarCount: parseNumber(draft.topBarCount), bottomBarCount: parseNumber(draft.bottomBarCount),
+    cornerBarCount: parseNumber(draft.cornerBarCount), faceBarCount: parseNumber(draft.faceBarCount),
     tieDiameterMm: parseNumber(draft.tie),
     tieType: draft.tieType === 'spiral' ? 'spiral' : draft.tieType === 'cross-tie' ? 'cross-tie' : 'closed',
     tieSpacingMm: parseNumber(draft.tieSpacing) * 10,
@@ -112,6 +119,14 @@ export function sectionTakeoff(result: ValidSectionResult, draft: SectionDraft):
 export function sectionReport(result: ValidSectionResult, draft: SectionDraft, code: DesignCodeId): DesignReport {
   const philosophy = sectionPhilosophy(draft);
   const capacityStatus = result.utilization > 1 + 1e-6 ? 'fail' : 'pass';
+  const layoutDescription = draft.barLayout === 'layers'
+    ? `${draft.topBarCount} superiores · ${draft.bottomBarCount} inferiores`
+    : draft.barLayout === 'zones'
+      ? `Distribución por zonas experimentales: ${draft.cornerBarCount} por esquina · ${draft.faceBarCount} por cara`
+      : 'Distribución perimetral';
+  const spacingDescription = draft.barLayout === 'zones'
+    ? `Separación libre mínima medida entre todos los pares: ${formatNumber(result.reinforcement.minClearSpacingMm, 1)} mm; criterio geométrico experimental ≥ ${formatNumber(result.reinforcement.requiredClearSpacingMm, 1)} mm. Tres barras por grupo son una opción de acomodo, no un máximo normativo.`
+    : `Separación libre mínima entre barras: ${formatNumber(result.reinforcement.minClearSpacingMm, 1)} mm.`;
   const checks: ElementCheck[] = [{
     id: 'section-capacity', label: sectionHasPerpendicularMoment(result) ? 'Proyección N–M · equilibrio perpendicular pendiente' : philosophy.value === 'allowable' ? 'Esfuerzos de la sección fisurada' : 'Axial y flexión en el eje elegido',
     status: sectionHasPerpendicularMoment(result) ? 'warning' : capacityStatus, ratio: result.utilization, reference: complementary(result.analysis.model),
@@ -144,6 +159,7 @@ export function sectionReport(result: ValidSectionResult, draft: SectionDraft, c
       `Demanda: N = ${formatNumber(result.demand.axialKn)} kN; M = ${formatNumber(result.demand.momentKnm)} kN·m; V = ${formatNumber(result.demand.shearKn)} kN; θ = ${draft.angle}°.`,
       draft.philosophy !== 'allowable' && draft.demandBasis === 'service' ? `Factor global aplicado a la demanda de servicio: ${draft.loadFactor}. No genera combinaciones normativas.` : `Demanda introducida: ${draft.philosophy === 'allowable' ? 'servicio' : 'última'}.`,
       `Refuerzo: ${result.geometry.bars.length} ${rebarLabel(result.input.barDiameterMm)}; As = ${formatNumber(result.reinforcement.steelAreaMm2 / 100, 2)} cm²; recubrimiento libre ${draft.cover} cm.`,
+      `Acomodo: ${layoutDescription}. ${spacingDescription}`,
       `Transversal: ${draft.tieType} Ø ${draft.tie} mm @ ${draft.tieSpacing} cm; sugerencia geométrica @ ${formatNumber(result.detailing.proposedTieSpacingMm / 10, 1)} cm.`,
       sectionVerdict(result), ...values.map((row) => `${row.symbol}: ${row.value}.`),
       ...(sectionHasPerpendicularMoment(result) ? [`Advertencia: ${sectionDirectionNote(result)}`] : []),
@@ -157,6 +173,7 @@ export function sectionReport(result: ValidSectionResult, draft: SectionDraft, c
     data: [
       { title: 'Geometría y materiales', rows: [
         { label: 'Forma y dimensiones', value: `${shapeLabel(draft)} · ${formatNumber(result.geometry.widthMm / 10)} × ${formatNumber(result.geometry.heightMm / 10)} cm` },
+        { label: 'Acomodo y separación', value: `${layoutDescription} · ${spacingDescription}` },
         { label: 'Longitud de cuantificación', value: `${draft.length} m` },
         { label: 'Recubrimiento libre', value: `${draft.cover} cm` },
         { label: 'f′c / fy', value: `${draft.fc} / ${draft.fy} kg/cm²` },
@@ -170,7 +187,7 @@ export function sectionReport(result: ValidSectionResult, draft: SectionDraft, c
       ] },
     ],
     reinforcement: [
-      { label: `${result.geometry.bars.length} barras ${rebarLabel(result.input.barDiameterMm)}`, value: `${draft.barLayout === 'layers' ? `${draft.topBarCount} superiores · ${draft.bottomBarCount} inferiores` : 'Distribución perimetral'} · ρ = ${formatNumber(result.reinforcement.ratioPercent, 2)} %` },
+      { label: `${result.geometry.bars.length} barras ${rebarLabel(result.input.barDiameterMm)}`, value: `${layoutDescription} · separación libre mín. ${formatNumber(result.reinforcement.minClearSpacingMm, 1)} mm · ρ = ${formatNumber(result.reinforcement.ratioPercent, 2)} %` },
       { label: 'Refuerzo transversal', value: `${draft.tieType === 'spiral' ? 'Zuncho' : draft.tieType === 'cross-tie' ? 'Cerrado con grapas' : 'Cerrado'} Ø ${draft.tie} @ ${draft.tieSpacing} cm` },
     ],
     values, tables: [{ title: 'Cuantificación geométrica', columns: ['Partida', 'Cantidad', 'Acero'], rows: [

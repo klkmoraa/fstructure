@@ -217,6 +217,56 @@ describe('Section Studio: resistencia y equilibrio', () => {
 });
 
 describe('Section Studio: esfuerzos admisibles y cuantificación', () => {
+  it('distribuye zonas 3×3 en 24 posiciones simétricas dentro del estribo y con separación geométrica', () => {
+    const result = ok({ shape: 'square', widthMm: 600, heightMm: 600, barLayout: 'zones', cornerBarCount: 3, faceBarCount: 3, barCount: 24, barDiameterMm: 20, axialKn: 0, momentKnm: 90 });
+    expect(result.geometry.bars).toHaveLength(24);
+    expect(new Set(result.geometry.bars.map(({ x, y }) => `${x.toFixed(6)},${y.toFixed(6)}`)).size).toBe(24);
+    for (const bar of result.geometry.bars) {
+      expect(result.geometry.bars.some((other) => Math.abs(bar.x + other.x) < 1e-7 && Math.abs(bar.y - other.y) < 1e-7)).toBe(true);
+      expect(result.geometry.bars.some((other) => Math.abs(bar.x - other.x) < 1e-7 && Math.abs(bar.y + other.y) < 1e-7)).toBe(true);
+      expect(Math.abs(bar.x)).toBeLessThanOrEqual(600 / 2 - 40 - 10 - 10 + 1e-7);
+      expect(Math.abs(bar.y)).toBeLessThanOrEqual(600 / 2 - 40 - 10 - 10 + 1e-7);
+    }
+    expect(result.reinforcement.minClearSpacingMm).toBeGreaterThanOrEqual(result.reinforcement.requiredClearSpacingMm);
+    expect(result.reinforcement.barCount).toBe(result.geometry.bars.length);
+  });
+
+  it('rechaza zonas congestionadas, conteos fuera de rango o no enteros y formas no rectangulares', () => {
+    expect(designSectionStudio({ ...base, shape: 'square', widthMm: 200, heightMm: 200, barLayout: 'zones', cornerBarCount: 3, faceBarCount: 3, barCount: 24 }).status).toBe('invalid');
+    expect(designSectionStudio({ ...base, barLayout: 'zones', cornerBarCount: 1.5, faceBarCount: 1, barCount: 10 }).status).toBe('invalid');
+    expect(designSectionStudio({ ...base, barLayout: 'zones', cornerBarCount: 4, faceBarCount: 0, barCount: 16 }).status).toBe('invalid');
+    expect(designSectionStudio({ ...base, shape: 'circle', barLayout: 'zones', cornerBarCount: 1, faceBarCount: 1, barCount: 8 }).status).toBe('invalid');
+  });
+
+  it('busca diámetro y distribución de zonas sin alterar la demanda y retorna la geometría calculada', () => {
+    const manual = { ...base, shape: 'square' as const, widthMm: 300, heightMm: 300, coverMm: 35, barLayout: 'zones' as const, cornerBarCount: 3, faceBarCount: 3, barCount: 24, barDiameterMm: 25, axialKn: 0, momentKnm: 40 };
+    expect(designSectionStudio(manual).status).toBe('invalid');
+    const proposal = proposeSectionReinforcement(manual, { diametersMm: [12, 16, 20, 20, NaN, -1] });
+    expect(proposal.status).toBe('proposed');
+    if (proposal.status === 'proposed') {
+      expect(proposal.input.barDiameterMm).toBeLessThan(25);
+      expect(proposal.result.geometry.bars).toHaveLength(proposal.input.barCount);
+      expect(proposal.result.input.axialKn).toBe(0);
+      expect(proposal.result.input.momentKnm).toBe(40);
+      expect(proposal.result.geometry.bars).toEqual(designSectionStudio(proposal.input).status === 'ok' ? (designSectionStudio(proposal.input) as SectionStudioSuccess).geometry.bars : []);
+      expect(proposal.result.reinforcement.steelAreaMm2).toBeCloseTo(proposal.input.barCount * Math.PI * proposal.input.barDiameterMm ** 2 / 4, 7);
+      expect(proposeSectionReinforcement(manual, { diametersMm: [20, 16, 12, 16] })).toMatchObject({ status: 'proposed', input: proposal.input });
+    }
+    const unchanged = { ...manual };
+    const impossible = proposeSectionReinforcement({ ...manual, axialKn: 1e9 }, { diametersMm: [12, 16] });
+    expect(impossible.status).toBe('no-solution');
+    expect(manual).toEqual(unchanged);
+  });
+
+  it('rechaza catálogos sin diámetro finito positivo y conserva los rechazos direccionales', () => {
+    const invalidCatalog = proposeSectionReinforcement(base, { diametersMm: [NaN, 0, -16, Infinity] });
+    expect(invalidCatalog.status).toBe('no-solution');
+    expect(invalidCatalog.checkedCandidates).toBe(0);
+    const directional = proposeSectionReinforcement({ ...base, shape: 'rectangle', widthMm: 300, heightMm: 550, barLayout: 'layers', topBarCount: 2, bottomBarCount: 4, axialKn: 400, momentKnm: 50, angleDeg: 45, philosophy: 'allowable' }, { diametersMm: [16, 20] });
+    expect(directional.status).toBe('no-solution');
+    if (directional.status === 'no-solution') expect(directional.reason).toContain('perpendicular');
+  });
+
   it('resuelve compresión uniforme con sección transformada y factor modular', () => {
     const result = ok({ philosophy: 'allowable', axialKn: 500, momentKnm: 0 });
     const ec = 4700 * Math.sqrt(30); const as = result.reinforcement.steelAreaMm2;

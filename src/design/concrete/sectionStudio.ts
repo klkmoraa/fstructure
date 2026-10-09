@@ -19,9 +19,11 @@ export interface SectionStudioInput {
   fyMpa: number;
   barDiameterMm: number;
   barCount: number;
-  barLayout?: 'perimeter' | 'layers';
+  barLayout?: 'perimeter' | 'layers' | 'zones';
   topBarCount?: number;
   bottomBarCount?: number;
+  cornerBarCount?: number;
+  faceBarCount?: number;
   tieDiameterMm: number;
   tieSpacingMm: number;
   tieType: 'closed' | 'cross-tie' | 'spiral';
@@ -268,7 +270,7 @@ function validate(input: SectionStudioInput): string[] {
   if (!SHAPES.includes(input.shape)) errors.push('Forma de sección desconocida.');
   if (!PHILOSOPHIES.includes(input.philosophy)) errors.push('Filosofía de diseño desconocida.');
   if (!['closed', 'cross-tie', 'spiral'].includes(input.tieType)) errors.push('Tipo de estribo desconocido.');
-  if (input.barLayout !== undefined && !['perimeter', 'layers'].includes(input.barLayout)) errors.push('Distribución de barras desconocida.');
+  if (input.barLayout !== undefined && !['perimeter', 'layers', 'zones'].includes(input.barLayout)) errors.push('Distribución de barras desconocida.');
   const positiveKeys = ['widthMm', 'heightMm', 'fcMpa', 'fyMpa', 'barDiameterMm', 'tieDiameterMm', 'tieSpacingMm', 'lengthM', 'phi', 'gammaConcrete', 'gammaSteel', 'allowableConcreteRatio', 'allowableSteelRatio'] as const;
   for (const key of positiveKeys) if (!Number.isFinite(input[key]) || input[key] <= 0) errors.push(`${key}: debe ser un número finito mayor que cero.`);
   for (const key of ['coverMm', 'axialKn', 'momentKnm', 'shearKn', 'angleDeg'] as const) if (!Number.isFinite(input[key])) errors.push(`${key}: debe ser un número finito.`);
@@ -285,6 +287,13 @@ function validate(input: SectionStudioInput): string[] {
     const top = input.topBarCount ?? Math.floor(input.barCount / 2);
     const bottom = input.bottomBarCount ?? input.barCount - top;
     if (!Number.isInteger(top) || !Number.isInteger(bottom) || top < 0 || bottom < 0 || top + bottom < 2 || top + bottom > 120) errors.push('Los lechos requieren conteos enteros no negativos y un total de 2 a 120 barras.');
+  }
+  if (input.barLayout === 'zones') {
+    if (input.shape !== 'square' && input.shape !== 'rectangle') errors.push('Los grupos por zonas se ofrecen sólo para secciones cuadradas o rectangulares.');
+    const corner = input.cornerBarCount;
+    const face = input.faceBarCount;
+    if (!Number.isInteger(corner) || corner! < 1 || corner! > 3 || !Number.isInteger(face) || face! < 0 || face! > 3) errors.push('Las zonas requieren 1–3 barras por esquina y 0–3 por cara, en cantidades enteras.');
+    if (Number.isInteger(corner) && Number.isInteger(face) && input.barCount !== 4 * (corner! + face!)) errors.push('El total de barras debe ser 4 × (barras por esquina + barras por cara).');
   }
   return errors;
 }
@@ -316,7 +325,25 @@ function buildSection(input: SectionStudioInput): Section | string {
     const steelContour = inset(vertices, barOffset);
     tieVertices = inset(vertices, tieOffset);
     if (steelContour.length < 3 || polygonMoments(steelContour).area < 1 || tieVertices.length < 3) return 'Recubrimiento, estribo y barras no caben dentro de la sección.';
-    if (input.barLayout === 'layers') {
+    if (input.barLayout === 'zones') {
+      const cornerCount = input.cornerBarCount!;
+      const faceCount = input.faceBarCount!;
+      const clear = Math.max(40, 1.5 * input.barDiameterMm);
+      const step = input.barDiameterMm + clear;
+      const xEdge = width / 2 - barOffset; const yEdge = height / 2 - barOffset;
+      bars = [];
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+        bars.push({ x: sx * xEdge, y: sy * yEdge });
+        if (cornerCount >= 2) bars.push({ x: sx * (xEdge - step), y: sy * yEdge });
+        if (cornerCount >= 3) bars.push({ x: sx * xEdge, y: sy * (yEdge - step) });
+      }
+      const offsets = faceCount === 1 ? [0] : faceCount === 2 ? [-step / 2, step / 2] : faceCount === 3 ? [-step, 0, step] : [];
+      for (const offset of offsets) {
+        bars.push({ x: offset, y: yEdge }, { x: offset, y: -yEdge });
+        bars.push({ x: xEdge, y: offset }, { x: -xEdge, y: offset });
+      }
+      if (bars.some((bar) => Math.abs(bar.x) > xEdge + 1e-7 || Math.abs(bar.y) > yEdge + 1e-7)) return 'Las barras de los grupos no caben dentro del estribo.';
+    } else if (input.barLayout === 'layers') {
       const top = input.topBarCount ?? Math.floor(input.barCount / 2);
       const bottom = input.bottomBarCount ?? input.barCount - top;
       const x = width / 2 - barOffset; const y = height / 2 - barOffset;
@@ -327,6 +354,7 @@ function buildSection(input: SectionStudioInput): Section | string {
   let minDistance = Infinity;
   for (let i = 0; i < bars.length; i += 1) for (let j = i + 1; j < bars.length; j += 1) minDistance = Math.min(minDistance, Math.hypot(bars[i].x - bars[j].x, bars[i].y - bars[j].y));
   if (minDistance < input.barDiameterMm - 1e-7) return 'Las barras se solapan: reduce su número/diámetro o aumenta la sección.';
+  if (input.barLayout === 'zones' && minDistance - input.barDiameterMm + 1e-7 < Math.max(40, 1.5 * input.barDiameterMm)) return 'Los grupos congestionan la sección: aumenta sus dimensiones o reduce barras/diámetro.';
   const moments = radius === null ? polygonMoments(vertices) : { area: PI * radius ** 2, sx: 0, sy: 0, ix: PI * radius ** 4 / 4, iy: PI * radius ** 4 / 4, ixy: 0 };
   const radians = input.angleDeg * PI / 180; const sin = Math.sin(radians); const cos = Math.cos(radians);
   const q = vertices.map((p) => p.x * sin + p.y * cos);
@@ -700,27 +728,55 @@ export function designSectionStudio(input: SectionStudioInput): SectionStudioRes
   };
 }
 
-/** Bounded search at fixed diameter and section. A proposal remains experimental and verifies N–M only. */
-export function proposeSectionReinforcement(input: SectionStudioInput): SectionStudioProposal {
+/** Bounded experimental search over the requested section and optional available diameters. */
+export function proposeSectionReinforcement(input: SectionStudioInput, options?: { diametersMm?: readonly number[] }): SectionStudioProposal {
   const validation = validate(input);
   if (validation.length > 0) return { status: 'no-solution', reason: validation.join(' '), checkedCandidates: 0 };
+  const diameters = options?.diametersMm === undefined
+    ? [input.barDiameterMm]
+    : [...new Set(options.diametersMm.filter((diameter) => Number.isFinite(diameter) && diameter > 0))].sort((a, b) => a - b);
+  if (diameters.length === 0) return { status: 'no-solution', reason: 'El catálogo no contiene diámetros finitos mayores que cero.', checkedCandidates: 0 };
   let best: { input: SectionStudioInput; result: SectionStudioSuccess } | null = null;
   let checkedCandidates = 0;
   let directionalCandidates = 0;
   const isLayers = input.barLayout === 'layers';
+  const isZones = input.barLayout === 'zones';
   const top = input.topBarCount ?? Math.floor(input.barCount / 2);
   const bottom = input.bottomBarCount ?? input.barCount - top;
   const negativeBending = input.momentKnm < 0;
-  for (let count = isLayers ? 2 : 3; count <= 24; count += 1) {
-    const proposedSpacing = Math.max(input.tieDiameterMm, Math.floor(Math.min(16 * input.barDiameterMm, 48 * input.tieDiameterMm, input.widthMm, input.shape === 'square' || input.shape === 'circle' ? input.widthMm : input.heightMm) / 25) * 25);
-    const candidate: SectionStudioInput = { ...input, barCount: isLayers ? count + (negativeBending ? bottom : top) : count, ...(isLayers ? { topBarCount: negativeBending ? count : top, bottomBarCount: negativeBending ? bottom : count } : {}), tieSpacingMm: Math.min(input.tieSpacingMm, proposedSpacing) };
-    checkedCandidates += 1;
-    const result = designSectionStudio(candidate);
-    if (result.status === 'ok' && result.directionalOnly) { directionalCandidates += 1; continue; }
-    if (result.status !== 'ok' || result.utilization > 1 || result.reinforcement.minClearSpacingMm + 1e-7 < result.reinforcement.requiredClearSpacingMm) continue;
-    if (best === null || result.reinforcement.steelAreaMm2 < best.result.reinforcement.steelAreaMm2) best = { input: candidate, result };
+  const better = (candidate: SectionStudioInput, result: SectionStudioSuccess) => {
+    if (best === null) return true;
+    const areaDifference = result.reinforcement.steelAreaMm2 - best.result.reinforcement.steelAreaMm2;
+    if (Math.abs(areaDifference) > 1e-8) return areaDifference < 0;
+    return candidate.barDiameterMm < best.input.barDiameterMm
+      || (candidate.barDiameterMm === best.input.barDiameterMm && candidate.barCount < best.input.barCount)
+      || (candidate.barDiameterMm === best.input.barDiameterMm && candidate.barCount === best.input.barCount && (candidate.cornerBarCount ?? 0) < (best.input.cornerBarCount ?? 0))
+      || (candidate.barDiameterMm === best.input.barDiameterMm && candidate.barCount === best.input.barCount && candidate.cornerBarCount === best.input.cornerBarCount && (candidate.faceBarCount ?? 0) < (best.input.faceBarCount ?? 0));
+  };
+  for (const diameter of diameters) {
+    const proposedSpacing = Math.max(input.tieDiameterMm, Math.floor(Math.min(16 * diameter, 48 * input.tieDiameterMm, input.widthMm, input.shape === 'square' || input.shape === 'circle' ? input.widthMm : input.heightMm) / 25) * 25);
+    const counts = isZones
+      ? Array.from({ length: 12 }, (_, index) => ({ cornerBarCount: Math.floor(index / 4) + 1, faceBarCount: index % 4 }))
+      : Array.from({ length: 22 }, (_, index) => ({ count: index + (isLayers ? 2 : 3) }));
+    for (const countsForLayout of counts) {
+      const cornerBarCount = 'cornerBarCount' in countsForLayout ? countsForLayout.cornerBarCount : undefined;
+      const faceBarCount = 'faceBarCount' in countsForLayout ? countsForLayout.faceBarCount : undefined;
+      const count = 'count' in countsForLayout ? countsForLayout.count : 4 * (cornerBarCount! + faceBarCount!);
+      const candidate: SectionStudioInput = {
+        ...input, barDiameterMm: diameter,
+        barCount: isLayers ? count + (negativeBending ? bottom : top) : count,
+        ...(isLayers ? { topBarCount: negativeBending ? count : top, bottomBarCount: negativeBending ? bottom : count } : {}),
+        ...(isZones ? { cornerBarCount, faceBarCount } : {}),
+        tieSpacingMm: Math.min(input.tieSpacingMm, proposedSpacing),
+      };
+      checkedCandidates += 1;
+      const result = designSectionStudio(candidate);
+      if (result.status === 'ok' && result.directionalOnly) { directionalCandidates += 1; continue; }
+      if (result.status !== 'ok' || result.utilization > 1 || result.reinforcement.minClearSpacingMm + 1e-7 < result.reinforcement.requiredClearSpacingMm) continue;
+      if (better(candidate, result)) best = { input: candidate, result };
+    }
   }
   return best === null
-    ? { status: 'no-solution', reason: directionalCandidates > 0 ? 'Las distribuciones generan momento perpendicular con el eje impuesto. Se requiere un modelo acoplado biaxial o una orientación/disposición simétrica antes de proponer acero para N–M sin ese momento.' : 'No se encontró una propuesta con 2–24 barras del diámetro actual que cubra N–M y separación libre. Aumenta la sección o el diámetro. Cortante y requisitos reglamentarios siguen sin verificarse.', checkedCandidates }
+    ? { status: 'no-solution', reason: directionalCandidates > 0 ? 'Las distribuciones generan momento perpendicular con el eje impuesto. Se requiere un modelo acoplado biaxial o una orientación/disposición simétrica antes de proponer acero para N–M sin ese momento.' : `No se encontró una propuesta dentro de ${isZones ? 'los grupos geométricos' : '2–24 barras'} y los diámetros disponibles que cubra N–M y separación libre. Aumenta la sección o amplía el catálogo. Cortante y requisitos reglamentarios siguen sin verificarse.`, checkedCandidates }
     : { status: 'proposed', ...best, checkedCandidates };
 }
