@@ -1,0 +1,66 @@
+# Losas y secciones libres Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Calcular una losa unidireccional propia y explorar una sección poligonal con huecos, interacción biaxial y servicio agrietado con hipótesis verificables.
+
+**Architecture:** Familia slab independiente y sección libre dentro de Secciones con selector de geometría predefinida/libre. Motores puros sin imports de UI/3D, workers cancelables y reportes compartidos. Extensiones tipadas se almacenan en un único entry compuesto detrás de aliases de WorkbenchStorage para conservar presupuestos.
+
+**Tech Stack:** TypeScript/React/Vitest/workers/pdf-lib existentes; oráculos Python externos sólo en /tmp/qa, sin dependencia de producto.
+
+**Spec:** docs/superpowers/specs/2026-10-09-losas-secciones-libres.md
+
+## Global Constraints
+
+- Español, Luna high, sin dependencias del producto, backend ni red implícita; territorialidad y Home diferida.
+- Experimental/pending visibles en UI/PDF; no extrapolar peralte/mínimos/cortante de viga a losa ni certificar servicio genérico.
+- Entradas ordinarias strings32, documento240000, memoria60, entradas físicas16 conservados. Migraciones1–9→10→11 atómicas y sin pérdida.
+- Un implementador, sin agentes hijos/push; scratch .superpowers/sdd/losas-secciones-libres/. TDD motores/datos, npm run verify y pruebas relacionadas. Controller browser/globalcheck/review final al terminar todos los planes.
+
+## Review Focus
+
+- fy/material fuera del alcance textual de mínimos de losa: pending, no regla universal (tarea1).
+- Todos los drafts/familias ocupados y importación inválida: aliases no superan16 ni resucitan datos legacy al borrar (tareas1/3).
+- Contorno cóncavo/hueco cruzado, región solapada o barra en vacío: guardar incompleto pero bloquear cálculo (tarea2).
+- Traslación/origen y asimetría: momentos referidos al centroide declarado y momento transversal nunca descartado (tareas2/3).
+- Rigidez singular/demanda fuera de ley/cambio durante worker: diagnóstico y cancelación sin curva plausible (tareas2/3).
+
+---
+
+### Task 1: Losa unidireccional y almacenamiento compuesto
+
+**Files:** Create src/design/elements/oneWaySlab.ts/test, workbench/slabModel.tsx, SlabWorkbench.tsx, slabDetailDraft.ts/test; modify workbenchStorage.ts, designMemory.tsx, designReport.ts, DesignWorkbench.tsx/start flows, report/despiece adapters and related tests. Create workbench/pieceDetailStore.ts/test for compact extension migration.
+
+**Interfaces:** New kind 'slab'; SlabDetailDraft={kind:'slab';version:1;loads:BeamLoadDraft[]} using A's bounded raw load rows (span='1'). Input OneWaySlabInput={code:DesignCodeId;lengthXM:number;lengthYM:number;direction:'x'|'y';thicknessMm:number;coverMm:number;fcMpa:number;fyMpa:number;aggregateMm:number;selfWeight:boolean;deadKpa:number;liveKpa:number;main:{diameterMm:number;spacingMm:number};distribution:{diameterMm:number;spacingMm:number};extraLoads:readonly BeamExtraLoad[]}. Export designOneWaySlab(input):OneWaySlabResult with mechanics (by target/factors, support reactions per1m and total tributary), section response, codeChecks pass/fail/pending, hypothesis/scope, errors. slabReport(code,draft,details?):DesignReport. Simple supports only, rectangle; invalid unsupported input rejected, not downgraded silently.
+
+**Storage interface:** Schema10, Physical key piece-details={version:1;beam?:BeamDetailDraft;slab?:SlabDetailDraft;origin?:WorkbenchOrigin;section?:FreeSectionDraft later}. Virtual aliases beam-details/slab-details/piece-origin/free-section-details map to this entry via read/write/canWrite. Move known old beam-details/piece-origin into composed entry losslessly on migration/export; keep unknown fields/entries, don't retain duplicate physical keys. Browser canonical entry presence suppresses stale legacy fallback even after clearing alias. preflight normalizes a whole batch before cap checks. WorkbenchMemoryItem.details extends slab discriminant valid only element slab. No increase cap; old callers remain unchanged through alias contract. Raw detail geometry valid only in input adapter.
+
+- [ ] Step1: RED fixture L4,width3,h150,totalpressure6.6 (explicit one mechanical target) gives q6.6kN/m per1m, reactions13.2each, Mmax13.2, total reactions39.6each; partial q4[0,1]+P10@3/L5 gives7.6/6.4; triangular/mirror equilibrium <=1e-9. NTC minAs=.0018×1000×150=270mm2 only with registered scope, general missing checks pending; no beam depth rule. Legacy keys migrate and all draft families fit <=16; malformed/oversize rejected, clear alias doesn't revive old value; slab save/reopen/PDF preserves geometry/load/armado.
+- [ ] Step2: Run focused RED; read norma-losa-seccion.md and exact source extracts before defining minimum/code rules.
+- [ ] Step3: Implement strip statics using solver/general load primitives or exact piecewise integrals with station critical roots, expose equilibrium and tributary width/diagram. Section flexure uses shared profile law with slab-specific verified minimum/spacing where available, never beam minima. Unsupported slab system checks pending; overall report warning while unresolved. Show shear demand and elastic deflection mechanics only if hypothesis explicit, no unsupported pass. Form plain dimensions/direction/loads/armado with plan/franja drawing and optional extra loads; no canned exercises. Integrate start/nav/memory/PDF/despiece with pending fabrication lengths. Implement compact migration/aliases and single source of validation logic.
+- [ ] Step4: npm run verify and targeted slab/statics/storage/memory/start tests; documentary clause IDs/excerpts in report. No manufactured SHA/verifiedAt.
+- [ ] Step5: Commit feat(design): analyze editable one-way slabs with scoped code checks; task-1-report.md.
+
+### Task 2: Geometría libre y capacidad biaxial nominal
+
+**Files:** Create src/design/concrete/freeSectionGeometry.ts/test and freeSection.ts/test; no UI/storage edits in this task. Focused modules for integration/material laws may be separate if needed.
+
+**Interfaces:** Export FreeSectionInput={outer:readonly PointMm[];holes:readonly(readonly PointMm[])[];regions:readonly{ id:string;outer:readonly PointMm[];fcMpa:number;ecMpa:number }[];bars:readonly{id:string;x:number;y:number;diameterMm:number;fyMpa:number;esMpa:number}[];coverMm:number;fcMpa:number;ecMpa:number;ultimateStrain:number;axialKn:number;momentXKnm:number;momentYKnm:number}. Coordinates mm; N compression positive, Mx=ΣF*y, My=-ΣF*x about net concrete centroid; strain=eps0+kx*y−ky*x. Concrete law compression-only linear Ec capped .85fc, limit ultimateStrain; steel elastic-perfectly-plastic Es/fy. Regions replace default concrete once, disjoint and contained; holes remove all concrete. Finite numbers, outer max64vertices,holes8 total256vertices,regions8 max64each and total512allrings,bars128. Export validateFreeSection(input):readonly string[], freeSectionGeometry(input):{areaMm2,centroid:PointMm,ixMm4,iyMm4,ixyMm4,triangles:...}, designFreeSection(input,options?:{directions?:number}):FreeSectionResult with interaction points at fixed N, capacity diagnostic/demand evaluation, bar strains, neutral plane, residual/tolerance and material/scope notes. Worker wrapper in Task3 consumes pure serializable result. Default directions36 bounded12–72.
+
+- [ ] Step1: RED geometry rectangle1000×150: A150000,Ix281250000,Iy12500000000; centeredhole200×50 givesA140000,Ix279166666.6667,Iy12466666666.6667 (<1e-9 relative). Concave shape triangulated area agrees shoelace; no triangles fill holes; rotations/translation of geometry/law consistent. Self-intersection/touchinghole/overlappingregions/bar inhole/outsidecover rejected. Homogeneous symmetric 400×500 4db16 at(±150,±200) pureN limits = .85fc(Ag−As)+fyAs compression and −fyAs tension forfc25/fy420; symmetric capacity sign/giro, vectorNresidual<=max(.01kN,1e-5relative), momentvector retained. Compare oracle fixtures only when law/eaxes match; no unsupported certification.
+- [ ] Step2: Run focused RED; independently calculate net geometry and force limits, inspect any oracle-seccion.md outputs before claiming comparison.
+- [ ] Step3: Implement robust ring intersection/containment, signed analytic moments and nonoverlapping partition. Suggested hole-safe triangulation: scanline slabs between all vertex y values, paired intersection intervals→trapezoids→triangles; don't clip a concave polygon as a single convex ring. Integrate material compression over triangles with clipping at strain thresholds, subtract displaced concrete at bars once. At each neutral-axis orientation max concrete strain fixed ultimateStrain, solve neutral-depth/offset to targetN by bracketed root; output actual biaxial moments and sorted closed locus/demand radial assessment without equating moment angle to strain angle. Detect unattainable axial/demand and nonconvex/intersection ambiguity, no fabricated point. No normative phi. Errors/residual explicit; verify refinement if numerical quadrature chosen instead of exact clipped integrals.
+- [ ] Step4: npm run verify + focused geometry/section existing tests; property/material/oracle evidence in report, include performance caps.
+- [ ] Step5: Commit feat(design): calculate free-section geometry and nominal biaxial capacity; task-2-report.md.
+
+### Task 3: Servicio agrietado, editor libre y entrega
+
+**Files:** Create src/design/concrete/freeSectionService.ts/test; workbench/freeSectionDraft.ts/test, FreeSectionWorkbench.tsx, FreeSectionEditor.tsx, freeSectionModel.tsx, freeSectionWorker.ts, freeSection.worker.ts and tests. Integrate ConcreteStudio.tsx, section report dispatch, workbenchStorage.ts, designMemory.tsx/PDF/despiece, detailstore union and focused UI tests. Use small modules rather than grow ConcreteStudio excessively.
+
+**Interfaces:** Consume FreeSectionInput/geometry/result from Task2 and aliases from Task1. Export analyzeFreeSectionService(input,options?:{directionDeg?:number;curvatureSteps?:number;maxCurvaturePerMm?:number}):FreeSectionServiceResult with converged state strains/curvatures/N/Mx/My/residual, cracked stiffness, moment-curvature points and diagnostics. Service concrete compression-only elastic Ec (no artificial tensile stress), steel elastic Es with yield-domain diagnostic. FreeSectionDraft={kind:'free-section';version:1;outer:PointDraft[];holes:PointDraft[][];regions:RegionDraft[];bars:BarDraft[]}; PointDraft={x:string;y:string}; RegionDraft={id:string;outer:PointDraft[];fcMpa:string;ecMpa:string}; BarDraft={id:string;x:string;y:string;diameterMm:string;fyMpa:string;esMpa:string}. Bounds match Task2, raw strings32/IDs32. Existing section draft adds sectionMode='predefined'|'free' and free action/material parameters strings; typed key free-section-details. Schema11 memorydetails valid for section, pure adapter strict/incomplete preservation. sectionReport(code,draft,details?) dispatches freeSectionReport on free mode; Experimental basis always.
+
+- [ ] Step1: RED service symmetric rectangleelastic compression compares analytic Ec*I response (steel contribution/displacement stated); N0 moment closes N/Mx/My with relative<=1e-5 and absolute .01kN/.01kNm; momentcurve begins0 atN0, sign symmetry, asimmetry retains transverseM; singular/no bars unsupported state diagnostic; abovefy service domain explicit. Worker edit/cancel ignores stale result, geometry+demand draft reopen/duplicate/undo preserves, unknown profile never pass, invalid geometricaldraft keepsfields/noresult. Allaliases fit16; malformedvertex/bar/oversize import rejected before mutation.
+- [ ] Step2: Run focused RED, inspect reference law conventions; no trivial mocks of solver response.
+- [ ] Step3: Implement damped Newton/backtracking/continuation on plane strain with scaled residual and analytic or finite-difference Jacobian; bound iterations/work and convergence. M-curvature fixesN and curvaturedirection, solves axialstrain, plots actual Mx/My/projectedM without claiming uniaxial equilibrium for asimmetry. Editor precise coordinate rows with selectable SVG outer/hole/region/bar and fieldsets; no drag-only interaction. Mode inside Secciones preserves predefined drafts; blank/free start owngeometry, no predefined exercises. Worker receives plain serializable snapshots; loading/error/cancel and outputs/provenance/drawing/PDF same input hash. Table perbar and biaxial chart, momentcurve and service note nearresult; progressive disclosures/chooser keep phone usable. Schedule known bars only with userlength, missinglength pending. Preserve links/copies from B and raw drafts through v11.
+- [ ] Step4: npm run verify and related section/worker/storage/memory/export tests; report browser steps for free contour+hole+bars and a service case. Controller screenshots/browser/PDF/globalcheck and final review across A/B/C/D.
+- [ ] Step5: Commit feat(design): edit free sections and inspect cracked-section service; task-3-report.md.
