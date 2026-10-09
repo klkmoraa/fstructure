@@ -46,7 +46,7 @@ describe('DesignStartDialog', () => {
     const exercise = within(dialog).getByRole('tabpanel');
     expect(within(exercise).getByRole('heading', { name: 'Sección con acciones dadas' })).toBeTruthy();
     await user.click(within(exercise).getByRole('button', { name: /Sección con acciones dadas/ }));
-    expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ id: 'exercise-section', fields: expect.any(Object) }));
+    expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ id: 'problem-section', fields: expect.any(Object) }));
   });
 
   it('cambia de categoría con las flechas de las pestañas', async () => {

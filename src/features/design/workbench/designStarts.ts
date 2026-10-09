@@ -67,7 +67,7 @@ export const DESIGN_STARTS: readonly DesignStart[] = [
   start({ id: 'piece-footing-mat', category: 'piece', element: 'footing', title: 'Losa de cimentación', description: 'Retícula editable de columnas y cargas por posición.', fields: footing('Losa', 'mat') }),
   start({ id: 'piece-section', category: 'piece', element: 'section', title: 'Estudio de sección', description: 'Sección de concreto editable para revisar acciones y filosofía.', fields: section('Sección', 'column') }),
 
-  start({ id: 'exercise-section', category: 'exercise', element: 'section', title: 'Sección con acciones dadas', description: 'Captura geometría, materiales y acciones para explorar el armado de una sección.', fields: ownSection }),
-  start({ id: 'exercise-column', category: 'exercise', element: 'column', title: 'Columna con acciones dadas', description: 'Captura sección, materiales y acciones para explorar el refuerzo de una columna rectangular.', fields: ownColumn }),
-  start({ id: 'exercise-beam', category: 'exercise', element: 'beam', title: 'Viga con claros y cargas', description: 'Captura geometría, materiales, claros y cargas para explorar el refuerzo de una viga.', ...ownBeam }),
+  start({ id: 'problem-section', category: 'exercise', element: 'section', title: 'Sección con acciones dadas', description: 'Captura datos propios para explorar el armado de una sección.', fields: ownSection }),
+  start({ id: 'problem-column', category: 'exercise', element: 'column', title: 'Columna con acciones dadas', description: 'Captura datos propios para explorar el refuerzo de una columna rectangular.', fields: ownColumn }),
+  start({ id: 'problem-beam', category: 'exercise', element: 'beam', title: 'Viga con claros y cargas', description: 'Captura datos propios de geometría, materiales, claros y cargas para explorar el refuerzo de una viga.', ...ownBeam }),
 ];

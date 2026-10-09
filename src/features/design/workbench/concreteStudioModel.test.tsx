@@ -159,11 +159,12 @@ describe('ConcreteStudio modelo y diagramas', () => {
   it('muestra zuncho para círculo y grapas reales en polígono sin certificar el elemento', async () => {
     const user = userEvent.setup();
     render(<ConcreteStudio chrome={chrome} />);
-    await user.click(screen.getByRole('button', { name: 'Circular' }));
+    const shape = screen.getByRole('combobox', { name: 'Forma de la sección' });
+    await user.selectOptions(shape, 'circle');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Refuerzo transversal' }), 'spiral');
     await user.click(screen.getByRole('button', { name: 'Estribos' }));
     expect(screen.getByRole('img', { name: /Distribución longitudinal.*zuncho/ })).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Octagonal' }));
+    await user.selectOptions(shape, 'octagon');
     const transverse = screen.getByRole('combobox', { name: 'Refuerzo transversal' });
     expect((transverse as HTMLSelectElement).value).toBe('closed');
     await user.selectOptions(transverse, 'cross-tie');
@@ -174,14 +175,15 @@ describe('ConcreteStudio modelo y diagramas', () => {
   it('al elegir polígonos propone conteos simétricos y conserva un múltiplo ya definido', async () => {
     const user = userEvent.setup();
     render(<ConcreteStudio chrome={chrome} />);
-    await user.click(screen.getByRole('button', { name: 'Triangular' }));
+    const shape = screen.getByRole('combobox', { name: 'Forma de la sección' });
+    await user.selectOptions(shape, 'triangle');
     const bars = screen.getByRole('textbox', { name: 'Número de barras' }) as HTMLInputElement;
     expect(bars.value).toBe('6');
     await user.clear(bars);
     await user.type(bars, '12');
-    await user.click(screen.getByRole('button', { name: 'Hexagonal' }));
+    await user.selectOptions(shape, 'hexagon');
     expect(bars.value).toBe('12');
-    await user.click(screen.getByRole('button', { name: 'Octagonal' }));
+    await user.selectOptions(shape, 'octagon');
     expect(bars.value).toBe('8');
   });
 });

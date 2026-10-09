@@ -1,33 +1,15 @@
-import { designSectionStudio, type SectionStudioInput, type SectionStudioResult } from '../../../design/concrete/sectionStudio';
+import { designSectionStudio, type SectionStudioResult } from '../../../design/concrete/sectionStudio';
 import type { DesignCodeId } from '../../../design/elements/codes';
 import { complementary, rebarLabel, type ElementCheck } from '../../../design/elements/shared';
 import type { Takeoff } from '../../../design/elements/takeoff';
 import { ConcreteSectionDrawing, SectionEquilibriumDrawing, SectionInteractionDrawing, SectionLongitudinalDrawing } from './ConcreteStudioDrawings';
-import { formatNumber, mpaFromKgcm2, parseNumber } from './common';
+import { formatNumber, parseNumber } from './common';
 import type { DesignReport } from './designReport';
-
-export const SECTION_DEFAULTS = {
-  tag: '', place: '', preset: 'column', level: 'simple',
-  shape: 'square', width: '40', height: '40', cover: '4',
-  fc: '250', fy: '4200', bar: '19.1', barCount: '8', barLayout: 'perimeter', topBarCount: '2', bottomBarCount: '4', cornerBarCount: '1', faceBarCount: '1',
-  tie: '9.5', tieType: 'closed', tieSpacing: '15', length: '3',
-  philosophy: 'ultimate', demandBasis: 'factored', loadFactor: '1.4',
-  axial: '900', moment: '80', shear: '0', angle: '0',
-  phi: '0.75', gammaConcrete: '1.5', gammaSteel: '1.15', allowableConcrete: '0.45', allowableSteel: '0.6',
-};
-export type SectionDraft = typeof SECTION_DEFAULTS;
+import { SECTION_DEFAULTS, SECTION_PHILOSOPHIES, SECTION_SHAPES, sectionInput, sectionPhilosophy, type SectionDraft } from './concreteStudioInput';
+export { SECTION_DEFAULTS, SECTION_PHILOSOPHIES, SECTION_SHAPES, sectionInput, sectionPhilosophy } from './concreteStudioInput';
+export type { SectionDraft } from './concreteStudioInput';
 export type ValidSectionResult = Extract<SectionStudioResult, { status: 'ok' }>;
 
-export const SECTION_SHAPES = [
-  { value: 'square', label: 'Cuadrada' }, { value: 'rectangle', label: 'Rectangular' },
-  { value: 'circle', label: 'Circular' }, { value: 'octagon', label: 'Octagonal' },
-  { value: 'hexagon', label: 'Hexagonal' }, { value: 'triangle', label: 'Triangular' },
-] as const;
-export const SECTION_PHILOSOPHIES = [
-  { value: 'allowable', short: 'EA', label: 'Esfuerzos admisibles', description: 'Esfuerzos elásticos en sección fisurada; solicitaciones de servicio.' },
-  { value: 'ultimate', short: 'RU', label: 'Resistencia última', description: 'Resistencia nominal con φ; solicitaciones últimas.' },
-  { value: 'limit-state', short: 'EL', label: 'Estados límite', description: 'Resistencias fc/γc y fy/γs; servicio sin evaluar.' },
-] as const;
 export const SECTION_PRESETS = [
   { value: 'beam', label: 'Flexión de viga' }, { value: 'column', label: 'Columna corta' },
   { value: 'slab', label: 'Franja de losa · 1 m' }, { value: 'pedestal', label: 'Pedestal' },
@@ -42,8 +24,6 @@ export function sectionPreset(preset: string, current: SectionDraft): SectionDra
   if (preset === 'pedestal') return { ...base, width: '55', height: '55', barCount: '8', cover: '5', axial: '1100', moment: '30', length: '1' };
   return base;
 }
-
-export const sectionPhilosophy = (draft: SectionDraft) => SECTION_PHILOSOPHIES.find((item) => item.value === draft.philosophy) ?? SECTION_PHILOSOPHIES[1];
 
 /** No reinterpretar un borrador corrupto ni permitir que un factor cero borre la carga. */
 export function sectionDraftErrors(draft: SectionDraft): string[] {
@@ -63,32 +43,6 @@ export function sectionDraftErrors(draft: SectionDraft): string[] {
   if (draft.philosophy !== 'allowable' && draft.demandBasis === 'service' && (!Number.isFinite(parseNumber(draft.loadFactor)) || parseNumber(draft.loadFactor) < 1)) errors.push('El factor global de demanda debe ser un número mayor o igual que 1.');
   return errors;
 }
-
-/** Servicio explícito: sólo RU/EL transforman demandas al pedir un factor global. */
-export const sectionInput = (draft: SectionDraft): SectionStudioInput => {
-  const philosophy = sectionPhilosophy(draft).value;
-  const factor = philosophy !== 'allowable' && draft.demandBasis === 'service' ? parseNumber(draft.loadFactor) : 1;
-  return {
-    shape: SECTION_SHAPES.find((item) => item.value === draft.shape)?.value ?? 'square',
-    philosophy,
-    widthMm: parseNumber(draft.width) * 10,
-    heightMm: parseNumber(draft.height) * 10,
-    coverMm: parseNumber(draft.cover) * 10,
-    fcMpa: mpaFromKgcm2(draft.fc), fyMpa: mpaFromKgcm2(draft.fy),
-    barDiameterMm: parseNumber(draft.bar), barCount: draft.barLayout === 'zones' ? 4 * (parseNumber(draft.cornerBarCount) + parseNumber(draft.faceBarCount)) : parseNumber(draft.barCount),
-    barLayout: draft.barLayout === 'layers' ? 'layers' : draft.barLayout === 'zones' ? 'zones' : 'perimeter',
-    topBarCount: parseNumber(draft.topBarCount), bottomBarCount: parseNumber(draft.bottomBarCount),
-    cornerBarCount: parseNumber(draft.cornerBarCount), faceBarCount: parseNumber(draft.faceBarCount),
-    tieDiameterMm: parseNumber(draft.tie),
-    tieType: draft.tieType === 'spiral' ? 'spiral' : draft.tieType === 'cross-tie' ? 'cross-tie' : 'closed',
-    tieSpacingMm: parseNumber(draft.tieSpacing) * 10,
-    lengthM: parseNumber(draft.length),
-    axialKn: parseNumber(draft.axial) * factor, momentKnm: parseNumber(draft.moment) * factor, shearKn: parseNumber(draft.shear) * factor,
-    angleDeg: parseNumber(draft.angle), phi: parseNumber(draft.phi),
-    gammaConcrete: parseNumber(draft.gammaConcrete), gammaSteel: parseNumber(draft.gammaSteel),
-    allowableConcreteRatio: parseNumber(draft.allowableConcrete), allowableSteelRatio: parseNumber(draft.allowableSteel),
-  };
-};
 
 const shapeLabel = (draft: SectionDraft) => SECTION_SHAPES.find((shape) => shape.value === draft.shape)?.label.toLowerCase() ?? 'cuadrada';
 export const sectionTitle = (draft: SectionDraft) => {

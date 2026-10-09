@@ -24,7 +24,7 @@ interface DesignStartDialogProps {
 const CATEGORIES: readonly { id: DesignStartCategory; label: string; description: string; icon: typeof Layers3 }[] = [
   { id: 'project', label: 'Proyecto', description: 'Diseña el modelo completo o empieza con un pórtico editable.', icon: Building2 },
   { id: 'piece', label: 'Pieza', description: 'Abre un elemento independiente y ajusta sus datos.', icon: Ruler },
-  { id: 'exercise', label: 'Ejercicio', description: 'Parte de un problema visible con sus supuestos y referencias.', icon: Sparkles },
+  { id: 'exercise', label: 'Ejercicio', description: 'Captura datos propios desde formularios incompletos.', icon: Sparkles },
 ];
 
 export function DesignStartDialog({ open, onOpenChange, hasModel2d, hasModel3d, code, projectName, onStart, onOpenModel, onOpenSpace3D, onCreateBuilding, onOpenMemory, initialCategory = 'project' }: DesignStartDialogProps) {

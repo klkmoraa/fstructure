@@ -1,5 +1,6 @@
-import { resolveReinforcementProposal, type ReinforcementProposalRequest } from './reinforcementProposal';
+import { resolveReinforcementProposalMessage } from './reinforcementProposalCompute';
+import type { ReinforcementProposalRequest } from './reinforcementProposalTypes';
 
 self.addEventListener('message', (event: MessageEvent<ReinforcementProposalRequest>) => {
-  self.postMessage(resolveReinforcementProposal(event.data));
+  self.postMessage(resolveReinforcementProposalMessage(event.data));
 });
