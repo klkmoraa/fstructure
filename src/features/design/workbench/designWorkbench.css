@@ -869,6 +869,7 @@
 .dw-frame__member[data-band='low'] { stroke: var(--dw-subtle); }
 .dw-frame__member[data-band='mid'] { stroke: var(--dw-ink); }
 .dw-frame__member[data-band='near'] { stroke: var(--fs-signal-attention); }
+.dw-frame__member[data-band='review'] { stroke: var(--fs-signal-attention); stroke-width: 6; stroke-dasharray: 5 3; }
 .dw-frame__member[data-band='fail'] { stroke: var(--dw-fail); stroke-width: 6; }
 .dw-frame[data-kind='moment'] .dw-frame__member,
 .dw-frame[data-kind='shear'] .dw-frame__member,
@@ -880,6 +881,7 @@
 .dw-frame__ratios text { font-weight: 600; font-size: 11px; paint-order: stroke; stroke: var(--sc-color-surface-1); stroke-width: 3px; }
 .dw-frame__ratios text[data-band='low'] { fill: var(--dw-muted); }
 .dw-frame__ratios text[data-band='near'] { fill: var(--fs-signal-attention-ink, var(--fs-signal-attention)); }
+.dw-frame__ratios text[data-band='review'] { fill: var(--fs-signal-attention-ink, var(--fs-signal-attention)); }
 .dw-frame__ratios text[data-band='fail'] { fill: var(--dw-fail); }
 .dw-frame__values text { font-weight: 600; font-size: 10.5px; paint-order: stroke; stroke: var(--sc-color-surface-1); stroke-width: 3px; }
 .dw-frame__level { fill: var(--dw-muted) !important; font-weight: 600; }
@@ -889,6 +891,7 @@
 .dw-frame-legend li[data-kind='low']::before { border-top: 4px solid var(--dw-subtle); }
 .dw-frame-legend li[data-kind='mid']::before { border-top: 4px solid var(--dw-ink); }
 .dw-frame-legend li[data-kind='near']::before { border-top: 4px solid var(--fs-signal-attention); }
+.dw-frame-legend li[data-kind='review']::before { border-top: 4px dashed var(--fs-signal-attention); }
 .dw-frame-legend li[data-kind='fail']::before { border-top: 5px solid var(--dw-fail); }
 
 /* Matriz de miembros del pórtico: niveles por filas, viga y columnas por columnas. */
@@ -898,6 +901,7 @@
 .dw-member-grid button { width: 100%; min-height: 32px; padding: 2px 4px; border: 1px solid var(--dw-line); border-radius: var(--sc-radius-data); background: var(--sc-color-surface-1); color: var(--dw-ink); font: 600 11px var(--sc-font-mono); cursor: pointer; }
 .dw-member-grid button[data-band='low'] { color: var(--dw-muted); }
 .dw-member-grid button[data-band='near'] { color: var(--fs-signal-attention-ink, var(--fs-signal-attention)); border-color: var(--fs-signal-attention); }
+.dw-member-grid button[data-band='review'] { color: var(--fs-signal-attention-ink, var(--fs-signal-attention)); border-color: var(--fs-signal-attention); border-style: dashed; }
 .dw-member-grid button[data-band='fail'] { color: var(--dw-fail); border-color: var(--dw-fail); }
 .dw-member-grid button[aria-pressed='true'] { background: var(--sc-color-fill-tertiary, var(--sc-color-surface-2)); border-color: var(--dw-ink); box-shadow: inset 0 0 0 1px var(--dw-ink); }
 .dw-frame-diagram__select { display: none; }

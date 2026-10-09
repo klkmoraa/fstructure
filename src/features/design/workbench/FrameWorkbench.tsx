@@ -89,17 +89,17 @@ function MemberGrid({ result, selected, onSelect }: { result: StructureDesignRes
     beams: result.beams.filter((beam) => beam.level === level),
     columns: result.columns.filter((column) => levelOfY(result.stories[column.story]?.yTop ?? Number.NaN) === level),
   })).filter((row) => row.beams.length || row.columns.length).reverse();
-  const chip = (id: string, text: string, label: string, ratio: number) => <button key={id} type="button" data-band={ratioBand(ratio)} aria-pressed={selected === id}
-    aria-label={`${label}: ${percent(ratio)}`} title={label} onClick={() => onSelect(id)}>
-    <span>{text}</span><b>{percent(ratio)}</b>
+  const chip = (id: string, text: string, label: string, ratio: number, status: 'pass' | 'warning' | 'fail' = 'pass') => <button key={id} type="button" data-band={ratioBand(ratio, status)} aria-pressed={selected === id}
+    aria-label={`${label}: ${percent(ratio)}${status === 'warning' ? ', revisión pendiente' : ''}`} title={`${label}${status === 'warning' ? ' · revisión pendiente' : ''}`} onClick={() => onSelect(id)}>
+    <span>{text}</span><b>{`${percent(ratio)}${status === 'warning' ? '*' : ''}`}</b>
   </button>;
   return <table className="dw-member-grid" aria-label="Cociente que rige en cada miembro de la estructura">
     <thead><tr><th scope="col">Nivel</th><th scope="col">Vigas y columnas</th></tr></thead>
     <tbody>{rows.map((row) => <tr key={row.level}>
       <th scope="row">{`N${row.level}`}</th>
       <td><div className="dw-member-grid__chips">
-        {row.beams.map((beam, index) => chip(beam.id, row.beams.length > 1 ? `V${String.fromCharCode(65 + index)}` : 'V', beam.label, beam.result.governingRatio))}
-        {row.columns.map((column) => chip(column.id, `C${column.axisLabel}`, column.label, column.result.governingRatio))}
+        {row.beams.map((beam, index) => chip(beam.id, row.beams.length > 1 ? `V${String.fromCharCode(65 + index)}` : 'V', beam.label, beam.result.governingRatio, beam.result.status))}
+        {row.columns.map((column) => chip(column.id, `C${column.axisLabel}`, column.label, column.result.governingRatio, column.result.status))}
       </div></td>
     </tr>)}</tbody>
   </table>;
@@ -529,6 +529,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <ul className="dw-legend dw-frame-legend">
           {kind === 'ratio' ? <>
             <li data-kind="low">≤ 60 %</li><li data-kind="mid">60–90 %</li><li data-kind="near">90–100 %</li><li data-kind="fail">&gt; 100 %</li>
+            {result.beams.some((item) => item.result.status === 'warning') || result.columns.some((item) => item.result.status === 'warning') ? <li data-kind="review">* Revisión pendiente</li> : null}
             {result.skipped.length ? <li data-kind="skip">Fuera del diseño de concreto</li> : null}
           </> : kind === 'deformed'
             ? <li data-kind="y">{result.lateral ? 'Deformada con la acción lateral, exagerada' : 'Deformada de servicio (CM + CV), exagerada'}</li>

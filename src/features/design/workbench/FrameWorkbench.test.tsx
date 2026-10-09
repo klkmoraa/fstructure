@@ -69,6 +69,17 @@ describe('mesa Estructura con el pórtico rápido', () => {
     expect(await screen.findByRole('img', { name: /Elevación de la viga de 3 claros/ })).toBeTruthy();
   });
 
+  it('señala en el diagrama y la leyenda una revisión transversal pendiente', async () => {
+    const draft = { ...FRAME_DEFAULTS, source: 'frame', stirrup: '6.4', columnWidth: '80', columnHeight: '80', wallLoad: '0' };
+    localStorage.setItem('fstructure.design-workbench.frame', JSON.stringify(draft));
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="frame" /></ProjectProvider>);
+    expect(await screen.findByText('* Revisión pendiente')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: /revisión pendiente/ }).length).toBeGreaterThan(0);
+    const drawing = screen.getByRole('img', { name: /Utilización de el pórtico/ });
+    expect(drawing.querySelector('.dw-frame__member[data-band="review"]')).toBeTruthy();
+    expect(drawing.querySelector('.dw-frame__ratios text[data-band="review"]')?.getAttribute('aria-label')).toContain('revisión pendiente');
+  });
+
   it('«Proponer» busca la viga y la columna con menos concreto que cumplen y Ctrl+Z las devuelve', async () => {
     const user = userEvent.setup();
     render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="frame" /></ProjectProvider>);

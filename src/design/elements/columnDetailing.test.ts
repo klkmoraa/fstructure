@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { designColumn, type ColumnDesignInput } from './column';
-import { barArea } from './shared';
-import { columnTakeoff } from './takeoff';
+import { barArea, rebarLabel } from './shared';
+import { columnTakeoff, takeoffBarUsage } from './takeoff';
 
 const base: ColumnDesignInput = {
   code: 'ntc-2023', widthMm: 400, depthMm: 400, coverMm: 40, fcMpa: 28, fyMpa: 420,
@@ -17,6 +17,17 @@ const ok = (input: ColumnDesignInput) => {
 };
 
 describe('separación de refuerzo transversal elegida por la persona', () => {
+  it('etiqueta #2 en cuantificación de estribos y grapas, nunca como longitudinal', () => {
+    const result = ok({ ...base, tieDiameterMm: 6.4 });
+    const takeoff = columnTakeoff(result);
+    const transverse = takeoff.lines.filter((line) => /Estribos|Grapas/.test(line.mark));
+    expect(transverse).toHaveLength(3);
+    expect(transverse.every((line) => line.mark.includes('#2'))).toBe(true);
+    expect(takeoff.lines.filter((line) => /Longitudinales/.test(line.mark)).every((line) => !line.mark.includes('#2'))).toBe(true);
+    expect(transverse.every((line) => rebarLabel(line.diameterMm, takeoffBarUsage(line.mark)) === '#2')).toBe(true);
+    expect(takeoffBarUsage(transverse.find((line) => /Grapas/.test(line.mark))!.mark)).toBe('transverse');
+  });
+
   it('conserva la propuesta, evalúa la separación exacta y modifica las cantidades', () => {
     const proposed = ok(base);
     const chosen = ok({ ...base, tieSpacingMm: 123, endTieSpacingMm: 75 });

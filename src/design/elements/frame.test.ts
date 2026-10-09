@@ -69,6 +69,19 @@ function enginePortal(widthM: number, heightM: number, beamKnPerM: number, colum
 }
 
 describe('pórtico de vigas y columnas', () => {
+  it('conserva el estado warning de vigas transversales pendientes en miembros y cociente', () => {
+    const result = designFrame(frameInput({
+      bays: [5], stories: [{ heightM: 3.5, deadKnPerM: 1, liveKnPerM: 0, lateralKn: 0 }],
+      stirrupDiameterMm: 6.4, column: { widthMm: 800, heightMm: 800 },
+    }));
+    if (!result.ok) throw new Error(result.errors.join('\n'));
+    const beam = result.beams[0]!;
+    const member = result.members.find((item) => item.designId === beam.id)!;
+    expect(beam.result.status).toBe('warning');
+    expect(member.status).toBe('warning');
+    expect(member.ratio).toBe(beam.spanRatios[0]);
+  });
+
   it('propaga a la revisión del pórtico la advertencia complementaria de estribos menores a 9.5 mm', () => {
     const result = designFrame(frameInput({ stirrupDiameterMm: 6.4 }));
     if (!result.ok) throw new Error(result.errors.join('\n'));

@@ -10,6 +10,7 @@ import { concatTransformationMatrix, PDFDocument, popGraphicsState, pushGraphics
 import { APP_VERSION } from '../../../appVersion';
 import { designCode } from '../../../design/elements/codes';
 import { rebarLabel, type ElementCheck } from '../../../design/elements/shared';
+import { takeoffBarUsage } from '../../../design/elements/takeoff';
 import { PdfLayout } from '../../../utils/pdf/pdfBuilder';
 import { createPalette } from '../../../utils/pdf/pdfTheme';
 import { reportHeading, snapshotHash, stableJson, type DesignReport, type ReportFigure } from './designReport';
@@ -196,7 +197,7 @@ async function drawElement(layout: PdfLayout, pdf: PDFDocument, source: DesignRe
     { header: 'Long. (m)', width: 58, align: 'right' },
     { header: 'Masa', width: 66, align: 'right' },
   ], [
-    ...report.takeoff.lines.map((item) => [item.mark, rebarLabel(item.diameterMm, /estrib|transversal|zuncho|tie/i.test(item.mark) ? 'transverse' : 'longitudinal'), String(item.count), item.pieceLengthM.toFixed(2), kg(item.massKg)]),
+    ...report.takeoff.lines.map((item) => [item.mark, rebarLabel(item.diameterMm, takeoffBarUsage(item.mark)), String(item.count), item.pieceLengthM.toFixed(2), kg(item.massKg)]),
     ['Total de acero', '', '', '', kg(report.takeoff.steelKg)],
   ]);
   layout.keyValues([

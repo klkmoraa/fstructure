@@ -176,7 +176,7 @@ const statusLabel = { pass: 'Cumple', fail: 'No cumple', warning: 'Revisar', inf
 
 /** Titular del veredicto: con verificaciones sin evaluar nunca dice «Cumple» a secas. */
 export const verdictHeadline = (status: 'pass' | 'fail' | 'warning', incomplete: boolean) =>
-  status === 'fail' ? 'No cumple' : status === 'warning' ? 'Cumple con observaciones' : incomplete ? 'Cumple lo evaluado' : 'Cumple';
+  status === 'fail' ? 'No cumple' : status === 'warning' ? 'Revisión pendiente' : incomplete ? 'Cumple lo evaluado' : 'Cumple';
 
 export function Verdict({ status, ratio, title, outOfScope = 0, children }: {
   status: 'pass' | 'fail' | 'warning'; ratio: number; title: string;

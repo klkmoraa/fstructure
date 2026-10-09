@@ -271,4 +271,4 @@ export function Plate({ title, note, wide = false, children }: { title: string; 
 }
 
 export const verdictLabel = (status: 'pass' | 'fail' | 'warning', ratio: number, incomplete = false) =>
-  `${status === 'warning' ? 'Cumple' : verdictHeadline(status, incomplete)} · ${Math.round(ratio * 100)} %`;
+  `${status === 'warning' ? 'Revisión pendiente' : verdictHeadline(status, incomplete)} · ${Math.round(ratio * 100)} %`;

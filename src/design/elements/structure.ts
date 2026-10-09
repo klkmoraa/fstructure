@@ -1062,7 +1062,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
       serviceV: serviceSum((action) => action.v),
       serviceU: serviceSum((action) => action.u),
       ratio,
-      status: column ? column.result.status : beam ? (ratio > 1 + 1e-9 ? 'fail' : 'pass') : 'skip',
+      status: column ? column.result.status : beam ? beam.result.status : 'skip',
       designId: beam?.id ?? column?.id ?? null,
     };
   });

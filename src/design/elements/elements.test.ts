@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { designBeam, type BeamDesignInput } from './beam';
+import { beamTakeoff } from './takeoff';
 import { analyzeBeam } from './beamAnalysis';
 import { designCode, type LoadCombination } from './codes';
 import { columnBars, designColumn, momentCapacityAt, rayCapacity, type ColumnDesignInput } from './column';
@@ -37,6 +38,7 @@ describe('designBeam (análisis con el solver 2D)', () => {
     expect(check?.reference.standard).toBe('complementary');
     expect(check?.note).toMatch(/aceptación normativa no está verificada/i);
     expect(assertBeam(beam).stirrupDiameterMm).toBe(9.5);
+    expect(beamTakeoff(result).lines.filter((line) => line.mark.startsWith('Estribos')).every((line) => line.mark.includes('#2'))).toBe(true);
   });
 
   it('solves roller/pin and fixed/roller supports while rejecting an unstabilized pair of rollers', () => {

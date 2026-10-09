@@ -14,8 +14,9 @@ export const FRAME_DIAGRAMS: readonly { value: FrameDiagramKind; label: string }
 
 const UNIT: Record<Exclude<FrameDiagramKind, 'ratio' | 'deformed'>, string> = { moment: 'kN·m', shear: 'kN', axial: 'kN' };
 
-/** Banda de utilización de un miembro: lo holgado en gris y lo que se acerca o pasa del límite como aviso. */
-export const ratioBand = (ratio: number) => !Number.isFinite(ratio) ? 'skip' : ratio > 1 + 1e-9 ? 'fail' : ratio > 0.9 ? 'near' : ratio > 0.6 ? 'mid' : 'low';
+/** Banda de utilización; una comprobación pendiente conserva su estado aunque el cociente sea menor que uno. */
+export const ratioBand = (ratio: number, status?: StructureDiagramMember['status']) =>
+  status === 'fail' || ratio > 1 + 1e-9 ? 'fail' : status === 'warning' ? 'review' : !Number.isFinite(ratio) ? 'skip' : ratio > 0.9 ? 'near' : ratio > 0.6 ? 'mid' : 'low';
 
 /** Nombre de lo que se diseña con un miembro: su línea de viga o su columna; si no se diseña, el miembro. */
 export const designLabelOf = (result: StructureDesignResult, member: StructureDiagramMember) =>
@@ -36,7 +37,7 @@ const MAX_DIMENSIONS = 9;
  * Elevación de la estructura (pórtico generado o Modelo 2D). Cada miembro
  * lleva su diagrama envolvente (momento del lado de la tensión, cortante y
  * axial del lado positivo) o la deformada; en «Utilización» cada miembro se
- * rotula con el cociente que rige. Con `onSelect`, una viga o columna se elige
+ * rotula con el cociente que rige; las comprobaciones pendientes llevan *. Con `onSelect`, una viga o columna se elige
  * con clic o teclado y se resalta todo lo que se diseña con ella.
  */
 export function FrameElevation({ result, kind, selected, onSelect }: {
@@ -224,7 +225,7 @@ export function FrameElevation({ result, kind, selected, onSelect }: {
     <g className="dw-frame__members">
       {result.members.map((member) => <line key={member.index}
         className={`dw-frame__member dw-frame__member--${member.kind}`}
-        data-band={kind === 'ratio' ? ratioBand(member.ratio) : undefined}
+        data-band={kind === 'ratio' ? ratioBand(member.ratio, member.status) : undefined}
         x1={sx(member.start.x)} y1={sy(member.start.y)} x2={sx(member.end.x)} y2={sy(member.end.y)} />)}
     </g>
     {result.members.filter((member) => selected && member.designId === selected).map((member) =>
@@ -240,8 +241,13 @@ export function FrameElevation({ result, kind, selected, onSelect }: {
         const geometry = frameOf(member);
         const horizontal = Math.abs(geometry.s) < 0.5;
         const middle = geometry.at(geometry.length / 2, horizontal ? 12 : 0);
+        const pending = member.status === 'warning';
+        const label = `${percent(member.ratio)}${pending ? ' · revisión pendiente' : ''}`;
         return <text key={member.index} x={middle.x + (horizontal ? 0 : 8)} y={middle.y + (horizontal ? -2 : 4)}
-          textAnchor={horizontal ? 'middle' : 'start'} data-band={ratioBand(member.ratio)}>{percent(member.ratio)}</text>;
+          textAnchor={horizontal ? 'middle' : 'start'} data-band={ratioBand(member.ratio, member.status)} aria-label={label}>
+          {`${percent(member.ratio)}${pending ? '*' : ''}`}
+          {pending ? <title>{label}</title> : null}
+        </text>;
       })}
     </g> : null}
     {labels.length ? <g className="dw-frame__values">
@@ -251,7 +257,7 @@ export function FrameElevation({ result, kind, selected, onSelect }: {
     {/* Zonas de selección. */}
     {onSelect ? <g className="dw-frame__hits">
       {result.members.filter((member) => member.designId).map((member) => {
-        const label = `${designLabelOf(result, member)} · ${member.label} · ${percent(member.ratio)}`;
+        const label = `${designLabelOf(result, member)} · ${member.label} · ${percent(member.ratio)}${member.status === 'warning' ? ' · revisión pendiente' : ''}`;
         return <line key={member.index} role="button" tabIndex={0}
           aria-label={label} aria-pressed={member.designId === selected}
           x1={sx(member.start.x)} y1={sy(member.start.y)} x2={sx(member.end.x)} y2={sy(member.end.y)}

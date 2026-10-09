@@ -26,3 +26,20 @@ Los estribos de viga menores a 9.5 mm llevan una advertencia complementaria que 
 ## Pendiente / preocupaciones
 
 No se ejecutó la suite completa ni la revisión visual de todo el taller; corresponden a la integración final. La propagación del aviso de estructura conserva cualquier fallo independiente, como el de anclaje: el aviso complementario aparece en la nota sin cambiar ese veredicto.
+
+## Corrección de revisión round 1
+
+- **Rojo de estado del miembro:** la regresión esperaba `warning` en el miembro de viga de la estructura con cociente numérico conservado; antes del arreglo encontró `pass`. `structure.ts` ahora copia `beam.result.status`, manteniendo el ratio intacto.
+- **Rojo de cuantificación:** las pruebas de viga y columna con Ø6.4 mm detectaron marcas sin `#2` en estribos y grapas. `takeoff.ts` ahora etiqueta explícitamente las barras transversales; `takeoffBarUsage` centraliza la clasificación que reutiliza el PDF e incluye grapas.
+- **Rojo de dibujo:** al ignorar temporalmente el estado en `ratioBand`, la prueba de mesa no encontró el miembro `data-band="review"`. La implementación usa color/patrón de revisión, asterisco y texto accesible en el rótulo, una leyenda explícita y estados de miembros/celdas; los cocientes mayores a 100 % o con estado fallido siguen con prioridad de fallo.
+- **Verde:** `npx vitest run src/design/elements/elements.test.ts src/design/elements/frame.test.ts src/design/elements/columnDetailing.test.ts src/features/design/workbench/FrameDrawings.test.tsx src/features/design/workbench/FrameWorkbench.test.tsx src/features/design/workbench/designReport.test.ts` — 6 archivos y 92 pruebas aprobadas.
+- `npm run typecheck` — aprobado; `git diff --check` — aprobado.
+
+Cambios adicionales de esta corrección: `src/features/design/workbench/FrameDrawings.tsx`, `FrameWorkbench.tsx`, `FrameWorkbench.test.tsx`, `designWorkbench.css`, `src/design/elements/takeoff.ts`, `columnDetailing.test.ts`, `elements.test.ts`, `frame.test.ts`, `FrameDrawings.test.tsx` y `designReportPdf.ts`.
+
+## Corrección de revisión round 1 — veredicto pendiente
+
+- **Rojo conductual del caso #2:** en `DesignWorkbench.test.tsx`, elegir Ø6.4 mm produce el aviso complementario y estado `Revisar`; el flujo mostraba un botón superior `Cumple · 100 %`. La prueba esperaba `Revisión pendiente · 100 %` y falló antes del cambio.
+- **Arreglo:** el indicador superior y el titular del panel de veredicto ahora llaman `Revisión pendiente` cuando el estado es `warning`. Los ratios siguen visibles; las rutas `pass` y `fail` no cambian.
+- **Verde:** la prueba del caso #2 pasó después del cambio. El conjunto relacionado — `npx vitest run src/design/elements/elements.test.ts src/design/elements/frame.test.ts src/design/elements/columnDetailing.test.ts src/features/design/workbench/FrameDrawings.test.tsx src/features/design/workbench/FrameWorkbench.test.tsx src/features/design/workbench/DesignWorkbench.test.tsx src/features/design/workbench/designReport.test.ts` — pasó: 7 archivos, 106 pruebas.
+- `npm run typecheck` y `git diff --check` — aprobados.

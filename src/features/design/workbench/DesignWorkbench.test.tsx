@@ -106,6 +106,9 @@ describe('DesignWorkbench', () => {
     await user.selectOptions(stirrup, '6.4');
     expect(await within(results()).findByText(/aceptación normativa no está verificada/i)).toBeTruthy();
     expect(await within(results()).findByText(/no establece un mínimo normativo/i)).toBeTruthy();
+    expect(within(results()).getByText('Revisar')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Revisión pendiente · 100 %\./ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Cumple · 100 %\./ })).toBeNull();
   });
 
   it('cambia de elemento con el teclado y recuerda el último', async () => {

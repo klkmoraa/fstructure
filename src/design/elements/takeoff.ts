@@ -6,7 +6,11 @@ import type { StripFootingResult } from './stripFooting';
 import type { FootingDesignResult } from './footing';
 import type { MatFoundationResult } from './matFoundation';
 import type { StrapFootingResult } from './strapFooting';
-import { barArea, rebarLabel } from './shared';
+import { barArea, rebarLabel, type BarUsage } from './shared';
+
+/** Interpreta la marca de la pieza para rotular su diámetro en reportes. */
+export const takeoffBarUsage = (mark: string): BarUsage =>
+  /estrib|transversal|zuncho|tie|grapa/i.test(mark) ? 'transverse' : 'longitudinal';
 
 /**
  * Cuantificación aproximada de acero y concreto de un elemento diseñado. Sirve
@@ -86,7 +90,7 @@ export function beamTakeoff(result: BeamDesignResult): Takeoff {
       ? zones.reduce((total, zone) => total + piecesAlong((zone.endM - zone.startM) * 1e3, span.stirrups.denseSpacingMm), 0)
         + piecesAlong(span.lengthM * 1e3 - denseMm, span.stirrups.centerSpacingMm) + 1
       : piecesAlong(span.lengthM * 1e3, span.stirrups.denseSpacingMm) + 1;
-    return line(`Estribos claro ${index + 1} ${rebarLabel(ds)}`, ds, count, stirrupLengthM(input.widthMm, input.heightMm, input.coverMm, ds));
+    return line(`Estribos claro ${index + 1} ${rebarLabel(ds, 'transverse')}`, ds, count, stirrupLengthM(input.widthMm, input.heightMm, input.coverMm, ds));
   });
   return summarize([continuous('top'), continuous('bottom'), ...bastions, ...stirrups], input.widthMm * input.heightMm * lengthMm / 1e9);
 }
@@ -109,13 +113,13 @@ export function columnTakeoff(result: ColumnDesignResult): Takeoff {
     // Zuncho continuo: vueltas de la altura más 2.5 de anclaje en cada extremo (NTC 14.7.4.4).
     const turns = heightMm / ties.spiral.pitchMm + 2 * 2.5;
     const turnLength = Math.hypot(Math.PI * (ties.spiral.coreDiameterMm - dt), ties.spiral.pitchMm);
-    return summarize([longitudinal, line(`Zuncho ${rebarLabel(dt)} (continuo)`, dt, 1, turns * turnLength / 1e3)], result.grossAreaMm2 * heightMm / 1e9);
+    return summarize([longitudinal, line(`Zuncho ${rebarLabel(dt, 'transverse')} (continuo)`, dt, 1, turns * turnLength / 1e3)], result.grossAreaMm2 * heightMm / 1e9);
   }
   return summarize([
     longitudinal,
-    line(`${circular ? 'Estribos circulares' : 'Estribos'} ${rebarLabel(dt)}`, dt, tieCount, circular ? hoopLengthM : stirrupLengthM(input.widthMm, input.depthMm, input.coverMm, dt)),
-    line(`Grapas paralelas a X ${rebarLabel(dt)}`, dt, tieCount * ties.crossTiesParallelToX, crossTie(input.widthMm)),
-    line(`Grapas paralelas a Y ${rebarLabel(dt)}`, dt, tieCount * ties.crossTiesParallelToY, crossTie(input.depthMm)),
+    line(`${circular ? 'Estribos circulares' : 'Estribos'} ${rebarLabel(dt, 'transverse')}`, dt, tieCount, circular ? hoopLengthM : stirrupLengthM(input.widthMm, input.depthMm, input.coverMm, dt)),
+    line(`Grapas paralelas a X ${rebarLabel(dt, 'transverse')}`, dt, tieCount * ties.crossTiesParallelToX, crossTie(input.widthMm)),
+    line(`Grapas paralelas a Y ${rebarLabel(dt, 'transverse')}`, dt, tieCount * ties.crossTiesParallelToY, crossTie(input.depthMm)),
   ], result.grossAreaMm2 * heightMm / 1e9);
 }
 
@@ -137,7 +141,7 @@ export function stripFootingTakeoff(result: StripFootingResult): Takeoff {
   const perMeter = Math.ceil(1_000 / result.transverse.spacingMm - 1e-9);
   const piece = (result.widthMm - 2 * input.coverMm + (result.transverse.anchorage === 'hook' ? 2 * hook90Mm(db) : 0)) / 1e3;
   return summarize([
-    line(`Transversales ${rebarLabel(db)} (por metro)`, db, perMeter, piece),
+    line(`Transversales ${rebarLabel(db, 'transverse')} (por metro)`, db, perMeter, piece),
     line(`Longitudinales ${rebarLabel(input.distributionBarDiameterMm)} (por metro)`, input.distributionBarDiameterMm, result.distribution.barCount, 1),
   ], result.widthMm * result.thicknessMm / 1e6);
 }
@@ -151,8 +155,8 @@ export function combinedFootingTakeoff(result: CombinedFootingResult): Takeoff {
   return summarize([
     line(`Longitudinal inferior ${rebarLabel(result.bottom.diameterMm)}`, result.bottom.diameterMm, result.bottom.barCount, long),
     ...(result.top ? [line(`Longitudinal superior ${rebarLabel(result.top.diameterMm)}`, result.top.diameterMm, result.top.barCount, long)] : []),
-    ...result.bands.map((band) => line(`Transversal bajo C${band.column} ${rebarLabel(band.diameterMm)}`, band.diameterMm, band.barCount, across(band.anchorage))),
-    line(`Transversal fuera de bandas ${rebarLabel(dt)}`, dt, Math.ceil(outside / result.transverseMinimumSpacingMm), across('straight')),
+    ...result.bands.map((band) => line(`Transversal bajo C${band.column} ${rebarLabel(band.diameterMm, 'transverse')}`, band.diameterMm, band.barCount, across(band.anchorage))),
+    line(`Transversal fuera de bandas ${rebarLabel(dt, 'transverse')}`, dt, Math.ceil(outside / result.transverseMinimumSpacingMm), across('straight')),
   ], result.lengthMm * result.widthMm * result.thicknessMm / 1e9);
 }
 
@@ -171,12 +175,12 @@ export function strapFootingTakeoff(result: StrapFootingResult): Takeoff {
   const free = Math.max(0, x2 - interior.sideXMm / 2 - result.exteriorLengthMm);
   const interiorTakeoff = footingTakeoff(interior);
   return summarize([
-    line(`Zapata 1 transversal ${rebarLabel(db)}`, db, exteriorBars, across),
+    line(`Zapata 1 transversal ${rebarLabel(db, 'transverse')}`, db, exteriorBars, across),
     line(`Zapata 1 longitudinal ${rebarLabel(db)}`, db, exterior.distribution.barCount, (result.exteriorLengthMm - 2 * cover) / 1e3),
     ...interiorTakeoff.lines.map((item) => ({ ...item, mark: `Zapata 2 ${item.mark.charAt(0).toLowerCase()}${item.mark.slice(1)}` })),
     line(`Contratrabe superior ${rebarLabel(dbs)}`, dbs, strap.top.barCount, strapLength),
     line(`Contratrabe inferior ${rebarLabel(dbs)}`, dbs, strap.bottom.barCount, strapLength),
-    line(`Estribos de contratrabe ${rebarLabel(ds)}`, ds, piecesAlong(x2, strap.shear.spacingMm) + 1, stirrupLengthM(strap.widthMm, strap.heightMm, cover, ds)),
+    line(`Estribos de contratrabe ${rebarLabel(ds, 'transverse')}`, ds, piecesAlong(x2, strap.shear.spacingMm) + 1, stirrupLengthM(strap.widthMm, strap.heightMm, cover, ds)),
   ], (result.exteriorLengthMm * result.exteriorWidthMm * exterior.thicknessMm + free * strap.widthMm * strap.heightMm) / 1e9 + interiorTakeoff.concreteM3);
 }
 
