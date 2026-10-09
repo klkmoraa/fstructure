@@ -121,6 +121,7 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   const [moreOpen, setMoreOpen] = useState(false);
   const [placement, setPlacement] = useState<{ memberStart: string | null; coordinateEntryOpen: boolean }>({ memberStart: null, coordinateEntryOpen: false });
   const [valueEditor, setValueEditor] = useState<{ id: string; draft: string } | null>(null);
+  const [angleDraft, setAngleDraft] = useState<string | null>(null);
   const valueInputRef = useRef<HTMLInputElement>(null);
   // El teclado del teléfono sólo sube si el foco llega dentro del toque. Al
   // colocar una carga el editor aún no existe: este campo invisible recibe el
@@ -300,6 +301,32 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
           <Icon size={18} strokeWidth={2.2} aria-hidden="true" />
         </button>;
       })}
+      <label className="mdock__angle">
+        <span aria-hidden="true">∠</span>
+        <input
+          type="text"
+          inputMode="text"
+          enterKeyHint="done"
+          autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          aria-label={t('dock.angle')}
+          value={angleDraft ?? String(Math.round(loadValue.direction * 100) / 100)}
+          onFocus={(event) => event.currentTarget.select()}
+          onChange={(event) => setAngleDraft(event.target.value)}
+          onBlur={() => {
+            const typed = angleDraft === null ? null : parseLocalizedDecimal(angleDraft, '°');
+            if (typed !== null) updateProject((next) => withLoadDirection(next, selection, typed));
+            setAngleDraft(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); valueInputRef.current?.focus({ preventScroll: true }); }
+            else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setAngleDraft(null); event.currentTarget.blur(); }
+          }}
+        />
+        <small>°</small>
+      </label>
     </div>}
     <label className="mdock__editor-field">
       <input

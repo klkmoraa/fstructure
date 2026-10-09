@@ -561,4 +561,5 @@ export const esWorkspace = {
   'dock.dir.right': 'Hacia la derecha',
   'dock.dir.up': 'Hacia arriba',
   'dock.dir.left': 'Hacia la izquierda',
+  'dock.angle': 'Ángulo de la carga (0° = hacia +X, 90° = hacia arriba)',
 } as const;

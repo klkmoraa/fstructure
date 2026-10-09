@@ -271,7 +271,8 @@
 .mdock__chip--value:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
 
 .mdock__editor {
-  height: var(--mdock-bar, 52px);
+  min-height: var(--mdock-bar, 52px);
+  flex-wrap: wrap;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -460,3 +461,35 @@
 .mdock__key--dir { width: 36px; height: 40px; min-height: 40px; border-radius: 12px; }
 .mdock__key--dir[aria-pressed='true'] { background: color-mix(in srgb, var(--sc-color-load-point) 22%, var(--sc-color-surface-inset)); color: var(--sc-color-load-point); box-shadow: none; }
 @media (max-width: 380px) { .mdock__key--dir { width: 32px; } }
+
+/* Dirección y ángulo en su fila; el valor, aplicar y cerrar, en la siguiente. */
+.mdock__editor .mdock__dirs { flex: 1 1 100%; align-items: center; gap: 4px; }
+.mdock__editor .mdock__dirs .mdock__key--dir { flex: 1 1 0; width: auto; }
+.mdock__angle {
+  flex: 1.3 1 0;
+  min-width: 0;
+  height: 40px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-text-secondary);
+}
+.mdock__angle input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: var(--sc-font-weight-semibold, 600) 16px/1 var(--sc-font-ui);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.mdock__angle:focus-within { box-shadow: 0 0 0 1px var(--sc-color-focus); }
