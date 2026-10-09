@@ -236,6 +236,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
           fields: structuredClone(draft.fields),
           ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
           ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
+          ...(draft.details ? { details: structuredClone(draft.details) } : {}),
         });
       }
       const writes: Record<string, Parameters<WorkbenchStorage['write']>[1]> = {
@@ -276,6 +277,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
           fields: structuredClone(draft.fields),
           ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
           ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
+          ...(draft.details ? { details: structuredClone(draft.details) } : {}),
         });
       }
       const writes: Record<string, Parameters<WorkbenchStorage['write']>[1]> = {

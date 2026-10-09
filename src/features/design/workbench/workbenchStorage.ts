@@ -114,7 +114,7 @@ export const browserWorkbenchStorage: WorkbenchStorage = {
   read(key) {
     try {
       const raw = window.localStorage.getItem(BROWSER_PREFIX + key);
-      if (!raw || raw.length > ((key === 'memory' || key === 'steel-memory') ? MAX_DOCUMENT_CHARS : 8_000)) return undefined;
+      if (!raw || raw.length > ((key === 'memory' || key === 'steel-memory' || key === 'beam-details') ? MAX_DOCUMENT_CHARS : 8_000)) return undefined;
       try {
         return JSON.parse(raw) as unknown;
       } catch {

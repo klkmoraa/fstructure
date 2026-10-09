@@ -77,7 +77,7 @@ export function isBeamDetailDraft(value: unknown): value is BeamDetailDraft {
 
 export interface StoredBeamDetails {
   readonly details: BeamDetailDraft;
-  setDetails(details: BeamDetailDraft): void;
+  setDetails(details: BeamDetailDraft): boolean;
 }
 
 /** Lee y persiste el detalle tipado del taller sin evaluar su geometría. */
@@ -86,11 +86,13 @@ export function useStoredBeamDetails(storage: WorkbenchStorage): StoredBeamDetai
     const stored = storage.read('beam-details');
     return isBeamDetailDraft(stored) ? structuredClone(stored) : EMPTY_BEAM_DETAILS;
   });
-  const setDetails = useCallback((next: BeamDetailDraft) => {
-    if (!isBeamDetailDraft(next)) return;
+  const setDetails = useCallback((next: BeamDetailDraft): boolean => {
+    if (!isBeamDetailDraft(next)) return false;
     const copy = structuredClone(next);
+    if (storage.canWrite && !storage.canWrite({ 'beam-details': copy as unknown as JsonValue })) return false;
     setState(copy);
     storage.write('beam-details', copy as unknown as JsonValue);
+    return true;
   }, [storage]);
   return { details, setDetails };
 }

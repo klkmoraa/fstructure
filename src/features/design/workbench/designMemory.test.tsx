@@ -151,6 +151,26 @@ it('guardar, abrir y duplicar conserva el detalle incompleto de una viga', () =>
   expect(result.current.items.at(-1)?.details).toEqual(details);
 });
 
+it.each(['start', 'open'] as const)('%s preserva valores vacíos del detalle activo antes de cambiar de pieza', (route) => {
+  const details = {
+    kind: 'beam', version: 1,
+    loads: [{ id: 'L-empty', span: '1', kind: 'point', category: 'dead', start: '', end: '', startValue: '', endValue: '' }],
+    bastions: [], stirrupZones: [],
+  };
+  const target = { id: 'column-target', element: 'column', code: 'ntc-2023', savedAt: '2026-10-09', fields: { tag: 'C destino' } };
+  const storage = memoryStorage({ beam: { tag: 'V actual' }, 'beam-details': details, 'beam-spans': DEFAULT_SPANS, memory: [target] });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => {
+    if (route === 'start') expect(result.current.start(legacyBeamExercise)).toBe('started');
+    else expect(result.current.open(target.id)).toBeTruthy();
+  });
+
+  const preserved = (storage.read('memory') as WorkbenchMemoryItem[]).find((item) => item.element === 'beam' && item.id !== target.id);
+  expect(preserved?.details).toEqual(details);
+  expect(preserved?.details?.loads[0]?.startValue).toBe('');
+});
+
 it('trata el detalle de viga ausente como el borrador canónico vacío al comparar', () => {
   const emptyDetails = { kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] };
   const item = savedItem('beam-empty', { tag: 'V-1' }, { details: emptyDetails });
