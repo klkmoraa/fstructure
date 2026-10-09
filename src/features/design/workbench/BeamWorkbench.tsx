@@ -5,8 +5,6 @@ import { LayerToggle, UnitField } from '../../../design-system/components/editor
 import { MAX_SPANS, barsText, beamClearSpanMm, designBeam, flangeWidthLimit } from '../../../design/elements/beam';
 import { designCode } from '../../../design/elements/codes';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
-import { evaluateBeamExercise } from './beamExercises';
-import { BeamExerciseGuide } from './BeamExerciseGuide';
 import {
   BEAM_DEFAULTS, DEFAULT_SPANS, END_LABEL, ENDS, beamSupportPreset, bastionDetail, bastionTitle, beamReport, beamToInput, cm, describeBeam, meters, parseSpans, proposeBeamSection, slabLineLoads, stirrupText,
   type SpanDraft,
@@ -137,7 +135,6 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} />
       <FieldGroup title="Claros y cargas" columns={1}>
-        <BeamExerciseGuide evaluation={evaluateBeamExercise(chrome.code, draft, spans)} onDismiss={() => set('exercise')('')} />
         <SpanTable
           spans={spans}
           points={draft.points === 'yes'}
@@ -160,8 +157,21 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         </Disclosure>
         <LayerToggle label="Cargas puntuales" checked={draft.points === 'yes'} onCheckedChange={(checked) => set('points')(checked ? 'yes' : 'no')} />
         <LayerToggle label="Sumar peso propio" checked={draft.selfWeight === 'yes'} onCheckedChange={(checked) => set('selfWeight')(checked ? 'yes' : 'no')} />
+        <div className="dw-span-all"><strong>Apoyos</strong></div>
+        <Select label="Configuración rápida de apoyos" value="" onChange={(event) => {
+          const next = beamSupportPreset(event.currentTarget.value as Parameters<typeof beamSupportPreset>[0], draft, spans);
+          replace(next.draft);
+          setSpans(next.spans);
+        }}>
+          <option value="">Elegir configuración</option>
+          <option value="simple">Apoyada</option><option value="propped">Empotrada–apoyada</option>
+          <option value="fixed">Doblemente empotrada</option><option value="cantilever-left">Voladizo izquierdo</option>
+          <option value="cantilever-right">Voladizo derecho</option><option value="continuous">Continua</option>
+        </Select>
+        <div className="dw-end"><span aria-hidden="true">Izquierdo</span><SegmentedControl label="Extremo izquierdo" size="sm" value={draft.leftEnd} options={ENDS} onValueChange={set('leftEnd')} /></div>
+        <div className="dw-end"><span aria-hidden="true">Derecho</span><SegmentedControl label="Extremo derecho" size="sm" value={draft.rightEnd} options={ENDS} onValueChange={set('rightEnd')} /></div>
       </FieldGroup>
-      <FieldGroup title="Sección" action={<InlineAction label="Proponer" title="Dimensionar: la sección de menor área que cumple" onClick={proposeSection} />}>
+      <FieldGroup title="Geometría y materiales" action={<InlineAction label="Proponer sección" title="Dimensionar: la sección de menor área que cumple" onClick={proposeSection} />}>
         <div className="dw-span-all">
           <SegmentedControl label="Tipo de viga" size="sm" value={flanged ? draft.sectionType : 'rect'} onValueChange={set('sectionType')}
             options={[{ value: 'rect', label: 'Rectangular' }, { value: 'T', label: 'T' }, { value: 'L', label: 'L' }]} />
@@ -181,32 +191,11 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           </> : null}
         </> : null}
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
+        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} fyv={draft.fyv} onFyvChange={set('fyv')} />
         <div className="dw-span-all"><ActionNote text={sectionNote} /></div>
       </FieldGroup>
-      <FieldGroup title="Apoyos" columns={1}>
-        <Select label="Configuración rápida de apoyos" value="" onChange={(event) => {
-          const next = beamSupportPreset(event.currentTarget.value as Parameters<typeof beamSupportPreset>[0], draft, spans);
-          replace(next.draft);
-          setSpans(next.spans);
-        }}>
-          <option value="">Elegir configuración</option>
-          <option value="simple">Apoyada</option>
-          <option value="propped">Empotrada–apoyada</option>
-          <option value="fixed">Doblemente empotrada</option>
-          <option value="cantilever-left">Voladizo izquierdo</option>
-          <option value="cantilever-right">Voladizo derecho</option>
-          <option value="continuous">Continua</option>
-        </Select>
-        <div className="dw-end"><span aria-hidden="true">Izquierdo</span><SegmentedControl label="Extremo izquierdo" size="sm" value={draft.leftEnd} options={ENDS} onValueChange={set('leftEnd')} /></div>
-        <div className="dw-end"><span aria-hidden="true">Derecho</span><SegmentedControl label="Extremo derecho" size="sm" value={draft.rightEnd} options={ENDS} onValueChange={set('rightEnd')} /></div>
-      </FieldGroup>
-      <FieldGroup title="Materiales">
-        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} fyv={draft.fyv} onFyvChange={set('fyv')} />
-      </FieldGroup>
-      <FieldGroup title="Refuerzo transversal">
+      <FieldGroup title="Acero longitudinal y transversal">
         <BarSelect label="Estribo" value={draft.stirrup} onChange={set('stirrup')} allowAuto usage="transverse" />
-      </FieldGroup>
-      <FieldGroup title="Armado">
         <div className="dw-span-all">
           <SegmentedControl label="Armado" size="sm" value={own ? 'own' : 'auto'} onValueChange={set('rebarMode')}
             options={[{ value: 'auto', label: 'Propuesto' }, { value: 'own', label: 'Propio' }]} />

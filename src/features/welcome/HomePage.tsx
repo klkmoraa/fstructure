@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { createBlankProject, exampleProjects } from '../../data/defaultProject';
 import { FStructureMark } from '../../design-system/brand';
-import { classroomExerciseTemplates, type ClassroomExerciseTemplateId } from '../../education/exerciseTemplates';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
 import { exportProjectJson } from '../../utils/export';
@@ -41,7 +40,7 @@ interface HomePageProps {
   /** Abre la mesa en el modo 3D. */
   onOpenSpace3D: () => void;
   /** Abre la mesa en el modo Diseño. */
-  onOpenDesign: () => void;
+  onOpenDesign: (category?: 'project' | 'piece' | 'exercise') => void;
 }
 
 const copy = {
@@ -60,7 +59,8 @@ const copy = {
     home: 'Inicio', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar',
     language: 'Idioma', theme: 'Cambiar tema', search: 'Buscar', clear: 'Borrar búsqueda',
     openTemplate: 'Abrir',
-    classroomStart: 'Ejercicio en blanco',
+    classroomStart: 'Resolver sección y acero',
+    blankExercise: 'Ejercicio en blanco',
     importPortable: 'Proyecto o expediente', importPortableBody: 'JSON de FStructure',
     importDxf: 'Geometría DXF', importDxfBody: 'Líneas 2D',
     note: 'Experimental: los resultados requieren revisión profesional.',
@@ -81,7 +81,8 @@ const copy = {
     home: 'Home', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import',
     language: 'Language', theme: 'Change theme', search: 'Search', clear: 'Clear search',
     openTemplate: 'Open',
-    classroomStart: 'Blank exercise',
+    classroomStart: 'Design section and reinforcement',
+    blankExercise: 'Blank model exercise',
     importPortable: 'Project or record', importPortableBody: 'FStructure JSON',
     importDxf: 'DXF geometry', importDxfBody: '2D lines',
     note: 'Experimental: results require professional review.',
@@ -104,14 +105,6 @@ const assetForExample = (name: string): ThreeStructuralAssetId => {
   if (/armadura|truss/i.test(name)) return 'truss:warren';
   if (/viga|beam|tributaria|diagrama/i.test(name)) return 'beam:simply-supported';
   return 'portal:single-bay';
-};
-
-const assetForExercise: Record<ClassroomExerciseTemplateId, ThreeStructuralAssetId> = {
-  blank: 'portal:single-bay',
-  'simple-beam': 'beam:simply-supported',
-  cantilever: 'cantilever:wall',
-  'portal-frame': 'portal:two-bay',
-  'triangular-truss': 'truss:pratt',
 };
 
 const VIEWS: readonly HomeView[] = ['projects', 'templates', 'library', 'classroom', 'import'];
@@ -145,7 +138,6 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
   const [importOpen, setImportOpen] = useState(false);
   const [dxfOpen, setDxfOpen] = useState(false);
   const [exerciseOpen, setExerciseOpen] = useState(false);
-  const [exerciseTemplate, setExerciseTemplate] = useState<ClassroomExerciseTemplateId>('blank');
 
   const navigate = (next: HomeView) => {
     setView(next);
@@ -161,10 +153,6 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
   const openProject = (next: typeof project, restoredAnalysis?: Parameters<typeof replaceProject>[1], revision?: number) => {
     replaceProject({ ...next, settings: { ...next.settings, language } }, restoredAnalysis, revision);
     onOpenWorkspace();
-  };
-  const openExercise = (template: ClassroomExerciseTemplateId = 'blank') => {
-    setExerciseTemplate(template);
-    setExerciseOpen(true);
   };
   const openMode = { model: onOpenWorkspace, '3d': onOpenSpace3D, design: onOpenDesign } as const;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
@@ -204,7 +192,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
       <h2 id="fh-start" className="fh-section__title">{text.start}</h2>
       <div className="fh-modes">
         {text.modes.map((item, index) => {
-          return <button key={item.id} type="button" className="fh-mode" style={{ '--i': index } as CSSProperties} onClick={openMode[item.id]}>
+          return <button key={item.id} type="button" className="fh-mode" style={{ '--i': index } as CSSProperties} onClick={() => openMode[item.id]()}>
             <span className="fh-mode__scene"><img src={scene(item.scene, mode)} alt="" decoding="async" loading="lazy" /></span>
             <span className="fh-mode__copy">
               <strong>{item.title}</strong>
@@ -247,17 +235,16 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
       </button>;
     })}</div>
       : view === 'classroom' ? <div className="fh-grid">
-        <button type="button" className="fh-card fh-card--accent" onClick={() => openExercise()}>
-          <span className="fh-card__scene"><ThreeStructuralImage assetId="portal:two-story" theme={theme} render="three" eager /></span>
-          <strong>{text.classroomStart}</strong>
+        <button type="button" className="fh-card" onClick={() => setExerciseOpen(true)}>
+          <span className="fh-card__scene"><ThreeStructuralImage assetId="portal:single-bay" theme={theme} render="three" eager /></span>
+          <strong>{text.blankExercise}</strong>
           <span className="fh-card__action">{text.openTemplate}<ArrowRight size={14} aria-hidden="true" /></span>
         </button>
-        {classroomExerciseTemplates.filter((item) => item.id !== 'blank').map((item) => <button key={item.id} type="button" className="fh-card" onClick={() => openExercise(item.id)}>
-          <span className="fh-card__scene"><ThreeStructuralImage assetId={assetForExercise[item.id]} theme={theme} render="three" /></span>
-          <strong>{item.name}</strong>
-          <span>{item.description}</span>
-          <span className="fh-card__action">{text.openTemplate}<ArrowRight size={14} aria-hidden="true" /></span>
-        </button>)}
+        <button type="button" className="fh-card fh-card--accent" onClick={() => onOpenDesign('exercise')}>
+          <span className="fh-card__scene"><ThreeStructuralImage assetId="portal:two-story" theme={theme} render="three" eager /></span>
+          <strong>{text.classroomStart}</strong>
+          <span className="fh-card__action">{text.classroomStart}<ArrowRight size={14} aria-hidden="true" /></span>
+        </button>
       </div>
         : view === 'library' ? <Suspense fallback={null}><PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} /></Suspense>
           : <div className="fh-links fh-links--wide">
@@ -306,7 +293,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
     <Suspense fallback={null}>
     {importOpen ? <PortableImportCenter open currentProjectName={project.name} onClose={() => setImportOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { setImportOpen(false); openProject(outcome.project, outcome.restoredAnalysis); }} /> : null}
     {dxfOpen ? <DxfImportDialog open onOpenChange={setDxfOpen} onImported={() => { setDxfOpen(false); onOpenWorkspace(); }} /> : null}
-    {exerciseOpen ? <NewExerciseDialog open initialTemplateId={exerciseTemplate} onClose={() => setExerciseOpen(false)} onCreate={(next) => { setExerciseOpen(false); openProject(next); }} /> : null}
+    {exerciseOpen ? <NewExerciseDialog open onClose={() => setExerciseOpen(false)} onCreate={(next) => { setExerciseOpen(false); openProject(next); }} /> : null}
     </Suspense>
   </>;
 };

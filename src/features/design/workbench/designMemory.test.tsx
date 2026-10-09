@@ -5,7 +5,7 @@ import { useDesignMemory } from './designMemory';
 import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS } from './frameModel';
 import { BEAM_DEFAULTS, DEFAULT_SPANS } from './beamModel';
 import { FOOTING_DEFAULTS } from './footingModel';
-import { DESIGN_STARTS } from './designStarts';
+import { DESIGN_STARTS, type DesignStart } from './designStarts';
 import { createProjectWorkbenchStorage, WORKBENCH_DOCUMENT_KIND, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
 
 const memoryStorage = (initial: Record<string, unknown>): WorkbenchStorage & { data: Record<string, unknown> } => {
@@ -14,6 +14,11 @@ const memoryStorage = (initial: Record<string, unknown>): WorkbenchStorage & { d
 };
 
 const AXES = [{ id: 'z:0', tag: 'Eje 1' }, { id: 'z:5', tag: 'Eje 2' }, { id: 'x:0', tag: 'Eje A' }];
+const legacyBeamExercise: DesignStart = {
+  id: 'exercise-beam-simple', category: 'exercise', element: 'beam', title: 'Viga simplemente apoyada', description: 'Caso heredado.',
+  fields: { ...BEAM_DEFAULTS, exercise: 'exercise-beam-simple', leftEnd: 'pin', rightEnd: 'roller', selfWeight: 'no' },
+  rows: [{ ...DEFAULT_SPANS[0]!, length: '5', dead: '10', live: '0' }],
+};
 
 const savedItem = (id: string, fields: Record<string, string>, overrides: Record<string, unknown> = {}): WorkbenchMemoryItem => ({
   id, element: 'beam', code: 'ntc-2023', savedAt: '2026-10-01', fields, rows: DEFAULT_SPANS, ...overrides,
@@ -418,7 +423,7 @@ it('un arranque de modelo conserva materiales propios, código y los demás camp
 it('arranques repetidos dejan piezas recuperables e independientes', () => {
   const storage = memoryStorage({ beam: { tag: 'borrador', width: '25' }, element: 'beam' });
   const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
-  const start = DESIGN_STARTS.find((item) => item.id === 'exercise-beam-simple')!;
+  const start = legacyBeamExercise;
 
   act(() => { result.current.start(start); });
   act(() => { expect(result.current.save()).toBe('saved'); });
@@ -438,7 +443,7 @@ it('arranques repetidos dejan piezas recuperables e independientes', () => {
 it('conserva el id de ejercicio en borrador, memoria de proyecto y al reabrir sin cambiar el esquema', () => {
   const writes: unknown[] = [];
   const storage = createProjectWorkbenchStorage({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 6, entries: {} }, (document) => writes.push(document), 0);
-  const recipe = DESIGN_STARTS.find((item) => item.id === 'exercise-beam-simple')!;
+  const recipe = legacyBeamExercise;
   const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
 
   act(() => { expect(result.current.start(recipe)).toBe('started'); });

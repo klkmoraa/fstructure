@@ -1,12 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { BEAM_DEFAULTS, type SpanDraft } from './beamModel';
-import { DESIGN_STARTS } from './designStarts';
 import { evaluateBeamExercise } from './beamExercises';
 
-const start = (id: string) => DESIGN_STARTS.find((item) => item.id === id)!;
+const legacyExercise = (id: string) => {
+  if (id === 'exercise-beam-simple') return {
+    fields: { exercise: id, leftEnd: 'pin', rightEnd: 'roller', selfWeight: 'no' },
+    rows: [{ length: '5', dead: '10', live: '0', pointDead: '0', pointLive: '0', pointAt: '2.5' }],
+  };
+  if (id === 'exercise-beam-cantilever') return {
+    fields: { exercise: id, leftEnd: 'fixed', rightEnd: 'free', selfWeight: 'no' },
+    rows: [{ length: '2', dead: '5', live: '0', pointDead: '0', pointLive: '0', pointAt: '1' }],
+  };
+  return {
+    fields: { exercise: id, leftEnd: 'pin', rightEnd: 'roller', selfWeight: 'no', points: 'yes' },
+    rows: [{ length: '4', dead: '0', live: '0', pointDead: '10', pointLive: '0', pointAt: '2' }],
+  };
+};
 const evaluate = (id: string, fields: Record<string, string> = {}, rows?: SpanDraft[]) => {
-  const recipe = start(id);
-  const result = evaluateBeamExercise('ntc-2023', { ...BEAM_DEFAULTS, ...recipe.fields, ...fields }, rows ?? (recipe.rows as SpanDraft[] | undefined) ?? []);
+  const recipe = legacyExercise(id);
+  const result = evaluateBeamExercise('ntc-2023', { ...BEAM_DEFAULTS, ...recipe.fields, ...fields }, rows ?? recipe.rows);
   if (!result) throw new Error(`Missing exercise evaluation for ${id}`);
   return result;
 };

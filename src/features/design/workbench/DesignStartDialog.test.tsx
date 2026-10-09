@@ -13,9 +13,10 @@ const renderDialog = (overrides: Partial<{
   onOpenModel: () => void;
   onOpenSpace3D: () => void;
   onCreateBuilding: () => void;
+  initialCategory: 'project' | 'piece' | 'exercise';
 }> = {}) => render(<DesignStartDialog open onOpenChange={overrides.onOpenChange ?? vi.fn()}
   hasModel2d={false} hasModel3d={false} code="ntc-2023" projectName="Casa" onStart={overrides.onStart ?? vi.fn((): 'started' => 'started')}
-  onOpenModel={overrides.onOpenModel} onOpenSpace3D={overrides.onOpenSpace3D} onCreateBuilding={overrides.onCreateBuilding} />);
+  onOpenModel={overrides.onOpenModel} onOpenSpace3D={overrides.onOpenSpace3D} onCreateBuilding={overrides.onCreateBuilding} initialCategory={overrides.initialCategory} />);
 
 describe('DesignStartDialog', () => {
   it('explica por qué no puede iniciar desde modelos vacíos y ofrece modelarlos', async () => {
@@ -36,16 +37,16 @@ describe('DesignStartDialog', () => {
     expect(onOpenSpace3D).toHaveBeenCalledOnce();
   });
 
-  it('muestra valores de referencia antes de iniciar y deja que el callback controle el inicio', async () => {
+  it('muestra los formularios propios y deja que el callback controle el inicio', async () => {
     const user = userEvent.setup();
     const onStart = vi.fn(() => 'started' as const);
     renderDialog({ onStart });
     const dialog = screen.getByRole('dialog', { name: 'Nuevo diseño' });
     await user.click(within(dialog).getByRole('tab', { name: 'Ejercicio' }));
     const exercise = within(dialog).getByRole('tabpanel');
-    expect(within(exercise).getByText(/qL²\/8 = 31\.25 kN·m/)).toBeTruthy();
-    await user.click(within(exercise).getByRole('button', { name: /Viga simplemente apoyada/ }));
-    expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ id: 'exercise-beam-simple', fields: expect.any(Object), rows: expect.any(Array) }));
+    expect(within(exercise).getByRole('heading', { name: 'Sección con acciones dadas' })).toBeTruthy();
+    await user.click(within(exercise).getByRole('button', { name: /Sección con acciones dadas/ }));
+    expect(onStart).toHaveBeenCalledWith(expect.objectContaining({ id: 'exercise-section', fields: expect.any(Object) }));
   });
 
   it('cambia de categoría con las flechas de las pestañas', async () => {
@@ -56,5 +57,11 @@ describe('DesignStartDialog', () => {
     await user.keyboard('{ArrowRight}');
     expect(screen.getByRole('tab', { name: 'Pieza' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tabpanel').textContent).toContain('Zapata aislada');
+  });
+
+  it('abre directamente la categoría pedida por el inicio externo', () => {
+    renderDialog({ initialCategory: 'exercise' });
+    expect(screen.getByRole('tab', { name: 'Ejercicio' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tabpanel').textContent).toContain('Sección con acciones dadas');
   });
 });

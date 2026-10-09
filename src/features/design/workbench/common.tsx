@@ -117,12 +117,12 @@ export function useDraftHistory<T>(value: T, apply: (value: T) => void, key?: st
   }), [counts, step]);
 }
 
-export function NumberField({ label, value, unit, onChange, hint, min = 0 }: {
-  label: string; value: string; unit: string; onChange: (value: string) => void; hint?: string; min?: number;
+export function NumberField({ label, value, unit, onChange, hint, min = 0, max }: {
+  label: string; value: string; unit: string; onChange: (value: string) => void; hint?: string; min?: number; max?: number;
 }) {
   const parsed = parseNumber(value);
-  const error = value.trim() === '' || !Number.isFinite(parsed) ? 'Número inválido' : parsed < min ? `Mínimo ${min}` : undefined;
-  return <UnitField label={label} value={value} unit={unit} onValueChange={onChange} hint={error ? undefined : hint} error={error} />;
+  const error = value.trim() === '' || !Number.isFinite(parsed) ? 'Número inválido' : parsed < min ? `Mínimo ${min}` : max !== undefined && parsed > max ? `Máximo ${max}` : undefined;
+  return <UnitField label={label} value={value} unit={unit} min={min} max={max} onValueChange={onChange} hint={error ? undefined : hint} error={error} />;
 }
 
 export function BarSelect({ label, value, onChange, allowAuto = false, minimumDiameterMm = 0, usage = 'longitudinal' }: {

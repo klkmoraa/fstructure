@@ -45,7 +45,7 @@ const readRoom = (): Room => {
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
 
-export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, startPicker = false, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateBuilding, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
+export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, startPicker = false, startCategory, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateBuilding, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
   nativeTool?: boolean;
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
   modelSource?: ExternalStructureSource | null;
@@ -68,6 +68,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   startCode?: string;
   /** Abre el selector inicial, sin elegir una pieza ni cambiar el origen guardado. */
   startPicker?: boolean;
+  startCategory?: 'project' | 'piece' | 'exercise';
   /** Barra del modelo cuyo diseño abre Estructura (la elegida en el 2D o el 3D). */
   focusMember?: string;
   /** «Ver en el Modelo» / «Ver en 3D»: selecciona las barras del elemento en su modo. */
@@ -358,7 +359,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
       }))}
       code={code} projectName={projectName} onStart={startRecipe} onOpenModel={onOpenModel}
       onOpenSpace3D={onOpenSpace3D ? () => onOpenSpace3D() : undefined} onCreateBuilding={onCreateBuilding}
-      onOpenMemory={() => { setStartOpen(false); setMemoryOpen(true); }} />
+      onOpenMemory={() => { setStartOpen(false); setMemoryOpen(true); }} initialCategory={startCategory} />
     <DesignMemoryDialog open={memoryOpen} onOpenChange={setMemoryOpen} memory={memory} element={element} onLoad={loadFromMemory}
       onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} onClearMessage={() => setExportMessage(null)} modelSource={modelSource} modelAxes={modelAxes} />
   </div>;

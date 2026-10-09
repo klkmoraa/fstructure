@@ -156,6 +156,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
       {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})} {...(createBuilding ? { onCreateBuilding: createBuilding } : {})}
       {...(startPicker ? { startPicker } : {})}
+      {...(intent?.category ? { startCategory: intent.category } : {})}
       {...(intent?.element ? { startElement: intent.element } : {})}
       {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers} modelSections={modelSections} space3dSections={space3dSections}
       {...(project?.members.some(isSteelReviewCandidate) ? { modelReview: <ModelSteelReview project={project} {...(focus ? { focusMember: focus.memberId } : {})} onShowMembers={showMembers} /> } : {})}

@@ -55,7 +55,7 @@ const FStructureSurface = () => {
       : { surface: 'workspace', projectId: route.projectId, tool: 'model2d', mode }));
   }, [navigate, route.projectId, route.mode]);
   // Home abre el selector de arranques; el acceso desde los modos conserva el modelo.
-  const openDesign = useCallback(() => { setToolIntent({ tool: 'design', kind: 'frame', picker: true }); openWorkspace('design'); }, [openWorkspace]);
+  const openDesign = useCallback((category?: 'project' | 'piece' | 'exercise') => { setToolIntent({ tool: 'design', kind: 'frame', picker: true, ...(category ? { category } : {}) }); openWorkspace('design'); }, [openWorkspace]);
   const openSpace3D = useCallback(() => openWorkspace('3d'), [openWorkspace]);
 
   /* Desde la Home, la mesa se abre casi siempre: su código se descarga en

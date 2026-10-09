@@ -1,50 +1,21 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import {
-  classroomExerciseTemplates,
   getClassroomExerciseTemplate,
-  type ClassroomDifficulty,
   type ClassroomExerciseParameterKey,
   type ClassroomExerciseParameters,
-  type ClassroomExerciseTemplateId,
-  type ClassroomTopic,
 } from '../../education/exerciseTemplates';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { useI18n } from '../../i18n/useI18n';
 import type { ProjectModel } from '../../types';
 import { useModalFocus } from '../../design-system/components/modalFocus';
-import { useWorkspaceUI } from '../../store/ProjectContext';
-import { ThreeStructuralImage, type ThreeStructuralAssetId } from '../structural-assets';
 import './newExerciseDialog.css';
 
 interface NewExerciseDialogProps {
   open: boolean;
   onClose: () => void;
   onCreate: (project: ProjectModel) => void;
-  initialTemplateId?: ClassroomExerciseTemplateId;
 }
-
-const difficultyLabelKeys: Record<ClassroomDifficulty, TranslationKey> = {
-  basic: 'newExercise.difficultyBasic',
-  intermediate: 'newExercise.difficultyIntermediate',
-  advanced: 'newExercise.difficultyAdvanced',
-};
-const templateCopyKeys: Record<ClassroomExerciseTemplateId, { name: TranslationKey; description: TranslationKey }> = {
-  blank: { name: 'newExercise.template.blankName', description: 'newExercise.template.blankDescription' },
-  'simple-beam': { name: 'newExercise.template.simpleBeamName', description: 'newExercise.template.simpleBeamDescription' },
-  cantilever: { name: 'newExercise.template.cantileverName', description: 'newExercise.template.cantileverDescription' },
-  'triangular-truss': { name: 'newExercise.template.triangularTrussName', description: 'newExercise.template.triangularTrussDescription' },
-  'portal-frame': { name: 'newExercise.template.portalFrameName', description: 'newExercise.template.portalFrameDescription' },
-};
-
-const topicLabelKeys: Record<ClassroomTopic, TranslationKey> = {
-  inicio: 'newExercise.topicStart',
-  vigas: 'newExercise.topicBeams',
-  diagramas: 'newExercise.topicDiagrams',
-  pórticos: 'newExercise.topicFrames',
-  armaduras: 'newExercise.topicTrusses',
-  hiperestática: 'newExercise.topicIndeterminate',
-};
 
 const fieldLabelKeys: Record<ClassroomExerciseParameterKey, TranslationKey> = {
   length: 'newExercise.fieldLength',
@@ -54,32 +25,19 @@ const fieldLabelKeys: Record<ClassroomExerciseParameterKey, TranslationKey> = {
   loadPosition: 'newExercise.fieldLoadPosition',
 };
 
-const templateAssetIds: Record<ClassroomExerciseTemplateId, ThreeStructuralAssetId> = {
-  blank: 'portal:single-bay',
-  'simple-beam': 'beam:simply-supported',
-  cantilever: 'cantilever:wall',
-  'triangular-truss': 'truss:pratt',
-  'portal-frame': 'portal:two-bay',
-};
-
-const initialParameters = (templateId: ClassroomExerciseTemplateId) => ({
-  ...getClassroomExerciseTemplate(templateId).defaults,
-});
+const initialParameters = () => ({ ...getClassroomExerciseTemplate('blank').defaults });
 
 export const NewExerciseDialog = ({
   open,
   onClose,
   onCreate,
-  initialTemplateId = 'blank',
 }: NewExerciseDialogProps) => {
   const { t } = useI18n();
-  const { theme } = useWorkspaceUI();
-  const [templateId, setTemplateId] = useState<ClassroomExerciseTemplateId>(initialTemplateId);
-  const [parameters, setParameters] = useState<Partial<ClassroomExerciseParameters>>(() => initialParameters(initialTemplateId));
+  const [parameters, setParameters] = useState<Partial<ClassroomExerciseParameters>>(initialParameters);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<ClassroomExerciseParameterKey, string>>>({});
   const dialogRef = useRef<HTMLDivElement>(null);
   const shouldFocusInvalidRef = useRef(false);
-  const template = getClassroomExerciseTemplate(templateId);
+  const template = getClassroomExerciseTemplate('blank');
 
   useEffect(() => {
     if (!shouldFocusInvalidRef.current) return;
@@ -89,10 +47,9 @@ export const NewExerciseDialog = ({
 
   useEffect(() => {
     if (!open) return;
-    setTemplateId(initialTemplateId);
-    setParameters(initialParameters(initialTemplateId));
+    setParameters(initialParameters());
     setFieldErrors({});
-  }, [initialTemplateId, open]);
+  }, [open]);
 
   useModalFocus({
     open,
@@ -103,25 +60,6 @@ export const NewExerciseDialog = ({
 
   if (!open) return null;
 
-  const chooseTemplate = (id: ClassroomExerciseTemplateId) => {
-    setTemplateId(id);
-    setParameters(initialParameters(id));
-    setFieldErrors({});
-  };
-
-  const onTemplateKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, index: number) => {
-    let nextIndex = index;
-    if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') nextIndex = (index - 1 + classroomExerciseTemplates.length) % classroomExerciseTemplates.length;
-    else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') nextIndex = (index + 1) % classroomExerciseTemplates.length;
-    else if (event.key === 'Home') nextIndex = 0;
-    else if (event.key === 'End') nextIndex = classroomExerciseTemplates.length - 1;
-    else return;
-    event.preventDefault();
-    const next = classroomExerciseTemplates[nextIndex];
-    chooseTemplate(next.id);
-    window.requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLButtonElement>(`[data-template-id="${next.id}"]`)?.focus());
-  };
-
   return (
     <div
       className="new-exercise-backdrop"
@@ -129,7 +67,7 @@ export const NewExerciseDialog = ({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div ref={dialogRef} className="new-exercise-dialog" data-aula-layout="guided-builder" role="dialog" aria-modal="true" aria-labelledby="new-exercise-title" aria-describedby="new-exercise-subtitle">
+      <div ref={dialogRef} className="new-exercise-dialog" data-aula-layout="blank-builder" role="dialog" aria-modal="true" aria-labelledby="new-exercise-title" aria-describedby="new-exercise-subtitle">
         <header className="new-exercise-header">
           <div>
             <p className="new-exercise-eyebrow">{t('classroom.eyebrow')}</p>
@@ -160,45 +98,7 @@ export const NewExerciseDialog = ({
             onCreate(template.build(parameters));
           }}
         >
-          <div className="new-exercise-chooser" role="radiogroup" aria-label={t('newExercise.typeLabel')}>
-            <h3>{t('newExercise.chooseBase')}</h3>
-            {classroomExerciseTemplates.map((candidate, index) => {
-              const selected = candidate.id === templateId;
-              const copy = templateCopyKeys[candidate.id];
-              return (
-                <button
-                  key={candidate.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  tabIndex={selected ? 0 : -1}
-                  data-template-id={candidate.id}
-                  className="new-exercise-template"
-                  onClick={() => chooseTemplate(candidate.id)}
-                  onKeyDown={(event) => onTemplateKeyDown(event, index)}
-                >
-                  <span className="new-exercise-template-art" aria-hidden="true">
-                    <ThreeStructuralImage assetId={templateAssetIds[candidate.id]} theme={theme} alt={t(copy.name)} render="three" />
-                  </span>
-                  <span className="new-exercise-template-copy">
-                    <strong>{t(copy.name)}</strong>
-                    <span>{t(copy.description)}</span>
-                    <span className="new-exercise-badges">
-                      <span>{t(difficultyLabelKeys[candidate.difficulty])}</span>
-                      <span>{t('newExercise.duration', { minutes: candidate.durationMinutes })}</span>
-                      {candidate.topics.slice(0, 2).map((topic) => <span key={topic}>{t(topicLabelKeys[topic])}</span>)}
-                    </span>
-                  </span>
-                  <span className="new-exercise-radio" aria-hidden="true" />
-                </button>
-              );
-            })}
-          </div>
-          <section className="new-exercise-settings" aria-labelledby="exercise-parameters-title">
-            <div className="new-exercise-preview" aria-hidden="true">
-              <ThreeStructuralImage assetId={templateAssetIds[templateId]} theme={theme} alt={t(templateCopyKeys[templateId].name)} eager render="three" />
-            </div>
-            <h3 id="exercise-parameters-title">{t('newExercise.parametersTitle')}</h3>
+          <section className="new-exercise-settings" aria-label={t('newExercise.title')}>
             {template.fields.length ? template.fields.map((field) => {
               const label = t(fieldLabelKeys[field.key]);
               const error = fieldErrors[field.key];

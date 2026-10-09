@@ -36,18 +36,13 @@ const start = (entry: Omit<DesignStart, 'fields' | 'rows' | 'levels'> & { fields
   ...(entry.levels ? { levels: entry.levels.map((row) => ({ ...row })) } : {}),
 });
 
-const simpleBeam = beam('V simple', { exercise: 'exercise-beam-simple', selfWeight: 'no', leftEnd: 'pin', rightEnd: 'roller' }, [
-  { length: '5', dead: '10', live: '0', pointDead: '0', pointLive: '0', pointAt: '2.5' },
-]);
-const cantileverBeam = beam('Voladizo', { exercise: 'exercise-beam-cantilever', selfWeight: 'no', leftEnd: 'fixed', rightEnd: 'free' }, [
-  { length: '2', dead: '5', live: '0', pointDead: '0', pointLive: '0', pointAt: '1' },
-]);
-const pointBeam = beam('Carga puntual', { exercise: 'exercise-beam-point', selfWeight: 'no', points: 'yes', leftEnd: 'pin', rightEnd: 'roller' }, [
-  { length: '4', dead: '0', live: '0', pointDead: '10', pointLive: '0', pointAt: '2' },
-]);
-
 const footing = (tag: string, type: string) => ({ ...clone(FOOTING_DEFAULTS), tag, type });
 const section = (tag: string, preset: string, patch: Partial<typeof SECTION_DEFAULTS> = {}) => ({ ...clone(SECTION_DEFAULTS), tag, preset, ...patch });
+const ownSection: Record<string, string> = { ...section('', 'custom', { shape: 'rectangle', barLayout: 'layers', axial: '', moment: '', width: '', height: '', cover: '', fc: '', fy: '' }), exercise: '' };
+const ownColumn = { ...clone(COLUMN_DEFAULTS), tag: '', shape: 'rectangular', width: '', depth: '', cover: '', fc: '', fy: '', axial: '', momentX: '', momentY: '' };
+const ownBeam = beam('', { sectionType: 'rect', leftEnd: 'pin', rightEnd: 'roller', width: '', height: '', cover: '', fc: '', fy: '', exercise: '' }, [
+  { length: '', dead: '', live: '', pointDead: '0', pointLive: '0', pointAt: '' },
+]);
 
 /** Catálogo inmutable: cada selección recibe copias para que los borradores no compartan referencias. */
 export const DESIGN_STARTS: readonly DesignStart[] = [
@@ -72,10 +67,7 @@ export const DESIGN_STARTS: readonly DesignStart[] = [
   start({ id: 'piece-footing-mat', category: 'piece', element: 'footing', title: 'Losa de cimentación', description: 'Retícula editable de columnas y cargas por posición.', fields: footing('Losa', 'mat') }),
   start({ id: 'piece-section', category: 'piece', element: 'section', title: 'Estudio de sección', description: 'Sección de concreto editable para revisar acciones y filosofía.', fields: section('Sección', 'column') }),
 
-  start({ id: 'exercise-beam-simple', category: 'exercise', element: 'beam', title: 'Viga simplemente apoyada', description: 'Carga muerta uniforme de 10 kN/m en un claro de 5 m. Sin peso propio.', reference: 'Referencia de servicio: qL²/8 = 31.25 kN·m.', ...simpleBeam }),
-  start({ id: 'exercise-beam-cantilever', category: 'exercise', element: 'beam', title: 'Voladizo con carga uniforme', description: 'Carga muerta uniforme de 5 kN/m en un voladizo de 2 m. Sin peso propio.', reference: 'Referencia de servicio: qL²/2 = 10 kN·m.', ...cantileverBeam }),
-  start({ id: 'exercise-beam-point', category: 'exercise', element: 'beam', title: 'Viga con carga puntual', description: 'Carga muerta puntual de 10 kN al centro de un claro de 4 m. Sin peso propio.', reference: 'Referencia de servicio: PL/4 = 10 kN·m.', ...pointBeam }),
-  start({ id: 'exercise-column', category: 'exercise', element: 'column', title: 'Ejercicio de columna', description: 'Ejemplo editable con hipótesis de columna rectangular arriostrada y acciones biaxiales; el resultado no está garantizado.', fields: { ...clone(COLUMN_DEFAULTS), tag: 'Ejercicio columna', shape: 'rectangular', braced: 'yes' } }),
-  start({ id: 'exercise-footing', category: 'exercise', element: 'footing', title: 'Ejercicio de zapata', description: 'Ejemplo editable de zapata aislada con carga axial, momento y presión admisible supuestos; no promete cumplir.', fields: { ...footing('Ejercicio zapata', 'isolated'), moments: 'yes' } }),
-  start({ id: 'exercise-frame', category: 'exercise', element: 'frame', title: 'Pórtico de vivienda', description: 'Ejemplo editable de dos claros y dos niveles; geometría y acciones son hipótesis de trabajo, no una verificación de proyecto.', ...frame('Pórtico vivienda') }),
+  start({ id: 'exercise-section', category: 'exercise', element: 'section', title: 'Sección con acciones dadas', description: 'Captura geometría, materiales y acciones para explorar el armado de una sección.', fields: ownSection }),
+  start({ id: 'exercise-column', category: 'exercise', element: 'column', title: 'Columna con acciones dadas', description: 'Captura sección, materiales y acciones para explorar el refuerzo de una columna rectangular.', fields: ownColumn }),
+  start({ id: 'exercise-beam', category: 'exercise', element: 'beam', title: 'Viga con claros y cargas', description: 'Captura geometría, materiales, claros y cargas para explorar el refuerzo de una viga.', ...ownBeam }),
 ];

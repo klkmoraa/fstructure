@@ -18,6 +18,7 @@ interface DesignStartDialogProps {
   onOpenSpace3D?: () => void;
   onCreateBuilding?: () => void;
   onOpenMemory?: () => void;
+  initialCategory?: DesignStartCategory;
 }
 
 const CATEGORIES: readonly { id: DesignStartCategory; label: string; description: string; icon: typeof Layers3 }[] = [
@@ -26,8 +27,8 @@ const CATEGORIES: readonly { id: DesignStartCategory; label: string; description
   { id: 'exercise', label: 'Ejercicio', description: 'Parte de un problema visible con sus supuestos y referencias.', icon: Sparkles },
 ];
 
-export function DesignStartDialog({ open, onOpenChange, hasModel2d, hasModel3d, code, projectName, onStart, onOpenModel, onOpenSpace3D, onCreateBuilding, onOpenMemory }: DesignStartDialogProps) {
-  const [category, setCategory] = useState<DesignStartCategory>('project');
+export function DesignStartDialog({ open, onOpenChange, hasModel2d, hasModel3d, code, projectName, onStart, onOpenModel, onOpenSpace3D, onCreateBuilding, onOpenMemory, initialCategory = 'project' }: DesignStartDialogProps) {
+  const [category, setCategory] = useState<DesignStartCategory>(initialCategory);
   const [full, setFull] = useState(false);
   const entries = useMemo(() => DESIGN_STARTS.filter((item) => item.category === category), [category]);
   const codeName = designCode(code).name;

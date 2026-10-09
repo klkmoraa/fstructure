@@ -9,12 +9,25 @@ import { DesignWorkbench } from './DesignWorkbench';
 import { ShellSlotHost, ShellToolSlotsProvider } from '../../workspace/ShellToolSlots';
 import { WorkbenchStorageContext } from './workbenchStorage';
 import { FOOTING_DEFAULTS, footingToInput } from './footingModel';
+import { SECTION_DEFAULTS } from './concreteStudioModel';
 
 beforeEach(() => {
   localStorage.clear();
   localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createDefaultProject()));
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+
+class PendingProposalWorker {
+  static instance: PendingProposalWorker | null = null;
+  onmessage: ((event: MessageEvent<{ kind: 'proposed'; requestId: number; fields: Record<string, string> }>) => void) | null = null;
+  onerror: ((event: ErrorEvent) => void) | null = null;
+  posted: { requestId: number } | null = null;
+  terminated = false;
+  constructor() { PendingProposalWorker.instance = this; }
+  postMessage(message: { requestId: number }) { this.posted = message; }
+  terminate() { this.terminated = true; }
+  reply(fields: Record<string, string>) { this.onmessage?.({ data: { kind: 'proposed', requestId: this.posted?.requestId ?? 1, fields } } as MessageEvent<{ kind: 'proposed'; requestId: number; fields: Record<string, string> }>); }
+}
 
 // El taller abre en Estructura; estas pruebas parten de la viga continua.
 const renderWorkbench = () => render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider>);
@@ -123,8 +136,8 @@ describe('DesignWorkbench', () => {
     expect(await within(results()).findByText(/aceptación normativa no está verificada/i)).toBeTruthy();
     expect(await within(results()).findByText(/no establece un mínimo normativo/i)).toBeTruthy();
     expect(within(results()).getByText('Revisar')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /^Revisión pendiente · 100 %\./ })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /^Cumple · 100 %\./ })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Revisión pendiente · 99 %\./ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Cumple · 99 %\./ })).toBeNull();
   });
 
   it('cambia de elemento con el teclado y recuerda el último', async () => {
@@ -179,61 +192,17 @@ describe('DesignWorkbench', () => {
     await user.click(screen.getByRole('button', { name: 'Nuevo diseño' }));
     const dialog = await screen.findByRole('dialog', { name: 'Nuevo diseño' });
     await user.click(within(dialog).getByRole('tab', { name: 'Ejercicio' }));
-    await user.click(await within(dialog).findByRole('button', { name: /Viga simplemente apoyada/ }));
+    await user.click(await within(dialog).findByRole('button', { name: /Viga con claros y cargas/ }));
     expect(screen.queryByRole('dialog', { name: 'Nuevo diseño' })).toBeNull();
-    expect((screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement).value).toBe('5');
-    expect((screen.getByRole('textbox', { name: 'Claro 1 · CM (kN/m)' }) as HTMLInputElement).value).toBe('10');
-    expect(screen.getByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
+    expect((screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement).value).toBe('');
+    expect((screen.getByRole('textbox', { name: 'Claro 1 · CM (kN/m)' }) as HTMLInputElement).value).toBe('');
+    expect(screen.queryByRole('meter')).toBeNull();
     expect(screen.getByRole('combobox', { name: 'Norma de diseño' })).toHaveProperty('value', 'e060');
     const memory = JSON.parse(localStorage.getItem('fstructure.design-workbench.memory')!);
     expect(memory).toEqual(expect.arrayContaining([expect.objectContaining({
       element: 'beam', fields: expect.objectContaining({ tag: '', selfWeight: 'yes' }),
       rows: expect.arrayContaining([expect.objectContaining({ length: '7' })]),
     })]));
-  });
-
-  it('mantiene editable la referencia, suspende al cambiar apoyos, oculta con deshacer y recupera al abrir Memoria', async () => {
-    const user = userEvent.setup();
-    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" startPicker /></ProjectProvider>);
-    const picker = await screen.findByRole('dialog', { name: 'Nuevo diseño' });
-    await user.click(within(picker).getByRole('tab', { name: 'Ejercicio' }));
-    await user.click(await within(picker).findByRole('button', { name: /Viga simplemente apoyada/ }));
-    expect(screen.getByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
-
-    const length = screen.getByRole('textbox', { name: 'Claro 1 · L (m)' });
-    const dead = screen.getByRole('textbox', { name: 'Claro 1 · CM (kN/m)' });
-    await user.clear(length);
-    const guide = screen.getByRole('region', { name: 'Viga simplemente apoyada' });
-    expect(within(guide).getByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
-    expect(within(guide).getByRole('status').textContent).toMatch(/Datos incompletos/);
-    expect(within(guide).queryByText(/kN·m/)).toBeNull();
-    await user.type(length, '5');
-    await user.clear(length); await user.type(length, '6');
-    await user.clear(dead); await user.type(dead, '12');
-    expect(screen.getAllByText('54.00 kN·m')).toHaveLength(2);
-
-    const supports = screen.getByRole('heading', { name: 'Apoyos' }).closest('section')!;
-    const leftSupports = within(supports).getByRole('radiogroup', { name: 'Extremo izquierdo' });
-    await user.click(within(leftSupports).getByRole('radio', { name: 'Empotre' }));
-    expect(within(screen.getByRole('form', { name: 'Datos del elemento' })).getByRole('status').textContent).toMatch(/Comparación suspendida.*apoyos simples/);
-    expect(screen.queryByText('54.00 kN·m')).toBeNull();
-    await user.click(within(leftSupports).getByRole('radio', { name: 'Apoyo' }));
-    expect(screen.getAllByText('54.00 kN·m')).toHaveLength(2);
-
-    await new Promise((resolve) => setTimeout(resolve, 750));
-    await user.click(screen.getByRole('button', { name: 'Ocultar guía' }));
-    expect(screen.queryByRole('heading', { name: 'Viga simplemente apoyada' })).toBeNull();
-    await user.keyboard('{Control>}z{/Control}');
-    expect(screen.getByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
-
-    await user.click(within(results()).getByRole('button', { name: 'Guardar' }));
-    await user.click(screen.getByRole('button', { name: /Guardado/ }));
-    const memory = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
-    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.memory')!)).toEqual(expect.arrayContaining([expect.objectContaining({ fields: expect.objectContaining({ exercise: 'exercise-beam-simple' }) })]));
-    await user.click(within(memory).getByRole('button', { name: 'Abrir V simple' }));
-    expect(await screen.findByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
-    expect(screen.getByRole('textbox', { name: 'Claro 1 · L (m)' })).toHaveProperty('value', '6');
-    expect(screen.getAllByText('54.00 kN·m')).toHaveLength(2);
   });
 
   it('ignora ids de ejercicio heredados en borradores del taller sin romper la viga', () => {
@@ -260,6 +229,67 @@ describe('DesignWorkbench', () => {
     expect(screen.getByRole('dialog', { name: 'Nuevo diseño' })).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Claro 1 · L (m)' })).toHaveProperty('value', '5');
     expect(screen.getByRole('button', { name: 'Abrir memoria del proyecto' })).toBeTruthy();
+  });
+
+  it.each([
+    ['Sección con acciones dadas'],
+    ['Columna con acciones dadas'],
+    ['Viga con claros y cargas'],
+  ])('inicia %s incompleto y no resuelve un ejemplo', async (title) => {
+    const user = userEvent.setup();
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" startPicker startCategory="exercise" /></ProjectProvider>);
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo diseño' });
+    await user.click(within(dialog).getByRole('button', { name: `Iniciar diseño: ${title}` }));
+    expect(screen.queryByRole('dialog', { name: 'Nuevo diseño' })).toBeNull();
+    expect(screen.queryByRole('meter')).toBeNull();
+    expect(screen.getByRole('form', { name: 'Datos del elemento' })).toBeTruthy();
+  });
+
+  it('cancela una propuesta de columna al editar y descarta su respuesta pendiente', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('Worker', PendingProposalWorker);
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="column" /></ProjectProvider>);
+    await user.click(screen.getByRole('button', { name: 'Proponer acero' }));
+    const worker = PendingProposalWorker.instance!;
+    expect(worker.terminated).toBe(false);
+    const axial = screen.getByRole('textbox', { name: 'Pu' });
+    await user.clear(axial);
+    worker.reply({ bar: '25.4', barsWidth: '6', barsDepth: '6' });
+    await waitFor(() => expect(worker.terminated).toBe(true));
+    expect((screen.getByRole('combobox', { name: 'Varilla' }) as HTMLSelectElement).value).toBe('19.1');
+    expect(screen.getByText(/Búsqueda cancelada/)).toBeTruthy();
+  });
+
+  it('aplica sólo los campos de acero de una propuesta de columna', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('Worker', PendingProposalWorker);
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="column" /></ProjectProvider>);
+    await user.click(screen.getByRole('button', { name: 'Proponer acero' }));
+    PendingProposalWorker.instance!.reply({ bar: '25.4', barsWidth: '4', barsDepth: '5' });
+    await waitFor(() => expect((screen.getByRole('combobox', { name: 'Varilla' }) as HTMLSelectElement).value).toBe('25.4'));
+    expect((screen.getByRole('textbox', { name: 'Base b (X)' }) as HTMLInputElement).value).toBe('40');
+    expect((screen.getByRole('textbox', { name: 'Peralte h (Y)' }) as HTMLInputElement).value).toBe('40');
+    expect((screen.getByRole('textbox', { name: 'Pu' }) as HTMLInputElement).value).toBe('900');
+  });
+
+  it('permite proponer acero si la distribución actual está congestionada y cancela al cambiar norma', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('Worker', PendingProposalWorker);
+    localStorage.setItem('fstructure.design-workbench.section', JSON.stringify({
+      ...SECTION_DEFAULTS, shape: 'square', width: '20', height: '20', cover: '5', bar: '25.4',
+      barLayout: 'zones', cornerBarCount: '3', faceBarCount: '3',
+    }));
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="section" /></ProjectProvider>);
+    expect(screen.getByRole('button', { name: 'Proponer acero' }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('textbox', { name: 'Barras por esquina' })).toHaveProperty('max', '3');
+    expect(screen.getByRole('textbox', { name: 'Barras por cara' })).toHaveProperty('max', '3');
+    await user.click(screen.getByRole('button', { name: 'Proponer acero' }));
+    expect(PendingProposalWorker.instance?.posted).toMatchObject({ kind: 'section' });
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Norma de diseño' }), 'e060');
+    await waitFor(() => expect(PendingProposalWorker.instance?.terminated).toBe(true));
+    PendingProposalWorker.instance?.reply({ bar: '16', barCount: '8' });
+    expect((screen.getByRole('combobox', { name: 'Diámetro longitudinal' }) as HTMLSelectElement).value).toBe('25.4');
+    expect(screen.getByText(/Búsqueda cancelada: cambiaron los datos de entrada/)).toBeTruthy();
   });
 
   it('filtra la revisión y enseña lo que queda sin evaluar con su ubicación', async () => {
@@ -377,9 +407,10 @@ describe('DesignWorkbench', () => {
     const axial = screen.getByRole('textbox', { name: /^Pu/ });
     await user.clear(axial);
     await user.type(axial, '3000');
-    await user.click(screen.getByRole('button', { name: 'Proponer' }));
-    expect(await screen.findByText(/^Propuesta: .* cm con /)).toBeTruthy();
-    expect(within(results()).queryByText('No cumple')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Proponer sección' }));
+    expect(await screen.findByText(/^Sección propuesta: .* cm/)).toBeTruthy();
+    expect((screen.getByRole('textbox', { name: 'Base b (X)' }) as HTMLInputElement).value).not.toBe('40');
+    expect((screen.getByRole('textbox', { name: 'Barras cara b' }) as HTMLInputElement).value).toBe('3');
   });
 
   it('muestra y oculta los paneles de datos y resultados sobre el lienzo', async () => {

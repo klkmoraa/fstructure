@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { BEAM_DEFAULTS, DEFAULT_SPANS, beamToInput } from './beamModel';
 import { MaterialFields } from './MaterialFields';
-import { BarSelect } from './common';
+import { BarSelect, NumberField } from './common';
 
 afterEach(cleanup);
 
@@ -31,5 +31,10 @@ describe('MaterialFields', () => {
     const transverse = screen.getByRole('combobox', { name: 'Estribo' }) as HTMLSelectElement;
     expect([...longitudinal.options].some((option) => option.textContent?.startsWith('#2 ·'))).toBe(false);
     expect([...transverse.options].some((option) => option.textContent?.startsWith('#2 ·'))).toBe(true);
+  });
+
+  it('aplica el rango visible de los grupos de refuerzo propios', () => {
+    render(<><NumberField label="Barras por esquina" value="1" unit="pzas" min={1} max={3} onChange={() => {}} /></>);
+    expect((screen.getByRole('textbox', { name: 'Barras por esquina' }) as HTMLInputElement).max).toBe('3');
   });
 });

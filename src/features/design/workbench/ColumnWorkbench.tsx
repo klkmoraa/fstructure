@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SegmentedControl } from '../../../design-system/components/controls';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
 import { designCode } from '../../../design/elements/codes';
@@ -13,6 +13,7 @@ import {
 } from './common';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 import { MaterialFields } from './MaterialFields';
+import { startReinforcementProposal, type ReinforcementProposalRequest } from './reinforcementProposal';
 
 export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('column', COLUMN_DEFAULTS);
@@ -25,14 +26,55 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const circular = draft.shape === 'circular';
   const spiral = circular && draft.transverse === 'spiral' && code.column.spiral !== null;
   const [proposalNote, setProposalNote] = useState<string | null>(null);
+  const [reinforcementSearch, setReinforcementSearch] = useState(false);
+  const requestId = useRef(0);
+  const activeProposal = useRef<{ key: string; cancel: () => void } | null>(null);
+  const snapshotRef = useRef({ code: chrome.code, draft });
+  snapshotRef.current = { code: chrome.code, draft };
+  const snapshotKey = JSON.stringify({ code: chrome.code, draft });
+  useEffect(() => {
+    const active = activeProposal.current;
+    if (active && active.key !== snapshotKey) {
+      active.cancel();
+      activeProposal.current = null;
+      setReinforcementSearch(false);
+      setProposalNote('Búsqueda cancelada: cambiaron los datos de entrada.');
+    }
+  }, [snapshotKey]);
+  useEffect(() => () => activeProposal.current?.cancel(), []);
   const [diagramAxis, setDiagramAxis] = useState<'both' | 'x' | 'y'>('both');
   const [showNominal, setShowNominal] = useState(true);
   const propose = () => {
     const proposal = proposeColumn(chrome.code, draft);
     if (!proposal) { setProposalNote('Ninguna sección hasta 120 cm cumple: revisa las solicitaciones y la esbeltez.'); return; }
-    replace({ ...draft, ...proposal });
-    const bars = circular ? `${proposal.barCount} barras` : `${proposal.barsWidth} × ${proposal.barsDepth} barras por cara`;
-    setProposalNote(`Propuesta: ${circular ? `Ø ${proposal.diameter}` : `${proposal.width} × ${proposal.depth}`} cm con ${bars} de ${Number(proposal.bar).toFixed(1)} mm, el menor acero que cumple.`);
+    const sectionFields = circular ? { diameter: proposal.diameter ?? draft.diameter } : { width: proposal.width ?? draft.width, depth: proposal.depth ?? draft.depth };
+    replace({ ...draft, ...sectionFields });
+    setProposalNote(`Sección propuesta: ${circular ? `Ø ${proposal.diameter}` : `${proposal.width} × ${proposal.depth}`} cm. El armado actual se conservó.`);
+  };
+  const proposeReinforcement = () => {
+    activeProposal.current?.cancel();
+    const id = ++requestId.current;
+    const key = JSON.stringify({ code: chrome.code, draft });
+    const request: ReinforcementProposalRequest = { kind: 'column', requestId: id, code: chrome.code, snapshot: { ...draft } };
+    setReinforcementSearch(true);
+    setProposalNote(null);
+    const cancel = startReinforcementProposal(request, (message) => {
+      activeProposal.current = null;
+      setReinforcementSearch(false);
+      const current = snapshotRef.current;
+      if (JSON.stringify({ code: current.code, draft: current.draft }) !== key) return;
+      if (message.kind === 'failed') { setProposalNote(message.reason); return; }
+      replace({ ...current.draft, ...message.fields });
+      const bars = circular ? `${message.fields.barCount} barras` : `${message.fields.barsWidth} × ${message.fields.barsDepth} barras por cara`;
+      setProposalNote(`Acero propuesto: ${bars} de ${Number(message.fields.bar).toFixed(1)} mm. La sección y las acciones se conservaron.`);
+    });
+    activeProposal.current = { key, cancel };
+  };
+  const cancelReinforcement = () => {
+    activeProposal.current?.cancel();
+    activeProposal.current = null;
+    setReinforcementSearch(false);
+    setProposalNote('Búsqueda cancelada.');
   };
   const report = useMemo(() => result.ok ? columnReport(result, draft) : null, [result, draft]);
   const checks = report?.checks ?? [];
@@ -49,13 +91,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
     caption={result.ok ? `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} · ρ ${formatNumber(result.steelRatio * 100, 2)} %` : undefined}
     inputs={<>
-      <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="C-1" />
-      <FieldGroup title="Solicitaciones últimas">
-        <NumberField label="Pu" unit="kN" value={draft.axial} onChange={set('axial')} min={-1e9} />
-        <NumberField label="Mux" unit="kN·m" value={draft.momentX} onChange={set('momentX')} min={-1e9} />
-        <NumberField label="Muy" unit="kN·m" value={draft.momentY} onChange={set('momentY')} min={-1e9} />
-      </FieldGroup>
-      <FieldGroup title="Sección" action={<InlineAction label="Proponer" title="Dimensionar sección y armado: los menores que cumplen" onClick={propose} />}>
+      <FieldGroup title="Sección, materiales y acciones" action={<InlineAction label="Proponer sección" title="Dimensionar sección conservando el armado actual" onClick={propose} />}>
         <div className="dw-span-all">
           <SegmentedControl label="Forma de la sección" size="sm" value={circular ? 'circular' : 'rectangular'} onValueChange={set('shape')}
             options={[{ value: 'rectangular', label: 'Rectangular' }, { value: 'circular', label: 'Circular' }]} />
@@ -67,9 +103,13 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             <NumberField label="Peralte h (Y)" unit="cm" value={draft.depth} onChange={set('depth')} />
           </>}
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
+        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} />
+        <NumberField label="Pu" unit="kN" value={draft.axial} onChange={set('axial')} min={-1e9} />
+        <NumberField label="Mux" unit="kN·m" value={draft.momentX} onChange={set('momentX')} min={-1e9} />
+        <NumberField label="Muy" unit="kN·m" value={draft.momentY} onChange={set('momentY')} min={-1e9} />
         <div className="dw-span-all"><ActionNote text={proposalNote} /></div>
       </FieldGroup>
-      <FieldGroup title="Refuerzo">
+      <FieldGroup title="Refuerzo" action={<InlineAction label={reinforcementSearch ? 'Cancelar búsqueda' : 'Proponer acero'} title="Buscar refuerzo para la sección y las acciones actuales" onClick={reinforcementSearch ? cancelReinforcement : proposeReinforcement} />}>
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
         {circular && code.column.spiral ? <div className="dw-span-all">
           <SegmentedControl label="Refuerzo transversal" size="sm" value={spiral ? 'spiral' : 'ties'} onValueChange={set('transverse')}
@@ -90,9 +130,9 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           placeholder="Propuesta" hint="Ambos extremos Lo" error={draft.endTieSpacing.trim() && (!Number.isFinite(parseNumber(draft.endTieSpacing)) || parseNumber(draft.endTieSpacing) <= 0) ? 'Debe ser mayor que cero' : undefined} /> : null}
         {result.ok ? <div className="dw-span-all"><ActionNote text={`Propuesta: ${formatNumber(result.ties.proposedCenterSpacingMm / 10, 1)} cm${result.ties.endLengthMm > 0 ? ` al centro · ${formatNumber(result.ties.proposedEndSpacingMm / 10, 1)} cm en Lo` : ''}. ${draft.tieSpacing.trim() || draft.endTieSpacing.trim() ? 'Se evalúa tu separación, sin ajustarla en silencio.' : 'Puedes escribir otra separación para verificarla.'}`} /></div> : null}
       </FieldGroup>
-      <FieldGroup title="Materiales">
-        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} />
-      </FieldGroup>
+      <p className="dw-span-all" aria-label="Resumen de esbeltez">Esbeltez: {braced ? 'sin desplazamiento lateral' : 'con desplazamiento lateral'} · lu = {draft.length} m · k = {draft.k}.</p>
+      <p className="dw-span-all" aria-label="Resumen de acciones capturadas">Cortantes sin verificar: Vux = {draft.shearX} kN · Vuy = {draft.shearY} kN.</p>
+      <Disclosure label="Hipótesis de esbeltez">
       <FieldGroup title="Esbeltez">
         <div className="dw-span-all">
           <SegmentedControl label="Marco" size="sm" value={braced ? 'yes' : 'no'} onValueChange={set('braced')}
@@ -106,6 +146,8 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <NumberField label={code.id === 'ntc-2023' ? 'Índice λest' : 'Índice Q'} unit="×" value={draft.stability} onChange={set('stability')} />
         </>}
       </FieldGroup>
+      </Disclosure>
+      <Disclosure label="Clave y ubicación"><IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="C-1" /></Disclosure>
       <MoreOptions>
         {code.column.geometryLimits ? <>
           <div className="dw-span-all">
