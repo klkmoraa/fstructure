@@ -10,6 +10,12 @@ Almacenamiento estructurado v7: commits `d8acdb9e` y `7d9b71c4`. `npm run verify
 
 Chromium comprobó la conservación de una carga incompleta y un bastón personalizado al iniciar otra pieza, abrir desde memoria y recargar. El modelo original de 10 barras permaneció intacto y no hubo errores de página. Las pruebas anteriores de esquemas/keys/capacidad se amplían en los siguientes bloques; no son todavía validación visual del editor futuro.
 
+## Editor de cargas y armado de viga
+
+Commit `e0373070`, pendiente de revisión independiente de la tarea. `npm run verify`: 46 archivos/379 pruebas y 5 pruebas Python, código 0. Los casos parciales, puntuales y triangulares comprueban equilibrio y máximos en raíces de cortante; éstas se obtienen también por combinación. El informe usa As requerida/mínima/colocada y d de los mismos lechos físicos.
+
+La integración detectó un ciclo de renderizado por un array de errores nuevo en cada render; se corrigió estabilizando su dependencia. La reproducción aislada terminó en 2.60s después del arreglo y las 28 pruebas de la mesa pasaron. Chromium volvió a comprobar detalles, memoria, PDF, recarga, teclado/deshacer, Día/Noche y 390px con cero errores de página y consola; pdftotext confirmó cargas y coordenadas. La búsqueda de geometría imposible sigue asignada a la integración de worker cancelable de A4, antes de publicar; esta tarea sola no se publica.
+
 ## Oráculos externos realmente ejecutados
 
 Se instalaron en un venv temporal, sin dependencias nuevas del producto, estos clones MIT fijados:
