@@ -37,6 +37,14 @@ describe('layoutBeamBed', () => {
     expect(bars).toHaveLength(4);
     expect(bars.filter((bar) => bar.kind === 'continuous').map((bar) => bar.diameterMm)).toEqual([15.9, 15.9]);
     expect(bars.filter((bar) => bar.kind === 'extra').map((bar) => bar.diameterMm)).toEqual([22.2, 22.2]);
+    const continuousXs = bars.filter((bar) => bar.kind === 'continuous').map((bar) => bar.xMm);
+    const firstLayerXs = bars.filter((bar) => bar.layer === 1).map((bar) => bar.xMm);
+    expect(continuousXs).toEqual([firstLayerXs[0], firstLayerXs.at(-1)]);
+
+    const oneExtraInSecond = layoutBeamBed({ ...geometry, continuous: { count: 2, diameterMm: 15.9 }, extra: { count: 3, diameterMm: 22.2 } });
+    if (!oneExtraInSecond) throw new Error('Expected a feasible two-layer mixed-diameter layout.');
+    expect(oneExtraInSecond.filter((bar) => bar.layer === 2)).toHaveLength(1);
+    expect(oneExtraInSecond.find((bar) => bar.layer === 2)!.xMm).toBe(geometry.widthMm / 2);
 
     const automatic = layoutBeamBed({ ...geometry, continuous: { count: 2, diameterMm: 15.9 }, extra: null });
     expect(automatic).toHaveLength(2);

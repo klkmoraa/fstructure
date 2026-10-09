@@ -31,22 +31,27 @@ export function layoutBeamBed(input: BeamBarLayoutInput): readonly BeamBarPlacem
 
   const placements: BeamBarPlacement[] = [];
   const firstCount = Math.min(groups.length, perLayer);
-  const layerCounts = [firstCount, groups.length - firstCount];
-  let offset = 0;
-  layerCounts.forEach((count, layerIndex) => {
-    if (!count) return;
-    const spacing = count > 1 ? (inside - maxDiameter) / (count - 1) : 0;
-    for (let index = 0; index < count; index += 1) {
-      const bar = groups[offset + index]!;
+  let firstLayer = groups.slice(0, firstCount);
+  if ((extra?.count ?? 0) > 0 && continuous.count >= 2 && firstCount >= 2) {
+    const continuousBars = groups.filter(({ kind }) => kind === 'continuous');
+    const endpoints = [continuousBars[0]!, continuousBars.at(-1)!];
+    const middle = groups.filter((bar) => !endpoints.includes(bar)).slice(0, firstCount - 2);
+    firstLayer = [endpoints[0]!, ...middle, endpoints[1]!];
+  }
+  const secondLayer = groups.filter((bar) => !firstLayer.includes(bar));
+  [firstLayer, secondLayer].forEach((layerBars, layerIndex) => {
+    if (!layerBars.length) return;
+    const spacing = layerBars.length > 1 ? (inside - maxDiameter) / (layerBars.length - 1) : 0;
+    for (let index = 0; index < layerBars.length; index += 1) {
+      const bar = layerBars[index]!;
       placements.push({
-        xMm: coverMm + stirrupDiameterMm + maxDiameter / 2 + index * spacing,
+        xMm: layerBars.length === 1 ? widthMm / 2 : coverMm + stirrupDiameterMm + maxDiameter / 2 + index * spacing,
         fromFaceMm: coverMm + stirrupDiameterMm + bar.diameterMm / 2 + layerIndex * (maxDiameter + Math.max(25, maxDiameter)),
         diameterMm: bar.diameterMm,
         kind: bar.kind,
         layer: (layerIndex + 1) as 1 | 2,
       });
     }
-    offset += count;
   });
   return placements;
 }

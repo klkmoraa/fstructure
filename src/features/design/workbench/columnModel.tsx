@@ -1,7 +1,7 @@
 import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import { designColumn, type ColumnDesignInput, type ColumnDesignResult } from '../../../design/elements/column';
 import { outOfScopeChecks } from '../../../design/elements/scope';
-import { rebarLabel } from '../../../design/elements/shared';
+import { REBAR_SIZES, rebarLabel } from '../../../design/elements/shared';
 import { columnTakeoff } from '../../../design/elements/takeoff';
 import { ColumnElevation, ColumnSection, InteractionChart } from './ColumnDrawings';
 import { formatNumber, mpaFromKgcm2, parseNumber, splitChecks } from './common';
@@ -212,6 +212,7 @@ export function columnReportFromDraft(code: DesignCodeId, draft: ColumnDraft) {
 }
 
 const PROPOSED_BARS = [15.9, 19.1, 22.2, 25.4, 28.6, 31.8];
+const PROPOSED_REINFORCEMENT_BARS = REBAR_SIZES.filter(({ diameterMm }) => diameterMm >= 12.7).map(({ diameterMm }) => diameterMm);
 
 /**
  * Sección y armado mínimos que cumplen: crece la sección de 5 en 5 cm y, en
@@ -260,7 +261,7 @@ export function proposeColumnReinforcement(codeId: DesignCodeId, draft: ColumnDr
   const widthCounts = counts;
   const depthCounts = circular ? [2] : counts;
 
-  for (const bar of PROPOSED_BARS) {
+  for (const bar of PROPOSED_REINFORCEMENT_BARS) {
     const tie = Math.max(Number.isFinite(capturedTie) ? capturedTie : 0, rules.minimumTieDiameter(bar));
     for (const widthCount of widthCounts) {
       for (const depthCount of depthCounts) {

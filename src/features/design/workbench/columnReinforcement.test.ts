@@ -40,6 +40,13 @@ describe('proposeColumnReinforcement', () => {
     if (result.ok) expect(result.input).toMatchObject({ widthMm: 400, depthMm: 500, axialKn: 0, momentXKnm: 0, momentYKnm: 0, shearXKn: 0, shearYKn: 0 });
   });
 
+  it('searches the longitudinal BarSelect catalog down to #4 for a low-demand fixed section', () => {
+    const draft = { ...COLUMN_DEFAULTS, width: '40', depth: '50', axial: '0', momentX: '0', momentY: '0', shearX: '0', shearY: '0' };
+    const proposal = proposeColumnReinforcement('ntc-2023', draft);
+
+    expect(proposal?.bar).toBe('12.7');
+  });
+
   it('rejects non-finite actions and an impossible captured section', () => {
     expect(proposeColumnReinforcement('ntc-2023', { ...COLUMN_DEFAULTS, axial: 'Infinity' })).toBeNull();
     expect(proposeColumnReinforcement('ntc-2023', { ...COLUMN_DEFAULTS, width: '1', depth: '1' })).toBeNull();
