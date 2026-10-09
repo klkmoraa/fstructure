@@ -49,9 +49,18 @@ describe('modelar y diseñar: la mesa Estructura con el Modelo 2D', () => {
     await user.click(await screen.findByRole('button', { name: 'Cambios sin guardar' }));
     const memory = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
     await user.click(within(memory).getByRole('button', { name: 'Abrir Pórtico guardado' }));
-    await user.click(await screen.findByRole('button', { name: 'Abrir sin guardar' }));
-    expect(within(screen.getByRole('radiogroup', { name: 'Origen de la estructura' })).getByRole('radio', { name: 'Pórtico rápido' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.queryByRole('dialog', { name: 'Memoria del proyecto' })).toBeNull();
+    const origin = within(screen.getByRole('radiogroup', { name: 'Origen de la estructura' }));
+    expect(origin.getByRole('radio', { name: 'Pórtico rápido' }).getAttribute('aria-checked')).toBe('true');
+    expect(origin.getByRole('radio', { name: 'Modelo 2D' }).getAttribute('aria-checked')).toBe('false');
     expect(screen.queryByText(/La barra .* no está en/)).toBeNull();
+    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.memory-active')!)).toBe('quick-frame');
+    const memoryItems = JSON.parse(localStorage.getItem('fstructure.design-workbench.memory')!);
+    expect(memoryItems).toHaveLength(2);
+    expect(memoryItems).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'quick-frame', fields: expect.objectContaining({ source: 'frame', tag: 'Pórtico guardado' }) }),
+      expect.objectContaining({ fields: expect.objectContaining({ source: 'model' }) }),
+    ]));
   });
 
   it('diseña las barras del modelo sin pedir su geometría y vuelve al 2D', async () => {
