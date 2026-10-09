@@ -17,8 +17,26 @@ export interface BeamSpanLoads {
   readonly pointAtM: number;
 }
 
+export interface BeamExtraLoad {
+  readonly spanIndex: number;
+  readonly category: 'dead' | 'live';
+  readonly kind: 'point' | 'distributed';
+  readonly startM: number;
+  readonly endM: number;
+  readonly startKn: number;
+  readonly endKn: number;
+}
+
+export interface BeamAnalysisCombination {
+  readonly dead: number;
+  readonly favorableDead: number;
+  readonly live: number;
+}
+
 interface BeamAnalysisInput {
   readonly spans: readonly BeamSpanLoads[];
+  readonly extraLoads?: readonly BeamExtraLoad[];
+  readonly combinations?: readonly BeamAnalysisCombination[];
   readonly leftEnd: BeamEnd;
   readonly rightEnd: BeamEnd;
   /** Peso propio uniforme que se suma a la carga muerta de cada claro. */
@@ -111,6 +129,19 @@ function buildBeamProject(input: BeamAnalysisInput): ProjectModel {
     uniform(`L${index}`, span.liveKnPerM);
     point(`L${index}`, span.pointLiveKn);
   });
+  for (const [loadIndex, load] of (input.extraLoads ?? []).entries()) {
+    const span = input.spans[load.spanIndex]!;
+    const caseId = `${load.category === 'dead' ? 'D' : 'L'}${load.spanIndex}`;
+    const memberId = `S${load.spanIndex + 1}`;
+    const start = load.startM / span.lengthM;
+    const end = load.endM / span.lengthM;
+    if (load.kind === 'point') {
+      const position = start;
+      memberLoads.push({ id: `extra-${loadIndex}-${memberId}`, memberId, caseId, type: 'point', coordinateSystem: 'global', lengthBasis: 'real', start, end: start, position, px: 0, py: -load.startKn });
+    } else {
+      memberLoads.push({ id: `extra-${loadIndex}-${memberId}`, memberId, caseId, type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start, end, qyStart: -load.startKn, qyEnd: -load.endKn });
+    }
+  }
   return {
     ...base,
     id: 'design-workbench-beam',
@@ -152,25 +183,100 @@ function sample(project: ProjectModel, result: AnalysisResult, stations: readonl
   return { moment, shear, deflection };
 }
 
+/** Raíces reales de un polinomio cuadrático en coordenada local al corte. */
+function quadraticRoots(coefficients: readonly [number, number, number]): number[] {
+  const [constant, linear, quadratic] = coefficients;
+  if (Math.abs(quadratic) < 1e-12) return Math.abs(linear) < 1e-12 ? [] : [-constant / linear];
+  const discriminant = linear * linear - 4 * quadratic * constant;
+  if (discriminant < -1e-10) return [];
+  const root = Math.sqrt(Math.max(0, discriminant));
+  return [(-linear - root) / (2 * quadratic), (-linear + root) / (2 * quadratic)];
+}
+
+/** Incluye raíces exactas de cortante desde los segmentos polinomiales del solver, no desde la grilla de dibujo. */
+function withShearRoots(project: ProjectModel, deadResults: readonly AnalysisResult[], liveResults: readonly AnalysisResult[], stations: readonly Station[], combinations: readonly BeamAnalysisCombination[]): Station[] {
+  const additions: Station[] = [];
+  project.members.forEach((projectMember, spanIndex) => {
+    const memberFor = (result: AnalysisResult) => result.memberResults.find((member) => member.memberId === projectMember.id);
+    const cases = [
+      ...deadResults.flatMap((result) => { const member = memberFor(result); return member ? [{ member, category: 'dead' as const }] : []; }),
+      ...liveResults.flatMap((result) => { const member = memberFor(result); return member ? [{ member, category: 'live' as const }] : []; }),
+    ];
+    if (!cases.length) return;
+    const startM = project.nodes[spanIndex]!.x;
+    const spanLengthM = project.nodes[spanIndex + 1]!.x - startM;
+    const breakpoints = [...new Set(cases.flatMap(({ member }) => [
+      ...member.diagramSegments.flatMap((segment) => [segment.x0, segment.x1]),
+      ...member.criticalPoints.filter((point) => point.quantity === 'moment' && point.kind === 'zero').map((point) => point.x),
+    ]))].sort((left, right) => left - right);
+    for (const combination of combinations) for (let index = 1; index < breakpoints.length; index += 1) {
+      const a = breakpoints[index - 1]!;
+      const b = breakpoints[index]!;
+      if (b - a < 1e-8) continue;
+      const middle = (a + b) / 2;
+      const high = [0, 0, 0];
+      const low = [0, 0, 0];
+      for (const { member, category } of cases) {
+        const segment = member.diagramSegments.find((candidate) => middle > candidate.x0 - 1e-9 && middle < candidate.x1 + 1e-9);
+        if (!segment) continue;
+        const dx = middle - segment.x0;
+        const moment = segment.moment[0] + dx * (segment.moment[1] + dx * (segment.moment[2] + dx * segment.moment[3]));
+        const factorHigh = category === 'dead'
+          ? moment >= 0 ? combination.dead : combination.favorableDead
+          : moment > 0 ? combination.live : 0;
+        const factorLow = category === 'dead'
+          ? moment >= 0 ? combination.favorableDead : combination.dead
+          : moment < 0 ? combination.live : 0;
+        const shift = a - segment.x0;
+        const shiftedShear: [number, number, number] = [
+          segment.shear[0] + shift * (segment.shear[1] + shift * segment.shear[2]),
+          segment.shear[1] + 2 * shift * segment.shear[2],
+          segment.shear[2],
+        ];
+        for (let coefficient = 0; coefficient < 3; coefficient += 1) {
+          high[coefficient]! += factorHigh * shiftedShear[coefficient]!;
+          low[coefficient]! += factorLow * shiftedShear[coefficient]!;
+        }
+      }
+      for (const shear of [high, low]) for (const offset of quadraticRoots(shear as [number, number, number])) {
+        if (offset <= 1e-8 || offset >= b - a - 1e-8) continue;
+        const local = a + offset;
+        if (local <= 1e-8 || local >= spanLengthM - 1e-8) continue;
+        additions.push({ x: startM + local, span: spanIndex, local, side: 'left' });
+      }
+    }
+  });
+  const known = new Set(stations.map((station) => `${station.span}:${station.local.toFixed(9)}:${station.side}`));
+  const uniqueAdditions = additions.filter((station) => {
+    const key = `${station.span}:${station.local.toFixed(9)}:${station.side}`;
+    if (known.has(key)) return false;
+    known.add(key);
+    return true;
+  });
+  const merged = [...stations, ...uniqueAdditions];
+  return merged.sort((left, right) => left.x - right.x || (left.side === 'left' ? -1 : 1));
+}
+
 /**
  * Estaciones uniformes por claro más la posición de la carga puntual. Los apoyos
  * interiores y las cargas puntuales quedan duplicados (lado izquierdo y derecho)
  * para que los saltos del cortante se dibujen y se evalúen sin suavizarse.
  */
-export function buildStations(input: Pick<BeamAnalysisInput, 'spans'>): Station[] {
+export function buildStations(input: Pick<BeamAnalysisInput, 'spans' | 'extraLoads'>): Station[] {
   const stations: Station[] = [];
   let start = 0;
   input.spans.forEach((span, index) => {
     const locals = Array.from({ length: STATIONS_PER_SPAN + 1 }, (_, step) => span.lengthM * step / STATIONS_PER_SPAN);
-    const pointAt = hasPoint(span) ? Math.min(span.lengthM, Math.max(0, span.pointAtM)) : undefined;
-    const interior = pointAt !== undefined && pointAt > 1e-9 && pointAt < span.lengthM - 1e-9;
-    if (interior && !locals.some((local) => Math.abs(local - pointAt) < 1e-9)) {
-      locals.push(pointAt);
-      locals.sort((left, right) => left - right);
-    }
+    const extra = (input.extraLoads ?? []).filter((load) => load.spanIndex === index);
+    const extraPositions = extra.flatMap((load) => load.kind === 'point' ? [load.startM] : [load.startM, load.endM]);
+    const pointPositions = [...(hasPoint(span) ? [span.pointAtM] : []), ...extra.filter((load) => load.kind === 'point').map((load) => load.startM)];
+    const breakpoints = [...extraPositions, ...pointPositions].filter((position) => Number.isFinite(position) && position >= 0 && position <= span.lengthM);
+    for (const position of breakpoints) if (!locals.some((local) => Math.abs(local - position) < 1e-9)) locals.push(position);
+    locals.sort((left, right) => left - right);
+    const isPoint = (local: number) => pointPositions.some((position) => Math.abs(position - local) < 1e-9);
     for (const local of locals) {
       const x = start + local;
-      if (interior && Math.abs(local - pointAt) < 1e-9) {
+      if (isPoint(local) && local > 1e-9 && local < span.lengthM - 1e-9) {
         stations.push({ x, span: index, local, side: 'left' }, { x, span: index, local, side: 'right' });
       } else {
         stations.push({ x, span: index, local, side: local === 0 ? 'right' : 'left' });
@@ -189,24 +295,39 @@ export function analyzeBeam(input: BeamAnalysisInput): BeamAnalysisOutcome {
   }
   const invalidPoint = input.spans.findIndex((span) => hasPoint(span) && (!Number.isFinite(span.pointAtM) || span.pointAtM < 0 || span.pointAtM > span.lengthM));
   if (invalidPoint >= 0) return { ok: false, error: `Claro ${invalidPoint + 1}: la carga puntual debe quedar dentro del claro (0 a ${input.spans[invalidPoint]!.lengthM} m).` };
+  const invalidExtra = (input.extraLoads ?? []).findIndex((load) => {
+    const span = input.spans[load.spanIndex];
+    return !span || !Number.isFinite(load.startM) || !Number.isFinite(load.endM) || load.startM < 0 || load.endM > span.lengthM
+      || (load.kind === 'point' ? load.startM !== load.endM || load.startKn !== load.endKn : load.endM <= load.startM)
+      || !Number.isFinite(load.startKn) || !Number.isFinite(load.endKn);
+  });
+  if (invalidExtra >= 0) return { ok: false, error: `La carga adicional ${invalidExtra + 1} tiene magnitud o posición inválida.` };
 
   const project = buildBeamProject(input);
-  const stations = buildStations(input);
+  let stations = buildStations(input);
   const run = (factors: Record<string, number>) => analyzeProject(project, { id: 'pattern', name: 'Patrón', factors }, { includeEducationTrace: false });
 
-  const deadPerSpan: CaseResponse[] = [];
-  const livePerSpan: CaseResponse[] = [];
+  const deadResults: AnalysisResult[] = [];
+  const liveResults: AnalysisResult[] = [];
   for (let index = 0; index < input.spans.length; index += 1) {
     const dead = run({ [`D${index}`]: 1 });
     if (!dead.success) {
       const message = dead.issues.find((issue) => issue.severity === 'error')?.message ?? 'El solver 2D no pudo resolver la viga.';
       return { ok: false, error: message };
     }
-    deadPerSpan.push(sample(project, dead, stations));
+    deadResults.push(dead);
     const live = run({ [`L${index}`]: 1 });
     if (!live.success) return { ok: false, error: 'El solver 2D no pudo resolver un patrón de carga viva.' };
-    livePerSpan.push(sample(project, live, stations));
+    liveResults.push(live);
   }
+  // Sin acciones generales nuevas, el refinamiento parabólico existente de
+  // beam.ts cubre los casos heredados uniformes y la carga puntual conserva
+  // sus dos caras sin calcular raíces de combinaciones que no hacen falta.
+  if (input.extraLoads?.length) {
+    stations = withShearRoots(project, deadResults, liveResults, stations, input.combinations ?? [{ dead: 1, favorableDead: 1, live: 1 }]);
+  }
+  const deadPerSpan = deadResults.map((result) => sample(project, result, stations));
+  const livePerSpan = liveResults.map((result) => sample(project, result, stations));
   return {
     ok: true,
     analysis: {

@@ -5,6 +5,9 @@ import { LayerToggle, UnitField } from '../../../design-system/components/editor
 import { MAX_SPANS, barsText, beamClearSpanMm, designBeam, flangeWidthLimit } from '../../../design/elements/beam';
 import { designCode } from '../../../design/elements/codes';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
+import { BeamDetailEditor } from './BeamDetailEditor';
+import { EMPTY_BEAM_DETAILS, useStoredBeamDetails } from './beamDetailDraft';
+import { parseBeamDetails } from './beamDetailInput';
 import {
   BEAM_DEFAULTS, DEFAULT_SPANS, END_LABEL, ENDS, beamSupportPreset, bastionDetail, bastionTitle, beamReport, beamToInput, cm, describeBeam, meters, parseSpans, proposeBeamSection, slabLineLoads, stirrupText,
   type SpanDraft,
@@ -79,10 +82,20 @@ function SpanTable({ spans, points, onChange, onAdd, onRemove }: {
 export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('beam', BEAM_DEFAULTS);
   const storage = useWorkbenchStorage();
+  const storedDetails = useStoredBeamDetails(storage);
+  const [detailsDraft, setDetailsDraft] = useState(storedDetails.details);
+  const [detailsNote, setDetailsNote] = useState<string | null>(null);
+  useEffect(() => { setDetailsDraft(storedDetails.details); }, [storedDetails.details]);
   const [spans, setSpans] = useState<SpanDraft[]>(() => readStored(storage, 'beam-spans', parseSpans, DEFAULT_SPANS));
   useEffect(() => storage.write('beam-spans', spans.map((span) => ({ ...span }))), [spans, storage]);
-  const snapshot = useMemo(() => ({ draft, spans }), [draft, spans]);
-  const applySnapshot = useCallback((next: typeof snapshot) => { replace(next.draft); setSpans(next.spans); }, [replace]);
+  const snapshot = useMemo(() => ({ draft, spans, details: storedDetails.details }), [draft, spans, storedDetails.details]);
+  const applySnapshot = useCallback((next: typeof snapshot) => {
+    if (!storedDetails.setDetails(next.details)) { setDetailsNote('Sin espacio para restaurar el detalle; se conservaron los datos actuales.'); return; }
+    setDetailsDraft(next.details);
+    replace(next.draft);
+    setSpans(next.spans);
+    setDetailsNote(null);
+  }, [replace, storedDetails]);
   const history = useDraftHistory(snapshot, applySnapshot, 'beam');
   const { onHistory } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
@@ -97,13 +110,21 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     const limit = flangeWidthLimit(draft.sectionType === 'L' ? 'L' : 'T', web, thickness, clearSpan, parseNumber(draft.flangeClear) * 1000);
     return Number.isFinite(limit.widthMm) && limit.widthMm > 0 ? limit : null;
   }, [flanged, code, draft.width, draft.flangeThickness, draft.flangeClear, draft.supportWidth, draft.sectionType, spans]);
-  const input = useMemo(() => beamToInput(chrome.code, draft, spans), [chrome.code, draft, spans]);
+  const deferredDetails = useDeferredValue(detailsDraft);
+  const parsedDetails = useMemo(() => parseBeamDetails(deferredDetails, spans), [deferredDetails, spans]);
+  const detailModeErrors = useMemo(() => parsedDetails.bastions.length || parsedDetails.stirrupZones.some(Boolean)
+    ? draft.rebarMode !== 'own' ? ['Activa el armado propio para aplicar bastones y zonas de estribos.']
+      : parsedDetails.bastions.length && draft.ownBastions !== 'custom' ? ['Selecciona Bastones propios para aplicar las regiones capturadas.'] : []
+    : [], [parsedDetails, draft.rebarMode, draft.ownBastions]);
+  const input = useMemo(() => beamToInput(chrome.code, draft, spans, true, deferredDetails), [chrome.code, draft, spans, deferredDetails]);
   const deferred = useDeferredValue(input);
-  const result = useMemo(() => designBeam(deferred), [deferred]);
+  const result = useMemo(() => parsedDetails.errors.length || detailModeErrors.length
+    ? { ok: false as const, errors: [...parsedDetails.errors, ...detailModeErrors] }
+    : designBeam(deferred), [deferred, parsedDetails, detailModeErrors]);
   // Con armado propio, el propuesto con la misma entrada sirve de referencia.
   const proposed = useMemo(() => deferred.provided ? designBeam({ ...deferred, provided: null }) : undefined, [deferred]);
   const deferredDraft = useDeferredValue(draft);
-  const report = useMemo(() => result.ok ? beamReport(result, deferredDraft, proposed?.ok ? proposed : undefined) : null, [result, proposed, deferredDraft]);
+  const report = useMemo(() => result.ok ? beamReport(result, deferredDraft, proposed?.ok ? proposed : undefined, deferredDetails) : null, [result, proposed, deferredDraft, deferredDetails]);
   const checks = report?.checks ?? [];
   const notes = report?.notes ?? [];
   const outOfScope = report?.outOfScope ?? [];
@@ -112,10 +133,10 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const [loadNote, setLoadNote] = useState<string | null>(null);
   const slab = slabLineLoads(draft);
   const proposeSection = () => {
-    const proposal = proposeBeamSection(chrome.code, draft, spans);
+    const proposal = proposeBeamSection(chrome.code, draft, spans, detailsDraft);
     if (!proposal) { setSectionNote('Ninguna sección hasta 50 × 150 cm cumple con el armado propuesto: revisa claros y cargas.'); return; }
     replace({ ...draft, ...proposal });
-    setSectionNote(`Sección propuesta: ${proposal.width} × ${proposal.height} cm, la de menor área que cumple.`);
+    setSectionNote(`Sección propuesta: ${proposal.width} × ${proposal.height} cm, la de menor área que cumple ${draft.rebarMode === 'own' ? 'con el armado propio y sus regiones' : 'con armado automático'} y las cargas capturadas.`);
   };
   const applySlab = () => {
     if (!slab) return;
@@ -129,7 +150,10 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     chrome={chrome}
     title="Viga"
     report={report}
-    onReset={() => { reset(); setSpans(DEFAULT_SPANS); }}
+    onReset={() => {
+      if (!storedDetails.setDetails(EMPTY_BEAM_DETAILS)) { setDetailsNote('Sin espacio para guardar el borrador vacío; se conservaron todos los datos.'); return; }
+      reset(); setSpans(DEFAULT_SPANS); setDetailsDraft(EMPTY_BEAM_DETAILS); setDetailsNote(null);
+    }}
     verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
     caption={result.ok ? describeBeam(result.input) : undefined}
     inputs={<>
@@ -154,6 +178,17 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             <button type="button" className="dw-inline-action" disabled={!slab} onClick={applySlab}>Aplicar a los claros</button>
           </div>
           <ActionNote text={loadNote} />
+        </Disclosure>
+        <Disclosure label="Cargas generales y detalle físico">
+          <p className="dw-beam-details__sum">Las cargas nuevas se suman a CM/CV, cargas puntuales y peso propio ya capturados.</p>
+          <BeamDetailEditor details={detailsDraft} spans={spans}
+            onChange={(next) => {
+              setDetailsDraft(next);
+              if (storedDetails.setDetails(next)) setDetailsNote(null);
+              else setDetailsNote('El borrador queda visible en esta sesión, pero el documento no tiene capacidad para guardarlo. Libera espacio antes de salir.');
+            }}
+            onActivateOwn={(kind) => replace({ ...draft, rebarMode: 'own', ...(kind === 'bastion' ? { ownBastions: 'custom' } : {}) })} />
+          <ActionNote text={detailsNote} />
         </Disclosure>
         <LayerToggle label="Cargas puntuales" checked={draft.points === 'yes'} onCheckedChange={(checked) => set('points')(checked ? 'yes' : 'no')} />
         <LayerToggle label="Sumar peso propio" checked={draft.selfWeight === 'yes'} onCheckedChange={(checked) => set('selfWeight')(checked ? 'yes' : 'no')} />
@@ -206,8 +241,8 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <NumberField label="Corridas abajo" unit="pzas" value={draft.bottomCount} onChange={set('bottomCount')} min={2} />
           <BarSelect label="Diámetro abajo" value={draft.bottomBar} onChange={set('bottomBar')} minimumDiameterMm={12.7} />
           <div className="dw-span-all">
-            <SegmentedControl label="Bastones" size="sm" value={draft.ownBastions === 'none' ? 'none' : 'auto'} onValueChange={set('ownBastions')}
-              options={[{ value: 'auto', label: 'Donde falten' }, { value: 'none', label: 'Sin bastones' }]} />
+            <SegmentedControl label="Bastones" size="sm" value={draft.ownBastions === 'none' ? 'none' : draft.ownBastions === 'custom' ? 'custom' : 'auto'} onValueChange={set('ownBastions')}
+              options={[{ value: 'auto', label: 'Donde falten' }, { value: 'custom', label: 'Propios' }, { value: 'none', label: 'Sin bastones' }]} />
           </div>
           <UnitField label="Estribos @" unit="cm" value={draft.stirrupSpacing} onValueChange={set('stirrupSpacing')}
             placeholder="calculada" error={spacingError} hint={spacingError ? undefined : 'Vacío: la calcula por claro'} />

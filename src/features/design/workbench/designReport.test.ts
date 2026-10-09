@@ -52,6 +52,16 @@ describe('instantánea de diseño', () => {
     }
     expect(beam.tables[0]!.rows).toHaveLength(2);
   });
+
+  it('reporta por lecho el peralte efectivo y el acero requerido, mínimo y provisto', () => {
+    const bedValues = beam.values.map(({ symbol, label }) => `${symbol} ${label}`);
+    for (const bed of ['superior', 'inferior']) {
+      expect(bedValues).toContain(`d Peralte efectivo · lecho ${bed}`);
+      expect(bedValues).toContain(`As req Acero requerido · lecho ${bed}`);
+      expect(bedValues).toContain(`As mín Acero mínimo · lecho ${bed}`);
+      expect(bedValues).toContain(`As prov Acero provisto · lecho ${bed}`);
+    }
+  });
 });
 
 describe('cuantificación', () => {
@@ -145,6 +155,22 @@ describe('memoria del proyecto', () => {
     expect(report.code).toBe('nsr-10');
     expect(report.title).toBe('Viga 30 × 50 cm');
     expect(reportFromMemoryItem({ id: 'c1', element: 'column', code: 'ntc-2023', savedAt: '', fields: { width: '0' } }).ok).toBe(false);
+  });
+
+  it('recalcula cargas generales guardadas y las incluye en la memoria calculada', () => {
+    const saved = reportFromMemoryItem({
+      id: 'v-detalle', element: 'beam', code: 'ntc-2023', savedAt: '2026-10-09',
+      fields: { rebarMode: 'auto' }, rows: [{ length: '5', dead: '0', live: '0', pointDead: '0', pointLive: '0', pointAt: '2.5' }],
+      details: {
+        kind: 'beam', version: 1,
+        loads: [{ id: 'q1', span: '1', kind: 'distributed', category: 'dead', start: '0', end: '1', startValue: '4', endValue: '4' }],
+        bastions: [], stirrupZones: [],
+      },
+    });
+    const report = unwrap(saved);
+    expect(report.input).toMatchObject({ extraLoads: [{ spanIndex: 0, category: 'dead', kind: 'distributed', startM: 0, endM: 1, startKn: 4, endKn: 4 }] });
+    expect(report.data.flatMap((group) => group.rows).some((row) => row.label.includes('Carga 1') && row.value.includes('0.00–1.00 m'))).toBe(true);
+    expect(report.memo).toContain('Carga adicional CM');
   });
 
   it('genera el PDF de un elemento y el de toda la memoria', async () => {

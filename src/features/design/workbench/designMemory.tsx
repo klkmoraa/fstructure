@@ -36,7 +36,7 @@ type MemoryReport = { readonly ok: true; readonly report: DesignReport } | { rea
 export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: ExternalStructureSource | null = null, modelAxes: ExternalStructureAxes | null = null): MemoryReport {
   const code: DesignCodeId = isDesignCodeId(item.code) ? item.code : 'ntc-2023';
   switch (item.element) {
-    case 'beam': return beamReportFromDraft(code, merge(BEAM_DEFAULTS, item.fields), parseSpans(item.rows) ?? DEFAULT_SPANS);
+    case 'beam': return beamReportFromDraft(code, merge(BEAM_DEFAULTS, item.fields), parseSpans(item.rows) ?? DEFAULT_SPANS, isBeamDetailDraft(item.details) ? item.details : EMPTY_BEAM_DETAILS);
     case 'column': return columnReportFromDraft(code, merge(COLUMN_DEFAULTS, item.fields));
     case 'frame': {
       const draft = merge({ ...FRAME_DEFAULTS, ...FRAME_LEGACY }, item.fields);

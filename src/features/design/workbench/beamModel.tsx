@@ -4,6 +4,8 @@ import { outOfScopeChecks } from '../../../design/elements/scope';
 import { rebarLabel } from '../../../design/elements/shared';
 import { beamTakeoff } from '../../../design/elements/takeoff';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
+import type { BeamDetailDraft } from './beamDetailDraft';
+import { parseBeamDetails } from './beamDetailInput';
 import { LIVE_LOAD_USES, LONG_TERM_DURATIONS, formatNumber, isShortString, mpaFromKgcm2, parseNumber, splitChecks, sustainedRatioFor, xiFor } from './common';
 import type { DesignReport, ReportAlternative, ReportRow } from './designReport';
 
@@ -70,7 +72,9 @@ export const parseSpans = (raw: unknown): SpanDraft[] | undefined => {
 
 const toEnd = (value: string): BeamEnd => ENDS.some((item) => item.value === value) ? value as BeamEnd : 'pin';
 
-export const beamToInput = (codeId: DesignCodeId, draft: BeamDraft, spans: readonly SpanDraft[], useOwn = true): BeamDesignInput => ({
+export const beamToInput = (codeId: DesignCodeId, draft: BeamDraft, spans: readonly SpanDraft[], useOwn = true, details?: BeamDetailDraft): BeamDesignInput => {
+  const physical = details ? parseBeamDetails(details, spans) : undefined;
+  return ({
   code: codeId,
   widthMm: parseNumber(draft.width) * 10,
   heightMm: parseNumber(draft.height) * 10,
@@ -89,6 +93,7 @@ export const beamToInput = (codeId: DesignCodeId, draft: BeamDraft, spans: reado
       pointAtM: points ? parseNumber(span.pointAt) : parseNumber(span.length) / 2,
     };
   }),
+  extraLoads: physical?.loads ?? [],
   leftEnd: toEnd(draft.leftEnd),
   rightEnd: toEnd(draft.rightEnd),
   includeSelfWeight: draft.selfWeight === 'yes',
@@ -106,10 +111,13 @@ export const beamToInput = (codeId: DesignCodeId, draft: BeamDraft, spans: reado
   provided: useOwn && draft.rebarMode === 'own' ? {
     top: { count: parseNumber(draft.topCount), diameterMm: parseNumber(draft.topBar) },
     bottom: { count: parseNumber(draft.bottomCount), diameterMm: parseNumber(draft.bottomBar) },
-    bastions: draft.ownBastions === 'none' ? 'none' : 'auto',
+    bastions: draft.ownBastions === 'none' ? 'none' : draft.ownBastions === 'custom' ? 'custom' : 'auto',
+    ...(draft.ownBastions === 'custom' ? { customBastions: physical?.bastions ?? [] } : {}),
     stirrupSpacingMm: draft.stirrupSpacing.trim() === '' ? null : parseNumber(draft.stirrupSpacing) * 10,
+    ...(physical ? { stirrupZones: physical.stirrupZones } : {}),
   } : null,
-});
+  });
+};
 
 const cm2 = (mm2: number) => `${formatNumber(mm2 / 100, 2)} cm²`;
 export const cm = (mm: number) => `${formatNumber(mm / 10, 0)} cm`;
@@ -150,7 +158,7 @@ const sectionText = (input: BeamDesignInput) => input.flange
   ? `${input.flange.kind === 'T' ? 'T (losa a ambos lados)' : 'L (losa de un lado)'}: alma bw = ${formatNumber(input.widthMm / 10, 0)} cm · h = ${formatNumber(input.heightMm / 10, 0)} cm · patín bf = ${formatNumber(input.flange.widthMm / 10, 0)} cm, hf = ${formatNumber(input.flange.thicknessMm / 10, 0)} cm${input.flange.clearDistanceMm ? ` · La = ${formatNumber(input.flange.clearDistanceMm / 1000, 2)} m` : ''}`
   : `rectangular: b = ${formatNumber(input.widthMm / 10, 0)} cm · h = ${formatNumber(input.heightMm / 10, 0)} cm`;
 
-function beamMemo(result: BeamDesignResult): string {
+function beamMemo(result: BeamDesignResult, details?: BeamDetailDraft): string {
   const { input } = result;
   return [
     `VIGA ${input.flange ? `${input.flange.kind} ` : ''}${input.widthMm / 10}×${input.heightMm / 10} cm${input.flange ? ` (patín ${input.flange.widthMm / 10}×${input.flange.thicknessMm / 10})` : ''} · ${describeBeam(input)} · L = ${input.spans.map((span) => span.lengthM).join(' + ')} m · ${designCode(input.code).name}`,
@@ -161,6 +169,9 @@ function beamMemo(result: BeamDesignResult): string {
     ...result.anchorages.map((item) => `Anclaje ${anchorageText(item)}`),
     `Traslapes Clase B: superior ${cm(result.splices.top)} · inferior ${cm(result.splices.bottom)}`,
     ...result.spans.map((span, index) => `Claro ${index + 1}: ${stirrupText(span.stirrups, result.stirrupDiameterMm)} · Δ ${formatNumber(span.checkedDeflectionMm)} / ${formatNumber(span.deflectionLimitMm)} mm`),
+    ...(result.input.extraLoads ?? []).map((load) => `Carga adicional ${load.category === 'dead' ? 'CM' : 'CV'} ${load.kind === 'point' ? `${formatNumber(load.startKn)} kN a ${formatNumber(load.startM)} m` : `${formatNumber(load.startKn)} → ${formatNumber(load.endKn)} kN/m de ${formatNumber(load.startM)} a ${formatNumber(load.endM)} m`} · claro ${load.spanIndex + 1} (se suma a cargas generales capturadas)`),
+    ...(details?.bastions ?? []).map((bar) => `Bastón propio ${bar.bed === 'top' ? 'superior' : 'inferior'} · ${bar.count} Ø${formatNumber(parseNumber(bar.diameterMm), 1)} · x ${bar.startM}–${bar.endM} m`),
+    ...(details?.stirrupZones ?? []).map((zone) => `Zona de estribos claro ${zone.span}: @${zone.endSpacingMm} mm en extremos, ${zone.endLengthM} m desde cada apoyo; centro @${zone.centerSpacingMm} mm`),
     ...result.checks.map((check) => `${check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '!'} ${check.label}${check.ratio !== undefined && Number.isFinite(check.ratio) ? ` (${Math.round(check.ratio * 100)} %)` : ''}`),
     'FStructure · Diseño experimental; requiere revisión profesional.',
   ].join('\n');
@@ -180,10 +191,18 @@ function beamReinforcementRows(result: BeamDesignResult): ReportRow[] {
 
 function beamValues(result: BeamDesignResult) {
   const code = designCode(result.input.code);
+  const top = result.continuousTop;
+  const bottom = result.continuousBottom;
   return [
-    { symbol: 'd', label: 'Peralte efectivo (corridas)', value: cm(result.continuousBottom.effectiveDepthMm) },
-    { symbol: 'As mín', label: 'Lecho inferior', value: cm2(code.beam.minimumSteel(result.input.widthMm, result.continuousBottom.effectiveDepthMm, result.input.heightMm, result.input.fcMpa, result.input.fyMpa, result.continuousBottom.extremeDepthMm)) },
-    { symbol: 'As máx', label: 'Por lecho', value: cm2(result.continuousBottom.maximumMm2) },
+    { symbol: 'd', label: 'Peralte efectivo · lecho superior', value: cm(top.effectiveDepthMm) },
+    { symbol: 'As req', label: 'Acero requerido · lecho superior', value: cm2(top.requiredMm2) },
+    { symbol: 'As mín', label: 'Acero mínimo · lecho superior', value: cm2(top.minimumMm2) },
+    { symbol: 'As prov', label: 'Acero provisto · lecho superior', value: cm2(top.areaMm2) },
+    { symbol: 'd', label: 'Peralte efectivo · lecho inferior', value: cm(bottom.effectiveDepthMm) },
+    { symbol: 'As req', label: 'Acero requerido · lecho inferior', value: cm2(bottom.requiredMm2) },
+    { symbol: 'As mín', label: 'Acero mínimo · lecho inferior', value: cm2(bottom.minimumMm2) },
+    { symbol: 'As prov', label: 'Acero provisto · lecho inferior', value: cm2(bottom.areaMm2) },
+    { symbol: 'As máx', label: 'Por lecho', value: cm2(bottom.maximumMm2) },
     { symbol: 'Mcr', label: 'Agrietamiento', value: `${formatNumber(result.deflection.crackingMomentKnm)} kN·m` },
     { symbol: 'Δi', label: `Inmediata claro ${result.deflection.governingSpan + 1}`, value: `${formatNumber(result.deflection.immediateMm)} mm` },
     { symbol: 'Δt', label: `Total con diferida claro ${result.deflection.governingSpan + 1}`, value: `${formatNumber(result.deflection.totalMm)} mm` },
@@ -197,7 +216,7 @@ function beamValues(result: BeamDesignResult) {
 const endLabel = (end: BeamEnd) => ENDS.find((item) => item.value === end)?.label ?? end;
 const kgcm2 = (value: string) => `${value} kg/cm² (${formatNumber(mpaFromKgcm2(value), 1)} MPa)`;
 
-function beamData(result: BeamDesignResult, draft: BeamDraft) {
+function beamData(result: BeamDesignResult, draft: BeamDraft, details?: BeamDetailDraft) {
   const { input } = result;
   const code = designCode(input.code);
   const points = input.spans.some((span) => span.pointDeadKn > 0 || span.pointLiveKn > 0);
@@ -216,6 +235,10 @@ function beamData(result: BeamDesignResult, draft: BeamDraft) {
         value: `CM ${formatNumber(span.deadKnPerM, 2)} · CV ${formatNumber(span.liveKnPerM, 2)} kN/m${points ? ` · P CM ${formatNumber(span.pointDeadKn, 1)} · P CV ${formatNumber(span.pointLiveKn, 1)} kN a ${formatNumber(span.pointAtM, 2)} m` : ''}`,
       })),
       { label: 'Peso propio', value: input.includeSelfWeight ? `incluido, ${formatNumber(result.selfWeightKnPerM, 2)} kN/m${input.flange ? ' (alma bajo la losa; la losa va en la carga muerta)' : ''}` : 'no incluido' },
+      ...(input.extraLoads?.length ? [{ label: 'Cargas adicionales', value: 'Se suman a las cargas CM/CV de los claros y a las cargas puntuales heredadas.' }, ...input.extraLoads.map((load, index) => ({
+        label: `Carga ${index + 1} · claro ${load.spanIndex + 1} · ${load.category === 'dead' ? 'CM' : 'CV'}`,
+        value: load.kind === 'point' ? `${formatNumber(load.startKn, 2)} kN a x = ${formatNumber(load.startM, 2)} m` : `${formatNumber(load.startKn, 2)} → ${formatNumber(load.endKn, 2)} kN/m · x = ${formatNumber(load.startM, 2)}–${formatNumber(load.endM, 2)} m`,
+      }))] : []),
     ] },
     { title: 'Materiales', rows: [
       { label: 'f′c', value: kgcm2(draft.fc) },
@@ -232,10 +255,14 @@ function beamData(result: BeamDesignResult, draft: BeamDraft) {
         ? `propio: ${barsText(input.provided.top)} arriba · ${barsText(input.provided.bottom)} abajo · bastones ${input.provided.bastions === 'none' ? 'omitidos' : 'propuestos'} · estribos ${input.provided.stirrupSpacingMm === null ? 'calculados' : `@ ${cm(input.provided.stirrupSpacingMm)}`}`
         : 'propuesto por el taller' },
     ] },
+    ...(details && (details.bastions.length || details.stirrupZones.length) ? [{ title: 'Detalle físico proporcionado', rows: [
+      ...details.bastions.map((bar, index) => ({ label: `Bastón ${index + 1} · ${bar.bed === 'top' ? 'superior' : 'inferior'}`, value: `${bar.count} Ø${formatNumber(Number(bar.diameterMm), 1)} · x = ${bar.startM}–${bar.endM} m` })),
+      ...details.stirrupZones.map((zone) => ({ label: `Estribos claro ${zone.span}`, value: `Extremos @${zone.endSpacingMm} mm × ${zone.endLengthM} m desde cada apoyo · centro @${zone.centerSpacingMm} mm` })),
+    ] }] : []),
   ];
 }
 
-export function beamReport(result: BeamDesignResult, draft: BeamDraft, alternative?: BeamDesignResult): DesignReport {
+export function beamReport(result: BeamDesignResult, draft: BeamDraft, alternative?: BeamDesignResult, details?: BeamDetailDraft): DesignReport {
   const [checks, notes] = splitChecks(result.checks);
   const altern: ReportAlternative | undefined = alternative ? {
     label: 'Armado propuesto por el taller',
@@ -252,12 +279,12 @@ export function beamReport(result: BeamDesignResult, draft: BeamDraft, alternati
     code: result.input.code,
     status: result.status,
     governingRatio: result.governingRatio,
-    memo: beamMemo(result),
+    memo: beamMemo(result, details),
     checks,
     notes,
     outOfScope: outOfScopeChecks('beam', result.input.code, { flange: Boolean(result.input.flange) }),
     input: result.input,
-    data: beamData(result, draft),
+    data: beamData(result, draft, details),
     reinforcement: beamReinforcementRows(result),
     values: beamValues(result),
     tables: [{
@@ -279,11 +306,19 @@ export function beamReport(result: BeamDesignResult, draft: BeamDraft, alternati
 }
 
 /** Diseña desde un borrador guardado (memoria del proyecto). */
-export function beamReportFromDraft(code: DesignCodeId, draft: BeamDraft, spans: readonly SpanDraft[]) {
-  const result = designBeam(beamToInput(code, draft, spans));
+export function beamReportFromDraft(code: DesignCodeId, draft: BeamDraft, spans: readonly SpanDraft[], details?: BeamDetailDraft) {
+  const physical = details ? parseBeamDetails(details, spans) : undefined;
+  if (physical?.errors.length) return { ok: false as const, errors: physical.errors };
+  if (physical && (physical.bastions.length || physical.stirrupZones.some(Boolean)) && draft.rebarMode !== 'own') {
+    return { ok: false as const, errors: ['Activa el armado propio para aplicar los bastones y las zonas de estribos capturados.'] };
+  }
+  if (physical?.bastions.length && draft.ownBastions !== 'custom') {
+    return { ok: false as const, errors: ['Selecciona Bastones propios para aplicar las regiones capturadas.'] };
+  }
+  const result = designBeam(beamToInput(code, draft, spans, true, details));
   if (!result.ok) return { ok: false as const, errors: result.errors };
-  const proposed = draft.rebarMode === 'own' ? designBeam(beamToInput(code, draft, spans, false)) : undefined;
-  return { ok: true as const, report: beamReport(result, draft, proposed?.ok ? proposed : undefined) };
+  const proposed = draft.rebarMode === 'own' ? designBeam(beamToInput(code, draft, spans, false, details)) : undefined;
+  return { ok: true as const, report: beamReport(result, draft, proposed?.ok ? proposed : undefined, details) };
 }
 
 /** Carga de línea por claro a partir de la losa: w = ancho tributario × carga de losa (+ muros en la muerta). */
@@ -304,7 +339,12 @@ const WIDTHS_CM = [20, 25, 30, 35, 40, 45, 50];
  * con el que la viga no reprueba ninguna comprobación con el armado propuesto;
  * gana la de menor área con peralte entre 1 y 3 veces el ancho.
  */
-export function proposeBeamSection(codeId: DesignCodeId, draft: BeamDraft, spans: readonly SpanDraft[]): { width: string; height: string } | null {
+export function proposeBeamSection(codeId: DesignCodeId, draft: BeamDraft, spans: readonly SpanDraft[], details?: BeamDetailDraft): { width: string; height: string } | null {
+  if (details) {
+    const physical = parseBeamDetails(details, spans);
+    if (physical.errors.length || (physical.bastions.length && (draft.rebarMode !== 'own' || draft.ownBastions !== 'custom'))
+      || (physical.stirrupZones.some(Boolean) && draft.rebarMode !== 'own')) return null;
+  }
   const longest = Math.max(...spans.map((span) => parseNumber(span.length)).filter(Number.isFinite), 0);
   if (!(longest > 0)) return null;
   const start = Math.max(30, Math.ceil(longest * 100 / 16 / 5) * 5);
@@ -312,7 +352,7 @@ export function proposeBeamSection(codeId: DesignCodeId, draft: BeamDraft, spans
   for (const width of WIDTHS_CM) {
     for (let height = Math.max(start, width); height <= Math.min(150, 3 * width); height += 5) {
       if (best && width * height >= best.width * best.height) break;
-      const trial = designBeam(beamToInput(codeId, { ...draft, width: String(width), height: String(height) }, spans, false));
+      const trial = designBeam(beamToInput(codeId, { ...draft, width: String(width), height: String(height) }, spans, draft.rebarMode === 'own', details));
       if (trial.ok && trial.status !== 'fail') {
         best = { width, height };
         break;

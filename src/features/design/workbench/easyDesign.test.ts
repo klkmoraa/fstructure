@@ -4,6 +4,7 @@ import { designColumn } from '../../../design/elements/column';
 import { BEAM_DEFAULTS, DEFAULT_SPANS, beamToInput, proposeBeamSection, slabLineLoads } from './beamModel';
 import { COLUMN_DEFAULTS, columnToInput, proposeColumn } from './columnModel';
 import { reportFromMemoryItem } from './designMemory';
+import { EMPTY_BEAM_DETAILS } from './beamDetailDraft';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
 
 describe('diseño más fácil', () => {
@@ -21,6 +22,17 @@ describe('diseño más fácil', () => {
     const shallower = trial(proposal.width, String(Number(proposal.height) - 5));
     expect(!shallower.ok || shallower.status === 'fail').toBe(true);
     expect(Number(proposal.height)).toBeLessThanOrEqual(3 * Number(proposal.width));
+  });
+
+  it('considera las cargas adicionales al proponer sección y bloquea borradores incompletos', () => {
+    const spans = [{ ...DEFAULT_SPANS[0]!, length: '5', dead: '0', live: '0' }];
+    const load = { ...EMPTY_BEAM_DETAILS, loads: [{ id: 'p1', span: '1', kind: 'point' as const, category: 'dead' as const, start: '2.5', end: '', startValue: '30', endValue: '' }] };
+    const baseline = proposeBeamSection('ntc-2023', BEAM_DEFAULTS, spans)!;
+    const withLoad = proposeBeamSection('ntc-2023', BEAM_DEFAULTS, spans, load);
+    expect(withLoad).not.toBeNull();
+    expect(withLoad).not.toEqual(baseline);
+    const incomplete = { ...EMPTY_BEAM_DETAILS, loads: [{ id: 'q1', span: '1', kind: 'point' as const, category: 'live' as const, start: '', end: '', startValue: '', endValue: '' }] };
+    expect(proposeBeamSection('ntc-2023', BEAM_DEFAULTS, spans, incomplete)).toBeNull();
   });
 
   it('propone sección y armado de columna rectangular y circular que cumplen', () => {

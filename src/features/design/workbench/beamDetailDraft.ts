@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import type { WorkbenchStorage } from './workbenchStorage';
 
@@ -94,6 +94,13 @@ export function useStoredBeamDetails(storage: WorkbenchStorage): StoredBeamDetai
     storage.write('beam-details', copy as unknown as JsonValue);
     return true;
   }, [storage]);
+  // Memoria puede abrir/duplicar un elemento desde otro componente; vuelve a leer
+  // el borrador externo cuando el taller renderiza, sin escribirlo de nuevo.
+  useEffect(() => {
+    const stored = storage.read('beam-details');
+    if (!isBeamDetailDraft(stored)) return;
+    setState((current) => JSON.stringify(current) === JSON.stringify(stored) ? current : structuredClone(stored));
+  });
   return { details, setDetails };
 }
 

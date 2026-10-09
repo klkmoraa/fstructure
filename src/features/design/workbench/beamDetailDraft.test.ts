@@ -56,6 +56,16 @@ describe('borrador estructurado de viga', () => {
     expect(values['beam-details']).toEqual(updated);
   });
 
+  it('refresca el estado cuando memoria abre otro detalle desde el storage', () => {
+    const values: Record<string, unknown> = { 'beam-details': EMPTY_BEAM_DETAILS };
+    const storage: WorkbenchStorage = { read: (key) => values[key], write: (key, value) => { values[key] = value; } };
+    const { result, rerender } = renderHook(() => useStoredBeamDetails(storage));
+    const opened = { ...EMPTY_BEAM_DETAILS, loads: [{ id: 'L2', span: '1', kind: 'point' as const, category: 'live' as const, start: '3', end: '', startValue: '10', endValue: '' }] };
+    values['beam-details'] = opened;
+    rerender();
+    expect(result.current.details).toEqual(opened);
+  });
+
   it('rechaza una edición si sumar beam-details excede las 16 entradas sin mutar estado o documento', () => {
     const entries = Object.fromEntries(Array.from({ length: 16 }, (_, index) => [`entry-${index}`, `v${index}`]));
     const persist = vi.fn();

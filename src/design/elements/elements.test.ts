@@ -106,6 +106,59 @@ describe('designBeam (análisis con el solver 2D)', () => {
     expect(designBeam({ ...beam, spans: [{ ...span(6, 0, 0), pointDeadKn: 100, pointAtM: 7 }] }).ok).toBe(false);
   });
 
+  it('adds partial distributed and point loads to their dead/live cases with balance', () => {
+    const result = assertBeam({
+      ...beam,
+      spans: [span(5, 0, 0)],
+      extraLoads: [
+        { spanIndex: 0, category: 'dead', kind: 'distributed', startM: 0, endM: 1, startKn: 4, endKn: 4 },
+        { spanIndex: 0, category: 'live', kind: 'point', startM: 3, endM: 3, startKn: 10, endKn: 10 },
+      ],
+      combinations: [{ label: 'servicio', dead: 1, favorableDead: 1, live: 1 }],
+    });
+    expect(result.extremes.positiveMomentKnm).toBeGreaterThan(0);
+    expect(result.diagram.momentMaxKnm.at(-1)).toBeCloseTo(0, 9);
+    expect(result.diagram.shearMaxKn[0]).toBeCloseTo(7.6, 8);
+    expect(Math.abs(result.diagram.shearMinKn.at(-1)!)).toBeCloseTo(6.4, 8);
+    expect(result.diagram.shearMaxKn[0]! + Math.abs(result.diagram.shearMinKn.at(-1)!)).toBeCloseTo(14, 9);
+    expect(Math.abs(result.diagram.shearMinKn.at(-1)!) * 5).toBeCloseTo(32, 9);
+
+    const factored = assertBeam({
+      ...beam,
+      spans: [span(5, 0, 0)],
+      extraLoads: [
+        { spanIndex: 0, category: 'dead', kind: 'distributed', startM: 0, endM: 1, startKn: 4, endKn: 4 },
+        { spanIndex: 0, category: 'live', kind: 'point', startM: 3, endM: 3, startKn: 10, endKn: 10 },
+      ],
+      combinations: [{ label: '1.3 CM + 1.5 CV', dead: 1.3, favorableDead: 1.3, live: 1.5 }],
+    });
+    expect(factored.diagram.shearMaxKn[0]).toBeCloseTo(10.68, 8);
+    expect(Math.abs(factored.diagram.shearMinKn.at(-1)!)).toBeCloseTo(9.52, 8);
+  });
+
+  it('evaluates a triangular member load at its exact shear-zero station', () => {
+    const result = assertBeam({
+      ...beam,
+      spans: [span(3, 0, 0)],
+      extraLoads: [{ spanIndex: 0, category: 'dead', kind: 'distributed', startM: 0, endM: 3, startKn: 0, endKn: 6 }],
+      combinations: [{ label: 'servicio', dead: 1, favorableDead: 1, live: 1 }],
+    });
+    expect(result.diagram.xM[result.diagram.momentMaxKnm.indexOf(Math.max(...result.diagram.momentMaxKnm))]).toBeCloseTo(Math.sqrt(3), 4);
+  });
+
+  it('finds the exact critical station for legacy uniform load plus an additional point load', () => {
+    const result = assertBeam({
+      ...beam,
+      spans: [{ ...span(5, 4, 0), deadKnPerM: 4 }],
+      extraLoads: [{ spanIndex: 0, category: 'live', kind: 'point', startM: 1, endM: 1, startKn: 10, endKn: 10 }],
+      combinations: [{ label: 'servicio', dead: 1, favorableDead: 1, live: 1 }],
+    });
+    expect(result.diagram.xM[result.diagram.momentMaxKnm.indexOf(Math.max(...result.diagram.momentMaxKnm))]).toBeCloseTo(2, 8);
+    expect(result.extremes.positiveMomentKnm).toBeCloseTo(18, 8);
+    expect(result.diagram.shearMaxKn[0]).toBeCloseTo(18, 8);
+    expect(Math.abs(result.diagram.shearMinKn.at(-1)!)).toBeCloseTo(12, 8);
+  });
+
   it('adds bastones where the envelope exceeds the continuous bars and extends them by ld', () => {
     const result = assertBeam({ ...beam, spans: [span(6, 30, 20), span(6, 30, 20)] });
     const top = result.bastions.filter((bastion) => bastion.bed === 'top');
@@ -129,6 +182,22 @@ describe('designBeam (análisis con el solver 2D)', () => {
     const result = assertBeam({ ...beam, spans: [span(6, 30, 20), span(3, 5, 2)] });
     result.spans.forEach((item) => expect(item.stirrups.strengthKn).toBeGreaterThanOrEqual(item.stirrups.demandKn));
     expect(result.spans[0]!.stirrups.demandKn).toBeGreaterThan(result.spans[1]!.stirrups.demandKn);
+  });
+
+  it('uses custom bastions and dense end zones from the physical input', () => {
+    const result = assertBeam({
+      ...beam,
+      spans: [span(5, 20, 8)],
+      provided: {
+        top: { count: 2, diameterMm: 15.9 }, bottom: { count: 3, diameterMm: 15.9 },
+        bastions: 'custom', customBastions: [{ bed: 'top', count: 2, diameterMm: 15.9, startM: 1, endM: 2 }],
+        stirrupSpacingMm: null, stirrupZones: [{ endSpacingMm: 100, endLengthM: .6, centerSpacingMm: 200 }],
+      },
+    });
+    expect(result.bastions).toHaveLength(1);
+    expect(result.bastions[0]).toMatchObject({ bed: 'top', bars: { count: 2, diameterMm: 15.9 }, startM: 1, endM: 2 });
+    expect(result.spans[0]!.stirrups.denseZones).toEqual([{ startM: 0, endM: .6 }, { startM: 4.4, endM: 5 }]);
+    expect(result.spans[0]!.stirrups.centerSpacingMm).toBe(200);
   });
 
   it('matches 5wL⁴/384EI while the section stays uncracked', () => {

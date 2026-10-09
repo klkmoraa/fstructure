@@ -1,4 +1,4 @@
-import { analyzeBeam, type BeamAnalysis, type BeamAnalysisOutcome, type BeamEnd, type BeamSpanLoads, type CaseResponse } from './beamAnalysis';
+import { analyzeBeam, type BeamAnalysis, type BeamAnalysisOutcome, type BeamEnd, type BeamExtraLoad, type BeamSpanLoads, type CaseResponse } from './beamAnalysis';
 import { layoutBeamBed } from './beamBarLayout';
 import { designCode, isDesignCodeId, type BlockArea, type DesignCode, type DesignCodeId, type DevelopmentLength, type LoadCombination } from './codes';
 import {
@@ -23,6 +23,7 @@ import {
 } from './shared';
 
 export type { BeamEnd, BeamSpanLoads };
+export type { BeamExtraLoad };
 
 /**
  * Análisis que sustituye al de la viga aislada: un pórtico entrega la
@@ -48,6 +49,8 @@ export interface BeamDesignInput {
   readonly fyMpa: number;
   readonly fyStirrupMpa: number;
   readonly spans: readonly BeamSpanLoads[];
+  /** Cargas de servicio adicionales por claro; las cargas heredadas se conservan y se suman. */
+  readonly extraLoads?: readonly BeamExtraLoad[];
   readonly leftEnd: BeamEnd;
   readonly rightEnd: BeamEnd;
   readonly includeSelfWeight: boolean;
@@ -702,6 +705,18 @@ function validate(input: BeamDesignInput): string[] {
       errors.push(`Claro ${index + 1}: la carga puntual debe quedar entre 0 y ${Number.isFinite(span.lengthM) ? span.lengthM : 'L'} m.`);
     }
   });
+  for (const [index, load] of (input.extraLoads ?? []).entries()) {
+    const span = input.spans[load.spanIndex];
+    const label = `Carga adicional ${index + 1}`;
+    if (!span) { errors.push(`${label}: el claro ${load.spanIndex + 1} no existe.`); continue; }
+    if (!Number.isFinite(load.startM) || !Number.isFinite(load.endM) || load.startM < 0 || load.endM > span.lengthM
+      || (load.kind === 'point' ? Math.abs(load.endM - load.startM) > 1e-9 : load.endM <= load.startM)) {
+      errors.push(`${label}: las posiciones deben quedar dentro del claro y en orden.`);
+    }
+    if (!Number.isFinite(load.startKn) || !Number.isFinite(load.endKn) || (load.kind === 'point' && load.startKn !== load.endKn)) {
+      errors.push(`${label}: magnitud inválida.`);
+    }
+  }
   if (input.flange) {
     const { widthMm: bf, thicknessMm: hf } = input.flange;
     if (!isPositiveFinite(bf) || bf < input.widthMm) errors.push('El ancho efectivo del patín debe ser al menos el ancho del alma.');
@@ -823,6 +838,7 @@ function refinePeaks(xs: readonly number[], values: readonly number[]): number[]
     const vertex = -b / (2 * a);
     if (vertex <= x0 || vertex >= x2) return value;
     const c = value - a * x1 ** 2 - b * x1;
+    if (xs.some((x, station) => station !== index && Math.abs(x - vertex) < 1e-9)) return value;
     return Math.max(value, a * vertex ** 2 + b * vertex + c);
   });
 }
@@ -997,6 +1013,8 @@ export function designBeam(input: BeamDesignInput, options: BeamDesignOptions = 
   const selfWeight = input.includeSelfWeight ? CONCRETE_UNIT_WEIGHT_KN_M3 * b * (h - hf) / 1e6 : 0;
   const baseAnalysisInput = {
     spans: input.spans,
+    extraLoads: input.extraLoads ?? [],
+    combinations: input.combinations,
     leftEnd: input.leftEnd,
     rightEnd: input.rightEnd,
     selfWeightKnPerM: selfWeight,
