@@ -20,7 +20,7 @@ import {
 import { MatPlan, MatStripDiagram, StrapDiagrams, StrapFootingPlan } from './FoundationDrawings';
 import { CombinedFootingDiagrams, CombinedFootingPlan, StripFootingSection } from './FootingTypeDrawings';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
-import { MaterialFields } from './MaterialFields';
+import { ConcreteStrengthField, MaterialFields } from './MaterialFields';
 
 type Setter = (field: keyof FootingDraft) => (value: string) => void;
 interface FootingProps { readonly chrome: WorkbenchChrome; readonly draft: FootingDraft; readonly set: Setter; readonly reset: () => void }
@@ -408,7 +408,7 @@ function IsolatedFooting({ chrome, draft, set, reset }: FootingProps) {
       <MoreOptions>
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
-        <NumberField label="f′c de la columna" unit="kg/cm²" value={draft.colFc} onChange={set('colFc')} />
+        <ConcreteStrengthField label="f′c de la columna" value={draft.colFc} onChange={set('colFc')} />
       </MoreOptions>
     </>}
     stage={result.ok ? <>

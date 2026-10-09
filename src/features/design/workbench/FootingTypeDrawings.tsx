@@ -45,7 +45,7 @@ export function StripFootingSection({ result }: { result: StripFootingResult }) 
       <text x={ox + s / 2} y={oy + t + 72} textAnchor="middle">{`B = ${formatNumber(result.widthMm / 10, 0)} cm`}</text>
     </g>
     <text className="dw-callout" x={W / 2} y={oy + t + 90} textAnchor="middle">
-      {`${rebarLabel(result.input.barDiameterMm)} @ ${formatNumber(result.transverse.spacingMm / 10, 0)} cm · ${result.distribution.barCount} ${rebarLabel(result.input.distributionBarDiameterMm)} long.`}
+      {`${rebarLabel(result.input.barDiameterMm, 'transverse')} @ ${formatNumber(result.transverse.spacingMm / 10, 0)} cm · ${result.distribution.barCount} ${rebarLabel(result.input.distributionBarDiameterMm)} long.`}
     </text>
   </svg>;
 }

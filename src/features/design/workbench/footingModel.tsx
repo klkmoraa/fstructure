@@ -423,7 +423,7 @@ export function strapReinforcementRows(result: StrapFootingResult): ReportRow[] 
     { label: `Contratrabe superior ${strap.top.barCount} ${rebarLabel(input.strap.barDiameterMm)}`, value: `Mu− ${formatNumber(strap.top.momentKnm, 0)} kN·m · gancho en la columna de lindero, corridas a través de la columna 2` },
     { label: `Contratrabe inferior ${strap.bottom.barCount} ${rebarLabel(input.strap.barDiameterMm)}`, value: `Corridas · Mu+ ${formatNumber(strap.bottom.momentKnm, 0)} kN·m` },
     { label: `Estribos ${rebarLabel(input.strap.stirrupDiameterMm, 'transverse')} @ ${formatNumber(strap.shear.spacingMm / 10, 1)} cm`, value: 'Cerrados, en toda la contratrabe' },
-    { label: `Zapata 1 ${rebarLabel(input.barDiameterMm)} @ ${formatNumber(exterior.transverse.spacingMm / 10, 0)} cm`, value: `Transversal a la contratrabe · ${exterior.distribution.barCount} ${rebarLabel(input.barDiameterMm)} a lo largo` },
+    { label: `Zapata 1 ${rebarLabel(input.barDiameterMm, 'transverse')} @ ${formatNumber(exterior.transverse.spacingMm / 10, 0)} cm`, value: `Transversal a la contratrabe · ${exterior.distribution.barCount} ${rebarLabel(input.barDiameterMm)} a lo largo` },
     ...[interior.directions.x, interior.directions.y].map((direction) => ({ label: `Zapata 2 ${directionTitle(direction, input.barDiameterMm)}`, value: directionDetail(direction) })),
   ];
 }

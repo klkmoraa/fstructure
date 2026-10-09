@@ -3,8 +3,8 @@ import { act, renderHook } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { useDesignMemory } from './designMemory';
 import { FRAME_DEFAULTS } from './frameModel';
+import { BEAM_DEFAULTS, DEFAULT_SPANS } from './beamModel';
 import { FOOTING_DEFAULTS } from './footingModel';
-import { DEFAULT_SPANS } from './beamModel';
 import { DESIGN_STARTS } from './designStarts';
 import { createProjectWorkbenchStorage, WORKBENCH_DOCUMENT_KIND, type WorkbenchStorage } from './workbenchStorage';
 
@@ -67,6 +67,33 @@ it('start no duplica borradores equivalentes ya guardados', () => {
 
   expect(result.current.items).toHaveLength(2);
   expect(result.current.items.map((item) => item.id)).toEqual(['beam-1', 'footing-1']);
+});
+
+it('deduplica una memoria legacy que omitía campos con sus defaults de elemento', () => {
+  const beam = { ...BEAM_DEFAULTS, tag: 'V-legacy', futureField: 'preservado' };
+  const legacyBeam = { id: 'beam-legacy', element: 'beam', code: 'ntc-2023', savedAt: '2026-10-01', fields: { tag: 'V-legacy', futureField: 'preservado' }, rows: DEFAULT_SPANS };
+  const storage = memoryStorage({ beam, 'beam-spans': DEFAULT_SPANS, element: 'beam', memory: [legacyBeam] });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.start(DESIGN_STARTS.find((item) => item.id === 'piece-footing')!)).toBe('started'); });
+
+  expect(result.current.items).toHaveLength(1);
+  expect(result.current.items[0]).toEqual(legacyBeam);
+  expect(storage.read('beam')).toEqual(beam);
+});
+
+it('conserva como distinta una instantánea frente a un campo explícito inválido', () => {
+  const complete = { ...BEAM_DEFAULTS, tag: 'V-1' };
+  const incomplete = { ...complete, fc: 'dato pendiente' };
+  const savedBeam = { id: 'beam-defaults', element: 'beam', code: 'ntc-2023', savedAt: '2026-10-01', fields: complete };
+  const storage = memoryStorage({ beam: incomplete, 'beam-spans': DEFAULT_SPANS, element: 'beam', memory: [savedBeam] });
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.start(DESIGN_STARTS.find((item) => item.id === 'piece-footing')!)).toBe('started'); });
+
+  expect(result.current.items).toHaveLength(2);
+  expect(result.current.items[0]?.fields).toEqual(complete);
+  expect(result.current.items[1]?.fields).toEqual(incomplete);
 });
 
 it('reconoce como equivalente la pieza antigua que omite sus claros por defecto', () => {

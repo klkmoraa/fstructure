@@ -52,6 +52,14 @@ export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: Ext
 /** Borrador vigente de un elemento, tal como lo guarda la mesa. */
 type MemoryDraft = Pick<WorkbenchMemoryItem, 'fields' | 'rows' | 'levels'>;
 
+const ELEMENT_DEFAULT_FIELDS: Record<DesignElementKind, Record<string, string>> = {
+  beam: BEAM_DEFAULTS,
+  column: COLUMN_DEFAULTS,
+  frame: { ...FRAME_DEFAULTS, ...FRAME_LEGACY },
+  footing: FOOTING_DEFAULTS,
+  section: SECTION_DEFAULTS,
+};
+
 function currentDraft(storage: WorkbenchStorage, element: DesignElementKind): MemoryDraft {
   const raw = storage.read(element);
   const fields = raw && typeof raw === 'object' && !Array.isArray(raw)
@@ -84,8 +92,9 @@ function hasStoredDraft(storage: WorkbenchStorage, element: DesignElementKind): 
 const sameDraft = (item: WorkbenchMemoryItem, draft: MemoryDraft) => {
   const defaultRows = item.element === 'beam' ? DEFAULT_SPANS : item.element === 'frame' ? DEFAULT_BAYS : undefined;
   const defaultLevels = item.element === 'frame' ? DEFAULT_STORIES : undefined;
-  return stableJson({ fields: item.fields, rows: item.rows ?? defaultRows ?? null, levels: item.levels ?? defaultLevels ?? null })
-    === stableJson({ fields: draft.fields, rows: draft.rows ?? defaultRows ?? null, levels: draft.levels ?? defaultLevels ?? null });
+  const normalizeFields = (fields: Record<string, string>) => ({ ...ELEMENT_DEFAULT_FIELDS[item.element], ...fields });
+  return stableJson({ fields: normalizeFields(item.fields), rows: item.rows ?? defaultRows ?? null, levels: item.levels ?? defaultLevels ?? null })
+    === stableJson({ fields: normalizeFields(draft.fields), rows: draft.rows ?? defaultRows ?? null, levels: draft.levels ?? defaultLevels ?? null });
 };
 
 const newId = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replaceAll('-', '').slice(0, 12);

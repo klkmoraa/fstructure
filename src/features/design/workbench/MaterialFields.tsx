@@ -22,6 +22,15 @@ function SuggestedNumber({ label, value, values, onChange }: {
   </>;
 }
 
+/** Selector de sugerencias de concreto y campo editable para otros usos del taller. */
+export function ConcreteStrengthField({ label = 'f′c', value, onChange }: {
+  label?: string;
+  value: string;
+  onChange(value: string): void;
+}) {
+  return <SuggestedNumber label={label} value={value} values={FC_VALUES} onChange={onChange} />;
+}
+
 /** Valores frecuentes como atajo; los campos siguen aceptando cualquier valor. */
 export function MaterialFields({ fc, onFcChange, fy, onFyChange, fyv, onFyvChange, showFc = true }: {
   fc: string;
@@ -33,7 +42,7 @@ export function MaterialFields({ fc, onFcChange, fy, onFyChange, fyv, onFyvChang
   showFc?: boolean;
 }) {
   return <>
-    {showFc ? <SuggestedNumber label="f′c" value={fc} values={FC_VALUES} onChange={onFcChange} /> : null}
+    {showFc ? <ConcreteStrengthField value={fc} onChange={onFcChange} /> : null}
     <SuggestedNumber label="fy" value={fy} values={FY_VALUES} onChange={onFyChange} />
     {fyv !== undefined && onFyvChange ? <SuggestedNumber label="fy estribos" value={fyv} values={FY_VALUES} onChange={onFyvChange} /> : null}
   </>;

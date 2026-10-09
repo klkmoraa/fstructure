@@ -8,6 +8,7 @@ import { ProjectProvider } from '../../../store/ProjectContext';
 import { DesignWorkbench } from './DesignWorkbench';
 import { ShellSlotHost, ShellToolSlotsProvider } from '../../workspace/ShellToolSlots';
 import { WorkbenchStorageContext } from './workbenchStorage';
+import { FOOTING_DEFAULTS, footingToInput } from './footingModel';
 
 beforeEach(() => {
   localStorage.clear();
@@ -52,6 +53,20 @@ describe('DesignWorkbench', () => {
     expect(within(results()).queryByRole('table')).toBeNull();
     await user.click(within(results()).getByRole('button', { name: 'Detalle del cálculo' }));
     expect(within(results()).getByRole('table')).toBeTruthy();
+  });
+
+  it('ofrece sugerencias de f′c para la columna en opciones avanzadas y actualiza su conversión', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    await user.click(screen.getByRole('radio', { name: 'Zapata' }));
+    await user.click(screen.getByRole('button', { name: 'Más opciones' }));
+    const suggested = screen.getByRole('combobox', { name: 'f′c de la columna sugerido' });
+    await user.selectOptions(suggested, '300');
+
+    expect((screen.getByRole('textbox', { name: 'f′c de la columna' }) as HTMLInputElement).value).toBe('300');
+    const savedDraft = JSON.parse(localStorage.getItem('fstructure.design-workbench.footing')!) as Record<string, string>;
+    expect(savedDraft.colFc).toBe('300');
+    expect(footingToInput('ntc-2023', { ...FOOTING_DEFAULTS, ...savedDraft }).columnFcMpa).toBeCloseTo(300 * 0.0980665, 5);
   });
 
   it('agrega y quita claros y muestra errores en lugar de un resultado con datos inválidos', async () => {
