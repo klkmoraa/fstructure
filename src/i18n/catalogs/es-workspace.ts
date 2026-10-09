@@ -556,4 +556,9 @@ export const esWorkspace = {
   'dock.apply': 'Aplicar',
   'dock.loadValue': 'Valor de {load}',
   'dock.endChain': 'Cerrar la cadena desde {node}',
+  'dock.direction': 'Dirección de la carga',
+  'dock.dir.down': 'Hacia abajo',
+  'dock.dir.right': 'Hacia la derecha',
+  'dock.dir.up': 'Hacia arriba',
+  'dock.dir.left': 'Hacia la izquierda',
 } as const;

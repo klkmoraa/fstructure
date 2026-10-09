@@ -556,4 +556,9 @@ export const enWorkspace = {
   'dock.apply': 'Apply',
   'dock.loadValue': '{load} value',
   'dock.endChain': 'End the chain from {node}',
+  'dock.direction': 'Load direction',
+  'dock.dir.down': 'Downward',
+  'dock.dir.right': 'To the right',
+  'dock.dir.up': 'Upward',
+  'dock.dir.left': 'To the left',
 } as const;

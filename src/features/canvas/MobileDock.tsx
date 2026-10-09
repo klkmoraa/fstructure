@@ -1,5 +1,8 @@
 import {
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
   Check,
   DraftingCompass,
   Ellipsis,
@@ -28,7 +31,7 @@ import { readCanvasViewSettings, withCanvasViewSettings } from '../view/canvasVi
 import { emitWorkspaceCommand, onWorkspaceCommand } from '../workspace/workspaceCommands';
 import { StructuralToolIcon } from './StructuralToolIcon';
 import { TOOL_REGISTRY } from './toolRegistry';
-import { readLoadQuickValue, withLoadFlipped, withLoadMagnitude, type LoadQuickValue } from './loadQuickValue';
+import { readLoadQuickValue, withLoadDirection, withLoadFlipped, withLoadMagnitude, type LoadQuickValue } from './loadQuickValue';
 import { parseLocalizedDecimal } from './quickEntry';
 import { fromDisplay, toDisplay } from '../../foundation/units';
 import { unitLabel } from '../../engine/units';
@@ -283,11 +286,21 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
     aria-label={t('dock.loadValue', { load: loadValue.id })}
     onSubmit={(event) => { event.preventDefault(); applyLoadValue(valueEditor.draft); }}
   >
-    <button type="button" className="mdock__key mdock__key--sm mdock__key--flip" aria-label={t('dock.flip')} title={t('dock.flip')}
+    {loadValue.quantity === 'moment' ? <button type="button" className="mdock__key mdock__key--sm mdock__key--flip" aria-label={t('dock.flip')} title={t('dock.flip')}
       onPointerDown={(event) => event.preventDefault()}
       onClick={() => updateProject((next) => withLoadFlipped(next, selection))}>
       <LoadDirectionGlyph value={loadValue} size={20} />
-    </button>
+    </button> : <div className="mdock__dirs" role="group" aria-label={t('dock.direction')}>
+      {([['down', -90, ArrowDown], ['right', 0, ArrowRight], ['up', 90, ArrowUp], ['left', 180, ArrowLeft]] as const).map(([id, angle, Icon]) => {
+        const active = Math.abs(((loadValue.direction - angle + 540) % 360) - 180) < 1;
+        return <button key={id} type="button" className="mdock__key mdock__key--sm mdock__key--dir" aria-pressed={active}
+          aria-label={t(`dock.dir.${id}`)} title={t(`dock.dir.${id}`)}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={() => updateProject((next) => withLoadDirection(next, selection, angle))}>
+          <Icon size={18} strokeWidth={2.2} aria-hidden="true" />
+        </button>;
+      })}
+    </div>}
     <label className="mdock__editor-field">
       <input
         ref={valueInputRef}

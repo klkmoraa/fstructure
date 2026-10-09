@@ -83,8 +83,11 @@ describe('dock dinámico', () => {
     expect(screen.getByLabelText('NL1 fy').textContent).toBe('-35');
 
     await user.click(screen.getByRole('button', { name: 'Valor de NL1' }));
-    await user.click(screen.getByRole('button', { name: 'Invertir sentido' }));
+    await user.click(screen.getByRole('button', { name: 'Hacia arriba' }));
     expect(screen.getByLabelText('NL1 fy').textContent).toBe('35');
+    // Horizontal: la misma magnitud, ahora en X.
+    await user.click(screen.getByRole('button', { name: 'Hacia la derecha' }));
+    expect(screen.getByLabelText('NL1 fy').textContent).toBe('0');
   });
 
   it('al colocar una carga el lienzo abre su valor en el dock', async () => {

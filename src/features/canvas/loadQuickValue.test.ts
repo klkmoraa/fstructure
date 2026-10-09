@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDefaultProject } from '../../data/defaultProject';
 import type { MemberLoad, ProjectModel as Project } from '../../types';
-import { readLoadQuickValue, withLoadFlipped, withLoadMagnitude } from './loadQuickValue';
+import { readLoadQuickValue, withLoadDirection, withLoadFlipped, withLoadMagnitude } from './loadQuickValue';
 
 const base = (): Project => {
   const project = createDefaultProject();
@@ -44,5 +44,19 @@ describe('valor rápido de una carga', () => {
   it('una magnitud escrita con signo se toma en valor absoluto: el sentido lo da invertir', () => {
     const project = withLoadMagnitude(base(), { kind: 'memberLoad', id: 'ML2' }, -7);
     expect(project.memberLoads[1].moment).toBe(-7);
+  });
+
+  it('apuntar a la derecha vuelve horizontal una carga vertical sin cambiar su magnitud', () => {
+    const project = withLoadDirection(base(), { kind: 'nodalLoad', id: 'NL1' }, 0);
+    expect(project.nodalLoads[0].fx).toBeCloseTo(5, 12);
+    expect(project.nodalLoads[0].fy).toBeCloseTo(0, 12);
+  });
+
+  it('una distribuida horizontal conserva la forma trapecial', () => {
+    const project = withLoadDirection(base(), { kind: 'memberLoad', id: 'ML1' }, 180);
+    const load = project.memberLoads[0];
+    expect(load.qxStart).toBeCloseTo(-10, 12);
+    expect(load.qxEnd).toBeCloseTo(-20, 12);
+    expect(load.qyStart).toBeCloseTo(0, 12);
   });
 });

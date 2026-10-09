@@ -126,3 +126,41 @@ export const withLoadFlipped = (draft: Project, selection: Selection): Project =
   }
   return draft;
 };
+
+/**
+ * Apunta la carga seleccionada hacia `angleDeg` (0 = +X, 90 = +Y, −90 = abajo)
+ * conservando su magnitud y, en una distribuida, la forma de sus extremos. No
+ * actúa sobre momentos. Muta `draft`.
+ */
+export const withLoadDirection = (draft: Project, selection: Selection, angleDeg: number): Project => {
+  const cos = Math.round(Math.cos(angleDeg * Math.PI / 180) * 1e12) / 1e12;
+  const sin = Math.round(Math.sin(angleDeg * Math.PI / 180) * 1e12) / 1e12;
+  const aim = (x: number | undefined, y: number | undefined, fallback: number) => {
+    const m = Math.hypot(x ?? 0, y ?? 0) || fallback;
+    return { x: m * cos, y: m * sin };
+  };
+  if (selection?.kind === 'nodalLoad') {
+    const load = draft.nodalLoads.find((item) => item.id === selection.id);
+    if (!load || Math.hypot(load.fx, load.fy) < EPS) return draft;
+    const next = aim(load.fx, load.fy, 0);
+    load.fx = next.x;
+    load.fy = next.y;
+    return draft;
+  }
+  if (selection?.kind !== 'memberLoad') return draft;
+  const load = draft.memberLoads.find((item) => item.id === selection.id);
+  if (!load || load.type === 'moment') return draft;
+  if (load.type === 'point') {
+    const next = aim(load.px, load.py, 0);
+    load.px = next.x;
+    load.py = next.y;
+    return draft;
+  }
+  const start = aim(load.qxStart, load.qyStart, 0);
+  const end = aim(load.qxEnd, load.qyEnd, 0);
+  load.qxStart = start.x;
+  load.qyStart = start.y;
+  load.qxEnd = end.x;
+  load.qyEnd = end.y;
+  return draft;
+};

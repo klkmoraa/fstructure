@@ -454,3 +454,9 @@
 .mdock__chip--chain > svg:last-child { width: 14px; height: 14px; color: var(--sc-color-text-secondary); }
 .mdock__chip--chain:active { transform: scale(.97); }
 .mdock__chip--chain:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
+
+/* Dirección de la carga: ↓ → ↑ ← a un toque; el valor sigue en el campo. */
+.mdock__dirs { flex: none; display: flex; gap: 2px; }
+.mdock__key--dir { width: 36px; height: 40px; min-height: 40px; border-radius: 12px; }
+.mdock__key--dir[aria-pressed='true'] { background: color-mix(in srgb, var(--sc-color-load-point) 22%, var(--sc-color-surface-inset)); color: var(--sc-color-load-point); box-shadow: none; }
+@media (max-width: 380px) { .mdock__key--dir { width: 32px; } }
