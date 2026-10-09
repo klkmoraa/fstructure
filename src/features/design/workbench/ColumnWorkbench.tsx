@@ -12,6 +12,7 @@ import {
   parseNumber,
 } from './common';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
+import { MaterialFields } from './MaterialFields';
 
 export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('column', COLUMN_DEFAULTS);
@@ -74,7 +75,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <SegmentedControl label="Refuerzo transversal" size="sm" value={spiral ? 'spiral' : 'ties'} onValueChange={set('transverse')}
             options={[{ value: 'ties', label: 'Estribos circulares' }, { value: 'spiral', label: 'Zuncho' }]} />
         </div> : null}
-        <BarSelect label={spiral ? 'Zuncho' : circular ? 'Estribo circular' : 'Estribo'} value={draft.tie} onChange={set('tie')} />
+        <BarSelect label={spiral ? 'Zuncho' : circular ? 'Estribo circular' : 'Estribo'} value={draft.tie} onChange={set('tie')} usage="transverse" />
         {circular
           ? <NumberField label="Número de barras" unit="pzas" value={draft.barCount} onChange={set('barCount')} min={code.column.circularMinimumBars} />
           : <>
@@ -90,8 +91,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         {result.ok ? <div className="dw-span-all"><ActionNote text={`Propuesta: ${formatNumber(result.ties.proposedCenterSpacingMm / 10, 1)} cm${result.ties.endLengthMm > 0 ? ` al centro · ${formatNumber(result.ties.proposedEndSpacingMm / 10, 1)} cm en Lo` : ''}. ${draft.tieSpacing.trim() || draft.endTieSpacing.trim() ? 'Se evalúa tu separación, sin ajustarla en silencio.' : 'Puedes escribir otra separación para verificarla.'}`} /></div> : null}
       </FieldGroup>
       <FieldGroup title="Materiales">
-        <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />
-        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
+        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} />
       </FieldGroup>
       <FieldGroup title="Esbeltez">
         <div className="dw-span-all">

@@ -12,6 +12,7 @@ import {
   overallStatus,
   requiredFlexuralSteelMm2,
   tracedAt,
+  transverseDiameterScopeWarning,
   type ElementCheck,
 } from './shared';
 import { designStripFooting, type StripFootingResult } from './stripFooting';
@@ -375,6 +376,8 @@ export function designStrapFooting(input: StrapFootingInput): StrapFootingResult
       note: `La contratrabe descarga la zapata 2 en ${(p1 * (k - 1)).toFixed(0)} kN (R2 = ${serviceInterior.toFixed(0)} kN de servicio); se diseña con P2 = ${p2.toFixed(0)} kN.` },
     { id: 'load-factors', label: 'Combinaciones de carga', status: 'info', reference: refs.loadFactors, note: `${combinationText}; P2u = ${p2u.toFixed(0)} kN.` },
   );
+  const transverseScopeWarning = transverseDiameterScopeWarning(input.strap.stirrupDiameterMm, 'Contratrabe: diámetro de estribo');
+  if (transverseScopeWarning) checks.push(transverseScopeWarning);
 
   return {
     ok: true,

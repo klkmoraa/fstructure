@@ -20,6 +20,7 @@ import {
 import { MatPlan, MatStripDiagram, StrapDiagrams, StrapFootingPlan } from './FoundationDrawings';
 import { CombinedFootingDiagrams, CombinedFootingPlan, StripFootingSection } from './FootingTypeDrawings';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
+import { MaterialFields } from './MaterialFields';
 
 type Setter = (field: keyof FootingDraft) => (value: string) => void;
 interface FootingProps { readonly chrome: WorkbenchChrome; readonly draft: FootingDraft; readonly set: Setter; readonly reset: () => void }
@@ -106,7 +107,7 @@ function StrapFooting({ chrome, draft, set, reset }: FootingProps) {
           <NumberField label="Peralte" unit="cm" value={draft.strapHeight} onChange={set('strapHeight')} />
         </>}
         <BarSelect label="Varilla" value={draft.strapBar} onChange={set('strapBar')} minimumDiameterMm={12.7} />
-        <BarSelect label="Estribo" value={draft.strapStirrup} onChange={set('strapStirrup')} />
+        <BarSelect label="Estribo" value={draft.strapStirrup} onChange={set('strapStirrup')} usage="transverse" />
       </FieldGroup>
       <SoilAndMaterials draft={draft} set={set} planLabel="Zapata 1 con ancho ≈ 2 × largo"
         planFields={<NumberField label="Largo B1 (X)" unit="cm" value={draft.b1} onChange={set('b1')} />} />
@@ -164,8 +165,7 @@ function MatFoundation({ chrome, draft, set, reset }: FootingProps) {
       <FieldGroup title="Suelo y materiales">
         <NumberField label="qa neta" unit="kPa" value={draft.qa} onChange={set('qa')} />
         <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
-        <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />
-        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
+        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} />
         <div className="dw-span-all">
           <LayerToggle label="Espesor automático" checked={draft.autoThickness === 'yes'} onCheckedChange={(checked) => set('autoThickness')(checked ? 'yes' : 'no')} />
         </div>
@@ -192,8 +192,7 @@ function SoilAndMaterials({ draft, set, planLabel, planFields }: { draft: Footin
     <FieldGroup title="Suelo y materiales">
       <NumberField label="qa neta" unit="kPa" value={draft.qa} onChange={set('qa')} />
       <NumberField label="Recubrimiento" unit="cm" value={draft.cover} onChange={set('cover')} />
-      <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />
-      <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
+      <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} />
     </FieldGroup>
     <FieldGroup title="Dimensiones">
       <div className="dw-span-all">
@@ -241,7 +240,7 @@ function StripFooting({ chrome, draft, set, reset }: FootingProps) {
       <SoilAndMaterials draft={draft} set={set} planLabel="Ancho automático"
         planFields={<NumberField label="Ancho B" unit="cm" value={draft.stripWidth} onChange={set('stripWidth')} />} />
       <MoreOptions>
-        <BarSelect label="Varilla transversal" value={draft.bar} onChange={set('bar')} />
+        <BarSelect label="Varilla transversal" value={draft.bar} onChange={set('bar')} usage="transverse" />
         <BarSelect label="Varilla longitudinal" value={draft.distBar} onChange={set('distBar')} />
       </MoreOptions>
     </>}
@@ -300,7 +299,7 @@ function CombinedFooting({ chrome, draft, set, reset }: FootingProps) {
         planFields={<NumberField label="Ancho B" unit="cm" value={draft.combWidth} onChange={set('combWidth')} />} />
       <MoreOptions>
         <BarSelect label="Varilla longitudinal" value={draft.bar} onChange={set('bar')} />
-        <BarSelect label="Varilla transversal" value={draft.transBar} onChange={set('transBar')} />
+        <BarSelect label="Varilla transversal" value={draft.transBar} onChange={set('transBar')} usage="transverse" />
       </MoreOptions>
     </>}
     stage={result.ok ? <>
@@ -404,8 +403,7 @@ function IsolatedFooting({ chrome, draft, set, reset }: FootingProps) {
         {draft.autoThickness === 'yes' ? null : <NumberField label="Peralte h" unit="cm" value={draft.thickness} onChange={set('thickness')} />}
       </FieldGroup>
       <FieldGroup title="Materiales">
-        <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />
-        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
+        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} />
       </FieldGroup>
       <MoreOptions>
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />

@@ -49,7 +49,7 @@ function structureReinforcementRows(result: StructureDesignResult): ReportRow[] 
     })),
     ...[...new Set(result.columns.map((column) => column.story))].reverse().map((story) => {
       const columns = result.columns.filter((column) => column.story === story);
-      const ties = columns.map((column) => `eje ${column.axisLabel} E ${rebarLabel(column.result.ties.diameterMm)} @ ${cm(column.result.ties.centerSpacingMm)}${column.result.ties.endLengthMm > 0 ? ` (@ ${cm(column.result.ties.endSpacingMm)} en Lo)` : ''}`);
+      const ties = columns.map((column) => `eje ${column.axisLabel} E ${rebarLabel(column.result.ties.diameterMm, 'transverse')} @ ${cm(column.result.ties.centerSpacingMm)}${column.result.ties.endLengthMm > 0 ? ` (@ ${cm(column.result.ties.endSpacingMm)} en Lo)` : ''}`);
       return { label: `Columnas del entrepiso ${story + 1}`, value: `${columns.map((column) => `${column.result.bars.length} ${rebarLabel(column.result.input.barDiameterMm)}`).join(' / ')} · ${ties.join(' · ')}` };
     }),
   ];
@@ -104,7 +104,7 @@ function structureData(outcome: Extract<StructureOutcome, { ok: true }>, draft: 
     { title: 'Secciones', rows: [
       { label: 'Vigas', value: `b = ${cm(frame.input.beam.widthMm)} · h = ${cm(frame.input.beam.heightMm)}` },
       { label: 'Columnas', value: `b = ${cm(frame.input.column.widthMm)} (fuera del plano) · h = ${cm(frame.input.column.heightMm)} (en el plano)` },
-      { label: 'Armado de columnas', value: `${columnBarsText(result)}: ${options.columnReinforcement.barsAlongWidth} por cara b y ${options.columnReinforcement.barsAlongDepth} por cara h · estribo ${rebarLabel(options.columnReinforcement.tieDiameterMm)}` },
+      { label: 'Armado de columnas', value: `${columnBarsText(result)}: ${options.columnReinforcement.barsAlongWidth} por cara b y ${options.columnReinforcement.barsAlongDepth} por cara h · estribo ${rebarLabel(options.columnReinforcement.tieDiameterMm, 'transverse')}` },
       { label: 'Recubrimiento libre', value: cm(options.coverMm) },
     ] },
     { title: 'Cargas de servicio por nivel', rows: [
@@ -125,7 +125,7 @@ function structureData(outcome: Extract<StructureOutcome, { ok: true }>, draft: 
     { title: 'Secciones', rows: [
       ...result.beams.map((beam) => ({ label: beam.label, value: `b = ${cm(beam.result.input.widthMm)} · h = ${cm(beam.result.input.heightMm)}` })),
       ...result.columns.map((column) => ({ label: column.label, value: `b = ${cm(column.result.input.widthMm)} · h = ${cm(column.result.input.depthMm)}` })),
-      { label: 'Armado de columnas', value: `${columnBarsText(result)}: ${options.columnReinforcement.barsAlongWidth} por cara b y ${options.columnReinforcement.barsAlongDepth} por cara h · estribo ${rebarLabel(options.columnReinforcement.tieDiameterMm)}` },
+      { label: 'Armado de columnas', value: `${columnBarsText(result)}: ${options.columnReinforcement.barsAlongWidth} por cara b y ${options.columnReinforcement.barsAlongDepth} por cara h · estribo ${rebarLabel(options.columnReinforcement.tieDiameterMm, 'transverse')}` },
       { label: 'Recubrimiento libre', value: cm(options.coverMm) },
     ] },
   ];

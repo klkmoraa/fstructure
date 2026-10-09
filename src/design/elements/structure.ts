@@ -1070,13 +1070,15 @@ export function designStructure(source: StructureSource, options: StructureDesig
   // Comprobaciones: una por línea de viga y por columna, y las del conjunto.
   const governingCheck = (checks: readonly ElementCheck[]) => {
     const failing = checks.filter((check) => check.status === 'fail');
-    const pool = failing.length ? failing : checks.filter((check) => check.ratio !== undefined && Number.isFinite(check.ratio));
+    const warnings = checks.filter((check) => check.status === 'warning');
+    const pool = failing.length ? failing : warnings.length ? warnings : checks.filter((check) => check.ratio !== undefined && Number.isFinite(check.ratio));
     return pool.reduce<ElementCheck | undefined>((best, check) => (!best || (check.ratio ?? 0) > (best.ratio ?? 0) ? check : best), undefined) ?? checks[0]!;
   };
   const sourceName = structureSourceName(source.kind);
   const memberChecks: ElementCheck[] = [
     ...beams.map((beam): ElementCheck => {
       const rule = governingCheck(beam.result.checks);
+      const complementaryWarnings = beam.result.checks.filter((check) => check.status === 'warning' && check !== rule);
       return {
         id: beam.id,
         label: beam.label,
@@ -1086,7 +1088,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
         capacity: 1,
         unit: '',
         reference: rule.reference,
-        note: `Rige: ${rule.label.toLowerCase()}${rule.note ? ` — ${rule.note}` : ''}`,
+        note: `Rige: ${rule.label.toLowerCase()}${rule.note ? ` — ${rule.note}` : ''}${complementaryWarnings.length ? ` Advertencia complementaria: ${complementaryWarnings.map((check) => check.note ?? check.label).join(' · ')}` : ''}`,
         location: `${beam.label}${rule.location ? ` · ${rule.location}` : ''}`,
         combination: rule.combination ?? `${sourceName} · envolvente`,
       };

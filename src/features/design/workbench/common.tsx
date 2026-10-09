@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, In
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Field, SegmentedControl, Select } from '../../../design-system/components/controls';
 import { UnitField } from '../../../design-system/components/editor';
-import { REBAR_SIZES, type ElementCheck } from '../../../design/elements/shared';
+import { REBAR_SIZES, STIRRUP_SIZES, type BarUsage, type ElementCheck } from '../../../design/elements/shared';
 import type { Takeoff } from '../../../design/elements/takeoff';
 import type { ReportAlternative } from './designReport';
 import { useWorkbenchStorage, type WorkbenchStorage } from './workbenchStorage';
@@ -125,12 +125,12 @@ export function NumberField({ label, value, unit, onChange, hint, min = 0 }: {
   return <UnitField label={label} value={value} unit={unit} onValueChange={onChange} hint={error ? undefined : hint} error={error} />;
 }
 
-export function BarSelect({ label, value, onChange, allowAuto = false, minimumDiameterMm = 0 }: {
-  label: string; value: string; onChange: (value: string) => void; allowAuto?: boolean; minimumDiameterMm?: number;
+export function BarSelect({ label, value, onChange, allowAuto = false, minimumDiameterMm = 0, usage = 'longitudinal' }: {
+  label: string; value: string; onChange: (value: string) => void; allowAuto?: boolean; minimumDiameterMm?: number; usage?: BarUsage;
 }) {
   return <Select label={label} value={value} onChange={(event) => onChange(event.currentTarget.value)}>
     {allowAuto ? <option value="auto">Automático</option> : null}
-    {REBAR_SIZES.filter((size) => size.diameterMm >= minimumDiameterMm).map((size) => (
+    {(usage === 'transverse' ? STIRRUP_SIZES : REBAR_SIZES).filter((size) => size.diameterMm >= minimumDiameterMm).map((size) => (
       <option key={size.label} value={String(size.diameterMm)}>{`${size.label} · Ø ${size.diameterMm} mm`}</option>
     ))}
   </Select>;

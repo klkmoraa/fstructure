@@ -13,7 +13,7 @@ interface RebarSize {
 
 /**
  * Varillas corrugadas en México (número en octavos de pulgada), de la #2.5 a
- * la #11. El mismo catálogo sirve para barras y estribos. Termina en la #11: la
+ * la #11. El catálogo longitudinal termina en la #11: la
  * tabla 14.4.2.4 de la NTC 2023 separa las longitudes de desarrollo en «no. 6 y
  * menores» y «no. 7 a no. 11»; la #12 (38.1 mm) queda fuera de ambos renglones.
  */
@@ -30,8 +30,17 @@ export const REBAR_SIZES: readonly RebarSize[] = Object.freeze([
   { label: '#11', diameterMm: 34.9 },
 ]);
 
-export const rebarLabel = (diameterMm: number): string =>
-  REBAR_SIZES.find((size) => Math.abs(size.diameterMm - diameterMm) < 0.05)?.label ?? `Ø${diameterMm}`;
+/** Catálogo transversal; #2 se reserva a estribos y no entra en el acero longitudinal. */
+export const STIRRUP_SIZES: readonly RebarSize[] = Object.freeze([
+  { label: '#2', diameterMm: 6.4 },
+  ...REBAR_SIZES,
+]);
+
+export type BarUsage = 'longitudinal' | 'transverse';
+
+export const rebarLabel = (diameterMm: number, usage: BarUsage = 'longitudinal'): string =>
+  (usage === 'transverse' ? STIRRUP_SIZES : REBAR_SIZES)
+    .find((size) => Math.abs(size.diameterMm - diameterMm) < 0.05)?.label ?? `Ø${diameterMm}`;
 
 export const barArea = (diameterMm: number): number => Math.PI * diameterMm ** 2 / 4;
 
@@ -113,6 +122,17 @@ export interface ElementCheck {
   /** De qué combinación o captura sale la demanda, y si es envolvente o concurrente. */
   readonly combination?: string;
 }
+
+/** Advertencia complementaria para diámetro transversal de viga no evaluado bajo 9.5 mm. */
+export const transverseDiameterScopeWarning = (diameterMm: number, label = 'Diámetro de estribo') => diameterMm < 9.5
+  ? {
+    id: 'stirrup-diameter-scope',
+    label,
+    status: 'warning' as const,
+    reference: complementary('Alcance no verificado'),
+    note: `Con Ø${diameterMm} mm la aceptación normativa no está verificada; esta advertencia complementaria no establece un mínimo normativo.`,
+  }
+  : undefined;
 
 /** Añade ubicación y origen de la demanda a una comprobación ya hecha. */
 export const tracedAt = (check: ElementCheck, location?: string, combination?: string): ElementCheck => ({

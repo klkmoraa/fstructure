@@ -196,7 +196,7 @@ async function drawElement(layout: PdfLayout, pdf: PDFDocument, source: DesignRe
     { header: 'Long. (m)', width: 58, align: 'right' },
     { header: 'Masa', width: 66, align: 'right' },
   ], [
-    ...report.takeoff.lines.map((item) => [item.mark, rebarLabel(item.diameterMm), String(item.count), item.pieceLengthM.toFixed(2), kg(item.massKg)]),
+    ...report.takeoff.lines.map((item) => [item.mark, rebarLabel(item.diameterMm, /estrib|transversal|zuncho|tie/i.test(item.mark) ? 'transverse' : 'longitudinal'), String(item.count), item.pieceLengthM.toFixed(2), kg(item.massKg)]),
     ['Total de acero', '', '', '', kg(report.takeoff.steelKg)],
   ]);
   layout.keyValues([

@@ -69,6 +69,16 @@ function enginePortal(widthM: number, heightM: number, beamKnPerM: number, colum
 }
 
 describe('pórtico de vigas y columnas', () => {
+  it('propaga a la revisión del pórtico la advertencia complementaria de estribos menores a 9.5 mm', () => {
+    const result = designFrame(frameInput({ stirrupDiameterMm: 6.4 }));
+    if (!result.ok) throw new Error(result.errors.join('\n'));
+    expect(result.beams.every((beam) => beam.result.checks.some((check) => check.id === 'stirrup-diameter-scope' && check.status === 'warning'))).toBe(true);
+    const reportChecks = result.checks.filter((check) => check.id.startsWith('beam-'));
+    expect(reportChecks).toHaveLength(result.beams.length);
+    expect(reportChecks.map(({ note }) => note)).toEqual(reportChecks.map(() => expect.stringContaining('aceptación normativa no está verificada')));
+    expect(result.status).toBe('fail');
+  });
+
   it('diseña cada nivel de vigas y cada columna', () => {
     const result = designFrame(frameInput());
     if (!result.ok) throw new Error(result.errors.join('\n'));

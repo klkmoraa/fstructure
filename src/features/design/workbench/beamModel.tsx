@@ -32,9 +32,28 @@ export const DEFAULT_SPANS: SpanDraft[] = [
 
 export const ENDS: { value: BeamEnd; label: string }[] = [
   { value: 'pin', label: 'Apoyo' },
+  { value: 'roller', label: 'Rodillo' },
   { value: 'fixed', label: 'Empotre' },
   { value: 'free', label: 'Libre' },
 ];
+
+export type BeamSupportPreset = 'simple' | 'propped' | 'fixed' | 'cantilever-left' | 'cantilever-right' | 'continuous';
+
+/** Ajusta apoyos rápidos sin reemplazar cargas ni claros capturados. */
+export function beamSupportPreset(preset: BeamSupportPreset, draft: BeamDraft, spans: readonly SpanDraft[]) {
+  const ends = {
+    simple: ['pin', 'pin'],
+    propped: ['fixed', 'pin'],
+    fixed: ['fixed', 'fixed'],
+    'cantilever-left': ['fixed', 'free'],
+    'cantilever-right': ['free', 'fixed'],
+    continuous: ['pin', 'pin'],
+  }[preset] as [string, string];
+  const nextSpans = preset === 'continuous' && spans.length === 1
+    ? [...spans, { ...spans[0]! }]
+    : spans.map((span) => ({ ...span }));
+  return { draft: { ...draft, leftEnd: ends[0]!, rightEnd: ends[1]! }, spans: nextSpans };
+}
 
 export const parseSpans = (raw: unknown): SpanDraft[] | undefined => {
   if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_SPANS) return undefined;
@@ -97,7 +116,7 @@ export const cm = (mm: number) => `${formatNumber(mm / 10, 0)} cm`;
 export const meters = (m: number) => formatNumber(m, 2);
 
 export function stirrupText(stirrups: SpanStirrups, diameterMm: number) {
-  const size = rebarLabel(diameterMm);
+  const size = rebarLabel(diameterMm, 'transverse');
   if (stirrups.denseZones.length === 0) return `E ${size} @ ${cm(stirrups.denseSpacingMm)}`;
   return `E ${size} @ ${cm(stirrups.denseSpacingMm)} en zonas de cortante · @ ${cm(stirrups.centerSpacingMm)} resto`;
 }
@@ -170,7 +189,7 @@ function beamValues(result: BeamDesignResult) {
     { symbol: 'Δt', label: `Total con diferida claro ${result.deflection.governingSpan + 1}`, value: `${formatNumber(result.deflection.totalMm)} mm` },
     { symbol: 'Ec', label: 'Módulo de elasticidad', value: `${formatNumber(code.elasticModulusMpa(result.input.fcMpa), 0)} MPa` },
     { symbol: 'w pp', label: 'Peso propio', value: `${formatNumber(result.selfWeightKnPerM, 2)} kN/m` },
-    { symbol: 'Estribo', label: 'Diámetro', value: rebarLabel(result.stirrupDiameterMm) },
+    { symbol: 'Estribo', label: 'Diámetro', value: rebarLabel(result.stirrupDiameterMm, 'transverse') },
     ...result.spans.map((span, index) => ({ symbol: 'Ie/Ig', label: `Claro ${index + 1}`, value: formatNumber(span.effectiveInertiaRatio, 2) })),
   ];
 }

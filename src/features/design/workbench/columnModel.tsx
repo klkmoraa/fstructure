@@ -64,10 +64,10 @@ export const spacingOriginText = (result: ColumnDesignResult) => result.input.ti
   : 'Separación propuesta por resistencia y detallado';
 
 export const tieText = (result: ColumnDesignResult) => result.ties.spiral
-  ? `Zuncho ${rebarLabel(result.ties.diameterMm)} a paso de ${formatNumber(result.ties.spiral.pitchMm / 10, 1)} cm`
+  ? `Zuncho ${rebarLabel(result.ties.diameterMm, 'transverse')} a paso de ${formatNumber(result.ties.spiral.pitchMm / 10, 1)} cm`
   : result.ties.endLengthMm > 0
-  ? `${tieWord(result)} ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.endSpacingMm / 10, 1)} cm en Lo · @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm al centro`
-  : `${tieWord(result)} ${rebarLabel(result.ties.diameterMm)} @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm`;
+  ? `${tieWord(result)} ${rebarLabel(result.ties.diameterMm, 'transverse')} @ ${formatNumber(result.ties.endSpacingMm / 10, 1)} cm en Lo · @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm al centro`
+  : `${tieWord(result)} ${rebarLabel(result.ties.diameterMm, 'transverse')} @ ${formatNumber(result.ties.centerSpacingMm / 10, 1)} cm`;
 
 export const methodLabel: Record<ColumnDesignResult['capacity']['method'], string> = {
   axial: 'Compresión axial',
@@ -159,7 +159,7 @@ function columnData(result: ColumnDesignResult, draft: ColumnDraft) {
       { label: 'Sección', value: input.shape === 'circular' ? `circular, D = ${formatNumber(input.widthMm / 10, 0)} cm` : `rectangular, b = ${formatNumber(input.widthMm / 10, 0)} cm (X) · h = ${formatNumber(input.depthMm / 10, 0)} cm (Y)` },
       { label: 'Recubrimiento libre', value: `${formatNumber(input.coverMm / 10, 1)} cm` },
       { label: 'Barras', value: input.shape === 'circular' ? `${input.barCount} ${rebarLabel(input.barDiameterMm)} en la circunferencia` : `${rebarLabel(input.barDiameterMm)} · ${input.barsAlongWidth} por cara b · ${input.barsAlongDepth} por cara h` },
-      { label: input.transverse === 'spiral' ? 'Zuncho' : 'Estribo', value: `${input.shape === 'circular' && input.transverse !== 'spiral' ? 'circular ' : ''}${rebarLabel(input.tieDiameterMm)}` },
+      { label: input.transverse === 'spiral' ? 'Zuncho' : 'Estribo', value: `${input.shape === 'circular' && input.transverse !== 'spiral' ? 'circular ' : ''}${rebarLabel(input.tieDiameterMm, 'transverse')}` },
       { label: 'Separación proporcionada', value: input.tieSpacingMm !== undefined ? `${formatNumber(input.tieSpacingMm / 10, 2)} cm${input.endTieSpacingMm !== undefined ? ` · extremos ${formatNumber(input.endTieSpacingMm / 10, 2)} cm` : ''}` : input.endTieSpacingMm !== undefined ? `Extremos ${formatNumber(input.endTieSpacingMm / 10, 2)} cm; centro propuesto` : 'Automática' },
       { label: 'Agregado máximo', value: `${formatNumber(input.maxAggregateMm, 0)} mm` },
     ] },

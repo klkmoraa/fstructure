@@ -8,6 +8,7 @@ import {
   equivalentBlockStrengthMpa,
   capacityCheck,
   tracedAt,
+  transverseDiameterScopeWarning,
   complementary,
   flexuralCapacity,
   floorTo,
@@ -1286,6 +1287,8 @@ export function designBeam(input: BeamDesignInput, options: BeamDesignOptions = 
     checks.push({ id: 'deep-beam', label: 'Relación L/h', status: 'fail', reference: refs.deepBeam,
       note: `L/h = ${lengthRatio.toFixed(1)} ${code.beam.deepBeam.inclusive ? '≤' : '<'} ${code.beam.deepBeam.ratio}: viga de gran peralte; se diseña con puntales y tensores (no implementado).` });
   }
+  const transverseScopeWarning = transverseDiameterScopeWarning(context.stirrupDiameterMm);
+  if (transverseScopeWarning) checks.push(transverseScopeWarning);
 
   // Cortes representativos para dibujar: donde rige M⁻ y donde rige M⁺.
   const negativeIndex = moment.min.reduce((best, value, index) => value < moment.min[best]! ? index : best, 0);

@@ -225,7 +225,7 @@ function stripMemo(result: StripFootingResult): string {
     `ZAPATA CORRIDA B = ${meters(result.widthMm)} m · h = ${formatNumber(result.thicknessMm / 10, 0)} cm · muro de ${input.wallMaterial === 'masonry' ? 'mampostería' : 'concreto'} de ${input.wallWidthMm / 10} cm · ${designCode(input.code).name}`,
     `Cargas por metro: CM = ${input.deadKnPerM} · CV = ${input.liveKnPerM} kN/m · wu = ${formatNumber(result.ultimateLoadKnPerM, 1)} kN/m`,
     `Presión de servicio ${formatNumber(result.servicePressureKpa, 0)} kPa · admisible ${input.allowablePressureKpa} kPa`,
-    `Transversal ${rebarLabel(input.barDiameterMm)} @ ${formatNumber(result.transverse.spacingMm / 10, 0)} cm · longitudinal ${result.distribution.barCount} ${rebarLabel(input.distributionBarDiameterMm)}`,
+    `Transversal ${rebarLabel(input.barDiameterMm, 'transverse')} @ ${formatNumber(result.transverse.spacingMm / 10, 0)} cm · longitudinal ${result.distribution.barCount} ${rebarLabel(input.distributionBarDiameterMm)}`,
     ...result.checks.map((check) => `${check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : '!'} ${check.label}${check.ratio !== undefined && Number.isFinite(check.ratio) ? ` (${Math.round(check.ratio * 100)} %)` : ''}`),
     'FStructure · Diseño experimental; requiere revisión profesional.',
   ].join('\n');
@@ -234,7 +234,7 @@ function stripMemo(result: StripFootingResult): string {
 function stripReinforcementRows(result: StripFootingResult): ReportRow[] {
   const { input, transverse } = result;
   return [
-    { label: `Transversal ${rebarLabel(input.barDiameterMm)} @ ${formatNumber(transverse.spacingMm / 10, 0)} cm`, value: `As ${formatNumber(transverse.providedMm2PerM / 100, 2)} cm²/m (req. ${formatNumber(Math.max(transverse.requiredMm2PerM, transverse.minimumMm2PerM) / 100, 2)})${transverse.anchorage === 'hook' ? ' · con gancho' : ''}` },
+    { label: `Transversal ${rebarLabel(input.barDiameterMm, 'transverse')} @ ${formatNumber(transverse.spacingMm / 10, 0)} cm`, value: `As ${formatNumber(transverse.providedMm2PerM / 100, 2)} cm²/m (req. ${formatNumber(Math.max(transverse.requiredMm2PerM, transverse.minimumMm2PerM) / 100, 2)})${transverse.anchorage === 'hook' ? ' · con gancho' : ''}` },
     { label: `Longitudinal ${result.distribution.barCount} ${rebarLabel(input.distributionBarDiameterMm)}`, value: `Distribución, @ ${formatNumber(result.distribution.spacingMm / 10, 0)} cm` },
   ];
 }
@@ -320,7 +320,7 @@ function combinedReinforcementRows(result: CombinedFootingResult): ReportRow[] {
     { label: `Inferior ${layerText(result.bottom)}`, value: `Longitudinal · Mu+ ${formatNumber(result.bottom.momentKnm, 0)} kN·m` },
     ...(result.top ? [{ label: `Superior ${layerText(result.top)}`, value: `Longitudinal entre columnas · Mu− ${formatNumber(result.top.momentKnm, 0)} kN·m` }] : []),
     ...result.bands.map((band) => ({ label: `Bajo C${band.column}: ${layerText(band)}`, value: `Transversal en banda de ${formatNumber(band.widthMm / 10, 0)} cm${band.anchorage === 'hook' ? ' · con gancho' : ''}` })),
-    { label: `Resto: ${rebarLabel(input.transverseBarMm)} @ ${formatNumber(result.transverseMinimumSpacingMm / 10, 0)} cm`, value: 'Transversal mínimo fuera de las bandas' },
+    { label: `Resto: ${rebarLabel(input.transverseBarMm, 'transverse')} @ ${formatNumber(result.transverseMinimumSpacingMm / 10, 0)} cm`, value: 'Transversal mínimo fuera de las bandas' },
   ];
 }
 
@@ -422,7 +422,7 @@ export function strapReinforcementRows(result: StrapFootingResult): ReportRow[] 
   return [
     { label: `Contratrabe superior ${strap.top.barCount} ${rebarLabel(input.strap.barDiameterMm)}`, value: `Mu− ${formatNumber(strap.top.momentKnm, 0)} kN·m · gancho en la columna de lindero, corridas a través de la columna 2` },
     { label: `Contratrabe inferior ${strap.bottom.barCount} ${rebarLabel(input.strap.barDiameterMm)}`, value: `Corridas · Mu+ ${formatNumber(strap.bottom.momentKnm, 0)} kN·m` },
-    { label: `Estribos ${rebarLabel(input.strap.stirrupDiameterMm)} @ ${formatNumber(strap.shear.spacingMm / 10, 1)} cm`, value: 'Cerrados, en toda la contratrabe' },
+    { label: `Estribos ${rebarLabel(input.strap.stirrupDiameterMm, 'transverse')} @ ${formatNumber(strap.shear.spacingMm / 10, 1)} cm`, value: 'Cerrados, en toda la contratrabe' },
     { label: `Zapata 1 ${rebarLabel(input.barDiameterMm)} @ ${formatNumber(exterior.transverse.spacingMm / 10, 0)} cm`, value: `Transversal a la contratrabe · ${exterior.distribution.barCount} ${rebarLabel(input.barDiameterMm)} a lo largo` },
     ...[interior.directions.x, interior.directions.y].map((direction) => ({ label: `Zapata 2 ${directionTitle(direction, input.barDiameterMm)}`, value: directionDetail(direction) })),
   ];
@@ -440,7 +440,7 @@ export function strapReport(result: StrapFootingResult, draft: FootingDraft): De
       `C1 ${input.exterior.widthMm / 10}×${input.exterior.depthMm / 10} cm en el lindero (CM ${input.exterior.deadKn} · CV ${input.exterior.liveKn} kN) · C2 ${input.interior.widthMm / 10}×${input.interior.depthMm / 10} cm (CM ${input.interior.deadKn} · CV ${input.interior.liveKn} kN) · L = ${meters(input.spacingMm)} m`,
       `Zapata 1 ${meters(result.exteriorLengthMm)} × ${meters(result.exteriorWidthMm)} m · h ${formatNumber(exterior.thicknessMm / 10, 0)} cm · e = ${formatNumber(result.eccentricityMm / 10, 1)} cm · R1 = ${formatNumber(result.reactions.service.exteriorKn, 0)} kN`,
       `Zapata 2 ${planText(interior)} · h ${formatNumber(interior.thicknessMm / 10, 0)} cm · R2 = ${formatNumber(result.reactions.service.interiorKn, 0)} kN (diseñada con P2)`,
-      `${strapText(result)} · ${strap.top.barCount} ${rebarLabel(input.strap.barDiameterMm)} sup. · ${strap.bottom.barCount} inf. · E ${rebarLabel(input.strap.stirrupDiameterMm)} @ ${formatNumber(strap.shear.spacingMm / 10, 1)} cm`,
+      `${strapText(result)} · ${strap.top.barCount} ${rebarLabel(input.strap.barDiameterMm)} sup. · ${strap.bottom.barCount} inf. · E ${rebarLabel(input.strap.stirrupDiameterMm, 'transverse')} @ ${formatNumber(strap.shear.spacingMm / 10, 1)} cm`,
       ...result.checks.filter((check) => check.status !== 'info').map((check) => `${statusMark(check.status)} ${check.label}`),
       'FStructure · Diseño experimental; requiere revisión profesional.',
     ].join('\n'),

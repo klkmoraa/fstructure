@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { designBeam, type BeamDesignInput } from './beam';
+import { analyzeBeam } from './beamAnalysis';
 import { designCode, type LoadCombination } from './codes';
 import { columnBars, designColumn, momentCapacityAt, rayCapacity, type ColumnDesignInput } from './column';
 import { designFooting, sizeFactor, type FootingDesignInput } from './footing';
-import { flexuralCapacity, requiredFlexuralSteelMm2 } from './shared';
+import { flexuralCapacity, requiredFlexuralSteelMm2, REBAR_SIZES, STIRRUP_SIZES, rebarLabel } from './shared';
 
 const developmentLength = designCode('ntc-2023').developmentLength;
 /** NTC Grupo B: 1.3 CM + 1.5 CV; `favorableDead` = 1.3 salvo que la prueba lo cambie. */
@@ -25,6 +26,43 @@ const assertBeam = (input: BeamDesignInput) => {
 };
 
 describe('designBeam (análisis con el solver 2D)', () => {
+  it('adds the #2 stirrup as a transverse-only option and warns below 9.5 mm', () => {
+    expect(REBAR_SIZES.some((item) => item.label === '#2')).toBe(false);
+    expect(STIRRUP_SIZES.find((item) => item.label === '#2')).toEqual({ label: '#2', diameterMm: 6.4 });
+    expect(rebarLabel(6.4, 'transverse')).toBe('#2');
+    expect(rebarLabel(6.4)).toBe('Ø6.4');
+    const result = assertBeam({ ...beam, stirrupDiameterMm: 6.4 });
+    const check = result.checks.find((item) => item.id === 'stirrup-diameter-scope');
+    expect(check?.status).toBe('warning');
+    expect(check?.reference.standard).toBe('complementary');
+    expect(check?.note).toMatch(/aceptación normativa no está verificada/i);
+    expect(assertBeam(beam).stirrupDiameterMm).toBe(9.5);
+  });
+
+  it('solves roller/pin and fixed/roller supports while rejecting an unstabilized pair of rollers', () => {
+    const service = { ...span(4, 10, 0), deadKnPerM: 10 };
+    const rollerPin = analyzeBeam({
+      spans: [service], leftEnd: 'roller', rightEnd: 'pin', selfWeightKnPerM: 0,
+      elasticModulusKpa: 25_000_000, areaM2: 0.25, inertiaM4: 0.005,
+    });
+    expect(rollerPin.ok).toBe(true);
+    if (rollerPin.ok) {
+      const response = rollerPin.analysis.deadPerSpan[0]!;
+      expect(Math.max(...response.moment)).toBeCloseTo(20, 2);
+      expect(Math.min(...response.moment)).toBeCloseTo(0, 2);
+    }
+    const fixedRoller = analyzeBeam({
+      spans: [service], leftEnd: 'fixed', rightEnd: 'roller', selfWeightKnPerM: 0,
+      elasticModulusKpa: 25_000_000, areaM2: 0.25, inertiaM4: 0.005,
+    });
+    expect(fixedRoller.ok).toBe(true);
+    if (fixedRoller.ok) expect(Math.min(...fixedRoller.analysis.deadPerSpan[0]!.moment)).toBeLessThan(-1);
+    expect(analyzeBeam({
+      spans: [service], leftEnd: 'roller', rightEnd: 'roller', selfWeightKnPerM: 0,
+      elasticModulusKpa: 25_000_000, areaM2: 0.25, inertiaM4: 0.005,
+    })).toMatchObject({ ok: false });
+  });
+
   it('reproduces classic moments and shears for each support condition', () => {
     const simple = assertBeam(beam);
     expect(simple.extremes.positiveMomentKnm).toBeCloseTo(wu * 36 / 8, 6);
@@ -140,6 +178,11 @@ const assertColumn = (input: ColumnDesignInput) => {
 };
 
 describe('designColumn', () => {
+  it('retains the normed minimum tie-diameter failure for #2', () => {
+    const result = assertColumn({ ...column, tieDiameterMm: 6.4 });
+    expect(result.checks.find((check) => check.id === 'tie-diameter')?.status).toBe('fail');
+  });
+
   it('places the perimeter bars without duplicates', () => {
     expect(columnBars(column)).toHaveLength(8);
     expect(columnBars({ ...column, barsAlongWidth: 4, barsAlongDepth: 2 })).toHaveLength(8);

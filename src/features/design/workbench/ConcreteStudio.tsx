@@ -10,6 +10,7 @@ import {
   PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, formatNumber, parseNumber, useDraftHistory, useStoredDraft,
 } from './common';
 import { Plate, WorkbenchLayout, type WorkbenchChrome } from './WorkbenchLayout';
+import { MaterialFields } from './MaterialFields';
 import './concreteStudio.css';
 
 const DRAWINGS = [
@@ -114,13 +115,12 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
           {!circular ? <option value="cross-tie">Cerrado con grapas cruzadas</option> : null}
           {circular ? <option value="spiral">Zuncho helicoidal</option> : null}
         </Select></div>
-        <BarSelect label={draft.tieType === 'spiral' ? 'Diámetro del zuncho' : 'Diámetro del estribo'} value={draft.tie} onChange={set('tie')} />
+        <BarSelect label={draft.tieType === 'spiral' ? 'Diámetro del zuncho' : 'Diámetro del estribo'} value={draft.tie} onChange={set('tie')} usage="transverse" />
         <NumberField label={draft.tieType === 'spiral' ? 'Paso manual' : 'Separación manual'} value={draft.tieSpacing} unit="cm" onChange={set('tieSpacing')} />
         {result.status === 'ok' ? <div className="dw-span-all"><button type="button" className="dw-inline-action" onClick={() => { set('tieSpacing')(String(Math.round(result.detailing.proposedTieSpacingMm) / 10)); setActionNote('Separación geométrica aplicada. El modelo no diseña cortante ni confinamiento sísmico.'); }}>Usar sugerencia · {formatNumber(result.detailing.proposedTieSpacingMm / 10, 1)} cm</button></div> : null}
       </FieldGroup>
       <FieldGroup title="Concreto y acero">
-        <NumberField label="Resistencia f′c" value={draft.fc} unit="kg/cm²" onChange={set('fc')} />
-        <NumberField label="Fluencia fy" value={draft.fy} unit="kg/cm²" onChange={set('fy')} />
+        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} />
       </FieldGroup>
       {advanced ? <FieldGroup title="Factores ajustables">
         {draft.philosophy === 'ultimate' ? <NumberField label="Reducción de resistencia φ" value={draft.phi} unit="×" onChange={set('phi')} /> : draft.philosophy === 'limit-state' ? <><NumberField label="Factor del concreto γc" value={draft.gammaConcrete} unit="×" min={1} onChange={set('gammaConcrete')} /><NumberField label="Factor del acero γs" value={draft.gammaSteel} unit="×" min={1} onChange={set('gammaSteel')} /></> : <><NumberField label="Límite concreto / f′c" value={draft.allowableConcrete} unit="×" onChange={set('allowableConcrete')} /><NumberField label="Límite acero / fy" value={draft.allowableSteel} unit="×" onChange={set('allowableSteel')} /></>}

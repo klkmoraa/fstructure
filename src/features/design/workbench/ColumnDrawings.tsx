@@ -162,7 +162,7 @@ export function ColumnElevation({ result }: { result: ColumnDesignResult }) {
       </>}
     </g>
     <text className="dw-rebar-label" x={145} y={16} textAnchor="middle">{`${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} longitudinales`}</text>
-    <text className="dw-stirrup-label" x={145} y={317} textAnchor="middle">{`${spiral ? 'Zuncho' : 'Estribos'} ${rebarLabel(result.ties.diameterMm)} · rec. ${formatNumber(result.input.coverMm / 10, 1)} cm`}</text>
+    <text className="dw-stirrup-label" x={145} y={317} textAnchor="middle">{`${spiral ? 'Zuncho' : 'Estribos'} ${rebarLabel(result.ties.diameterMm, 'transverse')} · rec. ${formatNumber(result.input.coverMm / 10, 1)} cm`}</text>
     <text className="dw-stirrup-label" x={145} y={332} textAnchor="middle">{spiral ? 'Sin las 5 vueltas de anclaje cuantificadas' : pieceCount > positions.length ? 'Vista resumida · no es despiece' : 'Esquema de distribución · no es despiece'}</text>
   </svg>;
 }

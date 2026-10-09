@@ -3,7 +3,7 @@ import { evaluateDeformationAt, evaluateDiagramAt } from '../../engine/diagram';
 import { analyzeProject } from '../../engine/solver';
 import type { AnalysisResult, MemberLoad, NodeModel, ProjectModel, SupportDefinition } from '../../types';
 
-export type BeamEnd = 'pin' | 'fixed' | 'free';
+export type BeamEnd = 'pin' | 'roller' | 'fixed' | 'free';
 
 export interface BeamSpanLoads {
   readonly lengthM: number;
@@ -65,6 +65,7 @@ const STATIONS_PER_SPAN = 96;
 const supportFor = (end: BeamEnd, restrainsX: boolean): SupportDefinition => {
   if (end === 'fixed') return { type: 'fixed' };
   if (end === 'free') return { type: 'none' };
+  if (end === 'roller') return { type: 'roller' };
   return { type: restrainsX ? 'pin' : 'roller' };
 };
 
@@ -83,7 +84,7 @@ function buildBeamProject(input: BeamAnalysisInput): ProjectModel {
     support: index === 0
       ? supportFor(input.leftEnd, true)
       : index === lastIndex
-        ? supportFor(input.rightEnd, input.leftEnd === 'free')
+        ? supportFor(input.rightEnd, input.leftEnd === 'free' || input.leftEnd === 'roller')
         : { type: 'roller' },
   }));
   const members = input.spans.map((_, index) => ({
@@ -181,6 +182,7 @@ export function buildStations(input: Pick<BeamAnalysisInput, 'spans'>): Station[
 }
 
 export function analyzeBeam(input: BeamAnalysisInput): BeamAnalysisOutcome {
+  if (input.leftEnd === 'roller' && input.rightEnd === 'roller') return { ok: false, error: 'Dos rodillos no estabilizan la viga en X; usa al menos un apoyo articulado o empotrado.' };
   if (input.leftEnd === 'free' && input.rightEnd === 'free') return { ok: false, error: 'Una viga con ambos extremos libres no tiene apoyos suficientes.' };
   if (input.spans.length === 1 && (input.leftEnd === 'free' || input.rightEnd === 'free') && input.leftEnd !== 'fixed' && input.rightEnd !== 'fixed') {
     return { ok: false, error: 'Un voladizo necesita el otro extremo empotrado.' };

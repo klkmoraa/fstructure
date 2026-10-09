@@ -38,6 +38,7 @@ function Support({ kind, x, y }: { kind: SupportKind; x: number; y: number }) {
 const endSupport = (end: BeamEnd, side: 'left' | 'right', restrainsX: boolean): SupportKind | null => {
   if (end === 'free') return null;
   if (end === 'fixed') return side === 'left' ? 'fixed-left' : 'fixed-right';
+  if (end === 'roller') return 'roller';
   return restrainsX ? 'pin' : 'roller';
 };
 
@@ -51,7 +52,7 @@ function Supports({ result, scaleX, beamTop, beamHeight, style = 'ideal' }: { re
   }
   return <>{result.nodesAtM.map((x, index) => {
     const kind = index === 0 ? endSupport(leftEnd, 'left', true)
-      : index === result.nodesAtM.length - 1 ? endSupport(rightEnd, 'right', leftEnd === 'free')
+      : index === result.nodesAtM.length - 1 ? endSupport(rightEnd, 'right', leftEnd === 'free' || leftEnd === 'roller')
         : 'roller';
     if (!kind) return null;
     return <Support key={x} kind={kind} x={scaleX(x)} y={kind.startsWith('fixed') ? beamTop + beamHeight / 2 : beamTop + beamHeight} />;
@@ -270,7 +271,7 @@ export function BeamRebarDetail({ result, supports = 'ideal' }: { result: BeamDe
 
     {supports === 'ideal' ? <Supports result={result} scaleX={scaleX} beamTop={beamTop} beamHeight={beamHeight} /> : null}
     {result.spans.map((span) => {
-      const size = rebarLabel(result.stirrupDiameterMm);
+      const size = rebarLabel(result.stirrupDiameterMm, 'transverse');
       const { denseSpacingMm, centerSpacingMm, denseZones } = span.stirrups;
       const text = denseZones.length
         ? `E${size} @${formatNumber(denseSpacingMm / 10, 0)} / @${formatNumber(centerSpacingMm / 10, 0)} cm`

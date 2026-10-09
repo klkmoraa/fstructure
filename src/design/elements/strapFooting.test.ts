@@ -45,6 +45,16 @@ describe('zapata de lindero con contratrabe', () => {
     expect(result.diagram.shearKn.at(-1)).toBeCloseTo(r1u - p1u, 6);
   });
 
+  it('propaga la advertencia complementaria cuando la contratrabe usa menos de 9.5 mm', () => {
+    const small = ok(designStrapFooting({ ...base, strap: { ...base.strap, stirrupDiameterMm: 6.4 } }));
+    const warning = small.checks.find((check) => check.id === 'stirrup-diameter-scope');
+    expect(warning?.status).toBe('warning');
+    expect(warning?.label).toBe('Contratrabe: diámetro de estribo');
+    expect(warning?.reference.standard).toBe('complementary');
+    expect(small.status).toBe('warning');
+    expect(small.checks.find((check) => check.id === 'strap-stirrups')?.status).not.toBe('fail');
+  });
+
   it('cumple 9.5.1.1 y 9.5.1.2 de la NTC en la contratrabe', () => {
     const clear = 5000 - 400;
     expect(Math.min(result.strap.widthMm, result.strap.heightMm)).toBeGreaterThanOrEqual(Math.max(450, clear / 20));

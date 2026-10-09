@@ -80,6 +80,34 @@ describe('DesignWorkbench', () => {
     expect((await within(results()).findAllByText('No cumple')).length).toBeGreaterThan(0);
   });
 
+  it('aplica un preset de apoyos sin tocar claros o cargas y lo deshace como una sola edición', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    const length = screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement;
+    const dead = screen.getByRole('textbox', { name: 'Claro 1 · CM (kN/m)' }) as HTMLInputElement;
+    const original = { length: length.value, dead: dead.value };
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Configuración rápida de apoyos' }), 'cantilever-left');
+    expect((screen.getByRole('radiogroup', { name: 'Extremo izquierdo' }).querySelector('[aria-checked="true"]') as HTMLElement).textContent).toContain('Empotre');
+    expect((screen.getByRole('radiogroup', { name: 'Extremo derecho' }).querySelector('[aria-checked="true"]') as HTMLElement).textContent).toContain('Libre');
+    expect(length.value).toBe(original.length);
+    expect(dead.value).toBe(original.dead);
+    await user.click(screen.getByRole('heading', { name: 'Viga' }));
+    await user.keyboard('{Control>}z{/Control}');
+    expect(screen.getByRole('radiogroup', { name: 'Extremo izquierdo' }).querySelector('[aria-checked="true"]')?.textContent).toContain('Apoyo');
+    expect((screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement).value).toBe(original.length);
+    expect((screen.getByRole('textbox', { name: 'Claro 1 · CM (kN/m)' }) as HTMLInputElement).value).toBe(original.dead);
+  });
+
+  it('expone el diámetro transversal sin abrir Avanzado y muestra su alcance complementario al elegir #2', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    const stirrup = screen.getByRole('combobox', { name: 'Estribo' }) as HTMLSelectElement;
+    expect([...stirrup.options].some((option) => option.textContent?.startsWith('#2 ·'))).toBe(true);
+    await user.selectOptions(stirrup, '6.4');
+    expect(await within(results()).findByText(/aceptación normativa no está verificada/i)).toBeTruthy();
+    expect(await within(results()).findByText(/no establece un mínimo normativo/i)).toBeTruthy();
+  });
+
   it('cambia de elemento con el teclado y recuerda el último', async () => {
     const user = userEvent.setup();
     renderWorkbench();

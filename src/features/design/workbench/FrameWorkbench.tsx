@@ -26,6 +26,7 @@ import { frameConcreteVolume, frameProposalStories, proposeFrameSections, propos
 import { startProposalWorker } from './proposalWorker';
 import { useWorkbenchStorage } from './workbenchStorage';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
+import { MaterialFields } from './MaterialFields';
 
 type RowColumn<T> = { field: keyof T & string; label: string; unit: string; min?: number };
 
@@ -469,7 +470,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </FieldGroup> : null}
       <FieldGroup title="Armado de columnas">
         <BarSelect label="Varilla" value={draft.columnBar} onChange={set('columnBar')} minimumDiameterMm={12.7} />
-        <BarSelect label="Estribo" value={draft.tie} onChange={set('tie')} />
+        <BarSelect label="Estribo" value={draft.tie} onChange={set('tie')} usage="transverse" />
         {draft.proposalBars === 'yes' ? <p className="dw-input-note dw-span-all">Armado por sección: al menos 1 % en cada columna. <button type="button" className="dw-inline-action" onClick={() => set('proposalBars')('no')}>Usar barras indicadas</button></p> : null}
         <NumberField label="Barras cara b" unit="pzas" value={draft.barsWidth} onChange={set('barsWidth')} min={2} />
         <NumberField label="Barras cara h" unit="pzas" value={draft.barsDepth} onChange={set('barsDepth')} min={2} />
@@ -477,8 +478,10 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <p className="dw-input-note dw-span-all" title="Corridas, bastones y estribos por tramo.">Vigas armadas por línea continua.</p>
       </FieldGroup>
       <FieldGroup title="Materiales">
-        {fcFromModel ? null : <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />}
-        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
+        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} fyv={draft.fyv} onFyvChange={set('fyv')} showFc={!fcFromModel} />
+      </FieldGroup>
+      <FieldGroup title="Refuerzo transversal de vigas">
+        <BarSelect label="Estribo de vigas" value={draft.stirrup} onChange={set('stirrup')} allowAuto usage="transverse" />
       </FieldGroup>
       <MoreOptions>
         {code.usesStructureGroup || code.column.geometryLimits ? <div className="dw-span-all">
@@ -501,8 +504,6 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           </Select>
         </div>
         <BarSelect label="Varilla de vigas" value={draft.beamBar} onChange={set('beamBar')} allowAuto minimumDiameterMm={12.7} />
-        <BarSelect label="Estribo de vigas" value={draft.stirrup} onChange={set('stirrup')} allowAuto />
-        <NumberField label="fy estribos" unit="kg/cm²" value={draft.fyv} onChange={set('fyv')} />
         <NumberField label="Agregado" unit="mm" value={draft.aggregate} onChange={set('aggregate')} />
         {fromModel ? null : <>
           <NumberField label="Inercia de vigas" unit="× Ig" value={draft.beamInertia} onChange={set('beamInertia')} hint="1 = sección bruta" />
@@ -623,7 +624,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         {column ? <>
           <RebarList items={[
             { kind: 'bar', title: `${column.result.bars.length} ${rebarLabel(column.result.input.barDiameterMm)}`, detail: `ρ ${formatNumber(column.result.steelRatio * 100, 2)} % · ${formatNumber(column.result.input.widthMm / 10, 0)}×${formatNumber(column.result.input.depthMm / 10, 0)} cm` },
-            { kind: 'stirrup', title: `E ${rebarLabel(column.result.ties.diameterMm)} @ ${formatNumber(column.result.ties.centerSpacingMm / 10, 1)} cm`,
+            { kind: 'stirrup', title: `E ${rebarLabel(column.result.ties.diameterMm, 'transverse')} @ ${formatNumber(column.result.ties.centerSpacingMm / 10, 1)} cm`,
               detail: column.result.ties.endLengthMm > 0 ? `@ ${formatNumber(column.result.ties.endSpacingMm / 10, 1)} cm en Lo = ${formatNumber(column.result.ties.endLengthMm / 10, 0)} cm` : undefined },
           ]} />
           <Summary rows={[

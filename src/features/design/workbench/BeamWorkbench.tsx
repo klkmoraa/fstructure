@@ -6,7 +6,7 @@ import { MAX_SPANS, barsText, beamClearSpanMm, designBeam, flangeWidthLimit } fr
 import { designCode } from '../../../design/elements/codes';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
 import {
-  BEAM_DEFAULTS, DEFAULT_SPANS, END_LABEL, ENDS, bastionDetail, bastionTitle, beamReport, beamToInput, cm, describeBeam, meters, parseSpans, proposeBeamSection, slabLineLoads, stirrupText,
+  BEAM_DEFAULTS, DEFAULT_SPANS, END_LABEL, ENDS, beamSupportPreset, bastionDetail, bastionTitle, beamReport, beamToInput, cm, describeBeam, meters, parseSpans, proposeBeamSection, slabLineLoads, stirrupText,
   type SpanDraft,
 } from './beamModel';
 import {
@@ -14,6 +14,7 @@ import {
   PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict, formatNumber, parseNumber, readStored, useDraftHistory, useStoredDraft,
 } from './common';
 import { useWorkbenchStorage } from './workbenchStorage';
+import { MaterialFields } from './MaterialFields';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 type SpanColumn = { field: keyof SpanDraft; label: string; unit: string };
@@ -180,12 +181,27 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <div className="dw-span-all"><ActionNote text={sectionNote} /></div>
       </FieldGroup>
       <FieldGroup title="Apoyos" columns={1}>
+        <Select label="Configuración rápida de apoyos" value="" onChange={(event) => {
+          const next = beamSupportPreset(event.currentTarget.value as Parameters<typeof beamSupportPreset>[0], draft, spans);
+          replace(next.draft);
+          setSpans(next.spans);
+        }}>
+          <option value="">Elegir configuración</option>
+          <option value="simple">Apoyada</option>
+          <option value="propped">Empotrada–apoyada</option>
+          <option value="fixed">Doblemente empotrada</option>
+          <option value="cantilever-left">Voladizo izquierdo</option>
+          <option value="cantilever-right">Voladizo derecho</option>
+          <option value="continuous">Continua</option>
+        </Select>
         <div className="dw-end"><span aria-hidden="true">Izquierdo</span><SegmentedControl label="Extremo izquierdo" size="sm" value={draft.leftEnd} options={ENDS} onValueChange={set('leftEnd')} /></div>
         <div className="dw-end"><span aria-hidden="true">Derecho</span><SegmentedControl label="Extremo derecho" size="sm" value={draft.rightEnd} options={ENDS} onValueChange={set('rightEnd')} /></div>
       </FieldGroup>
       <FieldGroup title="Materiales">
-        <NumberField label="f′c" unit="kg/cm²" value={draft.fc} onChange={set('fc')} />
-        <NumberField label="fy" unit="kg/cm²" value={draft.fy} onChange={set('fy')} />
+        <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} fyv={draft.fyv} onFyvChange={set('fyv')} />
+      </FieldGroup>
+      <FieldGroup title="Refuerzo transversal">
+        <BarSelect label="Estribo" value={draft.stirrup} onChange={set('stirrup')} allowAuto usage="transverse" />
       </FieldGroup>
       <FieldGroup title="Armado">
         <div className="dw-span-all">
@@ -222,8 +238,6 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           </Select>
         </div>
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} allowAuto minimumDiameterMm={12.7} />
-        <BarSelect label="Estribo" value={draft.stirrup} onChange={set('stirrup')} allowAuto />
-        <NumberField label="fy estribos" unit="kg/cm²" value={draft.fyv} onChange={set('fyv')} />
         <NumberField label="Agregado" unit="mm" value={draft.aggregate} onChange={set('aggregate')} />
         <NumberField label="Ancho de apoyo" unit="cm" value={draft.supportWidth} onChange={set('supportWidth')} />
         <div className="dw-span-all">
