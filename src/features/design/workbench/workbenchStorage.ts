@@ -33,7 +33,7 @@ const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6];
 const ELEMENT_KINDS = ['beam', 'column', 'frame', 'footing', 'section'] as const;
 const MAX_DOCUMENT_CHARS = 240_000;
 const MAX_ENTRIES = 16;
-const MAX_FIELDS = 64;
+const MAX_FIELDS = 96;
 const MAX_ROWS = 8;
 /** Elementos que caben en la memoria del proyecto. */
 export const MAX_MEMORY_ITEMS = 60;

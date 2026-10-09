@@ -12,6 +12,7 @@ import { reportHeading, stableJson, type DesignElementKind, type DesignReport } 
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
 import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, externalFor, frameReportFromDraft, parseBays, parseStories } from './frameModel';
 import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
+import type { DesignStart } from './designStarts';
 
 /**
  * Memoria del proyecto: los elementos que la persona guarda para la memoria de
@@ -70,8 +71,22 @@ function currentDraft(storage: WorkbenchStorage, element: DesignElementKind): Me
   return { fields, rows: Array.isArray(rows) ? rows as Record<string, string>[] : DEFAULT_SPANS.map((span) => ({ ...span })) };
 }
 
-const sameDraft = (item: WorkbenchMemoryItem, draft: MemoryDraft) =>
-  stableJson({ fields: item.fields, rows: item.rows ?? null, levels: item.levels ?? null }) === stableJson({ fields: draft.fields, rows: draft.rows ?? null, levels: draft.levels ?? null });
+/** Sólo conserva borradores que ya existen en storage; los defaults iniciales no son piezas. */
+function hasStoredDraft(storage: WorkbenchStorage, element: DesignElementKind): boolean {
+  const raw = storage.read(element);
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)
+    && Object.values(raw as Record<string, unknown>).some((value) => typeof value === 'string')) return true;
+  if (element === 'beam') return Array.isArray(storage.read('beam-spans'));
+  if (element === 'frame') return Array.isArray(storage.read('frame-bays')) || Array.isArray(storage.read('frame-stories'));
+  return false;
+}
+
+const sameDraft = (item: WorkbenchMemoryItem, draft: MemoryDraft) => {
+  const defaultRows = item.element === 'beam' ? DEFAULT_SPANS : item.element === 'frame' ? DEFAULT_BAYS : undefined;
+  const defaultLevels = item.element === 'frame' ? DEFAULT_STORIES : undefined;
+  return stableJson({ fields: item.fields, rows: item.rows ?? defaultRows ?? null, levels: item.levels ?? defaultLevels ?? null })
+    === stableJson({ fields: draft.fields, rows: draft.rows ?? defaultRows ?? null, levels: draft.levels ?? defaultLevels ?? null });
+};
 
 const newId = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replaceAll('-', '').slice(0, 12);
 
@@ -90,6 +105,8 @@ interface DesignMemory {
    * elemento por eje, con su clave «Eje 1»). Un eje que ya estaba se actualiza.
    */
   saveAxes(axes: readonly { readonly id: string; readonly tag: string }[]): 'saved' | 'full';
+  /** Conserva borradores afectados y prepara un arranque sin cambiar la norma ni el modelo. */
+  start(start: DesignStart): 'started' | 'full';
 }
 
 export function useDesignMemory(storage: WorkbenchStorage, element: DesignElementKind, code: DesignCodeId, revision: unknown): DesignMemory {
@@ -160,6 +177,42 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
       commit(next, nextActive);
       return 'saved';
+    },
+    start(start) {
+      const preserve = new Map<DesignElementKind, MemoryDraft>();
+      if (hasStoredDraft(storage, element)) preserve.set(element, currentDraft(storage, element));
+      if (!preserve.has(start.element) && hasStoredDraft(storage, start.element)) preserve.set(start.element, currentDraft(storage, start.element));
+
+      const next = [...items];
+      const savedAt = new Date().toISOString();
+      for (const [kind, draft] of preserve) {
+        const duplicate = next.some((item) => item.element === kind && item.code === code && sameDraft(item, draft));
+        if (duplicate) continue;
+        next.push({
+          id: newId(), element: kind, code, savedAt,
+          fields: draft.fields,
+          ...(draft.rows ? { rows: draft.rows } : {}),
+          ...(draft.levels ? { levels: draft.levels } : {}),
+        });
+      }
+      if (next.length > MAX_MEMORY_ITEMS || JSON.stringify(next).length > MEMORY_BUDGET_CHARS) return 'full';
+
+      commit(next, '');
+      if (start.source) {
+        const existing = storage.read('frame');
+        const fields = existing && typeof existing === 'object' && !Array.isArray(existing)
+          ? Object.fromEntries(Object.entries(existing as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
+          : {};
+        storage.write('frame', { ...fields, source: start.source } as unknown as Parameters<WorkbenchStorage['write']>[1]);
+      } else {
+        storage.write(start.element, start.fields);
+      }
+      if (start.rows) {
+        storage.write(start.element === 'frame' ? 'frame-bays' : 'beam-spans', start.rows);
+      }
+      if (start.levels) storage.write('frame-stories', start.levels);
+      storage.write('element', start.element);
+      return 'started';
     },
     remove(id) {
       commit(items.filter((item) => item.id !== id), id === activeId ? '' : activeId);

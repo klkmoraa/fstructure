@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { DesignWorkbench } from './DesignWorkbench';
+import { FOOTING_DEFAULTS } from './footingModel';
 import { WORKBENCH_DOCUMENT_KIND, WorkbenchStorageContext, createProjectWorkbenchStorage, parseWorkbenchDocument } from './workbenchStorage';
 
 const workbenchDoc = (entries: Record<string, unknown>, schemaVersion = 6) => ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion, entries });
@@ -76,10 +77,29 @@ describe('design workbench document', () => {
     expect(parseWorkbenchDocument(null)).toEqual({});
     expect(parseWorkbenchDocument({ kind: 'other', schemaVersion: 1, entries: {} })).toEqual({});
     expect(parseWorkbenchDocument({ ...workbenchDoc({}), schemaVersion: 7 })).toEqual({});
-    expect(parseWorkbenchDocument(workbenchDoc({ wide: Object.fromEntries(Array.from({ length: 70 }, (_, index) => [`f${index}`, 'x'])) }))).toEqual({});
-    const fields = Object.fromEntries(Array.from({ length: 64 }, (_, index) => [`f${index}`.padEnd(32, 'k'), 'x'.repeat(32)]));
+    expect(parseWorkbenchDocument(workbenchDoc({ wide: Object.fromEntries(Array.from({ length: 97 }, (_, index) => [`f${index}`, 'x'])) }))).toEqual({});
+    const fields = Object.fromEntries(Array.from({ length: 96 }, (_, index) => [`f${index}`.padEnd(32, 'k'), 'x'.repeat(32)]));
     const huge = { memory: Array.from({ length: 60 }, (_, index) => ({ id: `m${index}`, element: 'beam', code: 'ntc-2023', savedAt: '2026-09-27', fields })) };
     expect(parseWorkbenchDocument(workbenchDoc(huge))).toEqual({});
+  });
+
+  it('roundtrips all 79 footing draft fields and a memory item while allowing at most 96 fields per record', () => {
+    expect(Object.keys(FOOTING_DEFAULTS)).toHaveLength(79);
+    const memory = [{ id: 'footing-1', element: 'footing', code: 'ntc-2023', savedAt: '2026-10-01', fields: { ...FOOTING_DEFAULTS } }];
+    const persist = vi.fn<(value: JsonValue) => void>();
+    const storage = createProjectWorkbenchStorage(workbenchDoc({}), persist, 0);
+    storage.write('footing', FOOTING_DEFAULTS);
+    storage.write('memory', memory);
+    storage.flush();
+    const document = persist.mock.calls[0]?.[0];
+    expect(parseWorkbenchDocument(document)).toEqual({ footing: FOOTING_DEFAULTS, memory });
+    const excessive = Object.fromEntries(Array.from({ length: 97 }, (_, index) => [`f${index}`, 'x']));
+    expect(parseWorkbenchDocument(workbenchDoc({ footing: excessive }))).toEqual({});
+    storage.dispose();
+  });
+
+  it.each([1, 2, 3, 4, 5, 6])('retains workshop document compatibility for schema v%d', (schemaVersion) => {
+    expect(parseWorkbenchDocument(workbenchDoc({ code: 'e060', beam: { width: '30' } }, schemaVersion))).toEqual({ code: 'e060', beam: { width: '30' } });
   });
 
   it('batches writes and persists the whole document once', () => {
