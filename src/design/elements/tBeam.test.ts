@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { designBeam, flangeWidthLimit, type BeamDesignInput } from './beam';
+import { designBeam, flangeWidthLimit, grossBeamSectionProperties, type BeamDesignInput } from './beam';
 import { designCode } from './codes';
 import { barArea, equivalentBlockStrengthMpa } from './shared';
 
@@ -19,6 +19,15 @@ const ok = (result: ReturnType<typeof designBeam>) => {
 const midspanCapacity = (result: ReturnType<typeof ok>) => Math.max(...result.diagram.capacityPositiveKnm);
 
 describe('viga T y L', () => {
+  it('obtiene el área, centroide e inercia brutos del alma y patín para análisis elástico', () => {
+    const rect = grossBeamSectionProperties(250, 500);
+    const tee = grossBeamSectionProperties(250, 500, { kind: 'T', widthMm: 1000, thicknessMm: 120 });
+    expect(rect.areaMm2).toBe(125_000);
+    expect(tee.areaMm2).toBe(215_000);
+    expect(tee.centroidTopMm).toBeCloseTo(170.465116279, 6);
+    expect(tee.inertiaMm4).toBeCloseTo(4_601_120_155.039, -1);
+    expect(tee.inertiaMm4).toBeGreaterThan(rect.inertiaMm4);
+  });
   const fpp = equivalentBlockStrengthMpa(25);
   const tension = 3 * barArea(25.4) * 420;
 

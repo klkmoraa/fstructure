@@ -36,13 +36,13 @@ const start = (entry: Omit<DesignStart, 'fields' | 'rows' | 'levels'> & { fields
   ...(entry.levels ? { levels: entry.levels.map((row) => ({ ...row })) } : {}),
 });
 
-const simpleBeam = beam('V simple', { selfWeight: 'no', leftEnd: 'pin', rightEnd: 'roller' }, [
+const simpleBeam = beam('V simple', { exercise: 'exercise-beam-simple', selfWeight: 'no', leftEnd: 'pin', rightEnd: 'roller' }, [
   { length: '5', dead: '10', live: '0', pointDead: '0', pointLive: '0', pointAt: '2.5' },
 ]);
-const cantileverBeam = beam('Voladizo', { selfWeight: 'no', leftEnd: 'fixed', rightEnd: 'free' }, [
+const cantileverBeam = beam('Voladizo', { exercise: 'exercise-beam-cantilever', selfWeight: 'no', leftEnd: 'fixed', rightEnd: 'free' }, [
   { length: '2', dead: '5', live: '0', pointDead: '0', pointLive: '0', pointAt: '1' },
 ]);
-const pointBeam = beam('Carga puntual', { selfWeight: 'no', points: 'yes', leftEnd: 'pin', rightEnd: 'roller' }, [
+const pointBeam = beam('Carga puntual', { exercise: 'exercise-beam-point', selfWeight: 'no', points: 'yes', leftEnd: 'pin', rightEnd: 'roller' }, [
   { length: '4', dead: '0', live: '0', pointDead: '10', pointLive: '0', pointAt: '2' },
 ]);
 

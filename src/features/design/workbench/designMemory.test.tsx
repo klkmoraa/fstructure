@@ -434,3 +434,25 @@ it('arranques repetidos dejan piezas recuperables e independientes', () => {
   expect(result.current.activeId).toBe(first);
   expect(second.id).not.toBe(first);
 });
+
+it('conserva el id de ejercicio en borrador, memoria de proyecto y al reabrir sin cambiar el esquema', () => {
+  const writes: unknown[] = [];
+  const storage = createProjectWorkbenchStorage({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 6, entries: {} }, (document) => writes.push(document), 0);
+  const recipe = DESIGN_STARTS.find((item) => item.id === 'exercise-beam-simple')!;
+  const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+
+  act(() => { expect(result.current.start(recipe)).toBe('started'); });
+  expect((storage.read('beam') as Record<string, string>).exercise).toBe(recipe.id);
+  act(() => { expect(result.current.save()).toBe('saved'); });
+  const saved = result.current.items[0]!;
+  expect(saved.fields.exercise).toBe(recipe.id);
+
+  storage.flush();
+  const document = writes.at(-1) as { schemaVersion: number; entries: Record<string, unknown> };
+  expect(document.schemaVersion).toBe(6);
+  expect((document.entries.memory as WorkbenchMemoryItem[])[0]?.fields.exercise).toBe(recipe.id);
+  storage.write('beam', { ...recipe.fields, exercise: '' });
+  act(() => { expect(result.current.open(saved.id)).toBeTruthy(); });
+  expect((storage.read('beam') as Record<string, string>).exercise).toBe(recipe.id);
+  storage.dispose();
+});

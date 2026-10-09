@@ -183,12 +183,57 @@ describe('DesignWorkbench', () => {
     expect(screen.queryByRole('dialog', { name: 'Nuevo diseño' })).toBeNull();
     expect((screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement).value).toBe('5');
     expect((screen.getByRole('textbox', { name: 'Claro 1 · CM (kN/m)' }) as HTMLInputElement).value).toBe('10');
+    expect(screen.getByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Norma de diseño' })).toHaveProperty('value', 'e060');
     const memory = JSON.parse(localStorage.getItem('fstructure.design-workbench.memory')!);
     expect(memory).toEqual(expect.arrayContaining([expect.objectContaining({
       element: 'beam', fields: expect.objectContaining({ tag: '', selfWeight: 'yes' }),
       rows: expect.arrayContaining([expect.objectContaining({ length: '7' })]),
     })]));
+  });
+
+  it('mantiene editable la referencia, suspende al cambiar apoyos, oculta con deshacer y recupera al abrir Memoria', async () => {
+    const user = userEvent.setup();
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" startPicker /></ProjectProvider>);
+    const picker = await screen.findByRole('dialog', { name: 'Nuevo diseño' });
+    await user.click(within(picker).getByRole('tab', { name: 'Ejercicio' }));
+    await user.click(await within(picker).findByRole('button', { name: /Viga simplemente apoyada/ }));
+    expect(screen.getByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
+
+    const length = screen.getByRole('textbox', { name: 'Claro 1 · L (m)' });
+    const dead = screen.getByRole('textbox', { name: 'Claro 1 · CM (kN/m)' });
+    await user.clear(length);
+    const guide = screen.getByRole('region', { name: 'Viga simplemente apoyada' });
+    expect(within(guide).getByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
+    expect(within(guide).getByRole('status').textContent).toMatch(/Datos incompletos/);
+    expect(within(guide).queryByText(/kN·m/)).toBeNull();
+    await user.type(length, '5');
+    await user.clear(length); await user.type(length, '6');
+    await user.clear(dead); await user.type(dead, '12');
+    expect(screen.getAllByText('54.00 kN·m')).toHaveLength(2);
+
+    const supports = screen.getByRole('heading', { name: 'Apoyos' }).closest('section')!;
+    const leftSupports = within(supports).getByRole('radiogroup', { name: 'Extremo izquierdo' });
+    await user.click(within(leftSupports).getByRole('radio', { name: 'Empotre' }));
+    expect(within(screen.getByRole('form', { name: 'Datos del elemento' })).getByRole('status').textContent).toMatch(/Comparación suspendida.*apoyos simples/);
+    expect(screen.queryByText('54.00 kN·m')).toBeNull();
+    await user.click(within(leftSupports).getByRole('radio', { name: 'Apoyo' }));
+    expect(screen.getAllByText('54.00 kN·m')).toHaveLength(2);
+
+    await new Promise((resolve) => setTimeout(resolve, 750));
+    await user.click(screen.getByRole('button', { name: 'Ocultar guía' }));
+    expect(screen.queryByRole('heading', { name: 'Viga simplemente apoyada' })).toBeNull();
+    await user.keyboard('{Control>}z{/Control}');
+    expect(screen.getByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
+
+    await user.click(within(results()).getByRole('button', { name: 'Guardar' }));
+    await user.click(screen.getByRole('button', { name: /Guardado/ }));
+    const memory = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
+    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.memory')!)).toEqual(expect.arrayContaining([expect.objectContaining({ fields: expect.objectContaining({ exercise: 'exercise-beam-simple' }) })]));
+    await user.click(within(memory).getByRole('button', { name: 'Abrir V simple' }));
+    expect(await screen.findByRole('heading', { name: 'Viga simplemente apoyada' })).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Claro 1 · L (m)' })).toHaveProperty('value', '6');
+    expect(screen.getAllByText('54.00 kN·m')).toHaveLength(2);
   });
 
   it('mantiene abierto el selector y el formulario al no haber presupuesto para conservarlos', async () => {

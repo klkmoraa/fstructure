@@ -1,0 +1,13 @@
+.dw-exercise { grid-column: 1 / -1; padding: 12px; border: 1px solid var(--dw-line); border-left: 3px solid var(--dw-moment); border-radius: var(--sc-radius-panel, 10px); background: var(--sc-color-surface-1); color: var(--dw-ink); }
+.dw-exercise__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.dw-exercise__eyebrow { color: var(--dw-muted); font: 600 9px/1.4 var(--sc-font-mono); letter-spacing: .05em; text-transform: uppercase; }
+.dw-exercise__head h3 { margin: 3px 0 0; font-size: 14px; line-height: 1.35; }
+.dw-exercise__problem { margin: 10px 0 0; font-size: 11px; line-height: 1.55; }
+.dw-exercise > ul { margin: 8px 0 0; padding-left: 16px; color: var(--dw-muted); font-size: 10px; line-height: 1.6; }
+.dw-exercise__comparison { display: grid; gap: 5px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--dw-line); }
+.dw-exercise__comparison p { display: flex; justify-content: space-between; gap: 12px; margin: 0; font-size: 10px; line-height: 1.5; }
+.dw-exercise__comparison p strong { color: var(--dw-muted); font-weight: 500; }
+.dw-exercise__comparison p span { text-align: right; font-family: var(--sc-font-mono); }
+.dw-exercise__comparison small, .dw-exercise__state { margin: 4px 0 0; color: var(--dw-muted); font-size: 10px; line-height: 1.55; }
+.dw-exercise__state { color: var(--dw-warn); }
+@media (max-width: 600px) { .dw-exercise { padding: 10px; } .dw-exercise__comparison p { align-items: flex-start; } }

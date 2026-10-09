@@ -29,6 +29,9 @@ describe('design starts', () => {
     expect(byId('piece-footing').fields).toEqual({ ...FOOTING_DEFAULTS, tag: 'Zapata' });
     expect(byId('piece-beam-simple').rows).toHaveLength(1);
     expect(byId('piece-beam-simple').fields).toMatchObject({ leftEnd: 'pin', rightEnd: 'roller' });
+    for (const start of DESIGN_STARTS.filter((item) => item.category === 'piece' && item.element === 'beam')) {
+      expect(start.fields.exercise).toBe('');
+    }
     expect(byId('piece-column').fields).toEqual({ ...COLUMN_DEFAULTS, tag: 'Columna' });
     expect(byId('piece-section').fields).toEqual({ ...SECTION_DEFAULTS, tag: 'Sección' });
     expect(byId('exercise-frame').fields).toEqual({ ...FRAME_DEFAULTS, source: 'frame', tag: 'Pórtico vivienda' });
@@ -61,16 +64,19 @@ describe('design starts', () => {
 
   it('gives the beam exercises the stated loads, supports and no-self-weight hypothesis', () => {
     const simple = byId('exercise-beam-simple');
+    expect(simple.fields.exercise).toBe('exercise-beam-simple');
     expect(simple.fields.selfWeight).toBe('no');
     expect(simple.fields.leftEnd).toBe('pin');
     expect(simple.fields.rightEnd).toBe('roller');
     expect(simple.rows?.[0]).toMatchObject({ length: '5', dead: '10', live: '0' });
     expect(simple.reference).toContain('31.25');
     const cantilever = byId('exercise-beam-cantilever');
+    expect(cantilever.fields.exercise).toBe('exercise-beam-cantilever');
     expect(cantilever.fields.leftEnd).toBe('fixed');
     expect(cantilever.fields.rightEnd).toBe('free');
     expect(cantilever.rows?.[0]).toMatchObject({ length: '2', dead: '5', live: '0' });
     const point = byId('exercise-beam-point');
+    expect(point.fields.exercise).toBe('exercise-beam-point');
     expect(point.fields.points).toBe('yes');
     expect(point.rows?.[0]).toMatchObject({ length: '4', dead: '0', live: '0', pointDead: '10', pointAt: '2' });
   });

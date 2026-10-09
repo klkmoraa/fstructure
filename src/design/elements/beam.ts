@@ -82,6 +82,21 @@ export interface BeamFlange {
   readonly clearDistanceMm?: number | null;
 }
 
+/** Propiedades geométricas de la sección bruta, en mm² y mm⁴. */
+export function grossBeamSectionProperties(widthMm: number, heightMm: number, flange: BeamFlange | null = null) {
+  const hf = flange?.thicknessMm ?? 0;
+  const overhangArea = flange ? (flange.widthMm - widthMm) * hf : 0;
+  const areaMm2 = widthMm * heightMm + overhangArea;
+  const centroidTopMm = flange
+    ? (widthMm * heightMm ** 2 / 2 + overhangArea * hf / 2) / areaMm2
+    : heightMm / 2;
+  const inertiaMm4 = flange
+    ? widthMm * heightMm ** 3 / 12 + widthMm * heightMm * (heightMm / 2 - centroidTopMm) ** 2
+      + (flange.widthMm - widthMm) * hf ** 3 / 12 + overhangArea * (centroidTopMm - hf / 2) ** 2
+    : widthMm * heightMm ** 3 / 12;
+  return { areaMm2, inertiaMm4, centroidTopMm };
+}
+
 export interface FlangeWidthLimit {
   /** bf máximo, alma incluida. */
   readonly widthMm: number;
@@ -972,13 +987,7 @@ export function designBeam(input: BeamDesignInput, options: BeamDesignOptions = 
   const fr = code.ruptureModulusMpa(fc);
   const flange = input.flange ?? null;
   const hf = flange?.thicknessMm ?? 0;
-  const overhangArea = flange ? (flange.widthMm - b) * hf : 0;
-  const grossArea = b * h + overhangArea;
-  // Centroide desde la fibra superior y momento de inercia de la sección bruta (rectangular o T/L).
-  const centroidTop = flange ? (b * h * h / 2 + overhangArea * hf / 2) / grossArea : h / 2;
-  const grossInertia = flange
-    ? b * h ** 3 / 12 + b * h * (h / 2 - centroidTop) ** 2 + (flange.widthMm - b) * hf ** 3 / 12 + overhangArea * (centroidTop - hf / 2) ** 2
-    : b * h ** 3 / 12;
+  const { areaMm2: grossArea, inertiaMm4: grossInertia, centroidTopMm: centroidTop } = grossBeamSectionProperties(b, h, flange);
   // T/L: el peso propio es el del alma bajo la losa; la losa va en la carga muerta que se captura.
   const selfWeight = input.includeSelfWeight ? CONCRETE_UNIT_WEIGHT_KN_M3 * b * (h - hf) / 1e6 : 0;
   const baseAnalysisInput = {

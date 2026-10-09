@@ -5,6 +5,8 @@ import { LayerToggle, UnitField } from '../../../design-system/components/editor
 import { MAX_SPANS, barsText, beamClearSpanMm, designBeam, flangeWidthLimit } from '../../../design/elements/beam';
 import { designCode } from '../../../design/elements/codes';
 import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
+import { evaluateBeamExercise } from './beamExercises';
+import { BeamExerciseGuide } from './BeamExerciseGuide';
 import {
   BEAM_DEFAULTS, DEFAULT_SPANS, END_LABEL, ENDS, beamSupportPreset, bastionDetail, bastionTitle, beamReport, beamToInput, cm, describeBeam, meters, parseSpans, proposeBeamSection, slabLineLoads, stirrupText,
   type SpanDraft,
@@ -135,6 +137,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} />
       <FieldGroup title="Claros y cargas" columns={1}>
+        <BeamExerciseGuide evaluation={evaluateBeamExercise(chrome.code, draft, spans)} onDismiss={() => set('exercise')('')} />
         <SpanTable
           spans={spans}
           points={draft.points === 'yes'}

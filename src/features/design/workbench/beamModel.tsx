@@ -12,7 +12,7 @@ import type { DesignReport, ReportAlternative, ReportRow } from './designReport'
  * usan la mesa y la memoria del proyecto, para que ambas calculen lo mismo.
  */
 export const BEAM_DEFAULTS = {
-  tag: '', place: '',
+  tag: '', place: '', exercise: '',
   sectionType: 'rect', flangeWidth: '100', flangeThickness: '12', flangeClear: '0',
   width: '25', height: '50', cover: '4', fc: '250', fy: '4200', fyv: '4200', leftEnd: 'pin', rightEnd: 'pin',
   selfWeight: 'yes', points: 'no', group: 'B', use: 'habitacion', sustained: '25', duration: '60', bar: 'auto', stirrup: 'auto', aggregate: '19', damages: 'no',
