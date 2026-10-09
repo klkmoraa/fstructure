@@ -108,5 +108,5 @@
 - [x] Start app and verify real Home → picker → exercise, recipe material editing, #2 warning, complete model entry, two pieces saved/reopened, export request if feasible.
 - [x] Check desktop/day/night and mobile for horizontal overflow, clipped controls, keyboard focus and support drawings; fix any discovered regressions with covering tests.
 - [x] Update docs and TODO with delivered behavior and remaining new-engine work, and add brandbook evidence.
-- [ ] Independent whole-change review with Luna high; resolve material findings and rerun affected checks.
-- [ ] Commit final docs/verification fixes and push main only if fast-forward; report verified results and actual publication state.
+- [x] Independent whole-change review with Luna high; resolve material findings and rerun affected checks.
+- [x] Commit final docs/verification fixes and push main only if fast-forward; report verified results and actual publication state.
