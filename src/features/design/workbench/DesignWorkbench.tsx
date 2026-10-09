@@ -10,7 +10,8 @@ import { FootingWorkbench } from './FootingWorkbench';
 import { FrameWorkbench } from './FrameWorkbench';
 import type { DraftHistory } from './common';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
-import { MemoryDialog, MemoryStatus, useDesignMemory } from './designMemory';
+import { MemoryStatus, useDesignMemory } from './designMemory';
+import { DesignMemoryDialog } from './DesignMemoryDialog';
 import { memoText, reportHeading, type DesignReport } from './designReport';
 import type { ModelSectionsBridge, Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { useWorkbenchStorage } from './workbenchStorage';
@@ -358,7 +359,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
       code={code} projectName={projectName} onStart={startRecipe} onOpenModel={onOpenModel}
       onOpenSpace3D={onOpenSpace3D ? () => onOpenSpace3D() : undefined} onCreateBuilding={onCreateBuilding}
       onOpenMemory={() => { setStartOpen(false); setMemoryOpen(true); }} />
-    <MemoryDialog open={memoryOpen} onOpenChange={setMemoryOpen} memory={memory} element={element} onLoad={loadFromMemory}
-      onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} modelSource={modelSource} modelAxes={modelAxes} />
+    <DesignMemoryDialog open={memoryOpen} onOpenChange={setMemoryOpen} memory={memory} element={element} onLoad={loadFromMemory}
+      onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} onClearMessage={() => setExportMessage(null)} modelSource={modelSource} modelAxes={modelAxes} />
   </div>;
 }

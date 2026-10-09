@@ -1,14 +1,11 @@
-import { Copy, FileDown, FolderOpen, Plus, Save, Trash2 } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { Button } from '../../../design-system/components/controls';
-import { Dialog } from '../../../design-system/components/overlays';
-import { designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
+import { isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { BEAM_DEFAULTS, beamReportFromDraft, parseSpans, DEFAULT_SPANS } from './beamModel';
 import { COLUMN_DEFAULTS, columnReportFromDraft } from './columnModel';
 import { SECTION_DEFAULTS, sectionReportFromDraft } from './concreteStudioModel';
-import { verdictHeadline } from './common';
-import { reportHeading, stableJson, type DesignElementKind, type DesignReport } from './designReport';
+import { stableJson, type DesignElementKind, type DesignReport } from './designReport';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
 import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, externalFor, frameReportFromDraft, parseBays, parseStories } from './frameModel';
 import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
@@ -116,7 +113,7 @@ const uniqueCopyTag = (tag: string | undefined, items: readonly WorkbenchMemoryI
   }
 };
 
-interface DesignMemory {
+export interface DesignMemory {
   readonly items: readonly WorkbenchMemoryItem[];
   readonly activeId: string;
   /** El elemento abierto está en la memoria y no tiene cambios sin guardar. */
@@ -298,12 +295,6 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
   };
 }
 
-const percent = (ratio: number) => Number.isFinite(ratio) ? `${Math.round(ratio * 100)} %` : '—';
-const savedDate = (iso: string) => {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-};
-
 /** Estado de la memoria sobre los resultados: guardado, con cambios o fuera de la memoria. */
 export function MemoryStatus({ memory, element, onSave, onOpen }: { memory: DesignMemory; element: DesignElementKind; onSave: () => void; onOpen: () => void }) {
   const text = memory.active
@@ -317,80 +308,4 @@ export function MemoryStatus({ memory, element, onSave, onOpen }: { memory: Desi
       <Save size={13} aria-hidden="true" />Guardar
     </button>}
   </div>;
-}
-
-export function MemoryDialog({ open, onOpenChange, memory, element, onLoad, onExport, exporting, message, modelSource = null, modelAxes = null }: {
-  open: boolean;
-  /** Modelo 2D vigente: las estructuras guardadas desde el modelo se recalculan con él. */
-  modelSource?: ExternalStructureSource | null;
-  /** Ejes del Modelo 3D vigente, igual. */
-  modelAxes?: ExternalStructureAxes | null;
-  onOpenChange: (open: boolean) => void;
-  memory: DesignMemory;
-  element: DesignElementKind;
-  /** Abre un elemento guardado en la mesa. */
-  onLoad: (id: string) => void;
-  onExport: (reports: readonly DesignReport[]) => void;
-  exporting: boolean;
-  message: string | null;
-}) {
-  const [notice, setNotice] = useState<string | null>(null);
-  const rows = useMemo(() => open ? memory.items.map((item) => ({ item, outcome: reportFromMemoryItem(item, modelSource, modelAxes) })) : [], [open, memory.items, modelSource, modelAxes]);
-  const reports = rows.flatMap((row) => row.outcome.ok ? [row.outcome.report] : []);
-  const invalid = rows.length - reports.length;
-  const save = (asNew = false) => {
-    setNotice(memory.save(asNew) === 'full' ? `No hay espacio suficiente para guardar. La memoria admite hasta ${MAX_MEMORY_ITEMS} elementos y el documento tiene un límite de almacenamiento.` : null);
-  };
-  const load = (id: string) => {
-    onLoad(id);
-  };
-  const duplicate = (id: string) => {
-    const outcome = memory.duplicate(id);
-    setNotice(outcome === 'full' ? 'No hay espacio suficiente para duplicar esta pieza. Quita elementos o libera espacio en el documento.' : null);
-  };
-  const remove = (id: string) => {
-    const outcome = memory.remove(id);
-    setNotice(outcome === 'full' ? 'No hay espacio suficiente para actualizar la memoria en este documento.' : null);
-  };
-
-  return <Dialog open={open} onOpenChange={onOpenChange} title="Memoria del proyecto"
-    description="Se recalculan al abrirlos o exportarlos."
-    className="dw-memory"
-    footer={<>
-      {memory.active ? <Button variant="secondary" onClick={() => save(true)} disabled={exporting} leadingIcon={<Plus size={15} aria-hidden="true" />}>Guardar como nuevo</Button> : null}
-      <Button variant="secondary" onClick={() => save(false)} disabled={exporting || memory.saved} leadingIcon={<Save size={15} aria-hidden="true" />}>
-        {memory.active ? `Guardar ${memory.active.fields.tag || ELEMENT_LABEL[memory.active.element].toLowerCase()}` : `Agregar ${ELEMENT_LABEL[element].toLowerCase()} actual`}
-      </Button>
-      <Button variant="primary" onClick={() => onExport(reports)} disabled={!reports.length || exporting} leadingIcon={<FileDown size={15} aria-hidden="true" />}>
-        {exporting ? 'Generando…' : `Exportar memoria${reports.length ? ` (${reports.length})` : ''}`}
-      </Button>
-    </>}>
-    {notice || message ? <p className="dw-memory__notice" role="status">{notice ?? message}</p> : null}
-    {rows.length ? <table className="dw-table dw-memory__table" aria-label="Elementos de la memoria">
-      <thead><tr><th scope="col">Elemento</th><th scope="col">Estado</th><th scope="col"><span className="sr-only">Acciones</span></th></tr></thead>
-      <tbody>{rows.map(({ item, outcome }) => {
-        const report = outcome.ok ? outcome.report : null;
-        const status = report ? report.status : 'fail';
-        return <tr key={item.id} data-active={item.id === memory.activeId || undefined}>
-          <th scope="row">
-            <strong>{report ? reportHeading(report) : `${item.fields.tag || ELEMENT_LABEL[item.element]} · datos incompletos`}</strong>
-            <small>{[item.fields.place, report?.basisLabel ?? designCode(isDesignCodeId(item.code) ? item.code : 'ntc-2023').name, savedDate(item.savedAt)].filter(Boolean).join(' · ')}</small>
-          </th>
-          <td data-status={status}>{report ? `${verdictHeadline(report.status, report.outOfScope.length > 0)} · ${percent(report.governingRatio)}` : 'No se puede calcular'}</td>
-          <td className="dw-memory__actions">
-            <button type="button" className="dw-icon-button" onClick={() => load(item.id)} aria-label={`Abrir ${item.fields.tag || ELEMENT_LABEL[item.element]}`} title="Abrir en la mesa">
-              <FolderOpen size={15} aria-hidden="true" />
-            </button>
-            <button type="button" className="dw-icon-button" onClick={() => duplicate(item.id)} aria-label={`Duplicar ${item.fields.tag || ELEMENT_LABEL[item.element]}`} title="Duplicar pieza">
-              <Copy size={15} aria-hidden="true" />
-            </button>
-            <button type="button" className="dw-icon-button" onClick={() => remove(item.id)} aria-label={`Quitar ${item.fields.tag || ELEMENT_LABEL[item.element]} de la memoria`} title="Quitar de la memoria">
-              <Trash2 size={15} aria-hidden="true" />
-            </button>
-          </td>
-        </tr>;
-      })}</tbody>
-    </table> : <p className="dw-memory__empty">Aún no hay elementos. Diseña uno y agrégalo.</p>}
-    {invalid ? <p className="dw-footnote">{`${invalid} ${invalid === 1 ? 'elemento no se puede calcular y queda' : 'elementos no se pueden calcular y quedan'} fuera del PDF.`}</p> : null}
-  </Dialog>;
 }
