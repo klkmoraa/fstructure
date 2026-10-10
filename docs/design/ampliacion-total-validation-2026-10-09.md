@@ -54,3 +54,9 @@ El lote de detalle y activación de armado propio, y la restauración completa d
 ## A3 prueba de navegador durante integración
 
 Chromium comprobó inicio propio con acción/geometría/materiales vacíos; Mu 200 kN·m con b400/h600mm, fc25/fy420MPa y barras Ø15.9 da As1022.85mm² (10.23cm²), coherente con la referencia independiente bajo el peralte real. Mu vacío deshabilita reporte/PDF; cero explícito se acepta; Mu negativo selecciona el lecho superior. Guardado, memoria, PDF y recarga conservaron las acciones. Sin errores de página/consola ni desbordamiento390px. Las capturas detectaron contraste insuficiente de texto SVG en oscuro y un estado demasiado largo en móvil; se asignaron al implementador antes de la revisión de tarea. Dimensionamiento y revisión independientes de A3 aún pendientes.
+
+## A3 cierre revisado — 0e4f4a2f
+
+Flexión directa `2ecd90aa` y correcciones `9f912103`/`0e4f4a2f`: revisión independiente final Spec PASS/Quality APPROVED. La ecuación convierte N·mm a kN·m e imprime el factor obtenido con As requerida, bloque y deformación; las referencias del perfil son informativas. Mu=0 usa el factor compartido y no un respaldo de cero. Sólo se solicitan y validan barras del lecho activo; el crudo del otro lecho se conserva.
+
+Verify final: 21 archivos/186 pruebas relacionadas y Python 5/5, código 0; focal de la última corrección 19/19. Chromium posterior: acciones, memoria, PDF, recarga, dimensionamiento real en worker, preview no mutante, Aplicar/Deshacer y Día/Noche/390px, sin errores de página/consola. PDF de Mu=0 confirma φ0.900/As0/a0/equilibrio0; el de Mu200 confirma φ0.900/As1022.85/a50.54/equilibrio200 y referencias. El defecto menor de escala SVG para secciones anchas queda asignado a A4 o a la corrección integrada. A4/A5/B/C/D siguen pendientes; no se publica una entrega parcial.
