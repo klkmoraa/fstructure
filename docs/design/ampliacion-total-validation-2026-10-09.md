@@ -38,3 +38,7 @@ Los informes originales, scripts y resultados temporales se conservan en `qa-art
 Editor de cargas/armado; flexión directa y alternativas; snapshots/navegador; reacción→zapata; despiece/exportaciones; losa/franja y sección libre/biaxial/servicio. Cada tarea tiene revisión y pruebas propias. El cierre exige navegador Día/Noche/teléfono, migraciones/invalidimport/undo/cancel, coherencia PDF/SVG/CSV, npm run check completo, revisión consolidada y comprobación del despliegue.
 
 Las fuentes oficiales completas de losas no pudieron recuperarse (403 del proxy). Los mínimos y reglas de sección existentes sólo se habilitan bajo su alcance registrado; cortante/peralte/servicio/detalle sin evidencia aplicable quedan pendientes. No se fabricaron hashes, fechas de cotejo ni certificaciones.
+
+## Capacidad reducida de sección libre — contrato previo a implementación
+
+La comparación aprobada admite un factor manual opcional, vacío por defecto y explícitamente Experimental. No atribuye un factor a una norma sin respaldo. A N de cálculo fijo, la curva reducida usa el cálculo nominal a N/φ y escala sus acciones por φ; pruebas de equilibrio, φ=1 y dominio axial deben cubrir este cambio antes de declararlo implementado. No afecta al servicio elástico.
