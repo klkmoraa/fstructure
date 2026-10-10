@@ -46,3 +46,7 @@ La comparación aprobada admite un factor manual opcional, vacío por defecto y 
 ## Guardado general — hallazgo de auditoría, corrección asignada A5
 
 La aceptación de lotes completos debe preceder cambios visibles e historial en formularios, filas, selección, memoria y revisión de acero. El sink real del proyecto es `session.saveDesign`; actualmente su rechazo se absorbe. A5 incluye distinción de borrador pendiente/confirmación durable y reintento sin descartar trabajo. El fallback localStorage queda separado del proyecto normal. Estas garantías están planificadas, todavía no declaradas implementadas.
+
+## A2 cierre revisado — 1dacdf98
+
+El lote de detalle y activación de armado propio, y la restauración completa de viga, se prevalidan juntos. El rechazo conserva campos, resultado, memoria y stacks de deshacer/rehacer. Fixture válido de 60 piezas cercano a 240000 caracteres cubre detalle que cabe solo y lote que no cabe. Verify de la corrección: 38 archivos/258 pruebas, focal final 2/2; revisión independiente Spec PASS/Quality APPROVED. Chromium posterior conserva carga puntual y parcial, bastón y estribos, teclado/undo/recarga/memoria/PDF; Día/Noche/390px sin errores de página o consola ni desbordamiento. A3 en implementación; A4/A5/B/C/D todavía pendientes.
