@@ -77,7 +77,8 @@ export function isBeamDetailDraft(value: unknown): value is BeamDetailDraft {
 
 export interface StoredBeamDetails {
   readonly details: BeamDetailDraft;
-  setDetails(details: BeamDetailDraft): boolean;
+  /** Preflight y escribe juntas las entradas que acompañan al detalle. */
+  setDetails(details: BeamDetailDraft, writes?: Readonly<Record<string, JsonValue>>): boolean;
 }
 
 /** Lee y persiste el detalle tipado del taller sin evaluar su geometría. */
@@ -86,10 +87,12 @@ export function useStoredBeamDetails(storage: WorkbenchStorage): StoredBeamDetai
     const stored = storage.read('beam-details');
     return isBeamDetailDraft(stored) ? structuredClone(stored) : EMPTY_BEAM_DETAILS;
   });
-  const setDetails = useCallback((next: BeamDetailDraft): boolean => {
+  const setDetails = useCallback((next: BeamDetailDraft, writes: Readonly<Record<string, JsonValue>> = {}): boolean => {
     if (!isBeamDetailDraft(next)) return false;
     const copy = structuredClone(next);
-    if (storage.canWrite && !storage.canWrite({ 'beam-details': copy as unknown as JsonValue })) return false;
+    const batch = { ...writes, 'beam-details': copy as unknown as JsonValue };
+    if (storage.canWrite && !storage.canWrite(batch)) return false;
+    for (const [key, value] of Object.entries(writes)) storage.write(key, value);
     setState(copy);
     storage.write('beam-details', copy as unknown as JsonValue);
     return true;

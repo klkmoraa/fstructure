@@ -58,7 +58,7 @@ const HISTORY_LIMIT = 100;
  */
 const RETAINED_HISTORIES = new WeakMap<object, Map<string, { past: unknown[]; future: unknown[]; present: unknown }>>();
 
-export function useDraftHistory<T>(value: T, apply: (value: T) => void, key?: string): DraftHistory {
+export function useDraftHistory<T>(value: T, apply: (value: T) => void | boolean, key?: string): DraftHistory {
   const scope = useWorkbenchStorage().historyScope;
   const [retained] = useState(() => {
     const saved = scope && key ? RETAINED_HISTORIES.get(scope)?.get(key) : undefined;
@@ -99,11 +99,11 @@ export function useDraftHistory<T>(value: T, apply: (value: T) => void, key?: st
   const step = useCallback((from: { current: T[] }, to: { current: T[] }) => {
     const target = from.current[from.current.length - 1];
     if (target === undefined) return;
+    if (apply(target) === false) return;
     from.current = from.current.slice(0, -1);
     to.current = [...to.current, previous.current];
     applying.current = true;
     lastChange.current = 0;
-    apply(target);
     previous.current = target;
     remember();
     sync();

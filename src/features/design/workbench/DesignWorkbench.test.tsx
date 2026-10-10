@@ -4,11 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../../data/projectStorage';
+import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { ProjectProvider } from '../../../store/ProjectContext';
 import { DesignWorkbench } from './DesignWorkbench';
 import { ShellSlotHost, ShellToolSlotsProvider } from '../../workspace/ShellToolSlots';
-import { WorkbenchStorageContext } from './workbenchStorage';
-import { DEFAULT_SPANS } from './beamModel';
+import { createProjectWorkbenchStorage, parseWorkbenchDocument, WORKBENCH_DOCUMENT_KIND, WorkbenchStorageContext } from './workbenchStorage';
+import { BEAM_DEFAULTS, DEFAULT_SPANS } from './beamModel';
 import { EMPTY_BEAM_DETAILS } from './beamDetailDraft';
 import { FOOTING_DEFAULTS, footingToInput } from './footingModel';
 import { SECTION_DEFAULTS } from './concreteStudioModel';
@@ -449,6 +450,104 @@ describe('DesignWorkbench', () => {
     await user.click(screen.getByRole('button', { name: 'Agregar bastón' }));
     expect(data.beam).toMatchObject({ rebarMode: 'auto' });
     expect(data['beam-details']).toMatchObject({ bastions: [] });
+  });
+
+  it('preflighta detalle y armado como lote indivisible cerca del límite del documento', async () => {
+    const user = userEvent.setup();
+    const nextDetails = { ...EMPTY_BEAM_DETAILS, bastions: [{ id: 'b1', bed: 'top' as const, count: '', diameterMm: '', startM: '', endM: '' }] };
+    const ownBeam = { ...BEAM_DEFAULTS, rebarMode: 'own', ownBastions: 'custom' };
+    const makeDocument = (regularFields: number, padLength: number) => {
+      let fieldIndex = 0;
+      const memory = Array.from({ length: 60 }, (_, itemIndex) => {
+        const fields: Record<string, string> = {};
+        const itemFields = Math.min(96 - (itemIndex === 0 ? 8 : 0), regularFields - fieldIndex);
+        for (let index = 0; index < itemFields; index++, fieldIndex++) fields[`f${String(fieldIndex).padStart(5, '0')}`] = 'x'.repeat(32);
+        if (itemIndex === 0) {
+          let remaining = padLength;
+          for (const key of ['pad-a', 'pad-b', 'pad-c', 'pad-d', 'pad-e', 'pad-f', 'pad-g', 'pad-h']) {
+            const length = Math.min(32, remaining);
+            fields[key] = 'p'.repeat(length);
+            remaining -= length;
+          }
+        }
+        return { id: `m${itemIndex}`, element: 'beam', code: 'ntc-2023', savedAt: '2026-10-09', fields };
+      });
+      return { kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 7, entries: {
+        beam: { ...BEAM_DEFAULTS }, 'beam-details': EMPTY_BEAM_DETAILS, 'beam-spans': DEFAULT_SPANS.map((span) => ({ ...span })), memory,
+      } };
+    };
+    const writesFit = (raw: ReturnType<typeof makeDocument>, withBeam: boolean) => {
+      const entries = raw.entries;
+      const candidate = { ...entries, 'beam-details': nextDetails, ...(withBeam ? { beam: ownBeam } : {}) };
+      return JSON.stringify({ ...raw, entries: candidate }).length <= 240_000;
+    };
+    let fullFieldCount = 0;
+    let low = 0;
+    let high = 60 * 96 - 8;
+    while (low <= high) {
+      const middle = Math.floor((low + high) / 2);
+      if (writesFit(makeDocument(middle, 256), false)) { fullFieldCount = middle; low = middle + 1; }
+      else high = middle - 1;
+    }
+    let initial: ReturnType<typeof makeDocument> | undefined;
+    for (let count = Math.max(0, fullFieldCount - 8); count <= fullFieldCount + 1 && !initial; count++) {
+      const noPad = makeDocument(count, 0);
+      const detailLength = JSON.stringify({ ...noPad, entries: { ...noPad.entries, 'beam-details': nextDetails } }).length;
+      const batchLength = JSON.stringify({ ...noPad, entries: { ...noPad.entries, 'beam-details': nextDetails, beam: ownBeam } }).length;
+      const padLength = 240_000 - detailLength;
+      if (padLength >= 0 && padLength <= 256 && batchLength + padLength > 240_000) initial = makeDocument(count, padLength);
+    }
+    expect(initial).toBeDefined();
+    const persisted: unknown[] = [];
+    const storage = createProjectWorkbenchStorage(initial, (document) => persisted.push(document), 60_000);
+    expect(storage.canWrite?.({ 'beam-details': nextDetails as unknown as JsonValue })).toBe(true);
+    expect(storage.canWrite?.({ 'beam-details': nextDetails as unknown as JsonValue, beam: ownBeam })).toBe(false);
+    render(<WorkbenchStorageContext.Provider value={storage}><ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider></WorkbenchStorageContext.Provider>);
+    await user.click(screen.getByRole('button', { name: 'Cargas generales y detalle físico' }));
+    await user.click(screen.getByRole('button', { name: 'Agregar bastón' }));
+
+    expect(screen.queryByRole('group', { name: 'Bastón 1' })).toBeNull();
+    expect(storage.read('beam')).toMatchObject({ rebarMode: 'auto' });
+    expect(storage.read('beam-details')).toEqual(EMPTY_BEAM_DETAILS);
+    expect(await screen.findByText(/cambio fue rechazado por falta de espacio/i)).toBeTruthy();
+    expect(within(results()).getByText(/Mu positivo/)).toBeTruthy();
+    storage.flush();
+    const reopened = parseWorkbenchDocument(persisted.at(-1));
+    expect(reopened.beam).toMatchObject({ rebarMode: 'auto' });
+    expect(reopened['beam-details']).toEqual(EMPTY_BEAM_DETAILS);
+    expect(reopened.memory).toHaveLength(60);
+  });
+
+  it('mantiene el historial si el lote completo de deshacer es rechazado y permite reintentarlo', async () => {
+    const user = userEvent.setup();
+    const data: Record<string, unknown> = { beam: { ...BEAM_DEFAULTS }, 'beam-details': EMPTY_BEAM_DETAILS, 'beam-spans': DEFAULT_SPANS.map((span) => ({ ...span })) };
+    let rejectUndo = true;
+    const batches: Record<string, unknown>[] = [];
+    const storage = {
+      read: (key: string) => data[key],
+      write: (key: string, value: unknown) => { data[key] = structuredClone(value); },
+      canWrite: (writes: Record<string, unknown>) => {
+        batches.push(writes);
+        return !(rejectUndo && (writes.beam as typeof BEAM_DEFAULTS | undefined)?.rebarMode === 'auto' && JSON.stringify(writes['beam-details']) === JSON.stringify(EMPTY_BEAM_DETAILS));
+      },
+    };
+    render(<WorkbenchStorageContext.Provider value={storage as never}><ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider></WorkbenchStorageContext.Provider>);
+    await user.click(screen.getByRole('button', { name: 'Cargas generales y detalle físico' }));
+    await user.click(screen.getByRole('button', { name: 'Agregar bastón' }));
+    expect(data.beam).toMatchObject({ rebarMode: 'own', ownBastions: 'custom' });
+    expect(data['beam-details']).toMatchObject({ bastions: [{ id: expect.any(String) }] });
+    expect(batches.at(-1)).toEqual(expect.objectContaining({ beam: expect.any(Object), 'beam-details': expect.any(Object) }));
+
+    await user.click(screen.getByRole('heading', { name: 'Viga' }));
+    await user.keyboard('{Control>}z{/Control}');
+    expect(data.beam).toMatchObject({ rebarMode: 'own' });
+    expect(data['beam-details']).toMatchObject({ bastions: [{ id: expect.any(String) }] });
+    expect(batches.at(-1)).toEqual(expect.objectContaining({ beam: expect.any(Object), 'beam-details': expect.any(Object), 'beam-spans': expect.any(Array) }));
+
+    rejectUndo = false;
+    await user.keyboard('{Control>}z{/Control}');
+    expect(data.beam).toMatchObject({ rebarMode: 'auto' });
+    expect(data['beam-details']).toEqual(EMPTY_BEAM_DETAILS);
   });
 
   it('ofrece columnas circulares con zuncho, vigas T y los cinco tipos de cimentación', async () => {

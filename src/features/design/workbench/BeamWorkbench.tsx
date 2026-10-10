@@ -90,11 +90,13 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   useEffect(() => storage.write('beam-spans', spans.map((span) => ({ ...span }))), [spans, storage]);
   const snapshot = useMemo(() => ({ draft, spans, details: storedDetails.details }), [draft, spans, storedDetails.details]);
   const applySnapshot = useCallback((next: typeof snapshot) => {
-    if (!storedDetails.setDetails(next.details)) { setDetailsNote('Sin espacio para restaurar el detalle; se conservaron los datos actuales.'); return; }
+    const writes = { beam: next.draft, 'beam-spans': next.spans as unknown as import('../../../shared/project/unifiedProjectBundle').JsonValue };
+    if (!storedDetails.setDetails(next.details, writes)) { setDetailsNote('Sin espacio para restaurar el detalle y el armado; se conservaron los datos actuales.'); return false; }
     setDetailsDraft(next.details);
     replace(next.draft);
     setSpans(next.spans);
     setDetailsNote(null);
+    return true;
   }, [replace, storedDetails]);
   const history = useDraftHistory(snapshot, applySnapshot, 'beam');
   const { onHistory } = chrome;
@@ -182,16 +184,20 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <Disclosure label="Cargas generales y detalle físico">
           <p className="dw-beam-details__sum">Las cargas nuevas se suman a CM/CV, cargas puntuales y peso propio ya capturados.</p>
           <BeamDetailEditor details={detailsDraft} spans={spans}
-            onChange={(next) => {
-              if (!storedDetails.setDetails(next)) {
+            onChange={(next, activateOwn) => {
+              const nextDraft = activateOwn
+                ? { ...draft, rebarMode: 'own', ...(activateOwn === 'bastion' ? { ownBastions: 'custom' } : {}) }
+                : null;
+              if (!storedDetails.setDetails(next, nextDraft ? { beam: nextDraft } : {})) {
                 setDetailsNote('El cambio fue rechazado por falta de espacio y no se guardó; se conservó el detalle anterior. Libera espacio y vuelve a intentarlo.');
                 return false;
               }
               setDetailsDraft(next);
+              if (nextDraft) replace(nextDraft);
               setDetailsNote(null);
               return true;
             }}
-            onActivateOwn={(kind) => replace({ ...draft, rebarMode: 'own', ...(kind === 'bastion' ? { ownBastions: 'custom' } : {}) })} />
+          />
           <ActionNote text={detailsNote} />
         </Disclosure>
         <LayerToggle label="Cargas puntuales" checked={draft.points === 'yes'} onCheckedChange={(checked) => set('points')(checked ? 'yes' : 'no')} />
