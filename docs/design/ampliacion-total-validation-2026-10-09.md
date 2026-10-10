@@ -100,3 +100,7 @@ Los cuatro recorridos adicionales de columna rectangular/circular, viga propia y
 ## B1 cierre revisado — 4f35676e
 
 Implementación e248d598 y corrección4f35676e: revisión independiente final Spec PASS/Quality APPROVED. Se corregía clasificación de HSS/tubos como sólidos; quedan other con dimensiones nulas, conservando identidad/material. La cobertura comprueba también los rectángulos sólidos de catálogo. Verify de implementación:34 archivos/290 pruebas y Python5; fix final:16 archivos/84 pruebas y Python5, focal12. Proveedor nativo original/cancelable disponible; B2 UI/procedencia/navegador aún pendiente. Antes sigue la corrección específica del selector de diámetro de A4.
+
+## A4 diámetro — corrección de integración revisada f364d1dd
+
+Las nuevas propuestas de viga pertenecen al dominio que permiten editar sus campos. Un diámetro heredado fuera del filtro y un crudo incompleto se representan fielmente, sin reemplazarlos por el primer diámetro disponible. Revisión independiente Spec PASS/Quality APPROVED; verify40 archivos/280 pruebas, Python5, focal7/7 y crudo4/4. Chromium posterior confirmó raw/control15.9 y12.7, cambio sólo de acero, preview intacto, Aplicar/Deshacer/recarga y conservación exacta de7.9/incompleta con selección explícita15.9. Día/Noche y390px inspeccionados, sin errores ni desbordamiento. Dos recorridos intermedios se interrumpieron durante una edición con HMR y se conservaron como diagnóstico; los mismos runners sobre el código estable pasaron.
