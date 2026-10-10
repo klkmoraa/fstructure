@@ -13,6 +13,7 @@ import { BEAM_DEFAULTS, DEFAULT_SPANS } from './beamModel';
 import { EMPTY_BEAM_DETAILS } from './beamDetailDraft';
 import { FOOTING_DEFAULTS, footingToInput } from './footingModel';
 import { SECTION_DEFAULTS } from './concreteStudioModel';
+import { proposeFlexureDimensions, type FlexureExerciseInput, type FlexureDimensionBounds } from '../../../design/elements/flexureExercise';
 
 beforeEach(() => {
   localStorage.clear();
@@ -30,6 +31,37 @@ class PendingProposalWorker {
   postMessage(message: { requestId: number }) { this.posted = message; }
   terminate() { this.terminated = true; }
   reply(fields: Record<string, string>) { this.onmessage?.({ data: { kind: 'proposed', requestId: this.posted?.requestId ?? 1, fields } } as MessageEvent<{ kind: 'proposed'; requestId: number; fields: Record<string, string> }>); }
+}
+
+class PendingFlexureWorker {
+  static instance: PendingFlexureWorker | null = null;
+  onmessage: ((event: MessageEvent<{ requestId: number; proposal: { widthMm: number; heightMm: number; result: ReturnType<typeof proposeFlexureDimensions> extends infer T ? T extends { result: infer R } ? R : never : never } | null }>) => void) | null = null;
+  onerror: ((event: ErrorEvent) => void) | null = null;
+  posted: { requestId: number; input: FlexureExerciseInput; bounds: FlexureDimensionBounds } | null = null;
+  terminated = false;
+  constructor() { PendingFlexureWorker.instance = this; }
+  postMessage(message: { requestId: number; input: FlexureExerciseInput; bounds: FlexureDimensionBounds }) { this.posted = message; }
+  terminate() { this.terminated = true; }
+  reply() {
+    if (!this.posted) throw new Error('No se inició la búsqueda.');
+    const { requestId, input, bounds } = this.posted;
+    this.onmessage?.({ data: { requestId, proposal: proposeFlexureDimensions(input, bounds) } } as MessageEvent<{ requestId: number; proposal: null }>);
+  }
+}
+
+const renderFlexureExercise = () => render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="flexure" startPicker startCategory="exercise" /></ProjectProvider>);
+const openFlexureExercise = async (user: ReturnType<typeof userEvent.setup>) => {
+  renderFlexureExercise();
+  await user.click(screen.getByRole('button', { name: 'Iniciar diseño: Flexión con momento dado' }));
+};
+const prepareFlexureSizing = async (user: ReturnType<typeof userEvent.setup>) => {
+  await openFlexureExercise(user);
+  for (const [label, value] of [[/Mu \(positivo: tensión abajo; negativo: tensión arriba\)/, '200'], [/f′c/, '255'], [/^fy$/, '4280'], [/Barras abajo/, '6']] as const) {
+    const field = screen.getByRole('textbox', { name: label });
+    await user.clear(field);
+    await user.type(field, value);
+  }
+  await user.click(screen.getByRole('radio', { name: 'Dimensionar sección' }));
 }
 
 // El taller abre en Estructura; estas pruebas parten de la viga continua.
@@ -157,10 +189,54 @@ describe('DesignWorkbench', () => {
     expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.element')!)).toBe('footing');
   });
 
-  it('ofrece los cinco elementos, Estructura primero', () => {
+  it('dimensiona con b/h vacíos y sólo guarda la propuesta al aplicarla; deshacer restaura el borrador', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('Worker', PendingFlexureWorker);
+    await prepareFlexureSizing(user);
+    expect(screen.queryByRole('textbox', { name: 'Base b' })).toBeNull();
+    expect(screen.queryByRole('textbox', { name: 'Peralte h' })).toBeNull();
+    await screen.findByRole('button', { name: 'Cancelar búsqueda' });
+    const worker = PendingFlexureWorker.instance!;
+    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.flexure')!).width).toBe('');
+    worker.reply();
+    await screen.findByText(/Vista previa:/);
+    const proposal = proposeFlexureDimensions(worker.posted!.input, worker.posted!.bounds)!;
+    await user.click(screen.getByRole('button', { name: 'Aplicar dimensiones' }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.flexure')!).width).toBe(String(proposal.widthMm / 10)));
+    fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.flexure')!).width).toBe(''));
+    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.flexure')!).height).toBe('');
+  });
+
+  it('cancela la búsqueda y descarta una respuesta tardía', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('Worker', PendingFlexureWorker);
+    await prepareFlexureSizing(user);
+    await screen.findByRole('button', { name: 'Cancelar búsqueda' });
+    const worker = PendingFlexureWorker.instance!;
+    await user.click(screen.getByRole('button', { name: 'Cancelar búsqueda' }));
+    await waitFor(() => expect(worker.terminated).toBe(true));
+    worker.reply();
+    expect(screen.queryByText(/Vista previa:/)).toBeNull();
+    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.flexure')!).width).toBe('');
+  });
+
+  it('ofrece seis elementos, Estructura primero', () => {
     renderWorkbench();
     const dock = screen.getByRole('radiogroup', { name: 'Elemento a diseñar' });
-    expect(within(dock).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Estructura', 'Viga', 'Columna', 'Zapata', 'Secciones']);
+    expect(within(dock).getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Estructura', 'Viga', 'Columna', 'Zapata', 'Flexión', 'Secciones']);
+  });
+
+  it('Flexión recibe el momento directamente y distingue blanco de cero', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    await user.click(screen.getByRole('radio', { name: 'Flexión' }));
+    const moment = screen.getByRole('textbox', { name: /Mu \(positivo: tensión abajo; negativo: tensión arriba\)/ });
+    expect((moment as HTMLInputElement).value).toBe('');
+    expect(screen.getByText('Completa Mu, sección y materiales para calcular.')).toBeTruthy();
+    await user.type(moment, '0');
+    await waitFor(() => expect(within(results()).getAllByText('0.0 kN·m').length).toBeGreaterThan(0));
+    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.flexure')!).moment).toBe('0');
   });
 
   it('abre Nuevo diseño desde el dock y cancelar conserva el borrador vigente', async () => {

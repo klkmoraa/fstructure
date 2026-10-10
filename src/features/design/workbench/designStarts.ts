@@ -2,6 +2,7 @@ import { BEAM_DEFAULTS, DEFAULT_SPANS } from './beamModel';
 import { COLUMN_DEFAULTS } from './columnModel';
 import { SECTION_DEFAULTS } from './concreteStudioModel';
 import { FOOTING_DEFAULTS } from './footingModel';
+import { FLEXURE_DEFAULTS, flexureProblemDefaults } from './flexureModel';
 import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS } from './frameModel';
 import type { DesignElementKind } from './designReport';
 
@@ -65,9 +66,11 @@ export const DESIGN_STARTS: readonly DesignStart[] = [
   start({ id: 'piece-footing-combined', category: 'piece', element: 'footing', title: 'Zapata combinada', description: 'Cimentación de dos columnas con cargas y separación editables.', fields: footing('Combinada', 'combined') }),
   start({ id: 'piece-footing-strap', category: 'piece', element: 'footing', title: 'Zapata de lindero', description: 'Zapata con contratrabe; captura manual de las cargas.', fields: footing('Lindero', 'strap') }),
   start({ id: 'piece-footing-mat', category: 'piece', element: 'footing', title: 'Losa de cimentación', description: 'Retícula editable de columnas y cargas por posición.', fields: footing('Losa', 'mat') }),
+  start({ id: 'piece-flexure', category: 'piece', element: 'flexure', title: 'Sección a flexión', description: 'Sección rectangular editable para calcular acero, revisar barras o dimensionar por un momento capturado.', fields: { ...clone(FLEXURE_DEFAULTS), tag: 'Sección', moment: '200' } }),
   start({ id: 'piece-section', category: 'piece', element: 'section', title: 'Estudio de sección', description: 'Sección de concreto editable para revisar acciones y filosofía.', fields: section('Sección', 'column') }),
 
   start({ id: 'problem-section', category: 'exercise', element: 'section', title: 'Sección con acciones dadas', description: 'Captura datos propios para explorar el armado de una sección.', fields: ownSection }),
   start({ id: 'problem-column', category: 'exercise', element: 'column', title: 'Columna con acciones dadas', description: 'Captura datos propios para explorar el refuerzo de una columna rectangular.', fields: ownColumn }),
+  start({ id: 'problem-flexure', category: 'exercise', element: 'flexure', title: 'Flexión con momento dado', description: 'Captura el momento, sección y materiales del ejercicio; recubrimiento y barras empiezan como hipótesis de referencia editables.', fields: { ...clone(flexureProblemDefaults), tag: '' } }),
   start({ id: 'problem-beam', category: 'exercise', element: 'beam', title: 'Viga con claros y cargas', description: 'Captura datos propios de geometría, materiales, claros y cargas para explorar el refuerzo de una viga.', ...ownBeam }),
 ];

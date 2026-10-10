@@ -11,7 +11,7 @@ import { filterMemoryRows, selectedMemoryReports, type MemoryFilter, type Memory
 import { MAX_MEMORY_ITEMS } from './workbenchStorage';
 import './designMemory.css';
 
-const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', frame: 'Estructura', footing: 'Zapata', section: 'Sección' };
+const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', frame: 'Estructura', footing: 'Zapata', section: 'Sección', flexure: 'Flexión' };
 const percent = (ratio: number) => Number.isFinite(ratio) ? `${Math.round(ratio * 100)} %` : '—';
 const savedDate = (iso: string) => {
   const date = new Date(iso);

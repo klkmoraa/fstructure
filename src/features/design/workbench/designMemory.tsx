@@ -4,6 +4,7 @@ import { isDesignCodeId, type DesignCodeId } from '../../../design/elements/code
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { BEAM_DEFAULTS, beamReportFromDraft, parseSpans, DEFAULT_SPANS } from './beamModel';
 import { COLUMN_DEFAULTS, columnReportFromDraft } from './columnModel';
+import { FLEXURE_DEFAULTS, flexureReport, isFlexureDraftComplete } from './flexureModel';
 import { SECTION_DEFAULTS, sectionReportFromDraft } from './concreteStudioModel';
 import { stableJson, type DesignElementKind, type DesignReport } from './designReport';
 import { EMPTY_BEAM_DETAILS, isBeamDetailDraft } from './beamDetailDraft';
@@ -17,7 +18,7 @@ import type { DesignStart } from './designStarts';
  * cálculo. Se guarda el borrador (no el resultado) y se recalcula al mostrar o
  * exportar, así que la memoria siempre sale con el motor vigente.
  */
-const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', frame: 'Estructura', footing: 'Zapata', section: 'Sección' };
+const ELEMENT_LABEL: Record<DesignElementKind, string> = { beam: 'Viga', column: 'Columna', frame: 'Estructura', footing: 'Zapata', section: 'Sección', flexure: 'Flexión' };
 /** Presupuesto del documento para la memoria; el resto queda para los borradores. */
 const MEMORY_BUDGET_CHARS = 180_000;
 
@@ -44,6 +45,10 @@ export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: Ext
     }
     case 'footing': return footingReportFromDraft(code, merge(FOOTING_DEFAULTS, item.fields));
     case 'section': return sectionReportFromDraft(code, merge(SECTION_DEFAULTS, item.fields));
+    case 'flexure': {
+      const draft = merge(FLEXURE_DEFAULTS, item.fields);
+      return isFlexureDraftComplete(draft) ? { ok: true as const, report: flexureReport(code, draft) } : { ok: false as const, errors: ['El borrador de flexión está incompleto; conserva sus datos y complétalos en la mesa.'] };
+    }
   }
 }
 
@@ -56,6 +61,7 @@ const ELEMENT_DEFAULT_FIELDS: Record<DesignElementKind, Record<string, string>> 
   frame: { ...FRAME_DEFAULTS, ...FRAME_LEGACY },
   footing: FOOTING_DEFAULTS,
   section: SECTION_DEFAULTS,
+  flexure: FLEXURE_DEFAULTS,
 };
 
 function currentDraft(storage: WorkbenchStorage, element: DesignElementKind): MemoryDraft {

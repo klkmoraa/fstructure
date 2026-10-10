@@ -8,6 +8,7 @@ import { ColumnWorkbench } from './ColumnWorkbench';
 import { ConcreteStudio } from './ConcreteStudio';
 import { FootingWorkbench } from './FootingWorkbench';
 import { FrameWorkbench } from './FrameWorkbench';
+import { FlexureWorkbench } from './FlexureWorkbench';
 import type { DraftHistory } from './common';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { MemoryStatus, useDesignMemory } from './designMemory';
@@ -20,7 +21,7 @@ import type { DesignStart } from './designStarts';
 import './designWorkbench.css';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 
-type ElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'section';
+type ElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'section' | 'flexure';
 
 const icon = (children: ReactNode) => <svg className="dw-element-icon" viewBox="0 0 24 24" aria-hidden="true">{children}</svg>;
 const ELEMENTS: { id: ElementKind; label: string; icon: ReactNode }[] = [
@@ -28,6 +29,7 @@ const ELEMENTS: { id: ElementKind; label: string; icon: ReactNode }[] = [
   { id: 'beam', label: 'Viga', icon: icon(<><rect x="2" y="8" width="20" height="5" rx="1" /><path d="M4 13l-2 4h4zM20 13l-2 4h4z" /></>) },
   { id: 'column', label: 'Columna', icon: icon(<><rect x="8.5" y="2" width="7" height="17" rx="1" /><path d="M4 21.5h16" /></>) },
   { id: 'footing', label: 'Zapata', icon: icon(<><rect x="9.5" y="3" width="5" height="9" rx="1" /><rect x="3" y="12" width="18" height="6" rx="1" /></>) },
+  { id: 'flexure', label: 'Flexión', icon: icon(<><path d="M4 5h16v14H4z" /><path d="M7 16h10" /><circle cx="9" cy="16" r="1" /><circle cx="15" cy="16" r="1" /></>) },
   { id: 'section', label: 'Secciones', icon: icon(<><path d="M8 2h8l6 6v8l-6 6H8l-6-6V8z" /><path d="M8 8h8v8H8z" /></>) },
 ];
 
@@ -348,6 +350,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
       : element === 'column' ? <ColumnWorkbench key={loadCount} chrome={chrome} />
         : element === 'frame' ? <FrameWorkbench key={loadCount} chrome={chrome} />
         : element === 'footing' ? <FootingWorkbench key={loadCount} chrome={chrome} />
+        : element === 'flexure' ? <FlexureWorkbench key={loadCount} chrome={chrome} />
           : <ConcreteStudio key={loadCount} chrome={chrome} />}
     <DesignStartDialog open={startOpen} onOpenChange={setStartOpen}
       hasModel2d={Boolean(modelSource && !modelSource.errors.length && modelSource.summary.beams + modelSource.summary.columns > 0)}

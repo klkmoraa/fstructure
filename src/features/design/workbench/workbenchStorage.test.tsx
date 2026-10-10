@@ -28,6 +28,21 @@ describe('design workbench document', () => {
     storage.dispose();
   });
 
+  it('keeps incomplete flexure inputs and flexure memory in schema v7', () => {
+    const flexure = { tag: '', moment: '', width: '', height: '', fc: '', fy: '', cover: '4', objective: 'required' };
+    const memory = [{ id: 'f1', element: 'flexure', code: 'ntc-2023', savedAt: '2026-10-10', fields: flexure }];
+    const persist = vi.fn<(value: JsonValue) => void>();
+    const storage = createProjectWorkbenchStorage(workbenchDoc({ flexure, memory }), persist);
+    expect(storage.read('flexure')).toEqual(flexure);
+    expect(storage.read('memory')).toEqual(memory);
+    storage.write('flexure', { ...flexure, moment: '0' });
+    storage.flush();
+    const document = persist.mock.calls[0]?.[0] as { schemaVersion: number; entries: Record<string, JsonValue> };
+    expect(document.schemaVersion).toBe(7);
+    expect((parseWorkbenchDocument(document).flexure as Record<string, string>).moment).toBe('0');
+    storage.dispose();
+  });
+
   it('keeps short strings, records of strings and short lists of records only', () => {
     const parsed = parseWorkbenchDocument(workbenchDoc({
       code: 'nsr-10',

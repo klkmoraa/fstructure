@@ -34,7 +34,7 @@ export const WORKBENCH_DOCUMENT_KIND = 'fstructure-design-workbench';
  */
 const WORKBENCH_SCHEMA_VERSION = 7;
 const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7];
-const ELEMENT_KINDS = ['beam', 'column', 'frame', 'footing', 'section'] as const;
+const ELEMENT_KINDS = ['beam', 'column', 'frame', 'footing', 'section', 'flexure'] as const;
 const MAX_DOCUMENT_CHARS = 240_000;
 const MAX_ENTRIES = 16;
 const MAX_FIELDS = 96;

@@ -53,7 +53,7 @@ export function DesignStartDialog({ open, onOpenChange, hasModel2d, hasModel3d, 
           return <article className="dw-start-card" key={item.id}>
             <div className="dw-start-card__top">
               <span className="dw-start-card__icon" aria-hidden="true"><Icon size={17} /></span>
-              <span className="dw-start-card__element">{item.element === 'frame' ? 'Estructura' : item.element === 'beam' ? 'Viga' : item.element === 'column' ? 'Columna' : item.element === 'footing' ? 'Cimentación' : 'Sección'}</span>
+              <span className="dw-start-card__element">{item.element === 'frame' ? 'Estructura' : item.element === 'beam' ? 'Viga' : item.element === 'column' ? 'Columna' : item.element === 'footing' ? 'Cimentación' : item.element === 'flexure' ? 'Flexión' : 'Sección'}</span>
             </div>
             <h3>{item.title}</h3>
             <p>{item.description}</p>
