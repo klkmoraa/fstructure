@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { designFlexureExercise, type FlexureExerciseInput } from '../../../design/elements/flexureExercise';
 import { designCode, type DesignCodeId } from '../../../design/elements/codes';
-import { barArea } from '../../../design/elements/shared';
+import { barArea, equivalentBlockStrengthMpa } from '../../../design/elements/shared';
 import { formatNumber, mpaFromKgcm2, parseNumber } from './common';
 import type { DesignReport } from './designReport';
 
@@ -21,11 +21,14 @@ export const flexureProblemDefaults: FlexureDraft = {
   topCount: '2', topBar: '15.9', bottomCount: '2', bottomBar: '15.9', objective: 'required',
 };
 export const isFlexureDraftComplete = (draft: FlexureDraft): boolean => {
-  const fields = [draft.width, draft.height, draft.cover, draft.fc, draft.fy, draft.stirrup, draft.aggregate, draft.moment, draft.topCount, draft.topBar, draft.bottomCount, draft.bottomBar];
+  const topTension = Number(draft.moment) < 0;
+  const activeGroup = topTension ? [draft.topCount, draft.topBar] : [draft.bottomCount, draft.bottomBar];
+  const fields = [draft.width, draft.height, draft.cover, draft.fc, draft.fy, draft.stirrup, draft.aggregate, draft.moment, ...activeGroup];
   return fields.every((value) => value.trim() !== '' && Number.isFinite(Number(value)))
-    && Number(draft.width) > 0 && Number(draft.height) > 0 && Number(draft.fc) > 0 && Number(draft.fy) > 0
+    && Number(draft.width) > 0 && Number(draft.height) > 0
+    && Number(draft.fc) > 0 && Number(draft.fy) > 0
     && Number(draft.cover) >= 0 && Number(draft.stirrup) > 0 && Number(draft.aggregate) >= 0
-    && Number(draft.topCount) > 0 && Number(draft.bottomCount) > 0 && Number(draft.topBar) > 0 && Number(draft.bottomBar) > 0;
+    && Number(activeGroup[0]) > 0 && Number(activeGroup[1]) > 0;
 };
 
 export const flexureToInput = (code: DesignCodeId, draft: FlexureDraft): FlexureExerciseInput => ({
@@ -56,11 +59,22 @@ export function flexureReport(codeId: DesignCodeId, draft: FlexureDraft): Design
   const tensionBar = result.layout.tensionBed === 'top' ? draft.topBar : draft.bottomBar;
   const compressionGroup = result.layout.tensionBed === 'top' ? draft.bottomCount : draft.topCount;
   const compressionBar = result.layout.tensionBed === 'top' ? draft.bottomBar : draft.topBar;
-  const equation = `As req: φ·As·${formatNumber(input.fyMpa)}·(${formatNumber(result.effectiveDepthMm, 1)} − a/2) = ${formatNumber(Math.abs(input.momentKnM))} kN·m; a = As·${formatNumber(input.fyMpa)}/(0.85·${formatNumber(input.fcMpa)}·${formatNumber(input.widthMm)}). As requerida ${formatNumber(result.requiredMm2, 2)} mm² (${formatNumber(result.requiredMm2 / 100, 2)} cm²).`;
+  const fppMpa = equivalentBlockStrengthMpa(input.fcMpa);
+  const equation = `As req: φ·As·fy·(d − a/2) / 1,000,000 = Mu; φ = ${formatNumber(result.requiredResistanceFactor, 3)}, As = ${formatNumber(result.requiredMm2, 2)} mm², fy = ${formatNumber(input.fyMpa, 1)} MPa, d = ${formatNumber(result.effectiveDepthMm, 1)} mm, a = ${formatNumber(result.requiredBlockDepthMm, 2)} mm (As·fy/(f″c·b), f″c = ${formatNumber(fppMpa, 2)} MPa); εt = ${formatNumber(result.requiredTensileStrain, 5)}. ${formatNumber(result.requiredCapacityKnM, 2)} kN·m = ${formatNumber(Math.abs(input.momentKnM), 2)} kN·m.`;
   const outOfScope = result.checks.filter((check) => check.status === 'out-of-scope');
   const checks = checking ? result.checks.filter((check) => !['out-of-scope', 'info', 'warning'].includes(check.status)) : [];
   const reportStatus = checking ? result.status : 'warning';
   const notes = result.checks.filter((check) => ['info', 'warning'].includes(check.status));
+  if (!checking) {
+    notes.push(...result.checks.filter((check) => ['flexure', 'steel-min', 'steel-max'].includes(check.id)).map((check) => ({
+      id: `profile-reference-${check.id}`, label: `Perfil ${check.id === 'steel-max' ? 'registrado' : 'aplicado'} · ${check.label}`, status: 'info' as const, reference: check.reference,
+      note: check.id === 'flexure'
+        ? 'Factor normativo usado en el equilibrio para calcular As requerida; no verifica el armado capturado.'
+        : check.id === 'steel-min'
+          ? 'Regla de cuantía mínima del perfil mostrada junto a As requerida; no verifica el armado capturado.'
+          : 'Referencia de acero máximo del perfil; este objetivo no evalúa ni verifica el armado capturado.',
+    })));
+  }
   return {
     element: 'flexure', title: `Sección ${formatNumber(input.widthMm / 10, 0)} × ${formatNumber(input.heightMm / 10, 0)} cm`, tag: draft.tag, place: draft.place,
     code: codeId, status: reportStatus, governingRatio: checking && result.capacityKnM ? Math.abs(input.momentKnM) / result.capacityKnM : 0,
@@ -81,7 +95,7 @@ export function flexureReport(codeId: DesignCodeId, draft: FlexureDraft): Design
         { label: 'Sección', value: `Rectangular · b ${formatNumber(input.widthMm)} × h ${formatNumber(input.heightMm)} mm` },
         { label: 'Recubrimiento / estribo / agregado', value: `${formatNumber(input.coverMm)} / ${formatNumber(input.stirrupDiameterMm)} / ${formatNumber(input.aggregateMm)} mm` },
         { label: 'f′c / fy', value: `${draft.fc} kg/cm² (${formatNumber(input.fcMpa)} MPa) / ${draft.fy} kg/cm² (${formatNumber(input.fyMpa)} MPa)` },
-        { label: 'Barras de referencia · cara opuesta', value: `${barsText(compressionGroup, compressionBar)} (no se cuentan en la resistencia)` },
+        ...(Number(compressionGroup) > 0 && Number(compressionBar) > 0 ? [{ label: 'Lecho opuesto capturado · no se usa', value: `${barsText(compressionGroup, compressionBar)} (no se cuenta en la resistencia)` }] : []),
       ] },
     ],
     reinforcement: [{ label: checking ? `Armado propio · lecho ${result.layout.tensionBed === 'top' ? 'superior' : 'inferior'}` : `Armado de referencia · lecho ${result.layout.tensionBed === 'top' ? 'superior' : 'inferior'}`, value: checking ? `${barsText(tensionGroup, tensionBar)} · As ${cm2(result.providedMm2)}` : `${barsText(tensionGroup, tensionBar)} · sólo estima d; no se considera dado` }],

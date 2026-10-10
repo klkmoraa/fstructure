@@ -8,10 +8,12 @@ import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './Wo
 
 const BOUNDS: FlexureDimensionBounds = { widthMinMm: 200, widthMaxMm: 600, heightMinMm: 250, heightMaxMm: 1500, stepMm: 50 };
 const complete = (draft: FlexureDraft, requireSection = true) => {
-  const fields: (keyof FlexureDraft)[] = ['fc', 'fy', 'moment', 'topCount', 'topBar', 'bottomCount', 'bottomBar', 'cover', 'stirrup', 'aggregate', ...(requireSection ? ['width', 'height'] as const : [])];
+  const topTension = Number(draft.moment) < 0;
+  const fields: (keyof FlexureDraft)[] = ['fc', 'fy', 'moment', topTension ? 'topCount' : 'bottomCount', topTension ? 'topBar' : 'bottomBar', 'cover', 'stirrup', 'aggregate', ...(requireSection ? ['width', 'height'] as const : [])];
   return fields.every((field) => draft[field].trim() !== '' && Number.isFinite(Number(draft[field])))
     && (!requireSection || Number(draft.width) > 0 && Number(draft.height) > 0)
-    && Number(draft.fc) > 0 && Number(draft.fy) > 0 && Number(draft.topCount) > 0 && Number(draft.bottomCount) > 0;
+    && Number(draft.fc) > 0 && Number(draft.fy) > 0 && Number(draft.cover) >= 0 && Number(draft.stirrup) > 0 && Number(draft.aggregate) >= 0
+    && Number(topTension ? draft.topCount : draft.bottomCount) > 0 && Number(topTension ? draft.topBar : draft.bottomBar) > 0;
 };
 
 export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
@@ -46,6 +48,7 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   }, [draft.objective, inputKey, appliedInputKey]);
   const report: DesignReport | null = useMemo(() => result ? flexureReport(chrome.code, draft) : null, [result, chrome.code, draft]);
   const objective = draft.objective as FlexureObjective;
+  const tensionBed = draft.moment.trim() !== '' && Number.isFinite(Number(draft.moment)) ? (Number(draft.moment) < 0 ? 'top' : 'bottom') : null;
   const preview = objective === 'dimensions' && proposal?.key === inputKey && appliedInputKey !== inputKey ? proposal : null;
   const visibleResult = preview?.result ?? result;
   const visibleReport = useMemo(() => preview
@@ -74,13 +77,11 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <Select label="Estribo de referencia" value={draft.stirrup} onChange={(event) => set('stirrup')(event.currentTarget.value)}>{['6.4','9.5','12.7'].map((value) => <option key={value} value={value}>Ø {value} mm</option>)}</Select>
         <NumberField label="Agregado máximo" unit="mm" value={draft.aggregate} onChange={set('aggregate')} min={0} />
       </FieldGroup>
-      <FieldGroup title="Barras por lecho · hipótesis para d">
-        <NumberField label="Barras arriba" unit="pzas" value={draft.topCount} onChange={set('topCount')} min={1} />
-        <BarSelect label="Diámetro arriba" value={draft.topBar} onChange={set('topBar')} />
-        <NumberField label="Barras abajo" unit="pzas" value={draft.bottomCount} onChange={set('bottomCount')} min={1} />
-        <BarSelect label="Diámetro abajo" value={draft.bottomBar} onChange={set('bottomBar')} />
-        <p className="dw-help dw-span-all">El armado de referencia es editable. Sólo el lecho a tensión cuenta para As y resistencia.</p>
-      </FieldGroup>
+      {tensionBed ? <FieldGroup title={objective === 'required' ? `Barras de referencia · lecho ${tensionBed === 'top' ? 'superior' : 'inferior'}` : `Armado propio · lecho ${tensionBed === 'top' ? 'superior' : 'inferior'}`}>
+        <NumberField label={`Barras ${tensionBed === 'top' ? 'arriba' : 'abajo'}`} unit="pzas" value={draft[tensionBed === 'top' ? 'topCount' : 'bottomCount']} onChange={set(tensionBed === 'top' ? 'topCount' : 'bottomCount')} min={1} />
+        <BarSelect label={`Diámetro ${tensionBed === 'top' ? 'arriba' : 'abajo'}`} value={draft[tensionBed === 'top' ? 'topBar' : 'bottomBar']} onChange={set(tensionBed === 'top' ? 'topBar' : 'bottomBar')} />
+        <p className="dw-help dw-span-all">{objective === 'required' ? 'Hipótesis editable para estimar d; no se presenta como dato dado ni se verifica.' : 'Sólo este lecho interviene en el cálculo de As y resistencia.'}</p>
+      </FieldGroup> : <p className="dw-help">Captura Mu para identificar el lecho a tensión y solicitar sólo esas barras.</p>}
       {objective === 'dimensions' ? <FieldGroup title="Búsqueda acotada" columns={1}>
         <p className="dw-help">b 200–600 mm · h 250–1500 mm · pasos de 50 mm. Se conserva Mu, materiales y barras. La propuesta sólo considera flexión simple.</p>
         {proposalState === 'searching' ? <div className="dw-action-note"><p role="status">Buscando una sección…</p><button type="button" className="dw-inline-action" onClick={() => { setProposal(null); set('objective')('required'); }}>Cancelar búsqueda</button></div> : null}

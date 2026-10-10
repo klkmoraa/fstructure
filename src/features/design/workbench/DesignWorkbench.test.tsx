@@ -239,6 +239,28 @@ describe('DesignWorkbench', () => {
     expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.flexure')!).moment).toBe('0');
   });
 
+  it.each([
+    ['200', 'topCount', '', 'topBar', 'not-a-number', 'Barras abajo', 'Barras arriba'],
+    ['-200', 'bottomCount', '', 'bottomBar', 'not-a-number', 'Barras arriba', 'Barras abajo'],
+  ])('sólo presenta y valida el lecho a tensión para Mu=%s conservando el opuesto crudo', async (moment, unusedCount, unusedCountValue, unusedBar, unusedBarValue, activeLabel, inactiveLabel) => {
+    const user = userEvent.setup();
+    localStorage.setItem('fstructure.design-workbench.flexure', JSON.stringify({
+      width: '40', height: '60', cover: '4', fc: '255', fy: '4280', stirrup: '9.5', aggregate: '19', moment,
+      topCount: '2', topBar: '15.9', bottomCount: '6', bottomBar: '15.9', objective: 'required', tag: '', place: '', exercise: '',
+      [unusedCount]: unusedCountValue, [unusedBar]: unusedBarValue,
+    }));
+    renderWorkbench();
+    await user.click(screen.getByRole('radio', { name: 'Flexión' }));
+    expect(screen.getByRole('textbox', { name: activeLabel })).toBeTruthy();
+    expect(screen.queryByRole('textbox', { name: inactiveLabel })).toBeNull();
+    expect(within(results()).getByText('As requerida')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+    expect(screen.getByRole('button', { name: /Guardado/ })).toBeTruthy();
+    const saved = JSON.parse(localStorage.getItem('fstructure.design-workbench.flexure')!);
+    expect(saved[unusedCount]).toBe(unusedCountValue);
+    expect(saved[unusedBar]).toBe(unusedBarValue);
+  });
+
   it('abre Nuevo diseño desde el dock y cancelar conserva el borrador vigente', async () => {
     const user = userEvent.setup();
     renderWorkbench();

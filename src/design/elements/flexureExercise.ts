@@ -1,6 +1,6 @@
 import { designCode, isDesignCodeId, type DesignCodeId } from './codes';
 import { layoutBeamBed, type BeamBarPlacement } from './beamBarLayout';
-import { complementary, flexuralCapacity, requiredFlexuralSteelMm2, type ElementCheck } from './shared';
+import { complementary, equivalentBlockStrengthMpa, flexuralCapacity, requiredFlexuralSteelMm2, type ElementCheck } from './shared';
 
 export interface BarGroup { readonly count: number; readonly diameterMm: number }
 export interface FlexureExerciseInput {
@@ -23,6 +23,10 @@ export interface FlexureExerciseResult {
   readonly providedMm2: number;
   readonly effectiveDepthMm: number;
   readonly extremeDepthMm: number;
+  readonly requiredBlockDepthMm: number;
+  readonly requiredResistanceFactor: number;
+  readonly requiredTensileStrain: number;
+  readonly requiredCapacityKnM: number;
   readonly capacityKnM: number;
   readonly layout: { readonly tensionBed: 'top' | 'bottom'; readonly bars: readonly BeamBarPlacement[] | null };
   readonly checks: readonly ElementCheck[];
@@ -61,6 +65,15 @@ export function designFlexureExercise(input: FlexureExerciseInput): FlexureExerc
     ? requiredFlexuralSteelMm2(Math.abs(input.momentKnM), input.widthMm, effectiveDepthMm, input.fyMpa, input.fcMpa, extremeDepthMm, code.flexureFactor, code.tensionControlledStrain)
     : undefined;
   const requiredMm2 = required ?? Number.POSITIVE_INFINITY;
+  const requiredResistance = validGeometry && required !== undefined && required > 0
+    ? flexuralCapacity(required, input.widthMm, effectiveDepthMm, input.fyMpa, input.fcMpa, extremeDepthMm, code.flexureFactor)
+    : null;
+  const requiredBlockDepthMm = requiredResistance && validGeometry
+    ? requiredMm2 * input.fyMpa / (equivalentBlockStrengthMpa(input.fcMpa) * input.widthMm)
+    : 0;
+  const requiredResistanceFactor = requiredResistance?.resistanceFactor ?? 0;
+  const requiredTensileStrain = requiredResistance?.netTensileStrain ?? 0;
+  const requiredCapacityKnM = requiredResistance?.strengthKnm ?? 0;
   const minimumMm2 = validGeometry && effectiveDepthMm > 0 ? code.beam.minimumSteel(input.widthMm, effectiveDepthMm, input.heightMm, input.fcMpa, input.fyMpa, extremeDepthMm) : 0;
   const providedMm2 = area(group);
   const maximumMm2 = validGeometry && effectiveDepthMm > 0 ? code.beam.maximumSteel(input.widthMm, effectiveDepthMm, extremeDepthMm, input.fcMpa, input.fyMpa) : 0;
@@ -79,18 +92,19 @@ export function designFlexureExercise(input: FlexureExerciseInput): FlexureExerc
   ];
   const evaluated = checks.filter((check) => check.status !== 'out-of-scope');
   const status = evaluated.some((check) => check.status === 'fail') ? 'fail' : 'warning';
-  return { requiredMm2, minimumMm2, providedMm2, effectiveDepthMm, extremeDepthMm, capacityKnM, layout: { tensionBed, bars }, checks, status,
+  return { requiredMm2, minimumMm2, providedMm2, effectiveDepthMm, extremeDepthMm, requiredBlockDepthMm, requiredResistanceFactor, requiredTensileStrain, requiredCapacityKnM, capacityKnM, layout: { tensionBed, bars }, checks, status,
     notes: ['Flexión simple rectangular: sin cortante, desarrollo, servicio, carga axial ni flexión biaxial.'] };
 }
 
 export function proposeFlexureDimensions(input: FlexureExerciseInput, bounds: FlexureDimensionBounds): { widthMm: number; heightMm: number; result: FlexureExerciseResult } | null {
   const { widthMinMm, widthMaxMm, heightMinMm, heightMaxMm, stepMm } = bounds;
   const finiteBounds = [widthMinMm, widthMaxMm, heightMinMm, heightMaxMm, stepMm].every(Number.isFinite);
+  const tensionGroup = input.momentKnM < 0 ? input.top : input.bottom;
   const finiteInputs = isDesignCodeId(input.code)
     && [input.coverMm, input.fcMpa, input.fyMpa, input.stirrupDiameterMm, input.aggregateMm, input.momentKnM,
-      input.top.count, input.top.diameterMm, input.bottom.count, input.bottom.diameterMm].every(Number.isFinite)
+      tensionGroup.count, tensionGroup.diameterMm].every(Number.isFinite)
     && input.coverMm >= 0 && input.fcMpa > 0 && input.fyMpa > 0 && input.stirrupDiameterMm > 0 && input.aggregateMm >= 0
-    && input.top.count > 0 && input.bottom.count > 0 && input.top.diameterMm > 0 && input.bottom.diameterMm > 0;
+    && tensionGroup.count > 0 && tensionGroup.diameterMm > 0;
   if (!finiteBounds || !finiteInputs || stepMm <= 0 || widthMinMm <= 0 || heightMinMm <= 0 || widthMaxMm < widthMinMm || heightMaxMm < heightMinMm) return null;
   const widthSteps = Math.floor((widthMaxMm - widthMinMm) / stepMm + 1e-12);
   const heightSteps = Math.floor((heightMaxMm - heightMinMm) / stepMm + 1e-12);

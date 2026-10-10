@@ -61,6 +61,12 @@ describe('designFlexureExercise', () => {
     expect(proposed!.heightMm).toBeGreaterThanOrEqual(250);
     expect(proposeFlexureDimensions({ ...base, momentKnM: 1e6 }, { ...bounds, widthMaxMm: 200, heightMaxMm: 250 })).toBeNull();
   });
+
+  it('sizes from only the tension bed and ignores invalid raw values in the opposite bed', () => {
+    const bounds = { widthMinMm: 200, widthMaxMm: 600, heightMinMm: 250, heightMaxMm: 1500, stepMm: 50 };
+    expect(proposeFlexureDimensions({ ...base, top: { count: Number.NaN, diameterMm: Number.NaN } }, bounds)).not.toBeNull();
+    expect(proposeFlexureDimensions({ ...base, momentKnM: -200, top: { count: 10, diameterMm: 16 }, bottom: { count: Number.NaN, diameterMm: Number.NaN } }, bounds)).not.toBeNull();
+  });
 });
 
 describe('independent two-layer reference', () => {

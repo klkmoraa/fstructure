@@ -4,6 +4,10 @@ import { proposeFlexureDimensions } from '../../../design/elements/flexureExerci
 import { flexurePublishedReport, flexureReport, FLEXURE_DEFAULTS, isFlexureDraftComplete } from './flexureModel';
 import { memoText, snapshotHash } from './designReport';
 import { reportFromMemoryItem } from './designMemory';
+import { buildDesignMemoriaPdf } from './designReportPdf';
+import { designFlexureExercise, type FlexureExerciseInput } from '../../../design/elements/flexureExercise';
+import { flexuralCapacity, equivalentBlockStrengthMpa } from '../../../design/elements/shared';
+import { designCode } from '../../../design/elements/codes';
 
 describe('borrador y reporte de flexión', () => {
   it('conserva Mu vacío como incompleto y distingue Mu explícito igual a cero', () => {
@@ -44,5 +48,61 @@ describe('borrador y reporte de flexión', () => {
     expect(report.outOfScope.map((check) => check.label)).toEqual(expect.arrayContaining(['Cortante', 'Desarrollo y anclaje', 'Servicio y deformación', 'Carga axial y flexión biaxial']));
     expect(memoText(report)).toContain('○ Sin evaluar');
     expect(await snapshotHash(report)).toBe(await snapshotHash({ ...report, input: report.input }));
+  });
+
+  it('calcular acero explica el equilibrio con φ, a, conversión de unidades y referencias sin revisar el armado', () => {
+    const draft = { ...FLEXURE_DEFAULTS, objective: 'required', moment: '200' };
+    const report = flexureReport('ntc-2023', draft);
+    const input = report.input as FlexureExerciseInput;
+    const result = designFlexureExercise(input);
+    const code = designCode('ntc-2023');
+    const resistance = flexuralCapacity(result.requiredMm2, input.widthMm, result.effectiveDepthMm, input.fyMpa, input.fcMpa, result.extremeDepthMm, code.flexureFactor);
+    const blockDepth = result.requiredMm2 * input.fyMpa / (equivalentBlockStrengthMpa(input.fcMpa) * input.widthMm);
+    const equilibrium = resistance.resistanceFactor * result.requiredMm2 * input.fyMpa * (result.effectiveDepthMm - blockDepth / 2) / 1e6;
+    const equation = report.values.find((value) => value.symbol === 'As req')!.label;
+    expect(equation).toContain('/ 1,000,000');
+    expect(equation).toContain(`φ = ${resistance.resistanceFactor.toFixed(3)}`);
+    expect(equation).toContain(`a = ${blockDepth.toFixed(2)} mm`);
+    expect(equilibrium).toBeCloseTo(200, 4);
+    expect(report.checks).toEqual([]);
+    const references = report.notes.map((note) => note.reference.label).join(' ');
+    expect(references).toContain(code.refs.flexure.label);
+    expect(references).toContain(code.refs.steelMin.label);
+    expect(references).toContain(code.refs.steelMax.label);
+  });
+
+  it('sólo valida y reporta el lecho a tensión; conserva inactivo vacío o inválido', () => {
+    const positive = { ...FLEXURE_DEFAULTS, moment: '200', topCount: '', topBar: 'not-a-number' };
+    const negative = { ...FLEXURE_DEFAULTS, moment: '-200', bottomCount: '', bottomBar: 'not-a-number' };
+    for (const draft of [positive, negative]) {
+      expect(isFlexureDraftComplete(draft)).toBe(true);
+      const report = flexureReport('ntc-2023', draft);
+      expect(report.reinforcement[0]?.value).not.toContain('NaN');
+      expect(report.data.flatMap((section) => section.rows).map((row) => row.value).join(' ')).not.toContain('NaN');
+    }
+    expect(isFlexureDraftComplete({ ...positive, bottomCount: '', bottomBar: '22.2' })).toBe(false);
+    expect(isFlexureDraftComplete({ ...negative, topCount: '2', topBar: '' })).toBe(false);
+  });
+
+  it.each(['required', 'check', 'dimensions'] as const)('mantiene la validación de un solo lecho para el objetivo %s', (objective) => {
+    const positive = { ...FLEXURE_DEFAULTS, objective, moment: '200', topCount: '', topBar: 'invalid' };
+    const negative = { ...FLEXURE_DEFAULTS, objective, moment: '-200', bottomCount: '', bottomBar: 'invalid' };
+    expect(isFlexureDraftComplete(positive)).toBe(true);
+    expect(isFlexureDraftComplete(negative)).toBe(true);
+    expect(() => flexureReport('ntc-2023', positive)).not.toThrow();
+    expect(() => flexureReport('ntc-2023', negative)).not.toThrow();
+    expect(isFlexureDraftComplete({ ...positive, objective: 'dimensions', width: '', height: '' })).toBe(false);
+  });
+
+  it('reconstruye memoria y PDF aunque el lecho opuesto tenga datos inválidos', async () => {
+    const stored = reportFromMemoryItem({ id: 'flexure-own', element: 'flexure', code: 'ntc-2023', savedAt: '2026-10-10', fields: {
+      ...FLEXURE_DEFAULTS, moment: '200', topCount: '', topBar: 'invalid',
+    } });
+    expect(stored.ok).toBe(true);
+    if (!stored.ok) return;
+    const bytes = await buildDesignMemoriaPdf([stored.report], { figures: false });
+    expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
+    expect(stored.report.checks).toEqual([]);
+    expect(stored.report.notes.some((note) => note.label.startsWith('Perfil aplicado'))).toBe(true);
   });
 });
