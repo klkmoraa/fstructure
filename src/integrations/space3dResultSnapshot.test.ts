@@ -70,6 +70,21 @@ describe('modelo 3D: inventario y demanda nativa', () => {
     expect(space3dResultInventory(changed).members[0]!.section).toMatchObject({ shape: 'other', widthMm: null, depthMm: null });
   });
 
+  it('clasifica HSS cajón y tubo circular huecos como other sin borrar su rótulo ni material', () => {
+    const cases = [
+      { id: 'HSS 100x100x4', shapeId: 'HSS 100x100x4', A: 0.0015, Iy: 2.3e-6, Iz: 2.3e-6, J: 3.56e-6 },
+      { id: 'Tubo Ø 88.9x3.2', shapeId: 'Tubo Ø 88.9x3.2', A: 0.00086, Iy: 7.95e-7, Iz: 7.95e-7, J: 1.59e-6 },
+    ];
+    for (const section of cases) {
+      const model = cantilever();
+      const record = space3dResultInventory({ ...model, members: [{ ...model.members[0]!, label: section.id, sectionId: section.shapeId,
+        sectionOrigin: 'catalog', materialId: 'steel-a36', materialOrigin: 'catalog', E: 200_000_000, G: 77_000_000,
+        A: section.A, Iy: section.Iy, Iz: section.Iz, J: section.J }] }).members[0]!;
+      expect(record.label).toBe(section.id);
+      expect(record.section).toMatchObject({ shape: 'other', widthMm: null, depthMm: null, materialLabel: 'Acero ASTM A36 (preset elástico)' });
+    }
+  });
+
   it('deduplica geométricamente las barras en ejes X y Z, y cambia revisión al editar cargas', () => {
     const model = cantilever();
     const modelWithAxes: Space3DProjectV1 = {

@@ -77,4 +77,20 @@ describe('modelo 2D: inventario y demanda nativa', () => {
     expect(secondOrder.axes.convention).toContain('P-Δ nativo');
     expect(secondOrder.axes.convention.length).toBeLessThanOrEqual(256);
   });
+
+  it('no presenta un tubo redondo hueco del catálogo como sección circular sólida', () => {
+    const project = beamProject();
+    project.members = [{ ...project.members[0]!, label: 'Pipe 2 STD (DN50)', sectionId: 'pipe-2-std-dn50', sectionOrigin: 'catalog',
+      materialId: 'steel-a500-grade-b', materialOrigin: 'catalog', E: 200_000_000, A: 0.0006580632, I: 2.60977103851e-7 }];
+    const record = model2dResultInventory(project).members[0]!;
+    expect(record.label).toBe('Pipe 2 STD (DN50)');
+    expect(record.section).toMatchObject({ shape: 'other', widthMm: null, depthMm: null, materialLabel: 'Acero estructural tubular ASTM A500/A500M Grado B' });
+  });
+
+  it('retiene forma y dimensiones de un rectángulo sólido confirmado del catálogo', () => {
+    const project = beamProject();
+    project.members = [{ ...project.members[0]!, label: 'Viga Concreto 20x30 cm', sectionId: 'rect-concrete-200x300', sectionOrigin: 'catalog',
+      materialId: 'concrete-28mpa', materialOrigin: 'catalog', E: 24_870_062.324, A: 0.06, I: 0.00045 }];
+    expect(model2dResultInventory(project).members[0]!.section).toMatchObject({ shape: 'rectangular', widthMm: 200, depthMm: 300, fcMpa: 28 });
+  });
 });

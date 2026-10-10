@@ -38,7 +38,7 @@ function memberRecords(project: ProjectModel): { members: ModelMemberRecord[]; l
     const material = member.materialId ? standardMaterials.find((item) => item.id === member.materialId) : undefined;
     const close = (actual: number, expected: number) => Number.isFinite(actual) && Math.abs(actual - expected) <= Math.max(Math.abs(expected) * 1e-8, 1e-12);
     const trustedCatalog = member.sectionOrigin !== 'custom' && catalog && close(member.A, catalog.area) && close(member.I, catalog.inertiaX) ? catalog : undefined;
-    const shape: ModelMemberRecord['section']['shape'] = trustedCatalog?.shapeType === 'RECT' ? 'rectangular' : trustedCatalog?.shapeType === 'HSS_ROUND' ? 'circular' : 'other';
+    const shape: ModelMemberRecord['section']['shape'] = trustedCatalog?.shapeType === 'RECT' ? 'rectangular' : 'other';
     const horizontal = Math.abs(dy) <= Math.max(1, lengthM) * 1e-8;
     const levelHeight = horizontal ? (a.y + b.y) / 2 : null;
     const level = levelHeight === null ? undefined : levels.find((item) => Math.abs(item.heightM - levelHeight) <= 1e-6);

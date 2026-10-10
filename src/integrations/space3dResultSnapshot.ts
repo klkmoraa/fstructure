@@ -39,7 +39,7 @@ export function space3dResultInventory(model: Space3DProjectV1): ModelResultInve
     const close = (actual: number, expected: number) => Number.isFinite(actual) && Math.abs(actual - expected) <= Math.max(Math.abs(expected) * 1e-8, 1e-12);
     const trustedCatalog = member.sectionOrigin !== 'custom' && section && close(member.A, section.A) && close(member.Iy, section.Iy)
       && close(member.Iz, section.Iz) && close(member.J, section.J) ? section : undefined;
-    const shape = trustedCatalog?.shape === 'rect' || trustedCatalog?.shape === 'box' ? 'rectangular' : trustedCatalog?.shape === 'circle' || trustedCatalog?.shape === 'pipe' ? 'circular' : 'other';
+    const shape = trustedCatalog?.shape === 'rect' ? 'rectangular' : trustedCatalog?.shape === 'circle' ? 'circular' : 'other';
     const level = elevations.find((item) => Math.abs(item.heightM - (a.y + b.y) / 2) <= 1e-6);
     return [{
       id: member.id, label: member.label?.trim() || member.id, family: familyOf(member, dx, dy, dz), levelId: level?.id ?? null,
