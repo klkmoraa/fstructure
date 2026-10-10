@@ -76,3 +76,11 @@ El importador portable visible de Home rechazó un archivo inválido conservando
 ## A4 cierre revisado — 80986a4d
 
 La re-revisión independiente confirmó F1/F2 atendidos, Spec PASS/Quality APPROVED, sin problemas nuevos en el diff de corrección. El DTO y las tarjetas muestran acomodo, capas y separaciones efectivas; el ranking usa variedad longitudinal y área como desempate. Verify final: 16 suites/126 pruebas y Python5/5, código0. A5 inicia la protección general de guardado; B/C/D y cierre integrado siguen pendientes.
+
+## A5 guardado — evidencia de integración antes de revisión
+
+Chromium comprobó rechazo de detalles conocidos malformados antes de modificar el bundle o la copia de trabajo; un documento de versión futura se conserva exacto, abre en solo lectura y permite volver al modelo. Guardar cambios del modelo mantiene esa rama futura. No hubo errores de página/consola ni desbordamiento en 390px.
+
+Un fallo inyectado en el repositorio realmente utilizado conserva Mu200 en el borrador y Mu0 en el último guardado durable. Reintentar con un clic normal confirma Mu200; el aviso y su botón de 44px se inspeccionaron en Día/Noche y móvil. La prueba inicial reveló que el escenario de dibujo interceptaba el botón; se corrigió la capa del aviso y el punto de clic ahora alcanza el botón. El primer intento de inyección usaba otra instancia del módulo por su URL HMR; se corrigió el harness antes de atribuir un fallo al producto.
+
+La regresión posterior de A1–A4 terminó con código0 en cuatro recorridos: cargas/regiones propias y PDF/memoria/recarga, flexión directa y lecho por signo, dimensionamiento en worker con Aplicar/Deshacer y alternativas de acero con existencias. Todos conservaron acciones y campos; sin errores de página/consola ni desbordamiento390px. A5 espera verify final y revisión independiente; B/C/D siguen pendientes.
