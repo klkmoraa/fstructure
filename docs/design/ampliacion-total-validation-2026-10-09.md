@@ -72,3 +72,7 @@ La revisión de tarea pide completar la comparación del acomodo físico antes d
 Chromium comprobó tres vistas previas con centros y diámetros del acomodo real, separaciones visibles y ninguna modificación del borrador antes de aplicar. Las capturas Día/Noche de escritorio y móvil390px se inspeccionaron; sin desbordamiento ni errores de página/consola. La variedad de diámetros y las métricas completas de ambos lechos y bastones de viga se someten a re-revisión independiente antes de cerrar A4.
 
 El importador portable visible de Home rechazó un archivo inválido conservando modelo y Diseño completos (10 barras, 9 nodos). Esa ruta no importa documentos de Diseño; la frontera del bundle y la rama futura se comprueban separadamente en A5.
+
+## A4 cierre revisado — 80986a4d
+
+La re-revisión independiente confirmó F1/F2 atendidos, Spec PASS/Quality APPROVED, sin problemas nuevos en el diff de corrección. El DTO y las tarjetas muestran acomodo, capas y separaciones efectivas; el ranking usa variedad longitudinal y área como desempate. Verify final: 16 suites/126 pruebas y Python5/5, código0. A5 inicia la protección general de guardado; B/C/D y cierre integrado siguen pendientes.
