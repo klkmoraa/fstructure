@@ -66,3 +66,9 @@ Verify final: 21 archivos/186 pruebas relacionadas y Python 5/5, código 0; foca
 Alternativas en cuatro dominios y búsqueda de geometría de viga en workers: verify de la implementación, 33 archivos/249 pruebas y Python 5/5, código 0. Chromium confirmó cancelación de q1000 en 317ms y propuesta q4 de 20×35cm, aplicación/deshacer, existencias vacías y subconjunto Ø15.9, tres opciones desde acero requerido e invalidación al editar Mu. Se corrigieron el evento de checkbox liberado por React, importaciones de interfaz en el worker, NaN en preview con dimensiones incógnitas y símbolos de barras solapados. La repetición correspondiente quedó sin errores; 16Ø9.5 tiene cero solapes dibujados y el reporte usa dimensiones reales.
 
 La revisión de tarea pide completar la comparación del acomodo físico antes de aplicar y ordenar “Menos diámetros” por variedad del armado efectivo. Se corrigen en ronda 1, con métricas completas de viga bajo comprobación. A4 todavía no se declara cerrada; A5 y B/C/D continúan después de su revisión limpia.
+
+## A4 corrección de comparación física — navegador
+
+Chromium comprobó tres vistas previas con centros y diámetros del acomodo real, separaciones visibles y ninguna modificación del borrador antes de aplicar. Las capturas Día/Noche de escritorio y móvil390px se inspeccionaron; sin desbordamiento ni errores de página/consola. La variedad de diámetros y las métricas completas de ambos lechos y bastones de viga se someten a re-revisión independiente antes de cerrar A4.
+
+El importador portable visible de Home rechazó un archivo inválido conservando modelo y Diseño completos (10 barras, 9 nodos). Esa ruta no importa documentos de Diseño; la frontera del bundle y la rama futura se comprueban separadamente en A5.
