@@ -84,3 +84,7 @@ Chromium comprobó rechazo de detalles conocidos malformados antes de modificar 
 Un fallo inyectado en el repositorio realmente utilizado conserva Mu200 en el borrador y Mu0 en el último guardado durable. Reintentar con un clic normal confirma Mu200; el aviso y su botón de 44px se inspeccionaron en Día/Noche y móvil. La prueba inicial reveló que el escenario de dibujo interceptaba el botón; se corrigió la capa del aviso y el punto de clic ahora alcanza el botón. El primer intento de inyección usaba otra instancia del módulo por su URL HMR; se corrigió el harness antes de atribuir un fallo al producto.
 
 La regresión posterior de A1–A4 terminó con código0 en cuatro recorridos: cargas/regiones propias y PDF/memoria/recarga, flexión directa y lecho por signo, dimensionamiento en worker con Aplicar/Deshacer y alternativas de acero con existencias. Todos conservaron acciones y campos; sin errores de página/consola ni desbordamiento390px. A5 espera verify final y revisión independiente; B/C/D siguen pendientes.
+
+## A5 cierre revisado — 5afaa6cb
+
+Revisión independiente Spec PASS/Quality APPROVED, sin findings. Verify final tras CSS: 66 archivos/447 pruebas, TypeScript/lint y arquitectura20/20. El controller ejecutó y comprobó por separado guardas, conservación de versiones futuras, fallo/reintento real y los cuatro recorridos A1–A4 descritos arriba. A completo; B/C/D y cierre integrado siguen en ejecución, sin publicación parcial.
