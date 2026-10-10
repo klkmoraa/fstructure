@@ -49,4 +49,16 @@ describe('alternativas de viga', () => {
     expect(few.candidates[0]!.steelAreaMm2).toBeGreaterThan(minimum.candidates[0]!.steelAreaMm2);
     expect(few.candidates[0]!.arrangement.longitudinalRuns).toContainEqual(expect.objectContaining({ diameterMm: 9.5, count: 2 }));
   });
+
+  it('limita las propuestas de viga al catálogo editable y conserva un stock insuficiente sin ampliarlo', () => {
+    const draft = { ...BEAM_DEFAULTS, width: '30', height: '55', cover: '3', fc: '250', fy: '4200', rebarMode: 'own', ownBastions: 'none', selfWeight: 'no', topCount: '2', topBar: '15.9', bottomCount: '3', bottomBar: '15.9' };
+    const spans: SpanDraft[] = [{ length: '5', dead: '4', live: '1', pointDead: '0', pointLive: '0', pointAt: '2.5' }];
+    const input = beamToInput('ntc-2023', draft, spans, true);
+    const allCatalog = reinforcementAlternatives({ kind: 'beam', requestId: 10, input, objective: 'minimum-steel' });
+    expect(allCatalog.candidates.length).toBeGreaterThan(0);
+    expect(allCatalog.candidates.every((candidate) => Number(candidate.applyFields?.topBar ?? candidate.applyFields?.bottomBar) >= 12.7)).toBe(true);
+    const limitedStock = reinforcementAlternatives({ kind: 'beam', requestId: 11, input, objective: 'available-bars', availableDiametersMm: [7.9, 9.5] });
+    expect(limitedStock.candidates).toEqual([]);
+    expect(limitedStock.reason).toBe('no-feasible-candidate');
+  });
 });

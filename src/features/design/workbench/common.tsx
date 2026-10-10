@@ -169,9 +169,16 @@ export function NumberField({ label, value, unit, onChange, hint, min = 0, max }
 export function BarSelect({ label, value, onChange, allowAuto = false, minimumDiameterMm = 0, usage = 'longitudinal' }: {
   label: string; value: string; onChange: (value: string) => void; allowAuto?: boolean; minimumDiameterMm?: number; usage?: BarUsage;
 }) {
+  const catalog = usage === 'transverse' ? STIRRUP_SIZES : REBAR_SIZES;
+  const options = catalog.filter((size) => size.diameterMm >= minimumDiameterMm);
+  const hasCurrentValue = (allowAuto && value === 'auto') || options.some((size) => String(size.diameterMm) === value);
+  const inheritedSize = catalog.find((size) => String(size.diameterMm) === value);
   return <Select label={label} value={value} onChange={(event) => onChange(event.currentTarget.value)}>
     {allowAuto ? <option value="auto">Automático</option> : null}
-    {(usage === 'transverse' ? STIRRUP_SIZES : REBAR_SIZES).filter((size) => size.diameterMm >= minimumDiameterMm).map((size) => (
+    {!hasCurrentValue ? <option value={value} key={`inherited-${value}`}>{inheritedSize
+      ? `${inheritedSize.label} · Ø ${inheritedSize.diameterMm} mm · valor guardado fuera del rango editable`
+      : `Valor guardado «${value || 'vacío'}» · incompleto o fuera del catálogo editable`}</option> : null}
+    {options.map((size) => (
       <option key={size.label} value={String(size.diameterMm)}>{`${size.label} · Ø ${size.diameterMm} mm`}</option>
     ))}
   </Select>;

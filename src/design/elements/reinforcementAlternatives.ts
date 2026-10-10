@@ -53,6 +53,8 @@ export interface ReinforcementAlternativesResponse {
 }
 
 const CATALOG = REBAR_SIZES.map((item) => item.diameterMm).filter(Number.isFinite).sort((a, b) => a - b);
+// Keep beam proposals inside the diameter range exposed by the beam editor.
+const MINIMUM_BEAM_EDITABLE_DIAMETER_MM = 12.7;
 const STEEL_DENSITY_KG_M3 = 7850;
 const area = (group: BarGroup) => group.count * Math.PI * group.diameterMm ** 2 / 4;
 const uniqueDiameterCount = (candidate: ReinforcementCandidate) => new Set(candidate.arrangement.longitudinalDiametersMm.filter((diameter) => Number.isFinite(diameter) && diameter > 0)).size;
@@ -184,9 +186,11 @@ function beamAlternatives(request: Extract<ReinforcementAlternativesRequest, { k
   const { requestId, input, objective } = request;
   const available = availableCatalog(request);
   if (available.empty) return { kind: 'alternatives', requestId, candidates: [], reason: 'empty-stock' };
+  const editableDiameters = available.values.filter((diameter) => diameter >= MINIMUM_BEAM_EDITABLE_DIAMETER_MM);
+  if (editableDiameters.length === 0) return { kind: 'alternatives', requestId, candidates: [], reason: 'no-feasible-candidate' };
   if (!input.provided) return { kind: 'alternatives', requestId, candidates: [], reason: 'no-feasible-candidate' };
   const candidates: ReinforcementCandidate[] = [];
-  for (const diameter of available.values) for (let count = 2; count <= 8; count += 1) for (const bed of ['top', 'bottom'] as const) {
+  for (const diameter of editableDiameters) for (let count = 2; count <= 8; count += 1) for (const bed of ['top', 'bottom'] as const) {
     const provided = { ...input.provided, [bed]: { count, diameterMm: diameter } };
     const result = designBeam({ ...input, provided });
     if (!result.ok || result.status === 'fail' || !acceptedChecks(result.checks)) continue;

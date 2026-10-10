@@ -33,6 +33,26 @@ describe('MaterialFields', () => {
     expect([...transverse.options].some((option) => option.textContent?.startsWith('#2 ·'))).toBe(true);
   });
 
+  it('mantiene visible el valor crudo heredado fuera del filtro del catálogo', async () => {
+    const user = userEvent.setup();
+    function Harness({ initial }: { initial: string }) {
+      const [value, setValue] = useState(initial);
+      return <BarSelect label="Diámetro arriba" value={value} onChange={setValue} minimumDiameterMm={12.7} />;
+    }
+    const { rerender } = render(<Harness initial="7.9" />);
+    const select = screen.getByRole('combobox', { name: 'Diámetro arriba' }) as HTMLSelectElement;
+    expect(select.value).toBe('7.9');
+    expect([...select.options].some((option) => option.value === '7.9' && /guardado/.test(option.textContent ?? ''))).toBe(true);
+    expect([...select.options].some((option) => option.value === '12.7')).toBe(true);
+    await user.selectOptions(select, '12.7');
+    expect(select.value).toBe('12.7');
+
+    rerender(<Harness key="incomplete" initial="incompleto" />);
+    const incomplete = screen.getByRole('combobox', { name: 'Diámetro arriba' }) as HTMLSelectElement;
+    expect(incomplete.value).toBe('incompleto');
+    expect([...incomplete.options].some((option) => option.value === 'incompleto' && /guardado/.test(option.textContent ?? ''))).toBe(true);
+  });
+
   it('aplica el rango visible de los grupos de refuerzo propios', () => {
     render(<><NumberField label="Barras por esquina" value="1" unit="pzas" min={1} max={3} onChange={() => {}} /></>);
     expect((screen.getByRole('textbox', { name: 'Barras por esquina' }) as HTMLInputElement).max).toBe('3');
