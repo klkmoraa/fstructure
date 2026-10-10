@@ -388,6 +388,7 @@ describe('DesignWorkbench', () => {
     await user.clear(axial);
     worker.reply({ kind: 'alternatives', candidates: [{ id: 'late', geometry: { widthMm: 400, heightMm: 400 },
       reinforcement: { bed: 'top', group: { count: 6, diameterMm: 25.4 }, diametersMm: Array(6).fill(25.4) },
+      arrangement: { shape: 'rectangle', distribution: 'column-perimeter', outlinePointsMm: [{ xMm: -200, yMm: -200 }, { xMm: 200, yMm: -200 }, { xMm: 200, yMm: 200 }, { xMm: -200, yMm: 200 }], bars: [], layers: 1, spacingBasis: 'horizontal-per-layer', clearSpacingMm: 30, requiredClearSpacingMm: 25, longitudinalDiametersMm: Array(6).fill(25.4) },
       checked: { status: 'pass', checks: [], excluded: [] }, steelAreaMm2: 3000, assumedLengthM: 3, steelWeightKg: 70,
       weightAssumption: 'test', applyFields: { bar: '25.4' } }] });
     await waitFor(() => expect(worker.terminated).toBe(true));
@@ -403,9 +404,11 @@ describe('DesignWorkbench', () => {
     await user.click(screen.getByRole('button', { name: 'Comparar acero' }));
     PendingProposalWorker.instance!.reply({ kind: 'alternatives', candidates: [{ id: 'candidate', geometry: { widthMm: 400, heightMm: 400 },
       reinforcement: { bed: 'top', group: { count: 20, diameterMm: 25.4 }, diametersMm: Array(20).fill(25.4) },
+      arrangement: { shape: 'rectangle', distribution: 'column-perimeter', outlinePointsMm: [{ xMm: -200, yMm: -200 }, { xMm: 200, yMm: -200 }, { xMm: 200, yMm: 200 }, { xMm: -200, yMm: 200 }], bars: [{ xMm: 0, yMm: -150, diameterMm: 25.4, layer: 1, bed: 'top' }], beds: ['top'], layers: 1, spacingBasis: 'horizontal-per-layer', clearSpacingMm: 30, requiredClearSpacingMm: 25, longitudinalDiametersMm: Array(20).fill(25.4) },
       checked: { status: 'pass', checks: [], excluded: [] }, steelAreaMm2: 10134, assumedLengthM: 3, steelWeightKg: 238,
       weightAssumption: 'test', applyFields: { bar: '25.4', barsWidth: '4', barsDepth: '5' } }] });
-    await screen.findByRole('button', { name: 'Aplicar este armado' });
+    await screen.findByRole('img', { name: /Acomodo efectivo:/ });
+    expect(screen.getByRole('img', { name: /Acomodo efectivo:/ }).querySelectorAll('circle').length).toBe(1);
     expect((screen.getByRole('combobox', { name: 'Varilla' }) as HTMLSelectElement).value).toBe('19.1');
     await user.click(screen.getByRole('button', { name: 'Aplicar este armado' }));
     await waitFor(() => expect((screen.getByRole('combobox', { name: 'Varilla' }) as HTMLSelectElement).value).toBe('25.4'));

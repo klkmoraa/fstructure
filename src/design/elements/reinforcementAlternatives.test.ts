@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { designFlexureExercise, type FlexureExerciseInput } from './flexureExercise';
 import { reinforcementAlternatives, type ReinforcementAlternativesRequest } from './reinforcementAlternatives';
 import { designColumn, type ColumnDesignInput } from './column';
-import type { SectionStudioInput } from '../concrete/sectionStudio';
+import { designSectionStudio, type SectionStudioInput } from '../concrete/sectionStudio';
 
 const flexure: FlexureExerciseInput = {
   code: 'ntc-2023', widthMm: 300, heightMm: 550, coverMm: 35, fcMpa: 25, fyMpa: 420,
@@ -36,6 +36,9 @@ describe('reinforcement alternatives', () => {
       expect(reevaluated.checks.filter((check) => check.status !== 'out-of-scope').every((check) => check.status === 'pass')).toBe(true);
       expect(candidate.checked.status).toBe('pass');
       expect(candidate.reinforcement.diametersMm.every((diameter) => diameter === candidate.reinforcement.group.diameterMm)).toBe(true);
+      expect(candidate.arrangement.bars).toHaveLength(reevaluated.layout.bars!.length);
+      expect(candidate.arrangement.bars.map((bar) => bar.xMm)).toEqual(reevaluated.layout.bars!.map((bar) => bar.xMm - flexure.widthMm / 2));
+      expect(candidate.arrangement.requiredClearSpacingMm).toBeGreaterThan(0);
     }
   });
 
@@ -65,8 +68,17 @@ describe('reinforcement alternatives', () => {
       expect(candidate.geometry).toEqual({ widthMm: 400, heightMm: 400 });
       const checked = designColumn({ ...column, ...candidate.applyFields, barDiameterMm: Number(candidate.applyFields?.bar), barsAlongWidth: Number(candidate.applyFields?.barsWidth), barsAlongDepth: Number(candidate.applyFields?.barsDepth) });
       expect(checked.ok && checked.status !== 'fail').toBe(true);
+      if (!checked.ok) continue;
       expect(candidate.reinforcement.group.diameterMm).toBe(19.1);
+      expect(candidate.arrangement.bars.map(({ xMm, yMm }) => ({ xMm, yMm }))).toEqual(checked.bars.map(({ x, y }) => ({ xMm: x, yMm: y })));
+      expect(candidate.arrangement.requiredClearSpacingMm).toBeGreaterThan(0);
     }
+  });
+
+  it('normaliza la geometría de una columna circular usando D, no el peralte ignorado', () => {
+    const response = reinforcementAlternatives({ kind: 'column', requestId: 10, input: { ...column, shape: 'circular', widthMm: 400, depthMm: 230 }, objective: 'available-bars', availableDiametersMm: [19.1] });
+    expect(response.kind).toBe('alternatives');
+    if (response.kind === 'alternatives') for (const candidate of response.candidates) expect(candidate.geometry.heightMm).toBe(400);
   });
 
   it('keeps experimental section candidates labeled and constrained to evaluated checks', () => {
@@ -77,6 +89,9 @@ describe('reinforcement alternatives', () => {
       expect(candidate.display).toContain('Experimental');
       expect(candidate.checked.checks.every((check) => check.status === 'pass')).toBe(true);
       expect(candidate.checked.excluded.length).toBeGreaterThan(0);
+      const checked = designSectionStudio({ ...section, ...candidate.applyFields, barDiameterMm: Number(candidate.applyFields?.bar), barCount: Number(candidate.applyFields?.barCount) });
+      expect(checked.status).toBe('ok');
+      if (checked.status === 'ok') expect(candidate.arrangement.bars.map(({ xMm, yMm }) => ({ xMm, yMm }))).toEqual(checked.geometry.bars.map(({ x, y }) => ({ xMm: x, yMm: y })));
     }
   });
 });
