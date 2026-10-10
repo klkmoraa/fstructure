@@ -88,3 +88,11 @@ La regresión posterior de A1–A4 terminó con código0 en cuatro recorridos: c
 ## A5 cierre revisado — 5afaa6cb
 
 Revisión independiente Spec PASS/Quality APPROVED, sin findings. Verify final tras CSS: 66 archivos/447 pruebas, TypeScript/lint y arquitectura20/20. El controller ejecutó y comprobó por separado guardas, conservación de versiones futuras, fallo/reintento real y los cuatro recorridos A1–A4 descritos arriba. A completo; B/C/D y cierre integrado siguen en ejecución, sin publicación parcial.
+
+## B1 proveedor nativo — comprobación de navegador durante implementación
+
+Workers reales en Chromium devolvieron el vector simultáneo de los objetivos originales de la viga 2D: servicio M3=12.8kN·m y cortantes izquierdo3.6/derecho−6.4kN; combinación1.3D+1.5L M3=19.04kN·m. La barra 3D inclinada conservó su base local y N−8/Vy−6/Mz−24, y su reacción global de combinación×2 Fy20/Mz60. La columna vertical rectangular de catálogo devolvió N−200/Vy5/Vz10/My−20/Mz10 y reacción global (−10,200,−5,−15,0,30), con unidades kN/kN·m. Coinciden con las referencias independientes preparadas para B2/C. Cancelar devuelve AbortError y la estación fuera del miembro se rechaza; sin errores de página/consola. El primer harness pidió ocho jobs simultáneos y activó correctamente el límite de seis; la comprobación de resultados se ajustó a dos lotes de cuatro. B1 aún requiere cierre de pruebas y revisión.
+
+## Hallazgo visual de integración A4 pendiente de corrección
+
+Los cuatro recorridos adicionales de columna rectangular/circular, viga propia y sección experimental conservaron campos en preview/Apply/Undo/recarga, con SVG finitos y sin errores. La inspección visual de viga detectó un control desalineado: una propuesta guarda/reporta Ø7.9mm, pero el selector filtrado muestra Ø12.7mm. El navegador lo reprodujo (crudo7.9, control12.7). Se programó corrección específica antes de publicar, preservando valores heredados y haciendo coincidir propuestas con su dominio editable. No se atribuye un mínimo normativo nuevo a ese filtro.
