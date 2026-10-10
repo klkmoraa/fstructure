@@ -96,3 +96,7 @@ Workers reales en Chromium devolvieron el vector simultáneo de los objetivos or
 ## Hallazgo visual de integración A4 pendiente de corrección
 
 Los cuatro recorridos adicionales de columna rectangular/circular, viga propia y sección experimental conservaron campos en preview/Apply/Undo/recarga, con SVG finitos y sin errores. La inspección visual de viga detectó un control desalineado: una propuesta guarda/reporta Ø7.9mm, pero el selector filtrado muestra Ø12.7mm. El navegador lo reprodujo (crudo7.9, control12.7). Se programó corrección específica antes de publicar, preservando valores heredados y haciendo coincidir propuestas con su dominio editable. No se atribuye un mínimo normativo nuevo a ese filtro.
+
+## B1 cierre revisado — 4f35676e
+
+Implementación e248d598 y corrección4f35676e: revisión independiente final Spec PASS/Quality APPROVED. Se corregía clasificación de HSS/tubos como sólidos; quedan other con dimensiones nulas, conservando identidad/material. La cobertura comprueba también los rectángulos sólidos de catálogo. Verify de implementación:34 archivos/290 pruebas y Python5; fix final:16 archivos/84 pruebas y Python5, focal12. Proveedor nativo original/cancelable disponible; B2 UI/procedencia/navegador aún pendiente. Antes sigue la corrección específica del selector de diámetro de A4.
