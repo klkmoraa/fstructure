@@ -82,7 +82,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
     setActionNote('Búsqueda cancelada.');
   };
   const applyAlternative = (candidate: ReinforcementCandidate) => {
-    replace({ ...draft, ...candidate.applyFields });
+    if (!replace({ ...draft, ...candidate.applyFields })) return;
     setAlternatives(null);
     setActionNote('Armado experimental aplicado al borrador. El historial puede deshacerlo; revisa las exclusiones del modelo.');
   };
@@ -90,7 +90,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
     const sides = shape === 'triangle' ? 3 : shape === 'hexagon' ? 6 : shape === 'octagon' ? 8 : 0;
     const count = parseNumber(draft.barCount);
     const barCount = sides > 0 && (!Number.isInteger(count) || count < sides || count % sides !== 0) ? shape === 'triangle' ? '6' : String(sides) : draft.barCount;
-    replace({ ...draft, shape, barCount, barLayout: shape === 'square' || shape === 'rectangle' ? draft.barLayout : 'perimeter', tieType: shape === 'circle' ? draft.tieType === 'cross-tie' ? 'closed' : draft.tieType : draft.tieType === 'spiral' ? 'closed' : draft.tieType });
+    if (!replace({ ...draft, shape, barCount, barLayout: shape === 'square' || shape === 'rectangle' ? draft.barLayout : 'perimeter', tieType: shape === 'circle' ? draft.tieType === 'cross-tie' ? 'closed' : draft.tieType : draft.tieType === 'spiral' ? 'closed' : draft.tieType })) return;
     setActionNote(null);
   };
   return <div className="cs-workbench"><WorkbenchLayout

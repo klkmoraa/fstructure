@@ -12,6 +12,7 @@ import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
 import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, externalFor, frameReportFromDraft, parseBays, parseStories } from './frameModel';
 import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
 import type { DesignStart } from './designStarts';
+import { commitWorkbenchBatch } from './workbenchStorage';
 
 /**
  * Memoria del proyecto: los elementos que la persona guarda para la memoria de
@@ -68,7 +69,7 @@ function currentDraft(storage: WorkbenchStorage, element: DesignElementKind): Me
   const raw = storage.read(element);
   const fields = raw && typeof raw === 'object' && !Array.isArray(raw)
     ? Object.fromEntries(Object.entries(raw as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
-    : {};
+    : { ...ELEMENT_DEFAULT_FIELDS[element] };
   if (element === 'frame') {
     const bays = storage.read('frame-bays');
     const stories = storage.read('frame-stories');
@@ -84,7 +85,7 @@ function currentDraft(storage: WorkbenchStorage, element: DesignElementKind): Me
   return {
     fields,
     rows: Array.isArray(rows) ? rows as Record<string, string>[] : DEFAULT_SPANS.map((span) => ({ ...span })),
-    details: isBeamDetailDraft(rawDetails) ? rawDetails : EMPTY_BEAM_DETAILS,
+      details: isBeamDetailDraft(rawDetails) ? rawDetails : EMPTY_BEAM_DETAILS,
   };
 }
 
@@ -169,10 +170,10 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       memory: next as unknown as Parameters<WorkbenchStorage['write']>[1],
       'memory-active': nextActive,
     };
-    if (storage.canWrite && !storage.canWrite(writes)) return false;
+    const accepted = commitWorkbenchBatch(storage, writes);
+    if (!accepted.accepted) return false;
     setItems(next);
     setActiveId(nextActive);
-    for (const [key, value] of Object.entries(writes)) storage.write(key, value);
     return true;
   }, [storage]);
   const active = items.find((item) => item.id === activeId && item.element === element);

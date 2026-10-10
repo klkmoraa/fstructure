@@ -14,9 +14,10 @@ import {
 } from './beamModel';
 import {
   ActionNote, AlternativeSection, BarSelect, InlineAction, ChecksList, IdentityGroup, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField,
-  PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict, formatNumber, parseNumber, readStored, useDraftHistory, useStoredDraft,
+  PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict, formatNumber, parseNumber, readStored, useDraftHistory, useStoredDraft, useStoredRows,
 } from './common';
-import { useWorkbenchStorage } from './workbenchStorage';
+import { commitWorkbenchBatch, useWorkbenchStorage } from './workbenchStorage';
+import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { MaterialFields } from './MaterialFields';
 import { startBeamSectionProposal, type BeamSectionProposalReply } from './beamSectionProposal';
 import { ReinforcementAlternatives } from './ReinforcementAlternatives';
@@ -85,24 +86,23 @@ function SpanTable({ spans, points, onChange, onAdd, onRemove }: {
 }
 
 export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
-  const { draft, set, reset, replace } = useStoredDraft('beam', BEAM_DEFAULTS);
+  const { draft, set, reset, replace, accept } = useStoredDraft('beam', BEAM_DEFAULTS);
   const storage = useWorkbenchStorage();
   const storedDetails = useStoredBeamDetails(storage);
   const [detailsDraft, setDetailsDraft] = useState(storedDetails.details);
   const [detailsNote, setDetailsNote] = useState<string | null>(null);
   useEffect(() => { setDetailsDraft(storedDetails.details); }, [storedDetails.details]);
-  const [spans, setSpans] = useState<SpanDraft[]>(() => readStored(storage, 'beam-spans', parseSpans, DEFAULT_SPANS));
-  useEffect(() => storage.write('beam-spans', spans.map((span) => ({ ...span }))), [spans, storage]);
+  const [spans, setSpans, acceptSpans] = useStoredRows<SpanDraft[]>('beam-spans', readStored(storage, 'beam-spans', parseSpans, DEFAULT_SPANS));
   const snapshot = useMemo(() => ({ draft, spans, details: storedDetails.details }), [draft, spans, storedDetails.details]);
   const applySnapshot = useCallback((next: typeof snapshot) => {
     const writes = { beam: next.draft, 'beam-spans': next.spans as unknown as import('../../../shared/project/unifiedProjectBundle').JsonValue };
     if (!storedDetails.setDetails(next.details, writes)) { setDetailsNote('Sin espacio para restaurar el detalle y el armado; se conservaron los datos actuales.'); return false; }
     setDetailsDraft(next.details);
-    replace(next.draft);
-    setSpans(next.spans);
+    accept(next.draft);
+    acceptSpans(next.spans);
     setDetailsNote(null);
     return true;
-  }, [replace, storedDetails]);
+  }, [accept, acceptSpans, storedDetails]);
   const history = useDraftHistory(snapshot, applySnapshot, 'beam');
   const { onHistory } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
@@ -201,13 +201,13 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     alternativeRequest.current = { key, cancel };
   };
   const applyReinforcement = (candidate: ReinforcementCandidate) => {
-    replace({ ...draft, ...candidate.applyFields });
+    if (!replace({ ...draft, ...candidate.applyFields })) return;
     setAlternatives(null);
     setSectionNote('Armado aplicado con geometría, cargas y detalle capturados. Deshacer recupera el armado anterior.');
   };
   const applySlab = () => {
     if (!slab) return;
-    setSpans((current) => current.map((span) => ({ ...span, dead: String(slab.dead), live: String(slab.live) })));
+    if (!setSpans((current) => current.map((span) => ({ ...span, dead: String(slab.dead), live: String(slab.live) })))) return;
     setLoadNote(`Aplicado a ${spans.length === 1 ? 'el claro' : `los ${spans.length} claros`}: CM ${slab.dead} · CV ${slab.live} kN/m.`);
   };
   const spacingValue = parseNumber(draft.stirrupSpacing);
@@ -218,7 +218,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     title="Viga"
     report={report}
     onReset={() => {
-      if (!storedDetails.setDetails(EMPTY_BEAM_DETAILS)) { setDetailsNote('Sin espacio para guardar el borrador vacío; se conservaron todos los datos.'); return; }
+      if (!storedDetails.setDetails(EMPTY_BEAM_DETAILS, { beam: BEAM_DEFAULTS, 'beam-spans': DEFAULT_SPANS as unknown as JsonValue })) { setDetailsNote('No se guardó el reinicio; se conservaron los datos actuales. Libera espacio y vuelve a intentarlo.'); return; }
       reset(); setSpans(DEFAULT_SPANS); setDetailsDraft(EMPTY_BEAM_DETAILS); setDetailsNote(null);
     }}
     verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
@@ -258,7 +258,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
                 return false;
               }
               setDetailsDraft(next);
-              if (nextDraft) replace(nextDraft);
+              if (nextDraft) accept(nextDraft);
               setDetailsNote(null);
               return true;
             }}
@@ -270,6 +270,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <div className="dw-span-all"><strong>Apoyos</strong></div>
         <Select label="Configuración rápida de apoyos" value="" onChange={(event) => {
           const next = beamSupportPreset(event.currentTarget.value as Parameters<typeof beamSupportPreset>[0], draft, spans);
+          if (!commitWorkbenchBatch(storage, { beam: next.draft, 'beam-spans': next.spans as unknown as JsonValue }).accepted) return;
           replace(next.draft);
           setSpans(next.spans);
         }}>
@@ -285,7 +286,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         {sectionNote ? <p className="dw-span-all" role="status">{sectionNote}</p> : null}
         {sectionPreview?.key === sectionSnapshotKey ? <div className="dw-action-note dw-span-all" role="status">
           <span>Vista previa: {sectionPreview.width} × {sectionPreview.height} cm. Se conservan claros, cargas, detalle y armado actual.</span>
-          <button type="button" className="dw-inline-action" onClick={() => { replace({ ...draft, width: sectionPreview.width, height: sectionPreview.height }); setSectionNote(`Sección aplicada: ${sectionPreview.width} × ${sectionPreview.height} cm.`); setSectionPreview(null); }}>Aplicar sección</button>
+          <button type="button" className="dw-inline-action" onClick={() => { if (!replace({ ...draft, width: sectionPreview.width, height: sectionPreview.height })) return; setSectionNote(`Sección aplicada: ${sectionPreview.width} × ${sectionPreview.height} cm.`); setSectionPreview(null); }}>Aplicar sección</button>
           <button type="button" className="dw-inline-action" onClick={() => { setSectionPreview(null); setSectionNote('Propuesta descartada.'); }}>Descartar</button>
         </div> : null}
         <Disclosure label="Alternativas de acero · geometría fija">

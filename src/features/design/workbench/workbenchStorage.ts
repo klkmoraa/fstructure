@@ -1,192 +1,223 @@
 import { createContext, useContext } from 'react';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
-import { isSteelMemory } from '../../../design/steelMemory';
-import { isBeamDetailDraft } from './beamDetailDraft';
+import type { BeamDetailDraft } from '../../../shared/project/designDetailValidation';
+import {
+  DESIGN_WORKBENCH_KIND, DESIGN_WORKBENCH_MAX_DOCUMENT_CHARS, DESIGN_WORKBENCH_MAX_ENTRIES,
+  DESIGN_WORKBENCH_MAX_MEMORY_ITEMS, DESIGN_WORKBENCH_SCHEMA_VERSION, inspectDesignDocument,
+  isDesignWorkbenchEntry, isDesignWorkbenchMemoryItem,
+} from '../../../shared/project/designWorkbenchCodec';
 
-/**
- * Dónde viven los borradores del taller de diseño (norma, elemento y datos de
- * cada formulario). Dentro de un proyecto se guardan en la rama `design` del
- * bundle unificado; sin proyecto (pruebas, vista aislada) en el navegador.
- *
- * Los borradores no forman parte del modelo 2D: no invalidan el análisis ni
- * entran al historial de deshacer, igual que los modelos 3D.
- */
+export { DESIGN_WORKBENCH_SCHEMA_VERSION } from '../../../shared/project/designWorkbenchCodec';
+export const WORKBENCH_DOCUMENT_KIND = DESIGN_WORKBENCH_KIND;
+export const MAX_MEMORY_ITEMS = DESIGN_WORKBENCH_MAX_MEMORY_ITEMS;
+
+export interface WorkbenchMemoryItem {
+  readonly id: string; readonly element: 'beam' | 'column' | 'frame' | 'footing' | 'section' | 'flexure';
+  readonly code: string; readonly savedAt: string; readonly fields: Record<string, string>;
+  readonly rows?: Record<string, string>[]; readonly levels?: Record<string, string>[]; readonly details?: BeamDetailDraft;
+}
+export const isMemoryItem = isDesignWorkbenchMemoryItem as (value: unknown) => value is WorkbenchMemoryItem;
+
+export type BatchResult = { accepted: true } | { accepted: false; reason: string };
+export type WorkbenchSaveState = { status: 'saved' | 'pending' | 'failed'; pending: boolean; error?: string };
 export interface WorkbenchStorage {
-  /** Identidad de sesión para conservar deshacer al salir del modo. */
   readonly historyScope?: object;
+  readonly readOnlyReason?: string;
+  readonly writeNotice?: string | null;
+  setWriteNotice?(message: string | null): void;
+  subscribe?(listener: () => void): () => void;
   read(key: string): unknown;
-  write(key: string, value: JsonValue): void;
-  /** Preflight de todas las entradas que cambiarían juntas en un documento. */
+  /** Optional only for old isolated mocks; production providers implement commitBatch. */
+  commitBatch?(writes: Readonly<Record<string, JsonValue>>): BatchResult;
+  write(key: string, value: JsonValue): boolean | void;
   canWrite?(writes: Readonly<Record<string, JsonValue>>): boolean;
 }
 
-export const WORKBENCH_DOCUMENT_KIND = 'fstructure-design-workbench';
-/**
- * v1: borradores (cadenas cortas, registros y listas de claros).
- * v2: además, la memoria del proyecto (`memory`): elementos guardados con su
- * borrador para recalcularlos al exportar. Un documento v1 se lee tal cual.
- * v3: añade secciones y sus filosofías a la memoria; conserva v1 y v2.
- * v4: añade pórticos: borradores de claros y niveles y, en la memoria,
- * elementos `frame` con sus niveles (`levels`). Conserva v1 a v3.
- * v5: secciones por nivel en las filas y armado automático por sección.
- * v6: selecciones de revisión de acero, sin resultados ni copias del modelo. Conserva v1 a v5.
- * v7: detalle estructurado de viga, con borradores incompletos. Conserva v1 a v6.
- */
-const WORKBENCH_SCHEMA_VERSION = 7;
-const READABLE_VERSIONS = [1, 2, 3, 4, 5, 6, 7];
-const ELEMENT_KINDS = ['beam', 'column', 'frame', 'footing', 'section', 'flexure'] as const;
-const MAX_DOCUMENT_CHARS = 240_000;
-const MAX_ENTRIES = 16;
-const MAX_FIELDS = 96;
-const MAX_ROWS = 8;
-/** Elementos que caben en la memoria del proyecto. */
-export const MAX_MEMORY_ITEMS = 60;
-const KEY = /^[A-Za-z][A-Za-z0-9-]{0,31}$/;
-
-const isShortString = (value: unknown): value is string => typeof value === 'string' && value.length <= 32;
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
-const isRecord = (value: unknown): value is Record<string, string> =>
-  isPlainObject(value) && Object.keys(value).length <= MAX_FIELDS
-  && Object.entries(value).every(([field, item]) => KEY.test(field) && isShortString(item));
-
-const isRows = (value: unknown): value is Record<string, string>[] =>
-  Array.isArray(value) && value.length <= MAX_ROWS && value.every(isRecord);
-
-/** Elemento guardado en la memoria del proyecto: su borrador, la norma y cuándo se guardó. */
-export interface WorkbenchMemoryItem {
-  readonly id: string;
-  readonly element: (typeof ELEMENT_KINDS)[number];
-  readonly code: string;
-  readonly savedAt: string;
-  readonly fields: Record<string, string>;
-  /** Filas del formulario (los claros de la viga o del pórtico). */
-  readonly rows?: Record<string, string>[];
-  /** Niveles del pórtico. */
-  readonly levels?: Record<string, string>[];
-  /** Detalle editable v1 de una viga; no aplica a los demás elementos. */
-  readonly details?: import('./beamDetailDraft').BeamDetailDraft;
+export function commitWorkbenchBatch(storage: WorkbenchStorage, writes: Readonly<Record<string, JsonValue>>): BatchResult {
+  const result = storage.commitBatch ? storage.commitBatch(writes) : storage.canWrite && !storage.canWrite(writes)
+    ? { accepted: false as const, reason: 'La capacidad del almacenamiento está llena.' }
+    : (Object.entries(writes).forEach(([key, value]) => storage.write(key, value)), { accepted: true as const });
+  storage.setWriteNotice?.(result.accepted ? null : `No se guardó el cambio; se conserva el valor anterior. ${result.reason}`);
+  return result;
 }
 
-export const isMemoryItem = (value: unknown): value is WorkbenchMemoryItem => {
-  if (!isPlainObject(value)) return false;
-  const keys = Object.keys(value);
-  if (keys.some((key) => !['id', 'element', 'code', 'savedAt', 'fields', 'rows', 'levels', 'details'].includes(key))) return false;
-  return isShortString(value.id) && (ELEMENT_KINDS as readonly unknown[]).includes(value.element)
-    && isShortString(value.code) && isShortString(value.savedAt) && isRecord(value.fields)
-    && (value.rows === undefined || isRows(value.rows))
-    && (value.levels === undefined || isRows(value.levels))
-    && (value.details === undefined || (value.element === 'beam' && isBeamDetailDraft(value.details)));
-};
-
-const isMemory = (value: unknown): value is WorkbenchMemoryItem[] =>
-  Array.isArray(value) && value.length <= MAX_MEMORY_ITEMS && value.every(isMemoryItem)
-  && new Set(value.map((item) => item.id)).size === value.length;
-
-/** Cadenas cortas, registros de cadenas, listas cortas de registros (los claros) y la memoria del proyecto. */
-const isEntry = (key: string, value: unknown): value is JsonValue =>
-  key === 'beam-details' ? isBeamDetailDraft(value)
-    : key === 'steel-memory' ? isSteelMemory(value)
-    : isShortString(value) || isRecord(value) || isRows(value) || (key === 'memory' && isMemory(value));
-
-/** Lee un documento del taller; ante cualquier forma inesperada devuelve un borrador vacío, nunca lanza. */
+/** Returns no partial draft when a known schema contains an invalid key. */
 export function parseWorkbenchDocument(raw: unknown): Record<string, JsonValue> {
-  if (!isPlainObject(raw) || raw.kind !== WORKBENCH_DOCUMENT_KIND || !READABLE_VERSIONS.includes(raw.schemaVersion as number) || !isPlainObject(raw.entries)) return {};
-  try {
-    if (JSON.stringify(raw).length > MAX_DOCUMENT_CHARS) return {};
-  } catch {
-    return {};
-  }
-  const entries: Record<string, JsonValue> = {};
-  for (const [key, value] of Object.entries(raw.entries).slice(0, MAX_ENTRIES)) {
-    if (KEY.test(key) && isEntry(key, value)) entries[key] = structuredClone(value);
-  }
-  return entries;
+  const inspection = inspectDesignDocument(raw);
+  return inspection.status === 'supported' ? inspection.entries! : {};
 }
 
 const workbenchDocument = (entries: Readonly<Record<string, JsonValue>>): JsonValue =>
-  ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: WORKBENCH_SCHEMA_VERSION, entries: structuredClone(entries) as { [key: string]: JsonValue } });
-
+  ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: DESIGN_WORKBENCH_SCHEMA_VERSION, entries: structuredClone(entries) as { [key: string]: JsonValue } });
 const BROWSER_PREFIX = 'fstructure.design-workbench.';
+const browserListeners = new Set<() => void>();
+let browserWriteNotice: string | null = null;
 
-/** Respaldo en el navegador: comodidad por dispositivo; la página funciona sin almacenamiento. */
-export const browserWorkbenchStorage: WorkbenchStorage = {
-  read(key) {
-    try {
-      const raw = window.localStorage.getItem(BROWSER_PREFIX + key);
-      if (!raw || raw.length > ((key === 'memory' || key === 'steel-memory' || key === 'beam-details') ? MAX_DOCUMENT_CHARS : 8_000)) return undefined;
-      try {
-        return JSON.parse(raw) as unknown;
-      } catch {
-        // Versiones anteriores guardaban la norma y el elemento como texto plano.
-        return raw;
-      }
-    } catch {
-      return undefined;
+const browserValue = (key: string): unknown => {
+  try {
+    const raw = window.localStorage.getItem(BROWSER_PREFIX + key);
+    if (!raw || raw.length > ((key === 'memory' || key === 'steel-memory' || key === 'beam-details') ? DESIGN_WORKBENCH_MAX_DOCUMENT_CHARS : 8_000)) return undefined;
+    try { return JSON.parse(raw) as unknown; } catch { return raw; }
+  } catch { return undefined; }
+};
+const browserEntries = (): Record<string, JsonValue> => {
+  const entries: Record<string, JsonValue> = {};
+  try {
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const storageKey = window.localStorage.key(index);
+      if (!storageKey?.startsWith(BROWSER_PREFIX)) continue;
+      const key = storageKey.slice(BROWSER_PREFIX.length);
+      const value = browserValue(key);
+      if (isDesignWorkbenchEntry(key, value)) entries[key] = value as JsonValue;
     }
-  },
-  write(key, value) {
-    try { window.localStorage.setItem(BROWSER_PREFIX + key, JSON.stringify(value)); } catch { /* sin almacenamiento */ }
-  },
+  } catch { /* quota/private mode is reported by commitBatch */ }
+  return entries;
 };
 
-interface ProjectWorkbenchStorage extends WorkbenchStorage {
-  /** Escribe de inmediato lo pendiente (al cerrar la superficie). */
-  flush(): void;
+/** Local fallback commits all keys together and restores the prior values on quota failure. */
+export const browserWorkbenchStorage: WorkbenchStorage = {
+  get writeNotice() { return browserWriteNotice; },
+  setWriteNotice(message) { browserWriteNotice = message; browserListeners.forEach((listener) => listener()); },
+  subscribe(listener) { browserListeners.add(listener); return () => browserListeners.delete(listener); },
+  read: browserValue,
+  commitBatch(writes) {
+    let next: Record<string, JsonValue>;
+    try {
+      next = { ...browserEntries() };
+      for (const [key, value] of Object.entries(writes)) {
+        if (!isDesignWorkbenchEntry(key, value)) return { accepted: false, reason: 'La entrada del borrador no tiene un formato válido.' };
+        next[key] = structuredClone(value);
+      }
+      if (Object.keys(next).length > DESIGN_WORKBENCH_MAX_ENTRIES || JSON.stringify(workbenchDocument(next)).length > DESIGN_WORKBENCH_MAX_DOCUMENT_CHARS) {
+        return { accepted: false, reason: 'El borrador superaría el límite local de Diseño.' };
+      }
+    } catch { return { accepted: false, reason: 'No se pudo validar el borrador local.' }; }
+    const previous = new Map<string, string | null>();
+    try {
+      for (const key of Object.keys(writes)) {
+        previous.set(key, window.localStorage.getItem(BROWSER_PREFIX + key));
+        window.localStorage.setItem(BROWSER_PREFIX + key, JSON.stringify(writes[key]));
+      }
+      return { accepted: true };
+    } catch {
+      for (const [key, value] of previous) {
+        try { if (value === null) window.localStorage.removeItem(BROWSER_PREFIX + key); else window.localStorage.setItem(BROWSER_PREFIX + key, value); } catch { /* best-effort rollback */ }
+      }
+      return { accepted: false, reason: 'No se pudo guardar el borrador local; se conserva el valor anterior.' };
+    }
+  },
+  write(key, value) { return commitWorkbenchBatch(this, { [key]: value }).accepted; },
+};
+
+export interface ProjectWorkbenchStorage extends WorkbenchStorage {
+  readonly rawDocument: unknown;
+  readonly saveState: WorkbenchSaveState;
+  subscribe(listener: () => void): () => void;
+  flush(): Promise<void>;
+  retry(): Promise<void>;
   dispose(): void;
 }
 
-/**
- * Borradores guardados en el proyecto: se leen de la rama `design` y cada cambio
- * se agrupa (`delayMs`) antes de llamar a `persist` con el documento completo.
- */
 export function createProjectWorkbenchStorage(
   initial: unknown,
-  persist: (document: JsonValue) => void,
+  persist: (document: JsonValue) => unknown | Promise<unknown>,
   delayMs = 600,
   historyScope?: object,
 ): ProjectWorkbenchStorage {
-  const entries = parseWorkbenchDocument(initial);
+  const source = structuredClone(initial);
+  const inspection = inspectDesignDocument(source);
+  const readOnlyReason = inspection.status === 'future' || inspection.status === 'opaque' || inspection.status === 'invalid'
+    ? inspection.reason ?? (inspection.status === 'opaque' ? 'La rama de Diseño no pertenece a este formato y se conserva en solo lectura.' : 'La rama de Diseño no es válida y se conserva en solo lectura.')
+    : undefined;
+  const entries = inspection.status === 'supported' ? inspection.entries! : {};
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let dirty = false;
-  const flush = () => {
+  let revision = 0;
+  let pending = false;
+  let inFlight: Promise<void> | undefined;
+  let state: WorkbenchSaveState = { status: 'saved', pending: false };
+  let writeNotice: string | null = null;
+  const listeners = new Set<() => void>();
+  const publish = (next: WorkbenchSaveState) => { state = next; listeners.forEach((listener) => listener()); };
+  const schedule = () => {
+    if (timer !== undefined) clearTimeout(timer);
+    timer = setTimeout(() => { void flush().catch(() => undefined); }, delayMs);
+  };
+  const flush = async (): Promise<void> => {
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
-    if (!dirty) return;
-    dirty = false;
-    persist(workbenchDocument(entries));
+    if (readOnlyReason || !pending) return inFlight;
+    if (inFlight) {
+      await inFlight.catch(() => undefined);
+      // Several callers can wait for the same sink. Re-enter through the guard
+      // so only one of them persists the latest revision after it completes.
+      return flush();
+    }
+    if (!pending || readOnlyReason) return;
+    const snapshotRevision = revision;
+    const snapshot = structuredClone(entries);
+    const document = workbenchDocument(snapshot);
+    const validation = inspectDesignDocument(document);
+    if (validation.status !== 'supported') {
+      const error = validation.reason ?? 'El documento de Diseño no es válido.';
+      publish({ status: 'failed', pending: true, error });
+      throw new Error(error);
+    }
+    let persisted: unknown | Promise<unknown>;
+    try { persisted = persist(document); } catch (error) { persisted = Promise.reject(error); }
+    const saving = Promise.resolve(persisted).then(() => {
+      if (revision === snapshotRevision) {
+        pending = false;
+        publish({ status: 'saved', pending: false });
+      } else publish({ status: 'pending', pending: true });
+    }).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      publish({ status: 'failed', pending: true, error: message });
+      throw error;
+    }).finally(() => { if (inFlight === saving) inFlight = undefined; });
+    inFlight = saving;
+    return saving;
   };
   return {
-    historyScope,
+    historyScope, readOnlyReason, rawDocument: source,
+    get writeNotice() { return writeNotice; },
+    setWriteNotice(message) { writeNotice = message; listeners.forEach((listener) => listener()); },
+    get saveState() { return state; },
+    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     read: (key) => entries[key],
     canWrite(writes) {
+      if (readOnlyReason) return false;
       try {
         const next = { ...entries };
         for (const [key, value] of Object.entries(writes)) {
-          if (!KEY.test(key) || !isEntry(key, value)) return false;
+          if (!isDesignWorkbenchEntry(key, value)) return false;
           next[key] = structuredClone(value);
         }
-        return Object.keys(next).length <= MAX_ENTRIES
-          && JSON.stringify(workbenchDocument(next)).length <= MAX_DOCUMENT_CHARS;
-      } catch {
-        return false;
+        return Object.keys(next).length <= DESIGN_WORKBENCH_MAX_ENTRIES && JSON.stringify(workbenchDocument(next)).length <= DESIGN_WORKBENCH_MAX_DOCUMENT_CHARS;
+      } catch { return false; }
+    },
+    commitBatch(writes) {
+      if (readOnlyReason) return { accepted: false, reason: readOnlyReason };
+      if (Object.keys(writes).length === 0) return { accepted: true };
+      const currentCanWrite = this.canWrite!(writes);
+      if (!currentCanWrite) return { accepted: false, reason: 'El cambio superaría los límites o el formato compatible del borrador de Diseño.' };
+      let changed = false;
+      for (const [key, value] of Object.entries(writes)) {
+        if (JSON.stringify(entries[key]) !== JSON.stringify(value)) changed = true;
       }
+      if (!changed) return { accepted: true };
+      for (const [key, value] of Object.entries(writes)) entries[key] = structuredClone(value);
+      revision += 1;
+      pending = true;
+      publish({ status: 'pending', pending: true });
+      schedule();
+      return { accepted: true };
     },
-    write(key, value) {
-      if (!KEY.test(key) || !isEntry(key, value)) return;
-      if (JSON.stringify(entries[key]) === JSON.stringify(value)) return;
-      entries[key] = structuredClone(value);
-      dirty = true;
-      if (timer !== undefined) clearTimeout(timer);
-      timer = setTimeout(flush, delayMs);
-    },
+    write(key, value) { return commitWorkbenchBatch(this, { [key]: value }).accepted; },
     flush,
-    dispose() {
-      flush();
-    },
+    retry: flush,
+    dispose() { if (timer !== undefined) clearTimeout(timer); void flush().catch(() => undefined); },
   };
 }
 
 export const WorkbenchStorageContext = createContext<WorkbenchStorage>(browserWorkbenchStorage);
-
 export const useWorkbenchStorage = () => useContext(WorkbenchStorageContext);

@@ -8,7 +8,7 @@ import { analyzeSteelModel } from './modelSteelAnalysis';
 import './modelSteelReview.css';
 import { summarizeNtcSteelTensionDesign } from '../../../design/ntcSteel2023';
 import { isSteelMemory, MAX_STEEL_REVIEWS, type SteelMemoryItem } from '../../../design/steelMemory';
-import { useWorkbenchStorage } from '../../design/workbench/workbenchStorage';
+import { commitWorkbenchBatch, useWorkbenchStorage } from '../../design/workbench/workbenchStorage';
 
 // Sólo descubre candidatos para explicar su alcance. El motor exige identidades de catálogo.
 export const isSteelReviewCandidate = (member: MemberModel) =>
@@ -52,7 +52,8 @@ export function ModelSteelReview({ project, focusMember, onShowMembers }: {
     if (existing < 0 && saved.length >= MAX_STEEL_REVIEWS) { setFeedback(en ? 'The steel memory is full.' : 'La memoria de acero está llena.'); return; }
     const item = { memberId, combinationId, savedAt: new Date().toISOString() };
     const next = existing < 0 ? [...saved, item] : saved.map((s, i) => i === existing ? item : s);
-    storage.write('steel-memory', next.map((s) => ({ ...s })));
+    const accepted = commitWorkbenchBatch(storage, { 'steel-memory': next.map((s) => ({ ...s })) });
+    if (!accepted.accepted) { setFeedback(en ? 'The selection was not saved; the previous selection remains.' : 'No se guardó la selección; se conserva la anterior.'); return; }
     setSaved(next);
     setFeedback(en ? 'Selection saved; it will be recalculated with the current model.' : 'Selección guardada; se recalculará con el modelo vigente.');
   };

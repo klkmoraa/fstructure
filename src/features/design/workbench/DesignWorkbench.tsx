@@ -15,11 +15,12 @@ import { MemoryStatus, useDesignMemory } from './designMemory';
 import { DesignMemoryDialog } from './DesignMemoryDialog';
 import { memoText, reportHeading, type DesignReport } from './designReport';
 import type { ModelSectionsBridge, Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
-import { useWorkbenchStorage } from './workbenchStorage';
+import { commitWorkbenchBatch, useWorkbenchStorage } from './workbenchStorage';
 import { DesignStartDialog } from './DesignStartDialog';
 import type { DesignStart } from './designStarts';
 import './designWorkbench.css';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
+import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 
 type ElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'section' | 'flexure';
 
@@ -82,21 +83,31 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
 }) {
   const storage = useWorkbenchStorage();
   const [element, setElementState] = useState<ElementKind>(() => {
-    if (startElement) return startElement;
     if (startSource === 'model' || startSource === 'model3d') return 'frame';
     const stored = storage.read('element');
     // En la mesa de FStructure se empieza por diseñar el modelo.
     return isElementKind(stored) ? stored : 'frame';
   });
   const [code, setCodeState] = useState<DesignCodeId>(() => {
-    if (isDesignCodeId(startCode)) return startCode;
     const stored = storage.read('code');
     return isDesignCodeId(stored) ? stored : 'ntc-2023';
   });
-  // Lo elegido en la bienvenida se guarda como el nuevo último estado del taller.
+  // La selección de inicio se acepta como un lote antes de publicarla.
   useEffect(() => {
-    if (startElement) storage.write('element', startElement);
-    if (isDesignCodeId(startCode)) storage.write('code', startCode);
+    const storedFrame = storage.read('frame');
+    const currentFrame = storedFrame && typeof storedFrame === 'object' && !Array.isArray(storedFrame)
+      ? Object.fromEntries(Object.entries(storedFrame as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
+      : {};
+    const writes = {
+      ...(startElement ? { element: startElement } : {}),
+      ...(isDesignCodeId(startCode) ? { code: startCode } : {}),
+      ...(startSource ? { frame: { ...currentFrame, source: startSource } } : {}),
+    };
+    if (Object.keys(writes).length === 0) return;
+    const accepted = commitWorkbenchBatch(storage, writes as Record<string, JsonValue>);
+    if (!accepted.accepted) return;
+    if (startElement) setElementState(startElement);
+    if (isDesignCodeId(startCode)) setCodeState(startCode);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [report, setReport] = useState<DesignReport | null>(null);
@@ -160,15 +171,15 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   }), []);
 
   const setElement = (next: ElementKind) => {
+    if (!commitWorkbenchBatch(storage, { element: next }).accepted) return;
     setElementState(next);
     setCopied(false);
-    storage.write('element', next);
   };
 
   const setCode = (next: string) => {
     if (!isDesignCodeId(next)) return;
+    if (!commitWorkbenchBatch(storage, { code: next }).accepted) return;
     setCodeState(next);
-    storage.write('code', next);
   };
 
   const onReport = useCallback((next: DesignReport | null) => {

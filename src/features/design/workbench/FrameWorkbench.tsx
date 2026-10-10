@@ -13,8 +13,10 @@ import { bastionTitle, meters, stirrupText } from './beamModel';
 import { ColumnElevation, ColumnSection, InteractionChart } from './ColumnDrawings';
 import {
   ActionNote, BarSelect, InlineAction, ChecksList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, IdentityGroup, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField, PanelSection,
-  RebarList, ReviewList, Summary, TakeoffSection, ValuesTable, Verdict, formatNumber, parseNumber, readStored, splitChecks, useDraftHistory, useStoredDraft,
+  RebarList, ReviewList, Summary, TakeoffSection, ValuesTable, Verdict, formatNumber, parseNumber, readStored, splitChecks, useDraftHistory, useStoredDraft, useStoredRows,
 } from './common';
+import { commitWorkbenchBatch } from './workbenchStorage';
+import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { FRAME_DIAGRAMS, FrameElevation, ratioBand, type FrameDiagramKind } from './FrameDrawings';
 import {
   DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraftAsync, designFromDraft, designOfMember, memberIdsOf, plural, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
@@ -201,12 +203,15 @@ const usableSource = (source: ExternalStructureSource | null | undefined) =>
 export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('frame', FRAME_DEFAULTS, FRAME_LEGACY);
   const storage = useWorkbenchStorage();
-  const [bays, setBays] = useState<BayDraft[]>(() => readStored(storage, 'frame-bays', parseBays, DEFAULT_BAYS));
-  const [stories, setStories] = useState<StoryDraft[]>(() => readStored(storage, 'frame-stories', parseStories, DEFAULT_STORIES));
-  useEffect(() => storage.write('frame-bays', bays.map((bay) => ({ ...bay }))), [bays, storage]);
-  useEffect(() => storage.write('frame-stories', stories.map((story) => ({ ...story }))), [stories, storage]);
+  const [bays, setBays] = useStoredRows<BayDraft[]>('frame-bays', readStored(storage, 'frame-bays', parseBays, DEFAULT_BAYS));
+  const [stories, setStories] = useStoredRows<StoryDraft[]>('frame-stories', readStored(storage, 'frame-stories', parseStories, DEFAULT_STORIES));
   const snapshot = useMemo(() => ({ draft, bays, stories }), [draft, bays, stories]);
-  const applySnapshot = useCallback((next: typeof snapshot) => { replace(next.draft); setBays(next.bays); setStories(next.stories); }, [replace]);
+  const applySnapshot = useCallback((next: typeof snapshot) => {
+    const accepted = commitWorkbenchBatch(storage, { frame: next.draft, 'frame-bays': next.bays, 'frame-stories': next.stories });
+    if (!accepted.accepted) return false;
+    replace(next.draft); setBays(next.bays); setStories(next.stories);
+    return true;
+  }, [replace, setBays, setStories, storage]);
   const history = useDraftHistory(snapshot, applySnapshot, 'frame');
   const { onHistory, startSource, deferSourceNormalization = false, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateModel, onShowMembers } = chrome;
   useEffect(() => onHistory?.(history), [history, onHistory]);
@@ -309,12 +314,17 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       if (modelSections) { setModelProposal(step.proposal); return; }
       const { beam: proposedBeam, column: proposedColumn, ratio, volumeM3, trials } = step.proposal;
       const bars = String(proposedColumn.barsPerFace);
-      replace((current) => ({
-        ...current, proposalBars: 'yes',
+      const nextDraft = {
+        ...draft, proposalBars: 'yes',
         beamWidth: String(proposedBeam.width), beamHeight: String(proposedBeam.height),
         columnWidth: String(proposedColumn.width), columnHeight: String(proposedColumn.height), barsWidth: bars, barsDepth: bars,
-      }));
-      setStories(frameProposalStories(stories, step.proposal));
+      };
+      const nextStories = frameProposalStories(stories, step.proposal);
+      if (!commitWorkbenchBatch(storage, { frame: nextDraft, 'frame-stories': nextStories }).accepted) {
+        setSectionNote('No se aplicó la propuesta; se conservaron los datos actuales. Libera espacio y vuelve a proponer.'); return;
+      }
+      replace(nextDraft);
+      setStories(nextStories);
       setSectionNote(`Por nivel · Viga ${proposedBeam.width} × ${proposedBeam.height} y columna ${proposedColumn.width} × ${proposedColumn.height} cm con ${proposedColumn.barsPerFace} barras por cara: rige ${percent(ratio)}. `
         + `${formatNumber(volumeM3, 2)} m³ de concreto (antes ${formatNumber(before, 2)}), tras ${trials} diseños. Ctrl+Z lo deshace.`);
     };
@@ -336,21 +346,26 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     if (!modelProposal || !modelSections) return;
     const { beam: proposedBeam, column: proposedColumn } = modelProposal;
     const bars = String(proposedColumn.barsPerFace);
+    const nextDraft = { ...draft, proposalBars: 'yes', barsWidth: bars, barsDepth: bars };
+    if (!commitWorkbenchBatch(storage, { frame: nextDraft }).accepted) return;
     modelSections.apply(proposedBeam, proposedColumn, modelProposal.groups);
-    replace((current) => ({ ...current, proposalBars: 'yes', barsWidth: bars, barsDepth: bars }));
+    replace(nextDraft);
     setModelProposal(null);
     setSectionNote(modelProposal.groups?.length
       ? `Escritas por nivel en el Modelo ${from3d ? '3D' : '2D'}: ${modelProposal.groups.map((g) => `${g.label}: ${g.width}×${g.height} cm`).join('; ')}. Deshacer en el modo ${from3d ? '3D' : '2D'} recupera las secciones anteriores.`
       : `Escritas en el Modelo ${from3d ? '3D' : '2D'}: ${plural(modelSections.beams, 'viga', 'vigas')} ${proposedBeam.width} × ${proposedBeam.height} y ${plural(modelSections.columns, 'columna', 'columnas')} ${proposedColumn.width} × ${proposedColumn.height} cm, con ${proposedColumn.barsPerFace} barras por cara. Deshacer en el modo ${from3d ? '3D' : '2D'} recupera las secciones anteriores.`);
   };
   const setUniformSection = (field: 'beamWidth' | 'beamHeight' | 'columnWidth' | 'columnHeight') => (value: string) => {
-    set(field)(value);
-    setStories((current) => current.map(({ height, dead, live, lateral: force }) => ({ height, dead, live, lateral: force })));
+    const nextDraft = { ...draft, [field]: value };
+    const nextStories = stories.map(({ height, dead, live, lateral: force }) => ({ height, dead, live, lateral: force }));
+    if (!commitWorkbenchBatch(storage, { frame: nextDraft, 'frame-stories': nextStories }).accepted) return;
+    replace(nextDraft);
+    setStories(nextStories);
   };
   const slab = frameSlabLoads(draft);
   const applySlab = () => {
     if (!slab) return;
-    setStories((current) => current.map((story) => ({ ...story, dead: String(slab.dead), live: String(slab.live) })));
+    if (!setStories((current) => current.map((story) => ({ ...story, dead: String(slab.dead), live: String(slab.live) })))) return;
     setLoadNote(`Aplicado a ${stories.length === 1 ? 'el nivel' : `los ${stories.length} niveles`}: CM ${slab.dead} · CV ${slab.live} kN/m.`);
   };
   const kError = draft.k.trim() !== '' && !(parseNumber(draft.k) > 0) ? 'Mayor que cero, o vacío para calcularlo' : undefined;
@@ -386,7 +401,10 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     title="Estructura"
     noReview={fromModel && !steelOnly && !model.pending && !usableSource(external)}
     report={report}
-    onReset={() => { reset(); setBays(DEFAULT_BAYS); setStories(DEFAULT_STORIES); setPicked(null); }}
+    onReset={() => {
+      if (!commitWorkbenchBatch(storage, { frame: FRAME_DEFAULTS, 'frame-bays': DEFAULT_BAYS as unknown as JsonValue, 'frame-stories': DEFAULT_STORIES as unknown as JsonValue }).accepted) return;
+      reset(); setBays(DEFAULT_BAYS); setStories(DEFAULT_STORIES); setPicked(null);
+    }}
     verdict={verdict}
     caption={outcome?.ok ? describeStructure(outcome) : undefined}
     inputs={<>

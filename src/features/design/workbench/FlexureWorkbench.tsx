@@ -68,7 +68,7 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const applyAlternative = (candidate: ReinforcementCandidate) => {
     const bed = candidate.reinforcement.bed;
     const next = { ...draft, objective: 'check', [bed === 'top' ? 'topCount' : 'bottomCount']: String(candidate.reinforcement.group.count), [bed === 'top' ? 'topBar' : 'bottomBar']: String(candidate.reinforcement.group.diameterMm) };
-    replace(next);
+    if (!replace(next)) return;
     setAlternatives(null);
     setAlternativeSearch(false);
   };
@@ -135,7 +135,7 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         {proposalState === 'error' ? <p role="alert">No se pudo completar la búsqueda. Los datos siguen disponibles.</p> : null}
         {appliedInputKey === inputKey && result ? <p role="status">Dimensiones aplicadas: {draft.width} × {draft.height} cm. La búsqueda por flexión no evalúa otros estados límite.</p> : null}
         {preview ? <div className="dw-action-note"><span>Vista previa: {preview.widthMm} × {preview.heightMm} mm · As prov {formatNumber(preview.result.providedMm2, 1)} mm². La memoria y el PDF cambian al aplicar.</span>
-          <button type="button" className="dw-inline-action" onClick={() => { const next = { ...draft, width: String(preview.widthMm / 10), height: String(preview.heightMm / 10) }; setAppliedInputKey(JSON.stringify(flexureToInput(chrome.code, next))); replace(next); }}>Aplicar dimensiones</button>
+          <button type="button" className="dw-inline-action" onClick={() => { const next = { ...draft, width: String(preview.widthMm / 10), height: String(preview.heightMm / 10) }; if (!replace(next)) return; setAppliedInputKey(JSON.stringify(flexureToInput(chrome.code, next))); }}>Aplicar dimensiones</button>
           <button type="button" className="dw-inline-action" onClick={() => { setProposal(null); set('objective')('required'); }}>Descartar</button></div> : null}
       </FieldGroup> : null}
       {(objective === 'check' || objective === 'required') ? <FieldGroup title="Alternativas de armado · sección fija" columns={1}>

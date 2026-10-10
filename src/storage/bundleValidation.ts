@@ -2,6 +2,7 @@ import { CURRENT_SCHEMA_VERSION } from '../data/defaultProject';
 import { normalizeProject } from '../data/migrate';
 import { parseSpace3DDraft } from '../modules/space3d/space3d/data/codec';
 import type { UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
+import { inspectDesignDocument } from '../shared/project/designWorkbenchCodec';
 
 function jsonArrayValues(item: unknown[]): unknown[] {
   const keys = Reflect.ownKeys(item);
@@ -107,6 +108,8 @@ export function validateBundle(input: unknown): UnifiedProjectBundleV1 {
   }
   const detached = Object.fromEntries(Object.entries(descriptors).map(([key, descriptor]) => [key, modelJson(descriptor.value)]));
   const copy = JSON.parse(canonicalSerialize(detached)) as UnifiedProjectBundleV1;
+  const design = inspectDesignDocument(copy.design);
+  if (design.status === 'invalid') throw new Error(design.reason ?? 'Invalid Design document');
   const manifest = object(copy.manifest);
   exact(manifest, ['schemaVersion', 'projectId', 'sourceVersion', 'authoritativeModel']);
   if (manifest.schemaVersion !== 1 || manifest.authoritativeModel !== 'model2d') throw new Error('Unsupported manifest schema or authority');

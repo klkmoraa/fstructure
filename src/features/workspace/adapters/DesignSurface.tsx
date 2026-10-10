@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { concreteFrameGroups, concreteFrameMembers, withConcreteFrame, withConcreteSections, type ConcreteFrameSpec } from '../../../data/concreteFrame';
 import type { ModelSection, ModelSectionsBridge } from '../../design/workbench/WorkbenchLayout';
 import { startProposalWorker } from '../../design/workbench/proposalWorker';
@@ -11,7 +11,7 @@ import { structureOptions } from '../../design/workbench/frameModel';
 import { space3dDesignAxesWithWorker } from './space3dDesignAll';
 import { peekToolIntent, setToolIntent, takeToolIntent } from '../toolIntent';
 import { DesignWorkbench } from '../../design/workbench/DesignWorkbench';
-import { browserWorkbenchStorage, createProjectWorkbenchStorage, WorkbenchStorageContext } from '../../design/workbench/workbenchStorage';
+import { browserWorkbenchStorage, createProjectWorkbenchStorage, type ProjectWorkbenchStorage, type WorkbenchStorage, WorkbenchStorageContext } from '../../design/workbench/workbenchStorage';
 import { ProjectModelContext } from '../../../store/ProjectModelContext';
 import { WorkspaceUIContext } from '../../../store/WorkspaceUIContext';
 import { space3dSelection } from './mesaSelection';
@@ -29,6 +29,24 @@ import { ModelSteelReview, isSteelReviewCandidate } from './ModelSteelReview';
  * modo 2D o 3D, Estructura diseña con ese modelo. «Editar» vuelve al modo.
  */
 const HISTORY_SCOPES = new WeakMap<object, Map<string, object>>();
+
+function ProjectDesignSaveStatus({ storage }: { storage: ProjectWorkbenchStorage }) {
+  const save = useSyncExternalStore(storage.subscribe, () => storage.saveState, () => storage.saveState);
+  return <>
+    {save.status === 'pending' ? <p role="status" className="dw-storage-status">Borrador aceptado; guardado del proyecto pendiente.</p> : null}
+    {save.status === 'failed' ? <p role="alert" className="dw-storage-status">
+      No se pudo guardar en este dispositivo. El borrador sigue disponible. {save.error}
+      <button type="button" className="sc-button sc-button--touch sc-button--secondary" onClick={() => { void storage.retry().catch(() => undefined); }}>Reintentar guardado</button>
+    </p> : null}
+  </>;
+}
+
+const subscribeNothing = () => () => undefined;
+function WorkbenchWriteNotice({ storage }: { storage: WorkbenchStorage }) {
+  const subscribe = storage.subscribe ?? subscribeNothing;
+  const notice = useSyncExternalStore(subscribe, () => storage.writeNotice ?? null, () => null);
+  return notice ? <p role="alert" className="dw-storage-status">{notice}</p> : null;
+}
 
 export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenModel?: () => void; onOpenSpace3D?: () => void }) {
   const projectModel = useContext(ProjectModelContext);
@@ -147,19 +165,26 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     if (!scope) { scope = {}; scopes.set(projectId, scope); }
     return createProjectWorkbenchStorage(session.currentBundle(projectId)?.design, (document) => {
       const current = latestProject.current;
-      // El estado de guardado del proyecto (barra de estado) informa cualquier fallo.
-      if (current) void session.saveDesign(current, document).catch(() => undefined);
+      if (!current) throw new Error('El proyecto ya no está disponible para guardar Diseño.');
+      return session.saveDesign(current, document);
     }, 600, scope);
   }, [session, projectId]);
   useEffect(() => () => storage?.dispose(), [storage]);
+  const readOnly = storage?.readOnlyReason;
+  const activeStorage = storage ?? browserWorkbenchStorage;
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
-    <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
+    <WorkbenchWriteNotice storage={activeStorage} />
+    {storage ? <ProjectDesignSaveStatus storage={storage} /> : null}
+    {readOnly ? <section className="dw-storage-readonly" role="status" aria-label="Diseño en solo lectura">
+      <h2>Diseño en solo lectura</h2><p>{readOnly} Se conserva la rama original del proyecto.</p>
+      {onOpenModel ? <button type="button" className="sc-button sc-button--touch sc-button--secondary" onClick={onOpenModel}>Volver al modelo</button> : null}
+    </section> : <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
       {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})} {...(createBuilding ? { onCreateBuilding: createBuilding } : {})}
       {...(startPicker ? { startPicker } : {})}
       {...(intent?.category ? { startCategory: intent.category } : {})}
       {...(intent?.element ? { startElement: intent.element } : {})}
       {...(focus ? { focusMember: focus.memberId, ...(focus.explicit ? { startElement: 'frame' as const } : {}) } : {})} onShowMembers={showMembers} modelSections={modelSections} space3dSections={space3dSections}
       {...(project?.members.some(isSteelReviewCandidate) ? { modelReview: <ModelSteelReview project={project} {...(focus ? { focusMember: focus.memberId } : {})} onShowMembers={showMembers} /> } : {})}
-      {...(updateProject ? { onCreateModel: createModel } : {})} />
+      {...(updateProject ? { onCreateModel: createModel } : {})} />}
   </WorkbenchStorageContext.Provider>;
 }

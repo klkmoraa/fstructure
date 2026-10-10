@@ -1,13 +1,14 @@
 import { parseNumber, isShortString } from './formNumbers';
 export { parseNumber, isShortString, LIVE_LOAD_USES, LONG_TERM_DURATIONS, sustainedRatioFor, xiFor, mpaFromKgcm2 } from './formNumbers';
 import { AlertTriangle, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, Info, XCircle } from 'lucide-react';
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type SetStateAction } from 'react';
 import { Field, SegmentedControl, Select } from '../../../design-system/components/controls';
 import { UnitField } from '../../../design-system/components/editor';
 import { REBAR_SIZES, STIRRUP_SIZES, type BarUsage, type ElementCheck } from '../../../design/elements/shared';
 import type { Takeoff } from '../../../design/elements/takeoff';
 import type { ReportAlternative } from './designReport';
-import { useWorkbenchStorage, type WorkbenchStorage } from './workbenchStorage';
+import { commitWorkbenchBatch, useWorkbenchStorage, type WorkbenchStorage } from './workbenchStorage';
+import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 
 /** Lee un borrador guardado; es sólo una comodidad y la página funciona sin almacenamiento. */
 export function readStored<T>(storage: WorkbenchStorage, key: string, parse: (raw: unknown) => T | undefined, fallback: T): T {
@@ -27,16 +28,56 @@ export function useStoredDraft<T extends Record<string, string>>(key: string, de
   const [draft, setDraft] = useState<T>(() => readStored(storage, key, (raw) => {
     if (!raw || typeof raw !== 'object') return undefined;
     const merged: T = { ...defaults, ...legacy } as T;
-    for (const field of Object.keys(defaults) as (keyof T)[]) {
-      const value = (raw as Record<string, unknown>)[field as string];
-      if (isShortString(value)) merged[field] = value as T[keyof T];
+    for (const [field, value] of Object.entries(raw as Record<string, unknown>)) {
+      if (isShortString(value)) merged[field as keyof T] = value as T[keyof T];
     }
     return merged;
   }, defaults));
-  useEffect(() => storage.write(key, draft), [draft, key, storage]);
-  const set = (field: keyof T) => (value: string) => setDraft((current) => ({ ...current, [field]: value }));
-  const reset = () => setDraft(defaults);
-  return { draft, set, reset, replace: setDraft };
+  const latest = useRef(draft);
+  const [writeIssue, setWriteIssue] = useState<string | null>(null);
+  const replace = useCallback((action: SetStateAction<T>): boolean => {
+    const current = latest.current;
+    const next = typeof action === 'function' ? (action as (value: T) => T)(current) : action;
+    const result = commitWorkbenchBatch(storage, { [key]: next as unknown as JsonValue });
+    if (!result.accepted) { setWriteIssue(result.reason); return false; }
+    setWriteIssue(null);
+    if (JSON.stringify(current) !== JSON.stringify(next)) {
+      latest.current = next;
+      setDraft(next);
+    }
+    return true;
+  }, [key, storage]);
+  const accept = useCallback((next: T) => {
+    if (JSON.stringify(latest.current) !== JSON.stringify(next)) {
+      latest.current = next;
+      setDraft(next);
+    }
+  }, []);
+  const set = (field: keyof T) => (value: string) => { replace((current) => ({ ...current, [field]: value })); };
+  const reset = () => replace(defaults);
+  return { draft, set, reset, replace, accept, writeIssue };
+}
+
+/** Row groups use the same pre-acceptance rule as scalar drafts. */
+export function useStoredRows<T>(key: string, initial: T) {
+  const storage = useWorkbenchStorage();
+  const [rows, setRows] = useState<T>(() => {
+    const value = storage.read(key);
+    return (Array.isArray(value) ? structuredClone(value) : structuredClone(initial)) as T;
+  });
+  const latest = useRef(rows);
+  const replaceRows = useCallback((action: SetStateAction<T>): boolean => {
+    const current = latest.current;
+    const next = typeof action === 'function' ? (action as (value: T) => T)(current) : action;
+    const result = commitWorkbenchBatch(storage, { [key]: next as unknown as JsonValue });
+    if (!result.accepted) return false;
+    if (JSON.stringify(current) !== JSON.stringify(next)) { latest.current = next; setRows(next); }
+    return true;
+  }, [key, storage]);
+  const acceptRows = useCallback((next: T) => {
+    if (JSON.stringify(latest.current) !== JSON.stringify(next)) { latest.current = next; setRows(next); }
+  }, []);
+  return [rows, replaceRows, acceptRows] as const;
 }
 
 /** Deshacer y rehacer de un formulario del taller; la mesa lo muestra en la barra superior. */

@@ -56,7 +56,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     const proposal = proposeColumn(chrome.code, draft);
     if (!proposal) { setProposalNote('Ninguna sección hasta 120 cm cumple: revisa las solicitaciones y la esbeltez.'); return; }
     const sectionFields = circular ? { diameter: proposal.diameter ?? draft.diameter } : { width: proposal.width ?? draft.width, depth: proposal.depth ?? draft.depth };
-    replace({ ...draft, ...sectionFields });
+    if (!replace({ ...draft, ...sectionFields })) return;
     setProposalNote(`Sección propuesta: ${circular ? `Ø ${proposal.diameter}` : `${proposal.width} × ${proposal.depth}`} cm. El armado actual se conservó.`);
   };
   const proposeReinforcement = () => {
@@ -76,7 +76,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     activeProposal.current = { key, cancel };
   };
   const applyAlternative = (candidate: ReinforcementCandidate) => {
-    replace({ ...draft, ...candidate.applyFields });
+    if (!replace({ ...draft, ...candidate.applyFields })) return;
     setAlternatives(null);
     setProposalNote('Armado aplicado con sección y acciones capturadas. Deshacer recupera el armado anterior.');
   };

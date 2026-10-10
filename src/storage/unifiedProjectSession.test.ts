@@ -192,6 +192,18 @@ it('persists the Design workbench document in the design branch without touching
   expect(reopened.currentBundle(project.id)?.design).toEqual(design);
 });
 
+it('rejects a malformed known Design document before changing the session working copy', async () => {
+  const repo = new InMemoryUnifiedBundleRepository();
+  const project = createDefaultProject();
+  const session = new UnifiedProjectSession(repo);
+  await session.initialize(storage, project);
+  const before = session.currentBundle(project.id);
+  const malformed = { kind: 'fstructure-design-workbench', schemaVersion: 7, entries: { beam: { moment: '' }, 'bad key': 'x' } } as unknown as JsonValue;
+  await expect(session.saveDesign(project, malformed)).rejects.toThrow(/Diseño|Design/i);
+  expect(session.currentBundle(project.id)).toEqual(before);
+  expect(await repo.openBundle(project.id)).toBeNull();
+});
+
 it('keeps a failed Design save in the working copy until a later write commits it', async () => {
   const repo = new FailOnceRepository();
   const project = createDefaultProject();

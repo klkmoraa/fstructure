@@ -2,6 +2,7 @@ import type { ProjectModel } from '../types';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
 import type { JsonValue, LinkedSpace3DBranchV1, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
 import { canonicalJsonKey } from './bundleValidation';
+import { inspectDesignDocument } from '../shared/project/designWorkbenchCodec';
 import { BundleConflictError, IndexedDbUnifiedBundleRepository, type LegacyBundleStorage, type StoredBundleRecord, type UnifiedBundleRepository } from './unifiedBundleRepository';
 
 type UnifiedStorageStatus = { issue: 'conflict' | 'load-failed' | 'save-failed' | 'recovered' | null; message: string | null };
@@ -90,6 +91,8 @@ export class UnifiedProjectSession {
   }
   /** Persists the Design workbench document (drafts and chosen code) in the `design` branch. */
   saveDesign(project: ProjectModel, design: JsonValue): Promise<StoredBundleRecord> {
+    const inspection = inspectDesignDocument(design);
+    if (inspection.status === 'invalid') return Promise.reject(new Error(inspection.reason ?? 'Documento de Diseño inválido'));
     return this.save(project, undefined, undefined, structuredClone(design));
   }
   private save(project: ProjectModel, branch?: LinkedSpace3DBranchV1, femStudy?: JsonValue, design?: JsonValue): Promise<StoredBundleRecord> {

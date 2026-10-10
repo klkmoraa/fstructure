@@ -67,6 +67,19 @@ describe.each(implementations)('$name bundle transaction conformance', ({ setup 
     expect((await reopen().openBundle('frame'))?.bundle.model2d).toEqual(JSON.parse(original));
   });
 
+  it('rejects malformed known Design data before creating a repository revision', async () => {
+    const repository = setup()();
+    await repository.saveBundle(bundle(), 0);
+    const before = await repository.openBundle('p1');
+    const malformed = structuredClone(before!.bundle);
+    malformed.design = { kind: 'fstructure-design-workbench', schemaVersion: 7, entries: {
+      'beam-details': { kind: 'beam', version: 1, loads: [{ id: 'bad', kind: 'unknown' }], bastions: [], stirrupZones: [] },
+    } };
+    await expect(repository.saveBundle(malformed, before!.revision)).rejects.toThrow(/Diseño/);
+    expect(await repository.openBundle('p1')).toEqual(before);
+    expect((await repository.snapshot()).recoveries).toHaveLength(0);
+  });
+
   it('catches discarded normalization leaving required fields undefined after reopening', async () => {
     const reopen = setup();
     const input = bundle();

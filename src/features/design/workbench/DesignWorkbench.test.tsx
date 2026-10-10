@@ -315,6 +315,7 @@ describe('DesignWorkbench', () => {
 
   it('inicia una receta con campos y claros reales y conserva la pieza anterior en memoria', async () => {
     const user = userEvent.setup();
+    localStorage.clear();
     renderWorkbench();
     await user.selectOptions(screen.getByRole('combobox', { name: 'Norma de diseño' }), 'e060');
     const length = screen.getByRole('textbox', { name: 'Claro 1 · L (m)' }) as HTMLInputElement;
@@ -345,7 +346,7 @@ describe('DesignWorkbench', () => {
 
   it('mantiene abierto el selector y el formulario al no haber presupuesto para conservarlos', async () => {
     const user = userEvent.setup();
-    const entries: Record<string, unknown> = {};
+    const entries: Record<string, unknown> = { element: 'beam' };
     const storage = {
       read: (key: string) => entries[key],
       write: (key: string, value: unknown) => { entries[key] = structuredClone(value); },
@@ -484,6 +485,7 @@ describe('DesignWorkbench', () => {
   it('mantiene Memoria abierta y muestra un aviso si abrir no puede conservar el borrador actual', async () => {
     const user = userEvent.setup();
     const data: Record<string, unknown> = {
+      element: 'beam',
       memory: [{ id: 'target', element: 'footing', code: 'ntc-2023', savedAt: '2026-10-01', fields: { tag: 'Z guardada' } }],
       beam: { tag: 'V actual', width: '25' },
     };
@@ -505,7 +507,7 @@ describe('DesignWorkbench', () => {
 
   it('abre Memoria y explica que hace falta liberar almacenamiento si guardar queda bloqueado', async () => {
     const user = userEvent.setup();
-    const data: Record<string, unknown> = {};
+    const data: Record<string, unknown> = { element: 'beam' };
     const storage = {
       read: (key: string) => data[key],
       write: (key: string, value: unknown) => { data[key] = structuredClone(value); },
@@ -598,6 +600,7 @@ describe('DesignWorkbench', () => {
     const user = userEvent.setup();
     const nextDetails = { ...EMPTY_BEAM_DETAILS, bastions: [{ id: 'b1', bed: 'top' as const, count: '', diameterMm: '', startM: '', endM: '' }] };
     const ownBeam = { ...BEAM_DEFAULTS, rebarMode: 'own', ownBastions: 'custom' };
+    const fullRow = Object.fromEntries(Array.from({ length: 96 }, (_, index) => [`f${String(index).padStart(5, '0')}`, 'x'.repeat(32)]));
     const makeDocument = (regularFields: number, padLength: number) => {
       let fieldIndex = 0;
       const memory = Array.from({ length: 60 }, (_, itemIndex) => {
@@ -616,6 +619,7 @@ describe('DesignWorkbench', () => {
       });
       return { kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 7, entries: {
         beam: { ...BEAM_DEFAULTS }, 'beam-details': EMPTY_BEAM_DETAILS, 'beam-spans': DEFAULT_SPANS.map((span) => ({ ...span })), memory,
+        payloadA: Array.from({ length: 8 }, () => fullRow), payloadB: Array.from({ length: 8 }, () => fullRow), payloadC: Array.from({ length: 8 }, () => fullRow),
       } };
     };
     const writesFit = (raw: ReturnType<typeof makeDocument>, withBeam: boolean) => {
@@ -641,7 +645,7 @@ describe('DesignWorkbench', () => {
     }
     expect(initial).toBeDefined();
     const persisted: unknown[] = [];
-    const storage = createProjectWorkbenchStorage(initial, (document) => persisted.push(document), 60_000);
+    const storage = createProjectWorkbenchStorage(initial, (document) => { persisted.push(document); }, 60_000);
     expect(storage.canWrite?.({ 'beam-details': nextDetails as unknown as JsonValue })).toBe(true);
     expect(storage.canWrite?.({ 'beam-details': nextDetails as unknown as JsonValue, beam: ownBeam })).toBe(false);
     render(<WorkbenchStorageContext.Provider value={storage}><ProjectProvider><DesignWorkbench nativeTool={false} startElement="beam" /></ProjectProvider></WorkbenchStorageContext.Provider>);

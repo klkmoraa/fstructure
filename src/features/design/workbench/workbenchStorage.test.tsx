@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, renderHook, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { DesignWorkbench } from './DesignWorkbench';
 import { FOOTING_DEFAULTS } from './footingModel';
-import { WORKBENCH_DOCUMENT_KIND, WorkbenchStorageContext, createProjectWorkbenchStorage, parseWorkbenchDocument } from './workbenchStorage';
+import { DESIGN_WORKBENCH_SCHEMA_VERSION, WORKBENCH_DOCUMENT_KIND, WorkbenchStorageContext, browserWorkbenchStorage, createProjectWorkbenchStorage, parseWorkbenchDocument } from './workbenchStorage';
+import { inspectDesignDocument } from '../../../shared/project/designWorkbenchCodec';
+import { useStoredDraft } from './common';
 
 const workbenchDoc = (entries: Record<string, unknown>, schemaVersion = 6) => ({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion, entries });
 
@@ -14,6 +16,124 @@ afterEach(() => {
 });
 
 describe('design workbench document', () => {
+  it('retains legacy raw draft strings while editing a known field', () => {
+    const entries: Record<string, unknown> = { beam: { width: '25', legacyLoad: 'yes' } };
+    const storage = { read: (key: string) => entries[key], write: (key: string, value: unknown) => { entries[key] = value; } };
+    const hook = renderHook(() => useStoredDraft('beam', { width: '', height: '' }), {
+      wrapper: ({ children }) => <WorkbenchStorageContext.Provider value={storage as never}>{children}</WorkbenchStorageContext.Provider>,
+    });
+    act(() => hook.result.current.set('width')('30'));
+    expect(entries.beam).toEqual({ width: '30', height: '', legacyLoad: 'yes' });
+    expect((hook.result.current.draft as Record<string, string>).legacyLoad).toBe('yes');
+  });
+
+  it('keeps an incompatible future document read-only and byte-for-byte available', async () => {
+    const raw = { kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 12, entries: { future: { nested: [1, true] } } };
+    const persist = vi.fn();
+    const storage = createProjectWorkbenchStorage(raw, persist, 60_000);
+    expect(storage.readOnlyReason).toMatch(/12/);
+    expect(storage.commitBatch!({ code: 'ntc-2023' })).toMatchObject({ accepted: false });
+    expect(storage.write('code', 'ntc-2023')).toBe(false);
+    storage.flush();
+    expect(storage.rawDocument).toEqual(raw);
+    expect(persist).not.toHaveBeenCalled();
+    storage.dispose();
+  });
+
+  it('rejects an over-budget multi-entry batch without applying a partial write', () => {
+    const entries = Object.fromEntries(Array.from({ length: 15 }, (_, index) => [`f${index}`, Object.fromEntries(
+      Array.from({ length: 96 }, (_, field) => [`k${field}`, 'x'.repeat(32)]),
+    )]));
+    const storage = createProjectWorkbenchStorage(workbenchDoc(entries), vi.fn(), 60_000);
+    const before = storage.rawDocument;
+    const result = storage.commitBatch!({ extra: 'short', another: 'short' });
+    expect(result.accepted).toBe(false);
+    expect(storage.rawDocument).toEqual(before);
+    expect(storage.read('extra')).toBeUndefined();
+    storage.dispose();
+  });
+
+  it('uses valid bounded near-budget data to reject only the combined update batch', () => {
+    const memoryFields = Object.fromEntries(Array.from({ length: 41 }, (_, index) => [`f${index}`.padEnd(32, 'k'), 'v'.repeat(32)]));
+    const memory = Array.from({ length: 60 }, (_, index) => ({ id: `m${index}`, element: 'beam', code: 'ntc-2023', savedAt: '2026-10-09', fields: memoryFields }));
+    const fullRow = Object.fromEntries(Array.from({ length: 96 }, (_, index) => [`f${index}`.padEnd(32, 'k'), 'x'.repeat(32)]));
+    const entries = { memory, ...Object.fromEntries(Array.from({ length: 8 }, (_, index) => [`row${index}`, fullRow])), lastA: 'a', lastB: 'b' };
+    const initial = workbenchDoc(entries);
+    const serializedLength = JSON.stringify(initial).length;
+    expect(serializedLength).toBeLessThan(240_000);
+    expect(serializedLength).toBeGreaterThan(220_000);
+    expect(inspectDesignDocument(initial).status).toBe('supported');
+    const large = (key: string) => {
+      const candidate = createProjectWorkbenchStorage(initial, vi.fn(), 60_000);
+      const result = candidate.commitBatch!({ [key]: fullRow });
+      candidate.dispose();
+      return result;
+    };
+    expect(large('lastA').accepted).toBe(true);
+    expect(large('lastB').accepted).toBe(true);
+    const storage = createProjectWorkbenchStorage(initial, vi.fn(), 60_000);
+    const before = storage.rawDocument;
+    expect(storage.commitBatch!({ lastA: fullRow, lastB: fullRow }).accepted).toBe(false);
+    expect(storage.rawDocument).toEqual(before);
+    storage.dispose();
+  });
+
+  it('rolls browser fallback keys back after a localStorage quota failure', () => {
+    window.localStorage.clear();
+    window.localStorage.setItem('fstructure.design-workbench.code', '"e060"');
+    const original = Storage.prototype.setItem;
+    let calls = 0;
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      calls += 1;
+      if (calls === 2) throw new DOMException('quota', 'QuotaExceededError');
+      return original.call(this, key, value);
+    });
+    const result = browserWorkbenchStorage.commitBatch!({ code: 'ntc-2023', element: 'column' });
+    expect(result.accepted).toBe(false);
+    expect(window.localStorage.getItem('fstructure.design-workbench.code')).toBe('"e060"');
+    expect(window.localStorage.getItem('fstructure.design-workbench.element')).toBeNull();
+    vi.restoreAllMocks();
+    window.localStorage.clear();
+  });
+
+  it('keeps failed sink data pending and retry saves its complete current snapshot', async () => {
+    let failing = true;
+    const saved: JsonValue[] = [];
+    const storage = createProjectWorkbenchStorage(workbenchDoc({}), async (document) => {
+      if (failing) throw new Error('sink failed');
+      saved.push(document);
+    }, 60_000);
+    expect(storage.commitBatch!({ beam: { moment: '10' } }).accepted).toBe(true);
+    await expect(storage.flush()).rejects.toThrow('sink failed');
+    expect(storage.saveState).toMatchObject({ status: 'failed', pending: true });
+    failing = false;
+    await storage.retry();
+    expect(storage.saveState).toMatchObject({ status: 'saved', pending: false });
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toEqual(workbenchDoc({ beam: { moment: '10' } }, DESIGN_WORKBENCH_SCHEMA_VERSION));
+    storage.dispose();
+  });
+
+  it('does not let an older save completion clear a newer pending revision', async () => {
+    let resolveFirst!: () => void;
+    const persisted: JsonValue[] = [];
+    const storage = createProjectWorkbenchStorage(workbenchDoc({}), (document) => {
+      persisted.push(document);
+      if (persisted.length === 1) return new Promise<void>((resolve) => { resolveFirst = resolve; });
+    }, 60_000);
+    storage.commitBatch!({ beam: { moment: '10' } });
+    const firstFlush = storage.flush();
+    storage.commitBatch!({ beam: { moment: '20' } });
+    resolveFirst();
+    await firstFlush;
+    expect(storage.saveState).toMatchObject({ status: 'pending', pending: true });
+    await storage.flush();
+    expect(storage.saveState).toMatchObject({ status: 'saved', pending: false });
+    expect(persisted).toHaveLength(2);
+    expect(persisted[1]).toEqual(workbenchDoc({ beam: { moment: '20' } }, DESIGN_WORKBENCH_SCHEMA_VERSION));
+    storage.dispose();
+  });
+
   it('migrates v2 memory and retains the section studio draft and memory in v7', () => {
     const old = { id: 'a1', element: 'column', code: 'ntc-2023', savedAt: '2026-09-27', fields: { tag: 'C-1', width: '40' } };
     const section = { id: 'a2', element: 'section', code: 'ntc-2023', savedAt: '2026-10-01', fields: { tag: 'S-1', shape: 'octagonal', philosophy: 'allowable', cover: '4' } };
@@ -43,7 +163,7 @@ describe('design workbench document', () => {
     storage.dispose();
   });
 
-  it('keeps short strings, records of strings and short lists of records only', () => {
+  it('rejects the whole known document when any entry is invalid', () => {
     const parsed = parseWorkbenchDocument(workbenchDoc({
       code: 'nsr-10',
       beam: { width: '30', supportWidth: '45' },
@@ -53,7 +173,7 @@ describe('design workbench document', () => {
       long: 'x'.repeat(40),
       'Bad Key': 'no',
     }));
-    expect(parsed).toEqual({ code: 'nsr-10', beam: { width: '30', supportWidth: '45' }, 'beam-spans': [{ length: '5', dead: '10' }] });
+    expect(parsed).toEqual({});
   });
 
   it('reads v1 drafts and keeps a valid project memory', () => {
@@ -117,7 +237,7 @@ describe('design workbench document', () => {
     expect(parseWorkbenchDocument(workbenchDoc({ code: 'e060', beam: { width: '30' } }, schemaVersion))).toEqual({ code: 'e060', beam: { width: '30' } });
   });
 
-  it('batches writes and persists the whole document once', () => {
+  it('batches writes and persists the whole document once', async () => {
     vi.useFakeTimers();
     const persist = vi.fn<(value: JsonValue) => void>();
     const storage = createProjectWorkbenchStorage(workbenchDoc({ code: 'e060' }), persist, 500);
@@ -130,7 +250,7 @@ describe('design workbench document', () => {
     expect(persist).toHaveBeenCalledTimes(1);
     expect(persist).toHaveBeenLastCalledWith(workbenchDoc({ code: 'e060', element: 'column', column: { width: '40' } }, 7));
     storage.write('code', 'ntc-2023');
-    storage.flush();
+    await storage.flush();
     expect(persist).toHaveBeenCalledTimes(2);
     storage.write('column', { nested: { value: 1 } } as unknown as JsonValue);
     storage.dispose();

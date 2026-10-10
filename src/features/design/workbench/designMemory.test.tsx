@@ -512,7 +512,7 @@ it('arranques repetidos dejan piezas recuperables e independientes', () => {
 
 it('conserva el id de ejercicio en borrador, memoria de proyecto y al reabrir sin cambiar el esquema', () => {
   const writes: unknown[] = [];
-  const storage = createProjectWorkbenchStorage({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 6, entries: {} }, (document) => writes.push(document), 0);
+  const storage = createProjectWorkbenchStorage({ kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 6, entries: {} }, (document) => { writes.push(document); }, 0);
   const recipe = legacyBeamExercise;
   const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
 
