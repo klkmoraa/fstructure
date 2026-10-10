@@ -5,6 +5,10 @@ import { FLEXURE_DEFAULTS, flexurePublishedReport, flexureReport, flexureToInput
 import { designFlexureExercise, type FlexureDimensionBounds } from '../../../design/elements/flexureExercise';
 import type { DesignReport } from './designReport';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
+import { REBAR_SIZES } from '../../../design/elements/shared';
+import { ReinforcementAlternatives } from './ReinforcementAlternatives';
+import { startReinforcementAlternatives, type ReinforcementAlternativesRequest, type ReinforcementAlternativesResponse } from './reinforcementAlternativesClient';
+import type { ReinforcementCandidate, ReinforcementObjective } from '../../../design/elements/reinforcementAlternatives';
 
 const BOUNDS: FlexureDimensionBounds = { widthMinMm: 200, widthMaxMm: 600, heightMinMm: 250, heightMaxMm: 1500, stepMm: 50 };
 const complete = (draft: FlexureDraft, requireSection = true) => {
@@ -27,7 +31,47 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const [appliedInputKey, setAppliedInputKey] = useState('');
   const requestId = useRef(0);
   const [proposalState, setProposalState] = useState<'idle' | 'searching' | 'none' | 'error'>('idle');
+  const [alternativeObjective, setAlternativeObjective] = useState<ReinforcementObjective>('minimum-steel');
+  const [availableDiameters, setAvailableDiameters] = useState<number[]>(() => REBAR_SIZES.map((bar) => bar.diameterMm));
+  const [alternatives, setAlternatives] = useState<ReinforcementAlternativesResponse | null>(null);
+  const [alternativeSearch, setAlternativeSearch] = useState(false);
+  const alternativeRequest = useRef<{ key: string; cancel: () => void } | null>(null);
+  const alternativeRequestId = useRef(0);
   const inputKey = JSON.stringify(input);
+  const alternativesKey = JSON.stringify({ input, objective: alternativeObjective, stock: availableDiameters });
+  const alternativesKeyRef = useRef(alternativesKey);
+  alternativesKeyRef.current = alternativesKey;
+  useEffect(() => {
+    if (alternativeRequest.current && alternativeRequest.current.key !== alternativesKey) {
+      alternativeRequest.current.cancel(); alternativeRequest.current = null; setAlternativeSearch(false); setAlternatives(null);
+    }
+    setAlternatives(null);
+  }, [alternativesKey]);
+  useEffect(() => () => alternativeRequest.current?.cancel(), []);
+  const runAlternatives = () => {
+    if (alternativeRequest.current) { alternativeRequest.current.cancel(); alternativeRequest.current = null; setAlternativeSearch(false); return; }
+    if (!complete(draft) || (objective !== 'check' && objective !== 'required')) return;
+    const requestId = ++alternativeRequestId.current;
+    const key = alternativesKey;
+    const request: ReinforcementAlternativesRequest = {
+      kind: 'flexure', requestId, input, objective: alternativeObjective,
+      ...(alternativeObjective === 'available-bars' ? { availableDiametersMm: availableDiameters } : {}),
+    };
+    setAlternatives(null); setAlternativeSearch(true);
+    const cancel = startReinforcementAlternatives(request, (response: ReinforcementAlternativesResponse) => {
+      alternativeRequest.current = null; setAlternativeSearch(false);
+      if (alternativesKeyRef.current !== key) return;
+      setAlternatives(response);
+    });
+    alternativeRequest.current = { key, cancel };
+  };
+  const applyAlternative = (candidate: ReinforcementCandidate) => {
+    const bed = candidate.reinforcement.bed;
+    const next = { ...draft, objective: 'check', [bed === 'top' ? 'topCount' : 'bottomCount']: String(candidate.reinforcement.group.count), [bed === 'top' ? 'topBar' : 'bottomBar']: String(candidate.reinforcement.group.diameterMm) };
+    replace(next);
+    setAlternatives(null);
+    setAlternativeSearch(false);
+  };
   useEffect(() => {
     const id = ++requestId.current;
     setProposal(null);
@@ -51,6 +95,8 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const tensionBed = draft.moment.trim() !== '' && Number.isFinite(Number(draft.moment)) ? (Number(draft.moment) < 0 ? 'top' : 'bottom') : null;
   const preview = objective === 'dimensions' && proposal?.key === inputKey && appliedInputKey !== inputKey ? proposal : null;
   const visibleResult = preview?.result ?? result;
+  const visibleWidthMm = preview?.widthMm ?? input.widthMm;
+  const visibleHeightMm = preview?.heightMm ?? input.heightMm;
   const visibleReport = useMemo(() => preview
     ? flexureReport(chrome.code, { ...draft, width: String(preview.widthMm / 10), height: String(preview.heightMm / 10) }) : report, [preview, chrome.code, draft, report]);
   const publishedReport = flexurePublishedReport(objective, inputKey, appliedInputKey, Boolean(preview), report);
@@ -92,12 +138,30 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <button type="button" className="dw-inline-action" onClick={() => { const next = { ...draft, width: String(preview.widthMm / 10), height: String(preview.heightMm / 10) }; setAppliedInputKey(JSON.stringify(flexureToInput(chrome.code, next))); replace(next); }}>Aplicar dimensiones</button>
           <button type="button" className="dw-inline-action" onClick={() => { setProposal(null); set('objective')('required'); }}>Descartar</button></div> : null}
       </FieldGroup> : null}
+      {(objective === 'check' || objective === 'required') ? <FieldGroup title="Alternativas de armado · sección fija" columns={1}>
+        <Select label="Criterio de comparación" value={alternativeObjective} onChange={(event) => setAlternativeObjective(event.currentTarget.value as ReinforcementObjective)}>
+          <option value="minimum-steel">Menor área de acero</option><option value="few-diameters">Menos diámetros</option><option value="available-bars">Diámetros disponibles</option>
+        </Select>
+        {alternativeObjective === 'available-bars' ? <details className="dw-span-all"><summary>Diámetros en existencia · solo esta sesión</summary>
+          <div className="dw-group__grid" data-columns={3}>{REBAR_SIZES.map((bar) => <label key={bar.diameterMm} className="dw-check"><input type="checkbox" checked={availableDiameters.includes(bar.diameterMm)} onChange={(event) => { const checked = event.currentTarget.checked; setAvailableDiameters((current) => checked ? [...new Set([...current, bar.diameterMm])].sort((a, b) => a - b) : current.filter((value) => value !== bar.diameterMm)); }} /> Ø {bar.diameterMm} mm</label>)}</div>
+        </details> : null}
+        <button type="button" className="dw-inline-action" onClick={runAlternatives}>{alternativeSearch ? 'Cancelar comparación' : 'Comparar armados'}</button>
+        {alternativeSearch ? <p role="status">Comparando opciones con el mismo momento, sección y materiales…</p> : null}
+        {alternatives ? <ReinforcementAlternatives candidates={alternatives.candidates} onApply={applyAlternative} /> : null}
+        {alternatives?.reason === 'empty-stock' ? <p role="alert">Selecciona al menos un diámetro disponible del catálogo para comparar.</p> : null}
+        {alternatives?.reason === 'no-feasible-candidate' ? <p role="status">Ninguna combinación del catálogo cabe y pasa las verificaciones evaluadas para esta geometría y Mu.</p> : null}
+        {alternatives?.error ? <p role="alert">No se pudo ejecutar la comparación en segundo plano. Las entradas siguen disponibles.</p> : null}
+        <p className="dw-help">El peso estima barras longitudinales de 1 m y excluye estribos y anclajes. Cortante, desarrollo, servicio, axial y biaxial siguen fuera de alcance. Las disponibilidades duran esta sesión.</p>
+      </FieldGroup> : null}
     </>}
     stage={<Plate title="Sección rectangular" note={visibleResult ? `Mu ${formatNumber(input.momentKnM)} kN·m · tensión ${visibleResult.layout.tensionBed === 'top' ? 'arriba' : 'abajo'}` : 'Captura el momento, sección y materiales dados.'}>
       <svg viewBox="0 0 320 220" role="img" aria-label="Esquema de sección rectangular a flexión">
         <rect x="90" y="30" width="140" height="160" fill="none" stroke="currentColor" strokeWidth="2" />
-        {visibleResult?.layout.bars?.map((bar, index) => <circle key={index} cx={90 + bar.xMm / 3} cy={visibleResult.layout.tensionBed === 'bottom' ? 190 - bar.fromFaceMm / 3 : 30 + bar.fromFaceMm / 3} r="5" fill="currentColor" />)}
-        <text fill="currentColor" x="160" y="18" textAnchor="middle">b = {draft.width || '—'} cm</text><text fill="currentColor" x="244" y="110">h = {draft.height || '—'} cm</text>
+        {visibleResult?.layout.bars?.map((bar, index) => {
+          const scale = Math.min(140 / visibleWidthMm, 160 / visibleHeightMm);
+          return <circle key={index} cx={90 + bar.xMm / visibleWidthMm * 140} cy={visibleResult.layout.tensionBed === 'bottom' ? 190 - bar.fromFaceMm / visibleHeightMm * 160 : 30 + bar.fromFaceMm / visibleHeightMm * 160} r={Math.max(1, Math.min(5, bar.diameterMm * scale / 2))} fill="currentColor" />;
+        })}
+        <text fill="currentColor" x="160" y="18" textAnchor="middle">b = {preview ? formatNumber(visibleWidthMm / 10, 0) : draft.width || '—'} cm</text><text fill="currentColor" x="244" y="110">h = {preview ? formatNumber(visibleHeightMm / 10, 0) : draft.height || '—'} cm</text>
         <text fill="currentColor" x="160" y="212" textAnchor="middle">{visibleResult ? `Lecho a tensión ${visibleResult.layout.tensionBed === 'top' ? 'superior' : 'inferior'}` : 'Sección sin escalar'}</text>
       </svg>
     </Plate>}

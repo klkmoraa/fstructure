@@ -11,7 +11,9 @@ import {
 } from './common';
 import { Plate, WorkbenchLayout, type WorkbenchChrome } from './WorkbenchLayout';
 import { MaterialFields } from './MaterialFields';
-import { startReinforcementProposal } from './reinforcementProposal';
+import { ReinforcementAlternatives } from './ReinforcementAlternatives';
+import { startReinforcementAlternatives, type ReinforcementAlternativesRequest, type ReinforcementAlternativesResponse } from './reinforcementAlternativesClient';
+import type { ReinforcementCandidate, ReinforcementObjective } from '../../../design/elements/reinforcementAlternatives';
 import './concreteStudio.css';
 
 const DRAWINGS = [
@@ -27,12 +29,14 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
   const [drawing, setDrawing] = useState<string>('section');
   const [actionNote, setActionNote] = useState<string | null>(null);
   const [proposing, setProposing] = useState(false);
-  const [proposalCatalog, setProposalCatalog] = useState<'selected' | 'catalog'>('selected');
+  const [alternativeObjective, setAlternativeObjective] = useState<ReinforcementObjective>('minimum-steel');
+  const [availableDiameters, setAvailableDiameters] = useState<number[]>(() => REBAR_SIZES.map((bar) => bar.diameterMm));
+  const [alternatives, setAlternatives] = useState<ReinforcementAlternativesResponse | null>(null);
   const requestId = useRef(0);
   const activeProposal = useRef<{ key: string; cancel: () => void } | null>(null);
-  const snapshotRef = useRef(draft);
-  snapshotRef.current = draft;
-  const snapshotKey = JSON.stringify({ code: chrome.code, draft });
+  const snapshotKey = JSON.stringify({ code: chrome.code, draft, objective: alternativeObjective, stock: availableDiameters });
+  const snapshotKeyRef = useRef(snapshotKey);
+  snapshotKeyRef.current = snapshotKey;
   useEffect(() => {
     const active = activeProposal.current;
     if (active && active.key !== snapshotKey) {
@@ -41,6 +45,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
       setProposing(false);
       setActionNote('Búsqueda cancelada: cambiaron los datos de entrada.');
     }
+    setAlternatives(null);
   }, [snapshotKey]);
   useEffect(() => () => activeProposal.current?.cancel(), []);
   const philosophy = sectionPhilosophy(draft);
@@ -56,25 +61,16 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
     if (sectionDraftErrors(draft).length > 0) return;
     activeProposal.current?.cancel();
     const id = ++requestId.current;
-    const key = JSON.stringify({ code: chrome.code, draft });
+    const key = snapshotKey;
     setProposing(true);
-    setActionNote(null);
-    const cancel = startReinforcementProposal({
-      kind: 'section', requestId: id, snapshot: { ...draft },
-      ...(proposalCatalog === 'catalog' ? { diametersMm: REBAR_SIZES.map((size) => size.diameterMm) } : {}),
-    }, (message) => {
+    setActionNote(null); setAlternatives(null);
+    const request: ReinforcementAlternativesRequest = { kind: 'section', requestId: id, input: sectionInput(draft), objective: alternativeObjective,
+      ...(alternativeObjective === 'available-bars' ? { availableDiametersMm: availableDiameters } : {}) };
+    const cancel = startReinforcementAlternatives(request, (message: ReinforcementAlternativesResponse) => {
       activeProposal.current = null;
       setProposing(false);
-      const current = snapshotRef.current;
-      if (JSON.stringify({ code: chrome.code, draft: current }) !== key) return;
-      if (message.kind === 'failed') { setActionNote(message.reason); return; }
-      replace({ ...current, ...message.fields });
-      const distribution = current.barLayout === 'layers'
-        ? `${message.fields.topBarCount} superiores · ${message.fields.bottomBarCount} inferiores`
-        : current.barLayout === 'zones'
-          ? `${message.fields.cornerBarCount} por esquina · ${message.fields.faceBarCount} por cara, grupos separados`
-          : `${message.fields.barCount} barras en perímetro`;
-      setActionNote(`Propuesta: ${distribution} de ${rebarLabel(Number(message.fields.bar))}; estribos @ ${message.fields.tieSpacing} cm. Revisa el alcance, la separación libre y el área As.`);
+      if (snapshotKeyRef.current !== key) return;
+      setAlternatives(message);
     });
     activeProposal.current = { key, cancel };
   };
@@ -82,7 +78,13 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
     activeProposal.current?.cancel();
     activeProposal.current = null;
     setProposing(false);
+    setAlternatives(null);
     setActionNote('Búsqueda cancelada.');
+  };
+  const applyAlternative = (candidate: ReinforcementCandidate) => {
+    replace({ ...draft, ...candidate.applyFields });
+    setAlternatives(null);
+    setActionNote('Armado experimental aplicado al borrador. El historial puede deshacerlo; revisa las exclusiones del modelo.');
   };
   const chooseShape = (shape: string) => {
     const sides = shape === 'triangle' ? 3 : shape === 'hexagon' ? 6 : shape === 'octagon' ? 8 : 0;
@@ -118,14 +120,26 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
         <NumberField label="Momento M" value={draft.moment} unit="kN·m" min={-1e9} onChange={set('moment')} />
         <NumberField label="Cortante V · sin verificar" value={draft.shear} unit="kN" min={-1e9} onChange={set('shear')} />
       </FieldGroup>
-      <FieldGroup title="Acero longitudinal" action={<InlineAction label={proposing ? 'Cancelar búsqueda' : 'Proponer acero'} title="Buscar armado con el diámetro elegido o comparar el catálogo" onClick={proposing ? cancelProposal : propose} disabled={!proposing && sectionDraftErrors(draft).length > 0} />}>
+      <FieldGroup title="Acero longitudinal" action={<InlineAction label={proposing ? 'Cancelar búsqueda' : 'Comparar acero'} title="Comparar armados con el motor experimental de sección" onClick={proposing ? cancelProposal : propose} disabled={!proposing && sectionDraftErrors(draft).length > 0} />}>
         {rectangular ? <div className="dw-span-all"><SegmentedControl label="Distribución longitudinal" size="sm" value={draft.barLayout} onValueChange={set('barLayout')} options={[{ value: 'perimeter', label: 'Perímetro' }, { value: 'layers', label: 'Lechos' }, { value: 'zones', label: 'Grupos separados' }]} /></div> : null}
         <BarSelect label="Diámetro longitudinal" value={draft.bar} onChange={set('bar')} />
-        <div className="dw-span-all"><SegmentedControl label="Búsqueda de sección" size="sm" value={proposalCatalog} onValueChange={(value) => setProposalCatalog(value === 'catalog' ? 'catalog' : 'selected')} options={[{ value: 'selected', label: 'Diámetro elegido' }, { value: 'catalog', label: 'Comparar catálogo' }]} /></div>
         {layered ? <><NumberField label="Barras superiores" value={draft.topBarCount} unit="pzas" onChange={set('topBarCount')} /><NumberField label="Barras inferiores" value={draft.bottomBarCount} unit="pzas" onChange={set('bottomBarCount')} /></>
           : draft.barLayout === 'zones' ? <><NumberField label="Barras por esquina" value={draft.cornerBarCount} unit="pzas" min={1} max={3} onChange={set('cornerBarCount')} /><NumberField label="Barras por cara" value={draft.faceBarCount} unit="pzas" min={0} max={3} onChange={set('faceBarCount')} /><p className="cs-philosophy-note dw-span-all">Los grupos de esquina y de cara se distribuyen por separado; una cara puede tener 0–3 barras.</p></>
             : <NumberField label="Número de barras" value={draft.barCount} unit="pzas" min={2} onChange={set('barCount')} />}
         <div className="dw-span-all"><ActionNote text={actionNote} /></div>
+        <Disclosure label="Alternativas constructivas · Experimental">
+          <Select label="Criterio de comparación" value={alternativeObjective} onChange={(event) => setAlternativeObjective(event.currentTarget.value as ReinforcementObjective)}>
+            <option value="minimum-steel">Menor área de acero</option><option value="few-diameters">Menos diámetros</option><option value="available-bars">Diámetros disponibles</option>
+          </Select>
+          {alternativeObjective === 'available-bars' ? <details className="dw-span-all"><summary>Diámetros en existencia · solo esta sesión</summary>
+            <div className="dw-group__grid" data-columns={3}>{REBAR_SIZES.map((bar) => <label key={bar.diameterMm} className="dw-check"><input type="checkbox" checked={availableDiameters.includes(bar.diameterMm)} onChange={(event) => { const checked = event.currentTarget.checked; setAvailableDiameters((current) => checked ? [...new Set([...current, bar.diameterMm])].sort((a, b) => a - b) : current.filter((value) => value !== bar.diameterMm)); }} /> Ø {bar.diameterMm} mm</label>)}</div>
+          </details> : null}
+          {alternatives ? <ReinforcementAlternatives candidates={alternatives.candidates} onApply={applyAlternative} /> : null}
+          {alternatives?.reason === 'empty-stock' ? <p role="alert">Selecciona diámetros del catálogo para comparar.</p> : null}
+          {alternatives?.reason === 'no-feasible-candidate' ? <p role="status">No se encontró una opción dentro del motor Experimental; revisa el eje, el acomodo y las acciones.</p> : null}
+          {alternatives?.error ? <p role="alert">No se pudo ejecutar la comparación en segundo plano. Las entradas siguen disponibles.</p> : null}
+          <p className="dw-help">Las opciones conservan la geometría y acciones y siguen siendo Experimental. Cortante, anclaje, esbeltez y requisitos normativos no se acreditan.</p>
+        </Disclosure>
       </FieldGroup>
       <FieldGroup title="Estribos y recubrimiento">
         <div className="dw-span-all"><Select label="Refuerzo transversal" value={draft.tieType} onChange={(event) => set('tieType')(event.currentTarget.value)}>

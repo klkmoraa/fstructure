@@ -41,10 +41,15 @@ export const flexureToInput = (code: DesignCodeId, draft: FlexureDraft): Flexure
 
 const cm2 = (value: number) => `${formatNumber(value / 100, 2)} cm²`;
 const barsText = (count: string, diameter: string) => `${count} Ø${formatNumber(parseNumber(diameter), 1)}`;
-const figure = (result: ReturnType<typeof designFlexureExercise>): ReactElement => <svg viewBox="0 0 240 180" role="img" aria-label="Sección rectangular y lecho a tensión">
+const figure = (result: ReturnType<typeof designFlexureExercise>, widthMm: number, heightMm: number): ReactElement => <svg viewBox="0 0 240 180" role="img" aria-label="Sección rectangular y lecho a tensión">
   <rect x="55" y="20" width="130" height="140" fill="none" stroke="currentColor" strokeWidth="2" />
   <text fill="currentColor" x="120" y="14" textAnchor="middle" fontSize="11">b</text><text fill="currentColor" x="192" y="93" fontSize="11">h</text>
-  {(result.layout.bars ?? []).map((bar, index) => <circle key={index} cx={55 + bar.xMm / 4} cy={result.layout.tensionBed === 'bottom' ? 160 - bar.fromFaceMm / 4 : 20 + bar.fromFaceMm / 4} r={Math.max(2, bar.diameterMm / 5)} fill="currentColor" />)}
+  {(result.layout.bars ?? []).map((bar, index) => {
+    const xScale = 130 / widthMm;
+    const yScale = 140 / heightMm;
+    const symbolScale = Math.min(xScale, yScale);
+    return <circle key={index} cx={55 + bar.xMm * xScale} cy={result.layout.tensionBed === 'bottom' ? 160 - bar.fromFaceMm * yScale : 20 + bar.fromFaceMm * yScale} r={Math.max(1, Math.min(5, bar.diameterMm * symbolScale / 2))} fill="currentColor" />;
+  })}
   <text fill="currentColor" x="120" y="174" textAnchor="middle" fontSize="10">Lecho a tensión: {result.layout.tensionBed === 'bottom' ? 'inferior' : 'superior'}</text>
 </svg>;
 
@@ -107,7 +112,7 @@ export function flexureReport(codeId: DesignCodeId, draft: FlexureDraft): Design
       { symbol: 'd', label: checking ? 'Peralte efectivo al centroide del acero extremo' : 'Peralte efectivo estimado con armado de referencia', value: `${formatNumber(result.effectiveDepthMm, 1)} mm` },
       ...(checking ? [{ symbol: 'φMn', label: 'Resistencia del armado proporcionado', value: `${formatNumber(result.capacityKnM)} kN·m` }] : []),
     ], tables: [], takeoff: { lines: [], steelKg: 0, concreteM3: 0, steelRatioKgM3: 0, basis: 'No se cuantifica: falta longitud de la pieza.' },
-    figures: [{ title: 'Sección y lecho a tensión', note: 'Esquema; dimensiones en mm. Sólo se contabiliza el acero del lecho a tensión.', render: () => figure(result) }],
+    figures: [{ title: 'Sección y lecho a tensión', note: 'Esquema; dimensiones en mm. Sólo se contabiliza el acero del lecho a tensión.', render: () => figure(result, parseNumber(draft.width) * 10, parseNumber(draft.height) * 10) }],
   };
 }
 

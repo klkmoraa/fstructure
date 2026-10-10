@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
 import { MAX_SPANS, barsText, beamClearSpanMm, designBeam, flangeWidthLimit } from '../../../design/elements/beam';
@@ -9,7 +9,7 @@ import { BeamDetailEditor } from './BeamDetailEditor';
 import { EMPTY_BEAM_DETAILS, useStoredBeamDetails } from './beamDetailDraft';
 import { parseBeamDetails } from './beamDetailInput';
 import {
-  BEAM_DEFAULTS, DEFAULT_SPANS, END_LABEL, ENDS, beamSupportPreset, bastionDetail, bastionTitle, beamReport, beamToInput, cm, describeBeam, meters, parseSpans, proposeBeamSection, slabLineLoads, stirrupText,
+  BEAM_DEFAULTS, DEFAULT_SPANS, END_LABEL, ENDS, beamSupportPreset, bastionDetail, bastionTitle, beamReport, beamToInput, cm, describeBeam, meters, parseSpans, slabLineLoads, stirrupText,
   type SpanDraft,
 } from './beamModel';
 import {
@@ -18,6 +18,11 @@ import {
 } from './common';
 import { useWorkbenchStorage } from './workbenchStorage';
 import { MaterialFields } from './MaterialFields';
+import { startBeamSectionProposal, type BeamSectionProposalReply } from './beamSectionProposal';
+import { ReinforcementAlternatives } from './ReinforcementAlternatives';
+import { startReinforcementAlternatives, type ReinforcementAlternativesRequest, type ReinforcementAlternativesResponse } from './reinforcementAlternativesClient';
+import { REBAR_SIZES } from '../../../design/elements/shared';
+import type { ReinforcementCandidate, ReinforcementObjective } from '../../../design/elements/reinforcementAlternatives';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 type SpanColumn = { field: keyof SpanDraft; label: string; unit: string };
@@ -132,13 +137,73 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const outOfScope = report?.outOfScope ?? [];
   const title = report?.title ?? '';
   const [sectionNote, setSectionNote] = useState<string | null>(null);
+  const [alternativeObjective, setAlternativeObjective] = useState<ReinforcementObjective>('minimum-steel');
+  const [availableDiameters, setAvailableDiameters] = useState<number[]>(() => REBAR_SIZES.map((bar) => bar.diameterMm));
+  const [alternatives, setAlternatives] = useState<ReinforcementAlternativesResponse | null>(null);
+  const [alternativeSearch, setAlternativeSearch] = useState(false);
+  const alternativeRequest = useRef<{ key: string; cancel: () => void } | null>(null);
+  const alternativeRequestId = useRef(0);
+  const alternativeInput = useMemo(() => beamToInput(chrome.code, { ...draft, rebarMode: 'own' }, spans, true, detailsDraft), [chrome.code, draft, spans, detailsDraft]);
+  const alternativeKey = JSON.stringify({ input: alternativeInput, objective: alternativeObjective, stock: availableDiameters });
+  const alternativeKeyRef = useRef(alternativeKey);
+  alternativeKeyRef.current = alternativeKey;
+  useEffect(() => {
+    if (alternativeRequest.current && alternativeRequest.current.key !== alternativeKey) {
+      alternativeRequest.current.cancel(); alternativeRequest.current = null; setAlternativeSearch(false); setAlternatives(null);
+    }
+    setAlternatives(null);
+  }, [alternativeKey]);
+  useEffect(() => () => alternativeRequest.current?.cancel(), []);
+  const [sectionSearch, setSectionSearch] = useState(false);
+  const [sectionPreview, setSectionPreview] = useState<{ key: string; width: string; height: string } | null>(null);
+  const sectionRequest = useRef<{ key: string; cancel: () => void } | null>(null);
+  const sectionRequestId = useRef(0);
+  const sectionSnapshotKey = JSON.stringify({ code: chrome.code, draft, spans, details: detailsDraft });
+  const sectionSnapshotRef = useRef(sectionSnapshotKey);
+  sectionSnapshotRef.current = sectionSnapshotKey;
+  useEffect(() => {
+    if (sectionRequest.current && sectionRequest.current.key !== sectionSnapshotKey) {
+      sectionRequest.current.cancel(); sectionRequest.current = null; setSectionSearch(false); setSectionPreview(null);
+      setSectionNote('Búsqueda cancelada: cambiaron los datos de entrada.');
+    }
+  }, [sectionSnapshotKey]);
+  useEffect(() => { setSectionPreview((current) => current?.key === sectionSnapshotKey ? current : null); }, [sectionSnapshotKey]);
+  useEffect(() => () => sectionRequest.current?.cancel(), []);
   const [loadNote, setLoadNote] = useState<string | null>(null);
   const slab = slabLineLoads(draft);
   const proposeSection = () => {
-    const proposal = proposeBeamSection(chrome.code, draft, spans, detailsDraft);
-    if (!proposal) { setSectionNote('Ninguna sección hasta 50 × 150 cm cumple con el armado propuesto: revisa claros y cargas.'); return; }
-    replace({ ...draft, ...proposal });
-    setSectionNote(`Sección propuesta: ${proposal.width} × ${proposal.height} cm, la de menor área que cumple ${draft.rebarMode === 'own' ? 'con el armado propio y sus regiones' : 'con armado automático'} y las cargas capturadas.`);
+    if (sectionRequest.current) { sectionRequest.current.cancel(); sectionRequest.current = null; setSectionSearch(false); setSectionNote('Búsqueda cancelada.'); return; }
+    const requestId = ++sectionRequestId.current;
+    const key = sectionSnapshotKey;
+    setSectionPreview(null); setSectionNote(null); setSectionSearch(true);
+    const cancel = startBeamSectionProposal({ requestId, code: chrome.code, draft, spans, details: detailsDraft }, (reply: BeamSectionProposalReply) => {
+      sectionRequest.current = null; setSectionSearch(false);
+      if (sectionSnapshotRef.current !== key) return;
+      if (reply.error) { setSectionNote(reply.error); return; }
+      if (!reply.proposal) { setSectionNote('Ninguna sección hasta 50 × 150 cm cumple con el armado propuesto: revisa claros y cargas.'); return; }
+      setSectionPreview({ key, ...reply.proposal });
+    });
+    sectionRequest.current = { key, cancel };
+  };
+  const compareReinforcement = () => {
+    if (alternativeRequest.current) { alternativeRequest.current.cancel(); alternativeRequest.current = null; setAlternativeSearch(false); return; }
+    if (parsedDetails.errors.length || detailModeErrors.length) return;
+    const requestId = ++alternativeRequestId.current;
+    const key = alternativeKey;
+    const request: ReinforcementAlternativesRequest = { kind: 'beam', requestId, input: alternativeInput, objective: alternativeObjective,
+      ...(alternativeObjective === 'available-bars' ? { availableDiametersMm: availableDiameters } : {}) };
+    setAlternatives(null); setAlternativeSearch(true);
+    const cancel = startReinforcementAlternatives(request, (response: ReinforcementAlternativesResponse) => {
+      alternativeRequest.current = null; setAlternativeSearch(false);
+      if (alternativeKeyRef.current !== key) return;
+      setAlternatives(response);
+    });
+    alternativeRequest.current = { key, cancel };
+  };
+  const applyReinforcement = (candidate: ReinforcementCandidate) => {
+    replace({ ...draft, ...candidate.applyFields });
+    setAlternatives(null);
+    setSectionNote('Armado aplicado con geometría, cargas y detalle capturados. Deshacer recupera el armado anterior.');
   };
   const applySlab = () => {
     if (!slab) return;
@@ -216,7 +281,28 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <div className="dw-end"><span aria-hidden="true">Izquierdo</span><SegmentedControl label="Extremo izquierdo" size="sm" value={draft.leftEnd} options={ENDS} onValueChange={set('leftEnd')} /></div>
         <div className="dw-end"><span aria-hidden="true">Derecho</span><SegmentedControl label="Extremo derecho" size="sm" value={draft.rightEnd} options={ENDS} onValueChange={set('rightEnd')} /></div>
       </FieldGroup>
-      <FieldGroup title="Geometría y materiales" action={<InlineAction label="Proponer sección" title="Dimensionar: la sección de menor área que cumple" onClick={proposeSection} />}>
+      <FieldGroup title="Geometría y materiales" action={<InlineAction label={sectionSearch ? 'Cancelar búsqueda' : 'Proponer sección'} title="Dimensionar: la sección de menor área que cumple" onClick={proposeSection} />}>
+        {sectionNote ? <p className="dw-span-all" role="status">{sectionNote}</p> : null}
+        {sectionPreview?.key === sectionSnapshotKey ? <div className="dw-action-note dw-span-all" role="status">
+          <span>Vista previa: {sectionPreview.width} × {sectionPreview.height} cm. Se conservan claros, cargas, detalle y armado actual.</span>
+          <button type="button" className="dw-inline-action" onClick={() => { replace({ ...draft, width: sectionPreview.width, height: sectionPreview.height }); setSectionNote(`Sección aplicada: ${sectionPreview.width} × ${sectionPreview.height} cm.`); setSectionPreview(null); }}>Aplicar sección</button>
+          <button type="button" className="dw-inline-action" onClick={() => { setSectionPreview(null); setSectionNote('Propuesta descartada.'); }}>Descartar</button>
+        </div> : null}
+        <Disclosure label="Alternativas de acero · geometría fija">
+          <Select label="Criterio de comparación" value={alternativeObjective} onChange={(event) => setAlternativeObjective(event.currentTarget.value as ReinforcementObjective)}>
+            <option value="minimum-steel">Menor área de acero</option><option value="few-diameters">Menos diámetros</option><option value="available-bars">Diámetros disponibles</option>
+          </Select>
+          {alternativeObjective === 'available-bars' ? <details className="dw-span-all"><summary>Diámetros en existencia · solo esta sesión</summary>
+            <div className="dw-group__grid" data-columns={3}>{REBAR_SIZES.map((bar) => <label key={bar.diameterMm} className="dw-check"><input type="checkbox" checked={availableDiameters.includes(bar.diameterMm)} onChange={(event) => { const checked = event.currentTarget.checked; setAvailableDiameters((current) => checked ? [...new Set([...current, bar.diameterMm])].sort((a, b) => a - b) : current.filter((value) => value !== bar.diameterMm)); }} /> Ø {bar.diameterMm} mm</label>)}</div>
+          </details> : null}
+          <button type="button" className="dw-inline-action" onClick={compareReinforcement}>{alternativeSearch ? 'Cancelar comparación' : 'Comparar armados'}</button>
+          {alternativeSearch ? <p role="status">Comprobando armado físico con los mismos claros, acciones y detalles…</p> : null}
+          {alternatives ? <ReinforcementAlternatives candidates={alternatives.candidates} onApply={applyReinforcement} /> : null}
+          {alternatives?.reason === 'empty-stock' ? <p role="alert">Selecciona diámetros disponibles del catálogo.</p> : null}
+          {alternatives?.reason === 'no-feasible-candidate' ? <p role="status">No hay armado que pase las verificaciones evaluadas con estos claros, cargas y regiones.</p> : null}
+          {alternatives?.error ? <p role="alert">No se pudo ejecutar la comparación en segundo plano. Las entradas siguen disponibles.</p> : null}
+          <p className="dw-help">Peso estimado con barras principales continuas en la longitud total; bastones, estribos y anclajes excluidos. Se comprueban los estados de flexión y detalle que evalúa el motor.</p>
+        </Disclosure>
         <div className="dw-span-all">
           <SegmentedControl label="Tipo de viga" size="sm" value={flanged ? draft.sectionType : 'rect'} onValueChange={set('sectionType')}
             options={[{ value: 'rect', label: 'Rectangular' }, { value: 'T', label: 'T' }, { value: 'L', label: 'L' }]} />

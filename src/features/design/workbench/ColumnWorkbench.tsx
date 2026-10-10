@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SegmentedControl } from '../../../design-system/components/controls';
+import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
 import { designCode } from '../../../design/elements/codes';
 import { designColumn } from '../../../design/elements/column';
@@ -13,7 +13,10 @@ import {
 } from './common';
 import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 import { MaterialFields } from './MaterialFields';
-import { startReinforcementProposal, type ReinforcementProposalRequest } from './reinforcementProposal';
+import { REBAR_SIZES } from '../../../design/elements/shared';
+import { ReinforcementAlternatives } from './ReinforcementAlternatives';
+import { startReinforcementAlternatives, type ReinforcementAlternativesRequest, type ReinforcementAlternativesResponse } from './reinforcementAlternativesClient';
+import type { ReinforcementCandidate, ReinforcementObjective } from '../../../design/elements/reinforcementAlternatives';
 
 export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('column', COLUMN_DEFAULTS);
@@ -27,11 +30,15 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const spiral = circular && draft.transverse === 'spiral' && code.column.spiral !== null;
   const [proposalNote, setProposalNote] = useState<string | null>(null);
   const [reinforcementSearch, setReinforcementSearch] = useState(false);
+  const [alternativeObjective, setAlternativeObjective] = useState<ReinforcementObjective>('minimum-steel');
+  const [availableDiameters, setAvailableDiameters] = useState<number[]>(() => REBAR_SIZES.map((bar) => bar.diameterMm));
+  const [alternatives, setAlternatives] = useState<ReinforcementAlternativesResponse | null>(null);
   const requestId = useRef(0);
   const activeProposal = useRef<{ key: string; cancel: () => void } | null>(null);
-  const snapshotRef = useRef({ code: chrome.code, draft });
-  snapshotRef.current = { code: chrome.code, draft };
-  const snapshotKey = JSON.stringify({ code: chrome.code, draft });
+  const alternativeKey = JSON.stringify({ code: chrome.code, draft, objective: alternativeObjective, stock: availableDiameters });
+  const alternativeKeyRef = useRef(alternativeKey);
+  alternativeKeyRef.current = alternativeKey;
+  const snapshotKey = alternativeKey;
   useEffect(() => {
     const active = activeProposal.current;
     if (active && active.key !== snapshotKey) {
@@ -40,6 +47,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       setReinforcementSearch(false);
       setProposalNote('Búsqueda cancelada: cambiaron los datos de entrada.');
     }
+    setAlternatives(null);
   }, [snapshotKey]);
   useEffect(() => () => activeProposal.current?.cancel(), []);
   const [diagramAxis, setDiagramAxis] = useState<'both' | 'x' | 'y'>('both');
@@ -54,21 +62,23 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const proposeReinforcement = () => {
     activeProposal.current?.cancel();
     const id = ++requestId.current;
-    const key = JSON.stringify({ code: chrome.code, draft });
-    const request: ReinforcementProposalRequest = { kind: 'column', requestId: id, code: chrome.code, snapshot: { ...draft } };
+    const key = alternativeKey;
+    const request: ReinforcementAlternativesRequest = { kind: 'column', requestId: id, input: columnToInput(chrome.code, draft), objective: alternativeObjective,
+      ...(alternativeObjective === 'available-bars' ? { availableDiametersMm: availableDiameters } : {}) };
     setReinforcementSearch(true);
-    setProposalNote(null);
-    const cancel = startReinforcementProposal(request, (message) => {
+    setAlternatives(null);
+    const cancel = startReinforcementAlternatives(request, (message: ReinforcementAlternativesResponse) => {
       activeProposal.current = null;
       setReinforcementSearch(false);
-      const current = snapshotRef.current;
-      if (JSON.stringify({ code: current.code, draft: current.draft }) !== key) return;
-      if (message.kind === 'failed') { setProposalNote(message.reason); return; }
-      replace({ ...current.draft, ...message.fields });
-      const bars = circular ? `${message.fields.barCount} barras` : `${message.fields.barsWidth} × ${message.fields.barsDepth} barras por cara`;
-      setProposalNote(`Acero propuesto: ${bars} de ${Number(message.fields.bar).toFixed(1)} mm. La sección y las acciones se conservaron.`);
+      if (alternativeKeyRef.current !== key) return;
+      setAlternatives(message);
     });
     activeProposal.current = { key, cancel };
+  };
+  const applyAlternative = (candidate: ReinforcementCandidate) => {
+    replace({ ...draft, ...candidate.applyFields });
+    setAlternatives(null);
+    setProposalNote('Armado aplicado con sección y acciones capturadas. Deshacer recupera el armado anterior.');
   };
   const cancelReinforcement = () => {
     activeProposal.current?.cancel();
@@ -109,7 +119,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <NumberField label="Muy" unit="kN·m" value={draft.momentY} onChange={set('momentY')} min={-1e9} />
         <div className="dw-span-all"><ActionNote text={proposalNote} /></div>
       </FieldGroup>
-      <FieldGroup title="Refuerzo" action={<InlineAction label={reinforcementSearch ? 'Cancelar búsqueda' : 'Proponer acero'} title="Buscar refuerzo para la sección y las acciones actuales" onClick={reinforcementSearch ? cancelReinforcement : proposeReinforcement} />}>
+      <FieldGroup title="Refuerzo" action={<InlineAction label={reinforcementSearch ? 'Cancelar búsqueda' : 'Comparar acero'} title="Comparar armados para la sección y las acciones actuales" onClick={reinforcementSearch ? cancelReinforcement : proposeReinforcement} />}>
         <BarSelect label="Varilla" value={draft.bar} onChange={set('bar')} minimumDiameterMm={12.7} />
         {circular && code.column.spiral ? <div className="dw-span-all">
           <SegmentedControl label="Refuerzo transversal" size="sm" value={spiral ? 'spiral' : 'ties'} onValueChange={set('transverse')}
@@ -122,6 +132,20 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             <NumberField label="Barras cara b" unit="pzas" value={draft.barsWidth} onChange={set('barsWidth')} min={2} />
             <NumberField label="Barras cara h" unit="pzas" value={draft.barsDepth} onChange={set('barsDepth')} min={2} />
           </>}
+        <Disclosure label="Alternativas constructivas">
+          <Select label="Criterio de comparación" value={alternativeObjective} onChange={(event) => setAlternativeObjective(event.currentTarget.value as ReinforcementObjective)}>
+            <option value="minimum-steel">Menor área de acero</option><option value="few-diameters">Menos diámetros</option><option value="available-bars">Diámetros disponibles</option>
+          </Select>
+          {alternativeObjective === 'available-bars' ? <details className="dw-span-all"><summary>Diámetros en existencia · solo esta sesión</summary>
+            <div className="dw-group__grid" data-columns={3}>{REBAR_SIZES.map((bar) => <label key={bar.diameterMm} className="dw-check"><input type="checkbox" checked={availableDiameters.includes(bar.diameterMm)} onChange={(event) => { const checked = event.currentTarget.checked; setAvailableDiameters((current) => checked ? [...new Set([...current, bar.diameterMm])].sort((a, b) => a - b) : current.filter((value) => value !== bar.diameterMm)); }} /> Ø {bar.diameterMm} mm</label>)}</div>
+          </details> : null}
+          {reinforcementSearch ? <p role="status">Comparando armados con geometría y acciones fijas…</p> : null}
+          {alternatives ? <ReinforcementAlternatives candidates={alternatives.candidates} onApply={applyAlternative} /> : null}
+          {alternatives?.reason === 'empty-stock' ? <p role="alert">Selecciona diámetros disponibles del catálogo.</p> : null}
+          {alternatives?.reason === 'no-feasible-candidate' ? <p role="status">No hay alternativas que pasen las verificaciones evaluadas con esta geometría.</p> : null}
+          {alternatives?.error ? <p role="alert">No se pudo ejecutar la comparación en segundo plano. Las entradas siguen disponibles.</p> : null}
+          <p className="dw-help">Peso estimado con las barras longitudinales sobre la altura libre; estribos y anclajes excluidos. Cortante y otras revisiones fuera del motor se muestran como pendientes.</p>
+        </Disclosure>
       </FieldGroup>
       <FieldGroup title={spiral ? 'Paso del zuncho' : 'Separación de estribos'} action={<InlineAction label="Usar propuesta" title="Volver a calcular la separación automática" onClick={() => replace({ ...draft, tieSpacing: '', endTieSpacing: '' })} />}>
         <UnitField label={spiral ? 'Paso propio s' : 'Propia al centro s'} unit="cm" value={draft.tieSpacing} onValueChange={set('tieSpacing')}

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { StrictMode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../../data/defaultProject';
@@ -14,6 +15,7 @@ import { EMPTY_BEAM_DETAILS } from './beamDetailDraft';
 import { FOOTING_DEFAULTS, footingToInput } from './footingModel';
 import { SECTION_DEFAULTS } from './concreteStudioModel';
 import { proposeFlexureDimensions, type FlexureExerciseInput, type FlexureDimensionBounds } from '../../../design/elements/flexureExercise';
+import type { ReinforcementAlternativesResponse } from '../../../design/elements/reinforcementAlternatives';
 
 beforeEach(() => {
   localStorage.clear();
@@ -23,14 +25,16 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 class PendingProposalWorker {
   static instance: PendingProposalWorker | null = null;
-  onmessage: ((event: MessageEvent<{ kind: 'proposed'; requestId: number; fields: Record<string, string> }>) => void) | null = null;
+  onmessage: ((event: MessageEvent<ReinforcementAlternativesResponse>) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
-  posted: { requestId: number } | null = null;
+  posted: { requestId: number; kind: string } | null = null;
   terminated = false;
   constructor() { PendingProposalWorker.instance = this; }
-  postMessage(message: { requestId: number }) { this.posted = message; }
+  postMessage(message: { requestId: number; kind: string }) { this.posted = message; }
   terminate() { this.terminated = true; }
-  reply(fields: Record<string, string>) { this.onmessage?.({ data: { kind: 'proposed', requestId: this.posted?.requestId ?? 1, fields } } as MessageEvent<{ kind: 'proposed'; requestId: number; fields: Record<string, string> }>); }
+  reply(response: Omit<ReinforcementAlternativesResponse, 'requestId'>) {
+    this.onmessage?.({ data: { ...response, requestId: this.posted?.requestId ?? 1 } as ReinforcementAlternativesResponse } as MessageEvent<ReinforcementAlternativesResponse>);
+  }
 }
 
 class PendingFlexureWorker {
@@ -87,6 +91,19 @@ describe('DesignWorkbench', () => {
     await user.click(screen.getByRole('button', { name: 'Revisar datos' }));
     await waitFor(() => expect(document.activeElement).toBe(length));
     expect(screen.getByRole('button', { name: 'Datos' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('permite editar la preferencia de stock sin perder la mesa en React StrictMode', async () => {
+    const user = userEvent.setup();
+    render(<StrictMode><ProjectProvider><DesignWorkbench nativeTool={false} startElement="flexure" startPicker startCategory="exercise" /></ProjectProvider></StrictMode>);
+    await user.click(screen.getByRole('button', { name: 'Iniciar diseño: Flexión con momento dado' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Criterio de comparación' }), 'available-bars');
+    await user.click(screen.getByText('Diámetros en existencia · solo esta sesión'));
+    const firstStock = screen.getAllByRole('checkbox')[0]!;
+    await user.click(firstStock);
+    expect((firstStock as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByRole('button', { name: 'Comparar armados' })).toBeTruthy();
+    expect(screen.queryByText('No se pudo cargar esta superficie.')).toBeNull();
   });
 
   it('abre con una viga continua de ejemplo ya calculada por el solver 2D', async () => {
@@ -201,6 +218,19 @@ describe('DesignWorkbench', () => {
     worker.reply();
     await screen.findByText(/Vista previa:/);
     const proposal = proposeFlexureDimensions(worker.posted!.input, worker.posted!.bounds)!;
+    const sectionSvg = screen.getByRole('img', { name: 'Esquema de sección rectangular a flexión' });
+    const previewBars = [...sectionSvg.querySelectorAll('circle')];
+    expect(previewBars.length).toBeGreaterThan(0);
+    for (const previewBar of previewBars) {
+      const cx = Number(previewBar.getAttribute('cx'));
+      const cy = Number(previewBar.getAttribute('cy'));
+      expect(Number.isFinite(cx)).toBe(true);
+      expect(Number.isFinite(cy)).toBe(true);
+      expect(cx).toBeGreaterThanOrEqual(90);
+      expect(cx).toBeLessThanOrEqual(230);
+      expect(cy).toBeGreaterThanOrEqual(30);
+      expect(cy).toBeLessThanOrEqual(190);
+    }
     await user.click(screen.getByRole('button', { name: 'Aplicar dimensiones' }));
     await waitFor(() => expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.flexure')!).width).toBe(String(proposal.widthMm / 10)));
     fireEvent.keyDown(window, { key: 'z', ctrlKey: true });
@@ -346,34 +376,45 @@ describe('DesignWorkbench', () => {
     expect(screen.getByRole('form', { name: 'Datos del elemento' })).toBeTruthy();
   });
 
-  it('cancela una propuesta de columna al editar y descarta su respuesta pendiente', async () => {
+  it('cancela la comparación de columna al editar y descarta su respuesta pendiente', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('Worker', PendingProposalWorker);
     render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="column" /></ProjectProvider>);
-    await user.click(screen.getByRole('button', { name: 'Proponer acero' }));
+    await user.click(screen.getByText('Alternativas constructivas'));
+    await user.click(screen.getByRole('button', { name: 'Comparar acero' }));
     const worker = PendingProposalWorker.instance!;
     expect(worker.terminated).toBe(false);
     const axial = screen.getByRole('textbox', { name: 'Pu' });
     await user.clear(axial);
-    worker.reply({ bar: '25.4', barsWidth: '6', barsDepth: '6' });
+    worker.reply({ kind: 'alternatives', candidates: [{ id: 'late', geometry: { widthMm: 400, heightMm: 400 },
+      reinforcement: { bed: 'top', group: { count: 6, diameterMm: 25.4 }, diametersMm: Array(6).fill(25.4) },
+      checked: { status: 'pass', checks: [], excluded: [] }, steelAreaMm2: 3000, assumedLengthM: 3, steelWeightKg: 70,
+      weightAssumption: 'test', applyFields: { bar: '25.4' } }] });
     await waitFor(() => expect(worker.terminated).toBe(true));
     expect((screen.getByRole('combobox', { name: 'Varilla' }) as HTMLSelectElement).value).toBe('19.1');
     expect(screen.getByText(/Búsqueda cancelada/)).toBeTruthy();
   });
 
-  it('aplica sólo los campos de acero de una propuesta de columna', async () => {
+  it('previsualiza una alternativa de columna y aplica sólo el armado al solicitarlo', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('Worker', PendingProposalWorker);
     render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="column" /></ProjectProvider>);
-    await user.click(screen.getByRole('button', { name: 'Proponer acero' }));
-    PendingProposalWorker.instance!.reply({ bar: '25.4', barsWidth: '4', barsDepth: '5' });
+    await user.click(screen.getByText('Alternativas constructivas'));
+    await user.click(screen.getByRole('button', { name: 'Comparar acero' }));
+    PendingProposalWorker.instance!.reply({ kind: 'alternatives', candidates: [{ id: 'candidate', geometry: { widthMm: 400, heightMm: 400 },
+      reinforcement: { bed: 'top', group: { count: 20, diameterMm: 25.4 }, diametersMm: Array(20).fill(25.4) },
+      checked: { status: 'pass', checks: [], excluded: [] }, steelAreaMm2: 10134, assumedLengthM: 3, steelWeightKg: 238,
+      weightAssumption: 'test', applyFields: { bar: '25.4', barsWidth: '4', barsDepth: '5' } }] });
+    await screen.findByRole('button', { name: 'Aplicar este armado' });
+    expect((screen.getByRole('combobox', { name: 'Varilla' }) as HTMLSelectElement).value).toBe('19.1');
+    await user.click(screen.getByRole('button', { name: 'Aplicar este armado' }));
     await waitFor(() => expect((screen.getByRole('combobox', { name: 'Varilla' }) as HTMLSelectElement).value).toBe('25.4'));
     expect((screen.getByRole('textbox', { name: 'Base b (X)' }) as HTMLInputElement).value).toBe('40');
     expect((screen.getByRole('textbox', { name: 'Peralte h (Y)' }) as HTMLInputElement).value).toBe('40');
     expect((screen.getByRole('textbox', { name: 'Pu' }) as HTMLInputElement).value).toBe('900');
   });
 
-  it('permite proponer acero si la distribución actual está congestionada y cancela al cambiar norma', async () => {
+  it('permite comparar en Experimental aunque la distribución esté congestionada y cancela al cambiar norma', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('Worker', PendingProposalWorker);
     localStorage.setItem('fstructure.design-workbench.section', JSON.stringify({
@@ -381,14 +422,14 @@ describe('DesignWorkbench', () => {
       barLayout: 'zones', cornerBarCount: '3', faceBarCount: '3',
     }));
     render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="section" /></ProjectProvider>);
-    expect(screen.getByRole('button', { name: 'Proponer acero' }).hasAttribute('disabled')).toBe(false);
+    expect(screen.getByRole('button', { name: 'Comparar acero' }).hasAttribute('disabled')).toBe(false);
     expect(screen.getByRole('textbox', { name: 'Barras por esquina' })).toHaveProperty('max', '3');
     expect(screen.getByRole('textbox', { name: 'Barras por cara' })).toHaveProperty('max', '3');
-    await user.click(screen.getByRole('button', { name: 'Proponer acero' }));
+    await user.click(screen.getByRole('button', { name: 'Comparar acero' }));
     expect(PendingProposalWorker.instance?.posted).toMatchObject({ kind: 'section' });
     await user.selectOptions(screen.getByRole('combobox', { name: 'Norma de diseño' }), 'e060');
     await waitFor(() => expect(PendingProposalWorker.instance?.terminated).toBe(true));
-    PendingProposalWorker.instance?.reply({ bar: '16', barCount: '8' });
+    PendingProposalWorker.instance?.reply({ kind: 'alternatives', candidates: [] });
     expect((screen.getByRole('combobox', { name: 'Diámetro longitudinal' }) as HTMLSelectElement).value).toBe('25.4');
     expect(screen.getByText(/Búsqueda cancelada: cambiaron los datos de entrada/)).toBeTruthy();
   });
