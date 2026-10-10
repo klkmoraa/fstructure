@@ -17,6 +17,9 @@ import { WorkspaceUIContext } from '../../../store/WorkspaceUIContext';
 import { space3dSelection } from './mesaSelection';
 import { useSharedToolState } from '../../../store/SharedToolState';
 import { ModelSteelReview, isSteelReviewCandidate } from './ModelSteelReview';
+import { model2dResultProviderWithWorker, space3dResultProviderWithWorker } from './modelResultWorker';
+import { model2dRevision } from '../../../design/elements/model2dResultSnapshot';
+import { space3dRevision } from '../../../integrations/space3dResultSnapshot';
 
 /**
  * Modo Diseño de FStructure: los borradores del taller se guardan en la rama
@@ -58,7 +61,12 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   const latestProject = useRef(project);
   useEffect(() => { latestProject.current = project; }, [project]);
   const projectId = project?.id ?? null;
-  const modelSource = useMemo(() => project ? model2dDesignSourceWithWorker(project) : null, [project]);
+  const model2dResults = useMemo(() => project ? model2dResultProviderWithWorker(project, () => latestProject.current ? model2dRevision(latestProject.current) : null) : null, [project]);
+  const modelSource = useMemo(() => {
+    if (!project) return null;
+    const source = model2dDesignSourceWithWorker(project);
+    return model2dResults ? { ...source, resultProvider: model2dResults } : source;
+  }, [project, model2dResults]);
   // «Proponer» en Estructura con el Modelo 2D: cada candidato diseña el modelo con
   // esas secciones sin tocarlo; aplicarlas es un solo cambio deshacible del 2D.
   const modelSections = useMemo<ModelSectionsBridge | null>(() => {
@@ -87,8 +95,28 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     if (!branch) return null;
     try { return parseSpace3DDraft(JSON.stringify(branch.model)); } catch { return null; }
   }, [session, projectId]);
+  const latestSpace3d = useRef(space3d);
+  useEffect(() => { latestSpace3d.current = space3d; }, [space3d]);
+  const space3dResults = useMemo(() => space3d ? space3dResultProviderWithWorker(space3d, () => latestSpace3d.current ? space3dRevision(latestSpace3d.current) : null) : null, [space3d]);
   // «Revisar todos los ejes» diseña en un worker; la mesa sigue fluida.
-  const modelAxes = useMemo(() => space3d && space3d.members.length ? space3dDesignAxesWithWorker(space3d) : null, [space3d]);
+  const modelAxes = useMemo(() => {
+    if (!space3d || !space3d.members.length) return null;
+    const axes = space3dDesignAxesWithWorker(space3d);
+    if (!space3dResults) return axes;
+    const sources = new Map<string, ReturnType<typeof axes.source>>();
+    return {
+      ...axes,
+      resultProvider: space3dResults,
+      source(axisId: string) {
+        let source = sources.get(axisId);
+        if (!source) {
+          source = { ...axes.source(axisId), resultProvider: space3dResults };
+          sources.set(axisId, source);
+        }
+        return source;
+      },
+    };
+  }, [space3d, space3dResults]);
   const space3dSections = useMemo<ModelSectionsBridge | null>(() => {
     if (!space3d || !onOpenSpace3D) return null;
     const groups = space3dSectionGroups(space3d);

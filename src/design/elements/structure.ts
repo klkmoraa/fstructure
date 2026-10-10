@@ -3,6 +3,7 @@ import { designBeam, type BeamDesignInput, type BeamDesignResult } from './beam'
 import { designCode, isDesignCodeId, type DesignCodeId, type LoadCombination } from './codes';
 import { designColumn, momentCapacityAt, type ColumnDesignResult, type ColumnGroup } from './column';
 import { complementary, governingRatio, isPositiveFinite, overallStatus, type ClauseReference, type ElementCheck } from './shared';
+import type { ModelResultProvider } from './modelResultSnapshot';
 
 /**
  * Estructura plana de concreto: vigas y columnas diseñadas a partir de un
@@ -161,6 +162,8 @@ export interface ExternalStructureSource {
   readonly includesSelfWeight: boolean;
   /** Por qué no se puede diseñar, si no se puede. */
   readonly errors: readonly string[];
+  /** Inventario y resultados nativos del modelo, independiente del diseño por categorías. */
+  readonly resultProvider?: ModelResultProvider;
   create(options: { readonly braced: boolean }): StructureSource | null;
   /** Análisis asíncrono por casos; las funciones del diseño permanecen en el consumidor. */
   designAsync?(options: StructureDesignOptions, braced: boolean, signal: AbortSignal): Promise<StructureDesignResult | StructureDesignError>;
@@ -174,6 +177,8 @@ export interface ExternalStructureAxes {
   /** Nombre del modelo de origen. */
   readonly label: string;
   readonly axes: readonly ExternalStructureAxis[];
+  /** Proveedor único del modelo completo; evita duplicar columnas compartidas entre ejes. */
+  readonly resultProvider?: ModelResultProvider;
   /** Columnas en planta: cada pila de barras verticales en un mismo punto (x, z), m. */
   readonly columns: readonly { readonly x: number; readonly z: number; readonly memberIds: readonly string[] }[];
   /** La fuente de un eje; la misma instancia mientras el modelo no cambie. */

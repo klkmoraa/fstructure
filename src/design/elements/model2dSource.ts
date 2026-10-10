@@ -1,6 +1,7 @@
 import { standardMaterials } from '../../data/standardMaterials';
 import { standardSections } from '../../data/standardSections';
 import { withResolvedGeneratedLoads } from '../../engine/generatedLoads';
+import { model2dRevision } from './model2dResultSnapshot';
 import { analyzeModel2dCases, hydrateModel2dCases, type Model2dAnalysisRequest } from './model2dAnalysis';
 import {
   probeLoads,
@@ -63,15 +64,6 @@ interface ProjectedCase {
   /** Id del caso en la proyección para el solver. */
   readonly solverId: string;
 }
-
-/** Firma corta del modelo: cambia con cualquier dato que afecte el diseño. */
-const revisionOf = (project: ProjectModel) => {
-  const text = JSON.stringify([project.nodes, project.members, project.loadCases, project.nodalLoads, project.memberLoads,
-    project.prescribedDisplacements ?? [], project.memberInitialEffects ?? [], project.generatedLoadSources ?? [], project.nodeLinks ?? [], project.multiPointConstraints ?? []]);
-  let hash = 2166136261;
-  for (let index = 0; index < text.length; index += 1) hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
-  return `${project.id}:${(hash >>> 0).toString(36)}:${text.length}`;
-};
 
 export function model2dDesignSource(project: ProjectModel, analyzeCases?: (request: Model2dAnalysisRequest) => ReturnType<StructureSource['analyze']>): ExternalStructureSource {
   const resolved = withResolvedGeneratedLoads(project);
@@ -204,7 +196,7 @@ export function model2dDesignSource(project: ProjectModel, analyzeCases?: (reque
 
   return {
     label: project.name,
-    revision: revisionOf(project),
+    revision: model2dRevision(project),
     summary: { members: project.members.length, beams, columns, skipped: project.members.length - beams - columns, deadCases, liveCases, lateralCases, ignoredCases },
     fcMpa,
     includesSelfWeight,
