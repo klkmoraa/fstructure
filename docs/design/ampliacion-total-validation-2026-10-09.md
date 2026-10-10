@@ -42,3 +42,7 @@ Las fuentes oficiales completas de losas no pudieron recuperarse (403 del proxy)
 ## Capacidad reducida de sección libre — contrato previo a implementación
 
 La comparación aprobada admite un factor manual opcional, vacío por defecto y explícitamente Experimental. No atribuye un factor a una norma sin respaldo. A N de cálculo fijo, la curva reducida usa el cálculo nominal a N/φ y escala sus acciones por φ; pruebas de equilibrio, φ=1 y dominio axial deben cubrir este cambio antes de declararlo implementado. No afecta al servicio elástico.
+
+## Guardado general — hallazgo de auditoría, corrección asignada A5
+
+La aceptación de lotes completos debe preceder cambios visibles e historial en formularios, filas, selección, memoria y revisión de acero. El sink real del proyecto es `session.saveDesign`; actualmente su rechazo se absorbe. A5 incluye distinción de borrador pendiente/confirmación durable y reintento sin descartar trabajo. El fallback localStorage queda separado del proyecto normal. Estas garantías están planificadas, todavía no declaradas implementadas.
