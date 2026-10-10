@@ -12,7 +12,7 @@ Chromium comprobó la conservación de una carga incompleta y un bastón persona
 
 ## Editor de cargas y armado de viga
 
-Commit `e0373070`, pendiente de revisión independiente de la tarea. `npm run verify`: 46 archivos/379 pruebas y 5 pruebas Python, código 0. Los casos parciales, puntuales y triangulares comprueban equilibrio y máximos en raíces de cortante; éstas se obtienen también por combinación. El informe usa As requerida/mínima/colocada y d de los mismos lechos físicos.
+Implementación `e0373070`, correcciones `44e03b44`/`1dacdf98`, revisión independiente final Spec PASS/Calidad APPROVED. `npm run verify`: 46 archivos/379 pruebas y 5 pruebas Python, código 0. Los casos parciales, puntuales y triangulares comprueban equilibrio y máximos en raíces de cortante; éstas se obtienen también por combinación. El informe usa As requerida/mínima/colocada y d de los mismos lechos físicos.
 
 La integración detectó un ciclo de renderizado por un array de errores nuevo en cada render; se corrigió estabilizando su dependencia. La reproducción aislada terminó en 2.60s después del arreglo y las 28 pruebas de la mesa pasaron. Chromium volvió a comprobar detalles, memoria, PDF, recarga, teclado/deshacer, Día/Noche y 390px con cero errores de página y consola; pdftotext confirmó cargas y coordenadas. La búsqueda de geometría imposible sigue asignada a la integración de worker cancelable de A4, antes de publicar; esta tarea sola no se publica.
 
@@ -35,7 +35,7 @@ Los informes originales, scripts y resultados temporales se conservan en `qa-art
 
 ## Pendiente para el cierre integrado
 
-Editor de cargas/armado; flexión directa y alternativas; snapshots/navegador; reacción→zapata; despiece/exportaciones; losa/franja y sección libre/biaxial/servicio. Cada tarea tiene revisión y pruebas propias. El cierre exige navegador Día/Noche/teléfono, migraciones/invalidimport/undo/cancel, coherencia PDF/SVG/CSV, npm run check completo, revisión consolidada y comprobación del despliegue.
+Flexión directa y alternativas; snapshots/navegador; reacción→zapata; despiece/exportaciones; losa/franja y sección libre/biaxial/servicio. Cada tarea tiene revisión y pruebas propias. El cierre exige navegador Día/Noche/teléfono, migraciones/invalidimport/undo/cancel, coherencia PDF/SVG/CSV, npm run check completo, revisión consolidada y comprobación del despliegue.
 
 Las fuentes oficiales completas de losas no pudieron recuperarse (403 del proxy). Los mínimos y reglas de sección existentes sólo se habilitan bajo su alcance registrado; cortante/peralte/servicio/detalle sin evidencia aplicable quedan pendientes. No se fabricaron hashes, fechas de cotejo ni certificaciones.
 
@@ -50,3 +50,7 @@ La aceptación de lotes completos debe preceder cambios visibles e historial en 
 ## A2 cierre revisado — 1dacdf98
 
 El lote de detalle y activación de armado propio, y la restauración completa de viga, se prevalidan juntos. El rechazo conserva campos, resultado, memoria y stacks de deshacer/rehacer. Fixture válido de 60 piezas cercano a 240000 caracteres cubre detalle que cabe solo y lote que no cabe. Verify de la corrección: 38 archivos/258 pruebas, focal final 2/2; revisión independiente Spec PASS/Quality APPROVED. Chromium posterior conserva carga puntual y parcial, bastón y estribos, teclado/undo/recarga/memoria/PDF; Día/Noche/390px sin errores de página o consola ni desbordamiento. A3 en implementación; A4/A5/B/C/D todavía pendientes.
+
+## A3 prueba de navegador durante integración
+
+Chromium comprobó inicio propio con acción/geometría/materiales vacíos; Mu 200 kN·m con b400/h600mm, fc25/fy420MPa y barras Ø15.9 da As1022.85mm² (10.23cm²), coherente con la referencia independiente bajo el peralte real. Mu vacío deshabilita reporte/PDF; cero explícito se acepta; Mu negativo selecciona el lecho superior. Guardado, memoria, PDF y recarga conservaron las acciones. Sin errores de página/consola ni desbordamiento390px. Las capturas detectaron contraste insuficiente de texto SVG en oscuro y un estado demasiado largo en móvil; se asignaron al implementador antes de la revisión de tarea. Dimensionamiento y revisión independientes de A3 aún pendientes.
