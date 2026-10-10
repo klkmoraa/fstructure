@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ElementCheck } from '../../../design/elements/shared';
 import type { Takeoff } from '../../../design/elements/takeoff';
+import type { OriginState, WorkbenchOrigin } from './LinkedPieceOrigin';
 
 export type DesignElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'section' | 'flexure';
 
@@ -58,10 +59,34 @@ export interface DesignReport {
   readonly takeoff: Takeoff;
   readonly figures: readonly ReportFigure[];
   readonly alternative?: ReportAlternative;
+  readonly origin?: WorkbenchOrigin;
+  readonly originSourceStatus?: OriginState['source'];
+  readonly originEdited?: boolean;
 }
 
 /** «V-1 · Viga 25 × 50 cm», o sólo el título si no hay clave. */
 export const reportHeading = (report: Pick<DesignReport, 'tag' | 'title'>) => report.tag ? `${report.tag} · ${report.title}` : report.title;
+
+export function withReportOrigin(report: DesignReport, origin: WorkbenchOrigin | undefined, state?: OriginState): DesignReport {
+  if (!origin) return report;
+  const snapshot = origin.snapshot;
+  const { actions } = snapshot;
+  const flexureScope = report.element === 'flexure' ? [{ id: 'linked-flexure-vector-scope', label: 'Axial, cortante, torsión y flexión biaxial del modelo no se evalúan en esta flexión simple.', status: 'out-of-scope' as const,
+    reference: { standard: 'complementary' as const, clauseIds: [], label: 'Alcance del cálculo vinculado' },
+    note: `Se conserva el vector concurrente completo. Esta pieza usa sólo Mz = ${actions.mzKnm} kN·m como Mu; N, Vy, Vz, T y My no entran en la resistencia de flexión.` }] : [];
+  const group: ReportGroup = { title: 'Origen vinculado · modelo', rows: [
+    { label: 'Fuente', value: `${snapshot.source.kind === 'model2d' ? 'Modelo 2D' : 'Modelo 3D'} · proyecto ${snapshot.source.projectId} · revisión ${snapshot.source.revision}` },
+    { label: 'Miembro / eje', value: `${snapshot.member.label} (${snapshot.source.memberId})${snapshot.source.axisId ? ` · ${snapshot.source.axisId}` : ''}` },
+    { label: 'Estado y factores', value: `${snapshot.target.label} (${snapshot.target.id}) · ${snapshot.target.factors.map((factor) => `${factor.caseId} × ${factor.factor}`).join(' + ') || 'caso directo'}` },
+    { label: 'Estación y alcance', value: `x = ${snapshot.station.xM} m desde i · ${snapshot.station.side} · ${snapshot.axes.convention}` },
+    { label: 'Acciones originales', value: `N ${actions.nKn} kN · Vy ${actions.vyKn} kN · Vz ${actions.vzKn} kN · T ${actions.torsionKnm} kN·m · My ${actions.myKnm} kN·m · Mz ${actions.mzKnm} kN·m` },
+    { label: 'Base local', value: snapshot.axes.localBasis.map((axis) => `(${axis.join(', ')})`).join(' · ') },
+    ...(report.element === 'flexure' ? [{ label: 'Alcance calculado', value: `Flexión simple rectangular con Mz = ${actions.mzKnm} kN·m. El vector conserva N, Vy, Vz, T y My, pero estas acciones no se evalúan ni se convierten a una interacción espacial.` }] : []),
+    { label: 'Vigencia de origen', value: `${state?.source === 'current' ? 'Vigente' : state?.source === 'stale' ? 'Desactualizado' : 'No comprobable'}${state?.edited ? ' · copia editada' : ''}` },
+  ] };
+  const vector = `N ${actions.nKn} kN · Vy ${actions.vyKn} kN · Vz ${actions.vzKn} kN · T ${actions.torsionKnm} kN·m · My ${actions.myKnm} kN·m · Mz ${actions.mzKnm} kN·m`;
+  return { ...report, origin, ...(state ? { originSourceStatus: state.source, originEdited: state.edited } : {}), outOfScope: [...report.outOfScope, ...flexureScope], data: [...report.data, group], memo: `${report.memo}\nORIGEN DEL MODELO · ${snapshot.source.kind === 'model2d' ? 'Modelo 2D' : 'Modelo 3D'} · ${snapshot.member.label} (${snapshot.source.memberId}) · ${snapshot.target.label} · x = ${snapshot.station.xM} m desde i (${snapshot.station.side}).\nFactores: ${snapshot.target.factors.map((factor) => `${factor.caseId} × ${factor.factor}`).join(' + ') || 'caso directo'}. ${vector}.\n${snapshot.axes.convention}. Base local: ${snapshot.axes.localBasis.map((axis) => `(${axis.join(', ')})`).join(' · ')}.\nOrigen ${state?.source ?? 'no comprobable'}${state?.edited ? '; copia editada' : ''}.${flexureScope.length ? `\nALCANCE PARCIAL · ${flexureScope[0]!.note}` : ''}` };
+}
 
 const CLOSING_LINE = /^FStructure · /;
 
@@ -90,8 +115,8 @@ export function stableJson(value: unknown): string {
 }
 
 /** SHA-256 de la entrada; identifica la instantánea que reproduce un PDF. */
-export async function snapshotHash(report: Pick<DesignReport, 'element' | 'code' | 'input'>): Promise<string> {
-  const bytes = new TextEncoder().encode(stableJson({ element: report.element, code: report.code, input: report.input }));
+export async function snapshotHash(report: Pick<DesignReport, 'element' | 'code' | 'input' | 'origin'>): Promise<string> {
+  const bytes = new TextEncoder().encode(stableJson({ element: report.element, code: report.code, input: report.input, origin: report.origin ?? null }));
   const digest = await crypto.subtle.digest('SHA-256', bytes);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

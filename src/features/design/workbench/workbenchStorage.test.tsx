@@ -134,7 +134,7 @@ describe('design workbench document', () => {
     storage.dispose();
   });
 
-  it('migrates v2 memory and retains the section studio draft and memory in v7', () => {
+  it('migrates v2 memory and retains the section studio draft and memory in v8', () => {
     const old = { id: 'a1', element: 'column', code: 'ntc-2023', savedAt: '2026-09-27', fields: { tag: 'C-1', width: '40' } };
     const section = { id: 'a2', element: 'section', code: 'ntc-2023', savedAt: '2026-10-01', fields: { tag: 'S-1', shape: 'octagonal', philosophy: 'allowable', cover: '4' } };
     const persist = vi.fn<(value: JsonValue) => void>();
@@ -143,12 +143,12 @@ describe('design workbench document', () => {
     storage.write('memory', [old, section]);
     storage.flush();
     const document = persist.mock.calls[0]?.[0] as { schemaVersion: number; entries: Record<string, JsonValue> };
-    expect(document.schemaVersion).toBe(7);
+    expect(document.schemaVersion).toBe(8);
     expect(parseWorkbenchDocument(document)).toEqual({ memory: [old, section], section: section.fields });
     storage.dispose();
   });
 
-  it('keeps incomplete flexure inputs and flexure memory in schema v7', () => {
+  it('keeps incomplete flexure inputs and flexure memory in schema v8', () => {
     const flexure = { tag: '', moment: '', width: '', height: '', fc: '', fy: '', cover: '4', objective: 'required' };
     const memory = [{ id: 'f1', element: 'flexure', code: 'ntc-2023', savedAt: '2026-10-10', fields: flexure }];
     const persist = vi.fn<(value: JsonValue) => void>();
@@ -158,7 +158,7 @@ describe('design workbench document', () => {
     storage.write('flexure', { ...flexure, moment: '0' });
     storage.flush();
     const document = persist.mock.calls[0]?.[0] as { schemaVersion: number; entries: Record<string, JsonValue> };
-    expect(document.schemaVersion).toBe(7);
+    expect(document.schemaVersion).toBe(8);
     expect((parseWorkbenchDocument(document).flexure as Record<string, string>).moment).toBe('0');
     storage.dispose();
   });
@@ -188,7 +188,7 @@ describe('design workbench document', () => {
     expect(parseWorkbenchDocument(workbenchDoc({ notMemory: memory })).notMemory).toBeUndefined();
   });
 
-  it('keeps v3 documents and stores frames with their bays and levels in v7', () => {
+  it('keeps v3 documents and stores frames with their bays and levels in v8', () => {
     const beam = { id: 'a1', element: 'beam', code: 'ntc-2023', savedAt: '2026-09-27', fields: { tag: 'V-1' }, rows: [{ length: '5' }] };
     const persist = vi.fn<(value: JsonValue) => void>();
     const storage = createProjectWorkbenchStorage(workbenchDoc({ code: 'e060', memory: [beam] }, 3), persist);
@@ -201,7 +201,7 @@ describe('design workbench document', () => {
     storage.write('memory', [beam, frame]);
     storage.flush();
     const document = persist.mock.calls[0]?.[0] as { schemaVersion: number };
-    expect(document.schemaVersion).toBe(7);
+    expect(document.schemaVersion).toBe(8);
     expect(parseWorkbenchDocument(document)).toEqual({ code: 'e060', memory: [beam, frame], 'frame-bays': frame.rows, 'frame-stories': frame.levels });
     // Un nivel con una forma inesperada invalida la memoria, no la reinterpreta.
     expect(parseWorkbenchDocument(workbenchDoc({ memory: [{ ...frame, levels: [{ height: 3 }] }] })).memory).toBeUndefined();
@@ -248,7 +248,7 @@ describe('design workbench document', () => {
     expect(persist).not.toHaveBeenCalled();
     vi.advanceTimersByTime(500);
     expect(persist).toHaveBeenCalledTimes(1);
-    expect(persist).toHaveBeenLastCalledWith(workbenchDoc({ code: 'e060', element: 'column', column: { width: '40' } }, 7));
+    expect(persist).toHaveBeenLastCalledWith(workbenchDoc({ code: 'e060', element: 'column', column: { width: '40' } }, 8));
     storage.write('code', 'ntc-2023');
     await storage.flush();
     expect(persist).toHaveBeenCalledTimes(2);
@@ -270,13 +270,13 @@ describe('design workbench document', () => {
     storage.dispose();
   });
 
-  it('exports v6 entries in v7 without losing legacy fields', () => {
+  it('exports v6 entries in v8 without losing legacy fields', () => {
     const persist = vi.fn<(value: JsonValue) => void>();
     const storage = createProjectWorkbenchStorage(workbenchDoc({ beam: { legacy: 'yes' } }, 6), persist, 0);
     storage.write('beam-details', { kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] } as unknown as JsonValue);
     storage.flush();
     const document = persist.mock.calls[0]?.[0] as { schemaVersion: number; entries: Record<string, JsonValue> };
-    expect(document.schemaVersion).toBe(7);
+    expect(document.schemaVersion).toBe(8);
     expect(document.entries.beam).toEqual({ legacy: 'yes' });
     expect(parseWorkbenchDocument(document)['beam-details']).toEqual({ kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [] });
     storage.dispose();

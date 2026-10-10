@@ -6,13 +6,15 @@ import { BEAM_DEFAULTS, beamReportFromDraft, parseSpans, DEFAULT_SPANS } from '.
 import { COLUMN_DEFAULTS, columnReportFromDraft } from './columnModel';
 import { FLEXURE_DEFAULTS, flexureReport, isFlexureDraftComplete } from './flexureModel';
 import { SECTION_DEFAULTS, sectionReportFromDraft } from './concreteStudioModel';
-import { stableJson, type DesignElementKind, type DesignReport } from './designReport';
+import { stableJson, withReportOrigin, type DesignElementKind, type DesignReport } from './designReport';
 import { EMPTY_BEAM_DETAILS, isBeamDetailDraft } from './beamDetailDraft';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
 import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, externalFor, frameReportFromDraft, parseBays, parseStories } from './frameModel';
 import { MAX_MEMORY_ITEMS, isMemoryItem, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
 import type { DesignStart } from './designStarts';
 import { commitWorkbenchBatch } from './workbenchStorage';
+import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
+import { originForElement, originState, withElementOrigin } from './LinkedPieceOrigin';
 
 /**
  * Memoria del proyecto: los elementos que la persona guarda para la memoria de
@@ -37,24 +39,28 @@ type MemoryReport = { readonly ok: true; readonly report: DesignReport } | { rea
 /** Recalcula un elemento guardado; una estructura del Modelo 2D o de un eje del 3D usa el modelo vigente del proyecto. */
 export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: ExternalStructureSource | null = null, modelAxes: ExternalStructureAxes | null = null): MemoryReport {
   const code: DesignCodeId = isDesignCodeId(item.code) ? item.code : 'ntc-2023';
+  const provider = item.origin?.snapshot.source.kind === 'model2d' ? modelSource?.resultProvider : modelAxes?.resultProvider ?? (() => {
+    try { return item.origin?.snapshot.source.axisId ? modelAxes?.source(item.origin.snapshot.source.axisId).resultProvider : undefined; } catch { return undefined; }
+  })();
+  const decorate = (outcome: MemoryReport): MemoryReport => outcome.ok ? { ...outcome, report: withReportOrigin(outcome.report, item.origin, item.origin ? originState(item.origin, provider, item.fields) : undefined) } : outcome;
   switch (item.element) {
-    case 'beam': return beamReportFromDraft(code, merge(BEAM_DEFAULTS, item.fields), parseSpans(item.rows) ?? DEFAULT_SPANS, isBeamDetailDraft(item.details) ? item.details : EMPTY_BEAM_DETAILS);
-    case 'column': return columnReportFromDraft(code, merge(COLUMN_DEFAULTS, item.fields));
+    case 'beam': return decorate(beamReportFromDraft(code, merge(BEAM_DEFAULTS, item.fields), parseSpans(item.rows) ?? DEFAULT_SPANS, isBeamDetailDraft(item.details) ? item.details : EMPTY_BEAM_DETAILS));
+    case 'column': return decorate(columnReportFromDraft(code, merge(COLUMN_DEFAULTS, item.fields)));
     case 'frame': {
       const draft = merge({ ...FRAME_DEFAULTS, ...FRAME_LEGACY }, item.fields);
-      return frameReportFromDraft(code, draft, parseBays(item.rows) ?? DEFAULT_BAYS, parseStories(item.levels) ?? DEFAULT_STORIES, externalFor(draft, modelSource, modelAxes));
+      return decorate(frameReportFromDraft(code, draft, parseBays(item.rows) ?? DEFAULT_BAYS, parseStories(item.levels) ?? DEFAULT_STORIES, externalFor(draft, modelSource, modelAxes)));
     }
-    case 'footing': return footingReportFromDraft(code, merge(FOOTING_DEFAULTS, item.fields));
-    case 'section': return sectionReportFromDraft(code, merge(SECTION_DEFAULTS, item.fields));
+    case 'footing': return decorate(footingReportFromDraft(code, merge(FOOTING_DEFAULTS, item.fields)));
+    case 'section': return decorate(sectionReportFromDraft(code, merge(SECTION_DEFAULTS, item.fields)));
     case 'flexure': {
       const draft = merge(FLEXURE_DEFAULTS, item.fields);
-      return isFlexureDraftComplete(draft) ? { ok: true as const, report: flexureReport(code, draft) } : { ok: false as const, errors: ['El borrador de flexión está incompleto; conserva sus datos y complétalos en la mesa.'] };
+      return isFlexureDraftComplete(draft) ? decorate({ ok: true as const, report: flexureReport(code, draft) }) : { ok: false as const, errors: ['El borrador de flexión está incompleto; conserva sus datos y complétalos en la mesa.'] };
     }
   }
 }
 
 /** Borrador vigente de un elemento, tal como lo guarda la mesa. */
-type MemoryDraft = Pick<WorkbenchMemoryItem, 'fields' | 'rows' | 'levels' | 'details'>;
+type MemoryDraft = Pick<WorkbenchMemoryItem, 'fields' | 'rows' | 'levels' | 'details' | 'origin'>;
 
 const ELEMENT_DEFAULT_FIELDS: Record<DesignElementKind, Record<string, string>> = {
   beam: BEAM_DEFAULTS,
@@ -79,7 +85,7 @@ function currentDraft(storage: WorkbenchStorage, element: DesignElementKind): Me
       levels: Array.isArray(stories) ? stories as Record<string, string>[] : DEFAULT_STORIES.map((story) => ({ ...story })),
     };
   }
-  if (element !== 'beam') return { fields };
+  if (element !== 'beam') return { fields, ...(['column', 'flexure'].includes(element) && originForElement(storage.read('piece-origin'), element as 'column' | 'flexure') ? { origin: originForElement(storage.read('piece-origin'), element as 'column' | 'flexure') } : {}) };
   const rows = storage.read('beam-spans');
   const rawDetails = storage.read('beam-details');
   return {
@@ -104,8 +110,8 @@ const sameDraft = (item: WorkbenchMemoryItem, draft: MemoryDraft) => {
   const defaultLevels = item.element === 'frame' ? DEFAULT_STORIES : undefined;
   const normalizeFields = (fields: Record<string, string>) => ({ ...ELEMENT_DEFAULT_FIELDS[item.element], ...fields });
   const normalizeDetails = (details: WorkbenchMemoryItem['details']) => item.element === 'beam' ? details ?? EMPTY_BEAM_DETAILS : null;
-  return stableJson({ fields: normalizeFields(item.fields), rows: item.rows ?? defaultRows ?? null, levels: item.levels ?? defaultLevels ?? null, details: normalizeDetails(item.details) })
-    === stableJson({ fields: normalizeFields(draft.fields), rows: draft.rows ?? defaultRows ?? null, levels: draft.levels ?? defaultLevels ?? null, details: normalizeDetails(draft.details) });
+  return stableJson({ fields: normalizeFields(item.fields), rows: item.rows ?? defaultRows ?? null, levels: item.levels ?? defaultLevels ?? null, details: normalizeDetails(item.details), origin: item.origin ?? null })
+    === stableJson({ fields: normalizeFields(draft.fields), rows: draft.rows ?? defaultRows ?? null, levels: draft.levels ?? defaultLevels ?? null, details: normalizeDetails(draft.details), origin: draft.origin ?? null });
 };
 
 const newId = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`).replaceAll('-', '').slice(0, 12);
@@ -146,6 +152,8 @@ export interface DesignMemory {
   saveAxes(axes: readonly { readonly id: string; readonly tag: string }[]): 'saved' | 'full';
   /** Conserva borradores afectados y prepara un arranque sin cambiar la norma ni el modelo. */
   start(start: DesignStart): 'started' | 'full';
+  /** Conserva el borrador abierto y acepta el cambio de formulario en un lote. */
+  switchDraft(writes: Readonly<Record<string, JsonValue>>, nextElement: DesignElementKind, preserveCurrent?: boolean): 'switched' | 'full';
 }
 
 export function useDesignMemory(storage: WorkbenchStorage, element: DesignElementKind, code: DesignCodeId, revision: unknown): DesignMemory {
@@ -197,6 +205,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
         ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
         ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
         ...(draft.details ? { details: structuredClone(draft.details) } : {}),
+        ...(draft.origin ? { origin: structuredClone(draft.origin) } : {}),
       };
       const next = !asNew && active ? items.map((entry) => entry.id === item.id ? item : entry) : [...items, item];
       return commit(next, item.id) ? 'saved' : 'full';
@@ -222,6 +231,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
           ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
           ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
           ...(draft.details ? { details: structuredClone(draft.details) } : {}),
+          ...(draft.origin ? { origin: structuredClone(draft.origin) } : {}),
         };
         if (position >= 0) next[position] = item; else next.push(item);
         if (axis.id === open) nextActive = item.id;
@@ -263,7 +273,21 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       }
       if (start.levels) writes['frame-stories'] = start.levels;
       if (start.element === 'beam') writes['beam-details'] = EMPTY_BEAM_DETAILS as unknown as Parameters<WorkbenchStorage['write']>[1];
+      if (start.element === 'column' || start.element === 'flexure') writes['piece-origin'] = withElementOrigin(storage.read('piece-origin'), start.element, undefined) as unknown as Parameters<WorkbenchStorage['write']>[1];
       return commit(next, '', writes) ? 'started' : 'full';
+    },
+    switchDraft(writes, nextElement, preserveCurrent = true) {
+      const next = [...items];
+      if (preserveCurrent && hasStoredDraft(storage, element)) {
+        const draft = currentDraft(storage, element);
+        const alreadySaved = next.some((item) => item.element === element && item.code === code && sameDraft(item, draft));
+        if (!alreadySaved) {
+          next.push({ id: uniqueId(next), element, code, savedAt: new Date().toISOString(), fields: structuredClone(draft.fields),
+            ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}), ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
+            ...(draft.details ? { details: structuredClone(draft.details) } : {}), ...(draft.origin ? { origin: structuredClone(draft.origin) } : {}) });
+        }
+      }
+      return commit(next, '', { ...writes, element: nextElement }) ? 'switched' : 'full';
     },
     remove(id) {
       if (!items.some((item) => item.id === id)) return 'missing';
@@ -285,6 +309,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
           ...(draft.rows ? { rows: structuredClone(draft.rows) } : {}),
           ...(draft.levels ? { levels: structuredClone(draft.levels) } : {}),
           ...(draft.details ? { details: structuredClone(draft.details) } : {}),
+          ...(draft.origin ? { origin: structuredClone(draft.origin) } : {}),
         });
       }
       const writes: Record<string, Parameters<WorkbenchStorage['write']>[1]> = {
@@ -298,6 +323,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
         writes['beam-spans'] = structuredClone(item.rows ?? DEFAULT_SPANS) as unknown as Parameters<WorkbenchStorage['write']>[1];
         writes['beam-details'] = structuredClone(item.details ?? EMPTY_BEAM_DETAILS) as unknown as Parameters<WorkbenchStorage['write']>[1];
       }
+      if (item.element === 'column' || item.element === 'flexure') writes['piece-origin'] = withElementOrigin(storage.read('piece-origin'), item.element, item.origin) as unknown as Parameters<WorkbenchStorage['write']>[1];
       if (isDesignCodeId(item.code)) writes.code = item.code;
       if (!commit(next, item.id, writes)) return 'full';
       return item;

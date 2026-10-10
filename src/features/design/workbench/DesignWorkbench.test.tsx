@@ -397,6 +397,24 @@ describe('DesignWorkbench', () => {
     expect(screen.getByText(/Búsqueda cancelada/)).toBeTruthy();
   });
 
+  it('mantiene el origen vinculado dentro del panel de datos para conservar la mesa', () => {
+    localStorage.setItem('fstructure.design-workbench.piece-origin', JSON.stringify({ version: 1, byElement: { column: {
+      version: 1, copiedFields: { axial: '1' }, snapshot: {
+        version: 1, source: { kind: 'model3d', projectId: 'p', revision: 'r1', memberId: 'C1' },
+        target: { id: 'LC1', label: 'LC1', kind: 'case', factors: [] }, station: { xM: 1, side: 'right', lengthM: 3 }, units: 'kN-m',
+        axes: { convention: 'local', localBasis: [[0, 1, 0], [0, 0, 1], [1, 0, 0]] },
+        actions: { nKn: -1, vyKn: 0, vzKn: 0, torsionKnm: 0, myKnm: 2, mzKnm: 3 },
+        member: { id: 'C1', label: 'Columna C1', family: 'column', levelId: 'L1', axisIds: [], lengthM: 3,
+          section: { shape: 'rectangular', widthMm: 300, depthMm: 500, fcMpa: 25, materialLabel: 'C25' }, start: [0, 0, 0], end: [0, 3, 0] },
+      },
+    } } }));
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="column" /></ProjectProvider>);
+
+    const origin = screen.getByTestId('linked-piece-origin');
+    expect(origin.closest('form[aria-label="Datos del elemento"]')).toBeTruthy();
+    expect(origin.querySelector('details')).toBeTruthy();
+  });
+
   it('previsualiza una alternativa de columna y aplica sólo el armado al solicitarlo', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('Worker', PendingProposalWorker);

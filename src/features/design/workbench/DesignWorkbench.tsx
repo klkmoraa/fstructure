@@ -13,7 +13,7 @@ import type { DraftHistory } from './common';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import { MemoryStatus, useDesignMemory } from './designMemory';
 import { DesignMemoryDialog } from './DesignMemoryDialog';
-import { memoText, reportHeading, type DesignReport } from './designReport';
+import { memoText, reportHeading, withReportOrigin, type DesignReport } from './designReport';
 import type { ModelSectionsBridge, Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { commitWorkbenchBatch, useWorkbenchStorage } from './workbenchStorage';
 import { DesignStartDialog } from './DesignStartDialog';
@@ -21,6 +21,13 @@ import type { DesignStart } from './designStarts';
 import './designWorkbench.css';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
+import type { ModelResultKind } from '../../../design/elements/modelResultSnapshot';
+import { ModelMemberNavigator } from './ModelMemberNavigator';
+import { LinkedPieceOriginView } from './LinkedPieceOriginView';
+import { originForElement, originState, withElementOrigin } from './LinkedPieceOrigin';
+import { linkedPieceTransfer } from './linkedPieceTransfer';
+import { COLUMN_DEFAULTS } from './columnModel';
+import { FLEXURE_DEFAULTS } from './flexureModel';
 
 type ElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'section' | 'flexure';
 
@@ -75,7 +82,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   /** Barra del modelo cuyo diseño abre Estructura (la elegida en el 2D o el 3D). */
   focusMember?: string;
   /** «Ver en el Modelo» / «Ver en 3D»: selecciona las barras del elemento en su modo. */
-  onShowMembers?: (memberIds: readonly string[], axisId?: string) => void;
+  onShowMembers?: (memberIds: readonly string[], axisId?: string, kind?: ModelResultKind) => void;
   /** Proponer y escribir las secciones de las vigas y columnas del Modelo 2D. */
   modelSections?: ModelSectionsBridge | null;
   space3dSections?: ModelSectionsBridge | null;
@@ -116,6 +123,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const memory = useDesignMemory(storage, element, code, report);
   const [memoryOpen, setMemoryOpen] = useState(false);
+  const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [startOpen, setStartOpen] = useState(() => startPicker);
   const [initialIntentConsumed, setInitialIntentConsumed] = useState(false);
   // Abrir un elemento de la memoria vuelve a montar su formulario para que lea el borrador cargado.
@@ -183,9 +191,34 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   };
 
   const onReport = useCallback((next: DesignReport | null) => {
-    setReport(next);
+    const origin = next && (next.element === 'column' || next.element === 'flexure') ? originForElement(storage.read('piece-origin'), next.element) : undefined;
+    let provider = undefined;
+    if (origin?.snapshot.source.kind === 'model2d') provider = modelSource?.resultProvider;
+    else provider = modelAxes?.resultProvider ?? (() => { try { return origin?.snapshot.source.axisId ? modelAxes?.source(origin.snapshot.source.axisId).resultProvider : undefined; } catch { return undefined; } })();
+    const raw = next ? storage.read(next.element) : undefined;
+    const fields = raw && typeof raw === 'object' && !Array.isArray(raw) ? Object.fromEntries(Object.entries(raw as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string')) : {};
+    setReport(next ? withReportOrigin(next, origin, origin ? originState(origin, provider, fields) : undefined) : null);
     setCopied(false);
-  }, []);
+  }, [storage, modelSource, modelAxes]);
+  const createLinkedPiece = (snapshot: import('../../../design/elements/modelResultSnapshot').ModelDemandSnapshot, target: 'column' | 'flexure', preserveCurrent = true) => {
+    try {
+      const defaults = target === 'column' ? COLUMN_DEFAULTS : FLEXURE_DEFAULTS;
+      const stored = storage.read(target);
+      const base = stored && typeof stored === 'object' && !Array.isArray(stored)
+        ? Object.fromEntries(Object.entries(stored as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
+        : defaults;
+      const transfer = linkedPieceTransfer(snapshot, target, base);
+      const origins = withElementOrigin(storage.read('piece-origin'), target, transfer.origin);
+      const switched = memory.switchDraft({ [target]: transfer.fields, 'piece-origin': origins as unknown as JsonValue }, target, preserveCurrent);
+      if (switched === 'full') return;
+      setElementState(target);
+      setReport(null); setVerdict(null); setCopied(false);
+      setInitialIntentConsumed(true); setNavigatorOpen(false); setLoadCount((count) => count + 1);
+      history.current = null; setHistoryFlags({ canUndo: false, canRedo: false });
+    } catch (error) {
+      setExportMessage(error instanceof Error ? error.message : 'No se pudo crear la pieza vinculada.');
+    }
+  };
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const onVerdict = useCallback((next: Verdict) => setVerdict((current) =>
     current && current.status === next.status && current.label === next.label ? current : next), []);
@@ -294,6 +327,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     <button type="button" className="dw-dock__new-design" aria-label="Nuevo diseño" title="Nuevo diseño" onClick={() => setStartOpen(true)}>
       <Plus size={16} aria-hidden="true" /><span>Nuevo</span>
     </button>
+    {(modelSource?.resultProvider || modelAxes?.resultProvider || modelAxes?.axes.some((axis) => { try { return Boolean(modelAxes.source(axis.id).resultProvider); } catch { return false; } })) ? <button type="button" className="dw-dock__new-design dw-dock__building-action" data-testid="open-building-navigator" onClick={() => setNavigatorOpen(true)}>Edificio</button> : null}
   </div>;
   const codeControl = <label className="dw-code-chip" title={`${designCode(code).name} · ${designCode(code).country}`}>
     <select aria-label="Norma de diseño" value={code} onChange={(event) => setCode(event.currentTarget.value)}>
@@ -302,8 +336,25 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     <ChevronDown size={14} aria-hidden="true" />
   </label>;
   const memoryBar = <MemoryStatus memory={memory} element={element} onSave={saveToMemory} onOpen={() => setMemoryOpen(true)} />;
+  const activeOrigin = element === 'column' || element === 'flexure' ? originForElement(storage.read('piece-origin'), element) : undefined;
+  const activeProvider = activeOrigin ? activeOrigin.snapshot.source.kind === 'model2d' ? modelSource?.resultProvider : modelAxes?.resultProvider ?? (() => {
+    try { return activeOrigin.snapshot.source.axisId ? modelAxes?.source(activeOrigin.snapshot.source.axisId).resultProvider : undefined; } catch { return undefined; }
+  })() : undefined;
+  const activeFieldsRaw = storage.read(element);
+  const activeFields = activeFieldsRaw && typeof activeFieldsRaw === 'object' && !Array.isArray(activeFieldsRaw) ? Object.fromEntries(Object.entries(activeFieldsRaw as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string')) : {};
+  const contextualOrigin = activeOrigin ? <LinkedPieceOriginView origin={activeOrigin} provider={activeProvider} currentFields={activeFields}
+    onShowSource={() => onShowMembers?.([activeOrigin.snapshot.source.memberId], activeOrigin.snapshot.source.axisId, activeOrigin.snapshot.source.kind)}
+    onRefresh={() => {
+      const provider = activeProvider;
+      if (!provider) { setExportMessage('El origen no está disponible en el proyecto actual.'); return; }
+      const snapshot = activeOrigin.snapshot;
+      const abort = new AbortController();
+      void provider.member({ memberId: snapshot.source.memberId, targetId: snapshot.target.id, xM: snapshot.station.xM, side: snapshot.station.side, ...(snapshot.source.axisId ? { axisId: snapshot.source.axisId } : {}) }, abort.signal)
+        .then((fresh) => createLinkedPiece(fresh, element as 'column' | 'flexure', false))
+        .catch((error: unknown) => setExportMessage(error instanceof Error ? error.message : 'No se pudo actualizar el origen.'));
+    }} /> : null;
   const chrome: WorkbenchChrome = {
-    elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource, modelAxes,
+    elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource, modelAxes, contextualOrigin,
     onSaveAxes: (axes) => memory.saveAxes(axes),
     ...(nativeTool ? { onVerdict } : {}),
     ...(onOpenModel ? { onOpenModel } : {}),
@@ -319,6 +370,9 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
 
   return <div className="design-workbench" data-testid="design-workbench">
     {exportMessage && !memoryOpen ? <p className="dw-action-feedback" role="alert">{exportMessage}<button type="button" aria-label="Cerrar aviso" onClick={() => setExportMessage(null)}>×</button></p> : null}
+    {navigatorOpen ? <ModelMemberNavigator modelSource={modelSource} modelAxes={modelAxes} onShowMembers={onShowMembers}
+      origins={[...memory.items.flatMap((item) => item.origin ? [item.origin.snapshot] : []), ...(activeOrigin ? [activeOrigin.snapshot] : [])]}
+      onCreateLinked={createLinkedPiece} onClose={() => setNavigatorOpen(false)} /> : null}
     {nativeTool ? <ShellContribution slot="controls">
       <button type="button" className="workspace-topbar__icon-button" onClick={() => history.current?.undo()} disabled={!historyFlags.canUndo}
         aria-label="Deshacer" title="Deshacer (Ctrl/⌘ Z)"><Undo2 size={17} aria-hidden="true" /></button>

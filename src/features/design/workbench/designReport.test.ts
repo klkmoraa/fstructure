@@ -180,4 +180,24 @@ describe('memoria del proyecto', () => {
     expect(all.length).toBeGreaterThan(single.length);
     await expect(buildDesignMemoriaPdf([])).rejects.toThrow();
   });
+
+  it('mantiene el origen tipado en la memoria, los grupos y la huella PDF', async () => {
+    const origin = { version: 1 as const, snapshot: {
+      version: 1 as const, source: { kind: 'model3d' as const, projectId: 'p', revision: 'r1', memberId: 'C1', axisId: 'x:0' },
+      target: { id: 'LC1', label: 'LC1', kind: 'case' as const, factors: [] }, station: { xM: 1, side: 'right' as const, lengthM: 3 }, units: 'kN-m' as const,
+      axes: { convention: 'y global Z; z global X', localBasis: [[0, 1, 0], [0, 0, 1], [1, 0, 0]] as const },
+      actions: { nKn: -200, vyKn: 5, vzKn: 10, torsionKnm: 4, myKnm: -20, mzKnm: 10 },
+      member: { id: 'C1', label: 'Columna C1', family: 'column' as const, levelId: 'L1', axisIds: ['x:0'], lengthM: 3,
+        section: { shape: 'rectangular' as const, widthMm: 300, depthMm: 500, fcMpa: 25, materialLabel: 'C25' }, start: [0, 0, 0] as [number, number, number], end: [0, 3, 0] as [number, number, number] },
+    }, copiedFields: { axial: '200', momentX: '10' } };
+    const outcome = reportFromMemoryItem({ id: 'linked', element: 'column', code: 'ntc-2023', savedAt: '2026-10-10', fields: { ...COLUMN_DEFAULTS, axial: '201', momentX: '10' }, origin });
+    const report = unwrap(outcome);
+    expect(report.origin).toEqual(origin);
+    expect(report.originEdited).toBe(true);
+    expect(report.originSourceStatus).toBe('unavailable');
+    expect(report.data.find((group) => group.title.includes('Origen vinculado'))?.rows.some((row) => row.value.includes('Vy 5 kN') && row.value.includes('My -20 kN·m'))).toBe(true);
+    expect(await snapshotHash(report)).not.toBe(await snapshotHash({ ...report, origin: undefined }));
+    const pdf = await buildDesignMemoriaPdf([report], { figures: false });
+    expect(new TextDecoder().decode(pdf.slice(0, 5))).toBe('%PDF-');
+  });
 });

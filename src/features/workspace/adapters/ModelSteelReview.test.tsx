@@ -51,7 +51,7 @@ it('cancelar termina el worker y no devuelve un resultado caducado', async () =>
 
 it('guarda y reabre sólo la selección; recalcula la demanda del modelo vigente', async () => {
   vi.stubGlobal('Worker', FakeWorker);
-  const { createProjectWorkbenchStorage, WorkbenchStorageContext } = await import('../../design/workbench/workbenchStorage');
+  const { createProjectWorkbenchStorage, DESIGN_WORKBENCH_SCHEMA_VERSION, WorkbenchStorageContext } = await import('../../design/workbench/workbenchStorage');
   const persist = vi.fn();
   const storage = createProjectWorkbenchStorage(undefined, persist);
   const project = steelTensionProject();
@@ -61,7 +61,7 @@ it('guarda y reabre sólo la selección; recalcula la demanda del modelo vigente
   fireEvent.click(screen.getByRole('button', { name: 'Guardar revisión de acero' }));
   storage.flush();
   const document = persist.mock.calls[0]![0];
-  expect(document.schemaVersion).toBe(7);
+  expect(document.schemaVersion).toBe(DESIGN_WORKBENCH_SCHEMA_VERSION);
   expect(document.entries['steel-memory']).toEqual([{ memberId: 'T1', combinationId: 'U', savedAt: expect.any(String) }]);
   view.unmount(); storage.dispose();
   const reopened = createProjectWorkbenchStorage(document, () => undefined);

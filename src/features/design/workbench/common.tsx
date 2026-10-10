@@ -337,7 +337,7 @@ export function ReviewList({ checks, outOfScope }: { checks: readonly ElementChe
 export function ErrorsPanel({ errors }: { errors: readonly string[] }) {
   return <section className="dw-errors" role="alert">
     <CircleAlert size={18} aria-hidden="true" />
-    <div><strong>Revisa los datos</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>
+    <div><strong>Revisa los datos</strong><ul>{errors.map((error, index) => <li key={`${index}:${error}`}>{error}</li>)}</ul></div>
   </section>;
 }
 

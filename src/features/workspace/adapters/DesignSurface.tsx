@@ -15,6 +15,9 @@ import { browserWorkbenchStorage, createProjectWorkbenchStorage, type ProjectWor
 import { ProjectModelContext } from '../../../store/ProjectModelContext';
 import { WorkspaceUIContext } from '../../../store/WorkspaceUIContext';
 import { space3dSelection } from './mesaSelection';
+import type { ModelResultKind } from '../../../design/elements/modelResultSnapshot';
+
+export const modelSelectionDestination = (axisId?: string, kind?: ModelResultKind): 'model2d' | 'model3d' => axisId !== undefined || kind === 'model3d' ? 'model3d' : 'model2d';
 import { useSharedToolState } from '../../../store/SharedToolState';
 import { ModelSteelReview, isSteelReviewCandidate } from './ModelSteelReview';
 import { model2dResultProviderWithWorker, space3dResultProviderWithWorker } from './modelResultWorker';
@@ -172,9 +175,9 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   useEffect(() => { takeToolIntent('design'); }, []);
   // «Ver en el Modelo» / «Ver en 3D»: las barras de un elemento quedan seleccionadas al volver.
   const setSelection = ui?.setSelection;
-  const showMembers = useMemo(() => (memberIds: readonly string[], axisId?: string) => {
+  const showMembers = useMemo(() => (memberIds: readonly string[], axisId?: string, kind?: ModelResultKind) => {
     if (!memberIds.length) return;
-    if (axisId !== undefined) {
+    if (modelSelectionDestination(axisId, kind) === 'model3d') {
       if (!onOpenSpace3D) return;
       const axis = modelAxes?.axes.find((item) => item.id === axisId);
       setToolIntent({ tool: 'space3d', kind: 'view', view: axis?.short ? `elev-${axis.direction}:${axis.short}` : '3d', members: memberIds });

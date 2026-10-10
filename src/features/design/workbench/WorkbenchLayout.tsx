@@ -2,6 +2,7 @@ import { ClipboardCheck, Maximize2, Minus, PenLine, Plus, RotateCcw, SlidersHori
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
+import type { ModelResultKind } from '../../../design/elements/modelResultSnapshot';
 import { verdictHeadline, type DraftHistory } from './common';
 import type { DesignReport } from './designReport';
 import type { ProposalStep } from './frameProposal';
@@ -23,6 +24,8 @@ export interface WorkbenchChrome {
   readonly onReport: (report: DesignReport | null) => void;
   /** Estado del elemento en la memoria del proyecto, sobre los resultados. */
   readonly memoryBar?: ReactNode;
+  /** Origen contextual de una pieza enlazada, dentro del panel Datos. */
+  readonly contextualOrigin?: ReactNode;
   /** El formulario activo entrega aquí su deshacer/rehacer. */
   readonly onHistory?: (history: DraftHistory) => void;
   /**
@@ -51,7 +54,7 @@ export interface WorkbenchChrome {
   /** Barra del modelo cuyo diseño se abre al llegar (la elegida en el 2D o el 3D). */
   readonly focusMember?: string;
   /** Selecciona esas barras en su modo y lo abre; con `axisId`, en el 3D. */
-  readonly onShowMembers?: (memberIds: readonly string[], axisId?: string) => void;
+  readonly onShowMembers?: (memberIds: readonly string[], axisId?: string, kind?: ModelResultKind) => void;
   /** Las vigas y columnas de concreto del Modelo 2D, para proponer sus secciones y escribirlas en él. */
   readonly modelSections?: ModelSectionsBridge | null;
   readonly space3dSections?: ModelSectionsBridge | null;
@@ -208,7 +211,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
           <X size={16} aria-hidden="true" />
         </button>
       </header>
-      <div className="dw-panel__body">{inputs}</div>
+      <div className="dw-panel__body">{chrome.contextualOrigin}{inputs}</div>
     </form>
 
     <section className="dw-stage" aria-label="Lámina de diseño">

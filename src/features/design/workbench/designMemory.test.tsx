@@ -7,6 +7,7 @@ import { BEAM_DEFAULTS, DEFAULT_SPANS } from './beamModel';
 import { FOOTING_DEFAULTS } from './footingModel';
 import { DESIGN_STARTS, type DesignStart } from './designStarts';
 import { createProjectWorkbenchStorage, WORKBENCH_DOCUMENT_KIND, type WorkbenchMemoryItem, type WorkbenchStorage } from './workbenchStorage';
+import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 
 const memoryStorage = (initial: Record<string, unknown>): WorkbenchStorage & { data: Record<string, unknown> } => {
   const data = { ...initial };
@@ -524,10 +525,52 @@ it('conserva el id de ejercicio en borrador, memoria de proyecto y al reabrir si
 
   storage.flush();
   const document = writes.at(-1) as { schemaVersion: number; entries: Record<string, unknown> };
-  expect(document.schemaVersion).toBe(7);
+  expect(document.schemaVersion).toBe(8);
   expect((document.entries.memory as WorkbenchMemoryItem[])[0]?.fields.exercise).toBe(recipe.id);
   storage.write('beam', { ...recipe.fields, exercise: '' });
   act(() => { expect(result.current.open(saved.id)).toBeTruthy(); });
   expect((storage.read('beam') as Record<string, string>).exercise).toBe(recipe.id);
   storage.dispose();
+});
+
+it('guarda, duplica y abre el origen enlazado de columna conservando el origen independiente de flexión', () => {
+  const origin = { version: 1 as const, snapshot: {
+    version: 1 as const, source: { kind: 'model3d' as const, projectId: 'p', revision: 'r1', memberId: 'C1', axisId: 'x:0' },
+    target: { id: 'LC1', label: 'LC1', kind: 'case' as const, factors: [] }, station: { xM: 1, side: 'right' as const, lengthM: 3 }, units: 'kN-m' as const,
+    axes: { convention: 'local', localBasis: [[0, 1, 0], [0, 0, 1], [1, 0, 0]] as const }, actions: { nKn: -1, vyKn: 0, vzKn: 0, torsionKnm: 0, myKnm: 2, mzKnm: 3 },
+    member: { id: 'C1', label: 'C1', family: 'column' as const, levelId: 'L1', axisIds: ['x:0'], lengthM: 3, section: { shape: 'rectangular' as const, widthMm: 300, depthMm: 500, fcMpa: 25, materialLabel: 'C25' }, start: [0, 0, 0] as [number, number, number], end: [0, 3, 0] as [number, number, number] },
+  }, copiedFields: { axial: '1', momentX: '3' } };
+  const flexureOrigin = { ...origin, copiedFields: { moment: '3' } };
+  const storage = memoryStorage({ column: { tag: 'C1', axial: '1', momentX: '3' }, element: 'column', 'piece-origin': { version: 1, byElement: { column: origin, flexure: flexureOrigin } } });
+  const { result } = renderHook(() => useDesignMemory(storage, 'column', 'ntc-2023', 0));
+  act(() => { expect(result.current.save()).toBe('saved'); });
+  const saved = result.current.items[0]!;
+  expect(saved.origin).toEqual(origin);
+  act(() => { expect(result.current.duplicate(saved.id)).toBe('duplicated'); });
+  expect(result.current.items[1]?.origin).toEqual(origin);
+  act(() => { expect(result.current.open(saved.id)).toEqual(saved); });
+  expect(storage.read('piece-origin')).toEqual({ version: 1, byElement: { column: origin, flexure: flexureOrigin } });
+  act(() => { expect(result.current.start(DESIGN_STARTS.find((item) => item.id === 'piece-column')!)).toBe('started'); });
+  expect(storage.read('piece-origin')).toEqual({ version: 1, byElement: { flexure: flexureOrigin } });
+});
+
+it('rechaza un cambio enlazado cuando conservar el borrador previo excede la memoria llena', () => {
+  const origin = { version: 1 as const, snapshot: {
+    version: 1 as const, source: { kind: 'model2d' as const, projectId: 'p', revision: 'r1', memberId: 'C1' },
+    target: { id: 'SERV', label: 'SERV', kind: 'case' as const, factors: [] }, station: { xM: 1, side: 'right' as const, lengthM: 3 }, units: 'kN-m' as const,
+    axes: { convention: '2D', localBasis: [] as const }, actions: { nKn: -2, vyKn: 3, vzKn: 0, torsionKnm: 0, myKnm: 0, mzKnm: 4 },
+    member: { id: 'C1', label: 'C1', family: 'column' as const, levelId: null, axisIds: [], lengthM: 3, section: { shape: 'rectangular' as const, widthMm: 300, depthMm: 500, fcMpa: 25, materialLabel: 'C25' }, start: [0, 0, 0] as [number, number, number], end: [0, 3, 0] as [number, number, number] },
+  }, copiedFields: { axial: '2' } };
+  const memory = Array.from({ length: 60 }, (_, index) => ({ id: `m${index}`, element: 'beam' as const, code: 'ntc-2023', savedAt: '2026-10-10', fields: { width: '25' } }));
+  const data: Record<string, unknown> = { column: { tag: 'C1', axial: '2' }, element: 'column', memory, 'memory-active': '', 'piece-origin': { version: 1, byElement: { column: origin } } };
+  const storage: WorkbenchStorage = { read: (key) => data[key], write: (key, value) => { data[key] = value; }, commitBatch(writes) {
+    const next = { ...data, ...writes };
+    if (Array.isArray(next.memory) && next.memory.length > 60) return { accepted: false, reason: 'La memoria está llena.' };
+    Object.assign(data, writes); return { accepted: true };
+  } };
+  const before = structuredClone(data);
+  const { result } = renderHook(() => useDesignMemory(storage, 'column', 'ntc-2023', 0));
+  act(() => { expect(result.current.switchDraft({ column: { tag: 'C2', axial: '3' }, 'piece-origin': { version: 1, byElement: {} } as unknown as JsonValue }, 'column')).toBe('full'); });
+  expect(data).toEqual(before);
+  expect(result.current.items).toHaveLength(60);
 });

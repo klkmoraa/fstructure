@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createDefaultProject } from '../../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../../data/projectStorage';
 import { ProjectProvider } from '../../../store/ProjectContext';
-import DesignSurface from './DesignSurface';
+import DesignSurface, { modelSelectionDestination } from './DesignSurface';
 import { setToolIntent } from '../toolIntent';
 
 beforeEach(() => {
@@ -13,6 +13,12 @@ beforeEach(() => {
   localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createDefaultProject()));
 });
 afterEach(cleanup);
+
+it('conserva el territorio 3D al ver origen aunque el snapshot no tenga eje', () => {
+  expect(modelSelectionDestination(undefined, 'model3d')).toBe('model3d');
+  expect(modelSelectionDestination('x:0', undefined)).toBe('model3d');
+  expect(modelSelectionDestination(undefined, 'model2d')).toBe('model2d');
+});
 
 describe('DesignSurface: entrada al selector de arranques', () => {
   it('abre el selector de Home y cancelar no normaliza el origen previo del pórtico', async () => {

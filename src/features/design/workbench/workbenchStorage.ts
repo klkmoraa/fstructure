@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import type { BeamDetailDraft } from '../../../shared/project/designDetailValidation';
+import type { LinkedPieceOrigin } from './LinkedPieceOrigin';
 import {
   DESIGN_WORKBENCH_KIND, DESIGN_WORKBENCH_MAX_DOCUMENT_CHARS, DESIGN_WORKBENCH_MAX_ENTRIES,
   DESIGN_WORKBENCH_MAX_MEMORY_ITEMS, DESIGN_WORKBENCH_SCHEMA_VERSION, inspectDesignDocument,
@@ -14,7 +15,7 @@ export const MAX_MEMORY_ITEMS = DESIGN_WORKBENCH_MAX_MEMORY_ITEMS;
 export interface WorkbenchMemoryItem {
   readonly id: string; readonly element: 'beam' | 'column' | 'frame' | 'footing' | 'section' | 'flexure';
   readonly code: string; readonly savedAt: string; readonly fields: Record<string, string>;
-  readonly rows?: Record<string, string>[]; readonly levels?: Record<string, string>[]; readonly details?: BeamDetailDraft;
+  readonly rows?: Record<string, string>[]; readonly levels?: Record<string, string>[]; readonly details?: BeamDetailDraft; readonly origin?: LinkedPieceOrigin;
 }
 export const isMemoryItem = isDesignWorkbenchMemoryItem as (value: unknown) => value is WorkbenchMemoryItem;
 

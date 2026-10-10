@@ -4,7 +4,7 @@ import {
   inspectDesignDocument,
 } from './designWorkbenchCodec';
 
-const document = (entries: Record<string, unknown>, schemaVersion = 7) => ({
+const document = (entries: Record<string, unknown>, schemaVersion = 8) => ({
   kind: 'fstructure-design-workbench', schemaVersion, entries,
 });
 
@@ -18,8 +18,8 @@ describe('inspectDesignDocument', () => {
   });
 
   it('accepts supported versions and preserves valid incomplete fields', () => {
-    expect(DESIGN_WORKBENCH_SCHEMA_VERSION).toBe(7);
-    for (let version = 1; version <= 7; version += 1) {
+    expect(DESIGN_WORKBENCH_SCHEMA_VERSION).toBe(8);
+    for (let version = 1; version <= 8; version += 1) {
       const result = inspectDesignDocument(document({ beam: { moment: '' }, 'old-field': 'yes' }, version));
       expect(result.status).toBe('supported');
       expect(result.entries).toEqual({ beam: { moment: '' }, 'old-field': 'yes' });
@@ -54,5 +54,24 @@ describe('inspectDesignDocument', () => {
     expect(inspectDesignDocument(document({ future: { nested: [1, true] } }, 12))).toMatchObject({
       status: 'future', schemaVersion: 12, entries: null,
     });
+  });
+
+  it('validates linked origins and rejects non-finite actions and oversized bases atomically', () => {
+    const origin = { version: 1, snapshot: {
+      version: 1, source: { kind: 'model3d', projectId: 'p1', revision: 'r1', memberId: 'C1', axisId: 'x:0' },
+      target: { id: 'LC1', label: 'LC1', kind: 'combination', factors: [{ caseId: 'D', factor: 1 }] },
+      station: { xM: 1, side: 'right', lengthM: 3 }, units: 'kN-m',
+      axes: { convention: 'local', localBasis: [[0, 1, 0], [0, 0, 1], [1, 0, 0]] },
+      actions: { nKn: -200, vyKn: 5, vzKn: 10, torsionKnm: 4, myKnm: -20, mzKnm: 10 },
+      member: { id: 'C1', label: 'C1', family: 'column', levelId: 'L1', axisIds: ['x:0'], lengthM: 3,
+        section: { shape: 'rectangular', widthMm: 300, depthMm: 500, fcMpa: 25, materialLabel: 'Concreto' }, start: [0, 0, 0], end: [0, 3, 0] },
+    }, copiedFields: { axial: '200' } };
+    expect(inspectDesignDocument(document({ 'piece-origin': { version: 1, byElement: { column: origin } } })).status).toBe('supported');
+    const nanOrigin = structuredClone(origin) as typeof origin;
+    nanOrigin.snapshot.actions.nKn = Number.NaN;
+    expect(inspectDesignDocument(document({ 'piece-origin': { version: 1, byElement: { column: nanOrigin } } })).status).toBe('invalid');
+    const longBasis = structuredClone(origin) as typeof origin;
+    longBasis.snapshot.axes.localBasis.push([1, 0, 0]);
+    expect(inspectDesignDocument(document({ 'piece-origin': { version: 1, byElement: { column: longBasis } } })).status).toBe('invalid');
   });
 });
