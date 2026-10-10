@@ -65,7 +65,8 @@ export function designFlexureExercise(input: FlexureExerciseInput): FlexureExerc
     ? requiredFlexuralSteelMm2(Math.abs(input.momentKnM), input.widthMm, effectiveDepthMm, input.fyMpa, input.fcMpa, extremeDepthMm, code.flexureFactor, code.tensionControlledStrain)
     : undefined;
   const requiredMm2 = required ?? Number.POSITIVE_INFINITY;
-  const requiredResistance = validGeometry && required !== undefined && required > 0
+  // Evaluate the shared profile law at As=0 too; zero demand still has a real factor.
+  const requiredResistance = validGeometry && required !== undefined
     ? flexuralCapacity(required, input.widthMm, effectiveDepthMm, input.fyMpa, input.fcMpa, extremeDepthMm, code.flexureFactor)
     : null;
   const requiredBlockDepthMm = requiredResistance && validGeometry

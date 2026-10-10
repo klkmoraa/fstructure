@@ -15,6 +15,12 @@ describe('borrador y reporte de flexión', () => {
     expect(isFlexureDraftComplete({ ...FLEXURE_DEFAULTS, moment: '0' })).toBe(true);
     const report = flexureReport('ntc-2023', { ...FLEXURE_DEFAULTS, moment: '0' });
     expect(report.memo).toContain('Mu = 0.0 kN·m');
+    const equation = report.values.find((value) => value.symbol === 'As req')!.label;
+    expect(equation).toContain('φ = 0.900');
+    expect(equation).toContain('As = 0.00 mm²');
+    expect(equation).toContain('a = 0.00 mm');
+    expect(report.checks).toEqual([]);
+    expect(report.notes.filter((note) => note.label.startsWith('Perfil')).length).toBe(3);
   });
 
   it('oculta del reporte vigente cualquier preview de dimensiones sin aplicar', () => {

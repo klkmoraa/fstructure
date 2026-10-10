@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { designFlexureExercise, proposeFlexureDimensions, type FlexureExerciseInput } from './flexureExercise';
+import { flexuralCapacity } from './shared';
+import { designCode } from './codes';
 
 const base: FlexureExerciseInput = {
   code: 'ntc-2023', widthMm: 400, heightMm: 600, coverMm: 40, fcMpa: 25, fyMpa: 420,
@@ -41,6 +43,9 @@ describe('designFlexureExercise', () => {
   it('accepts an explicit zero moment and rejects invalid geometry or congested bars', () => {
     const zero = designFlexureExercise({ ...base, momentKnM: 0 });
     expect(zero.requiredMm2).toBe(0);
+    const expected = flexuralCapacity(0, base.widthMm, zero.effectiveDepthMm, base.fyMpa, base.fcMpa, zero.extremeDepthMm, designCode(base.code).flexureFactor);
+    expect(zero.requiredResistanceFactor).toBe(expected.resistanceFactor);
+    expect(zero.requiredResistanceFactor).toBeGreaterThan(0);
     expect(zero.status).not.toBe('pass');
     expect(designFlexureExercise({ ...base, widthMm: 80 }).checks.some((check) => check.status === 'fail')).toBe(true);
     expect(designFlexureExercise({ ...base, bottom: { count: 30, diameterMm: 32 } }).layout.bars).toBeNull();
