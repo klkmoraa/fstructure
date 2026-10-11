@@ -66,10 +66,13 @@ export interface WorkbenchChrome {
 export interface ModelSection { readonly width: number; readonly height: number }
 
 export interface ModelSectionsBridge {
+  readonly kind?: 'model2d' | 'model3d';
+  readonly projectId?: string;
+  readonly revision?: string;
   readonly groups?: readonly ConcreteSectionGroup[];
-  propose?(code: DesignCodeId, draft: FrameDraft, onStep: (step: ProposalStep) => void): (() => void) | null;
+  propose?(code: DesignCodeId, draft: FrameDraft, onStep: (step: ProposalStep) => void, scopeMemberIds?: readonly string[]): (() => void) | null;
   /** Revisión del candidato completo (varios ejes, si procede). */
-  evaluate?(code: DesignCodeId, draft: FrameDraft, beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): StructureOutcome;
+  evaluate?(code: DesignCodeId, draft: FrameDraft, beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[], scopeMemberIds?: readonly string[]): StructureOutcome;
   readonly beams: number;
   readonly columns: number;
   readonly beamLengthM: number;
@@ -77,9 +80,9 @@ export interface ModelSectionsBridge {
   /** Volumen de concreto de esas barras con sus secciones actuales, m³. */
   readonly volumeM3: number;
   /** La fuente del modelo con esas secciones en todas sus vigas y columnas (sin cambiarlo). */
-  variant(beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): ExternalStructureSource;
+  variant(beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[], scopeMemberIds?: readonly string[]): ExternalStructureSource;
   /** Las escribe en el modelo, como un cambio deshacible en el modo 2D. */
-  apply(beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[]): void;
+  apply(beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[], scopeMemberIds?: readonly string[]): void;
 }
 
 export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };

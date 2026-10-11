@@ -142,7 +142,7 @@ export function concreteFrameMembers(project: ProjectModel): { readonly beams: r
  * barras inclinadas, de acero o armaduras quedan como estaban. Quien lo aplica
  * lo hace como un cambio deshacible.
  */
-export function withConcreteSections(project: ProjectModel, sections: ConcreteFrameSections, groups: readonly ConcreteSectionGroup[] = []): ProjectModel {
+export function withConcreteSections(project: ProjectModel, sections: ConcreteFrameSections, groups: readonly ConcreteSectionGroup[] = [], scopeMemberIds?: readonly string[]): ProjectModel {
   const { beams, columns } = concreteFrameMembers(project);
   const role = new Map<string, 'beam' | 'column'>([...beams.map((item) => [item.id, 'beam'] as const), ...columns.map((item) => [item.id, 'column'] as const)]);
   const sectionOf = ({ widthMm, heightMm }: { widthMm: number; heightMm: number }) => {
@@ -152,13 +152,14 @@ export function withConcreteSections(project: ProjectModel, sections: ConcreteFr
     return { match, A: width * depth, I: width * depth ** 3 / 12 };
   };
   const assigned = new Map(groups.flatMap((group) => group.memberIds.map((id) => [id, sectionOf({ widthMm: group.width * 10, heightMm: group.height * 10 })] as const)));
+  const scope = scopeMemberIds ? new Set(scopeMemberIds) : null;
   const beam = sectionOf(sections.beam);
   const column = sectionOf(sections.column);
   return {
     ...project,
     members: project.members.map((member) => {
       const kind = role.get(member.id);
-      if (!kind) return member;
+      if (!kind || (scope && !scope.has(member.id))) return member;
       const section = assigned.get(member.id) ?? (kind === 'beam' ? beam : column);
       const { sectionId: _previous, ...rest } = member;
       return section.match

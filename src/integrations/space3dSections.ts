@@ -32,16 +32,17 @@ export function space3dSectionGroups(model: Space3DProjectV1): ConcreteSectionGr
 }
 
 /** Puente Diseño → modelo 3D: cambia sólo A, Iy, Iz, J e identidad de sección. Quien lo llama registra el historial del 3D. */
-export function withSpace3dSections(model: Space3DProjectV1, sections: ConcreteFrameSections, assigned: readonly ConcreteSectionGroup[] = []): Space3DProjectV1 {
+export function withSpace3dSections(model: Space3DProjectV1, sections: ConcreteFrameSections, assigned: readonly ConcreteSectionGroup[] = [], scopeMemberIds?: readonly string[]): Space3DProjectV1 {
   const groups = space3dSectionGroups(model);
   const sizes = new Map(assigned.flatMap((g) => g.memberIds.map((id) => [id, { widthMm: g.width * 10, heightMm: g.height * 10 }] as const)));
   const roles = new Map(groups.flatMap((g) => g.memberIds.map((id) => [id, g.kind] as const)));
+  const scope = scopeMemberIds ? new Set(scopeMemberIds) : null;
   for (const section of [...sizes.values(), sections.beam, sections.column]) {
     if (!(Number.isFinite(section.widthMm) && section.widthMm > 0 && Number.isFinite(section.heightMm) && section.heightMm > 0)) throw new Error('La sección propuesta debe tener dimensiones finitas y positivas.');
   }
   return { ...model, members: model.members.map((member) => {
     const kind = roles.get(member.id);
-    if (!kind) return member;
+    if (!kind || (scope && !scope.has(member.id))) return member;
     const size = sizes.get(member.id) ?? sections[kind];
     const { sectionId: _previous, shearArea: _shearArea, ...rest } = member;
     return { ...rest, ...calculateRectangularSection(size.widthMm / 1e3, size.heightMm / 1e3), sectionOrigin: 'custom' as const };

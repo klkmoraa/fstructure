@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../../data/defaultProject';
+import type { ModelDemandSnapshot, ModelResultProvider } from '../../../design/elements/modelResultSnapshot';
 import { PROJECT_STORAGE_KEY } from '../../../data/projectStorage';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { ProjectProvider } from '../../../store/ProjectContext';
@@ -337,6 +338,27 @@ describe('DesignWorkbench', () => {
     })]));
   });
 
+  it('conserva el origen en memoria al iniciar un ejercicio propio desde una pieza vinculada sin guardar', async () => {
+    const user = userEvent.setup();
+    const snapshot: ModelDemandSnapshot = { version: 1, source: { kind: 'model3d', projectId: 'p', revision: 'r1', memberId: 'C1' },
+      target: { id: 'LC1', label: 'LC1', kind: 'case', factors: [] }, station: { xM: 1, side: 'right', lengthM: 3 }, units: 'kN-m',
+      axes: { convention: 'local', localBasis: [[0, 1, 0], [0, 0, 1], [1, 0, 0]] }, actions: { nKn: -1, vyKn: 0, vzKn: 0, torsionKnm: 0, myKnm: 2, mzKnm: 3 },
+      member: { id: 'C1', label: 'Columna C1', family: 'column', levelId: 'L1', axisIds: [], lengthM: 3,
+        section: { shape: 'rectangular', widthMm: 300, depthMm: 500, fcMpa: 25, materialLabel: 'C25' }, start: [0, 0, 0], end: [0, 3, 0] } };
+    const origin = { version: 1, snapshot, copiedFields: { axial: '-1' } };
+    localStorage.setItem('fstructure.design-workbench.element', JSON.stringify('column'));
+    localStorage.setItem('fstructure.design-workbench.column', JSON.stringify({ axial: '-1', tag: 'C-1' }));
+    localStorage.setItem('fstructure.design-workbench.piece-origin', JSON.stringify({ version: 1, byElement: { column: origin } }));
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="column" /></ProjectProvider>);
+    await user.click(screen.getByRole('button', { name: 'Nuevo diseño' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo diseño' });
+    await user.click(within(dialog).getByRole('tab', { name: 'Ejercicio' }));
+    await user.click(await within(dialog).findByRole('button', { name: 'Iniciar diseño: Columna con acciones dadas' }));
+    const memory = JSON.parse(localStorage.getItem('fstructure.design-workbench.memory')!);
+    expect(memory).toEqual(expect.arrayContaining([expect.objectContaining({ element: 'column', fields: expect.objectContaining({ tag: 'C-1' }), origin })]));
+    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.piece-origin')!).byElement.column).toBeUndefined();
+  });
+
   it('ignora ids de ejercicio heredados en borradores del taller sin romper la viga', () => {
     localStorage.setItem('fstructure.design-workbench.beam', JSON.stringify({ exercise: 'constructor' }));
     renderWorkbench();
@@ -413,6 +435,28 @@ describe('DesignWorkbench', () => {
     const origin = screen.getByTestId('linked-piece-origin');
     expect(origin.closest('form[aria-label="Datos del elemento"]')).toBeTruthy();
     expect(origin.querySelector('details')).toBeTruthy();
+  });
+
+  it('descarta la actualización de origen tardía si se cambia de elemento mientras lee el modelo', async () => {
+    const user = userEvent.setup();
+    const member = { id: 'C1', label: 'Columna C1', family: 'column' as const, levelId: 'L1', axisIds: [], lengthM: 3,
+      section: { shape: 'rectangular' as const, widthMm: 300, depthMm: 500, fcMpa: 25, materialLabel: 'C25' }, start: [0, 0, 0] as [number, number, number], end: [0, 3, 0] as [number, number, number] };
+    const target = { id: 'LC1', label: 'LC1', kind: 'case' as const, factors: [] };
+    const snapshot: ModelDemandSnapshot = { version: 1, source: { kind: 'model3d', projectId: 'p', revision: 'r1', memberId: 'C1' }, target,
+      station: { xM: 1, side: 'right', lengthM: 3 }, units: 'kN-m', axes: { convention: 'local', localBasis: [[0, 1, 0], [0, 0, 1], [1, 0, 0]] },
+      actions: { nKn: -1, vyKn: 0, vzKn: 0, torsionKnm: 0, myKnm: 2, mzKnm: 3 }, member };
+    let resolve!: (value: ModelDemandSnapshot) => void;
+    const pending = new Promise<ModelDemandSnapshot>((done) => { resolve = done; });
+    const provider: ModelResultProvider = { inventory: { projectId: 'p', kind: 'model3d', revision: 'r1', members: [member], targets: [target], supports: [], levels: [] }, member: () => pending, support: async () => { throw new Error(); } };
+    localStorage.setItem('fstructure.design-workbench.piece-origin', JSON.stringify({ version: 1, byElement: { column: { version: 1, copiedFields: { axial: '-1' }, snapshot } } }));
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="column" modelAxes={{ axes: [], resultProvider: provider } as never} /></ProjectProvider>);
+    await user.click(screen.getByRole('button', { name: 'Actualizar origen' }));
+    await user.click(screen.getByRole('radio', { name: 'Flexión' }));
+    resolve(snapshot);
+    await Promise.resolve(); await Promise.resolve();
+    expect(screen.getByRole('radio', { name: 'Flexión' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.queryByTestId('linked-piece-origin')).toBeNull();
+    expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.piece-origin')!).byElement.column.snapshot.source.revision).toBe('r1');
   });
 
   it('previsualiza una alternativa de columna y aplica sólo el armado al solicitarlo', async () => {

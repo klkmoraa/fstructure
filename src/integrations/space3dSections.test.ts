@@ -32,6 +32,14 @@ it('agrupa todos los ejes sin contar dos veces las columnas compartidas', () => 
   expect(new Set(ids).size).toBe(ids.length);
   expect(ids.sort()).toEqual(building.members.map((m) => m.id).sort());
 });
+it('limita los cambios 3D al grupo seleccionado y conserva el resto del edificio', () => {
+  const original = model(2), groups = space3dSectionGroups(original);
+  const selected = groups.find((group) => group.kind === 'beam')!;
+  const changed = withSpace3dSections(original, sizes, [], selected.memberIds);
+  for (const id of selected.memberIds) expect(changed.members.find((member) => member.id === id)?.A).toBeCloseTo(.15, 12);
+  for (const member of original.members.filter((item) => !selected.memberIds.includes(item.id)))
+    expect(changed.members.find((item) => item.id === member.id)).toEqual(member);
+});
 for (const code of ['ntc-2023', 'nsr-10', 'e060'] as DesignCodeId[]) it(`propone por grupos en el 3D y verifica todos los ejes con ${code}`, () => {
   const original = model(code === 'ntc-2023' ? 2 : 1), groups = space3dSectionGroups(original), draft = { ...FRAME_DEFAULTS, source: 'model3d', proposalBars: 'yes' };
   const variant = (beam: {width:number;height:number}, column: {width:number;height:number}, assigned: readonly (typeof groups)[number][] = groups) => withSpace3dSections(original,

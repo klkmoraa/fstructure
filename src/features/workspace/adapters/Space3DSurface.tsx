@@ -84,7 +84,7 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
       setSectionFailure('El modelo 3D cambió después de calcular la propuesta. Vuelve a Diseño para recalcularla.'); return;
     }
     const mm = (section: { width: number; height: number }) => ({ widthMm: section.width * 10, heightMm: section.height * 10 });
-    setIncoming({ project: withSpace3dSections(canonicalProject, { beam: mm(sections.beam), column: mm(sections.column) }, sections.groups),
+    setIncoming({ project: withSpace3dSections(canonicalProject, { beam: mm(sections.beam), column: mm(sections.column) }, sections.groups, sections.scopeMemberIds),
       nonce: 0, operation: 'sections', title: '', description: '' });
   }, [intent, canonicalProject]);
   const es = project.settings.language !== 'en';

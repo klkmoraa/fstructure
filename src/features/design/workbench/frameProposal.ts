@@ -219,13 +219,13 @@ export function proposeUniformFrameSections(code: DesignCodeId, draft: FrameDraf
  * fuente que entrega `variant`, el modelo con esas secciones en todas sus vigas
  * y columnas de concreto. El modelo no cambia hasta aplicar la propuesta.
  */
-function proposeUniformModelSections(code: DesignCodeId, draft: FrameDraft, model: Pick<ModelSectionsBridge, 'beamLengthM' | 'columnLengthM' | 'variant' | 'groups' | 'evaluate'>): Generator<ProposalStep, void, void> {
+function proposeUniformModelSections(code: DesignCodeId, draft: FrameDraft, model: Pick<ModelSectionsBridge, 'beamLengthM' | 'columnLengthM' | 'variant' | 'groups' | 'evaluate'>, scopeMemberIds?: readonly string[]): Generator<ProposalStep, void, void> {
   return searchSections({
     beamLengthM: model.beamLengthM,
     columnLengthM: model.columnLengthM,
     barDiameterMm: parseNumber(draft.columnBar),
-    design: (beam, column, bars) => model.evaluate?.(code, { ...draft, proposalBars: 'yes', barsWidth: String(bars), barsDepth: String(bars) }, beam, column)
-      ?? designFromDraft(code, { ...draft, proposalBars: 'yes', barsWidth: String(bars), barsDepth: String(bars) }, [], [], model.variant(beam, column)),
+    design: (beam, column, bars) => model.evaluate?.(code, { ...draft, proposalBars: 'yes', barsWidth: String(bars), barsDepth: String(bars) }, beam, column, undefined, scopeMemberIds)
+      ?? designFromDraft(code, { ...draft, proposalBars: 'yes', barsWidth: String(bars), barsDepth: String(bars) }, [], [], model.variant(beam, column, undefined, scopeMemberIds)),
   });
 }
 
@@ -291,10 +291,12 @@ export function proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bays
     (proposal) => designFromDraft(code, { ...draft, source: 'frame', proposalBars: 'yes' }, bays, frameProposalStories(plain, proposal)));
 }
 
-export function proposeModelSections(code: DesignCodeId, draft: FrameDraft, model: Pick<ModelSectionsBridge, 'beamLengthM' | 'columnLengthM' | 'variant' | 'groups' | 'evaluate'>): Generator<ProposalStep, void, void> {
-  const uniform = proposeUniformModelSections(code, draft, model);
-  if (!model.groups?.length) return uniform;
-  return trimSectionGroups(uniform, model.groups,
-    (proposal) => model.evaluate?.(code, { ...draft, proposalBars: 'yes' }, proposal.beam, proposal.column, proposal.groups)
-      ?? designFromDraft(code, { ...draft, proposalBars: 'yes' }, [], [], model.variant(proposal.beam, proposal.column, proposal.groups)));
+export function proposeModelSections(code: DesignCodeId, draft: FrameDraft, model: Pick<ModelSectionsBridge, 'beamLengthM' | 'columnLengthM' | 'variant' | 'groups' | 'evaluate'>, scopeMemberIds?: readonly string[]): Generator<ProposalStep, void, void> {
+  const scope = scopeMemberIds ? new Set(scopeMemberIds) : null;
+  const scopedGroups = scope ? model.groups?.filter((group) => group.memberIds.some((id) => scope.has(id))) : model.groups;
+  const uniform = proposeUniformModelSections(code, draft, model, scopeMemberIds);
+  if (!scopedGroups?.length) return uniform;
+  return trimSectionGroups(uniform, scopedGroups,
+    (proposal) => model.evaluate?.(code, { ...draft, proposalBars: 'yes' }, proposal.beam, proposal.column, proposal.groups, scopeMemberIds)
+      ?? designFromDraft(code, { ...draft, proposalBars: 'yes' }, [], [], model.variant(proposal.beam, proposal.column, proposal.groups, scopeMemberIds)));
 }

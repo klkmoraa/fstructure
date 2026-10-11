@@ -82,14 +82,15 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     const sum = (items: readonly { lengthM: number }[]) => items.reduce((total, item) => total + item.lengthM, 0);
     return {
       groups: concreteFrameGroups(project),
-      propose: (code, draft, onStep) => startProposalWorker(new URL('./modelSectionProposal.worker.ts', import.meta.url), { kind: 'model2d', model: project, code, draft }, onStep),
+      kind: 'model2d', projectId: project.id, revision: model2dRevision(project),
+      propose: (code, draft, onStep, scopeMemberIds) => startProposalWorker(new URL('./modelSectionProposal.worker.ts', import.meta.url), { kind: 'model2d', model: project, code, draft, ...(scopeMemberIds ? { scopeMemberIds } : {}) }, onStep),
       beams: beams.length,
       columns: columns.length,
       beamLengthM: sum(beams),
       columnLengthM: sum(columns),
       volumeM3: [...beams, ...columns].reduce((total, item) => total + item.lengthM * item.areaM2, 0),
-      variant: (beam, column, groups) => model2dDesignSource(withConcreteSections(project, mm(beam, column), groups)),
-      apply: (beam, column, groups) => updateProject((current) => withConcreteSections(current, mm(beam, column), groups)),
+      variant: (beam, column, groups, scopeMemberIds) => model2dDesignSource(withConcreteSections(project, mm(beam, column), groups, scopeMemberIds)),
+      apply: (beam, column, groups, scopeMemberIds) => updateProject((current) => model2dRevision(current) === model2dRevision(project) ? withConcreteSections(current, mm(beam, column), groups, scopeMemberIds) : current),
     };
   }, [project, updateProject]);
   // El modelo 3D se lee al entrar al modo (se edita en el modo 3D, que guarda en la sesión).
@@ -128,19 +129,19 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     const eligible = new Set(groups.flatMap((g) => g.memberIds));
     const nodes = new Map(space3d.nodes.map((n) => [n.id, n]));
     const mm = (s: ModelSection) => ({ widthMm: s.width * 10, heightMm: s.height * 10 });
-    const candidate = (beam: ModelSection, column: ModelSection, assigned?: Parameters<typeof withSpace3dSections>[2]) => withSpace3dSections(space3d, { beam: mm(beam), column: mm(column) }, assigned);
     return {
-      propose: (code, draft, onStep) => startProposalWorker(new URL('./modelSectionProposal.worker.ts', import.meta.url), { kind: 'model3d', model: space3d, code, draft }, onStep),
+      kind: 'model3d', projectId: space3d.id, revision: space3dRevision(space3d),
+      propose: (code, draft, onStep, scopeMemberIds) => startProposalWorker(new URL('./modelSectionProposal.worker.ts', import.meta.url), { kind: 'model3d', model: space3d, code, draft, ...(scopeMemberIds ? { scopeMemberIds } : {}) }, onStep),
       groups, beams: beamGroups.reduce((s, g) => s + g.memberIds.length, 0), columns: columnGroups.reduce((s, g) => s + g.memberIds.length, 0),
       beamLengthM: beamGroups.reduce((s, g) => s + g.lengthM, 0), columnLengthM: columnGroups.reduce((s, g) => s + g.lengthM, 0),
       volumeM3: space3d.members.reduce((s, m) => { const a = nodes.get(m.i)!, b = nodes.get(m.j)!; return s + (eligible.has(m.id) ? m.A * Math.hypot(a.x-b.x, a.y-b.y, a.z-b.z) : 0); }, 0),
-      variant: (beam, column, assigned) => { const axes = space3dDesignAxes(candidate(beam, column, assigned)); return axes.source(axes.axes[0]!.id)!; },
-      evaluate: (code, draft, beam, column, assigned) => {
-        const result = designSpace3dSectionCandidate(candidate(beam, column, assigned), structureOptions(code, draft), draft.braced === 'yes');
+      variant: (beam, column, assigned, scopeMemberIds) => { const axes = space3dDesignAxes(withSpace3dSections(space3d, { beam: mm(beam), column: mm(column) }, assigned, scopeMemberIds)); return axes.source(axes.axes[0]!.id)!; },
+      evaluate: (code, draft, beam, column, assigned, scopeMemberIds) => {
+        const result = designSpace3dSectionCandidate(withSpace3dSections(space3d, { beam: mm(beam), column: mm(column) }, assigned, scopeMemberIds), structureOptions(code, draft), draft.braced === 'yes');
         return result.ok ? { ok: true, result, frame: null } : result;
       },
-      apply: (beam, column, assigned) => {
-        setToolIntent({ tool: 'space3d', kind: 'view', view: '3d', sections: { beam, column, ...(assigned ? { groups: assigned } : {}), sourceModel: JSON.stringify(space3d) } });
+      apply: (beam, column, assigned, scopeMemberIds) => {
+        setToolIntent({ tool: 'space3d', kind: 'view', view: '3d', sections: { beam, column, ...(assigned ? { groups: assigned } : {}), ...(scopeMemberIds ? { scopeMemberIds } : {}), sourceModel: JSON.stringify(space3d) } });
         onOpenSpace3D();
       },
     };

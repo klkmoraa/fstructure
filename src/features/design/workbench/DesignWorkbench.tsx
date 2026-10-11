@@ -28,6 +28,7 @@ import { originForElement, originState, withElementOrigin } from './LinkedPieceO
 import { linkedPieceTransfer } from './linkedPieceTransfer';
 import { COLUMN_DEFAULTS } from './columnModel';
 import { FLEXURE_DEFAULTS } from './flexureModel';
+import { FRAME_DEFAULTS, type FrameDraft } from './frameCalculation';
 
 type ElementKind = 'beam' | 'column' | 'frame' | 'footing' | 'section' | 'flexure';
 
@@ -200,7 +201,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     setReport(next ? withReportOrigin(next, origin, origin ? originState(origin, provider, fields) : undefined) : null);
     setCopied(false);
   }, [storage, modelSource, modelAxes]);
-  const createLinkedPiece = (snapshot: import('../../../design/elements/modelResultSnapshot').ModelDemandSnapshot, target: 'column' | 'flexure', preserveCurrent = true) => {
+  const createLinkedPiece = (snapshot: import('../../../design/elements/modelResultSnapshot').ModelDemandSnapshot, target: 'column' | 'flexure', preserveCurrent = true): { ok: true } | { ok: false; reason: string } => {
     try {
       const defaults = target === 'column' ? COLUMN_DEFAULTS : FLEXURE_DEFAULTS;
       const stored = storage.read(target);
@@ -210,13 +211,16 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
       const transfer = linkedPieceTransfer(snapshot, target, base);
       const origins = withElementOrigin(storage.read('piece-origin'), target, transfer.origin);
       const switched = memory.switchDraft({ [target]: transfer.fields, 'piece-origin': origins as unknown as JsonValue }, target, preserveCurrent);
-      if (switched === 'full') return;
+      if (switched === 'full') return { ok: false, reason: 'La memoria está llena. Libera una pieza guardada antes de crear otra.' };
       setElementState(target);
       setReport(null); setVerdict(null); setCopied(false);
       setInitialIntentConsumed(true); setNavigatorOpen(false); setLoadCount((count) => count + 1);
       history.current = null; setHistoryFlags({ canUndo: false, canRedo: false });
+      return { ok: true };
     } catch (error) {
-      setExportMessage(error instanceof Error ? error.message : 'No se pudo crear la pieza vinculada.');
+      const reason = error instanceof Error ? error.message : 'No se pudo crear la pieza vinculada.';
+      setExportMessage(reason);
+      return { ok: false, reason };
     }
   };
   const [verdict, setVerdict] = useState<Verdict | null>(null);
@@ -341,7 +345,24 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
     try { return activeOrigin.snapshot.source.axisId ? modelAxes?.source(activeOrigin.snapshot.source.axisId).resultProvider : undefined; } catch { return undefined; }
   })() : undefined;
   const activeFieldsRaw = storage.read(element);
+  const refreshProviderIds = useRef(new WeakMap<object, number>());
+  const refreshProviderSequence = useRef(1);
+  const refreshProviderId = activeProvider ? (() => {
+    let id = refreshProviderIds.current.get(activeProvider);
+    if (id === undefined) { id = refreshProviderSequence.current++; refreshProviderIds.current.set(activeProvider, id); }
+    return id;
+  })() : '';
+  const refreshContext = `${element}|${activeOrigin ? JSON.stringify(activeOrigin) : ''}|${activeProvider?.inventory.revision ?? ''}:${refreshProviderId}|${JSON.stringify(activeFieldsRaw)}`;
+  const refreshContextRef = useRef(refreshContext); refreshContextRef.current = refreshContext;
+  const refreshRequest = useRef<{ id: number; controller: AbortController } | null>(null);
+  const refreshSequence = useRef(0);
+  useEffect(() => {
+    refreshSequence.current++;
+    refreshRequest.current?.controller.abort(); refreshRequest.current = null;
+  }, [element, refreshContext]);
   const activeFields = activeFieldsRaw && typeof activeFieldsRaw === 'object' && !Array.isArray(activeFieldsRaw) ? Object.fromEntries(Object.entries(activeFieldsRaw as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string')) : {};
+  const frameRaw = storage.read('frame');
+  const frameDraft = { ...FRAME_DEFAULTS, ...(frameRaw && typeof frameRaw === 'object' && !Array.isArray(frameRaw) ? Object.fromEntries(Object.entries(frameRaw as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string')) : {}) } as FrameDraft;
   const contextualOrigin = activeOrigin ? <LinkedPieceOriginView origin={activeOrigin} provider={activeProvider} currentFields={activeFields}
     onShowSource={() => onShowMembers?.([activeOrigin.snapshot.source.memberId], activeOrigin.snapshot.source.axisId, activeOrigin.snapshot.source.kind)}
     onRefresh={() => {
@@ -349,9 +370,18 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
       if (!provider) { setExportMessage('El origen no está disponible en el proyecto actual.'); return; }
       const snapshot = activeOrigin.snapshot;
       const abort = new AbortController();
+      const id = ++refreshSequence.current, context = refreshContext;
+      refreshRequest.current?.controller.abort(); refreshRequest.current = { id, controller: abort };
       void provider.member({ memberId: snapshot.source.memberId, targetId: snapshot.target.id, xM: snapshot.station.xM, side: snapshot.station.side, ...(snapshot.source.axisId ? { axisId: snapshot.source.axisId } : {}) }, abort.signal)
-        .then((fresh) => createLinkedPiece(fresh, element as 'column' | 'flexure', false))
-        .catch((error: unknown) => setExportMessage(error instanceof Error ? error.message : 'No se pudo actualizar el origen.'));
+        .then((fresh) => {
+          if (abort.signal.aborted || refreshRequest.current?.id !== id || refreshContextRef.current !== context) return;
+          createLinkedPiece(fresh, element as 'column' | 'flexure', false);
+          refreshRequest.current = null;
+        })
+        .catch((error: unknown) => {
+          if (abort.signal.aborted || refreshRequest.current?.id !== id || refreshContextRef.current !== context) return;
+          setExportMessage(error instanceof Error ? error.message : 'No se pudo actualizar el origen.'); refreshRequest.current = null;
+        });
     }} /> : null;
   const chrome: WorkbenchChrome = {
     elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource, modelAxes, contextualOrigin,
@@ -370,7 +400,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
 
   return <div className="design-workbench" data-testid="design-workbench">
     {exportMessage && !memoryOpen ? <p className="dw-action-feedback" role="alert">{exportMessage}<button type="button" aria-label="Cerrar aviso" onClick={() => setExportMessage(null)}>×</button></p> : null}
-    {navigatorOpen ? <ModelMemberNavigator modelSource={modelSource} modelAxes={modelAxes} onShowMembers={onShowMembers}
+    {navigatorOpen ? <ModelMemberNavigator modelSource={modelSource} modelAxes={modelAxes} modelSections={modelSections} space3dSections={space3dSections} code={code} frameDraft={frameDraft} onShowMembers={onShowMembers}
       origins={[...memory.items.flatMap((item) => item.origin ? [item.origin.snapshot] : []), ...(activeOrigin ? [activeOrigin.snapshot] : [])]}
       onCreateLinked={createLinkedPiece} onClose={() => setNavigatorOpen(false)} /> : null}
     {nativeTool ? <ShellContribution slot="controls">

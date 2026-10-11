@@ -1039,6 +1039,15 @@
 .dw-member-navigator { position: absolute; z-index: 40; top: 16px; left: 50%; transform: translateX(-50%); width: min(760px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; box-shadow: var(--sc-shadow-md); }
 .dw-member-navigator h2 { margin: 0; font-size: 15px; }
 .dw-member-navigator__filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.dw-member-navigator__plan-wrap { display: grid; gap: 4px; min-width: 0; }
+.dw-member-navigator__plan-wrap > strong { color: var(--dw-muted); font-size: 11px; }
+.dw-member-navigator__plan { display: block; width: 100%; max-height: 180px; border: 1px solid var(--dw-line); border-radius: var(--sc-radius-sm, 6px); background: var(--sc-color-surface-2); }
+.dw-member-navigator__plan g { color: var(--dw-ink); cursor: pointer; outline: none; }
+.dw-member-navigator__plan g line:not(.dw-member-navigator__plan-hit) { stroke: currentColor; stroke-width: 3; }
+.dw-member-navigator__plan g circle:not(.dw-member-navigator__plan-hit) { fill: currentColor; stroke: var(--sc-color-surface-1); stroke-width: 1.5; }
+.dw-member-navigator__plan g[aria-pressed='true'] { color: var(--sc-color-action-primary); }
+.dw-member-navigator__plan g:focus-visible { filter: drop-shadow(0 0 3px var(--sc-color-focus)); }
+.dw-member-navigator__plan .dw-member-navigator__plan-hit { fill: transparent; stroke: transparent; stroke-width: 24; pointer-events: all; }
 .dw-member-navigator label { display: grid; gap: 4px; color: var(--dw-muted); font-size: 11px; }
 .dw-member-navigator input, .dw-member-navigator select { min-width: 0; min-height: 36px; padding: 5px 8px; border: 1px solid var(--dw-line); border-radius: var(--sc-radius-sm, 6px); background: var(--sc-color-surface-1); color: var(--dw-ink); font: inherit; }
 .dw-member-navigator__table-wrap { max-height: 300px; overflow: auto; border: 1px solid var(--dw-line); border-radius: var(--sc-radius-sm, 6px); }
