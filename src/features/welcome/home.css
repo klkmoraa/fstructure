@@ -378,6 +378,7 @@
 
 /* En teléfono, la escena acompaña al texto; no retrasa el proyecto abierto. */
 @media (max-width: 759px) {
+  .fh-brand { gap: 8px; padding: 0; }
   .fh-body { gap: 28px; padding-top: 16px; }
   .fh-hero { grid-template-columns: minmax(0, 1fr) 96px; gap: 16px 12px; }
   .fh-hero__copy { display: contents; }
