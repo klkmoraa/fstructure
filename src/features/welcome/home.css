@@ -376,6 +376,22 @@
 
 /* --- Escritorio ------------------------------------------------------------- */
 
+/* En teléfono, la escena acompaña al texto; no retrasa el proyecto abierto. */
+@media (max-width: 759px) {
+  .fh-body { gap: 28px; padding-top: 16px; }
+  .fh-hero { grid-template-columns: minmax(0, 1fr) 96px; gap: 16px 12px; }
+  .fh-hero__copy { display: contents; }
+  .fh-hero__title { grid-column: 1 / -1; grid-row: 1; max-width: none; font-size: clamp(28px, 8vw, 34px); line-height: 1.1; }
+  .fh-hero__lead { grid-column: 1; grid-row: 2; font-size: 14px; line-height: 1.5; }
+  .fh-hero__stage { grid-column: 2; grid-row: 2; order: 0; }
+  .fh-hero__stage img { width: 100%; }
+  .fh-current { grid-column: 1 / -1; grid-row: 3; margin-top: 0; }
+  .fh-modes { gap: 10px; }
+  .fh-mode { grid-template-columns: 80px minmax(0, 1fr); gap: 12px; padding-right: 36px; }
+  .fh-mode__copy > span:last-child { font-size: 13px; }
+  .fh-split { gap: 28px; }
+}
+
 @media (min-width: 760px) {
   .fh-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(24px, 4vw, 56px); padding-top: clamp(8px, 3vw, 32px); }
   .fh-hero__stage { order: 0; }

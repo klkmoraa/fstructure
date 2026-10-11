@@ -407,6 +407,10 @@
   .workspace-topbar__eyebrow { display: none; }
 
   .workspace-topbar__actions { min-width: 0; flex: none; gap: 0; }
+  /* El historial vacío quitaba al proyecto el ancho de dos botones. */
+  .workspace-topbar__history-group > button:disabled,
+  .workspace-topbar__tool-group .workspace-topbar__icon-button:disabled { display: none; }
+  .workspace-topbar__history-group:not(:has(> button:enabled)) { display: none; }
 
   /* Fila 2: el modo, a todo el ancho. */
   .workspace-topbar__mode-group { order: 3; flex: 1 0 100%; padding: 2px; }
@@ -467,6 +471,13 @@
   .workspace-topbar__brand { width: 34px; height: 34px; }
   .workspace-topbar__project { height: 34px; }
   .workspace-topbar__eyebrow { display: none; }
+}
+
+@media (max-height: 500px) and (min-width: 561px) and (max-width: 1023px) {
+  .workspace-topbar { flex-wrap: nowrap; gap: 6px; }
+  .workspace-topbar__mode-group { order: 0; flex: 0 1 auto; }
+  .workspace-topbar__mode-button { flex: none; }
+  .workspace-topbar__mode-button > span { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

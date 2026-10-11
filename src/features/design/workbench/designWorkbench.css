@@ -674,7 +674,12 @@
  * elegida (dibujo, datos o resultados) y abajo pestañas fijas con el veredicto.
  * Nada se encima y el dibujo se ajusta al ancho; se amplía con dos dedos.
  */
-@media (max-width: 760px) {
+@media (max-width: 760px), (max-width: 1023px) and (max-height: 500px) {
+  .design-workbench {
+    --sc-control-height-sm: 44px;
+    --sc-control-height-md: 44px;
+    --sc-control-height-touch: 44px;
+  }
   .dw-layout, .dw-layout[data-inputs='open'], .dw-layout[data-results='open'] {
     --dw-left: 10px;
     --dw-right: 10px;
@@ -715,10 +720,12 @@
   .dw-dock__group .sc-tool-button { padding-inline: 0; }
 
   .dw-stage, .dw-panel { grid-row: 2; grid-column: 1; }
-  .dw-stage { margin: 0 8px; }
+  .dw-stage { margin: 0 8px; background-image: none; }
   .dw-layout[data-inputs='open'] .dw-stage, .dw-layout[data-results='open'] .dw-stage { visibility: hidden; }
-  .dw-stage__scroll { padding: 54px 10px 64px; }
+  .dw-stage__scroll { padding: 58px 16px 24px; }
+  .dw-stage__content { padding-bottom: 0; gap: 24px; }
   .dw-hud { top: 10px; }
+  .dw-code-chip select { min-height: 40px; box-shadow: none; border: 1px solid var(--dw-line); }
   .dw-hud--start { max-width: calc(100% - 150px); }
   .dw-badge--caption { display: none; }
   .dw-plate, .dw-plate--wide { flex-basis: 100%; }
@@ -743,6 +750,8 @@
   .dw-panel__close, .dw-panel__head--results { display: none; }
   .dw-panel__head { padding: 12px 8px 4px 16px; }
   .dw-panel__body { padding: 0 16px 24px; }
+  .dw-inputs :is(input:not([type='checkbox']):not([type='radio']), select) { min-height: 44px; font-size: 16px; }
+  .dw-inputs :is(.dw-more__toggle, .dw-spans__add, .dw-spans .dw-icon-button) { min-height: 44px; }
   .dw-results .dw-panel__body { padding-top: 14px; }
   .dw-icon-button { width: 40px; height: 40px; }
 
@@ -753,6 +762,8 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 4px;
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--dw-line);
+    background: var(--sc-color-surface-1);
   }
   .dw-view, .dw-view--stage {
     display: flex;
@@ -764,7 +775,15 @@
   }
   .dw-view > span { display: block; }
   .dw-view > em { display: inline-flex; position: absolute; top: 7px; right: 8px; }
-  .dw-view[aria-pressed='true'] { background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-raised); }
+  .dw-view[aria-pressed='true'] { background: var(--sc-color-surface-inset); box-shadow: none; }
+}
+
+/* En horizontal, las acciones caben junto a los elementos y las vistas abajo
+   son una fila baja. El formulario usa el ancho completo, sin tapar el dibujo. */
+@media (min-width: 561px) and (max-width: 1023px) and (max-height: 500px) {
+  .dw-views { padding: 4px 8px calc(4px + env(safe-area-inset-bottom)); }
+  .dw-view, .dw-view--stage { flex-direction: row; min-height: 40px; gap: 8px; }
+  .dw-view > em { position: static; }
 }
 
 @media (prefers-reduced-motion: reduce) {

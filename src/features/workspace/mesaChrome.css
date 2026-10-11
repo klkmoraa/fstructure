@@ -194,6 +194,12 @@
     border-radius: 0;
     box-shadow: none;
   }
+
+  /* Los avisos de guardado no cubren el selector de elementos de Diseño. */
+  .app-shell:has(.design-workbench) .sc-toast-container {
+    top: auto;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
 }
 
 /* --- Toque: la mesa no amplía la página ---------------------------------------- */
@@ -210,4 +216,27 @@
 }
 @media (pointer: coarse) {
   .app-shell .structural-canvas:focus-visible { box-shadow: none; }
+}
+
+@media (min-width: 561px) and (max-width: 1023px) and (max-height: 500px) {
+  .app-shell .workspace-topbar { height: calc(48px + env(safe-area-inset-top)); min-height: calc(48px + env(safe-area-inset-top)); }
+  .workspace-topbar__history-group > button:disabled,
+  .workspace-topbar__tool-group .workspace-topbar__icon-button:disabled { display: none; }
+  .app-shell.workspace-screen[data-shell-class][data-shell-class]:has(.design-workbench) > .workspace { padding: 0; gap: 0; }
+  .app-shell.workspace-screen[data-shell-class][data-shell-class]:has(.design-workbench) .center-stage,
+  .app-shell .dw-layout :is(.dw-stage, .dw-panel) { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+  .app-shell .dw-dock .sc-tool-button,
+  .app-shell .dw-dock .sc-tool-button[aria-checked='true'] {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    height: 52px;
+    min-height: 52px;
+    padding: 4px 2px;
+    gap: 3px;
+  }
+  .app-shell .dw-dock .sc-tool-button .sc-tool-button__copy { display: block; }
+  .app-shell:has(.design-workbench) [data-mesa-foot] { display: none; }
+  .app-shell:has(.design-workbench) .sc-toast-container { top: auto; bottom: calc(60px + env(safe-area-inset-bottom)); }
 }

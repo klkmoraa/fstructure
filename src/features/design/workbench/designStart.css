@@ -83,7 +83,7 @@
 .dw-dock__new-design:hover { background: var(--sc-color-surface-2); }
 .dw-dock__new-design:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
 .dw-dock__elements { display: flex; align-items: center; gap: 4px; }
-@media (max-width: 760px) {
+@media (max-width: 760px), (max-width: 1023px) and (max-height: 500px) {
   .dw-start-dialog { width: 100vw; max-height: 100dvh; border-radius: 0; }
   .dw-start__cards { grid-template-columns: 1fr; gap: var(--sc-space-2); }
   .dw-start-card { padding: var(--sc-space-3); }
@@ -94,29 +94,41 @@
     grid-column: 1;
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    grid-template-rows: auto auto;
-    gap: 2px;
-    margin: 6px 8px;
-    padding: 3px;
-    border-radius: var(--sc-radius-card);
-    background: var(--sc-color-surface-inset, var(--sc-color-surface-2));
-    box-shadow: var(--sc-shadow-inset);
+    grid-template-rows: 58px 40px;
+    gap: 4px 8px;
+    margin: 0;
+    padding: 6px 12px;
+    min-width: 0;
+    border-bottom: 1px solid var(--dw-line);
+    border-radius: 0;
+    background: var(--sc-color-surface-1);
+    box-shadow: none;
   }
   .dw-dock__elements .dw-dock__group {
     grid-row: 1;
     grid-column: 1 / 7;
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(58px, 1fr));
     gap: 2px;
     min-width: 0;
     margin: 0;
-    padding: 0;
-    border-radius: 0;
-    background: none;
+    padding: 3px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-radius: var(--sc-radius-control);
+    background: var(--sc-color-surface-inset);
     box-shadow: none;
   }
-  .dw-dock__elements .dw-dock__new-design { grid-row: 2; grid-column: 1 / 4; width: 100%; min-width: 0; min-height: 52px; flex-direction: column; gap: 3px; margin: 0; padding: 4px 1px; border-color: transparent; background: transparent; font-size: 9px; white-space: nowrap; }
-  .dw-dock__elements .dw-dock__building-action { grid-row: 2; grid-column: 4 / 7; min-height: 44px; }
+  .dw-dock__elements .dw-dock__new-design { grid-row: 2; grid-column: 1 / 4; width: 100%; min-width: 0; min-height: 40px; flex-direction: row; gap: 6px; margin: 0; padding: 4px 10px; border-color: var(--dw-line); background: transparent; font-size: 12px; white-space: nowrap; }
+  .dw-dock__elements .dw-dock__building-action { grid-row: 2; grid-column: 4 / 7; }
+  .dw-dock__elements:not(:has(.dw-dock__building-action)) .dw-dock__new-design { grid-column: 1 / 7; }
   .dw-dock__new-design span { overflow: hidden; max-width: 100%; text-overflow: ellipsis; }
+}
+@media (min-width: 561px) and (max-width: 1023px) and (max-height: 500px) {
+  .dw-dock__elements { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-rows: 58px; align-items: center; }
+  .dw-dock__elements .dw-dock__group { grid-row: 1; grid-column: 1; width: 100%; }
+  .dw-dock__elements .dw-dock__new-design,
+  .dw-dock__elements:not(:has(.dw-dock__building-action)) .dw-dock__new-design { grid-row: 1; grid-column: 2; width: auto; }
+  .dw-dock__elements .dw-dock__building-action { grid-row: 1; grid-column: 3; }
 }
 @media (min-width: 761px) and (max-width: 1020px) { .dw-start__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
