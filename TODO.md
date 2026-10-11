@@ -23,12 +23,12 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Diseño (de `docs/research/concrete-design`)
 
-Próxima ampliación investigada: [proyecto, armado y resolución propia · 9 de octubre](docs/research/ampliacion-concreto-2026-10-09.md). Prioridades propuestas, aún no implementadas:
+Próxima ampliación investigada: [proyecto, armado y resolución propia · 9 de octubre](docs/research/ampliacion-concreto-2026-10-09.md). Estado de la ampliación; esta entrega cierra los bloques A y B:
 
-- [ ] Resolver y editar acero: objetivos del ejercicio, As requerida/mínima/proporcionada en la primera familia verificada, editor de bastones/estribos y alternativas constructivas.
-- [ ] Revisión de pieza vinculada al edificio: procedencia, demanda concurrente, estación y revisión; navegador por planta/eje y aviso de origen desactualizado.
-- [ ] Reacciones del apoyo a zapata aislada y despiece por marca/diámetro/nivel, con CSV/SVG y ampliación del PDF existente.
-- [ ] Primera losa maciza unidireccional con reparto de carga y verificaciones completas; después secciones libres, equilibrio biaxial y servicio, con normas y referencias por familia.
+- [x] Resolver y editar acero: objetivos del ejercicio, As requerida/mínima/proporcionada en la primera familia verificada, editor de bastones/estribos y alternativas constructivas.
+- [x] Revisión de pieza vinculada al edificio: procedencia, demanda concurrente, estación y revisión; navegador por planta/eje y aviso de origen desactualizado.
+- [ ] Bloque C pendiente: reacciones del apoyo a zapata aislada y despiece por marca/diámetro/nivel, con CSV/SVG y ampliación del PDF. Plan y referencias de equilibrio/peso preparados; funcionalidad nueva aún sin implementar.
+- [ ] Bloque D pendiente: losa maciza unidireccional, editor de secciones libres, equilibrio biaxial y servicio. Plan y oráculos analíticos preparados; funcionalidad nueva aún sin implementar.
 
 - [x] Entrada Proyecto / Pieza / Ejercicio desde Home y «Nuevo diseño» en la mesa: 20 arranques editables: cuatro proyectos, trece piezas y tres formularios para problemas propios, sin respuestas prefabricadas.
 - [x] Iniciar otra pieza conserva borradores completos e incompletos en Memoria, sin sobrescribir lo guardado; aborta antes de escribir si no cabe. Persistencia de los 79 campos de cimentación y compatibilidad del taller v1–v6.
@@ -45,7 +45,7 @@ Próxima ampliación investigada: [proyecto, armado y resolución propia · 9 de
 - [x] Calculadora experimental de seis secciones, tres filosofías, flexión/N–M, armado por lechos/perímetro, recubrimiento, cantidades y memoria PDF. El momento perpendicular pendiente se declara sin aprobarlo.
 - [x] Separación propia de estribos y paso del zuncho en las columnas existentes, revisión de cortante y límites, grapas y elevación ligadas al cálculo.
 - [ ] Extender los modelos experimentales de sección a normativa verificada, equilibrio biaxial completo, servicio de miembro y cortante resistente; los modelos EA/EL actuales identifican expresamente sus hipótesis.
-- [ ] Armado propio por zonas en la viga (bastones y estribos por claro); hoy se fijan corridas, bastones sí/no y una separación uniforme.
+- [x] Armado propio por zonas en la viga: bastones con inicio/fin propios, estribos por claro y editor de cargas generales; memoria, PDF y reapertura conservan los detalles.
 - [ ] Columnas zunchadas, de lindero con contratrabe, losas de cimentación y dados: necesitan cláusulas registradas (FR y φPn,máx del zuncho, αs de borde, ancho efectivo del patín).
 - [ ] Normas para ampliar el taller: torsión (NTC 5.8), losas, muros y combinaciones accidentales necesitan el texto oficial registrado con evidencia en `docs/design/normative-sources.json`.
 - [ ] Confirmar con la NTC 6.7.4 si el umbral de acero mínimo por penetración (6.7.6.1.2) usa el esfuerzo combinado con transferencia de momento; hoy usa vuv directo y la nota lo avisa.
@@ -65,6 +65,7 @@ Próxima ampliación investigada: [proyecto, armado y resolución propia · 9 de
 
 ## Limpieza
 
+- [ ] Corregir el símbolo `$` extra que la localización antepone al porcentaje de utilización en la vista previa por conjunto; el valor numérico y el cálculo no cambian.
 - [ ] El modo sin shell de `Space3DWorkspace` (barra local) sólo lo usan pruebas: migrarlas al shell y retirarlo.
 - [ ] Dividir los archivos más grandes (`Space3DWorkspace.tsx`, `WorkspaceShell.tsx`, `ProjectContext.tsx`).
 

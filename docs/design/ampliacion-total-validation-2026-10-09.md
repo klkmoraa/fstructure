@@ -1,6 +1,6 @@
 # Validación de la ampliación de concreto — 9 de octubre de 2026
 
-Estado: **en implementación**. Los planes A/B/C/D están autorizados; esta ficha registra evidencia obtenida, sin declarar completos los bloques pendientes.
+Estado de cierre: **publicación de los bloques A y B**. Por la instrucción final de terminar y subir lo implementado, C y D se conservan pendientes en TODO.md y sus planes. Las secciones siguientes registran el proceso; los estados intermedios se sustituyen por el cierre integrado al final de esta ficha.
 
 ## Base y conservación de datos
 
@@ -104,3 +104,51 @@ Implementación e248d598 y corrección4f35676e: revisión independiente final Sp
 ## A4 diámetro — corrección de integración revisada f364d1dd
 
 Las nuevas propuestas de viga pertenecen al dominio que permiten editar sus campos. Un diámetro heredado fuera del filtro y un crudo incompleto se representan fielmente, sin reemplazarlos por el primer diámetro disponible. Revisión independiente Spec PASS/Quality APPROVED; verify40 archivos/280 pruebas, Python5, focal7/7 y crudo4/4. Chromium posterior confirmó raw/control15.9 y12.7, cambio sólo de acero, preview intacto, Aplicar/Deshacer/recarga y conservación exacta de7.9/incompleta con selección explícita15.9. Día/Noche y390px inspeccionados, sin errores ni desbordamiento. Dos recorridos intermedios se interrumpieron durante una edición con HMR y se conservaron como diagnóstico; los mismos runners sobre el código estable pasaron.
+
+## Referencias adicionales para los bloques en implementación
+
+Un agente de QA de solo lectura resolvió cuatro casos nativos de apoyo 2D/3D y los contrastó con equilibrio independiente, con tolerancia absoluta de 1e−8. Los estados Chromium aislados mantienen bundles validados y checksums actualizados; todavía no se navegó la interfaz de enlace de zapata. En 3D, servicio conserva la reacción global (−10,400,0,20,5,40) y último (−20,600,0,30,8,60), en kN/kN·m. Para planta2×2m, las presiones correspondientes son55/145 y82.5/217.5kPa. En 2D, servicio Fy200/Mz30 da27.5/72.5kPa y último Fy300/Mz60 da30/120kPa. La acción del edificio sobre la zapata es opuesta a la reacción; My global3D es torsión vertical conservada, sin verificación de deslizamiento o suelo.
+
+Otro agente preparó y ejecutó una referencia analítica independiente, sólo con Python estándar, para el rectángulo400×500mm con cuatro barras puntualesØ16 en(±150,±200)mm. Integra exactamente los tramos de concreto sin tracción y compresión lineal limitada a0.85fc; cada barra suma Abar(σs−σc) una vez. Se conservan N positivo a compresión, Mx=ΣFy y My=−ΣFx. Los doce casos cardinales N0/160/200kN alcanzaron residuo axial máximo1.46×10⁻¹⁰N. A N200kN, Mx117.894141/My93.057500kN·m; para Nd160 y factor manual0.8,94.315313/74.445999kN·m. Con factor1, la rebanada N160 conserva109.705745/86.753925kN·m. No se atribuye un factor normativo ni se declara implementado el motor de sección libre; estos resultados modelan barras puntuales, distintos de los círculos discretizados del oráculo externo.
+
+B2 ya cuenta con implementación y pruebas; continúa su revisión independiente. C1 y D2 usarán las referencias anteriores con sus pruebas y revisión propias.
+
+
+## B2 evidencia inicial de integración — 97e6ac88
+
+Verify final:69 archivos/461 pruebas, TypeScript y lint, código0. Chromium comprobó crear flexión desde SERV de V1 a3m/Mu12.8 y columna desde LC1 de AB a1m con vector simultáneo N−200/Vy5/Vz10/My−20/Mz10, catálogo30×50cm y base local conservados. Editar Pu210 y Ø25.4 mantiene el vector original y marca Copia editada. Guardar, duplicar con ID nuevo, abrir desde ejercicio propio vacío, cambiar de familia y recargar conserva el origen correspondiente y los campos propios. Una nueva columna manual limpia sólo su enlace activo, conserva entradas guardadas y deja Pu vacío. Los PDFs se descargaron por acción explícita y su texto conserva origen, factores, vector, proyección y huella.
+
+Cambiar la carga nativa hace el vínculo desactualizado sin modificar Pu210/Ø25.4; Actualizar copia Pu250 y el nuevo origen, conservando Ø25.4. Una fuente ausente deja la pieza disponible y exportable; actualizar fallido mantiene sus campos. Memoria60 llena rechaza la creación conservando copia visible, documento y modelos. Seis orígenes malformados se rechazan antes de modificar el bundle. Estos runners pasaron sin errores de página/consola.
+
+La primera corrida detectó claves duplicadas al mostrar errores de campos vacíos; la corrección mantiene todos los errores. La inspección inicial encontró el origen ocupando el ancho de la mesa; ahora aparece compacto dentro de Datos, con instantánea expandible. Día/Noche y390px finales se inspeccionaron. Nuevo/Edificio ya no se solapan y responden a clic y teclado; navegador y tabla tienen scroll acotado, sin desbordamiento de página. La revisión inicial pidió completar planta/selección, conjuntos y feedback de capacidad; la corrección94207ad9 y su revisión final atienden esos hallazgos.
+
+
+## Decisiones conservadas al cerrar
+
+- Se trabaja en el checkout cloud de main y con agentes Luna en esfuerzo alto, según las instrucciones del usuario y AGENTS.md. Los cambios quedan en commits reversibles; los paquetes de revisión locales sustituyen scripts de skill no disponibles, con comprobación manual de sus bases.
+- La revisión consolidada sigue las revisiones por tarea; permite comprobar los contratos comunes al integrar, con el coste de descubrir posibles defectos entre tareas más tarde.
+- Las búsquedas costosas de viga se cierran mediante workers cancelables antes de publicar. El guardado incluye lotes atómicos y feedback de persistencia porque la auditoría encontró productores sin preflight y rechazos absorbidos; se amplió la superficie de pruebas.
+- Los documentos conocidos con extensiones de envelope no reconocidas se conservan y abren en solo lectura. Se evita descartarlas en una canonicalización; su edición requiere migración o recuperación.
+- Crear una pieza vinculada conserva primero el borrador completo y su origen. Consume memoria y puede rechazarse por capacidad; actualizar explícitamente actúa sobre la misma pieza y conserva su acero propio.
+- El cierre ordenado por el usuario publica A/B y deja C/D sin implementar. Las referencias y planes de cimentación/despiece y losas/secciones libres no son una entrega funcional ni certificación normativa. Para D sigue previsto un factor manual Experimental vacío por defecto y curva a N/φ; ningún factor normativo sin evidencia. La compactación futura de detalles bajo el presupuesto de 16 entradas necesitará migración y pruebas propias.
+
+
+## B2 cierre de integración en navegador
+
+La corrección cubre selección compartida entre planta y tabla, feedback de memoria llena, cancelación por contexto y conservación del origen del borrador al iniciar una pieza manual. Los recorridos de memoria llena, respuestas tardías de lectura y actualización, nuevo manual, memoria/PDF/reapertura y origen ausente o desactualizado pasaron en Chromium.
+
+El recorrido final por grupos pasó con workers reales en 2D y 3D: preview sin mutación, Día/Noche y390px, aplicar sólo V11/V21 o AB/CD, conservar los miembros fuera del conjunto y el otro modelo, y deshacer con la barra nativa hasta recuperar el modelo completo original. Cero errores de página/consola y ancho de documento390px en viewport390px. El cambio de norma/borrador invalida la búsqueda y la vista previa; recrear callbacks por tema/tamaño conserva una propuesta de la misma revisión y usa el callback actual.
+
+Se corrigieron dos errores del harness: `model2d` es el discriminador del request, mientras el borrador de cálculo usa `model`; y el primer caso3D de categoría `other` no habilitaba las combinaciones del diseñador de secciones. La búsqueda por grupos normaliza su fuente a partir del modelo elegido. El fixture3D válido declara su caso permanente y mantiene columnas superiores45×45cm, porque el modelo original fallaba anclaje fuera del conjunto elegido. Se comprobó ese rechazo sin aplicar cambios ni reducir las comprobaciones; las propuestas de grupo siguen evaluando el modelo completo con el alcance de combinaciones existente.
+
+
+## Revisión final A/B — 94207ad9
+
+Revisión independiente desde bc931aeb hasta94207ad9472d8cfef6fbb88a1922c79c4564ff9e: Spec PASS/Quality APPROVED; F1–F7 atendidos, sin hallazgos abiertos. Verify final de la corrección: TypeScript/lint y96 archivos/692 pruebas relacionadas, código0. La localización del porcentaje tiene un símbolo extra menor registrado en TODO; no modifica el valor numérico. Las capturas de ejercicios propios, alternativas físicas, piezas vinculadas y navegador Día/Noche/móvil se incorporaron al brandbook.
+
+
+## Puerta global de publicación
+
+`npm run check` posterior al último ajuste94207ad9 terminó con código0:191 archivos/1318 pruebas Vitest,5 referencias Python y20 pruebas de arquitectura, además de lint, TypeScript y build de producción. La compilación mantiene su aviso de chunks grandes y jsdom emite avisos de canvas sin implementación; ninguno produjo fallo. Esta comprobación corresponde al código final revisado, no a una ejecución interrumpida o a un informe de agente.
+
+Entrega: ejercicios propios y flexión directa, edición física de cargas/bastones/estribos, alternativas constructivas, guardado con recuperación y piezas vinculadas al edificio con navegación y propuestas por conjunto. C/D permanecen pendientes explícitos, con sus referencias conservadas.

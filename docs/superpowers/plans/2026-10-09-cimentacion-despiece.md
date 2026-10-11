@@ -1,5 +1,7 @@
 # Cimentación y despiece Implementation Plan
 
+> Estado de esta publicación: pendiente. El cierre solicitado por el usuario publica los bloques A/B implementados; este plan C/D y sus referencias se conservan para la siguiente ampliación. Ninguna tarea de este plan se declara terminada.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Revisar zapata aislada desde acciones simultáneas reales y producir despiece rastreable local por pieza/nivel/diámetro.
