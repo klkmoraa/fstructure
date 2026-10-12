@@ -157,10 +157,6 @@ export const InspectorProperties = () => {
     (value: number) => value >= 0 ? undefined : t('inspector.nonNegativeValidation'),
     [t],
   );
-  const normalizedPosition = useCallback(
-    (value: number) => value >= 0 && value <= 1 ? undefined : t('inspector.normalizedPositionValidation'),
-    [t],
-  );
   const supportNames: Record<SupportType, string> = {
     none: t('inspector.free'),
     pin: t('inspector.pin'),
@@ -840,10 +836,10 @@ export const InspectorProperties = () => {
         </div>
         {selectedMemberLoad.type === 'distributed' ? <SelectField label={t('inspector.base')} value={selectedMemberLoad.lengthBasis} onChange={(value) => updateMemberLoad('lengthBasis', value)}><option value="real">{t('inspector.realLength')}</option><option value="horizontal">{t('inspector.horizontalProjection')}</option><option value="vertical">{t('inspector.verticalProjection')}</option></SelectField> : null}
         {selectedMemberLoad.type === 'distributed' && selectedMemberLoad.lengthBasis !== 'real' ? <InspectorHelper>{t('inspector.loadBasisConversionHelp')}</InspectorHelper> : null}
-        {selectedMemberLoad.type !== 'moment' ? <div className="segmented-control" role="group" aria-label="Unidad de posición">
+        <div className="segmented-control" role="group" aria-label="Unidad de posición">
           <button type="button" aria-pressed={memberLoadPositionMode === 'meters'} className={memberLoadPositionMode === 'meters' ? 'active' : ''} onClick={() => setMemberLoadPositionMode('meters')}>Metros</button>
           <button type="button" aria-pressed={memberLoadPositionMode === 'percent'} className={memberLoadPositionMode === 'percent' ? 'active' : ''} onClick={() => setMemberLoadPositionMode('percent')}>%</button>
-        </div> : null}
+        </div>
         {selectedMemberLoad.type === 'distributed' ? <>
           {memberLoadPositionMode === 'meters' ? <>
             <PhysicalNumberField label={t('inspector.from')} value={selectedMemberLoad.start * selectedLoadLength} units={units} quantity="length" resetKey={`${selectionKey}:start-m`} hint={`L = ${formatPhysical(selectedLoadLength, units, 'length')}`} onCommit={(value) => updateMemberLoad('start', Math.max(0, Math.min(1, value / selectedLoadLength)))} />
@@ -858,10 +854,12 @@ export const InspectorProperties = () => {
             <button type="button" className="inspector-load-option" onClick={extendDistributedLoad}>Extender al tramo recto · {formatPhysical(selectedLoadChainLength, units, 'length')}</button>
           </div></details> : null}
         </> : null}
-        {selectedMemberLoad.type === 'point' ? <>
+        {selectedMemberLoad.type !== 'distributed' ? <>
           {memberLoadPositionMode === 'meters'
             ? <PhysicalNumberField label={t('inspector.position')} value={(selectedMemberLoad.position ?? 0.5) * selectedLoadLength} units={units} quantity="length" resetKey={`${selectionKey}:position-m`} hint={`L = ${formatPhysical(selectedLoadLength, units, 'length')}`} onCommit={(value) => updateMemberLoad('position', Math.max(0, Math.min(1, value / selectedLoadLength)))} />
             : <InspectorNumericField label={t('inspector.position')} value={(selectedMemberLoad.position ?? 0.5) * 100} unit="%" resetKey={`${selectionKey}:position-percent`} language={language} validate={(value) => value >= 0 && value <= 100 ? undefined : t('inspector.normalizedPositionValidation')} onCommit={(value) => updateMemberLoad('position', Math.max(0, Math.min(1, value / 100)))} />}
+        </> : null}
+        {selectedMemberLoad.type === 'point' ? <>
           <div className="segmented-control" role="group" aria-label="Forma de definir la dirección">
             <button type="button" aria-pressed={pointLoadDirectionMode === 'polar'} className={pointLoadDirectionMode === 'polar' ? 'active' : ''} onClick={() => setPointLoadDirectionMode('polar')}>Magnitud y ángulo</button>
             <button type="button" aria-pressed={pointLoadDirectionMode === 'components'} className={pointLoadDirectionMode === 'components' ? 'active' : ''} onClick={() => setPointLoadDirectionMode('components')}>Componentes</button>
@@ -887,7 +885,6 @@ export const InspectorProperties = () => {
           </div></details> : null}
         </> : null}
         {selectedMemberLoad.type === 'moment' ? <>
-          <InspectorNumericField label={t('inspector.position')} value={selectedMemberLoad.position ?? 0.5} unit="x/L" resetKey={`${selectionKey}:position`} language={language} validate={normalizedPosition} onCommit={(value) => updateMemberLoad('position', Math.max(0, Math.min(1, value)))} />
           <PhysicalNumberField label="M" value={selectedMemberLoad.moment ?? 0} units={units} quantity="moment" resetKey={`${selectionKey}:moment`} signed onCommit={(value) => updateMemberLoad('moment', value)} />
         </> : null}
       </InspectorPropertyGroup>

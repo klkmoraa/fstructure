@@ -10,6 +10,7 @@ import { formatFixed, formatScientific } from '../../utils/numberFormat';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { modeShapePoints, modeShapeScaleFor } from './modeShapePath';
+import { deformedDisplayScale } from './deformedPresentation';
 
 type MemberResult = AnalysisResult['memberResults'][number];
 type NodeResult = AnalysisResult['nodeResults'][number];
@@ -73,6 +74,7 @@ const CanvasResultLayerImpl = ({
 }: CanvasResultLayerProps) => {
   const view = readCanvasViewSettings(project);
   const scaleFor = (result: MemberResult) => diagramPixelScaleFor(project, resultTab, globalDiagramMax, result);
+  const deformationScale = resultTab === 'deformed' ? deformedDisplayScale(project, analysis) : view.deformedScale;
 
   /**
    * Identidad de la corrida que se está mirando.
@@ -154,7 +156,7 @@ const CanvasResultLayerImpl = ({
     const ni = nodeMap.get(member.i); const nj = nodeMap.get(member.j);
     if (!result || !ni || !nj || member.type === 'rigid' || !result.deformation.length) return '';
     const { c, s } = memberAxis(member, ni, nj);
-    const scale = view.deformedScale;
+    const scale = deformationScale;
     const curved = result.deformation.map((point) => {
       const grossX = (result.startOffset ?? 0) + point.x;
       const gx = ni.x + c * grossX + scale * (c * point.u - s * point.v);
@@ -212,7 +214,7 @@ const CanvasResultLayerImpl = ({
     } else if (resultTab === 'deformed' && result.deformationSegments.length) {
       const response = evaluateDeformationAt(result.deformationSegments, x);
       if (response) {
-        const scale = view.deformedScale;
+        const scale = deformationScale;
         screen = toScreen(base.x + scale * (c * response.u - s * response.v), base.y + scale * (s * response.u + c * response.v));
         label = `v ${formatScientific(toDisplay(response.v, units, 'length'), 2)} ${lengthLabel}`;
       }
@@ -350,8 +352,8 @@ const CanvasResultLayerImpl = ({
       const clockwise = result.rm < 0;
       const r = Math.max(28, bottomClearance + 6);
       const path = clockwise
-        ? `M ${p.x - 22} ${p.y - 10} A ${r} ${r} 0 1 0 ${p.x + 20} ${p.y - 14}`
-        : `M ${p.x + 22} ${p.y - 10} A ${r} ${r} 0 1 1 ${p.x - 20} ${p.y - 14}`;
+        ? `M ${p.x + 22} ${p.y - 10} A ${r} ${r} 0 1 1 ${p.x - 20} ${p.y - 14}`
+        : `M ${p.x - 22} ${p.y - 10} A ${r} ${r} 0 1 0 ${p.x + 20} ${p.y - 14}`;
       descriptions.push(`Mᵣ = ${formatFixed(toDisplay(result.rm, units, 'moment'), 2)} ${momentLabel}`);
       elements.push(<path key="moment" d={path} markerEnd="url(#arrow-reaction)" />);
     }

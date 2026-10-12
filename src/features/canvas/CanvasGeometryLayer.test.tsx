@@ -99,6 +99,23 @@ const pointLoad = (id: string, magnitude: number): MemberLoad => ({
 const arrowTailYs = (container: HTMLElement) => [...container.querySelectorAll<SVGLineElement>('.load-symbol--distributed line[marker-end]')]
   .map((line) => Number(line.getAttribute('y1')));
 
+describe('sentido de los momentos aplicados', () => {
+  it.each(['nodal', 'member'] as const)('invierte el arco %s al cambiar el signo: positivo antihorario', (kind) => {
+    const loadProject = (value: number) => ({ ...project, members: [member],
+      nodalLoads: kind === 'nodal' ? [{ id: 'moment', nodeId: 'N2', caseId: 'LC1', fx: 0, fy: 0, mz: value }] : [],
+      memberLoads: kind === 'member' ? [{ ...pointLoad('moment', 0), type: 'moment' as const, moment: value }] : [],
+    });
+    const draw = (value: number) => <svg><CanvasGeometryLayer {...props} project={loadProject(value)} memberMap={new Map([[member.id, member]])} /></svg>;
+    const { container, rerender } = render(draw(8));
+    const arc = () => container.querySelector('[data-structure-id="moment"] path[marker-end]')!.getAttribute('d')!;
+    const positive = arc();
+    expect(positive).toMatch(/A \d+ \d+ 0 1 0 /);
+    rerender(draw(-8));
+    expect(arc()).not.toBe(positive);
+    expect(arc()).toMatch(/A \d+ \d+ 0 1 1 /);
+  });
+});
+
 describe('CanvasGeometryLayer support presentation', () => {
   it('draws every configured spring plus the imposed movement and advanced links', () => {
     const { container } = render(<svg><CanvasGeometryLayer {...props} /></svg>);

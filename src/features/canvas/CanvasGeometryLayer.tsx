@@ -466,7 +466,9 @@ const CanvasGeometryLayerImpl = ({
       );
     }
     if (Math.abs(load.mz) > 1e-9) {
-      const momentPath = `M ${p.x - 20} ${p.y - 8} A 22 22 0 1 1 ${p.x + 17} ${p.y - 14}`;
+      const momentPath = load.mz < 0
+        ? `M ${p.x + 20} ${p.y - 8} A 22 22 0 1 1 ${p.x - 17} ${p.y - 14}`
+        : `M ${p.x - 20} ${p.y - 8} A 22 22 0 1 0 ${p.x + 17} ${p.y - 14}`;
       return <g key={load.id} className={`load-symbol load-symbol--moment${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane="moment-outer" data-structure-object data-structure-kind="nodalLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.momentLoadAria', { id: load.id, target: load.nodeId, value: formatFixed(toDisplay(load.mz, units, 'moment'), 2), unit: momentLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'nodalLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'nodalLoad', id: load.id })}>
         {selected ? <path className="load-selection-halo" d={momentPath} /> : null}
         {previewed ? <path className="candidate-preview-halo" d={momentPath} /> : null}
@@ -515,8 +517,8 @@ const CanvasGeometryLayerImpl = ({
       const momentBase = { x: base.x + outwardNormal.x * 14, y: base.y + outwardNormal.y * 14 };
       const clockwise = (load.moment ?? 0) < 0;
       const path = clockwise
-        ? `M ${momentBase.x - 22} ${momentBase.y - 3} A 23 23 0 1 0 ${momentBase.x + 18} ${momentBase.y - 13}`
-        : `M ${momentBase.x + 22} ${momentBase.y - 3} A 23 23 0 1 1 ${momentBase.x - 18} ${momentBase.y - 13}`;
+        ? `M ${momentBase.x + 22} ${momentBase.y - 3} A 23 23 0 1 1 ${momentBase.x - 18} ${momentBase.y - 13}`
+        : `M ${momentBase.x - 22} ${momentBase.y - 3} A 23 23 0 1 0 ${momentBase.x + 18} ${momentBase.y - 13}`;
       return <g key={load.id} className={`load-symbol load-symbol--moment${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.momentLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(load.moment ?? 0, units, 'moment'), 2), unit: momentLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <path className="load-selection-halo" d={path} /> : null}{previewed ? <path className="candidate-preview-halo" d={path} /> : null}<path className="load-hit" d={path} /><path d={path} markerEnd="url(#arrow-load-moment)" /></g>;
     }
     const visibleLoadedLength = axis.length * camera.scale * Math.abs(load.end - load.start);

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type Ref } from 'react';
 import { X } from 'lucide-react';
+import { deformedDisplayScale } from './deformedPresentation';
 import { useProject } from '../../store/ProjectContext';
 import type { DiagramPoint, DiagramQuantity, MemberModel, NodeModel, Selection, Tool } from '../../types';
 import { evaluateDiagramAt } from '../../engine/diagram';
@@ -548,7 +549,7 @@ export const StructuralCanvas = ({
     const bounds = modelBounds(project.nodes);
     if (!layers.results || stackActive || resultTab !== 'deformed' || analysis?.success !== true) return bounds;
     const points = project.nodes.map(({ x, y }) => ({ x, y }));
-    const scale = view.deformedScale;
+    const scale = deformedDisplayScale(project, analysis);
     for (const member of project.members) {
       const result = resultMap.get(member.id);
       const start = nodeMap.get(member.i);
@@ -570,7 +571,7 @@ export const StructuralCanvas = ({
       );
     }
     return modelBounds(points);
-  }, [analysis?.success, layers.results, nodeMap, nodeResultMap, project.members, project.nodes, resultMap, resultTab, stackActive, view.deformedScale]);
+  }, [analysis, layers.results, nodeMap, nodeResultMap, project, resultMap, resultTab, stackActive]);
   /**
    * El mapa de demanda es una lectura derivada, no un estado: se recalcula sólo
    * cuando la capa está encendida, así el coste no lo paga quien no lo pidió.
