@@ -168,6 +168,8 @@
 .fh-current__counts b { color: var(--sc-color-text-primary); }
 
 .fh-current__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fh-current__save, .fh-current__save-error { grid-column: 1 / -1; }
+.fh-current__save-error { color: var(--sc-color-state-error-foreground); font-size: 12px; }
 
 .fh-button {
   min-height: 48px;

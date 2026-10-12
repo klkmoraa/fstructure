@@ -34,6 +34,44 @@ const implementations = [
 ];
 
 describe.each(implementations)('$name bundle transaction conformance', ({ setup }) => {
+  it('keeps legacy projects saved and rejects an incomplete bulk change without altering any selection', async () => {
+    const repo = setup()();
+    await repo.migrateLegacy(sources());
+    const original = (await repo.openBundle('p1'))!;
+    expect(original.libraryState).toBe('saved');
+    await expect(repo.setLibraryState(['p1', 'missing'], 'deleted')).rejects.toThrow(/missing/);
+    expect(await repo.openBundle('p1')).toEqual(original);
+  });
+
+  it('separates new drafts from saved projects without changing the project or its revisions', async () => {
+    const reopen = setup();
+    const repo = reopen();
+    const draft = await repo.saveBundle(bundle(), 0);
+    expect(draft.libraryState).toBe('draft');
+    await repo.setLibraryState(['p1'], 'saved');
+    const saved = (await reopen().openBundle('p1'))!;
+    expect(saved.libraryState).toBe('saved');
+    expect(saved.revision).toBe(draft.revision);
+    expect(saved.checksum).toBe(draft.checksum);
+    const edited = await repo.saveBundle(bundle('Edited'), saved.revision);
+    expect(edited.libraryState).toBe('saved');
+  });
+
+  it('deletes in bulk and prevents stale autosaves or legacy migration from restoring deleted projects', async () => {
+    const reopen = setup();
+    const repo = reopen();
+    const first = await repo.saveBundle(bundle(), 0);
+    const second = bundle('Second'); second.manifest.projectId = 'p2'; second.model2d.id = 'p2';
+    await repo.saveBundle(second, 0);
+    await repo.setLibraryState(['p1', 'p2'], 'deleted');
+    expect(await reopen().openBundle('p1')).toBeNull();
+    expect((await reopen().snapshot()).bundles).toHaveLength(0);
+    await expect(repo.saveBundle(first.bundle, first.revision)).rejects.toThrow(/deleted/);
+    await reopen().migrateLegacy(sources());
+    expect(await reopen().openBundle('p1')).toBeNull();
+    expect((await reopen().snapshot()).bundles).toHaveLength(0);
+  });
+
   it('catches lost committed bundles across instances and leaked mutable references', async () => {
     const reopen = setup();
     const repository = reopen();

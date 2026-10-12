@@ -21,6 +21,7 @@ import { useI18n } from '../../i18n/useI18n';
 import { useProject, useWorkspaceUI } from '../../store/ProjectContext';
 import { exportProjectJson } from '../../utils/export';
 import { ProjectHub } from '../project-hub/ProjectHub';
+import { ProjectSaveButton } from '../project-hub/ProjectSaveButton';
 import { ThreeStructuralImage, type ThreeStructuralAssetId } from '../structural-assets';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { presentExample } from './examplePresentation';
@@ -180,6 +181,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
           <div className="fh-current__actions">
             <button type="button" className="fh-button fh-button--primary" onClick={onOpenWorkspace}><Play size={16} fill="currentColor" aria-hidden="true" />{text.continue}</button>
             <button type="button" className="fh-button" onClick={() => openProject(createBlankProject())}><FilePlus2 size={16} aria-hidden="true" />{text.create}</button>
+            <ProjectSaveButton />
           </div>
         </div>
       </div>

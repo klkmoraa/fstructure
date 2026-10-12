@@ -20,6 +20,17 @@ class FailOnceRepository extends InMemoryUnifiedBundleRepository {
 }
 
 const storage = { length: 0, key: () => null, getItem: () => null };
+it('starts a blank project when the legacy fallback points to a project the user deleted', async () => {
+  const repo = new InMemoryUnifiedBundleRepository();
+  const project = createDefaultProject();
+  await repo.saveBundle(createUnifiedProjectBundle(project, 'v1'), 0);
+  await repo.setLibraryState([project.id], 'deleted');
+  const legacy = { length: 1, key: () => 'structureCo.project', getItem: () => JSON.stringify(project) };
+  const opened = await new UnifiedProjectSession(repo).initialize(legacy, project);
+  expect(opened.id).not.toBe(project.id);
+  expect(opened.nodes).toHaveLength(0);
+  expect(opened.settings.units).toBe(project.settings.units);
+});
 it('retains the canonical fallback revision when a requested project is absent', async () => {
   const repo = new InMemoryUnifiedBundleRepository();
   const project = createDefaultProject();

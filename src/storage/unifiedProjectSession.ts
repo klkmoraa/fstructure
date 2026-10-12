@@ -1,4 +1,5 @@
 import type { ProjectModel } from '../types';
+import { createBlankProject } from '../data/defaultProject';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
 import type { JsonValue, LinkedSpace3DBranchV1, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
 import { canonicalJsonKey } from './bundleValidation';
@@ -58,7 +59,14 @@ export class UnifiedProjectSession {
         ...snapshot.migrations.filter((item) => item.status === 'invalid').map((item) => item.diagnostic ?? item.sourceKey)];
       if (diagnostics.length) this.status = { issue: 'load-failed', message: diagnostics.join(' · ') };
       else if (snapshot.recoveries.length) this.status = { issue: 'recovered', message: `${snapshot.recoveries.length} recuperaciones conservadas en el proyecto local.` };
-      return await this.open(projectId) ?? (projectId !== fallback.id ? await this.open(fallback.id) : null) ?? fallback;
+      const opened = await this.open(projectId) ?? (projectId !== fallback.id ? await this.open(fallback.id) : null);
+      if (opened) return opened;
+      if (snapshot.deletedProjectIds?.includes(fallback.id)) {
+        const blank = createBlankProject();
+        blank.settings = structuredClone(fallback.settings);
+        return blank;
+      }
+      return fallback;
     })();
   }
 
@@ -81,6 +89,18 @@ export class UnifiedProjectSession {
 
   save2D(project: ProjectModel): Promise<StoredBundleRecord> {
     return this.save(project);
+  }
+  /** Wait for pending writes before changing retention or deleting a project. */
+  async setLibraryState(ids: readonly string[], state: NonNullable<StoredBundleRecord['libraryState']>): Promise<void> {
+    await this.chain.catch(() => undefined);
+    await this.repository.setLibraryState(ids, state);
+    if (state === 'deleted') {
+      for (const id of ids) {
+        this.records.delete(id);
+        this.working.delete(id);
+        this.blocked.add(id);
+      }
+    }
   }
   saveSpace3D(project: ProjectModel, branch: LinkedSpace3DBranchV1): Promise<StoredBundleRecord> {
     return this.save(project, structuredClone(branch));

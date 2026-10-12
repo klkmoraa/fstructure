@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Copy, FolderOpen, MoreHorizontal, Pencil, RotateCcw, ShieldAlert, Trash2 } from 'lucide-react';
+import { Copy, FolderOpen, MoreHorizontal, Pencil, RotateCcw, Save, ShieldAlert, Trash2 } from 'lucide-react';
 import { usePhase2I18n } from '../../i18n/usePhase2I18n';
 import { useI18n } from '../../i18n/useI18n';
-import { useWorkspaceUI } from '../../store/ProjectContext';
+import { useProjectModel, useWorkspaceUI } from '../../store/ProjectContext';
+import { useSharedToolState } from '../../store/SharedToolState';
+import { createBlankProject } from '../../data/defaultProject';
+import { createUnifiedProjectBundle } from '../../shared/project/unifiedProjectBundle';
 import type { ProjectModel } from '../../types';
 import type { ToolId } from '../../shared/contracts';
 import type { StoredBundleRecord, UnifiedBundleRepository } from '../../storage/unifiedBundleRepository';
@@ -113,6 +116,9 @@ export const ProjectHub = ({
   const { language } = useI18n();
   const { t } = usePhase2I18n(language);
   const { theme } = useWorkspaceUI();
+  const { project: currentProject, replaceProject } = useProjectModel();
+  const session = useSharedToolState()?.session;
+  const canonicalRepository = bundleRepository ?? session?.repository;
   const activeRepository = repository ?? (typeof indexedDB === 'undefined' ? null : getProjectRepository());
   const [projects, setProjects] = useState<StoredProjectRecord[]>([]);
   const [recoveries, setRecoveries] = useState<RecoveryRecord[]>([]);
@@ -121,6 +127,29 @@ export const ProjectHub = ({
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [collection, setCollection] = useState<'saved' | 'draft' | 'all'>('saved');
+  const [sort, setSort] = useState<'updated' | 'name'>('updated');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const text = language === 'es' ? {
+    saved: 'Guardados', draft: 'Borradores', all: 'Todos', order: 'Ordenar por', updated: 'Última edición', name: 'Nombre A–Z',
+    help: 'Los ejercicios nuevos quedan en Borradores. Pulsa Guardar para conservarlos en tu lista de proyectos.',
+    draftHelp: 'Los borradores se recuperan en este dispositivo, pero no se añaden a Guardados hasta que tú lo decidas.',
+    selectAll: 'Seleccionar todos', clear: 'Quitar selección', save: 'Guardar', move: 'Mover a borradores',
+    select: (name: string) => `Seleccionar ${name}`, saveName: (name: string) => `Guardar ${name}`,
+    remove: (count: number) => `Eliminar seleccionados (${count})`, keep: (count: number) => `Guardar seleccionados (${count})`,
+    confirm: (names: string[]) => `¿Eliminar ${names.length} proyecto(s) de la lista?\n\n${names.join('\n')}`,
+    empty: 'No hay proyectos en este apartado.',
+  } : {
+    saved: 'Saved', draft: 'Drafts', all: 'All', order: 'Sort by', updated: 'Last edited', name: 'Name A–Z',
+    help: 'New exercises start in Drafts. Choose Save to keep them in your project list.',
+    draftHelp: 'Drafts can be recovered on this device. They only join Saved when you choose to save them.',
+    selectAll: 'Select all', clear: 'Clear selection', save: 'Save', move: 'Move to drafts',
+    select: (name: string) => `Select ${name}`, saveName: (name: string) => `Save ${name}`,
+    remove: (count: number) => `Delete selected (${count})`, keep: (count: number) => `Save selected (${count})`,
+    confirm: (names: string[]) => `Delete ${names.length} project(s) from the list?\n\n${names.join('\n')}`,
+    empty: 'No projects in this category.',
+  };
   const observedRecoveries = useRef(new Set<string>());
 
   const refresh = useCallback(async () => {
@@ -135,10 +164,22 @@ export const ProjectHub = ({
     try {
       const [snapshot, bundleSnapshot] = await Promise.all([
         activeRepository.listLibrary(),
-        bundleRepository?.snapshot() ?? Promise.resolve(null),
+        canonicalRepository?.snapshot() ?? Promise.resolve(null),
       ]);
-      setProjects(snapshot.projects);
-      setRecoveries(snapshot.recoveries.filter((recovery) => recovery.reason !== 'version'));
+      const deleted = new Set(bundleSnapshot?.deletedProjectIds ?? []);
+      const merged = new Map(snapshot.projects.filter((record) => !deleted.has(record.id)).map((record) => [record.id, record]));
+      for (const record of bundleSnapshot?.bundles ?? []) {
+        if (!merged.has(record.id)) merged.set(record.id, {
+          id: record.id, name: record.bundle.model2d.name, project: record.bundle.model2d,
+          schemaVersion: record.bundle.model2d.schemaVersion, revision: record.revision, checksum: record.checksum, updatedAt: record.updatedAt,
+        });
+      }
+      setProjects([...merged.values()].filter((record) => {
+        const bundle = bundleSnapshot?.bundles.find((item) => item.id === record.id);
+        return !(bundle?.libraryState === 'draft' && record.name === 'Proyecto sin título' && projectEntityCount(record.project) === 0
+          && !bundle.bundle.space3d && !Object.keys(bundle.bundle.design ?? {}).length && !bundle.bundle.fem.length);
+      }));
+      setRecoveries(snapshot.recoveries.filter((recovery) => recovery.reason !== 'version' && !deleted.has(recovery.projectId)));
       setBundles(new Map((bundleSnapshot?.bundles ?? []).map((record) => [record.id, record])));
       setError(null);
     } catch {
@@ -146,16 +187,24 @@ export const ProjectHub = ({
     } finally {
       setLoading(false);
     }
-  }, [activeRepository, bundleRepository, t]);
+  }, [activeRepository, canonicalRepository, t]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { setSelected(new Set()); }, [filter, collection]);
+  // The current project can finish autosaving while Home is already mounted.
+  useEffect(() => { const handle = window.setTimeout(() => { void refresh(); }, 900); return () => window.clearTimeout(handle); }, [currentProject, refresh]);
 
   useEffect(() => {
     const onLibraryChange = (event: StorageEvent) => {
       if (event.key === PROJECT_LIBRARY_CHANGE_KEY) void refresh();
     };
     window.addEventListener('storage', onLibraryChange);
-    return () => window.removeEventListener('storage', onLibraryChange);
+    const onLocalChange = () => { void refresh(); };
+    window.addEventListener(PROJECT_LIBRARY_CHANGE_KEY, onLocalChange);
+    return () => {
+      window.removeEventListener('storage', onLibraryChange);
+      window.removeEventListener(PROJECT_LIBRARY_CHANGE_KEY, onLocalChange);
+    };
   }, [refresh]);
 
   useEffect(() => {
@@ -188,14 +237,67 @@ export const ProjectHub = ({
     }
   };
 
-  const remove = async (record: StoredProjectRecord) => {
-    if (!activeRepository || !window.confirm(t('hub.deleteConfirm', { name: record.name }))) return;
+  const changeRetention = async (records: StoredProjectRecord[], state: 'saved' | 'draft' | 'deleted') => {
+    if (!canonicalRepository) throw new Error(t('hub.unavailable'));
+    for (const record of records) {
+      if (!await canonicalRepository.openBundle(record.id)) {
+        await canonicalRepository.saveBundle(createUnifiedProjectBundle(record.project, crypto.randomUUID()), 0);
+      }
+    }
+    const ids = records.map((record) => record.id);
+    if (session?.repository === canonicalRepository) await session.setLibraryState(ids, state);
+    else await canonicalRepository.setLibraryState(ids, state);
+    localStorage.setItem(PROJECT_LIBRARY_CHANGE_KEY, JSON.stringify({ projectId: ids[0], state, at: Date.now() }));
+  };
+
+  const keep = async (records: StoredProjectRecord[], state: 'saved' | 'draft' = 'saved') => {
+    setBusy(true);
     try {
-      await activeRepository.deleteProject(record.id);
+      await changeRetention(records, state);
+      setSelected(new Set());
       setOpenMenuId(null);
       await refresh();
     } catch {
       setError(t('hub.unavailable'));
+    } finally { setBusy(false); }
+  };
+
+  const remove = async (records: StoredProjectRecord[]) => {
+    if (!activeRepository || !records.length || !window.confirm(text.confirm(records.map((record) => record.name)))) return;
+    setBusy(true);
+    try {
+      if (canonicalRepository) await changeRetention(records, 'deleted');
+      if (records.some((record) => record.id === currentProject.id)) {
+        const blank = createBlankProject(); blank.settings = { ...currentProject.settings };
+        replaceProject(blank);
+      }
+      for (const record of records) {
+        if (await activeRepository.openProject(record.id)) await activeRepository.deleteProject(record.id);
+      }
+      setSelected(new Set()); setOpenMenuId(null);
+      await refresh();
+    } catch {
+      await refresh();
+      setError(t('hub.unavailable'));
+    } finally { setBusy(false); }
+  };
+
+  const toggleSelection = (id: string) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const retentionOf = (id: string) => bundles.get(id)?.libraryState ?? 'saved';
+
+  const selectedRecords = projects.filter((record) => selected.has(record.id));
+
+  const chooseCollection = (value: 'saved' | 'draft' | 'all') => {
+    if (!busy) {
+      setCollection(value);
+      setOpenMenuId(null);
     }
   };
 
@@ -253,16 +355,37 @@ export const ProjectHub = ({
   ));
   const normalizedFilter = filter.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase(language);
   const matchesFilter = (name: string) => !normalizedFilter || name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase(language).includes(normalizedFilter);
-  const filteredProjects = projectsForDisplay.filter((record) => matchesFilter(record.name));
+  const filteredProjects = projectsForDisplay.filter((record) => matchesFilter(record.name)
+    && (collection === 'all' || retentionOf(record.id) === collection)).sort((a, b) =>
+    sort === 'name' ? a.name.localeCompare(b.name, language, { numeric: true, sensitivity: 'base' })
+      : b.updatedAt.localeCompare(a.updatedAt) || a.name.localeCompare(b.name, language));
   const filteredRecoveries = recoveries.filter((recovery) => matchesFilter(recovery.project.name));
   const visibleProjects = limit === undefined ? filteredProjects : filteredProjects.slice(0, Math.max(0, limit));
   const noMatches = Boolean(normalizedFilter) && filteredProjects.length === 0 && filteredRecoveries.length === 0 && (projects.length > 0 || recoveries.length > 0);
 
   return <section className={`project-hub project-hub--${variant}${collapsed ? ' project-hub--collapsed' : ''}`} data-project-hub-layout="visual-library" aria-label={t('hub.title')}>
+    {variant === 'full' ? <div className="project-hub__organizer">
+      <p>{text.help}</p>
+      <div className="project-hub__collections" role="group" aria-label={language === 'es' ? 'Apartados de proyectos' : 'Project categories'}>
+        {(['saved', 'draft', 'all'] as const).map((value) => <button type="button" key={value} aria-pressed={collection === value} disabled={busy} onClick={() => chooseCollection(value)}>
+          {text[value]} <span>{projectsForDisplay.filter((record) => value === 'all' || retentionOf(record.id) === value).length}</span>
+        </button>)}
+      </div>
+      <label className="project-hub__sort">{text.order}<select value={sort} onChange={(event) => setSort(event.target.value as 'updated' | 'name')}><option value="updated">{text.updated}</option><option value="name">{text.name}</option></select></label>
+      {collection === 'draft' ? <p>{text.draftHelp}</p> : null}
+      {visibleProjects.length ? <div className="project-hub__bulk">
+        <button type="button" disabled={busy} onClick={() => setSelected(selected.size ? new Set() : new Set(visibleProjects.map((record) => record.id)))}>{selected.size ? text.clear : text.selectAll}</button>
+        {selectedRecords.length ? <>
+          {canonicalRepository && selectedRecords.some((record) => retentionOf(record.id) === 'draft') ? <button type="button" disabled={busy} onClick={() => void keep(selectedRecords)}><Save size={16} />{text.keep(selectedRecords.length)}</button> : null}
+          <button type="button" className="project-hub__delete" disabled={busy} onClick={() => void remove(selectedRecords)}><Trash2 size={16} />{text.remove(selectedRecords.length)}</button>
+        </> : null}
+      </div> : null}
+    </div> : null}
     {loading ? <p role="status">{t('hub.loading')}</p> : null}
     {error ? <p className="project-hub__error" role="alert">{error}</p> : null}
     {!loading && projects.length === 0 ? <p className="project-hub__empty">{t('hub.empty')}</p> : null}
     {!loading && noMatches ? <p className="project-hub__empty" role="status">{t('hub.noMatches')}</p> : null}
+    {!loading && projects.length > 0 && !visibleProjects.length && !noMatches ? <p className="project-hub__empty" role="status">{text.empty}</p> : null}
     {visibleProjects.length ? <div className="project-hub__list">
       {visibleProjects.map((record) => {
         const presentation = recentProjectPresentation(tool, bundles.get(record.id)?.bundle, language);
@@ -270,7 +393,8 @@ export const ProjectHub = ({
         const meta = presentation.meta || (tool === 'model2d'
           ? `${t('hub.meta', { members: record.project.members.length, nodes: record.project.nodes.length })}${presentation.space3d ? ` · 3D: ${presentation.space3d}` : ''}${presentation.design ? ` · ${language === 'es' ? 'Diseño' : 'Design'}: ${presentation.design}` : ''}`
           : language === 'es' ? 'Sin datos guardados de esta herramienta' : 'No saved data for this tool');
-        return <div className="project-hub__entry" key={record.id}><article className="project-hub__row">
+        return <div className="project-hub__entry" key={record.id}><article className={`project-hub__row${selected.has(record.id) ? ' is-selected' : ''}`}>
+        {variant === 'full' ? <label className="project-hub__select"><input type="checkbox" aria-label={text.select(record.name)} checked={selected.has(record.id)} disabled={busy} onChange={() => toggleSelection(record.id)} /></label> : null}
         <div className="project-hub__preview" aria-hidden="true">
           {toolScene
             ? <img src={theme === 'dark' ? toolScene.night : toolScene.day} alt="" />
@@ -283,20 +407,24 @@ export const ProjectHub = ({
             <button type="button" onClick={() => setEditing(null)}>{t('hub.cancel')}</button>
           </form> : <><strong>{record.name}</strong><span>{meta}</span></>}
           <div className="project-hub__record-meta">
+            <small className={`project-hub__retention is-${retentionOf(record.id)}`}>{retentionOf(record.id) === 'draft' ? text.draft : text.saved}</small>
             <time className="project-hub__updated" dateTime={record.updatedAt}>{formatUpdated(record.updatedAt, language)}</time>
             {variant === 'full' ? <small className="project-hub__revision">{t('hub.revision', { revision: record.revision })}</small> : null}
           </div>
         </div>
         <div className="project-hub__actions">
-          <button className="project-hub__open" type="button" aria-label={t('hub.openLabel', { name: record.name })} onClick={() => onOpen(record)}><FolderOpen size={16} />{t('hub.open')}</button>
+          {canonicalRepository && retentionOf(record.id) === 'draft' ? <button className="project-hub__save" type="button" disabled={busy} aria-label={text.saveName(record.name)} onClick={() => void keep([record])}><Save size={16} />{text.save}</button> : null}
+          <button className="project-hub__open" type="button" disabled={busy} aria-label={t('hub.openLabel', { name: record.name })} onClick={() => onOpen(record)}><FolderOpen size={16} />{t('hub.open')}</button>
           <div className={`project-hub__menu${openMenuId === record.id ? ' is-open' : ''}`}>
-            <button type="button" aria-expanded={openMenuId === record.id} aria-label={t('hub.moreActions', { name: record.name })} onClick={() => setOpenMenuId((current) => current === record.id ? null : record.id)}><MoreHorizontal size={18} /></button>
+            <button type="button" disabled={busy} aria-expanded={openMenuId === record.id} aria-label={t('hub.moreActions', { name: record.name })} onClick={() => setOpenMenuId((current) => current === record.id ? null : record.id)}><MoreHorizontal size={18} /></button>
           </div>
+          {variant === 'full' ? <button type="button" className="project-hub__quick-delete project-hub__delete" disabled={busy} aria-label={t('hub.deleteAction', { name: record.name })} onClick={() => void remove([record])}><Trash2 size={17} /></button> : null}
         </div>
         {openMenuId === record.id ? <div className="project-hub__menu-panel">
           <button type="button" aria-label={t('hub.renameAction', { name: record.name })} onClick={() => { setOpenMenuId(null); setEditing({ id: record.id, name: record.name }); }}><Pencil size={15} />{t('hub.rename')}</button>
           <button type="button" aria-label={t('hub.duplicateAction', { name: record.name })} onClick={() => { setOpenMenuId(null); void duplicate(record); }}><Copy size={15} />{t('hub.duplicate')}</button>
-          <button type="button" className="project-hub__delete" aria-label={t('hub.deleteAction', { name: record.name })} onClick={() => void remove(record)}><Trash2 size={15} />{t('hub.delete')}</button>
+          {canonicalRepository && retentionOf(record.id) === 'saved' ? <button type="button" disabled={busy} onClick={() => void keep([record], 'draft')}><Save size={15} />{text.move}</button> : null}
+          {variant === 'recent' ? <button type="button" className="project-hub__delete" aria-label={t('hub.deleteAction', { name: record.name })} onClick={() => void remove([record])}><Trash2 size={15} />{t('hub.delete')}</button> : null}
         </div> : null}
       </article>{activeRepository && variant === 'full' ? <ProjectVersions
         repository={activeRepository}

@@ -12,6 +12,8 @@ export interface StoredBundleRecord {
   checksum: string;
   updatedAt: string;
   bundle: UnifiedProjectBundleV1;
+  /** Missing on preexisting records: those projects remain saved. */
+  libraryState?: 'draft' | 'saved' | 'deleted';
 }
 export interface BundleRecoveryRecord {
   id: string;
@@ -46,12 +48,14 @@ interface BundleIntegrityDiagnostic {
 /** Invalid records are excluded from usable arrays and identified without mutating storage. */
 export interface BundleLibrarySnapshot extends StoredLibrarySnapshot {
   integrityDiagnostics: BundleIntegrityDiagnostic[];
+  deletedProjectIds?: string[];
 }
 export interface UnifiedBundleRepository {
   openBundle(id: string): Promise<StoredBundleRecord | null>;
   snapshot(): Promise<BundleLibrarySnapshot>;
   /** 0 means create; updates require the revision returned by openBundle. */
   saveBundle(bundle: UnifiedProjectBundleV1, expectedRevision: number): Promise<StoredBundleRecord>;
+  setLibraryState(ids: readonly string[], state: NonNullable<StoredBundleRecord['libraryState']>): Promise<void>;
   migrateLegacy(storage: LegacyBundleStorage): Promise<BundleLibrarySnapshot>;
 }
 export class BundleConflictError extends Error {
@@ -171,7 +175,8 @@ abstract class BundleRepository implements UnifiedBundleRepository {
     for (const record of stored.bundles) {
       try {
         await this.validateStoredBundle(record);
-        snapshot.bundles.push(record);
+        if (record.libraryState === 'deleted') (snapshot.deletedProjectIds ??= []).push(record.id);
+        else snapshot.bundles.push(record);
       } catch (error) {
         snapshot.integrityDiagnostics.push({ store: 'bundles', recordId: record.id, code: 'invalid-record', message: error instanceof Error ? error.message : String(error) });
       }
@@ -192,7 +197,17 @@ abstract class BundleRepository implements UnifiedBundleRepository {
       try { await this.validateStoredBundle(record); }
       catch (error) { throw new Error(`Bundle ${id} integrity failure: ${error instanceof Error ? error.message : String(error)}`); }
     }
-    return record;
+    return record?.libraryState === 'deleted' ? null : record;
+  }
+  async setLibraryState(ids: readonly string[], libraryState: NonNullable<StoredBundleRecord['libraryState']>): Promise<void> {
+    await this.database.transaction(true, (state) => {
+      const records = [...new Set(ids)].map((id) => {
+        const record = state.bundles.get(id);
+        if (!record || record.libraryState === 'deleted') throw new Error(`Project ${id} is missing or deleted`);
+        return record;
+      });
+      for (const record of records) state.bundles.set(record.id, { ...record, libraryState });
+    });
   }
   async saveBundle(input: UnifiedProjectBundleV1, expectedRevision: number): Promise<StoredBundleRecord> {
     if (!Number.isInteger(expectedRevision) || expectedRevision < 0) throw new Error('An explicit nonnegative expected revision is required');
@@ -203,11 +218,13 @@ abstract class BundleRepository implements UnifiedBundleRepository {
     const recoveryId = crypto.randomUUID();
     const outcome = await this.database.transaction(true, (state) => {
       const current = state.bundles.get(id);
+      if (current?.libraryState === 'deleted') throw new Error(`Project ${id} was deleted`);
       if ((current?.revision ?? 0) !== expectedRevision) {
         state.recoveries.set(recoveryId, { id: recoveryId, projectId: id, reason: 'conflict', createdAt: timestamp, checksum, bundle });
         return { conflict: true as const };
       }
-      const record: StoredBundleRecord = { id, revision: expectedRevision + 1, updatedAt: timestamp, checksum, bundle };
+      const record: StoredBundleRecord = { id, revision: expectedRevision + 1, updatedAt: timestamp, checksum, bundle,
+        libraryState: current?.libraryState ?? (current ? 'saved' : 'draft') };
       state.bundles.set(id, record);
       return { conflict: false as const, record };
     });
@@ -238,11 +255,17 @@ abstract class BundleRepository implements UnifiedBundleRepository {
         }
         const id = plan.bundle?.manifest.projectId ?? null;
         const current = id ? state.bundles.get(id) : undefined;
+        // A deletion is an explicit user decision, including over retained legacy bytes.
+        if (current?.libraryState === 'deleted') {
+          for (const source of pending) state.migrations.set(source.id, { ...source, complete: true, status: 'imported' });
+          continue;
+        }
         const canImport = plan.bundle && id !== null && !corruptIds.has(id) && (!current || current.checksum === plan.checksum || current.checksum === plan.baseChecksum);
         let recoveryId: string | undefined;
         if (canImport && plan.bundle && id) {
           if (current?.checksum !== plan.checksum) state.bundles.set(id, {
             id, revision: (current?.revision ?? 0) + 1, checksum: plan.checksum, updatedAt: timestamp, bundle: plan.bundle,
+            libraryState: current?.libraryState ?? 'saved',
           });
         } else {
           recoveryId = crypto.randomUUID();
