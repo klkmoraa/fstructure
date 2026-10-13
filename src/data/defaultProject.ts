@@ -2,7 +2,7 @@ import type { ProjectModel, ProjectSettings } from '../types';
 import { createId } from '../utils/id';
 import { withConcreteFrame } from './concreteFrame';
 
-export const CURRENT_SCHEMA_VERSION = 8;
+export const CURRENT_SCHEMA_VERSION = 9;
 
 export const DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN = {
   coverMm: 40,
@@ -57,7 +57,7 @@ export const createBlankProject = (): ProjectModel => ({
   generatedLoadSources: [],
   movingLoadCases: [],
   designAssignments: [],
-  settings: createDefaultSettings(),
+  settings: { ...createDefaultSettings(), stiffnessDefaults: { mode: 'EI', factor: 1 } },
 });
 
 export const createDefaultProject = (): ProjectModel => ({

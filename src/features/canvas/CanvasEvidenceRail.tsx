@@ -61,7 +61,7 @@ export const CanvasEvidenceRail = ({
       disabled={!stackAvailable}
       data-evidence-layer="stack"
       onClick={onStackToggle}
-    >ACM</button>
+    >{t('canvas.evidenceStackShort')}</button>
     {stackActive ? <div className="canvas-evidence-stack-choices" role="group" aria-label={t('canvas.evidenceStack')}>
       {STACK_QUANTITIES.map((quantity) => {
         const selected = stackQuantities.includes(quantity);

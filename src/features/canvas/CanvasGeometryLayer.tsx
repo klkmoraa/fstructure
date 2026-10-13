@@ -42,6 +42,7 @@ const arrowPath = (x1: number, y1: number, x2: number, y2: number, marker = 'arr
 interface CanvasGeometryLayerProps {
   /** `members` paints under the result annotations; `objects` (supports/loads/nodes) paints over them. */
   slot: 'members' | 'objects';
+  interactive?: boolean;
   project: ProjectModel;
   nodeMap: Map<string, NodeModel>;
   memberMap: Map<string, MemberModel>;
@@ -73,7 +74,7 @@ interface CanvasGeometryLayerProps {
 }
 
 const CanvasGeometryLayerImpl = ({
-  slot, project, nodeMap, memberMap, toScreen, camera, selectionVisualState, candidatePreview, learningFocus, memberStartId,
+  slot, interactive = true, project, nodeMap, memberMap, toScreen, camera, selectionVisualState, candidatePreview, learningFocus, memberStartId,
   layers, loadsLayerVisible, heatmapRatios, demandMapActive, resultTab, units, forceLabel, momentLabel, distributedLabel, t,
   onObjectPointerDown, onObjectKeyDown, onShowCut, onCutLeave,
 }: CanvasGeometryLayerProps) => {
@@ -457,7 +458,7 @@ const CanvasGeometryLayerImpl = ({
       const start = { x: p.x - ux * length, y: p.y - uy * length };
       const end = { x: p.x - ux * 8, y: p.y - uy * 8 };
       return (
-        <g key={load.id} className={`load-symbol load-symbol--point${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane="point" data-structure-object data-structure-kind="nodalLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.pointLoadAria', { id: load.id, target: load.nodeId, value: formatFixed(toDisplay(magnitude, units, 'force'), 2), unit: forceLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'nodalLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'nodalLoad', id: load.id })}>
+        <g key={load.id} className={`load-symbol load-symbol--point${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane="point" data-structure-object data-structure-kind="nodalLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={interactive ? 0 : -1} aria-keyshortcuts="Enter Space" aria-label={t('canvas.pointLoadAria', { id: load.id, target: load.nodeId, value: formatFixed(toDisplay(magnitude, units, 'force'), 2), unit: forceLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'nodalLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'nodalLoad', id: load.id })}>
           {selected ? <line className="load-selection-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}
           {previewed ? <line className="candidate-preview-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}
           <line className="load-hit" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
@@ -469,7 +470,7 @@ const CanvasGeometryLayerImpl = ({
       const momentPath = load.mz < 0
         ? `M ${p.x + 20} ${p.y - 8} A 22 22 0 1 1 ${p.x - 17} ${p.y - 14}`
         : `M ${p.x - 20} ${p.y - 8} A 22 22 0 1 0 ${p.x + 17} ${p.y - 14}`;
-      return <g key={load.id} className={`load-symbol load-symbol--moment${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane="moment-outer" data-structure-object data-structure-kind="nodalLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.momentLoadAria', { id: load.id, target: load.nodeId, value: formatFixed(toDisplay(load.mz, units, 'moment'), 2), unit: momentLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'nodalLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'nodalLoad', id: load.id })}>
+      return <g key={load.id} className={`load-symbol load-symbol--moment${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane="moment-outer" data-structure-object data-structure-kind="nodalLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={interactive ? 0 : -1} aria-keyshortcuts="Enter Space" aria-label={t('canvas.momentLoadAria', { id: load.id, target: load.nodeId, value: formatFixed(toDisplay(load.mz, units, 'moment'), 2), unit: momentLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'nodalLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'nodalLoad', id: load.id })}>
         {selected ? <path className="load-selection-halo" d={momentPath} /> : null}
         {previewed ? <path className="candidate-preview-halo" d={momentPath} /> : null}
         <path className="load-hit" d={momentPath} />
@@ -510,7 +511,7 @@ const CanvasGeometryLayerImpl = ({
         y: base.y - uy * tailOffset,
       };
       const end = { x: base.x - ux * headOffset, y: base.y - uy * headOffset };
-      return <g key={load.id} className={`load-symbol load-symbol--point${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-point-stack-index={presentation.pointStackIndex} data-point-stack-count={presentation.pointStackCount} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.pointLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(mag, units, 'force'), 2), unit: forceLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}<line className="load-hit" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />{arrowPath(start.x, start.y, end.x, end.y)}</g>;
+      return <g key={load.id} className={`load-symbol load-symbol--point${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-point-stack-index={presentation.pointStackIndex} data-point-stack-count={presentation.pointStackCount} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={interactive ? 0 : -1} aria-keyshortcuts="Enter Space" aria-label={t('canvas.pointLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(mag, units, 'force'), 2), unit: forceLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={start.x} y1={start.y} x2={end.x} y2={end.y} /> : null}<line className="load-hit" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />{arrowPath(start.x, start.y, end.x, end.y)}</g>;
     }
     if (load.type === 'moment') {
       const base = stationOf(load.position ?? 0.5);
@@ -519,7 +520,7 @@ const CanvasGeometryLayerImpl = ({
       const path = clockwise
         ? `M ${momentBase.x + 22} ${momentBase.y - 3} A 23 23 0 1 1 ${momentBase.x - 18} ${momentBase.y - 13}`
         : `M ${momentBase.x - 22} ${momentBase.y - 3} A 23 23 0 1 0 ${momentBase.x + 18} ${momentBase.y - 13}`;
-      return <g key={load.id} className={`load-symbol load-symbol--moment${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.momentLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(load.moment ?? 0, units, 'moment'), 2), unit: momentLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <path className="load-selection-halo" d={path} /> : null}{previewed ? <path className="candidate-preview-halo" d={path} /> : null}<path className="load-hit" d={path} /><path d={path} markerEnd="url(#arrow-load-moment)" /></g>;
+      return <g key={load.id} className={`load-symbol load-symbol--moment${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={interactive ? 0 : -1} aria-keyshortcuts="Enter Space" aria-label={t('canvas.momentLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(load.moment ?? 0, units, 'moment'), 2), unit: momentLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <path className="load-selection-halo" d={path} /> : null}{previewed ? <path className="candidate-preview-halo" d={path} /> : null}<path className="load-hit" d={path} /><path d={path} markerEnd="url(#arrow-load-moment)" /></g>;
     }
     const visibleLoadedLength = axis.length * camera.scale * Math.abs(load.end - load.start);
     const count = Math.max(3, Math.min(9, Math.round(visibleLoadedLength / 34) + 1));
@@ -596,7 +597,7 @@ const CanvasGeometryLayerImpl = ({
       const points = [...geometry.map(({ tail }) => tail), ...[...geometry].reverse().map(({ base }) => base)];
       return `M ${points.map((point) => `${point.x} ${point.y}`).join(' L ')} Z`;
     });
-    return <g key={load.id} className={`distributed-symbol load-symbol--distributed${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-load-stack-offset={distributedBaseOffset} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={0} aria-keyshortcuts="Enter Space" aria-label={t('canvas.distributedLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(average, units, 'distributedForce'), 2), unit: distributedLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}<line className="load-hit" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} />{envelopePaths.map((path, index) => <path key={index} className="distributed-envelope" d={path} />)}{arrows}</g>;
+    return <g key={load.id} className={`distributed-symbol load-symbol--distributed${selected ? ' selected' : ''}${previewed ? ' candidate-preview' : ''}`} data-load-lane={lane} data-load-stack-offset={distributedBaseOffset} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id} data-candidate-preview={previewed ? 'true' : undefined} role="button" tabIndex={interactive ? 0 : -1} aria-keyshortcuts="Enter Space" aria-label={t('canvas.distributedLoadAria', { id: load.id, target: load.memberId, value: formatFixed(toDisplay(average, units, 'distributedForce'), 2), unit: distributedLabel })} aria-pressed={selected} onPointerDown={(event) => onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })} onKeyDown={(event) => onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>{selected ? <line className="load-selection-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}{previewed ? <line className="candidate-preview-halo" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} /> : null}<line className="load-hit" x1={hitStart.x} y1={hitStart.y} x2={hitEnd.x} y2={hitEnd.y} />{envelopePaths.map((path, index) => <path key={index} className="distributed-envelope" d={path} />)}{arrows}</g>;
   };
 
   const renderPointStackGuide = (presentation: MemberLoadPresentation) => {
@@ -661,7 +662,7 @@ const CanvasGeometryLayerImpl = ({
               className={`member-object ${selected ? 'selected' : ''}${previewed ? ' candidate-preview' : ''} ${learningHighlighted ? 'learning-highlight' : ''} ${member.type}${paint === null ? '' : ' has-demand'}${unevaluated ? ' is-unevaluated' : ''}`}
               data-candidate-preview={previewed ? 'true' : undefined}
               role="button"
-              tabIndex={0}
+              tabIndex={interactive ? 0 : -1}
               aria-keyshortcuts="Enter Space"
               aria-label={t('canvas.memberAria', { id: member.id, i: member.i, j: member.j })}
               aria-pressed={selected}
@@ -738,7 +739,7 @@ const CanvasGeometryLayerImpl = ({
             data-structure-id={node.id}
             data-candidate-preview={previewed ? 'true' : undefined}
             role="button"
-            tabIndex={0}
+            tabIndex={interactive ? 0 : -1}
             aria-keyshortcuts="Enter Space"
             aria-label={t('canvas.nodeAria', { id: node.id, x: formatFixed(node.x, 3), y: formatFixed(node.y, 3) })}
             aria-pressed={selected}

@@ -1,3 +1,4 @@
+import { normalizeProject } from '../data/migrate';
 import type { ProjectModel } from '../types';
 import { createBlankProject } from '../data/defaultProject';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
@@ -79,7 +80,7 @@ export class UnifiedProjectSession {
       this.working.delete(id);
       this.blocked.delete(id);
       if (this.status.issue === 'conflict') this.status = { issue: null, message: null };
-      return structuredClone(record.bundle.model2d);
+      return normalizeProject(record.bundle.model2d);
     } catch (error) {
       this.blocked.add(id);
       this.status = { issue: 'load-failed', message: String(error) };

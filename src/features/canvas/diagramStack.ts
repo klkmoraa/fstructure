@@ -27,7 +27,7 @@ export const persistStackQuantities = (quantities: readonly StackQuantity[]): vo
   try { window.localStorage.setItem(DIAGRAM_STACK_STORAGE_KEY, JSON.stringify(quantities)); } catch { /* Optional view preference. */ }
 };
 
-/** The last visible lane cannot be removed: an active empty ACM would be misleading. */
+/** The last visible lane cannot be removed: an active empty diagram sheet would be misleading. */
 export const toggleStackQuantity = (current: readonly StackQuantity[], quantity: StackQuantity): StackQuantity[] => {
   if (current.includes(quantity) && current.length === 1) return [...current];
   const next = current.includes(quantity) ? current.filter((item) => item !== quantity) : [...current, quantity];

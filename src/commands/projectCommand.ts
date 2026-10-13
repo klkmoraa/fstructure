@@ -1,3 +1,4 @@
+import { setStiffnessDefaults, validateMemberStiffness, withMemberStiffness } from '../data/memberStiffness';
 import { placeGeneratedStructure } from '../data/generators/generatorPlacement';
 import { generateStructure } from '../data/generators/structureGenerators';
 import type { GeneratorParams } from '../data/generators/generatorTypes';
@@ -22,6 +23,7 @@ import type {
   NodeModel,
   PrescribedDisplacement,
   ProjectModel,
+  StiffnessDefaults,
   Selection,
   SupportDefinition,
 } from '../types';
@@ -40,6 +42,7 @@ export interface ProjectPatchOperation {
 export interface ProjectPatch {
   description: string;
   operations: ProjectPatchOperation[];
+  stiffnessDefaults?: { before: StiffnessDefaults | null; after: StiffnessDefaults | null };
 }
 
 interface CommandBase { description: string }
@@ -147,6 +150,8 @@ export interface MemberLoadBulkEntry {
 }
 
 export type ProjectCommand =
+  | (CommandBase & { kind: 'stiffness.defaults.update'; defaults?: StiffnessDefaults; applyToAll?: boolean })
+  | (CommandBase & { kind: 'member.stiffness.set'; memberId: string; factor?: number })
   | (CommandBase & { kind: 'member.create'; nodes: NodeModel[]; member: MemberModel })
   | (CommandBase & {
     kind: 'member.createAtPoint';
@@ -348,11 +353,17 @@ const diffProjects = (before: ProjectModel, after: ProjectModel, description: st
       }
     }
   }
-  return { description, operations };
+  return { description, operations,
+    ...(!same(before.settings.stiffnessDefaults, after.settings.stiffnessDefaults) ? { stiffnessDefaults: {
+      before: structuredClone(before.settings.stiffnessDefaults ?? null),
+      after: structuredClone(after.settings.stiffnessDefaults ?? null),
+    } } : {}),
+  };
 };
 
 const invertProjectPatch = (patch: ProjectPatch): ProjectPatch => ({
   description: `Revertir: ${patch.description}`,
+  ...(patch.stiffnessDefaults ? { stiffnessDefaults: { before: patch.stiffnessDefaults.after, after: patch.stiffnessDefaults.before } } : {}),
   operations: patch.operations.map((operation) => ({
     ...operation,
     before: operation.after ? structuredClone(operation.after) : null,
@@ -362,6 +373,11 @@ const invertProjectPatch = (patch: ProjectPatch): ProjectPatch => ({
 
 export const applyProjectPatch = (project: ProjectModel, patch: ProjectPatch): ProjectModel => {
   const next = structuredClone(project);
+  if (patch.stiffnessDefaults) {
+    if (!same(project.settings.stiffnessDefaults ?? null, patch.stiffnessDefaults.before)) throw new Error('La base de rigidez cambió; vuelve a preparar la edición.');
+    if (patch.stiffnessDefaults.after) next.settings.stiffnessDefaults = structuredClone(patch.stiffnessDefaults.after);
+    else delete next.settings.stiffnessDefaults;
+  }
   for (const operation of patch.operations) {
     const collection = entities(next, operation.collection);
     const currentIndex = collection.findIndex((candidate) => candidate.id === operation.id);
@@ -372,6 +388,7 @@ export const applyProjectPatch = (project: ProjectModel, patch: ProjectPatch): P
     else collection.splice(Math.min(operation.index, collection.length), 0, structuredClone(operation.after));
     (next as unknown as Record<string, ProjectEntity[]>)[operation.collection] = collection;
   }
+  validateMemberStiffness(next);
   validateProjectBoundary(next);
   return next;
 };
@@ -552,15 +569,31 @@ const applyNodeBulkChanges = (current: NodeModel, changes: NodeBulkChanges): Nod
 export const compileProjectCommand = (project: ProjectModel, command: ProjectCommand): CompiledProjectCommand => {
   const next = structuredClone(project);
   let result: ProjectCommandResult | undefined;
-  if (command.kind === 'member.create') {
+  if (command.kind === 'stiffness.defaults.update') {
+    Object.assign(next, setStiffnessDefaults(next, command.defaults, command.applyToAll));
+  } else if (command.kind === 'member.stiffness.set') {
+    const index = next.members.findIndex((member) => member.id === command.memberId);
+    if (index < 0) throw new Error(`No existe el miembro ${command.memberId}.`);
+    if (command.factor === undefined) delete next.members[index].stiffnessFactor;
+    else {
+      if (!next.settings.stiffnessDefaults) throw new Error('Define primero una base de rigidez.');
+      next.members[index] = withMemberStiffness(next.members[index], next.settings.stiffnessDefaults, command.factor);
+    }
+  } else if (command.kind === 'member.create') {
     next.nodes.push(...structuredClone(command.nodes));
     const member = structuredClone(command.member);
     member.materialOrigin ??= 'custom';
     member.sectionOrigin ??= 'custom';
-    next.members.push(member);
+    next.members.push(next.settings.stiffnessDefaults
+      ? withMemberStiffness(member, next.settings.stiffnessDefaults, member.stiffnessFactor ?? next.settings.stiffnessDefaults.factor)
+      : member);
     result = { kind: 'member.create', memberId: member.id, nodeId: member.j, created: true };
   } else if (command.kind === 'member.createAtPoint') {
     const created = createMemberAtPoint(next, command);
+    if (created.created && next.settings.stiffnessDefaults) {
+      const index = next.members.findIndex((member) => member.id === created.memberId);
+      next.members[index] = withMemberStiffness(next.members[index], next.settings.stiffnessDefaults, command.template.stiffnessFactor ?? next.settings.stiffnessDefaults.factor);
+    }
     result = { kind: command.kind, ...created };
   } else if (command.kind === 'member.split') {
     const split = splitMemberAt(next, command.memberId, command.ratio);
@@ -714,6 +747,17 @@ export const compileProjectCommand = (project: ProjectModel, command: ProjectCom
     result = { kind: 'topology.repair', report };
   }
   validateProjectBoundary(next);
+  if (command.kind === 'member.update' || command.kind === 'member.material.apply' || command.kind === 'member.section.apply' || command.kind === 'selection.bulk.apply') {
+    next.members = next.members.map((member) => {
+      const before = project.members.find((item) => item.id === member.id);
+      const mode = next.settings.stiffnessDefaults?.mode;
+      if (before?.stiffnessFactor !== undefined && ((mode !== 'I' && member.E !== before.E) || (mode !== 'E' && member.I !== before.I) || member.type !== before.type)) {
+        delete member.stiffnessFactor;
+      }
+      return member;
+    });
+  }
+  validateMemberStiffness(next);
   const forward = diffProjects(project, next, command.description);
   return { command, forward, inverse: invertProjectPatch(forward), result };
 };

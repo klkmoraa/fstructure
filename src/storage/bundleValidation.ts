@@ -115,7 +115,7 @@ export function validateBundle(input: unknown): UnifiedProjectBundleV1 {
   if (manifest.schemaVersion !== 1 || manifest.authoritativeModel !== 'model2d') throw new Error('Unsupported manifest schema or authority');
   if (!nonempty(manifest.projectId) || !nonempty(manifest.sourceVersion)) throw new Error('Project identity and source version are required');
   const model = object(copy.model2d);
-  if (model.id !== manifest.projectId || model.schemaVersion !== CURRENT_SCHEMA_VERSION) throw new Error('Unsupported model schema or mismatched project identity');
+  if (model.id !== manifest.projectId || !Number.isInteger(model.schemaVersion) || (model.schemaVersion as number) < 1 || (model.schemaVersion as number) > CURRENT_SCHEMA_VERSION) throw new Error('Unsupported model schema or mismatched project identity');
   // Persist the validated domain representation, including required defaults.
   copy.model2d = JSON.parse(canonicalSerialize(modelJson(normalizeProject(copy.model2d))));
   if (!Array.isArray(copy.fem)) throw new Error('FEM must be a list of serializable branches');

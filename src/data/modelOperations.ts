@@ -1,3 +1,4 @@
+import { withMemberStiffness } from './memberStiffness';
 import type { MemberInitialEffect, MemberLoad, MemberModel, NodalLoad, NodeModel, PrescribedDisplacement, ProjectModel, Selection } from '../types';
 
 /**
@@ -181,6 +182,13 @@ export const copyModelSelection = (project: ProjectModel, selection: Selection):
 };
 
 /** Pastes a clipboard snapshot with fresh IDs. Mutates the supplied draft. */
+const pastedStiffness = (member: MemberModel, project: ProjectModel): MemberModel => {
+  if (member.stiffnessFactor === undefined) return member;
+  if (project.settings.stiffnessDefaults) return withMemberStiffness(member, project.settings.stiffnessDefaults, member.stiffnessFactor);
+  delete member.stiffnessFactor;
+  return member;
+};
+
 export const pasteModelClipboard = (
   project: ProjectModel,
   clipboard: ModelClipboard,
@@ -213,7 +221,7 @@ export const pasteModelClipboard = (
     { ...structuredClone(sourceJ), id: nodeJId, x: sourceJ.x + offset.x, y: sourceJ.y + offset.y },
   );
   const memberId = nextId('M', project.members.map((member) => member.id));
-  project.members.push({ ...structuredClone(clipboard.member), id: memberId, i: nodeIId, j: nodeJId });
+  project.members.push(pastedStiffness({ ...structuredClone(clipboard.member), id: memberId, i: nodeIId, j: nodeJId }, project));
   for (const source of clipboard.memberLoads) {
     project.memberLoads.push({
       ...structuredClone(source),
@@ -245,7 +253,7 @@ export const pasteModelClipboard = (
     const memberId = nextId('M', [...project.members.map((member) => member.id), ...pastedMemberIds]);
     memberIdMap.set(source.id, memberId);
     pastedMemberIds.push(memberId);
-    project.members.push({ ...structuredClone(source), id: memberId, i, j });
+    project.members.push(pastedStiffness({ ...structuredClone(source), id: memberId, i, j }, project));
   }
   for (const source of clipboard.nodalLoads) {
     const nodeId = nodeIdMap.get(source.nodeId);

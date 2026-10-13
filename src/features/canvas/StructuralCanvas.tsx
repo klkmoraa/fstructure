@@ -61,7 +61,7 @@ import {
 import { CanvasResultLayer, diagramPixelScaleFor, reactionClearanceFor } from './CanvasResultLayer';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
 import { CanvasMiniMap } from './CanvasMiniMap';
-import { CanvasDiagramStack, stackBottomReserve } from './CanvasDiagramStack';
+import { CanvasDiagramStack, diagramRowHeight, stackBottomReserve } from './CanvasDiagramStack';
 import { persistStackQuantities, readStoredStackQuantities, toggleStackQuantity, type StackQuantity } from './diagramStack';
 import { CanvasTouchLoupe } from './CanvasTouchLoupe';
 import { CandidatePicker } from './CanvasCandidatePicker';
@@ -537,7 +537,6 @@ export const StructuralCanvas = ({
    * dibujar nada en ese margen; en un teléfono eso se nota.
    */
   const loadDecorationDrawn = loadsLayerVisible
-    && !stackActive
     && view.showLoads
     && resultTab !== 'influence'
     && project.nodalLoads.length + project.memberLoads.length > 0;
@@ -2171,6 +2170,7 @@ export const StructuralCanvas = ({
     const svg = svgRef.current;
     if (!svg) return;
     const onWheel = (event: globalThis.WheelEvent) => {
+      if (stackActive && !event.ctrlKey) return;
       event.preventDefault();
       const local = localScreenPoint(event.clientX, event.clientY);
       const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaMode === 2 ? event.deltaY * size.height : event.deltaY;
@@ -2179,7 +2179,7 @@ export const StructuralCanvas = ({
     };
     svg.addEventListener('wheel', onWheel, { passive: false });
     return () => svg.removeEventListener('wheel', onWheel);
-  }, [localScreenPoint, size.height, updateCamera]);
+  }, [localScreenPoint, size.height, stackActive, updateCamera]);
 
   const memberValueAt = (memberId: string, ratio: number): DiagramPoint | null => {
     const result = resultMap.get(memberId);
@@ -2214,11 +2214,12 @@ export const StructuralCanvas = ({
   }, [analysis, resultTab]);
 
   const stackAvailable = Boolean(analysis?.success && analysis.memberResults.some((result) => result.diagramSegments.length > 0));
+  useEffect(() => { if (!stackAvailable && stackActive) setStackActive(false); }, [stackAvailable, stackActive]);
   // ACM is an analysis drawing, not an editor composition. Its own traces are
   // meaningful only when reaction labels, load arrows and local axes do not
   // compete with them. This is presentation-only; the persisted layer choice
   // and model data remain untouched.
-  const acmLayers = stackActive ? { ...layers, dimensions: false } : layers;
+  const acmLayers = layers;
   /**
    * Encuadre con el que se entró en ACM, para poder devolverlo al salir.
    *
@@ -2317,7 +2318,7 @@ export const StructuralCanvas = ({
     const b = toScreen(nj.x, nj.y);
     const anchor = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     const selected = selectedMemberIds.includes(member.id);
-    if (selected || (layers.labels && layers.ids && view.showMemberLabels)) {
+    if (selected || (layers.labels && ((layers.ids && view.showMemberLabels) || member.stiffnessFactor !== undefined))) {
       // El identificador NO se ancla al punto medio. Ahí es donde una carga
       // distribuida pone su valor —su ancla es el centro del tramo cargado— y
       // los dos pedían el mismo hueco justo encima de la barra: el repartidor
@@ -2328,7 +2329,9 @@ export const StructuralCanvas = ({
       const idAnchor = { x: a.x + (b.x - a.x) * MEMBER_LABEL_STATION, y: a.y + (b.y - a.y) * MEMBER_LABEL_STATION };
       smartLabelCandidates.push({
         id: `member:${member.id}`,
-        text: member.id,
+        text: member.stiffnessFactor !== undefined && project.settings.stiffnessDefaults
+          ? `${member.id} · ${member.stiffnessFactor === 1 ? '' : formatFixed(member.stiffnessFactor, 2).replace(/\.?0+$/, '')}${project.settings.stiffnessDefaults.mode}`
+          : member.id,
         anchor: idAnchor,
         priority: selected ? 0 : 2,
         tone: selected ? 'selection' : 'neutral',
@@ -2491,7 +2494,7 @@ export const StructuralCanvas = ({
       }
     }
 
-    if (['axial', 'shear', 'moment'].includes(resultTab) && view.showResultOverlay) {
+    if (!stackActive && ['axial', 'shear', 'moment'].includes(resultTab) && view.showResultOverlay) {
       const quantity = resultTab as DiagramQuantity;
       const side = view.diagramSide === 'negative' ? -1 : 1;
       for (const member of project.members) {
@@ -2537,11 +2540,12 @@ export const StructuralCanvas = ({
     }
   }
 
-    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(size), camera.scale);
+    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(stackActive ? { ...size, height: diagramRowHeight(project, size) } : size), camera.scale);
   }, [
     activeTool,
     analysis,
     camera,
+    stackActive,
     distributedLabel,
     forceLabel,
     globalDiagramMax,
@@ -2584,11 +2588,15 @@ export const StructuralCanvas = ({
 
   return (
     <div className="canvas-host" ref={hostRef} data-context-sheet-open={compactContextSheetOpen || undefined}>
+      <div className={stackActive ? 'canvas-diagram-scroll' : 'canvas-scene-wrapper'}>
+      {stackActive ? <div className="canvas-dcl-heading">DCL</div> : null}
       <svg
+        style={stackActive ? { height: diagramRowHeight(project, size), background: 'transparent', touchAction: 'pan-y' } : { background: 'transparent' }}
+        data-stack-row={stackActive ? 'dcl' : undefined}
         ref={svgRef}
         className={`structural-canvas tool-${activeTool} interaction-${interaction.kind} ${spacePressed ? 'space-pan-ready' : ''}`}
         data-interaction={interaction.kind}
-        viewBox={`0 0 ${size.width} ${size.height}`}
+        viewBox={`0 0 ${size.width} ${stackActive ? diagramRowHeight(project, size) : size.height}`}
         role="application"
         aria-label={t('canvas.workspace')}
         aria-describedby="canvas-interaction-description"
@@ -2715,7 +2723,7 @@ export const StructuralCanvas = ({
           learningFocus={learningFocus}
           memberStartId={memberStart}
           layers={acmLayers}
-          loadsLayerVisible={loadsLayerVisible && !stackActive}
+          loadsLayerVisible={loadsLayerVisible}
           heatmapRatios={heatmapRatios}
           demandMapActive={demandMapActive}
           resultTab={resultTab}
@@ -2730,14 +2738,7 @@ export const StructuralCanvas = ({
           onCutLeave={onCutLeave}
         />
 
-        {stackActive && layers.results && analysis?.success && !structuralEditDraft ? <CanvasDiagramStack
-          project={project}
-          results={analysis.memberResults}
-          quantities={stackQuantities}
-          nodeMap={nodeMap}
-          size={size}
-          t={t}
-        /> : null}
+
 
         <CanvasResultLayer
           slot="annotations"
@@ -2761,7 +2762,7 @@ export const StructuralCanvas = ({
           lengthLabel={lengthLabel}
           forceLabel={forceLabel}
           momentLabel={momentLabel}
-          showResults={layers.results && !stackActive && !structuralEditDraft}
+          showResults={layers.results && !structuralEditDraft}
           showDiagnostics={layers.diagnostics && !structuralEditDraft}
           size={size}
           t={t}
@@ -2779,7 +2780,7 @@ export const StructuralCanvas = ({
           learningFocus={learningFocus}
           memberStartId={memberStart}
           layers={acmLayers}
-          loadsLayerVisible={loadsLayerVisible && !stackActive}
+          loadsLayerVisible={loadsLayerVisible}
           heatmapRatios={heatmapRatios}
           demandMapActive={demandMapActive}
           resultTab={resultTab}
@@ -2831,11 +2832,16 @@ export const StructuralCanvas = ({
           </g>;
         })() : null}
 
-        {!stackActive ? smartLabelLayer : null}
+        {smartLabelLayer}
 
         {!stackActive ? <GlobalAxes canvasHeight={size.height} /> : null}
         </g>
       </svg>
+      {stackActive && layers.results && analysis?.success && !structuralEditDraft ? <CanvasDiagramStack
+        project={project} results={analysis.memberResults} quantities={stackQuantities} nodeMap={nodeMap} size={size} t={t}
+        camera={camera}
+      /> : null}
+      </div>
 
       {supportPlacement ? <SupportPlacementPopover
         nodeId={supportPlacement.nodeId}
@@ -2942,9 +2948,9 @@ export const StructuralCanvas = ({
         lengthLabel={lengthLabel}
         scale={camera.scale}
         onCancelPlacement={() => setActiveTool('select')}
-        onZoomIn={() => updateCamera(zoomCameraAt(cameraRef.current, { x: size.width / 2, y: size.height / 2 }, 1.15))}
-        onZoomOut={() => updateCamera(zoomCameraAt(cameraRef.current, { x: size.width / 2, y: size.height / 2 }, 1 / 1.15))}
-        onFit={fitModel}
+        onZoomIn={() => updateCamera(zoomCameraAt(cameraRef.current, { x: size.width / 2, y: (stackActive ? diagramRowHeight(project, size) : size.height) / 2 }, 1.15))}
+        onZoomOut={() => updateCamera(zoomCameraAt(cameraRef.current, { x: size.width / 2, y: (stackActive ? diagramRowHeight(project, size) : size.height) / 2 }, 1 / 1.15))}
+        onFit={() => fitModel(stackActive ? stackBottomReserve(project, size, stackQuantities.length) : undefined)}
         stackActive={stackActive}
         stackAvailable={stackAvailable}
         stackQuantities={stackQuantities}
@@ -2979,7 +2985,7 @@ export const StructuralCanvas = ({
         onActivate={activateRepeat}
         onCancel={() => { setRepeatRecipe(null); setMemberStart(null); setActiveTool('select'); }}
       />
-      {layers.results && layers.labels && resultsAllowed && analysis?.success && ['axial', 'shear', 'moment'].includes(resultTab) ? <div className={`canvas-result-legend ${resultTab}`} aria-label={t('canvas.diagramConvention')} data-canvas-chrome="result-legend"><strong>{resultTab === 'axial' ? `N · ${t('results.axial')}` : resultTab === 'shear' ? `V · ${t('results.shear')}` : `M · ${t('results.moment')}`}</strong><span><i /> {t('canvas.exactCurveScale', { scale: t(view.diagramScaleMode === 'individual' ? 'canvas.scaleByMember' : 'canvas.scaleCommon') })}</span><small>{t('canvas.diagramSideDescription', { side: view.diagramSide === 'positive' ? '+y' : '−y' })}</small></div> : null}
+      {!stackActive && layers.results && layers.labels && resultsAllowed && analysis?.success && ['axial', 'shear', 'moment'].includes(resultTab) ? <div className={`canvas-result-legend ${resultTab}`} aria-label={t('canvas.diagramConvention')} data-canvas-chrome="result-legend"><strong>{resultTab === 'axial' ? `N · ${t('results.axial')}` : resultTab === 'shear' ? `V · ${t('results.shear')}` : `M · ${t('results.moment')}`}</strong><span><i /> {t('canvas.exactCurveScale', { scale: t(view.diagramScaleMode === 'individual' ? 'canvas.scaleByMember' : 'canvas.scaleCommon') })}</span><small>{t('canvas.diagramSideDescription', { side: view.diagramSide === 'positive' ? '+y' : '−y' })}</small></div> : null}
       {demandLegend ? <div className="canvas-demand-legend" aria-label={t('canvas.demandLegendTitle')} data-canvas-chrome="demand-legend" data-testid="canvas-demand-legend">
         <strong>{t('canvas.demandLegendTitle')}</strong>
         {/* La rampa se declara con sus dos extremos y la referencia: sin esto el

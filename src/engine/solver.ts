@@ -1,3 +1,4 @@
+import { STIFFNESS_REFERENCE } from '../data/memberStiffness';
 import type {
   AnalysisResult,
   ElementTrace,
@@ -648,6 +649,12 @@ export const getEvidentGroundingIssue = (project: ProjectModel): ValidationIssue
 export const validateProject = (project: ProjectModel): ValidationIssue[] => {
   const issues: ValidationIssue[] = [];
   const push = (issue: ValidationIssue) => issues.push(issue);
+  const relative = project.settings.stiffnessDefaults;
+  if (relative && relative.value === undefined && project.members.some((member) => member.stiffnessFactor !== undefined)) push({
+    id: 'relative-stiffness', severity: 'warning', title: 'Rigidez relativa · sin valor numérico',
+    message: `${relative.mode} usa la referencia ${STIFFNESS_REFERENCE[relative.mode]} ${relative.mode === 'EI' ? 'kN·m²' : relative.mode === 'E' ? 'kN/m²' : 'm⁴'}. La deformada y los desplazamientos son relativos; A, la propiedad independiente, resortes y asentamientos conservan sus valores y pueden afectar el reparto.`,
+    suggestedFix: 'Introduce el valor de la constante para obtener desplazamientos físicos.',
+  });
   const nodeMap = getNodeMap(project);
   const memberMap = new Map(project.members.map((member) => [member.id, member]));
   const caseIds = new Set(project.loadCases.map((loadCase) => loadCase.id));
@@ -972,7 +979,7 @@ export const validateProject = (project: ProjectModel): ValidationIssue[] => {
       : Math.abs(effect.axialStrain ?? 0) + Math.abs(effect.curvature ?? 0) > 0)
     || (project.prescribedDisplacements ?? []).some((displacement) => Math.abs(displacement.value) > 0);
   if (!hasLoad) push({ id: 'no-loads', severity: 'warning', title: 'Sin cargas', message: 'El modelo no contiene cargas distintas de cero.', suggestedFix: 'Agrega una carga o analiza el caso nulo únicamente como comprobación.' });
-  if (project.settings.calculationMode === 'classroom') {
+  if (project.settings.calculationMode === 'classroom' && project.members.some((member) => member.type !== 'rigid' && member.stiffnessFactor === undefined)) {
     const restraintCount = project.nodes.reduce((total, node) => {
       if (node.support.type === 'fixed') return total + (project.members.every((member) => member.type === 'truss') ? 2 : 3);
       if (node.support.type === 'pin') return total + 2;

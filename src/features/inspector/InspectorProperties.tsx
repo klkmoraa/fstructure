@@ -47,6 +47,7 @@ import { formatInspectorValue } from './numericFormatting';
 import { SectionPresetSelector } from './SectionPresetSelector';
 import { PersonalSectionSelector } from './PersonalSectionSelector';
 import { SectionViewer2D } from './SectionViewer2D';
+import { StiffnessEditor } from './StiffnessEditor';
 import { SupportPicker } from './SupportPicker';
 import { applySupportPreset, type SupportEntry } from './supportCatalog';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
@@ -658,7 +659,7 @@ export const InspectorProperties = () => {
       /> : null}
     </div>
 
-    {selection === null ? <ModelOverviewPanel /> : null}
+    {selection === null ? <><ModelOverviewPanel /><StiffnessEditor /></> : null}
 
     {canEditSelection ? <div className="inspector-selection-actions" aria-label={t('contextualActions.title')}>
       <button type="button" className="inspector-selection-edit" onClick={() => emitWorkspaceCommand('open-structural-edit')}>
@@ -745,6 +746,7 @@ export const InspectorProperties = () => {
               >{t(short)}</button>)}
             </div>
           </div>
+          {selectedMember.type !== 'rigid' ? <StiffnessEditor member={selectedMember} /> : null}
           {selectedMember.type !== 'rigid' && !classroomMode ? <>
             <MaterialPresetSelector units={units} selectedId={selectedMember.materialId} origin={selectedMember.materialOrigin} onSelect={applyMaterialPreset} />
             <SectionPresetSelector units={units} selectedId={selectedMember.sectionId} origin={selectedMember.sectionOrigin} onSelect={applySectionPreset} />
@@ -755,11 +757,11 @@ export const InspectorProperties = () => {
                 <MemberFavoritesPanel project={project} member={selectedMember} language={language} units={units} executeProjectCommand={executeProjectCommand} />
               </div>
             </details>
-            <PhysicalNumberField label="E" value={selectedMember.E} units={units} quantity="elasticModulus" resetKey={`${selectionKey}:E`} onCommit={(value) => updateMember('E', value)} />
+            <PhysicalNumberField disabled={selectedMember.stiffnessFactor !== undefined && project.settings.stiffnessDefaults?.mode !== 'I'} label="E" value={selectedMember.E} units={units} quantity="elasticModulus" resetKey={`${selectionKey}:E`} onCommit={(value) => updateMember('E', value)} />
             <PhysicalNumberField label="A" value={selectedMember.A} units={units} quantity="area" resetKey={`${selectionKey}:A`} onCommit={(value) => updateMember('A', value)} />
-            <PhysicalNumberField label="I" value={selectedMember.I} units={units} quantity="inertia" resetKey={`${selectionKey}:I`} hint={selectedMember.type === 'frame' ? undefined : t('inspector.inertiaCompatibilityHint')} onCommit={(value) => updateMember('I', value)} />
+            <PhysicalNumberField disabled={selectedMember.stiffnessFactor !== undefined && project.settings.stiffnessDefaults?.mode !== 'E'} label="I" value={selectedMember.I} units={units} quantity="inertia" resetKey={`${selectionKey}:I`} hint={selectedMember.type === 'frame' ? undefined : t('inspector.inertiaCompatibilityHint')} onCommit={(value) => updateMember('I', value)} />
           </> : null}
-          {selectedMember.type !== 'rigid' && classroomMode ? <InspectorLockedState title={t('inspector.materialLockedClassroom')}>{t('inspector.materialLockedClassroomBody')}</InspectorLockedState> : null}
+          {selectedMember.type !== 'rigid' && classroomMode && selectedMember.stiffnessFactor === undefined ? <InspectorLockedState title={t('inspector.materialLockedClassroom')}>{t('inspector.materialLockedClassroomBody')}</InspectorLockedState> : null}
           {selectedMember.type === 'rigid' ? <InspectorLockedState title={t('inspector.noEditableStiffness')}>{t('inspector.noEditableStiffnessBody')}</InspectorLockedState> : null}
           {selectedMember.type === 'frame' ? <div className="inspector-releases" role="group" aria-label={t('inspector.releases')}>
             <span className="inspector-releases__title">{t('inspector.releases')}</span>

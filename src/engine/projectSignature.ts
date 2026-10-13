@@ -35,6 +35,7 @@ export const analysisSignature = (project: ProjectModel): string => {
     project.settings.calculationMode ?? null,
     project.settings.analysisMode ?? null,
     project.settings.pDeltaConfig ?? null,
+    project.settings.stiffnessDefaults ?? null,
   ]);
   cache.set(project, signature);
   return signature;

@@ -155,6 +155,8 @@ abstract class BundleRepository implements UnifiedBundleRepository {
   constructor(database: BundleDatabase) { this.database = database; }
   private async validateStoredBundle(record: StoredBundleRecord): Promise<void> {
     const validated = validateBundle(record.bundle);
+    // Stored bytes keep their original version and checksum until an explicit save.
+    validated.model2d.schemaVersion = record.bundle.model2d.schemaVersion;
     if (record.id !== validated.manifest.projectId || !Number.isInteger(record.revision) || record.revision < 1 || canonicalSerialize(validated) !== canonicalSerialize(record.bundle) || await sha256(canonicalSerialize(record.bundle)) !== record.checksum) {
       throw new Error(`Bundle ${record.id} failed stored integrity verification`);
     }
@@ -162,6 +164,7 @@ abstract class BundleRepository implements UnifiedBundleRepository {
   private async validateRecovery(record: BundleRecoveryRecord): Promise<void> {
     if (record.bundle) {
       const validated = validateBundle(record.bundle);
+      validated.model2d.schemaVersion = record.bundle.model2d.schemaVersion;
       if (record.projectId !== validated.manifest.projectId || record.space3d || canonicalSerialize(validated) !== canonicalSerialize(record.bundle)) throw new Error('Recovery identity failed integrity verification');
     } else if (record.space3d) parseSpace3DDraft(canonicalSerialize(record.space3d));
     else throw new Error('Recovery content failed integrity verification');

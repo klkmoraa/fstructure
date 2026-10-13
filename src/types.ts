@@ -77,6 +77,13 @@ export interface MemberRelease {
 /** Provenance of the material or section properties stored on a 2D member. */
 export type MemberPropertyOrigin = 'catalog' | 'custom' | 'imported' | 'legacy';
 
+export interface StiffnessDefaults {
+  mode: 'EI' | 'E' | 'I';
+  /** Absent means a relative exercise, using an explicitly reported reference. */
+  value?: number;
+  factor: number;
+}
+
 export interface MemberModel {
   id: string;
   i: string;
@@ -88,6 +95,8 @@ export interface MemberModel {
   /** Stable catalog identity. Numeric properties remain the solver inputs. */
   sectionId?: string;
   sectionOrigin?: MemberPropertyOrigin;
+  /** Multiplier of settings.stiffnessDefaults; E/I remain materialized solver inputs. */
+  stiffnessFactor?: number;
   E: number; // kN / m², internal base unit
   A: number; // m²
   I: number; // m⁴
@@ -329,6 +338,7 @@ export interface ProjectSettings {
   diagramSide: 'positive' | 'negative';
   /** Classroom mode keeps advanced material/eigenstrain inputs out of the primary workflow. */
   calculationMode?: 'complete' | 'classroom';
+  stiffnessDefaults?: StiffnessDefaults;
   /** Second-order geometric-stiffness (P-Delta) analysis; absent/`'first-order'` keeps today's linear behavior. */
   analysisMode?: 'first-order' | 'p-delta';
   /**

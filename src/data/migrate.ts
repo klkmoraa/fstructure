@@ -1,3 +1,4 @@
+import { validateMemberStiffness, validateStiffnessDefaults } from './memberStiffness';
 import { CURRENT_SCHEMA_VERSION, DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN, createDefaultSettings } from './defaultProject';
 import type {
   LoadCase,
@@ -147,6 +148,18 @@ const normalizeSupport = (input: unknown, path: string): SupportDefinition => {
   };
 };
 
+const normalizeStiffnessDefaults = (input: unknown): ProjectSettings['stiffnessDefaults'] => {
+  if (input === undefined) return undefined;
+  const raw = objectAt(input, 'settings.stiffnessDefaults');
+  const defaults = {
+    mode: enumAt(raw.mode, 'settings.stiffnessDefaults.mode', ['EI', 'E', 'I'] as const),
+    factor: finiteAt(raw.factor, 'settings.stiffnessDefaults.factor'),
+    ...(raw.value === undefined ? {} : { value: finiteAt(raw.value, 'settings.stiffnessDefaults.value') }),
+  };
+  validateStiffnessDefaults(defaults);
+  return defaults;
+};
+
 const normalizeSettings = (input: unknown): ProjectSettings => {
   const defaults = createDefaultSettings();
   const raw = input === undefined ? {} : objectAt(input, 'settings');
@@ -195,6 +208,7 @@ const normalizeSettings = (input: unknown): ProjectSettings => {
         'three-moment', 'virtual-work', 'castigliano-truss', 'hardy-cross', 'kani-frame',
         'method-of-sections', 'method-of-joints', 'conjugate-beam',
       ] as const),
+    ...(raw.stiffnessDefaults === undefined ? {} : { stiffnessDefaults: normalizeStiffnessDefaults(raw.stiffnessDefaults) }),
     pDeltaConfig: normalizePDeltaConfig(raw.pDeltaConfig, 'settings.pDeltaConfig'),
   };
   if (settings.gridSize <= 0) fail('settings.gridSize', 'debe ser mayor que cero.');
@@ -276,6 +290,7 @@ const normalizeMembers = (input: unknown, nodeIds: Set<string>): MemberModel[] =
       materialOrigin,
       ...(sectionId === undefined ? {} : { sectionId }),
       sectionOrigin,
+      ...(raw.stiffnessFactor === undefined ? {} : { stiffnessFactor: finiteAt(raw.stiffnessFactor, `${path}.stiffnessFactor`) }),
       E: finiteAt(raw.E, `${path}.E`, 200e6),
       A: finiteAt(raw.A, `${path}.A`, 0.01),
       I: finiteAt(raw.I, `${path}.I`, type === 'truss' ? 0 : 8e-5),
@@ -760,7 +775,7 @@ export const normalizeProject = (input: unknown): ProjectModel => {
     ? normalizeEducationalAssertions(educationalRaw.expectedAssertions, nodeIds, memberIds)
     : undefined;
 
-  return {
+  const project: ProjectModel = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     id: stringAt(raw.id, 'id', createId()),
     name: stringAt(raw.name, 'name', 'Proyecto importado'),
@@ -789,4 +804,6 @@ export const normalizeProject = (input: unknown): ProjectModel => {
       expectedAssertions,
     } : undefined,
   };
+  validateMemberStiffness(project);
+  return project;
 };
