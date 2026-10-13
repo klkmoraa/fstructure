@@ -1,4 +1,5 @@
 import { validateMemberStiffness, validateStiffnessDefaults } from './memberStiffness';
+import { normalizeCustomSection, normalizeCustomMaterial } from './memberProfiles';
 import { CURRENT_SCHEMA_VERSION, DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN, createDefaultSettings } from './defaultProject';
 import type {
   LoadCase,
@@ -286,6 +287,9 @@ const normalizeMembers = (input: unknown, nodeIds: Set<string>): MemberModel[] =
       i,
       j,
       type,
+      ...(raw.propertyProfile === undefined ? {} : { propertyProfile: enumAt(raw.propertyProfile, `${path}.propertyProfile`, ['exercise', 'catalog', 'custom'] as const) }),
+      ...(raw.customSection === undefined ? {} : { customSection: normalizeCustomSection(raw.customSection) }),
+      ...(raw.customMaterial === undefined ? {} : { customMaterial: normalizeCustomMaterial(raw.customMaterial) }),
       ...(materialId === undefined ? {} : { materialId }),
       materialOrigin,
       ...(sectionId === undefined ? {} : { sectionId }),

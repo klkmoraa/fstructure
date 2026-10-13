@@ -61,8 +61,9 @@ import {
 import { CanvasResultLayer, diagramPixelScaleFor, reactionClearanceFor } from './CanvasResultLayer';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
 import { CanvasMiniMap } from './CanvasMiniMap';
-import { CanvasDiagramStack, diagramRowHeight, stackBottomReserve } from './CanvasDiagramStack';
-import { persistStackQuantities, readStoredStackQuantities, toggleStackQuantity, type StackQuantity } from './diagramStack';
+import { diagramSheetLayout } from './diagramSheetLayout';
+import { CanvasDiagramStack, diagramDclHeight, stackBottomReserve } from './CanvasDiagramStack';
+import { persistStackQuantities, initialStackQuantities, readStoredStackQuantities, toggleStackQuantity, type StackQuantity } from './diagramStack';
 import { CanvasTouchLoupe } from './CanvasTouchLoupe';
 import { CandidatePicker } from './CanvasCandidatePicker';
 import {
@@ -518,7 +519,7 @@ export const StructuralCanvas = ({
       : activeTool === 'moment'
         ? t('canvas.placeMoment')
         : null;
-  const loadsLayerVisible = layers.loads || loadPlacementInstruction !== null;
+  const loadsLayerVisible = stackActive || layers.loads || loadPlacementInstruction !== null;
   const creationInstruction = activeTool === 'node'
     ? language === 'es' ? 'Toca el lienzo o escribe las coordenadas para colocar un nudo.' : 'Tap the canvas or enter coordinates to place a node.'
     : activeTool === 'member' && !memberStart
@@ -580,7 +581,7 @@ export const StructuralCanvas = ({
    * no aparece en el mapa: conserva su color de dibujo técnico en lugar de
    * recibir un η fabricado.
    */
-  const demandMapActive = layers.heatmap && resultsAllowed;
+  const demandMapActive = layers.heatmap && resultsAllowed && !stackActive;
   const demandView = useMemo(
     () => demandMapActive ? elasticDemandView(project, analysis) : null,
     [analysis, demandMapActive, project],
@@ -744,6 +745,7 @@ export const StructuralCanvas = ({
   }, [lengthLabel, localScreenPoint, units]);
 
   const fitModel = useCallback((bottomReserve = 0, topReserve?: number) => {
+    if (stackActive) { updateCamera(diagramSheetLayout(project, size).camera); return; }
     if (!project.nodes.length || !Number.isFinite(size.width) || !Number.isFinite(size.height) || size.width <= 0 || size.height <= 0) return;
     // React supplies a MouseEvent when this callback is handed directly to a
     // button. Only the ACM effect is allowed to provide a numeric reserve.
@@ -778,7 +780,7 @@ export const StructuralCanvas = ({
     // exacto, sin margen que no le corresponde.
     const decorated = loadDecorationDrawn ? expandBoundsForDecoration(bounds, first.scale) : bounds;
     updateCamera(decorated === bounds ? first : cameraToFitBounds(decorated, viewport, fitInsets));
-  }, [loadDecorationDrawn, project.nodes.length, size, updateCamera, visibleFitBounds]);
+  }, [loadDecorationDrawn, project, size, stackActive, updateCamera, visibleFitBounds]);
 
   /* Las hojas K0 flotan sobre el lienzo. Antes, al abrirse o cerrarse —y cada
      vez que cambiaba el modelo con una abierta, porque el efecto dependía de
@@ -820,7 +822,7 @@ export const StructuralCanvas = ({
       const sheet = document.querySelector<HTMLElement>(
         '[data-surface-presentation="sheet"][data-surface-status="active"]:not([hidden])',
       );
-      if (!host || !anchor || !sheet) return;
+      if (stackActive || !host || !anchor || !sheet) return;
       const hostRect = host.getBoundingClientRect();
       const visibleBottom = Math.min(hostRect.height, sheet.getBoundingClientRect().top - hostRect.top) - 28;
       const current = cameraRef.current;
@@ -842,11 +844,12 @@ export const StructuralCanvas = ({
       window.cancelAnimationFrame(frame);
       sheetObserver?.disconnect();
     };
-  }, [canvasMeasured, compactContextSheetOpen, updateCamera]);
+  }, [canvasMeasured, compactContextSheetOpen, stackActive, updateCamera]);
 
   const navigateMinimapTo = useCallback((point: ModelPoint) => {
+    if (stackActive) { fitModel(); return; }
     updateCamera((current) => cameraToCenterPoint(point, current.scale, size));
-  }, [size, updateCamera]);
+  }, [fitModel, size, stackActive, updateCamera]);
 
   useEffect(() => {
     if (!hostRef.current) return;
@@ -894,6 +897,7 @@ export const StructuralCanvas = ({
 
   useEffect(() => {
     const focusObject = (detail: FocusableSelection) => {
+      if (stackActive) { fitModel(); return; }
       if (!detail) return;
       let point: { x: number; y: number } | null = null;
       if (detail.kind === 'node') {
@@ -925,7 +929,7 @@ export const StructuralCanvas = ({
       window.requestAnimationFrame(() => svgRef.current?.focus({ preventScroll: true }));
     };
     return onWorkspaceCommand('focus-object', focusObject);
-  }, [memberMap, nodeMap, project.memberLoads, project.nodalLoads, showCanvasFeedback, size.height, size.width, t, updateCamera]);
+  }, [fitModel, stackActive, memberMap, nodeMap, project.memberLoads, project.nodalLoads, showCanvasFeedback, size.height, size.width, t, updateCamera]);
 
   useEffect(() => {
     const baseName = project.name.replace(/\s+/g, '-').toLowerCase();
@@ -1691,6 +1695,7 @@ export const StructuralCanvas = ({
   });
 
   const handleBackgroundPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (stackActive) return;
     if (candidatePicker || supportPlacement) return;
     if (event.target !== event.currentTarget && (event.target as Element).closest('[data-structure-object]')) return;
     if (interactionRef.current.kind === 'pinch') return;
@@ -2213,13 +2218,14 @@ export const StructuralCanvas = ({
     return maximum;
   }, [analysis, resultTab]);
 
-  const stackAvailable = Boolean(analysis?.success && analysis.memberResults.some((result) => result.diagramSegments.length > 0));
+  const stackAvailable = Boolean(!structuralEditDraft && analysis?.success && analysis.memberResults.some((result) => result.diagramSegments.length > 0));
   useEffect(() => { if (!stackAvailable && stackActive) setStackActive(false); }, [stackAvailable, stackActive]);
+  useEffect(() => { if (stackActive && activeTool !== 'select' && activeTool !== 'pan') setStackActive(false); }, [activeTool, stackActive]);
   // ACM is an analysis drawing, not an editor composition. Its own traces are
   // meaningful only when reaction labels, load arrows and local axes do not
   // compete with them. This is presentation-only; the persisted layer choice
   // and model data remain untouched.
-  const acmLayers = layers;
+  const acmLayers = stackActive ? { ...layers, model: true, loads: true, heatmap: false } : layers;
   /**
    * Encuadre con el que se entró en ACM, para poder devolverlo al salir.
    *
@@ -2231,13 +2237,19 @@ export const StructuralCanvas = ({
    * automático encima del que la persona pudiera haber elegido.
    */
   const cameraBeforeStackRef = useRef<Camera | null>(null);
+  const stackInitializedRef = useRef(false);
   const toggleStack = useCallback(() => {
     if (!stackActive) {
+      setActiveTool('select');
       if (!layers.results) dispatchLayers({ type: 'set', layer: 'results', visible: true });
       cameraBeforeStackRef.current = cameraRef.current;
+      if (!stackInitializedRef.current) {
+        setStackQuantities(initialStackQuantities(Boolean(analysis?.memberResults.some(r => Math.max(Math.abs(r.maxAxial), Math.abs(r.minAxial)) > 1e-8))));
+        stackInitializedRef.current = true;
+      }
     }
     setStackActive((current) => !current);
-  }, [dispatchLayers, layers.results, stackActive]);
+  }, [analysis, dispatchLayers, layers.results, setActiveTool, stackActive]);
   const toggleStackQuantityChoice = useCallback((quantity: StackQuantity) => {
     setStackQuantities((current) => {
       const next = toggleStackQuantity(current, quantity);
@@ -2540,7 +2552,7 @@ export const StructuralCanvas = ({
     }
   }
 
-    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(stackActive ? { ...size, height: diagramRowHeight(project, size) } : size), camera.scale);
+    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(stackActive ? { ...size, height: diagramDclHeight(project, size) } : size), camera.scale);
   }, [
     activeTool,
     analysis,
@@ -2591,12 +2603,12 @@ export const StructuralCanvas = ({
       <div className={stackActive ? 'canvas-diagram-scroll' : 'canvas-scene-wrapper'}>
       {stackActive ? <div className="canvas-dcl-heading">DCL</div> : null}
       <svg
-        style={stackActive ? { height: diagramRowHeight(project, size), background: 'transparent', touchAction: 'pan-y' } : { background: 'transparent' }}
+        style={stackActive ? { height: diagramDclHeight(project, size), background: 'transparent', touchAction: 'pan-y' } : { background: 'transparent' }}
         data-stack-row={stackActive ? 'dcl' : undefined}
         ref={svgRef}
         className={`structural-canvas tool-${activeTool} interaction-${interaction.kind} ${spacePressed ? 'space-pan-ready' : ''}`}
         data-interaction={interaction.kind}
-        viewBox={`0 0 ${size.width} ${stackActive ? diagramRowHeight(project, size) : size.height}`}
+        viewBox={`0 0 ${size.width} ${stackActive ? diagramDclHeight(project, size) : size.height}`}
         role="application"
         aria-label={t('canvas.workspace')}
         aria-describedby="canvas-interaction-description"
@@ -2948,8 +2960,8 @@ export const StructuralCanvas = ({
         lengthLabel={lengthLabel}
         scale={camera.scale}
         onCancelPlacement={() => setActiveTool('select')}
-        onZoomIn={() => updateCamera(zoomCameraAt(cameraRef.current, { x: size.width / 2, y: (stackActive ? diagramRowHeight(project, size) : size.height) / 2 }, 1.15))}
-        onZoomOut={() => updateCamera(zoomCameraAt(cameraRef.current, { x: size.width / 2, y: (stackActive ? diagramRowHeight(project, size) : size.height) / 2 }, 1 / 1.15))}
+        onZoomIn={() => updateCamera(zoomCameraAt(cameraRef.current, { x: size.width / 2, y: (stackActive ? diagramDclHeight(project, size) : size.height) / 2 }, 1.15))}
+        onZoomOut={() => updateCamera(zoomCameraAt(cameraRef.current, { x: size.width / 2, y: (stackActive ? diagramDclHeight(project, size) : size.height) / 2 }, 1 / 1.15))}
         onFit={() => fitModel(stackActive ? stackBottomReserve(project, size, stackQuantities.length) : undefined)}
         stackActive={stackActive}
         stackAvailable={stackAvailable}

@@ -129,9 +129,9 @@ export const InspectorNarrativeCard = ({ member, result, analysis, units }: Insp
       <summary>{t('elastic.howTitle')}</summary>
       <p className="elastic-how-chain">{index.section ? t('elastic.howChain') : t('elastic.howChainAxial')}</p>
       <ul className="elastic-how-steps">
-        <li>{t('elastic.materialLabel')}: {formatInspectorValue(toDisplay(index.material.yieldStrength, units, 'elasticModulus'), unitLabel(units, 'elasticModulus'))} · {t('elastic.provenanceCatalog', { name: index.material.name, id: index.material.id })}</li>
+        <li>{t('elastic.materialLabel')}: {formatInspectorValue(toDisplay(index.material.yieldStrength, units, 'elasticModulus'), unitLabel(units, 'elasticModulus'))} · {t(index.material.id.startsWith('custom:') ? 'elastic.provenanceCustom' : 'elastic.provenanceCatalog', { name: index.material.name, id: index.material.id })}</li>
         <li>{index.section
-          ? `${t('elastic.sectionLabel')}: ${formatInspectorValue(toDisplay(index.section.sectionModulus, units, 'sectionModulus'), unitLabel(units, 'sectionModulus'))} · ${t('elastic.provenanceCatalog', { name: index.section.name, id: index.section.id })}`
+          ? `${t('elastic.sectionLabel')}: ${formatInspectorValue(toDisplay(index.section.sectionModulus, units, 'sectionModulus'), unitLabel(units, 'sectionModulus'))} · ${t(index.section.id.startsWith('custom:') ? 'elastic.provenanceCustom' : 'elastic.provenanceCatalog', { name: index.section.name, id: index.section.id })}`
           : `${t('elastic.sectionLabel')}: ${t('elastic.axialOnly')}`}</li>
         <li>{t('elastic.howRatio', {
           sigma: formatInspectorValue(toDisplay(index.sigmaTotal, units, 'elasticModulus'), unitLabel(units, 'elasticModulus')),

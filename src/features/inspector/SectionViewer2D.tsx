@@ -3,7 +3,7 @@ import { Box, Ruler } from 'lucide-react';
 import { unitLabel } from '../../engine/units';
 import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
-import type { MemberPropertyOrigin } from '../../types';
+import type { CustomMemberSection, MemberPropertyOrigin } from '../../types';
 import type { UnitSystemId } from '../../foundation/units';
 import { formatFixed } from '../../utils/numberFormat';
 import { formatInspectorValue } from './numericFormatting';
@@ -17,6 +17,7 @@ interface SectionViewer2DProps {
   inertia: number;
   sectionId?: string;
   sectionOrigin?: MemberPropertyOrigin;
+  customSection?: CustomMemberSection;
   units: UnitSystemId;
   /** Axil de referencia (kN) para el mapa de tensiones; 0 lo deja neutro. */
   axialForce?: number;
@@ -35,7 +36,7 @@ const PADDING = 30;
  * otro origen se dibuja la rectangular equivalente h = √(12·I/A), que es la única
  * forma que A e I determinan sin inventar una identidad.
  */
-export const SectionViewer2D = ({ area, inertia, sectionId, sectionOrigin, units, axialForce = 0, bendingMoment = 0 }: SectionViewer2DProps) => {
+export const SectionViewer2D = ({ area, inertia, sectionId, sectionOrigin, customSection, units, axialForce = 0, bendingMoment = 0 }: SectionViewer2DProps) => {
   const [view, setView] = useState<'dimensions' | 'stress'>('dimensions');
   const { t } = useI18n();
   const uid = useId();
@@ -43,8 +44,8 @@ export const SectionViewer2D = ({ area, inertia, sectionId, sectionOrigin, units
   const maskId = `section-stress-mask-${uid}`;
 
   const geometry = useMemo(
-    () => resolveSectionGeometry({ area, inertia, sectionId, sectionOrigin }),
-    [area, inertia, sectionId, sectionOrigin],
+    () => resolveSectionGeometry({ area, inertia, sectionId, sectionOrigin, customSection }),
+    [area, inertia, sectionId, sectionOrigin, customSection],
   );
 
   const { section, shapeType, depth, width, modulus } = geometry;
@@ -105,8 +106,8 @@ export const SectionViewer2D = ({ area, inertia, sectionId, sectionOrigin, units
   return <section className="section-viewer" aria-label={t('inspector.sectionViewer')} data-testid="section-viewer-2d">
     <header className="section-viewer-header">
       <div className="section-viewer-title">
-        <strong>{section?.name ?? t('inspector.sectionEquivalent')}</strong>
-        <span>{section ? `${shapeType} · ${section.standard}` : t('inspector.sectionEquivalentHint')}</span>
+        <strong>{section?.name ?? geometry.customName ?? t('inspector.sectionEquivalent')}</strong>
+        <span>{section ? `${shapeType} · ${section.standard}` : geometry.customName ? t('inspector.identityCustom') : t('inspector.sectionEquivalentHint')}</span>
       </div>
       <div className="section-viewer-modes" role="group" aria-label={t('inspector.sectionViewMode')}>
         <button

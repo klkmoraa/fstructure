@@ -33,3 +33,12 @@ export const toggleStackQuantity = (current: readonly StackQuantity[], quantity:
   const next = current.includes(quantity) ? current.filter((item) => item !== quantity) : [...current, quantity];
   return STACK_QUANTITIES.filter((item) => next.includes(item));
 };
+
+/** Omit an empty axial row on first opening; an explicit saved choice always wins. */
+export const initialStackQuantities = (hasAxial: boolean): StackQuantity[] => {
+  try {
+    const raw = window.localStorage.getItem(DIAGRAM_STACK_STORAGE_KEY);
+    if (raw) return parseStackQuantities(raw);
+  } catch { /* Optional preference. */ }
+  return hasAxial ? [...STACK_QUANTITIES] : ['shear', 'moment'];
+};

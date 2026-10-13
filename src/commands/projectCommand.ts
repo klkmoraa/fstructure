@@ -1,4 +1,5 @@
 import { setStiffnessDefaults, validateMemberStiffness, withMemberStiffness } from '../data/memberStiffness';
+import { withCustomSection, withCustomMaterial, normalizeCustomSection, normalizeCustomMaterial } from '../data/memberProfiles';
 import { placeGeneratedStructure } from '../data/generators/generatorPlacement';
 import { generateStructure } from '../data/generators/structureGenerators';
 import type { GeneratorParams } from '../data/generators/generatorTypes';
@@ -24,6 +25,8 @@ import type {
   PrescribedDisplacement,
   ProjectModel,
   StiffnessDefaults,
+  CustomMemberMaterial,
+  CustomMemberSection,
   Selection,
   SupportDefinition,
 } from '../types';
@@ -150,6 +153,9 @@ export interface MemberLoadBulkEntry {
 }
 
 export type ProjectCommand =
+  | (CommandBase & { kind: 'member.section.custom'; memberId: string; section: CustomMemberSection })
+  | (CommandBase & { kind: 'member.material.custom'; memberId: string; material: CustomMemberMaterial; properties: Pick<MemberModel, 'E'> & Pick<Partial<MemberModel>, 'G' | 'density'> })
+  | (CommandBase & { kind: 'members.stiffness.set'; memberIds: readonly string[]; factor?: number })
   | (CommandBase & { kind: 'stiffness.defaults.update'; defaults?: StiffnessDefaults; applyToAll?: boolean })
   | (CommandBase & { kind: 'member.stiffness.set'; memberId: string; factor?: number })
   | (CommandBase & { kind: 'member.create'; nodes: NodeModel[]; member: MemberModel })
@@ -298,6 +304,8 @@ const validateProjectBoundary = (project: ProjectModel): void => {
   }
   const memberIds = new Set<string>();
   for (const member of project.members) {
+    if (member.customSection) normalizeCustomSection(member.customSection);
+    if (member.customMaterial) normalizeCustomMaterial(member.customMaterial);
     if (memberIds.has(member.id)) throw new Error(`ID de miembro duplicado: ${member.id}.`);
     if (!nodeIds.has(member.i) || !nodeIds.has(member.j) || member.i === member.j) {
       throw new Error(`El miembro ${member.id} no conserva extremos válidos.`);
@@ -571,6 +579,25 @@ export const compileProjectCommand = (project: ProjectModel, command: ProjectCom
   let result: ProjectCommandResult | undefined;
   if (command.kind === 'stiffness.defaults.update') {
     Object.assign(next, setStiffnessDefaults(next, command.defaults, command.applyToAll));
+  } else if (command.kind === 'members.stiffness.set') {
+    for (const id of new Set(command.memberIds)) {
+      const index = next.members.findIndex(member => member.id === id);
+      if (index < 0) throw new Error(`No existe el miembro ${id}.`);
+      if (command.factor === undefined) delete next.members[index].stiffnessFactor;
+      else {
+        if (!next.settings.stiffnessDefaults) throw new Error('Define primero una base de rigidez.');
+        next.members[index] = withMemberStiffness(next.members[index], next.settings.stiffnessDefaults, command.factor);
+      }
+    }
+  } else if (command.kind === 'member.section.custom' || command.kind === 'member.material.custom') {
+    const index = next.members.findIndex(member => member.id === command.memberId);
+    if (index < 0) throw new Error(`No existe el miembro ${command.memberId}.`);
+    next.members[index] = command.kind === 'member.section.custom'
+      ? withCustomSection(next.members[index], command.section)
+      : withCustomMaterial(next.members[index], command.material, command.properties);
+    if (command.kind === 'member.section.custom' && next.settings.stiffnessDefaults?.mode === 'E' && project.members[index].stiffnessFactor !== undefined) {
+      next.members[index].stiffnessFactor = project.members[index].stiffnessFactor;
+    }
   } else if (command.kind === 'member.stiffness.set') {
     const index = next.members.findIndex((member) => member.id === command.memberId);
     if (index < 0) throw new Error(`No existe el miembro ${command.memberId}.`);
@@ -584,12 +611,17 @@ export const compileProjectCommand = (project: ProjectModel, command: ProjectCom
     const member = structuredClone(command.member);
     member.materialOrigin ??= 'custom';
     member.sectionOrigin ??= 'custom';
+    member.propertyProfile ??= member.sectionId || member.materialId ? 'catalog' : member.customSection || member.customMaterial ? 'custom' : 'exercise';
     next.members.push(next.settings.stiffnessDefaults
       ? withMemberStiffness(member, next.settings.stiffnessDefaults, member.stiffnessFactor ?? next.settings.stiffnessDefaults.factor)
       : member);
     result = { kind: 'member.create', memberId: member.id, nodeId: member.j, created: true };
   } else if (command.kind === 'member.createAtPoint') {
     const created = createMemberAtPoint(next, command);
+    if (created.created) {
+      const member = next.members.find(member => member.id === created.memberId)!;
+      member.propertyProfile ??= member.sectionId || member.materialId ? 'catalog' : member.customSection || member.customMaterial ? 'custom' : 'exercise';
+    }
     if (created.created && next.settings.stiffnessDefaults) {
       const index = next.members.findIndex((member) => member.id === created.memberId);
       next.members[index] = withMemberStiffness(next.members[index], next.settings.stiffnessDefaults, command.template.stiffnessFactor ?? next.settings.stiffnessDefaults.factor);
@@ -611,6 +643,7 @@ export const compileProjectCommand = (project: ProjectModel, command: ProjectCom
       ...structuredClone(command.properties),
       materialId: command.materialId,
       materialOrigin: 'catalog',
+      propertyProfile: 'catalog',
     };
   } else if (command.kind === 'member.section.apply') {
     const index = next.members.findIndex((member) => member.id === command.memberId);
@@ -620,6 +653,7 @@ export const compileProjectCommand = (project: ProjectModel, command: ProjectCom
       ...structuredClone(command.properties),
       sectionId: command.sectionId,
       sectionOrigin: 'catalog',
+      propertyProfile: 'catalog',
     };
   } else if (command.kind === 'member.update') {
     const index = next.members.findIndex((member) => member.id === command.memberId);
@@ -747,7 +781,7 @@ export const compileProjectCommand = (project: ProjectModel, command: ProjectCom
     result = { kind: 'topology.repair', report };
   }
   validateProjectBoundary(next);
-  if (command.kind === 'member.update' || command.kind === 'member.material.apply' || command.kind === 'member.section.apply' || command.kind === 'selection.bulk.apply') {
+  if (command.kind === 'member.update' || command.kind === 'member.material.apply' || command.kind === 'member.material.custom' || command.kind === 'member.section.apply' || command.kind === 'selection.bulk.apply') {
     next.members = next.members.map((member) => {
       const before = project.members.find((item) => item.id === member.id);
       const mode = next.settings.stiffnessDefaults?.mode;

@@ -1,3 +1,4 @@
+import { thermalExpansionOf } from '../data/memberProfiles';
 import { STIFFNESS_REFERENCE } from '../data/memberStiffness';
 import type {
   AnalysisResult,
@@ -868,14 +869,14 @@ export const validateProject = (project: ProjectModel): ValidationIssue[] => {
   for (const effect of project.memberInitialEffects ?? []) {
     if (!memberMap.has(effect.memberId)) push({ id: `initial-effect-member-${effect.id}`, severity: 'error', title: 'Miembro inexistente', message: `El efecto ${effect.id} referencia el miembro ${effect.memberId}, que no existe.`, objectId: effect.id });
     if (!caseIds.has(effect.caseId)) push({ id: `initial-effect-case-${effect.id}`, severity: 'error', title: 'Caso de carga inexistente', message: `El efecto ${effect.id} referencia el caso ${effect.caseId}, que no existe.`, objectId: effect.id });
+    const targetMember = memberMap.get(effect.memberId);
     const values = effect.type === 'temperature'
-      ? [effect.alpha ?? 1.2e-5, effect.deltaT ?? 0, effect.gradient ?? 0]
+      ? [thermalExpansionOf(targetMember, effect.alpha), effect.deltaT ?? 0, effect.gradient ?? 0]
       : [effect.axialStrain ?? 0, effect.curvature ?? 0];
     if (values.some((value) => !finiteValue(value))) push({ id: `initial-effect-value-${effect.id}`, severity: 'error', title: 'Efecto inicial inválido', message: `El efecto ${effect.id} contiene valores no finitos.`, objectId: effect.id, suggestedFix: 'Corrige α, ΔT, gradiente, deformación o curvatura.' });
-    if (effect.type === 'temperature' && (effect.alpha ?? 1.2e-5) < 0) push({ id: `initial-effect-alpha-${effect.id}`, severity: 'error', title: 'Coeficiente térmico inválido', message: `α del efecto ${effect.id} no puede ser negativo.`, objectId: effect.id });
-    const targetMember = memberMap.get(effect.memberId);
+    if (effect.type === 'temperature' && (thermalExpansionOf(targetMember, effect.alpha)) < 0) push({ id: `initial-effect-alpha-${effect.id}`, severity: 'error', title: 'Coeficiente térmico inválido', message: `α del efecto ${effect.id} no puede ser negativo.`, objectId: effect.id });
     if (targetMember?.type === 'rigid') push({ id: `initial-effect-rigid-${effect.id}`, severity: 'error', title: 'Efecto inicial incompatible con vínculo rígido', message: `El efecto ${effect.id} se aplica a ${targetMember.id}, que no tiene deformación propia.`, objectId: effect.id, suggestedFix: 'Aplica el efecto a un miembro deformable o elimina el efecto.' });
-    const hasCurvature = effect.type === 'temperature' ? Math.abs((effect.alpha ?? 1.2e-5) * (effect.gradient ?? 0)) > 0 : Math.abs(effect.curvature ?? 0) > 0;
+    const hasCurvature = effect.type === 'temperature' ? Math.abs((thermalExpansionOf(targetMember, effect.alpha)) * (effect.gradient ?? 0)) > 0 : Math.abs(effect.curvature ?? 0) > 0;
     if (targetMember?.type === 'truss' && hasCurvature) push({ id: `initial-effect-curvature-${effect.id}`, severity: 'error', title: 'Curvatura incompatible con armadura', message: `El efecto ${effect.id} aplica curvatura a la barra axial ${targetMember.id}.`, objectId: effect.id, suggestedFix: 'Usa un miembro de pórtico o elimina la curvatura/gradiente.' });
   }
 
@@ -975,7 +976,7 @@ export const validateProject = (project: ProjectModel): ValidationIssue[] => {
       return Math.abs(load.moment ?? 0) > 0;
     })
     || (project.memberInitialEffects ?? []).some((effect) => effect.type === 'temperature'
-      ? Math.abs((effect.alpha ?? 1.2e-5) * (effect.deltaT ?? 0)) + Math.abs((effect.alpha ?? 1.2e-5) * (effect.gradient ?? 0)) > 0
+      ? Math.abs((thermalExpansionOf(memberMap.get(effect.memberId), effect.alpha)) * (effect.deltaT ?? 0)) + Math.abs((thermalExpansionOf(memberMap.get(effect.memberId), effect.alpha)) * (effect.gradient ?? 0)) > 0
       : Math.abs(effect.axialStrain ?? 0) + Math.abs(effect.curvature ?? 0) > 0)
     || (project.prescribedDisplacements ?? []).some((displacement) => Math.abs(displacement.value) > 0);
   if (!hasLoad) push({ id: 'no-loads', severity: 'warning', title: 'Sin cargas', message: 'El modelo no contiene cargas distintas de cero.', suggestedFix: 'Agrega una carga o analiza el caso nulo únicamente como comprobación.' });
@@ -1024,12 +1025,13 @@ const resolveMemberInitialEffect = (
   combination?: LoadCombination | null,
 ): ResolvedMemberInitialEffect => {
   const factors = selectedFactors(project, combination);
+  const member = project.members.find(member => member.id === memberId);
   return (project.memberInitialEffects ?? [])
     .filter((effect) => effect.memberId === memberId && (factors[effect.caseId] ?? 0) !== 0)
     .reduce<ResolvedMemberInitialEffect>((total, effect) => {
       const factor = factors[effect.caseId] ?? 0;
       if (effect.type === 'temperature') {
-        const alpha = effect.alpha ?? 1.2e-5;
+        const alpha = thermalExpansionOf(member, effect.alpha);
         total.axialStrain += factor * alpha * (effect.deltaT ?? 0);
         // T(y)=T0+g*y and epsilon(y)=epsilon0-y*kappa, hence kappa=-alpha*g.
         total.curvature -= factor * alpha * (effect.gradient ?? 0);

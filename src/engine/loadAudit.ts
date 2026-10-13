@@ -1,3 +1,4 @@
+import { thermalExpansionOf } from '../data/memberProfiles';
 import type { GeneralizedLoadComparison, MemberModel, ProjectModel } from '../types';
 
 type Polynomial = number[];
@@ -200,7 +201,7 @@ export const integrateIndependentMemberSourceLoads = (
     const factor = factors[effect.caseId] ?? 0;
     if (factor === 0) continue;
     if (effect.type === 'temperature') {
-      const alpha = effect.alpha ?? 1.2e-5;
+      const alpha = thermalExpansionOf(member, effect.alpha);
       axialStrain += factor * alpha * (effect.deltaT ?? 0);
       curvature -= factor * alpha * (effect.gradient ?? 0);
     } else {

@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   Anchor,
-  ChevronRight,
   CircleDot,
   DraftingCompass,
   Layers3,
@@ -17,8 +16,6 @@ import {
 } from 'lucide-react';
 import { BulkEditInspectorPanel } from '../bulk-edit/BulkEditInspectorPanel';
 import { repairProjectTopology } from '../../data/modelOperations';
-import type { StandardMaterial } from '../../data/standardMaterials';
-import type { StandardSection } from '../../data/standardSections';
 import { unitLabel } from '../../engine/units';
 import { fromDisplay, toDisplay, type UnitQuantity } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
@@ -42,18 +39,16 @@ import { InspectorNarrativeCard } from './InspectorNarrativeCard';
 import { ModelOverviewPanel } from './ModelOverviewPanel';
 import { InspectorNumericField } from './InspectorNumericField';
 import { InspectorSelectionPreview } from './InspectorSelectionPreview';
-import { MaterialPresetSelector } from './MaterialPresetSelector';
 import { formatInspectorValue } from './numericFormatting';
-import { SectionPresetSelector } from './SectionPresetSelector';
-import { PersonalSectionSelector } from './PersonalSectionSelector';
 import { SectionViewer2D } from './SectionViewer2D';
+import { MemberProfileEditor, memberProfileOf } from './MemberProfileEditor';
+import { MultiStiffnessEditor } from './MultiStiffnessEditor';
 import { StiffnessEditor } from './StiffnessEditor';
 import { SupportPicker } from './SupportPicker';
 import { applySupportPreset, type SupportEntry } from './supportCatalog';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
 import { splitDistributedLoadAcrossChain, straightMemberChain } from './memberLoadChain';
 import { pointLoadPolarFromVector, pointLoadVectorFromPolar, splitPointLoadIntoComponents } from './memberLoadVectors';
-import { MemberFavoritesPanel } from '../library/MemberFavoritesPanel';
 import {
   InspectorAdvancedProperties,
   InspectorDerivedList,
@@ -310,36 +305,6 @@ export const InspectorProperties = () => {
     }
     void executeProjectCommand({
       kind: 'member.update', description: `Editar miembro ${member.id}`, memberId: member.id, changes: member,
-    });
-  };
-
-  const applyMaterialPreset = (material: StandardMaterial) => {
-    if (!selectedMember) return;
-    void executeProjectCommand({
-      kind: 'member.material.apply',
-      description: `Aplicar material a ${selectedMember.id}`,
-      memberId: selectedMember.id,
-      materialId: material.id,
-      properties: { E: material.elasticModulus, G: material.shearModulus, density: material.density },
-    });
-  };
-
-  const applySectionPreset = (section: StandardSection) => {
-    if (!selectedMember) return;
-    void executeProjectCommand({
-      kind: 'member.section.apply',
-      description: `Aplicar sección a ${selectedMember.id}`,
-      memberId: selectedMember.id,
-      sectionId: section.id,
-      properties: { A: section.area, I: section.inertiaX },
-    });
-  };
-
-  const applyPersonalSection = (section: import('../../data/personalSections').PersonalParametricSection) => {
-    if (!selectedMember) return;
-    void executeProjectCommand({
-      kind: 'member.update', description: `Aplicar sección personal ${section.name} a ${selectedMember.id}`, memberId: selectedMember.id,
-      changes: { A: section.properties.area, I: section.properties.inertiaX },
     });
   };
 
@@ -602,7 +567,7 @@ export const InspectorProperties = () => {
             draft.memberInitialEffects ??= [];
             let index = 1;
             while (draft.memberInitialEffects.some((item) => item.id === `IE${index}`)) index += 1;
-            draft.memberInitialEffects.push({ id: `IE${index}`, memberId: selectedMember.id, caseId: draft.loadCases[0]?.id ?? 'LC1', type: 'temperature', alpha: 1.2e-5, deltaT: 0, gradient: 0 });
+            draft.memberInitialEffects.push({ id: `IE${index}`, memberId: selectedMember.id, caseId: draft.loadCases[0]?.id ?? 'LC1', type: 'temperature', alpha: selectedMember.customMaterial?.thermalExpansion ?? 1.2e-5, deltaT: 0, gradient: 0 });
             return draft;
         })}><Plus size={15} /></button>
         </div>
@@ -681,7 +646,7 @@ export const InspectorProperties = () => {
           { label: t('inspector.total'), value: multiCount },
         ]} />
       </InspectorPropertyGroup>
-      <BulkEditInspectorPanel selection={selection} />
+      <MultiStiffnessEditor members={project.members.filter(member => selection.memberIds.includes(member.id))} /><BulkEditInspectorPanel selection={selection} />
     </> : null}
 
     {selectedNode ? <>
@@ -746,22 +711,7 @@ export const InspectorProperties = () => {
               >{t(short)}</button>)}
             </div>
           </div>
-          {selectedMember.type !== 'rigid' ? <StiffnessEditor member={selectedMember} /> : null}
-          {selectedMember.type !== 'rigid' && !classroomMode ? <>
-            <MaterialPresetSelector units={units} selectedId={selectedMember.materialId} origin={selectedMember.materialOrigin} onSelect={applyMaterialPreset} />
-            <SectionPresetSelector units={units} selectedId={selectedMember.sectionId} origin={selectedMember.sectionOrigin} onSelect={applySectionPreset} />
-            <details className="inspector-disclosure">
-              <summary><span>{t('inspector.library')}</span><ChevronRight size={16} aria-hidden="true" /></summary>
-              <div className="inspector-disclosure__body">
-                <PersonalSectionSelector units={units} onSelect={applyPersonalSection} />
-                <MemberFavoritesPanel project={project} member={selectedMember} language={language} units={units} executeProjectCommand={executeProjectCommand} />
-              </div>
-            </details>
-            <PhysicalNumberField disabled={selectedMember.stiffnessFactor !== undefined && project.settings.stiffnessDefaults?.mode !== 'I'} label="E" value={selectedMember.E} units={units} quantity="elasticModulus" resetKey={`${selectionKey}:E`} onCommit={(value) => updateMember('E', value)} />
-            <PhysicalNumberField label="A" value={selectedMember.A} units={units} quantity="area" resetKey={`${selectionKey}:A`} onCommit={(value) => updateMember('A', value)} />
-            <PhysicalNumberField disabled={selectedMember.stiffnessFactor !== undefined && project.settings.stiffnessDefaults?.mode !== 'E'} label="I" value={selectedMember.I} units={units} quantity="inertia" resetKey={`${selectionKey}:I`} hint={selectedMember.type === 'frame' ? undefined : t('inspector.inertiaCompatibilityHint')} onCommit={(value) => updateMember('I', value)} />
-          </> : null}
-          {selectedMember.type !== 'rigid' && classroomMode && selectedMember.stiffnessFactor === undefined ? <InspectorLockedState title={t('inspector.materialLockedClassroom')}>{t('inspector.materialLockedClassroomBody')}</InspectorLockedState> : null}
+          {selectedMember.type !== 'rigid' ? <MemberProfileEditor key={selectedMember.id} member={selectedMember} /> : null}
           {selectedMember.type === 'rigid' ? <InspectorLockedState title={t('inspector.noEditableStiffness')}>{t('inspector.noEditableStiffnessBody')}</InspectorLockedState> : null}
           {selectedMember.type === 'frame' ? <div className="inspector-releases" role="group" aria-label={t('inspector.releases')}>
             <span className="inspector-releases__title">{t('inspector.releases')}</span>
@@ -783,11 +733,12 @@ export const InspectorProperties = () => {
             </div>)}
           </div> : null}
         </InspectorPropertyGroup>
-        {selectedMember.type !== 'rigid' && selectedMember.A > 0 && selectedMember.I > 0 ? <SectionViewer2D
+        {selectedMember.type !== 'rigid' && memberProfileOf(selectedMember) !== 'exercise' && selectedMember.A > 0 && selectedMember.I > 0 ? <SectionViewer2D
           area={selectedMember.A}
           inertia={selectedMember.I}
           sectionId={selectedMember.sectionId}
           sectionOrigin={selectedMember.sectionOrigin}
+          customSection={selectedMember.customSection}
           units={units}
           axialForce={memberResult && (!classroomMode || resultsVisible) ? memberResult.maxAxial : 0}
           bendingMoment={memberResult && (!classroomMode || resultsVisible) ? memberResult.maxMoment : 0}

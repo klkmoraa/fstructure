@@ -4,7 +4,9 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
-- [x] Modelo 2D: EI/E/I constante, valor o referencia relativa, predeterminados y factor por barra; Capas alineada y ACM sustituido por diagramas de toda la viga o todo el marco, alineados exactamente con el DCL.
+- [x] Modelo 2D: EI/E/I constante, valor o referencia relativa, predeterminados y factor por barra; edición en Aula/Completo y en selección múltiple.
+- [x] Inspector: Ejercicios como perfil sin forma física predeterminado; Personalizado con medidas de siete familias y material editable (f′c, Fy, Fu, E, G, ν, ρ, γ y α), biblioteca y guardado en el proyecto.
+- [x] ACM/Diagramas: DCL completo y V/M compactos en vigas, axial opcional, cuadrícula en cada fila, marcos completos y encuadre que resiste Localizar y las hojas móviles.
 
 - [x] Chrome común de las mesas (`mesaChrome.css`): barra, tarjeta, dock y pie con la misma geometría; la transición de modo anima cada pieza por separado y 3D ↔ Diseño comparten shell.
 - [ ] Proyectos por herramienta: miniatura generada de cada modelo 3D o elemento de Diseño; hoy usan la escena de la herramienta y el resumen de su rama local.

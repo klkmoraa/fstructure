@@ -2,7 +2,8 @@ import { canonicalSerialize, sha256 } from './bundleValidation';
 import { UnifiedProjectSession } from './unifiedProjectSession';
 import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it } from 'vitest';
-import { createBlankProject, CURRENT_SCHEMA_VERSION } from '../data/defaultProject';
+import { setStiffnessDefaults } from '../data/memberStiffness';
+import { createBlankProject, createDefaultProject, CURRENT_SCHEMA_VERSION } from '../data/defaultProject';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
 import {
   InMemoryBundleDatabase, InMemoryUnifiedBundleRepository, IndexedDbUnifiedBundleRepository,
@@ -51,24 +52,29 @@ const implementations = [
 ];
 
 describe.each(implementations)('$name corruption isolation', ({ setup }) => {
-  it('abre bundles v8 sin borrar ni reescribir el original y migra al guardar', async () => {
+  it.each([8, 9])('abre bundles v%s sin borrar ni reescribir el original y migra al guardar', async (version) => {
     const { repository, access } = setup();
-    const original = bundle('legacy-v8');
+    const original = bundle(`legacy-v${version}`);
     delete original.model2d.settings.stiffnessDefaults;
+    if (version === 9) original.model2d = setStiffnessDefaults({ ...createDefaultProject(), id: original.model2d.id }, { mode: 'EI', value: 16000, factor: 3 }, true);
     await repository().saveBundle(original, 0);
     const record = (await access('bundles'))[0] as StoredBundleRecord;
-    record.bundle.model2d.schemaVersion = 8;
+    record.bundle.model2d.schemaVersion = version;
     record.checksum = await sha256(canonicalSerialize(record.bundle));
     await access('bundles', (stored) => Object.assign(stored, record));
     const before = await access('bundles');
     expect((await repository().snapshot()).integrityDiagnostics).toEqual([]);
     const session = new UnifiedProjectSession(repository());
-    const opened = await session.open('legacy-v8');
+    const opened = await session.open(`legacy-v${version}`);
     expect(opened?.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
-    expect(opened?.settings.stiffnessDefaults).toBeUndefined();
+    if (version === 8) expect(opened?.settings.stiffnessDefaults).toBeUndefined();
+    else {
+      expect(opened?.settings.stiffnessDefaults).toEqual({ mode: 'EI', value: 16000, factor: 3 });
+      expect(opened?.members.every(member => member.stiffnessFactor === 3)).toBe(true);
+    }
     expect(await access('bundles')).toEqual(before);
     await session.save2D(opened!);
-    expect((await repository().openBundle('legacy-v8'))?.bundle.model2d.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+    expect((await repository().openBundle(`legacy-v${version}`))?.bundle.model2d.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
   });
 
   it.each(['bundles', 'recoveries'] as const)('catches corrupt %s blocking healthy projects or causing mutation during reads', async (store) => {

@@ -73,8 +73,9 @@ const rectangleOf = (member: MemberModel) => {
  */
 const materialOf = (member: MemberModel): Pick<Space3DFrameMember, 'materialId' | 'materialOrigin'> => {
   const material = member.materialId ? standardMaterials.find((item) => item.id === member.materialId) : undefined;
-  if (material?.category !== 'CONCRETE') return {};
-  const fcMpa = Math.round(material.yieldStrength / 1e3 * 10) / 10;
+  const custom = member.materialOrigin !== 'catalog' ? member.customMaterial : undefined;
+  if (custom ? custom.category !== 'CONCRETE' || custom.compressiveStrength === undefined : material?.category !== 'CONCRETE') return {};
+  const fcMpa = Math.round((custom?.compressiveStrength ?? material!.yieldStrength) / 1e3 * 10) / 10;
   const id = `concrete-fc${fcMpa}`;
   const catalog = SPACE3D_MATERIALS.some((item) => item.id === id);
   // Sin densidad propia, el material del catálogo del 3D le daría peso que el 2D no tiene.

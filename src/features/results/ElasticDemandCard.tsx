@@ -192,7 +192,7 @@ export const ElasticDemandCard = () => {
         <dt>{t('elastic.materialLabel')}</dt>
         <dd>
           {formatInspectorValue(toDisplay(highest.material.yieldStrength, units, 'elasticModulus'), unitLabel(units, 'elasticModulus'))}
-          <small>{t('elastic.provenanceCatalog', { name: highest.material.name, id: highest.material.id })}</small>
+          <small>{t(highest.material.id.startsWith('custom:') ? 'elastic.provenanceCustom' : 'elastic.provenanceCatalog', { name: highest.material.name, id: highest.material.id })}</small>
         </dd>
       </div>
       <div>
@@ -201,7 +201,7 @@ export const ElasticDemandCard = () => {
           {highest.section
             ? <>
               {formatInspectorValue(toDisplay(highest.section.sectionModulus, units, 'sectionModulus'), unitLabel(units, 'sectionModulus'))}
-              <small>{t('elastic.provenanceCatalog', { name: highest.section.name, id: highest.section.id })}</small>
+              <small>{t(highest.section.id.startsWith('custom:') ? 'elastic.provenanceCustom' : 'elastic.provenanceCatalog', { name: highest.section.name, id: highest.section.id })}</small>
             </>
             /* Demanda puramente axial: W no participó, así que no se declara. */
             : <><span>—</span><small>{t('elastic.axialOnly')}</small></>}

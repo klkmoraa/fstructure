@@ -58,7 +58,7 @@ describe('normalizeProject', () => {
 
     const normalized = normalizeProject(JSON.parse(JSON.stringify(source)));
 
-    expect(CURRENT_SCHEMA_VERSION).toBe(9);
+    expect(CURRENT_SCHEMA_VERSION).toBe(10);
     expect(normalized.designAssignments).toEqual([concreteBeamAssignment()]);
   });
 

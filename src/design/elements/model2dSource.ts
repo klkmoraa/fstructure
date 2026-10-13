@@ -1,5 +1,6 @@
 import { standardMaterials } from '../../data/standardMaterials';
 import { standardSections } from '../../data/standardSections';
+import { activeCustomSection, materialDefinitionOf } from '../../data/memberProfiles';
 import { withResolvedGeneratedLoads } from '../../engine/generatedLoads';
 import { model2dRevision } from './model2dResultSnapshot';
 import { analyzeModel2dCases, hydrateModel2dCases, type Model2dAnalysisRequest } from './model2dAnalysis';
@@ -46,6 +47,10 @@ const supportOf = (node: NodeModel): StructureSupport => {
 };
 
 const concreteOf = (member: MemberModel) => {
+  const custom = materialDefinitionOf(member);
+  if (custom) return custom.category === 'CONCRETE'
+    ? { concrete: true, fcMpa: custom.compressiveStrength === undefined ? null : custom.compressiveStrength / 1e3 }
+    : { concrete: false, fcMpa: null, name: custom.name };
   const material = member.materialId ? standardMaterials.find((item) => item.id === member.materialId) : undefined;
   if (material) return material.category === 'CONCRETE' ? { concrete: true, fcMpa: material.yieldStrength / 1e3 } : { concrete: false, fcMpa: null, name: material.name };
   return { concrete: member.E >= CONCRETE_E_RANGE_KPA[0] && member.E <= CONCRETE_E_RANGE_KPA[1], fcMpa: null };
@@ -53,6 +58,8 @@ const concreteOf = (member: MemberModel) => {
 
 /** b × h de la barra: la sección rectangular del catálogo o el rectángulo equivalente en A e I. */
 const sectionOf = (member: MemberModel) => {
+  const custom = activeCustomSection(member);
+  if (custom?.definition.family === 'rectangle') return { widthMm: custom.definition.width * 1e3, heightMm: custom.definition.depth * 1e3 };
   const catalog = member.sectionId ? standardSections.find((item) => item.id === member.sectionId) : undefined;
   if (catalog?.shapeType === 'RECT') return { widthMm: catalog.width * 1e3, heightMm: catalog.depth * 1e3 };
   const height = Math.sqrt(12 * member.I / member.A);
@@ -116,6 +123,10 @@ export function model2dDesignSource(project: ProjectModel, analyzeCases?: (reque
       ...(loads.point ? { displayPoint: loads.point } : {}),
     };
     if (member.type !== 'frame') return { ...base, kind: 'other' as const, reason: member.type === 'truss' ? 'barra de armadura (sólo axial)' : 'brazo rígido' };
+    if (member.propertyProfile === 'exercise') return { ...base, kind: 'other' as const, reason: 'perfil de ejercicios sin sección física definida' };
+    const customSection = activeCustomSection(member);
+    if (member.customSection && member.sectionOrigin !== 'catalog' && !customSection) return { ...base, kind: 'other' as const, reason: 'las medidas personalizadas no coinciden con A e I; vuelve a aplicar la geometría' };
+    if (customSection && customSection.definition.family !== 'rectangle') return { ...base, kind: 'other' as const, reason: 'el diseño de concreto requiere una sección rectangular' };
     if (!material.concrete) return { ...base, kind: 'other' as const, reason: material.name ? `material ${material.name}` : 'su módulo de elasticidad no es de concreto' };
     if (member.rigidOffsetI || member.rigidOffsetJ) notes.push(`${base.label}: tiene zonas rígidas; sus diagramas se leen sobre la parte flexible.`);
     if (material.fcMpa !== null) fcMpa = fcMpa === null ? material.fcMpa : Math.min(fcMpa, material.fcMpa);

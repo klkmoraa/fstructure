@@ -1,5 +1,6 @@
 import { findStandardSection, type SectionShapeType, type StandardSection } from '../../data/standardSections';
-import type { MemberPropertyOrigin } from '../../types';
+import type { CustomMemberSection, MemberPropertyOrigin } from '../../types';
+import { calculateParametricSection } from '../../data/personalSections';
 
 /**
  * Geometría dibujable de una sección transversal.
@@ -21,12 +22,14 @@ interface SectionGeometryInput {
   inertia: number;
   sectionId?: string;
   sectionOrigin?: MemberPropertyOrigin;
+  customSection?: CustomMemberSection;
 }
 
 export interface SectionGeometry {
+  customName?: string;
   /** Sección del catálogo cuando la identidad es explícita; `null` si es equivalente. */
   section: StandardSection | null;
-  shapeType: SectionShapeType;
+  shapeType: SectionShapeType | 'CIRCLE';
   depth: number; // m
   width: number; // m
   flange: number; // m
@@ -40,12 +43,26 @@ export const resolveSectionGeometry = ({
   inertia,
   sectionId,
   sectionOrigin,
+  customSection,
 }: SectionGeometryInput): SectionGeometry => {
   const section: StandardSection | null = sectionOrigin === 'catalog' && sectionId
     ? findStandardSection(sectionId) ?? null
     : null;
   const safeArea = area > 0 ? area : 0.01;
   const safeInertia = inertia > 0 ? inertia : 1e-5;
+  if (customSection && sectionOrigin !== 'catalog') {
+    const d = customSection.definition; const p = calculateParametricSection(d);
+    if (Math.abs(p.area - area) < p.area * 1e-9 && Math.abs(p.inertiaX - inertia) < p.inertiaX * 1e-9) {
+      const circular = d.family === 'circle' || d.family === 'circular-tube';
+      const depth = d.family === 'circle' ? d.diameter : d.family === 'circular-tube' ? d.outerDiameter : d.depth;
+      const width = circular ? depth : ('width' in d ? d.width : depth);
+      const shapeType = d.family === 'circle' ? 'CIRCLE' : d.family === 'circular-tube' ? 'HSS_ROUND' : d.family === 'rectangle' ? 'RECT' : d.family === 'symmetric-i' ? 'I' : d.family === 'channel' ? 'C' : d.family === 'angle' ? 'L' : 'HSS_RECT';
+      return { section: null, customName: customSection.name, shapeType, width, depth,
+        web: 'webThickness' in d ? d.webThickness : 'thickness' in d ? d.thickness : 0,
+        flange: 'flangeThickness' in d ? d.flangeThickness : 'thickness' in d ? d.thickness : 0,
+        modulus: p.sectionModulusX };
+    }
+  }
   const depth = section?.depth ?? Math.sqrt((12 * safeInertia) / safeArea);
   const width = section?.width ?? safeArea / (depth > 0 ? depth : 1);
   return {

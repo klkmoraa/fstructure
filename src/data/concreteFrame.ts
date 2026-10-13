@@ -112,6 +112,8 @@ export interface ConcreteFrameSections {
 
 const CONCRETE_E_RANGE_KPA = [15e6, 50e6] as const;
 const isConcrete = (member: MemberModel) => {
+  if (member.propertyProfile === 'exercise') return false;
+  if (member.customMaterial && member.materialOrigin !== 'catalog') return member.customMaterial.category === 'CONCRETE';
   const material = member.materialId ? standardMaterials.find((item) => item.id === member.materialId) : undefined;
   return material ? material.category === 'CONCRETE' : member.E >= CONCRETE_E_RANGE_KPA[0] && member.E <= CONCRETE_E_RANGE_KPA[1];
 };

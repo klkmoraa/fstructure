@@ -20,7 +20,7 @@ export const SectionShape = ({
   layout,
   variant = 'draw',
 }: {
-  shapeType: SectionShapeType;
+  shapeType: SectionShapeType | 'CIRCLE';
   layout: SectionShapeLayout;
   variant?: SectionShapeVariant;
 }) => {
@@ -34,6 +34,8 @@ export const SectionShape = ({
     : { className: 'section-shape-void' };
 
   switch (shapeType) {
+    case 'CIRCLE':
+      return <circle {...solid} cx={cx} cy={cy} r={Math.min(pxWidth, pxHeight) / 2} />;
     case 'I':
     case 'C': {
       const webLeft = shapeType === 'C' ? left : cx - pxWeb / 2;

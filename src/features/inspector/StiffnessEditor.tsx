@@ -32,7 +32,7 @@ export const StiffnessEditor = ({ member }: { member?: MemberModel }) => {
   const unit = mode === 'EI' ? `${unitLabel(units, 'force')}·${unitLabel(units, 'length')}²` : unitLabel(units, mode === 'E' ? 'elasticModulus' : 'inertia');
   const config = <div className="stiffness-editor__settings">
     <label className="stiffness-editor__select"><span>{es ? 'Constante del proyecto' : 'Project constant'}</span>
-      <select value={base?.mode ?? 'own'} onChange={(event) => {
+      <select aria-label={es ? 'Constante del proyecto' : 'Project constant'} value={base?.mode ?? 'own'} onChange={(event) => {
         const next = event.target.value;
         writeBase(next === 'own' ? undefined : { mode: next as StiffnessDefaults['mode'], factor: base?.factor ?? 1 });
       }}>

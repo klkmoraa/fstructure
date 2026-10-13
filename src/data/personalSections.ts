@@ -57,7 +57,7 @@ const dimension = (value: unknown, path: string): number => {
   return value;
 };
 
-const normalizeDefinition = (value: unknown): ParametricSectionDefinition => {
+export const normalizeSectionDefinition = (value: unknown): ParametricSectionDefinition => {
   if (!isRecord(value)) throw new Error('definition debe ser un objeto.');
   if (value.family === 'rectangle') return {
     family: value.family,
@@ -108,6 +108,7 @@ const normalizeDefinition = (value: unknown): ParametricSectionDefinition => {
   }
   throw new Error('definition.family no está soportada.');
 };
+const normalizeDefinition = normalizeSectionDefinition;
 
 const propertiesFrom = (area: number, inertiaX: number, inertiaY: number, depth: number, width: number): ParametricSectionProperties => ({
   area,

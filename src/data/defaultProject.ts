@@ -2,7 +2,7 @@ import type { ProjectModel, ProjectSettings } from '../types';
 import { createId } from '../utils/id';
 import { withConcreteFrame } from './concreteFrame';
 
-export const CURRENT_SCHEMA_VERSION = 9;
+export const CURRENT_SCHEMA_VERSION = 10;
 
 export const DEFAULT_REINFORCED_CONCRETE_BEAM_DESIGN = {
   coverMm: 40,

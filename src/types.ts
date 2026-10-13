@@ -1,5 +1,6 @@
 import type { UnitSystemId } from './foundation/units';
 import type { LinearSolverDiagnostics } from './foundation/linearAlgebra';
+import type { ParametricSectionDefinition } from './data/personalSections';
 
 /** @deprecated Import neutral unit types directly from `foundation/units`. */
 export type {  UnitSystemId } from './foundation/units';
@@ -84,11 +85,30 @@ export interface StiffnessDefaults {
   factor: number;
 }
 
+/** Additional material data; E, G and density on MemberModel are authoritative. */
+export interface CustomMemberMaterial {
+  name: string;
+  category: 'STEEL' | 'CONCRETE' | 'TIMBER' | 'ALUMINUM' | 'OTHER';
+  poissonRatio: number;
+  thermalExpansion: number;
+  yieldStrength?: number; // kN/m²
+  ultimateStrength?: number; // kN/m²
+  compressiveStrength?: number; // kN/m² (f′c for concrete)
+}
+
+export interface CustomMemberSection {
+  name: string;
+  definition: ParametricSectionDefinition;
+}
+
 export interface MemberModel {
   id: string;
   i: string;
   j: string;
   type: MemberType;
+  propertyProfile?: 'exercise' | 'catalog' | 'custom';
+  customSection?: CustomMemberSection;
+  customMaterial?: CustomMemberMaterial;
   /** Stable catalog identity. Numeric properties remain the solver inputs. */
   materialId?: string;
   materialOrigin?: MemberPropertyOrigin;

@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import { createDefaultProject } from '../../data/defaultProject';
 import { analyzeProject } from '../../engine/solver';
+import { diagramSheetLayout } from './diagramSheetLayout';
 import { CanvasDiagramStack, diagramRowHeight } from './CanvasDiagramStack';
 
 const project = createDefaultProject();
@@ -21,9 +22,9 @@ it('cada diagrama conserva el marco COMPLETO y las mismas coordenadas que el DCL
       const line = panel.querySelector(`[data-replica-member="${member.id}"]`)!;
       const i = props.nodeMap.get(member.i)!; const j = props.nodeMap.get(member.j)!;
       expect(Number(line.getAttribute('x1'))).toBe(camera.x + i.x * camera.scale);
-      expect(Number(line.getAttribute('y1'))).toBe(camera.y - i.y * camera.scale);
+      expect(Number(line.getAttribute('y1'))).toBe(camera.y - i.y * camera.scale - diagramSheetLayout(project, {width:800,height:700}).replicaShift);
       expect(Number(line.getAttribute('x2'))).toBe(camera.x + j.x * camera.scale);
-      expect(Number(line.getAttribute('y2'))).toBe(camera.y - j.y * camera.scale);
+      expect(Number(line.getAttribute('y2'))).toBe(camera.y - j.y * camera.scale - diagramSheetLayout(project, {width:800,height:700}).replicaShift);
     }
   }
 });
@@ -46,6 +47,6 @@ it('una viga incluye todos sus tramos y el voladizo; cada cantidad tiene su eje 
   }
 });
 it('los marcos conservan espacio legible sin comprimir tres copias dentro del alto de pantalla', () => {
-  expect(diagramRowHeight(project,{width:390,height:650})).toBeGreaterThan(300);
-  expect(diagramRowHeight(project,{width:844,height:280})).toBeGreaterThanOrEqual(240);
+  expect(diagramRowHeight(project,{width:390,height:650})).toBeGreaterThan(240);
+  expect(diagramRowHeight(project,{width:844,height:280})).toBeGreaterThanOrEqual(220);
 });

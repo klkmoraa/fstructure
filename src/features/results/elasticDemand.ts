@@ -17,9 +17,9 @@
  *
  * Tres decisiones sostienen la lectura, y las tres se declaran al usuario:
  *
- *  · **W elástico.** Sólo desde `sectionId` con `sectionOrigin === 'catalog'`.
+ *  · **W elástico.** Desde catálogo o medidas personalizadas válidas y coincidentes con A/I.
  *    Sin esa identidad explícita no hay `sectionModulusX` auditable.
- *  · **Fy.** Sólo desde `materialId` con `materialOrigin === 'catalog'`.
+ *  · **Fy.** Desde catálogo o un Fy de acero personalizado declarado.
  *    Coincidir en E con un material del catálogo no es identidad.
  *  · **Combinación.** N* y M* son los máximos absolutos de sus envolventes y
  *    pueden proceder de secciones distintas de la barra: se suman como
@@ -30,6 +30,8 @@
  */
 import { findStandardMaterial } from '../../data/standardMaterials';
 import { findStandardSection } from '../../data/standardSections';
+import { activeCustomSection } from '../../data/memberProfiles';
+import { calculateParametricSection } from '../../data/personalSections';
 import { resolveReliability, type ReliabilityCheck } from '../../engine/reliability';
 import type { AnalysisResult, MemberModel, MemberResult, ProjectModel } from '../../types';
 
@@ -63,7 +65,7 @@ type ElasticDemandBlocker = 'no-analysis' | 'unreliable' | 'no-evaluable-member'
  */
 type ElasticDemandConfidence = 'reliable' | 'limited';
 
-/** Procedencia del Fy publicado: siempre un material del catálogo, por id. */
+/** Procedencia del Fy publicado: material de catálogo o acero personalizado declarado. */
 interface ElasticYieldSource {
   id: string;
   name: string;
@@ -71,7 +73,7 @@ interface ElasticYieldSource {
   yieldStrength: number;
 }
 
-/** Procedencia del W publicado: siempre un perfil del catálogo, por id. */
+/** Procedencia del W publicado: perfil de catálogo o geometría personalizada calculada. */
 interface ElasticSectionSource {
   id: string;
   name: string;
@@ -183,6 +185,9 @@ const GAP_ORDER: ElasticIndexGap[] = ['section-geometry', 'yield-strength', 'sec
  * usuario no puede rastrear hasta un perfil concreto.
  */
 const memberSectionModulus = (member: MemberModel): ElasticSectionSource | null => {
+  if (member.propertyProfile === 'exercise') return null;
+  const custom = activeCustomSection(member);
+  if (custom) return { id: `custom:${member.id}`, name: custom.name, sectionModulus: calculateParametricSection(custom.definition).sectionModulusX };
   if (member.sectionOrigin !== 'catalog' || !member.sectionId) return null;
   const section = findStandardSection(member.sectionId);
   if (!section || !(section.sectionModulusX > 0)) return null;
@@ -195,6 +200,9 @@ const memberSectionModulus = (member: MemberModel): ElasticSectionSource | null 
  * material del catálogo no es identidad.
  */
 const memberYieldStrength = (member: MemberModel): ElasticYieldSource | null => {
+  if (member.propertyProfile === 'exercise') return null;
+  const custom = member.materialOrigin !== 'catalog' ? member.customMaterial : undefined;
+  if (custom?.category === 'STEEL' && custom.yieldStrength && custom.yieldStrength > 0) return { id: `custom:${member.id}`, name: custom.name, yieldStrength: custom.yieldStrength };
   if (member.materialOrigin !== 'catalog' || !member.materialId) return null;
   const material = findStandardMaterial(member.materialId);
   if (!material || !(material.yieldStrength > 0)) return null;
