@@ -50,7 +50,7 @@ export const CanvasDiagramStack = memo(({ project, results, quantities, nodeMap,
   return <section className="canvas-diagram-stack" data-canvas-layer="diagram-stack" aria-label={t('canvas.evidenceStackStructure')}>
     {visible.map((quantity) => {
       const maximum = maximumFor(quantity);
-      const direction = quantity === 'moment' ? (project.settings.diagramSide === 'negative' ? -1 : 1) : -1;
+      const direction = view.diagramSide === 'negative' ? -1 : 1;
       const geometryProps = { project, nodeMap: mutableNodes, memberMap, toScreen, camera,
         selectionVisualState: noSelection, candidatePreview: null, learningFocus: null, memberStartId: null,
         layers: replicaLayers, loadsLayerVisible: false, heatmapRatios: emptyRatios, demandMapActive: false,
@@ -71,8 +71,9 @@ export const CanvasDiagramStack = memo(({ project, results, quantities, nodeMap,
           const a = toScreen(i.x, i.y); const b = toScreen(j.x, j.y);
           const result = resultMap.get(member.id);
           const axis = memberAxis(member, i, j);
-          const dx = b.x - a.x; const dy = b.y - a.y; const length = Math.hypot(dx, dy) || 1;
-          const normal = { x: -dy / length, y: dx / length };
+          const dx = b.x - a.x; const dy = b.y - a.y;
+          // Same local +y as CanvasResultLayer; screen y grows downwards.
+          const normal = { x: axis.normal.x, y: -axis.normal.y };
           const point = (x: number, value = 0) => {
             const ratio = ((result?.startOffset ?? 0) + x) / axis.length;
             const offset = direction * value * amplitude / maximum;
@@ -102,7 +103,8 @@ export const CanvasDiagramStack = memo(({ project, results, quantities, nodeMap,
             {readings.map((reading) => {
               const p = point(reading.x, reading.value); const side = (Math.sign(reading.value) || 1) * direction;
               const display = toDisplay(reading.value, units, quantity === 'moment' ? 'moment' : 'force');
-              return <text key={`${reading.x}:${reading.value}`} className="diagram-stack-value" x={Math.max(32, Math.min(size.width - 32, p.x + normal.x * side * 10))} y={Math.max(38, Math.min(height - 14, p.y + normal.y * side * 10 - 3))} textAnchor="middle">{formatFixed(Math.abs(display) < 1e-8 ? 0 : display, Math.abs(display) >= 100 ? 1 : 2)}</text>;
+              const rightEnd = p.x > size.width - 72 && result && Math.abs(reading.x - result.length) < Math.max(1, result.length) * 1e-8;
+              return <text key={`${reading.x}:${reading.value}`} className="diagram-stack-value" x={Math.max(32, Math.min(size.width - 32, p.x + normal.x * side * 10 - (rightEnd ? 8 : 0)))} y={Math.max(38, Math.min(height - 14, p.y + normal.y * side * 10 - 3))} textAnchor={rightEnd ? 'end' : 'middle'}>{formatFixed(Math.abs(display) < 1e-8 ? 0 : display, 2)}</text>;
             })}
           </g>;
         })}
