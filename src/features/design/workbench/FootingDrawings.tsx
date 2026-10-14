@@ -81,12 +81,13 @@ export function FootingPlan({ result }: { result: FootingDesignResult }) {
 }
 
 export function FootingSection({ result }: { result: FootingDesignResult }) {
-  const W = 360;
+  // A la derecha queda sitio para las cotas h y d.
+  const W = 400;
   const side = result.sideXMm;
   const scale = 250 / side;
   const s = side * scale;
   const t = Math.max(24, result.thicknessMm * scale);
-  const ox = (W - s) / 2;
+  const ox = (W - s) / 2 - 20;
   const pedestal = result.input.pedestal;
   const pedestalH = pedestal ? Math.min(40, Math.max(14, pedestal.heightMm * scale)) : 0;
   // Margen superior para la carga de la columna: el corte es el DCL de la zapata.
@@ -105,7 +106,7 @@ export function FootingSection({ result }: { result: FootingDesignResult }) {
   const x = result.directions.x;
   // Secciones críticas a la derecha de la columna: paño (flexión), d (cortante como viga) y d/2 (penetración).
   const { support } = result;
-  const center = W / 2;
+  const center = ox + s / 2;
   const faceM = center + support.flexureWidthMm / 2 * scale;
   const faceV = center + (support.shearWidthMm / 2 + x.effectiveDepthMm) * scale;
   const faceP = center + (support.shearWidthMm / 2 + result.effectiveDepthMm / 2) * scale;
@@ -126,8 +127,8 @@ export function FootingSection({ result }: { result: FootingDesignResult }) {
       <text x={center + 8} y={14}>{`Pu = ${formatNumber(result.ultimateAxialKn, 0)} kN`}</text>
       {Math.abs(momentX) > 1e-6 ? <text x={center + 8} y={28}>{`Mu = ${formatNumber(momentX, 1)} kN·m`}</text> : null}
     </g>
-    <rect className="dw-column" x={W / 2 - colW / 2} y={loadTop + 10} width={colW} height={oy - pedestalH - loadTop - 10} />
-    {pedestal ? <rect className="dw-pedestal" x={W / 2 - pedestal.widthMm * scale / 2} y={oy - pedestalH} width={pedestal.widthMm * scale} height={pedestalH}>
+    <rect className="dw-column" x={center - colW / 2} y={loadTop + 10} width={colW} height={oy - pedestalH - loadTop - 10} />
+    {pedestal ? <rect className="dw-pedestal" x={center - pedestal.widthMm * scale / 2} y={oy - pedestalH} width={pedestal.widthMm * scale} height={pedestalH}>
       <title>{`Dado de ${formatNumber(pedestal.heightMm / 10, 0)} cm de altura`}</title>
     </rect> : null}
     <rect className="dw-concrete" x={ox} y={oy} width={s} height={t} />
@@ -151,10 +152,10 @@ export function FootingSection({ result }: { result: FootingDesignResult }) {
     </g>
     <g className="dw-critical-cuts">
       {inside(faceM) ? <g><line className="dw-critical dw-critical--moment" x1={faceM} x2={faceM} y1={oy - 6} y2={oy + t + 2} /><text x={faceM + 3} y={oy - 4}>M</text></g> : null}
-      {inside(faceP) ? <g><line className="dw-critical" x1={faceP} x2={faceP} y1={oy - 6} y2={oy + t + 2} /><text x={faceP + 3} y={oy - 4}>d/2</text></g> : null}
+      {inside(faceP) ? <g><line className="dw-critical" x1={faceP} x2={faceP} y1={oy - 16} y2={oy + t + 2} /><text x={faceP + 3} y={oy - 14}>d/2</text></g> : null}
       {inside(faceV) ? <g><line className="dw-critical dw-critical--oneway" x1={faceV} x2={faceV} y1={oy - 6} y2={oy + t + 2} /><text x={faceV + 3} y={oy - 4}>d</text></g> : null}
     </g>
-    <text className="dw-callout" x={W / 2} y={oy + t + 82} textAnchor="middle">{`X: ${rebarLabel(result.input.barDiameterMm)} @ ${formatNumber(x.spacingMm / 10, 0)} cm · Y: ${rebarLabel(result.input.barDiameterMm)} @ ${formatNumber(result.directions.y.spacingMm / 10, 0)} cm`}</text>
-    <text className="dw-muted dw-critical-legend" x={W / 2} y={oy + t + 100} textAnchor="middle">{`Paño Mu ${formatNumber(x.momentKnm, 1)} kN·m · a d Vu ${formatNumber(x.oneWayDemandKn, 0)} kN · a d/2 Vu ${formatNumber(result.punching.demandKn, 0)} kN`}</text>
+    <text className="dw-callout" x={center} y={oy + t + 82} textAnchor="middle">{`X: ${rebarLabel(result.input.barDiameterMm)} @ ${formatNumber(x.spacingMm / 10, 0)} cm · Y: ${rebarLabel(result.input.barDiameterMm)} @ ${formatNumber(result.directions.y.spacingMm / 10, 0)} cm`}</text>
+    <text className="dw-muted dw-critical-legend" x={center} y={oy + t + 100} textAnchor="middle">{`Paño Mu ${formatNumber(x.momentKnm, 1)} kN·m · a d Vu ${formatNumber(x.oneWayDemandKn, 0)} kN · a d/2 Vu ${formatNumber(result.punching.demandKn, 0)} kN`}</text>
   </svg>;
 }

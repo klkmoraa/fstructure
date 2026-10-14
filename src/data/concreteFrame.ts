@@ -26,7 +26,7 @@ type FrameParts = Pick<ProjectModel, 'nodes' | 'members' | 'loadCases' | 'combin
 
 const CONCRETE_DENSITY = 2400;
 
-function concreteFrameModel(spec: ConcreteFrameSpec): FrameParts {
+export function concreteFrameModel(spec: ConcreteFrameSpec): FrameParts {
   const xs = spec.bays.reduce<number[]>((positions, bay) => [...positions, positions[positions.length - 1]! + bay], [0]);
   const ys = spec.stories.reduce<number[]>((levels, story) => [...levels, levels[levels.length - 1]! + story.heightM], [0]);
   const catalog = standardMaterials.find((material) => material.category === 'CONCRETE' && Math.abs(material.yieldStrength / 1e3 - spec.fcMpa) < 0.5);

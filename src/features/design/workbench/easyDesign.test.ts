@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { designBeam } from '../../../design/elements/beam';
 import { designColumn } from '../../../design/elements/column';
 import { BEAM_DEFAULTS, DEFAULT_SPANS, beamToInput, proposeBeamSection, slabLineLoads } from './beamModel';
-import { COLUMN_DEFAULTS, columnToInput, proposeColumn } from './columnModel';
+import { COLUMN_DEFAULTS, columnToInput, proposeColumn, proposeColumnSection } from './columnModel';
 import { reportFromMemoryItem } from './designMemory';
 import { EMPTY_BEAM_DETAILS } from './beamDetailDraft';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
@@ -52,5 +52,20 @@ describe('diseño más fácil', () => {
     expect(combined.ok && combined.report.title).toMatch(/^Zapata combinada/);
     const isolated = footingReportFromDraft('ntc-2023', FOOTING_DEFAULTS);
     expect(isolated.ok && isolated.report.title).toMatch(/^Zapata \d/);
+  });
+});
+
+describe('proposeColumnSection', () => {
+  it('da la menor sección que cumple con el armado capturado', () => {
+    const fields = proposeColumnSection('ntc-2023', COLUMN_DEFAULTS)!;
+    const result = designColumn(columnToInput('ntc-2023', { ...COLUMN_DEFAULTS, ...fields }));
+    expect(result.ok && result.status).not.toBe('fail');
+    const smaller = String(Number(fields.width) - 5);
+    const below = designColumn(columnToInput('ntc-2023', { ...COLUMN_DEFAULTS, width: smaller, depth: smaller }));
+    expect(below.ok && below.status).toBe('fail');
+  });
+
+  it('sin sección que cumpla con ese armado devuelve null', () => {
+    expect(proposeColumnSection('ntc-2023', { ...COLUMN_DEFAULTS, axial: '40000' })).toBeNull();
   });
 });

@@ -795,7 +795,21 @@ describe('DesignWorkbench', () => {
     await user.click(screen.getByRole('button', { name: 'Proponer sección' }));
     expect(await screen.findByText(/^Sección propuesta: .* cm/)).toBeTruthy();
     expect((screen.getByRole('textbox', { name: 'Base b (X)' }) as HTMLInputElement).value).not.toBe('40');
+    // Lo propuesto siempre cumple.
+    expect(await within(results()).findByText('Cumple lo evaluado')).toBeTruthy();
+  });
+
+  it('la propuesta de columna conserva el armado cuando alguna sección cumple con él', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    await user.click(screen.getByRole('radio', { name: 'Columna' }));
+    const axial = screen.getByRole('textbox', { name: /^Pu/ });
+    await user.clear(axial);
+    await user.type(axial, '1800');
+    await user.click(screen.getByRole('button', { name: 'Proponer sección' }));
+    expect(await screen.findByText(/la menor que cumple con el armado actual/)).toBeTruthy();
     expect((screen.getByRole('textbox', { name: 'Barras cara b' }) as HTMLInputElement).value).toBe('3');
+    expect(await within(results()).findByText('Cumple lo evaluado')).toBeTruthy();
   });
 
   it('muestra y oculta los paneles de datos y resultados sobre el lienzo', async () => {

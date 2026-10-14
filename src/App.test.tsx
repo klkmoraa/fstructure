@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
@@ -71,16 +71,29 @@ describe('standalone FStructure', () => {
     render(<App />);
     await screen.findByTestId('home');
     await user.click(screen.getByRole('button', { name: /^Zapata/ }));
-    expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' }, { timeout: 8000 })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Nuevo diseño' }, { timeout: 8000 })).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
-    const elements = screen.getByRole('radiogroup', { name: 'Elemento a diseñar' });
-    expect(within(elements).getAllByRole('radio').map((item) => item.getAttribute('aria-label') ?? item.textContent)).toEqual(['Zapata']);
+    // Una sola pieza: sin selector de elementos ni interruptor de modos.
+    expect(screen.queryByRole('radiogroup', { name: 'Elemento a diseñar' })).toBeNull();
+    expect(screen.getByRole('combobox', { name: 'Tipo de cimentación' })).toBeTruthy();
     expect(screen.queryByRole('group', { name: 'Modo de la mesa' })).toBeNull();
     expect(screen.getByText(/Individual · Zapata/i)).toBeTruthy();
     // Un enlace a otro modo vuelve a la pantalla de la pieza.
     window.history.pushState(null, '', window.location.href.replace('mode=design', 'mode=3d'));
     window.dispatchEvent(new PopStateEvent('popstate'));
     await waitFor(() => expect(new URLSearchParams(window.location.search).get('mode')).toBe('design'));
+  });
+
+  it('el Modelo 2D individual vacío ofrece inicios que se calculan y se deshacen', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByTestId('home');
+    await user.click(screen.getAllByRole('button', { name: /^Modelo 2D/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Empieza tu modelo 2D' }, { timeout: 8000 })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /^Viga apoyada/ }));
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Empieza tu modelo 2D' })).toBeNull());
+    await user.click(screen.getAllByRole('button', { name: /^Deshacer/ })[0]!);
+    expect(await screen.findByRole('heading', { name: 'Empieza tu modelo 2D' })).toBeTruthy();
   });
 
   it('una entrada directa a la mesa vuelve a la Home desde el logo', async () => {

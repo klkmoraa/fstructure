@@ -1,0 +1,119 @@
+/* Modelo 2D vacío: la tarjeta de inicio flota sobre el lienzo sin bloquear el
+   resto; sólo la tarjeta recibe el puntero. Misma pauta que el modo 3D. */
+.model-start {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  display: flex;
+  padding: 72px var(--sc-space-4) 96px;
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.model-start__card {
+  width: min(460px, 100%);
+  margin: auto;
+  padding: var(--sc-space-5);
+  border: var(--sc-border-width) solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-lg);
+  background: var(--sc-color-surface-elevated);
+  box-shadow: var(--sc-shadow-lg);
+  color: var(--sc-color-text-primary);
+  pointer-events: auto;
+}
+
+.model-start__card h2 {
+  margin: 0;
+  font-family: var(--sc-font-display);
+  font-size: 22px;
+  font-weight: var(--sc-font-weight-semibold);
+  letter-spacing: var(--sc-tracking-tight, -0.01em);
+  line-height: 1.2;
+}
+
+.model-start__body {
+  margin: var(--sc-space-1) 0 var(--sc-space-4);
+  color: var(--sc-color-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.model-start__options { display: grid; gap: var(--sc-space-2); }
+
+.model-start__option {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-3);
+  min-height: 48px;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border: var(--sc-border-width) solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-color-surface-1);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--sc-transition-control);
+}
+
+.model-start__option:hover {
+  border-color: var(--sc-color-border-strong);
+  background: var(--sc-color-surface-elevated);
+}
+
+.model-start__option:focus-visible,
+.model-start__secondary button:focus-visible {
+  outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
+  outline-offset: var(--sc-focus-ring-offset);
+}
+
+.model-start__glyph {
+  flex: none;
+  width: 40px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.model-start__copy { display: grid; gap: 1px; min-width: 0; }
+.model-start__copy strong { font-size: 14px; font-weight: var(--sc-font-weight-semibold); }
+.model-start__copy span { color: var(--sc-color-text-secondary); font-family: var(--sc-font-mono); font-size: 11px; }
+
+.model-start__secondary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sc-space-2);
+  margin-top: var(--sc-space-3);
+}
+
+.model-start__secondary button {
+  min-height: 40px;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border: var(--sc-border-width) solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-md);
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--sc-font-weight-medium, 500);
+  cursor: pointer;
+  transition: var(--sc-transition-control);
+}
+
+.model-start__secondary button:hover { border-color: var(--sc-color-border-strong); background: var(--sc-color-surface-1); }
+
+.model-start__note {
+  margin: var(--sc-space-3) 0 0;
+  color: var(--sc-color-text-tertiary, var(--sc-color-text-secondary));
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  /* A la derecha queda libre la columna del zoom del lienzo. */
+  .model-start { padding: 64px var(--canvas-safe-right, 52px) 88px var(--sc-space-3); }
+  .model-start__card { padding: var(--sc-space-4); }
+  .model-start__secondary { grid-template-columns: 1fr; }
+}

@@ -48,6 +48,8 @@ import { CanvasChrome } from './CanvasChrome';
 import { layoutSmartLabels, smartLabelDetailForScale, type SmartLabelCandidate } from './labelLayout';
 import { buildCanvasSelectionVisualState, selectionEnvelopeForPoints } from './selectionVisuals';
 import { emitWorkspaceCommand, onWorkspaceCommand, type FocusableSelection } from '../workspace/workspaceCommands';
+import { withModelStart } from '../../data/modelStarts';
+import { ModelStartCard } from './ModelStartCard';
 import { CanvasGeometryLayer, type StructuralTarget } from './CanvasGeometryLayer';
 import {
   flexibleRatioFromGross,
@@ -2854,6 +2856,13 @@ export const StructuralCanvas = ({
         camera={camera}
       /> : null}
       </div>
+
+      {/* El Aula construye su modelo desde cero a propósito: allí no se ofrecen inicios. */}
+      {!project.nodes.length && activeTool === 'select' && !stackActive && !structuralEditDraft && project.settings.calculationMode !== 'classroom' ? <ModelStartCard
+        onStart={(id) => updateProject((draft) => withModelStart(draft, id), true)}
+        onGenerate={() => emitWorkspaceCommand('open-structure-generator')}
+        onDraw={() => setActiveTool('node')}
+      /> : null}
 
       {supportPlacement ? <SupportPlacementPopover
         nodeId={supportPlacement.nodeId}

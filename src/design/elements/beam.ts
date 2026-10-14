@@ -280,7 +280,7 @@ export interface BeamAnchorage {
 }
 
 /** Reacción de un apoyo de la viga. Fuerzas en kN (+ hacia arriba); momentos en kN·m (+ antihorario). */
-export interface BeamSupportReaction {
+interface BeamSupportReaction {
   readonly xM: number;
   readonly kind: BeamEnd | 'interior';
   /** Servicio: carga muerta (con peso propio) y viva en todos los claros. */

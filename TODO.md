@@ -6,6 +6,11 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 - [x] Por separado o proyecto completo: las mismas pantallas (Modelo 2D, Modelo 3D y cada pieza de Diseño) como archivo individual sin enlaces, o el proyecto con 2D, 3D y Diseño enlazados; Home con ambas entradas y Proyectos filtra individuales.
 - [ ] Individual → proyecto: convertir un cálculo individual (p. ej. un Modelo 2D) en proyecto completo sin copiar datos a mano.
+- [x] Mesas individuales listas para calcular: el Modelo 2D vacío ofrece cinco inicios (viga apoyada, voladizo, viga continua, pórtico y armadura Pratt) que se calculan al elegirlos y se deshacen; Sección a flexión abre con su momento; una pieza sola no muestra selector de elementos.
+- [x] DCL y reacciones de la viga (CM, CV, combinación y máxima alternada, ΣFy = 0) en la mesa y la memoria; cortes de zapata aislada, corrida y combinada con la carga última, la presión del suelo y las secciones críticas M, d y d/2.
+- [x] Columna: «Proponer sección» da la menor sección que cumple con el armado capturado (antes conservaba el armado y podía dejarla en «No cumple»); si ninguna cumple, propone sección y armado.
+- [ ] DCL de la zapata de lindero y de la losa de cimentación (cargas y reacción del suelo sobre la planta).
+- [ ] Viga → zapata: llevar la reacción de un apoyo de la viga a una zapata individual sin capturarla a mano.
 - [x] Al recargar en la Home se reabre el último archivo de este navegador (antes se abría uno en blanco).
 
 - [x] Momento individual y Diagramas: misma normal local y convención de signos, centésimas en valores grandes y extremo derecho legible junto al zoom.

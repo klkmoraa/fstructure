@@ -17,7 +17,7 @@ import { memoText, reportHeading, withReportOrigin, type DesignReport } from './
 import type { ModelSectionsBridge, Verdict, WorkbenchChrome, WorkbenchPanel } from './WorkbenchLayout';
 import { commitWorkbenchBatch, useWorkbenchStorage } from './workbenchStorage';
 import { DesignStartDialog } from './DesignStartDialog';
-import type { DesignStart } from './designStarts';
+import { DESIGN_STARTS, type DesignStart } from './designStarts';
 import './designWorkbench.css';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
@@ -55,6 +55,12 @@ const readRoom = (): Room => {
 };
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
+
+/**
+ * Pieza individual recién creada cuyo formulario vacío no calcularía nada: se
+ * abre con su inicio del catálogo (datos completos y editables).
+ */
+const SINGLE_SEEDS: Partial<Record<ElementKind, string>> = { flexure: 'piece-flexure' };
 
 /** Inicios del selector «Nuevo diseño» que ofrece cada apartado. */
 const SCOPE_CATEGORIES = {
@@ -140,6 +146,16 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const memory = useDesignMemory(storage, element, code, report);
+  // Un cálculo individual nuevo abre con datos completos; lo guardado nunca se toca.
+  const seed = scope === 'single' ? DESIGN_STARTS.find((item) => item.id === SINGLE_SEEDS[element]) : undefined;
+  const [seeding, setSeeding] = useState(() => Boolean(seed && storage.read(element) === undefined));
+  useEffect(() => {
+    if (!seeding) return;
+    // El doble efecto de desarrollo no debe guardar la receta como un borrador previo.
+    if (seed && storage.read(element) === undefined) memory.start(seed);
+    setSeeding(false);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [startOpen, setStartOpen] = useState(() => startPicker);
@@ -328,8 +344,9 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
     setFocusRequest((count) => count + 1);
   };
 
-  const elements = <div className="dw-dock__elements">
-    <div className="dw-dock__group" role="radiogroup" aria-label="Elemento a diseñar">
+  // Con un solo elemento (cálculo individual) el selector sobra: la barra ya nombra la pieza.
+  const elements = <div className={'dw-dock__elements' + (offered.length > 1 ? '' : ' is-single')}>
+    {offered.length > 1 ? <div className="dw-dock__group" role="radiogroup" aria-label="Elemento a diseñar">
       {offered.map((item, index) => <ToolButton
         key={item.id}
         ref={(node) => { buttons.current[index] = node; }}
@@ -344,7 +361,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
         onClick={() => setElement(item.id)}
         onKeyDown={(event) => onKeyDown(event, index)}
       />)}
-    </div>
+    </div> : null}
     <button type="button" className="dw-dock__new-design" aria-label="Nuevo diseño" title="Nuevo diseño" onClick={() => setStartOpen(true)}>
       <Plus size={16} aria-hidden="true" /><span>Nuevo</span>
     </button>
@@ -459,7 +476,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
       </button>
     </ShellContribution> : null}
 
-    {element === 'beam' ? <BeamWorkbench key={loadCount} chrome={chrome} />
+    {seeding ? null : element === 'beam' ? <BeamWorkbench key={loadCount} chrome={chrome} />
       : element === 'column' ? <ColumnWorkbench key={loadCount} chrome={chrome} />
         : element === 'frame' ? <FrameWorkbench key={loadCount} chrome={chrome} />
         : element === 'footing' ? <FootingWorkbench key={loadCount} chrome={chrome} />

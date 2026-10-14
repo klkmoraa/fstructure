@@ -5,7 +5,8 @@ import { designCode } from '../../../design/elements/codes';
 import { designColumn } from '../../../design/elements/column';
 import { rebarLabel } from '../../../design/elements/shared';
 import { ColumnElevation, ColumnSection, InteractionChart } from './ColumnDrawings';
-import { COLUMN_DEFAULTS, columnReport, columnToInput, methodLabel, proposeColumn, spacingOriginText, tieText } from './columnModel';
+import { COLUMN_DEFAULTS, columnReport, columnToInput, methodLabel, proposeColumn, proposeColumnSection, spacingOriginText, tieText } from './columnModel';
+import type { ColumnDraft } from './columnProposal';
 import {
   ActionNote, BarSelect, ChecksList, IdentityGroup, InlineAction, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict,
   formatNumber, useDraftHistory, useStoredDraft,
@@ -52,12 +53,25 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   useEffect(() => () => activeProposal.current?.cancel(), []);
   const [diagramAxis, setDiagramAxis] = useState<'both' | 'x' | 'y'>('both');
   const [showNominal, setShowNominal] = useState(true);
+  // Primero la menor sección que cumple con el armado capturado; si ninguna lo
+  // logra, sección y armado juntos. La propuesta aplicada siempre cumple.
   const propose = () => {
+    const sizeText = (fields: Partial<ColumnDraft>) => circular ? `Ø ${fields.diameter}` : `${fields.width} × ${fields.depth}`;
+    const section = proposeColumnSection(chrome.code, draft);
+    if (section) {
+      const same = circular ? section.diameter === draft.diameter : section.width === draft.width && section.depth === draft.depth;
+      if (!same && !replace({ ...draft, ...section })) return;
+      setProposalNote(same
+        ? `La sección actual (${sizeText(section)} cm) ya es la menor que cumple con este armado.`
+        : `Sección propuesta: ${sizeText(section)} cm, la menor que cumple con el armado actual.`);
+      return;
+    }
     const proposal = proposeColumn(chrome.code, draft);
     if (!proposal) { setProposalNote('Ninguna sección hasta 120 cm cumple: revisa las solicitaciones y la esbeltez.'); return; }
-    const sectionFields = circular ? { diameter: proposal.diameter ?? draft.diameter } : { width: proposal.width ?? draft.width, depth: proposal.depth ?? draft.depth };
-    if (!replace({ ...draft, ...sectionFields })) return;
-    setProposalNote(`Sección propuesta: ${circular ? `Ø ${proposal.diameter}` : `${proposal.width} × ${proposal.depth}`} cm. El armado actual se conservó.`);
+    if (!replace({ ...draft, ...proposal })) return;
+    const total = circular ? Number(proposal.barCount) : 2 * (Number(proposal.barsWidth) + Number(proposal.barsDepth)) - 4;
+    const bars = `${total} ${rebarLabel(Number(proposal.bar))}${circular ? '' : ` (${proposal.barsWidth} por cara b y ${proposal.barsDepth} por cara h)`}`;
+    setProposalNote(`Sección propuesta: ${sizeText(proposal)} cm con ${bars}; con el armado anterior ninguna sección hasta 120 cm cumplía.`);
   };
   const proposeReinforcement = () => {
     activeProposal.current?.cancel();
@@ -101,7 +115,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
     caption={result.ok ? `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} · ρ ${formatNumber(result.steelRatio * 100, 2)} %` : undefined}
     inputs={<>
-      <FieldGroup title="Sección, materiales y acciones" action={<InlineAction label="Proponer sección" title="Dimensionar sección conservando el armado actual" onClick={propose} />}>
+      <FieldGroup title="Sección, materiales y acciones" action={<InlineAction label="Proponer sección" title="Menor sección que cumple con el armado actual; si no hay, también propone el armado" onClick={propose} />}>
         <div className="dw-span-all">
           <SegmentedControl label="Forma de la sección" size="sm" value={circular ? 'circular' : 'rectangular'} onValueChange={set('shape')}
             options={[{ value: 'rectangular', label: 'Rectangular' }, { value: 'circular', label: 'Circular' }]} />

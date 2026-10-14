@@ -166,6 +166,22 @@ export function columnReportFromDraft(code: DesignCodeId, draft: ColumnDraft) {
 const PROPOSED_BARS = [15.9, 19.1, 22.2, 25.4, 28.6, 31.8];
 
 /**
+ * Menor sección que cumple con el armado capturado (mismas barras por cara o
+ * total en la circular): crece de 5 en 5 cm hasta 120. Si ninguna cumple con
+ * ese armado devuelve `null` y quien la pide recurre a {@link proposeColumn}.
+ */
+export function proposeColumnSection(codeId: DesignCodeId, draft: ColumnDraft): Partial<ColumnDraft> | null {
+  const circular = circularDraft(draft);
+  const minimum = draft.group === 'B2' ? 25 : 30;
+  for (let size = minimum; size <= 120; size += 5) {
+    const fields: Partial<ColumnDraft> = circular ? { diameter: String(size) } : { width: String(size), depth: String(size) };
+    const trial = designColumn(columnToInput(codeId, { ...draft, ...fields }));
+    if (trial.ok && trial.status !== 'fail') return fields;
+  }
+  return null;
+}
+
+/**
  * Sección y armado mínimos que cumplen: crece la sección de 5 en 5 cm y, en
  * cada tamaño, prueba diámetros y número de barras hasta el de menor acero que
  * no reprueba nada. Acepta el primer tamaño con cuantía hasta 2.5 %; si ninguno
