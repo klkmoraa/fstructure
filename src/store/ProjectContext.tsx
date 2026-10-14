@@ -394,11 +394,11 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
       setIsAnalyzing(false);
       if (!next.success) setResultTab('issues');
       else if (selectionRef.current?.kind !== 'member' && next.memberResults.length) {
-        const critical = next.memberResults.reduce((best, current) => {
-          const bestValue = Math.max(Math.abs(best.maxMoment), Math.abs(best.minMoment));
-          const currentValue = Math.max(Math.abs(current.maxMoment), Math.abs(current.minMoment));
-          return currentValue > bestValue ? current : best;
-        });
+        // La barra crítica es la de mayor momento; en una armadura, la de mayor axial.
+        const moment = (member: typeof next.memberResults[number]) => Math.max(Math.abs(member.maxMoment), Math.abs(member.minMoment));
+        const axial = (member: typeof next.memberResults[number]) => Math.max(Math.abs(member.maxAxial), Math.abs(member.minAxial));
+        const governing = next.memberResults.some((member) => moment(member) > 1e-9) ? moment : axial;
+        const critical = next.memberResults.reduce((best, current) => governing(current) > governing(best) ? current : best);
         setSelection({ kind: 'member', id: critical.memberId });
       }
     };

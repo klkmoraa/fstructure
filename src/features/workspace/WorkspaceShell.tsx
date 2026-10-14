@@ -279,7 +279,9 @@ const WorkspaceBrokerContent = ({
     */
   useEffect(() => {
     if (analysis?.success && analysis !== reportedAnalysisRef.current) {
-      activateEvidenceLayer('moment', { setResultTab, dispatchLayers: dispatchEditorLayers, revealResultOverlay });
+      // Sin flexión en ninguna barra (una armadura) la lectura de gobierno es el axial.
+      const bending = analysis.memberResults.some((member) => Math.max(Math.abs(member.maxMoment), Math.abs(member.minMoment)) > 1e-9);
+      activateEvidenceLayer(bending || !analysis.memberResults.length ? 'moment' : 'axial', { setResultTab, dispatchLayers: dispatchEditorLayers, revealResultOverlay });
     }
     reportedAnalysisRef.current = analysis;
   }, [analysis, revealResultOverlay, setResultTab]);
