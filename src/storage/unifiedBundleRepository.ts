@@ -72,6 +72,15 @@ export class BundleConflictError extends Error {
 type State = { [K in keyof StoredLibrarySnapshot]: Map<string, StoredLibrarySnapshot[K][number]> };
 const stores = ['bundles', 'recoveries', 'migrations'] as const;
 const emptyState = (): State => ({ bundles: new Map(), recoveries: new Map(), migrations: new Map() });
+/** A newer model schema may supply missing defaults, but must preserve every stored field. */
+const preservesStoredFields = (stored: unknown, normalized: unknown): boolean => {
+  if (stored === null || typeof stored !== 'object') return stored === normalized;
+  if (normalized === null || typeof normalized !== 'object' || Array.isArray(stored) !== Array.isArray(normalized)) return false;
+  if (Array.isArray(stored)) return stored.length === (normalized as unknown[]).length
+    && stored.every((item, index) => preservesStoredFields(item, (normalized as unknown[])[index]));
+  return Object.entries(stored).every(([key, value]) => Object.hasOwn(normalized, key)
+    && preservesStoredFields(value, (normalized as Record<string, unknown>)[key]));
+};
 interface BundleDatabase {
   transaction<T>(write: boolean, operation: (state: State) => T): Promise<T>;
 }
@@ -157,7 +166,10 @@ abstract class BundleRepository implements UnifiedBundleRepository {
     const validated = validateBundle(record.bundle);
     // Stored bytes keep their original version and checksum until an explicit save.
     validated.model2d.schemaVersion = record.bundle.model2d.schemaVersion;
-    if (record.id !== validated.manifest.projectId || !Number.isInteger(record.revision) || record.revision < 1 || canonicalSerialize(validated) !== canonicalSerialize(record.bundle) || await sha256(canonicalSerialize(record.bundle)) !== record.checksum) {
+    if (validated.space3d?.sourceModel2D && record.bundle.space3d?.sourceModel2D) {
+      validated.space3d.sourceModel2D.schemaVersion = record.bundle.space3d.sourceModel2D.schemaVersion;
+    }
+    if (record.id !== validated.manifest.projectId || !Number.isInteger(record.revision) || record.revision < 1 || !preservesStoredFields(record.bundle, validated) || await sha256(canonicalSerialize(record.bundle)) !== record.checksum) {
       throw new Error(`Bundle ${record.id} failed stored integrity verification`);
     }
   }
@@ -165,7 +177,10 @@ abstract class BundleRepository implements UnifiedBundleRepository {
     if (record.bundle) {
       const validated = validateBundle(record.bundle);
       validated.model2d.schemaVersion = record.bundle.model2d.schemaVersion;
-      if (record.projectId !== validated.manifest.projectId || record.space3d || canonicalSerialize(validated) !== canonicalSerialize(record.bundle)) throw new Error('Recovery identity failed integrity verification');
+      if (validated.space3d?.sourceModel2D && record.bundle.space3d?.sourceModel2D) {
+        validated.space3d.sourceModel2D.schemaVersion = record.bundle.space3d.sourceModel2D.schemaVersion;
+      }
+      if (record.projectId !== validated.manifest.projectId || record.space3d || !preservesStoredFields(record.bundle, validated)) throw new Error('Recovery identity failed integrity verification');
     } else if (record.space3d) parseSpace3DDraft(canonicalSerialize(record.space3d));
     else throw new Error('Recovery content failed integrity verification');
     if (await sha256(canonicalSerialize(record.bundle ?? record.space3d)) !== record.checksum) throw new Error(`Recovery ${record.id} failed stored integrity verification`);

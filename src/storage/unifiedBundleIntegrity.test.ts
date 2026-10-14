@@ -52,6 +52,38 @@ const implementations = [
 ];
 
 describe.each(implementations)('$name corruption isolation', ({ setup }) => {
+  it('opens a checksummed older project when current defaults only add fields, then migrates on save', async () => {
+    const { repository, access } = setup();
+    const original = bundle('older-defaults');
+    await repository().saveBundle(original, 0);
+    const record = (await access('bundles'))[0] as StoredBundleRecord;
+    record.bundle.model2d.schemaVersion = 8;
+    delete (record.bundle.model2d.settings as Partial<typeof record.bundle.model2d.settings>).showResultValues;
+    record.checksum = await sha256(canonicalSerialize(record.bundle));
+    await access('bundles', (stored) => Object.assign(stored, record));
+    const before = await access('bundles');
+    expect((await repository().snapshot()).integrityDiagnostics).toEqual([]);
+    const session = new UnifiedProjectSession(repository());
+    const opened = await session.open('older-defaults');
+    expect(opened?.settings.showResultValues).toBe(true);
+    expect(await access('bundles')).toEqual(before);
+    await session.save2D(opened!);
+    expect((await repository().openBundle('older-defaults'))?.bundle.model2d.schemaVersion).toBe(CURRENT_SCHEMA_VERSION);
+  });
+
+  it('still blocks a checksummed field that normalization would discard', async () => {
+    const { repository, access } = setup();
+    await repository().saveBundle(bundle('unknown-field'), 0);
+    const record = (await access('bundles'))[0] as StoredBundleRecord;
+    (record.bundle.model2d.settings as unknown as Record<string, unknown>).futureOption = { value: 1 };
+    record.checksum = await sha256(canonicalSerialize(record.bundle));
+    await access('bundles', (stored) => Object.assign(stored, record));
+    expect((await repository().snapshot()).integrityDiagnostics).toEqual([
+      expect.objectContaining({ store: 'bundles', recordId: 'unknown-field', code: 'invalid-record' }),
+    ]);
+    await expect(repository().openBundle('unknown-field')).rejects.toThrow(/integrity/);
+  });
+
   it.each([8, 9])('abre bundles v%s sin borrar ni reescribir el original y migra al guardar', async (version) => {
     const { repository, access } = setup();
     const original = bundle(`legacy-v${version}`);
