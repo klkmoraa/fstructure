@@ -46,7 +46,7 @@ import type {
  * local (y o z) que la contiene.
  */
 
-export interface Space3DFramePlane {
+interface Space3DFramePlane {
   /** `z:0`, `x:5`. */
   readonly id: string;
   readonly axis: 'x' | 'z';

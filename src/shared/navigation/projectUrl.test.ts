@@ -3,14 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { readProjectUrl, writeProjectUrl } from './projectUrl';
 
 describe('canonical project navigation', () => {
-  it('sends the retired exercise links to a clean Home', () => {
+  it('sends unknown surfaces without a project to the Home', () => {
     expect(readProjectUrl('https://example.test/app/?surface=calc&topic=shear-beam', 'active')).toEqual({ surface: 'welcome', projectId: 'active', tool: 'model2d' });
-    const url = new URL('https://example.test/app/?surface=calc&topic=shear-beam&find=shear-check');
-    const browser = { location: url as unknown as Location, history: { pushState: (_: unknown, __: string, next: URL) => { url.href = next.href; }, replaceState: (_: unknown, __: string, next: URL) => { url.href = next.href; }, state: null } as unknown as History };
-    writeProjectUrl(browser, { surface: 'welcome', projectId: 'p', tool: 'model2d' }, 'replace');
-    expect(url.searchParams.get('surface')).toBe('welcome');
-    expect(url.searchParams.has('topic')).toBe(false);
-    expect(url.searchParams.has('find')).toBe(false);
   });
   it('migrates legacy workspace2d preserving project identity', () => {
     expect(readProjectUrl('https://example.test/app/?surface=workspace2d&project=old', 'active')).toEqual({ surface: 'workspace', projectId: 'old', tool: 'model2d' });

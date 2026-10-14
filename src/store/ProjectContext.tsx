@@ -45,6 +45,15 @@ const PROJECT_LIBRARY_CHANGE_KEY = 'structureCo.project-library.changed';
 const THEME_STORAGE_KEY = 'fusionstructure.theme';
 
 /**
+ * Sólo el id del último archivo abierto (nunca sus datos): al recargar en la
+ * Home sin `?project=` se vuelve a él en lugar de empezar uno en blanco.
+ */
+const LAST_OPEN_PROJECT_KEY = 'fstructure.last-open-project';
+const readLastOpenProject = (): string | undefined => {
+  try { return localStorage.getItem(LAST_OPEN_PROJECT_KEY) ?? undefined; } catch { return undefined; }
+};
+
+/**
  * Tema inicial. La fusión había clavado el valor a `'light'` con un `setTheme`
  * vacío, así que el conmutador del producto y el comando de la paleta existían
  * pero no hacían nada. El orden es: lo que el usuario eligió aquí antes, y si
@@ -114,8 +123,8 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
       if (!active) return;
       const session = unifiedSessionRef.current ??= createUnifiedProjectSession();
       unsubscribe = session.subscribeStatus(() => { if (active) setStorageState(session.status); });
-      const requestedId = new URLSearchParams(window.location.search).get('project') ?? projectRef.current.id;
-      const canonical = await session.initialize(localStorage, projectRef.current, requestedId);
+      const urlId = new URLSearchParams(window.location.search).get('project');
+      const canonical = await session.initialize(localStorage, projectRef.current, urlId ?? projectRef.current.id, urlId ? undefined : readLastOpenProject());
       if (!active) return;
       projectRef.current = canonical;
       setProject(canonical);
@@ -135,6 +144,10 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
   }, []);
 
   useEffect(() => { projectRef.current = project; }, [project]);
+  useEffect(() => {
+    if (!unified || !unifiedReady) return;
+    try { localStorage.setItem(LAST_OPEN_PROJECT_KEY, project.id); } catch { /* modo privado: se empieza como antes */ }
+  }, [unified, unifiedReady, project.id]);
   useEffect(() => { selectionRef.current = selection; }, [selection]);
   useEffect(() => { analysisRef.current = analysis; }, [analysis]);
 

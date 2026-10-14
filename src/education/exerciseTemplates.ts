@@ -3,9 +3,9 @@ import type { ProjectModel } from '../types';
 
 const CUSTOM_MEMBER_IDENTITY = { materialOrigin: 'custom', sectionOrigin: 'custom' } as const;
 
-export type ClassroomExerciseTemplateId = 'blank' | 'simple-beam' | 'cantilever' | 'portal-frame' | 'triangular-truss';
-export type ClassroomDifficulty = 'basic' | 'intermediate' | 'advanced';
-export type ClassroomTopic = 'inicio' | 'vigas' | 'diagramas' | 'pórticos' | 'armaduras' | 'hiperestática';
+type ClassroomExerciseTemplateId = 'blank' | 'simple-beam' | 'cantilever' | 'portal-frame' | 'triangular-truss';
+type ClassroomDifficulty = 'basic' | 'intermediate' | 'advanced';
+type ClassroomTopic = 'inicio' | 'vigas' | 'diagramas' | 'pórticos' | 'armaduras' | 'hiperestática';
 export type ClassroomExerciseParameterKey = 'length' | 'height' | 'loadMagnitude' | 'distributedLoadMagnitude' | 'loadPosition';
 
 export interface ClassroomExerciseParameters {
@@ -148,7 +148,7 @@ const loadField: ClassroomExerciseField = { key: 'loadMagnitude', label: 'Carga 
 const distributedLoadField: ClassroomExerciseField = { key: 'distributedLoadMagnitude', label: 'Carga distribuida hacia abajo', unit: 'kN/m', min: 0.001, max: 1e9, step: 1 };
 const loadPositionField: ClassroomExerciseField = { key: 'loadPosition', label: 'Posición de la carga', unit: 'x/L', min: 0, max: 1, step: 0.05 };
 
-export const classroomExerciseTemplates: ClassroomExerciseTemplate[] = [
+const classroomExerciseTemplates: ClassroomExerciseTemplate[] = [
   {
     id: 'blank',
     name: 'Desde cero',

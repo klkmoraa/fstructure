@@ -27,7 +27,7 @@ export interface BeamExtraLoad {
   readonly endKn: number;
 }
 
-export interface BeamAnalysisCombination {
+interface BeamAnalysisCombination {
   readonly dead: number;
   readonly favorableDead: number;
   readonly live: number;
@@ -165,7 +165,7 @@ function buildBeamProject(input: BeamAnalysisInput): ProjectModel {
   };
 }
 
-export interface BeamStation { readonly x: number; readonly span: number; readonly local: number; readonly side: 'left' | 'right' }
+interface BeamStation { readonly x: number; readonly span: number; readonly local: number; readonly side: 'left' | 'right' }
 type Station = BeamStation;
 
 function sample(project: ProjectModel, result: AnalysisResult, stations: readonly Station[]): CaseResponse {

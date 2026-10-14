@@ -116,7 +116,7 @@ const sectionInertia = (section: FrameSection) => section.widthMm * section.heig
 const sectionArea = (section: FrameSection) => section.widthMm * section.heightMm / 1e6;
 
 /** Fuente de diseño del pórtico generado: geometría, casos y su análisis rápido. */
-export function frameSource(input: FrameDesignInput): StructureSource & { readonly selfWeight: FrameDesignResult['selfWeight'] } {
+function frameSource(input: FrameDesignInput): StructureSource & { readonly selfWeight: FrameDesignResult['selfWeight'] } {
   const lines = input.bays.length + 1;
   const xs = [0];
   input.bays.forEach((length) => xs.push(xs[xs.length - 1]! + length));

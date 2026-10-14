@@ -8,7 +8,7 @@ import type { ProposalStep } from './frameProposal';
 
 type Candidate = { provider: ModelResultProvider; source: 'Modelo 2D' | 'Modelo 3D'; memberId: string; axisId?: string };
 type SourceList = { label: 'Modelo 2D' | 'Modelo 3D'; provider?: ModelResultProvider; axisId?: string };
-export type LinkedPieceCreationResult = { readonly ok: true } | { readonly ok: false; readonly reason: string };
+type LinkedPieceCreationResult = { readonly ok: true } | { readonly ok: false; readonly reason: string };
 
 function candidates(modelSource: ExternalStructureSource | null, modelAxes: ExternalStructureAxes | null): Candidate[] {
   const sources: SourceList[] = [

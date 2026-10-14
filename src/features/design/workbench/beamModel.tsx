@@ -42,7 +42,7 @@ export const ENDS: { value: BeamEnd; label: string }[] = [
   { value: 'free', label: 'Libre' },
 ];
 
-export type BeamSupportPreset = 'simple' | 'propped' | 'fixed' | 'cantilever-left' | 'cantilever-right' | 'continuous';
+type BeamSupportPreset = 'simple' | 'propped' | 'fixed' | 'cantilever-left' | 'cantilever-right' | 'continuous';
 
 /** Ajusta apoyos rápidos sin reemplazar cargas ni claros capturados. */
 export function beamSupportPreset(preset: BeamSupportPreset, draft: BeamDraft, spans: readonly SpanDraft[]) {

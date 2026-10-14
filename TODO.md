@@ -6,7 +6,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 - [x] Por separado o proyecto completo: las mismas pantallas (Modelo 2D, Modelo 3D y cada pieza de Diseño) como archivo individual sin enlaces, o el proyecto con 2D, 3D y Diseño enlazados; Home con ambas entradas y Proyectos filtra individuales.
 - [ ] Individual → proyecto: convertir un cálculo individual (p. ej. un Modelo 2D) en proyecto completo sin copiar datos a mano.
-- [ ] Al recargar estando en la Home se abre un proyecto en blanco aunque el último archivo siga en Proyectos (pasa igual con proyectos y con individuales): recordar el último abierto.
+- [x] Al recargar en la Home se reabre el último archivo de este navegador (antes se abría uno en blanco).
 
 - [x] Momento individual y Diagramas: misma normal local y convención de signos, centésimas en valores grandes y extremo derecho legible junto al zoom.
 

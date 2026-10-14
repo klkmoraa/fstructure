@@ -3,7 +3,7 @@ import type { BeamDetailDraft } from './beamDetailDraft';
 import type { SpanDraft } from './beamModel';
 import { parseNumber } from './formNumbers';
 
-export interface ParsedBeamDetails {
+interface ParsedBeamDetails {
   readonly loads: readonly BeamExtraLoad[];
   readonly bastions: readonly ProvidedBastion[];
   readonly stirrupZones: readonly (ProvidedStirrupZone | null)[];

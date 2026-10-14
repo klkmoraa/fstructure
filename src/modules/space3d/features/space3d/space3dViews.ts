@@ -8,7 +8,7 @@ import { SPACE3D_SCOPE_3D, type Space3DViewScope } from '../../space3d/view/scen
 
 export type Space3DViewId = string;
 
-export interface Space3DViewOption {
+interface Space3DViewOption {
   readonly id: Space3DViewId;
   readonly group: '3d' | 'plan' | 'elevation';
   readonly scope: Space3DViewScope;

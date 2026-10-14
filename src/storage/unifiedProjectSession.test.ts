@@ -31,6 +31,32 @@ it('starts a blank project when the legacy fallback points to a project the user
   expect(opened.nodes).toHaveLength(0);
   expect(opened.settings.units).toBe(project.settings.units);
 });
+it('reopens the last project of this browser when the URL asks for none', async () => {
+  const repo = new InMemoryUnifiedBundleRepository();
+  const fallback = createDefaultProject();
+  const last = { ...createDefaultProject(), id: 'last-open', name: 'Zapata individual' };
+  await repo.saveBundle(createUnifiedProjectBundle(last, 'v1'), 0);
+  const opened = await new UnifiedProjectSession(repo).initialize(storage, fallback, fallback.id, 'last-open');
+  expect(opened.name).toBe('Zapata individual');
+});
+it('ignores a remembered project that was deleted or cannot be read, without reporting an error', async () => {
+  const repo = new InMemoryUnifiedBundleRepository();
+  const fallback = createDefaultProject();
+  const gone = { ...createDefaultProject(), id: 'gone' };
+  await repo.saveBundle(createUnifiedProjectBundle(gone, 'v1'), 0);
+  await repo.setLibraryState(['gone'], 'deleted');
+  const deleted = new UnifiedProjectSession(repo);
+  expect((await deleted.initialize(storage, fallback, fallback.id, 'gone')).id).toBe(fallback.id);
+  class BrokenRepository extends InMemoryUnifiedBundleRepository {
+    override async openBundle(id: string): Promise<StoredBundleRecord | null> {
+      if (id === 'broken') throw new Error('Bundle broken integrity failure');
+      return super.openBundle(id);
+    }
+  }
+  const broken = new UnifiedProjectSession(new BrokenRepository());
+  expect((await broken.initialize(storage, fallback, fallback.id, 'broken')).id).toBe(fallback.id);
+  expect(broken.status.issue).toBeNull();
+});
 it('retains the canonical fallback revision when a requested project is absent', async () => {
   const repo = new InMemoryUnifiedBundleRepository();
   const project = createDefaultProject();

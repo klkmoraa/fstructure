@@ -182,7 +182,7 @@ const ticks = (min: number, max: number, target: number) => {
 };
 
 /** Otros estados de demanda que se revisan con la misma sección (p. ej. las combinaciones de un pórtico). */
-export interface InteractionCloudPoint { readonly axialKn: number; readonly momentKnm: number; readonly label: string }
+interface InteractionCloudPoint { readonly axialKn: number; readonly momentKnm: number; readonly label: string }
 
 export function InteractionChart({ result, axis = 'both', showNominal = true, cloud = [] }: { result: ColumnDesignResult; axis?: 'both' | 'x' | 'y'; showNominal?: boolean; cloud?: readonly InteractionCloudPoint[] }) {
   const W = 480;

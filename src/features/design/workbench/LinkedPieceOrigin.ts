@@ -6,7 +6,7 @@ export interface LinkedPieceOrigin {
   readonly copiedFields: Record<string, string>;
 }
 
-export interface WorkbenchOriginsDraft {
+interface WorkbenchOriginsDraft {
   readonly version: 1;
   readonly byElement: Partial<Record<'column' | 'flexure', LinkedPieceOrigin>>;
 }

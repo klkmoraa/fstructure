@@ -1345,7 +1345,7 @@ const drawPortalMethod = (context: ReportContext, solution: PortalMethodResult):
   // moments are that shear times the distance to the point of inflection. Both are written as
   // the product that produced them, and only where that product really gives the figure the
   // table above lists.
-  for (const story of [...new Set(solution.columns.map((column) => column.story))]) {
+  for (const story of new Set(solution.columns.map((column) => column.story))) {
     const columns = solution.columns.filter((column) => column.story === story);
     const widthTotal = columns.reduce((sum, column) => sum + column.tributaryWidth, 0);
     const storyShear = solution.storyShear[story - 1] ?? 0;
@@ -1496,7 +1496,7 @@ const drawCantileverMethod = (context: ReportContext, solution: CantileverMethod
   // formula, each column's quotient is divided out: if the hypothesis holds — and it does,
   // because it is how the solution was built — every column of a storey lands on the same
   // number, and the reader can see it land.
-  for (const story of [...new Set(solution.columns.map((column) => column.story))]) {
+  for (const story of new Set(solution.columns.map((column) => column.story))) {
     const columns = solution.columns.filter((column) => column.story === story);
     const quotients = columns.flatMap((column) => {
       const member = index.member(column.memberId);

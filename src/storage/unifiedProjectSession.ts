@@ -53,14 +53,23 @@ export class UnifiedProjectSession {
   constructor(repository: UnifiedBundleRepository) { this.repository = repository; }
   currentBundle(id: string) { return structuredClone(this.working.get(id) ?? this.records.get(id)?.bundle ?? null); }
 
-  initialize(storage: LegacyBundleStorage, fallback: ProjectModel, projectId = fallback.id): Promise<ProjectModel> {
+  /**
+   * `remembered` es el último archivo abierto en este navegador: se abre cuando
+   * la URL no pide uno. Si ya no existe o no se puede leer, se sigue como antes
+   * sin marcar error: no es lo que la persona pidió.
+   */
+  initialize(storage: LegacyBundleStorage, fallback: ProjectModel, projectId = fallback.id, remembered?: string): Promise<ProjectModel> {
     return this.initialization ??= (async () => {
       const snapshot = await this.repository.migrateLegacy(storage);
       const diagnostics = [...snapshot.integrityDiagnostics.map((item) => item.message),
         ...snapshot.migrations.filter((item) => item.status === 'invalid').map((item) => item.diagnostic ?? item.sourceKey)];
       if (diagnostics.length) this.status = { issue: 'load-failed', message: diagnostics.join(' · ') };
       else if (snapshot.recoveries.length) this.status = { issue: 'recovered', message: `${snapshot.recoveries.length} recuperaciones conservadas en el proyecto local.` };
-      const opened = await this.open(projectId) ?? (projectId !== fallback.id ? await this.open(fallback.id) : null);
+      const status = this.status;
+      const last = remembered && remembered !== projectId
+        ? await this.open(remembered).catch(() => { this.status = status; return null; })
+        : null;
+      const opened = last ?? await this.open(projectId) ?? (projectId !== fallback.id ? await this.open(fallback.id) : null);
       if (opened) return opened;
       if (snapshot.deletedProjectIds?.includes(fallback.id)) {
         const blank = createBlankProject();

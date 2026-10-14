@@ -76,7 +76,7 @@ const failures = (result: StructureDesignResult) => {
 };
 
 /** Lo que la búsqueda necesita de una estructura: cómo diseñarla con unas secciones y cuánto mide. */
-export interface SectionSearch {
+interface SectionSearch {
   /** Diseña con la viga y la columna (cm) y las barras por cara de la columna. */
   readonly design: (beam: ProposedSection, column: ProposedSection, barsPerFace: number) => StructureOutcome;
   /** Longitud total de vigas y de columnas, m (para el volumen de concreto). */
@@ -104,7 +104,7 @@ export interface SectionSearch {
  * Es un generador: cada `next()` hace a lo más un diseño completo, para que la
  * mesa lo reparta en tareas y siga respondiendo.
  */
-export function* searchSections(search: SectionSearch): Generator<ProposalStep, void, void> {
+function* searchSections(search: SectionSearch): Generator<ProposalStep, void, void> {
   const barsPerFace = (c: number) => columnBarsPerFace(c, search.barDiameterMm);
   const volume = ({ b, h, c }: Candidate) => (search.beamLengthM * b * h + search.columnLengthM * c * c) / 1e4;
   const valid = ({ b, h, c }: Candidate) => b >= BEAM_MIN.width && b <= BEAM_MAX.width && h >= Math.max(BEAM_MIN.height, b) && h <= Math.min(BEAM_MAX.height, BEAM_MAX_ASPECT * b)
@@ -230,7 +230,7 @@ function proposeUniformModelSections(code: DesignCodeId, draft: FrameDraft, mode
 }
 
 /** Ajuste por grupo desde una solución uniforme válida: descenso hasta que ningún paso de 5 cm ahorra y cumple. */
-export function* trimSectionGroups(uniform: Generator<ProposalStep, void, void>, groups: readonly ConcreteSectionGroup[],
+function* trimSectionGroups(uniform: Generator<ProposalStep, void, void>, groups: readonly ConcreteSectionGroup[],
   design: (proposal: SectionProposal) => StructureOutcome): Generator<ProposalStep, void, void> {
   let base: SectionProposal | null = null;
   for (const step of uniform) {

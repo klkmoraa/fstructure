@@ -129,7 +129,7 @@ export interface SectionStudioSuccess {
   sources: { title: string; url: string }[];
 }
 export type SectionStudioResult = SectionStudioSuccess | { status: 'invalid'; errors: string[] };
-export type SectionStudioProposal =
+type SectionStudioProposal =
   | { status: 'proposed'; input: SectionStudioInput; result: SectionStudioSuccess; checkedCandidates: number }
   | { status: 'no-solution'; reason: string; checkedCandidates: number };
 

@@ -1,12 +1,10 @@
 import { resolveReinforcementProposal as computeProposal, sanitizeReinforcementProposalMessage } from './reinforcementProposalCompute';
 import type { ReinforcementProposalMessage, ReinforcementProposalRequest } from './reinforcementProposalTypes';
-export type { ProposalSnapshot, ReinforcementProposalMessage, ReinforcementProposalRequest } from './reinforcementProposalTypes';
+export type { ReinforcementProposalMessage, ReinforcementProposalRequest } from './reinforcementProposalTypes';
 
 function sanitizeMessage(request: ReinforcementProposalRequest, message: ReinforcementProposalMessage): ReinforcementProposalMessage {
   return sanitizeReinforcementProposalMessage(request, message);
 }
-
-export const resolveReinforcementProposal = computeProposal;
 
 export function startReinforcementProposal(request: ReinforcementProposalRequest, onResult: (message: ReinforcementProposalMessage) => void): () => void {
   let cancelled = false;

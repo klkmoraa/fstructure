@@ -88,7 +88,7 @@ const createInlineSpace3DWorker = (): WorkerLike => {
       const response = handleSpace3DWorkerRequest(message);
       queueMicrotask(() => {
         if (!alive) return;
-        for (const listener of [...(listeners.get('message') ?? [])]) listener({ data: response });
+        for (const listener of Array.from(listeners.get('message') ?? [])) listener({ data: response });
       });
     },
     terminate() { alive = false; listeners.clear(); },

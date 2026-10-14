@@ -6,9 +6,9 @@ export const DESIGN_WORKBENCH_SCHEMA_VERSION = 8;
 export const DESIGN_WORKBENCH_MAX_ENTRIES = 16;
 export const DESIGN_WORKBENCH_MAX_DOCUMENT_CHARS = 240_000;
 export const DESIGN_WORKBENCH_MAX_MEMORY_ITEMS = 60;
-export const DESIGN_WORKBENCH_MAX_MEMORY_CHARS = 180_000;
+const DESIGN_WORKBENCH_MAX_MEMORY_CHARS = 180_000;
 
-export type DesignDocumentInspection = {
+type DesignDocumentInspection = {
   status: 'empty' | 'supported' | 'future' | 'opaque' | 'invalid';
   schemaVersion: number | null;
   reason: string | null;

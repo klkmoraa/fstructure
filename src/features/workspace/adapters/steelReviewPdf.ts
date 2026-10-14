@@ -5,7 +5,7 @@ import type { LoadCombination, ProjectModel } from '../../../types';
 import { PdfLayout } from '../../../utils/pdf/pdfBuilder';
 import { createPalette } from '../../../utils/pdf/pdfTheme';
 
-export interface SteelReviewReport {
+interface SteelReviewReport {
   readonly projectName: string;
   readonly combination: LoadCombination;
   readonly summary: ReturnType<typeof summarizeNtcSteelTensionDesign>;

@@ -306,7 +306,7 @@ export interface StructureDiagramMember {
   readonly designId: string | null;
 }
 
-export interface StructureColumnState {
+interface StructureColumnState {
   readonly label: string;
   readonly combination: string;
   /** Compresión positiva. */
@@ -424,7 +424,7 @@ const LEVEL_TOLERANCE = 0.005;
 const round = (value: number) => Math.round(value / LEVEL_TOLERANCE) * LEVEL_TOLERANCE;
 
 /** Elevaciones donde termina alguna columna (superior): ahí actúa el caso de sondeo. */
-export function probeLevels(nodes: readonly StructureNode[], members: readonly StructureMember[]): number[] {
+function probeLevels(nodes: readonly StructureNode[], members: readonly StructureMember[]): number[] {
   const tops = members.filter((member) => member.kind === 'column').map((member) => round(Math.max(nodes[member.i]!.y, nodes[member.j]!.y)));
   return [...new Set(tops)].sort((a, b) => a - b);
 }

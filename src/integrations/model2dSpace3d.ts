@@ -25,7 +25,7 @@ import type { MemberLoad, MemberModel, NodeModel, ProjectModel } from '../types'
  * eje local y de toda barra del pórtico queda en su plano.
  */
 
-export interface ExtrudeOptions {
+interface ExtrudeOptions {
   /** Pórticos paralelos (≥ 1). */
   readonly frames: number;
   /** Separación entre pórticos, m. */
@@ -34,7 +34,7 @@ export interface ExtrudeOptions {
   readonly diaphragms?: boolean;
 }
 
-export interface Space3DFromModel2D {
+interface Space3DFromModel2D {
   readonly model: Space3DProjectV1 | null;
   readonly errors: readonly string[];
   /** Lo que no se pudo traer y por qué. */

@@ -180,7 +180,7 @@ export interface ColumnTies {
   readonly spiral?: ColumnSpiral;
 }
 
-export interface ColumnSpiral {
+interface ColumnSpiral {
   /** Paso centro a centro s. */
   readonly pitchMm: number;
   readonly clearPitchMm: number;
@@ -625,7 +625,7 @@ const aciCrossTies = (barsOnFace: number, clearSpacingMm: number) => {
 /** Columna: las solicitaciones se capturan a mano y se suponen de una misma combinación. */
 const CAPTURED_DEMAND = 'Pu, Mu y Vu capturados · concurrentes';
 
-export interface ColumnDesignOptions {
+interface ColumnDesignOptions {
   /** De dónde sale la demanda (p. ej. el estado de un pórtico); sin él, la captura concurrente. */
   readonly demandSource?: string;
 }

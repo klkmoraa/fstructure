@@ -67,7 +67,7 @@ export interface ModelResultProvider {
   support(request: { readonly nodeId: string; readonly targetId: string }, signal: AbortSignal): Promise<ModelSupportSnapshot>;
 }
 
-export function requireFinite(value: number, label: string): number {
+function requireFinite(value: number, label: string): number {
   if (!Number.isFinite(value)) throw new Error(`${label} debe ser finito.`);
   return value;
 }

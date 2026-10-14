@@ -185,6 +185,15 @@ const hasForce = (value: string): value is UnitForceId =>
 const hasLength = (value: string): value is UnitLengthId =>
   Object.prototype.hasOwnProperty.call(lengthDefinitions, value);
 
+/** Caracteres de control (U+0000–U+001F y U+007F): no caben en el nombre de una unidad. */
+const hasControlCharacter = (value: string): boolean => {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code <= 0x1f || code === 0x7f) return true;
+  }
+  return false;
+};
+
 const normalizeCustomName = (value: string): string =>
   value.trim().replace(/\s+/g, ' ');
 
@@ -199,7 +208,7 @@ export const parseCustomUnitSystemId = (value: unknown): CustomUnitSystem | null
     return null;
   }
   const name = normalizeCustomName(decodedName);
-  if (!name || name.length > 64 || /[\u0000-\u001f\u007f]/.test(name)) return null;
+  if (!name || name.length > 64 || hasControlCharacter(name)) return null;
   return { name, force: parts[1], length: parts[2] };
 };
 
@@ -210,7 +219,7 @@ export const createCustomUnitSystemId = (
 ): UnitSystemId => {
   if (!hasForce(force) || !hasLength(length)) throw new Error('Unidad personalizada no disponible.');
   const normalizedName = normalizeCustomName(name) || `${force}/${length}`;
-  if (normalizedName.length > 64 || /[\u0000-\u001f\u007f]/.test(normalizedName)) {
+  if (normalizedName.length > 64 || hasControlCharacter(normalizedName)) {
     throw new Error('El nombre de la unidad personalizada no es válido.');
   }
   return `${customUnitSystemPrefix}${encodeURIComponent(normalizedName)}:${force}:${length}` as UnitSystemId;

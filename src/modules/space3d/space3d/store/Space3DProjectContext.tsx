@@ -25,7 +25,7 @@ import type { Space3DAnalysisResult, Space3DProjectV1 } from '../model/types';
 export type Space3DAnalysisState = 'idle' | 'running' | 'ready' | 'stale' | 'failed' | 'cancelled';
 
 /** Qué cálculo produjo el resultado del lienzo. */
-export interface Space3DAnalysisSource {
+interface Space3DAnalysisSource {
   readonly kind: 'linear' | 'pdelta' | 'response-spectrum';
   /** Caso o combinación (lineal, P-Delta) o caso espectral. */
   readonly id: string;

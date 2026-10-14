@@ -5,7 +5,7 @@ import type { FlexureDraft } from './flexureModel';
 import { FLEXURE_DEFAULTS } from './flexureModel';
 import type { LinkedPieceOrigin } from './LinkedPieceOrigin';
 
-export type LinkedPieceTransfer = { readonly element: 'column' | 'flexure'; readonly fields: Record<string, string>; readonly origin: LinkedPieceOrigin };
+type LinkedPieceTransfer = { readonly element: 'column' | 'flexure'; readonly fields: Record<string, string>; readonly origin: LinkedPieceOrigin };
 
 const kgcm2 = (mpa: number) => String(Number((mpa * 10.197162129779).toFixed(2)));
 const cm = (mm: number) => String(Number((mm / 10).toFixed(2)));

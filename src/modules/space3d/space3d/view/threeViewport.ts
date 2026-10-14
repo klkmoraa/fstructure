@@ -512,14 +512,15 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
 
   const clearGroup = (name: Space3DSceneLayer) => {
     const group = groups.get(name)!;
-    for (const child of [...group.children]) {
+    // Copia: `remove` cambia `children` durante el recorrido.
+    for (const child of group.children.slice()) {
       group.remove(child);
       disposeObject(child);
     }
   };
 
   const buildWorldAxes = () => {
-    for (const child of [...gizmoGroup.children]) {
+    for (const child of gizmoGroup.children.slice()) {
       gizmoGroup.remove(child);
       disposeObject(child);
     }

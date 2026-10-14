@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dependencySpecifiersIn } from './check-local-foundation-dependencies.mjs';
 
 const isProductionTypeScript = (name) => /(?<!\.(?:test|spec))\.(?:ts|tsx)$/.test(name);
-const isStylesheet = (name) => /\.css$/.test(name);
+const isStylesheet = (name) => name.endsWith('.css');
 
 const filesUnder = (directory, predicate, ignored = new Set(['node_modules', '.git', 'dist', 'docs'])) => {
   if (!existsSync(directory)) return [];

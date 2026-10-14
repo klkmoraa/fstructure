@@ -6,7 +6,7 @@ import { REBAR_SIZES, complementary, type ElementCheck } from './shared';
 import { designSectionStudio, proposeSectionReinforcement, type SectionStudioInput } from '../concrete/sectionStudio';
 import { layoutBeamBed } from './beamBarLayout';
 
-export interface ArrangementBar { readonly xMm: number; readonly yMm: number; readonly diameterMm: number; readonly layer: number; readonly bed?: 'top' | 'bottom'; readonly kind?: string }
+interface ArrangementBar { readonly xMm: number; readonly yMm: number; readonly diameterMm: number; readonly layer: number; readonly bed?: 'top' | 'bottom'; readonly kind?: string }
 export interface ReinforcementArrangement {
   readonly shape: 'rectangle' | 'circle' | 'polygon';
   readonly distribution: 'tension-bed' | 'beam-beds' | 'column-perimeter' | 'circular-perimeter' | 'experimental-perimeter' | 'experimental-layers' | 'experimental-zones';

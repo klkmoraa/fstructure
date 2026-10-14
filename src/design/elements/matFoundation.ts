@@ -63,7 +63,7 @@ export interface MatPunching {
   readonly strengthStressMpa: number;
 }
 
-export interface MatStrip {
+interface MatStrip {
   readonly centerMm: number;
   readonly widthMm: number;
   /** Momentos por metro: positivo con tensión abajo (bajo columnas), negativo con tensión arriba (entre columnas). */

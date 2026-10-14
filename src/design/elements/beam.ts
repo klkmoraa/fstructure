@@ -31,9 +31,9 @@ export type { BeamExtraLoad };
  * la inercia de cada claro en m⁴ para el análisis de servicio con secciones
  * agrietadas; sin ella, la de la sección bruta.
  */
-export type BeamAnalysisProvider = (inertiaM4PerSpan?: readonly number[]) => BeamAnalysisOutcome;
+type BeamAnalysisProvider = (inertiaM4PerSpan?: readonly number[]) => BeamAnalysisOutcome;
 
-export interface BeamDesignOptions {
+interface BeamDesignOptions {
   readonly analyze?: BeamAnalysisProvider;
   /** De dónde sale la demanda, para la trazabilidad (p. ej. «Pórtico · nivel 2»). */
   readonly demandSource?: string;
@@ -101,7 +101,7 @@ export function grossBeamSectionProperties(widthMm: number, heightMm: number, fl
   return { areaMm2, inertiaMm4, centroidTopMm };
 }
 
-export interface FlangeWidthLimit {
+interface FlangeWidthLimit {
   /** bf máximo, alma incluida. */
   readonly widthMm: number;
   /** Vuelo máximo desde la cara del alma, por lado. */

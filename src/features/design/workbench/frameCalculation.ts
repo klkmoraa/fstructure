@@ -83,7 +83,7 @@ export function frameModelSpec(codeId: DesignCodeId, draft: FrameDraft, bays: re
   };
 }
 
-export function frameToInput(codeId: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): FrameDesignInput {
+function frameToInput(codeId: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): FrameDesignInput {
   const code = designCode(codeId);
   const group = loadGroupOf(draft.group);
   const lateral = code.lateralCombinations(group);
@@ -168,7 +168,7 @@ export type StructureOutcome =
   | { readonly ok: true; readonly result: StructureDesignResult; readonly frame: FrameDesignResult | null }
   | { readonly ok: false; readonly errors: readonly string[] };
 
-export const MODEL_MISSING = 'No hay Modelo 2D en este proyecto: modela la estructura en FStructure 2D o genera un pórtico aquí.';
+const MODEL_MISSING = 'No hay Modelo 2D en este proyecto: modela la estructura en FStructure 2D o genera un pórtico aquí.';
 const MODEL3D_MISSING = 'No hay Modelo 3D en este proyecto: modela, genera o trae del 2D la estructura en el modo 3D.';
 
 /** La estructura viene de un modelo del proyecto (2D o un eje del 3D), no del pórtico rápido. */

@@ -3,7 +3,7 @@ import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { isBeamDetailDraft } from '../../../shared/project/designDetailValidation';
 import type { BeamDetailDraft } from '../../../shared/project/designDetailValidation';
 import { commitWorkbenchBatch, type WorkbenchStorage } from './workbenchStorage';
-export type { BeamLoadDraft, BeamBastionDraft, BeamStirrupZoneDraft, BeamDetailDraft } from '../../../shared/project/designDetailValidation';
+export type { BeamDetailDraft } from '../../../shared/project/designDetailValidation';
 
 export const EMPTY_BEAM_DETAILS: BeamDetailDraft = {
   kind: 'beam', version: 1, loads: [], bastions: [], stirrupZones: [],
@@ -12,7 +12,7 @@ export const EMPTY_BEAM_DETAILS: BeamDetailDraft = {
 /** Valida forma y límites del borrador, sin evaluar geometría ni completar valores físicos. */
 export { isBeamDetailDraft } from '../../../shared/project/designDetailValidation';
 
-export interface StoredBeamDetails {
+interface StoredBeamDetails {
   readonly details: BeamDetailDraft;
   /** Preflight y escribe juntas las entradas que acompañan al detalle. */
   setDetails(details: BeamDetailDraft, writes?: Readonly<Record<string, JsonValue>>): boolean;

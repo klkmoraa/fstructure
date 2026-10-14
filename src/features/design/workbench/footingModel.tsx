@@ -503,7 +503,7 @@ export const matToInput = (codeId: DesignCodeId, draft: FootingDraft): MatFounda
 
 const matLayerText = (layer: MatLayer, diameterMm: number) => `${rebarLabel(diameterMm)} @ ${formatNumber(layer.spacingMm / 10, 0)} cm`;
 
-export function matReinforcementRows(result: MatFoundationResult): ReportRow[] {
+function matReinforcementRows(result: MatFoundationResult): ReportRow[] {
   const db = result.input.barDiameterMm;
   return (['x', 'y'] as const).flatMap((axis) => (['bottom', 'top'] as const).map((face) => {
     const layer = result.directions[axis][face];

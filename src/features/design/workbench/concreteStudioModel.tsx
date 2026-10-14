@@ -7,10 +7,10 @@ import { formatNumber, parseNumber } from './common';
 import type { DesignReport } from './designReport';
 import { SECTION_DEFAULTS, SECTION_PHILOSOPHIES, SECTION_SHAPES, sectionInput, sectionPhilosophy, type SectionDraft } from './concreteStudioInput';
 export { SECTION_DEFAULTS, SECTION_PHILOSOPHIES, SECTION_SHAPES, sectionInput, sectionPhilosophy } from './concreteStudioInput';
-export type { SectionDraft } from './concreteStudioInput';
-export type ValidSectionResult = Extract<SectionStudioResult, { status: 'ok' }>;
 
-export const SECTION_PRESETS = [
+type ValidSectionResult = Extract<SectionStudioResult, { status: 'ok' }>;
+
+const SECTION_PRESETS = [
   { value: 'beam', label: 'Flexión de viga' }, { value: 'column', label: 'Columna corta' },
   { value: 'slab', label: 'Franja de losa · 1 m' }, { value: 'pedestal', label: 'Pedestal' },
 ] as const;
@@ -45,7 +45,7 @@ export function sectionDraftErrors(draft: SectionDraft): string[] {
 }
 
 const shapeLabel = (draft: SectionDraft) => SECTION_SHAPES.find((shape) => shape.value === draft.shape)?.label.toLowerCase() ?? 'cuadrada';
-export const sectionTitle = (draft: SectionDraft) => {
+const sectionTitle = (draft: SectionDraft) => {
   const element = SECTION_PRESETS.find((preset) => preset.value === draft.preset)?.label ?? 'Sección';
   const dimensions = draft.shape === 'circle' ? `Ø ${draft.width} cm` : draft.shape === 'square' ? `${draft.width} × ${draft.width} cm` : `${draft.width} × ${draft.height} cm`;
   return `${element} ${shapeLabel(draft)} · ${dimensions}`;
@@ -57,7 +57,7 @@ export const sectionHeadline = (result: ValidSectionResult) => sectionHasPerpend
 export const sectionVerdict = (result: ValidSectionResult) => `${sectionHeadline(result)} · ${Number.isFinite(result.utilization) ? Math.round(result.utilization * 100) : '>999'} %`;
 export const sectionDirectionNote = (result: ValidSectionResult) => `El eje de deformación impuesto genera M⊥ = ${formatNumber(result.analysis.orthogonalMomentKnm, 2)} kN·m ${result.input.philosophy === 'allowable' ? 'en la demanda elástica' : 'en el punto de capacidad'}. Ese momento no fue introducido: la proyección no verifica equilibrio uniaxial ni biaxial.`;
 
-export function sectionTakeoff(result: ValidSectionResult, draft: SectionDraft): Takeoff {
+function sectionTakeoff(result: ValidSectionResult, draft: SectionDraft): Takeoff {
   const { quantities: q, geometry, input } = result;
   return {
     concreteM3: q.concreteM3, steelKg: q.totalSteelKg,

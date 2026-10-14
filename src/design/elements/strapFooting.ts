@@ -66,7 +66,7 @@ export interface StrapFootingInput {
   };
 }
 
-export interface StrapLayer {
+interface StrapLayer {
   readonly momentKnm: number;
   readonly requiredMm2: number;
   readonly minimumMm2: number;

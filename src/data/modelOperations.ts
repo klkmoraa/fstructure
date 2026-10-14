@@ -487,9 +487,10 @@ export const repairProjectTopology = (project: ProjectModel): TopologyRepairRepo
     }
   }
 
-  for (const node of [...project.nodes]) {
+  // Copias: partir una barra cambia las listas mientras se recorren.
+  for (const node of project.nodes.slice()) {
     if (!nodeHasStructuralActivity(project, node)) continue;
-    for (const member of [...project.members]) {
+    for (const member of project.members.slice()) {
       if (member.type === 'rigid' || member.i === node.id || member.j === node.id) continue;
       const ratio = memberInteriorRatioAtPoint(project, member, node);
       if (ratio === null) continue;
@@ -535,7 +536,7 @@ export const ensureNodeAtPoint = (project: ProjectModel, point: { x: number; y: 
     const ratio = memberInteriorRatioAtPoint(project, containingMember, point, tolerance)!;
     const result = splitMember(project, containingMember.id, ratio);
     const createdNode = project.nodes.find((node) => node.id === result.nodeId)!;
-    for (const member of [...project.members]) {
+    for (const member of project.members.slice()) {
       if (member.type === 'rigid' || member.i === createdNode.id || member.j === createdNode.id) continue;
       const crossingRatio = memberInteriorRatioAtPoint(project, member, createdNode, tolerance);
       if (crossingRatio !== null) splitMember(project, member.id, crossingRatio, createdNode.id);

@@ -3,8 +3,7 @@ import type { ToolId } from '../contracts';
 /**
  * `welcome` es la Home (la única portada de la app); `workspace`, la mesa de
  * FStructure. Las portadas que hubo antes (`surface=home`, el Inicio de
- * FusionStructure, la bienvenida de FEM y el Cálculo de ejercicios) abren hoy
- * la misma Home.
+ * FusionStructure y la bienvenida de FEM) abren hoy la misma Home.
  */
 export interface ProjectUrlState {
   surface: 'welcome' | 'workspace';
@@ -51,16 +50,13 @@ export function readProjectUrl(href: string, activeProjectId: string): ProjectUr
   const surface = params.get('surface');
   // La bienvenida de una herramienta (`surface=home`) y el Inicio son hoy la misma Home.
   // FEM se retiró: sus enlaces (`tool=fem`, `surface=fem`) abren la Home.
-  if (surface === 'home' || surface === 'welcome' || surface === 'fem' || surface === 'calc' || canonical === 'fem') return { surface: 'welcome', projectId, tool };
+  if (surface === 'home' || surface === 'welcome' || surface === 'fem' || canonical === 'fem') return { surface: 'welcome', projectId, tool };
   const workspace = params.has('tool') || legacy !== undefined || (params.has('project') && surface !== 'welcome');
   if (!workspace) return { surface: 'welcome', projectId, tool };
   const requestedMode = params.get('mode');
   const mode = tool === 'model2d' ? legacyMode(params) ?? (isMesaMode(requestedMode) ? requestedMode : null) : null;
   return mode && mode !== 'model' ? { surface: 'workspace', projectId, tool, mode } : { surface: 'workspace', projectId, tool };
 }
-
-/** Parámetros del Cálculo de ejercicios retirado: sus enlaces abren la Home limpia. */
-const CALC_PARAMS = ['topic', 'find', 'piece'] as const;
 
 export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, route: ProjectUrlState, mode: 'push' | 'replace'): void {
   const url = new URL(browser.location.href);
@@ -70,11 +66,9 @@ export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, r
   url.searchParams.delete('mode');
   if (route.surface === 'welcome') {
     // La sección abierta de la Home (`view`) es suya: se conserva al recargar.
-    CALC_PARAMS.forEach((key) => url.searchParams.delete(key));
     url.searchParams.set('surface', 'welcome');
   } else {
     url.searchParams.delete('view');
-    CALC_PARAMS.forEach((key) => url.searchParams.delete(key));
     url.searchParams.set('project', route.projectId);
     url.searchParams.set('tool', route.tool);
     if (route.tool === 'model2d' && route.mode && route.mode !== 'model') url.searchParams.set('mode', route.mode);

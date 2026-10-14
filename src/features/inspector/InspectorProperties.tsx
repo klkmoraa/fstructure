@@ -676,16 +676,14 @@ export const InspectorProperties = () => {
       </InspectorPropertyGroup>
       {nodeResult && (!classroomMode || resultsVisible) ? <InspectorPropertyGroup title={t('inspector.derivedValues')} mode="derived">
         <InspectorDerivedList rows={[
-          ...(nodeResult && (!classroomMode || resultsVisible) ? [
-            ...(!classroomMode ? [
-              { label: 'Ux', value: formatPhysical(nodeResult.ux, units, 'length') },
-              { label: 'Uy', value: formatPhysical(nodeResult.uy, units, 'length') },
-              { label: 'Rz', value: formatInspectorValue(nodeResult.rz, 'rad') },
-            ] : []),
-            { label: 'Rx', value: formatPhysical(nodeResult.rx, units, 'force') },
-            { label: 'Ry', value: formatPhysical(nodeResult.ry, units, 'force') },
-            { label: 'M', value: formatPhysical(nodeResult.rm, units, 'moment') },
+          ...(!classroomMode ? [
+            { label: 'Ux', value: formatPhysical(nodeResult.ux, units, 'length') },
+            { label: 'Uy', value: formatPhysical(nodeResult.uy, units, 'length') },
+            { label: 'Rz', value: formatInspectorValue(nodeResult.rz, 'rad') },
           ] : []),
+          { label: 'Rx', value: formatPhysical(nodeResult.rx, units, 'force') },
+          { label: 'Ry', value: formatPhysical(nodeResult.ry, units, 'force') },
+          { label: 'M', value: formatPhysical(nodeResult.rm, units, 'moment') },
         ]} />
       </InspectorPropertyGroup> : null}
       <InspectorAdvancedProperties>{renderNodeAdvanced}</InspectorAdvancedProperties>

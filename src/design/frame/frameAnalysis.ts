@@ -49,7 +49,7 @@ export interface FrameModel {
   readonly members: readonly FrameMember[];
 }
 
-export interface MemberCaseResult {
+interface MemberCaseResult {
   /** Fuerzas de los nudos sobre el miembro en ejes locales: [Ni, Vi, Mi, Nj, Vj, Mj]. */
   readonly endForces: readonly number[];
   /** Desplazamientos de los extremos en ejes locales: [ui, vi, θi, uj, vj, θj]. */
@@ -59,25 +59,25 @@ export interface MemberCaseResult {
   readonly qy: number;
 }
 
-export interface FrameCaseResult {
+interface FrameCaseResult {
   readonly id: string;
   /** Desplazamientos por nudo [ux, uy, rz] en m y rad. */
   readonly nodeDisplacements: readonly (readonly [number, number, number])[];
   readonly members: readonly MemberCaseResult[];
 }
 
-export interface MemberGeometry {
+interface MemberGeometry {
   readonly lengthM: number;
   readonly cos: number;
   readonly sin: number;
 }
 
-export interface FrameAnalysis {
+interface FrameAnalysis {
   readonly geometry: readonly MemberGeometry[];
   readonly cases: readonly FrameCaseResult[];
 }
 
-export type FrameAnalysisOutcome = { readonly ok: true; readonly analysis: FrameAnalysis } | { readonly ok: false; readonly error: string };
+type FrameAnalysisOutcome = { readonly ok: true; readonly analysis: FrameAnalysis } | { readonly ok: false; readonly error: string };
 
 const memberGeometry = (model: FrameModel, index: number): MemberGeometry => {
   const member = model.members[index]!;
@@ -228,7 +228,7 @@ export function analyzeFrame(model: FrameModel, cases: readonly FrameLoadCase[])
   return { ok: true, analysis: { geometry, cases: results } };
 }
 
-export interface MemberAction {
+interface MemberAction {
   /** Tensión positiva, kN. */
   readonly axial: number;
   readonly shear: number;

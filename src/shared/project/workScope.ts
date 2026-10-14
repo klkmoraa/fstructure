@@ -16,7 +16,7 @@ export const singleWorkTool = (project: Pick<ProjectModel, 'settings'>): SingleW
 export const singleWorkMode = (tool: SingleWorkTool): MesaMode =>
   tool === 'model2d' ? 'model' : tool === 'space3d' ? '3d' : 'design';
 
-export type SingleDesignElement = Exclude<SingleWorkTool, 'model2d' | 'space3d'>;
+type SingleDesignElement = Exclude<SingleWorkTool, 'model2d' | 'space3d'>;
 
 /** Pieza del taller de Diseño de un archivo individual; `null` en 2D, 3D o en un proyecto. */
 export const singleDesignElement = (project: Pick<ProjectModel, 'settings'>): SingleDesignElement | null => {

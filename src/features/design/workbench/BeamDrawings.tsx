@@ -45,7 +45,7 @@ const endSupport = (end: BeamEnd, side: 'left' | 'right', restrainsX: boolean): 
 };
 
 /** Cómo se dibujan los apoyos: ideales (viga aislada) o columnas del pórtico que la cruzan. */
-export type BeamSupportStyle = 'ideal' | 'columns';
+type BeamSupportStyle = 'ideal' | 'columns';
 
 function Supports({ result, scaleX, beamTop, beamHeight, style = 'ideal' }: { result: BeamDesignResult; scaleX: (x: number) => number; beamTop: number; beamHeight: number; style?: BeamSupportStyle }) {
   const { leftEnd, rightEnd } = result.input;

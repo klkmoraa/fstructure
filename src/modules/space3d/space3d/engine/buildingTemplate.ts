@@ -41,7 +41,7 @@ import { estimateSpace3DStaticBytes } from './solver';
 import { assessAnalysisAdmission, createAutomaticAnalysisBudget } from '../../../../numeric/admission';
 import { SPACE3D_GRAVITY } from './memberLoading';
 
-export interface Space3DBuildingTemplateOptions {
+interface Space3DBuildingTemplateOptions {
   readonly id?: string;
   readonly name?: string;
   /** Separaciones de los ejes en X (A, B, C…), m. */

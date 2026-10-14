@@ -316,7 +316,7 @@ export const StructureGeneratorPanel = ({
         const seeded = form.elasticModulus.trim() || form.area.trim() || form.inertia.trim()
           ? null
           : explicitPropertiesFromCatalog(form.materialId, form.sectionId, units);
-        patch({ propertiesSource: 'explicit', ...(seeded ?? {}) });
+        patch({ propertiesSource: 'explicit', ...seeded });
       }}
     />
     {form.propertiesSource === 'catalog' ? <>

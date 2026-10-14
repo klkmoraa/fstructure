@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import { designFlexureExercise, type FlexureExerciseInput } from '../../../design/elements/flexureExercise';
 import { designCode, type DesignCodeId } from '../../../design/elements/codes';
-import { barArea, equivalentBlockStrengthMpa } from '../../../design/elements/shared';
+import { equivalentBlockStrengthMpa } from '../../../design/elements/shared';
 import { formatNumber, mpaFromKgcm2, parseNumber } from './common';
 import type { DesignReport } from './designReport';
 
@@ -116,4 +116,3 @@ export function flexureReport(codeId: DesignCodeId, draft: FlexureDraft): Design
   };
 }
 
-export const flexureDisplayArea = (count: string, diameter: string) => parseNumber(count) * barArea(parseNumber(diameter));

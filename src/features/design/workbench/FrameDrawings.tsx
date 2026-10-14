@@ -19,7 +19,7 @@ export const ratioBand = (ratio: number, status?: StructureDiagramMember['status
   status === 'fail' || ratio > 1 + 1e-9 ? 'fail' : status === 'warning' ? 'review' : !Number.isFinite(ratio) ? 'skip' : ratio > 0.9 ? 'near' : ratio > 0.6 ? 'mid' : 'low';
 
 /** Nombre de lo que se diseña con un miembro: su línea de viga o su columna; si no se diseña, el miembro. */
-export const designLabelOf = (result: StructureDesignResult, member: StructureDiagramMember) =>
+const designLabelOf = (result: StructureDesignResult, member: StructureDiagramMember) =>
   result.beams.find((beam) => beam.id === member.designId)?.label
   ?? result.columns.find((column) => column.id === member.designId)?.label
   ?? `${member.label} (sin diseñar)`;

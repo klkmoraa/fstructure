@@ -1,4 +1,4 @@
-export interface BeamBarLayoutInput {
+interface BeamBarLayoutInput {
   readonly widthMm: number;
   readonly heightMm: number;
   readonly coverMm: number;

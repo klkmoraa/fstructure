@@ -1,4 +1,4 @@
-import { MAX_SPANS, type BeamDesignInput, type BeamEnd } from '../../../design/elements/beam';
+import type { BeamDesignInput, BeamEnd } from '../../../design/elements/beam';
 import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import type { BeamDraft, SpanDraft } from './beamModel';
 import type { BeamDetailDraft } from './beamDetailDraft';
@@ -37,19 +37,4 @@ export function beamToInput(codeId: DesignCodeId, draft: BeamDraft, spans: reado
       ...(physical ? { stirrupZones: physical.stirrupZones } : {}),
     } : null,
   };
-}
-
-export function parseSpanDraft(raw: unknown): SpanDraft[] | undefined {
-  if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_SPANS) return undefined;
-  const spans = raw.map((item: unknown) => {
-    if (!item || typeof item !== 'object') return undefined;
-    const record = item as Record<string, unknown>;
-    const pointAt = typeof record.pointAt === 'string' && record.pointAt.length <= 32 ? record.pointAt
-      : typeof record.length === 'string' && record.length.length <= 32 ? String(parseNumber(record.length) / 2) : undefined;
-    const withPoint: Record<string, unknown> = { ...record, pointAt };
-    const fields = ['length', 'dead', 'live', 'pointDead', 'pointLive', 'pointAt'] as const;
-    return fields.every((field) => typeof withPoint[field] === 'string' && (withPoint[field] as string).length <= 32)
-      ? Object.fromEntries(fields.map((field) => [field, withPoint[field]])) as unknown as SpanDraft : undefined;
-  });
-  return spans.every(Boolean) ? spans as SpanDraft[] : undefined;
 }

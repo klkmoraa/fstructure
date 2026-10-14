@@ -1,5 +1,5 @@
 import { parseNumber, isShortString } from './formNumbers';
-export { parseNumber, isShortString, LIVE_LOAD_USES, LONG_TERM_DURATIONS, sustainedRatioFor, xiFor, mpaFromKgcm2 } from './formNumbers';
+export { parseNumber, isShortString, LIVE_LOAD_USES, LONG_TERM_DURATIONS, mpaFromKgcm2 } from './formNumbers';
 import { AlertTriangle, CheckCircle2, ChevronDown, CircleAlert, CircleDashed, Info, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type SetStateAction } from 'react';
 import { Field, SegmentedControl, Select } from '../../../design-system/components/controls';
