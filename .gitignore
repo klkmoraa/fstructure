@@ -1,6 +1,7 @@
 # Dependencias y builds
 node_modules
 dist/
+dist-proposals/
 __pycache__/
 *.pyc
 
