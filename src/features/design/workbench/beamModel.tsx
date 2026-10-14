@@ -3,7 +3,7 @@ import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import { outOfScopeChecks } from '../../../design/elements/scope';
 import { rebarLabel } from '../../../design/elements/shared';
 import { beamTakeoff } from '../../../design/elements/takeoff';
-import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
+import { BeamElevation, BeamFreeBody, BeamRebarDetail, BeamSection } from './BeamDrawings';
 import type { BeamDetailDraft } from './beamDetailDraft';
 import { parseBeamDetails } from './beamDetailInput';
 import { beamToInput } from './beamInput';
@@ -248,9 +248,21 @@ export function beamReport(result: BeamDesignResult, draft: BeamDraft, alternati
         String(index + 1), formatNumber(span.positiveMomentKnm), formatNumber(span.negativeLeftKnm), formatNumber(span.negativeRightKnm),
         formatNumber(span.shearKn), formatNumber(span.checkedDeflectionMm), formatNumber(span.deflectionLimitMm),
       ]),
-    }],
+    }, ...(result.reactions ? [{
+      title: `Reacciones por apoyo (kN, kN·m) · ${result.reactions.combination.label}`,
+      columns: ['Apoyo', 'x (m)', 'CM', 'CV', 'Diseño', 'Máx. alternada', 'M diseño'],
+      rows: result.reactions.supports.flatMap((support, index) => support.kind === 'free' ? [] : [[
+        String.fromCharCode(65 + index), formatNumber(support.xM, 2), formatNumber(support.deadKn), formatNumber(support.liveKn),
+        formatNumber(support.ultimateKn), formatNumber(support.maxUltimateKn), formatNumber(support.ultimateKnm),
+      ]]),
+    }] : [])],
     takeoff: beamTakeoff(result),
     figures: [
+      ...(result.reactions ? [{
+        title: 'Diagrama de cuerpo libre',
+        note: `${result.reactions.combination.label} · todos los claros cargados · ΣFy = 0: ΣR = ${formatNumber(result.reactions.supports.reduce((sum, support) => sum + support.ultimateKn, 0))} kN = Σ cargas ${formatNumber(result.reactions.totalLoadKn)} kN`,
+        render: () => <BeamFreeBody result={result} bare />,
+      }] : []),
       { title: 'Elevación y envolventes', render: () => <BeamElevation result={result} /> },
       { title: 'Armado longitudinal', render: () => <BeamRebarDetail result={result} /> },
       ...result.cuts.map((cut) => ({ title: cut.label, note: `x = ${meters(cut.xM)} m`, render: () => <BeamSection result={result} cut={cut} /> })),

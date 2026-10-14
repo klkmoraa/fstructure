@@ -49,12 +49,20 @@ interface BeamAnalysisInput {
   readonly inertiaM4PerSpan?: readonly number[];
 }
 
+/** Reacción de un nudo de la viga en un caso: fuerza vertical (kN, + hacia arriba) y momento (kN·m). */
+export interface NodeReaction {
+  readonly ry: number;
+  readonly rm: number;
+}
+
 /** Una respuesta de caso: valores por estación a lo largo de toda la viga. */
 export interface CaseResponse {
   readonly moment: readonly number[];
   readonly shear: readonly number[];
   /** Flecha vertical, m (positiva hacia arriba). */
   readonly deflection: readonly number[];
+  /** Reacciones en cada nudo de apoyo (uno por extremo de claro), si el proveedor las da. */
+  readonly reactions?: readonly NodeReaction[];
 }
 
 export interface BeamAnalysis {
@@ -180,7 +188,12 @@ function sample(project: ProjectModel, result: AnalysisResult, stations: readonl
     shear.push(point?.shear ?? 0);
     deflection.push(evaluateDeformationAt(member.deformationSegments, station.local)?.v ?? 0);
   }
-  return { moment, shear, deflection };
+  const nodeResults = new Map(result.nodeResults.map((node) => [node.nodeId, node]));
+  const reactions = project.nodes.map((node) => {
+    const value = nodeResults.get(node.id);
+    return { ry: value?.ry ?? 0, rm: value?.rm ?? 0 };
+  });
+  return { moment, shear, deflection, reactions };
 }
 
 /** Raíces reales de un polinomio cuadrático en coordenada local al corte. */

@@ -471,6 +471,9 @@
 .dw-rebar-grid line { stroke: var(--dw-muted); stroke-width: .8; opacity: .6; }
 .dw-critical { fill: none; stroke: var(--dw-shear); stroke-width: 1.5; stroke-dasharray: 6 4; }
 .dw-critical--oneway { stroke-dasharray: 2 3; }
+.dw-critical--moment { stroke: var(--dw-moment, var(--fs-signal-moment)); stroke-dasharray: 4 3; }
+.dw-critical-cuts text { fill: var(--dw-muted); font: 600 9.5px var(--sc-font-mono); }
+.dw-critical-legend { font-size: 10px; }
 .dw-property-line { stroke: var(--dw-ink); stroke-width: 2.5; stroke-dasharray: 10 4 2 4; }
 
 .dw-load line { stroke: var(--sc-color-load-distributed, var(--dw-ink)); stroke-width: 1.2; }
@@ -1083,4 +1086,24 @@
   .dw-member-navigator { top: 8px; width: calc(100% - 16px); max-height: calc(100% - 16px); padding: 8px; }
   .dw-member-navigator__table-wrap { max-height: 220px; }
   .dw-member-navigator table { min-width: 620px; }
+}
+
+/* Diagrama de cuerpo libre: cargas de diseño en color de carga, reacciones en el
+   verde de reacción del lienzo 2D y ΣFy = 0 al pie. */
+.dw-fbd { margin: 0; display: grid; gap: 6px; }
+.dw-fbd__beam { stroke: var(--dw-ink); stroke-width: 5; stroke-linecap: round; }
+.dw-fbd__node { fill: var(--sc-color-surface-1); stroke: var(--dw-ink); stroke-width: 1.5; }
+.dw-fbd__letter { fill: var(--dw-muted); font: 600 11px var(--sc-font-mono); }
+.dw-fbd__reaction line, .dw-fbd__moment path { fill: none; stroke: var(--sc-color-reaction); stroke-width: 2; }
+.dw-fbd__head { fill: var(--sc-color-reaction); }
+.dw-fbd__reaction text { fill: var(--sc-color-reaction); font: 600 11px var(--sc-font-mono); paint-order: stroke; stroke: var(--sc-color-surface-1); stroke-width: 3px; }
+.dw-load--patch polyline { fill: none; stroke: var(--sc-color-load-distributed, var(--dw-ink)); stroke-width: 1.2; }
+.dw-fbd__balance { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 6px 10px; border-radius: var(--sc-radius-control); background: var(--sc-color-surface-inset); color: var(--dw-muted); font: 500 11.5px var(--sc-font-mono); }
+.dw-fbd__balance b { margin-left: auto; color: var(--sc-color-state-success-foreground); font-weight: 600; }
+.dw-fbd__balance.is-off b { color: var(--sc-color-state-error-foreground); }
+.dw-reactions { overflow-x: auto; }
+/* En teléfono el DCL conserva un tamaño legible y se recorre a lo ancho. */
+@media (max-width: 760px) {
+  .dw-fbd { overflow-x: auto; overscroll-behavior-x: contain; }
+  .dw-fbd > svg { min-width: 620px; }
 }

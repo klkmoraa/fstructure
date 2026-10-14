@@ -17,15 +17,29 @@ export function StripFootingSection({ result }: { result: StripFootingResult }) 
   const s = result.widthMm * scale;
   const t = Math.max(22, result.thicknessMm * scale);
   const ox = (W - s) / 2;
-  const oy = 70;
+  // Margen superior para la carga del muro: el corte es el DCL por metro.
+  const loadTop = 30;
+  const oy = 70 + loadTop;
   const wall = result.input.wallWidthMm * scale;
+  const center = W / 2;
+  // Secciones críticas: flexión en el paño (concreto) o a ¼ del muro (mampostería); cortante a d del paño.
+  const faceM = center + (result.input.wallMaterial === 'masonry' ? result.input.wallWidthMm / 4 : result.input.wallWidthMm / 2) * scale;
+  const faceV = center + (result.input.wallWidthMm / 2 + result.effectiveDepthMm) * scale;
+  const inside = (value: number) => value < ox + s - 2;
   const cover = result.input.coverMm * scale;
   const count = Math.min(result.distribution.barCount, 24);
   const arrows = 9;
-  return <svg className="dw-drawing" viewBox={`0 0 ${W} ${oy + t + 92}`} role="img"
+  return <svg className="dw-drawing" viewBox={`0 0 ${W} ${oy + t + 110}`} role="img"
     aria-label={`Corte de zapata corrida de ${formatNumber(result.widthMm / 10, 0)} centímetros de ancho y ${formatNumber(result.thicknessMm / 10, 0)} de peralte bajo muro de ${formatNumber(result.input.wallWidthMm / 10, 0)} centímetros`}>
     <SoilArrowMarker />
-    <rect className={result.input.wallMaterial === 'masonry' ? 'dw-column dw-wall--masonry' : 'dw-column'} x={W / 2 - wall / 2} y={10} width={wall} height={oy - 10} />
+    <defs>
+      <marker id="dw-wall-load" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="7" markerHeight="7"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
+    </defs>
+    <g className="dw-load dw-load--point">
+      <line x1={center} x2={center} y1={4} y2={loadTop + 6} markerEnd="url(#dw-wall-load)" />
+      <text x={center + 8} y={14}>{`wu = ${formatNumber(result.ultimateLoadKnPerM, 1)} kN/m`}</text>
+    </g>
+    <rect className={result.input.wallMaterial === 'masonry' ? 'dw-column dw-wall--masonry' : 'dw-column'} x={W / 2 - wall / 2} y={loadTop + 10} width={wall} height={oy - loadTop - 10} />
     <rect className="dw-concrete" x={ox} y={oy} width={s} height={t} />
     <line className="dw-rebar" x1={ox + cover} x2={ox + s - cover} y1={oy + t - cover} y2={oy + t - cover} />
     {Array.from({ length: count }, (_, index) => <circle key={index} className="dw-bar" r={2.2}
@@ -44,9 +58,14 @@ export function StripFootingSection({ result }: { result: StripFootingResult }) 
       <line x1={ox} x2={ox + s} y1={oy + t + 58} y2={oy + t + 58} />
       <text x={ox + s / 2} y={oy + t + 72} textAnchor="middle">{`B = ${formatNumber(result.widthMm / 10, 0)} cm`}</text>
     </g>
+    <g className="dw-critical-cuts">
+      {inside(faceM) ? <g><line className="dw-critical dw-critical--moment" x1={faceM} x2={faceM} y1={oy - 6} y2={oy + t + 2} /><text x={faceM + 3} y={oy - 4}>M</text></g> : null}
+      {inside(faceV) ? <g><line className="dw-critical dw-critical--oneway" x1={faceV} x2={faceV} y1={oy - 6} y2={oy + t + 2} /><text x={faceV + 3} y={oy - 4}>d</text></g> : null}
+    </g>
     <text className="dw-callout" x={W / 2} y={oy + t + 90} textAnchor="middle">
       {`${rebarLabel(result.input.barDiameterMm, 'transverse')} @ ${formatNumber(result.transverse.spacingMm / 10, 0)} cm · ${result.distribution.barCount} ${rebarLabel(result.input.distributionBarDiameterMm)} long.`}
     </text>
+    <text className="dw-muted dw-critical-legend" x={W / 2} y={oy + t + 106} textAnchor="middle">{`Mu ${formatNumber(result.momentKnmPerM, 1)} kN·m/m · a d Vu ${formatNumber(result.shearKnPerM, 1)} kN/m`}</text>
   </svg>;
 }
 
@@ -100,14 +119,32 @@ export function CombinedFootingDiagrams({ result }: { result: CombinedFootingRes
   const scaleX = (x: number) => left + x / length * plot;
   const columns = result.columnAtMm.map((x) => x / 1000);
   const band = 110;
-  return <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${2 * band + 90}`} role="img"
-    aria-label={`Diagramas de cortante y momento de la zapata combinada: momento positivo ${formatNumber(result.bottom.momentKnm, 0)} y negativo ${formatNumber(result.top?.momentKnm ?? 0, 0)} kilonewton metro`}>
-    <rect className="dw-beam" x={scaleX(0)} y={12} width={plot} height={12} />
+  // DCL a lo largo: cargas últimas de las columnas (primera combinación) y la presión del suelo, arriba de los diagramas.
+  const combination = result.input.combinations[0]!;
+  const loads = result.input.columns.map((column) => combination.dead * column.deadKn + combination.live * column.liveKn);
+  const offset = 64;
+  const beamY = 38;
+  const soil = Array.from({ length: 13 }, (_, index) => index / 12);
+  return <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${2 * band + 90 + offset}`} role="img"
+    aria-label={`DCL y diagramas de la zapata combinada con ${combination.label}: P1u ${formatNumber(loads[0]!, 0)} y P2u ${formatNumber(loads[1]!, 0)} kN; momento positivo ${formatNumber(result.bottom.momentKnm, 0)} y negativo ${formatNumber(result.top?.momentKnm ?? 0, 0)} kilonewton metro`}>
+    <defs>
+      <marker id="dw-combined-load" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="7" markerHeight="7"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
+      <marker id="dw-combined-soil" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="6" markerHeight="6"><path d="M0,10 L5,0 L10,10 Z" className="dw-soil__head" /></marker>
+    </defs>
+    {loads.map((load, index) => <g key={index} className="dw-load dw-load--point">
+      <line x1={scaleX(columns[index]!)} x2={scaleX(columns[index]!)} y1={2} y2={beamY - 14} markerEnd="url(#dw-combined-load)" />
+      <text x={scaleX(columns[index]!) + 8} y={12}>{`P${index + 1}u = ${formatNumber(load, 0)} kN`}</text>
+    </g>)}
+    <rect className="dw-beam" x={scaleX(0)} y={beamY} width={plot} height={12} />
     {result.input.columns.map((column, index) => <rect key={index} className="dw-column"
-      x={scaleX(columns[index]! - column.widthMm / 2000)} y={0} width={column.widthMm / 1000 / length * plot} height={12} />)}
-    <DiagramBand xs={xs} upper={result.diagram.shearMaxKn} lower={result.diagram.shearMinKn} top={40} height={band} scaleX={scaleX}
+      x={scaleX(columns[index]! - column.widthMm / 2000)} y={beamY - 12} width={column.widthMm / 1000 / length * plot} height={12} />)}
+    <g className="dw-soil">
+      {soil.map((t) => <line key={t} x1={scaleX(t * length)} x2={scaleX(t * length)} y1={beamY + 30} y2={beamY + 14} markerEnd="url(#dw-combined-soil)" />)}
+      <text x={scaleX(length)} y={beamY + 42} textAnchor="end">{`qu ${formatNumber(result.ultimate.minimumKpa, 0)}–${formatNumber(result.ultimate.maximumKpa, 0)} kPa`}</text>
+    </g>
+    <DiagramBand xs={xs} upper={result.diagram.shearMaxKn} lower={result.diagram.shearMinKn} top={40 + offset} height={band} scaleX={scaleX}
       positive="up" tone="shear" label="Cortante" unit="kN" nodesAtM={columns} />
-    <DiagramBand xs={xs} upper={result.diagram.momentMaxKnm} lower={result.diagram.momentMinKnm} top={60 + band} height={band} scaleX={scaleX}
+    <DiagramBand xs={xs} upper={result.diagram.momentMaxKnm} lower={result.diagram.momentMinKnm} top={60 + band + offset} height={band} scaleX={scaleX}
       positive="down" tone="moment" label="Momento" unit="kN·m" nodesAtM={columns} />
   </svg>;
 }

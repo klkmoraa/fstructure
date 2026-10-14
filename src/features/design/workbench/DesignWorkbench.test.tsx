@@ -116,9 +116,11 @@ describe('DesignWorkbench', () => {
     expect(screen.getByRole('img', { name: /Elevación de la viga de 2 claros/ })).toBeTruthy();
     expect(screen.getAllByRole('img', { name: /sección 25 por 50/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole('img', { name: /Despiece/ })).toBeTruthy();
-    expect(within(results()).queryByRole('table')).toBeNull();
+    expect(screen.getByRole('img', { name: /Diagrama de cuerpo libre/ })).toBeTruthy();
+    expect(within(results()).getAllByRole('table')).toHaveLength(1);
+    expect(within(results()).getByRole('table', { name: 'Reacciones por apoyo' })).toBeTruthy();
     await user.click(within(results()).getByRole('button', { name: 'Detalle del cálculo' }));
-    expect(within(results()).getByRole('table')).toBeTruthy();
+    expect(within(results()).getAllByRole('table')).toHaveLength(2);
   });
 
   it('ofrece sugerencias de f′c para la columna en opciones avanzadas y actualiza su conversión', async () => {

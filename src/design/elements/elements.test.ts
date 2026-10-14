@@ -524,3 +524,40 @@ describe('NTC 2023 building blocks', () => {
     expect(deep.checks.find((check) => check.id === 'deep-beam')!.status).toBe('fail');
   });
 });
+
+describe('designBeam · reacciones y DCL', () => {
+  const total = (result: ReturnType<typeof assertBeam>) => result.reactions!.supports.reduce((sum, item) => sum + item.ultimateKn, 0);
+
+  it('viga simple: R = wL/2 en servicio y con la combinación de diseño', () => {
+    const result = assertBeam(beam);
+    const [left, right] = result.reactions!.supports;
+    expect(left!.deadKn).toBeCloseTo(20 * 6 / 2, 6);
+    expect(left!.liveKn).toBeCloseTo(10 * 6 / 2, 6);
+    expect(right!.ultimateKn).toBeCloseTo(wu * 6 / 2, 6);
+    expect(left!.ultimateKnm).toBeCloseTo(0, 6);
+    // ΣFy = 0: la suma de reacciones iguala la carga de diseño calculada de los datos.
+    expect(total(result)).toBeCloseTo(result.reactions!.totalLoadKn, 6);
+    expect(result.reactions!.totalLoadKn).toBeCloseTo(wu * 6, 6);
+  });
+
+  it('continua de dos claros iguales: 0.375 wL en los extremos y 1.25 wL al centro', () => {
+    const result = assertBeam({ ...beam, spans: [span(5), span(5)] });
+    const [left, middle, right] = result.reactions!.supports;
+    expect(left!.deadKn).toBeCloseTo(0.375 * 20 * 5, 3);
+    expect(middle!.deadKn).toBeCloseTo(1.25 * 20 * 5, 3);
+    expect(right!.liveKn).toBeCloseTo(0.375 * 10 * 5, 3);
+    expect(middle!.kind).toBe('interior');
+    // Con la viva sólo en un claro el extremo recibe más: la máxima alternada supera a la de todos cargados.
+    expect(left!.maxUltimateKn).toBeGreaterThan(left!.ultimateKn);
+    expect(total(result)).toBeCloseTo(result.reactions!.totalLoadKn, 6);
+  });
+
+  it('voladizo: R = wL y M = wL²/2 en el empotramiento, antihorario', () => {
+    const result = assertBeam({ ...beam, spans: [span(3, 10, 0)], leftEnd: 'fixed', rightEnd: 'free' });
+    const [fixed, free] = result.reactions!.supports;
+    expect(fixed!.deadKn).toBeCloseTo(30, 6);
+    expect(fixed!.deadKnm).toBeCloseTo(10 * 3 ** 2 / 2, 6);
+    expect(free!.deadKn).toBeCloseTo(0, 9);
+    expect(fixed!.kind).toBe('fixed');
+  });
+});

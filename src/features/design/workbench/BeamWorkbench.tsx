@@ -4,7 +4,7 @@ import { SegmentedControl, Select } from '../../../design-system/components/cont
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
 import { MAX_SPANS, barsText, beamClearSpanMm, designBeam, flangeWidthLimit } from '../../../design/elements/beam';
 import { designCode } from '../../../design/elements/codes';
-import { BeamElevation, BeamRebarDetail, BeamSection } from './BeamDrawings';
+import { BeamElevation, BeamFreeBody, BeamReactionsTable, BeamRebarDetail, BeamSection } from './BeamDrawings';
 import { BeamDetailEditor } from './BeamDetailEditor';
 import { EMPTY_BEAM_DETAILS, useStoredBeamDetails } from './beamDetailDraft';
 import { parseBeamDetails } from './beamDetailInput';
@@ -371,6 +371,9 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </MoreOptions>
     </>}
     stage={result.ok ? <>
+      {result.reactions ? <Plate title="Diagrama de cuerpo libre" note={`${result.reactions.combination.label} · todos los claros cargados`} wide>
+        <BeamFreeBody result={result} />
+      </Plate> : null}
       <Plate title="Elevación y envolventes" wide>
         <BeamElevation result={result} interactive />
       </Plate>
@@ -406,6 +409,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </PanelSection>
       {report?.alternative ? <AlternativeSection own={{ status: result.status, governingRatio: result.governingRatio, steelKg: report.takeoff.steelKg }} alternative={report.alternative} /> : null}
       <PanelSection title="Revisión"><ReviewList checks={checks} outOfScope={outOfScope} /></PanelSection>
+      {result.reactions ? <PanelSection title="Reacciones"><BeamReactionsTable result={result} /></PanelSection> : null}
       {report ? <TakeoffSection takeoff={report.takeoff} /> : null}
       <Disclosure label="Detalle del cálculo">
         <RebarList items={result.bastions.map((bastion) => ({ kind: 'extra' as const, title: bastionTitle(bastion), detail: bastionDetail(bastion) }))} />

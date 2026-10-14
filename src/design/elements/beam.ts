@@ -279,6 +279,30 @@ export interface BeamAnchorage {
   readonly kind: 'straight' | 'hook' | 'insufficient';
 }
 
+/** Reacción de un apoyo de la viga. Fuerzas en kN (+ hacia arriba); momentos en kN·m (+ antihorario). */
+export interface BeamSupportReaction {
+  readonly xM: number;
+  readonly kind: BeamEnd | 'interior';
+  /** Servicio: carga muerta (con peso propio) y viva en todos los claros. */
+  readonly deadKn: number;
+  readonly liveKn: number;
+  readonly deadKnm: number;
+  readonly liveKnm: number;
+  /** Combinación de diseño con todos los claros cargados (el estado del DCL). */
+  readonly ultimateKn: number;
+  readonly ultimateKnm: number;
+  /** Máxima de diseño con la viva alternada por claros (la que se lleva a la cimentación). */
+  readonly maxUltimateKn: number;
+}
+
+/** Diagrama de cuerpo libre de la viga con la combinación de diseño y todos los claros cargados. */
+export interface BeamReactions {
+  readonly combination: LoadCombination;
+  readonly supports: readonly BeamSupportReaction[];
+  /** Σ de las cargas de diseño, calculada de los datos (no del solver): ΣFy = 0 la compara con ΣR. */
+  readonly totalLoadKn: number;
+}
+
 export interface BeamDesignResult {
   readonly ok: true;
   readonly input: BeamDesignInput;
@@ -309,6 +333,8 @@ export interface BeamDesignResult {
     readonly limitMm: number;
     readonly crackingMomentKnm: number;
   };
+  /** Reacciones y DCL; `null` si el proveedor del análisis no da reacciones (vigas tomadas de un modelo). */
+  readonly reactions: BeamReactions | null;
   readonly checks: readonly ElementCheck[];
   readonly governingRatio: number;
   readonly status: 'pass' | 'fail' | 'warning';
@@ -996,6 +1022,46 @@ function designReinforcement(
 
 const largestBar = (section: BedSection) => Math.max(section.continuous.diameterMm, section.extra?.diameterMm ?? 0);
 
+/**
+ * Reacciones por apoyo a partir de las respuestas por claro (muerta y viva por
+ * separado). La combinación del DCL es la primera gravitacional de la norma con
+ * todos los claros cargados; la máxima alterna la viva como la envolvente.
+ */
+function beamReactions(input: BeamDesignInput, analysis: BeamAnalysis, selfWeightKnPerM: number): BeamReactions | null {
+  const dead = analysis.deadPerSpan;
+  const live = analysis.livePerSpan;
+  if (![...dead, ...live].every((response) => response.reactions?.length === analysis.nodesAtM.length)) return null;
+  const combination = input.combinations.find((item) => !item.lateral) ?? input.combinations[0]!;
+  const last = analysis.nodesAtM.length - 1;
+  const supports = analysis.nodesAtM.map((xM, node): BeamSupportReaction => {
+    const pick = (responses: readonly CaseResponse[], key: 'ry' | 'rm') => responses.map((response) => response.reactions![node]![key]);
+    const deadRy = pick(dead, 'ry');
+    const liveRy = pick(live, 'ry');
+    const sum = (values: readonly number[]) => values.reduce((total, value) => total + value, 0);
+    const deadKn = sum(deadRy);
+    const liveKn = sum(liveRy);
+    const deadKnm = sum(pick(dead, 'rm'));
+    const liveKnm = sum(pick(live, 'rm'));
+    const maxUltimateKn = sum(deadRy.map((value) => Math.max(combination.dead * value, combination.favorableDead * value)))
+      + sum(liveRy.map((value) => Math.max(0, combination.live * value)));
+    return {
+      xM,
+      kind: node === 0 ? input.leftEnd : node === last ? input.rightEnd : 'interior',
+      deadKn, liveKn, deadKnm, liveKnm,
+      ultimateKn: combination.dead * deadKn + combination.live * liveKn,
+      ultimateKnm: combination.dead * deadKnm + combination.live * liveKnm,
+      maxUltimateKn,
+    };
+  });
+  const factor = (category: 'dead' | 'live') => category === 'dead' ? combination.dead : combination.live;
+  const spansLoad = input.spans.reduce((total, span) => total
+    + combination.dead * ((span.deadKnPerM + selfWeightKnPerM) * span.lengthM + span.pointDeadKn)
+    + combination.live * (span.liveKnPerM * span.lengthM + span.pointLiveKn), 0);
+  const extraLoad = (input.extraLoads ?? []).reduce((total, load) => total + factor(load.category)
+    * (load.kind === 'point' ? load.startKn : (load.startKn + load.endKn) / 2 * (load.endM - load.startM)), 0);
+  return { combination, supports, totalLoadKn: spansLoad + extraLoad };
+}
+
 export function designBeam(input: BeamDesignInput, options: BeamDesignOptions = {}): BeamDesignResult | BeamDesignError {
   const errors = validate(input);
   if (errors.length) return { ok: false, errors };
@@ -1366,6 +1432,7 @@ export function designBeam(input: BeamDesignInput, options: BeamDesignOptions = 
       limitMm: governingSpan.deflectionLimitMm,
       crackingMomentKnm: crackingMoment,
     },
+    reactions: beamReactions(input, analysis, selfWeight),
     checks,
     governingRatio: governingRatio(checks.filter((item) => STRENGTH_CHECKS.has(item.id))),
     status: overallStatus(checks),

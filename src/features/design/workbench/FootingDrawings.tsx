@@ -89,7 +89,9 @@ export function FootingSection({ result }: { result: FootingDesignResult }) {
   const ox = (W - s) / 2;
   const pedestal = result.input.pedestal;
   const pedestalH = pedestal ? Math.min(40, Math.max(14, pedestal.heightMm * scale)) : 0;
-  const oy = 70 + pedestalH;
+  // Margen superior para la carga de la columna: el corte es el DCL de la zapata.
+  const loadTop = 34;
+  const oy = 70 + loadTop + pedestalH;
   const colW = result.input.columnWidthMm * scale;
   const cover = result.input.coverMm * scale;
   const count = Math.min(result.directions.y.barCount, 30);
@@ -101,14 +103,30 @@ export function FootingSection({ result }: { result: FootingDesignResult }) {
     return 8 + 26 * Math.max(0, q) / peak;
   };
   const x = result.directions.x;
-  return <svg className="dw-drawing" viewBox={`0 0 ${W} ${oy + t + 92}`} role="img"
+  // Secciones críticas a la derecha de la columna: paño (flexión), d (cortante como viga) y d/2 (penetración).
+  const { support } = result;
+  const center = W / 2;
+  const faceM = center + support.flexureWidthMm / 2 * scale;
+  const faceV = center + (support.shearWidthMm / 2 + x.effectiveDepthMm) * scale;
+  const faceP = center + (support.shearWidthMm / 2 + result.effectiveDepthMm / 2) * scale;
+  const inside = (value: number) => value < ox + s - 2;
+  const momentX = result.input.ultimateMomentXKnm;
+  return <svg className="dw-drawing" viewBox={`0 0 ${W} ${oy + t + 110}`} role="img"
     aria-label={`Corte en X de zapata con peralte ${formatNumber(result.thicknessMm / 10, 0)} centímetros y presión última de ${formatNumber(minimumKpa, 0)} a ${formatNumber(maximumKpa, 0)} kPa`}>
     <defs>
       <marker id="dw-soil-arrow" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="6" markerHeight="6">
         <path d="M0,10 L5,0 L10,10 Z" className="dw-soil__head" />
       </marker>
+      <marker id="dw-column-load" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="7" markerHeight="7">
+        <path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" />
+      </marker>
     </defs>
-    <rect className="dw-column" x={W / 2 - colW / 2} y={10} width={colW} height={oy - pedestalH - 10} />
+    <g className="dw-load dw-load--point">
+      <line x1={center} x2={center} y1={4} y2={loadTop + 6} markerEnd="url(#dw-column-load)" />
+      <text x={center + 8} y={14}>{`Pu = ${formatNumber(result.ultimateAxialKn, 0)} kN`}</text>
+      {Math.abs(momentX) > 1e-6 ? <text x={center + 8} y={28}>{`Mu = ${formatNumber(momentX, 1)} kN·m`}</text> : null}
+    </g>
+    <rect className="dw-column" x={W / 2 - colW / 2} y={loadTop + 10} width={colW} height={oy - pedestalH - loadTop - 10} />
     {pedestal ? <rect className="dw-pedestal" x={W / 2 - pedestal.widthMm * scale / 2} y={oy - pedestalH} width={pedestal.widthMm * scale} height={pedestalH}>
       <title>{`Dado de ${formatNumber(pedestal.heightMm / 10, 0)} cm de altura`}</title>
     </rect> : null}
@@ -131,6 +149,12 @@ export function FootingSection({ result }: { result: FootingDesignResult }) {
       <text x={ox + s + 20} y={oy + t / 2 + 4}>{`h = ${formatNumber(result.thicknessMm / 10, 0)} cm`}</text>
       <text className="dw-muted" x={ox + s + 20} y={oy + t / 2 + 18}>{`d = ${formatNumber(result.effectiveDepthMm / 10, 1)} cm`}</text>
     </g>
+    <g className="dw-critical-cuts">
+      {inside(faceM) ? <g><line className="dw-critical dw-critical--moment" x1={faceM} x2={faceM} y1={oy - 6} y2={oy + t + 2} /><text x={faceM + 3} y={oy - 4}>M</text></g> : null}
+      {inside(faceP) ? <g><line className="dw-critical" x1={faceP} x2={faceP} y1={oy - 6} y2={oy + t + 2} /><text x={faceP + 3} y={oy - 4}>d/2</text></g> : null}
+      {inside(faceV) ? <g><line className="dw-critical dw-critical--oneway" x1={faceV} x2={faceV} y1={oy - 6} y2={oy + t + 2} /><text x={faceV + 3} y={oy - 4}>d</text></g> : null}
+    </g>
     <text className="dw-callout" x={W / 2} y={oy + t + 82} textAnchor="middle">{`X: ${rebarLabel(result.input.barDiameterMm)} @ ${formatNumber(x.spacingMm / 10, 0)} cm · Y: ${rebarLabel(result.input.barDiameterMm)} @ ${formatNumber(result.directions.y.spacingMm / 10, 0)} cm`}</text>
+    <text className="dw-muted dw-critical-legend" x={W / 2} y={oy + t + 100} textAnchor="middle">{`Paño Mu ${formatNumber(x.momentKnm, 1)} kN·m · a d Vu ${formatNumber(x.oneWayDemandKn, 0)} kN · a d/2 Vu ${formatNumber(result.punching.demandKn, 0)} kN`}</text>
   </svg>;
 }

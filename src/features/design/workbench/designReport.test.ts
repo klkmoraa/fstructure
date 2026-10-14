@@ -1,3 +1,4 @@
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 import { designBeam } from '../../../design/elements/beam';
@@ -201,3 +202,14 @@ describe('memoria del proyecto', () => {
     expect(new TextDecoder().decode(pdf.slice(0, 5))).toBe('%PDF-');
   });
 });
+
+describe('memoria de la viga · DCL', () => {
+  it('lleva la tabla de reacciones y el DCL como un <svg> que el PDF puede rasterizar', () => {
+    const table = beam.tables.find((item) => item.title.startsWith('Reacciones por apoyo'));
+    expect(table?.rows.length).toBeGreaterThanOrEqual(2);
+    const figure = beam.figures.find((item) => item.title === 'Diagrama de cuerpo libre');
+    expect(figure?.note).toMatch(/ΣFy = 0/);
+    expect(renderToStaticMarkup(figure!.render()).startsWith('<svg')).toBe(true);
+  });
+});
+

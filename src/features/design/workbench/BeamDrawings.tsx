@@ -218,6 +218,143 @@ export function BeamElevation({ result, interactive = false, supports = 'ideal' 
   </div>;
 }
 
+/**
+ * Diagrama de cuerpo libre con la combinación de diseño y todos los claros
+ * cargados: cargas factorizadas (uniformes, puntuales y generales), reacciones
+ * y momentos de empotramiento en los apoyos, y ΣFy = 0 comparando la suma de
+ * reacciones con la carga calculada de los datos.
+ */
+export function BeamFreeBody({ result, bare = false }: { result: BeamDesignResult; bare?: boolean }) {
+  const reactions = result.reactions;
+  if (!reactions) return null;
+  const { combination } = reactions;
+  const length = result.totalLengthM;
+  const scaleX = (x: number) => LEFT + x / length * PLOT;
+  const beamY = 104;
+  const factored = (dead: number, live: number) => combination.dead * dead + combination.live * live;
+  const spans = result.input.spans.map((span, index) => ({
+    startM: result.spans[index]!.startM,
+    lengthM: span.lengthM,
+    wu: factored(span.deadKnPerM + result.selfWeightKnPerM, span.liveKnPerM),
+    pu: factored(span.pointDeadKn, span.pointLiveKn),
+    pointAtM: span.pointAtM,
+  }));
+  const extras = (result.input.extraLoads ?? []).map((load) => {
+    const factor = load.category === 'dead' ? combination.dead : combination.live;
+    const startM = result.spans[load.spanIndex]!.startM;
+    return { ...load, startX: startM + load.startM, endX: startM + load.endM, startKn: factor * load.startKn, endKn: factor * load.endKn };
+  });
+  const maxW = Math.max(1e-9, ...spans.map((span) => span.wu), ...extras.filter((load) => load.kind === 'distributed').map((load) => Math.max(load.startKn, load.endKn)));
+  const sumReactions = reactions.supports.reduce((sum, support) => sum + support.ultimateKn, 0);
+  const balanced = Math.abs(sumReactions - reactions.totalLoadKn) <= Math.max(1e-6, 1e-6 * Math.abs(reactions.totalLoadKn));
+  const letter = (index: number) => String.fromCharCode(65 + index);
+  const height = 236;
+  const drawing = <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${height}`} role="img"
+      aria-label={`Diagrama de cuerpo libre con ${combination.label}: ${reactions.supports.flatMap((support, index) => support.kind === 'free' ? [] : [`R${letter(index)} = ${formatNumber(support.ultimateKn, 1)} kN`]).join(', ')}.`}>
+      <defs>
+        <marker id="dw-fbd-load" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
+        <marker id="dw-fbd-reaction" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="7" markerHeight="7"><path d="M0,10 L5,0 L10,10 Z" className="dw-fbd__head" /></marker>
+      </defs>
+      {spans.map((span, index) => {
+        const x0 = scaleX(span.startM);
+        const x1 = scaleX(span.startM + span.lengthM);
+        const top = beamY - 10 - 36 * span.wu / maxW;
+        const arrows = Math.max(3, Math.round((x1 - x0) / 26));
+        return <g key={index}>
+          {span.wu > 0 ? <g className="dw-load">
+            <line x1={x0} x2={x1} y1={top} y2={top} />
+            {Array.from({ length: arrows + 1 }, (_, arrow) => {
+              const x = x0 + (x1 - x0) * arrow / arrows;
+              return <line key={arrow} x1={x} x2={x} y1={top} y2={beamY - 4} markerEnd="url(#dw-fbd-load)" />;
+            })}
+            <text x={(x0 + x1) / 2} y={top - 6} textAnchor="middle">{`wu = ${formatNumber(span.wu, 1)} kN/m`}</text>
+          </g> : null}
+          {span.pu > 0 ? <g className="dw-load dw-load--point">
+            <line x1={scaleX(span.startM + span.pointAtM)} x2={scaleX(span.startM + span.pointAtM)} y1={18} y2={beamY - 4} markerEnd="url(#dw-fbd-load)" />
+            <text x={scaleX(span.startM + span.pointAtM) + 6} y={24}>{`Pu = ${formatNumber(span.pu, 1)} kN`}</text>
+          </g> : null}
+        </g>;
+      })}
+      {extras.map((load, index) => load.kind === 'point'
+        ? <g key={`extra-${index}`} className="dw-load dw-load--point">
+          <line x1={scaleX(load.startX)} x2={scaleX(load.startX)} y1={30} y2={beamY - 4} markerEnd="url(#dw-fbd-load)" />
+          <text x={scaleX(load.startX) + 6} y={36}>{`${formatNumber(load.startKn, 1)} kN`}</text>
+        </g>
+        : <g key={`extra-${index}`} className="dw-load dw-load--patch">
+          <polyline points={`${scaleX(load.startX)},${beamY - 10 - 36 * load.startKn / maxW} ${scaleX(load.endX)},${beamY - 10 - 36 * load.endKn / maxW}`} />
+          {[0, 0.5, 1].map((t) => {
+            const x = load.startX + (load.endX - load.startX) * t;
+            const q = load.startKn + (load.endKn - load.startKn) * t;
+            return <line key={t} x1={scaleX(x)} x2={scaleX(x)} y1={beamY - 10 - 36 * q / maxW} y2={beamY - 4} markerEnd="url(#dw-fbd-load)" />;
+          })}
+        </g>)}
+      <line className="dw-fbd__beam" x1={scaleX(0)} x2={scaleX(length)} y1={beamY} y2={beamY} />
+      {reactions.supports.map((support, index) => {
+        if (support.kind === 'free') return null;
+        const x = scaleX(support.xM);
+        const anchor = index === 0 ? 'start' : index === reactions.supports.length - 1 ? 'end' : 'middle';
+        const labelX = anchor === 'start' ? x - 4 : anchor === 'end' ? x + 4 : x;
+        const up = support.ultimateKn >= 0;
+        const moment = Math.abs(support.ultimateKnm) > 1e-6 ? support.ultimateKnm : 0;
+        const side = index === 0 ? -1 : 1;
+        return <g key={support.xM} className="dw-fbd__reaction">
+          <circle className="dw-fbd__node" cx={x} cy={beamY} r={3.5} />
+          <text className="dw-fbd__letter" x={x - side * 10} y={beamY + 18} textAnchor="middle">{letter(index)}</text>
+          <line x1={x} x2={x} y1={up ? beamY + 62 : beamY + 8} y2={up ? beamY + 8 : beamY + 62} markerEnd="url(#dw-fbd-reaction)" />
+          <text x={labelX} y={beamY + 80} textAnchor={anchor}>{`R${letter(index)} = ${formatNumber(Math.abs(support.ultimateKn), 1)} kN`}</text>
+          {moment ? <g className="dw-fbd__moment">
+            {/* Arco por fuera del apoyo; la punta marca el giro (antihorario si el momento es positivo). */}
+            {(() => {
+              const bulge = x + side * 30;
+              const topToBottom = (moment > 0) === (side < 0);
+              const [from, to] = topToBottom ? [beamY - 20, beamY + 20] : [beamY + 20, beamY - 20];
+              return <path d={`M ${x} ${from} C ${bulge} ${from} ${bulge} ${to} ${x + side * 2} ${to}`} markerEnd="url(#dw-fbd-reaction)" />;
+            })()}
+            <text x={x - side * 28} y={beamY + 44} textAnchor={side < 0 ? 'start' : 'end'}>{`M${letter(index)} = ${formatNumber(Math.abs(moment), 1)} kN·m`}</text>
+          </g> : null}
+        </g>;
+      })}
+      <SpanDimensions result={result} scaleX={scaleX} y={height - 22} />
+    </svg>;
+  // El PDF rasteriza un `<svg>` raíz; la comprobación va en la nota de su figura.
+  if (bare) return drawing;
+  return <figure className="dw-fbd">
+    {drawing}
+    <figcaption className={`dw-fbd__balance${balanced ? '' : ' is-off'}`}>
+      <span>ΣFy = 0</span>
+      <span>ΣR = {formatNumber(sumReactions, 1)} kN</span>
+      <span>Σ cargas = {formatNumber(reactions.totalLoadKn, 1)} kN</span>
+      <b>{balanced ? 'Equilibrio' : 'Revisar'}</b>
+    </figcaption>
+  </figure>;
+}
+
+/** Reacciones por apoyo: servicio (CM, CV), la combinación del DCL y la máxima con viva alternada. */
+export function BeamReactionsTable({ result }: { result: BeamDesignResult }) {
+  const reactions = result.reactions;
+  if (!reactions) return null;
+  const rows = reactions.supports.map((support, index) => ({ support, label: String.fromCharCode(65 + index) })).filter(({ support }) => support.kind !== 'free');
+  const anyMoment = rows.some(({ support }) => Math.abs(support.deadKnm) + Math.abs(support.liveKnm) > 1e-6);
+  return <div className="dw-reactions">
+    <table className="dw-table" aria-label="Reacciones por apoyo">
+      <thead><tr>
+        <th scope="col">Apoyo</th><th scope="col">x · m</th><th scope="col">CM · kN</th><th scope="col">CV · kN</th>
+        <th scope="col">{reactions.combination.label} · kN</th><th scope="col">Máx. alternada · kN</th>
+        {anyMoment ? <th scope="col">M {reactions.combination.label} · kN·m</th> : null}
+      </tr></thead>
+      <tbody>{rows.map(({ support, label }) => <tr key={label}>
+        <th scope="row">{label}</th>
+        <td>{formatNumber(support.xM, 2)}</td>
+        <td>{formatNumber(support.deadKn, 1)}</td>
+        <td>{formatNumber(support.liveKn, 1)}</td>
+        <td>{formatNumber(support.ultimateKn, 1)}</td>
+        <td>{formatNumber(support.maxUltimateKn, 1)}</td>
+        {anyMoment ? <td>{formatNumber(support.ultimateKnm, 1)}</td> : null}
+      </tr>)}</tbody>
+    </table>
+  </div>;
+}
+
 /** Despiece longitudinal: corridas, bastones con su longitud y estribos por zonas. */
 export function BeamRebarDetail({ result, supports = 'ideal' }: { result: BeamDesignResult; supports?: BeamSupportStyle }) {
   const length = result.totalLengthM;
