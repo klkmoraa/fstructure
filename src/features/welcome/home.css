@@ -108,49 +108,127 @@
 
 /* --- Portada ---------------------------------------------------------------- */
 
-.fh-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-}
-
-.fh-hero__copy { display: grid; gap: 16px; min-width: 0; }
+.fh-hero { display: grid; gap: 12px; padding-top: clamp(8px, 3vw, 28px); }
 
 .fh-hero__title {
-  max-width: 14ch;
+  max-width: 18ch;
   margin: 0;
-  font: 650 clamp(34px, 6vw, 60px) / 1.02 var(--sc-font-display);
+  font: 650 clamp(32px, 5.4vw, 56px) / 1.03 var(--sc-font-display);
   letter-spacing: -.035em;
   text-wrap: balance;
 }
 
 .fh-hero__lead {
-  max-width: 46ch;
+  max-width: 56ch;
   margin: 0;
   color: var(--sc-color-text-secondary);
-  font-size: clamp(15px, 1.6vw, 18px);
+  font-size: clamp(15px, 1.5vw, 18px);
   line-height: 1.5;
+  text-wrap: pretty;
 }
 
-.fh-hero__stage { order: -1; margin: 0; }
-.fh-hero__stage img { display: block; width: min(100%, 320px); height: auto; margin: 0 auto; }
+/* Las dos puertas: Cálculo (suelto) y Proyecto (conectado). */
+.fh-doors { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: calc(-1 * clamp(8px, 2vw, 24px)); }
+
+.fh-door {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: clamp(18px, 2.4vw, 26px);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+  animation: fh-rise 260ms var(--sc-ease-standard) both;
+  animation-delay: calc(var(--i, 0) * 50ms);
+}
+
+@keyframes fh-rise { from { opacity: 0; transform: translateY(8px); } }
+
+.fh-door__head { display: flex; align-items: center; gap: 10px; }
+.fh-door__icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 11px; background: var(--sc-color-surface-inset); color: var(--sc-color-text-primary); }
+.fh-door__icon .fs-mark--fstructure .fs-mark__register { fill: var(--fs-family-analisis); }
+.fh-door__eyebrow { margin: 0; color: var(--sc-color-text-muted); font: 700 11px/1 var(--sc-font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.fh-door__title { margin: 0; font: 650 clamp(26px, 3vw, 34px)/1.05 var(--sc-font-display); letter-spacing: -.03em; }
+.fh-door__body { max-width: 48ch; margin: 0; color: var(--sc-color-text-secondary); font-size: 15px; line-height: 1.5; }
+.fh-door__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; padding-top: 4px; }
+
+/* Cálculo: una pizarra con las fórmulas de siempre, y los temas a un toque. */
+.fh-slate {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+  color: var(--sc-color-text-technical);
+  font: 500 13px/1.4 var(--sc-font-mono);
+  overflow-wrap: anywhere;
+}
+
+.fh-slate span:nth-child(2) { color: var(--sc-color-text-secondary); }
+.fh-slate span:nth-child(3) { color: var(--sc-color-text-muted); }
+
+.fh-topics { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.fh-topic {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  font: 600 13.5px/1 var(--sc-font-ui);
+  cursor: pointer;
+  transition: border-color 150ms var(--sc-ease-standard), transform 120ms var(--sc-ease-standard);
+}
+
+.fh-topic:hover { border-color: var(--sc-color-border-strong); }
+.fh-topic:active { transform: scale(.97); }
+
+/* Proyecto: el flujo 2D → 3D → Diseño y el proyecto abierto. */
+.fh-flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; counter-reset: flow; }
+
+.fh-flow__step {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 8px 8px 12px;
+  border: 0;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 150ms var(--sc-ease-standard), box-shadow 150ms var(--sc-ease-standard), background-color 150ms var(--sc-ease-standard);
+}
+
+.fh-flow__step:hover { background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-raised); transform: translateY(-2px); }
+.fh-flow__step:active { transform: translateY(0); }
+.fh-flow__scene { aspect-ratio: 3 / 2; display: grid; place-items: center; overflow: hidden; border-radius: calc(var(--sc-radius-card) - 8px); }
+.fh-flow__scene img { width: 104%; height: auto; }
+.fh-flow__copy { display: grid; gap: 2px; padding-inline: 4px; min-width: 0; }
+.fh-flow__copy small { color: var(--sc-color-text-muted); font: 700 10.5px/1 var(--sc-font-mono); }
+.fh-flow__copy strong { font: 600 15px/1.2 var(--sc-font-display); }
+.fh-flow__copy span { color: var(--sc-color-text-muted); font-size: 12px; line-height: 1.3; }
 
 /* Proyecto abierto: la acción de todos los días. */
 .fh-current {
   display: grid;
   gap: 14px;
-  margin-top: 8px;
-  padding: 16px;
+  padding: 14px;
   border-radius: var(--sc-radius-card);
-  background: var(--sc-color-surface-1);
-  box-shadow: var(--sc-shadow-raised);
+  background: var(--sc-color-bg-app);
+  box-shadow: var(--sc-shadow-inset);
 }
 
 .fh-current__info { display: grid; gap: 4px; min-width: 0; }
 
 .fh-current__label {
-  color: var(--fs-family-analisis-text, var(--fs-family-analisis));
+  color: var(--sc-color-action-ink);
   font: 700 11px/1 var(--sc-font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -158,7 +236,7 @@
 
 .fh-current__name {
   overflow: hidden;
-  font: 600 20px/1.25 var(--sc-font-display);
+  font: 600 18px/1.25 var(--sc-font-display);
   letter-spacing: -.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -197,6 +275,9 @@
   box-shadow: var(--sc-shadow-action);
 }
 
+.fh-button--quiet { border-color: transparent; background: transparent; color: var(--sc-color-text-secondary); }
+.fh-button--quiet:hover { background: var(--sc-color-surface-inset); box-shadow: none; }
+
 /* --- Secciones -------------------------------------------------------------- */
 
 .fh-section { display: grid; gap: 14px; min-width: 0; align-content: start; }
@@ -217,47 +298,6 @@
 }
 
 .fh-link:hover { color: var(--sc-color-text-primary); }
-
-/* Los tres modos de la mesa, con su escena en arcilla. */
-.fh-modes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-
-.fh-mode {
-  position: relative;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 112px minmax(0, 1fr);
-  align-items: center;
-  gap: 14px;
-  padding: 10px 44px 10px 10px;
-  border: 0;
-  border-radius: var(--sc-radius-card);
-  background: var(--sc-color-surface-1);
-  box-shadow: var(--sc-shadow-raised);
-  color: var(--sc-color-text-primary);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: transform var(--sc-motion-quick) var(--sc-ease-standard), box-shadow var(--sc-motion-quick) var(--sc-ease-standard);
-}
-
-.fh-mode:hover { transform: translateY(-2px); box-shadow: var(--sc-shadow-lifted); }
-.fh-mode:active { transform: translateY(0); }
-
-.fh-mode__scene {
-  aspect-ratio: 3 / 2;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border-radius: calc(var(--sc-radius-card) - 6px);
-  background: var(--sc-color-surface-inset);
-}
-
-.fh-mode__scene img { width: 108%; height: auto; }
-
-.fh-mode__copy { display: grid; gap: 4px; min-width: 0; }
-.fh-mode__copy strong { font: 600 18px/1.2 var(--sc-font-display); letter-spacing: -.01em; }
-.fh-mode__copy > span:last-child { color: var(--sc-color-text-secondary); font-size: 13.5px; line-height: 1.35; }
-.fh-mode__go { position: absolute; right: 16px; top: 50%; color: var(--sc-color-text-muted); transform: translateY(-50%); }
 
 /* Recientes y accesos. */
 .fh-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(32px, 5vw, 56px); }
@@ -378,42 +418,33 @@
 
 /* --- Escritorio ------------------------------------------------------------- */
 
-/* En teléfono, la escena acompaña al texto; no retrasa el proyecto abierto. */
 @media (max-width: 759px) {
   .fh-brand { gap: 8px; padding: 0; }
-  .fh-body { gap: 28px; padding-top: 16px; }
-  .fh-hero { grid-template-columns: minmax(0, 1fr) 96px; gap: 16px 12px; }
-  .fh-hero__copy { display: contents; }
-  .fh-hero__title { grid-column: 1 / -1; grid-row: 1; max-width: none; font-size: clamp(28px, 8vw, 34px); line-height: 1.1; }
-  .fh-hero__lead { grid-column: 1; grid-row: 2; font-size: 14px; line-height: 1.5; }
-  .fh-hero__stage { grid-column: 2; grid-row: 2; order: 0; }
-  .fh-hero__stage img { width: 100%; }
-  .fh-current { grid-column: 1 / -1; grid-row: 3; margin-top: 0; }
-  .fh-modes { gap: 10px; }
-  .fh-mode { grid-template-columns: 80px minmax(0, 1fr); gap: 12px; padding-right: 36px; }
-  .fh-mode__copy > span:last-child { font-size: 13px; }
+  .fh-body { gap: 28px; padding-top: 12px; }
+  .fh-hero__title { font-size: clamp(28px, 8vw, 34px); line-height: 1.1; }
+  .fh-hero__lead { font-size: 14px; }
+  .fh-doors { margin-top: -8px; }
+  .fh-door { border-radius: var(--sc-radius-card); }
+  .fh-slate { display: none; }
+  .fh-flow { gap: 6px; }
+  .fh-flow__copy span { display: none; }
+  .fh-door__actions .fh-button { flex: 1 1 auto; }
   .fh-split { gap: 28px; }
 }
 
 @media (min-width: 760px) {
-  .fh-hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(24px, 4vw, 56px); padding-top: clamp(8px, 3vw, 32px); }
-  .fh-hero__stage { order: 0; }
-  .fh-hero__stage img { width: 100%; max-width: 620px; }
-  .fh-current { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 18px 18px 18px 22px; }
+  .fh-current { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 14px 14px 14px 18px; }
   .fh-current__actions { grid-template-columns: auto auto; }
-
-  .fh-modes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-  .fh-mode { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 12px; padding: 12px 12px 18px; }
-  .fh-mode__scene img { width: 92%; }
-  .fh-mode__copy { padding-inline: 6px; }
-  .fh-mode__go { top: auto; bottom: 20px; transform: none; }
-
   .fh-split { grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); }
   .fh-back { flex-basis: auto; }
 }
 
+@media (min-width: 1040px) {
+  .fh-doors { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .fh * { transition: none !important; }
+  .fh * { transition: none !important; animation: none !important; }
 }
 
 /* --- Piezas reutilizadas dentro de la Home ----------------------------------- */

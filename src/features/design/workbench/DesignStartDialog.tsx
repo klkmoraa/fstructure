@@ -19,6 +19,10 @@ interface DesignStartDialogProps {
   onCreateBuilding?: () => void;
   onOpenMemory?: () => void;
   initialCategory?: DesignStartCategory;
+  /** Inicios que ofrece el apartado; por omisión, los tres. */
+  categories?: readonly DesignStartCategory[];
+  /** Elementos disponibles en el apartado; los inicios de otros elementos no se muestran. */
+  elements?: readonly string[];
 }
 
 const CATEGORIES: readonly { id: DesignStartCategory; label: string; description: string; icon: typeof Layers3 }[] = [
@@ -27,10 +31,11 @@ const CATEGORIES: readonly { id: DesignStartCategory; label: string; description
   { id: 'exercise', label: 'Ejercicio', description: 'Captura datos propios desde formularios incompletos.', icon: Sparkles },
 ];
 
-export function DesignStartDialog({ open, onOpenChange, hasModel2d, hasModel3d, code, projectName, onStart, onOpenModel, onOpenSpace3D, onCreateBuilding, onOpenMemory, initialCategory = 'project' }: DesignStartDialogProps) {
-  const [category, setCategory] = useState<DesignStartCategory>(initialCategory);
+export function DesignStartDialog({ open, onOpenChange, hasModel2d, hasModel3d, code, projectName, onStart, onOpenModel, onOpenSpace3D, onCreateBuilding, onOpenMemory, initialCategory = 'project', categories, elements }: DesignStartDialogProps) {
+  const offered = CATEGORIES.filter((item) => !categories || categories.includes(item.id));
+  const [category, setCategory] = useState<DesignStartCategory>(() => offered.some((item) => item.id === initialCategory) ? initialCategory : offered[0]!.id);
   const [full, setFull] = useState(false);
-  const entries = useMemo(() => DESIGN_STARTS.filter((item) => item.category === category), [category]);
+  const entries = useMemo(() => DESIGN_STARTS.filter((item) => item.category === category && (!elements || elements.includes(item.element))), [category, elements]);
   const codeName = designCode(code).name;
 
   const start = (item: DesignStart) => {
@@ -42,7 +47,7 @@ export function DesignStartDialog({ open, onOpenChange, hasModel2d, hasModel3d, 
     onOpenChange(next);
   };
 
-  const tabs = CATEGORIES.map(({ id, label, description, icon: Icon }) => ({
+  const tabs = offered.map(({ id, label, description, icon: Icon }) => ({
     id,
     label,
     content: <div className="dw-start__tab-content">
@@ -81,6 +86,7 @@ export function DesignStartDialog({ open, onOpenChange, hasModel2d, hasModel3d, 
     description={projectName?.trim() ? `Proyecto: ${projectName.trim()} · Norma vigente: ${codeName}` : `Elige un punto de partida · Norma vigente: ${codeName}`}
     closeLabel="Cerrar nuevo diseño" className="dw-start-dialog">
     <Tabs label="Tipo de inicio" items={tabs} value={category} onValueChange={(value) => { setCategory(value as DesignStartCategory); setFull(false); }} />
+    {categories && !categories.includes('exercise') ? <p className="dw-start__elsewhere">¿Un ejercicio suelto, con datos o incógnitas? Está en <strong>Cálculo</strong>, desde el Inicio; no toca este proyecto.</p> : null}
     {full ? <div className="dw-start__full" role="alert">
       <p>No hay espacio suficiente para conservar el trabajo actual. Libera espacio en la memoria del proyecto y vuelve a intentarlo.</p>
       {onOpenMemory ? <button type="button" onClick={() => { changeOpen(false); onOpenMemory(); }}>Abrir memoria del proyecto</button> : null}

@@ -34,7 +34,7 @@ describe('standalone FStructure', () => {
     render(<App />);
 
     expect(await screen.findByTestId('home')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1, name: 'Modela, analiza y diseña estructuras.' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Un cálculo suelto o un proyecto completo.' })).toBeTruthy();
     expect(screen.queryByText(/Elementos finitos/)).toBeNull();
 
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
@@ -53,7 +53,7 @@ describe('standalone FStructure', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Proyectos' })).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('view')).toBe('projects');
     await user.click(screen.getByRole('button', { name: 'Inicio' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Modela, analiza y diseña estructuras.' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Un cálculo suelto o un proyecto completo.' })).toBeTruthy();
     expect(new URLSearchParams(window.location.search).has('view')).toBe(false);
   });
 
@@ -61,9 +61,24 @@ describe('standalone FStructure', () => {
     const user = userEvent.setup();
     render(<App />);
     await screen.findByTestId('home');
-    await user.click(screen.getByRole('button', { name: /^Diseño/ }));
+    await user.click(screen.getByRole('button', { name: /Cada barra con su armado/ }));
     expect(await screen.findByRole('radiogroup', { name: 'Elemento a diseñar' }, { timeout: 8000 })).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
+  });
+
+  it('Cálculo abre aparte del proyecto y vuelve a la Home', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByTestId('home');
+    await user.click(screen.getByRole('button', { name: 'Zapatas' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Zapata aislada' })).toBeTruthy();
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get('surface')).toBe('calc');
+    expect(params.get('topic')).toBe('footing-isolated');
+    expect(params.has('tool')).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Volver al Inicio' }));
+    expect(await screen.findByTestId('home')).toBeTruthy();
+    expect(new URLSearchParams(window.location.search).has('topic')).toBe(false);
   });
 
   it('una entrada directa a la mesa vuelve a la Home desde el logo', async () => {

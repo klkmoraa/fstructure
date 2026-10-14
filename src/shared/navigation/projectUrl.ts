@@ -1,12 +1,13 @@
 import type { ToolId } from '../contracts';
 
 /**
- * `welcome` es la Home (la única portada de la app); `workspace`, la mesa de
- * FStructure. Las portadas que hubo antes (`surface=home`, el Inicio de
- * FusionStructure y la bienvenida de FEM) abren hoy la misma Home.
+ * `welcome` es la Home (la única portada de la app); `calc`, el apartado de
+ * Cálculo (ejercicios y piezas sueltas, sin tocar el proyecto); `workspace`,
+ * la mesa del Proyecto. Las portadas que hubo antes (`surface=home`, el Inicio
+ * de FusionStructure y la bienvenida de FEM) abren hoy la misma Home.
  */
 export interface ProjectUrlState {
-  surface: 'welcome' | 'workspace';
+  surface: 'welcome' | 'calc' | 'workspace';
   projectId: string;
   tool: ToolId;
   /** Modo de la mesa de FStructure: modelo 2D (por omisión), modelo 3D o diseño. */
@@ -51,12 +52,16 @@ export function readProjectUrl(href: string, activeProjectId: string): ProjectUr
   // La bienvenida de una herramienta (`surface=home`) y el Inicio son hoy la misma Home.
   // FEM se retiró: sus enlaces (`tool=fem`, `surface=fem`) abren la Home.
   if (surface === 'home' || surface === 'welcome' || surface === 'fem' || canonical === 'fem') return { surface: 'welcome', projectId, tool };
+  if (surface === 'calc') return { surface: 'calc', projectId, tool };
   const workspace = params.has('tool') || legacy !== undefined || (params.has('project') && surface !== 'welcome');
   if (!workspace) return { surface: 'welcome', projectId, tool };
   const requestedMode = params.get('mode');
   const mode = tool === 'model2d' ? legacyMode(params) ?? (isMesaMode(requestedMode) ? requestedMode : null) : null;
   return mode && mode !== 'model' ? { surface: 'workspace', projectId, tool, mode } : { surface: 'workspace', projectId, tool };
 }
+
+/** Parámetros propios del apartado Cálculo. */
+const CALC_PARAMS = ['topic', 'find', 'piece'] as const;
 
 export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, route: ProjectUrlState, mode: 'push' | 'replace'): void {
   const url = new URL(browser.location.href);
@@ -66,9 +71,15 @@ export function writeProjectUrl(browser: Pick<Window, 'location' | 'history'>, r
   url.searchParams.delete('mode');
   if (route.surface === 'welcome') {
     // La sección abierta de la Home (`view`) es suya: se conserva al recargar.
+    CALC_PARAMS.forEach((key) => url.searchParams.delete(key));
     url.searchParams.set('surface', 'welcome');
+  } else if (route.surface === 'calc') {
+    // El tema abierto de Cálculo (`topic`, `find`, `piece`) es suyo.
+    url.searchParams.delete('view');
+    url.searchParams.set('surface', 'calc');
   } else {
     url.searchParams.delete('view');
+    CALC_PARAMS.forEach((key) => url.searchParams.delete(key));
     url.searchParams.set('project', route.projectId);
     url.searchParams.set('tool', route.tool);
     if (route.tool === 'model2d' && route.mode && route.mode !== 'model') url.searchParams.set('mode', route.mode);

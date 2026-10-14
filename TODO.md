@@ -4,6 +4,11 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
+- [x] Dos apartados: Cálculo (ejercicios estilo libro con incógnita elegible y solución paso a paso, más piezas sueltas fuera del proyecto) y Proyecto (2D → 3D → Diseño); Home con dos puertas y Diseño del proyecto sin «Ejercicio».
+- [ ] Cálculo: más temas del libro — deflexiones con sección agrietada (Ie) y diferidas, losas en una y dos direcciones, torsión, columnas esbeltas, doble armado por diseño (A′s como incógnita), zapata con momento y muros; cada uno con su cláusula registrada.
+- [ ] Cálculo: guardar un ejercicio resuelto en la Biblioteca y exportarlo en PDF con la misma memoria del taller (hoy: copiar texto o imprimir).
+- [ ] Cálculo en inglés (hoy sólo español, como el taller de Diseño).
+
 - [x] Momento individual y Diagramas: misma normal local y convención de signos, centésimas en valores grandes y extremo derecho legible junto al zoom.
 
 - [x] Modelo 2D: EI/E/I constante, valor o referencia relativa, predeterminados y factor por barra; edición en Aula/Completo y en selección múltiple.

@@ -1,0 +1,575 @@
+/*
+ * Cálculo: ejercicios y piezas sueltas.
+ *
+ * Como una libreta: índice a la izquierda, el ejercicio al centro y la
+ * solución que se escribe sola. Superficies de arcilla del canon, el acento de
+ * Análisis sólo en lo que se elige (nunca en un resultado) y las señales N, M,
+ * V en las figuras. Movimiento sólo al cambiar de tema: los resultados se
+ * actualizan al teclear sin animarse.
+ */
+
+.fc {
+  --fc-gutter: clamp(16px, 3vw, 32px);
+  height: 100%;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--sc-color-bg-app);
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-ui);
+}
+
+.fc-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* --- Barra ------------------------------------------------------------------ */
+
+.fc-bar {
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: calc(8px + env(safe-area-inset-top)) var(--fc-gutter) 8px;
+  border-bottom: 1px solid var(--sc-color-border-soft);
+  background: color-mix(in srgb, var(--sc-color-bg-app) 90%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.fc-home {
+  justify-self: start;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px 0 6px;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fc-home:hover { background: var(--sc-color-surface-inset); }
+.fc-home .fs-mark--fstructure .fs-mark__register { fill: var(--fs-family-analisis); }
+.fc-home__text { display: grid; gap: 1px; }
+.fc-home__text strong { font: 600 17px/1.1 var(--sc-font-display); letter-spacing: -.015em; }
+.fc-home__text small { color: var(--sc-color-text-muted); font-size: 12px; }
+
+.fc-tabs, .fc-segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.fc-tabs button, .fc-segmented button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--sc-radius-pill);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: 600 14px/1 var(--sc-font-ui);
+  cursor: pointer;
+  transition: background-color 150ms var(--sc-ease-standard), color 150ms var(--sc-ease-standard), box-shadow 150ms var(--sc-ease-standard);
+}
+
+.fc-segmented button { min-width: 48px; padding: 0 12px; font: 600 12px/1 var(--sc-font-mono); letter-spacing: .04em; }
+.fc-tabs button[aria-selected='true'], .fc-segmented button[aria-pressed='true'] { background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); color: var(--sc-color-text-primary); }
+
+.fc-prefs { justify-self: end; display: flex; align-items: center; gap: 8px; }
+
+.fc-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  color: var(--sc-color-text-secondary);
+}
+
+.fc-select select {
+  min-height: 40px;
+  padding: 0 32px 0 14px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  font: 600 13px/1 var(--sc-font-ui);
+  appearance: none;
+  cursor: pointer;
+}
+
+.fc-select svg { position: absolute; right: 12px; pointer-events: none; }
+
+.fc-icon-button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
+  color: var(--sc-color-text-secondary);
+  cursor: pointer;
+}
+
+.fc-banner {
+  margin: 0;
+  padding: 8px var(--fc-gutter);
+  background: color-mix(in srgb, var(--fs-signal-attention) 14%, var(--sc-color-bg-app));
+  color: var(--sc-color-text-primary);
+  font-size: 13px;
+}
+
+/* --- Ejercicios: índice + ejercicio ----------------------------------------- */
+
+.fc-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.fc-aside, .fc-main { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.fc-aside { padding: 20px var(--fc-gutter) 40px; }
+.fc-main { padding: 20px var(--fc-gutter) 64px; }
+
+.fc-intro { display: grid; gap: 8px; margin-bottom: 20px; }
+
+.fc-index { display: grid; gap: 22px; }
+.fc-index__chapter { display: grid; gap: 6px; }
+
+.fc-index__title {
+  margin: 0;
+  padding-inline: 12px;
+  color: var(--sc-color-text-muted);
+  font: 700 11px/1.4 var(--sc-font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.fc-index__list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+
+.fc-index__item {
+  width: 100%;
+  min-height: 52px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 12px;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms var(--sc-ease-standard);
+}
+
+.fc-index__item:hover { background: var(--sc-color-surface-inset); }
+.fc-index__item[aria-current='page'] { background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); }
+.fc-index__item[aria-current='page'] strong::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin: 0 8px 2px 0;
+  border-radius: 50%;
+  background: var(--fs-family-analisis);
+}
+.fc-index__text { display: grid; gap: 2px; min-width: 0; }
+.fc-index__text strong { font: 600 15px/1.25 var(--sc-font-ui); }
+.fc-index__text small { overflow: hidden; color: var(--sc-color-text-muted); font: 12px/1.3 var(--sc-font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.fc-index__go { color: var(--sc-color-text-subtle); }
+
+.fc-back {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -6px 0 6px -8px;
+  padding: 0 10px 0 4px;
+  border: 0;
+  border-radius: var(--sc-radius-pill);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: 600 15px/1 var(--sc-font-ui);
+  cursor: pointer;
+}
+
+/* --- Encabezado del ejercicio ----------------------------------------------- */
+
+.fc-exercise { display: grid; gap: 24px; max-width: 1160px; animation: fc-enter 200ms var(--sc-ease-standard) both; }
+
+@keyframes fc-enter {
+  from { opacity: 0; transform: translateY(6px); }
+}
+
+.fc-exercise__head { display: grid; gap: 8px; }
+
+.fc-eyebrow {
+  margin: 0;
+  color: var(--sc-color-action-ink);
+  font: 700 11px/1 var(--sc-font-mono);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.fc-title { margin: 0; font: 650 clamp(28px, 3.4vw, 40px)/1.05 var(--sc-font-display); letter-spacing: -.03em; text-wrap: balance; }
+.fc-lead { max-width: 62ch; margin: 0; color: var(--sc-color-text-secondary); font-size: 15px; line-height: 1.5; }
+
+.fc-find {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.fc-find__label {
+  grid-column: 1 / -1;
+  color: var(--sc-color-text-muted);
+  font: 600 13px/1 var(--sc-font-ui);
+}
+
+.fc-find__option {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms var(--sc-ease-standard), box-shadow 150ms var(--sc-ease-standard), transform 120ms var(--sc-ease-standard);
+}
+
+.fc-find__option:active { transform: scale(.985); }
+.fc-find__option strong { grid-row: 1 / 3; min-width: 44px; font: 600 22px/1 var(--sc-font-display); letter-spacing: -.02em; }
+.fc-find__option span { font: 600 14px/1.25 var(--sc-font-ui); }
+.fc-find__option small { color: var(--sc-color-text-muted); font: 600 11px/1 var(--sc-font-mono); letter-spacing: .06em; text-transform: uppercase; }
+.fc-find__option[aria-checked='true'] { border-color: var(--fs-family-analisis); box-shadow: var(--sc-shadow-raised); }
+.fc-find__option[aria-checked='true'] small { color: var(--sc-color-action-ink); }
+
+.fc-find-single { margin: 4px 0 0; color: var(--sc-color-text-secondary); font-size: 14px; }
+.fc-find-single strong { color: var(--sc-color-text-primary); font-family: var(--sc-font-display); }
+
+/* --- Datos y solución ------------------------------------------------------- */
+
+.fc-work { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.fc-data, .fc-solution { display: grid; gap: 16px; min-width: 0; }
+
+.fc-card {
+  padding: 18px;
+  border-radius: var(--sc-radius-card);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-raised);
+}
+
+.fc-card__title { margin: 0 0 10px; color: var(--sc-color-text-muted); font: 700 11px/1 var(--sc-font-mono); letter-spacing: .08em; text-transform: uppercase; }
+
+.fc-statement p { margin: 0; font: 400 15.5px/1.6 var(--sc-font-ui); text-wrap: pretty; }
+.fc-examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+.fc-chip {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-secondary);
+  font: 600 12.5px/1 var(--sc-font-ui);
+  cursor: pointer;
+}
+
+.fc-chip:hover { border-color: var(--sc-color-border-strong); color: var(--sc-color-text-primary); }
+.fc-chip--quiet { border-style: dashed; }
+
+/* Datos como lista agrupada: símbolo, nombre, valor y unidad en una fila. */
+.fc-fields { padding: 14px 6px 6px; }
+.fc-fields .fc-card__title { padding-inline: 12px; }
+
+.fc-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(128px, 168px);
+  align-items: center;
+  gap: 4px 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--sc-color-divider);
+}
+
+.fc-field:first-of-type { border-top: 0; }
+
+.fc-field__label { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: baseline; gap: 8px; min-width: 0; cursor: pointer; }
+.fc-field__symbol { font: 600 15px/1.2 var(--sc-font-display); font-style: italic; }
+.fc-field__name { color: var(--sc-color-text-secondary); font-size: 13.5px; line-height: 1.3; }
+.fc-field__name em { color: var(--sc-color-text-subtle); font-style: normal; }
+.fc-field__hint { grid-column: 1 / -1; padding-left: 60px; color: var(--sc-color-text-muted); font-size: 12px; line-height: 1.35; }
+
+.fc-field__control {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 2px;
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+}
+
+.fc-field__control:focus-within { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
+
+.fc-field__control input, .fc-field__control select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 0 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: 500 15px/1 var(--sc-font-mono);
+  text-align: right;
+  outline: 0;
+}
+
+.fc-field__control select { padding-right: 4px; font: 500 13px/1 var(--sc-font-ui); text-align: left; appearance: auto; cursor: pointer; }
+.fc-field__control input::placeholder { color: var(--sc-color-text-subtle); }
+.fc-field__unit { flex: none; min-width: 34px; color: var(--sc-color-text-unit); font: 12px/1 var(--sc-font-mono); }
+
+.fc-field--flag { grid-template-columns: minmax(0, 1fr) auto; }
+.fc-switch input {
+  position: relative;
+  width: 46px;
+  height: 28px;
+  margin: 0;
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
+  appearance: none;
+  cursor: pointer;
+  transition: background-color 150ms var(--sc-ease-standard);
+}
+.fc-switch input::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
+  transition: transform 160ms var(--sc-ease-standard);
+}
+.fc-switch input:checked { background: var(--fs-family-analisis); }
+.fc-switch input:checked::after { transform: translateX(18px); }
+.fc-switch input:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 2px; }
+
+/* Pendiente: faltan datos o hay uno inválido. */
+.fc-pending { display: grid; gap: 10px; min-height: 160px; align-content: center; justify-items: start; background: var(--sc-color-surface-inset); box-shadow: var(--sc-shadow-inset); }
+.fc-pending__title { margin: 0; font: 600 18px/1.2 var(--sc-font-display); }
+.fc-pending__list { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.fc-pending__note { margin: 0; color: var(--sc-color-text-secondary); font-size: 14px; line-height: 1.45; }
+.fc-pending--invalid .fc-pending__title { color: var(--sc-color-state-error-foreground); }
+
+.fc-token {
+  min-width: 32px;
+  padding: 5px 9px;
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
+  font: 600 13px/1 var(--sc-font-display);
+  font-style: italic;
+  text-align: center;
+}
+
+/* Resultado: la respuesta grande, la figura y las comprobaciones. */
+.fc-result { display: grid; gap: 14px; }
+.fc-result__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.fc-result__label { margin: 0; color: var(--sc-color-text-muted); font: 700 11px/1 var(--sc-font-mono); letter-spacing: .08em; text-transform: uppercase; }
+
+.fc-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: var(--sc-radius-pill);
+  font: 700 11px/1 var(--sc-font-mono);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.fc-badge--ok { background: color-mix(in srgb, var(--sc-color-state-success) 16%, transparent); color: var(--sc-color-state-success-foreground); }
+.fc-badge--fail { background: color-mix(in srgb, var(--sc-color-state-error) 14%, transparent); color: var(--sc-color-state-error-foreground); }
+.fc-badge--experimental { background: color-mix(in srgb, var(--fs-status-experimental) 16%, transparent); color: var(--fs-status-experimental); }
+
+.fc-answers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px 18px; margin: 0; }
+.fc-answer { display: grid; gap: 4px; min-width: 0; }
+.fc-answer dt { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.fc-answer__symbol { font: 600 14px/1 var(--sc-font-display); font-style: italic; }
+.fc-answer__label { overflow: hidden; color: var(--sc-color-text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.fc-answer dd { margin: 0; font: 600 18px/1.2 var(--sc-font-display); letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.fc-answer--main { grid-column: 1 / -1; }
+.fc-answer--main dd { font-size: clamp(28px, 3.4vw, 36px); letter-spacing: -.025em; }
+
+.fc-figure { margin: 0; padding: 10px; border-radius: calc(var(--sc-radius-card) - 6px); background: var(--sc-color-bg-canvas); box-shadow: var(--sc-shadow-inset); }
+.fc-figure__svg { display: block; width: 100%; max-width: 380px; max-height: 340px; height: auto; margin: 0 auto; overflow: visible; }
+.fc-fig-outline { fill: color-mix(in srgb, var(--sc-color-text-primary) 4%, transparent); stroke: var(--sc-color-text-primary); stroke-width: 1.6; }
+.fc-fig-block { fill: color-mix(in srgb, var(--fs-signal-axial) 22%, transparent); }
+.fc-fig-axis { fill: none; stroke: var(--sc-color-text-muted); stroke-width: 1; stroke-dasharray: 5 4; }
+.fc-fig-bar { fill: var(--sc-color-text-primary); }
+.fc-fig-column { fill: color-mix(in srgb, var(--sc-color-text-primary) 18%, transparent); stroke: var(--sc-color-text-primary); stroke-width: 1.2; }
+.fc-fig-label { fill: var(--sc-color-text-secondary); font: 600 11px var(--sc-font-mono); }
+.fc-fig-label--axial { fill: var(--fs-signal-axial-ink); }
+.fc-fig-label--shear { fill: var(--fs-signal-shear-ink); }
+.fc-fig-label--moment { fill: var(--fs-signal-moment-ink); }
+.fc-fig-tick { fill: var(--sc-color-text-muted); font: 10.5px var(--sc-font-mono); }
+.fc-fig-grid { stroke: var(--sc-color-border); stroke-width: 1; }
+.fc-fig-curve { fill: none; stroke: var(--fs-signal-axial); stroke-width: 2; stroke-linejoin: round; }
+.fc-fig-curve--nominal { stroke: var(--sc-color-text-muted); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.fc-fig-ray { stroke: var(--sc-color-text-subtle); stroke-width: 1; stroke-dasharray: 2 3; }
+.fc-fig-point { stroke: var(--sc-color-surface-1); stroke-width: 2; }
+.fc-fig-point.is-ok { fill: var(--sc-color-state-success); }
+.fc-fig-point.is-fail { fill: var(--fs-signal-attention); }
+.fc-fig-legend text { fill: var(--sc-color-text-muted); font: 10px var(--sc-font-mono); }
+.fc-fig-beam { stroke: var(--sc-color-text-primary); stroke-width: 4; stroke-linecap: round; }
+.fc-fig-support { fill: none; stroke: var(--sc-color-text-primary); stroke-width: 1.4; }
+.fc-fig-load-line { fill: none; stroke: var(--fs-load-distributed); stroke-width: 1.3; }
+.fc-fig-load-point { fill: none; stroke: var(--fs-load-point); stroke-width: 2; }
+.fc-fig-diagram { stroke-width: 1.5; stroke-linejoin: round; }
+.fc-fig-diagram--shear { fill: color-mix(in srgb, var(--fs-signal-shear) 20%, transparent); stroke: var(--fs-signal-shear); }
+.fc-fig-diagram--moment { fill: color-mix(in srgb, var(--fs-signal-moment) 18%, transparent); stroke: var(--fs-signal-moment); }
+
+.fc-checks { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.fc-check { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; align-items: start; }
+.fc-check__icon { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; font: 700 12px/1 var(--sc-font-mono); }
+.fc-check--pass .fc-check__icon { background: color-mix(in srgb, var(--sc-color-state-success) 18%, transparent); color: var(--sc-color-state-success-foreground); }
+.fc-check--fail .fc-check__icon { background: color-mix(in srgb, var(--sc-color-state-error) 16%, transparent); color: var(--sc-color-state-error-foreground); }
+.fc-check--info .fc-check__icon { background: var(--sc-color-surface-inset); color: var(--sc-color-text-muted); }
+.fc-check__text { display: grid; gap: 2px; font-size: 13.5px; line-height: 1.4; }
+.fc-check__text span { color: var(--sc-color-text-secondary); }
+.fc-check__text small { color: var(--sc-color-text-muted); font: 11px/1.4 var(--sc-font-mono); }
+
+/* Pasos: como en el pizarrón, fórmula → sustitución → resultado. */
+.fc-steps { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.fc-step { position: relative; padding: 0 0 20px 40px; }
+.fc-step::before { content: ''; position: absolute; top: 30px; bottom: 4px; left: 13px; width: 1px; background: var(--sc-color-border); }
+.fc-step:last-child::before { display: none; }
+.fc-step__title { display: flex; align-items: center; gap: 12px; margin: 0 0 8px -40px; font: 600 16px/1.3 var(--sc-font-display); letter-spacing: -.01em; }
+.fc-step__number { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); font: 600 12px/1 var(--sc-font-mono); }
+.fc-step__lines { display: grid; gap: 10px; }
+.fc-line { display: grid; gap: 3px; padding: 10px 14px; border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); }
+.fc-line p { margin: 0; overflow-wrap: anywhere; }
+.fc-line__formula { font: 500 14px/1.45 var(--sc-font-mono); }
+.fc-line__sub { color: var(--sc-color-text-secondary); font: 13px/1.45 var(--sc-font-mono); }
+.fc-line__result { font: 13.5px/1.4 var(--sc-font-mono); }
+.fc-line__result span { font-style: italic; }
+.fc-line__result strong { font: 600 15px/1.3 var(--sc-font-display); font-variant-numeric: tabular-nums; }
+.fc-line__note { color: var(--sc-color-text-muted); font-size: 13px; line-height: 1.45; }
+
+.fc-notes { display: grid; gap: 6px; margin: 0; padding: 0 0 0 18px; color: var(--sc-color-text-secondary); font-size: 13px; line-height: 1.45; }
+.fc-experimental { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; color: var(--sc-color-text-muted); font-size: 12.5px; }
+
+.fc-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.fc-button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-pill);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  font: 600 14px/1 var(--sc-font-ui);
+  cursor: pointer;
+  transition: box-shadow 150ms var(--sc-ease-standard), transform 120ms var(--sc-ease-standard);
+}
+
+.fc-button:hover { box-shadow: var(--sc-shadow-xs); }
+.fc-button:active { transform: scale(.98); }
+.fc-button--link { margin-left: auto; border-color: transparent; background: transparent; color: var(--sc-color-text-secondary); }
+
+.fc :is(button, a, select):focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 2px; }
+
+/* --- Piezas sueltas -------------------------------------------------------- */
+
+.fc-pieces-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+/* La mesa de la pieza ocupa el resto de la página, no la ventana entera. */
+.fc-pieces-wrap > .app-shell { flex: 1; min-height: 0; height: auto; }
+.fc-pieces__bar { flex: none; display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px var(--fc-gutter); }
+.fc-pieces__bar .shell-tool-slot { display: contents; }
+.fc-pieces__grow { flex: 1; min-width: 0; text-align: center; }
+.fc-pieces__note { color: var(--sc-color-text-muted); font-size: 12px; }
+.fc-loading { flex: 1; }
+
+/* --- Anchos ---------------------------------------------------------------- */
+
+@media (min-width: 760px) {
+  .fc-layout { grid-template-columns: 280px minmax(0, 1fr); }
+  .fc-aside { border-right: 1px solid var(--sc-color-border-soft); padding-inline: 12px; }
+  .fc-main { padding-top: 28px; }
+}
+
+@media (min-width: 1180px) {
+  .fc-work { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 24px; }
+  .fc-data { position: sticky; top: 0; }
+}
+
+@media (max-width: 759px) {
+  .fc-bar { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; }
+  .fc-home__text { display: none; }
+  .fc-home { padding-right: 6px; }
+  .fc-tabs { grid-column: 1 / -1; grid-row: 2; justify-self: stretch; }
+  .fc-tabs button { flex: 1; }
+  .fc-segmented button { min-width: 40px; padding: 0 8px; }
+  .fc-select select { max-width: 116px; padding-left: 12px; }
+  .fc-field { grid-template-columns: minmax(0, 1fr) 120px; gap: 4px 10px; }
+  .fc-field__label { grid-template-columns: 34px minmax(0, 1fr); }
+  .fc-field__name { font-size: 13px; }
+  .fc-field__hint { padding-left: 42px; }
+  .fc-pieces__note { display: none; }
+  .fc-button--link { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fc *, .fc { animation: none !important; transition: none !important; }
+}
+
+/* --- Impresión: el ejercicio como hoja de cálculo ---------------------------- */
+
+@media print {
+  .fc { height: auto; overflow: visible; background: #fff; color: #000; }
+  .fc-bar, .fc-aside, .fc-back, .fc-actions, .fc-examples, .fc-banner, .fc-find__label { display: none !important; }
+  .fc-layout, .fc-main { display: block; overflow: visible; padding: 0; }
+  .fc-find__option:not([aria-checked='true']) { display: none; }
+  .fc-card, .fc-line, .fc-find__option, .fc-figure { box-shadow: none; border: 1px solid #ccc; }
+  .fc-work { display: block; }
+  .fc-data, .fc-solution { display: block; }
+  .fc-card, .fc-step { break-inside: avoid; margin-bottom: 10px; }
+  .fc-exercise { animation: none; }
+}

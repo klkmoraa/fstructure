@@ -4,6 +4,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  Calculator,
   FilePlus2,
   FileUp,
   GraduationCap,
@@ -36,31 +37,45 @@ const NewExerciseDialog = lazy(() => import('./NewExerciseDialog').then((module)
 type HomeView = 'home' | 'projects' | 'templates' | 'library' | 'classroom' | 'import';
 
 interface HomePageProps {
-  /** Abre la mesa en el modo 2D. */
+  /** Abre la mesa del Proyecto en el modo 2D. */
   onOpenWorkspace: () => void;
-  /** Abre la mesa en el modo 3D. */
+  /** Abre la mesa del Proyecto en el modo 3D. */
   onOpenSpace3D: () => void;
-  /** Abre la mesa en el modo Diseño. */
-  onOpenDesign: (category?: 'project' | 'piece' | 'exercise') => void;
+  /** Abre la mesa del Proyecto en el modo Diseño. */
+  onOpenDesign: (category?: 'project' | 'piece') => void;
+  /** Abre Cálculo: ejercicios (`topic`) o una pieza suelta (`piece`). */
+  onOpenCalc?: (target?: { topic?: string; piece?: string }) => void;
 }
 
 const copy = {
   es: {
-    title: 'Modela, analiza y diseña estructuras.',
-    lead: 'Pórticos en 2D y edificios en 3D, con diseño de concreto en la misma mesa.',
-    open: 'Proyecto abierto', continue: 'Continuar', create: 'Nuevo',
+    title: 'Un cálculo suelto o un proyecto completo.',
+    lead: 'Dos apartados, cada uno a su ritmo: ejercicios resueltos paso a paso, o un proyecto donde el 2D, el 3D y el diseño comparten el mismo modelo.',
+    calc: {
+      eyebrow: 'Ejercicios y cálculos rápidos', title: 'Cálculo',
+      body: 'Cada tema por separado, como en el libro: revisa con todos los datos o diseña con incógnitas. No toca tu proyecto.',
+      open: 'Abrir Cálculo', pieces: 'Piezas completas',
+      topics: [
+        { id: 'flexure-rect', label: 'Flexión' }, { id: 'shear-beam', label: 'Cortante' }, { id: 'column-interaction', label: 'Columnas' },
+        { id: 'footing-isolated', label: 'Zapatas' }, { id: 'anchorage', label: 'Anclaje' }, { id: 'beam-simple', label: 'Vigas' },
+      ],
+    },
+    project: {
+      eyebrow: 'Todo conectado', title: 'Proyecto',
+      body: 'Modela el pórtico, llévalo al 3D y diseña cada barra con las acciones del modelo. Un solo archivo, todo sincronizado.',
+      open: 'Proyecto abierto', continue: 'Continuar', create: 'Nuevo',
+      steps: [
+        { id: 'model', title: 'Modelo 2D', role: 'Pórticos, vigas y armaduras', scene: 'model2d' },
+        { id: '3d', title: 'Modelo 3D', role: 'El edificio y sus ejes', scene: 'space3d' },
+        { id: 'design', title: 'Diseño', role: 'Cada barra con su armado', scene: 'design' },
+      ],
+    },
     nodes: 'nudos', members: 'barras', loads: 'cargas',
-    start: 'Empezar',
-    modes: [
-      { id: 'model', title: 'Modelo 2D', role: 'Marcos planos, vigas y armaduras', scene: 'model2d' },
-      { id: '3d', title: 'Modelo 3D', role: 'Edificios y marcos espaciales', scene: 'space3d' },
-      { id: 'design', title: 'Diseño', role: 'Vigas, columnas y zapatas de concreto', scene: 'design' },
-    ],
     recent: 'Proyectos recientes', all: 'Ver todos', more: 'Más',
     home: 'Inicio', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar',
     language: 'Idioma', theme: 'Cambiar tema', search: 'Buscar', clear: 'Borrar búsqueda',
     openTemplate: 'Abrir',
-    classroomStart: 'Resolver sección y acero',
+    classroomStart: 'Ejercicios de diseño en Cálculo',
     blankExercise: 'Ejercicio en blanco',
     importPortable: 'Proyecto o expediente', importPortableBody: 'JSON de FStructure',
     importDxf: 'Geometría DXF', importDxfBody: 'Líneas 2D',
@@ -68,21 +83,33 @@ const copy = {
     by: 'Hecho por Cristian Mora',
   },
   en: {
-    title: 'Model, analyse and design structures.',
-    lead: '2D frames and 3D buildings, with concrete design on the same workbench.',
-    open: 'Open project', continue: 'Continue', create: 'New',
+    title: 'A quick calculation or a complete project.',
+    lead: 'Two spaces, each at its own pace: exercises solved step by step, or a project where 2D, 3D and design share one model.',
+    calc: {
+      eyebrow: 'Exercises and quick checks', title: 'Calculation',
+      body: 'One topic at a time, like the textbook: check with every datum given or design for the unknown. Your project is untouched.',
+      open: 'Open Calculation', pieces: 'Full members',
+      topics: [
+        { id: 'flexure-rect', label: 'Flexure' }, { id: 'shear-beam', label: 'Shear' }, { id: 'column-interaction', label: 'Columns' },
+        { id: 'footing-isolated', label: 'Footings' }, { id: 'anchorage', label: 'Anchorage' }, { id: 'beam-simple', label: 'Beams' },
+      ],
+    },
+    project: {
+      eyebrow: 'Everything connected', title: 'Project',
+      body: 'Model the frame, take it to 3D and design every member with the model’s actions. One file, always in sync.',
+      open: 'Open project', continue: 'Continue', create: 'New',
+      steps: [
+        { id: 'model', title: '2D model', role: 'Frames, beams and trusses', scene: 'model2d' },
+        { id: '3d', title: '3D model', role: 'The building and its axes', scene: 'space3d' },
+        { id: 'design', title: 'Design', role: 'Every member reinforced', scene: 'design' },
+      ],
+    },
     nodes: 'nodes', members: 'members', loads: 'loads',
-    start: 'Start',
-    modes: [
-      { id: 'model', title: '2D model', role: 'Plane frames, beams and trusses', scene: 'model2d' },
-      { id: '3d', title: '3D model', role: 'Buildings and space frames', scene: 'space3d' },
-      { id: 'design', title: 'Design', role: 'Concrete beams, columns and footings', scene: 'design' },
-    ],
     recent: 'Recent projects', all: 'View all', more: 'More',
     home: 'Home', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import',
     language: 'Language', theme: 'Change theme', search: 'Search', clear: 'Clear search',
     openTemplate: 'Open',
-    classroomStart: 'Design section and reinforcement',
+    classroomStart: 'Design exercises in Calculation',
     blankExercise: 'Blank model exercise',
     importPortable: 'Project or record', importPortableBody: 'FStructure JSON',
     importDxf: 'DXF geometry', importDxfBody: '2D lines',
@@ -122,12 +149,12 @@ const scene = (id: string, mode: 'day' | 'night') => `./assets/suite/${id}-${mod
 /**
  * Home de FStructure: la única portada de la app.
  *
- * Arriba lo que se hace a diario —continuar el proyecto abierto o empezar en
- * uno de los tres modos de la mesa—; debajo los proyectos recientes y los
- * accesos (plantillas, aula, importar, biblioteca), que se abren como páginas
- * de la misma Home con una flecha para volver.
+ * Dos puertas: **Cálculo** (ejercicios y piezas sueltas, sin tocar el proyecto)
+ * y **Proyecto** (2D → 3D → Diseño sobre el mismo modelo, con el proyecto
+ * abierto a la mano). Debajo, los recientes y los accesos (plantillas,
+ * importar, biblioteca), que se abren como páginas de la misma Home.
  */
-export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomePageProps) => {
+export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign, onOpenCalc }: HomePageProps) => {
   const { project, replaceProject, updateProjectView } = useProject();
   const { language, t } = useI18n();
   const { theme, setTheme } = useWorkspaceUI();
@@ -155,56 +182,75 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
     replaceProject({ ...next, settings: { ...next.settings, language } }, restoredAnalysis, revision);
     onOpenWorkspace();
   };
-  const openMode = { model: onOpenWorkspace, '3d': onOpenSpace3D, design: onOpenDesign } as const;
+  const openMode = { model: onOpenWorkspace, '3d': onOpenSpace3D, design: () => onOpenDesign('project') } as const;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
   const normalized = query.trim().toLocaleLowerCase(language);
   const examples = exampleProjects.filter((example) => `${example.name} ${example.description}`.toLocaleLowerCase(language).includes(normalized));
 
   const links = [
     { id: 'templates' as const, label: text.templates, Icon: LayoutTemplate },
-    { id: 'classroom' as const, label: text.classroom, Icon: GraduationCap },
     { id: 'import' as const, label: text.import, Icon: Upload },
     { id: 'library' as const, label: text.library, Icon: BookOpen },
+    { id: 'classroom' as const, label: text.classroom, Icon: GraduationCap },
   ];
 
   const home = <>
     <section className="fh-hero" aria-labelledby="fh-title">
-      <div className="fh-hero__copy">
-        <h1 id="fh-title" className="fh-hero__title">{text.title}</h1>
-        <p className="fh-hero__lead">{text.lead}</p>
-        <div className="fh-current" aria-label={text.open}>
+      <h1 id="fh-title" className="fh-hero__title">{text.title}</h1>
+      <p className="fh-hero__lead">{text.lead}</p>
+    </section>
+
+    <div className="fh-doors">
+      <section className="fh-door fh-door--calc" aria-labelledby="fh-calc-title" style={{ '--i': 0 } as CSSProperties}>
+        <div className="fh-door__head">
+          <span className="fh-door__icon" aria-hidden="true"><Calculator size={20} /></span>
+          <p className="fh-door__eyebrow">{text.calc.eyebrow}</p>
+        </div>
+        <h2 id="fh-calc-title" className="fh-door__title">{text.calc.title}</h2>
+        <p className="fh-door__body">{text.calc.body}</p>
+        <div className="fh-slate" aria-hidden="true">
+          <span>MR = FR · As fy (d − a/2)</span>
+          <span>s = Av fyt d / Vs</span>
+          <span>P0 = f″c (Ag − As) + As fy</span>
+        </div>
+        <nav className="fh-topics" aria-label={text.calc.title}>
+          {text.calc.topics.map((topic) => <button key={topic.id} type="button" className="fh-topic" onClick={() => onOpenCalc?.({ topic: topic.id })}>{topic.label}</button>)}
+        </nav>
+        <div className="fh-door__actions">
+          <button type="button" className="fh-button fh-button--primary" onClick={() => onOpenCalc?.()}>{text.calc.open}<ArrowRight size={16} aria-hidden="true" /></button>
+          <button type="button" className="fh-button fh-button--quiet" onClick={() => onOpenCalc?.({ piece: 'beam' })}>{text.calc.pieces}</button>
+        </div>
+      </section>
+
+      <section className="fh-door fh-door--project" aria-labelledby="fh-project-title" style={{ '--i': 1 } as CSSProperties}>
+        <div className="fh-door__head">
+          <span className="fh-door__icon" aria-hidden="true"><FStructureMark size={20} /></span>
+          <p className="fh-door__eyebrow">{text.project.eyebrow}</p>
+        </div>
+        <h2 id="fh-project-title" className="fh-door__title">{text.project.title}</h2>
+        <p className="fh-door__body">{text.project.body}</p>
+        <ol className="fh-flow">
+          {text.project.steps.map((item, index) => <li key={item.id}>
+            <button type="button" className="fh-flow__step" onClick={() => openMode[item.id]()}>
+              <span className="fh-flow__scene"><img src={scene(item.scene, mode)} alt="" decoding="async" loading="lazy" /></span>
+              <span className="fh-flow__copy"><small>{index + 1}</small><strong>{item.title}</strong><span>{item.role}</span></span>
+            </button>
+          </li>)}
+        </ol>
+        <div className="fh-current" aria-label={text.project.open}>
           <div className="fh-current__info">
-            <span className="fh-current__label">{text.open}</span>
+            <span className="fh-current__label">{text.project.open}</span>
             <strong className="fh-current__name" title={project.name}>{project.name}</strong>
             <span className="fh-current__counts"><b>{project.nodes.length}</b> {text.nodes} · <b>{project.members.length}</b> {text.members} · <b>{loadCount}</b> {text.loads}</span>
           </div>
           <div className="fh-current__actions">
-            <button type="button" className="fh-button fh-button--primary" onClick={onOpenWorkspace}><Play size={16} fill="currentColor" aria-hidden="true" />{text.continue}</button>
-            <button type="button" className="fh-button" onClick={() => openProject(createBlankProject())}><FilePlus2 size={16} aria-hidden="true" />{text.create}</button>
+            <button type="button" className="fh-button fh-button--primary" onClick={onOpenWorkspace}><Play size={16} fill="currentColor" aria-hidden="true" />{text.project.continue}</button>
+            <button type="button" className="fh-button" onClick={() => openProject(createBlankProject())}><FilePlus2 size={16} aria-hidden="true" />{text.project.create}</button>
             <ProjectSaveButton />
           </div>
         </div>
-      </div>
-      <figure className="fh-hero__stage" aria-hidden="true">
-        <img src={scene('portal', mode)} alt="" decoding="async" />
-      </figure>
-    </section>
-
-    <section className="fh-section" aria-labelledby="fh-start">
-      <h2 id="fh-start" className="fh-section__title">{text.start}</h2>
-      <div className="fh-modes">
-        {text.modes.map((item, index) => {
-          return <button key={item.id} type="button" className="fh-mode" style={{ '--i': index } as CSSProperties} onClick={() => openMode[item.id]()}>
-            <span className="fh-mode__scene"><img src={scene(item.scene, mode)} alt="" decoding="async" loading="lazy" /></span>
-            <span className="fh-mode__copy">
-              <strong>{item.title}</strong>
-              <span>{item.role}</span>
-            </span>
-            <ArrowRight className="fh-mode__go" size={18} aria-hidden="true" />
-          </button>;
-        })}
-      </div>
-    </section>
+      </section>
+    </div>
 
     <div className="fh-split">
       <section className="fh-section" aria-labelledby="fh-recent">
@@ -242,10 +288,10 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
           <strong>{text.blankExercise}</strong>
           <span className="fh-card__action">{text.openTemplate}<ArrowRight size={14} aria-hidden="true" /></span>
         </button>
-        <button type="button" className="fh-card fh-card--accent" onClick={() => onOpenDesign('exercise')}>
+        <button type="button" className="fh-card fh-card--accent" onClick={() => onOpenCalc?.()}>
           <span className="fh-card__scene"><ThreeStructuralImage assetId="portal:two-story" theme={theme} render="three" eager /></span>
           <strong>{text.classroomStart}</strong>
-          <span className="fh-card__action">{text.classroomStart}<ArrowRight size={14} aria-hidden="true" /></span>
+          <span className="fh-card__action">{text.calc.open}<ArrowRight size={14} aria-hidden="true" /></span>
         </button>
       </div>
         : view === 'library' ? <Suspense fallback={null}><PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} /></Suspense>
@@ -299,4 +345,3 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
     </Suspense>
   </>;
 };
-

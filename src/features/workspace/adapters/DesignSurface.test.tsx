@@ -33,11 +33,13 @@ describe('DesignSurface: entrada al selector de arranques', () => {
     expect(JSON.parse(localStorage.getItem('fstructure.design-workbench.frame')!).source).toBe('model');
   });
 
-  it('respeta la categoría de ejercicio que llega desde Aula', async () => {
+  it('en el Proyecto los ejercicios sueltos se mandan a Cálculo, aun con una intención vieja', async () => {
     setToolIntent({ tool: 'design', kind: 'frame', picker: true, category: 'exercise' });
     render(<ProjectProvider><DesignSurface /></ProjectProvider>);
-    expect((await screen.findByRole('tab', { name: 'Ejercicio' })).getAttribute('aria-selected')).toBe('true');
-    expect(screen.getByRole('tabpanel').textContent).toContain('Sección con acciones dadas');
+    expect((await screen.findByRole('tab', { name: 'Proyecto' })).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Pieza' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Ejercicio' })).toBeNull();
+    expect(screen.getByText(/Está en/).textContent).toContain('Cálculo');
   });
 
   it('la entrada desde un modelo y una barra abre directo a Estructura, sin selector', async () => {

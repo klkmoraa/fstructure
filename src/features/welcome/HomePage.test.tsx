@@ -15,18 +15,41 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('HomePage Aula', () => {
-  it('conserva el modelo vacío y abre Diseño en ejercicio propio', async () => {
+  it('conserva el modelo vacío y lleva los ejercicios de diseño a Cálculo', async () => {
     const user = userEvent.setup();
     const onOpenDesign = vi.fn();
-    render(<ProjectProvider><HomePage onOpenWorkspace={vi.fn()} onOpenSpace3D={vi.fn()} onOpenDesign={onOpenDesign} /></ProjectProvider>);
+    const onOpenCalc = vi.fn();
+    render(<ProjectProvider><HomePage onOpenWorkspace={vi.fn()} onOpenSpace3D={vi.fn()} onOpenDesign={onOpenDesign} onOpenCalc={onOpenCalc} /></ProjectProvider>);
     await user.click(screen.getByRole('button', { name: /Ejercicio en blanco/ }));
     expect(await screen.findByRole('dialog')).toBeTruthy();
     expect(screen.queryByRole('radiogroup')).toBeNull();
     await user.keyboard('{Escape}');
-    const button = screen.getByRole('button', { name: /Resolver sección y acero/ });
-    await user.click(button);
-    expect(onOpenDesign).toHaveBeenCalledWith('exercise');
-    expect(screen.getAllByRole('button', { name: /Resolver sección y acero/ })).toHaveLength(1);
-    expect(screen.queryByRole('button', { name: /Viga simplemente apoyada/ })).toBeNull();
+    await user.click(screen.getByRole('button', { name: /Ejercicios de diseño en Cálculo/ }));
+    expect(onOpenCalc).toHaveBeenCalledTimes(1);
+    expect(onOpenDesign).not.toHaveBeenCalled();
+  });
+});
+
+describe('HomePage: dos apartados', () => {
+  it('Cálculo abre un tema y Proyecto abre cada modo de la mesa', async () => {
+    window.history.replaceState({}, '', '?surface=welcome');
+    const user = userEvent.setup();
+    const onOpenWorkspace = vi.fn();
+    const onOpenSpace3D = vi.fn();
+    const onOpenDesign = vi.fn();
+    const onOpenCalc = vi.fn();
+    render(<ProjectProvider><HomePage onOpenWorkspace={onOpenWorkspace} onOpenSpace3D={onOpenSpace3D} onOpenDesign={onOpenDesign} onOpenCalc={onOpenCalc} /></ProjectProvider>);
+    expect(screen.getByRole('heading', { name: 'Cálculo' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Proyecto' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Cortante' }));
+    expect(onOpenCalc).toHaveBeenLastCalledWith({ topic: 'shear-beam' });
+    await user.click(screen.getByRole('button', { name: /Piezas completas/ }));
+    expect(onOpenCalc).toHaveBeenLastCalledWith({ piece: 'beam' });
+    await user.click(screen.getByRole('button', { name: /Modelo 3D/ }));
+    expect(onOpenSpace3D).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole('button', { name: /Diseño/ }));
+    expect(onOpenDesign).toHaveBeenCalledWith('project');
+    await user.click(screen.getByRole('button', { name: /Continuar/ }));
+    expect(onOpenWorkspace).toHaveBeenCalled();
   });
 });

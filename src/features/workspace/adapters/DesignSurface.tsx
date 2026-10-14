@@ -210,7 +210,7 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     {readOnly ? <section className="dw-storage-readonly" role="status" aria-label="Diseño en solo lectura">
       <h2>Diseño en solo lectura</h2><p>{readOnly} Se conserva la rama original del proyecto.</p>
       {onOpenModel ? <button type="button" className="sc-button sc-button--touch sc-button--secondary" onClick={onOpenModel}>Volver al modelo</button> : null}
-    </section> : <DesignWorkbench key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
+    </section> : <DesignWorkbench scope="project" key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
       {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})} {...(createBuilding ? { onCreateBuilding: createBuilding } : {})}
       {...(startPicker ? { startPicker } : {})}
       {...(intent?.category ? { startCategory: intent.category } : {})}

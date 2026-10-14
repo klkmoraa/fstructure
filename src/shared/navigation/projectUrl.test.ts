@@ -3,6 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { readProjectUrl, writeProjectUrl } from './projectUrl';
 
 describe('canonical project navigation', () => {
+  it('opens Cálculo apart from the project and keeps its topic only there', () => {
+    expect(readProjectUrl('https://example.test/app/?surface=calc&topic=shear-beam', 'active')).toEqual({ surface: 'calc', projectId: 'active', tool: 'model2d' });
+    const calc = new URL('https://example.test/app/?surface=calc&topic=shear-beam&find=shear-check');
+    const browser = { location: calc as unknown as Location, history: { pushState: (_: unknown, __: string, url: URL) => { calc.href = url.href; }, replaceState: (_: unknown, __: string, url: URL) => { calc.href = url.href; }, state: null } as unknown as History };
+    writeProjectUrl(browser, { surface: 'calc', projectId: 'p', tool: 'model2d' }, 'replace');
+    expect(calc.searchParams.get('topic')).toBe('shear-beam');
+    writeProjectUrl(browser, { surface: 'workspace', projectId: 'p', tool: 'model2d' }, 'replace');
+    expect(calc.searchParams.get('topic')).toBeNull();
+    expect(calc.searchParams.get('find')).toBeNull();
+  });
   it('migrates legacy workspace2d preserving project identity', () => {
     expect(readProjectUrl('https://example.test/app/?surface=workspace2d&project=old', 'active')).toEqual({ surface: 'workspace', projectId: 'old', tool: 'model2d' });
   });

@@ -56,8 +56,21 @@ const readRoom = (): Room => {
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
   room === 'wide' ? { inputs: true, results: true } : room === 'narrow' ? { inputs: true, results: false } : { inputs: false, results: false };
 
-export function DesignWorkbench({ nativeTool = true, startElement, startCode, startSource, startPicker = false, startCategory, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateBuilding, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
+/** Inicios del selector «Nuevo diseño» que ofrece cada apartado. */
+const SCOPE_CATEGORIES = {
+  project: ['project', 'piece'],
+  calc: ['piece', 'exercise'],
+} as const;
+
+export function DesignWorkbench({ scope, elements: allowedElements, nativeTool = true, startElement, startCode, startSource, startPicker = false, startCategory, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateBuilding, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
   nativeTool?: boolean;
+  /**
+   * Apartado que aloja el taller: en el Proyecto los inicios son el modelo y las
+   * piezas; en Cálculo, piezas y ejercicios sueltos. Sin él se ofrecen todos.
+   */
+  scope?: 'project' | 'calc';
+  /** Elementos que ofrece el selector; por omisión, todos. */
+  elements?: readonly ElementKind[];
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
   modelSource?: ExternalStructureSource | null;
   /** Ejes diseñables del Modelo 3D del proyecto, traducidos por la misma frontera. */
@@ -90,11 +103,14 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   modelReview?: ReactNode;
 }) {
   const storage = useWorkbenchStorage();
+  const offered = allowedElements ? ELEMENTS.filter((item) => allowedElements.includes(item.id)) : ELEMENTS;
+  const allowed = (value: unknown): value is ElementKind => isElementKind(value) && offered.some((item) => item.id === value);
   const [element, setElementState] = useState<ElementKind>(() => {
-    if (startSource === 'model' || startSource === 'model3d') return 'frame';
+    if (allowed(startElement)) return startElement;
+    if ((startSource === 'model' || startSource === 'model3d') && allowed('frame')) return 'frame';
     const stored = storage.read('element');
     // En la mesa de FStructure se empieza por diseñar el modelo.
-    return isElementKind(stored) ? stored : 'frame';
+    return allowed(stored) ? stored : offered[0]!.id;
   });
   const [code, setCodeState] = useState<DesignCodeId>(() => {
     const stored = storage.read('code');
@@ -107,14 +123,14 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
       ? Object.fromEntries(Object.entries(storedFrame as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
       : {};
     const writes = {
-      ...(startElement ? { element: startElement } : {}),
+      ...(allowed(startElement) ? { element: startElement } : {}),
       ...(isDesignCodeId(startCode) ? { code: startCode } : {}),
       ...(startSource ? { frame: { ...currentFrame, source: startSource } } : {}),
     };
     if (Object.keys(writes).length === 0) return;
     const accepted = commitWorkbenchBatch(storage, writes as Record<string, JsonValue>);
     if (!accepted.accepted) return;
-    if (startElement) setElementState(startElement);
+    if (allowed(startElement)) setElementState(startElement);
     if (isDesignCodeId(startCode)) setCodeState(startCode);
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -155,7 +171,7 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   // Cada elemento monta su propia barra; el foco del teclado se mueve cuando ya existe la nueva.
   const [focusRequest, setFocusRequest] = useState(0);
   useEffect(() => {
-    if (focusRequest > 0) buttons.current[ELEMENTS.findIndex((item) => item.id === element)]?.focus();
+    if (focusRequest > 0) buttons.current[offered.findIndex((item) => item.id === element)]?.focus();
   }, [element, focusRequest]);
 
   // Paneles: preferencia de la sesión, no se guarda en el proyecto.
@@ -302,18 +318,18 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const steps: Record<string, number> = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
     let next = index;
-    if (event.key in steps) next = (index + steps[event.key]! + ELEMENTS.length) % ELEMENTS.length;
+    if (event.key in steps) next = (index + steps[event.key]! + offered.length) % offered.length;
     else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = ELEMENTS.length - 1;
+    else if (event.key === 'End') next = offered.length - 1;
     else return;
     event.preventDefault();
-    setElement(ELEMENTS[next]!.id);
+    setElement(offered[next]!.id);
     setFocusRequest((count) => count + 1);
   };
 
   const elements = <div className="dw-dock__elements">
     <div className="dw-dock__group" role="radiogroup" aria-label="Elemento a diseñar">
-      {ELEMENTS.map((item, index) => <ToolButton
+      {offered.map((item, index) => <ToolButton
         key={item.id}
         ref={(node) => { buttons.current[index] = node; }}
         role="radio"
@@ -457,7 +473,9 @@ export function DesignWorkbench({ nativeTool = true, startElement, startCode, st
       }))}
       code={code} projectName={projectName} onStart={startRecipe} onOpenModel={onOpenModel}
       onOpenSpace3D={onOpenSpace3D ? () => onOpenSpace3D() : undefined} onCreateBuilding={onCreateBuilding}
-      onOpenMemory={() => { setStartOpen(false); setMemoryOpen(true); }} initialCategory={startCategory} />
+      onOpenMemory={() => { setStartOpen(false); setMemoryOpen(true); }} initialCategory={startCategory}
+      {...(scope ? { categories: SCOPE_CATEGORIES[scope] } : {})}
+      elements={offered.map((item) => item.id)} />
     <DesignMemoryDialog open={memoryOpen} onOpenChange={setMemoryOpen} memory={memory} element={element} onLoad={loadFromMemory}
       onExport={(reports) => void exportPdf(reports, projectName?.trim() || 'proyecto')} exporting={exporting} message={exportMessage} onClearMessage={() => setExportMessage(null)} modelSource={modelSource} modelAxes={modelAxes} />
   </div>;

@@ -132,3 +132,11 @@
   .dw-dock__elements .dw-dock__building-action { grid-row: 1; grid-column: 3; }
 }
 @media (min-width: 761px) and (max-width: 1020px) { .dw-start__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* En el Proyecto, los ejercicios sueltos viven en Cálculo. */
+.dw-start__elsewhere {
+  margin: 14px 0 0;
+  color: var(--sc-color-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
