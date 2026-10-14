@@ -1,1 +1,0 @@
-var e=[`beam`,`column`,`footing`,`flexure`,`section`];export{e as t};
