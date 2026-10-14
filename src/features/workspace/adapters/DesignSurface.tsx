@@ -15,6 +15,7 @@ import { browserWorkbenchStorage, createProjectWorkbenchStorage, type ProjectWor
 import { ProjectModelContext } from '../../../store/ProjectModelContext';
 import { WorkspaceUIContext } from '../../../store/WorkspaceUIContext';
 import { space3dSelection } from './mesaSelection';
+import { singleDesignElement } from '../../../shared/project/workScope';
 import type { ModelResultKind } from '../../../design/elements/modelResultSnapshot';
 
 export const modelSelectionDestination = (axisId?: string, kind?: ModelResultKind): 'model2d' | 'model3d' => axisId !== undefined || kind === 'model3d' ? 'model3d' : 'model2d';
@@ -203,6 +204,8 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
   }, [session, projectId]);
   useEffect(() => () => storage?.dispose(), [storage]);
   const readOnly = storage?.readOnlyReason;
+  // Una pieza individual: sólo esa pieza, sin modelos que leer ni modos a los que volver.
+  const singleElement = project ? singleDesignElement(project) : null;
   const activeStorage = storage ?? browserWorkbenchStorage;
   return <WorkbenchStorageContext.Provider value={storage ?? browserWorkbenchStorage}>
     <WorkbenchWriteNotice storage={activeStorage} />
@@ -210,7 +213,9 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     {readOnly ? <section className="dw-storage-readonly" role="status" aria-label="Diseño en solo lectura">
       <h2>Diseño en solo lectura</h2><p>{readOnly} Se conserva la rama original del proyecto.</p>
       {onOpenModel ? <button type="button" className="sc-button sc-button--touch sc-button--secondary" onClick={onOpenModel}>Volver al modelo</button> : null}
-    </section> : <DesignWorkbench scope="project" key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
+    </section> : singleElement ? <DesignWorkbench scope="single" key={projectId ?? 'local'} projectName={project?.name}
+      elements={[singleElement]} startElement={singleElement} {...(singleElement === 'frame' ? { startSource: 'frame' as const } : {})} />
+      : <DesignWorkbench scope="project" key={projectId ?? 'local'} projectName={project?.name} modelSource={modelSource} modelAxes={modelAxes}
       {...(startSource ? { startSource } : {})} {...(onOpenModel ? { onOpenModel } : {})} {...(openSpace3D ? { onOpenSpace3D: openSpace3D } : {})} {...(createBuilding ? { onCreateBuilding: createBuilding } : {})}
       {...(startPicker ? { startPicker } : {})}
       {...(intent?.category ? { startCategory: intent.category } : {})}

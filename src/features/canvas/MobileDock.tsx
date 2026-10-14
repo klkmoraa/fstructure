@@ -25,6 +25,7 @@ import { createPortal } from 'react-dom';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { useProject } from '../../store/ProjectContext';
+import { singleWorkTool } from '../../shared/project/workScope';
 import type { Selection, Tool } from '../../types';
 import { CoordinateEntryGlyph } from '../../design-system/icons/structural';
 import { readCanvasViewSettings, withCanvasViewSettings } from '../view/canvasViewSettings';
@@ -258,7 +259,7 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
       {structural ? <DockKey className="mdock__key--sm" label={t('contextualActions.structuralEdit')} onClick={() => emitWorkspaceCommand('open-structural-edit')}>
         <Move size={18} strokeWidth={1.9} aria-hidden="true" />
       </DockKey> : null}
-      {selectedMember && (selectedMember.type === 'frame' || selectedMember.type === 'truss') ? <DockKey className="mdock__key--sm" label={t('contextualActions.designMember')} onClick={() => emitWorkspaceCommand('open-member-design', { memberId: selectedMember.id })}>
+      {selectedMember && !singleWorkTool(project) && (selectedMember.type === 'frame' || selectedMember.type === 'truss') ? <DockKey className="mdock__key--sm" label={t('contextualActions.designMember')} onClick={() => emitWorkspaceCommand('open-member-design', { memberId: selectedMember.id })}>
         <DraftingCompass size={18} strokeWidth={1.9} aria-hidden="true" />
       </DockKey> : null}
       <DockKey className="mdock__key--sm mdock__key--danger" label={t('inspector.deleteSelection')} onClick={deleteSelection}>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { SINGLE_WORK_LABEL, singleWorkTool } from '../../shared/project/workScope';
 import { Copy, FolderOpen, MoreHorizontal, Pencil, RotateCcw, Save, ShieldAlert, Trash2 } from 'lucide-react';
 import { usePhase2I18n } from '../../i18n/usePhase2I18n';
 import { useI18n } from '../../i18n/useI18n';
@@ -128,6 +129,8 @@ export const ProjectHub = ({
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [collection, setCollection] = useState<'saved' | 'draft' | 'all'>('saved');
+  // Proyectos completos o cálculos individuales; por omisión, todos.
+  const [scope, setScope] = useState<'all' | 'project' | 'single'>('all');
   const [sort, setSort] = useState<'updated' | 'name'>('updated');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -190,7 +193,7 @@ export const ProjectHub = ({
   }, [activeRepository, canonicalRepository, t]);
 
   useEffect(() => { void refresh(); }, [refresh]);
-  useEffect(() => { setSelected(new Set()); }, [filter, collection]);
+  useEffect(() => { setSelected(new Set()); }, [filter, collection, scope]);
   // The current project can finish autosaving while Home is already mounted.
   useEffect(() => { const handle = window.setTimeout(() => { void refresh(); }, 900); return () => window.clearTimeout(handle); }, [currentProject, refresh]);
 
@@ -356,7 +359,8 @@ export const ProjectHub = ({
   const normalizedFilter = filter.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase(language);
   const matchesFilter = (name: string) => !normalizedFilter || name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase(language).includes(normalizedFilter);
   const filteredProjects = projectsForDisplay.filter((record) => matchesFilter(record.name)
-    && (collection === 'all' || retentionOf(record.id) === collection)).sort((a, b) =>
+    && (collection === 'all' || retentionOf(record.id) === collection)
+    && (scope === 'all' || (scope === 'single') === Boolean(singleWorkTool(record.project)))).sort((a, b) =>
     sort === 'name' ? a.name.localeCompare(b.name, language, { numeric: true, sensitivity: 'base' })
       : b.updatedAt.localeCompare(a.updatedAt) || a.name.localeCompare(b.name, language));
   const filteredRecoveries = recoveries.filter((recovery) => matchesFilter(recovery.project.name));
@@ -369,6 +373,11 @@ export const ProjectHub = ({
       <div className="project-hub__collections" role="group" aria-label={language === 'es' ? 'Apartados de proyectos' : 'Project categories'}>
         {(['saved', 'draft', 'all'] as const).map((value) => <button type="button" key={value} aria-pressed={collection === value} disabled={busy} onClick={() => chooseCollection(value)}>
           {text[value]} <span>{projectsForDisplay.filter((record) => value === 'all' || retentionOf(record.id) === value).length}</span>
+        </button>)}
+      </div>
+      <div className="project-hub__collections" role="group" aria-label={language === 'es' ? 'Tipo de archivo' : 'File kind'}>
+        {(['all', 'project', 'single'] as const).map((value) => <button type="button" key={value} aria-pressed={scope === value} disabled={busy} onClick={() => setScope(value)}>
+          {value === 'all' ? (language === 'es' ? 'Todo' : 'All') : value === 'project' ? (language === 'es' ? 'Proyectos' : 'Projects') : (language === 'es' ? 'Individuales' : 'Single')}
         </button>)}
       </div>
       <label className="project-hub__sort">{text.order}<select value={sort} onChange={(event) => setSort(event.target.value as 'updated' | 'name')}><option value="updated">{text.updated}</option><option value="name">{text.name}</option></select></label>
@@ -390,7 +399,8 @@ export const ProjectHub = ({
       {visibleProjects.map((record) => {
         const presentation = recentProjectPresentation(tool, bundles.get(record.id)?.bundle, language);
         const toolScene = tool === 'model2d' ? null : toolIdentity(tool).scene;
-        const meta = presentation.meta || (tool === 'model2d'
+        const single = singleWorkTool(record.project);
+        const meta = single ? `${language === 'es' ? 'Individual' : 'Single'} · ${SINGLE_WORK_LABEL[single][language]}` : presentation.meta || (tool === 'model2d'
           ? `${t('hub.meta', { members: record.project.members.length, nodes: record.project.nodes.length })}${presentation.space3d ? ` · 3D: ${presentation.space3d}` : ''}${presentation.design ? ` · ${language === 'es' ? 'Diseño' : 'Design'}: ${presentation.design}` : ''}`
           : language === 'es' ? 'Sin datos guardados de esta herramienta' : 'No saved data for this tool');
         return <div className="project-hub__entry" key={record.id}><article className={`project-hub__row${selected.has(record.id) ? ' is-selected' : ''}`}>

@@ -161,6 +161,14 @@ const normalizeStiffnessDefaults = (input: unknown): ProjectSettings['stiffnessD
   return defaults;
 };
 
+const normalizeWorkScope = (input: unknown): NonNullable<ProjectSettings['workScope']> => {
+  const raw = objectAt(input, 'settings.workScope');
+  return {
+    kind: enumAt(raw.kind, 'settings.workScope.kind', ['single'] as const),
+    tool: enumAt(raw.tool, 'settings.workScope.tool', ['model2d', 'space3d', 'beam', 'column', 'footing', 'flexure', 'section', 'frame'] as const),
+  };
+};
+
 const normalizeSettings = (input: unknown): ProjectSettings => {
   const defaults = createDefaultSettings();
   const raw = input === undefined ? {} : objectAt(input, 'settings');
@@ -211,6 +219,7 @@ const normalizeSettings = (input: unknown): ProjectSettings => {
       ] as const),
     ...(raw.stiffnessDefaults === undefined ? {} : { stiffnessDefaults: normalizeStiffnessDefaults(raw.stiffnessDefaults) }),
     pDeltaConfig: normalizePDeltaConfig(raw.pDeltaConfig, 'settings.pDeltaConfig'),
+    ...(raw.workScope === undefined ? {} : { workScope: normalizeWorkScope(raw.workScope) }),
   };
   if (settings.gridSize <= 0) fail('settings.gridSize', 'debe ser mayor que cero.');
   if (settings.diagramScale <= 0) fail('settings.diagramScale', 'debe ser mayor que cero.');

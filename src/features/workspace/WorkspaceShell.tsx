@@ -43,6 +43,7 @@ import '../canvas/mobileCanvasDensity.css';
 import './canvasChrome.css';
 import './mesaChrome.css';
 import { emitWorkspaceCommand, onWorkspaceCommand } from './workspaceCommands';
+import { SINGLE_WORK_LABEL, singleWorkTool } from '../../shared/project/workScope';
 import { setToolIntent } from './toolIntent';
 import { isOwnHistoryScope } from './commandRegistry';
 import type { AnalysisResult } from '../../types';
@@ -493,7 +494,8 @@ const WorkspaceBrokerContent = ({
       canUndo={canUndo}
       canRedo={canRedo}
       labels={{
-        solverName: `FS-A01 · ${SOLVER_2D.name}`,
+        // Un cálculo individual lo dice en la barra: no está enlazado con 3D ni Diseño.
+        solverName: singleWorkTool(project) ? `${language === 'es' ? 'Individual' : 'Single'} · ${SINGLE_WORK_LABEL.model2d[language]}` : `FS-A01 · ${SOLVER_2D.name}`,
         project: t('topbar.currentProject'),
         home: t('navigation.home'),
         editProject: t('project.name'),

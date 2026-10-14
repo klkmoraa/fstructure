@@ -16,6 +16,7 @@ import { ShellMoreMenu } from './ShellMoreMenu';
 import { usePageZoomGuard } from './usePageZoomGuard';
 import '../../design-system/components/ui.css';
 import './phase1.css';
+import { SINGLE_WORK_LABEL, singleWorkTool } from '../../shared/project/workScope';
 import './workspaceTopbar.css';
 import './nativeWorkspaceMode.css';
 import './mesaChrome.css';
@@ -103,7 +104,7 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
         canUndo={false}
         canRedo={false}
         labels={{
-          solverName: `${identity.code} · ${name}`,
+          solverName: singleWorkTool(project) ? `${language === 'es' ? 'Individual' : 'Single'} · ${SINGLE_WORK_LABEL[singleWorkTool(project)!][language]}` : `${identity.code} · ${name}`,
           project: t('topbar.currentProject'),
           home: t('navigation.home'),
           editProject: t('project.name'),

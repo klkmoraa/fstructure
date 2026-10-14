@@ -1,4 +1,4 @@
-import type { ProjectModel, ProjectSettings } from '../types';
+import type { ProjectModel, ProjectSettings, SingleWorkTool } from '../types';
 import { createId } from '../utils/id';
 import { withConcreteFrame } from './concreteFrame';
 
@@ -59,6 +59,15 @@ export const createBlankProject = (): ProjectModel => ({
   designAssignments: [],
   settings: { ...createDefaultSettings(), stiffnessDefaults: { mode: 'EI', factor: 1 } },
 });
+
+/**
+ * Cálculo individual: un archivo vacío que abre una sola pantalla, sin enlaces
+ * con las demás. Se guarda y aparece en los recientes como cualquier proyecto.
+ */
+export const createSingleWork = (tool: SingleWorkTool, name: string): ProjectModel => {
+  const blank = createBlankProject();
+  return { ...blank, name, settings: { ...blank.settings, workScope: { kind: 'single', tool } } };
+};
 
 export const createDefaultProject = (): ProjectModel => ({
   schemaVersion: CURRENT_SCHEMA_VERSION,

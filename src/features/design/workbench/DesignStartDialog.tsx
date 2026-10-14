@@ -86,7 +86,7 @@ export function DesignStartDialog({ open, onOpenChange, hasModel2d, hasModel3d, 
     description={projectName?.trim() ? `Proyecto: ${projectName.trim()} · Norma vigente: ${codeName}` : `Elige un punto de partida · Norma vigente: ${codeName}`}
     closeLabel="Cerrar nuevo diseño" className="dw-start-dialog">
     <Tabs label="Tipo de inicio" items={tabs} value={category} onValueChange={(value) => { setCategory(value as DesignStartCategory); setFull(false); }} />
-    {categories && !categories.includes('exercise') ? <p className="dw-start__elsewhere">¿Un ejercicio suelto, con datos o incógnitas? Está en <strong>Cálculo</strong>, desde el Inicio; no toca este proyecto.</p> : null}
+    {categories && !categories.includes('exercise') ? <p className="dw-start__elsewhere">¿Una pieza con tus propios datos, sin enlazarla al proyecto? Ábrela en <strong>Calcular por separado</strong>, desde el Inicio.</p> : null}
     {full ? <div className="dw-start__full" role="alert">
       <p>No hay espacio suficiente para conservar el trabajo actual. Libera espacio en la memoria del proyecto y vuelve a intentarlo.</p>
       {onOpenMemory ? <button type="button" onClick={() => { changeOpen(false); onOpenMemory(); }}>Abrir memoria del proyecto</button> : null}

@@ -59,16 +59,17 @@ const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
 /** Inicios del selector «Nuevo diseño» que ofrece cada apartado. */
 const SCOPE_CATEGORIES = {
   project: ['project', 'piece'],
-  calc: ['piece', 'exercise'],
+  single: ['piece', 'exercise'],
 } as const;
 
 export function DesignWorkbench({ scope, elements: allowedElements, nativeTool = true, startElement, startCode, startSource, startPicker = false, startCategory, projectName, modelSource = null, modelAxes = null, onOpenModel, onOpenSpace3D, onCreateBuilding, onCreateModel, focusMember, onShowMembers, modelSections = null, space3dSections = null, modelReview }: {
   nativeTool?: boolean;
   /**
-   * Apartado que aloja el taller: en el Proyecto los inicios son el modelo y las
-   * piezas; en Cálculo, piezas y ejercicios sueltos. Sin él se ofrecen todos.
+   * Cómo se usa el taller: en un proyecto completo los inicios son el modelo y
+   * las piezas; en un cálculo individual, la pieza con datos completos o con
+   * formularios para tus propios datos. Sin él se ofrecen todos.
    */
-  scope?: 'project' | 'calc';
+  scope?: 'project' | 'single';
   /** Elementos que ofrece el selector; por omisión, todos. */
   elements?: readonly ElementKind[];
   /** Modelo 2D del proyecto traducido por la frontera; sin él la estructura sólo se genera aquí. */
@@ -412,6 +413,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
     ...(startPicker && startOpen && !initialIntentConsumed ? { deferSourceNormalization: true } : {}),
     ...(onShowMembers ? { onShowMembers } : {}),
     modelSections, space3dSections, ...(modelReview ? { modelReview } : {}),
+    ...(scope === 'single' ? { standalone: true } : {}),
   };
 
   return <div className="design-workbench" data-testid="design-workbench">

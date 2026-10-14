@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MemberDesignAssignment, ProjectModel } from '../types';
-import { createBlankProject, createDefaultProject, CURRENT_SCHEMA_VERSION } from './defaultProject';
+import { createBlankProject, createDefaultProject, createSingleWork, CURRENT_SCHEMA_VERSION } from './defaultProject';
 import { normalizeProject } from './migrate';
 
 type DesignAssignmentsAreRequired = ProjectModel extends { designAssignments: MemberDesignAssignment[] } ? true : false;
@@ -131,5 +131,19 @@ describe('normalizeProject', () => {
     const brokenRef = createDefaultProject();
     brokenRef.members[0].i = 'DOES-NOT-EXIST';
     expect(() => normalizeProject(brokenRef)).toThrow(/members\[0\]\.i/);
+  });
+});
+
+describe('cálculo individual (settings.workScope)', () => {
+  it('se conserva al guardar y reabrir; sin él el archivo es un proyecto completo', () => {
+    const single = createSingleWork('footing', 'Zapata');
+    const reopened = normalizeProject(JSON.parse(JSON.stringify(single)));
+    expect(reopened.settings.workScope).toEqual({ kind: 'single', tool: 'footing' });
+    expect(normalizeProject(JSON.parse(JSON.stringify(createBlankProject()))).settings.workScope).toBeUndefined();
+  });
+  it('rechaza un alcance desconocido en lugar de abrirlo como otra cosa', () => {
+    const bad = JSON.parse(JSON.stringify(createSingleWork('beam', 'Viga')));
+    bad.settings.workScope.tool = 'puente';
+    expect(() => normalizeProject(bad)).toThrow(/workScope\.tool/);
   });
 });

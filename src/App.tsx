@@ -12,6 +12,7 @@ import { toolRegistry } from './features/workspace/toolRegistry';
 import { useI18n } from './i18n/useI18n';
 import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
 import type { MesaMode } from './shared/navigation/projectUrl';
+import { singleWorkMode, singleWorkTool } from './shared/project/workScope';
 
 const loadMotionFeatures = () => import('./design-system/motionFeatures')
   .then(({ default: features }) => features);
@@ -22,8 +23,6 @@ const loadWorkspaceShell = () => import('./features/workspace/WorkspaceShell');
 const loadMesaModeShell = () => import('./features/workspace/ToolShell');
 const WorkspaceShell = lazy(loadWorkspaceShell);
 const MesaModeShell = lazy(() => loadMesaModeShell().then((module) => ({ default: module.MesaModeShell })));
-// Cálculo (ejercicios y piezas sueltas) tampoco pesa en la Home.
-const CalcPage = lazy(() => import('./features/calc/CalcPage').then((module) => ({ default: module.CalcPage })));
 const preloadShells = () => { void loadWorkspaceShell().catch(() => undefined); void loadMesaModeShell().catch(() => undefined); };
 const ShellLoading = () => <div className="app-shell-loading" role="status" aria-label="Cargando la mesa" />;
 
@@ -33,8 +32,7 @@ const FStructureSurface = () => {
   const { language } = useI18n();
   useEffect(() => {
     document.title = route.surface === 'welcome' ? 'FStructure · FusionStructure'
-      : route.surface === 'calc' ? 'Cálculo · FStructure'
-        : `${project.name} · FStructure`;
+      : `${project.name} · FStructure`;
   }, [route.surface, project.name, language]);
   /* Una sola portada (la Home) y la mesa. El logo de la mesa vuelve a la Home. */
   const openHome = useCallback(() => {
@@ -60,15 +58,17 @@ const FStructureSurface = () => {
   // Home abre el selector de arranques del Proyecto; el acceso desde los modos conserva el modelo.
   const openDesign = useCallback((category?: 'project' | 'piece') => { setToolIntent({ tool: 'design', kind: 'frame', picker: true, ...(category ? { category } : {}) }); openWorkspace('design'); }, [openWorkspace]);
   const openSpace3D = useCallback(() => openWorkspace('3d'), [openWorkspace]);
-  /* Cálculo abre en un tema (`topic`) o en una pieza suelta (`piece`); no toca el proyecto. */
-  const openCalc = useCallback((target?: { topic?: string; piece?: string }) => {
-    const url = new URL(window.location.href);
-    for (const key of ['topic', 'find', 'piece']) url.searchParams.delete(key);
-    if (target?.topic) url.searchParams.set('topic', target.topic);
-    if (target?.piece) url.searchParams.set('piece', target.piece);
-    window.history.replaceState(window.history.state, '', url);
-    navigate({ surface: 'calc', projectId: route.projectId, tool: 'model2d' });
-  }, [navigate, route.projectId]);
+
+  /* Un cálculo individual vive en una sola pantalla: sin interruptor de modos
+     y, si la URL pide otro modo (un enlace viejo, atrás/adelante), se corrige. */
+  const single = singleWorkTool(project);
+  useEffect(() => {
+    if (!single || route.surface !== 'workspace' || route.projectId !== project.id) return;
+    const mode = singleWorkMode(single);
+    if ((route.mode ?? 'model') === mode) return;
+    navigate(mode === 'model' ? { surface: 'workspace', projectId: project.id, tool: 'model2d' }
+      : { surface: 'workspace', projectId: project.id, tool: 'model2d', mode }, 'replace');
+  }, [single, route, project.id, navigate]);
 
   /* Desde la Home, la mesa se abre casi siempre: su código se descarga en
      segundo plano para que «Continuar» no espere a la red (en móvil eran segundos). */
@@ -122,12 +122,11 @@ const FStructureSurface = () => {
      superficie, historial de interfaz ni estado de render sobrevive en la Home. */
   return <ClassroomSessionProvider projectId={project.id} analysisAvailable={analysis?.success === true}>
     {route.surface === 'welcome'
-      ? <HomePage key="home" onOpenWorkspace={() => openWorkspace()} onOpenSpace3D={openSpace3D} onOpenDesign={openDesign} onOpenCalc={openCalc} />
-      : route.surface === 'calc' ? <Suspense fallback={<ShellLoading />}><CalcPage key="calc" onOpenHome={openHome} /></Suspense>
+      ? <HomePage key="home" onOpenWorkspace={openWorkspace} onOpenSpace3D={openSpace3D} onOpenDesign={openDesign} />
       : <Suspense fallback={<ShellLoading />}>
         {route.mode === 'design' || route.mode === '3d'
-          ? <MesaModeShell key="model2d-mesa" mode={route.mode} projectId={project.id} onOpenHome={openHome} onModeChange={setMesaMode} />
-          : <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openHome} onModeChange={setMesaMode} />}
+          ? <MesaModeShell key="model2d-mesa" mode={route.mode} projectId={project.id} onOpenHome={openHome} {...(single ? {} : { onModeChange: setMesaMode })} />
+          : <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openHome} {...(single ? {} : { onModeChange: setMesaMode })} />}
       </Suspense>}
   </ClassroomSessionProvider>;
 };

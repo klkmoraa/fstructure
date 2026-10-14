@@ -60,6 +60,8 @@ export interface WorkbenchChrome {
   readonly space3dSections?: ModelSectionsBridge | null;
   /** Revisión adicional suministrada por el workspace, independiente del concreto. */
   readonly modelReview?: ReactNode;
+  /** Cálculo individual: la pieza no se enlaza con ningún modelo. */
+  readonly standalone?: boolean;
 }
 
 /** Secciones rectangulares, cm. */

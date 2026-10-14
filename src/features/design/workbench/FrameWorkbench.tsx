@@ -409,7 +409,8 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     caption={outcome?.ok ? describeStructure(outcome) : undefined}
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="P-1" />
-      <FieldGroup title="Origen de la estructura" columns={1}>
+      {/* Un pórtico individual no tiene modelos que leer: sin selector de origen. */}
+      {chrome.standalone ? null : <FieldGroup title="Origen de la estructura" columns={1}>
         <SegmentedControl label="Origen de la estructura" size="sm" value={from3d ? 'model3d' : fromModel ? 'model' : 'frame'} onValueChange={(value) => { set('source')(value); setPicked(null); }}
           options={[{ value: 'model', label: 'Modelo 2D' }, { value: 'model3d', label: 'Modelo 3D' }, { value: 'frame', label: 'Pórtico rápido' }]} />
         {from3d && modelAxes?.axes.length ? <>
@@ -423,7 +424,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         {steelOnly ? <p className="dw-input-note" title="La revisión disponible aparece en el dibujo con su combinación y alcance propios.">Barras de acero: revisión parcial en el dibujo.</p> : fromModel ? <ModelSummary modelSource={external} fcFromModel={fcFromModel} space={from3d} {...(openSource ? { onOpenModel: openSource } : {})} />
           : onCreateModel ? <QuickFrameCard spec={frameOutcome?.ok ? frameModelSpec(chrome.code as DesignCodeId, draft, bays, stories) : null} modelMembers={modelSource?.summary.members ?? 0}
             onCreate={(spec) => { onCreateModel(spec); set('source')('model'); setPicked(null); setLoadNote(null); }} /> : null}
-      </FieldGroup>
+      </FieldGroup>}
       {!steelOnly ? <>
       {fromModel ? null : <>
         <FieldGroup title="Claros entre ejes" columns={1}>

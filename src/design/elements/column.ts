@@ -294,7 +294,7 @@ export function columnBars(input: Pick<ColumnDesignInput, 'shape' | 'widthMm' | 
 /** Bloque de compresión de profundidad `a` medida desde la fibra extrema: área y centroide desde esa fibra. */
 type CompressionBlock = (depthMm: number) => { readonly areaMm2: number; readonly centroidMm: number };
 
-export const rectangularBlock = (widthMm: number): CompressionBlock => (a) => ({ areaMm2: a * widthMm, centroidMm: a / 2 });
+const rectangularBlock = (widthMm: number): CompressionBlock => (a) => ({ areaMm2: a * widthMm, centroidMm: a / 2 });
 
 /** Segmento circular de altura `a` en un círculo de diámetro D (bloque equivalente de 3.6.1 en sección circular). */
 const circularBlock = (diameterMm: number): CompressionBlock => (a) => {
@@ -307,7 +307,7 @@ const circularBlock = (diameterMm: number): CompressionBlock => (a) => {
   return { areaMm2: area, centroidMm: radius - fromCenter };
 };
 
-export function interactionCurve(
+function interactionCurve(
   code: DesignCode,
   sectionDepth: number,
   block: CompressionBlock,

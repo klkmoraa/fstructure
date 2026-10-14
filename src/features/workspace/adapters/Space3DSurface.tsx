@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { singleWorkTool } from '../../../shared/project/workScope';
 import { ArrowDownToLine } from 'lucide-react';
 import { useProjectModel } from '../../../store/ProjectModelContext';
 import Space3DWorkspace, { type Space3DCameraState, type Space3DIncomingProject } from '../../../modules/space3d/features/space3d/Space3DWorkspace';
@@ -91,12 +92,13 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
   return <>
     {sectionFailure ? <ShellContribution slot="status"><ShellStatusChip tone="warn" label="Propuesta caducada" detail={sectionFailure} /></ShellContribution> : null}
     {failure ? <ShellContribution slot="status"><ShellStatusChip tone="warn" label="Sólo en memoria" detail={failure} /></ShellContribution> : null}
-    <ShellContribution slot="controls">
+    {/* Un Modelo 3D individual no tiene 2D del cual traer. */}
+    {singleWorkTool(project) ? null : <ShellContribution slot="controls">
       <button type="button" className="workspace-topbar__action-button" data-wide-label onClick={() => setBringOpen(true)}
         aria-label={es ? 'Traer el Modelo 2D al 3D' : 'Bring the 2D model into 3D'} title={es ? 'Extruir el pórtico del Modelo 2D en pórticos paralelos' : 'Extrude the 2D frame into parallel frames'}>
         <ArrowDownToLine size={17} aria-hidden="true" /><span>{es ? 'Traer del 2D' : 'From 2D'}</span>
       </button>
-    </ShellContribution>
+    </ShellContribution>}
     {bringOpen ? <BringFrom2D project={project} es={es} onClose={() => setBringOpen(false)} onBring={(model) => {
       setBringOpen(false);
       setIncoming({

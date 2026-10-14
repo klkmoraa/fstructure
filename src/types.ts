@@ -327,6 +327,22 @@ export interface MovingLoadCase {
   axles: Array<{ id?: string; P: number; offset: number }>;
 }
 
+/**
+ * Pantallas que se pueden usar solas, como cálculo individual: el Modelo 2D,
+ * el Modelo 3D o una pieza del taller de Diseño.
+ */
+export type SingleWorkTool = 'model2d' | 'space3d' | 'beam' | 'column' | 'footing' | 'flexure' | 'section' | 'frame';
+
+/**
+ * Alcance del archivo. Sin él (todo lo guardado antes) es un proyecto completo:
+ * 2D, 3D y Diseño enlazados. `single` abre una sola pantalla, sin interruptor
+ * de modos ni enlaces con las demás.
+ */
+export interface WorkScope {
+  kind: 'single';
+  tool: SingleWorkTool;
+}
+
 export interface ProjectSettings {
   units: UnitSystemId;
   language: 'es' | 'en';
@@ -368,6 +384,8 @@ export interface ProjectSettings {
   solutionMethod?: 'matrix-stiffness' | 'double-integration' | 'portal-method' | 'cantilever-method' | 'three-moment' | 'virtual-work' | 'castigliano-truss' | 'hardy-cross' | 'kani-frame' | 'method-of-sections' | 'method-of-joints' | 'conjugate-beam';
   /** Overrides merged over `DEFAULT_PDELTA_CONFIG`; unset fields keep their default. */
   pDeltaConfig?: Partial<PDeltaConfig>;
+  /** Cálculo individual; ausente = proyecto completo. */
+  workScope?: WorkScope;
 }
 
 export interface ReinforcedConcreteBeamAssignment {
