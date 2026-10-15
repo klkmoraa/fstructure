@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { SINGLE_WORK_LABEL, singleWorkTool } from '../../shared/project/workScope';
-import { Copy, FolderOpen, MoreHorizontal, Pencil, RotateCcw, Save, ShieldAlert, Trash2 } from 'lucide-react';
+import { SINGLE_WORK_LABEL, singleWorkMode, singleWorkTool } from '../../shared/project/workScope';
+import type { MesaMode } from '../../shared/navigation/projectUrl';
+import { promotedProjectName, savePromotedProject } from '../../storage/promoteProject';
+import { Copy, FolderOpen, Layers, MoreHorizontal, Pencil, RotateCcw, Save, ShieldAlert, Trash2 } from 'lucide-react';
 import { usePhase2I18n } from '../../i18n/usePhase2I18n';
 import { useI18n } from '../../i18n/useI18n';
 import { useProjectModel, useWorkspaceUI } from '../../store/ProjectContext';
@@ -110,7 +112,8 @@ export const ProjectHub = ({
   onClearFilter,
 }: {
   repository?: ProjectRepository;
-  onOpen: (record: StoredProjectRecord) => void;
+  /** `mode` abre la mesa en ese modo (la copia de un individual abre en el de su herramienta). */
+  onOpen: (record: StoredProjectRecord, mode?: MesaMode) => void;
   limit?: number;
   filter?: string;
   /** Borra la búsqueda de quien la escribe (la Home); «Limpiar filtros» la llama. */
@@ -235,6 +238,29 @@ export const ProjectHub = ({
     } catch {
       setError(t('hub.unavailable'));
     }
+  };
+
+  /* «Convertir en proyecto completo»: copia nueva sin workScope con todo el
+     bundle; el original no se toca. Se abre en el modo de su herramienta. */
+  const promote = async (record: StoredProjectRecord) => {
+    const tool = singleWorkTool(record.project);
+    if (!tool || !canonicalRepository) return;
+    setBusy(true);
+    try {
+      const name = promotedProjectName(record.name, language);
+      const copy = session?.repository === canonicalRepository
+        ? await session.promoteToProject(record.id, name, bundles.has(record.id) ? undefined : record.project)
+        : await savePromotedProject(canonicalRepository,
+          (await canonicalRepository.openBundle(record.id))?.bundle ?? createUnifiedProjectBundle(record.project, crypto.randomUUID()),
+          name, bundles.get(record.id)?.libraryState ?? (bundles.has(record.id) ? 'saved' : 'draft'));
+      try { await activeRepository?.saveProject(copy.bundle.model2d); } catch { /* espejo opcional */ }
+      setOpenMenuId(null);
+      await refresh();
+      onOpen({ id: copy.id, name: copy.bundle.model2d.name, project: copy.bundle.model2d, schemaVersion: copy.bundle.model2d.schemaVersion,
+        revision: copy.revision, checksum: copy.checksum, updatedAt: copy.updatedAt }, singleWorkMode(tool));
+    } catch {
+      setError(t('hub.unavailable'));
+    } finally { setBusy(false); }
   };
 
   const commitRename = async () => {
@@ -473,6 +499,7 @@ export const ProjectHub = ({
         {openMenuId === record.id ? <div className="project-hub__menu-panel">
           <button type="button" aria-label={t('hub.renameAction', { name: record.name })} onClick={() => { setOpenMenuId(null); setEditing({ id: record.id, name: record.name }); }}><Pencil size={15} />{t('hub.rename')}</button>
           <button type="button" aria-label={t('hub.duplicateAction', { name: record.name })} onClick={() => { setOpenMenuId(null); void duplicate(record); }}><Copy size={15} />{t('hub.duplicate')}</button>
+          {canonicalRepository && singleWorkTool(record.project) ? <button type="button" disabled={busy} aria-label={language === 'es' ? `Convertir ${record.name} en proyecto completo` : `Convert ${record.name} to a full project`} onClick={() => void promote(record)}><Layers size={15} />{language === 'es' ? 'Convertir en proyecto completo' : 'Convert to full project'}</button> : null}
           {canonicalRepository && retentionOf(record.id) === 'saved' ? <button type="button" disabled={busy} onClick={() => void keep([record], 'draft')}><Save size={15} />{text.move}</button> : null}
           {variant === 'recent' ? <button type="button" className="project-hub__delete" aria-label={t('hub.deleteAction', { name: record.name })} onClick={() => void remove([record])}><Trash2 size={15} />{t('hub.delete')}</button> : null}
         </div> : null}

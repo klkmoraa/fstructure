@@ -84,6 +84,28 @@ describe('standalone FStructure', () => {
     await waitFor(() => expect(new URLSearchParams(window.location.search).get('mode')).toBe('design'));
   });
 
+  it('una pieza individual se convierte en proyecto completo: copia abierta con modos y original intacto', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByTestId('home');
+    await user.click(screen.getByRole('button', { name: /^Zapata/ }));
+    expect(await screen.findByRole('button', { name: 'Nuevo diseño' }, { timeout: 8000 })).toBeTruthy();
+    const originalId = new URLSearchParams(window.location.search).get('project')!;
+    await waitFor(async () => expect(await new IndexedDbUnifiedBundleRepository().openBundle(originalId)).toBeTruthy(), { timeout: 4000 });
+    await user.click(document.querySelector<HTMLButtonElement>('.workspace-utilities__trigger')!);
+    await user.click(screen.getByRole('menuitem', { name: 'Convertir en proyecto completo' }));
+    expect(await screen.findByRole('group', { name: 'Modo de la mesa' }, { timeout: 8000 })).toBeTruthy();
+    const copyId = new URLSearchParams(window.location.search).get('project');
+    expect(copyId).not.toBe(originalId);
+    expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');
+    expect(screen.queryByText(/Individual · Zapata/i)).toBeNull();
+    const repository = new IndexedDbUnifiedBundleRepository();
+    const copy = await repository.openBundle(copyId!);
+    expect(copy?.bundle.model2d.settings.workScope).toBeUndefined();
+    expect(copy?.bundle.model2d.name).toMatch(/· proyecto$/);
+    expect((await repository.openBundle(originalId))?.bundle.model2d.settings.workScope).toEqual({ kind: 'single', tool: 'footing' });
+  });
+
   it('el Modelo 2D individual vacío ofrece inicios que se calculan y se deshacen', async () => {
     const user = userEvent.setup();
     render(<App />);

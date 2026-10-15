@@ -5,6 +5,7 @@ import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBund
 import type { JsonValue, LinkedSpace3DBranchV1, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
 import { canonicalJsonKey } from './bundleValidation';
 import { inspectDesignDocument } from '../shared/project/designWorkbenchCodec';
+import { savePromotedProject } from './promoteProject';
 import { BundleConflictError, IndexedDbUnifiedBundleRepository, type LegacyBundleStorage, type StoredBundleRecord, type UnifiedBundleRepository } from './unifiedBundleRepository';
 
 type UnifiedStorageStatus = { issue: 'conflict' | 'load-failed' | 'save-failed' | 'recovered' | null; message: string | null };
@@ -111,6 +112,26 @@ export class UnifiedProjectSession {
         this.blocked.add(id);
       }
     }
+  }
+  /**
+   * «Convertir en proyecto completo»: copia nueva con id propio y sin
+   * `workScope`, con todo lo del bundle. El original no se reescribe; sólo,
+   * si la mesa trae un 2D más nuevo que el guardado (el autoguardado aún no
+   * corrió), se guarda primero como lo habría hecho el autoguardado.
+   */
+  async promoteToProject(sourceId: string, name: string, live?: ProjectModel): Promise<StoredBundleRecord> {
+    if (live && live.id !== sourceId) throw new Error('El proyecto de la mesa no coincide con el que se convierte.');
+    await this.chain.catch(() => undefined);
+    if (live && !this.blocked.has(sourceId)) {
+      const pending = this.currentBundle(sourceId);
+      if (pending && canonicalJsonKey(pending.model2d) !== canonicalJsonKey(normalizeProject(live))) await this.save2D(live);
+    }
+    const stored = this.records.get(sourceId) ?? await this.repository.openBundle(sourceId);
+    const source = this.currentBundle(sourceId) ?? stored?.bundle
+      ?? (live ? createUnifiedProjectBundle(normalizeProject(live), crypto.randomUUID()) : null);
+    if (!source) throw new Error(`No existe el proyecto ${sourceId}.`);
+    if (live) source.model2d = normalizeProject(structuredClone(live));
+    return savePromotedProject(this.repository, source, name, stored ? stored.libraryState ?? 'saved' : 'draft');
   }
   saveSpace3D(project: ProjectModel, branch: LinkedSpace3DBranchV1): Promise<StoredBundleRecord> {
     return this.save(project, structuredClone(branch));

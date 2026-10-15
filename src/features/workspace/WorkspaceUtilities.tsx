@@ -28,6 +28,7 @@ import type { CalculationReportOptions } from '../../utils/calculationPdf';
 import type { PdfPreviewArtifact } from '../pdf-preview/PdfPreviewDialog';
 import { emitWorkspaceCommand } from './workspaceCommands';
 import { OPEN_HELP_EVENT } from './WorkspaceHelp';
+import { PromoteToProjectItem } from './PromoteToProjectItem';
 import './workspaceUtilities.css';
 
 const LazyPdfPreviewDialog = lazy(() => import('../pdf-preview/PdfPreviewDialog').then((module) => ({ default: module.PdfPreviewDialog })));
@@ -166,6 +167,7 @@ export const WorkspaceUtilities = ({
     ><MoreHorizontal size={19} aria-hidden="true" /></button>
     {open ? <section className="workspace-utilities__panel" role="dialog" aria-label={t('topbar.utilities')}>
       <div className="workspace-utilities__list" role="menu">
+        <PromoteToProjectItem onDone={() => setOpen(false)} />
         {item(FileText, preparingPdf ? t('workspace.utilityPdfPreparing') : t('portable.previewLabel'), () => void openPdf(), { disabled: preparingPdf })}
         {item(Sheet, t('datasheet.title'), run(() => emitWorkspaceCommand('open-datasheet')))}
         {item(ClipboardList, t('workspace.utilityBom'), run(() => emitWorkspaceCommand('open-structural-bom')))}

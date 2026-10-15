@@ -3,6 +3,7 @@ import { CircleHelp, Moon, MoreHorizontal, Sun } from 'lucide-react';
 import { useI18n } from '../../i18n/useI18n';
 import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
 import { OPEN_HELP_EVENT } from './WorkspaceHelp';
+import { PromoteToProjectItem } from './PromoteToProjectItem';
 import './workspaceUtilities.css';
 
 /**
@@ -51,6 +52,7 @@ export function ShellMoreMenu({ tools }: { tools?: ReactNode } = {}) {
     {open ? <section className="workspace-utilities__panel" role="dialog" aria-label={t('topbar.more')}>
       {tools ? <div ref={toolGroup} className="workspace-utilities__tools" role="group" aria-label={t('toolbar.primary')}>{tools}</div> : null}
       <div className="workspace-utilities__list" role="menu">
+        <PromoteToProjectItem onDone={() => setOpen(false)} />
         <button type="button" role="menuitem" className="workspace-utilities__item workspace-utilities__phone-only" onClick={() => { setOpen(false); window.dispatchEvent(new Event(OPEN_HELP_EVENT)); }}>
           <CircleHelp size={17} aria-hidden="true" /><span>{t('workspace.utilityHelp')}</span>
         </button>
