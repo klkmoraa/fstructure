@@ -199,9 +199,9 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
 
   /* Un archivo individual abre su única pantalla; un proyecto, el 2D. */
   const modeOf = (next: Pick<typeof project, 'settings'>) => { const tool = singleWorkTool(next); return tool ? singleWorkMode(tool) : 'model'; };
-  const openProject = (next: typeof project, restoredAnalysis?: Parameters<typeof replaceProject>[1], revision?: number) => {
+  const openProject = (next: typeof project, restoredAnalysis?: Parameters<typeof replaceProject>[1], revision?: number, mode?: MesaMode) => {
     replaceProject({ ...next, settings: { ...next.settings, language } }, restoredAnalysis, revision);
-    onOpenWorkspace(modeOf(next));
+    onOpenWorkspace(mode ?? modeOf(next));
   };
   const openSingle = (tool: SingleWorkTool) => openProject(createSingleWork(tool, SINGLE_WORK_LABEL[tool][language]));
   /* Los modos del proyecto enlazan el archivo abierto; si es individual, empiezan uno nuevo. */
@@ -280,7 +280,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
           <h2 id="fh-recent" className="fh-section__title">{text.recent}</h2>
           <button type="button" className="fh-link" onClick={() => navigate('projects')}>{text.all}<ArrowRight size={15} aria-hidden="true" /></button>
         </header>
-        <div className="fh-recents"><ProjectHub variant="recent" limit={4} onOpen={(record) => openProject(record.project, undefined, record.revision)} /></div>
+        <div className="fh-recents"><ProjectHub variant="recent" limit={4} onOpen={(record, mode) => openProject(record.project, undefined, record.revision, mode)} /></div>
       </section>
       <section className="fh-section" aria-labelledby="fh-more">
         <h2 id="fh-more" className="fh-section__title">{text.more}</h2>
@@ -294,7 +294,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
   </>;
 
   const searchable = view === 'projects' || view === 'templates';
-  const page = view === 'projects' ? <ProjectHub filter={query} onClearFilter={() => setQuery('')} onOpen={(record) => openProject(record.project, undefined, record.revision)} />
+  const page = view === 'projects' ? <ProjectHub filter={query} onClearFilter={() => setQuery('')} onOpen={(record, mode) => openProject(record.project, undefined, record.revision, mode)} />
     : view === 'templates' ? <div className="fh-grid">{examples.map((example) => {
       const presented = presentExample(example.name, example.description, t);
       return <button key={example.name} type="button" className="fh-card" onClick={() => openProject(example.build())}>

@@ -137,7 +137,7 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
       />}
       workspace={<section className="native-workspace-mode" data-workspace-mode={variant === '3d' ? 'space3d' : variant}
         aria-label={design ? (language === 'es' ? `${name} · Diseño` : `${name} · Design`) : variant === '3d' ? `${name} · 3D` : name}>
-        <ToolErrorBoundary key={variant} fallback={(reset) => <div className="tool-shell__failure" role="alert">
+        <ToolErrorBoundary key={`${variant}:${projectId}`} fallback={(reset) => <div className="tool-shell__failure" role="alert">
           <strong>{text.failed}</strong>
           <p>{text.failedBody}</p>
           <div>
