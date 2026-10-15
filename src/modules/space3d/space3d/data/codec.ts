@@ -18,6 +18,10 @@ import {
   SPACE3D_SCHEMA_VERSION,
   SPACE3D_V2_SCHEMA_VERSION,
   SPACE3D_V3_SCHEMA_VERSION,
+  SPACE3D_V4_SCHEMA_VERSION,
+  SPACE3D_DOF_KEYS,
+  type Space3DDofKey,
+  type Space3DNodeSprings,
   type Space3DDiaphragm,
   type Space3DGridSystem,
   type Space3DMassSource,
@@ -150,10 +154,25 @@ const readRestraints = (value: unknown, path: string): Space3DRestraints => {
   };
 };
 
-const readNode = (value: unknown, index: number): Space3DNode => {
+/** Resortes de apoyo por GDL: rigideces finitas y no negativas. */
+const readNodeSprings = (value: unknown, path: string): Space3DNodeSprings => {
+  const source = object(value, path);
+  exactKeys(source, [], path, [...SPACE3D_DOF_KEYS]);
+  const springs: { [key in Space3DDofKey]?: number } = {};
+  for (const key of SPACE3D_DOF_KEYS) {
+    const stiffness = optionalNum(source, key, path);
+    if (stiffness === undefined) continue;
+    if (stiffness < 0) fail('invalid-model', `${path}.${key} debe ser no negativa`);
+    springs[key] = stiffness;
+  }
+  return springs;
+};
+
+const readNode = (value: unknown, index: number, allowSprings: boolean): Space3DNode => {
   const path = `nodes[${index}]`;
   const source = object(value, path);
-  const optional = ['planarSupport', 'internalHinge'];
+  // Los resortes llegan con el esquema 5: en un archivo anterior son un campo ajeno.
+  const optional = ['planarSupport', 'internalHinge', ...(allowSprings ? ['springs'] : [])];
   exactKeys(source, ['id', 'x', 'y', 'z', 'restraints'], path, optional);
   return {
     id: text(source, 'id', path),
@@ -163,6 +182,7 @@ const readNode = (value: unknown, index: number): Space3DNode => {
     restraints: readRestraints(source.restraints, `${path}.restraints`),
     ...(Object.hasOwn(source, 'planarSupport') ? { planarSupport: readPlanarSupport(source.planarSupport, `${path}.planarSupport`) } : {}),
     ...(Object.hasOwn(source, 'internalHinge') ? { internalHinge: flag(source, 'internalHinge', path) } : {}),
+    ...(Object.hasOwn(source, 'springs') ? { springs: readNodeSprings(source.springs, `${path}.springs`) } : {}),
   };
 };
 
@@ -621,13 +641,13 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
   if (source.analysisSpace !== SPACE3D_ANALYSIS_SPACE) {
     fail('analysis-space', `se esperaba «${SPACE3D_ANALYSIS_SPACE}» y llegó «${String(source.analysisSpace)}»`);
   }
-  const versions = [SPACE3D_LEGACY_SCHEMA_VERSION, SPACE3D_V2_SCHEMA_VERSION, SPACE3D_V3_SCHEMA_VERSION, SPACE3D_SCHEMA_VERSION] as const;
+  const versions = [SPACE3D_LEGACY_SCHEMA_VERSION, SPACE3D_V2_SCHEMA_VERSION, SPACE3D_V3_SCHEMA_VERSION, SPACE3D_V4_SCHEMA_VERSION, SPACE3D_SCHEMA_VERSION] as const;
   if (!versions.includes(source.schemaVersion as (typeof versions)[number])) {
     fail('schema-version', `se esperaba ${versions.join(', ')} y llegó ${String(source.schemaVersion)}`);
   }
 
-  // Migración por versión: v1 no tenía semánticas, v2 no tenía rejilla y v3
-  // no tenía diafragmas, masa ni espectros. Lo que falta se crea vacío; nada
+  // Migración por versión: v1 no tenía semánticas, v2 no tenía rejilla, v3
+  // no tenía diafragmas, masa ni espectros y v4 no tenía resortes de apoyo. Lo que falta se crea vacío; nada
   // de lo que llega se descarta, y un campo de una versión posterior en un
   // archivo anterior se rechaza.
   const version = source.schemaVersion as (typeof versions)[number];
@@ -636,7 +656,7 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
   const semanticFields = ['prescribedDisplacements', 'memberLoads', 'memberInitialEffects', 'nodeLinks', 'multiPointConstraints', 'nodalMasses', 'generatedLoadSources', 'movingLoadCases'];
   const optionalFields = [
     ...(version >= SPACE3D_V3_SCHEMA_VERSION ? ['grid'] : []),
-    ...(version >= SPACE3D_SCHEMA_VERSION ? ['diaphragms', 'massSource', 'spectrumFunctions', 'responseSpectrumCases'] : []),
+    ...(version >= SPACE3D_V4_SCHEMA_VERSION ? ['diaphragms', 'massSource', 'spectrumFunctions', 'responseSpectrumCases'] : []),
   ];
   exactKeys(source, legacy ? coreFields : [...coreFields, ...semanticFields], 'project', optionalFields);
 
@@ -649,7 +669,7 @@ export const parseSpace3DProject = (json: string, options: Space3DParseOptions =
     id: text(source, 'id', 'project'),
     name: text(source, 'name', 'project'),
     units: units as Space3DProjectV1['units'],
-    nodes: list(source, 'nodes', 'project').map(readNode),
+    nodes: list(source, 'nodes', 'project').map((raw, index) => readNode(raw, index, version >= SPACE3D_SCHEMA_VERSION)),
     members: list(source, 'members', 'project').map(readMember),
     nodalLoads: list(source, 'nodalLoads', 'project').map(readLoad),
     loadCases: list(source, 'loadCases', 'project').map(readCase),

@@ -28,7 +28,7 @@ const PROJECT_FIELDS = [
   'prescribedDisplacements', 'memberLoads', 'memberInitialEffects', 'nodeLinks', 'multiPointConstraints', 'nodalMasses',
   'generatedLoadSources', 'movingLoadCases', 'grid', 'diaphragms', 'massSource', 'spectrumFunctions', 'responseSpectrumCases',
 ];
-const NODE_FIELDS = ['id', 'x', 'y', 'z', 'restraints', 'planarSupport', 'internalHinge'];
+const NODE_FIELDS = ['id', 'x', 'y', 'z', 'restraints', 'planarSupport', 'internalHinge', 'springs'];
 const RESTRAINT_FIELDS = ['ux', 'uy', 'uz', 'rx', 'ry', 'rz'];
 const MEMBER_FIELDS = [
   'id', 'i', 'j', 'E', 'G', 'A', 'Iy', 'Iz', 'J', 'orientation', 'type', 'materialId', 'materialOrigin', 'sectionId',
@@ -176,6 +176,18 @@ export const validateSpace3DProject = (project: Space3DProjectV1): readonly Spac
         }
       }
     }
+    const springs = node?.springs;
+    if (springs !== undefined) {
+      if (typeof springs !== 'object' || springs === null) {
+        collect.push('invalid-property', 'node', id, 'springs');
+      } else {
+        unknownFields(collect, springs, RESTRAINT_FIELDS, 'node', id);
+        for (const dof of RESTRAINT_FIELDS) {
+          const stiffness = (springs as Record<string, unknown>)[dof];
+          if (stiffness !== undefined && !isNonNegativeFinite(stiffness)) collect.push('invalid-property', 'node', id, `springs.${dof}`);
+        }
+      }
+    }
     if (id !== '' && isCoordinate(node?.x) && isCoordinate(node?.y) && isCoordinate(node?.z) && !nodeById.has(id)) {
       nodeById.set(id, { x: node.x, y: node.y, z: node.z });
     }
@@ -227,9 +239,22 @@ export const validateSpace3DProject = (project: Space3DProjectV1): readonly Spac
 
     const from: Space3DVector = [start.x, start.y, start.z];
     const to: Space3DVector = [end.x, end.y, end.z];
-    if (memberLength(from, to) < SPACE3D_LIMITS.minMemberLength) {
+    const length = memberLength(from, to);
+    if (length < SPACE3D_LIMITS.minMemberLength) {
       collect.push('degenerate-length', 'member', id, 'j');
       continue;
+    }
+    // Zonas rígidas: longitudes no negativas, sólo en barras frame y dejando
+    // una parte flexible apreciable.
+    const offsets = (['rigidOffsetI', 'rigidOffsetJ'] as const).map((field) => {
+      const value = member[field];
+      if (value === undefined) return 0;
+      if (!isNonNegativeFinite(value)) { collect.push('invalid-property', 'member', id, field); return 0; }
+      if (value > 0 && memberType !== 'frame') collect.push('invalid-property', 'member', id, field);
+      return value;
+    });
+    if (offsets[0] + offsets[1] > 0 && length - offsets[0] - offsets[1] <= length * SPACE3D_LIMITS.minFlexibleRatio) {
+      collect.push('invalid-property', 'member', id, offsets[1] > 0 ? 'rigidOffsetJ' : 'rigidOffsetI');
     }
     if (!orientationUsable) continue;
     try {

@@ -69,19 +69,19 @@ describe('Space3D canonical static assembly', () => {
 
   it('fails closed when a persisted semantic has no static implementation yet', () => {
     const project = axialCantilever({ P: 10 });
-    const withOffset = {
+    const withSpring = {
       ...project,
-      members: [{ ...project.members[0], rigidOffsetJ: 0.2 }],
+      members: [{ ...project.members[0], rotationalSpringJ: 5000 }],
     };
 
-    const result = analyzeSpace3DProject(withOffset, 'CO1');
+    const result = analyzeSpace3DProject(withSpring, 'CO1');
 
     expect(result.success).toBe(false);
     expect(result.issues).toContainEqual({
       code: 'unsupported-semantics',
       entityKind: 'member',
       entityId: 'M1',
-      field: 'rigidOffsetJ',
+      field: 'rotationalSpringJ',
     });
   });
 });

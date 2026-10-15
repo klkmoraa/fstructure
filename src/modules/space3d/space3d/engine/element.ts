@@ -14,9 +14,16 @@
  *     y el elemento guarda lo necesario para condensar sus cargas y recuperar
  *     el desplazamiento propio del extremo liberado (el giro de la rótula).
  *   · Armadura: sólo rigidez axial. No transmite momentos ni torsión.
+ *   · Zonas rígidas colineales (`rigidOffsetI/J`): la parte flexible, de
+ *     longitud `L − a − b`, se une a los nudos por brazos rígidos. Con
+ *     `d_flex = H·d_nudo` —`v' = v + a·rz`, `w' = w − a·ry` en `i` y
+ *     `v' = v − b·rz`, `w' = w + b·ry` en `j`— la rigidez en los nudos es
+ *     `Hᵀ·k_flex·H` y las fuerzas de extremo `Hᵀ·f_flex`. Las liberaciones se
+ *     condensan en las caras de la parte flexible.
  */
 import { multiply, transpose, zeros, type Matrix } from '../../../../foundation/linearAlgebra';
 import { buildMemberOrientation, memberLength } from './orientation';
+import { space3DFixedEndForces, splitSpace3DRigidOffsetLoads, type Space3DLocalLoadSet } from './memberLoading';
 import type { Space3DFrameMember, Space3DMemberRelease, Space3DNode, Space3DOrientationBasis } from '../model/types';
 
 interface Space3DSectionProperties {
@@ -49,7 +56,10 @@ export interface Space3DElement {
   readonly localStiffness: Matrix;
   readonly transformation: Matrix;
   readonly globalStiffness: Matrix;
+  /** Condensación de las liberaciones, en los GDL de la parte flexible. */
   readonly condensation: Space3DElementCondensation | null;
+  /** Zonas rígidas `[a, b]`, m; `null` si la barra no tiene. */
+  readonly offsets: readonly [number, number] | null;
 }
 
 /** El orden de las claves reproduce el de los GDL locales. */
@@ -185,6 +195,24 @@ const spaceFrameTransformation = (basis: Space3DOrientationBasis): Matrix => {
   return T;
 };
 
+/** `Hᵀ·f` (12): fuerzas en las caras flexibles llevadas a los nudos, locales. */
+const offsetToNodes = ([a, b]: readonly [number, number], faces: readonly number[]): number[] => {
+  const nodal = [...faces];
+  nodal[5] += a * faces[1];
+  nodal[4] -= a * faces[2];
+  nodal[11] -= b * faces[7];
+  nodal[10] += b * faces[8];
+  return nodal;
+};
+
+/** `Hᵀ·k·H` sin formar `H`: columnas y luego filas. */
+const offsetStiffness = (offsets: readonly [number, number], k: Matrix): Matrix => {
+  const columns = k.map((row) => offsetToNodes(offsets, row));
+  const transposed = columns[0].map((_, column) => columns.map((row) => row[column]));
+  const result = transposed.map((column) => offsetToNodes(offsets, column));
+  return result[0].map((_, row) => result.map((column) => column[row]));
+};
+
 export const buildSpaceFrameElement = (
   member: Space3DFrameMember,
   nodeI: Space3DNode,
@@ -195,15 +223,40 @@ export const buildSpaceFrameElement = (
   const length = memberLength(start, end);
   const basis = buildMemberOrientation(start, end, member.orientation);
   const kind = member.type === 'truss' ? 'truss' : 'frame';
-  const full = kind === 'truss' ? trussLocalStiffness(member, length) : spaceFrameLocalStiffness(member, length);
+  const offsetI = kind === 'frame' ? member.rigidOffsetI ?? 0 : 0;
+  const offsetJ = kind === 'frame' ? member.rigidOffsetJ ?? 0 : 0;
+  const offsets = offsetI > 0 || offsetJ > 0 ? [offsetI, offsetJ] as const : null;
+  const flexibleLength = length - offsetI - offsetJ;
+  const full = kind === 'truss' ? trussLocalStiffness(member, length) : spaceFrameLocalStiffness(member, flexibleLength);
   const released = kind === 'frame' ? releasedLocalDofs(member.releases) : [];
-  const { stiffness: localStiffness, condensation } = released.length > 0
+  const { stiffness: flexibleStiffness, condensation } = released.length > 0
     ? condense(member.id, full, released)
     : { stiffness: full, condensation: null };
+  const localStiffness = offsets ? offsetStiffness(offsets, flexibleStiffness) : flexibleStiffness;
   const transformation = spaceFrameTransformation(basis);
   const globalStiffness = multiply(transpose(transformation), multiply(localStiffness, transformation));
 
-  return { memberId: member.id, kind, length, basis, localStiffness, transformation, globalStiffness, condensation };
+  return { memberId: member.id, kind, length, basis, localStiffness, transformation, globalStiffness, condensation, offsets };
+};
+
+/**
+ * Fuerzas de empotramiento de las cargas locales de una barra. `raw` es el
+ * vector sin condensar de la parte flexible (lo que necesita la recuperación
+ * de una rótula); `condensed`, el que entra al ensamblaje, ya en los nudos.
+ */
+export const space3DElementFixedEndForces = (
+  element: Space3DElement,
+  loads: Space3DLocalLoadSet,
+): { readonly raw: number[]; readonly condensed: number[] } => {
+  if (!element.offsets) {
+    const raw = space3DFixedEndForces(loads, element.length, element.kind);
+    return { raw, condensed: condenseFixedEndForces(element, raw) };
+  }
+  const [a, b] = element.offsets;
+  const { flexible, rigid } = splitSpace3DRigidOffsetLoads(loads, element.length, a, b);
+  const raw = space3DFixedEndForces(flexible, element.length - a - b, element.kind);
+  const nodal = offsetToNodes(element.offsets, condenseFixedEndForces(element, raw));
+  return { raw, condensed: nodal.map((value, index) => value + rigid[index]) };
 };
 
 /**
@@ -231,7 +284,9 @@ export const recoverMemberEndDisplacements = (
   fixedEnd: readonly number[],
 ): number[] => {
   const condensation = element.condensation;
-  if (!condensation) return [...nodeLocal];
+  // Con zonas rígidas las estaciones van de nudo a nudo: sus extremos son los
+  // de los nudos (el giro propio de una rótula en la cara no se informa).
+  if (!condensation || element.offsets) return [...nodeLocal];
   const releasedSet = new Set(condensation.released);
   const retained = nodeLocal.map((value, index) => (releasedSet.has(index) ? 0 : value));
   const rhs = condensation.kcFull.map((row, index) => row.reduce((sum, value, column) => sum + value * retained[column], 0)

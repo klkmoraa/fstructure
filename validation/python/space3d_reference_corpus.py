@@ -35,10 +35,15 @@ Equivalencias que el script comprueba antes de resolver:
     modelan con las flexiones liberadas en ambos extremos y la torsión en uno;
     los nudos a los que sólo llegan armaduras reciben además restricción de
     giro (con reacción nula), lo que FStructure hace solo.
+  · Resortes de apoyo. ``def_support_spring`` de PyNite, por GDL global; su
+    reacción es −k·u, como en FStructure.
+  · Zonas rígidas. PyNite no las tiene: se emulan con barras colineales muy
+    rígidas (A, I y J × penalización) entre el nudo y la cara; las cargas se
+    reparten por tramos y las liberaciones van en la parte flexible.
   · Diafragma rígido. PyNite no tiene restricción de diafragma: se aproxima con
     barras de penalización en el plano (A e Iy enormes, Iz y J despreciables).
-    El error de la penalización se estima resolviendo con dos niveles y se
-    publica como ``referenceUncertainty`` del caso.
+    En diafragmas y zonas rígidas el error de la penalización se estima
+    resolviendo con dos niveles y se publica como ``referenceUncertainty``.
 """
 
 from __future__ import annotations
@@ -110,13 +115,17 @@ VERTICAL = [-1, 0, 0]
 
 # --- Constructores del formato del corpus ---------------------------------------
 
-def node(node_id: str, x: float, y: float, z: float, restraints: list[str] | None = None) -> dict[str, Any]:
-    return {"id": node_id, "x": x, "y": y, "z": z, "restraints": list(restraints or [])}
+def node(node_id: str, x: float, y: float, z: float, restraints: list[str] | None = None,
+         springs: dict[str, float] | None = None) -> dict[str, Any]:
+    data: dict[str, Any] = {"id": node_id, "x": x, "y": y, "z": z, "restraints": list(restraints or [])}
+    if springs:
+        data["springs"] = dict(springs)
+    return data
 
 
 def member(member_id: str, i: str, j: str, material: dict[str, float], section: dict[str, float], *,
            reference: list[float] = UP, roll_degrees: float = 0.0, kind: str = "frame",
-           releases: list[str] | None = None) -> dict[str, Any]:
+           releases: list[str] | None = None, offsets: tuple[float, float] = (0.0, 0.0)) -> dict[str, Any]:
     data: dict[str, Any] = {
         "id": member_id, "i": i, "j": j, "type": kind,
         "E": material["E"], "G": material["G"],
@@ -125,6 +134,10 @@ def member(member_id: str, i: str, j: str, material: dict[str, float], section: 
     }
     if releases:
         data["releases"] = {key: True for key in releases}
+    if offsets[0] > 0:
+        data["rigidOffsetI"] = offsets[0]
+    if offsets[1] > 0:
+        data["rigidOffsetJ"] = offsets[1]
     return data
 
 
@@ -361,6 +374,58 @@ def case_tied_cantilever() -> dict[str, Any]:
     }
 
 
+def case_support_springs() -> dict[str, Any]:
+    plan = [(0, 0), (6, 0), (6, 5), (0, 5)]
+    # Cimentación flexible: cada base con una mezcla distinta de apoyos y resortes
+    # (kN/m y kN·m/rad), y un resorte lateral en un nudo del techo.
+    bases = [
+        node("B0", 0, 0, 0, None, {"ux": 2.0e5, "uy": 5.0e5, "uz": 2.0e5, "rx": 3.0e4, "ry": 1.2e4, "rz": 3.0e4}),
+        node("B1", 6, 0, 0, ["ux", "uy", "uz", "ry"], {"rx": 2.5e4, "rz": 2.5e4}),
+        node("B2", 6, 0, 5, FIXED),
+        node("B3", 0, 0, 5, PINNED, {"rx": 1.5e4, "ry": 5.0e3, "rz": 1.5e4}),
+    ]
+    tops = [node(f"T{k}", x, 3.5, z) for k, (x, z) in enumerate(plan)]
+    tops[2] = node("T2", 6, 3.5, 5, None, {"ux": 4000.0})
+    members = [member(f"C{k}", f"B{k}", f"T{k}", CONCRETE, COL40, reference=VERTICAL) for k in range(4)]
+    members += [member(f"V{k}", f"T{k}", f"T{(k + 1) % 4}", CONCRETE, BEAM30x50) for k in range(4)]
+    loads = [nodal(f"G{k}", "LC1", f"T{k}", fy=-80) for k in range(4)]
+    loads += [nodal("WX", "LC1", "T0", fx=40), nodal("WZ", "LC1", "T1", fz=25), nodal("MT", "LC1", "T2", my=12)]
+    return {
+        "id": "resortes-apoyo",
+        "description": "Pórtico de un nivel (concreto) sobre cimentación flexible: resortes traslacionales y rotacionales por GDL en las bases, mezclados con apoyos rígidos, y un resorte lateral en el techo.",
+        "exercises": ["resortes de apoyo traslacionales y rotacionales", "apoyo rígido y resorte en el mismo nudo", "reacción del resorte −k·u"],
+        "model": {
+            "nodes": bases + tops, "members": members, "nodalLoads": loads,
+            "memberLoads": [distributed("Q1", "LC1", "V0", "global", 0, 1, qyStart=-15, qyEnd=-15)],
+            **single_case(),
+        },
+    }
+
+
+def case_rigid_offsets() -> dict[str, Any]:
+    plan = [(0, 0), (6, 0), (6, 5), (0, 5)]
+    nodes = [node(f"B{k}", x, 0, z, FIXED) for k, (x, z) in enumerate(plan)]
+    nodes += [node(f"T{k}", x, 3.5, z) for k, (x, z) in enumerate(plan)]
+    # Nudos de tamaño finito: la columna es rígida en el peralte de la viga (0,25 m)
+    # y la viga en media columna (0,20 m) en cada extremo.
+    members = [member(f"C{k}", f"B{k}", f"T{k}", CONCRETE, COL40, reference=VERTICAL, offsets=(0.0, 0.25)) for k in range(4)]
+    members += [member(f"V{k}", f"T{k}", f"T{(k + 1) % 4}", CONCRETE, BEAM30x50, offsets=(0.2, 0.2),
+                       releases=["jRz"] if k == 1 else None) for k in range(4)]
+    loads = [nodal("WX", "LC1", "T0", fx=30), nodal("WZ", "LC1", "T3", fz=-18)]
+    member_loads = [distributed(f"Q{k}", "LC1", f"V{k}", "global", 0, 1, qyStart=-20, qyEnd=-20) for k in range(4)]
+    member_loads += [
+        point("P1", "LC1", "V0", "global", 0.02, py=-15.0),
+        point("P2", "LC1", "V2", "local", 0.5, pz=4.0),
+        distributed("Q5", "LC1", "V3", "local", 0.0, 0.5, qzStart=3.0, qzEnd=0.0),
+    ]
+    return {
+        "id": "zonas-rigidas",
+        "description": "Pórtico de un nivel (concreto) con nudos de tamaño finito: zonas rígidas en las puntas de las columnas y en ambos extremos de las vigas, una viga articulada en la cara, cargas sobre las zonas rígidas y carga lateral.",
+        "exercises": ["zonas rígidas en i y en j", "cargas distribuidas y puntuales dentro de la zona rígida", "liberación en la cara de la parte flexible"],
+        "model": {"nodes": nodes, "members": members, "nodalLoads": loads, "memberLoads": member_loads, **single_case()},
+    }
+
+
 CASES = (
     case_space_cantilever,
     case_one_story_frame,
@@ -370,6 +435,8 @@ CASES = (
     case_grid_releases,
     case_rigid_diaphragm,
     case_tied_cantilever,
+    case_support_springs,
+    case_rigid_offsets,
 )
 
 
@@ -401,12 +468,33 @@ def build_pynite(model: dict[str, Any], penalty: float) -> tuple[FEModel3D, list
         rotations = truss_only[item["id"]]
         fem.def_support(item["id"], "ux" in restrained, "uy" in restrained, "uz" in restrained,
                         "rx" in restrained or rotations, "ry" in restrained or rotations, "rz" in restrained or rotations)
+        for dof, stiffness in item.get("springs", {}).items():
+            if dof in restrained:
+                raise SystemExit(f"{item['id']}.{dof}: el corpus no combina apoyo y resorte en el mismo GDL")
+            fem.def_support_spring(item["id"], ("D" if dof[0] == "u" else "R") + dof[1].upper(), stiffness)
 
     for item in model["members"]:
         material, section = f"mat-{item['id']}", f"sec-{item['id']}"
         fem.add_material(material, item["E"], item["G"], item["E"] / (2 * item["G"]) - 1, 0.0)
         fem.add_section(section, item["A"], item["Iy"], item["Iz"], item["J"])
-        fem.add_member(item["id"], item["i"], item["j"], material, section, rotation=item["rollDegrees"])
+        a, b = item.get("rigidOffsetI", 0.0), item.get("rigidOffsetJ", 0.0)
+        i_name, j_name = item["i"], item["j"]
+        if a > 0 or b > 0:
+            # Zonas rígidas: barras de la misma dirección con A, I y J × penalización
+            # entre el nudo y la cara de la parte flexible.
+            rigid = f"sec-{item['id']}~r"
+            fem.add_section(rigid, item["A"] * penalty, item["Iy"] * penalty, item["Iz"] * penalty, item["J"] * penalty)
+            start, end = node_vector(model, item["i"]), node_vector(model, item["j"])
+            axis = (end - start) / np.linalg.norm(end - start)
+            if a > 0:
+                i_name = f"{item['id']}~i"
+                fem.add_node(i_name, *(start + a * axis))
+                fem.add_member(f"{item['id']}~ri", item["i"], i_name, material, rigid, rotation=item["rollDegrees"])
+            if b > 0:
+                j_name = f"{item['id']}~j"
+                fem.add_node(j_name, *(end - b * axis))
+                fem.add_member(f"{item['id']}~rj", j_name, item["j"], material, rigid, rotation=item["rollDegrees"])
+        fem.add_member(item["id"], i_name, j_name, material, section, rotation=item["rollDegrees"])
         flags = [bool(item.get("releases", {}).get(key, False)) for key in RELEASE_KEYS]
         if item["type"] == "truss":
             # Sólo axil: flexión libre en ambos extremos y torsión libre en uno.
@@ -436,11 +524,14 @@ def build_pynite(model: dict[str, Any], penalty: float) -> tuple[FEModel3D, list
         fem.add_member(name, order[0], order[-1], "mat-penalty", "sec-penalty")
         penalty_members.append(name)
 
-    lengths = {}
+    # Tramos de cada barra: (nombre en PyNite, desde, hasta) en m desde el nudo i.
+    pieces: dict[str, list[tuple[str, float, float]]] = {}
     for item in model["members"]:
-        a = model_node(model, item["i"])
-        b = model_node(model, item["j"])
-        lengths[item["id"]] = math.dist((a["x"], a["y"], a["z"]), (b["x"], b["y"], b["z"]))
+        L = float(np.linalg.norm(node_vector(model, item["j"]) - node_vector(model, item["i"])))
+        a, b = item.get("rigidOffsetI", 0.0), item.get("rigidOffsetJ", 0.0)
+        pieces[item["id"]] = [(name, lo, hi) for name, lo, hi in (
+            (f"{item['id']}~ri", 0.0, a), (item["id"], a, L - b), (f"{item['id']}~rj", L - b, L),
+        ) if hi > lo]
 
     for load in model["nodalLoads"]:
         for key, direction in (("fx", "FX"), ("fy", "FY"), ("fz", "FZ"), ("mx", "MX"), ("my", "MY"), ("mz", "MZ")):
@@ -448,26 +539,38 @@ def build_pynite(model: dict[str, Any], penalty: float) -> tuple[FEModel3D, list
                 fem.add_node_load(load["nodeId"], direction, load[key], case=load["caseId"])
 
     for load in model["memberLoads"]:
-        L = lengths[load["memberId"]]
+        parts = pieces[load["memberId"]]
+        L = parts[-1][2]
         local = load["coordinateSystem"] == "local"
         axes = ("x", "y", "z")
         if load["type"] == "distributed":
+            x1, x2 = load["start"] * L, load["end"] * L
             for axis in axes:
                 w1 = load.get(f"q{axis}Start", 0.0)
                 w2 = load.get(f"q{axis}End", 0.0)
                 if w1 == 0 and w2 == 0:
                     continue
                 direction = f"F{axis}" if local else f"F{axis.upper()}"
-                fem.add_member_dist_load(load["memberId"], direction, w1, w2, load["start"] * L, load["end"] * L, case=load["caseId"])
+                # Cada tramo recibe su parte de la carga, interpolada en sus bordes.
+                for name, lo, hi in parts:
+                    a, b = max(x1, lo), min(x2, hi)
+                    if b > a:
+                        wa = w1 + (w2 - w1) * (a - x1) / (x2 - x1)
+                        wb = w1 + (w2 - w1) * (b - x1) / (x2 - x1)
+                        fem.add_member_dist_load(name, direction, wa, wb, a - lo, b - lo, case=load["caseId"])
         else:
             prefix = "F" if load["type"] == "point" else "M"
             key = "p" if load["type"] == "point" else "m"
+            x = load["position"] * L
+            # Un punto en una cara va a la parte flexible, como en FStructure.
+            inside = [part for part in parts if part[1] <= x <= part[2]]
+            name, lo, _hi = next((part for part in inside if part[0] == load["memberId"]), inside[0])
             for axis in axes:
                 value = load.get(f"{key}{axis}", 0.0)
                 if value == 0:
                     continue
                 direction = f"{prefix}{axis}" if local else f"{prefix}{axis.upper()}"
-                fem.add_member_pt_load(load["memberId"], direction, value, load["position"] * L, case=load["caseId"])
+                fem.add_member_pt_load(name, direction, value, x - lo, case=load["caseId"])
 
     target = model["target"]
     factors: dict[str, float] = {}
@@ -483,6 +586,11 @@ def build_pynite(model: dict[str, Any], penalty: float) -> tuple[FEModel3D, list
 
 def model_node(model: dict[str, Any], node_id: str) -> dict[str, Any]:
     return next(item for item in model["nodes"] if item["id"] == node_id)
+
+
+def node_vector(model: dict[str, Any], node_id: str) -> np.ndarray:
+    item = model_node(model, node_id)
+    return np.array([item["x"], item["y"], item["z"]], dtype=float)
 
 
 def check_orientation(fem: FEModel3D, model: dict[str, Any]) -> None:
@@ -511,7 +619,7 @@ def solve(model: dict[str, Any], penalty: float) -> dict[str, Any]:
         n = fem.nodes[item["id"]]
         displacement = [n.DX[combo], n.DY[combo], n.DZ[combo], n.RX[combo], n.RY[combo], n.RZ[combo]]
         reaction = [n.RxnFX[combo], n.RxnFY[combo], n.RxnFZ[combo], n.RxnMX[combo], n.RxnMY[combo], n.RxnMZ[combo]]
-        restrained = set(item["restraints"])
+        restrained = set(item["restraints"]) | set(item.get("springs", {}))
         # Los giros que sólo se fijaron en PyNite (nudos de armadura) deben quedar sin reacción.
         for index, dof in enumerate(DOFS):
             if dof not in restrained:
@@ -522,17 +630,21 @@ def solve(model: dict[str, Any], penalty: float) -> dict[str, Any]:
         nodes_out[item["id"]] = {"displacement": displacement, "reaction": reaction}
 
     members_out: dict[str, Any] = {}
-    for item in model["members"]:
-        physical = fem.members[item["id"]]
+    def single(name: str):
+        physical = fem.members[name]
         if len(physical.sub_members) != 1:
-            raise SystemExit(f"{item['id']} se dividió en {len(physical.sub_members)} tramos; el corpus no lo admite")
-        sub = next(iter(physical.sub_members.values()))
-        forces = sub.f(combo).flatten().tolist()
-        triad = sub.T()[:3, :3]
+            raise SystemExit(f"{name} se dividió en {len(physical.sub_members)} tramos; el corpus no lo admite")
+        return next(iter(physical.sub_members.values()))
+
+    for item in model["members"]:
+        # Con zonas rígidas, las fuerzas en los nudos son las de los extremos de los brazos.
+        first = single(f"{item['id']}~ri" if item.get("rigidOffsetI", 0) > 0 else item["id"])
+        last = single(f"{item['id']}~rj" if item.get("rigidOffsetJ", 0) > 0 else item["id"])
+        triad = single(item["id"]).T()[:3, :3]
         members_out[item["id"]] = {
             "basis": {"x": triad[0].tolist(), "y": triad[1].tolist(), "z": triad[2].tolist()},
-            "start": forces[:6],
-            "end": forces[6:],
+            "start": first.f(combo).flatten().tolist()[:6],
+            "end": last.f(combo).flatten().tolist()[6:],
         }
     return {"nodes": nodes_out, "members": members_out}
 
@@ -560,7 +672,8 @@ def rounded(value: Any) -> Any:
 def build_case(factory) -> dict[str, Any]:
     case = factory()
     model = case["model"]
-    if model.get("diaphragms"):
+    offsets = any(item.get("rigidOffsetI", 0) > 0 or item.get("rigidOffsetJ", 0) > 0 for item in model["members"])
+    if model.get("diaphragms") or offsets:
         # Penalización a dos niveles: la diferencia mide el error del modelo
         # aproximado de PyNite. Se publica el más rígido.
         coarse = solve(model, 1e4)
@@ -569,10 +682,12 @@ def build_case(factory) -> dict[str, Any]:
         scale = np.max(np.abs(b))
         uncertainty = float(np.max(np.abs(a - b)) / 9 / scale)
         expected = fine
-        case["referenceModel"] = (
-            "Diafragma aproximado en PyNite con barras de penalización (A e Iy × 1e5 del mayor de las barras reales; "
-            "Iz y J despreciables). referenceUncertainty estima su error relativo a partir de la solución con × 1e4."
+        what = (
+            "Diafragma aproximado en PyNite con barras de penalización (A e Iy × 1e5 del mayor de las barras reales; Iz y J despreciables)"
+            if model.get("diaphragms") else
+            "Zonas rígidas emuladas en PyNite con barras colineales de A, Iy, Iz y J × 1e5 de la propia barra entre el nudo y la cara"
         )
+        case["referenceModel"] = f"{what}. referenceUncertainty estima su error relativo a partir de la solución con × 1e4."
     else:
         expected = solve(model, 0)
         uncertainty = 0.0

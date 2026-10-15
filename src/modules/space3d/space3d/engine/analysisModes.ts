@@ -403,7 +403,7 @@ const geometricFromDisplacement = (
     if (!(axial < 0)) continue;
     // Una armadura o una barra con flexión liberada no transmite giro: su
     // rigidez geométrica es la de la cuerda, N/L sobre las traslaciones.
-    const localGeometric = element.kind === 'truss' || element.element.condensation
+    const localGeometric = element.kind === 'truss' || element.element.condensation || element.element.offsets
       ? chordGeometricStiffness(element.length, -axial)
       : localGeometricStiffness(element.length, -axial);
     matrices.set(element.memberId, multiply(transpose(element.transformation), multiply(localGeometric, element.transformation)));
