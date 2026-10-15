@@ -6,6 +6,94 @@ import { formatNumber } from './common';
 
 const meters = (mm: number) => formatNumber(mm / 1000, 2);
 
+/** Fuerzas de un DCL a lo largo (m y kN): cargas hacia abajo, reacciones puntuales y suelo uniforme hacia arriba. */
+export interface AlongFreeBody {
+  readonly lengthM: number;
+  readonly loads: readonly { readonly xM: number; readonly kn: number; readonly label: string }[];
+  readonly reactions: readonly { readonly xM: number; readonly kn: number; readonly label: string }[];
+  readonly soil: { readonly fromM: number; readonly toM: number; readonly knPerM: number; readonly label: string };
+}
+
+/** ΣFy del DCL: lo que baja contra lo que sube. */
+export const freeBodyBalance = (body: AlongFreeBody) => ({
+  downKn: body.loads.reduce((sum, load) => sum + load.kn, 0),
+  upKn: body.reactions.reduce((sum, reaction) => sum + reaction.kn, 0) + body.soil.knPerM * (body.soil.toM - body.soil.fromM),
+});
+
+/**
+ * DCL de la contratrabe con cargas últimas: P1u en el eje de la columna 1, la
+ * reacción R1u repartida bajo la zapata 1 (B1) y R2u en el eje de la columna 2,
+ * que también recibe P2u. Es el mismo cuerpo libre que da los diagramas.
+ */
+export function strapFreeBody(result: StrapFootingResult): AlongFreeBody {
+  const { exteriorKn: r1u, interiorKn: r2u, exteriorColumnKn: p1u } = result.reactions.ultimate;
+  const p2u = r2u + r1u - p1u;
+  const x1 = result.input.exterior.widthMm / 2000;
+  const x2 = x1 + result.input.spacingMm / 1000;
+  const b1 = result.exteriorLengthMm / 1000;
+  return {
+    lengthM: x2,
+    loads: [{ xM: x1, kn: p1u, label: 'P1u' }, { xM: x2, kn: p2u, label: 'P2u' }],
+    reactions: [{ xM: x2, kn: r2u, label: 'R2u' }],
+    soil: { fromM: 0, toM: b1, knPerM: r1u / b1, label: 'R1u' },
+  };
+}
+
+/**
+ * DCL de la franja en X que rige: cargas de columna y reacción uniforme
+ * ajustadas a su promedio, como en el método de franjas que da los momentos.
+ */
+export function matStripFreeBody(result: MatFoundationResult): AlongFreeBody {
+  const strips = result.directions.x.strips;
+  const governing = strips.reduce((best, item) => Math.max(item.positiveKnmPerM, item.negativeKnmPerM) > Math.max(best.positiveKnmPerM, best.negativeKnmPerM) ? item : best);
+  const length = result.lengthXMm / 1000;
+  const columns = result.columns.filter((column) => column.yMm === governing.centerMm).sort((left, right) => left.xMm - right.xMm);
+  const loads = columns.reduce((sum, column) => sum + column.ultimateKn, 0);
+  const soil = result.ultimate.pressureKpa * governing.widthMm / 1000 * length;
+  const average = (soil + loads) / 2;
+  const loadFactor = loads > 0 ? average / loads : 1;
+  return {
+    lengthM: length,
+    loads: columns.map((column, index) => ({ xM: column.xMm / 1000, kn: column.ultimateKn * loadFactor, label: `P${index + 1}u` })),
+    reactions: [],
+    soil: { fromM: 0, toM: length, knPerM: average / length, label: 'q' },
+  };
+}
+
+/** Dibujo del DCL dentro de otro SVG: ocupa `FREE_BODY_HEIGHT` px desde arriba. */
+const FREE_BODY_HEIGHT = 112;
+function FreeBodyMarks({ body, id, scaleX }: { body: AlongFreeBody; id: string; scaleX: (xM: number) => number }) {
+  const beamY = 40;
+  const { downKn, upKn } = freeBodyBalance(body);
+  const arrows = Math.max(2, Math.round((body.soil.toM - body.soil.fromM) / body.lengthM * 12));
+  const soilXs = Array.from({ length: arrows + 1 }, (_, index) => body.soil.fromM + (body.soil.toM - body.soil.fromM) * index / arrows);
+  const anchor = (xM: number) => xM > body.lengthM * 0.75 ? 'end' : 'start';
+  const offset = (xM: number) => anchor(xM) === 'end' ? -6 : 6;
+  return <g>
+    <defs>
+      <marker id={`${id}-load`} viewBox="0 0 10 10" refX="5" refY="9" markerWidth="7" markerHeight="7"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
+      <marker id={`${id}-up`} viewBox="0 0 10 10" refX="5" refY="1" markerWidth="7" markerHeight="7"><path d="M0,10 L5,0 L10,10 Z" className="dw-fbd__head" /></marker>
+      <marker id={`${id}-soil`} viewBox="0 0 10 10" refX="5" refY="1" markerWidth="6" markerHeight="6"><path d="M0,10 L5,0 L10,10 Z" className="dw-soil__head" /></marker>
+    </defs>
+    {body.loads.map((load) => <g key={load.label} className="dw-load dw-load--point">
+      <line x1={scaleX(load.xM)} x2={scaleX(load.xM)} y1={16} y2={beamY - 6} markerEnd={`url(#${id}-load)`} />
+      <text x={scaleX(load.xM) + offset(load.xM)} y={11} textAnchor={anchor(load.xM)}>{`${load.label} = ${formatNumber(load.kn, 0)} kN`}</text>
+    </g>)}
+    <line className="dw-fbd__beam" x1={scaleX(0)} x2={scaleX(body.lengthM)} y1={beamY} y2={beamY} />
+    <g className="dw-soil">
+      {soilXs.map((x) => <line key={x} x1={scaleX(x)} x2={scaleX(x)} y1={beamY + 26} y2={beamY + 6} markerEnd={`url(#${id}-soil)`} />)}
+      <text x={scaleX((body.soil.fromM + body.soil.toM) / 2)} y={beamY + 40} textAnchor="middle">
+        {`${body.soil.label} = ${formatNumber(body.soil.knPerM * (body.soil.toM - body.soil.fromM), 0)} kN · ${formatNumber(body.soil.knPerM, 1)} kN/m`}
+      </text>
+    </g>
+    {body.reactions.map((reaction) => <g key={reaction.label} className="dw-fbd__reaction">
+      <line x1={scaleX(reaction.xM)} x2={scaleX(reaction.xM)} y1={beamY + 34} y2={beamY + 6} markerEnd={`url(#${id}-up)`} />
+      <text x={scaleX(reaction.xM) + offset(reaction.xM)} y={beamY + 40} textAnchor={anchor(reaction.xM)}>{`${reaction.label} = ${formatNumber(reaction.kn, 0)} kN`}</text>
+    </g>)}
+    <text className="dw-fbd__letter" x={scaleX(0)} y={beamY + 62}>{`ΣFy = 0 · Σ cargas = ${formatNumber(downKn, 1)} kN · Σ reacciones = ${formatNumber(upKn, 1)} kN`}</text>
+  </g>;
+}
+
 /** Planta de la zapata de lindero: lindero, zapata 1, contratrabe y zapata 2. */
 export function StrapFootingPlan({ result }: { result: StrapFootingResult }) {
   const W = 620;
@@ -51,13 +139,18 @@ export function StrapDiagrams({ result }: { result: StrapFootingResult }) {
   const x1 = result.input.exterior.widthMm / 2000;
   const columns = [x1, length];
   const band = 110;
-  return <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${2 * band + 90}`} role="img"
-    aria-label={`Diagramas de la contratrabe: momento negativo máximo ${formatNumber(result.strap.top.momentKnm, 0)} kilonewton metro y cortante ${formatNumber(result.strap.shear.demandKn, 0)} kilonewton`}>
+  const body = strapFreeBody(result);
+  const [p1, p2] = body.loads;
+  return <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${2 * band + 90 + FREE_BODY_HEIGHT}`} role="img"
+    aria-label={`DCL y diagramas de la contratrabe: P1u ${formatNumber(p1!.kn, 0)} y P2u ${formatNumber(p2!.kn, 0)} kN; R1u ${formatNumber(result.reactions.ultimate.exteriorKn, 0)} kN bajo la zapata 1 y R2u ${formatNumber(result.reactions.ultimate.interiorKn, 0)} kN en la zapata 2; momento negativo máximo ${formatNumber(result.strap.top.momentKnm, 0)} kilonewton metro y cortante ${formatNumber(result.strap.shear.demandKn, 0)} kilonewton`}>
+    <FreeBodyMarks body={body} id="dw-strap-fbd" scaleX={scaleX} />
+    <g transform={`translate(0 ${FREE_BODY_HEIGHT})`}>
     <rect className="dw-beam" x={scaleX(0)} y={12} width={plot} height={12} />
     <rect className="dw-concrete" x={scaleX(0)} y={24} width={result.exteriorLengthMm / 1000 / length * plot} height={6}><title>Zapata 1</title></rect>
     {columns.map((x, index) => <rect key={index} className="dw-column" x={scaleX(x) - 4} y={0} width={8} height={12} />)}
     <DiagramBand xs={xs} upper={result.diagram.shearKn} top={44} height={band} scaleX={scaleX} positive="up" tone="shear" label="Cortante" unit="kN" nodesAtM={columns} />
     <DiagramBand xs={xs} upper={result.diagram.momentKnm} top={64 + band} height={band} scaleX={scaleX} positive="down" tone="moment" label="Momento" unit="kN·m" nodesAtM={columns} />
+    </g>
   </svg>;
 }
 
@@ -119,13 +212,17 @@ export function MatStripDiagram({ result }: { result: MatFoundationResult }) {
   const perMeter = governing.momentKnm.map((value) => value * 1000 / governing.widthMm);
   const band = 130;
   const { x } = result.directions;
-  return <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${band + 70}`} role="img"
-    aria-label={`Momento por metro de la franja que rige en X: ${formatNumber(governing.positiveKnmPerM, 0)} bajo columnas y ${formatNumber(governing.negativeKnmPerM, 0)} entre columnas`}>
+  const body = matStripFreeBody(result);
+  return <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${band + 70 + FREE_BODY_HEIGHT}`} role="img"
+    aria-label={`DCL y momento por metro de la franja que rige en X: ${body.loads.length} cargas de columna y reacción de ${formatNumber(body.soil.knPerM, 1)} kN/m; ${formatNumber(governing.positiveKnmPerM, 0)} bajo columnas y ${formatNumber(governing.negativeKnmPerM, 0)} entre columnas`}>
+    <FreeBodyMarks body={body} id="dw-mat-fbd" scaleX={scaleX} />
+    <g transform={`translate(0 ${FREE_BODY_HEIGHT})`}>
     <rect className="dw-beam" x={scaleX(0)} y={10} width={plot} height={10} />
     {columns.map((at) => <rect key={at} className="dw-column" x={scaleX(at) - 4} y={0} width={8} height={10} />)}
     <DiagramBand xs={xs} upper={perMeter} top={34} height={band} scaleX={scaleX} positive="down" tone="moment" label="M/m" unit="kN·m/m" nodesAtM={columns} />
     <text className="dw-callout" x={WIDTH / 2} y={band + 62} textAnchor="middle">
       {`Inferior X ${rebarLabel(result.input.barDiameterMm)} @ ${formatNumber(x.bottom.spacingMm / 10, 0)} cm · superior X @ ${formatNumber(x.top.spacingMm / 10, 0)} cm`}
     </text>
+    </g>
   </svg>;
 }

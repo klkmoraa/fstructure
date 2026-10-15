@@ -474,7 +474,7 @@ export function strapReport(result: StrapFootingResult, draft: FootingDraft): De
     takeoff: strapFootingTakeoff(result),
     figures: [
       { title: 'Planta', note: 'Línea de trazo y punto: lindero; sombra: contratrabe', render: () => <StrapFootingPlan result={result} /> },
-      { title: 'Contratrabe: cortante y momento', note: 'Del lindero al eje de la columna 2; momento positivo con tensión abajo', render: () => <StrapDiagrams result={result} /> },
+      { title: 'Contratrabe: DCL, cortante y momento', note: 'DCL con cargas últimas y R1u repartida bajo la zapata 1; del lindero al eje de la columna 2, momento positivo con tensión abajo', render: () => <StrapDiagrams result={result} /> },
     ],
   };
 }
@@ -560,7 +560,7 @@ export function matReport(result: MatFoundationResult, draft: FootingDraft): Des
     takeoff: matFoundationTakeoff(result),
     figures: [
       { title: 'Planta', note: 'Discontinua: perímetros críticos de penetración', render: () => <MatPlan result={result} /> },
-      { title: 'Franja que rige en X', note: 'Momento por metro; positivo con tensión abajo', render: () => <MatStripDiagram result={result} /> },
+      { title: 'Franja que rige en X', note: 'DCL con cargas y reacción promediadas, como en el método de franjas; momento por metro, positivo con tensión abajo', render: () => <MatStripDiagram result={result} /> },
     ],
   };
 }

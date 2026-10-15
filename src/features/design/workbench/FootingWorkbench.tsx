@@ -117,7 +117,7 @@ function StrapFooting({ chrome, draft, set, reset }: FootingProps) {
     </>}
     stage={result.ok ? <>
       <Plate title="Planta" wide><StrapFootingPlan result={result} /></Plate>
-      <Plate title="Contratrabe: cortante y momento" wide><StrapDiagrams result={result} /></Plate>
+      <Plate title="Contratrabe: DCL, cortante y momento" wide><StrapDiagrams result={result} /></Plate>
     </> : <ErrorsPanel errors={result.errors} />}
     results={result.ok && report ? <ReportResults report={report} status={result.status} ratio={result.governingRatio} summary={[
       { label: 'R1 · R2', value: `${formatNumber(result.reactions.service.exteriorKn, 0)} · ${formatNumber(result.reactions.service.interiorKn, 0)} kN`, tone: 'axial' },
