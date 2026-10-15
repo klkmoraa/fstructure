@@ -1,88 +1,80 @@
 # Plan final · normas, pruebas y mejoras · FStructure
 
-Fecha: 14 de octubre de 2026. Reemplaza a `plan-todo.md` y `plan-normas-y-mejoras.md`. No se modificó el repositorio en esta etapa.
-
----
+Fecha original: 14 de octubre de 2026. **Actualizado con investigación de cierre el 14 de octubre de 2026.** Reemplaza a `plan-todo.md` y `plan-normas-y-mejoras.md`. Esta actualización es documental: no incorpora normas al motor ni publica cambios en la app.
 
 ## 0. Resumen ejecutivo
 
-1. **ACI 318 queda en espera** hasta tener una copia legal. Hoy no hay forma gratuita ni legal de obtener la edición 2025 para México que el repositorio pueda verificar. Abajo están las vías concretas para conseguirla (§3).
-2. **El Código Estructural de España (RD 470/2021) es la norma que se puede agregar ya.** Es oficial, gratuita en el BOE, y su concreto está en el Título 2 (artículos 26 a 78). Es la primera norma nueva del plan (§4).
-3. **Antes de agregar cualquier norma hay que corregir un riesgo de datos** en la memoria de diseño (§5.1).
-4. **Decisión sobre extractos (tomada por mí):** el registro sólo guarda cláusula, página, valor numérico, hash del documento y, como máximo, **una línea** del texto (la fila de una tabla o una ecuación). Nunca párrafos. Así no se reproduce obra protegida y el hash sigue verificando. Si luego quieres algo más estricto, se cambia en un punto (§6).
-5. **Mejoras visuales y limpieza no dependen de ACI** y pueden avanzar ya (§8).
+1. **ACI 318-25 existe oficialmente en español**, con ficha ACI fechada el 29-09-2026. Esto corrige la conclusión original. FStructure sigue **pendiente de copia legal**; no se adquirió ni descargó el Código.
+2. **NSR-10 y E.060 tienen fuentes oficiales identificadas.** Deben distinguirse sus modificaciones y propuestas de actualización de la evidencia de las cláusulas ya registradas. Una noticia o comité no sustituye un acto de aprobación.
+3. **El Código Estructural español tiene acceso público, pero su implementación exige más lectura.** El art. 45 remite a Anejos 19/21 y las bases al Anejo 18; no basta con artículos 26–78. Se identificó la corrección de 2024.
+4. **La investigación visual ya incluye tablas, táctil, diagramas y comunidad.** Las reglas externas orientan propuestas bajo el canon de FusionStructure; no acreditan que las mejoras estén implementadas en la app oficial.
+5. **Antes de ampliar normas deben revisarse los riesgos de datos y las pruebas.** La investigación no reparó el recálculo de normas desconocidas ni cambió el registro. Las propuestas de código están aisladas en `feature/propuestas-visuales-brandbook`.
 
----
+Documentos de investigación (consulta **2026-10-14**; cada fuente distingue **Verificado** y **No verificado**):
+
+- [Informe de cierre e índice](../research/reports/Investigación%20pendiente%20de%20FStructure.md).
+- [ACI: acceso legal y comprobación de bibliotecas](../research/aci-318-acceso-legal.md).
+- [Normas: estado, acceso y mapa técnico](../research/normas-estado-y-acceso.md).
+- [Referencias visuales y criterios V1–V9](../research/referencias-visuales.md).
+- [Comunidad y licencias](../research/propuestas-comunidad.md).
+- [Nueve propuestas en código y límites](../research/propuestas-codigo-2026-10-14.md).
 
 ## 1. Lo que dice la investigación, norma por norma
 
-| Norma | Estado | Acceso legal hoy | Acción |
-|---|---|---|---|
-| **NTC-CDMX Concreto 2023** | Vigente (Gaceta, 6 nov. 2023) | Gratuito | Ya implementada (74 cláusulas) |
-| **NSR-10 Título C** (Colombia) | Vigente; hay debate sobre reemplazarla tras el sismo del 10 de agosto de 2026. No hay «NSR-25» publicado | Gratuito en fuentes oficiales; no confirmé la URL del AIS ni del Minvivienda | Ya implementada (36 cláusulas). Confirmar que la versión registrada es la vigente |
-| **E.060 2009** (Perú) | Vigente según lo encontrado. El PDF del Ministerio no apareció en la búsqueda; sólo copias municipales y un borrador de 2019 | Gratuito si se obtiene del Ministerio o de El Peruano | Ya implementada (34 cláusulas). Confirmar la resolución vigente en El Peruano |
-| **Código Estructural RD 470/2021** (España) | Vigente desde noviembre de 2021; sustituye a la EHE-08 | **Gratuito**: BOE, PDF y XML | **Agregar ya** (§4) |
-| **ACI 318-25** | Edición vigente (lanzada a inicios de 2025). Sin edición oficial en español encontrada; el texto en inglés es el que rige | **Pagado.** Ver §3 | En espera de copia |
-| **ACI 318-14 en español** | Traducción oficial de ACI | Pagado | No recomendado: la edición vigente es la 2025 |
-| **Eurocode 2 EN 1992-1-1** | Segunda generación publicada en 2023; retiro de la primera el 30 de marzo de 2028 | Pagado (BSI). El JRC ofrece talleres gratuitos, no el texto | Diferir hasta definir país |
-| **CSA A23.3:24** (Canadá) | Octava edición (2024) | Por suscripción universitaria o biblioteca pública; no encontré acceso gratuito general | Diferir |
-| **ABNT NBR 6118:2023** (Brasil) | Vigente | Gratis para estudiantes y personal de instituciones con acceso CAPES; para profesionales, el Creanet del CREA-SC (solicitud en 72 h) | Diferir |
+| Norma | Estado comprobado a 2026-10-14 | Acceso y acción |
+|---|---|---|
+| NTC-CDMX Concreto 2023 | El registro local contiene 74 entradas de cláusula. Esta investigación no repite la auditoría de vigencia de NTC. | Mantener su evidencia registrada; no usar este informe como nueva certificación. |
+| NSR-10 Título C | **Verificado:** Decreto 926/2010 y cadena de modificaciones; AIS 100-24 es una propuesta, no un reglamento adoptado por ese solo hecho. | [Texto base IDRD, 590 páginas](https://www.idrd.gov.co/sites/default/files/documentos/Construcciones/3titulo-c-nsr-100.pdf) accesible. **No verificado:** cotejo de cada cláusula del motor con todos los modificatorios. |
+| E.060 Perú | **Verificado:** DS 010-2009-VIVIENDA, firma 8-may/publicación 9-may-2009; [El Peruano](https://busquedas.elperuano.pe/dispositivo/NL/346173-9), art. 2. Los proyectos de 2019 y 2026 y el grupo de 2025 no acreditan aprobación de una sustitución. | Se identificó la ruta oficial RNE/SENCICO y el archivo registrado. **No verificado:** nueva lectura de sus bytes desde Drive y existencia de un acto aprobatorio posterior fuera del rastreo documentado. |
+| Código Estructural RD 470/2021 | **Verificado:** [BOE](https://www.boe.es/eli/es/rd/2021/06/29/470), texto y corrección de 2024; art. 45 → Anejos 19/21. | Consulta pública. Antes de agregar: elegir ámbito, leer anejos, registrar cláusulas/páginas/hashes, validar casos independientes y resolver riesgo de datos. |
+| ACI CODE-318-25 | **Verificado:** edición oficial española, [ficha ACI 29-09-2026](https://www.concrete.org/publications/internationalconcreteabstractsportal.aspx?id=51752098&m=details). | Compra/suscripción. **Pendiente de copia legal**, sin implementación. Precio español y MXN no verificados. |
+| Eurocódigo 2 | **Verificado:** [JRC](https://eurocodes.jrc.ec.europa.eu/second-generation-eurocodes) fija publicación nacional hasta 30-sep-2027 y retirada de primera generación hasta 30-mar-2028; BSI ya vende adopción 2023 y Anejo británico. | País y Anejo Nacional obligan a una decisión explícita. Hay [NA danés gratuito](https://www.bygningsreglementet.dk/nationale-annekser/nationale-annekser/nationale-annekser/?Layout=ShowAll) de primera generación; no equivale a texto EN completo ni a NA de segunda generación. |
+| CSA A23.3:24 | **Verificado:** ficha editorial de octava edición 2024. | Compra/suscripción; **no verificado** acceso gratuito general o licencia de biblioteca concreta. Véase informe de normas. |
+| ABNT NBR 6118 | **Verificado:** acuerdo profesional Confea/ABNT y referencia a edición 2023. | **No verificado:** edición más reciente del catálogo y acceso CAPES que afirmaba el borrador. No asumir que un acuerdo brasileño habilite al usuario de México. |
 
-Fuentes principales: [BOE, RD 470/2021](https://www.boe.es/eli/es/rd/2021/06/29/470), [ACI 318 PLUS](https://www.concrete.org/publications/aci318plus.aspx), [ACI, estudiantes](https://www.concrete.org/educatorsandresearchers/aciinyourclassroom.aspx), [JRC Eurocodes](https://eurocodes.jrc.ec.europa.eu/EN-Eurocodes/eurocode-2-design-concrete-structures), [CSA en bibliotecas (UAlberta)](https://guides.library.ualberta.ca/az/csa-canadian-standards-association-standards), [CAPES, normas ABNT](https://educapes.capes.gov.br/handle/capes/1090320?mode=full), [CREA-SC Creanet](https://portal.crea-sc.org.br/mesa-redonda-dia-14-11-normas-abnt-nbrs-15-575-2021-e-6118-2023/?print=pdf), [ITESO, catálogo ACI 318-02 en español](https://opac.biblio.iteso.mx/vufind/Record/000165905/Description).
-
-Nota: la mayoría de las fuentes son secundarias. El texto oficial manda, y cada cláusula implementada debe confirmarse contra él.
-
----
+Las URLs, fechas y límites completos están en los cuatro documentos de investigación. Se retiró la afirmación no sustentada sobre un sismo de 2026 como fundamento de vigencia de NSR. «ASCI» no se utiliza como fuente.
 
 ## 2. Qué significa para México
 
-- En **Ciudad de México** la norma obligatoria es la **NTC-CDMX 2023**, ya implementada. Esa es la prioridad para proyectos reales.
-- **ACI 318 es referencia técnica** salvo que una jurisdicción la adopte. Lo dice una fuente argentina (INTI); conviene verificar qué reglamento aplica en cada estado donde se use la herramienta.
-- Por eso ACI sirve para comparar, enseñar o diseñar en proyectos fuera de jurisdicciones con NTC. No cambia la prioridad de NTC.
+No se investigó la adopción municipal/estatal de ACI en todo México. **No verificado:** que una norma extranjera sea aplicable a un proyecto concreto por el solo hecho de estar disponible en la herramienta. Antes de elegirla se debe identificar jurisdicción, edición adoptada, alcance y condiciones. El acceso legal al texto y su aplicabilidad técnica/jurídica son comprobaciones diferentes.
 
----
+## 3. ACI 318: vías legales de acceso
 
-## 3. ACI 318: cómo conseguir una copia legal (sin pedir permiso a nadie)
+| Vía | Resultado de la comprobación a 2026-10-14 |
+|---|---|
+| Compra directa ACI CODE-318-25 | **Verificado:** US$309 público / US$184 miembro en la ficha inglesa Protected PDF. **No verificado:** precio de la variante española, MXN, impuestos/envío o total final México. |
+| ACI 318 PLUS | **Verificado:** US$299 público / US$169 miembro al año en la ficha consultada; corrige el precio anterior de US$149. **No verificado:** inclusión del texto español en PLUS. |
+| Estudiante elegible | **Verificado:** membresía gratuita bajo condiciones y una copia a US$105 anunciada por ACI. **No verificado:** elegibilidad de la persona, idioma español y costo final México. La membresía por sí sola no entrega el Código. |
+| Docente / Faculty Network | **Verificado:** desk copy y año PLUS bajo condiciones. No se interpreta como autorización para compartir el Código con terceros; las notas de curso son un recurso distinto. |
+| ACI Collection Online | **Verificado:** índice incluye CODE-318-25 Spanish; ficha anual US$1,049 público / US$319 miembro. No es precio del título español individual ni acceso adquirido. |
+| Bibliotecas UNAM, UAM, IPN, UDG, ITESO, UANL y Guanajuato | Se revisaron portales/catálogos, con errores, login o formularios no consultables. **No verificado:** tenencia, ejemplar y disponibilidad de ACI. No concluir ausencia del libro ni convertir snippets en registro confirmado. |
+| IMCYC | **No verificado:** distribución propia 2025 española, precio y disponibilidad; tienda no legible en el acceso consultado. La existencia del título español se verificó directamente en ACI. |
 
-Lo que encontré, en orden de costo:
+Fuentes y condiciones de cada vía: [ACI 318: acceso legal](../research/aci-318-acceso-legal.md). No se encontró una copia gratuita autorizada de acceso general en las fuentes consultadas; esto no excluye licencias institucionales no confirmadas. No se hicieron compras, solicitudes ni inicios de sesión.
 
-| Vía | Qué implica | Verificado |
-|---|---|---|
-| **Ser estudiante** | Membresía de estudiante **gratuita**. Comprar el libro impreso del 318-25 a precio estudiantil (**US$105** más envío) incluye **un año de ACI 318 PLUS** | Sí, en la página de ACI para educadores |
-| **Pedirla a un profesor** | ACI ofrece copia de cortesía a profesores (*desk copy*) para la cátedra; el profesor puede compartir notas | Sí |
-| **Biblioteca universitaria** | Preguntar si tienen ACI 318 **físico o licencia**. El ITESO tiene ACI 318-02 en español, edición antigua (2004) | Parcial: confirmar la edición y el horario de consulta |
-| **Comprar el 318-25** | Precio en pesos no verificado. Hay ofertas de terceros que **no uso** porque no son de ACI | Precio no verificado |
-| **ACI 318 PLUS** | Suscripción desde **US$149/año**, año gratis para quien compró 318-19 directamente | Sí |
-| **IMCYC** | Publicó ACI 318-02 en español en 2004. No encontré una edición 2025 ni precio actual | No verificado: preguntar directamente |
+Al recibir una copia autorizada, calcular SHA-256 **fuera del repositorio**, conservar edición/erratas y registrar sólo la evidencia permitida. **No subir el PDF.** Es una política documental; no se encontró en esta rama una prueba que automáticamente impida versionarlo.
 
-**Recomendación práctica:** si eres estudiante o conoces a alguien en una facultad, la vía de **estudiante o profesor** es la más barata y legal. Si no, la compra directa del 318-25 en ACI es la única segura. Ninguna vía libre está confirmada, y no voy a usar PDFs que circulan en blogs o redes: no son fuente verificable.
+## 4. Ruta de evaluación del Código Estructural de España
 
-**Qué hacemos cuando tengas la copia:** calcular el SHA-256 de tu archivo fuera del repositorio y registrar el hash, la página y las líneas permitidas (§6). El archivo no se sube al repositorio.
+**Verificado:** [RD 470/2021](https://www.boe.es/eli/es/rd/2021/06/29/470), publicado 10-ago-2021, entrada en vigor a los tres meses; [corrección 2024](https://www.boe.es/eli/es/rd/2021/06/29/470/corrigendum/20240202). Su Título 2 contiene artículos 26–78, pero el art. 45 remite el cálculo a Anejos 19/21, y las bases incluyen Anejo 18. El informe identifica un ejemplo de anclaje y fiabilidad; **no** verificó todas las páginas/constantes de flexión, cortante, columnas y zapatas. Véase [mapa de lectura y límites](../research/normas-estado-y-acceso.md).
 
----
+Pasos futuros, todavía no implementados:
 
-## 4. Ruta concreta: Código Estructural de España (se puede empezar ya)
+1. Resolver y verificar el riesgo de norma desconocida (§5.1); escoger edificación o puentes y fijar la ruta normativa completa.
+2. Consultar texto y corrección oficiales fuera del repo; comprobar disposición transitoria y condiciones de aplicabilidad del proyecto.
+3. Leer Anejo 19 o 21, bases de Anejo 18 y las referencias geotécnicas necesarias. Registrar cláusulas, páginas, condiciones y hashes exactos; no trasladar números de ejemplos aislados.
+4. Proponer y probar el esquema de registro `officialDocument`; añadir perfil, tipos y oráculo en una rama de código desde `main`, siguiendo §7.
+5. Verificar todos los casos y las referencias del perfil antes de habilitarlo. No reutilizar fórmulas ACI/NTC por similitud aparente.
 
-Verificado en el BOE: aprobado por el RD 470/2021, publicado el 10 de agosto de 2021, **Título 2 «Estructuras de hormigón», artículos 26 a 78, capítulos 7 a 16**. Deroga la EHE-08. Su disposición transitoria exime proyectos redactados antes de la entrada en vigor, si las obras empiezan en un año (edificación) o tres (obra civil). Ese punto debe leerse en el texto completo.
-
-**Pasos:**
-1. Descargar el PDF oficial del BOE (`https://www.boe.es/boe/dias/2021/08/10/pdfs/BOE-A-2021-13681.pdf`) **fuera** del repositorio y calcular su SHA-256. Anotar fecha de verificación.
-2. Leer el Título 2 (capítulos 7 a 16) y la disposición transitoria. Elegir las cláusulas que el taller ya cubre: flexión, cortante, desarrollo, separación de barras, columnas y zapatas.
-3. Registrar en `docs/design/normative-sources.json` una entrada `standards` con `id: "rd-470-2021-hormigon"`: título, URL del BOE, hash del documento, y `verifiedClauses` por cláusula (página, valor, una línea de extracto y su hash).
-4. Ampliar el tipo en `src/design/elements/shared.ts` (`NormativeStandardId`) y crear `const cs = reference('rd-470-2021-hormigon', 'CE')`.
-5. Crear el perfil en `src/design/elements/codes.ts` (ver §7 para la ruta completa).
-6. Agregar bloque en `validation/python/elements_oracle.py` con valores hechos a mano.
-7. Pruebas de §9, fila «Perfil de norma».
-
-**Criterio de terminado:** cada constante del perfil cita una cláusula con página y hash; el oráculo independiente pasa; `codes.test.ts` confirma que toda cláusula citada existe.
-
-**Advertencia:** la búsqueda sólo mostró cabecera y artículos iniciales; los valores concretos (factores, límites) hay que tomarlos del texto. No los copies de resúmenes.
+**Criterio de terminado técnico:** evidencia de cada constante, condiciones de aplicación, oráculo independiente y pruebas de registro/perfil en verde. La accesibilidad del BOE por sí sola no cumple ese criterio.
 
 ---
 
 ## 5. Hallazgos del código y riesgos
 
 ### 5.1 Riesgo de datos (prioridad 1, antes de cualquier norma nueva)
+
+Hallazgo del diagnóstico original, conservado para implementación. Esta actualización documental no ejecutó la reparación ni una prueba funcional de ida y vuelta; las líneas citadas son orientativas y deben revalidarse.
 `src/features/design/workbench/designMemory.tsx`, líneas 41 y 328: una norma desconocida se trata como `ntc-2023` **sin avisar**. Si una versión nueva guarda una pieza con otra norma y la abre una versión anterior, la recalcula como NTC y la guarda así. Viola «no perder datos».
 
 **Corrección:** conservar el código original en la pieza, bloquear el recálculo y mostrar «Norma no disponible en esta versión». Pruebas en §9.
@@ -90,15 +82,15 @@ Verificado en el BOE: aprobado por el RD 470/2021, publicado el 10 de agosto de 
 ### 5.2 Otros hallazgos
 - **Identificador de norma cerrado en cuatro sitios:** `DesignCodeId` y `DESIGN_CODE_IDS` (`codes.ts`, líneas 19 y 27), `NormativeStandardId` (`shared.ts`) y el esquema de `normativeRegistry.test.ts`. Cambiarlos en un solo commit.
 - **El esquema del registro exige dos documentos por norma** (`publicationNotice` y `officialElectronicAnnex`). ACI y el BOE tienen uno. Hay que aceptar `officialDocument` además de esos dos, con su prueba.
-- **Documentación desfasada:** `docs/design/design-workbench.md` y `docs/references/normative/README.md` citan `src/design/structuralDesignMigration.test.ts`, que no existe. La regla de PDFs está en `src/design/normativeEvidence.test.ts`.
-- **Brecha de evidencia congelada:** `normativeEvidence.test.ts` mide constantes de NTC sin extracto (por ejemplo, la de 3.6.1). No puede crecer. Reducirla es trabajo aparte.
+- **Documentación corregida en este cierre:** hashes, páginas y fuentes se validan en `normativeRegistry.test.ts`; constantes frente a extractos, en `normativeEvidence.test.ts`. `structuralDesignMigration.test.ts` no existe. La política prohíbe PDFs, pero no se encontró un test que la aplique automáticamente.
+- **Brecha de evidencia saldada en el registro actual:** `RECORDED_EVIDENCE_DEBT = {}` en `normativeEvidence.test.ts`; el comentario documenta el cierre el 2026-09-23. No afirmar deuda pendiente por el ejemplo histórico 3.6.1. La prueba sigue exigiendo que nuevas constantes tengan evidencia.
 - **Motor de etiquetas ya existe:** `src/features/canvas/labelLayout.ts` (pruebas en `labelLayout.test.ts`), con candidatos en `StructuralCanvas.tsx` (líneas 2308–2344 y 2504). El problema es que no considera la geometría de barras ni de curvas.
 - **Archivos grandes:** `Space3DWorkspace.tsx` (1 688 líneas), `ProjectContext.tsx` (778), `WorkspaceShell.tsx` (693).
 - **Texto «Revisión incompleta»:** lo decide `src/design/elements/scope.ts`, línea 161.
 
 ---
 
-## 6. Política de extractos (decidida)
+## 6. Política de extractos (criterio de minimización para trabajo futuro)
 
 | Campo del registro | Qué guardamos |
 |---|---|
@@ -109,7 +101,7 @@ Verificado en el BOE: aprobado por el RD 470/2021, publicado el 10 de agosto de 
 | `evidence.excerptSha256` | Hash de esa línea exacta |
 | `verifiedAt` | Fecha de verificación |
 
-Para normas pagadas (ACI): se usa **sólo** lo necesario para verificar el valor. Si el valor es un número o una fórmula, es un dato, no una expresión protegida; aun así, la línea se limita a la fila o ecuación. Si prefieres una regla más estricta, se cambia aquí y en `normativeEvidence.test.ts`.
+Para normas pagadas (ACI), confirmar los términos del acceso/licencia y limitar el registro a lo necesario y permitido. Una línea, un número o una fórmula no constituyen automáticamente una excepción de reproducción. Este criterio no demuestra que todos los extractos existentes sean de una sola línea ni que haya una prueba automática de longitud/licencia; `normativeEvidence.test.ts` comprueba correspondencia de constantes, no derechos de reproducción.
 
 ---
 
@@ -133,17 +125,17 @@ Nota para E.060: ya lleva ramas `'aci'` (`codes.ts` líneas ~370, 420–457, 572
 
 ### Fase 0 · Riesgo de datos y publicación (S)
 - Norma desconocida en memoria (§5.1).
-- Corregir la referencia a `structuralDesignMigration.test.ts`.
+- Referencias documentales a pruebas: corregidas en este cierre; queda sin implementar una eventual prueba automática de no versionar PDFs.
 - `$` extra en el porcentaje de utilización (localización en `src/i18n/catalogs/`).
 - Pages con el flujo oficial: `.github/workflows/deploy-pages.yml` con `configure-pages`, `upload-pages-artifact` y `deploy-pages` (permisos `pages: write` e `id-token: write`, y `needs`). Probar en rama antes de `main`.
 - Escenas de la Home a WebP (`public/assets/suite/`, 8 archivos hoy).
 - Aviso de versión nueva en `scripts/sw.template.js`.
 
-### Fase 1 · Código Estructural de España (M)
-§4, pasos 1 a 7.
+### Fase 1 · Evaluación e implementación del Código Estructural (M)
+§4, pasos 1 a 5; no habilitar el perfil sin completar lectura de anejos y evidencia.
 
 ### Fase 2 · Mejoras visuales (S–M, en paralelo)
-§9 de referencias visuales; ver §10.
+Ver §10 y los documentos de referencias/comunidad. La galería exploratoria ya existe en una rama aparte; la integración en la app oficial sigue siendo trabajo de código.
 
 ### Fase 3 · Cálculo individual completo (M)
 - Individual → proyecto: promover el archivo (copia nueva, sin tocar el original), con migración de bundle.
@@ -197,51 +189,41 @@ Se suma a `AGENTS.md`. Correr lo que aplique antes de cada commit.
 
 | # | Problema observado | Propuesta | Referencia | Ruta | Prueba |
 |---|---|---|---|---|---|
-| V1 | «Ry = 165.81 kN» cae sobre la curva de momento | Evitar la curva en el cálculo de posición | d3fc-label-layout, D3-Labeler | `labelLayout.ts`, `StructuralCanvas.tsx` | `labelLayout.test.ts` |
-| V2 | «N máx» cruza barras (armadura) | Candidatos fuera de la barra | avoid-overlap | Igual | Igual |
+| V1 | «Ry = 165.81 kN» cae sobre la curva de momento | Evitar la curva en el cálculo de posición | d3fc-label-layout, Vega Label Transform | `labelLayout.ts`, `StructuralCanvas.tsx` | `labelLayout.test.ts` |
+| V2 | «N máx» cruza barras (armadura) | Candidatos fuera de la barra | d3fc-label-layout, candidatos de Vega | Igual | Igual |
 | V3 | «Revisión incompleta» casi siempre | Tres estados: Cumple, No cumple, Faltan datos | Decisión de diseño | `scope.ts` 161 | `codes.test.ts`, capturas |
 | V4 | «Proponer sección» se parte en dos líneas | Icono con texto accesible o fila inferior | — | `ColumnWorkbench.tsx` | Capturas 1440 y 390 |
 | V5 | DCL ilegible en teléfono | Versión vertical o texto mínimo mayor | — | `BeamDrawings.tsx` (`BeamFreeBody`) | `designReport.test.ts`, captura |
 | V6 | Tarjeta vacía del 2D sin jerarquía | Título positivo y acción principal única | [Carbon](https://carbondesignsystem.com/patterns/empty-states-pattern/) | `ModelStartCard.tsx` | `App.test.tsx -t "Modelo 2D individual"` |
 | V7 | Filtros sin resultados se ven como lista vacía | Estado propio con «Limpiar filtros» solo si hay filtros, altura estable | [Cloudscape](https://cloudscape.design/patterns/general/empty-states/), [Guidewire](https://docs.guidewire.com/jutro/documentation/10.13/table-states), [Supabase](https://supabase.com/design-system/docs/ui-patterns/empty-states) | `src/features/project-hub/`, `DesignMemoryDialog.tsx` | `HomePage.test.tsx`, capturas |
 | V8 | Barra con muchos controles en teléfono | Barra mínima, foco en el dibujo | [Excalidraw](https://github.com/excalidraw/excalidraw/) | Barra de 3D y Diseño | Capturas 390 px |
-| V9 | Diseño separado de la estructura | Parámetros de diseño junto al elemento | [RFEM 6](https://www.dlubal.com/en/support-and-learning/support/faq/005103) (material del fabricante) | `DesignWorkbench.tsx` | `DesignWorkbench.test.tsx` |
+| V9 | Diseño separado de la estructura | Parámetros de diseño junto al elemento | Propuesta local; conservar selección y parámetros (criterio V9 del informe visual) | `DesignWorkbench.tsx` | `DesignWorkbench.test.tsx` |
 
-Huecos: no encontré referencias verificadas de interacción táctil en teléfono ni de tablas de datos (la guía de tablas de Carbon no se pudo leer). Para esas decisiones, usar capturas propias a 390 px.
+Investigación completada: [referencias visuales](../research/referencias-visuales.md) documenta Carbon Data table, estados vacíos, Jutro, etiquetas y casos táctiles de Excalidraw; [comunidad](../research/propuestas-comunidad.md) separa solicitudes, respuestas y licencias. Incluye criterios medibles V1–V9 propuestos, no resultados de pruebas ni requisitos impuestos por esas fuentes. No se descargaron activos externos. Se conserva el canon y se valida en pantallas propias de 390/1440 px, Día/Noche.
 
 ---
 
 ## 11. Riesgos y licencias
 
 - **ACI sin copia:** la fase 6 espera. No se implementa sin hash del archivo.
-- **Licencias:** Frame3DD (GPL) y anaStruct (GPL-3.0) sólo como oráculos numéricos. RecrBeam (MIT) es el más cómodo. Revisar PyNite y OpenSeesPy antes de usarlos.
+- **Licencias verificadas:** PyNite MIT, Frame3DD GPL-3.0 y anaStruct **LGPL-3.0**. OpenSeesPy y su motor tienen condiciones propias, incluidas restricciones de distribución comercial; no tratarlos como MIT/BSD. SFAP: autoría académica identificada, repo/licencia **no verificados**. En esta investigación no se copió código ni se integraron dependencias; los términos del binario/versión elegidos deberán revisarse antes de usarlos. [Fuentes primarias y alcance](../research/propuestas-comunidad.md).
 - **Publicación:** migrar Pages puede romper la ruta del sitio; probar en rama.
 - **Dividir archivos:** riesgo de regresiones; pruebas existentes primero.
 - **Memoria:** el cambio de §5.1 es prerrequisito de cualquier norma nueva.
 
 ---
 
-## 12. Lo verificado y lo que no
+## 12. Lo verificado y lo que sigue sin verificar
 
-**Verificado:**
-- Estructura y contenido del RD 470/2021 en el BOE (título, fechas, Título 2, derogación de EHE-08, disposición transitoria en resumen).
-- Política de acceso de ACI (estudiantes, profesores, ACI 318 PLUS, precios de la página de ACI).
-- Que el registro del proyecto exige hash y extracto, y prohíbe PDFs normativos (leído en el repositorio).
-- Riesgo de datos en `designMemory.tsx` (leído en el código).
+La investigación requerida en §2 del prompt está documentada en cuatro entregables y sus notas, con URL, consulta y estado. El [informe de cierre](../research/reports/Investigación%20pendiente%20de%20FStructure.md) resume la cobertura.
 
-**No verificado:**
-- Precio del ACI 318-25 en pesos mexicanos y disponibilidad en IMCYC.
-- Existencia de una edición oficial de ACI 318-25 en español.
-- URL oficial de E.060 (vivienda.gob.pe) y de NSR-10 (AIS, Minvivienda).
-- Valores concretos del Código Estructural: no los leí todavía, sólo la estructura.
-- Licencias de PyNite, OpenSeesPy y SFAP.
-- Fórmula de desarrollo de ACI 318-25 que circula en redes (no usada).
+**Verificado:** existencia de ACI 318-25 en español, precios de vistas inglesas y condiciones generales; portales consultados de siete universidades; fuentes y actos de NSR/E.060; estado de propuestas de actualización; calendario JRC y adopción BSI; NA danés gratuito de primera generación; BOE y necesidad de anejos; patrones visuales/táctiles/tablas; discusiones concretas y licencias de proyectos identificados; responsabilidad real de las pruebas del registro.
 
----
+**No verificado o aún no disponible:** copia ACI licenciada para FStructure, precio español/MXN/final México, tenencias universitarias y distribución IMCYC; cotejo completo NSR frente a modificatorios; nueva lectura/hash del PDF E.060 desde Drive; adopción posterior de propuestas fuera de las fuentes consultadas; NA gratuito de segunda generación para un país elegido; coeficientes y páginas completas de anejos españoles; repo/licencia de SFAP; última edición ABNT y acceso CAPES. Se documenta cada intento y no se infiere ausencia universal.
 
-## 13. Lo que necesito de ti (sólo esto)
+## 13. Estado de cierre y siguiente trabajo
 
-1. **ACI:** decide la vía para la copia (§3). Si eres estudiante o tienes profesor, es lo más barato.
-2. **Orden:** ¿arrancamos con la fase 0 y la norma de España (fase 1), que no dependen de nadie?
-
-Sin respuesta, empiezo con la fase 0 y la fase 2, porque son de riesgo bajo y no cambian datos.
+- Investigación documental e integración de sus resultados: completadas con los límites anteriores, sin compras ni envío de solicitudes.
+- Documentos e imágenes permanecen en `plan/normas-y-mejoras-2026-10-14`; no se hace PR ni merge a `main`.
+- Código exploratorio: `feature/propuestas-visuales-brandbook`, commit `09de120`, separado de la app oficial. Las nueve imágenes previas siguen como material a revisar.
+- La implementación de §5–§8, la verificación cláusula por cláusula y la adquisición de una copia ACI son tareas distintas; este cierre no las marca realizadas ni exige una aprobación nueva para terminar la documentación.

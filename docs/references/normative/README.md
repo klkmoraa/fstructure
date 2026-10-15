@@ -4,11 +4,19 @@ Este directorio guarda **enlaces y metadatos**, nunca los documentos. Las normas
 se consultan en su fuente y el repositorio registra la edición, la cláusula y el
 extracto verificado, no el capítulo copiado.
 
-La regla está fijada por la prueba `impide incorporar PDFs normativos al
-repositorio único` (`src/design/structuralDesignMigration.test.ts`): cualquier
-`.pdf` versionado la hace fallar. Vale para toda norma, incluidas las NTC de la
-Ciudad de México: que un documento sea de consulta pública no implica licencia
-para redistribuirlo desde un repositorio público publicado en GitHub Pages.
+La política del registro `docs/design/normative-sources.json` declara
+`localNormativePdfsAllowed: false` y redistribución mediante enlaces. La auditoría
+documental del 2026-10-14 no encontró una prueba que impida automáticamente
+versionar un PDF: no debe atribuirse esa garantía a un test inexistente.
+`src/design/normativeRegistry.test.ts` valida fuentes, páginas y hashes de los
+extractos; `src/design/normativeEvidence.test.ts` contrasta las constantes con
+sus extractos. Ninguna de esas comprobaciones concede derechos de reproducción.
+Que un texto sea consultable públicamente no autoriza a redistribuirlo desde
+este repositorio publicado en GitHub Pages.
+
+El [estado y acceso de normas](../../research/normas-estado-y-acceso.md) y las
+[vías legales de ACI](../../research/aci-318-acceso-legal.md) documentan las fuentes,
+la consulta del 2026-10-14 y sus límites. ACI sigue pendiente de copia licenciada.
 
 | Norma | Fuente | Uso en el prototipo |
 | --- | --- | --- |

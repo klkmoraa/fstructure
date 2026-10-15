@@ -68,7 +68,7 @@ Toda comprobación declara su referencia (`ClauseReference` en `src/design/eleme
 
 - `codes.test.ts` recorre diseños de las tres normas: toda cláusula citada existe en el registro de su norma, ninguna comprobación cita otra norma y cada cláusula registrada de NSR-10 y E.060 la usa algún perfil.
 - `normativeEvidence.test.ts` exige que cada constante de un bloque `implementation` aparezca en sus extractos. La deuda que quedaba en la NTC (Ec, fr, β1, FR de cortante, MR, VcR y los límites de estribos) quedó saldada el 2026-09-23.
-- `structuralDesignMigration.test.ts` valida hashes, páginas y fuentes.
+- `normativeRegistry.test.ts` valida hashes, páginas y fuentes. La correspondencia entre constantes y extractos se comprueba en `normativeEvidence.test.ts`. La política de no versionar PDFs está en el registro; la auditoría documental del 2026-10-14 no encontró una prueba automática que la imponga.
 
 Los PDF no se versionan. Los extractos de E.060 transcriben la coma decimal como punto.
 

@@ -20,6 +20,9 @@ Eres Codex trabajando en el repositorio klkmoraa/fstructure (FStructure). Respon
 Si cualquier paso falla, reporta el estado exacto (ramas, commits, archivos modificados) y no sigas.
 
 ## 2. Investigación completa
+
+**Actualización documental · 2026-10-14:** la investigación solicitada abajo ya fue realizada y está integrada en el plan de referencia. Consultar el [informe de cierre](../research/reports/Investigación%20pendiente%20de%20FStructure.md), [acceso ACI](../research/aci-318-acceso-legal.md), [normas y acceso](../research/normas-estado-y-acceso.md), [referencias visuales](../research/referencias-visuales.md) y [comunidad/licencias](../research/propuestas-comunidad.md). Se conservan estas instrucciones como alcance de la investigación. Cada entregable registra fuentes, fecha y límites: completar el informe no equivale a obtener ACI, verificar todas las cláusulas ni implementar normas. La edición ACI 318-25 española sí existe; la copia licenciada de FStructure sigue pendiente.
+
 Completa lo que la investigación previa no resolvió. Cada hallazgo lleva URL, fecha de consulta y marca de "verificado" o "no verificado". Guarda los resultados en `docs/research/`.
 
 ### 2.1 ACI 318 (copia legal)
@@ -32,7 +35,7 @@ Entregable: `docs/research/aci-318-acceso-legal.md` con cada vía, su costo veri
 
 Reglas: no descargues PDFs de sitios piratas, blogs ni copias de terceros. Si no hay copia legal, deja ACI como "pendiente de copia" y no implementes nada de ACI.
 
-Cuando la persona entregue el archivo: calcula su SHA-256 fuera del repositorio. Nunca subas el PDF al repositorio (hay una prueba que lo impide).
+Cuando la persona entregue el archivo: calcula su SHA-256 fuera del repositorio. Nunca subas el PDF al repositorio: la política lo prohíbe. La auditoría del 2026-10-14 no encontró una prueba que lo impida automáticamente; no atribuir esa garantía a `normativeEvidence.test.ts`.
 
 ### 2.2 Normas: estado y acceso
 - NSR-10 Título C (AIS, Ministerio de Vivienda): confirma la URL oficial del texto y que la versión registrada siga vigente.
@@ -97,7 +100,7 @@ Un commit por tema, cada uno con sus pruebas. Cada push a `main` debe pasar `npm
 
 **Fase 0 · Riesgo de datos y publicación**
 1. Memoria con norma desconocida. `src/features/design/workbench/designMemory.tsx`, líneas 41 y 328: una norma no reconocida se reetiqueta como `ntc-2023` sin avisar. Conserva el código original, bloquea el recálculo y muestra «Norma no disponible en esta versión». Pruebas: `designMemory.test.tsx`, `src/data/migrate.test.ts`, y a mano abrir → guardar → reabrir y un archivo inválido.
-2. Documentación desfasada. `docs/design/design-workbench.md` y `docs/references/normative/README.md` citan `src/design/structuralDesignMigration.test.ts`, que no existe. La regla de PDFs está en `src/design/normativeEvidence.test.ts`. Corrige la referencia.
+2. Documentación desfasada. `docs/design/design-workbench.md` y `docs/references/normative/README.md` citan `src/design/structuralDesignMigration.test.ts`, que no existe. Las fuentes, páginas y hashes se validan en `src/design/normativeRegistry.test.ts`; `normativeEvidence.test.ts` contrasta constantes. Las referencias documentales se corrigieron en el cierre de investigación. No se encontró una prueba de bloqueo de PDFs; conservar esa distinción.
 3. `$` extra en el porcentaje de utilización (busca el formateo en `src/i18n/catalogs/`).
 4. Pages con el flujo oficial en `.github/workflows/deploy-pages.yml`: `configure-pages`, `upload-pages-artifact`, `deploy-pages`, con `needs` y permisos `pages: write` e `id-token: write`. Prueba primero en una rama.
 5. Escenas de la Home a WebP en `public/assets/suite/` (hoy hay 8 PNG). Conserva el respaldo.
