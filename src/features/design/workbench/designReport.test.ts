@@ -2,12 +2,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { PDFArray, PDFDocument, PDFRawStream, decodePDFRawStream } from 'pdf-lib';
 import { designBeam } from '../../../design/elements/beam';
-import { reviewState } from '../../../design/elements/scope';
 import { barMassKgPerM } from '../../../design/elements/takeoff';
 import { BEAM_DEFAULTS, DEFAULT_SPANS, beamReportFromDraft, beamToInput } from './beamModel';
 import { COLUMN_DEFAULTS, columnReportFromDraft } from './columnModel';
 import { reportFromMemoryItem } from './designMemory';
-import { memoText, snapshotHash, stableJson, type DesignReport } from './designReport';
+import { memoText, missingDataText, snapshotHash, stableJson, verdictHeadline, type DesignReport } from './designReport';
 import { buildDesignMemoriaPdf } from './designReportPdf';
 import { FOOTING_DEFAULTS, footingReportFromDraft } from './footingModel';
 
@@ -21,10 +20,14 @@ const beam = unwrap(beamReportFromDraft('ntc-2023', { ...BEAM_DEFAULTS, tag: 'V-
 const footing = unwrap(footingReportFromDraft('ntc-2023', FOOTING_DEFAULTS));
 
 describe('instantánea de diseño', () => {
-  it('no llama «Cumple» a un elemento con verificaciones sin evaluar', () => {
-    expect(reviewState('pass', column.outOfScope)).toBe('incomplete');
-    expect(reviewState('pass', [])).toBe('pass');
-    expect(reviewState('fail', column.outOfScope)).toBe('fail');
+  it('el titular lo decide lo evaluado; lo fuera del alcance queda como nota', () => {
+    expect(column.status).toBe('pass');
+    expect(column.outOfScope.length).toBeGreaterThan(0);
+    expect(verdictHeadline(column.status)).toBe('Cumple');
+    expect(verdictHeadline('fail')).toBe('No cumple');
+    expect(verdictHeadline('warning')).toBe('Revisión pendiente');
+    expect(missingDataText(['Claro 1: la longitud debe ser mayor que cero.', 'Base debe ser mayor que cero.']))
+      .toBe('Faltan: Claro 1: la longitud debe ser mayor que cero · Base debe ser mayor que cero.');
   });
 
   it('la huella no depende del orden de las llaves', async () => {
@@ -38,7 +41,7 @@ describe('instantánea de diseño', () => {
   it('la memoria copiada abre con la identificación y lista lo no evaluado antes de la firma', () => {
     const lines = memoText(column).split('\n');
     expect(lines[0]).toBe('C-1 · Eje A-1 · PB');
-    expect(lines.at(-2)).toMatch(/^○ Sin evaluar .*Concurrencia de Pu, Mux y Muy/);
+    expect(lines.at(-2)).toMatch(/^○ \d+ verificaciones fuera del alcance del taller: .*Concurrencia de Pu, Mux y Muy/);
     expect(lines.at(-1)).toMatch(/^FStructure · /);
   });
 

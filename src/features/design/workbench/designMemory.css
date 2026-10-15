@@ -28,8 +28,9 @@
 .dw-memory__table th[scope='row'] small { color: var(--dw-muted); font: 11px var(--sc-font-ui); }
 .dw-memory__table td { vertical-align: middle; font: 500 11.5px var(--sc-font-mono); }
 .dw-memory__table td[data-status='pass'] { color: var(--dw-pass); }
-.dw-memory__table td[data-status='warning'] { color: var(--dw-warn); }
-.dw-memory__table td[data-status='fail'], .dw-memory__table td[data-status='invalid'] { color: var(--dw-fail); }
+/* «Faltan datos» no es un resultado: va en ámbar, como un aviso, nunca en el rojo de «No cumple». */
+.dw-memory__table td[data-status='warning'], .dw-memory__table td[data-status='invalid'] { color: var(--dw-warn); }
+.dw-memory__table td[data-status='fail'] { color: var(--dw-fail); }
 .dw-memory__table tr[data-active] th[scope='row'] strong::after { content: ' · abierto'; color: var(--dw-muted); font-weight: 500; }
 .dw-memory__check { width: 42px; text-align: center; }
 .dw-memory__check input { width: 20px; height: 20px; accent-color: var(--sc-color-focus); cursor: pointer; }

@@ -24,7 +24,7 @@ import { ReinforcementAlternatives } from './ReinforcementAlternatives';
 import { startReinforcementAlternatives, type ReinforcementAlternativesRequest, type ReinforcementAlternativesResponse } from './reinforcementAlternativesClient';
 import { REBAR_SIZES } from '../../../design/elements/shared';
 import type { ReinforcementCandidate, ReinforcementObjective } from '../../../design/elements/reinforcementAlternatives';
-import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
+import { Plate, WorkbenchLayout, missingDataVerdict, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 
 type SpanColumn = { field: keyof SpanDraft; label: string; unit: string };
 
@@ -221,7 +221,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       if (!storedDetails.setDetails(EMPTY_BEAM_DETAILS, { beam: BEAM_DEFAULTS, 'beam-spans': DEFAULT_SPANS as unknown as JsonValue })) { setDetailsNote('No se guardó el reinicio; se conservaron los datos actuales. Libera espacio y vuelve a intentarlo.'); return; }
       reset(); setSpans(DEFAULT_SPANS); setDetailsDraft(EMPTY_BEAM_DETAILS); setDetailsNote(null);
     }}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : missingDataVerdict(result.errors)}
     caption={result.ok ? describeBeam(result.input) : undefined}
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} />
@@ -241,7 +241,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
             <NumberField label="Viva de la losa" unit="kN/m²" value={draft.slabLive} onChange={set('slabLive')} hint={code.id === 'ntc-2023' ? 'NTC habitación: Wm 1.9' : 'Según el destino'} />
           </div>
           <div className="dw-slab-apply">
-            <span>{slab ? `CM ${slab.dead} · CV ${slab.live} kN/m` : 'Datos incompletos'}</span>
+            <span>{slab ? `CM ${slab.dead} · CV ${slab.live} kN/m` : 'Faltan datos'}</span>
             <button type="button" className="dw-inline-action" disabled={!slab} onClick={applySlab}>Aplicar a los claros</button>
           </div>
           <ActionNote text={loadNote} />

@@ -52,7 +52,7 @@ describe('borrador y reporte de flexión', () => {
     expect(report.memo).toContain('Mu = -200.0 kN·m');
     expect(report.values.some((value) => value.symbol === 'd' && value.value.endsWith('mm'))).toBe(true);
     expect(report.outOfScope.map((check) => check.label)).toEqual(expect.arrayContaining(['Cortante', 'Desarrollo y anclaje', 'Servicio y deformación', 'Carga axial y flexión biaxial']));
-    expect(memoText(report)).toContain('○ Sin evaluar');
+    expect(memoText(report)).toMatch(/○ \d+ verificaci(ón|ones) fuera del alcance del taller: /);
     expect(await snapshotHash(report)).toBe(await snapshotHash({ ...report, input: report.input }));
   });
 

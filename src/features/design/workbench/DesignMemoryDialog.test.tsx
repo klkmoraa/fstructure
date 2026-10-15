@@ -108,14 +108,14 @@ describe('DesignMemoryDialog', () => {
     expect(screen.getByText(/Aún no hay elementos/)).toBeTruthy();
   });
 
-  it('borra selección al eliminar id y excluye datos incompletos de la exportación', async () => {
+  it('borra selección al eliminar id y excluye piezas con datos faltantes de la exportación', async () => {
     const { user, onExport } = renderDialog([saved('good', 'V-1'), saved('bad', 'V-2', '')]);
     expect(screen.queryByRole('checkbox', { name: 'Seleccionar V-2' })).toBeNull();
     await user.click(screen.getByRole('checkbox', { name: 'Seleccionar V-1' }));
     await user.click(screen.getByRole('button', { name: 'Quitar V-1 de la memoria' }));
     expect((screen.getByRole('button', { name: 'Exportar selección (0)' }) as HTMLButtonElement).disabled).toBe(true);
     expect(onExport).not.toHaveBeenCalled();
-    expect(screen.getByText(/1 elemento incompleto se excluye/)).toBeTruthy();
+    expect(screen.getByText(/1 elemento con datos faltantes se excluye/)).toBeTruthy();
   });
 
   it('un duplicado exitoso limpia el aviso parental de un open rechazado y no activa la copia', async () => {

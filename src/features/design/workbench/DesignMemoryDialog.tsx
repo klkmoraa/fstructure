@@ -4,9 +4,8 @@ import { Button, Field, Select } from '../../../design-system/components/control
 import { Dialog } from '../../../design-system/components/overlays';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
-import { verdictHeadline } from './common';
 import { reportFromMemoryItem, type DesignMemory } from './designMemory';
-import { reportHeading, type DesignElementKind, type DesignReport } from './designReport';
+import { MISSING_DATA, missingDataText, reportHeading, verdictHeadline, type DesignElementKind, type DesignReport } from './designReport';
 import { filterMemoryRows, selectedMemoryReports, type MemoryFilter, type MemoryStatusFilter, type MemoryViewRow } from './designMemoryView';
 import { MAX_MEMORY_ITEMS } from './workbenchStorage';
 import './designMemory.css';
@@ -78,7 +77,6 @@ export function DesignMemoryDialog({ open, onOpenChange, memory, element, onLoad
     warning: rows.filter((row) => row.outcome.ok && row.outcome.report.status === 'warning').length,
     fail: rows.filter((row) => row.outcome.ok && row.outcome.report.status === 'fail').length,
     invalid,
-    partial: rows.filter((row) => row.outcome.ok && row.outcome.report.outOfScope.length > 0).length,
   };
   const statusValue: MemoryStatusFilter = filters.status;
 
@@ -99,8 +97,7 @@ export function DesignMemoryDialog({ open, onOpenChange, memory, element, onLoad
     </>}>
     {notice || message ? <p className="dw-memory__notice" role="status">{notice ?? message}</p> : null}
     <div className="dw-memory__summary" aria-label="Resumen de la memoria">
-      <span>{rows.length} {rows.length === 1 ? 'elemento' : 'elementos'}</span><span>{counts.pass} cumple</span><span>{counts.warning} revisión</span><span>{counts.fail} no cumple</span><span>{counts.invalid} incompletos</span>
-      {counts.partial ? <span>{counts.partial} con alcance parcial</span> : null}
+      <span>{rows.length} {rows.length === 1 ? 'elemento' : 'elementos'}</span><span>{counts.pass} cumple</span><span>{counts.warning} revisión</span><span>{counts.fail} no cumple</span><span>{counts.invalid} con datos faltantes</span>
     </div>
     <div className="dw-memory__filters" aria-label="Filtros de memoria">
       <Field type="search" label="Buscar en memoria" aria-label="Buscar en memoria" value={filters.query} onChange={(event) => changeFilter('query', event.currentTarget.value)} />
@@ -111,7 +108,7 @@ export function DesignMemoryDialog({ open, onOpenChange, memory, element, onLoad
         <option value="all">Todas las normas</option>{DESIGN_CODE_IDS.map((id) => <option key={id} value={id}>{designCode(id).name}</option>)}
       </Select>
       <Select label="Estado" aria-label="Filtrar por estado" value={statusValue} onChange={(event) => changeFilter('status', event.currentTarget.value as MemoryStatusFilter)}>
-        <option value="all">Todos los estados</option><option value="pass">Cumple</option><option value="warning">Revisión pendiente</option><option value="fail">No cumple</option><option value="invalid">Datos incompletos</option>
+        <option value="all">Todos los estados</option><option value="pass">Cumple</option><option value="warning">Revisión pendiente</option><option value="fail">No cumple</option><option value="invalid">{MISSING_DATA}</option>
       </Select>
     </div>
     <div className="dw-memory__selection">
@@ -128,12 +125,13 @@ export function DesignMemoryDialog({ open, onOpenChange, memory, element, onLoad
         const label = item.fields.tag || ELEMENT_LABEL[item.element];
         const code = isDesignCodeId(item.code) ? designCode(item.code) : designCode('ntc-2023');
         return <tr key={item.id} data-active={item.id === memory.activeId || undefined}>
-          <td className="dw-memory__check">{report ? <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleSelection(item.id)} aria-label={`Seleccionar ${label}`} /> : <span className="dw-memory__not-selectable" aria-label={`${label}: datos incompletos, excluido de selección`}>—</span>}</td>
+          <td className="dw-memory__check">{report ? <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleSelection(item.id)} aria-label={`Seleccionar ${label}`} /> : <span className="dw-memory__not-selectable" aria-label={`${label}: faltan datos, excluido de selección`}>—</span>}</td>
           <th scope="row">
-            <strong>{report ? reportHeading(report) : `${label} · datos incompletos`}</strong>
+            <strong>{report ? reportHeading(report) : label}</strong>
             <small>{[item.fields.place, report?.basisLabel ?? code.name, savedDate(item.savedAt)].filter(Boolean).join(' · ')}</small>
+            {outcome.ok ? null : <small>{missingDataText(outcome.errors)}</small>}
           </th>
-          <td data-status={status}>{report ? `${verdictHeadline(report.status, report.outOfScope.length > 0)} · ${percent(report.governingRatio)}` : 'No se puede calcular'}</td>
+          <td data-status={status}>{report ? `${verdictHeadline(report.status)} · ${percent(report.governingRatio)}` : MISSING_DATA}</td>
           <td className="dw-memory__actions">
             <button type="button" className="dw-icon-button" onClick={() => onLoad(item.id)} aria-label={`Abrir ${label}`} title="Abrir en la mesa"><FolderOpen size={15} aria-hidden="true" /></button>
             <button type="button" className="dw-icon-button" onClick={() => duplicate(item.id)} aria-label={`Duplicar ${label}`} title="Duplicar pieza"><Copy size={15} aria-hidden="true" /></button>
@@ -143,6 +141,6 @@ export function DesignMemoryDialog({ open, onOpenChange, memory, element, onLoad
       })}</tbody>
     </table></div> : <div className="dw-memory__empty"><p>No hay coincidencias con estos filtros.</p><Button variant="secondary" size="sm" onClick={clearFilters}>Restablecer filtros</Button></div>
       : <p className="dw-memory__empty">Aún no hay elementos. Diseña uno y agrégalo.</p>}
-    {invalid ? <p className="dw-footnote">{`${invalid} ${invalid === 1 ? 'elemento incompleto se excluye' : 'elementos incompletos se excluyen'} de la selección y del PDF.`}</p> : null}
+    {invalid ? <p className="dw-footnote">{`${invalid} ${invalid === 1 ? 'elemento con datos faltantes se excluye' : 'elementos con datos faltantes se excluyen'} de la selección y del PDF.`}</p> : null}
   </Dialog>;
 }

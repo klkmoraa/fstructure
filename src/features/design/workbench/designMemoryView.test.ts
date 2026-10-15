@@ -34,7 +34,7 @@ const all: MemoryFilter = { query: '', element: 'all', code: 'all', status: 'all
     expect(filterMemoryRows(rows, { query: '', element: 'column', code: 'e060', status: 'warning' })).toEqual([rows[1]]);
   });
 
-  it('distingue pasa con alcance parcial y limita estado inválido a datos incompletos', () => {
+  it('distingue pasa con alcance parcial y limita estado inválido a faltan datos', () => {
     const partial = row(item('partial', { tag: 'P-1' }), report({ outOfScope: [{ id: 'cut', label: 'cortante', status: 'warning', demand: 0, capacity: 1, ratio: 0.5, reference: { standard: 'complementary', clauseIds: [], label: 'fuera del alcance' } }] }));
     const invalid = row(item('invalid', { tag: 'I-1' }), null);
     expect(partial.outcome.ok && partial.outcome.report.status).toBe('pass');
@@ -43,7 +43,7 @@ const all: MemoryFilter = { query: '', element: 'all', code: 'all', status: 'all
     expect(filterMemoryRows([partial, invalid], { ...all, status: 'invalid' })).toEqual([invalid]);
   });
 
-  it('exporta por selección de ids en orden guardado y omite incompletos sin depender del filtro', () => {
+  it('exporta por selección de ids en orden guardado y omite piezas con datos faltantes sin depender del filtro', () => {
     const first = row(item('first', { tag: '1' }), report({ tag: '1' }));
     const invalid = row(item('bad', { tag: 'x' }), null);
     const last = row(item('last', { tag: '2' }), report({ tag: '2' }));

@@ -25,7 +25,7 @@ export function filterMemoryRows(rows: readonly MemoryViewRow[], filters: Memory
     if (filters.status !== 'all' && (outcome.ok ? outcome.report.status !== filters.status : filters.status !== 'invalid')) return false;
     if (!query) return true;
     const code = isDesignCodeId(item.code) ? designCode(item.code) : designCode('ntc-2023');
-    const searchable = [item.fields.tag, item.fields.place, code.name, item.code, ...(outcome.ok ? [outcome.report.title] : [`${item.fields.tag || item.element} datos incompletos`])];
+    const searchable = [item.fields.tag, item.fields.place, code.name, item.code, ...(outcome.ok ? [outcome.report.title] : [`${item.fields.tag || item.element} faltan datos`])];
     return searchable.some((value) => normalizeMemorySearch(value ?? '').includes(query));
   });
 }

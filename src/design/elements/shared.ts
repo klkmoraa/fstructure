@@ -102,7 +102,8 @@ export function bearingStrengthKn(fcMpa: number, loadedAreaMm2: number, supportA
 
 /**
  * `out-of-scope`: verificación que la norma pide y el taller no calcula. Nunca
- * aprueba ni reprueba, pero impide llamar «Cumple» a secas al elemento.
+ * aprueba ni reprueba ni cambia el veredicto: se informa aparte, como nota de
+ * alcance, y se lista completa en la revisión, la memoria y el PDF.
  */
 export type CheckStatus = 'pass' | 'fail' | 'warning' | 'info' | 'out-of-scope';
 

@@ -153,14 +153,3 @@ export function outOfScopeChecks(element: ElementKind, code: DesignCodeId, optio
     note: item.note[code],
   }));
 }
-
-type ReviewState = 'fail' | 'warning' | 'incomplete' | 'pass';
-
-/**
- * Estado de la revisión del elemento. «incomplete» significa que todo lo
- * evaluado cumple pero hay verificaciones sin evaluar: no se llama «Cumple».
- */
-export function reviewState(status: 'pass' | 'fail' | 'warning', outOfScope: readonly ElementCheck[]): ReviewState {
-  if (status !== 'pass') return status;
-  return outOfScope.length ? 'incomplete' : 'pass';
-}

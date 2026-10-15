@@ -9,7 +9,7 @@ import {
   ActionNote, BarSelect, Disclosure, ErrorsPanel, FieldGroup, IdentityGroup, InlineAction, NumberField,
   PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, formatNumber, parseNumber, useDraftHistory, useStoredDraft,
 } from './common';
-import { Plate, WorkbenchLayout, type WorkbenchChrome } from './WorkbenchLayout';
+import { Plate, WorkbenchLayout, missingDataVerdict, type WorkbenchChrome } from './WorkbenchLayout';
 import { MaterialFields } from './MaterialFields';
 import { ReinforcementAlternatives } from './ReinforcementAlternatives';
 import { startReinforcementAlternatives, type ReinforcementAlternativesRequest, type ReinforcementAlternativesResponse } from './reinforcementAlternativesClient';
@@ -97,7 +97,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
     chrome={chrome} title="Secciones de concreto" report={report}
     onReset={() => { reset(); setActionNote(null); }}
     caption={`${philosophy.short} · ${SECTION_SHAPES.find((item) => item.value === draft.shape)?.label ?? 'Sección'} · experimental`}
-    verdict={result.status === 'ok' ? { status: sectionStatus(result), label: sectionVerdict(result) } : { status: 'error', label: 'Revisa los datos' }}
+    verdict={result.status === 'ok' ? { status: sectionStatus(result), label: sectionVerdict(result) } : missingDataVerdict(result.errors)}
     inputs={<>
       <div className="cs-intro"><span className="cs-experimental"><CircleDashed size={12} aria-hidden="true" />LABORATORIO DE SECCIONES</span></div>
       <FieldGroup title="Datos del problema">

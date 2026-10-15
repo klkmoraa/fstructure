@@ -29,7 +29,7 @@ describe('mesa Estructura con el pórtico rápido', () => {
     expect(await screen.findByRole('img', { name: /Utilización de el pórtico/ })).toBeTruthy();
     // Elegir el 3D vacío no muestra un error: ofrece modelar aquí o en el 3D.
     await user.click(screen.getByRole('radio', { name: 'Modelo 3D' }));
-    expect(screen.queryByText('Revisa los datos')).toBeNull();
+    expect(document.querySelector('.dw-errors')).toBeNull();
     await user.click(await screen.findByRole('button', { name: 'Modelar en 3D' }));
     expect(onOpenSpace3D).toHaveBeenCalledOnce();
     await user.click(screen.getByRole('button', { name: 'Pórtico rápido' }));

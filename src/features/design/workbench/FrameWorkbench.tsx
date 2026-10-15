@@ -27,7 +27,7 @@ import { BuildingAxes } from './BuildingAxes';
 import { frameConcreteVolume, frameProposalStories, proposeFrameSections, proposeModelSections, type ProposalStep, type SectionProposal } from './frameProposal';
 import { startProposalWorker } from './proposalWorker';
 import { useWorkbenchStorage } from './workbenchStorage';
-import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
+import { Plate, WorkbenchLayout, missingDataVerdict, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 import { MaterialFields } from './MaterialFields';
 
 type RowColumn<T> = { field: keyof T & string; label: string; unit: string; min?: number };
@@ -393,8 +393,8 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const modelReview = fromModel && !from3d ? chrome.modelReview : null;
   const steelOnly = Boolean(modelReview && external?.summary.beams === 0 && external?.summary.columns === 0);
   const verdict = steelOnly ? { status: 'warning' as const, label: 'Acero · revisión parcial' } : result
-    ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) }
-    : { status: 'error' as const, label: fromModel && model.pending ? 'Analizando el modelo…' : 'Datos incompletos' };
+    ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) }
+    : fromModel && model.pending ? { status: 'error' as const, label: 'Analizando el modelo…' } : missingDataVerdict(outcome && !outcome.ok ? outcome.errors : []);
 
   return <><WorkbenchLayout
     chrome={steelOnly ? { ...chrome, codeControl: <span className="dw-badge">Acero · NTC CDMX 2023</span> } : chrome}
@@ -447,7 +447,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
               <NumberField label="Viva de la losa" unit="kN/m²" value={draft.slabLive} onChange={set('slabLive')} hint={code.id === 'ntc-2023' ? 'NTC habitación: Wm 1.9' : 'Según el destino'} />
             </div>
             <div className="dw-slab-apply">
-              <span>{slab ? `CM ${slab.dead} · CV ${slab.live} kN/m` : 'Datos incompletos'}</span>
+              <span>{slab ? `CM ${slab.dead} · CV ${slab.live} kN/m` : 'Faltan datos'}</span>
               <button type="button" className="dw-inline-action" disabled={!slab} onClick={applySlab}>Aplicar a los niveles</button>
             </div>
             <ActionNote text={loadNote} />
