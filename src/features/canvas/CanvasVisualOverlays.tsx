@@ -6,8 +6,13 @@ export const SmartLabelLayer = ({ labels, detail }: { labels: readonly PlacedSma
   {labels.map((label) => {
     const centerX = label.rect.x + label.rect.width / 2;
     const centerY = label.rect.y + label.rect.height / 2;
+    // La guía termina en el borde de la caja: las cifras de resultado no tienen
+    // fondo y la línea pasaría por debajo del texto.
+    const dx = label.anchor.x - centerX;
+    const dy = label.anchor.y - centerY;
+    const edge = Math.min(Math.abs(dx) > 1e-9 ? label.rect.width / 2 / Math.abs(dx) : Infinity, Math.abs(dy) > 1e-9 ? label.rect.height / 2 / Math.abs(dy) : Infinity, 1);
     return <g key={label.id} className={`smart-label priority-${label.priority} tone-${label.tone ?? 'neutral'}`} data-smart-label={label.id} data-label-priority={label.priority}>
-      {label.leader ? <line className="smart-label-leader" x1={label.anchor.x} y1={label.anchor.y} x2={centerX} y2={centerY} /> : null}
+      {label.leader ? <line className="smart-label-leader" x1={label.anchor.x} y1={label.anchor.y} x2={centerX + dx * edge} y2={centerY + dy * edge} /> : null}
       <rect x={label.rect.x} y={label.rect.y} width={label.rect.width} height={label.rect.height} rx="6" />
       <text x={label.rect.x + 8} y={label.rect.y + 15}>{label.text}</text>
     </g>;
