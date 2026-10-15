@@ -17,6 +17,7 @@ para redistribuirlo desde un repositorio público publicado en GitHub Pages.
 | NTC Sismo CDMX 2020 | [SMIE](https://www.smie.org.mx/uploads/1/2022-11/normas_tecnicas_complementarias_diseno_sismo_2020.pdf) | Referencia sísmica pública con comentarios |
 | NTC Viento CDMX 2017 | [SMIE](https://www.smie.org.mx/uploads/1/2022-11/normas_tecnicas_complementarias_diseno_viento_2017.pdf) | Referencia de viento |
 | NTC Concreto CDMX 2023 | [Gaceta Oficial CDMX](https://data.consejeria.cdmx.gob.mx/portal_old/uploads/gacetas/b3c4f4ff37241d0a93cc6742a8b0bf2f.pdf) | Edición implementada; cláusulas y evidencia en `docs/design/normative-sources.json` |
+| Código Estructural de España (RD 470/2021, corrección de 2024) | [BOE, PDF oficial](https://www.boe.es/eli/es/rd/2021/06/29/470/dof/spa/pdf) | Identificado, en lectura, sin perfil: registro `codigo-estructural-2021` pendiente y bloqueado; lectura y brecha del motor en `docs/research/codigo-estructural-lectura.md` |
 
 Los códigos ACI/AISC/ASCE y los manuales PCI/PTI se mantienen igual: enlace y
 metadatos hasta contar con una fuente o licencia que permita redistribución.

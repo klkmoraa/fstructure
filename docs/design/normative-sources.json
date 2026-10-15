@@ -1276,6 +1276,42 @@
         "El enlace original del Ministerio (www3.vivienda.gob.pe) no resuelve; se usa el enlace que SENCICO publica en gob.pe.",
         "Only metadata, short evidence excerpts and hashes are versioned; the official PDF is not redistributed."
       ]
+    },
+    {
+      "id": "codigo-estructural-2021",
+      "jurisdiction": "España",
+      "edition": "2021 (con la corrección de errores de 2024)",
+      "title": "Código Estructural (Real Decreto 470/2021) — Título 2 Estructuras de hormigón y Anejos 18, 19 y 21",
+      "status": "identified-reading-pending",
+      "officialLandingPage": "https://www.boe.es/eli/es/rd/2021/06/29/470",
+      "officialDocument": {
+        "publisher": "Boletín Oficial del Estado (BOE núm. 190, 10-08-2021, BOE-A-2021-13681)",
+        "publicationDate": "2021-08-10",
+        "url": "https://www.boe.es/eli/es/rd/2021/06/29/470/dof/spa/pdf",
+        "sha256": "bad9e8d07be7ca46ae1549122438ef2ce704e8fc81cc926a9eb904b190b289ad",
+        "verification": "download-stream-hashed-2026-10-15",
+        "scopeNote": "PDF oficial completo (1789 páginas). Página del PDF = página del BOE − 97663. Título 2: páginas 63–227; Anejo 18: 560–621; Anejo 19: 622–828; Anejo 21: 903–983."
+      },
+      "corrigenda": [
+        {
+          "publisher": "Boletín Oficial del Estado (BOE núm. 29, 02-02-2024, BOE-A-2024-1989)",
+          "publicationDate": "2024-02-02",
+          "url": "https://www.boe.es/eli/es/rd/2021/06/29/470/corrigendum/20240202/dof/spa/pdf",
+          "sha256": "5f1edd15e75c04dd1f1d42a314c616cee6d0bcb11fbce3df18aee95bb100cc9f",
+          "verification": "download-stream-hashed-2026-10-15",
+          "scopeNote": "Corrección de errores (4 páginas); afecta, entre otros, al art. 49.5.1.2 y a los apartados 8.4.1, 8.4.3 y 8.4.4 del Anejo 19."
+        }
+      ],
+      "verifiedClauses": [],
+      "clauseVerificationStatus": "pending",
+      "localPdf": null,
+      "implementationGate": "blocked-until-partial-factor-engine-and-annex-19-evidence",
+      "notes": [
+        "Sin perfil en la app: el motor del taller usa factores φ sobre la resistencia nominal y el Código Estructural, coeficientes parciales sobre los materiales.",
+        "El art. 45 remite el cálculo a los Anejos 19 y 21; para edificación, el Anejo 18 (apéndice A.1) remite los coeficientes de acciones al Código Técnico de la Edificación, que no está registrado.",
+        "Las ecuaciones del Anejo 19 no se extraen como texto del PDF; la lectura en docs/research/codigo-estructural-lectura.md separa extractos de texto y transcripciones visuales pendientes de segunda lectura.",
+        "Only metadata, short evidence excerpts and hashes are versioned; the official PDF is not redistributed."
+      ]
     }
   ]
 }
