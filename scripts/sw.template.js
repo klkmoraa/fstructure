@@ -5,7 +5,9 @@
  *   publicada; sin red se abre la guardada.
  * - Los archivos con huella (`assets/…`) no cambian nunca: se sirven de la caché.
  * - Una versión nueva espera a que se cierre la app para tomar el control, así
- *   una pestaña abierta nunca mezcla código de dos versiones.
+ *   una pestaña abierta nunca mezcla código de dos versiones. La app avisa
+ *   «Nueva versión lista» y, si la persona pulsa «Recargar», manda
+ *   `SKIP_WAITING`: sólo entonces la versión nueva toma el control.
  */
 const VERSION = '__FS_VERSION__';
 const PRECACHE = __FS_PRECACHE__;
@@ -13,6 +15,10 @@ const CACHE = `fstructure-${VERSION}`;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

@@ -1,5 +1,6 @@
 /**
- * Renderiza las escenas de la Home a PNG transparente, en día y noche.
+ * Renderiza las escenas de la Home a PNG transparente, en día y noche, y su
+ * copia WebP (la que se sirve; el PNG queda de respaldo, `SceneImage`).
  *
  * Requiere el servidor de desarrollo (`npm run dev`) en http://localhost:5173:
  * la escena se construye con el mismo código three.js de la app, dentro de un
@@ -37,6 +38,17 @@ for (const scene of scenes) {
       return render.renderStructuralGroupDataUrl(suite.buildSuiteScene(scene.id, theme), theme, width, height);
     }, { scene, theme, modules: { render: '/src/features/structural-assets/threeStructuralRender.ts', suite: '/src/features/structural-assets/suiteScenes.ts' } });
     writeFileSync(join(out, `${scene.file}-${theme}.png`), Buffer.from(url.split(',')[1], 'base64'));
+    const webp = await page.evaluate(async (png) => {
+      const image = new Image();
+      image.src = png;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      canvas.getContext('2d').drawImage(image, 0, 0);
+      return canvas.toDataURL('image/webp', 0.88);
+    }, url);
+    writeFileSync(join(out, `${scene.file}-${theme}.webp`), Buffer.from(webp.split(',')[1], 'base64'));
   }
 }
 await browser.close();

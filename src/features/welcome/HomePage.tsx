@@ -27,6 +27,7 @@ import { ProjectHub } from '../project-hub/ProjectHub';
 import { ProjectSaveButton } from '../project-hub/ProjectSaveButton';
 import { ThreeStructuralImage, type ThreeStructuralAssetId } from '../structural-assets';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
+import { SceneImage } from '../../design-system/components/SceneImage';
 import { presentExample } from './examplePresentation';
 import './home.css';
 
@@ -239,7 +240,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
         </div>
       </div>
       <figure className="fh-hero__stage" aria-hidden="true">
-        <img src={scene('portal', mode)} alt="" decoding="async" />
+        <SceneImage src={scene('portal', mode)} alt="" decoding="async" />
       </figure>
     </section>
 
@@ -266,7 +267,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
       </header>
       <div className="fh-modes">
         {text.modes.map((item, index) => <button key={item.id} type="button" className="fh-mode" style={{ '--i': index } as CSSProperties} onClick={() => openProjectMode(item.id)}>
-          <span className="fh-mode__scene"><img src={scene(item.scene, mode)} alt="" decoding="async" loading="lazy" /></span>
+          <span className="fh-mode__scene"><SceneImage src={scene(item.scene, mode)} alt="" decoding="async" loading="lazy" /></span>
           <span className="fh-mode__copy"><small>{index + 1}</small><strong>{item.title}</strong><span>{item.role}</span></span>
           <ArrowRight className="fh-mode__go" size={18} aria-hidden="true" />
         </button>)}
