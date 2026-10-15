@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type RefObject } from 'react';
 import type { BeamDesignResult, BeamEnd, BeamSectionCut, BedSection } from '../../../design/elements/beam';
 import { barsText } from '../../../design/elements/beam';
 import { designCode } from '../../../design/elements/codes';
@@ -218,6 +218,174 @@ export function BeamElevation({ result, interactive = false, supports = 'ideal' 
   </div>;
 }
 
+/** Por debajo de este ancho (px de la lámina, sin zoom) el DCL se dibuja compacto, en píxeles reales. */
+const COMPACT_BELOW = 720;
+/** Texto del DCL compacto: 14 px reales; la mono avanza 0.6 em por carácter. */
+const FBD_FONT = 14;
+const FBD_CHAR = FBD_FONT * 0.6;
+const FBD_ROW = FBD_FONT + 6;
+const FBD_GAP = 10;
+
+/**
+ * Ancho del marco en px de la lámina (descontando el zoom del lienzo). Null sin
+ * `ResizeObserver` (pruebas) o en el PDF: entonces se dibuja la lámina de siempre.
+ */
+function useBaseWidth(ref: RefObject<HTMLElement | null>, enabled: boolean): number | null {
+  const [width, setWidth] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!enabled || !element || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const zoom = Number.parseFloat(getComputedStyle(element).getPropertyValue('--z')) || 1;
+      const next = Math.round(element.getBoundingClientRect().width / zoom);
+      if (next > 0) setWidth(next);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [ref, enabled]);
+  return width;
+}
+
+/** Etiqueta acomodada: sus líneas, su tramo horizontal y la fila que le tocó. */
+interface PlacedLabel { readonly key: string; readonly lines: readonly string[]; readonly x0: number; readonly x1: number; readonly row: number }
+
+/**
+ * Acomoda etiquetas en filas sin traslape: cada una va centrada en su punto
+ * (sin salirse del dibujo) y, si choca con otra de su fila, pasa a la siguiente.
+ */
+function placeLabels(items: readonly { key: string; x: number; lines: readonly string[] }[], width: number): PlacedLabel[] {
+  const rows: [number, number][][] = [];
+  return items.map((item) => {
+    const w = Math.max(...item.lines.map((line) => line.length)) * FBD_CHAR;
+    const x0 = Math.max(2, Math.min(item.x - w / 2, width - 2 - w));
+    const x1 = x0 + w;
+    let row = rows.findIndex((taken) => taken.every(([a, b]) => x1 + FBD_GAP <= a || x0 >= b + FBD_GAP));
+    if (row < 0) { row = rows.length; rows.push([]); }
+    rows[row]!.push([x0, x1]);
+    return { key: item.key, lines: item.lines, x0, x1, row };
+  });
+}
+const rowCount = (labels: readonly PlacedLabel[]) => labels.reduce((max, label) => Math.max(max, label.row + 1), 0);
+
+interface FreeBodySpan { readonly startM: number; readonly lengthM: number; readonly wu: number; readonly pu: number; readonly pointAtM: number }
+interface FreeBodyExtra { readonly kind: string; readonly startX: number; readonly endX: number; readonly startKn: number; readonly endKn: number }
+
+/**
+ * DCL para teléfono: el mismo dibujo con unidades del SVG = px reales, texto de
+ * 14 px y etiquetas reacomodadas en filas (cargas arriba; reacciones y momentos
+ * de empotramiento abajo; cotas al pie) para que ninguna choque ni haga falta
+ * desplazarse a lo ancho. Los valores son los mismos de la lámina completa.
+ */
+function CompactFreeBody({ width, label, result, spans, extras, maxW }: {
+  width: number; label: string; result: BeamDesignResult; spans: readonly FreeBodySpan[]; extras: readonly FreeBodyExtra[]; maxW: number;
+}) {
+  const reactions = result.reactions!;
+  const length = result.totalLengthM;
+  const letter = (index: number) => String.fromCharCode(65 + index);
+  const momentAt = (index: number) => {
+    const support = reactions.supports[index];
+    return support && support.kind !== 'free' && Math.abs(support.ultimateKnm) > 1e-6 ? support.ultimateKnm : 0;
+  };
+  // Margen para el arco del momento de empotramiento, que sale por fuera del apoyo.
+  const left = momentAt(0) ? 42 : 18;
+  const right = momentAt(reactions.supports.length - 1) ? 42 : 18;
+  const scaleX = (x: number) => left + x / length * (width - left - right);
+
+  const loadLabels = placeLabels([
+    ...spans.flatMap((span, index) => span.wu > 0 ? [{ key: `w${index}`, x: scaleX(span.startM + span.lengthM / 2), lines: [`wu = ${formatNumber(span.wu, 1)} kN/m`] }] : []),
+    ...spans.flatMap((span, index) => span.pu > 0 ? [{ key: `p${index}`, x: scaleX(span.startM + span.pointAtM), lines: [`Pu = ${formatNumber(span.pu, 1)} kN`] }] : []),
+    ...extras.flatMap((load, index) => load.kind === 'point' ? [{ key: `e${index}`, x: scaleX(load.startX), lines: [`${formatNumber(load.startKn, 1)} kN`] }] : []),
+  ], width);
+  const loadRows = rowCount(loadLabels);
+  const loadTop = 8 + loadRows * FBD_ROW + 6;
+  const beamY = loadTop + 46;
+  const reactionLabels = placeLabels(reactions.supports.flatMap((support, index) => support.kind === 'free' ? [] : [{
+    key: `r${index}`, x: scaleX(support.xM),
+    lines: [`R${letter(index)} = ${formatNumber(Math.abs(support.ultimateKn), 1)} kN`, ...(momentAt(index) ? [`M${letter(index)} = ${formatNumber(Math.abs(momentAt(index)), 1)} kN·m`] : [])],
+  }]), width);
+  const block = Math.max(1, ...reactionLabels.map((item) => item.lines.length)) * FBD_ROW;
+  const reactionTop = beamY + 66;
+  const dimensionY = reactionTop + rowCount(reactionLabels) * block + 12;
+  const dimensionLabels = placeLabels(result.spans.map((span, index) => ({
+    key: `d${index}`, x: scaleX(span.startM + span.lengthM / 2), lines: [`${formatNumber(span.lengthM, 2)} m`],
+  })), width);
+  const height = dimensionY + 12 + rowCount(dimensionLabels) * FBD_ROW;
+  const text = (item: PlacedLabel, baseline: number) => <g key={item.key}>{item.lines.map((line, index) =>
+    <text key={index} x={(item.x0 + item.x1) / 2} y={baseline + index * FBD_ROW} textAnchor="middle">{line}</text>)}</g>;
+  const loadArrow = 'url(#dw-fbd-load-compact)';
+
+  return <svg className="dw-drawing dw-fbd--compact" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label}>
+    <defs>
+      <marker id="dw-fbd-load-compact" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
+      <marker id="dw-fbd-reaction-compact" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="7" markerHeight="7"><path d="M0,10 L5,0 L10,10 Z" className="dw-fbd__head" /></marker>
+    </defs>
+    {spans.map((span, index) => {
+      if (!(span.wu > 0)) return null;
+      const x0 = scaleX(span.startM);
+      const x1 = scaleX(span.startM + span.lengthM);
+      const top = beamY - 10 - 36 * span.wu / maxW;
+      const arrows = Math.max(2, Math.round((x1 - x0) / 22));
+      return <g key={index} className="dw-load">
+        <line x1={x0} x2={x1} y1={top} y2={top} />
+        {Array.from({ length: arrows + 1 }, (_, arrow) => {
+          const x = x0 + (x1 - x0) * arrow / arrows;
+          return <line key={arrow} x1={x} x2={x} y1={top} y2={beamY - 4} markerEnd={loadArrow} />;
+        })}
+      </g>;
+    })}
+    {spans.map((span, index) => span.pu > 0 ? <g key={`p${index}`} className="dw-load dw-load--point">
+      <line x1={scaleX(span.startM + span.pointAtM)} x2={scaleX(span.startM + span.pointAtM)} y1={loadTop} y2={beamY - 4} markerEnd={loadArrow} />
+    </g> : null)}
+    {extras.map((load, index) => load.kind === 'point'
+      ? <g key={`e${index}`} className="dw-load dw-load--point">
+        <line x1={scaleX(load.startX)} x2={scaleX(load.startX)} y1={loadTop + 8} y2={beamY - 4} markerEnd={loadArrow} />
+      </g>
+      : <g key={`e${index}`} className="dw-load dw-load--patch">
+        <polyline points={`${scaleX(load.startX)},${beamY - 10 - 36 * load.startKn / maxW} ${scaleX(load.endX)},${beamY - 10 - 36 * load.endKn / maxW}`} />
+        {[0, 0.5, 1].map((t) => {
+          const x = load.startX + (load.endX - load.startX) * t;
+          const q = load.startKn + (load.endKn - load.startKn) * t;
+          return <line key={t} x1={scaleX(x)} x2={scaleX(x)} y1={beamY - 10 - 36 * q / maxW} y2={beamY - 4} markerEnd={loadArrow} />;
+        })}
+      </g>)}
+    {/* Fila 0 justo sobre las cargas; las que chocan suben. */}
+    <g className="dw-load">{loadLabels.map((item) => text(item, 8 + (loadRows - item.row) * FBD_ROW - 5))}</g>
+    <line className="dw-fbd__beam" x1={scaleX(0)} x2={scaleX(length)} y1={beamY} y2={beamY} />
+    {reactions.supports.map((support, index) => {
+      if (support.kind === 'free') return null;
+      const x = scaleX(support.xM);
+      const up = support.ultimateKn >= 0;
+      const moment = momentAt(index);
+      const side = index === 0 ? -1 : 1;
+      const topToBottom = (moment > 0) === (side < 0);
+      const [from, to] = topToBottom ? [beamY - 20, beamY + 20] : [beamY + 20, beamY - 20];
+      return <g key={support.xM} className="dw-fbd__reaction">
+        <circle className="dw-fbd__node" cx={x} cy={beamY} r={3.5} />
+        <text className="dw-fbd__letter" x={x - side * 13} y={beamY + 24} textAnchor="middle">{letter(index)}</text>
+        <line x1={x} x2={x} y1={up ? beamY + 58 : beamY + 8} y2={up ? beamY + 8 : beamY + 58} markerEnd="url(#dw-fbd-reaction-compact)" />
+        {moment ? <g className="dw-fbd__moment">
+          <path d={`M ${x} ${from} C ${x + side * 30} ${from} ${x + side * 30} ${to} ${x + side * 2} ${to}`} markerEnd="url(#dw-fbd-reaction-compact)" />
+        </g> : null}
+      </g>;
+    })}
+    <g className="dw-fbd__reaction">{reactionLabels.map((item) => text(item, reactionTop + item.row * block + FBD_FONT))}</g>
+    <g className="dw-dimension">
+      {result.spans.map((span) => {
+        const x0 = scaleX(span.startM);
+        const x1 = scaleX(span.startM + span.lengthM);
+        return <g key={span.startM}>
+          <line x1={x0} x2={x1} y1={dimensionY} y2={dimensionY} />
+          <line x1={x0} x2={x0} y1={dimensionY - 6} y2={dimensionY + 6} />
+          <line x1={x1} x2={x1} y1={dimensionY - 6} y2={dimensionY + 6} />
+        </g>;
+      })}
+      {dimensionLabels.map((item) => text(item, dimensionY + 8 + item.row * FBD_ROW + FBD_FONT))}
+    </g>
+  </svg>;
+}
+
 /**
  * Diagrama de cuerpo libre con la combinación de diseño y todos los claros
  * cargados: cargas factorizadas (uniformes, puntuales y generales), reacciones
@@ -225,6 +393,8 @@ export function BeamElevation({ result, interactive = false, supports = 'ideal' 
  * reacciones con la carga calculada de los datos.
  */
 export function BeamFreeBody({ result, bare = false }: { result: BeamDesignResult; bare?: boolean }) {
+  const frame = useRef<HTMLElement>(null);
+  const measured = useBaseWidth(frame, !bare);
   const reactions = result.reactions;
   if (!reactions) return null;
   const { combination } = reactions;
@@ -249,8 +419,11 @@ export function BeamFreeBody({ result, bare = false }: { result: BeamDesignResul
   const balanced = Math.abs(sumReactions - reactions.totalLoadKn) <= Math.max(1e-6, 1e-6 * Math.abs(reactions.totalLoadKn));
   const letter = (index: number) => String.fromCharCode(65 + index);
   const height = 236;
-  const drawing = <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${height}`} role="img"
-      aria-label={`Diagrama de cuerpo libre con ${combination.label}: ${reactions.supports.flatMap((support, index) => support.kind === 'free' ? [] : [`R${letter(index)} = ${formatNumber(support.ultimateKn, 1)} kN`]).join(', ')}.`}>
+  const label = `Diagrama de cuerpo libre con ${combination.label}: ${reactions.supports.flatMap((support, index) => support.kind === 'free' ? [] : [`R${letter(index)} = ${formatNumber(support.ultimateKn, 1)} kN`]).join(', ')}.`;
+  // En teléfono, la lámina en px reales con texto legible; el PDF y el escritorio, la de siempre.
+  const drawing = !bare && measured !== null && measured < COMPACT_BELOW
+    ? <CompactFreeBody width={measured} label={label} result={result} spans={spans} extras={extras} maxW={maxW} />
+    : <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${height}`} role="img" aria-label={label}>
       <defs>
         <marker id="dw-fbd-load" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
         <marker id="dw-fbd-reaction" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="7" markerHeight="7"><path d="M0,10 L5,0 L10,10 Z" className="dw-fbd__head" /></marker>
@@ -318,7 +491,7 @@ export function BeamFreeBody({ result, bare = false }: { result: BeamDesignResul
     </svg>;
   // El PDF rasteriza un `<svg>` raíz; la comprobación va en la nota de su figura.
   if (bare) return drawing;
-  return <figure className="dw-fbd">
+  return <figure className="dw-fbd" ref={frame}>
     {drawing}
     <figcaption className={`dw-fbd__balance${balanced ? '' : ' is-off'}`}>
       <span>ΣFy = 0</span>

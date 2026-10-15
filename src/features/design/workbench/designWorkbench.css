@@ -1109,8 +1109,11 @@
 .dw-fbd__balance b { margin-left: auto; color: var(--sc-color-state-success-foreground); font-weight: 600; }
 .dw-fbd__balance.is-off b { color: var(--sc-color-state-error-foreground); }
 .dw-reactions { overflow-x: auto; }
-/* En teléfono el DCL conserva un tamaño legible y se recorre a lo ancho. */
-@media (max-width: 760px) {
-  .dw-fbd { overflow-x: auto; overscroll-behavior-x: contain; }
-  .dw-fbd > svg { min-width: 620px; }
-}
+/* En teléfono el DCL se dibuja compacto en px reales (`CompactFreeBody`): texto de
+   14 px, sin desplazamiento a lo ancho. */
+.dw-fbd--compact text,
+.dw-fbd--compact .dw-load text,
+.dw-fbd--compact .dw-dimension text,
+.dw-fbd--compact .dw-fbd__letter,
+.dw-fbd--compact .dw-fbd__reaction text { font-size: 14px; }
+.dw-fbd--compact .dw-fbd__beam { stroke-width: 4; }
