@@ -66,7 +66,7 @@ try {
     for (const screen of screens) {
       // Cada pantalla en un contexto nuevo: sin proyectos ni preferencias de la anterior.
       const context = await browser.newContext({ viewport: { width: variant.width, height: variant.height }, colorScheme: variant.theme === 'dark' ? 'dark' : 'light', serviceWorkers: 'block' });
-      await context.addInitScript((theme) => { try { localStorage.setItem('fstructure.theme', theme); } catch { /* sin almacenamiento */ } }, variant.theme);
+      await context.addInitScript((theme) => { try { localStorage.setItem('fusionstructure.theme', theme); } catch { /* sin almacenamiento */ } }, variant.theme);
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
@@ -78,6 +78,8 @@ try {
         if (screen.title) await page.getByRole('heading', { name: screen.title }).first().waitFor({ timeout: 10_000 });
         if (screen.selector) await page.locator(screen.selector).first().waitFor({ timeout: 15_000 });
         await page.waitForTimeout(400);
+        const theme = await page.evaluate(() => document.documentElement.dataset.theme);
+        if (theme !== variant.theme) errors.push(`tema ${theme ?? 'sin definir'} en vez de ${variant.theme}`);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         if (overflow > 1) errors.push(`desplazamiento horizontal de ${overflow} px`);
         await page.screenshot({ path: join(out, `${id}.png`) });
