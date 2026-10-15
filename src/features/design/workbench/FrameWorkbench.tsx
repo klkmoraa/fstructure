@@ -273,6 +273,13 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   }, [result]);
   const selected = !result ? null
     : picked && (result.beams.some((beam) => beam.id === picked) || result.columns.some((column) => column.id === picked)) ? picked : governingDesign(result);
+  // Sólo una elección (la barra que llegó o la que se tocó), no el diseño que rige por omisión.
+  const onPickMembers = chrome.onPickMembers;
+  useEffect(() => {
+    if (!picked || !result || !fromModel || selected !== picked) return;
+    const ids = memberIdsOf(result, picked);
+    if (ids.length) onPickMembers?.(ids, from3d ? 'model3d' : 'model2d');
+  }, [picked, result, fromModel, from3d, selected, onPickMembers]);
   const beam = result?.beams.find((item) => item.id === selected);
   const column = result?.columns.find((item) => item.id === selected);
   const [loadNote, setLoadNote] = useState<string | null>(null);

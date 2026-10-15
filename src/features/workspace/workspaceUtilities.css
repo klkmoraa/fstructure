@@ -226,3 +226,27 @@
 
   .workspace-utilities__item { min-height: 44px; }
 }
+
+/* Teléfono: los controles de la herramienta (3D y Diseño) encabezan el menú
+   como filas de 44 px con su nombre; los deshabilitados no ocupan sitio. */
+.workspace-utilities__tools,
+.workspace-utilities__tools .shell-tool-slot--controls { display: grid; gap: 1px; }
+.workspace-utilities__tools:not(:has(button:enabled:not([data-mobile-hide]))) { display: none; }
+.workspace-utilities__tools + .workspace-utilities__list { padding-top: 6px; border-top: 1px solid var(--sc-color-border-soft); }
+.workspace-utilities .workspace-utilities__tools :is(.workspace-topbar__icon-button, .workspace-topbar__action-button) {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  min-height: 44px;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 10px;
+  color: var(--sc-color-text-primary);
+  font-size: var(--sc-font-size-control);
+  font-weight: inherit;
+}
+.workspace-utilities .workspace-utilities__tools :is(.workspace-topbar__icon-button, .workspace-topbar__action-button) svg { flex: none; color: var(--sc-color-text-secondary); }
+.workspace-utilities .workspace-utilities__tools .workspace-topbar__action-button:not(.is-primary) > span { display: inline; }
+.workspace-utilities .workspace-utilities__tools .workspace-topbar__icon-button:not(:has(span))::after { content: attr(aria-label); }
+.workspace-utilities .workspace-utilities__tools button:disabled { display: none; }
+.workspace-utilities .workspace-utilities__tools .workspace-utilities__item { min-height: 44px; }

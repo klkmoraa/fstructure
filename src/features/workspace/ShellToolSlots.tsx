@@ -20,13 +20,21 @@ interface Slots {
   setCollapsed: (collapsed: boolean) => void;
   /** Muestra el inspector: abre la hoja en un teléfono o lo despliega en escritorio. */
   reveal: (trigger: HTMLElement) => void;
+  /**
+   * Barra de teléfono: arriba sólo el nombre, «⋯» y la acción principal; los
+   * controles de la herramienta (`controls`) viven dentro del menú «⋯».
+   */
+  compactBar: boolean;
 }
 const Context = createContext<Slots | null>(null);
 // oxlint-disable-next-line react/only-export-components
 export const useShellInspector = () => useContext(Context);
+/** La barra es la de teléfono: lo secundario va a `controls`, que el shell muestra en «⋯». */
+// oxlint-disable-next-line react/only-export-components
+export const useShellCompactBar = () => useContext(Context)?.compactBar ?? false;
 
 /** Neutral DOM destinations: lazy adapters retain their own state and React context. */
-export function ShellToolSlotsProvider({ mobile, children, tool }: { mobile: boolean; children: ReactNode; tool?: string }) {
+export function ShellToolSlotsProvider({ mobile, children, tool, compactBar = false }: { mobile: boolean; children: ReactNode; tool?: string; compactBar?: boolean }) {
   const [hosts, setHosts] = useState<Slots['hosts']>({});
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -36,8 +44,8 @@ export function ShellToolSlotsProvider({ mobile, children, tool }: { mobile: boo
   const show = useCallback((element: HTMLElement) => { trigger.current = element; setOpen(true); }, []);
   const close = useCallback(() => { setOpen(false); trigger.current?.focus({ preventScroll: true }); }, []);
   const reveal = useCallback((element: HTMLElement) => { if (mobile) show(element); else setCollapsed(false); }, [mobile, show]);
-  const value = useMemo(() => ({ hosts, register, mobile, open, show, close, collapsed, setCollapsed, reveal }),
-    [hosts, register, mobile, open, show, close, collapsed, reveal]);
+  const value = useMemo(() => ({ hosts, register, mobile, open, show, close, collapsed, setCollapsed, reveal, compactBar }),
+    [hosts, register, mobile, open, show, close, collapsed, reveal, compactBar]);
   return <Context value={value}>{children}</Context>;
 }
 export function ShellSlotHost({ slot }: { slot: Slot }) {
@@ -70,9 +78,15 @@ export function ShellStatusChip({ tone, label, badge, detail }: { tone: ShellSta
   </span>;
 }
 
-export function ShellInspectorTrigger({ label = 'Panel' }: { label?: string }) {
+export function ShellInspectorTrigger({ label = 'Panel', menu = false }: { label?: string; menu?: boolean }) {
   const slots = useContext(Context);
   if (!slots) return null;
+  // Teléfono: una fila del menú «⋯». Al cerrar la hoja, el foco vuelve a «⋯»,
+  // porque la fila desaparece con el menú.
+  if (menu) return <button type="button" className="workspace-utilities__item" aria-haspopup="dialog" aria-expanded={slots.open}
+    onClick={(event) => slots.show(event.currentTarget.closest('.workspace-utilities')?.querySelector<HTMLElement>('.workspace-utilities__trigger') ?? event.currentTarget)}>
+    <PanelRight size={17} aria-hidden="true" /><span>{label}</span>
+  </button>;
   // En escritorio es el mismo interruptor que «Experiencia de cálculo» en 2D:
   // pliega o despliega el panel lateral y dice su estado.
   if (!slots.mobile) return <button type="button" className={'workspace-topbar__action-button workspace-topbar__inspector-button' + (slots.collapsed ? '' : ' is-active')}
@@ -98,6 +112,12 @@ export function ShellInspectorHost() {
   if (!slots.mobile) return <aside className="shell-tool-inspector" data-collapsed={slots.collapsed || undefined}><ShellSlotHost slot="inspector" /></aside>;
   return <ShellMobileSurface><dialog ref={dialog} className="shell-mobile-sheet" aria-label="Inspector de herramienta" aria-modal="true"
     onCancel={(event) => { event.preventDefault(); slots.close(); }}
+    // La hoja deja ver el modelo encima: tocar ese fondo la cierra, como cualquier hoja inferior.
+    onClick={(event) => {
+      if (event.target !== event.currentTarget) return;
+      const box = event.currentTarget.getBoundingClientRect();
+      if (event.clientY < box.top || event.clientY > box.bottom || event.clientX < box.left || event.clientX > box.right) slots.close();
+    }}
     onKeyDown={(event) => {
       if (event.key === 'Escape') { event.preventDefault(); slots.close(); }
       if (event.key !== 'Tab') return;

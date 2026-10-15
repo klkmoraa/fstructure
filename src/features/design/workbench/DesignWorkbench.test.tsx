@@ -3,7 +3,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { StrictMode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDefaultProject } from '../../../data/defaultProject';
+import { createConcreteFrameProject, createDefaultProject } from '../../../data/defaultProject';
+import { model2dDesignSource } from '../../../design/elements/model2dSource';
 import type { ModelDemandSnapshot, ModelResultProvider } from '../../../design/elements/modelResultSnapshot';
 import { PROJECT_STORAGE_KEY } from '../../../data/projectStorage';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
@@ -826,4 +827,52 @@ describe('DesignWorkbench', () => {
     await user.click(screen.getByRole('button', { name: /Cumple lo evaluado · \d+ %\. Ver resultados/ }));
     expect(results().dataset.open).toBe('true');
   });
+});
+
+/**
+ * Una pieza elegida conserva sus controles de diseño a una acción explícita:
+ * la barra que abre Diseño (o la tocada en Estructura, o en el navegador)
+ * sigue elegida al cambiar de panel y «Edificio» abre con sus controles.
+ */
+describe('DesignWorkbench · pieza elegida', () => {
+  const member = (id: string, family: 'beam' | 'column') => ({ id, label: `${family === 'beam' ? 'Viga' : 'Columna'} ${id}`, family, levelId: null, axisIds: [], lengthM: 3,
+    section: { shape: 'rectangular' as const, widthMm: 300, depthMm: 500, fcMpa: 28, materialLabel: 'Concreto 28' }, start: [0, 0, 0] as [number, number, number], end: [0, 3, 0] as [number, number, number] });
+  const source = () => {
+    const target = { id: 'U1', label: 'Última resistencia', kind: 'combination' as const, factors: [{ caseId: 'D', factor: 1.3 }] };
+    const resultProvider: ModelResultProvider = {
+      inventory: { projectId: 'p', kind: 'model2d', revision: 'r1', members: [member('C22', 'column'), member('V11', 'beam'), member('V21', 'beam')], targets: [target], supports: [], levels: [] },
+      member: async () => { throw new Error('sin resultado'); }, support: async () => { throw new Error('sin apoyo'); },
+    };
+    return { ...model2dDesignSource(createConcreteFrameProject()), resultProvider };
+  };
+  const navigatorSelection = () => within(screen.getByTestId('model-member-navigator')).getByTestId('member-selection');
+
+  it('la barra que abre Diseño sigue elegida al cambiar de panel y «Edificio» abre con sus controles', async () => {
+    const user = userEvent.setup();
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="model" modelSource={source()} focusMember="C22" /></ProjectProvider>);
+    expect(await within(results()).findByRole('heading', { name: /Columna del eje 2, nivel 2/ }, { timeout: 8000 })).toBeTruthy();
+    // Dibujo → Datos → Resultados: la elección no se pierde.
+    await user.click(screen.getByRole('button', { name: 'Datos' }));
+    await user.click(screen.getByRole('button', { name: 'Resultados' }));
+    expect(within(results()).getByRole('heading', { name: /Columna del eje 2, nivel 2/ })).toBeTruthy();
+    // Una acción: «Edificio» abre con la columna elegida y sus controles de diseño.
+    await user.click(screen.getByTestId('open-building-navigator'));
+    expect(navigatorSelection().textContent).toContain('C22');
+    expect(within(navigatorSelection()).getByRole('button', { name: 'Crear columna vinculada' })).toBeTruthy();
+    // Cerrar y volver a abrir no la olvida.
+    await user.click(screen.getByRole('button', { name: 'Cerrar navegador' }));
+    await user.click(screen.getByTestId('open-building-navigator'));
+    expect(navigatorSelection().textContent).toContain('C22');
+    await user.click(screen.getByRole('button', { name: 'Cerrar navegador' }));
+    // Otra elección en Estructura: la viga del nivel 1 pasa al navegador con sus controles.
+    await user.click(within(within(results()).getByRole('table', { name: /Cociente que rige/ })).getByRole('button', { name: /Viga del nivel 1/ }));
+    await user.click(screen.getByTestId('open-building-navigator'));
+    expect(navigatorSelection().textContent).toContain('V11');
+    expect(within(navigatorSelection()).getByRole('button', { name: 'Crear flexión vinculada' })).toBeTruthy();
+    // Y la elegida dentro del navegador también se conserva al volver.
+    await user.click(screen.getByRole('button', { name: 'Seleccionar Columna C22 C22' }));
+    await user.click(screen.getByRole('button', { name: 'Cerrar navegador' }));
+    await user.click(screen.getByTestId('open-building-navigator'));
+    expect(navigatorSelection().textContent).toContain('C22');
+  }, 20_000);
 });
