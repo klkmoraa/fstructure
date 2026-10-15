@@ -434,6 +434,21 @@
 }
 .dw-spans input:focus { outline: none; border-color: var(--sc-color-action-primary); }
 .dw-spans input[aria-invalid='true'] { border-color: var(--sc-color-state-error); }
+/* Cargas puntuales: nivel y claro se eligen. */
+.dw-points select {
+  width: 100%;
+  min-width: 0;
+  height: var(--sc-control-height-sm, 32px);
+  padding: 0 4px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-data);
+  background: var(--sc-color-surface-input);
+  color: var(--dw-ink);
+  font: 500 12px var(--sc-font-mono);
+}
+.dw-points select:focus { outline: none; border-color: var(--sc-color-action-primary); }
+.dw-points .dw-spans__row { grid-template-columns: 52px 44px repeat(3, minmax(0, 1fr)) 30px; }
+.dw-points input { padding: 0 5px; }
 .dw-add {
   display: inline-flex;
   align-items: center;

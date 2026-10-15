@@ -59,6 +59,34 @@ class ElementsOracleTest(unittest.TestCase):
             for case in fixture.get("hooks", []):
                 self.assert_close(oracle.hooked_length(case["diameterMm"], case["fyMpa"], case["fcMpa"]), case["lengthMm"], f"{name}.hooks")
 
+    def test_frame_fixtures(self):
+        for name in fixtures("frame-"):
+            fixture = load(name)
+            expected = fixture["expected"]
+            self.assert_close(oracle.frame_analysis(fixture["input"]), expected, name)
+            data = fixture["input"]
+            # Equilibrio global: reacciones contra la carga total de servicio.
+            for case, key in (("dead", "deadKnPerM"), ("live", "liveKnPerM")):
+                point = "deadKn" if case == "dead" else "liveKn"
+                tip = "tipDeadKn" if case == "dead" else "tipLiveKn"
+                total = 0.0
+                for story in data["stories"]:
+                    total += story[key] * sum(data["bays"]) + sum(p[point] for p in story["points"])
+                    for side in ("cantileverLeft", "cantileverRight"):
+                        if data.get(side):
+                            total += data[side][key] * data[side]["lengthM"] + data[side][tip]
+                self.assertAlmostEqual(sum(r[1] for r in expected[case]["baseReactions"]), total, places=8)
+                self.assertAlmostEqual(sum(r[0] for r in expected[case]["baseReactions"]), 0.0, places=8)
+            self.assertAlmostEqual(sum(r[0] for r in expected["lateral"]["baseReactions"]), -sum(s["lateralKn"] for s in data["stories"]), places=8)
+            # El voladizo es isostático: M = −(wL²/2 + PL) en el apoyo, a mano.
+            cantilever = data["cantileverRight"]
+            for index, station in enumerate(data["momentStations"]):
+                end = sum(data["bays"])
+                if station["side"] == "right" and abs(station["x"] - end) < 1e-9:
+                    for case, w, p in (("dead", "deadKnPerM", "tipDeadKn"), ("live", "liveKnPerM", "tipLiveKn")):
+                        hand = -(cantilever[w] * cantilever["lengthM"] ** 2 / 2 + cantilever[p] * cantilever["lengthM"])
+                        self.assertAlmostEqual(expected[case]["beamMoments"][index], hand, places=8)
+
     def test_hand_values(self):
         # Transición de la tabla 3.8.2.2: con 0.9ρb el FR cae a ~0.70.
         balanced = 0.85 * 24.5 / 412 * (600 * 0.85 / (412 + 600)) * 300 * 540

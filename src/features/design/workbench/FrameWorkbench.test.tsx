@@ -69,6 +69,23 @@ describe('mesa Estructura con el pórtico rápido', () => {
     expect(await screen.findByRole('img', { name: /Elevación de la viga de 3 claros/ })).toBeTruthy();
   });
 
+  it('agrega una carga puntual y un voladizo: se guardan en el borrador y se dibujan', async () => {
+    const user = userEvent.setup();
+    render(<ProjectProvider><DesignWorkbench nativeTool={false} startElement="frame" startSource="frame" /></ProjectProvider>);
+    expect(await screen.findByRole('img', { name: /Utilización de el pórtico/ })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Agregar carga puntual' }));
+    const stored = () => JSON.parse(localStorage.getItem('fstructure.design-workbench.frame-stories') ?? '[]') as Record<string, string>[];
+    expect(stored()[0]!.p1).toBe('0|2.5|20|10');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Carga puntual 1 · nivel' }), 'N2');
+    expect(stored()[0]!.p1).toBeUndefined();
+    expect(stored()[1]!.p1).toBe('0|2.5|20|10');
+    await user.click(screen.getByRole('switch', { name: 'Derecho' }));
+    expect(screen.getByRole('textbox', { name: /Largo derecho/ })).toBeTruthy();
+    const drawing = await screen.findByRole('img', { name: /Utilización de el pórtico/ });
+    await vi.waitFor(() => expect(drawing.querySelectorAll('.dw-frame__points > g')).toHaveLength(1));
+    expect(await screen.findAllByRole('button', { name: /V2·voladizo der\./ })).toHaveLength(1);
+  });
+
   it('señala en el diagrama y la leyenda una revisión transversal pendiente', async () => {
     const draft = { ...FRAME_DEFAULTS, source: 'frame', stirrup: '6.4', columnWidth: '80', columnHeight: '80', wallLoad: '0' };
     localStorage.setItem('fstructure.design-workbench.frame', JSON.stringify(draft));

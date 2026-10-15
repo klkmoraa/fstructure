@@ -25,6 +25,8 @@ const cases: FrameLoadCase[] = [
   { id: 'D', gravity: { 6: 18, 7: 12, 8: 9, 9: 15, 0: 3.84, 1: 3.84, 2: 3.84, 3: 2.88 } },
   { id: 'L', gravity: { 7: 10 } },
   { id: 'E', nodal: [{ node: 3, fx: 20, fy: 0 }, { node: 6, fx: 35, fy: 0 }] },
+  // Cargas puntuales: dos en una viga (una con su uniforme), una en otra y una axial en una columna.
+  { id: 'P', gravity: { 7: 6 }, points: { 6: [{ atM: 1.8, kN: 25 }, { atM: 3.6, kN: 12 }], 9: [{ atM: 2.5, kN: 30 }], 1: [{ atM: 1.2, kN: 10 }] } },
 ];
 
 function engineProject(caseId: string): ProjectModel {
@@ -33,6 +35,14 @@ function engineProject(caseId: string): ProjectModel {
   const memberLoads: MemberLoad[] = Object.entries(loadCase.gravity ?? {}).map(([member, w]) => ({
     id: `q${member}`, memberId: `M${member}`, caseId, type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1, qyStart: -w, qyEnd: -w,
   }));
+  for (const [member, points] of Object.entries(loadCase.points ?? {})) {
+    const index = Number(member);
+    const length = Math.hypot(model.nodes[model.members[index]!.j]!.x - model.nodes[model.members[index]!.i]!.x, model.nodes[model.members[index]!.j]!.y - model.nodes[model.members[index]!.i]!.y);
+    points.forEach((point, position) => {
+      const at = point.atM / length;
+      memberLoads.push({ id: `p${member}-${position}`, memberId: `M${member}`, caseId, type: 'point', coordinateSystem: 'global', lengthBasis: 'real', start: at, end: at, position: at, px: 0, py: -point.kN });
+    });
+  }
   const nodalLoads: NodalLoad[] = (loadCase.nodal ?? []).map((item, index) => ({ id: `n${index}`, nodeId: `N${item.node}`, caseId, fx: item.fx, fy: item.fy, mz: 0 }));
   return {
     ...base,
@@ -60,9 +70,11 @@ describe('análisis de marco del taller', () => {
     engine.memberResults.forEach((memberResult, index) => {
       const member = model.members[index]!;
       const length = analysis.geometry[index]!.lengthM;
-      for (const x of [0, length * 0.37, length / 2, length]) {
-        const reference = evaluateDiagramAt(memberResult.diagramSegments, memberResult.diagramJumps, x, x === 0 ? 'right' : 'left')!;
-        const action = memberActionAt(member, length, ours.members[index]!, x);
+      const loads = (cases.find((item) => item.id === caseId)!.points?.[index] ?? []).map((point) => point.atM);
+      const samples: [number, 'left' | 'right'][] = [[0, 'right'], [length * 0.37, 'left'], [length / 2, 'left'], [length, 'left'], ...loads.flatMap((at) => [[at, 'left'], [at, 'right']] as [number, 'left' | 'right'][])];
+      for (const [x, side] of samples) {
+        const reference = evaluateDiagramAt(memberResult.diagramSegments, memberResult.diagramJumps, x, side)!;
+        const action = memberActionAt(member, length, ours.members[index]!, x, side);
         expect(action.axial).toBeCloseTo(reference.axial, 6);
         expect(action.shear).toBeCloseTo(reference.shear, 6);
         expect(action.moment).toBeCloseTo(reference.moment, 6);
