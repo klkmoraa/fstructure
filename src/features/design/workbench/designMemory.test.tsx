@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
-import { useDesignMemory } from './designMemory';
+import { describe, expect, it, vi } from 'vitest';
+import { reportFromMemoryItem, useDesignMemory } from './designMemory';
 import { DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS } from './frameModel';
 import { BEAM_DEFAULTS, DEFAULT_SPANS } from './beamModel';
 import { FOOTING_DEFAULTS } from './footingModel';
@@ -573,4 +573,49 @@ it('rechaza un cambio enlazado cuando conservar el borrador previo excede la mem
   act(() => { expect(result.current.switchDraft({ column: { tag: 'C2', axial: '3' }, 'piece-origin': { version: 1, byElement: {} } as unknown as JsonValue }, 'column')).toBe('full'); });
   expect(data).toEqual(before);
   expect(result.current.items).toHaveLength(60);
+});
+
+describe('pieza guardada con una norma que esta versión no tiene', () => {
+  const futureItem = () => savedItem('futura', { ...BEAM_DEFAULTS, tag: 'V-futura' }, { code: 'cte-2021' });
+
+  it('no se recalcula con otra norma', () => {
+    expect(reportFromMemoryItem(futureItem()).ok).toBe(false);
+  });
+
+  it('no se muestra ni se abre, y guardar otra pieza la conserva intacta', () => {
+    const item = futureItem();
+    const storage = memoryStorage({ element: 'beam', beam: { ...BEAM_DEFAULTS, tag: 'V-1' }, memory: [item], 'memory-active': 'futura' });
+    const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+    expect(result.current.items).toEqual([]);
+    expect(result.current.active).toBeUndefined();
+    act(() => { expect(result.current.open('futura')).toBeUndefined(); });
+    expect(result.current.remove('futura')).toBe('missing');
+    // Aunque la memoria activa apuntaba a ella, guardar agrega otra pieza y no la reetiqueta como NTC.
+    act(() => { expect(result.current.save()).toBe('saved'); });
+    expect(result.current.items.map((entry) => entry.fields.tag)).toEqual(['V-1']);
+    expect(storage.data.memory).toEqual([item, expect.objectContaining({ code: 'ntc-2023', fields: expect.objectContaining({ tag: 'V-1' }) })]);
+  });
+
+  it('guardar los ejes no pisa un eje guardado con esa norma', () => {
+    const future = { id: 'eje-futuro', element: 'frame', code: 'cte-2021', savedAt: '2026-10-01', fields: { ...FRAME_DEFAULTS, source: 'model3d', axis: 'z:5', tag: 'Eje 2' } };
+    const storage = memoryStorage({ frame: { ...FRAME_DEFAULTS, source: 'model3d', axis: 'z:0' }, memory: [future] });
+    const { result } = renderHook(() => useDesignMemory(storage, 'frame', 'ntc-2023', 0));
+    act(() => { expect(result.current.saveAxes(AXES)).toBe('saved'); });
+    expect((storage.data.memory as unknown[])[0]).toEqual(future);
+    expect(result.current.items.filter((entry) => entry.fields.axis === 'z:5')).toHaveLength(1);
+  });
+
+  it('guardar → reabrir el documento del proyecto la conserva', () => {
+    const item = futureItem();
+    const initial = { kind: WORKBENCH_DOCUMENT_KIND, schemaVersion: 6, entries: { code: 'ntc-2023', element: 'beam', beam: { ...BEAM_DEFAULTS, tag: 'V-1' }, memory: [item] } };
+    let persisted: unknown = structuredClone(initial);
+    const storage = createProjectWorkbenchStorage(initial, (document) => { persisted = document; }, 60_000);
+    const { result } = renderHook(() => useDesignMemory(storage, 'beam', 'ntc-2023', 0));
+    act(() => { expect(result.current.save()).toBe('saved'); });
+    storage.flush();
+    const reopened = createProjectWorkbenchStorage(persisted, vi.fn());
+    expect(reopened.read('memory')).toEqual([item, expect.objectContaining({ code: 'ntc-2023' })]);
+    storage.dispose();
+    reopened.dispose();
+  });
 });

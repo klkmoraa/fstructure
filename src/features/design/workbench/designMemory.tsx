@@ -38,7 +38,9 @@ type MemoryReport = { readonly ok: true; readonly report: DesignReport } | { rea
 
 /** Recalcula un elemento guardado; una estructura del Modelo 2D o de un eje del 3D usa el modelo vigente del proyecto. */
 export function reportFromMemoryItem(item: WorkbenchMemoryItem, modelSource: ExternalStructureSource | null = null, modelAxes: ExternalStructureAxes | null = null): MemoryReport {
-  const code: DesignCodeId = isDesignCodeId(item.code) ? item.code : 'ntc-2023';
+  // Una norma que esta versión no tiene no se recalcula con otra.
+  if (!isDesignCodeId(item.code)) return { ok: false, errors: ['Norma de diseño desconocida.'] };
+  const code: DesignCodeId = item.code;
   const provider = item.origin?.snapshot.source.kind === 'model2d' ? modelSource?.resultProvider : modelAxes?.resultProvider ?? (() => {
     try { return item.origin?.snapshot.source.axisId ? modelAxes?.source(item.origin.snapshot.source.axisId).resultProvider : undefined; } catch { return undefined; }
   })();
@@ -156,6 +158,11 @@ export interface DesignMemory {
   switchDraft(writes: Readonly<Record<string, JsonValue>>, nextElement: DesignElementKind, preserveCurrent?: boolean): 'switched' | 'full';
 }
 
+/**
+ * Las piezas guardadas con una norma que esta versión no tiene (las guardó una
+ * versión más nueva) no se muestran ni se abren, pero siguen en el documento:
+ * cada escritura conserva la lista completa y nada las pisa.
+ */
 export function useDesignMemory(storage: WorkbenchStorage, element: DesignElementKind, code: DesignCodeId, revision: unknown): DesignMemory {
   const [items, setItems] = useState<WorkbenchMemoryItem[]>(() => {
     const raw = storage.read('memory');
@@ -184,13 +191,14 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
     setActiveId(nextActive);
     return true;
   }, [storage]);
-  const active = items.find((item) => item.id === activeId && item.element === element);
+  const visible = useMemo(() => items.filter((item) => isDesignCodeId(item.code)), [items]);
+  const active = visible.find((item) => item.id === activeId && item.element === element);
   // `revision` cambia con cada resultado de la mesa: el borrador se vuelve a leer.
   // oxlint-disable-next-line react-hooks/exhaustive-deps
   const saved = useMemo(() => Boolean(active && active.code === code && sameDraft(active, currentDraft(storage, element))), [active, code, element, storage, revision]);
 
   return {
-    items,
+    items: visible,
     activeId: active?.id ?? '',
     saved,
     active,
@@ -221,7 +229,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       const open = draft.fields.source === 'model3d' ? axisIdOf(draft.fields) : undefined;
       let nextActive = activeId;
       for (const axis of axes) {
-        const position = next.findIndex((item) => item.element === 'frame' && item.fields.source === 'model3d' && axisIdOf(item.fields) === axis.id);
+        const position = next.findIndex((item) => isDesignCodeId(item.code) && item.element === 'frame' && item.fields.source === 'model3d' && axisIdOf(item.fields) === axis.id);
         const item: WorkbenchMemoryItem = {
           id: position >= 0 ? next[position]!.id : uniqueId(next),
           element: 'frame',
@@ -291,11 +299,11 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       return commit(next, '', { ...writes, element: nextElement }) ? 'switched' : 'full';
     },
     remove(id) {
-      if (!items.some((item) => item.id === id)) return 'missing';
+      if (!visible.some((item) => item.id === id)) return 'missing';
       return commit(items.filter((item) => item.id !== id), id === activeId ? '' : activeId) ? 'removed' : 'full';
     },
     open(id) {
-      const item = items.find((entry) => entry.id === id);
+      const item = visible.find((entry) => entry.id === id);
       if (!item) return undefined;
       const preserve = new Map<DesignElementKind, MemoryDraft>();
       if (hasStoredDraft(storage, element)) preserve.set(element, currentDraft(storage, element));
@@ -330,7 +338,7 @@ export function useDesignMemory(storage: WorkbenchStorage, element: DesignElemen
       return item;
     },
     duplicate(id) {
-      const source = items.find((item) => item.id === id);
+      const source = visible.find((item) => item.id === id);
       if (!source) return 'missing';
       const fields = structuredClone(source.fields);
       fields.tag = uniqueCopyTag(fields.tag, items);

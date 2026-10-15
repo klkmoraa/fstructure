@@ -20,6 +20,7 @@ import {
   type StoredProjectRecord,
 } from '../../storage/projectRepository';
 import { ThreeStructuralImage } from '../structural-assets';
+import { SceneImage } from '../../design-system/components/SceneImage';
 import type { ThreeStructuralAssetId } from '../structural-assets/threeStructuralRender';
 import { recordLocalMetric } from '../../analytics/localMetrics';
 import { ProjectVersions } from './ProjectVersions';
@@ -407,7 +408,7 @@ export const ProjectHub = ({
         {variant === 'full' ? <label className="project-hub__select"><input type="checkbox" aria-label={text.select(record.name)} checked={selected.has(record.id)} disabled={busy} onChange={() => toggleSelection(record.id)} /></label> : null}
         <div className="project-hub__preview" aria-hidden="true">
           {toolScene
-            ? <img src={theme === 'dark' ? toolScene.night : toolScene.day} alt="" />
+            ? <SceneImage src={theme === 'dark' ? toolScene.night : toolScene.day} alt="" />
             : <ThreeStructuralImage assetId={projectAssetId(record.project)} theme={theme} alt={record.name} render="three" />}
         </div>
         <div className="project-hub__identity">
