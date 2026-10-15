@@ -45,7 +45,7 @@ import { toolFromShortcut } from './toolRegistry';
 import { cameraToCenterPoint, cameraToFitBounds, canvasSafeInsetsFor, canvasSafeRect, expandBoundsForDecoration } from './canvasChromeGeometry';
 import type { EditorLayerAction, EditorLayerState } from './editorLayers';
 import { CanvasChrome } from './CanvasChrome';
-import { layoutSmartLabels, smartLabelDetailForScale, type SmartLabelCandidate } from './labelLayout';
+import { layoutSmartLabels, smartLabelDetailForScale, smartLabelOffsetToward, type SmartLabelCandidate, type SmartLabelObstacle } from './labelLayout';
 import { buildCanvasSelectionVisualState, selectionEnvelopeForPoints } from './selectionVisuals';
 import { emitWorkspaceCommand, onWorkspaceCommand, type FocusableSelection } from '../workspace/workspaceCommands';
 import { withModelStart } from '../../data/modelStarts';
@@ -60,7 +60,8 @@ import {
   pointAtGrossRatio,
   toGlobalVector,
 } from '../../graphics/structureGeometry';
-import { CanvasResultLayer, diagramPixelScaleFor, reactionClearanceFor } from './CanvasResultLayer';
+import { CanvasResultLayer, diagramPixelScaleFor } from './CanvasResultLayer';
+import { diagramScreenPoint, diagramScreenPolyline, reactionArrows } from './resultGeometry';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
 import { CanvasMiniMap } from './CanvasMiniMap';
 import { diagramSheetLayout } from './diagramSheetLayout';
@@ -147,6 +148,16 @@ const EMPTY_DEMAND_RATIOS: ReadonlyMap<string, number> = new Map();
  * identificador de la barra que nombra.
  */
 const MEMBER_LABEL_STATION = 0.3;
+
+/**
+ * Margen, en px, entre un trazo y la caja de cualquier etiqueta: medio grosor
+ * del trazo (barra 3 px —5 con foco—, curva del diagrama 2.15 px, flecha de
+ * reacción 2.2 px con su punta de unos 15 px) más 4 px de aire.
+ */
+const LABEL_CLEARANCE = { member: 6.5, diagram: 6, reaction: 8 } as const;
+/** Aire entre la cifra y lo que anota: la curva en su extremo, la flecha de la reacción. */
+const RESULT_LABEL_GAP = 8;
+const REACTION_LABEL_GAP = 10;
 
 interface Size {
   width: number;
@@ -2306,8 +2317,43 @@ export const StructuralCanvas = ({
 
   const placedSmartLabels = useMemo(() => {
     const smartLabelCandidates: SmartLabelCandidate[] = [];
+    // Lo que el lienzo dibuja y ninguna etiqueta puede tapar: las barras, la
+    // curva del diagrama encendido y las flechas de reacción.
+    const labelObstacles: SmartLabelObstacle[] = [];
     const selectedNodeIds = selectionVisualState.nodeIds;
     const selectedMemberIds = selectionVisualState.memberIds;
+    const diagramQuantity = ['axial', 'shear', 'moment'].includes(resultTab) ? resultTab as DiagramQuantity : null;
+    const resultsDrawn = layers.results && !structuralEditDraft && resultsAllowed && Boolean(analysis?.success);
+    const diagramDrawn = resultsDrawn && !stackActive && view.showResultOverlay && diagramQuantity !== null;
+    /** El mismo marco con el que `CanvasResultLayer` lleva el diagrama de la barra a la pantalla. */
+    const diagramFrameFor = (member: MemberModel) => {
+      const result = resultMap.get(member.id);
+      const ni = nodeMap.get(member.i);
+      const nj = nodeMap.get(member.j);
+      if (!result || !ni || !nj) return null;
+      const axis = memberAxis(member, ni, nj);
+      if (axis.length <= 1e-12) return null;
+      return {
+        result, axis, side: view.diagramSide === 'negative' ? -1 : 1,
+        pixelScale: diagramPixelScaleFor(project, resultTab, globalDiagramMax, result), cameraScale: camera.scale, toScreen,
+      };
+    };
+    if (resultsDrawn) {
+      for (const node of project.nodes) {
+        const result = nodeResultMap.get(node.id);
+        if (!result) continue;
+        for (const arrow of reactionArrows(toScreen(node.x, node.y), result, node.support.type)) {
+          labelObstacles.push({ points: [arrow.from, arrow.to], clearance: LABEL_CLEARANCE.reaction });
+        }
+      }
+    }
+    if (diagramDrawn && diagramQuantity) {
+      for (const member of project.members) {
+        const frame = diagramFrameFor(member);
+        if (!frame) continue;
+        labelObstacles.push({ points: diagramScreenPolyline(frame, frame.result.diagramSegments, diagramQuantity), clearance: LABEL_CLEARANCE.diagram });
+      }
+    }
 
   for (const node of project.nodes) {
     const selected = selectedNodeIds.includes(node.id);
@@ -2330,6 +2376,7 @@ export const StructuralCanvas = ({
     if (!ni || !nj) continue;
     const a = toScreen(ni.x, ni.y);
     const b = toScreen(nj.x, nj.y);
+    labelObstacles.push({ points: [a, b], clearance: LABEL_CLEARANCE.member });
     const anchor = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
     const selected = selectedMemberIds.includes(member.id);
     if (selected || (layers.labels && ((layers.ids && view.showMemberLabels) || member.stiffnessFactor !== undefined))) {
@@ -2495,34 +2542,38 @@ export const StructuralCanvas = ({
       const result = nodeResultMap.get(node.id);
       if (!result) continue;
       const point = toScreen(node.x, node.y);
-      const { bottom: bottomClearance, side: sideClearance } = reactionClearanceFor(node.support.type);
-      if (Math.abs(result.rx) > 1e-8) {
-        const direction = Math.sign(result.rx);
-        smartLabelCandidates.push({ id: `reaction:${node.id}:rx`, text: `Rx = ${formatFixed(toDisplay(result.rx, units, 'force'), 2)} ${forceLabel}`, anchor: { x: point.x - direction * (sideClearance + 24), y: point.y - 14 }, priority: 1, tone: 'reaction', preferredOffset: { x: 0, y: 0 } });
-      }
-      if (Math.abs(result.ry) > 1e-8) {
-        smartLabelCandidates.push({ id: `reaction:${node.id}:ry`, text: `Ry = ${formatFixed(toDisplay(result.ry, units, 'force'), 2)} ${forceLabel}`, anchor: { x: point.x + 18, y: point.y + bottomClearance + 24 }, priority: 1, tone: 'reaction', preferredOffset: { x: 0, y: 0 } });
+      // Cada cifra se ancla a la mitad de su flecha y se pone a su lado, no
+      // encima: Rx sobre la horizontal, Ry a la derecha de la vertical.
+      for (const arrow of reactionArrows(point, result, node.support.type)) {
+        const value = arrow.component === 'rx' ? result.rx : result.ry;
+        const text = `${arrow.component === 'rx' ? 'Rx' : 'Ry'} = ${formatFixed(toDisplay(value, units, 'force'), 2)} ${forceLabel}`;
+        smartLabelCandidates.push({
+          id: `reaction:${node.id}:${arrow.component}`,
+          text,
+          anchor: { x: (arrow.from.x + arrow.to.x) / 2, y: (arrow.from.y + arrow.to.y) / 2 },
+          priority: 1,
+          tone: 'reaction',
+          preferredOffset: smartLabelOffsetToward(text, arrow.component === 'rx' ? { x: 0, y: -1 } : { x: 1, y: 0 }, REACTION_LABEL_GAP),
+        });
       }
       if (Math.abs(result.rm) > 1e-8) {
         smartLabelCandidates.push({ id: `reaction:${node.id}:rm`, text: `Mᵣ = ${formatFixed(toDisplay(result.rm, units, 'moment'), 2)} ${momentLabel}`, anchor: { x: point.x, y: point.y - 38 }, priority: 1, tone: 'moment', preferredOffset: { x: 0, y: 0 } });
       }
     }
 
-    if (!stackActive && ['axial', 'shear', 'moment'].includes(resultTab) && view.showResultOverlay) {
-      const quantity = resultTab as DiagramQuantity;
-      const side = view.diagramSide === 'negative' ? -1 : 1;
+    if (!stackActive && diagramQuantity && view.showResultOverlay) {
+      const quantity = diagramQuantity;
       for (const member of project.members) {
-        const result = resultMap.get(member.id);
-        const ni = nodeMap.get(member.i);
-        const nj = nodeMap.get(member.j);
-        if (!result || !ni || !nj) continue;
-        const axis = memberAxis(member, ni, nj);
-        const length = axis.length;
-        if (length <= 1e-12) continue;
-        const tx = axis.c;
-        const ty = axis.s;
-        const nx = axis.normal.x * side;
-        const ny = axis.normal.y * side;
+        const frame = diagramFrameFor(member);
+        if (!frame) continue;
+        const { result } = frame;
+        const length = frame.axis.length;
+        const ordinates = result.criticalPoints.filter((point) => point.quantity === quantity).map((point) => point.value);
+        // Un diagrama constante —el axial de una barra de armadura— no tiene un
+        // punto más extremo que otro: la cifra se ancla a media barra, lejos
+        // del nudo donde se cruzan las demás.
+        const constant = ordinates.length > 0
+          && Math.max(...ordinates) - Math.min(...ordinates) <= Math.max(1, ...ordinates.map((value) => Math.abs(value))) * 1e-7;
         const quantityUnit = quantity === 'moment' ? momentLabel : forceLabel;
         const displayQuantity = quantity === 'moment' ? 'moment' as const : 'force' as const;
         const extrema = (['maximum', 'minimum'] as const).flatMap((kind) => {
@@ -2534,29 +2585,33 @@ export const StructuralCanvas = ({
           // Un extremo nulo («M mín 0.00» en un apoyo) no dice nada y se encimaba con el apoyo.
           .filter((point) => Math.abs(point.value) > globalDiagramMax * 0.005);
         for (const point of extrema) {
-          const grossX = (result.startOffset ?? 0) + point.x;
-          const baseX = ni.x + tx * grossX;
-          const baseY = ni.y + ty * grossX;
-          const offsetModel = point.value * diagramPixelScaleFor(project, resultTab, globalDiagramMax, result) / camera.scale;
-          const anchor = toScreen(baseX + nx * offsetModel, baseY + ny * offsetModel);
-          const outward = point.value * side >= 0 ? 1 : -1;
+          const anchor = diagramScreenPoint(frame, constant ? result.length / 2 : point.x, point.value);
+          // Hacia donde crece la ordenada: fuera del diagrama, junto a la curva.
+          const outward = (point.value >= 0 ? 1 : -1) * frame.side;
+          const text = `${quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M'} ${point.kind === 'maximum' ? 'máx' : 'mín'} ${formatFixed(toDisplay(point.value, units, displayQuantity), 2)} ${quantityUnit}`;
           smartLabelCandidates.push({
             id: `result:${member.id}:${quantity}:${point.kind}`,
-            text: `${quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M'} ${point.kind === 'maximum' ? 'máx' : 'mín'} ${formatFixed(toDisplay(point.value, units, displayQuantity), 2)} ${quantityUnit}`,
+            text,
             anchor,
             priority: 2,
             forceVisible: true,
             tone: quantity,
-            preferredOffset: { x: nx * outward * 28, y: -ny * outward * 28 - 6 },
+            preferredOffset: smartLabelOffsetToward(text, { x: frame.axis.normal.x * outward, y: -frame.axis.normal.y * outward }, RESULT_LABEL_GAP),
           });
         }
       }
     }
   }
 
-    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(stackActive ? { ...size, height: diagramDclHeight(project, size) } : size), camera.scale);
+    // El radar (escritorio, modelos grandes) flota sobre la esquina inferior
+    // derecha del área segura: una cifra que se aparta de su barra no puede
+    // acabar debajo de él. Mismas medidas que `.canvas-minimap` en phase2.css.
+    const minimapShown = size.width >= 1024 && (project.members.length >= 12 || project.nodes.length >= 16);
+    const reservedRects = minimapShown ? [{ x: size.width - 12 - 132 - 8, y: size.height - 104 - 88 - 8, width: 132 + 16, height: 88 + 16 }] : [];
+    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(stackActive ? { ...size, height: diagramDclHeight(project, size) } : size), camera.scale, reservedRects, labelObstacles);
   }, [
     activeTool,
+    structuralEditDraft,
     analysis,
     camera,
     stackActive,

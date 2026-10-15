@@ -11,6 +11,7 @@ import type { TranslationKey } from '../../i18n/catalogs';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { modeShapePoints, modeShapeScaleFor } from './modeShapePath';
 import { deformedDisplayScale } from './deformedPresentation';
+import { diagramScreenPoint, reactionArrows, reactionClearanceFor } from './resultGeometry';
 
 type MemberResult = AnalysisResult['memberResults'][number];
 type NodeResult = AnalysisResult['nodeResults'][number];
@@ -47,12 +48,6 @@ interface CanvasResultLayerProps {
   size: { width: number; height: number };
   t: Translate;
 }
-
-// oxlint-disable-next-line react/only-export-components
-export const reactionClearanceFor = (type: NodeModel['support']['type']): { bottom: number; side: number } => ({
-  bottom: type === 'roller' ? 28 : type === 'pin' || type === 'custom' ? 25 : type === 'fixed' ? 16 : 8,
-  side: type === 'none' ? 8 : type === 'fixed' ? 20 : 18,
-});
 
 /** Pixel scale for a diagram ordinate: shared global scale, or per-member when `diagramScaleMode` is `individual`. */
 // oxlint-disable-next-line react/only-export-components
@@ -97,21 +92,14 @@ const CanvasResultLayerImpl = ({
     const result = resultMap.get(member.id);
     const ni = nodeMap.get(member.i); const nj = nodeMap.get(member.j);
     if (!resultsAllowed || !view.showResultOverlay || !result || !ni || !nj || !['axial', 'shear', 'moment'].includes(resultTab) || !result.diagramSegments.length) return null;
-    const axis = memberAxis(member, ni, nj);
-    const tx = axis.c; const ty = axis.s;
-    const side = view.diagramSide === 'negative' ? -1 : 1;
-    const nx = axis.normal.x * side; const ny = axis.normal.y * side;
     const key = resultTab as DiagramQuantity;
-    const diagramPixelScale = scaleFor(result);
-    const locate = (x: number, value: number) => {
-      const grossX = (result.startOffset ?? 0) + x;
-      const bx = ni.x + tx * grossX;
-      const by = ni.y + ty * grossX;
-      const offsetModel = (value * diagramPixelScale) / camera.scale;
-      return toScreen(bx + nx * offsetModel, by + ny * offsetModel);
+    const frame = {
+      result, axis: memberAxis(member, ni, nj), side: view.diagramSide === 'negative' ? -1 : 1,
+      pixelScale: scaleFor(result), cameraScale: camera.scale, toScreen,
     };
-    const baselineStart = toScreen(ni.x + tx * (result.startOffset ?? 0), ni.y + ty * (result.startOffset ?? 0));
-    const baselineEnd = toScreen(ni.x + tx * ((result.startOffset ?? 0) + result.length), ni.y + ty * ((result.startOffset ?? 0) + result.length));
+    const locate = (x: number, value: number) => diagramScreenPoint(frame, x, value);
+    const baselineStart = locate(0, 0);
+    const baselineEnd = locate(result.length, 0);
     const firstControl = segmentBezierControls(result.diagramSegments[0], key);
     const firstPoint = locate(firstControl.x0, firstControl.y0);
     const fillCommands = [`M ${baselineStart.x} ${baselineStart.y}`, `L ${firstPoint.x} ${firstPoint.y}`];
@@ -327,25 +315,14 @@ const CanvasResultLayerImpl = ({
     const result = nodeResultMap.get(node.id);
     if (!result) return null;
     const p = toScreen(node.x, node.y);
-    const { bottom: bottomClearance, side: sideClearance } = reactionClearanceFor(node.support.type);
+    const { bottom: bottomClearance } = reactionClearanceFor(node.support.type);
     const elements = [];
     const descriptions: string[] = [];
-    if (Math.abs(result.rx) > 1e-8) {
-      const direction = Math.sign(result.rx);
-      const length = 48;
-      descriptions.push(`Rx = ${formatFixed(toDisplay(result.rx, units, 'force'), 2)} ${forceLabel}`);
+    for (const arrow of reactionArrows(p, result, node.support.type)) {
+      const value = arrow.component === 'rx' ? result.rx : result.ry;
+      descriptions.push(`${arrow.component === 'rx' ? 'Rx' : 'Ry'} = ${formatFixed(toDisplay(value, units, 'force'), 2)} ${forceLabel}`);
       elements.push(
-        <line key="rx" data-reaction-component="rx" x1={p.x - direction * (sideClearance + length)} y1={p.y} x2={p.x - direction * sideClearance} y2={p.y} markerEnd="url(#arrow-reaction)" />,
-      );
-    }
-    if (Math.abs(result.ry) > 1e-8) {
-      const screenDirection = -Math.sign(result.ry);
-      const length = 48;
-      descriptions.push(`Ry = ${formatFixed(toDisplay(result.ry, units, 'force'), 2)} ${forceLabel}`);
-      elements.push(
-        screenDirection < 0
-          ? <line key="ry" data-reaction-component="ry" x1={p.x} y1={p.y + bottomClearance + length} x2={p.x} y2={p.y + bottomClearance} markerEnd="url(#arrow-reaction)" />
-          : <line key="ry" data-reaction-component="ry" x1={p.x} y1={p.y + bottomClearance} x2={p.x} y2={p.y + bottomClearance + length} markerEnd="url(#arrow-reaction)" />,
+        <line key={arrow.component} data-reaction-component={arrow.component} x1={arrow.from.x} y1={arrow.from.y} x2={arrow.to.x} y2={arrow.to.y} markerEnd="url(#arrow-reaction)" />,
       );
     }
     if (Math.abs(result.rm) > 1e-8) {
