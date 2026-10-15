@@ -227,3 +227,26 @@ La investigación requerida en §2 del prompt está documentada en cuatro entreg
 - Documentos e imágenes permanecen en `plan/normas-y-mejoras-2026-10-14`; no se hace PR ni merge a `main`.
 - Código exploratorio: `feature/propuestas-visuales-brandbook`, commit `09de120`, separado de la app oficial. Las nueve imágenes previas siguen como material a revisar.
 - La implementación de §5–§8, la verificación cláusula por cláusula y la adquisición de una copia ACI son tareas distintas; este cierre no las marca realizadas ni exige una aprobación nueva para terminar la documentación.
+
+---
+
+## 14. Estado de implementación (15 de octubre de 2026)
+
+Cada cambio entró a `main` con `npm run check` en verde; el último `main` es `4bd26bb` (208 archivos, 1 477 pruebas, oráculo Python y build) y `npm run smoke` da 32 de 32 pantallas.
+
+| Fase | Estado | Qué se hizo / por qué no |
+|---|---|---|
+| 0 · Riesgo de datos | Hecha | Una pieza con norma desconocida no se muestra, no se abre ni se recalcula, y se conserva en el documento (guardar, ejes y reabrir probados). |
+| 0 · `$` extra | No reproducible | No hay `$` literal en el código actual. |
+| 0 · Pages oficial | No se hizo | Requiere cambiar el origen de Pages en la configuración y perdería la generación anterior de `assets/`. Se mantiene gh-pages. |
+| 0 · WebP y aviso de versión | Hechas | WebP con PNG de respaldo; «Nueva versión lista · Recargar», probado en Chromium. |
+| 1–2 · Código Estructural | En lectura, sin perfil | BOE descargado fuera del repo con SHA-256; 38 extractos de una línea (14 de texto comprobado, 24 transcripciones visuales); registro `pending` con `officialDocument`. Bloqueos: motor de coeficientes parciales (L–XL) y CTE DB-SE sin registrar. |
+| Visual V1–V9 | Hechas | Etiquetas fuera de barras y curvas; Cumple / No cumple / Faltan datos; «Proponer sección» en una línea; DCL móvil a 14 px; 2D vacío con una acción primaria; sin coincidencias con «Limpiar filtros»; barra mínima en teléfono; «Edificio» abre con la pieza elegida. |
+| 3 · Cálculo individual | Hecha | Convertir en proyecto (copia, original intacto); DCL de lindero y losa; viga → zapata. |
+| 4 · 3D | Parcial | Corpus PyNite de 10 casos (≤ 1e-10); resortes de apoyo y zonas rígidas en motor y editor (esquema v5). Pendiente: Timoshenko, resortes de extremo de barra, espectro + estáticos, excentricidad accidental, dibujo rápido, losas. |
+| 5 · Diseño | Parcial | Bloque C (despiece CSV/SVG, oráculo 2 × 13 #5); Pórtico con cargas puntuales, voladizos y worker. Pendiente: bloque D; bloqueados por norma: torsión, losas, muros, zunchos, combinaciones sísmicas NSR/E.060. |
+| 6 · ACI 318-25 | Bloqueada | Sin copia legal. El registro ya acepta `officialDocument`. |
+| 7 · Limpieza | Hecha | Sin modo sin shell en el 3D; `ProjectContext` 778 → 534, `WorkspaceShell` 693 → 500; `npm audit` en CI. |
+| 8 · Humo | Hecha | `npm run smoke` y bloqueo de PDF versionados en `architecture:check`. Pendiente: matriz de importación/exportación y PDF en Safari (manual). |
+
+Las imágenes generadas en ChatGPT se usaron sólo como guía; la implementación partió de la app y del brandbook oficiales.
