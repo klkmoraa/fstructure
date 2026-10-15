@@ -40,6 +40,8 @@ El selector **Norma de diseño**, arriba de cada formulario, aplica uno de tres 
 | NSR-10 Título C (Colombia) | Título C publicado por el Ministerio (Decreto 926 de 2010), copia alojada por el IDRD de Bogotá | 36 |
 | E.060 Concreto Armado 2009 (Perú) | Enlace de SENCICO en la página oficial del RNE (D.S. 010-2009-VIVIENDA) | 34 |
 
+El Código Estructural de España (RD 470/2021) está identificado y en lectura, sin perfil: su entrada `codigo-estructural-2021` del registro queda pendiente y bloqueada hasta generalizar el motor a coeficientes parciales (ver [la lectura](../research/codigo-estructural-lectura.md)).
+
 La tabla resume las diferencias implementadas:
 
 | Tema | NTC-CDMX 2023 | NSR-10 | E.060 |
