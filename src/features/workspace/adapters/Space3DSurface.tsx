@@ -110,7 +110,7 @@ function ProjectSpace3D({ project, session }: { project: ProjectModel; session?:
           : 'The current 3D model is replaced by the extruded 2D model. You can undo it; the 2D model does not change.',
       });
     }} /> : null}
-    <Space3DWorkspace language={project.settings.language} embedded storage={embeddedStorage}
+    <Space3DWorkspace language={project.settings.language} storage={embeddedStorage}
       canonicalProject={canonicalProject} retainedHistory={retainedHistory} onHistoryChange={rememberHistory} onProjectChange={save} startIntent={startIntent} incomingProject={incoming}
       {...(startView ? { startView } : {})} onViewChange={rememberView} startCamera={startCamera} onCameraRelease={rememberCamera}
       {...(startSelection ? { startSelection } : {})} onSelectionChange={rememberSelection} />

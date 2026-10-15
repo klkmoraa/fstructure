@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import Space3DWorkspace from './Space3DWorkspace';
+import { Space3DShellHost } from './space3dShellHost.test-utils';
 import { createBlankSpace3DProject } from '../../space3d/model/defaultProject';
 import { fixedSpace3DRestraints, freeSpace3DRestraints, type Space3DProjectV1 } from '../../space3d/model/types';
 import { space3dStorageKeys, type Space3DStorageLike } from '../../space3d/data/storage';
@@ -62,7 +63,7 @@ describe('Space3DWorkspace · resortes de apoyo y zonas rígidas', () => {
   it('edita un resorte, lo deshace y rehace, analiza y lo reabre', async () => {
     const user = userEvent.setup();
     const storage = memoryStorage();
-    const view = render(<Space3DWorkspace language="es" storage={storage} createViewport={fakeViewport} canonicalProject={cantilever()} />);
+    const view = render(<Space3DWorkspace language="es" storage={storage} createViewport={fakeViewport} canonicalProject={cantilever()} />, { wrapper: Space3DShellHost });
 
     await user.click(listButton('Nudos', 'N1'));
     await user.click(screen.getByText('Resortes de apoyo'));
@@ -97,14 +98,14 @@ describe('Space3DWorkspace · resortes de apoyo y zonas rígidas', () => {
     });
     view.unmount();
 
-    render(<Space3DWorkspace language="es" storage={storage} createViewport={fakeViewport} />);
+    render(<Space3DWorkspace language="es" storage={storage} createViewport={fakeViewport} />, { wrapper: Space3DShellHost });
     await user.click(listButton('Nudos', 'N1'));
     expect((screen.getByLabelText('kθZ') as HTMLInputElement).value).toBe('8000');
   });
 
   it('muestra la longitud flexible y rechaza zonas rígidas que la agotan', async () => {
     const user = userEvent.setup();
-    render(<Space3DWorkspace language="es" storage={null} createViewport={fakeViewport} canonicalProject={cantilever()} />);
+    render(<Space3DWorkspace language="es" storage={null} createViewport={fakeViewport} canonicalProject={cantilever()} />, { wrapper: Space3DShellHost });
 
     await user.click(listButton('Barras', 'M1'));
     await user.click(screen.getByText('Zonas rígidas'));

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import Space3DWorkspace from './Space3DWorkspace';
+import { Space3DShellHost } from './space3dShellHost.test-utils';
 import { generateSpace3DFrame } from '../../space3d/engine/space3dGenerative';
 import type { Space3DViewportFactory } from '../../space3d/view/Space3DCanvas';
 
@@ -27,8 +28,7 @@ const renderWorkspace = () => render(
     storage={null}
     createViewport={fakeViewport}
     canonicalProject={generateSpace3DFrame({ baysX: 1, bayWidthX: 4, storiesY: 1, storyHeightY: 3, baysZ: 1, bayDepthZ: 4 })}
-  />,
-);
+  />, { wrapper: Space3DShellHost });
 
 const memberButtons = () => within(screen.getByRole('list', { name: 'Barras' })).getAllByRole('button');
 const nodeButtons = () => within(screen.getByRole('list', { name: 'Nudos' })).getAllByRole('button');

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PerspectiveCamera, Scene, Vector3 } from 'three';
 import Space3DWorkspace from './Space3DWorkspace';
+import { Space3DShellHost } from './space3dShellHost.test-utils';
 import { generateSpace3DFrame } from '../../space3d/engine/space3dGenerative';
 import { createBlankSpace3DProject } from '../../space3d/model/defaultProject';
 import { freeSpace3DRestraints, type Space3DProjectV1 } from '../../space3d/model/types';
@@ -26,8 +27,7 @@ const fakeViewport: Space3DViewportFactory = () => ({
 });
 
 const renderWorkspace = (project: Space3DProjectV1) => render(
-  <Space3DWorkspace language="es" storage={null} createViewport={fakeViewport} canonicalProject={project} />,
-);
+  <Space3DWorkspace language="es" storage={null} createViewport={fakeViewport} canonicalProject={project} />, { wrapper: Space3DShellHost });
 
 const tapCanvas = () => {
   const canvas = document.querySelector('canvas') as HTMLCanvasElement;
