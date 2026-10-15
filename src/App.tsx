@@ -8,6 +8,7 @@ import { runMesaTransition } from './features/workspace/mesaTransition';
 import { peekToolIntent, setToolIntent } from './features/workspace/toolIntent';
 import { preloadMesaMode } from './features/workspace/toolSurfaces';
 import { HomePage } from './features/welcome/HomePage';
+import { UpdateNotice } from './features/app-update/UpdateNotice';
 import { toolRegistry } from './features/workspace/toolRegistry';
 import { useI18n } from './i18n/useI18n';
 import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
@@ -128,6 +129,7 @@ const FStructureSurface = () => {
           ? <MesaModeShell key="model2d-mesa" mode={route.mode} projectId={project.id} onOpenHome={openHome} {...(single ? {} : { onModeChange: setMesaMode })} />
           : <WorkspaceShell key="model2d" projectId={project.id} onOpenHome={openHome} {...(single ? {} : { onModeChange: setMesaMode })} />}
       </Suspense>}
+    <UpdateNotice />
   </ClassroomSessionProvider>;
 };
 
