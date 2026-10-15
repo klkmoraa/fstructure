@@ -503,7 +503,11 @@ export function BeamFreeBody({ result, bare = false }: { result: BeamDesignResul
 }
 
 /** Reacciones por apoyo: servicio (CM, CV), la combinación del DCL y la máxima con viva alternada. */
-export function BeamReactionsTable({ result }: { result: BeamDesignResult }) {
+export function BeamReactionsTable({ result, onDesignFooting }: {
+  result: BeamDesignResult;
+  /** «Diseñar zapata»: abre una zapata aislada con la carga de servicio del apoyo. */
+  onDesignFooting?: (support: { readonly deadKn: number; readonly liveKn: number }, label: string) => void;
+}) {
   const reactions = result.reactions;
   if (!reactions) return null;
   const rows = reactions.supports.map((support, index) => ({ support, label: String.fromCharCode(65 + index) })).filter(({ support }) => support.kind !== 'free');
@@ -525,6 +529,12 @@ export function BeamReactionsTable({ result }: { result: BeamDesignResult }) {
         {anyMoment ? <td>{formatNumber(support.ultimateKnm, 1)}</td> : null}
       </tr>)}</tbody>
     </table>
+    {onDesignFooting ? <div className="dw-reactions__actions" role="group" aria-label="Diseñar zapata por apoyo">
+      <span>Diseñar zapata</span>
+      {rows.filter(({ support }) => support.deadKn + support.liveKn > 0).map(({ support, label }) => <button key={label} type="button" className="dw-inline-action"
+        aria-label={`Diseñar zapata en el apoyo ${label}`} title={`Zapata aislada con CM ${formatNumber(support.deadKn, 1)} kN y CV ${formatNumber(support.liveKn, 1)} kN; el borrador actual queda en la memoria`}
+        onClick={() => onDesignFooting(support, label)}>{label}</button>)}
+    </div> : null}
   </div>;
 }
 

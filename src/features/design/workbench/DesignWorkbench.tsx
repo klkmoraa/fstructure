@@ -431,6 +431,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
     ...(onShowMembers ? { onShowMembers } : {}),
     modelSections, space3dSections, ...(modelReview ? { modelReview } : {}),
     ...(scope === 'single' ? { standalone: true } : {}),
+    ...(allowed('footing') ? { onStart: startRecipe } : {}),
   };
 
   return <div className="design-workbench" data-testid="design-workbench">

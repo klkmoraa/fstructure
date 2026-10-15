@@ -9,6 +9,7 @@ import {
   ActionNote, BarSelect, Disclosure, ErrorsPanel, FieldGroup, IdentityGroup, InlineAction, NumberField,
   PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, formatNumber, parseNumber, useDraftHistory, useStoredDraft,
 } from './common';
+import { reportHeading } from './designReport';
 import { Plate, WorkbenchLayout, missingDataVerdict, type WorkbenchChrome } from './WorkbenchLayout';
 import { MaterialFields } from './MaterialFields';
 import { ReinforcementAlternatives } from './ReinforcementAlternatives';
@@ -175,7 +176,7 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
         { kind: 'stirrup', title: `${draft.tieType === 'spiral' ? 'Zuncho' : draft.tieType === 'cross-tie' ? 'Estribos con grapas' : 'Estribos cerrados'} Ø ${draft.tie} mm`, detail: `@ ${draft.tieSpacing} cm · recubrimiento ${draft.cover} cm` },
       ]} /></PanelSection>
       <PanelSection title="Revisión del detalle"><ul className="cs-detail-checks">{result.detailing.checks.map((check) => <li key={check.id} data-status={check.id === 'shear' ? 'unevaluated' : check.status}><div>{check.id === 'shear' ? <CircleDashed size={14} aria-hidden="true" /> : check.status === 'ok' ? <CheckCircle2 size={14} aria-hidden="true" /> : <AlertTriangle size={14} aria-hidden="true" />}<span>{check.label}{check.id === 'shear' ? ' · sin verificar' : ''}</span></div>{check.value !== null ? <small className="cs-check-value">{formatNumber(check.value, check.id === 'steel-ratio' ? 2 : 1)} {check.id === 'steel-ratio' ? '%' : check.id === 'shear' ? 'kN' : 'mm'}{check.limit !== null ? ` · referencia ${formatNumber(check.limit, 1)}` : ''}</small> : null}<p>{check.description}</p></li>)}</ul></PanelSection>
-      {report ? <TakeoffSection takeoff={report.takeoff} /> : null}
+      {report ? <TakeoffSection takeoff={report.takeoff} name={reportHeading(report)} /> : null}
       <Disclosure label="Alcance y aspectos sin evaluar"><ul className="cs-limitations">{result.limitations.map((limitation) => <li key={limitation}>{limitation}</li>)}</ul></Disclosure>
       <Disclosure label="Detalle del cálculo"><ValuesTable rows={report?.values ?? []} /><ul className="cs-limitations">{result.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}</ul><ul className="cs-reference-list">{result.sources.map((source) => <li key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.title}</a></li>)}</ul></Disclosure>
     </> : null}

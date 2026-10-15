@@ -6,6 +6,8 @@ import { Field, SegmentedControl, Select } from '../../../design-system/componen
 import { UnitField } from '../../../design-system/components/editor';
 import { REBAR_SIZES, STIRRUP_SIZES, type BarUsage, type ElementCheck } from '../../../design/elements/shared';
 import type { Takeoff } from '../../../design/elements/takeoff';
+import { takeoffCsv, takeoffFileName, takeoffSvg } from '../../../design/elements/takeoffExport';
+import { shareOrDownloadPortableBytes } from '../../../utils/portableDownload';
 import { MISSING_DATA, missingDataText, outOfScopeNote, verdictHeadline, type ReportAlternative } from './designReport';
 import { commitWorkbenchBatch, useWorkbenchStorage, type WorkbenchStorage } from './workbenchStorage';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
@@ -375,8 +377,20 @@ export function IdentityGroup({ tag, place, onTag, onPlace, example = 'V-1' }: {
   </FieldGroup>;
 }
 
-/** Cuantificación aproximada de acero y concreto del elemento. */
-export function TakeoffSection({ takeoff }: { takeoff: Takeoff }) {
+/**
+ * Cuantificación aproximada de acero y concreto del elemento, con el despiece
+ * exportable en CSV o en lámina SVG. Sólo se descarga al pulsar el botón.
+ */
+export function TakeoffSection({ takeoff, name = 'Pieza' }: { takeoff: Takeoff; name?: string }) {
+  const [note, setNote] = useState<string | null>(null);
+  const exportAs = (format: 'csv' | 'svg') => {
+    const text = format === 'csv' ? takeoffCsv(takeoff) : takeoffSvg(takeoff, name);
+    const mime = format === 'csv' ? 'text/csv;charset=utf-8' : 'image/svg+xml';
+    void shareOrDownloadPortableBytes(new TextEncoder().encode(text), takeoffFileName(name, format), mime, `Despiece · ${name}`)
+      .then((outcome) => setNote(outcome === 'cancelled' ? null : `Despiece en ${format.toUpperCase()} ${outcome === 'shared' ? 'compartido' : 'descargado'}.`))
+      .catch(() => setNote('No se pudo exportar el despiece.'));
+  };
+  const exportable = takeoff.lines.length > 0;
   return <PanelSection title="Cuantificación">
     <Summary rows={[
       { label: 'Acero', value: `${formatNumber(takeoff.steelKg, 1)} kg` },
@@ -384,6 +398,14 @@ export function TakeoffSection({ takeoff }: { takeoff: Takeoff }) {
       { label: 'Cuantía', value: `${formatNumber(takeoff.steelRatioKgM3, 0)} kg/m³` },
     ]} />
     <p className="dw-footnote">{takeoff.basis}</p>
+    <div className="dw-takeoff-export" role="group" aria-label="Exportar despiece">
+      <span>Despiece</span>
+      <button type="button" className="dw-inline-action" disabled={!exportable} onClick={() => exportAs('csv')}
+        aria-label="Exportar despiece en CSV" title="Despiece por marca en CSV, para hoja de cálculo">CSV</button>
+      <button type="button" className="dw-inline-action" disabled={!exportable} onClick={() => exportAs('svg')}
+        aria-label="Exportar despiece en SVG" title="Lámina de despiece en SVG">SVG</button>
+    </div>
+    <ActionNote text={note} />
   </PanelSection>;
 }
 

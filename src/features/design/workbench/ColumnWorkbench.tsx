@@ -12,6 +12,7 @@ import {
   formatNumber, useDraftHistory, useStoredDraft,
   parseNumber,
 } from './common';
+import { reportHeading } from './designReport';
 import { Plate, WorkbenchLayout, missingDataVerdict, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 import { MaterialFields } from './MaterialFields';
 import { REBAR_SIZES } from '../../../design/elements/shared';
@@ -254,7 +255,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         ]} />
       </PanelSection>
       <PanelSection title="Revisión"><ReviewList checks={checks} outOfScope={outOfScope} /></PanelSection>
-      {report ? <TakeoffSection takeoff={report.takeoff} /> : null}
+      {report ? <TakeoffSection takeoff={report.takeoff} name={reportHeading(report)} /> : null}
       <Disclosure label="Detalle del cálculo">
         <ValuesTable rows={report?.values ?? []} />
         <ChecksList checks={notes} />

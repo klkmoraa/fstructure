@@ -5,6 +5,7 @@ import type { ExternalStructureAxes, ExternalStructureSource } from '../../../de
 import type { ModelResultKind } from '../../../design/elements/modelResultSnapshot';
 import type { DraftHistory } from './common';
 import { MISSING_DATA, missingDataText, verdictHeadline, type DesignReport } from './designReport';
+import type { DesignStart } from './designStarts';
 import type { ProposalStep } from './frameProposal';
 import type { FrameDraft, StructureOutcome } from './frameModel';
 import type { ConcreteSectionGroup, ConcreteFrameSpec } from '../../../data/concreteFrame';
@@ -62,6 +63,12 @@ export interface WorkbenchChrome {
   readonly modelReview?: ReactNode;
   /** Cálculo individual: la pieza no se enlaza con ningún modelo. */
   readonly standalone?: boolean;
+  /**
+   * Abre otra pieza en la mesa (la zapata de un apoyo de la viga) y conserva el
+   * borrador actual en la memoria, como los inicios. Sólo existe si la mesa
+   * ofrece esa pieza.
+   */
+  readonly onStart?: (start: DesignStart) => 'started' | 'full';
 }
 
 /** Secciones rectangulares, cm. */

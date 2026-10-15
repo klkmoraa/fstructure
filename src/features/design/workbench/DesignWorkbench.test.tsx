@@ -107,6 +107,29 @@ describe('DesignWorkbench', () => {
     expect(screen.queryByText('No se pudo cargar esta superficie.')).toBeNull();
   });
 
+  it('«Diseñar zapata» abre la zapata con la carga de servicio del apoyo y guarda la viga en la memoria', async () => {
+    const user = userEvent.setup();
+    renderWorkbench();
+    const length = screen.getByRole('textbox', { name: 'Claro 1 · L (m)' });
+    await user.clear(length);
+    await user.type(length, '6');
+    const table = await within(results()).findByRole('table', { name: 'Reacciones por apoyo' });
+    const row = within(table).getByRole('rowheader', { name: 'B' }).closest('tr')!;
+    const [, dead, live] = Array.from(row.querySelectorAll('td')).map((cell) => cell.textContent);
+    await user.click(within(results()).getByRole('button', { name: 'Diseñar zapata en el apoyo B' }));
+
+    expect(screen.getByRole('radio', { name: 'Zapata' }).getAttribute('aria-checked')).toBe('true');
+    const footing = JSON.parse(localStorage.getItem('fstructure.design-workbench.footing')!) as Record<string, string>;
+    expect(footing).toMatchObject({ type: 'isolated', tag: 'Zapata B', moments: 'no' });
+    // Las cargas llegan con el valor del cálculo, no con el redondeo de la tabla.
+    const shown = (text: string | null | undefined) => Number(text!.replace(/[\s,]/g, ''));
+    expect(Math.abs(Number(footing.dead) - shown(dead))).toBeLessThanOrEqual(0.05 + 1e-9);
+    expect(Math.abs(Number(footing.live) - shown(live))).toBeLessThanOrEqual(0.05 + 1e-9);    const memory = JSON.parse(localStorage.getItem('fstructure.design-workbench.memory')!);
+    expect(memory).toEqual(expect.arrayContaining([expect.objectContaining({
+      element: 'beam', rows: expect.arrayContaining([expect.objectContaining({ length: '6' })]),
+    })]));
+  });
+
   it('abre con una viga continua de ejemplo ya calculada por el solver 2D', async () => {
     const user = userEvent.setup();
     renderWorkbench();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DESIGN_STARTS, type DesignStart } from './designStarts';
+import { DESIGN_STARTS, footingFromBeamSupport, type DesignStart } from './designStarts';
 import { reportFromMemoryItem } from './designMemory';
 import { COLUMN_DEFAULTS } from './columnModel';
 import { FOOTING_DEFAULTS } from './footingModel';
@@ -69,5 +69,18 @@ describe('design starts', () => {
       });
       expect(outcome.ok, `${start.id}: ${outcome.ok ? '' : outcome.errors.join('; ')}`).toBe(true);
     }
+  });
+});
+
+describe('zapata desde un apoyo de la viga', () => {
+  it('lleva CM y CV exactas del apoyo a una zapata aislada sin momentos', () => {
+    const support = { deadKn: 187.43219876543, liveKn: 0.1 + 0.2 };
+    const start = footingFromBeamSupport(support, 'B', { tag: 'V-1' });
+    expect(start.element).toBe('footing');
+    expect(start.fields).toMatchObject({ qa: FOOTING_DEFAULTS.qa, c1: FOOTING_DEFAULTS.c1, type: 'isolated', tag: 'Zapata B', place: 'V-1 · apoyo B', moments: 'no' });
+    expect(Number(start.fields.dead)).toBeCloseTo(support.deadKn, 9);
+    expect(start.fields.live).toBe('0.3');
+    const report = reportFromMemoryItem({ id: 'z', element: 'footing', code: 'ntc-2023', savedAt: '', fields: start.fields });
+    expect(report.ok ? (report.report.input as { deadKn: number }).deadKn : NaN).toBeCloseTo(support.deadKn, 9);
   });
 });

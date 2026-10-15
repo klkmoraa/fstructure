@@ -74,3 +74,24 @@ export const DESIGN_STARTS: readonly DesignStart[] = [
   start({ id: 'problem-flexure', category: 'exercise', element: 'flexure', title: 'Flexión con momento dado', description: 'Captura el momento, sección y materiales del ejercicio; recubrimiento y barras empiezan como hipótesis de referencia editables.', fields: { ...clone(flexureProblemDefaults), tag: '' } }),
   start({ id: 'problem-beam', category: 'exercise', element: 'beam', title: 'Viga con claros y cargas', description: 'Captura datos propios de geometría, materiales, claros y cargas para explorar el refuerzo de una viga.', ...ownBeam }),
 ];
+
+/** Texto de un campo de carga: el valor del cálculo sin el ruido de coma flotante. */
+const loadField = (kn: number) => String(Number(kn.toPrecision(12)));
+
+/**
+ * Zapata aislada con la carga de servicio de un apoyo de la viga (CM con peso
+ * propio y CV, kN). No lleva el momento del apoyo: la zapata parte sin momentos
+ * y se capturan aparte si el apoyo los transmite.
+ */
+export function footingFromBeamSupport(support: { readonly deadKn: number; readonly liveKn: number }, label: string, beam: { readonly tag?: string } = {}): DesignStart {
+  const owner = beam.tag?.trim() || 'Viga';
+  return start({
+    id: `beam-support-footing-${label}`, category: 'piece', element: 'footing',
+    title: `Zapata del apoyo ${label}`, description: `Zapata aislada con la reacción de servicio del apoyo ${label} de ${owner}.`,
+    fields: {
+      ...footing(`Zapata ${label}`, 'isolated'),
+      place: `${owner} · apoyo ${label}`.slice(0, 32),
+      dead: loadField(support.deadKn), live: loadField(support.liveKn), moments: 'no',
+    },
+  });
+}
