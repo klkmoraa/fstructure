@@ -34,7 +34,10 @@ function candidates(modelSource: ExternalStructureSource | null, modelAxes: Exte
   return result;
 }
 
-export function ModelMemberNavigator({ modelSource = null, modelAxes = null, modelSections, space3dSections, code, frameDraft, origins = [], onShowMembers, onCreateLinked, onClose }: {
+/** Barra elegida fuera del navegador (en el 2D, el 3D, Estructura o en una visita anterior). */
+export type NavigatorMember = { readonly id: string; readonly kind?: 'model2d' | 'model3d' };
+
+export function ModelMemberNavigator({ modelSource = null, modelAxes = null, modelSections, space3dSections, code, frameDraft, origins = [], initialMember, onSelectMember, onShowMembers, onCreateLinked, onClose }: {
   modelSource?: ExternalStructureSource | null;
   modelAxes?: ExternalStructureAxes | null;
   modelSections?: ModelSectionsBridge | null;
@@ -45,15 +48,27 @@ export function ModelMemberNavigator({ modelSource = null, modelAxes = null, mod
   onShowMembers?: (ids: readonly string[], axisId?: string, kind?: 'model2d' | 'model3d') => void;
   onCreateLinked: (snapshot: ModelDemandSnapshot, element: 'column' | 'flexure') => void | LinkedPieceCreationResult | Promise<void | LinkedPieceCreationResult>;
   onClose?: () => void;
+  /** Abre con esta barra elegida y sus controles a la vista. */
+  initialMember?: NavigatorMember;
+  /** Cada elección, para que la siguiente visita abra con ella. */
+  onSelectMember?: (member: NavigatorMember) => void;
 }) {
   const rows = useMemo(() => candidates(modelSource, modelAxes), [modelSource, modelAxes]);
+  // La elección con la que se abre: la misma barra, del modelo de donde vino si se sabe.
+  const [start] = useState(() => {
+    if (!initialMember) return null;
+    const matches = rows.filter((row) => row.memberId === initialMember.id);
+    const row = matches.find((item) => item.provider.inventory.kind === initialMember.kind) ?? matches[0];
+    const member = row?.provider.inventory.members.find((item) => item.id === initialMember.id);
+    return row && member ? { row, member } : null;
+  });
   const [query, setQuery] = useState('');
-  const [level, setLevel] = useState('all');
-  const [axis, setAxis] = useState('all');
+  const [level, setLevel] = useState(start?.member.levelId ?? 'all');
+  const [axis, setAxis] = useState(start ? start.row.axisId ?? start.member.axisIds[0] ?? 'all' : 'all');
   const [family, setFamily] = useState('all');
   const [review, setReview] = useState('all');
-  const [selected, setSelected] = useState<string>('');
-  const [targetId, setTargetId] = useState('');
+  const [selected, setSelected] = useState<string>(() => start ? `${start.row.provider.inventory.kind}|${start.row.provider.inventory.projectId}|${start.member.id}|${start.row.axisId ?? ''}` : '');
+  const [targetId, setTargetId] = useState(start?.row.provider.inventory.targets[0]?.id ?? '');
   const [stationM, setStationM] = useState('0');
   const [side, setSide] = useState<'left' | 'right'>('right');
   const [busy, setBusy] = useState(false);
@@ -119,6 +134,7 @@ export function ModelMemberNavigator({ modelSource = null, modelAxes = null, mod
     const member = row.provider.inventory.members.find((item) => item.id === id)!;
     setSelected(keyOf(row, id)); setTargetId(row.provider.inventory.targets[0]?.id ?? ''); setStationM('0'); setSelectedSnapshot(null);
     setLevel(member.levelId ?? 'all'); setAxis(row.axisId ?? member.axisIds[0] ?? 'all');
+    onSelectMember?.({ id, kind: row.provider.inventory.kind });
   };
   const create = async (element: 'column' | 'flexure') => {
     if (!chosen || !target || busy) return;

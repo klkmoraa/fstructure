@@ -735,7 +735,7 @@
   .dw-stage__scroll { padding: 58px 16px 24px; }
   .dw-stage__content { padding-bottom: 0; gap: 24px; }
   .dw-hud { top: 10px; }
-  .dw-code-chip select { min-height: 40px; box-shadow: none; border: 1px solid var(--dw-line); }
+  .dw-code-chip select { min-height: 44px; box-shadow: none; border: 1px solid var(--dw-line); }
   .dw-hud--start { max-width: calc(100% - 150px); }
   .dw-badge--caption { display: none; }
   .dw-plate, .dw-plate--wide { flex-basis: 100%; }

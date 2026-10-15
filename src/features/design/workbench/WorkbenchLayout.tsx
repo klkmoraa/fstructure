@@ -53,6 +53,8 @@ export interface WorkbenchChrome {
   readonly deferSourceNormalization?: boolean;
   /** Barra del modelo cuyo diseño se abre al llegar (la elegida en el 2D o el 3D). */
   readonly focusMember?: string;
+  /** La pieza elegida en Estructura (sus barras del modelo): el navegador del edificio abre con ella. */
+  readonly onPickMembers?: (memberIds: readonly string[], kind: ModelResultKind) => void;
   /** Selecciona esas barras en su modo y lo abre; con `axisId`, en el 3D. */
   readonly onShowMembers?: (memberIds: readonly string[], axisId?: string, kind?: ModelResultKind) => void;
   /** Las vigas y columnas de concreto del Modelo 2D, para proponer sus secciones y escribirlas en él. */

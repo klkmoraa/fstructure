@@ -1,4 +1,4 @@
-import { Component, Suspense, useRef, type ErrorInfo, type ReactNode } from 'react';
+import { Component, Suspense, useRef, useSyncExternalStore, type ErrorInfo, type ReactNode } from 'react';
 import type { ToolId } from '../../shared/contracts';
 import type { MesaMode } from '../../shared/navigation/projectUrl';
 import { useI18n } from '../../i18n/useI18n';
@@ -53,6 +53,20 @@ class ToolErrorBoundary extends Component<BoundaryProps, BoundaryState> {
   render() { return this.state.failed ? this.props.fallback(this.reset) : this.props.children; }
 }
 
+/**
+ * Barra de teléfono (el mismo corte que pasa la barra a dos filas en
+ * workspaceTopbar.css): arriba quedan el nombre, «⋯» y la acción principal.
+ */
+const PHONE_BAR = '(max-width: 760px)';
+const subscribePhoneBar = (onChange: () => void) => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return () => undefined;
+  const query = window.matchMedia(PHONE_BAR);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+};
+const readPhoneBar = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(PHONE_BAR).matches;
+const usePhoneBar = () => useSyncExternalStore(subscribePhoneBar, readPhoneBar, () => false);
+
 const ToolContent = ({ variant, onModeChange }: Pick<SurfaceProps, 'variant' | 'onModeChange'>) => {
   if (variant === 'design') {
     return <LazySurface><DesignModeTool {...(onModeChange ? { onOpenModel: () => onModeChange('model'), onOpenSpace3D: () => onModeChange('3d') } : {})} /></LazySurface>;
@@ -74,8 +88,10 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
   const name = identity.name[language];
   // Diseño lleva sus datos y resultados sobre su propio lienzo: sólo el 3D usa el inspector del shell.
   const hasInspector = variant === '3d';
+  // En teléfono los controles de la herramienta (y el panel del 3D) bajan al menú «⋯».
+  const compactBar = usePhoneBar();
 
-  return <ShellToolSlotsProvider tool={variant} mobile={shellClass === 'K0'}>
+  return <ShellToolSlotsProvider tool={variant} mobile={shellClass === 'K0'} compactBar={compactBar}>
     <AppShellLayout
       ref={shellRef}
       projectId={projectId}
@@ -89,13 +105,16 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
         helpTopic={design ? 'design' : 'space3d'}
         modeSwitch={onModeChange ? <MesaModeSwitch mode={variant} onChange={onModeChange} language={language} /> : undefined}
         contextActive={false}
-        contextualControls={<div className="workspace-topbar__tool-group" data-workspace-group="tool">
+        contextualControls={compactBar ? null : <div className="workspace-topbar__tool-group" data-workspace-group="tool">
           <ShellSlotHost slot="controls" />
           {hasInspector ? <ShellInspectorTrigger label={text.panel} /> : null}
         </div>}
         primaryAction={<ShellSlotHost slot="action" />}
         toolStatus={<ShellSlotHost slot="status" />}
-        utilities={<ShellMoreMenu />}
+        utilities={<ShellMoreMenu {...(compactBar ? { tools: <>
+          <ShellSlotHost slot="controls" />
+          {hasInspector ? <ShellInspectorTrigger label={text.panel} menu /> : null}
+        </> } : {})} />}
         projectName={project.name}
         storageState={!storageIssue ? 'ready' : storageIssue === 'recovered' ? 'recovered' : 'issue'}
         storageMessage={storageMessage}

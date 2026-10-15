@@ -2,7 +2,7 @@ import { BookOpen, Check, ChevronDown, Copy, FileDown, PanelRight, Plus, Redo2, 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { ToolButton } from '../../../design-system/components/editor';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId, type DesignCodeId } from '../../../design/elements/codes';
-import { ShellContribution, ShellStatusChip, type ShellStatusTone } from '../../workspace/ShellToolSlots';
+import { ShellContribution, ShellStatusChip, useShellCompactBar, type ShellStatusTone } from '../../workspace/ShellToolSlots';
 import { BeamWorkbench } from './BeamWorkbench';
 import { ColumnWorkbench } from './ColumnWorkbench';
 import { ConcreteStudio } from './ConcreteStudio';
@@ -22,7 +22,7 @@ import './designWorkbench.css';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import type { ModelResultKind } from '../../../design/elements/modelResultSnapshot';
-import { ModelMemberNavigator } from './ModelMemberNavigator';
+import { ModelMemberNavigator, type NavigatorMember } from './ModelMemberNavigator';
 import { LinkedPieceOriginView } from './LinkedPieceOriginView';
 import { originForElement, originState, withElementOrigin } from './LinkedPieceOrigin';
 import { linkedPieceTransfer } from './linkedPieceTransfer';
@@ -158,6 +158,12 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
   }, []);
   const [memoryOpen, setMemoryOpen] = useState(false);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
+  // La pieza elegida —la barra que abrió Diseño, la tocada en Estructura o en el
+  // navegador— sobrevive al cerrar y abrir «Edificio»: sus controles quedan a un toque.
+  const [navigatorMember, setNavigatorMember] = useState<NavigatorMember | undefined>(() =>
+    focusMember ? { id: focusMember, kind: startSource === 'model3d' ? 'model3d' : 'model2d' } : undefined);
+  const onPickMembers = useCallback((ids: readonly string[], kind: 'model2d' | 'model3d') => setNavigatorMember((current) =>
+    current && current.kind === kind && ids.includes(current.id) ? current : { id: ids[0]!, kind }), []);
   const [startOpen, setStartOpen] = useState(() => startPicker);
   const [initialIntentConsumed, setInitialIntentConsumed] = useState(false);
   // Abrir un elemento de la memoria vuelve a montar su formulario para que lea el borrador cargado.
@@ -418,7 +424,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
         });
     }} /> : null;
   const chrome: WorkbenchChrome = {
-    elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource, modelAxes, contextualOrigin,
+    elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource, modelAxes, contextualOrigin, onPickMembers,
     onSaveAxes: (axes) => memory.saveAxes(axes),
     ...(nativeTool ? { onVerdict } : {}),
     ...(onOpenModel ? { onOpenModel } : {}),
@@ -433,10 +439,18 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
     ...(scope === 'single' ? { standalone: true } : {}),
   };
 
+  // En teléfono la barra deja sólo el PDF: la memoria pasa a «⋯» con los demás controles.
+  const compactBar = useShellCompactBar();
+  const memoryButton = <button type="button" className="workspace-topbar__action-button" data-wide-label onClick={() => setMemoryOpen(true)}
+    aria-label={`Memoria del proyecto, ${memory.items.length} ${memory.items.length === 1 ? 'elemento' : 'elementos'}`} title="Memoria del proyecto">
+    <BookOpen size={17} aria-hidden="true" /><span>Memoria{memory.items.length ? ` · ${memory.items.length}` : ''}</span>
+  </button>;
+
   return <div className="design-workbench" data-testid="design-workbench">
     {exportMessage && !memoryOpen ? <p className="dw-action-feedback" role="alert">{exportMessage}<button type="button" aria-label="Cerrar aviso" onClick={() => setExportMessage(null)}>×</button></p> : null}
     {navigatorOpen ? <ModelMemberNavigator modelSource={modelSource} modelAxes={modelAxes} modelSections={modelSections} space3dSections={space3dSections} code={code} frameDraft={frameDraft} onShowMembers={onShowMembers}
       origins={[...memory.items.flatMap((item) => item.origin ? [item.origin.snapshot] : []), ...(activeOrigin ? [activeOrigin.snapshot] : [])]}
+      {...(navigatorMember ? { initialMember: navigatorMember } : {})} onSelectMember={setNavigatorMember}
       onCreateLinked={createLinkedPiece} onClose={() => setNavigatorOpen(false)} /> : null}
     {nativeTool ? <ShellContribution slot="controls">
       <button type="button" className="workspace-topbar__icon-button" onClick={() => history.current?.undo()} disabled={!historyFlags.canUndo}
@@ -447,6 +461,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
         aria-label="Paneles de datos y resultados" aria-pressed={anyPanelOpen} title="Panel" onClick={togglePanels}>
         <PanelRight size={17} aria-hidden="true" /><span>Panel</span>
       </button>
+      {compactBar ? memoryButton : null}
     </ShellContribution> : null}
     {nativeTool && verdict ? <ShellContribution slot="status">
       <ShellStatusChip tone={VERDICT_TONE[verdict.status]} label={verdict.label} badge="Experimental" {...(verdict.detail ? { detail: verdict.detail } : {})} />
@@ -466,10 +481,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
         {copied ? <Check size={17} aria-hidden="true" /> : <Copy size={17} aria-hidden="true" />}
         <span>{copied ? 'Copiada' : 'Copiar'}</span>
       </button>
-      <button type="button" className="workspace-topbar__action-button" data-wide-label onClick={() => setMemoryOpen(true)}
-        aria-label={`Memoria del proyecto, ${memory.items.length} ${memory.items.length === 1 ? 'elemento' : 'elementos'}`} title="Memoria del proyecto">
-        <BookOpen size={17} aria-hidden="true" /><span>Memoria{memory.items.length ? ` · ${memory.items.length}` : ''}</span>
-      </button>
+      {compactBar ? null : memoryButton}
       <button type="button" className="workspace-topbar__action-button is-primary" disabled={!report || exporting} onClick={() => report && exportPdf([report], reportHeading(report))}
         aria-label="Exportar este elemento en PDF" title="Memoria en PDF de este elemento">
         <FileDown size={17} aria-hidden="true" /><span>{exporting ? 'Generando…' : 'PDF'}</span>
