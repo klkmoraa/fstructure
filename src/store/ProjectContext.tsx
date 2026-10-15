@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { unavailableAnalysis } from '../engine/analysisFailure';
-import type { AnalysisWorkerResponse } from '../engine/analysisWorkerProtocol';
 import { normalizeProject } from '../data/migrate';
-import { loadProjectFromStorage, saveProjectToStorage } from '../data/projectStorage';
+import { loadProjectFromStorage } from '../data/projectStorage';
 import { repairProjectTopology } from '../data/modelOperations';
-import type { AnalysisResult, ProjectModel, Selection, ThemeMode, Tool } from '../types';
+import type { AnalysisResult, ProjectModel, Selection, Tool } from '../types';
 import { ProjectModelContext, useProjectModel, type ProjectModelContextValue } from './ProjectModelContext';
 import { ProjectAnalysisContext, useProjectAnalysis, type ProjectAnalysisContextValue, type InfluenceCanvasState } from './ProjectAnalysisContext';
 import { WorkspaceUIContext, useWorkspaceUI, type WorkspaceUIContextValue, type ModeShapeCanvasState, type ResultCursor, type ResultTab } from './WorkspaceUIContext';
 import type { PreparedTopologyRepair, ProjectCommand, ProjectCommandResult } from '../commands/projectCommand';
 import type { PreparedStructureGeneration } from '../commands/structureGeneration';
-import { WORKER_PROTOCOL_VERSION, type AnalysisWorkerPayload, type WorkerRequestEnvelope, type WorkerResponseEnvelope } from '../runtime/workerProtocol';
-import type { ProjectRepository } from '../storage/projectRepository';
-import { recordLocalMetric } from '../analytics/localMetrics';
 import type { PreparedStructuralEdit } from '../data/structuralEditing';
 import type { UnifiedProjectSession } from '../storage/unifiedProjectSession';
 import { SharedToolStateProvider } from './SharedToolState';
+import { useThemePreference } from './themePreference';
+import { analysisWorkerRequest, createAnalysisWorker, runAnalysisWithTrace, runFallbackAnalysis, type AnalysisWorkerMessage } from './projectAnalysisRunner';
+import { readLastOpenProject, useProjectPersistence, type ProjectStorageState } from './projectPersistence';
 
 // oxlint-disable-next-line react/only-export-components
 export { useProjectModel } from './ProjectModelContext';
@@ -26,47 +25,11 @@ export { useWorkspaceUI } from './WorkspaceUIContext';
 export type { ModeShapeCanvasState, ResultTab, ResultCursor } from './WorkspaceUIContext';
 export type { InfluenceCanvasState } from './ProjectAnalysisContext';
 
-const runFallbackAnalysis = async (project: ProjectModel, combinationId: string, includeEducationTrace: boolean) => {
-  const { analyzeProjectAuto } = await import('../engine/pDelta');
-  const combination = project.combinations.find((item) => item.id === combinationId) ?? null;
-  return analyzeProjectAuto(project, combination, { includeEducationTrace });
-};
-
 interface HistoryEntry {
   project: ProjectModel;
   description: string;
   affectsAnalysis: boolean;
 }
-
-// Kept here as a literal so the optional IndexedDB module can remain lazy in
-// the editor shell; this key carries only revision notifications, never data.
-const PROJECT_LIBRARY_CHANGE_KEY = 'structureCo.project-library.changed';
-
-const THEME_STORAGE_KEY = 'fusionstructure.theme';
-
-/**
- * Sólo el id del último archivo abierto (nunca sus datos): al recargar en la
- * Home sin `?project=` se vuelve a él en lugar de empezar uno en blanco.
- */
-const LAST_OPEN_PROJECT_KEY = 'fstructure.last-open-project';
-const readLastOpenProject = (): string | undefined => {
-  try { return localStorage.getItem(LAST_OPEN_PROJECT_KEY) ?? undefined; } catch { return undefined; }
-};
-
-/**
- * Tema inicial. La fusión había clavado el valor a `'light'` con un `setTheme`
- * vacío, así que el conmutador del producto y el comando de la paleta existían
- * pero no hacían nada. El orden es: lo que el usuario eligió aquí antes, y si
- * nunca eligió, lo que pide el sistema.
- */
-const readPreferredTheme = (): ThemeMode => {
-  if (typeof window === 'undefined') return 'light';
-  try {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored === 'light' || stored === 'dark') return stored;
-  } catch { /* almacenamiento bloqueado: se decide por preferencia del sistema */ }
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-};
 
 export const ProjectProvider = ({ children, unified = false }: { children: ReactNode; unified?: boolean }) => {
   const [initial] = useState(() => loadProjectFromStorage(unified
@@ -80,7 +43,7 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
   const [analysis, setAnalysisState] = useState<AnalysisResult | null>(null);
   const [activeTool, setActiveTool] = useState<Tool>('select');
   const [selection, setSelectionState] = useState<Selection>(null);
-  const [theme, setTheme] = useState<ThemeMode>(readPreferredTheme);
+  const [theme, setTheme] = useThemePreference();
   const [resultTab, setResultTab] = useState<ResultTab>('moment');
   const [selectedCombinationId, setSelectedCombinationIdState] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -90,10 +53,7 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
   const [influenceCanvasState, setInfluenceCanvasState] = useState<InfluenceCanvasState | null>(null);
   const [transactionActive, setTransactionActive] = useState(false);
   const [persistenceRevision, setPersistenceRevision] = useState(0);
-  const [storageState, setStorageState] = useState<{
-    issue: 'recovered' | 'load-failed' | 'save-failed' | 'repository-degraded' | 'conflict' | null;
-    message: string | null;
-  }>(() => ({
+  const [storageState, setStorageState] = useState<ProjectStorageState>(() => ({
     issue: initial.recoveredFromBackup ? 'recovered' : initial.recoveryMessage ? 'load-failed' : null,
     message: initial.recoveryMessage ?? null,
   }));
@@ -105,11 +65,6 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
   const analysisTimerRef = useRef<number | null>(null);
   const analysisRevisionRef = useRef(0);
   const analysisWorkerRef = useRef<Worker | null>(null);
-  const repositoryRef = useRef<ProjectRepository | null>(null);
-  const repositoryRevisionRef = useRef<{ projectId: string; revision: number } | null>(null);
-  const repositoryBlockedProjectIdRef = useRef<string | null>(null);
-  const repositorySaveChainRef = useRef<Promise<void>>(Promise.resolve());
-  const projectChecksumRef = useRef<((project: ProjectModel) => Promise<string>) | null>(null);
 
   const setAnalysis = useCallback((result: AnalysisResult | null) => {
     setAnalysisState(result);
@@ -144,87 +99,12 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
   }, []);
 
   useEffect(() => { projectRef.current = project; }, [project]);
-  useEffect(() => {
-    if (!unified || !unifiedReady) return;
-    try { localStorage.setItem(LAST_OPEN_PROJECT_KEY, project.id); } catch { /* modo privado: se empieza como antes */ }
-  }, [unified, unifiedReady, project.id]);
   useEffect(() => { selectionRef.current = selection; }, [selection]);
   useEffect(() => { analysisRef.current = analysis; }, [analysis]);
 
-  useEffect(() => {
-    if (unified || typeof indexedDB === 'undefined') return undefined;
-    let active = true;
-    void import('../storage/projectRepository').then(async ({ getProjectRepository, migrateLegacyProject, projectChecksum }) => {
-      const repository = getProjectRepository();
-      const migration = await migrateLegacyProject(repository, localStorage);
-      if (!active) return;
-      repositoryRef.current = repository;
-      projectChecksumRef.current = projectChecksum;
-      if (migration.record) repositoryRevisionRef.current = { projectId: migration.record.id, revision: migration.record.revision };
-      if (migration.status === 'conflict') {
-        repositoryBlockedProjectIdRef.current = projectRef.current.id;
-        setStorageState({
-          issue: 'conflict',
-          message: 'IndexedDB ya contiene otra revisión. La copia compatible se conservó como recuperación; abre una versión desde Proyectos locales para desbloquear ese ID.',
-        });
-      }
-    }).catch((error: unknown) => {
-      if (!active) return;
-      setStorageState({
-        issue: 'repository-degraded',
-        message: error instanceof Error ? error.message : 'La biblioteca local no está disponible; el proyecto sigue protegido en el guardado compatible.',
-      });
-    });
-    return () => { active = false; };
-  }, [unified]);
-
-  useEffect(() => {
-    if (unified) return;
-    const onLibraryChange = (event: StorageEvent) => {
-      if (event.key !== PROJECT_LIBRARY_CHANGE_KEY || !event.newValue) return;
-      try {
-        const change = JSON.parse(event.newValue) as { projectId?: unknown; revision?: unknown };
-        if (typeof change.projectId !== 'string' || change.projectId !== projectRef.current.id || typeof change.revision !== 'number') return;
-        if (repositoryRevisionRef.current?.projectId === change.projectId && repositoryRevisionRef.current.revision === change.revision) return;
-        const changedProjectId = change.projectId;
-        const repository = repositoryRef.current;
-        const checksum = projectChecksumRef.current;
-        if (!repository || !checksum) return;
-        // Otra pestaña escribió una revisión distinta. Marcamos el ID antes
-        // de cualquier await para que un autosave pendiente no gane la carrera
-        // y, después, conservamos la edición local si realmente difiere.
-        repositoryBlockedProjectIdRef.current = changedProjectId;
-        const localProject = structuredClone(projectRef.current);
-        repositorySaveChainRef.current = repositorySaveChainRef.current.catch(() => undefined).then(async () => {
-          try {
-            const saved = await repository.openProject(changedProjectId);
-            if (!saved) return;
-            if (await checksum(localProject) === saved.checksum) {
-              repositoryRevisionRef.current = { projectId: saved.id, revision: saved.revision };
-              repositoryBlockedProjectIdRef.current = null;
-              return;
-            }
-            await repository.createRecovery(localProject, 'conflict');
-            saveProjectToStorage(localStorage, saved.project);
-            recordLocalMetric(localStorage, { name: 'conflict_detected', code: 'cross-tab' });
-            setStorageState({
-              issue: 'conflict',
-              message: 'Otra pestaña guardó una revisión distinta. Esta edición se protegió como recuperación hasta que elijas una versión en Proyectos locales.',
-            });
-          } catch (error) {
-            setStorageState({
-              issue: 'repository-degraded',
-              message: error instanceof Error ? error.message : 'No se pudo proteger la edición al sincronizar otra pestaña.',
-            });
-          }
-        });
-      } catch {
-        // A malformed notification must not interrupt the editor.
-      }
-    };
-    window.addEventListener('storage', onLibraryChange);
-    return () => window.removeEventListener('storage', onLibraryChange);
-  }, [unified]);
+  const { repositoryRevisionRef, repositoryBlockedProjectIdRef } = useProjectPersistence({
+    unified, unifiedReady, project, projectRef, unifiedSessionRef, persistenceRevision, transactionActive, setStorageState,
+  });
 
   const invalidateAnalysis = useCallback(() => {
     analysisRevisionRef.current += 1;
@@ -275,85 +155,6 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
     if (analysisTimerRef.current !== null) window.clearTimeout(analysisTimerRef.current);
     analysisWorkerRef.current?.terminate();
   }, []);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* modo privado: el tema vive sólo en memoria */ }
-  }, [theme]);
-
-  useEffect(() => {
-    if (transactionActive || !unifiedReady) return;
-    const handle = window.setTimeout(() => {
-      if (unified) {
-        const session = unifiedSessionRef.current;
-        if (!session) return;
-        void session.save2D(project).then(async (record) => {
-          setStorageState(session.status);
-          // Compatibility library surfaces read this mirror. Only the bundle owns revisions.
-          const { getProjectRepository } = await import('../storage/projectRepository');
-          const mirror = getProjectRepository();
-          const previous = await mirror.openProject(record.id);
-          await mirror.saveProject(record.bundle.model2d, previous?.revision);
-        }).catch((error: unknown) => setStorageState(session.status.issue ? session.status : {
-          issue: 'repository-degraded', message: `Bundle guardado; espejo de biblioteca no disponible: ${String(error)}`,
-        }));
-        return;
-      }
-      try {
-        const repository = repositoryRef.current;
-        const persistCompatible = (next: ProjectModel) => {
-          saveProjectToStorage(localStorage, next);
-          setStorageState((current) => current.issue === 'save-failed'
-            ? { issue: null, message: null }
-            : current);
-        };
-        if (!repository) {
-          persistCompatible(project);
-          return;
-        }
-        // A conflict is already a durable recovery. Do not keep rewriting the
-        // compatibility mirror while the user is deciding which revision wins.
-        if (repositoryBlockedProjectIdRef.current === project.id) return;
-        repositorySaveChainRef.current = repositorySaveChainRef.current.catch(() => undefined).then(async () => {
-          const expected = repositoryRevisionRef.current?.projectId === project.id
-            ? repositoryRevisionRef.current.revision
-            : undefined;
-          try {
-            const record = await repository.saveProject(project, expected);
-            repositoryRevisionRef.current = { projectId: record.id, revision: record.revision };
-            persistCompatible(record.project);
-            localStorage.setItem(PROJECT_LIBRARY_CHANGE_KEY, JSON.stringify({ projectId: record.id, revision: record.revision, at: record.updatedAt }));
-            if (repositoryBlockedProjectIdRef.current === record.id) repositoryBlockedProjectIdRef.current = null;
-            setStorageState((current) => current.issue === 'repository-degraded' || current.issue === 'conflict'
-              ? { issue: null, message: null }
-              : current);
-          } catch (error) {
-            const conflict = error instanceof Error && error.name === 'RepositoryConflictError';
-            if (conflict) {
-              repositoryBlockedProjectIdRef.current = project.id;
-              // The local edit is now a recovery in IndexedDB. Mirror the
-              // canonical saved side so an offline reload cannot manufacture
-              // a second conflict from the compatibility store.
-              const saved = await repository.openProject(project.id).catch(() => null);
-              if (saved) saveProjectToStorage(localStorage, saved.project);
-            } else {
-              persistCompatible(project);
-            }
-            setStorageState({
-              issue: conflict ? 'conflict' : 'repository-degraded',
-              message: error instanceof Error ? error.message : 'La biblioteca IndexedDB no pudo guardar; el espejo compatible permanece disponible.',
-            });
-          }
-        });
-      } catch (error) {
-        setStorageState({
-          issue: 'save-failed',
-          message: error instanceof Error ? error.message : 'No se pudo guardar el proyecto.',
-        });
-      }
-    }, 250);
-    return () => window.clearTimeout(handle);
-  }, [project, persistenceRevision, transactionActive, unified, unifiedReady]);
 
   const analyze = useCallback(() => {
     if (analysisTimerRef.current !== null) window.clearTimeout(analysisTimerRef.current);
@@ -420,7 +221,7 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
       return;
     }
     try {
-      const worker = new Worker(new URL('../workers/analysis.worker.ts', import.meta.url), { type: 'module' });
+      const worker = createAnalysisWorker();
       analysisWorkerRef.current = worker;
       let settled = false;
       const fallbackOnce = () => {
@@ -430,7 +231,7 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
         if (analysisWorkerRef.current === worker) analysisWorkerRef.current = null;
         runFallback();
       };
-      worker.onmessage = (event: MessageEvent<WorkerResponseEnvelope<'analysis', AnalysisResult> | AnalysisWorkerResponse>) => {
+      worker.onmessage = (event: MessageEvent<AnalysisWorkerMessage>) => {
         if (settled || event.data.requestId !== requestRevision) return;
         settled = true;
         worker.terminate();
@@ -442,56 +243,11 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
         else fail(event.data.type === 'error' ? event.data.error.message : event.data.message);
       };
       worker.onerror = fallbackOnce;
-      const request: WorkerRequestEnvelope<'analysis', AnalysisWorkerPayload> = {
-        protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'analysis', requestId: requestRevision,
-        payload: { project: source, combinationId: selectedCombinationId || null, includeEducationTrace: false },
-      };
-      worker.postMessage(request);
+      worker.postMessage(analysisWorkerRequest(source, selectedCombinationId, requestRevision, false));
     } catch {
       runFallback();
     }
   }, [selectedCombinationId, setSelection]);
-
-  // Standalone worker-or-fallback runner for `ensureEducationTrace`: unlike
-  // `analyze()` above, this never touches history, selection or the revision
-  // counter that governs the main interactive analysis — it only computes one
-  // extra result, on demand, to read its `educationTrace` off of.
-  const runAnalysisWithTrace = useCallback((source: ProjectModel, combinationId: string): Promise<AnalysisResult> => {
-    return new Promise((resolve, reject) => {
-      const runFallback = () => {
-        void runFallbackAnalysis(source, combinationId, true).then(resolve).catch(reject);
-      };
-      if (typeof Worker === 'undefined') {
-        runFallback();
-        return;
-      }
-      try {
-        const worker = new Worker(new URL('../workers/analysis.worker.ts', import.meta.url), { type: 'module' });
-        let settled = false;
-        const fallbackOnce = () => {
-          if (settled) return;
-          settled = true;
-          worker.terminate();
-          runFallback();
-        };
-        worker.onmessage = (event: MessageEvent<WorkerResponseEnvelope<'analysis', AnalysisResult> | AnalysisWorkerResponse>) => {
-          if (settled) return;
-          settled = true;
-          worker.terminate();
-          if (event.data.type === 'success' || event.data.type === 'analysis-result') resolve(event.data.result);
-          else reject(new Error(event.data.type === 'error' ? event.data.error.message : event.data.message));
-        };
-        worker.onerror = fallbackOnce;
-        const request: WorkerRequestEnvelope<'analysis', AnalysisWorkerPayload> = {
-          protocolVersion: WORKER_PROTOCOL_VERSION, type: 'run', domain: 'analysis', requestId: 0,
-          payload: { project: source, combinationId: combinationId || null, includeEducationTrace: true },
-        };
-        worker.postMessage(request);
-      } catch {
-        runFallback();
-      }
-    });
-  }, []);
 
   const ensureEducationTrace = useCallback(async (): Promise<AnalysisResult | null> => {
     const target = analysisRef.current;
@@ -509,7 +265,7 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
     } catch {
       return null;
     }
-  }, [runAnalysisWithTrace, selectedCombinationId]);
+  }, [selectedCombinationId]);
 
   const setSelectedCombinationId = useCallback((id: string) => {
     if (id === selectedCombinationId) return;
