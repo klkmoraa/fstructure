@@ -13,7 +13,7 @@ import { rebarLabel, type ElementCheck } from '../../../design/elements/shared';
 import { takeoffBarUsage } from '../../../design/elements/takeoff';
 import { PdfLayout } from '../../../utils/pdf/pdfBuilder';
 import { createPalette } from '../../../utils/pdf/pdfTheme';
-import { reportHeading, snapshotHash, stableJson, type DesignReport, type ReportFigure } from './designReport';
+import { outOfScopeNote, reportHeading, snapshotHash, stableJson, verdictHeadline, type DesignReport, type ReportFigure } from './designReport';
 import { rasterizeFigure, type RasterFigure } from './figureRaster';
 
 const DOCUMENT_TITLE = 'Memoria de diseño · Experimental';
@@ -26,8 +26,6 @@ const number = (value: number | undefined, unit: string | undefined) =>
   value === undefined || !Number.isFinite(value) ? '—' : `${value.toLocaleString('es-MX', { maximumFractionDigits: unit === '' ? 2 : 1 })}${unit ? ` ${unit}` : ''}`;
 const percent = (ratio: number | undefined) => ratio === undefined || !Number.isFinite(ratio) ? '—' : `${Math.round(ratio * 100)} %`;
 const kg = (value: number) => `${value.toLocaleString('es-MX', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`;
-const headline = (report: DesignReport) => report.status === 'fail' ? 'No cumple'
-  : report.status === 'warning' ? 'Con observaciones' : report.outOfScope.length ? 'Cumple lo evaluado' : 'Cumple';
 
 interface DesignMemoriaOptions {
   readonly projectName?: string;
@@ -100,21 +98,22 @@ async function drawElement(layout: PdfLayout, pdf: PDFDocument, source: DesignRe
   const { palette } = layout;
   const report = plain(source);
   const code = designCode(report.code);
-  const incomplete = report.outOfScope.length > 0;
   const hash = await snapshotHash(source);
   layout.part(reportHeading(report), [ELEMENT_NAME[report.element], report.place, report.basisLabel ?? `${code.name} · ${code.country}`].filter(Boolean).join(' · '));
 
   layout.metrics([
-    { label: 'Estado', value: report.status === 'fail' ? 'No cumple' : report.status === 'warning' ? 'Observado' : 'Cumple',
-      detail: incomplete && report.status !== 'fail' ? 'lo evaluado · revisión incompleta' : undefined,
+    // «Revisión pendiente» no cabe a 13.5 pt en un cuarto de página: el valor dice «Revisar» y el detalle, el titular.
+    { label: 'Estado', value: report.status === 'warning' ? STATUS_TEXT.warning : verdictHeadline(report.status),
+      detail: report.status === 'warning' ? verdictHeadline(report.status).toLowerCase() : undefined,
       color: report.status === 'fail' ? palette.danger : report.status === 'warning' ? palette.warn : palette.ok },
     { label: 'Utilización que rige', value: percent(report.governingRatio) },
     { label: 'Acero', value: kg(report.takeoff.steelKg), detail: `${report.takeoff.steelRatioKgM3.toFixed(0)} kg/m3 de concreto` },
     { label: 'Sin evaluar', value: String(report.outOfScope.length), detail: 'fuera del alcance' },
   ]);
-  if (incomplete) {
-    layout.callout('warn', 'Revisión incompleta',
-      `Lo evaluado ${report.status === 'fail' ? 'no cumple' : 'cumple'}, pero ${report.outOfScope.length} verificaciones que la norma pide quedan fuera del alcance del taller (apartado «Fuera de alcance»). El elemento no puede declararse conforme sin revisarlas.`);
+  // Lo fuera del alcance no cambia el estado: es una nota que remite al apartado que lo detalla.
+  if (report.outOfScope.length) {
+    layout.callout('neutral', 'Fuera del alcance del taller',
+      `${outOfScopeNote(report.outOfScope.length)}: la norma las pide y deben resolverse aparte (apartado «Fuera de alcance»).`);
   }
 
   layout.heading('Datos de entrada');
@@ -249,7 +248,7 @@ function drawCover(layout: PdfLayout, reports: readonly DesignReport[], options:
     { header: 'Estado', flex: 1.1 },
     { header: 'Rige', width: 42, align: 'right' },
     { header: 'Acero', width: 64, align: 'right' },
-  ], reports.map((report) => [report.tag || '—', report.title, report.place || '—', headline(report), percent(report.governingRatio), kg(report.takeoff.steelKg)]));
+  ], reports.map((report) => [report.tag || '—', report.title, report.place || '—', verdictHeadline(report.status), percent(report.governingRatio), kg(report.takeoff.steelKg)]));
   const steel = reports.reduce((total, report) => total + report.takeoff.steelKg, 0);
   const concrete = reports.reduce((total, report) => total + report.takeoff.concreteM3, 0);
   const failing = reports.filter((report) => report.status === 'fail').length;

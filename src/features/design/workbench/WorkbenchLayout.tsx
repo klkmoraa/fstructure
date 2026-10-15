@@ -3,8 +3,8 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type 
 import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
 import type { ModelResultKind } from '../../../design/elements/modelResultSnapshot';
-import { verdictHeadline, type DraftHistory } from './common';
-import type { DesignReport } from './designReport';
+import type { DraftHistory } from './common';
+import { MISSING_DATA, missingDataText, verdictHeadline, type DesignReport } from './designReport';
 import type { ProposalStep } from './frameProposal';
 import type { FrameDraft, StructureOutcome } from './frameModel';
 import type { ConcreteSectionGroup, ConcreteFrameSpec } from '../../../data/concreteFrame';
@@ -87,7 +87,8 @@ export interface ModelSectionsBridge {
   apply(beam: ModelSection, column: ModelSection, groups?: readonly ConcreteSectionGroup[], scopeMemberIds?: readonly string[]): void;
 }
 
-export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string };
+/** `error`: la pieza no se puede calcular («Faltan datos»); `detail` dice qué falta. */
+export type Verdict = { status: 'pass' | 'fail' | 'warning' | 'error'; label: string; detail?: string };
 
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 3;
@@ -188,7 +189,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
 }) {
   const { onReport, onVerdict, panels, setPanel } = chrome;
   useEffect(() => onReport(report), [report, onReport]);
-  useEffect(() => { onVerdict?.({ status: verdict.status, label: verdict.label }); }, [verdict.status, verdict.label, onVerdict]);
+  useEffect(() => { onVerdict?.({ status: verdict.status, label: verdict.label, ...(verdict.detail ? { detail: verdict.detail } : {}) }); }, [verdict.status, verdict.label, verdict.detail, onVerdict]);
   const { scroller, zoom, setZoom } = useStageZoom();
   const canShowResults = verdict.status !== 'error';
   const percent = verdict.label.split(' · ')[1];
@@ -226,7 +227,8 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
       <div className="dw-hud dw-hud--start">
         {onVerdict ? null : <button type="button" className="dw-badge dw-badge--button" data-status={verdict.status}
           disabled={!canShowResults} aria-expanded={canShowResults ? panels.results : undefined}
-          aria-label={canShowResults ? `${verdict.label}. ${panels.results ? 'Ocultar' : 'Ver'} resultados` : verdict.label}
+          aria-label={canShowResults ? `${verdict.label}. ${panels.results ? 'Ocultar' : 'Ver'} resultados` : [verdict.label, verdict.detail].filter(Boolean).join('. ')}
+          title={verdict.detail}
           onClick={() => setPanel('results', !panels.results)}>
           <i aria-hidden="true" />{verdict.label}
         </button>}
@@ -263,7 +265,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
         <button type="button" className="dw-view" aria-pressed={panels.inputs} aria-controls={inputId} title="Editar geometría, materiales y demandas" onClick={() => setPanel('inputs', !panels.inputs)}>
           <SlidersHorizontal size={18} aria-hidden="true" /><span>Datos</span>
         </button>
-        <button type="button" className="dw-view" aria-pressed={panels.results && canShowResults} aria-label="Resultados" aria-controls={resultsId} title={canShowResults ? 'Consultar comprobaciones y memoria' : 'Corrige los datos del elemento para consultar los resultados'}
+        <button type="button" className="dw-view" aria-pressed={panels.results && canShowResults} aria-label="Resultados" aria-controls={resultsId} title={canShowResults ? 'Consultar comprobaciones y memoria' : verdict.detail ?? 'Corrige los datos del elemento para consultar los resultados'}
           disabled={!canShowResults} data-status={verdict.status} onClick={() => setPanel('results', !panels.results)}>
           <ClipboardCheck size={18} aria-hidden="true" /><span>Resultados</span>
           {percent ? <em aria-hidden="true"><i />{percent}</em> : null}
@@ -280,5 +282,9 @@ export function Plate({ title, note, wide = false, children }: { title: string; 
   </figure>;
 }
 
-export const verdictLabel = (status: 'pass' | 'fail' | 'warning', ratio: number, incomplete = false) =>
-  `${status === 'warning' ? 'Revisión pendiente' : verdictHeadline(status, incomplete)} · ${Math.round(ratio * 100)} %`;
+export const verdictLabel = (status: 'pass' | 'fail' | 'warning', ratio: number) =>
+  `${verdictHeadline(status)} · ${Math.round(ratio * 100)} %`;
+
+/** La pieza no se puede calcular: «Faltan datos», con lo que falta en el detalle. */
+export const missingDataVerdict = (errors: readonly string[]): Verdict =>
+  ({ status: 'error', label: MISSING_DATA, detail: missingDataText(errors) });

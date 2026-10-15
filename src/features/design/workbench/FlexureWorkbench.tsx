@@ -3,22 +3,35 @@ import { SegmentedControl, Select } from '../../../design-system/components/cont
 import { BarSelect, FieldGroup, IdentityGroup, NumberField, ReviewList, Summary, ValuesTable, formatNumber, useDraftHistory, useStoredDraft } from './common';
 import { FLEXURE_DEFAULTS, flexurePublishedReport, flexureReport, flexureToInput, type FlexureDraft, type FlexureObjective } from './flexureModel';
 import { designFlexureExercise, type FlexureDimensionBounds } from '../../../design/elements/flexureExercise';
-import type { DesignReport } from './designReport';
-import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
+import { missingDataText, type DesignReport } from './designReport';
+import { Plate, WorkbenchLayout, missingDataVerdict, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 import { REBAR_SIZES } from '../../../design/elements/shared';
 import { ReinforcementAlternatives } from './ReinforcementAlternatives';
 import { startReinforcementAlternatives, type ReinforcementAlternativesRequest, type ReinforcementAlternativesResponse } from './reinforcementAlternativesClient';
 import type { ReinforcementCandidate, ReinforcementObjective } from '../../../design/elements/reinforcementAlternatives';
 
 const BOUNDS: FlexureDimensionBounds = { widthMinMm: 200, widthMaxMm: 600, heightMinMm: 250, heightMaxMm: 1500, stepMm: 50 };
-const complete = (draft: FlexureDraft, requireSection = true) => {
+/** Campos del cálculo: nombre para «Faltan: …» y el mínimo que exige (cualquier número, ≥ 0 o > 0). */
+const FLEXURE_FIELDS = {
+  width: { label: 'base b', min: 'positive' }, height: { label: 'peralte h', min: 'positive' }, moment: { label: 'Mu', min: 'any' },
+  fc: { label: 'f′c', min: 'positive' }, fy: { label: 'fy', min: 'positive' },
+  topCount: { label: 'barras arriba', min: 'positive' }, bottomCount: { label: 'barras abajo', min: 'positive' },
+  topBar: { label: 'diámetro arriba', min: 'positive' }, bottomBar: { label: 'diámetro abajo', min: 'positive' },
+  cover: { label: 'recubrimiento', min: 'zero' }, stirrup: { label: 'estribo de referencia', min: 'positive' }, aggregate: { label: 'agregado máximo', min: 'zero' },
+} as const satisfies Partial<Record<keyof FlexureDraft, { label: string; min: 'any' | 'zero' | 'positive' }>>;
+
+/** Lo que falta o no es válido para calcular la flexión (nombres de campo). */
+const missingFlexure = (draft: FlexureDraft, requireSection = true) => {
   const topTension = Number(draft.moment) < 0;
-  const fields: (keyof FlexureDraft)[] = ['fc', 'fy', 'moment', topTension ? 'topCount' : 'bottomCount', topTension ? 'topBar' : 'bottomBar', 'cover', 'stirrup', 'aggregate', ...(requireSection ? ['width', 'height'] as const : [])];
-  return fields.every((field) => draft[field].trim() !== '' && Number.isFinite(Number(draft[field])))
-    && (!requireSection || Number(draft.width) > 0 && Number(draft.height) > 0)
-    && Number(draft.fc) > 0 && Number(draft.fy) > 0 && Number(draft.cover) >= 0 && Number(draft.stirrup) > 0 && Number(draft.aggregate) >= 0
-    && Number(topTension ? draft.topCount : draft.bottomCount) > 0 && Number(topTension ? draft.topBar : draft.bottomBar) > 0;
+  const fields: (keyof typeof FLEXURE_FIELDS)[] = [...(requireSection ? ['width', 'height'] as const : []), 'moment', 'fc', 'fy',
+    topTension ? 'topCount' : 'bottomCount', topTension ? 'topBar' : 'bottomBar', 'cover', 'stirrup', 'aggregate'];
+  return fields.filter((field) => {
+    const value = Number(draft[field]);
+    const { min } = FLEXURE_FIELDS[field];
+    return draft[field].trim() === '' || !Number.isFinite(value) || (min === 'positive' ? !(value > 0) : min === 'zero' ? value < 0 : false);
+  }).map((field) => FLEXURE_FIELDS[field].label);
 };
+const complete = (draft: FlexureDraft, requireSection = true) => missingFlexure(draft, requireSection).length === 0;
 
 export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const { draft, set, reset, replace } = useStoredDraft('flexure', FLEXURE_DEFAULTS);
@@ -102,7 +115,7 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const publishedReport = flexurePublishedReport(objective, inputKey, appliedInputKey, Boolean(preview), report);
 
   return <WorkbenchLayout chrome={chrome} title="Flexión" report={publishedReport} onReset={reset}
-    verdict={visibleResult ? { status: objective === 'required' ? 'warning' : visibleResult.status, label: objective === 'required' ? 'As requerida' : verdictLabel(visibleResult.status, visibleResult.capacityKnM ? Math.abs(input.momentKnM) / visibleResult.capacityKnM : 0, visibleResult.checks.some((check) => check.status === 'out-of-scope')) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={visibleResult ? { status: objective === 'required' ? 'warning' : visibleResult.status, label: objective === 'required' ? 'As requerida' : verdictLabel(visibleResult.status, visibleResult.capacityKnM ? Math.abs(input.momentKnM) / visibleResult.capacityKnM : 0) } : missingDataVerdict(missingFlexure(draft))}
     caption={visibleResult ? `${formatNumber(visibleResult.capacityKnM)} kN·m · d ${formatNumber(visibleResult.effectiveDepthMm, 1)} mm` : undefined}
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} />
@@ -154,7 +167,7 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <p className="dw-help">El peso estima barras longitudinales de 1 m y excluye estribos y anclajes. Cortante, desarrollo, servicio, axial y biaxial siguen fuera de alcance. Las disponibilidades duran esta sesión.</p>
       </FieldGroup> : null}
     </>}
-    stage={<Plate title="Sección rectangular" note={visibleResult ? `Mu ${formatNumber(input.momentKnM)} kN·m · tensión ${visibleResult.layout.tensionBed === 'top' ? 'arriba' : 'abajo'}` : 'Captura el momento, sección y materiales dados.'}>
+    stage={<Plate title="Sección rectangular" note={visibleResult ? `Mu ${formatNumber(input.momentKnM)} kN·m · tensión ${visibleResult.layout.tensionBed === 'top' ? 'arriba' : 'abajo'}` : missingDataText(missingFlexure(draft))}>
       <svg viewBox="0 0 320 220" role="img" aria-label="Esquema de sección rectangular a flexión">
         <rect x="90" y="30" width="140" height="160" fill="none" stroke="currentColor" strokeWidth="2" />
         {visibleResult?.layout.bars?.map((bar, index) => {

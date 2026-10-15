@@ -6,7 +6,7 @@ import { Field, SegmentedControl, Select } from '../../../design-system/componen
 import { UnitField } from '../../../design-system/components/editor';
 import { REBAR_SIZES, STIRRUP_SIZES, type BarUsage, type ElementCheck } from '../../../design/elements/shared';
 import type { Takeoff } from '../../../design/elements/takeoff';
-import type { ReportAlternative } from './designReport';
+import { MISSING_DATA, missingDataText, outOfScopeNote, verdictHeadline, type ReportAlternative } from './designReport';
 import { commitWorkbenchBatch, useWorkbenchStorage, type WorkbenchStorage } from './workbenchStorage';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 
@@ -222,10 +222,11 @@ export const formatNumber = (value: number, digits = 1) =>
 const statusIcon = { pass: CheckCircle2, fail: XCircle, warning: AlertTriangle, info: Info, 'out-of-scope': CircleDashed } as const;
 const statusLabel = { pass: 'Cumple', fail: 'No cumple', warning: 'Revisar', info: 'Nota', 'out-of-scope': 'Sin evaluar' } as const;
 
-/** Titular del veredicto: con verificaciones sin evaluar nunca dice «Cumple» a secas. */
-export const verdictHeadline = (status: 'pass' | 'fail' | 'warning', incomplete: boolean) =>
-  status === 'fail' ? 'No cumple' : status === 'warning' ? 'Revisión pendiente' : incomplete ? 'Cumple lo evaluado' : 'Cumple';
-
+/**
+ * Veredicto del elemento: Cumple, No cumple o Revisión pendiente (avisos reales
+ * del cálculo). Lo que el taller no calcula no es un estado: queda como nota
+ * breve bajo el medidor y en detalle en «Sin evaluar» de la revisión.
+ */
 export function Verdict({ status, ratio, title, outOfScope = 0, children }: {
   status: 'pass' | 'fail' | 'warning'; ratio: number; title: string;
   /** Verificaciones que la norma pide y el taller no calcula. */
@@ -234,11 +235,11 @@ export function Verdict({ status, ratio, title, outOfScope = 0, children }: {
 }) {
   const Icon = statusIcon[status];
   const percent = Number.isFinite(ratio) ? Math.round(ratio * 100) : 999;
-  return <section className="dw-verdict" data-status={status} data-incomplete={outOfScope > 0 && status !== 'fail'} aria-live="polite">
+  return <section className="dw-verdict" data-status={status} aria-live="polite">
     <p className="dw-eyebrow">{title}</p>
     <div className="dw-verdict__head">
       <Icon size={20} aria-hidden="true" />
-      <strong>{verdictHeadline(status, outOfScope > 0)}</strong>
+      <strong>{verdictHeadline(status)}</strong>
       <span className="dw-verdict__percent" title="Relación demanda/capacidad que rige">{percent > 999 ? '>999' : percent}<small>%</small></span>
     </div>
     <div className="dw-meter" role="meter" aria-label="Utilización que rige" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(percent, 100)}>
@@ -246,7 +247,7 @@ export function Verdict({ status, ratio, title, outOfScope = 0, children }: {
     </div>
     {outOfScope > 0 ? <p className="dw-verdict__scope">
       <CircleDashed size={13} aria-hidden="true" />
-      Revisión incompleta: {outOfScope} {outOfScope === 1 ? 'verificación' : 'verificaciones'} sin evaluar.
+      {outOfScopeNote(outOfScope)}.
     </p> : null}
     {children}
   </section>;
@@ -334,10 +335,14 @@ export function ReviewList({ checks, outOfScope }: { checks: readonly ElementChe
   </div>;
 }
 
+/** Sin cálculo posible: «Faltan datos» y, debajo, lo que falta o es inválido con los mensajes de validación. */
 export function ErrorsPanel({ errors }: { errors: readonly string[] }) {
   return <section className="dw-errors" role="alert">
     <CircleAlert size={18} aria-hidden="true" />
-    <div><strong>Revisa los datos</strong><ul>{errors.map((error, index) => <li key={`${index}:${error}`}>{error}</li>)}</ul></div>
+    <div><strong>{MISSING_DATA}</strong>
+      {errors.length === 1 ? <p>{missingDataText(errors)}</p>
+        : errors.length ? <><p>Faltan:</p><ul>{errors.map((error, index) => <li key={`${index}:${error}`}>{error}</li>)}</ul></> : null}
+    </div>
   </section>;
 }
 

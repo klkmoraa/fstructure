@@ -12,7 +12,7 @@ import {
   formatNumber, useDraftHistory, useStoredDraft,
   parseNumber,
 } from './common';
-import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
+import { Plate, WorkbenchLayout, missingDataVerdict, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 import { MaterialFields } from './MaterialFields';
 import { REBAR_SIZES } from '../../../design/elements/shared';
 import { ReinforcementAlternatives } from './ReinforcementAlternatives';
@@ -112,7 +112,7 @@ export function ColumnWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     title="Columna"
     report={report}
     onReset={reset}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : missingDataVerdict(result.errors)}
     caption={result.ok ? `${result.bars.length} ${rebarLabel(result.input.barDiameterMm)} · ρ ${formatNumber(result.steelRatio * 100, 2)} %` : undefined}
     inputs={<>
       <FieldGroup title="Sección, materiales y acciones" action={<InlineAction label="Proponer sección" title="Menor sección que cumple con el armado actual; si no hay, también propone el armado" onClick={propose} />}>

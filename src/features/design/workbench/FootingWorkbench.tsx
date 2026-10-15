@@ -19,7 +19,7 @@ import {
 } from './footingModel';
 import { MatPlan, MatStripDiagram, StrapDiagrams, StrapFootingPlan } from './FoundationDrawings';
 import { CombinedFootingDiagrams, CombinedFootingPlan, StripFootingSection } from './FootingTypeDrawings';
-import { Plate, WorkbenchLayout, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
+import { Plate, WorkbenchLayout, missingDataVerdict, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 import { ConcreteStrengthField, MaterialFields } from './MaterialFields';
 
 type Setter = (field: keyof FootingDraft) => (value: string) => void;
@@ -89,7 +89,7 @@ function StrapFooting({ chrome, draft, set, reset }: FootingProps) {
     title="Zapata de lindero"
     report={report}
     onReset={reset}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, (report?.outOfScope.length ?? 0) > 0) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : missingDataVerdict(result.errors)}
     caption={result.ok ? `${formatNumber(result.exteriorLengthMm / 1000, 2)} × ${formatNumber(result.exteriorWidthMm / 1000, 2)} m · ${strapText(result).toLowerCase()}` : undefined}
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="Z-1" />
@@ -142,7 +142,7 @@ function MatFoundation({ chrome, draft, set, reset }: FootingProps) {
     title="Losa de cimentación"
     report={report}
     onReset={reset}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, (report?.outOfScope.length ?? 0) > 0) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : missingDataVerdict(result.errors)}
     caption={result.ok ? `${formatNumber(result.lengthXMm / 1000, 2)} × ${formatNumber(result.lengthYMm / 1000, 2)} m · h ${formatNumber(result.thicknessMm / 10, 0)} cm` : undefined}
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="LC-1" />
@@ -222,7 +222,7 @@ function StripFooting({ chrome, draft, set, reset }: FootingProps) {
     title="Zapata corrida"
     report={report}
     onReset={reset}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, (report?.outOfScope.length ?? 0) > 0) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : missingDataVerdict(result.errors)}
     caption={result.ok ? `B ${formatNumber(result.widthMm / 10, 0)} cm · h ${formatNumber(result.thicknessMm / 10, 0)} cm` : undefined}
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="Z-1" />
@@ -280,7 +280,7 @@ function CombinedFooting({ chrome, draft, set, reset }: FootingProps) {
     title="Zapata combinada"
     report={report}
     onReset={reset}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, (report?.outOfScope.length ?? 0) > 0) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : missingDataVerdict(result.errors)}
     caption={result.ok ? `${formatNumber(result.lengthMm / 1000, 2)} × ${formatNumber(result.widthMm / 1000, 2)} m · h ${formatNumber(result.thicknessMm / 10, 0)} cm` : undefined}
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="Z-1" />
@@ -340,7 +340,7 @@ function IsolatedFooting({ chrome, draft, set, reset }: FootingProps) {
     title="Zapata aislada"
     report={report}
     onReset={reset}
-    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio, outOfScope.length > 0) } : { status: 'error', label: 'Datos incompletos' }}
+    verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : missingDataVerdict(result.errors)}
     caption={result.ok ? `${planText(result)} · h ${formatNumber(result.thicknessMm / 10, 0)} cm` : undefined}
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} example="Z-1" />

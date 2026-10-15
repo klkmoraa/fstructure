@@ -111,8 +111,8 @@ describe('DesignWorkbench', () => {
     const user = userEvent.setup();
     renderWorkbench();
     expect(screen.getByRole('radio', { name: 'Viga' }).getAttribute('aria-checked')).toBe('true');
-    expect(await within(results()).findByText('Cumple lo evaluado')).toBeTruthy();
-    expect(within(results()).getByText(/Revisión incompleta: 5 verificaciones/)).toBeTruthy();
+    expect(await within(results()).findByText('Cumple', { selector: '.dw-verdict__head strong' })).toBeTruthy();
+    expect(within(results()).getByText(/^5 verificaciones fuera del alcance del taller/)).toBeTruthy();
     expect(screen.getByRole('img', { name: /Elevación de la viga de 2 claros/ })).toBeTruthy();
     expect(screen.getAllByRole('img', { name: /sección 25 por 50/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole('img', { name: /Despiece/ })).toBeTruthy();
@@ -159,7 +159,7 @@ describe('DesignWorkbench', () => {
 
     const length = screen.getByRole('textbox', { name: 'Claro 1 · L (m)' });
     await user.clear(length);
-    expect(await screen.findByText('Revisa los datos')).toBeTruthy();
+    expect(await screen.findByText('Faltan datos', { selector: '.dw-errors strong' })).toBeTruthy();
     await user.type(length, '14');
     expect((await within(results()).findAllByText('No cumple')).length).toBeGreaterThan(0);
   });
@@ -796,7 +796,7 @@ describe('DesignWorkbench', () => {
     expect(await screen.findByText(/^Sección propuesta: .* cm/)).toBeTruthy();
     expect((screen.getByRole('textbox', { name: 'Base b (X)' }) as HTMLInputElement).value).not.toBe('40');
     // Lo propuesto siempre cumple.
-    expect(await within(results()).findByText('Cumple lo evaluado')).toBeTruthy();
+    expect(await within(results()).findByText('Cumple', { selector: '.dw-verdict__head strong' })).toBeTruthy();
   });
 
   it('la propuesta de columna conserva el armado cuando alguna sección cumple con él', async () => {
@@ -809,7 +809,7 @@ describe('DesignWorkbench', () => {
     await user.click(screen.getByRole('button', { name: 'Proponer sección' }));
     expect(await screen.findByText(/la menor que cumple con el armado actual/)).toBeTruthy();
     expect((screen.getByRole('textbox', { name: 'Barras cara b' }) as HTMLInputElement).value).toBe('3');
-    expect(await within(results()).findByText('Cumple lo evaluado')).toBeTruthy();
+    expect(await within(results()).findByText('Cumple', { selector: '.dw-verdict__head strong' })).toBeTruthy();
   });
 
   it('muestra y oculta los paneles de datos y resultados sobre el lienzo', async () => {
@@ -823,7 +823,7 @@ describe('DesignWorkbench', () => {
     expect(inputs().dataset.open).toBe('false');
     await user.click(screen.getByRole('button', { name: 'Ocultar resultados' }));
     expect(results().dataset.open).toBe('false');
-    await user.click(screen.getByRole('button', { name: /Cumple lo evaluado · \d+ %\. Ver resultados/ }));
+    await user.click(screen.getByRole('button', { name: /^Cumple · \d+ %\. Ver resultados/ }));
     expect(results().dataset.open).toBe('true');
   });
 });

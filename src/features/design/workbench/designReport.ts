@@ -67,6 +67,24 @@ export interface DesignReport {
 /** «V-1 · Viga 25 × 50 cm», o sólo el título si no hay clave. */
 export const reportHeading = (report: Pick<DesignReport, 'tag' | 'title'>) => report.tag ? `${report.tag} · ${report.title}` : report.title;
 
+/**
+ * Titular del veredicto, el mismo en la mesa, la memoria y el PDF. Lo decide lo
+ * que el taller evalúa; lo que queda fuera de su alcance se informa aparte, como
+ * nota, y no cambia el titular. Sin cálculo posible el titular es «Faltan datos».
+ */
+export const verdictHeadline = (status: DesignReport['status']) =>
+  status === 'fail' ? 'No cumple' : status === 'warning' ? 'Revisión pendiente' : 'Cumple';
+
+export const MISSING_DATA = 'Faltan datos';
+
+/** «Faltan: …» con los mensajes de validación tal cual, sin el punto final de cada uno. */
+export const missingDataText = (errors: readonly string[]) =>
+  errors.length ? `Faltan: ${errors.map((error) => error.trim().replace(/\.$/, '')).join(' · ')}.` : `${MISSING_DATA}.`;
+
+/** Nota de alcance: cuántas verificaciones que la norma pide no calcula el taller. */
+export const outOfScopeNote = (count: number) =>
+  `${count} ${count === 1 ? 'verificación' : 'verificaciones'} fuera del alcance del taller`;
+
 export function withReportOrigin(report: DesignReport, origin: WorkbenchOrigin | undefined, state?: OriginState): DesignReport {
   if (!origin) return report;
   const snapshot = origin.snapshot;
@@ -90,7 +108,7 @@ export function withReportOrigin(report: DesignReport, origin: WorkbenchOrigin |
 
 const CLOSING_LINE = /^FStructure · /;
 
-/** Memoria copiable: identificación, la memoria del elemento y lo sin evaluar antes de la firma. */
+/** Memoria copiable: identificación, la memoria del elemento y la nota de alcance antes de la firma. */
 export function memoText(report: DesignReport): string {
   const lines = report.memo.split('\n');
   const closing = lines.length && CLOSING_LINE.test(lines[lines.length - 1]!) ? lines.pop()! : undefined;
@@ -98,7 +116,7 @@ export function memoText(report: DesignReport): string {
   return [
     ...(identity ? [identity] : []),
     ...lines,
-    ...(report.outOfScope.length ? [`○ Sin evaluar (fuera del alcance del taller): ${report.outOfScope.map((check) => check.label).join(' · ')}`] : []),
+    ...(report.outOfScope.length ? [`○ ${outOfScopeNote(report.outOfScope.length)}: ${report.outOfScope.map((check) => check.label).join(' · ')}`] : []),
     ...(closing ? [closing] : []),
   ].join('\n');
 }

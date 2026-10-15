@@ -258,7 +258,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
   };
   const [verdict, setVerdict] = useState<Verdict | null>(null);
   const onVerdict = useCallback((next: Verdict) => setVerdict((current) =>
-    current && current.status === next.status && current.label === next.label ? current : next), []);
+    current && current.status === next.status && current.label === next.label && current.detail === next.detail ? current : next), []);
   const anyPanelOpen = panels.inputs || panels.results;
   // «Panel» de la barra, como en las demás mesas: pliega o despliega los dos paneles.
   const togglePanels = () => setPanels(anyPanelOpen ? { inputs: false, results: false } : initialPanels(room.current === 'phone' ? 'narrow' : room.current));
@@ -449,7 +449,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
       </button>
     </ShellContribution> : null}
     {nativeTool && verdict ? <ShellContribution slot="status">
-      <ShellStatusChip tone={VERDICT_TONE[verdict.status]} label={verdict.label} badge="Experimental" />
+      <ShellStatusChip tone={VERDICT_TONE[verdict.status]} label={verdict.label} badge="Experimental" {...(verdict.detail ? { detail: verdict.detail } : {})} />
     </ShellContribution> : null}
     {nativeTool ? <ShellContribution slot="statusbar">
       <footer className="mesa-statusbar" data-mesa-foot="" aria-label="Estado de Diseño">
