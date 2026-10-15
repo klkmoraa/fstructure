@@ -23,6 +23,7 @@ FStructure (FS-A01) es la app de cálculo estructural de FusionStructure: una so
 | CSS, copy, layout | mirarlo en el navegador; claro/oscuro, y móvil si cambió el layout |
 | solver, unidades, diseño | un caso pequeño con valor de referencia y tolerancia |
 | guardado/importación | abrir → guardar → reabrir, y un archivo inválido |
+| Home, secciones o layout general | `npm run smoke` (Home, secciones, mesa 2D y una pieza; Día/Noche, 1440 y 390 px; `FS_CHROMIUM` si el Chromium de Playwright no coincide) |
 | algo transversal o antes de un cambio grande | `npm run check` |
 
 No escribir pruebas para fijar estilo o copy. `npm run lint:design` sólo avisa. `npm run deadcode` (knip) lista archivos, exportaciones y dependencias sin uso.
