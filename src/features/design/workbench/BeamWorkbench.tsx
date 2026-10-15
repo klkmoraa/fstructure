@@ -16,6 +16,8 @@ import {
   ActionNote, AlternativeSection, BarSelect, InlineAction, ChecksList, IdentityGroup, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField,
   PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict, formatNumber, parseNumber, readStored, useDraftHistory, useStoredDraft, useStoredRows,
 } from './common';
+import { reportHeading } from './designReport';
+import { footingFromBeamSupport } from './designStarts';
 import { commitWorkbenchBatch, useWorkbenchStorage } from './workbenchStorage';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { MaterialFields } from './MaterialFields';
@@ -91,6 +93,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const storedDetails = useStoredBeamDetails(storage);
   const [detailsDraft, setDetailsDraft] = useState(storedDetails.details);
   const [detailsNote, setDetailsNote] = useState<string | null>(null);
+  const [footingNote, setFootingNote] = useState<string | null>(null);
   useEffect(() => { setDetailsDraft(storedDetails.details); }, [storedDetails.details]);
   const [spans, setSpans, acceptSpans] = useStoredRows<SpanDraft[]>('beam-spans', readStored(storage, 'beam-spans', parseSpans, DEFAULT_SPANS));
   const snapshot = useMemo(() => ({ draft, spans, details: storedDetails.details }), [draft, spans, storedDetails.details]);
@@ -409,8 +412,13 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </PanelSection>
       {report?.alternative ? <AlternativeSection own={{ status: result.status, governingRatio: result.governingRatio, steelKg: report.takeoff.steelKg }} alternative={report.alternative} /> : null}
       <PanelSection title="Revisión"><ReviewList checks={checks} outOfScope={outOfScope} /></PanelSection>
-      {result.reactions ? <PanelSection title="Reacciones"><BeamReactionsTable result={result} /></PanelSection> : null}
-      {report ? <TakeoffSection takeoff={report.takeoff} /> : null}
+      {result.reactions ? <PanelSection title="Reacciones">
+        <BeamReactionsTable result={result} {...(chrome.onStart ? { onDesignFooting: (support: { deadKn: number; liveKn: number }, label: string) => {
+          if (chrome.onStart?.(footingFromBeamSupport(support, label, { tag: draft.tag })) === 'full') setFootingNote('No hay espacio en la memoria para conservar el borrador; libera elementos antes de abrir la zapata.');
+        } } : {})} />
+        <ActionNote text={footingNote} />
+      </PanelSection> : null}
+      {report ? <TakeoffSection takeoff={report.takeoff} name={reportHeading(report)} /> : null}
       <Disclosure label="Detalle del cálculo">
         <RebarList items={result.bastions.map((bastion) => ({ kind: 'extra' as const, title: bastionTitle(bastion), detail: bastionDetail(bastion) }))} />
         <table className="dw-table" aria-label="Envolvente por claro (kN·m, kN)">

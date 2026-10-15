@@ -11,6 +11,7 @@ import {
   BarSelect, ChecksList, IdentityGroup, ReviewList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, MoreOptions, NumberField, PanelSection, RebarList, Summary, TakeoffSection, ValuesTable, Verdict,
   formatNumber, useDraftHistory, useStoredDraft,
 } from './common';
+import { reportHeading } from './designReport';
 import { FootingPlan, FootingSection } from './FootingDrawings';
 import {
   FOOTING_DEFAULTS, combinedReport, combinedToInput, directionDetail, directionTitle, footingReport, footingToInput, footingType, matReport, matToInput, planText,
@@ -66,7 +67,7 @@ function ReportResults({ report, status, ratio, summary }: {
     </Verdict>
     <PanelSection title="Armado"><RebarList items={report.reinforcement.map((row) => ({ kind: 'bar' as const, title: row.label, detail: row.value }))} /></PanelSection>
     <PanelSection title="Revisión"><ReviewList checks={report.checks} outOfScope={report.outOfScope} /></PanelSection>
-    <TakeoffSection takeoff={report.takeoff} />
+    <TakeoffSection takeoff={report.takeoff} name={reportHeading(report)} />
     <Disclosure label="Detalle del cálculo">
       <ValuesTable rows={report.values} />
       <ChecksList checks={report.notes} />
@@ -256,7 +257,7 @@ function StripFooting({ chrome, draft, set, reset }: FootingProps) {
       </Verdict>
       <PanelSection title="Armado"><RebarList items={report.reinforcement.map((row) => ({ kind: 'bar' as const, title: row.label, detail: row.value }))} /></PanelSection>
       <PanelSection title="Revisión"><ReviewList checks={report.checks} outOfScope={report.outOfScope} /></PanelSection>
-      <TakeoffSection takeoff={report.takeoff} />
+      <TakeoffSection takeoff={report.takeoff} name={reportHeading(report)} />
       <Disclosure label="Detalle del cálculo">
         <ValuesTable rows={report.values} />
         <ChecksList checks={report.notes} />
@@ -317,7 +318,7 @@ function CombinedFooting({ chrome, draft, set, reset }: FootingProps) {
       </Verdict>
       <PanelSection title="Armado"><RebarList items={report.reinforcement.map((row) => ({ kind: 'bar' as const, title: row.label, detail: row.value }))} /></PanelSection>
       <PanelSection title="Revisión"><ReviewList checks={report.checks} outOfScope={report.outOfScope} /></PanelSection>
-      <TakeoffSection takeoff={report.takeoff} />
+      <TakeoffSection takeoff={report.takeoff} name={reportHeading(report)} />
       <Disclosure label="Detalle del cálculo">
         <ValuesTable rows={report.values} />
         <ChecksList checks={report.notes} />
@@ -436,7 +437,7 @@ function IsolatedFooting({ chrome, draft, set, reset }: FootingProps) {
         }))} />
       </PanelSection>
       <PanelSection title="Revisión"><ReviewList checks={checks} outOfScope={outOfScope} /></PanelSection>
-      {report ? <TakeoffSection takeoff={report.takeoff} /> : null}
+      {report ? <TakeoffSection takeoff={report.takeoff} name={reportHeading(report)} /> : null}
       <Disclosure label="Detalle del cálculo">
         <RebarList items={[result.directions.x, result.directions.y].map((direction) => ({
           kind: 'bar' as const,

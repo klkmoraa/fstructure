@@ -15,6 +15,7 @@ import {
   ActionNote, BarSelect, InlineAction, ChecksList, Disclosure, ErrorsPanel, FieldGroup, GroupSelect, IdentityGroup, LIVE_LOAD_USES, LONG_TERM_DURATIONS, MoreOptions, NumberField, PanelSection,
   RebarList, ReviewList, Summary, TakeoffSection, ValuesTable, Verdict, formatNumber, parseNumber, readStored, splitChecks, useDraftHistory, useStoredDraft, useStoredRows,
 } from './common';
+import { reportHeading } from './designReport';
 import { commitWorkbenchBatch } from './workbenchStorage';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { FRAME_DIAGRAMS, FrameElevation, ratioBand, type FrameDiagramKind } from './FrameDrawings';
@@ -695,7 +696,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         {memberChecks[1].length ? <Disclosure label="Notas del miembro"><ChecksList checks={memberChecks[1]} /></Disclosure> : null}
       </PanelSection> : null}
       <PanelSection title={`Revisión de ${fromModel ? 'la estructura' : 'el pórtico'}`}><ReviewList checks={report.checks} outOfScope={outOfScope} /></PanelSection>
-      <TakeoffSection takeoff={report.takeoff} />
+      <TakeoffSection takeoff={report.takeoff} name={reportHeading(report)} />
       <Disclosure label="Detalle del cálculo">
         <ValuesTable rows={report.values} />
         {report.tables.slice(2).map((table) => <table key={table.title} className="dw-table" aria-label={table.title}>

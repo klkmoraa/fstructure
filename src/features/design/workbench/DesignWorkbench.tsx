@@ -437,6 +437,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
     ...(onShowMembers ? { onShowMembers } : {}),
     modelSections, space3dSections, ...(modelReview ? { modelReview } : {}),
     ...(scope === 'single' ? { standalone: true } : {}),
+    ...(allowed('footing') ? { onStart: startRecipe } : {}),
   };
 
   // En teléfono la barra deja sólo el PDF: la memoria pasa a «⋯» con los demás controles.
