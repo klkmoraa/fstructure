@@ -1,5 +1,5 @@
 import { Copy, FileDown, FolderOpen, Plus, Save, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button, Field, Select } from '../../../design-system/components/controls';
 import { Dialog } from '../../../design-system/components/overlays';
 import { DESIGN_CODE_IDS, designCode, isDesignCodeId } from '../../../design/elements/codes';
@@ -79,6 +79,23 @@ export function DesignMemoryDialog({ open, onOpenChange, memory, element, onLoad
     invalid,
   };
   const statusValue: MemoryStatusFilter = filters.status;
+  // Tres estados sin tabla: primer uso (memoria vacía), cero coincidencias por filtros y error (aviso).
+  const noMatches = rows.length > 0 && visibleRows.length === 0;
+  /* Altura estable: mientras hay tabla se anota la altura de selección + tabla;
+     si un filtro deja cero coincidencias, esa altura queda como mínimo y el pie
+     del diálogo no salta. */
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const showsTable = visibleRows.length > 0;
+  useLayoutEffect(() => {
+    const node = resultsRef.current;
+    if (!node || !showsTable) return;
+    const settle = () => node.style.setProperty('--dw-memory-settled', `${node.offsetHeight}px`);
+    settle();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(settle);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [showsTable, open]);
 
   return <Dialog open={open} onOpenChange={onOpenChange} title="Memoria del proyecto"
     description="Se recalculan al abrirlos o exportarlos."
@@ -95,7 +112,7 @@ export function DesignMemoryDialog({ open, onOpenChange, memory, element, onLoad
         {exporting ? 'Generando…' : `Exportar memoria (${reports.length})`}
       </Button>
     </>}>
-    {notice || message ? <p className="dw-memory__notice" role="status">{notice ?? message}</p> : null}
+    {notice || message ? <p className="dw-memory__notice" role="alert">{notice ?? message}</p> : null}
     <div className="dw-memory__summary" aria-label="Resumen de la memoria">
       <span>{rows.length} {rows.length === 1 ? 'elemento' : 'elementos'}</span><span>{counts.pass} cumple</span><span>{counts.warning} revisión</span><span>{counts.fail} no cumple</span><span>{counts.invalid} con datos faltantes</span>
     </div>
@@ -111,11 +128,12 @@ export function DesignMemoryDialog({ open, onOpenChange, memory, element, onLoad
         <option value="all">Todos los estados</option><option value="pass">Cumple</option><option value="warning">Revisión pendiente</option><option value="fail">No cumple</option><option value="invalid">{MISSING_DATA}</option>
       </Select>
     </div>
+    <div ref={resultsRef} className={`dw-memory__results${noMatches ? ' is-no-matches' : ''}`}>
     <div className="dw-memory__selection">
       <span aria-live="polite">{selectedReports.length} seleccionados</span>
       <Button variant="secondary" size="sm" onClick={setVisibleSelected} disabled={!visibleValidIds.length}>Seleccionar visibles</Button>
       <Button variant="ghost" size="sm" onClick={clearSelection} disabled={!selectedIds.size}>Limpiar selección</Button>
-      {filterActive ? <Button variant="ghost" size="sm" onClick={clearFilters}>Limpiar filtros</Button> : null}
+      {filterActive && !noMatches ? <Button variant="ghost" size="sm" onClick={clearFilters}>Limpiar filtros</Button> : null}
     </div>
     {rows.length ? visibleRows.length ? <div className="dw-memory__table-wrap"><table className="dw-table dw-memory__table" aria-label="Elementos de la memoria">
       <thead><tr><th scope="col">Selección</th><th scope="col">Elemento</th><th scope="col">Estado</th><th scope="col"><span className="sr-only">Acciones</span></th></tr></thead>
@@ -139,8 +157,9 @@ export function DesignMemoryDialog({ open, onOpenChange, memory, element, onLoad
           </td>
         </tr>;
       })}</tbody>
-    </table></div> : <div className="dw-memory__empty"><p>No hay coincidencias con estos filtros.</p><Button variant="secondary" size="sm" onClick={clearFilters}>Restablecer filtros</Button></div>
+    </table></div> : <div className="dw-memory__empty"><p role="status">Ninguna pieza coincide con el filtro.</p>{filterActive ? <Button variant="secondary" size="sm" onClick={clearFilters}>Limpiar filtros</Button> : null}</div>
       : <p className="dw-memory__empty">Aún no hay elementos. Diseña uno y agrégalo.</p>}
+    </div>
     {invalid ? <p className="dw-footnote">{`${invalid} ${invalid === 1 ? 'elemento con datos faltantes se excluye' : 'elementos con datos faltantes se excluyen'} de la selección y del PDF.`}</p> : null}
   </Dialog>;
 }

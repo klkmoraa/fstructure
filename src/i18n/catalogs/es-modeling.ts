@@ -970,6 +970,7 @@ export const esModeling = {
   'inspector.rigidShort': 'Rígido',
   'modelStart.title': 'Empieza tu modelo 2D',
   'modelStart.body': 'Elige una estructura lista para calcular y edítala, o dibuja la tuya.',
+  'modelStart.more': 'Otros inicios',
   'modelStart.beamSimple': 'Viga apoyada',
   'modelStart.beamSimpleHint': '6 m · CM 15 y CV 8 kN/m',
   'modelStart.beamCantilever': 'Voladizo',

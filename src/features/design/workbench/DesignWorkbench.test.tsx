@@ -565,7 +565,7 @@ describe('DesignWorkbench', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Abrir Z guardada' }));
 
     expect(screen.getByRole('dialog', { name: 'Memoria del proyecto' })).toBeTruthy();
-    expect(await within(dialog).findByRole('status')).toHaveProperty('textContent', expect.stringMatching(/No hay espacio suficiente.*conservar los borradores/i));
+    expect(await within(dialog).findByRole('alert')).toHaveProperty('textContent', expect.stringMatching(/No hay espacio suficiente.*conservar los borradores/i));
     expect(screen.getByRole('textbox', { name: 'Claro 1 · L (m)' })).toHaveProperty('value', '5');
   });
 
@@ -582,7 +582,7 @@ describe('DesignWorkbench', () => {
     await user.click(await within(results()).findByRole('button', { name: 'Guardar' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Memoria del proyecto' });
-    expect(await within(dialog).findByRole('status')).toHaveProperty('textContent', expect.stringMatching(/No hay espacio suficiente para guardar/i));
+    expect(await within(dialog).findByRole('alert')).toHaveProperty('textContent', expect.stringMatching(/No hay espacio suficiente para guardar/i));
     expect(screen.getByRole('textbox', { name: 'Claro 1 · L (m)' })).toHaveProperty('value', '5');
   });
 

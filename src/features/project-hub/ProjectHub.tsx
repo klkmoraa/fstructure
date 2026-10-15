@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SINGLE_WORK_LABEL, singleWorkTool } from '../../shared/project/workScope';
 import { Copy, FolderOpen, MoreHorizontal, Pencil, RotateCcw, Save, ShieldAlert, Trash2 } from 'lucide-react';
 import { usePhase2I18n } from '../../i18n/usePhase2I18n';
@@ -24,6 +24,7 @@ import { SceneImage } from '../../design-system/components/SceneImage';
 import type { ThreeStructuralAssetId } from '../structural-assets/threeStructuralRender';
 import { recordLocalMetric } from '../../analytics/localMetrics';
 import { ProjectVersions } from './ProjectVersions';
+import { Button } from '../../design-system/components/controls';
 import './projectHub.css';
 
 /**
@@ -106,11 +107,14 @@ export const ProjectHub = ({
   variant = 'full',
   tool = 'model2d',
   bundleRepository,
+  onClearFilter,
 }: {
   repository?: ProjectRepository;
   onOpen: (record: StoredProjectRecord) => void;
   limit?: number;
   filter?: string;
+  /** Borra la búsqueda de quien la escribe (la Home); «Limpiar filtros» la llama. */
+  onClearFilter?: () => void;
   variant?: 'full' | 'recent';
   tool?: ToolId;
   bundleRepository?: UnifiedBundleRepository;
@@ -125,7 +129,9 @@ export const ProjectHub = ({
   const [projects, setProjects] = useState<StoredProjectRecord[]>([]);
   const [recoveries, setRecoveries] = useState<RecoveryRecord[]>([]);
   const [bundles, setBundles] = useState<Map<string, StoredBundleRecord>>(new Map());
-  const [loading, setLoading] = useState(true);
+  // Sólo la primera lectura muestra «Abriendo…»: las relecturas en segundo plano
+  // conservan lo que hay en pantalla en vez de parpadear y mover la lista.
+  const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
@@ -143,7 +149,7 @@ export const ProjectHub = ({
     select: (name: string) => `Seleccionar ${name}`, saveName: (name: string) => `Guardar ${name}`,
     remove: (count: number) => `Eliminar seleccionados (${count})`, keep: (count: number) => `Guardar seleccionados (${count})`,
     confirm: (names: string[]) => `¿Eliminar ${names.length} proyecto(s) de la lista?\n\n${names.join('\n')}`,
-    empty: 'No hay proyectos en este apartado.',
+    clearFilters: 'Limpiar filtros',
   } : {
     saved: 'Saved', draft: 'Drafts', all: 'All', order: 'Sort by', updated: 'Last edited', name: 'Name A–Z',
     help: 'New exercises start in Drafts. Choose Save to keep them in your project list.',
@@ -152,17 +158,18 @@ export const ProjectHub = ({
     select: (name: string) => `Select ${name}`, saveName: (name: string) => `Save ${name}`,
     remove: (count: number) => `Delete selected (${count})`, keep: (count: number) => `Save selected (${count})`,
     confirm: (names: string[]) => `Delete ${names.length} project(s) from the list?\n\n${names.join('\n')}`,
-    empty: 'No projects in this category.',
+    clearFilters: 'Clear filters',
   };
   const observedRecoveries = useRef(new Set<string>());
+  const hubRef = useRef<HTMLElement>(null);
+  const allCollectionRef = useRef<HTMLButtonElement>(null);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
     if (!activeRepository) {
       setProjects([]);
       setRecoveries([]);
       setError(t('hub.unavailable'));
-      setLoading(false);
+      setLoaded(true);
       return;
     }
     try {
@@ -189,7 +196,7 @@ export const ProjectHub = ({
     } catch {
       setError(t('hub.unavailable'));
     } finally {
-      setLoading(false);
+      setLoaded(true);
     }
   }, [activeRepository, canonicalRepository, t]);
 
@@ -348,7 +355,7 @@ export const ProjectHub = ({
      la biblioteca o una copia pendiente— se despliega sola. La recuperación
      queda garantizada por construcción: su presencia es lo que fuerza el
      despliegue, así que nunca puede quedar menos alcanzable que hoy. */
-  const collapsed = !loading && !error && projects.length === 0 && recoveries.length === 0;
+  const collapsed = loaded && !error && projects.length === 0 && recoveries.length === 0;
   // CRI-140: una tarjeta 0/0 no puede presentarse como la revisión canónica
   // cuando la propia biblioteca tiene una recuperación de conflicto con más
   // entidades. La decisión segura vive en el resolvedor de abajo.
@@ -366,13 +373,43 @@ export const ProjectHub = ({
       : b.updatedAt.localeCompare(a.updatedAt) || a.name.localeCompare(b.name, language));
   const filteredRecoveries = recoveries.filter((recovery) => matchesFilter(recovery.project.name));
   const visibleProjects = limit === undefined ? filteredProjects : filteredProjects.slice(0, Math.max(0, limit));
-  const noMatches = Boolean(normalizedFilter) && filteredProjects.length === 0 && filteredRecoveries.length === 0 && (projects.length > 0 || recoveries.length > 0);
+  /* Tres estados sin lista: primer uso (no hay nada guardado), cero
+     coincidencias (hay proyectos, pero la búsqueda, el apartado o el tipo los
+     ocultan) y error (la biblioteca no abrió; no se presenta como vacía). */
+  const firstUse = loaded && !error && projects.length === 0;
+  const noMatches = loaded && projects.length > 0 && visibleProjects.length === 0;
+  // En Recientes no hay filtros a la vista: sin coincidencias es «aún no hay guardados».
+  const filtersActive = variant === 'full' && (Boolean(normalizedFilter) || collection !== 'all' || scope !== 'all');
+  const clearable = filtersActive && (collection !== 'all' || scope !== 'all' || Boolean(onClearFilter));
+  const clearFilters = () => {
+    setCollection('all');
+    setScope('all');
+    setOpenMenuId(null);
+    onClearFilter?.();
+    // El botón desaparece con el filtro: el foco pasa al apartado «Todos».
+    allCollectionRef.current?.focus();
+  };
 
-  return <section className={`project-hub project-hub--${variant}${collapsed ? ' project-hub--collapsed' : ''}`} data-project-hub-layout="visual-library" aria-label={t('hub.title')}>
+  /* Altura estable: mientras hay lista se anota la altura de la biblioteca y,
+     si un filtro la deja sin coincidencias, esa altura queda como mínimo para
+     que lo que sigue debajo no salte. */
+  const showsList = visibleProjects.length > 0;
+  useLayoutEffect(() => {
+    const node = hubRef.current;
+    if (!node || !showsList) return;
+    const settle = () => node.style.setProperty('--project-hub-settled', `${node.offsetHeight}px`);
+    settle();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(settle);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [showsList]);
+
+  return <section ref={hubRef} className={`project-hub project-hub--${variant}${collapsed ? ' project-hub--collapsed' : ''}${noMatches ? ' project-hub--no-matches' : ''}`} data-project-hub-layout="visual-library" aria-label={t('hub.title')}>
     {variant === 'full' ? <div className="project-hub__organizer">
       <p>{text.help}</p>
       <div className="project-hub__collections" role="group" aria-label={language === 'es' ? 'Apartados de proyectos' : 'Project categories'}>
-        {(['saved', 'draft', 'all'] as const).map((value) => <button type="button" key={value} aria-pressed={collection === value} disabled={busy} onClick={() => chooseCollection(value)}>
+        {(['saved', 'draft', 'all'] as const).map((value) => <button type="button" key={value} ref={value === 'all' ? allCollectionRef : undefined} aria-pressed={collection === value} disabled={busy} onClick={() => chooseCollection(value)}>
           {text[value]} <span>{projectsForDisplay.filter((record) => value === 'all' || retentionOf(record.id) === value).length}</span>
         </button>)}
       </div>
@@ -391,11 +428,13 @@ export const ProjectHub = ({
         </> : null}
       </div> : null}
     </div> : null}
-    {loading ? <p role="status">{t('hub.loading')}</p> : null}
+    {!loaded ? <p role="status">{t('hub.loading')}</p> : null}
     {error ? <p className="project-hub__error" role="alert">{error}</p> : null}
-    {!loading && projects.length === 0 ? <p className="project-hub__empty">{t('hub.empty')}</p> : null}
-    {!loading && noMatches ? <p className="project-hub__empty" role="status">{t('hub.noMatches')}</p> : null}
-    {!loading && projects.length > 0 && !visibleProjects.length && !noMatches ? <p className="project-hub__empty" role="status">{text.empty}</p> : null}
+    {firstUse || (noMatches && !filtersActive) ? <p className="project-hub__empty">{t('hub.empty')}</p> : null}
+    {noMatches && filtersActive ? <div className="project-hub__no-matches">
+      <p className="project-hub__empty" role="status">{t('hub.noMatches')}</p>
+      {clearable ? <Button variant="secondary" size="touch" onClick={clearFilters}>{text.clearFilters}</Button> : null}
+    </div> : null}
     {visibleProjects.length ? <div className="project-hub__list">
       {visibleProjects.map((record) => {
         const presentation = recentProjectPresentation(tool, bundles.get(record.id)?.bundle, language);

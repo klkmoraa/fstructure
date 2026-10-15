@@ -97,15 +97,21 @@ describe('DesignMemoryDialog', () => {
   it('distingue lista vacía de búsqueda sin coincidencias y permite restablecer filtros', async () => {
     const { user } = renderDialog([saved('one', 'V-1')]);
     await user.selectOptions(screen.getByRole('combobox', { name: 'Filtrar por estado' }), 'invalid');
-    expect(screen.getByText(/No hay coincidencias/)).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toBe('Ninguna pieza coincide con el filtro.');
     await user.selectOptions(screen.getByRole('combobox', { name: 'Filtrar por estado' }), 'all');
     await user.type(screen.getByRole('searchbox', { name: 'Buscar en memoria' }), 'inexistente');
-    expect(screen.getByText(/No hay coincidencias/)).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Restablecer filtros' }));
+    expect(screen.getByText('Ninguna pieza coincide con el filtro.')).toBeTruthy();
+    // Un solo «Limpiar filtros», junto al mensaje, restaura la lista con un toque.
+    expect(screen.getAllByRole('button', { name: 'Limpiar filtros' })).toHaveLength(1);
+    await user.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
     expect(screen.getByRole('row', { name: /V-1/ })).toBeTruthy();
+    expect((screen.getByRole('searchbox', { name: 'Buscar en memoria' }) as HTMLInputElement).value).toBe('');
+    expect(screen.queryByText('Ninguna pieza coincide con el filtro.')).toBeNull();
     cleanup();
     render(<Harness initial={[]} state={{ writable: true }} onExport={vi.fn()} />);
     expect(screen.getByText(/Aún no hay elementos/)).toBeTruthy();
+    expect(screen.queryByText('Ninguna pieza coincide con el filtro.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).toBeNull();
   });
 
   it('borra selección al eliminar id y excluye piezas con datos faltantes de la exportación', async () => {
@@ -133,7 +139,7 @@ describe('DesignMemoryDialog', () => {
   it('muestra el rechazo de capacidad al duplicar', async () => {
     const { user } = renderDialog([saved('source', 'V-1')], { writable: false });
     await user.click(screen.getByRole('button', { name: 'Duplicar V-1' }));
-    expect(screen.getByText(/No hay espacio suficiente para duplicar/)).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toMatch(/No hay espacio suficiente para duplicar/);
     expect(screen.queryByRole('row', { name: /V-1 · copia/ })).toBeNull();
   });
 });

@@ -270,6 +270,13 @@
 }
 .project-hub__empty { margin: 0; color: var(--sc-color-text-muted); }
 
+/* Sin coincidencias por filtros: la biblioteca conserva la altura que tenía con
+   lista (la anota ProjectHub) para que lo de abajo no salte, y ofrece volver a
+   la lista completa con un toque. */
+.project-hub--no-matches { min-height: var(--project-hub-settled, auto); }
+.project-hub__no-matches { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.project-hub__no-matches .project-hub__empty { color: var(--sc-color-text-secondary); font-size: 14px; }
+
 .project-hub__recoveries {
   margin-top: var(--sc-space-4);
   display: grid;
