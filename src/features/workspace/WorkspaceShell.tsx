@@ -12,7 +12,6 @@ import { ToastNotification } from './ToastNotification';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
 import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
-import { SOLVER_2D } from '../../design-system/moduleIdentity';
 import { createPersistedEditorLayerState, editorLayerReducer, persistEditorLayerState } from '../canvas/editorLayers';
 import { activateEvidenceLayer } from '../canvas/evidenceLayers';
 import { withCanvasViewSettings } from '../view/canvasViewSettings';
@@ -25,7 +24,7 @@ import { ShellCompositionProvider } from './ShellCompositionProvider';
 import { SurfacePresentationProvider } from './SurfacePresentationProvider';
 import { useShellComposition } from './useShellComposition';
 import { useSurfacePresentation } from './useSurfacePresentation';
-import { nextAvailableInspectorDetent, normalizeInspectorDetent, useWorkspaceLayoutPreferences } from './useWorkspaceLayoutPreferences';
+import { useWorkspaceLayoutPreferences } from './useWorkspaceLayoutPreferences';
 import { preloadDenseResultsSurface, type DenseResultView } from '../results/denseResults';
 import { reservesInspectorColumn, type SurfaceId } from './surfacePresentation';
 import '../../design-system/components/ui.css';
@@ -43,15 +42,15 @@ import '../canvas/mobileCanvasDensity.css';
 import './canvasChrome.css';
 import './mesaChrome.css';
 import { emitWorkspaceCommand, onWorkspaceCommand } from './workspaceCommands';
-import { SINGLE_WORK_LABEL, singleWorkTool } from '../../shared/project/workScope';
 import { setToolIntent } from './toolIntent';
-import { isOwnHistoryScope } from './commandRegistry';
 import type { AnalysisResult } from '../../types';
 import type { RevisionSnapshot } from '../revision-comparison/revisionComparison';
 import { DataSurfaceRetainedStateProvider } from './DataSurfaceRetainedState';
 import { LazySurface } from './LazySurface';
 import { ShellToolSlotsProvider, ShellSlotHost, ShellMobileSurface } from './ShellToolSlots';
 import { usePageZoomGuard } from './usePageZoomGuard';
+import { model2dTopBarLabels } from './model2dTopBarLabels';
+import { focusStableLauncherIfUnclaimed, useInspectorDetent, useModel2DShortcuts, useModelDoctorNotification, useVisualViewportSync } from './useModel2DShellEffects';
 
 const LazyCommandPalette = lazy(() => import('./CommandPalette').then((module) => ({ default: module.CommandPalette })));
 const LazyLocalCommandAssistant = lazy(() => import('../ai/LocalCommandAssistant').then((module) => ({ default: module.LocalCommandAssistant })));
@@ -60,29 +59,6 @@ const LazyDatasheet = lazy(() => import('../datasheet/DatasheetPanel').then((mod
 const LazyStructuralBom = lazy(() => import('../bom/StructuralBomPanel').then((module) => ({ default: module.StructuralBomPanel })));
 const LazyRevisionComparison = lazy(() => import('../revision-comparison/RevisionComparisonPanel').then((module) => ({ default: module.RevisionComparisonPanel })));
 const LazyDenseResults = lazy(() => preloadDenseResultsSurface());
-
-/**
- * Respaldo de foco para el cierre de una superficie: enfoca el primer lanzador
- * visible de `selector` **sólo** si nadie reclamó el foco.
- *
- * `SurfacePresentationProvider` ya devuelve el foco al disparador que abrió la
- * superficie cuando ese disparador sigue montado, y lo hace en su propio
- * `requestAnimationFrame`. Un respaldo incondicional se ejecuta después y le
- * roba el foco a ese disparador: en K0 eso mandaba el foco a Utilidades aunque
- * Resultados se hubiera abierto —y cerrado— desde su botón persistente de la
- * barra. Encolar este cuadro después del bróker y comprobar `activeElement`
- * conserva el respaldo para el caso que lo justifica —un item de menú que se
- * desmonta con la hoja— sin pisar la restauración correcta.
- */
-const focusStableLauncherIfUnclaimed = (selector: string): void => {
-  window.requestAnimationFrame(() => {
-    const active = document.activeElement;
-    if (active && active !== document.body) return;
-    const launcher = [...document.querySelectorAll<HTMLElement>(selector)]
-      .find((candidate) => candidate.isConnected && candidate.getClientRects().length > 0);
-    launcher?.focus({ preventScroll: true });
-  });
-};
 
 /**
  * Shell del Modelo 2D: el modo Modelo de la mesa de FStructure.
@@ -100,12 +76,6 @@ type WorkspaceShellProps = {
   onModeChange?: (mode: MesaMode) => void;
 };
 type LayoutController = ReturnType<typeof useWorkspaceLayoutPreferences>;
-type PendingModelDoctorNotification = {
-  id: number;
-  projectId: string;
-  analysisAtRequest: AnalysisResult | null;
-  hasStarted: boolean;
-};
 
 const WorkspaceBrokerContent = ({
   onOpenHome,
@@ -123,11 +93,9 @@ const WorkspaceBrokerContent = ({
   const [editorLayers, dispatchEditorLayers] = useReducer(editorLayerReducer, undefined, createPersistedEditorLayerState);
   const { t, language } = useI18n();
   const { project, analysis, isAnalyzing, storageIssue, storageMessage, renameProject, setActiveTool, setResultTab, updateProjectView, analyze, undo, redo, canUndo, canRedo } = useProject();
-  const [pendingModelDoctorNotification, setPendingModelDoctorNotification] = useState<PendingModelDoctorNotification | null>(null);
+  const { requestNotification: requestModelDoctorNotification, resetNotification: resetModelDoctorNotification } = useModelDoctorNotification({ project, analysis, isAnalyzing, t });
   const [localAssistantOpen, setLocalAssistantOpen] = useState(false);
   const localAssistantTriggerRef = useRef<HTMLElement | null>(null);
-  const modelDoctorNotificationIdRef = useRef(0);
-  const pendingModelDoctorNotificationIdRef = useRef<number | null>(null);
   const reportedAnalysisRef = useRef<AnalysisResult | null>(null);
   const { activeTool } = useWorkspaceUI();
   const { preferences: layout, setPreference, togglePreference } = layoutController;
@@ -165,38 +133,7 @@ const WorkspaceBrokerContent = ({
 
   useEffect(() => persistEditorLayerState(editorLayers), [editorLayers]);
 
-  useEffect(() => {
-    const normalizeDetent = () => {
-      const next = normalizeInspectorDetent(layout.inspectorDetent, {
-        width: window.innerWidth,
-        height: window.visualViewport?.height ?? window.innerHeight,
-      });
-      if (next !== layout.inspectorDetent) setPreference('inspectorDetent', next);
-    };
-    normalizeDetent();
-    window.addEventListener('resize', normalizeDetent);
-    window.addEventListener('orientationchange', normalizeDetent);
-    window.visualViewport?.addEventListener('resize', normalizeDetent);
-    return () => {
-      window.removeEventListener('resize', normalizeDetent);
-      window.removeEventListener('orientationchange', normalizeDetent);
-      window.visualViewport?.removeEventListener('resize', normalizeDetent);
-    };
-  }, [layout.inspectorDetent, setPreference]);
-
-  // Una hoja que se pide para leer o editar no nace en su altura mínima, donde
-  // sólo cabe la cabecera.
-  const ensureReadableDetent = useCallback(() => {
-    if (shellClass === 'K0' && layout.inspectorDetent === 'compact') setPreference('inspectorDetent', 'medium');
-  }, [layout.inspectorDetent, setPreference, shellClass]);
-
-  const cycleInspectorDetent = useCallback((direction: 1 | -1) => {
-    const next = nextAvailableInspectorDetent(layout.inspectorDetent, direction, {
-      width: window.innerWidth,
-      height: window.visualViewport?.height ?? window.innerHeight,
-    });
-    if (next !== layout.inspectorDetent) setPreference('inspectorDetent', next);
-  }, [layout.inspectorDetent, setPreference]);
+  const { ensureReadableDetent, cycleInspectorDetent } = useInspectorDetent(layoutController, shellClass);
 
   useEffect(() => {
     const canOpenPalette = datasheet.status !== 'active' && bom.status !== 'active' && comparison.status !== 'active' && doctor.status !== 'active';
@@ -223,12 +160,7 @@ const WorkspaceBrokerContent = ({
         if (results.open) closeSurface('results');
         else openModel2DSurface('results', payload?.trigger);
       }),
-      onWorkspaceCommand('analysis-requested', () => {
-        const id = modelDoctorNotificationIdRef.current + 1;
-        modelDoctorNotificationIdRef.current = id;
-        pendingModelDoctorNotificationIdRef.current = id;
-        setPendingModelDoctorNotification({ id, projectId: project.id, analysisAtRequest: analysis, hasStarted: false });
-      }),
+      onWorkspaceCommand('analysis-requested', () => requestModelDoctorNotification(project.id, analysis)),
       onWorkspaceCommand('open-analysis-setup', () => { ensureReadableDetent(); openModel2DSurface('analysisSetup'); }),
       // «Diseñar en concreto» desde el Inspector: el modo Diseño abre esa barra.
       onWorkspaceCommand('open-member-design', ({ memberId }) => {
@@ -256,12 +188,11 @@ const WorkspaceBrokerContent = ({
       }),
     ];
     return () => subscriptions.forEach((unsubscribe) => unsubscribe());
-  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, ensureReadableDetent, onModeChange, openModel2DSurface, project.id, results.open, revealResultOverlay, setResultTab]);
+  }, [analysis, bom.status, closeSurface, comparison.status, datasheet.status, doctor.status, ensureReadableDetent, onModeChange, openModel2DSurface, project.id, requestModelDoctorNotification, results.open, revealResultOverlay, setResultTab]);
 
   useEffect(() => {
     setModelDoctorAcknowledgedIds(new Set());
-    pendingModelDoctorNotificationIdRef.current = null;
-    setPendingModelDoctorNotification(null);
+    resetModelDoctorNotification();
     (['generator', 'dense', 'datasheet', 'bom', 'comparison', 'doctor', 'palette'] as const).forEach((surface) => closeSurface(surface));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
@@ -296,104 +227,11 @@ const WorkspaceBrokerContent = ({
     resultsWereOpenRef.current = results.open;
   }, [detail.open, results.open, setPreference]);
 
-  useEffect(() => {
-    const request = pendingModelDoctorNotification;
-    if (!request) return undefined;
-    if (request.projectId !== project.id) {
-      if (pendingModelDoctorNotificationIdRef.current === request.id) {
-        pendingModelDoctorNotificationIdRef.current = null;
-        setPendingModelDoctorNotification(null);
-      }
-      return undefined;
-    }
-    if (isAnalyzing) {
-      if (!request.hasStarted) {
-        setPendingModelDoctorNotification((current) => current?.id === request.id
-          ? { ...current, hasStarted: true }
-          : current);
-      }
-      return undefined;
-    }
-    if (!request.hasStarted || analysis === request.analysisAtRequest) return undefined;
-
-    let current = true;
-    void import('../model-doctor/modelDoctorDiagnostics').then(({ buildModelDoctorReport }) => {
-      if (!current || pendingModelDoctorNotificationIdRef.current !== request.id) return;
-      const report = buildModelDoctorReport(project);
-      if (report.total > 0) {
-        emitWorkspaceCommand('show-toast', {
-          message: t('modelDoctor.toastTitle'),
-          description: t('modelDoctor.toastDescription'),
-          tone: 'warning',
-        });
-      }
-      if (pendingModelDoctorNotificationIdRef.current === request.id) {
-        pendingModelDoctorNotificationIdRef.current = null;
-        setPendingModelDoctorNotification(null);
-      }
-    });
-    return () => { current = false; };
-  }, [analysis, isAnalyzing, pendingModelDoctorNotification, project, t]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() !== 'k' || !(event.ctrlKey || event.metaKey) || event.altKey) return;
-      if (document.querySelector('[aria-modal="true"]')) return;
-      if (datasheet.status === 'active' || bom.status === 'active' || comparison.status === 'active' || doctor.status === 'active') return;
-      event.preventDefault();
-      toggleSurface('palette', document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [bom.status, comparison.status, datasheet.status, doctor.status, toggleSurface]);
-
-  // Ctrl/Cmd+Z and Ctrl/Cmd+Y drive the same undo/redo the history buttons use
-  // (G-01 · CRI-103) — but never with focus in a text field, the Datasheet
-  // grid, or any modal surface with its own editing history: the worst case is
-  // silently undoing a model operation while the user meant to undo a cell.
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
-      const key = event.key.toLowerCase();
-      const isUndo = key === 'z';
-      const isRedo = key === 'y';
-      if (!isUndo && !isRedo) return;
-      if (isOwnHistoryScope(event.target)) return;
-      if (isUndo) {
-        if (!canUndo) return;
-        event.preventDefault();
-        undo();
-      } else {
-        if (!canRedo) return;
-        event.preventDefault();
-        redo();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [canRedo, canUndo, redo, undo]);
-
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    const shell = shellRef.current;
-    if (!viewport || !shell) return undefined;
-    const syncViewport = () => {
-      const bottom = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
-      shell.style.setProperty('--sc-visual-viewport-height', `${viewport.height}px`);
-      shell.style.setProperty('--sc-visual-viewport-top', `${viewport.offsetTop}px`);
-      shell.style.setProperty('--sc-visual-viewport-bottom', `${bottom}px`);
-      // El teclado del teléfono está arriba: el dock se aparta y lo que se
-      // escribe sube por encima del teclado (ver `mobileDock.css`).
-      shell.toggleAttribute('data-keyboard', bottom > 120);
-    };
-    syncViewport();
-    viewport.addEventListener('resize', syncViewport);
-    viewport.addEventListener('scroll', syncViewport);
-    return () => {
-      viewport.removeEventListener('resize', syncViewport);
-      viewport.removeEventListener('scroll', syncViewport);
-    };
-  }, [shellRef]);
+  useModel2DShortcuts({
+    paletteBlocked: datasheet.status === 'active' || bom.status === 'active' || comparison.status === 'active' || doctor.status === 'active',
+    toggleSurface, canUndo, canRedo, undo, redo,
+  });
+  useVisualViewportSync(shellRef);
 
   const setResultsOpen = useCallback((open: boolean, trigger?: HTMLElement | null) => {
     if (open) openModel2DSurface('results', trigger);
@@ -495,38 +333,7 @@ const WorkspaceBrokerContent = ({
       resultsOpen={results.open}
       canUndo={canUndo}
       canRedo={canRedo}
-      labels={{
-        // Un cálculo individual lo dice en la barra: no está enlazado con 3D ni Diseño.
-        solverName: singleWorkTool(project) ? `${language === 'es' ? 'Individual' : 'Single'} · ${SINGLE_WORK_LABEL.model2d[language]}` : `FS-A01 · ${SOLVER_2D.name}`,
-        project: t('topbar.currentProject'),
-        home: t('navigation.home'),
-        editProject: t('project.name'),
-        saveProject: t('topbar.saveProject'),
-        cancel: t('topbar.cancelProject'),
-        storageReady: t('storage.local'),
-        storageRecovered: t('storage.recoveredShort'),
-        // `storageIssue` no es sólo «no pude guardar»: `ProjectProvider` lo usa
-        // también para una recuperación desde el respaldo, una carga fallida,
-        // un conflicto de revisión y una biblioteca degradada. Rotularlos todos
-        // «Error al guardar» informa de la operación equivocada —una
-        // recuperación con éxito se leía como un fallo de guardado—, y el
-        // catálogo ya tiene la palabra corta de cada caso.
-        storageIssue: storageIssue === 'recovered' ? t('storage.recoveredShort')
-          : storageIssue === 'load-failed' ? t('storage.loadFailedShort')
-          : storageIssue === 'conflict' ? t('storage.conflictShort')
-          : storageIssue === 'repository-degraded' ? t('storage.repositoryShort')
-          : t('storage.failedShort'),
-        analysisReady: t('analysis.statusReady'),
-        analysisRunning: t('analysis.running'),
-        analysisResolved: t('analysis.statusResolved'),
-        analysisFailed: t('analysis.statusError'),
-        undo: t('history.undo'),
-        redo: t('history.redo'),
-        analyze: t('analysis.run'),
-        results: t('results.outputs'),
-        calculationExperience: t('inspector.calculationExperience'),
-        actions: t('toolbar.primary'),
-      }}
+      labels={model2dTopBarLabels(t, language, project, storageIssue)}
       onOpenHome={onOpenHome}
       onRenameProject={renameProject}
       onUndo={undo}

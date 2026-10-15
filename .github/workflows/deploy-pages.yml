@@ -41,6 +41,12 @@ jobs:
       - name: Quality gate
         run: npm run check
 
+      # Sólo las dependencias que llegan al navegador. Consulta el registro de
+      # npm desde el runner (la misma red de CI que `npm ci`); no envía nada
+      # del proyecto ni de quien lo usa.
+      - name: Dependency audit
+        run: npm audit --audit-level=high --omit=dev
+
       - name: Upload build output
         uses: actions/upload-artifact@v4
         with:

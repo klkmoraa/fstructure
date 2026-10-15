@@ -221,20 +221,6 @@
 .space3d-spin { animation: space3d-spin var(--sc-motion-loading) linear infinite; }
 @keyframes space3d-spin { to { transform: rotate(360deg); } }
 
-/* --- Barra local (sólo fuera del shell) ----------------------------------- */
-
-.space3d-localbar {
-  display: flex;
-  align-items: center;
-  gap: var(--sc-space-3);
-  padding: var(--sc-space-2) var(--sc-space-4);
-  border-bottom: var(--sc-border-width) solid var(--sc-color-divider);
-  background: var(--sc-color-surface-1);
-}
-
-.space3d-localbar-title { font-family: var(--sc-font-display); font-size: var(--s3-heading); }
-.space3d-localbar-actions { display: flex; align-items: center; gap: var(--sc-space-1); margin-left: auto; }
-
 /* --- Avisos del puente 2D y errores --------------------------------------- */
 
 .space3d-diagnostics {
@@ -308,9 +294,6 @@
   background: transparent;
 }
 .space3d-layout > .space3d-results-band { grid-column: -2 / -1; }
-
-.space3d-screen:not([data-embedded]) .space3d-layout { grid-template-columns: minmax(0, 1fr) minmax(300px, 340px); }
-.space3d-screen:not([data-embedded]) .space3d-layout[data-explorer] { grid-template-columns: var(--s3-explorer-w) minmax(0, 1fr) minmax(300px, 340px); }
 
 /* Una vista o dos (planta + 3D), como la pareja de ventanas de ETABS. El dock
    se centra sobre ellas. */
@@ -1805,14 +1788,6 @@
 
 /* --- Panel lateral --------------------------------------------------------- */
 
-.space3d-sheet {
-  min-height: 0;
-  overflow: auto;
-  border-radius: var(--sc-radius-panel);
-  background: var(--sc-color-surface-1);
-  box-shadow: var(--sc-shadow-xs);
-}
-
 .space3d-inspector {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -2630,25 +2605,11 @@
 
   /* Sin sitio para tres columnas: el explorador y la vista doble se retiran. */
   .space3d-layout,
-  .space3d-layout[data-explorer],
-  .space3d-screen:not([data-embedded]) .space3d-layout,
-  .space3d-screen:not([data-embedded]) .space3d-layout[data-explorer] { grid-template-columns: minmax(0, 1fr); }
+  .space3d-layout[data-explorer] { grid-template-columns: minmax(0, 1fr); }
   .space3d-explorer,
   .space3d-stage--secondary,
   .space3d-dock-group--view { display: none; }
   .space3d-layout[data-split] .space3d-stages:has(.space3d-stage--secondary) { grid-template-columns: minmax(0, 1fr); }
-
-  .space3d-screen:not([data-embedded]) .space3d-sheet {
-    position: fixed;
-    z-index: var(--sc-z-sheet, 60);
-    inset: auto 0 0;
-    max-height: 70dvh;
-    border-radius: var(--sc-radius-sheet, 16px) var(--sc-radius-sheet, 16px) 0 0;
-    box-shadow: var(--sc-shadow-sheet, var(--sc-shadow-floating));
-    transform: translateY(calc(100% - 56px));
-  }
-
-  .space3d-screen:not([data-embedded]) .space3d-sheet[data-expanded] { transform: none; }
 
   /* Con la hoja abierta, HUD y leyenda se retiran para no quedar debajo. */
   .space3d-bottom-stack[data-sheet-expanded] { display: none; }

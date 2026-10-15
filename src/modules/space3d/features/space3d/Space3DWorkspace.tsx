@@ -115,19 +115,12 @@ const ANALYSIS_MODE_LABEL_KEYS: Record<Space3DAnalysisMode, TranslationKey> = {
   spectrum: 'space3d.analysisModeSpectrum',
 };
 
-function EmbeddedInspector({ embedded, expanded, children }: { embedded: boolean; expanded: boolean; children: ReactNode }) {
-  return embedded ? <ShellContribution slot="inspector">{children}</ShellContribution>
-    : <div className="space3d-sheet" data-expanded={expanded || undefined}>{children}</div>;
-}
-
 interface Space3DWorkspaceProps {
   readonly canonicalProject?: Space3DProjectV1;
   readonly retainedHistory?: Space3DHistory | null;
   readonly onHistoryChange?: (history: Space3DHistory) => void;
   readonly onProjectChange?: (project: Space3DProjectV1) => void;
   readonly language: Language;
-  /** Render the 3D surface inside the global workbench shell. */
-  readonly embedded?: boolean;
   readonly storage?: Space3DStorageLike | null;
   readonly client?: Space3DWorkerClient;
   readonly createViewport?: Space3DViewportFactory;
@@ -242,10 +235,10 @@ interface Space3DStudyFeedback {
 const LABELS_BY_DEFAULT_LIMIT = 30;
 
 interface WorkspaceBodyProps extends Pick<Space3DWorkspaceProps,
-  'language' | 'embedded' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange' | 'startCamera' | 'onCameraRelease' | 'startSelection' | 'onSelectionChange'> {}
+  'language' | 'createViewport' | 'onProjectChange' | 'startIntent' | 'incomingProject' | 'startView' | 'onViewChange' | 'startCamera' | 'onCameraRelease' | 'startSelection' | 'onSelectionChange'> {}
 
 const WorkspaceBody = ({
-  language, embedded = false, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange, startCamera, onCameraRelease, startSelection, onSelectionChange,
+  language, createViewport, onProjectChange, startIntent, incomingProject, startView, onViewChange, startCamera, onCameraRelease, startSelection, onSelectionChange,
 }: WorkspaceBodyProps) => {
   // El inglés se carga bajo demanda; al llegar, la versión cambia y la mesa se traduce.
   const [catalogVersion, setCatalogVersion] = useState(0);
@@ -314,7 +307,7 @@ const WorkspaceBody = ({
   const shellInspector = useShellInspector();
   const setSheetExpanded = (value: boolean | ((current: boolean) => boolean)) => {
     setLocalSheetExpanded(value);
-    if (embedded && shellInspector?.mobile && value !== false && document.activeElement instanceof HTMLElement) shellInspector.show(document.activeElement);
+    if (shellInspector?.mobile && value !== false && document.activeElement instanceof HTMLElement) shellInspector.show(document.activeElement);
   };
   const [resultMode, setResultMode] = useState<Space3DResultMode>('model');
   const [lastAnalyzedAt, setLastAnalyzedAt] = useState<number | null>(null);
@@ -1332,7 +1325,7 @@ const WorkspaceBody = ({
     <span className={`space3d-state space3d-state--${STATE_TONES[analysisState]}`}>{stateLabel}</span>
   </footer>;
 
-  const phoneDock = embedded && Boolean(shellInspector?.mobile);
+  const phoneDock = Boolean(shellInspector?.mobile);
 
   // Banda de resultados al pie del lienzo, como el «Centro analítico» de 2D: el
   // dato que gobierna y un acceso al panel con las tablas.
@@ -1362,8 +1355,7 @@ const WorkspaceBody = ({
   })();
   const openResults = (element: HTMLElement) => {
     setPanel('analysis');
-    if (embedded && shellInspector) shellInspector.reveal(element);
-    else setSheetExpanded(true);
+    shellInspector?.reveal(element);
   };
   const resultsBand = bandHeadline ? <section className="space3d-results-band" aria-label={t('space3d.band.label')}>
     <div className="space3d-results-band-copy">
@@ -1375,23 +1367,13 @@ const WorkspaceBody = ({
     </button>
   </section> : null;
 
-  return <div className="space3d-screen" data-space3d-layout="workbench" data-embedded={embedded || undefined}>
-    {embedded ? <>
-      <ShellContribution slot="controls">
-        <button type="button" className="workspace-topbar__icon-button" onClick={undo} disabled={!canUndo} aria-label={t('space3d.undo')} title={t('space3d.undo')}><Undo2 size={17} aria-hidden="true" /></button>
-        <button type="button" className="workspace-topbar__icon-button" onClick={redo} disabled={!canRedo} aria-label={t('space3d.redo')} title={t('space3d.redo')}><Redo2 size={17} aria-hidden="true" /></button>
-      </ShellContribution>
-      <ShellContribution slot="action">{analyzeButton('workspace-topbar__action-button is-primary')}</ShellContribution>
-      <ShellContribution slot="status"><ShellStatusChip tone={SHELL_TONES[analysisState] ?? 'neutral'} label={stateLabel} badge={t('space3d.badge')} /></ShellContribution>
-    </> : <header className="space3d-localbar">
-      <strong className="space3d-localbar-title">{project.name}</strong>
-      <span className="space3d-badge">{t('space3d.badge')}</span>
-      <div className="space3d-localbar-actions">
-        <button type="button" className="space3d-tool" onClick={undo} disabled={!canUndo} aria-label={t('space3d.undo')} title={t('space3d.undo')}><Undo2 size={16} aria-hidden="true" /></button>
-        <button type="button" className="space3d-tool" onClick={redo} disabled={!canRedo} aria-label={t('space3d.redo')} title={t('space3d.redo')}><Redo2 size={16} aria-hidden="true" /></button>
-        {analyzeButton('space3d-button space3d-button--primary')}
-      </div>
-    </header>}
+  return <div className="space3d-screen" data-space3d-layout="workbench">
+    <ShellContribution slot="controls">
+      <button type="button" className="workspace-topbar__icon-button" onClick={undo} disabled={!canUndo} aria-label={t('space3d.undo')} title={t('space3d.undo')}><Undo2 size={17} aria-hidden="true" /></button>
+      <button type="button" className="workspace-topbar__icon-button" onClick={redo} disabled={!canRedo} aria-label={t('space3d.redo')} title={t('space3d.redo')}><Redo2 size={17} aria-hidden="true" /></button>
+    </ShellContribution>
+    <ShellContribution slot="action">{analyzeButton('workspace-topbar__action-button is-primary')}</ShellContribution>
+    <ShellContribution slot="status"><ShellStatusChip tone={SHELL_TONES[analysisState] ?? 'neutral'} label={stateLabel} badge={t('space3d.badge')} /></ShellContribution>
 
     {errorMessage ? <div className="space3d-diagnostics">
       <p className="space3d-notice space3d-notice--error" role="alert">{errorMessage}</p>
@@ -1561,7 +1543,7 @@ const WorkspaceBody = ({
       {resultsBand}
     </div>
 
-    <EmbeddedInspector embedded={embedded} expanded={sheetExpanded}>
+    <ShellContribution slot="inspector">
       <div className="space3d-inspector">
         {/* Con resultados, la ruta ya se recorrió: basta una línea y el panel es para los números. */}
         <Space3DGuide
@@ -1585,7 +1567,7 @@ const WorkspaceBody = ({
         </div>
         {panel === 'model' ? modelSection : analysisSection}
       </div>
-    </EmbeddedInspector>
+    </ShellContribution>
 
     <Dialog
       open={transfer !== null}
@@ -1677,7 +1659,7 @@ const WorkspaceBody = ({
       /> : null}
     </Suspense>
 
-    {embedded ? <ShellContribution slot="statusbar">{statusBar}</ShellContribution> : statusBar}
+    <ShellContribution slot="statusbar">{statusBar}</ShellContribution>
     <span data-testid="space3d-analysis-state" className="space3d-visually-hidden">{analysisState}</span>
     <span data-testid="space3d-deformed-visible" className="space3d-visually-hidden">{String(scene.deformed !== null)}</span>
   </div>;
