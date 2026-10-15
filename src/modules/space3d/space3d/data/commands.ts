@@ -117,6 +117,13 @@ const requirePositive = (value: unknown, label: string) => {
   if ((value as number) <= 0) fail('invalid-value', `${label} debe ser mayor que cero`);
 };
 
+/**
+ * Un cambio con `campo: undefined` borra el campo (quitar un resorte o una
+ * zona rígida) en vez de dejar la clave vacía en el documento.
+ */
+const withoutUndefined = <T extends object>(value: T): T =>
+  Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
+
 const checkNodeShape = (node: Space3DNode) => {
   requireId(node.id, 'el nudo');
   for (const axis of ['x', 'y', 'z'] as const) {
@@ -183,7 +190,7 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
 
     case 'update-node': {
       const current = requireExisting(project.nodes, command.nodeId, 'el nudo');
-      const next = { ...current, ...command.changes, id: current.id };
+      const next = withoutUndefined({ ...current, ...command.changes, id: current.id });
       checkNodeShape(next);
       return finish(project, { ...project, nodes: project.nodes.map((node) => (node.id === current.id ? next : node)) });
     }
@@ -219,7 +226,7 @@ export const applySpace3DCommand = (project: Space3DProjectV1, command: Space3DC
 
     case 'update-member': {
       const current = requireExisting(project.members, command.memberId, 'la barra');
-      const next = { ...current, ...command.changes, id: current.id };
+      const next = withoutUndefined({ ...current, ...command.changes, id: current.id });
       checkMemberShape(next);
       requireExisting(project.nodes, next.i, 'el nudo');
       requireExisting(project.nodes, next.j, 'el nudo');

@@ -32,6 +32,8 @@ interface Space3DResultsPanelProps {
   readonly t: (key: TranslationKey, variables?: Record<string, string | number>) => string;
   readonly onSelectNode: (id: string) => void;
   readonly onSelectMember: (id: string) => void;
+  /** Nudos con resortes de apoyo: su fila de reacciones incluye −k·u. */
+  readonly springNodeIds?: ReadonlySet<string>;
 }
 
 const TABS: readonly { id: Space3DResultsTab; key: TranslationKey }[] = [
@@ -94,7 +96,7 @@ const peak = <T,>(items: readonly T[], measure: (item: T) => number): { item: T;
 };
 
 export const Space3DResultsPanel = ({
-  analysis, analysisState, tab, onTabChange, deformationScale, maxDisplacement, t, onSelectNode, onSelectMember,
+  analysis, analysisState, tab, onTabChange, deformationScale, maxDisplacement, t, onSelectNode, onSelectMember, springNodeIds,
 }: Space3DResultsPanelProps) => {
   const usable = analysis?.success ? analysis : null;
 
@@ -184,7 +186,7 @@ export const Space3DResultsPanel = ({
               {DOFS.map((dof) => <td key={dof}>{engineering(item.displacement[dof])}</td>)}
             </tr>,
             <tr key={`${item.nodeId}-r`} className="space3d-row-secondary">
-              <th scope="row"><span aria-hidden="true">{item.nodeId}</span><em>{t('space3d.reaction')}</em></th>
+              <th scope="row"><span aria-hidden="true">{item.nodeId}</span><em>{t(springNodeIds?.has(item.nodeId) ? 'space3d.reactionWithSpring' : 'space3d.reaction')}</em></th>
               {DOFS.map((dof) => <td key={dof}>{engineering(item.reaction[dof], 4)}</td>)}
             </tr>,
           ])}

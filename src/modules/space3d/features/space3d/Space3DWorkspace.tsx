@@ -64,7 +64,7 @@ import type { Space3DAnalysisMode } from './space3dWorkspaceModel';
 import { isCatalogReady, loadCatalog, translate, type Language, type TranslationKey } from '../../i18n/catalogs';
 import { formatSpace3DNumber } from './space3dNumberFormat';
 import type { Space3DCommand } from '../../space3d/data/commands';
-import type { Space3DProjectV1, Space3DVector } from '../../space3d/model/types';
+import { SPACE3D_DOF_KEYS, type Space3DProjectV1, type Space3DVector } from '../../space3d/model/types';
 import type { Space3DStorageLike } from '../../space3d/data/storage';
 import type { Space3DWorkerClient } from '../../space3d/runtime/workerClient';
 import { ShellContribution, ShellStatusChip, useShellInspector, type ShellStatusTone } from '../../../../features/workspace/ShellToolSlots';
@@ -360,6 +360,10 @@ const WorkspaceBody = ({
   }, [project]);
 
   const grid = useMemo(() => resolveSpace3DGrid(project), [project]);
+  // Sólo los nudos con algún resorte que actúa (en un GDL no restringido).
+  const springNodeIds = useMemo(() => new Set(project.nodes
+    .filter((node) => SPACE3D_DOF_KEYS.some((dof) => (node.springs?.[dof] ?? 0) > 0 && !node.restraints[dof]))
+    .map((node) => node.id)), [project]);
   const viewOptions = useMemo(() => space3DViewOptions(grid), [grid]);
   const view = resolveSpace3DView(viewOptions, viewId);
   const activeView = view.preset;
@@ -1181,6 +1185,7 @@ const WorkspaceBody = ({
       t={t}
       onSelectNode={(id) => selectEntity({ kind: 'node', id }, true)}
       onSelectMember={(id) => selectEntity({ kind: 'member', id }, true)}
+      springNodeIds={springNodeIds}
     />
   </div>;
 
