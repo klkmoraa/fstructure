@@ -1,7 +1,7 @@
 import type { ConcreteSectionGroup } from '../../../data/concreteFrame';
 import type { DesignCodeId } from '../../../design/elements/codes';
 import type { StructureDesignResult } from '../../../design/elements/structure';
-import { designFromDraft, type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome } from './frameCalculation';
+import { designFromDraft, frameCantilevers, uniformStory, type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome } from './frameCalculation';
 import type { ModelSectionsBridge } from './WorkbenchLayout';
 import { parseNumber } from './formNumbers';
 
@@ -42,8 +42,10 @@ const MAX_TRIALS = 90;
 interface Candidate { readonly b: number; readonly h: number; readonly c: number }
 
 /** Volumen de concreto de vigas y columnas del pórtico rápido con las secciones del borrador, m³. */
-export function frameConcreteVolume(draft: Pick<FrameDraft, 'beamWidth' | 'beamHeight' | 'columnWidth' | 'columnHeight'>, bays: readonly BayDraft[], stories: readonly StoryDraft[]): number {
-  const beamLength = bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0);
+export function frameConcreteVolume(draft: Pick<FrameDraft, 'beamWidth' | 'beamHeight' | 'columnWidth' | 'columnHeight'> & Partial<Pick<FrameDraft, 'cantLeft' | 'cantRight'>>, bays: readonly BayDraft[], stories: readonly StoryDraft[]): number {
+  // Los voladizos llevan la viga del nivel.
+  const cantilever = (length: string | undefined) => length && length.trim() !== '' ? parseNumber(length) : 0;
+  const beamLength = bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0) + cantilever(draft.cantLeft) + cantilever(draft.cantRight);
   return stories.reduce((volume, story) => volume + (
     beamLength * parseNumber(story.beamWidth ?? draft.beamWidth) * parseNumber(story.beamHeight ?? draft.beamHeight)
     + parseNumber(story.height) * (bays.length + 1) * parseNumber(story.columnWidth ?? draft.columnWidth) * parseNumber(story.columnHeight ?? draft.columnHeight)
@@ -282,9 +284,12 @@ export function frameProposalStories(stories: readonly StoryDraft[], proposal: S
 
 export function proposeFrameSections(code: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): Generator<ProposalStep, void, void> {
   // La referencia uniforme ignora las secciones previamente propuestas por nivel.
-  const plain = stories.map(({ height, dead, live, lateral }) => ({ height, dead, live, lateral }));
+  const plain = stories.map(uniformStory);
+  const cantilevers = frameCantilevers(draft);
+  const cantileverIds = (level: number) => [...(cantilevers?.left ? [`V${level}-VI`] : []), ...(cantilevers?.right ? [`V${level}-VD`] : [])];
+  const beamLength = bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0) + (cantilevers?.left?.lengthM ?? 0) + (cantilevers?.right?.lengthM ?? 0);
   const groups: ConcreteSectionGroup[] = plain.flatMap((story, index) => [
-    { id: `beam:${index}`, label: `Vigas N${index + 1}`, kind: 'beam' as const, memberIds: bays.map((_, b) => `V${index + 1}-${b + 1}`), lengthM: bays.reduce((sum, bay) => sum + parseNumber(bay.length), 0), width: 0, height: 0 },
+    { id: `beam:${index}`, label: `Vigas N${index + 1}`, kind: 'beam' as const, memberIds: [...bays.map((_, b) => `V${index + 1}-${b + 1}`), ...cantileverIds(index + 1)], lengthM: beamLength, width: 0, height: 0 },
     { id: `column:${index}`, label: `Columnas N${index}–N${index + 1}`, kind: 'column' as const, memberIds: Array.from({ length: bays.length + 1 }, (_, c) => `C${c + 1}-${index + 1}`), lengthM: parseNumber(story.height) * (bays.length + 1), width: 0, height: 0 },
   ]);
   return trimSectionGroups(proposeUniformFrameSections(code, draft, bays, plain), groups,

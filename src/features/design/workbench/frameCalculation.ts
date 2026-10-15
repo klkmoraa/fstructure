@@ -1,6 +1,6 @@
 import { designCode, type DesignCodeId } from '../../../design/elements/codes';
 import type { ColumnGroup } from '../../../design/elements/column';
-import { MAX_FRAME_BAYS, MAX_FRAME_STORIES, designFrame, type FrameDesignInput, type FrameDesignResult } from '../../../design/elements/frame';
+import { MAX_FRAME_BAYS, MAX_FRAME_POINT_LOADS, MAX_FRAME_STORIES, designFrame, type FrameCantilever, type FrameDesignInput, type FrameDesignResult, type FramePointLoad } from '../../../design/elements/frame';
 import { designStructure, type ExternalStructureAxes, type ExternalStructureSource, type StructureDesignOptions, type StructureDesignResult } from '../../../design/elements/structure';
 import { isShortString, mpaFromKgcm2, parseNumber, sustainedRatioFor, xiFor } from './formNumbers';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
@@ -26,13 +26,73 @@ export const FRAME_DEFAULTS = {
   beamInertia: '1', columnInertia: '1', k: '',
   /** Cargas desde la losa: ancho tributario (m), muerta y viva de la losa (kN/m²) y muros sobre la viga (kN/m). */
   tributary: '4', slabDead: '4.5', slabLive: '1.9', wallLoad: '4',
+  /**
+   * Voladizos del pórtico rápido (m desde el eje de la columna extrema; vacío,
+   * sin voladizo) y su carga de servicio: uniforme (kN/m) y en la punta (kN),
+   * la misma en los dos lados y en todos los niveles.
+   */
+  cantLeft: '', cantRight: '', cantDead: '15', cantLive: '5', cantTipDead: '0', cantTipLive: '0',
 };
 export type FrameDraft = typeof FRAME_DEFAULTS;
 /** Borradores y memorias guardados antes de la fuente Modelo 2D eran pórticos generados. */
 export const FRAME_LEGACY = { source: 'frame' } as const satisfies Partial<FrameDraft>;
 
 export type BayDraft = { length: string };
-export type StoryDraft = { height: string; dead: string; live: string; lateral: string; beamWidth?: string; beamHeight?: string; columnWidth?: string; columnHeight?: string };
+/**
+ * Un nivel del pórtico rápido. Sus cargas puntuales viajan en el mismo renglón
+ * (`p1`…`p8`, «claro|x|CM|CV», claro desde 0): así las guardan, sin cambiar de
+ * versión, el taller, el historial y la memoria del proyecto; un nivel guardado
+ * antes simplemente no tiene ninguna.
+ */
+export type StoryDraft = {
+  height: string; dead: string; live: string; lateral: string; beamWidth?: string; beamHeight?: string; columnWidth?: string; columnHeight?: string;
+  p1?: string; p2?: string; p3?: string; p4?: string; p5?: string; p6?: string; p7?: string; p8?: string;
+};
+/** Carga puntual del pórtico rápido como la edita la tabla: nivel y claro desde 0, posición desde el eje izquierdo del claro. */
+export type PointDraft = { level: number; bay: number; at: string; dead: string; live: string };
+
+const POINT_KEYS = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'] as const satisfies readonly (keyof StoryDraft)[];
+const SECTION_KEYS = ['beamWidth', 'beamHeight', 'columnWidth', 'columnHeight'] as const;
+/** Caracteres por valor en una carga puntual: los cuatro caben en un campo guardado (32). */
+export const POINT_FIELD_CHARS = 8;
+
+const decodePoint = (value: string | undefined) => {
+  const parts = value?.split('|');
+  if (!parts || parts.length !== 4 || !/^\d$/.test(parts[0]!)) return null;
+  return { bay: Number(parts[0]), at: parts[1]!, dead: parts[2]!, live: parts[3]! };
+};
+const encodePoint = (point: Pick<PointDraft, 'bay' | 'at' | 'dead' | 'live'>) =>
+  [String(point.bay), ...[point.at, point.dead, point.live].map((value) => value.replace(/\|/g, '').slice(0, POINT_FIELD_CHARS))].join('|');
+
+/** Las cargas puntuales de todos los niveles, de abajo hacia arriba. */
+export const pointsOfStories = (stories: readonly StoryDraft[]): PointDraft[] => stories.flatMap((story, level) =>
+  POINT_KEYS.flatMap((key) => { const point = decodePoint(story[key]); return point ? [{ level, ...point }] : []; }));
+
+/** Los niveles con estas cargas puntuales (las de un nivel que no existe, o más de las permitidas por nivel, no entran). */
+export const storiesWithPoints = (stories: readonly StoryDraft[], points: readonly PointDraft[]): StoryDraft[] => stories.map((story, level) => {
+  const next: StoryDraft = { ...story };
+  for (const key of POINT_KEYS) delete next[key];
+  points.filter((point) => point.level === level).slice(0, MAX_FRAME_POINT_LOADS).forEach((point, index) => { next[POINT_KEYS[index]!] = encodePoint(point); });
+  return next;
+});
+
+/** El nivel sin sus secciones propias (vuelve a las generales); conserva alturas, cargas y cargas puntuales. */
+export const uniformStory = (story: StoryDraft): StoryDraft => {
+  const next: StoryDraft = { ...story };
+  for (const key of SECTION_KEYS) delete next[key];
+  return next;
+};
+
+/** Un nivel nuevo copia el anterior sin sus cargas puntuales. */
+export const storyWithoutPoints = (story: StoryDraft): StoryDraft => {
+  const next: StoryDraft = { ...story };
+  for (const key of POINT_KEYS) delete next[key];
+  return next;
+};
+
+/** Quitar un claro quita sus cargas puntuales y recorre las de los claros siguientes. */
+export const storiesWithoutBay = (stories: readonly StoryDraft[], bay: number): StoryDraft[] =>
+  storiesWithPoints(stories, pointsOfStories(stories).flatMap((point) => point.bay === bay ? [] : [{ ...point, bay: point.bay > bay ? point.bay - 1 : point.bay }]));
 
 export const DEFAULT_BAYS: BayDraft[] = [{ length: '5' }, { length: '4' }];
 export const DEFAULT_STORIES: StoryDraft[] = [
@@ -53,7 +113,7 @@ export const parseBays = (raw: unknown) => rowsOf<BayDraft>(raw, ['length'], MAX
 export const parseStories = (raw: unknown): StoryDraft[] | undefined => {
   const base = rowsOf<StoryDraft>(raw, ['height', 'dead', 'live', 'lateral'], MAX_FRAME_STORIES);
   if (!base) return undefined;
-  for (let i = 0; i < base.length; i++) for (const key of ['beamWidth', 'beamHeight', 'columnWidth', 'columnHeight'] as const) {
+  for (let i = 0; i < base.length; i++) for (const key of [...SECTION_KEYS, ...POINT_KEYS]) {
     const value = (raw as Record<string, unknown>[])[i]![key];
     if (value !== undefined) { if (!isShortString(value)) return undefined; base[i]![key] = value; }
   }
@@ -74,6 +134,7 @@ export function frameModelSpec(codeId: DesignCodeId, draft: FrameDraft, bays: re
   return {
     bays: input.bays,
     stories: stories.map((story, index) => ({ ...input.stories[index]!, lateralKn: draft.lateral === 'yes' ? parseNumber(story.lateral) : 0 })),
+    ...(input.cantilevers ? { cantilevers: input.cantilevers } : {}),
     base: input.base,
     beam: input.beam,
     column: input.column,
@@ -83,20 +144,39 @@ export function frameModelSpec(codeId: DesignCodeId, draft: FrameDraft, bays: re
   };
 }
 
+/** Voladizos del borrador: un lado con longitud escrita lo tiene; vacío, no. */
+export function frameCantilevers(draft: Pick<FrameDraft, 'cantLeft' | 'cantRight' | 'cantDead' | 'cantLive' | 'cantTipDead' | 'cantTipLive'>): FrameDesignInput['cantilevers'] | undefined {
+  const value = (text: string) => text.trim() === '' ? 0 : parseNumber(text);
+  const of = (length: string): FrameCantilever | undefined => length.trim() === '' ? undefined : {
+    lengthM: parseNumber(length), deadKnPerM: value(draft.cantDead), liveKnPerM: value(draft.cantLive), tipDeadKn: value(draft.cantTipDead), tipLiveKn: value(draft.cantTipLive),
+  };
+  const left = of(draft.cantLeft);
+  const right = of(draft.cantRight);
+  return left || right ? { ...(left ? { left } : {}), ...(right ? { right } : {}) } : undefined;
+}
+
 function frameToInput(codeId: DesignCodeId, draft: FrameDraft, bays: readonly BayDraft[], stories: readonly StoryDraft[]): FrameDesignInput {
   const code = designCode(codeId);
   const group = loadGroupOf(draft.group);
   const lateral = code.lateralCombinations(group);
   const withLateral = draft.lateral === 'yes' && draft.braced !== 'yes';
   const optional = (value: string) => value.trim() === '' ? null : parseNumber(value);
+  const points = pointsOfStories(stories);
+  const cantilevers = frameCantilevers(draft);
   return {
     code: codeId,
     bays: bays.map((bay) => parseNumber(bay.length)),
-    stories: stories.map((story) => ({
+    ...(cantilevers ? { cantilevers } : {}),
+    stories: stories.map((story, level) => ({
       heightM: parseNumber(story.height),
       deadKnPerM: parseNumber(story.dead),
       liveKnPerM: parseNumber(story.live),
       lateralKn: withLateral ? parseNumber(story.lateral) : 0,
+      ...(points.some((point) => point.level === level) ? {
+        pointLoads: points.filter((point) => point.level === level).map((point): FramePointLoad => ({
+          bay: point.bay, atM: parseNumber(point.at), deadKn: parseNumber(point.dead), liveKn: parseNumber(point.live),
+        })),
+      } : {}),
       ...(story.beamWidth !== undefined ? { beam: { widthMm: parseNumber(story.beamWidth) * 10, heightMm: parseNumber(story.beamHeight ?? draft.beamHeight) * 10 } } : {}),
       ...(story.columnWidth !== undefined ? { column: { widthMm: parseNumber(story.columnWidth) * 10, heightMm: parseNumber(story.columnHeight ?? draft.columnHeight) * 10 } } : {}),
     })),
@@ -134,8 +214,12 @@ function frameToInput(codeId: DesignCodeId, draft: FrameDraft, bays: readonly Ba
 
 export const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
-export const describeFrame = (input: FrameDesignInput) =>
-  `${plural(input.bays.length, 'claro', 'claros')} × ${plural(input.stories.length, 'nivel', 'niveles')}${input.braced ? ' · arriostrado' : ''}`;
+export const describeFrame = (input: FrameDesignInput) => {
+  const cantilevers = [input.cantilevers?.left ? 'izq.' : '', input.cantilevers?.right ? 'der.' : ''].filter(Boolean);
+  const points = input.stories.reduce((total, story) => total + (story.pointLoads?.length ?? 0), 0);
+  return `${plural(input.bays.length, 'claro', 'claros')} × ${plural(input.stories.length, 'nivel', 'niveles')}`
+    + `${cantilevers.length ? ` · voladizo ${cantilevers.join(' y ')}` : ''}${points ? ` · ${plural(points, 'carga puntual', 'cargas puntuales')}` : ''}${input.braced ? ' · arriostrado' : ''}`;
+};
 
 /** Opciones de diseño comunes a las dos fuentes: materiales, armado de columnas y criterios. */
 export function structureOptions(codeId: DesignCodeId, draft: FrameDraft, fcMpa = mpaFromKgcm2(draft.fc)): StructureDesignOptions {

@@ -349,7 +349,10 @@ interface BeamDesignError {
 const STRENGTH_CHECKS = new Set(['flexure-positive', 'flexure-negative', 'shear', 'shear-section', 'deflection', 'deflection-live']);
 const AUTO_BAR_DIAMETERS = [12.7, 15.9, 19.1, 22.2, 25.4, 28.6, 31.8];
 const AUTO_STIRRUP_DIAMETERS = [9.5, 12.7, 15.9];
+/** Claros que se editan en el taller de la viga. */
 export const MAX_SPANS = 6;
+/** Claros de una línea de viga que llega de una estructura: cinco claros del pórtico y sus dos voladizos. */
+export const MAX_LINE_SPANS = 7;
 const TOLERANCE = 1e-9;
 /** E.060 9.9.3: Z ≤ 26 kN/mm. */
 const Z_LIMIT_KN_PER_MM = 26;
@@ -721,7 +724,7 @@ function validate(input: BeamDesignInput): string[] {
   }
   if (!Number.isFinite(input.sustainedLiveRatio) || input.sustainedLiveRatio < 0 || input.sustainedLiveRatio > 1) errors.push('La fracción sostenida de la carga viva debe estar entre 0 y 1.');
   if (!isPositiveFinite(input.longTermXi)) errors.push('El factor ξ de deflexión diferida debe ser mayor que cero.');
-  if (input.spans.length < 1 || input.spans.length > MAX_SPANS) errors.push(`La viga debe tener entre 1 y ${MAX_SPANS} claros.`);
+  if (input.spans.length < 1 || input.spans.length > MAX_LINE_SPANS) errors.push(`La viga debe tener entre 1 y ${MAX_LINE_SPANS} claros.`);
   input.spans.forEach((span, index) => {
     if (!isPositiveFinite(span.lengthM)) errors.push(`Claro ${index + 1}: la longitud debe ser mayor que cero.`);
     for (const [key, label] of [['deadKnPerM', 'carga muerta'], ['liveKnPerM', 'carga viva'], ['pointDeadKn', 'puntual muerta'], ['pointLiveKn', 'puntual viva']] as const) {

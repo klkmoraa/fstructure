@@ -230,6 +230,20 @@ export function FrameElevation({ result, kind, selected, onSelect }: {
     </g>
     {result.members.filter((member) => selected && member.designId === selected).map((member) =>
       <line key={`sel-${member.index}`} className="dw-frame__selected" x1={sx(member.start.x)} y1={sy(member.start.y)} x2={sx(member.end.x)} y2={sy(member.end.y)} />)}
+    {/* Cargas puntuales de servicio (CM + CV) sobre las vigas, en la vista de utilización. */}
+    {kind === 'ratio' ? <g className="dw-load dw-load--point dw-frame__points">
+      {result.members.flatMap((member) => (member.points ?? []).map((point, position) => {
+        const { at } = frameOf(member);
+        const base = at(point.atM, 0);
+        const total = point.deadKn + point.liveKn;
+        const label = `Carga puntual ${formatNumber(total, 1)} kN (CM ${formatNumber(point.deadKn, 1)} + CV ${formatNumber(point.liveKn, 1)}) a ${formatNumber(point.atM, 2)} m de ${member.label}`;
+        return <g key={`${member.index}-${position}`} aria-label={label}>
+          <title>{label}</title>
+          <line x1={base.x} x2={base.x} y1={base.y - 34} y2={base.y - 5} markerEnd="url(#dw-frame-arrow)" />
+          <text x={base.x + 4} y={base.y - 28}>{`${formatNumber(total, 0)} kN`}</text>
+        </g>;
+      }))}
+    </g> : null}
     {/* Nudos libres. */}
     <g className="dw-frame__nodes">
       {nodes.filter((node) => node.support === 'free').map((node, index) => <circle key={index} cx={sx(node.x)} cy={sy(node.y)} r={2.6} />)}
@@ -240,7 +254,9 @@ export function FrameElevation({ result, kind, selected, onSelect }: {
       {result.members.filter((member) => member.kind !== 'other').map((member) => {
         const geometry = frameOf(member);
         const horizontal = Math.abs(geometry.s) < 0.5;
-        const middle = geometry.at(geometry.length / 2, horizontal ? 12 : 0);
+        // El rótulo va al centro o, si ahí cae una carga puntual, donde no la tape.
+        const clear = [0.5, 0.3, 0.7, 0.2, 0.8].find((fraction) => !(member.points ?? []).some((point) => Math.abs(point.atM / geometry.length - fraction) < 0.12)) ?? 0.5;
+        const middle = geometry.at(geometry.length * clear, horizontal ? 12 : 0);
         const pending = member.status === 'warning';
         const label = `${percent(member.ratio)}${pending ? ' · revisión pendiente' : ''}`;
         return <text key={member.index} x={middle.x + (horizontal ? 0 : 8)} y={middle.y + (horizontal ? -2 : 4)}

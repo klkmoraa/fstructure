@@ -12,7 +12,17 @@ export interface ConcreteFrameSpec {
   /** Claros entre ejes, de izquierda a derecha (m). */
   readonly bays: readonly number[];
   /** Niveles de abajo hacia arriba: altura (m), cargas de servicio sobre las vigas (kN/m) y fuerza lateral del nivel (kN). */
-  readonly stories: readonly { readonly heightM: number; readonly deadKnPerM: number; readonly liveKnPerM: number; readonly lateralKn: number; readonly beam?: { widthMm: number; heightMm: number }; readonly column?: { widthMm: number; heightMm: number } }[];
+  readonly stories: readonly {
+    readonly heightM: number; readonly deadKnPerM: number; readonly liveKnPerM: number; readonly lateralKn: number;
+    readonly beam?: { widthMm: number; heightMm: number }; readonly column?: { widthMm: number; heightMm: number };
+    /** Cargas puntuales de servicio sobre las vigas: claro desde 0 y distancia desde su eje izquierdo (m), kN. */
+    readonly pointLoads?: readonly { readonly bay: number; readonly atM: number; readonly deadKn: number; readonly liveKn: number }[];
+  }[];
+  /** Voladizos a la izquierda y a la derecha en todos los niveles: longitud (m), carga uniforme (kN/m) y en la punta (kN). */
+  readonly cantilevers?: {
+    readonly left?: ConcreteFrameCantilever;
+    readonly right?: ConcreteFrameCantilever;
+  };
   readonly base: 'fixed' | 'pinned';
   readonly beam: { readonly widthMm: number; readonly heightMm: number };
   readonly column: { readonly widthMm: number; readonly heightMm: number };
@@ -20,6 +30,14 @@ export interface ConcreteFrameSpec {
   /** Módulo de elasticidad del concreto (kN/m²) cuando f′c no está en el catálogo. */
   readonly elasticModulusKpa: number;
   readonly includeSelfWeight: boolean;
+}
+
+export interface ConcreteFrameCantilever {
+  readonly lengthM: number;
+  readonly deadKnPerM: number;
+  readonly liveKnPerM: number;
+  readonly tipDeadKn: number;
+  readonly tipLiveKn: number;
 }
 
 type FrameParts = Pick<ProjectModel, 'nodes' | 'members' | 'loadCases' | 'combinations' | 'nodalLoads' | 'memberLoads'>;
@@ -51,9 +69,18 @@ export function concreteFrameModel(spec: ConcreteFrameSpec): FrameParts {
   })));
   const member = (id: string, i: string, j: string, section: typeof beam): MemberModel => ({ id, i, j, type: 'frame', ...material, ...section });
   const levels = spec.stories.map((_, index) => index + 1);
+  const left = spec.cantilevers?.left;
+  const right = spec.cantilevers?.right;
+  // Punta de cada voladizo: un nudo libre por nivel.
+  for (const level of spec.stories.map((_, index) => index + 1)) {
+    if (left) nodes.push({ id: `NVI${level}`, x: -left.lengthM, y: ys[level]!, support: { type: 'none' } });
+    if (right) nodes.push({ id: `NVD${level}`, x: xs[xs.length - 1]! + right.lengthM, y: ys[level]!, support: { type: 'none' } });
+  }
   const members: MemberModel[] = [
     ...levels.flatMap((level) => xs.map((_, axis) => member(`C${axis + 1}${level}`, nodeId(axis, level - 1), nodeId(axis, level), sectionOf(spec.stories[level - 1]!.column ?? spec.column)))),
     ...levels.flatMap((level) => spec.bays.map((_, bay) => member(`V${bay + 1}${level}`, nodeId(bay, level), nodeId(bay + 1, level), sectionOf(spec.stories[level - 1]!.beam ?? spec.beam)))),
+    ...(left ? levels.map((level) => member(`VI${level}`, `NVI${level}`, nodeId(0, level), sectionOf(spec.stories[level - 1]!.beam ?? spec.beam))) : []),
+    ...(right ? levels.map((level) => member(`VD${level}`, nodeId(xs.length - 1, level), `NVD${level}`, sectionOf(spec.stories[level - 1]!.beam ?? spec.beam))) : []),
   ];
   const uniform = (memberId: string, caseId: string, q: number): MemberLoad => ({
     id: `${caseId}-${memberId}`, memberId, caseId, type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1,
@@ -70,13 +97,33 @@ export function concreteFrameModel(spec: ConcreteFrameSpec): FrameParts {
     { id: 'U1', name: '1.2 CM + 1.6 CV', factors: { CM: 1.2, CV: 1.6 } },
     ...(lateral ? [{ id: 'U2', name: '1.2 CM + 1.0 CV + 1.0 S', factors: { CM: 1.2, CV: 1, S: 1 } }] : []),
   ];
-  const memberLoads = levels.flatMap((level) => spec.bays.flatMap((_, bay) => {
-    const story = spec.stories[level - 1]!;
-    return [
-      ...(story.deadKnPerM ? [uniform(`V${bay + 1}${level}`, 'CM', story.deadKnPerM)] : []),
-      ...(story.liveKnPerM ? [uniform(`V${bay + 1}${level}`, 'CV', story.liveKnPerM)] : []),
-    ];
-  }));
+  const point = (memberId: string, caseId: string, kN: number, position: number, index: number): MemberLoad => ({
+    id: `${caseId}-${memberId}-P${index + 1}`, memberId, caseId, type: 'point', coordinateSystem: 'global', lengthBasis: 'real', start: position, end: position, position, px: 0, py: -kN,
+  });
+  const memberLoads = [
+    ...levels.flatMap((level) => spec.bays.flatMap((length, bay) => {
+      const story = spec.stories[level - 1]!;
+      const memberId = `V${bay + 1}${level}`;
+      const points = (story.pointLoads ?? []).filter((item) => item.bay === bay);
+      return [
+        ...(story.deadKnPerM ? [uniform(memberId, 'CM', story.deadKnPerM)] : []),
+        ...(story.liveKnPerM ? [uniform(memberId, 'CV', story.liveKnPerM)] : []),
+        ...points.flatMap((item, index) => [
+          ...(item.deadKn ? [point(memberId, 'CM', item.deadKn, item.atM / length, index)] : []),
+          ...(item.liveKn ? [point(memberId, 'CV', item.liveKn, item.atM / length, index)] : []),
+        ]),
+      ];
+    })),
+    ...([[left, 'VI', 0], [right, 'VD', 1]] as const).flatMap(([cantilever, prefix, tip]) => cantilever ? levels.flatMap((level) => {
+      const memberId = `${prefix}${level}`;
+      return [
+        ...(cantilever.deadKnPerM ? [uniform(memberId, 'CM', cantilever.deadKnPerM)] : []),
+        ...(cantilever.liveKnPerM ? [uniform(memberId, 'CV', cantilever.liveKnPerM)] : []),
+        ...(cantilever.tipDeadKn ? [point(memberId, 'CM', cantilever.tipDeadKn, tip, 0)] : []),
+        ...(cantilever.tipLiveKn ? [point(memberId, 'CV', cantilever.tipLiveKn, tip, 0)] : []),
+      ];
+    }) : []),
+  ];
   // La fuerza lateral de cada nivel se reparte por igual entre sus nudos.
   const nodalLoads: NodalLoad[] = lateral ? levels.flatMap((level) => {
     const force = spec.stories[level - 1]!.lateralKn / xs.length;

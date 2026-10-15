@@ -292,6 +292,8 @@ export interface StructureDiagramMember {
   readonly end: { readonly x: number; readonly y: number };
   /** Posiciones locales desde el nudo i, m. */
   readonly stations: readonly number[];
+  /** Cargas puntuales de servicio del miembro (a `atM` m del nudo i), para dibujarlas. */
+  readonly points?: readonly { readonly atM: number; readonly deadKn: number; readonly liveKn: number }[];
   readonly momentMaxKnm: readonly number[];
   readonly momentMinKnm: readonly number[];
   readonly shearMaxKn: readonly number[];
@@ -1041,8 +1043,8 @@ export function designStructure(source: StructureSource, options: StructureDesig
   const diagramMembers: StructureDiagramMember[] = members.map((member, index) => {
     const length = lengths[index]!;
     // Estaciones uniformes y, en cada carga puntual interior, una a cada lado del salto.
-    const pointsAt = (member.displayPoints ?? (member.displayPoint ? [member.displayPoint] : []))
-      .map((point) => point.atM).filter((atM) => atM > TOLERANCE && atM < length - TOLERANCE);
+    const memberPoints = member.displayPoints ?? (member.displayPoint ? [member.displayPoint] : []);
+    const pointsAt = memberPoints.map((point) => point.atM).filter((atM) => atM > TOLERANCE && atM < length - TOLERANCE);
     const marks = [
       ...Array.from({ length: MEMBER_STATIONS + 1 }, (_, step) => ({ x: length * step / MEMBER_STATIONS, side: 'left' as const })),
       ...pointsAt.flatMap((atM) => [{ x: atM, side: 'left' as const }, { x: atM, side: 'right' as const }]),
@@ -1082,6 +1084,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
       start: { x: nodes[member.i]!.x, y: nodes[member.i]!.y },
       end: { x: nodes[member.j]!.x, y: nodes[member.j]!.y },
       stations,
+      ...(memberPoints.length ? { points: memberPoints.map(({ atM, deadKn, liveKn }) => ({ atM, deadKn, liveKn })) } : {}),
       momentMaxKnm: moment.max,
       momentMinKnm: moment.min,
       shearMaxKn: shearEnvelope.max,

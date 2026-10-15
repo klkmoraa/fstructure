@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { concreteFrameModel } from '../../data/concreteFrame';
 import { createDefaultProject } from '../../data/defaultProject';
 import { evaluateDiagramAt } from '../../engine/diagram';
 import { analyzeProject } from '../../engine/solver';
@@ -266,6 +267,26 @@ describe('pórtico con cargas puntuales y voladizo contra el oráculo Python', (
     const at = (kind: 'dead' | 'live') => sum(kind, (caseIndex) => outcome.cases[caseIndex]!.at(root, 0).moment);
     expect(at('dead')).toBeCloseTo(-(tip.deadKnPerM * tip.lengthM ** 2 / 2 + tip.tipDeadKn * tip.lengthM), 8);
     expect(at('live')).toBeCloseTo(-(tip.liveKnPerM * tip.lengthM ** 2 / 2 + tip.tipLiveKn * tip.lengthM), 8);
+  });
+
+  it('el mismo pórtico pasado al Modelo 2D da las reacciones del oráculo en el solver 2D', () => {
+    const spec = {
+      bays: data.bays,
+      stories: input.stories.map((story) => ({ ...story })),
+      cantilevers: { right: data.cantileverRight },
+      base: 'fixed' as const, beam: data.beam, column: data.column, fcMpa: 25, elasticModulusKpa: 25e6, includeSelfWeight: false,
+    };
+    const project = { ...createDefaultProject(), ...concreteFrameModel(spec), prescribedDisplacements: [], memberInitialEffects: [], nodeLinks: [], multiPointConstraints: [], generatedLoadSources: [], movingLoadCases: [], designAssignments: [] };
+    for (const [kind, caseId] of [['dead', 'CM'], ['live', 'CV'], ['lateral', 'S']] as const) {
+      const engine = analyzeProject(project, { id: 'c', name: 'c', factors: { [caseId]: 1 } }, { includeEducationTrace: false });
+      expect(engine.success).toBe(true);
+      fixture.expected[kind].baseReactions.forEach(([rx, ry, rm], line) => {
+        const node = engine.nodeResults.find((item) => item.nodeId === `N${line + 1}0`)!;
+        close(node.rx, rx);
+        close(node.ry, ry);
+        close(node.rm, rm);
+      });
+    }
   });
 
   it('diseña la línea de viga con el voladizo como extremo libre y cada carga con su salto de cortante', () => {

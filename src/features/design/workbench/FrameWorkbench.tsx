@@ -4,7 +4,7 @@ import { SegmentedControl, Select } from '../../../design-system/components/cont
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
 import { barsText } from '../../../design/elements/beam';
 import { designCode, type DesignCodeId } from '../../../design/elements/codes';
-import { MAX_FRAME_BAYS, MAX_FRAME_STORIES } from '../../../design/elements/frame';
+import { MAX_FRAME_BAYS, MAX_FRAME_POINT_LOADS, MAX_FRAME_STORIES } from '../../../design/elements/frame';
 import { rebarLabel } from '../../../design/elements/shared';
 import type { ConcreteFrameSpec } from '../../../data/concreteFrame';
 import type { ExternalStructureSource, StructureDesignResult } from '../../../design/elements/structure';
@@ -20,14 +20,16 @@ import { commitWorkbenchBatch } from './workbenchStorage';
 import type { JsonValue } from '../../../shared/project/unifiedProjectBundle';
 import { FRAME_DIAGRAMS, FrameElevation, ratioBand, type FrameDiagramKind } from './FrameDrawings';
 import {
-  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, axisOf, designFromDraftAsync, designFromDraft, designOfMember, memberIdsOf, plural, externalFor, frameModelSpec, fromProjectModel, describeStructure, frameSlabLoads, parseBays, parseStories, structureReport,
-  type BayDraft, type FrameDraft, type StoryDraft, type StructureOutcome,
+  DEFAULT_BAYS, DEFAULT_STORIES, FRAME_DEFAULTS, FRAME_LEGACY, POINT_FIELD_CHARS, axisOf, designFromDraftAsync, designOfMember, memberIdsOf, plural, externalFor, frameModelSpec, fromProjectModel,
+  describeStructure, frameSlabLoads, parseBays, parseStories, pointsOfStories, storiesWithPoints, storiesWithoutBay, storyWithoutPoints, structureReport, uniformStory,
+  type BayDraft, type FrameDraft, type PointDraft, type StoryDraft, type StructureOutcome,
 } from './frameModel';
 import { afterTransition } from '../../../design-system/afterTransition';
 import { BuildingAxes } from './BuildingAxes';
 import { frameConcreteVolume, frameProposalStories, proposeFrameSections, proposeModelSections, type ProposalStep, type SectionProposal } from './frameProposal';
 import { startProposalWorker } from './proposalWorker';
 import { useWorkbenchStorage } from './workbenchStorage';
+import { designFrameAsync } from './frameDesignClient';
 import { Plate, WorkbenchLayout, missingDataVerdict, verdictLabel, type WorkbenchChrome } from './WorkbenchLayout';
 import { MaterialFields } from './MaterialFields';
 
@@ -70,6 +72,60 @@ function RowsTable<T extends Record<string, string | undefined>>({ rows, columns
   </div>;
 }
 
+/**
+ * Cargas puntuales de servicio sobre las vigas del pórtico rápido: nivel y
+ * claro se eligen (no pueden quedar fuera del pórtico); x se mide desde el eje
+ * izquierdo del claro.
+ */
+function PointLoadsTable({ points, stories, bays, onChange }: {
+  points: readonly PointDraft[];
+  stories: number;
+  bays: readonly BayDraft[];
+  onChange: (points: PointDraft[]) => void;
+}) {
+  const full = (level: number) => points.filter((point) => point.level === level).length >= MAX_FRAME_POINT_LOADS;
+  const update = (index: number, patch: Partial<PointDraft>) => onChange(points.map((point, position) => position === index ? { ...point, ...patch } : point));
+  const freeLevel = Array.from({ length: stories }, (_, level) => level).find((level) => !full(level));
+  const add = () => {
+    if (freeLevel === undefined) return;
+    const last = points[points.length - 1];
+    const level = last && !full(last.level) ? last.level : freeLevel;
+    const bay = last ? Math.min(last.bay, bays.length - 1) : 0;
+    const half = parseNumber(bays[bay]?.length ?? '');
+    onChange([...points, { level, bay, at: Number.isFinite(half) ? String(Math.round(half / 2 * 100) / 100) : '0', dead: '20', live: '10' }]);
+  };
+  const invalid = (value: string, max?: number) => {
+    const parsed = parseNumber(value);
+    return !Number.isFinite(parsed) || parsed < 0 || (max !== undefined && Number.isFinite(max) && parsed > max);
+  };
+  return <div className="dw-spans dw-points" style={{ '--cols': 5 } as CSSProperties}>
+    {points.length ? <div className="dw-spans__row dw-spans__head" aria-hidden="true">
+      <span>Nivel</span><span>Claro</span><span>x<small>m</small></span><span>CM<small>kN</small></span><span>CV<small>kN</small></span>
+      <span />
+    </div> : null}
+    {points.map((point, index) => {
+      const length = parseNumber(bays[point.bay]?.length ?? '');
+      const name = `Carga puntual ${index + 1}`;
+      return <div key={index} className="dw-spans__row" role="group" aria-label={name}>
+        <select aria-label={`${name} · nivel`} value={point.level} onChange={(event) => update(index, { level: Number(event.currentTarget.value) })}>
+          {Array.from({ length: stories }, (_, level) => <option key={level} value={level} disabled={level !== point.level && full(level)}>{`N${level + 1}`}</option>)}
+        </select>
+        <select aria-label={`${name} · claro`} value={point.bay} onChange={(event) => update(index, { bay: Number(event.currentTarget.value) })}>
+          {bays.map((_, bay) => <option key={bay} value={bay}>{bay + 1}</option>)}
+        </select>
+        {(['at', 'dead', 'live'] as const).map((field) => <input key={field} type="text" inputMode="decimal" maxLength={POINT_FIELD_CHARS} value={point[field]}
+          aria-invalid={invalid(point[field], field === 'at' ? length : undefined) || undefined}
+          aria-label={`${name} · ${field === 'at' ? 'x desde el eje izquierdo del claro (m)' : field === 'dead' ? 'CM (kN)' : 'CV (kN)'}`}
+          onChange={(event) => update(index, { [field]: event.currentTarget.value })} />)}
+        <button type="button" className="dw-icon-button" aria-label={`Quitar ${name.toLowerCase()}`} onClick={() => onChange(points.filter((_, position) => position !== index))}>
+          <Trash2 size={14} aria-hidden="true" />
+        </button>
+      </div>;
+    })}
+    {freeLevel !== undefined ? <button type="button" className="dw-add" onClick={add}><Plus size={14} aria-hidden="true" />Agregar carga puntual</button> : null}
+  </div>;
+}
+
 /** Lo que más se acerca al límite: lo que se muestra al abrir. */
 const governingDesign = (result: StructureDesignResult): string | null => {
   const items = [
@@ -109,12 +165,15 @@ function MemberGrid({ result, selected, onSelect }: { result: StructureDesignRes
 }
 
 /**
- * Cálculo diferido de la estructura de un modelo del proyecto (2D o un eje del
- * 3D): su análisis con el solver general puede tardar un segundo. Se calcula después de pintar y, mientras
- * tanto, no se publica un resultado de entradas anteriores.
+ * Cálculo diferido de la estructura: un modelo del proyecto (2D o un eje del
+ * 3D), cuyo análisis con el solver general puede tardar un segundo, o el
+ * pórtico rápido en su worker. Se calcula después de pintar; `outcome` es sólo
+ * el de las entradas actuales y `latest`, el último que llegó (el pórtico
+ * rápido lo sigue mostrando mientras recalcula).
  */
-function useDeferredOutcome(key: string, enabled: boolean, compute: (signal: AbortSignal) => StructureOutcome | Promise<StructureOutcome>) {
-  const [state, setState] = useState<{ key: string; outcome: StructureOutcome } | null>(null);
+function useDeferredOutcome<T extends StructureOutcome = StructureOutcome>(key: string, enabled: boolean, compute: (signal: AbortSignal) => T | Promise<T>,
+  failed: (errors: string[]) => T = (errors) => ({ ok: false, errors }) as unknown as T) {
+  const [state, setState] = useState<{ key: string; outcome: T } | null>(null);
   const latest = useRef(compute);
   latest.current = compute;
   useEffect(() => {
@@ -126,13 +185,18 @@ function useDeferredOutcome(key: string, enabled: boolean, compute: (signal: Abo
       void Promise.resolve().then(() => computeForKey(controller.signal)).then((outcome) => {
         if (!controller.signal.aborted) setState({key,outcome});
       }).catch((error:unknown) => {
-        if (!controller.signal.aborted) setState({key,outcome:{ok:false,errors:[error instanceof Error ? error.message : 'No se pudo diseñar.']}});
+        if (!controller.signal.aborted) setState({key,outcome:failed([error instanceof Error ? error.message : 'No se pudo diseñar.'])});
       });
     });
     return () => {controller.abort();cancel();};
   }, [key, enabled]);
-  return enabled ? { outcome: state?.key === key ? state.outcome : null, pending: state?.key !== key } : { outcome: null, pending: false };
+  return enabled
+    ? { outcome: state?.key === key ? state.outcome : null, latest: state?.outcome ?? null, pending: state?.key !== key }
+    : { outcome: null, latest: null, pending: false };
 }
+
+/** El resultado del pórtico rápido con el borrador que lo produjo (para su memoria mientras llega el siguiente). */
+type QuickOutcome = StructureOutcome & { readonly draft: FrameDraft };
 
 /**
  * Pórtico rápido → Modelo 2D: lo que se probó aquí se escribe en el modelo con
@@ -251,13 +315,18 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   // Pórtico rápido: cálculo inmediato (diferido por React). Modelos del proyecto: cálculo después de pintar.
   const inputs = useMemo(() => ({ code: chrome.code, draft, bays, stories }), [chrome.code, draft, bays, stories]);
   const deferredInputs = useDeferredValue(inputs);
-  const frameOutcome = useMemo(() => fromModel ? null : designFromDraft(deferredInputs.code, deferredInputs.draft as FrameDraft, deferredInputs.bays, deferredInputs.stories),
-    [fromModel, deferredInputs]);
+  // Pórtico rápido: en su worker (un 5 × 5 con sismo pasa del medio segundo); se sigue viendo el último resultado.
+  const quickKey = JSON.stringify([chrome.code, draft, bays, stories]);
+  const quick = useDeferredOutcome<QuickOutcome>(quickKey, !fromModel,
+    async (signal) => ({ ...await designFrameAsync(chrome.code as DesignCodeId, draft, bays, stories, signal), draft }),
+    (errors) => ({ ok: false, errors, draft }));
+  const frameOutcome = fromModel ? null : quick.latest;
   const modelKey = JSON.stringify([chrome.code, draft, external?.revision ?? null]);
   const model = useDeferredOutcome(modelKey, fromModel, (signal) => designFromDraftAsync(chrome.code as DesignCodeId, draft, bays, stories, external, signal));
   const outcome: StructureOutcome | null = fromModel ? model.outcome : frameOutcome;
   const result = outcome?.ok ? outcome.result : null;
-  const report = useMemo(() => outcome?.ok ? structureReport(outcome, deferredInputs.draft as FrameDraft) : null, [outcome, deferredInputs.draft]);
+  const reportDraft = fromModel ? deferredInputs.draft as FrameDraft : frameOutcome?.draft ?? draft;
+  const report = useMemo(() => outcome?.ok ? structureReport(outcome, reportDraft) : null, [outcome, reportDraft]);
   const outOfScope = report?.outOfScope ?? [];
   const [kind, setKind] = useState<FrameDiagramKind>('ratio');
   const [picked, setPicked] = useState<string | null>(null);
@@ -365,9 +434,20 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   };
   const setUniformSection = (field: 'beamWidth' | 'beamHeight' | 'columnWidth' | 'columnHeight') => (value: string) => {
     const nextDraft = { ...draft, [field]: value };
-    const nextStories = stories.map(({ height, dead, live, lateral: force }) => ({ height, dead, live, lateral: force }));
+    const nextStories = stories.map(uniformStory);
     if (!commitWorkbenchBatch(storage, { frame: nextDraft, 'frame-stories': nextStories }).accepted) return;
     replace(nextDraft);
+    setStories(nextStories);
+  };
+  const points = useMemo(() => pointsOfStories(stories), [stories]);
+  const hasLeft = draft.cantLeft.trim() !== '';
+  const hasRight = draft.cantRight.trim() !== '';
+  // Quitar un claro quita sus cargas puntuales y recorre las siguientes, en un solo cambio.
+  const removeBay = (index: number) => {
+    const nextBays = bays.filter((_, position) => position !== index);
+    const nextStories = storiesWithoutBay(stories, index);
+    if (!commitWorkbenchBatch(storage, { 'frame-bays': nextBays, 'frame-stories': nextStories }).accepted) return;
+    setBays(nextBays);
     setStories(nextStories);
   };
   const slab = frameSlabLoads(draft);
@@ -402,7 +482,8 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
   const steelOnly = Boolean(modelReview && external?.summary.beams === 0 && external?.summary.columns === 0);
   const verdict = steelOnly ? { status: 'warning' as const, label: 'Acero · revisión parcial' } : result
     ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) }
-    : fromModel && model.pending ? { status: 'error' as const, label: 'Analizando el modelo…' } : missingDataVerdict(outcome && !outcome.ok ? outcome.errors : []);
+    : fromModel && model.pending ? { status: 'error' as const, label: 'Analizando el modelo…' }
+      : !fromModel && !outcome && quick.pending ? { status: 'error' as const, label: 'Calculando el pórtico…' } : missingDataVerdict(outcome && !outcome.ok ? outcome.errors : []);
 
   return <><WorkbenchLayout
     chrome={steelOnly ? { ...chrome, codeControl: <span className="dw-badge">Acero · NTC CDMX 2023</span> } : chrome}
@@ -439,12 +520,12 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <RowsTable rows={bays} columns={[{ field: 'length', label: 'L', unit: 'm', min: 0.5 }]} label="Claro" max={MAX_FRAME_BAYS} addLabel="Agregar claro"
             onChange={(index, field, value) => setBays((current) => current.map((bay, position) => position === index ? { ...bay, [field]: value } : bay))}
             onAdd={() => setBays((current) => [...current, { ...current[current.length - 1]! }])}
-            onRemove={(index) => setBays((current) => current.filter((_, position) => position !== index))} />
+            onRemove={removeBay} />
         </FieldGroup>
         <FieldGroup title="Niveles y cargas en vigas" columns={1}>
           <RowsTable rows={stories} columns={storyColumns} label="Nivel" prefix="N" max={MAX_FRAME_STORIES} addLabel="Agregar nivel"
             onChange={(index, field, value) => setStories((current) => current.map((story, position) => position === index ? { ...story, [field]: value } : story))}
-            onAdd={() => setStories((current) => [...current, { ...current[current.length - 1]! }])}
+            onAdd={() => setStories((current) => [...current, storyWithoutPoints(current[current.length - 1]!)])}
             onRemove={(index) => setStories((current) => current.filter((_, position) => position !== index))} />
           <p className="dw-input-note" title="N1 es el primer nivel sobre la base. CM y CV son de servicio sobre las vigas, sin su peso propio. F es la fuerza lateral de diseño del nivel (sismo ya reducido o viento).">N1: primer nivel · CM y CV de servicio, sin peso propio{lateral ? ' · F lateral de diseño' : ''}.</p>
           <Disclosure label="Cargas desde la losa">
@@ -463,6 +544,29 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
           <LayerToggle label="Fuerzas laterales (sismo o viento)" checked={draft.lateral === 'yes'} disabled={draft.braced === 'yes'}
             onCheckedChange={(checked) => set('lateral')(checked ? 'yes' : 'no')} />
           <LayerToggle label="Sumar peso propio" checked={draft.selfWeight === 'yes'} onCheckedChange={(checked) => set('selfWeight')(checked ? 'yes' : 'no')} />
+        </FieldGroup>
+        <FieldGroup title="Cargas puntuales en vigas" columns={1}>
+          <PointLoadsTable points={points} stories={stories.length} bays={bays} onChange={(next) => setStories((current) => storiesWithPoints(current, next))} />
+          <p className="dw-input-note" title="CM y CV de servicio. x se mide desde el eje izquierdo del claro; la CV de cada carga se alterna con la de su claro y nivel.">
+            {points.length ? `x desde el eje izquierdo del claro · hasta ${MAX_FRAME_POINT_LOADS} por nivel.` : 'Sin cargas puntuales: sólo la uniforme de cada nivel.'}
+          </p>
+        </FieldGroup>
+        <FieldGroup title="Voladizos" columns={1}>
+          <div className="dw-group__grid" data-columns={2}>
+            <LayerToggle label="Izquierdo" checked={hasLeft} onCheckedChange={(checked) => set('cantLeft')(checked ? '1.5' : '')} />
+            <LayerToggle label="Derecho" checked={hasRight} onCheckedChange={(checked) => set('cantRight')(checked ? '1.5' : '')} />
+            {hasLeft ? <NumberField label="Largo izquierdo" unit="m" value={draft.cantLeft} onChange={set('cantLeft')} min={0.1} hint="Desde el eje de la columna" /> : null}
+            {hasRight ? <NumberField label="Largo derecho" unit="m" value={draft.cantRight} onChange={set('cantRight')} min={0.1} hint="Desde el eje de la columna" /> : null}
+            {hasLeft || hasRight ? <>
+              <NumberField label="CM del voladizo" unit="kN/m" value={draft.cantDead} onChange={set('cantDead')} />
+              <NumberField label="CV del voladizo" unit="kN/m" value={draft.cantLive} onChange={set('cantLive')} />
+              <NumberField label="CM en la punta" unit="kN" value={draft.cantTipDead} onChange={set('cantTipDead')} hint="Pretil, fachada" />
+              <NumberField label="CV en la punta" unit="kN" value={draft.cantTipLive} onChange={set('cantTipLive')} />
+            </> : null}
+          </div>
+          <p className="dw-input-note" title="El voladizo va en todos los niveles con la sección de la viga del nivel; su CM y su CV se alternan como las de un claro.">
+            {hasLeft || hasRight ? 'En todos los niveles, con la viga del nivel; la misma carga a cada lado.' : 'Sin voladizos.'}
+          </p>
         </FieldGroup>
       </>}
       <FieldGroup title={fromModel ? 'Marco' : 'Apoyos y marco'} columns={1}>
@@ -499,7 +603,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       {!fromModel && stories.some((story) => story.beamWidth) ? <FieldGroup title="Secciones por nivel" columns={1}>
         {stories.map((story, index) => <p key={index} className="dw-input-note">N{index + 1}: V {story.beamWidth ?? draft.beamWidth} × {story.beamHeight ?? draft.beamHeight} · C {story.columnWidth ?? draft.columnWidth} × {story.columnHeight ?? draft.columnHeight} cm.</p>)}
         <p className="dw-input-note">Editar los campos generales restablece secciones uniformes.</p>
-        <button type="button" className="dw-inline-action" onClick={() => setStories(stories.map(({ height, dead, live, lateral: force }) => ({ height, dead, live, lateral: force })))}>Volver a secciones uniformes</button>
+        <button type="button" className="dw-inline-action" onClick={() => setStories(stories.map(uniformStory))}>Volver a secciones uniformes</button>
       </FieldGroup> : null}
       <FieldGroup title="Armado de columnas">
         <BarSelect label="Varilla" value={draft.columnBar} onChange={set('columnBar')} minimumDiameterMm={12.7} />
@@ -551,7 +655,7 @@ export function FrameWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </> : null}
     </>}
     stage={<>{modelReview}{buildingView}{result ? <>
-      <Plate title={name} wide note={`${result.loadCases} casos superpuestos · ${result.combinations.length} combinaciones${fromModel && model.pending ? ' · recalculando…' : ''}`}>
+      <Plate title={name} wide note={`${result.loadCases} casos superpuestos · ${result.combinations.length} combinaciones${(fromModel ? model.pending : quick.pending) ? ' · recalculando…' : ''}`}>
         <div className="dw-span-all dw-frame-diagram">
           <SegmentedControl className="dw-frame-diagram__tabs" label="Diagrama de la estructura" size="sm" value={kind} onValueChange={(value) => setKind(value as FrameDiagramKind)} options={FRAME_DIAGRAMS} />
           <Select className="dw-frame-diagram__select" label="Diagrama de la estructura" value={kind} onChange={(event) => setKind(event.currentTarget.value as FrameDiagramKind)}>
