@@ -15,6 +15,8 @@
  * mueve estos casos más de un 0,1 %). En el diafragma, PyNite no tiene la
  * restricción y se aproxima con barras de penalización; el generador publica
  * su error estimado (`referenceUncertainty`) y la tolerancia lo absorbe ×10.
+ * Lo mismo con las zonas rígidas, que PyNite emula con barras muy rígidas.
+ * Los resortes de apoyo sí son nativos en PyNite: tolerancia estricta.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -28,6 +30,7 @@ import {
   type Space3DDofKey,
   type Space3DMemberLoad,
   type Space3DMemberRelease,
+  type Space3DNodeSprings,
   type Space3DProjectV1,
   type Space3DVector,
 } from '../model/types';
@@ -48,6 +51,8 @@ interface CorpusMember {
   readonly localYReferenceGlobal: Vec;
   readonly rollDegrees: number;
   readonly releases?: Space3DMemberRelease;
+  readonly rigidOffsetI?: number;
+  readonly rigidOffsetJ?: number;
 }
 
 interface CorpusCase {
@@ -55,7 +60,7 @@ interface CorpusCase {
   readonly description: string;
   readonly referenceUncertainty: number;
   readonly model: {
-    readonly nodes: readonly { id: string; x: number; y: number; z: number; restraints: Space3DDofKey[] }[];
+    readonly nodes: readonly { id: string; x: number; y: number; z: number; restraints: Space3DDofKey[]; springs?: Space3DNodeSprings }[];
     readonly members: readonly CorpusMember[];
     readonly nodalLoads: Space3DProjectV1['nodalLoads'];
     readonly memberLoads: readonly Space3DMemberLoad[];
@@ -92,12 +97,15 @@ const toProject = (item: CorpusCase): Space3DProjectV1 => ({
   nodes: item.model.nodes.map((node) => ({
     id: node.id, x: node.x, y: node.y, z: node.z,
     restraints: Object.fromEntries(SPACE3D_DOF_KEYS.map((key) => [key, node.restraints.includes(key)])) as unknown as Space3DProjectV1['nodes'][number]['restraints'],
+    ...(node.springs ? { springs: node.springs } : {}),
   })),
   members: item.model.members.map((member) => ({
     id: member.id, i: member.i, j: member.j, type: member.type,
     E: member.E, G: member.G, A: member.A, Iy: member.Iy, Iz: member.Iz, J: member.J,
     orientation: { localYReferenceGlobal: member.localYReferenceGlobal, rollRadians: (member.rollDegrees * Math.PI) / 180 },
     ...(member.releases ? { releases: member.releases } : {}),
+    ...(member.rigidOffsetI ? { rigidOffsetI: member.rigidOffsetI } : {}),
+    ...(member.rigidOffsetJ ? { rigidOffsetJ: member.rigidOffsetJ } : {}),
   })),
   nodalLoads: item.model.nodalLoads,
   loadCases: item.model.loadCases,
@@ -185,9 +193,8 @@ const appliedLoads = (item: CorpusCase): { force: Vec; moment: Vec } => {
 };
 
 describe(`corpus de referencia del Modelo 3D (${corpus.source}, ${corpus.generatedAt})`, () => {
-  it('trae entre seis y ocho casos con resultados de todos los nudos y barras', () => {
+  it('trae al menos seis casos con resultados de todos los nudos y barras', () => {
     expect(corpus.cases.length).toBeGreaterThanOrEqual(6);
-    expect(corpus.cases.length).toBeLessThanOrEqual(8);
     for (const item of corpus.cases) {
       expect(Object.keys(item.expected.nodes).sort()).toEqual(item.model.nodes.map((node) => node.id).sort());
       expect(Object.keys(item.expected.members).sort()).toEqual(item.model.members.map((member) => member.id).sort());

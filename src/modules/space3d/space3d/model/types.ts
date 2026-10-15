@@ -25,8 +25,10 @@ export const SPACE3D_LEGACY_SCHEMA_VERSION = 1 as const;
 export const SPACE3D_V2_SCHEMA_VERSION = 2 as const;
 /** V2 más la rejilla de ejes y pisos. */
 export const SPACE3D_V3_SCHEMA_VERSION = 3 as const;
-/** Esquema vigente: V3 más diafragmas, fuente de masa y espectros de respuesta. */
-export const SPACE3D_SCHEMA_VERSION = 4 as const;
+/** V3 más diafragmas, fuente de masa y espectros de respuesta. */
+export const SPACE3D_V4_SCHEMA_VERSION = 4 as const;
+/** Esquema vigente: V4 más resortes de apoyo por grado de libertad (`node.springs`). */
+export const SPACE3D_SCHEMA_VERSION = 5 as const;
 export const SPACE3D_ANALYSIS_SPACE = 'space-3d' as const;
 
 /**
@@ -38,6 +40,8 @@ export const SPACE3D_LIMITS = Object.freeze({
   minMemberLength: 1e-9,
   minReferenceNorm: 1e-12,
   minPerpendicularRatio: 1e-8,
+  /** Parte flexible mínima de una barra con zonas rígidas, como fracción de su longitud. */
+  minFlexibleRatio: 1e-6,
 });
 
 export type Space3DVector = readonly [number, number, number];
@@ -63,7 +67,16 @@ export interface Space3DNode {
   /** Semántica planar exacta de origen; ausente en nodos creados sólo en 3D. */
   readonly planarSupport?: Space3DPlanarSupport;
   readonly internalHinge?: boolean;
+  /** Resortes de apoyo a tierra en ejes globales; ausentes antes del esquema 5. */
+  readonly springs?: Space3DNodeSprings;
 }
+
+/**
+ * Resortes lineales de apoyo por grado de libertad global: kN/m en
+ * traslación y kN·m/rad en giro. Un GDL restringido prevalece sobre su
+ * resorte; la reacción de un GDL con resorte es `−k·u`.
+ */
+export type Space3DNodeSprings = { readonly [key in Space3DDofKey]?: number };
 
 interface Space3DSpringDefinition {
   readonly kx?: number;
@@ -127,6 +140,12 @@ export interface Space3DFrameMember {
   readonly axialBehavior?: 'both' | 'tension-only' | 'compression-only';
   readonly rotationalSpringI?: number;
   readonly rotationalSpringJ?: number;
+  /**
+   * Zonas rígidas colineales en cada extremo, m. La parte flexible va de
+   * `rigidOffsetI` a `L − rigidOffsetJ`; las liberaciones actúan en las caras
+   * de esa parte. Las cargas se siguen midiendo sobre la longitud real desde
+   * `i`, y las fuerzas de extremo se informan en los nudos.
+   */
   readonly rigidOffsetI?: number;
   readonly rigidOffsetJ?: number;
   readonly label?: string;

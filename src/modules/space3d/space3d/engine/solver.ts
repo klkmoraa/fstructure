@@ -10,7 +10,9 @@
  * Lo que el motor resuelve, al modo de SAP2000/ETABS:
  *
  *   · barras frame (6 GDL por extremo) y armaduras (sólo axil);
- *   · liberaciones de extremo por condensación estática;
+ *   · liberaciones de extremo por condensación estática y zonas rígidas
+ *     colineales en los extremos (`rigidOffsetI/J`);
+ *   · resortes de apoyo por GDL (`node.springs`), cuya reacción es `−k·u`;
  *   · cargas en nudos, cargas en barra —distribuidas trapezoidales parciales,
  *     puntuales y pares, en ejes globales o locales y por longitud real u
  *     horizontal/vertical proyectada— y peso propio por caso;
@@ -31,8 +33,8 @@ import {
 import type { AnalysisBudget } from '../../../../shared/contracts';
 import {
   buildSpaceFrameElement,
-  condenseFixedEndForces,
   recoverMemberEndDisplacements,
+  space3DElementFixedEndForces,
   Space3DReleaseInstabilityError,
   type Space3DElement,
 } from './element';
@@ -41,7 +43,6 @@ import {
   EMPTY_LOCAL_LOADS,
   hasSpace3DLocalLoads,
   resolveSpace3DMemberLoads,
-  space3DFixedEndForces,
   space3DSelfWeightFactor,
   type Space3DLocalLoadSet,
 } from './memberLoading';
@@ -57,6 +58,7 @@ import {
   expandSpace3DVector,
   planSpace3DEquations,
   reduceSpace3DVector,
+  scatterSpace3DDiagonal,
   scatterSpace3DElement,
   space3DDiaphragmOfNodes,
   space3DSlaveDofs,
@@ -268,6 +270,8 @@ export interface Space3DStaticAssembly {
   readonly autoRestrainedDofs: readonly number[];
   readonly freeDofs: readonly number[];
   readonly elements: readonly Space3DStaticAssemblyElement[];
+  /** Resortes de apoyo: GDL global y rigidez (kN/m o kN·m/rad). */
+  readonly springs: readonly { readonly dof: number; readonly stiffness: number }[];
   readonly issues: readonly Space3DAnalysisIssue[];
   readonly backend: 'dense-reference' | 'sparse-requested';
   /**
@@ -296,8 +300,6 @@ const unsupportedMemberSemantics = (member: Space3DFrameMember): readonly string
   if (member.axialBehavior && member.axialBehavior !== 'both') fields.push('axialBehavior');
   if (member.rotationalSpringI !== undefined) fields.push('rotationalSpringI');
   if (member.rotationalSpringJ !== undefined) fields.push('rotationalSpringJ');
-  if (member.rigidOffsetI !== undefined && member.rigidOffsetI !== 0) fields.push('rigidOffsetI');
-  if (member.rigidOffsetJ !== undefined && member.rigidOffsetJ !== 0) fields.push('rigidOffsetJ');
   return fields;
 };
 
@@ -355,6 +357,7 @@ const emptyStaticAssembly = (
     autoRestrainedDofs: Object.freeze([]),
     freeDofs: Object.freeze([]),
     elements: Object.freeze([]),
+    springs: Object.freeze([]),
     issues: Object.freeze([...issues]),
     backend,
     equations: EMPTY_EQUATIONS,
@@ -493,8 +496,9 @@ export const assembleSpace3DStaticModel = (
         selfWeightFactor,
       });
       const loaded = hasSpace3DLocalLoads(loads);
-      const rawFixedEndForces = loaded ? space3DFixedEndForces(loads, element.length, element.kind) : new Array<number>(12).fill(0);
-      const fixedEndForces = loaded ? condenseFixedEndForces(element, rawFixedEndForces) : rawFixedEndForces;
+      const fixedEnd = loaded ? space3DElementFixedEndForces(element, loads) : null;
+      const rawFixedEndForces = fixedEnd?.raw ?? new Array<number>(12).fill(0);
+      const fixedEndForces = fixedEnd?.condensed ?? rawFixedEndForces;
       if (loaded) {
         // Carga nodal equivalente global: −Tᵀ f_F.
         for (let row = 0; row < 12; row += 1) {
@@ -549,6 +553,19 @@ export const assembleSpace3DStaticModel = (
   const userRestrained = new Set<number>();
   project.nodes.forEach((node, index) => {
     SPACE3D_DOF_KEYS.forEach((key, dof) => { if (node.restraints[key]) userRestrained.add(index * DOF_PER_NODE + dof); });
+  });
+
+  // Resortes de apoyo: rigidez a tierra en el GDL. Un GDL restringido no lo
+  // necesita (su desplazamiento es nulo) y no se ensambla.
+  const springs: { dof: number; stiffness: number }[] = [];
+  project.nodes.forEach((node, index) => {
+    SPACE3D_DOF_KEYS.forEach((key, dof) => {
+      const stiffness = node.springs?.[key];
+      const global = index * DOF_PER_NODE + dof;
+      if (stiffness === undefined || !(stiffness > 0) || userRestrained.has(global)) return;
+      springs.push({ dof: global, stiffness });
+      diagonal[global] += stiffness;
+    });
   });
 
   // Un nudo de diafragma no puede tener apoyo en el plano: el diafragma
@@ -614,6 +631,7 @@ export const assembleSpace3DStaticModel = (
         for (let col = 0; col < 12; col += 1) target[indices[col]] += source[col];
       }
     }
+    for (const spring of springs) matrix[spring.dof][spring.dof] += spring.stiffness;
     dense = matrix;
     return matrix;
   };
@@ -634,6 +652,7 @@ export const assembleSpace3DStaticModel = (
     autoRestrainedDofs: Object.freeze(autoRestrained),
     freeDofs: Object.freeze(freeDofs),
     elements: Object.freeze(elements),
+    springs: Object.freeze(springs.map((spring) => Object.freeze(spring))),
     issues: Object.freeze([]),
     backend,
     ...(assemblyTrace ? { assemblyTrace } : {}),
@@ -671,6 +690,9 @@ export const recoverSpace3DResult = (
   const rawReactions = product.map((value, index) => value - (loadVector[index] ?? 0));
   const restrained = new Set(assembly.restrainedDofs);
   const reactions = rawReactions.map((value, index) => (restrained.has(index) ? value : 0));
+  // Un resorte empuja a la estructura con −k·u. El producto ya lo incluye, así
+  // que en un GDL libre el residuo es nulo y la reacción es la del resorte.
+  for (const spring of assembly.springs) reactions[spring.dof] = -spring.stiffness * (displacement[spring.dof] ?? 0);
 
   const nodeResults: Space3DNodeResult[] = project.nodes.map((node, index) => Object.freeze({
     nodeId: node.id,
@@ -695,6 +717,7 @@ export const recoverSpace3DResult = (
       endDisplacements: memberEnds,
       loads: withMemberLoads ? element.loads : EMPTY_LOCAL_LOADS,
       segments: options.stationSegments,
+      ...(element.element.offsets ? { rigidOffsets: element.element.offsets } : {}),
     });
     return Object.freeze({
       memberId: element.memberId,
@@ -731,9 +754,10 @@ export const recoverSpace3DResult = (
   });
 };
 
-/** `K·u` barra a barra, sin formar la matriz global. */
+/** `K·u` barra a barra (y resortes de apoyo), sin formar la matriz global. */
 export const space3DElementStiffnessProduct = (assembly: Space3DStaticAssembly, displacement: readonly number[]): number[] => {
   const result = new Array<number>(assembly.totalDofs).fill(0);
+  for (const spring of assembly.springs) result[spring.dof] += spring.stiffness * (displacement[spring.dof] ?? 0);
   for (const element of assembly.elements) {
     const indices = element.dofIndices;
     for (let row = 0; row < 12; row += 1) {
@@ -780,6 +804,7 @@ export const assembleSpace3DSkylineStiffness = (
     const additional = extra?.(element);
     if (additional) scatterSpace3DElement(assembly.equations, matrix, element.dofIndices, additional);
   }
+  for (const spring of assembly.springs) scatterSpace3DDiagonal(assembly.equations, matrix, spring.dof, spring.stiffness);
   return matrix;
 };
 

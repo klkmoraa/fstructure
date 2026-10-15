@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Check, Trash2 } from 'lucide-react';
-import { fixedSpace3DRestraints, freeSpace3DRestraints, type Space3DFrameMember, type Space3DNodalLoad, type Space3DNode, type Space3DProjectV1, type Space3DRestraints } from '../../space3d/model/types';
+import { SPACE3D_DOF_KEYS, SPACE3D_LIMITS, fixedSpace3DRestraints, freeSpace3DRestraints, type Space3DFrameMember, type Space3DNodalLoad, type Space3DNode, type Space3DNodeSprings, type Space3DProjectV1, type Space3DRestraints } from '../../space3d/model/types';
 import {
   SPACE3D_MATERIALS,
   SPACE3D_SECTION_CATALOG,
@@ -66,11 +66,22 @@ const numeric = (value: string): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+/** Campo del borrador para el resorte de un GDL: vacío = sin resorte. */
+const springField = (dof: string) => `k_${dof}`;
+
 const nodeDraft = (node: Space3DNode | undefined): Draft => ({
   x: String(node?.x ?? 0),
   y: String(node?.y ?? 0),
   z: String(node?.z ?? 0),
+  ...Object.fromEntries(SPACE3D_DOF_KEYS.map((dof) => [springField(dof), node?.springs?.[dof] === undefined ? '' : String(node.springs[dof])])),
 });
+
+/** Longitud nudo a nudo, o null si falta algún extremo. */
+const nodeDistance = (project: Space3DProjectV1, i: string, j: string): number | null => {
+  const a = project.nodes.find((item) => item.id === i);
+  const b = project.nodes.find((item) => item.id === j);
+  return a && b ? Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) : null;
+};
 
 const memberDraft = (member: Space3DFrameMember | undefined, fallback: Space3DFrameMember | undefined): Draft => {
   const source = member ?? fallback;
@@ -85,6 +96,9 @@ const memberDraft = (member: Space3DFrameMember | undefined, fallback: Space3DFr
     refY: String(source?.orientation.localYReferenceGlobal[1] ?? 1),
     refZ: String(source?.orientation.localYReferenceGlobal[2] ?? 0),
     roll: String(source?.orientation.rollRadians ?? 0),
+    // Las zonas rígidas son de la barra, no se heredan de otra.
+    offI: member?.rigidOffsetI ? String(member.rigidOffsetI) : '',
+    offJ: member?.rigidOffsetJ ? String(member.rigidOffsetJ) : '',
   };
 };
 
@@ -213,13 +227,14 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
    * viviera dentro, el nombre accesible del campo sería «X m» en vez de «X», y
    * el usuario de lector de pantalla oiría la unidad como parte del rótulo.
    */
-  const field = (name: string, label: string, unit?: string, positive = false) => {
+  const field = (name: string, label: string, unit?: string, positive = false, unitInLegend = false) => {
     const invalid = errors[name];
     const inputId = `space3d-${target.kind}-${name}`;
     const unitId = unit ? `${inputId}-unit` : undefined;
     return <div className={`space3d-field${invalid ? ' is-invalid' : ''}`} key={name}>
       <label className="space3d-field-label" htmlFor={inputId}>{label}</label>
-      {unit ? <span className="space3d-field-unit" id={unitId}>{unit}</span> : null}
+      {/* Con la unidad ya en el subtítulo del grupo, queda sólo para el lector de pantalla. */}
+      {unit ? <span className={unitInLegend ? 'space3d-visually-hidden' : 'space3d-field-unit'} id={unitId}>{unit}</span> : null}
       <input
         id={inputId}
         type="text"
@@ -253,7 +268,7 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
           }
         }}
       />
-      {invalid ? <small role="alert">{t(positive ? 'space3d.requiredPositive' : 'space3d.requiredNumber')}</small> : null}
+      {invalid ? <small role="alert">{t(invalid !== 'invalid' ? invalid as TranslationKey : positive ? 'space3d.requiredPositive' : 'space3d.requiredNumber')}</small> : null}
     </div>;
   };
 
@@ -271,14 +286,36 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
 
   if (target.kind === 'node') {
     const id = target.id ?? nextId('N', project.nodes.map((item) => item.id));
+    /** Resortes del borrador: vacío = sin resorte; null si alguno no es válido. */
+    const readSprings = (): { springs: Space3DNodeSprings | undefined; errors: Record<string, string> } => {
+      const springs: { [key in typeof SPACE3D_DOF_KEYS[number]]?: number } = {};
+      const springErrors: Record<string, string> = {};
+      for (const dof of SPACE3D_DOF_KEYS) {
+        const text = (draft[springField(dof)] ?? '').trim();
+        if (text === '') continue;
+        const value = numeric(text);
+        if (value === null || value < 0) springErrors[springField(dof)] = 'space3d.requiredNonNegative';
+        else if (value > 0) springs[dof] = value;
+      }
+      return { springs: Object.keys(springs).length > 0 ? springs : undefined, errors: springErrors };
+    };
     const submit = () => {
       const values = readNumbers(['x', 'y', 'z']);
-      if (!values) return;
-      const payload: Space3DNode = { id, x: values.x, y: values.y, z: values.z, restraints };
+      const spring = readSprings();
+      if (Object.keys(spring.errors).length > 0) setErrors((current) => ({ ...current, ...spring.errors }));
+      if (!values || Object.keys(spring.errors).length > 0) return;
+      const payload: Space3DNode = { id, x: values.x, y: values.y, z: values.z, restraints, ...(spring.springs ? { springs: spring.springs } : {}) };
       const ok = target.id
-        ? onSubmit({ kind: 'update-node', nodeId: id, changes: { x: values.x, y: values.y, z: values.z, restraints } })
+        ? onSubmit({ kind: 'update-node', nodeId: id, changes: { x: values.x, y: values.y, z: values.z, restraints, springs: spring.springs } })
         : onSubmit({ kind: 'add-node', node: payload });
       if (ok) onCancel();
+    };
+    const springInput = (dof: typeof SPACE3D_DOF_KEYS[number]) => {
+      const rotation = dof.startsWith('r');
+      return <div key={dof}>
+        {field(springField(dof), t(`space3d.springField.${dof}` as TranslationKey), t(rotation ? 'space3d.unitSpringRotation' : 'space3d.unitSpringTranslation'), false, true)}
+        {restraints[dof] && (draft[springField(dof)] ?? '').trim() !== '' ? <p className="space3d-field-hint">{t('space3d.springOverridden')}</p> : null}
+      </div>;
     };
 
     const supportKind = customSupport ? 'custom' : space3DSupportKind(restraints);
@@ -330,15 +367,47 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         </div>
       </fieldset>
 
+      <details className="space3d-disclosure" open={SPACE3D_DOF_KEYS.some((dof) => (draft[springField(dof)] ?? '').trim() !== '' || errors[springField(dof)]) || undefined}>
+        <summary>{t('space3d.springsLegend')}</summary>
+        <div className="space3d-disclosure-body">
+          <p className="space3d-field-hint">{t('space3d.springsHint')}</p>
+          <p className="space3d-field-label">{t('space3d.springTranslation')}</p>
+          <div className="space3d-field-grid space3d-field-grid--3">{TRANSLATION_DOFS.map(springInput)}</div>
+          <p className="space3d-field-label">{t('space3d.springRotation')}</p>
+          <div className="space3d-field-grid space3d-field-grid--3">{ROTATION_DOFS.map(springInput)}</div>
+        </div>
+      </details>
+
       {footer('space3d.saveNode')}
     </form>;
   }
 
   if (target.kind === 'member') {
     const id = target.id ?? nextId('M', project.members.map((item) => item.id));
+    const total = nodeDistance(project, endI, endJ);
+    const offsetText = (name: 'offI' | 'offJ') => (draft[name] ?? '').trim();
+    const offsetValue = (name: 'offI' | 'offJ') => (offsetText(name) === '' ? 0 : numeric(offsetText(name)));
+    const offI = offsetValue('offI');
+    const offJ = offsetValue('offJ');
+    const flexible = total !== null && offI !== null && offJ !== null ? total - offI - offJ : null;
+    /** Errores de las zonas rígidas, con su motivo; los mismos que el validador del modelo. */
+    const offsetErrors = (): Record<string, string> => {
+      const found: Record<string, string> = {};
+      for (const [name, value] of [['offI', offI], ['offJ', offJ]] as const) {
+        if (value === null || value < 0) found[name] = 'space3d.requiredNonNegative';
+        else if (value > 0 && member?.type && member.type !== 'frame') found[name] = 'space3d.rigidOffsetTruss';
+      }
+      if (Object.keys(found).length === 0 && total !== null && (offI ?? 0) + (offJ ?? 0) > 0
+        && (flexible ?? 0) <= total * SPACE3D_LIMITS.minFlexibleRatio) {
+        found[(offJ ?? 0) > 0 ? 'offJ' : 'offI'] = 'space3d.rigidOffsetTooLong';
+      }
+      return found;
+    };
     const submit = () => {
       const values = readNumbers([...PROPERTY_KEYS, 'refX', 'refY', 'refZ', 'roll'], [...PROPERTY_KEYS]);
-      if (!values) return;
+      const invalidOffsets = offsetErrors();
+      if (Object.keys(invalidOffsets).length > 0) setErrors((current) => ({ ...current, ...invalidOffsets }));
+      if (!values || Object.keys(invalidOffsets).length > 0) return;
       const orientation = {
         localYReferenceGlobal: [values.refX, values.refY, values.refZ] as const,
         rollRadians: values.roll,
@@ -348,6 +417,8 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
         E: values.E, G: values.G, A: values.A, Iy: values.Iy, Iz: values.Iz, J: values.J,
         ...memberMetadata,
         orientation,
+        rigidOffsetI: offI ? offI : undefined,
+        rigidOffsetJ: offJ ? offJ : undefined,
       };
       const ok = target.id
         ? onSubmit({ kind: 'update-member', memberId: id, changes })
@@ -574,6 +645,22 @@ export const Space3DEntityEditor = ({ project, target, t, onSubmit, onCancel, on
             {field('refZ', t('space3d.fieldZ'))}
             {field('roll', t('space3d.roll'), t('space3d.unitAngle'))}
           </div>
+        </div>
+      </details>
+
+      <details className="space3d-disclosure" open={offsetText('offI') !== '' || offsetText('offJ') !== '' || errors.offI || errors.offJ ? true : undefined}>
+        <summary>{t('space3d.memberRigidOffsets')}</summary>
+        <div className="space3d-disclosure-body">
+          <p className="space3d-field-hint">{t('space3d.memberRigidOffsetsHint')}</p>
+          <div className="space3d-field-grid">
+            {field('offI', t('space3d.rigidOffsetI'), t('space3d.unitLength'))}
+            {field('offJ', t('space3d.rigidOffsetJ'), t('space3d.unitLength'))}
+          </div>
+          {total !== null && flexible !== null
+            ? <p className={`space3d-field-hint${flexible <= total * SPACE3D_LIMITS.minFlexibleRatio ? ' space3d-field-error' : ''}`} aria-live="polite">
+              {t('space3d.flexibleLength', { flexible: Number(flexible.toFixed(4)), total: Number(total.toFixed(4)) })}
+            </p>
+            : null}
         </div>
       </details>
 

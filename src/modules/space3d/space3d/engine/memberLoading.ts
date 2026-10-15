@@ -278,6 +278,71 @@ const consistentLoadVector = (loads: Space3DLocalLoadSet, length: number, kind: 
 export const space3DFixedEndForces = (loads: Space3DLocalLoadSet, length: number, kind: 'frame' | 'truss'): number[] =>
   consistentLoadVector(loads, length, kind).map((value) => (value === 0 ? 0 : -value));
 
+/**
+ * Reparto de las cargas de una barra con zonas rígidas `[0, a]` y `[L − b, L]`.
+ *
+ *   · `flexible`: lo que cae en la parte flexible, con posiciones medidas desde
+ *     su cara `i` (longitud `L − a − b`).
+ *   · `rigid`: fuerzas de empotramiento (12, locales, en los nudos) de lo que
+ *     cae en cada zona rígida: el nudo sostiene el brazo y le devuelve la
+ *     resultante y su momento, `−(F, r × F + M)` con `r` desde el nudo.
+ */
+export const splitSpace3DRigidOffsetLoads = (
+  loads: Space3DLocalLoadSet,
+  length: number,
+  offsetI: number,
+  offsetJ: number,
+): { readonly flexible: Space3DLocalLoadSet; readonly rigid: number[] } => {
+  const faceI = offsetI;
+  const faceJ = length - offsetJ;
+  const rigid = new Array<number>(12).fill(0);
+  // Acción de una fuerza `f` en `s` y un par `m` sobre el nudo más cercano.
+  const toNode = (s: number, f: Vec3, m: Vec3) => {
+    const atJ = s > faceJ;
+    const base = atJ ? 6 : 0;
+    const arm = s - (atJ ? length : 0);
+    // r × f con r = (arm, 0, 0).
+    const moment: Vec3 = [m[0], m[1] - arm * f[2], m[2] + arm * f[1]];
+    for (let axis = 0; axis < 3; axis += 1) {
+      rigid[base + axis] -= f[axis];
+      rigid[base + 3 + axis] -= moment[axis];
+    }
+  };
+  const distributed: Space3DLocalDistributedLoad[] = [];
+  const points: Space3DLocalPointLoad[] = [];
+  const moments: Space3DLocalMomentLoad[] = [];
+  const at = (load: Space3DLocalDistributedLoad, s: number): Vec3 => [interpolate(load, s, 0), interpolate(load, s, 1), interpolate(load, s, 2)];
+
+  for (const load of loads.distributed) {
+    for (const [from, to, zone] of [[0, faceI, 'rigid'], [faceI, faceJ, 'flexible'], [faceJ, length, 'rigid']] as const) {
+      const a = Math.max(load.a, from);
+      const b = Math.min(load.b, to);
+      if (!(b > a)) continue;
+      if (zone === 'flexible') {
+        distributed.push({ a: a - faceI, b: b - faceI, q1: at(load, a), q2: at(load, b) });
+        continue;
+      }
+      // Resultante del tramo y su punto de aplicación, por componente.
+      for (const component of [0, 1, 2] as const) {
+        const resultant = integrate(a, b, (s) => interpolate(load, s, component));
+        if (resultant === 0) continue;
+        const firstMoment = integrate(a, b, (s) => s * interpolate(load, s, component));
+        const f: Vec3 = [component === 0 ? resultant : 0, component === 1 ? resultant : 0, component === 2 ? resultant : 0];
+        toNode(firstMoment / resultant, f, [0, 0, 0]);
+      }
+    }
+  }
+  for (const load of loads.points) {
+    if (load.a >= faceI && load.a <= faceJ) points.push({ a: load.a - faceI, p: load.p });
+    else toNode(load.a, load.p, [0, 0, 0]);
+  }
+  for (const load of loads.moments) {
+    if (load.a >= faceI && load.a <= faceJ) moments.push({ a: load.a - faceI, m: load.m });
+    else toNode(load.a, [0, 0, 0], load.m);
+  }
+  return { flexible: { distributed, points, moments }, rigid };
+};
+
 export const hasSpace3DLocalLoads = (loads: Space3DLocalLoadSet): boolean =>
   loads.distributed.length > 0 || loads.points.length > 0 || loads.moments.length > 0;
 
@@ -349,6 +414,8 @@ interface StationInput {
   readonly loads: Space3DLocalLoadSet;
   /** Tramos uniformes además de los puntos singulares de carga. */
   readonly segments?: number;
+  /** Zonas rígidas en cada extremo, m: ahí la barra no se curva. */
+  readonly rigidOffsets?: readonly [number, number];
 }
 
 const DEFLECTION_SEGMENTS = 24;
@@ -379,8 +446,11 @@ export const computeSpace3DMemberStations = (input: StationInput): readonly Spac
   // ≤ 3, así que la cuadratura de Gauss integra exacto:
   //   θₖ₊₁ = θₖ + ∫κ,   vₖ₊₁ = vₖ + h·θₖ + ∫(xₖ₊₁ − s)·κ(s) ds.
   const flexible = input.kind === 'frame' && input.E > 0;
+  const [offsetI, offsetJ] = input.rigidOffsets ?? [0, 0];
+  const rigidAt = (s: number) => s < offsetI || s > L - offsetJ;
   const fine = [...new Set([
     ...positions,
+    ...[offsetI, L - offsetJ].filter((a) => a > 1e-9 && a < L - 1e-9).map((a) => Number(a.toPrecision(12))),
     ...Array.from({ length: DEFLECTION_SEGMENTS + 1 }, (_, index) => Number(((L * index) / DEFLECTION_SEGMENTS).toPrecision(12))),
   ])].sort((a, b) => a - b);
   const deflection = (curvature: (s: number) => number): Map<number, number> => {
@@ -397,10 +467,10 @@ export const computeSpace3DMemberStations = (input: StationInput): readonly Spac
     return new Map(fine.map((x, index) => [x, values[index] - (last * x) / L]));
   };
   const particularV = flexible && input.Iz > 0
-    ? deflection((s) => internalForcesAt(s, startForces, loads, false).Mz / (input.E * input.Iz))
+    ? deflection((s) => (rigidAt(s) ? 0 : internalForcesAt(s, startForces, loads, false).Mz / (input.E * input.Iz)))
     : null;
   const particularW = flexible && input.Iy > 0
-    ? deflection((s) => -internalForcesAt(s, startForces, loads, false).My / (input.E * input.Iy))
+    ? deflection((s) => (rigidAt(s) ? 0 : -internalForcesAt(s, startForces, loads, false).My / (input.E * input.Iy)))
     : null;
   const sample = (values: Map<number, number> | null, x: number): number => values?.get(x) ?? 0;
 
