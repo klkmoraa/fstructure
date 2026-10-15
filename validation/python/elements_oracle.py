@@ -326,3 +326,181 @@ def footing(data: dict[str, Any]) -> dict[str, Any]:
         "strengthStressMpa": punching_phi * vc,
     }
     return result
+
+
+# ---------------------------------------------------------------------------
+# Pórtico plano: claros, niveles, cargas puntuales y voladizos.
+#
+# Independiente del motor del taller: cada carga puntual parte la viga con un
+# nudo propio (el motor usa fuerzas de empotramiento de la carga puntual) y la
+# punta del voladizo es un nudo más. Sólo la carga uniforme usa sus fuerzas de
+# empotramiento de libro (wL/2, wL²/12). Las fuerzas internas no dependen de E
+# cuando todo el marco tiene el mismo módulo: se usa E = 1 con las áreas e
+# inercias de las secciones. Unidades: m, kN, kN·m.
+
+
+def _solve(matrix: list[list[float]], vector: list[float]) -> list[float]:
+    """Eliminación gaussiana con pivoteo parcial."""
+    n = len(vector)
+    a = [row[:] + [vector[i]] for i, row in enumerate(matrix)]
+    for col in range(n):
+        pivot = max(range(col, n), key=lambda r: abs(a[r][col]))
+        a[col], a[pivot] = a[pivot], a[col]
+        for r in range(col + 1, n):
+            factor = a[r][col] / a[col][col]
+            if factor:
+                for c in range(col, n + 1):
+                    a[r][c] -= factor * a[col][c]
+    x = [0.0] * n
+    for r in range(n - 1, -1, -1):
+        x[r] = (a[r][n] - sum(a[r][c] * x[c] for c in range(r + 1, n))) / a[r][r]
+    return x
+
+
+def _section(section: dict[str, float]) -> tuple[float, float]:
+    b, h = section["widthMm"] / 1e3, section["heightMm"] / 1e3
+    return b * h, b * h**3 / 12
+
+
+def frame_analysis(data: dict[str, Any]) -> dict[str, Any]:
+    """Casos totales de servicio (muerta, viva y lateral) del pórtico de un fixture."""
+    bays, heights = data["bays"], data["heights"]
+    beam_a, beam_i = _section(data["beam"])
+    col_a, col_i = _section(data["column"])
+    xs = [0.0]
+    for bay in bays:
+        xs.append(xs[-1] + bay)
+    ys = [0.0]
+    for h in heights:
+        ys.append(ys[-1] + h)
+
+    nodes: list[tuple[float, float]] = []
+    restrained: dict[int, tuple[bool, bool, bool]] = {}
+    grid: dict[tuple[int, int], int] = {}
+    for level, y in enumerate(ys):
+        for line, x in enumerate(xs):
+            grid[(line, level)] = len(nodes)
+            nodes.append((x, y))
+            if level == 0:
+                restrained[len(nodes) - 1] = (True, True, data["base"] == "fixed")
+    # Miembro: nudos i, j, área, inercia y carga uniforme de gravedad por caso.
+    members: list[tuple[int, int, float, float, dict[str, float]]] = []
+    nodal: dict[str, dict[int, list[float]]] = {"dead": {}, "live": {}, "lateral": {}}
+
+    def add_nodal(case: str, node: int, fx: float, fy: float) -> None:
+        load = nodal[case].setdefault(node, [0.0, 0.0, 0.0])
+        load[0] += fx
+        load[1] += fy
+
+    for level in range(1, len(ys)):
+        for line in range(len(xs)):
+            members.append((grid[(line, level - 1)], grid[(line, level)], col_a, col_i, {}))
+    for level in range(1, len(ys)):
+        y = ys[level]
+        story = data["stories"][level - 1]
+        uniform = {"dead": story["deadKnPerM"], "live": story["liveKnPerM"]}
+        for bay in range(len(bays)):
+            points = [p for p in story.get("points", []) if p["bay"] == bay]
+            chain = [grid[(bay, level)]]
+            for cut in sorted({p["atM"] for p in points if 0 < p["atM"] < bays[bay]}):
+                nodes.append((xs[bay] + cut, y))
+                chain.append(len(nodes) - 1)
+            chain.append(grid[(bay + 1, level)])
+            for a, b in zip(chain, chain[1:]):
+                members.append((a, b, beam_a, beam_i, uniform))
+            for p in points:
+                target = next(n for n in chain if abs(nodes[n][0] - (xs[bay] + p["atM"])) < 1e-12)
+                add_nodal("dead", target, 0.0, -p["deadKn"])
+                add_nodal("live", target, 0.0, -p["liveKn"])
+        for key, root, sign in (("cantileverLeft", grid[(0, level)], -1), ("cantileverRight", grid[(len(xs) - 1, level)], 1)):
+            cantilever = data.get(key)
+            if not cantilever:
+                continue
+            nodes.append((nodes[root][0] + sign * cantilever["lengthM"], y))
+            tip = len(nodes) - 1
+            loads = {"dead": cantilever["deadKnPerM"], "live": cantilever["liveKnPerM"]}
+            members.append((tip, root, beam_a, beam_i, loads) if sign < 0 else (root, tip, beam_a, beam_i, loads))
+            add_nodal("dead", tip, 0.0, -cantilever["tipDeadKn"])
+            add_nodal("live", tip, 0.0, -cantilever["tipLiveKn"])
+        for line in range(len(xs)):
+            add_nodal("lateral", grid[(line, level)], story["lateralKn"] / len(xs), 0.0)
+
+    dofs = 3 * len(nodes)
+    free = [d for d in range(dofs) if not (d // 3 in restrained and restrained[d // 3][d % 3])]
+    index = {d: k for k, d in enumerate(free)}
+
+    elements = []
+    stiffness = [[0.0] * len(free) for _ in free]
+    for i, j, area, inertia, loads in members:
+        (x1, y1), (x2, y2) = nodes[i], nodes[j]
+        length = math.hypot(x2 - x1, y2 - y1)
+        c, s = (x2 - x1) / length, (y2 - y1) / length
+        ea, k1, k2, k3, k4 = area / length, 12 * inertia / length**3, 6 * inertia / length**2, 4 * inertia / length, 2 * inertia / length
+        k = [
+            [ea, 0, 0, -ea, 0, 0],
+            [0, k1, k2, 0, -k1, k2],
+            [0, k2, k3, 0, -k2, k4],
+            [-ea, 0, 0, ea, 0, 0],
+            [0, -k1, -k2, 0, k1, -k2],
+            [0, k2, k4, 0, -k2, k3],
+        ]
+        t = [[0.0] * 6 for _ in range(6)]
+        for o in (0, 3):
+            t[o][o], t[o][o + 1], t[o + 1][o], t[o + 1][o + 1], t[o + 2][o + 2] = c, s, -s, c, 1.0
+        kg = [[sum(t[a][r] * k[a][b] * t[b][q] for a in range(6) for b in range(6)) for q in range(6)] for r in range(6)]
+        ids = [3 * i, 3 * i + 1, 3 * i + 2, 3 * j, 3 * j + 1, 3 * j + 2]
+        for r in range(6):
+            for q in range(6):
+                if ids[r] in index and ids[q] in index:
+                    stiffness[index[ids[r]]][index[ids[q]]] += kg[r][q]
+        elements.append((i, j, length, c, s, k, t, ids, loads))
+
+    def fef(w: float, length: float, c: float, s: float) -> list[float]:
+        # Gravedad (0, −w) por metro: local px = −w·s, qy = −w·c; fuerzas de los nudos sobre el miembro.
+        px, qy = -w * s, -w * c
+        return [-px * length / 2, -qy * length / 2, -qy * length**2 / 12, -px * length / 2, -qy * length / 2, qy * length**2 / 12]
+
+    out: dict[str, Any] = {}
+    for case in ("dead", "live", "lateral"):
+        vector = [0.0] * len(free)
+        for node, load in nodal[case].items():
+            for d in range(3):
+                if 3 * node + d in index:
+                    vector[index[3 * node + d]] += load[d]
+        for i, j, length, c, s, k, t, ids, loads in elements:
+            local = fef(loads.get(case, 0.0), length, c, s)
+            for r in range(6):
+                if ids[r] in index:
+                    vector[index[ids[r]]] -= sum(t[a][r] * local[a] for a in range(6))
+        solution = _solve(stiffness, vector)
+        full = [solution[index[d]] if d in index else 0.0 for d in range(dofs)]
+        reactions = {node: [0.0, 0.0, 0.0] for node in restrained}
+        ends = []
+        for i, j, length, c, s, k, t, ids, loads in elements:
+            dl = [sum(t[r][a] * full[ids[a]] for a in range(6)) for r in range(6)]
+            local = [sum(k[r][a] * dl[a] for a in range(6)) + f for r, f in enumerate(fef(loads.get(case, 0.0), length, c, s))]
+            glob = [sum(t[a][r] * local[a] for a in range(6)) for r in range(6)]
+            for end, node in ((0, i), (3, j)):
+                if node in reactions:
+                    for d in range(3):
+                        reactions[node][d] += glob[end + d]
+            ends.append((i, j, local, loads.get(case, 0.0)))
+
+        def beam_moment(x: float, y: float, side: str) -> float:
+            """Momento con tensión abajo positiva en la viga horizontal por (x, y), a la izquierda o a la derecha de x."""
+            for i, j, local, w in ends:
+                (x1, y1), (x2, y2) = nodes[i], nodes[j]
+                if abs(y1 - y) > 1e-9 or abs(y2 - y) > 1e-9:
+                    continue
+                inside = x1 + 1e-9 < x <= x2 + 1e-9 if side == "left" else x1 - 1e-9 <= x < x2 - 1e-9
+                if not inside:
+                    continue
+                a = x - x1
+                return -local[2] + local[1] * a - w * a * a / 2
+            raise ValueError(f"sin viga en ({x}, {y})")
+
+        out[case] = {
+            "baseReactions": [reactions[grid[(line, 0)]] for line in range(len(xs))],
+            "beamMoments": [beam_moment(p["x"], p["y"], p["side"]) for p in data["momentStations"]],
+        }
+    return out

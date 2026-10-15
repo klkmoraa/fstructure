@@ -16,13 +16,41 @@ export { swayEffectiveLengthFactor } from './structure';
  * validada contra el solver 2D). El diseño de vigas y columnas es el común de
  * `structure.ts`, el mismo que recibe un Modelo 2D.
  *
- * Casos: la carga muerta (con el peso propio) y la viva de cada claro de cada
- * nivel por separado, el peso propio de las columnas, la acción lateral
- * repartida entre los nudos de cada nivel y el caso de sondeo.
+ * Cada claro lleva su carga uniforme y, si las tiene, cargas puntuales; el
+ * pórtico puede tener un voladizo a la izquierda y otro a la derecha en todos
+ * sus niveles, con su propia carga.
+ *
+ * Casos: la carga muerta (con el peso propio) y la viva de cada claro —y de
+ * cada voladizo— de cada nivel por separado, el peso propio de las columnas,
+ * la acción lateral repartida entre los nudos de cada nivel y el caso de sondeo.
  */
 
 export const MAX_FRAME_BAYS = 5;
 export const MAX_FRAME_STORIES = 5;
+/** Cargas puntuales por nivel. */
+export const MAX_FRAME_POINT_LOADS = 8;
+
+/** Carga puntual de servicio sobre la viga de un claro, kN. */
+export interface FramePointLoad {
+  /** Claro, desde 0 a la izquierda. */
+  readonly bay: number;
+  /** Distancia desde el eje izquierdo del claro, m. */
+  readonly atM: number;
+  readonly deadKn: number;
+  readonly liveKn: number;
+}
+
+/** Voladizo de un extremo del pórtico, en todos los niveles, con la sección de la viga del nivel. */
+export interface FrameCantilever {
+  /** Desde el eje de la columna extrema hasta la punta, m. */
+  readonly lengthM: number;
+  /** Carga uniforme de servicio, kN/m, sin peso propio. */
+  readonly deadKnPerM: number;
+  readonly liveKnPerM: number;
+  /** Carga puntual de servicio en la punta (pretil, fachada), kN. */
+  readonly tipDeadKn: number;
+  readonly tipLiveKn: number;
+}
 
 export interface FrameStory {
   readonly beam?: FrameSection;
@@ -33,6 +61,8 @@ export interface FrameStory {
   readonly liveKnPerM: number;
   /** Fuerza lateral de diseño en el nivel (sismo ya reducido o viento), kN. */
   readonly lateralKn: number;
+  /** Cargas puntuales sobre las vigas del nivel. */
+  readonly pointLoads?: readonly FramePointLoad[];
 }
 
 export type FrameSection = StructureSection;
@@ -44,6 +74,8 @@ export interface FrameDesignInput {
   readonly bays: readonly number[];
   /** Niveles de abajo hacia arriba. */
   readonly stories: readonly FrameStory[];
+  /** Voladizos a la izquierda y a la derecha, en todos los niveles. */
+  readonly cantilevers?: { readonly left?: FrameCantilever; readonly right?: FrameCantilever };
   readonly base: 'fixed' | 'pinned';
   /** Marco arriostrado: cada nivel restringido lateralmente por otro sistema (muros, contravientos). */
   readonly braced: boolean;
@@ -95,7 +127,23 @@ function validate(input: FrameDesignInput): string[] {
     for (const [key, label] of [['deadKnPerM', 'carga muerta'], ['liveKnPerM', 'carga viva'], ['lateralKn', 'fuerza lateral']] as const) {
       if (!Number.isFinite(story[key]) || story[key] < 0) errors.push(`Nivel ${index + 1}: la ${label} debe ser cero o positiva.`);
     }
+    const points = story.pointLoads ?? [];
+    if (points.length > MAX_FRAME_POINT_LOADS) errors.push(`Nivel ${index + 1}: a lo más ${MAX_FRAME_POINT_LOADS} cargas puntuales.`);
+    points.forEach((point, position) => {
+      const where = `Nivel ${index + 1}, carga puntual ${position + 1}`;
+      const length = input.bays[point.bay];
+      if (!Number.isInteger(point.bay) || length === undefined) { errors.push(`${where}: el claro ${point.bay + 1} no existe.`); return; }
+      if (!Number.isFinite(point.atM) || point.atM < 0 || point.atM > length) errors.push(`${where}: la posición debe quedar dentro del claro (0 a ${length} m).`);
+      if (!Number.isFinite(point.deadKn) || point.deadKn < 0 || !Number.isFinite(point.liveKn) || point.liveKn < 0) errors.push(`${where}: CM y CV deben ser cero o positivas.`);
+    });
   });
+  for (const [side, cantilever] of [['izquierdo', input.cantilevers?.left], ['derecho', input.cantilevers?.right]] as const) {
+    if (!cantilever) continue;
+    if (!isPositiveFinite(cantilever.lengthM)) errors.push(`Voladizo ${side}: la longitud debe ser mayor que cero.`);
+    for (const [key, label] of [['deadKnPerM', 'carga muerta'], ['liveKnPerM', 'carga viva'], ['tipDeadKn', 'carga muerta en la punta'], ['tipLiveKn', 'carga viva en la punta']] as const) {
+      if (!Number.isFinite(cantilever[key]) || cantilever[key] < 0) errors.push(`Voladizo ${side}: la ${label} debe ser cero o positiva.`);
+    }
+  }
   const positive: [number, string][] = [
     [input.beam.widthMm, 'Base de la viga'], [input.beam.heightMm, 'Peralte de la viga'],
     [input.column.widthMm, 'Base b de la columna'], [input.column.heightMm, 'Peralte h de la columna'],
@@ -116,17 +164,28 @@ const sectionInertia = (section: FrameSection) => section.widthMm * section.heig
 const sectionArea = (section: FrameSection) => section.widthMm * section.heightMm / 1e6;
 
 /** Fuente de diseño del pórtico generado: geometría, casos y su análisis rápido. */
-function frameSource(input: FrameDesignInput): StructureSource & { readonly selfWeight: FrameDesignResult['selfWeight'] } {
+export function frameStructureSource(input: FrameDesignInput): StructureSource & { readonly selfWeight: FrameDesignResult['selfWeight'] } {
   const lines = input.bays.length + 1;
   const xs = [0];
   input.bays.forEach((length) => xs.push(xs[xs.length - 1]! + length));
   const ys = [0];
   input.stories.forEach((story) => ys.push(ys[ys.length - 1]! + story.heightM));
   const node = (line: number, level: number) => level * lines + line;
+  const gridNodes = ys.length * lines;
   const e = designCode(input.code).elasticModulusMpa(input.fcMpa) * 1e3;
   const nodes: StructureNode[] = ys.flatMap((y, level) => xs.map((x) => ({ x, y, support: level === 0 ? (input.base === 'fixed' ? 'fixed' : 'pinned') : 'free' })));
+  // Punta de cada voladizo, nivel por nivel, después de la rejilla.
+  const left = input.cantilevers?.left;
+  const right = input.cantilevers?.right;
+  const tips = input.stories.map((_, s) => {
+    const y = ys[s + 1]!;
+    const tip = (x: number) => { nodes.push({ x, y, support: 'free' }); return nodes.length - 1; };
+    return { left: left ? tip(-left.lengthM) : -1, right: right ? tip(xs[xs.length - 1]! + right.lengthM) : -1 };
+  });
   const members: StructureMember[] = [];
   const frameMembers: FrameMember[] = [];
+  /** Cargas puntuales de servicio de cada viga, a `atM` m de su nudo i. */
+  const memberPoints = new Map<number, { deadKn: number; liveKn: number; atM: number }[]>();
   input.stories.forEach((level, story) => {
     const column = level.column ?? input.column;
     const columnInertia = sectionInertia(column) * input.columnInertiaFactor;
@@ -141,13 +200,26 @@ function frameSource(input: FrameDesignInput): StructureSource & { readonly self
   input.stories.forEach((story, s) => {
     const beam = story.beam ?? input.beam;
     const beamInertia = sectionInertia(beam) * input.beamInertiaFactor;
-    input.bays.forEach((__, bay) => {
+    const addBeam = (id: string, label: string, i: number, j: number, deadKnPerM: number, liveKnPerM: number, points: { deadKn: number; liveKn: number; atM: number }[]) => {
+      const index = members.length;
       members.push({
-        id: `V${s + 1}-${bay + 1}`, label: `V${s + 1}·${bay + 1}`, i: node(bay, s + 1), j: node(bay + 1, s + 1), kind: 'beam',
-        section: beam, flexuralStiffnessKnM2: e * beamInertia, displayDeadKnPerM: story.deadKnPerM, displayLiveKnPerM: story.liveKnPerM,
+        id, label, i, j, kind: 'beam',
+        section: beam, flexuralStiffnessKnM2: e * beamInertia, displayDeadKnPerM: deadKnPerM, displayLiveKnPerM: liveKnPerM,
+        ...(points.length ? { displayPoints: points } : {}),
       });
-      frameMembers.push({ i: node(bay, s + 1), j: node(bay + 1, s + 1), elasticModulusKpa: e, areaM2: sectionArea(beam), inertiaM4: beamInertia });
+      frameMembers.push({ i, j, elasticModulusKpa: e, areaM2: sectionArea(beam), inertiaM4: beamInertia });
+      if (points.length) memberPoints.set(index, points);
+    };
+    const tipPoint = (cantilever: FrameCantilever, atM: number) => cantilever.tipDeadKn > 0 || cantilever.tipLiveKn > 0
+      ? [{ deadKn: cantilever.tipDeadKn, liveKn: cantilever.tipLiveKn, atM }] : [];
+    // El voladizo izquierdo va de su punta a la columna: así la línea de viga sigue de izquierda a derecha.
+    if (left) addBeam(`V${s + 1}-VI`, `V${s + 1}·voladizo izq.`, tips[s]!.left, node(0, s + 1), left.deadKnPerM, left.liveKnPerM, tipPoint(left, 0));
+    input.bays.forEach((__, bay) => {
+      const points = (story.pointLoads ?? []).filter((point) => point.bay === bay && (point.deadKn > 0 || point.liveKn > 0))
+        .map((point) => ({ deadKn: point.deadKn, liveKn: point.liveKn, atM: point.atM }));
+      addBeam(`V${s + 1}-${bay + 1}`, `V${s + 1}·${bay + 1}`, node(bay, s + 1), node(bay + 1, s + 1), story.deadKnPerM, story.liveKnPerM, points);
     });
+    if (right) addBeam(`V${s + 1}-VD`, `V${s + 1}·voladizo der.`, node(lines - 1, s + 1), tips[s]!.right, right.deadKnPerM, right.liveKnPerM, tipPoint(right, right.lengthM));
   });
   const selfWeight = input.includeSelfWeight
     ? { beamKnPerM: CONCRETE_UNIT_WEIGHT_KN_M3 * sectionArea(input.beam), columnKnPerM: CONCRETE_UNIT_WEIGHT_KN_M3 * sectionArea(input.column) }
@@ -156,18 +228,22 @@ function frameSource(input: FrameDesignInput): StructureSource & { readonly self
 
   const cases: StructureCase[] = [];
   const loads: FrameLoadCase[] = [];
+  const pointsOf = (index: number, pick: 'deadKn' | 'liveKn') => {
+    const points = (memberPoints.get(index) ?? []).flatMap((point) => point[pick] > 0 ? [{ atM: point.atM, kN: point[pick] }] : []);
+    return points.length ? { points: { [index]: points } } : {};
+  };
   members.forEach((member, index) => {
     if (member.kind !== 'beam') return;
     cases.push({ id: `D-${member.id}`, label: `CM ${member.label}`, kind: 'dead' });
-    loads.push({ id: `D-${member.id}`, gravity: { [index]: member.displayDeadKnPerM + (input.includeSelfWeight ? CONCRETE_UNIT_WEIGHT_KN_M3 * sectionArea(member.section) : 0) } });
+    loads.push({ id: `D-${member.id}`, gravity: { [index]: member.displayDeadKnPerM + (input.includeSelfWeight ? CONCRETE_UNIT_WEIGHT_KN_M3 * sectionArea(member.section) : 0) }, ...pointsOf(index, 'deadKn') });
     cases.push({ id: `L-${member.id}`, label: `CV ${member.label}`, kind: 'live' });
-    loads.push({ id: `L-${member.id}`, gravity: { [index]: member.displayLiveKnPerM } });
+    loads.push({ id: `L-${member.id}`, gravity: { [index]: member.displayLiveKnPerM }, ...pointsOf(index, 'liveKn') });
   });
   if (selfWeight.columnKnPerM > 0) {
     cases.push({ id: 'D-col', label: 'Peso propio de columnas', kind: 'dead' });
     loads.push({ id: 'D-col', gravity: Object.fromEntries(members.flatMap((member, index) => member.kind === 'column' ? [[index, CONCRETE_UNIT_WEIGHT_KN_M3 * sectionArea(member.section)]] : [])) });
   }
-  // Fuerza de cada nivel repartida entre sus nudos (diafragma rígido).
+  // Fuerza de cada nivel repartida entre sus nudos sobre columnas (diafragma rígido).
   if (lateral) {
     cases.push({ id: 'E', label: 'Acción lateral', kind: 'lateral' });
     loads.push({ id: 'E', nodal: input.stories.flatMap((story, s) => xs.map((__, line) => ({ node: node(line, s + 1), fx: story.lateralKn / lines, fy: 0 }))) });
@@ -176,10 +252,11 @@ function frameSource(input: FrameDesignInput): StructureSource & { readonly self
     cases.push({ id: 'probe', label: 'Sondeo lateral', kind: 'probe' });
     loads.push({ id: 'probe', nodal: probeLoads(nodes, members).map((item) => ({ ...item, fy: 0 })) });
   }
+  const cantileverText = [left ? 'voladizo izq.' : '', right ? 'voladizo der.' : ''].filter(Boolean).join(' y ');
 
   return {
     kind: 'frame',
-    label: `Pórtico ${input.bays.length} ${input.bays.length === 1 ? 'claro' : 'claros'} × ${input.stories.length} ${input.stories.length === 1 ? 'nivel' : 'niveles'}`,
+    label: `Pórtico ${input.bays.length} ${input.bays.length === 1 ? 'claro' : 'claros'} × ${input.stories.length} ${input.stories.length === 1 ? 'nivel' : 'niveles'}${cantileverText ? ` · ${cantileverText}` : ''}`,
     nodes,
     members,
     cases,
@@ -194,7 +271,7 @@ function frameSource(input: FrameDesignInput): StructureSource & { readonly self
           restraint: item.support === 'fixed' ? [true, true, true] as const
             : item.support === 'pinned' ? [true, true, false] as const
               // Arriostrado: el primer nudo de cada nivel no se desplaza lateralmente.
-              : [input.braced && index % lines === 0, false, false] as const,
+              : [input.braced && index < gridNodes && index % lines === 0, false, false] as const,
         })),
         members: frameMembers.map((member, index) => overrides?.has(index) ? { ...member, inertiaM4: overrides.get(index)! } : member),
       };
@@ -204,7 +281,7 @@ function frameSource(input: FrameDesignInput): StructureSource & { readonly self
         ok: true,
         cases: outcome.analysis.cases.map((caseResult) => ({
           nodeDisplacements: caseResult.nodeDisplacements,
-          at: (memberIndex: number, x: number) => memberActionAt(model.members[memberIndex]!, outcome.analysis.geometry[memberIndex]!.lengthM, caseResult.members[memberIndex]!, x),
+          at: (memberIndex: number, x: number, side?: 'left' | 'right') => memberActionAt(model.members[memberIndex]!, outcome.analysis.geometry[memberIndex]!.lengthM, caseResult.members[memberIndex]!, x, side),
         })),
       };
     },
@@ -214,7 +291,7 @@ function frameSource(input: FrameDesignInput): StructureSource & { readonly self
 export function designFrame(input: FrameDesignInput): FrameDesignResult | FrameDesignError {
   const errors = validate(input);
   if (errors.length) return { ok: false, errors };
-  const source = frameSource(input);
+  const source = frameStructureSource(input);
   const result = designStructure(source, {
     code: input.code,
     coverMm: input.coverMm,

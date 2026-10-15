@@ -1,4 +1,4 @@
-import { buildStations, type BeamAnalysis, type BeamAnalysisOutcome, type BeamEnd, type CaseResponse } from './beamAnalysis';
+import { buildStations, type BeamAnalysis, type BeamAnalysisOutcome, type BeamEnd, type BeamExtraLoad, type CaseResponse } from './beamAnalysis';
 import { designBeam, type BeamDesignInput, type BeamDesignResult } from './beam';
 import { designCode, isDesignCodeId, type DesignCodeId, type LoadCombination } from './codes';
 import { designColumn, momentCapacityAt, type ColumnDesignResult, type ColumnGroup } from './column';
@@ -62,6 +62,12 @@ export interface StructureMember {
   /** Carga puntual de referencia del tramo (la mayor), para la lámina y las estaciones de la viga. */
   readonly displayPoint?: { readonly deadKn: number; readonly liveKn: number; readonly atM: number };
   /**
+   * Todas las cargas puntuales de servicio del tramo (a `atM` m de su nudo i),
+   * cuando la fuente las conoce: cada una tiene su estación y su salto de
+   * cortante. Si está, manda sobre `displayPoint`.
+   */
+  readonly displayPoints?: readonly { readonly deadKn: number; readonly liveKn: number; readonly atM: number }[];
+  /**
    * Columna de un marco espacial: su restricción en la dirección perpendicular
    * al plano. ψ en cada extremo (con las vigas de esa dirección) y, si hay un
    * pórtico en esa dirección, la rigidez lateral de su entrepiso.
@@ -100,8 +106,8 @@ export interface StructureAction {
 export interface StructureCaseResult {
   /** [ux, uy, rz] por nudo, m y rad. */
   readonly nodeDisplacements: readonly (readonly [number, number, number])[];
-  /** Acciones del miembro `memberIndex` a `x` m de su nudo i. */
-  readonly at: (memberIndex: number, x: number) => StructureAction;
+  /** Acciones del miembro `memberIndex` a `x` m de su nudo i (en una carga puntual, del lado `side`; por omisión, el izquierdo). */
+  readonly at: (memberIndex: number, x: number, side?: 'left' | 'right') => StructureAction;
   /**
    * Compresión total de las columnas del entrepiso del pórtico perpendicular
    * que contiene a la columna `memberIndex`, kN (para su índice de estabilidad).
@@ -719,23 +725,35 @@ export function designStructure(source: StructureSource, options: StructureDesig
   const beams: StructureBeamDesign[] = [];
   const lineLevelCount = new Map<number, number>();
   for (const line of lines) {
-    const spans = line.members.map(({ index, reversed }) => {
+    // La primera carga puntual de cada tramo va en el tramo; las demás, como cargas adicionales.
+    const extraLoads: BeamExtraLoad[] = [];
+    const spans = line.members.map(({ index, reversed }, spanIndex) => {
       const member = members[index]!;
-      const point = member.displayPoint;
-      const atM = point ? (reversed ? lengths[index]! - point.atM : point.atM) : lengths[index]! / 2;
+      const length = lengths[index]!;
+      const local = (atM: number) => Math.min(length, Math.max(0, reversed ? length - atM : atM));
+      const points = member.displayPoints ?? (member.displayPoint ? [member.displayPoint] : []);
+      const [point, ...rest] = points;
+      for (const item of rest) {
+        const at = local(item.atM);
+        for (const [category, kN] of [['dead', item.deadKn], ['live', item.liveKn]] as const) {
+          if (kN !== 0) extraLoads.push({ spanIndex, category, kind: 'point', startM: at, endM: at, startKn: kN, endKn: kN });
+        }
+      }
       return {
-        lengthM: lengths[index]!, deadKnPerM: member.displayDeadKnPerM, liveKnPerM: member.displayLiveKnPerM,
-        pointDeadKn: point?.deadKn ?? 0, pointLiveKn: point?.liveKn ?? 0, pointAtM: Math.min(lengths[index]!, Math.max(0, atM)),
+        lengthM: length, deadKnPerM: member.displayDeadKnPerM, liveKnPerM: member.displayLiveKnPerM,
+        pointDeadKn: point?.deadKn ?? 0, pointLiveKn: point?.liveKn ?? 0, pointAtM: point ? local(point.atM) : length / 2,
       };
     });
-    const stations = buildStations({ spans });
+    const stations = buildStations({ spans, extraLoads });
     const sample = (cases: readonly StructureCaseResult[], caseIndex: number): CaseResponse => {
       const moment: number[] = [];
       const shear: number[] = [];
       const deflection: number[] = [];
       for (const station of stations) {
         const { index, reversed } = line.members[station.span]!;
-        const action = cases[caseIndex]!.at(index, reversed ? lengths[index]! - station.local : station.local);
+        // En una carga puntual, el lado de la estación; un tramo al revés lo invierte.
+        const side = reversed ? (station.side === 'left' ? 'right' : 'left') : station.side;
+        const action = cases[caseIndex]!.at(index, reversed ? lengths[index]! - station.local : station.local, side);
         // Un tramo dibujado al revés tiene el eje y local hacia abajo: momento y flecha cambian de signo.
         moment.push(reversed ? -action.moment : action.moment);
         shear.push(action.shear);
@@ -785,6 +803,7 @@ export function designStructure(source: StructureSource, options: StructureDesig
       supportWidthMm: Math.max(supportWidth(line.nodes[0]!), supportWidth(line.nodes[line.nodes.length - 1]!)) || 300,
       flange: null,
       provided: null,
+      ...(extraLoads.length ? { extraLoads } : {}),
     };
     const level = levelOf((nodes[line.nodes[0]!]!.y + nodes[line.nodes[line.nodes.length - 1]!]!.y) / 2);
     const count = (lineLevelCount.get(level) ?? 0) + 1;
@@ -1021,8 +1040,15 @@ export function designStructure(source: StructureSource, options: StructureDesig
   const firstLateral = laterals[0] ?? null;
   const diagramMembers: StructureDiagramMember[] = members.map((member, index) => {
     const length = lengths[index]!;
-    const stations = Array.from({ length: MEMBER_STATIONS + 1 }, (_, step) => length * step / MEMBER_STATIONS);
-    const sampled = analysis.map((caseResult) => stations.map((x) => caseResult.at(index, x)));
+    // Estaciones uniformes y, en cada carga puntual interior, una a cada lado del salto.
+    const pointsAt = (member.displayPoints ?? (member.displayPoint ? [member.displayPoint] : []))
+      .map((point) => point.atM).filter((atM) => atM > TOLERANCE && atM < length - TOLERANCE);
+    const marks = [
+      ...Array.from({ length: MEMBER_STATIONS + 1 }, (_, step) => ({ x: length * step / MEMBER_STATIONS, side: 'left' as const })),
+      ...pointsAt.flatMap((atM) => [{ x: atM, side: 'left' as const }, { x: atM, side: 'right' as const }]),
+    ].sort((a, b) => a.x - b.x || (a.side === b.side ? 0 : a.side === 'left' ? -1 : 1));
+    const stations = marks.map((mark) => mark.x);
+    const sampled = analysis.map((caseResult) => marks.map((mark) => caseResult.at(index, mark.x, mark.side)));
     const envelope = (pick: (action: StructureAction) => number) => {
       const max: number[] = [];
       const min: number[] = [];

@@ -4,7 +4,7 @@ import { factorizeLinearSystem, zeros, type Matrix } from '../../foundation/line
  * Análisis elástico lineal de un marco plano para el taller de Diseño.
  *
  * Rigidez directa con elementos de Euler-Bernoulli (axial y flexión), carga
- * uniforme en cada miembro y cargas en los nudos. Todos los casos comparten una
+ * uniforme y cargas puntuales de gravedad en cada miembro, y cargas en los nudos. Todos los casos comparten una
  * sola factorización de la matriz de rigidez: un pórtico de cinco niveles y
  * cinco claros con medio centenar de casos de carga se resuelve en unos
  * milisegundos, lo que permite recalcular mientras se edita. Las convenciones
@@ -40,8 +40,22 @@ export interface FrameLoadCase {
   readonly id: string;
   /** Carga uniforme por miembro en dirección −Y global (gravedad), kN/m de longitud real. */
   readonly gravity?: Readonly<Record<number, number>>;
+  /** Cargas puntuales por miembro en dirección −Y global, kN, a `atM` m del nudo i. */
+  readonly points?: Readonly<Record<number, readonly FramePointLoad[]>>;
   /** Fuerzas en los nudos, kN (globales). */
   readonly nodal?: readonly { readonly node: number; readonly fx: number; readonly fy: number }[];
+}
+
+export interface FramePointLoad {
+  readonly atM: number;
+  readonly kN: number;
+}
+
+/** Carga puntual en ejes locales: axial `px` y transversal `qy`, kN, a `atM` m del nudo i. */
+interface LocalPoint {
+  readonly atM: number;
+  readonly px: number;
+  readonly qy: number;
 }
 
 export interface FrameModel {
@@ -57,6 +71,8 @@ interface MemberCaseResult {
   /** Carga distribuida en ejes locales, kN/m. */
   readonly px: number;
   readonly qy: number;
+  /** Cargas puntuales en ejes locales. */
+  readonly points: readonly LocalPoint[];
 }
 
 interface FrameCaseResult {
@@ -137,6 +153,16 @@ const fixedEndForces = (px: number, qy: number, length: number) => [
   -px * length / 2, -qy * length / 2, qy * length ** 2 / 12,
 ];
 
+/** Fuerzas de empotramiento por una carga puntual local (axial `px`, transversal `qy`) a `a` m del nudo i. */
+const pointFixedEndForces = ({ atM: a, px, qy }: LocalPoint, length: number) => {
+  const b = length - a;
+  const l3 = length ** 3;
+  return [
+    -px * b / length, -qy * b ** 2 * (3 * a + b) / l3, -qy * a * b ** 2 / length ** 2,
+    -px * a / length, -qy * a ** 2 * (a + 3 * b) / l3, qy * a ** 2 * b / length ** 2,
+  ];
+};
+
 const isUsable = (value: number) => Number.isFinite(value) && value > 0;
 
 /** Resuelve todos los casos con una sola factorización. */
@@ -197,10 +223,22 @@ export function analyzeFrame(model: FrameModel, cases: readonly FrameLoadCase[])
       // Gravedad (0, −w) proyectada en ejes locales.
       return { px: -w * g.sin, qy: -w * g.cos };
     });
+    const pointsOf = model.members.map((_, index): LocalPoint[] => {
+      const g = geometry[index]!;
+      return (loadCase.points?.[index] ?? []).flatMap((point) => point.kN === 0 ? []
+        : [{ atM: Math.min(g.lengthM, Math.max(0, point.atM)), px: -point.kN * g.sin, qy: -point.kN * g.cos }]);
+    });
+    const fixedOf = (index: number) => {
+      const { px, qy } = distributed[index]!;
+      const length = geometry[index]!.lengthM;
+      const fixed = fixedEndForces(px, qy, length);
+      for (const point of pointsOf[index]!) pointFixedEndForces(point, length).forEach((value, position) => { fixed[position]! += value; });
+      return fixed;
+    };
     model.members.forEach((_, index) => {
       const { px, qy } = distributed[index]!;
-      if (px === 0 && qy === 0) return;
-      const equivalent = toGlobal(geometry[index]!, fixedEndForces(px, qy, geometry[index]!.lengthM)).map((value) => -value);
+      if (px === 0 && qy === 0 && !pointsOf[index]!.length) return;
+      const equivalent = toGlobal(geometry[index]!, fixedOf(index)).map((value) => -value);
       dofsOf(index).forEach((dof, position) => {
         const r = freeIndex[dof]!;
         if (r >= 0) load[r]! += equivalent[position]!;
@@ -219,9 +257,9 @@ export function analyzeFrame(model: FrameModel, cases: readonly FrameLoadCase[])
       const g = geometry[index]!;
       const displacements = toLocal(g, dofsOf(index).map((dof) => full[dof]!));
       const { px, qy } = distributed[index]!;
-      const fixed = fixedEndForces(px, qy, g.lengthM);
+      const fixed = fixedOf(index);
       const endForces = locals[index]!.map((row, r) => row.reduce((total, value, position) => total + value * displacements[position]!, 0) + fixed[r]!);
-      return { endForces, displacements, px, qy };
+      return { endForces, displacements, px, qy, points: pointsOf[index]! };
     });
     return { id: loadCase.id, nodeDisplacements, members };
   });
@@ -238,8 +276,12 @@ interface MemberAction {
   readonly v: number;
 }
 
-/** Acciones internas y desplazamientos de un miembro a la distancia `x` (m) del nudo i. */
-export function memberActionAt(member: FrameMember, lengthM: number, result: MemberCaseResult, x: number): MemberAction {
+/**
+ * Acciones internas y desplazamientos de un miembro a la distancia `x` (m) del
+ * nudo i. Justo en una carga puntual se da el valor de su izquierda (lado i);
+ * `side: 'right'` da el de su derecha.
+ */
+export function memberActionAt(member: FrameMember, lengthM: number, result: MemberCaseResult, x: number, side: 'left' | 'right' = 'left'): MemberAction {
   const [ni, vi, mi] = result.endForces as [number, number, number];
   const { px, qy } = result;
   const [ui, vti, ti, uj, vtj, tj] = result.displacements as [number, number, number, number, number, number];
@@ -252,11 +294,29 @@ export function memberActionAt(member: FrameMember, lengthM: number, result: Mem
   const n3 = 3 * xi ** 2 - 2 * xi ** 3;
   const n4 = L * (-(xi ** 2) + xi ** 3);
   const at = xi * L;
-  return {
-    axial: -ni - px * at,
-    shear: vi + qy * at,
-    moment: -mi + vi * at + qy * at ** 2 / 2,
-    u: ui + (uj - ui) * xi + px * at * (L - at) / (2 * ea),
-    v: n1 * vti + n2 * ti + n3 * vtj + n4 * tj + qy * at ** 2 * (L - at) ** 2 / (24 * ei),
-  };
+  let axial = -ni - px * at;
+  let shear = vi + qy * at;
+  let moment = -mi + vi * at + qy * at ** 2 / 2;
+  let u = ui + (uj - ui) * xi + px * at * (L - at) / (2 * ea);
+  let v = n1 * vti + n2 * ti + n3 * vtj + n4 * tj + qy * at ** 2 * (L - at) ** 2 / (24 * ei);
+  for (const point of result.points ?? []) {
+    const a = point.atM;
+    const b = L - a;
+    const beyond = side === 'right' ? at > a - 1e-9 : at > a + 1e-9;
+    if (beyond) {
+      axial -= point.px;
+      shear += point.qy;
+      moment += point.qy * (at - a);
+    }
+    // Solución particular de la barra biempotrada con la carga puntual.
+    if (at <= a) {
+      u += point.px * b * at / (ea * L);
+      v += point.qy * b ** 2 * at ** 2 * (3 * a * L - 3 * a * at - b * at) / (6 * ei * L ** 3);
+    } else {
+      const r = L - at;
+      u += point.px * a * r / (ea * L);
+      v += point.qy * a ** 2 * r ** 2 * (3 * b * L - 3 * b * r - a * r) / (6 * ei * L ** 3);
+    }
+  }
+  return { axial, shear, moment, u, v };
 }

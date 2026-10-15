@@ -1,10 +1,12 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createDefaultProject } from '../../data/defaultProject';
 import { evaluateDiagramAt } from '../../engine/diagram';
 import { analyzeProject } from '../../engine/solver';
 import type { MemberLoad, NodalLoad, ProjectModel } from '../../types';
 import { designCode, type DesignCodeId } from './codes';
-import { designFrame, swayEffectiveLengthFactor, type FrameDesignInput } from './frame';
+import { designFrame, frameStructureSource, swayEffectiveLengthFactor, type FrameDesignInput } from './frame';
 
 const frameInput = (overrides: Partial<FrameDesignInput> = {}, code: DesignCodeId = 'ntc-2023'): FrameDesignInput => ({
   code,
@@ -179,6 +181,105 @@ describe('pórtico de vigas y columnas', () => {
     const lateral = result.checks.find((check) => check.id === 'lateral-combinations')!;
     expect(lateral.reference.standard).toBe(code === 'ntc-2023' ? 'ntc-cdmx-2023-criteria-actions' : 'complementary');
     expect(result.stories.every((story) => story.driftMm > 0)).toBe(true);
+  });
+});
+
+interface FrameFixture {
+  readonly tolerance: { readonly relative: number; readonly absolute: number };
+  readonly input: {
+    readonly bays: number[];
+    readonly heights: number[];
+    readonly beam: { widthMm: number; heightMm: number };
+    readonly column: { widthMm: number; heightMm: number };
+    readonly cantileverRight: { lengthM: number; deadKnPerM: number; liveKnPerM: number; tipDeadKn: number; tipLiveKn: number };
+    readonly stories: { deadKnPerM: number; liveKnPerM: number; lateralKn: number; points: { bay: number; atM: number; deadKn: number; liveKn: number }[] }[];
+    readonly momentStations: { x: number; y: number; side: 'left' | 'right' }[];
+  };
+  readonly expected: Record<'dead' | 'live' | 'lateral', { baseReactions: [number, number, number][]; beamMoments: number[] }>;
+}
+
+describe('pórtico con cargas puntuales y voladizo contra el oráculo Python', () => {
+  // validation/python/elements_oracle.py · frame_analysis: rigidez directa propia, con un nudo en
+  // cada carga puntual y en la punta del voladizo (el motor usa fuerzas de empotramiento).
+  const fixture = JSON.parse(readFileSync(join(process.cwd(), 'validation/fixtures/elements/frame-portico-cantilever-point.json'), 'utf8')) as FrameFixture;
+  const { input: data, tolerance } = fixture;
+  const input = frameInput({
+    bays: data.bays,
+    stories: data.heights.map((heightM, index) => ({
+      heightM, deadKnPerM: data.stories[index]!.deadKnPerM, liveKnPerM: data.stories[index]!.liveKnPerM, lateralKn: data.stories[index]!.lateralKn,
+      pointLoads: data.stories[index]!.points,
+    })),
+    cantilevers: { right: data.cantileverRight },
+    beam: data.beam,
+    column: data.column,
+    includeSelfWeight: false,
+  });
+  const source = frameStructureSource(input);
+  const outcome = source.analyze();
+  if (!outcome.ok) throw new Error(outcome.error);
+  const kinds = { dead: 'dead', live: 'live', lateral: 'lateral' } as const;
+  const sum = (kind: keyof typeof kinds, pick: (caseIndex: number) => number) =>
+    source.cases.reduce((total, item, index) => item.kind === kinds[kind] ? total + pick(index) : total, 0);
+  const close = (actual: number, expected: number) =>
+    expect(Math.abs(actual - expected)).toBeLessThanOrEqual(tolerance.absolute + tolerance.relative * Math.abs(expected));
+  const baseColumns = source.members.flatMap((member, index) => member.kind === 'column' && source.nodes[member.i]!.y === 0 ? [index] : []);
+
+  it.each(['dead', 'live', 'lateral'] as const)('reacciones y momentos del caso %s', (kind) => {
+    const expected = fixture.expected[kind];
+    baseColumns.forEach((memberIndex, line) => {
+      // Columna que sube: y local hacia −X; la reacción es la fuerza del apoyo sobre el miembro.
+      const rx = sum(kind, (caseIndex) => -outcome.cases[caseIndex]!.at(memberIndex, 0).shear);
+      const ry = sum(kind, (caseIndex) => -outcome.cases[caseIndex]!.at(memberIndex, 0).axial);
+      const mz = sum(kind, (caseIndex) => -outcome.cases[caseIndex]!.at(memberIndex, 0).moment);
+      close(rx, expected.baseReactions[line]![0]);
+      close(ry, expected.baseReactions[line]![1]);
+      close(mz, expected.baseReactions[line]![2]);
+    });
+    data.momentStations.forEach((station, position) => {
+      const memberIndex = source.members.findIndex((member) => member.kind === 'beam'
+        && Math.abs(source.nodes[member.i]!.y - station.y) < 1e-9
+        && (station.side === 'left'
+          ? source.nodes[member.i]!.x < station.x - 1e-9 && station.x <= source.nodes[member.j]!.x + 1e-9
+          : source.nodes[member.i]!.x <= station.x + 1e-9 && station.x < source.nodes[member.j]!.x - 1e-9));
+      expect(memberIndex).toBeGreaterThanOrEqual(0);
+      const x = station.x - source.nodes[source.members[memberIndex]!.i]!.x;
+      close(sum(kind, (caseIndex) => outcome.cases[caseIndex]!.at(memberIndex, x, station.side).moment), expected.beamMoments[position]!);
+    });
+  });
+
+  it('equilibra la carga vertical total y la lateral', () => {
+    const ry = (kind: 'dead' | 'live') => baseColumns.reduce((total, memberIndex) => total + sum(kind, (caseIndex) => -outcome.cases[caseIndex]!.at(memberIndex, 0).axial), 0);
+    const tip = data.cantileverRight;
+    const dead = data.stories.reduce((total, story) => total + story.deadKnPerM * (data.bays[0]! + data.bays[1]!)
+      + story.points.reduce((points, point) => points + point.deadKn, 0) + tip.deadKnPerM * tip.lengthM + tip.tipDeadKn, 0);
+    const live = data.stories.reduce((total, story) => total + story.liveKnPerM * (data.bays[0]! + data.bays[1]!)
+      + story.points.reduce((points, point) => points + point.liveKn, 0) + tip.liveKnPerM * tip.lengthM + tip.tipLiveKn, 0);
+    expect(ry('dead')).toBeCloseTo(dead, 8);
+    expect(ry('live')).toBeCloseTo(live, 8);
+    const rx = baseColumns.reduce((total, memberIndex) => total + sum('lateral', (caseIndex) => -outcome.cases[caseIndex]!.at(memberIndex, 0).shear), 0);
+    expect(rx).toBeCloseTo(-data.stories.reduce((total, story) => total + story.lateralKn, 0), 8);
+  });
+
+  it('el voladizo es isostático: M = wL²/2 + PL en el apoyo, a mano', () => {
+    const tip = data.cantileverRight;
+    const root = source.members.findIndex((member) => member.id === 'V1-VD');
+    const at = (kind: 'dead' | 'live') => sum(kind, (caseIndex) => outcome.cases[caseIndex]!.at(root, 0).moment);
+    expect(at('dead')).toBeCloseTo(-(tip.deadKnPerM * tip.lengthM ** 2 / 2 + tip.tipDeadKn * tip.lengthM), 8);
+    expect(at('live')).toBeCloseTo(-(tip.liveKnPerM * tip.lengthM ** 2 / 2 + tip.tipLiveKn * tip.lengthM), 8);
+  });
+
+  it('diseña la línea de viga con el voladizo como extremo libre y cada carga con su salto de cortante', () => {
+    const result = designFrame({ ...input, includeSelfWeight: true });
+    if (!result.ok) throw new Error(result.errors.join(' '));
+    const beam = result.beams.find((item) => item.level === 1)!;
+    expect(beam.memberIndexes).toHaveLength(3);
+    expect(beam.result.input.rightEnd).toBe('free');
+    expect(beam.result.input.leftEnd).toBe('fixed');
+    // La carga puntual de 30 + 15 kN en x = 2 m: la envolvente de cortante salta ahí.
+    const at = beam.result.diagram.xM.flatMap((x, index) => Math.abs(x - 2) < 1e-9 ? [index] : []);
+    expect(at.length).toBeGreaterThanOrEqual(2);
+    const jump = beam.result.diagram.shearMaxKn[at[0]!]! - beam.result.diagram.shearMaxKn[at[at.length - 1]!]!;
+    expect(jump).toBeGreaterThan(30);
   });
 });
 
