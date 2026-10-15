@@ -293,7 +293,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
   </>;
 
   const searchable = view === 'projects' || view === 'templates';
-  const page = view === 'projects' ? <ProjectHub filter={query} onOpen={(record) => openProject(record.project, undefined, record.revision)} />
+  const page = view === 'projects' ? <ProjectHub filter={query} onClearFilter={() => setQuery('')} onOpen={(record) => openProject(record.project, undefined, record.revision)} />
     : view === 'templates' ? <div className="fh-grid">{examples.map((example) => {
       const presented = presentExample(example.name, example.description, t);
       return <button key={example.name} type="button" className="fh-card" onClick={() => openProject(example.build())}>

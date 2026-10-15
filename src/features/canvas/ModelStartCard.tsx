@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { MODEL_STARTS, type ModelStartId } from '../../data/modelStarts';
+import { Button } from '../../design-system/components/controls';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { useI18n } from '../../i18n/useI18n';
 import './modelStart.css';
@@ -15,10 +16,18 @@ const COPY: Record<ModelStartId, { title: TranslationKey; hint: TranslationKey; 
   'truss-pratt': { title: 'modelStart.trussPratt', hint: 'modelStart.trussPrattHint', glyph: glyph(<><path d="M3 15h26M9 5h14M3 15l6-10M29 15l-6-10M9 5v10M16 5v10M23 5v10M9 5l7 10M23 5l-7 10" /></>) },
 };
 
+const startCopy = (id: ModelStartId, t: (key: TranslationKey) => string) => <>
+  {COPY[id].glyph}
+  <span className="model-start__copy"><strong>{t(COPY[id].title)}</strong><span>{t(COPY[id].hint)}</span></span>
+</>;
+
 /**
  * Modelo 2D vacío: estructuras pequeñas y completas que se calculan al
  * elegirlas, más el generador y el dibujo libre. Es la misma pauta que el
- * lienzo vacío del modo 3D.
+ * lienzo vacío del modo 3D: un solo inicio relleno con el acento (el primero,
+ * la viga apoyada), los demás inicios en una lista sin relleno y el generador
+ * y el dibujo libre como acciones fantasma. Ninguna otra acción pesa como la
+ * primaria.
  */
 export function ModelStartCard({ onStart, onGenerate, onDraw }: {
   onStart: (id: ModelStartId) => void;
@@ -26,19 +35,19 @@ export function ModelStartCard({ onStart, onGenerate, onDraw }: {
   onDraw: () => void;
 }) {
   const { t } = useI18n();
+  const [primary, ...others] = MODEL_STARTS;
   return <div className="model-start" data-testid="model-start">
     <section className="model-start__card" aria-labelledby="model-start-title">
       <h2 id="model-start-title">{t('modelStart.title')}</h2>
       <p className="model-start__body">{t('modelStart.body')}</p>
-      <div className="model-start__options">
-        {MODEL_STARTS.map((id) => <button key={id} type="button" className="model-start__option" onClick={() => onStart(id)}>
-          {COPY[id].glyph}
-          <span className="model-start__copy"><strong>{t(COPY[id].title)}</strong><span>{t(COPY[id].hint)}</span></span>
-        </button>)}
+      <button type="button" className="model-start__primary" onClick={() => onStart(primary)}>{startCopy(primary, t)}</button>
+      <p id="model-start-more" className="model-start__label">{t('modelStart.more')}</p>
+      <div className="model-start__options" role="group" aria-labelledby="model-start-more">
+        {others.map((id) => <button key={id} type="button" className="model-start__option" onClick={() => onStart(id)}>{startCopy(id, t)}</button>)}
       </div>
       <div className="model-start__secondary">
-        <button type="button" onClick={onGenerate}>{t('modelStart.generate')}</button>
-        <button type="button" onClick={onDraw}>{t('modelStart.draw')}</button>
+        <Button variant="ghost" size="touch" onClick={onGenerate}>{t('modelStart.generate')}</Button>
+        <Button variant="ghost" size="touch" onClick={onDraw}>{t('modelStart.draw')}</Button>
       </div>
       <p className="model-start__note">{t('modelStart.note')}</p>
     </section>

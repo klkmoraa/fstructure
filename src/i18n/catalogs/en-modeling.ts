@@ -970,6 +970,7 @@ export const enModeling = {
   'inspector.rigidShort': 'Rigid',
   'modelStart.title': 'Start your 2D model',
   'modelStart.body': 'Pick a structure ready to analyze and edit it, or draw your own.',
+  'modelStart.more': 'Other starting points',
   'modelStart.beamSimple': 'Simply supported beam',
   'modelStart.beamSimpleHint': '6 m · D 15 and L 8 kN/m',
   'modelStart.beamCantilever': 'Cantilever',

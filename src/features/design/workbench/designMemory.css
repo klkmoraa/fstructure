@@ -38,7 +38,9 @@
 .dw-memory__actions .dw-icon-button { display: inline-grid; width: 42px; height: 42px; margin-left: 2px; vertical-align: middle; }
 .dw-memory__empty { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0; color: var(--dw-muted); font-size: 13px; line-height: 1.5; }
 .dw-memory__empty p { margin: 0; }
-.dw-memory__notice { margin: 0 0 10px; color: var(--dw-muted); font-size: 12px; }
+.dw-memory__results.is-no-matches { min-height: var(--dw-memory-settled, auto); }
+/* El aviso sólo aparece cuando algo falló (guardar, abrir, exportar): se lee como error. */
+.dw-memory__notice { margin: 0 0 10px; padding: 8px 10px; border-radius: var(--sc-radius-sm); background: color-mix(in srgb, var(--sc-color-state-error) 9%, transparent); color: var(--sc-color-state-error-foreground); font-size: 12px; }
 .dw-memory__confirm { display: grid; gap: 8px; margin: 0 0 12px; padding: 10px 12px; border-left: 2px solid var(--dw-warn); background: var(--sc-color-surface-inset); font-size: 12.5px; }
 .dw-memory__confirm p { margin: 0; }
 .dw-memory__confirm div { display: flex; flex-wrap: wrap; gap: 6px; }

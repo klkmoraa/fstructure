@@ -6,6 +6,8 @@ import { createDefaultProject } from '../../data/defaultProject';
 import { PROJECT_STORAGE_KEY } from '../../data/projectStorage';
 import { ProjectProvider } from '../../store/ProjectContext';
 import { HomePage } from './HomePage';
+import { IDBFactory } from 'fake-indexeddb';
+import { getProjectRepository } from '../../storage/projectRepository';
 
 beforeEach(() => {
   localStorage.clear();
@@ -51,5 +53,23 @@ describe('HomePage: por separado o proyecto completo', () => {
     await user.click(screen.getByRole('button', { name: /Edificios y marcos espaciales/ }));
     expect(onOpenSpace3D).toHaveBeenCalledTimes(1);
     expect(await screen.findByText('Proyecto abierto')).toBeTruthy();
+  });
+});
+
+describe('HomePage Proyectos: búsqueda sin coincidencias', () => {
+  it('dice que ningún proyecto coincide y «Limpiar filtros» borra la búsqueda y restaura la lista', async () => {
+    globalThis.indexedDB = new IDBFactory();
+    await getProjectRepository().saveProject({ ...createDefaultProject(), id: 'p-1', name: 'Nave industrial' });
+    window.history.replaceState({}, '', '?surface=welcome&view=projects');
+    const user = userEvent.setup();
+    render(<ProjectProvider><HomePage onOpenWorkspace={vi.fn()} onOpenSpace3D={vi.fn()} onOpenDesign={vi.fn()} /></ProjectProvider>);
+    expect(await screen.findByText('Nave industrial')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Limpiar filtros' })).toBeNull();
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar' }), 'puente');
+    expect(await screen.findByText('Ningún proyecto coincide con el filtro.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
+    expect((screen.getByRole('searchbox', { name: 'Buscar' }) as HTMLInputElement).value).toBe('');
+    expect(screen.getByText('Nave industrial')).toBeTruthy();
+    expect(screen.queryByText('Ningún proyecto coincide con el filtro.')).toBeNull();
   });
 });
