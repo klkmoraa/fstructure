@@ -2,15 +2,15 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { designCode } from '../../../design/elements/codes';
-import { designMatFoundation, type MatFoundationInput } from '../../../design/elements/matFoundation';
-import { designStrapFooting, type StrapFootingInput } from '../../../design/elements/strapFooting';
+import { designMatFoundation, type MatFoundationInput, type MatFoundationResult } from '../../../design/elements/matFoundation';
+import { designStrapFooting, type StrapFootingInput, type StrapFootingResult } from '../../../design/elements/strapFooting';
 import { MatStripDiagram, StrapDiagrams, freeBodyBalance, matStripFreeBody, strapFreeBody } from './FoundationDrawings';
 
 afterEach(cleanup);
 
-const ok = <T,>(result: T | { ok: false; errors: readonly string[] }): T => {
-  if ((result as { ok: boolean }).ok === false) throw new Error((result as { errors: readonly string[] }).errors.join('; '));
-  return result as T;
+const ok = <T extends { ok: true }>(result: T | { ok: false; errors: readonly string[] }): T => {
+  if (result.ok === false) throw new Error(result.errors.join('; '));
+  return result;
 };
 
 describe('DCL de la zapata de lindero', () => {
@@ -24,7 +24,7 @@ describe('DCL de la zapata de lindero', () => {
     coverMm: 75, exteriorLengthMm: 2400, thicknessMm: null, barDiameterMm: 15.9,
     strap: { widthMm: null, heightMm: null, barDiameterMm: 15.9, stirrupDiameterMm: 9.5 },
   };
-  const result = ok(designStrapFooting(input));
+  const result = ok<StrapFootingResult>(designStrapFooting(input));
 
   it('da R1 = 800 kN y R2 = 1 000 kN de servicio', () => {
     expect(result.eccentricityMm).toBe(1000);
@@ -62,7 +62,7 @@ describe('DCL de la franja de la losa de cimentación', () => {
     loads: { corner: { deadKn: 300, liveKn: 150 }, edge: { deadKn: 600, liveKn: 300 }, interior: { deadKn: 1200, liveKn: 600 } },
     combinations: designCode('ntc-2023').loadCombinations('B'), allowablePressureKpa: 100, fcMpa: 25, fyMpa: 420, coverMm: 75, barDiameterMm: 19.1, thicknessMm: null,
   };
-  const result = ok(designMatFoundation(base));
+  const result = ok<MatFoundationResult>(designMatFoundation(base));
 
   it('con 2 × 2 claros lleva tres columnas a la franja y queda en equilibrio', () => {
     const body = matStripFreeBody(result);
