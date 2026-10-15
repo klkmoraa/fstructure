@@ -24,6 +24,7 @@ import { ModelSteelReview, isSteelReviewCandidate } from './ModelSteelReview';
 import { model2dResultProviderWithWorker, space3dResultProviderWithWorker } from './modelResultWorker';
 import { model2dRevision } from '../../../design/elements/model2dResultSnapshot';
 import { space3dRevision } from '../../../integrations/space3dResultSnapshot';
+import { registerPendingWrite } from '../pendingWrites';
 
 /**
  * Modo Diseño de FStructure: los borradores del taller se guardan en la rama
@@ -203,6 +204,8 @@ export default function DesignSurface({ onOpenModel, onOpenSpace3D }: { onOpenMo
     }, 600, scope);
   }, [session, projectId]);
   useEffect(() => () => storage?.dispose(), [storage]);
+  // «Convertir en proyecto completo» vacía este guardado diferido antes de copiar.
+  useEffect(() => storage ? registerPendingWrite(() => storage.flush()) : undefined, [storage]);
   const readOnly = storage?.readOnlyReason;
   // Una pieza individual: sólo esa pieza, sin modelos que leer ni modos a los que volver.
   const singleElement = project ? singleDesignElement(project) : null;

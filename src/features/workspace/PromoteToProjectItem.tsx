@@ -5,6 +5,7 @@ import { useProjectModel } from '../../store/ProjectContext';
 import { useSharedToolState } from '../../store/SharedToolState';
 import { singleWorkTool } from '../../shared/project/workScope';
 import { promotedProjectName } from '../../storage/promoteProject';
+import { flushPendingWrites } from './pendingWrites';
 
 /**
  * «Convertir en proyecto completo» del menú «⋯» de la mesa, sólo en un archivo
@@ -23,6 +24,8 @@ export function PromoteToProjectItem({ onDone }: { onDone: () => void }) {
     setBusy(true);
     setError(null);
     try {
+      // El último cambio de Diseño (aún en su espera de 600 ms) entra en la copia.
+      await flushPendingWrites();
       const record = await session.promoteToProject(project.id, promotedProjectName(project.name, es ? 'es' : 'en'), project);
       // La biblioteca compatible lee este espejo (como el autoguardado); si falla, el bundle ya está guardado.
       try {
