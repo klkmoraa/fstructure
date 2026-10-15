@@ -5,12 +5,12 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 ## Producto
 
 - [x] Por separado o proyecto completo: las mismas pantallas (Modelo 2D, Modelo 3D y cada pieza de Diseño) como archivo individual sin enlaces, o el proyecto con 2D, 3D y Diseño enlazados; Home con ambas entradas y Proyectos filtra individuales.
-- [ ] Individual → proyecto: convertir un cálculo individual (p. ej. un Modelo 2D) en proyecto completo sin copiar datos a mano.
+- [x] Individual → proyecto: «Convertir en proyecto completo» crea una copia sin `workScope` y deja el original intacto (15-oct-2026).
 - [x] Mesas individuales listas para calcular: el Modelo 2D vacío ofrece cinco inicios (viga apoyada, voladizo, viga continua, pórtico y armadura Pratt) que se calculan al elegirlos y se deshacen; Sección a flexión abre con su momento; una pieza sola no muestra selector de elementos.
 - [x] DCL y reacciones de la viga (CM, CV, combinación y máxima alternada, ΣFy = 0) en la mesa y la memoria; cortes de zapata aislada, corrida y combinada con la carga última, la presión del suelo y las secciones críticas M, d y d/2.
 - [x] Columna: «Proponer sección» da la menor sección que cumple con el armado capturado (antes conservaba el armado y podía dejarla en «No cumple»); si ninguna cumple, propone sección y armado.
-- [ ] DCL de la zapata de lindero y de la losa de cimentación (cargas y reacción del suelo sobre la planta).
-- [ ] Viga → zapata: llevar la reacción de un apoyo de la viga a una zapata individual sin capturarla a mano.
+- [x] DCL de la zapata de lindero y de la franja de la losa, con ΣFy (R1 = 800 kN, R2 = 1 000 kN de referencia).
+- [x] Viga → zapata: «Diseñar zapata» en cada apoyo de la tabla de reacciones (sin el momento del apoyo, que se captura a mano).
 - [x] Al recargar en la Home se reabre el último archivo de este navegador (antes se abría uno en blanco).
 
 - [x] Momento individual y Diagramas: misma normal local y convención de signos, centésimas en valores grandes y extremo derecho legible junto al zoom.
@@ -26,7 +26,8 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [ ] Llevar el dock dinámico (cápsula contextual) al 3D y a Diseño en teléfono.
 - [x] Una sola Home (FEM retirado): proyecto abierto, tarjetas 2D · 3D · Diseño, recientes y secciones en la URL.
 - [ ] Exportar o reabrir los estudios FEM que quedaron guardados en proyectos viejos (hoy se conservan intactos en el registro, sin interfaz).
-- [ ] 3D: resortes en apoyos, brazos rígidos y viga de Timoshenko (hoy se rechazan con aviso).
+- [x] 3D: resortes en apoyos y zonas rígidas en el estático y el editor, contrastados con PyNite (esquema 3D v5).
+- [ ] 3D: viga de Timoshenko y resortes de extremo de barra (conexión semirrígida); siguen rechazados con aviso.
 - [ ] 3D: combinar el espectro con casos estáticos (envolventes máx./mín.) y excentricidad accidental del diafragma.
 - [ ] 3D: dibujo rápido de columnas y vigas sobre la rejilla (un clic por eje o por vano) y losas como áreas.
 - [x] Mesa única 2D · 3D · Diseño: el Solver 3D es el modo 3D de FStructure, con transición animada, «Traer del 2D» y diseño de un eje del 3D en Estructura.
@@ -42,7 +43,9 @@ Próxima ampliación investigada: [proyecto, armado y resolución propia · 9 de
 
 - [x] Resolver y editar acero: objetivos del ejercicio, As requerida/mínima/proporcionada en la primera familia verificada, editor de bastones/estribos y alternativas constructivas.
 - [x] Revisión de pieza vinculada al edificio: procedencia, demanda concurrente, estación y revisión; navegador por planta/eje y aviso de origen desactualizado.
-- [ ] Bloque C pendiente: reacciones del apoyo a zapata aislada y despiece por marca/diámetro/nivel, con CSV/SVG y ampliación del PDF. Plan y referencias de equilibrio/peso preparados; funcionalidad nueva aún sin implementar.
+- [x] Bloque C: despiece en CSV y SVG por marca con forma; oráculo zapata 2.45 m, 2 × 13 #5.
+- [ ] Norma de España (Código Estructural): identificada y en lectura (`docs/research/codigo-estructural-lectura.md`); el perfil necesita generalizar el motor a coeficientes parciales y registrar CTE DB-SE.
+- [ ] ACI 318-25: pendiente de copia legal.
 - [ ] Bloque D pendiente: losa maciza unidireccional, editor de secciones libres, equilibrio biaxial y servicio. Plan y oráculos analíticos preparados; funcionalidad nueva aún sin implementar.
 
 - [x] Entrada Proyecto / Pieza / Ejercicio desde Home y «Nuevo diseño» en la mesa: 20 arranques editables: cuatro proyectos, trece piezas y tres formularios para problemas propios, sin respuestas prefabricadas.
@@ -74,27 +77,27 @@ Próxima ampliación investigada: [proyecto, armado y resolución propia · 9 de
 - [x] Proponer secciones: pórtico rápido y Modelo 2D (viga y columna con el menor volumen de concreto que cumplen, columnas al 1 %; en el modelo se aplica a pedido y se deshace en el 2D).
 - [x] Proponer secciones por nivel: vigas por elevación y columnas por entrepiso, menor o igual volumen que la propuesta uniforme, armado por sección y aplicación deshacible en el Modelo 2D; persistencia v5 compatible con v1–v4.
 - [x] Proponer secciones para todos los ejes del 3D, con columnas compartidas comprobadas en ambas direcciones, grupos por nivel y aplicación explícita deshacible en 3D.
-- [ ] Pórtico rápido con cargas puntuales y voladizos.
-- [ ] Pórtico: llevar el cálculo a un worker; un 5 × 5 con sismo tarda ~0.3 s en el hilo principal.
+- [x] Pórtico con cargas puntuales y voladizos, contra oráculo Python.
+- [x] Pórtico en worker: el hilo principal queda en 10–40 ms.
 - [ ] Registrar con evidencia las combinaciones sísmicas de NSR-10 (B.2.4.2) y E.060 (9.2.3); hoy el pórtico las aplica como complementarias y lo dice.
 
 ## Limpieza
 
-- [ ] Corregir el símbolo `$` extra que la localización antepone al porcentaje de utilización en la vista previa por conjunto; el valor numérico y el cálculo no cambian.
-- [ ] El modo sin shell de `Space3DWorkspace` (barra local) sólo lo usan pruebas: migrarlas al shell y retirarlo.
-- [ ] Dividir los archivos más grandes (`Space3DWorkspace.tsx`, `WorkspaceShell.tsx`, `ProjectContext.tsx`).
+- [x] `$` extra en el porcentaje: no se reproduce en el código actual (15-oct-2026).
+- [x] Retirado el modo sin shell de `Space3DWorkspace`; las pruebas montan el host de ranuras.
+- [x] `ProjectContext.tsx` 778 → 534 y `WorkspaceShell.tsx` 693 → 500 líneas, sin cambiar su API. `Space3DWorkspace.tsx` sigue grande (1 675).
 
 ## Rendimiento y distribución
 
 - [x] Bajar el bundle inicial: la mesa, three.js y los diálogos de la Home se cargan aparte (JS inicial 452 → 149 KB gzip, CSS 225 → 15 KB al quitar dos fuentes incrustadas sin uso).
-- [ ] Escenas de la Home en WebP.
+- [x] Escenas de la Home en WebP con PNG de respaldo (≈78 % menos).
 - [x] PWA sin conexión: `sw.js` (generado en `vite.config.ts`) guarda la Home, la mesa y los workers; PDF, imágenes y fuentes al usarse. Una versión nueva toma el control al cerrar la app.
-- [ ] Aviso discreto «Nueva versión lista · Recargar» cuando hay un service worker en espera.
-- [ ] Publicar con el flujo oficial de Pages (artefacto) en vez de escribir en `gh-pages`.
+- [x] Aviso «Nueva versión lista · Recargar».
+- [ ] Publicar con el flujo oficial de Pages: requiere cambiar el origen de Pages en la configuración del repositorio y perdería la generación anterior de `assets/`; se mantiene gh-pages.
 
 ## Pruebas (sólo si aportan)
 
-- [ ] Humo E2E de las pantallas de entrada (Home y sus secciones) con capturas en claro, oscuro y móvil.
+- [x] Humo E2E: `npm run smoke` (Home, secciones, mesa 2D y una pieza; Día/Noche; 1440 y 390 px).
 - [ ] Matriz de importación/exportación: un archivo válido y uno inválido por formato.
 - [ ] Confirmar la entrega del PDF de Diseño en Safari: Chromium sin «compartir» ya descarga el PDF (probado con el del pórtico, 13 páginas con láminas).
-- [ ] Auditoría de dependencias en CI.
+- [x] Auditoría de dependencias en CI (`npm audit --audit-level=high --omit=dev`).
