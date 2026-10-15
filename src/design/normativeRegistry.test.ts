@@ -33,11 +33,17 @@ type VerifiedClause = {
   evidence?: PageEvidence[];
 };
 
+/**
+ * Fuentes de una norma: el par de las gacetas (aviso de publicación y anexo
+ * electrónico oficial) o un documento oficial único (`officialDocument`), como
+ * el texto del BOE o una edición comprada de ACI.
+ */
 type NormativeStandard = {
   id: string;
   status: string;
-  publicationNotice: OfficialDocument;
-  officialElectronicAnnex: OfficialDocument;
+  publicationNotice?: OfficialDocument;
+  officialElectronicAnnex?: OfficialDocument;
+  officialDocument?: OfficialDocument;
   verifiedClauses: VerifiedClause[];
   clauseVerificationStatus: string;
   implementationGate?: string;
@@ -94,7 +100,13 @@ const normativeRegistryErrors = (registry: NormativeRegistry): string[] => {
       if (gateIsBlocked) errors.push(`${prefix} verified no puede conservar gate pending`);
     }
 
-    const registeredSources = [standard.publicationNotice, standard.officialElectronicAnnex];
+    const pair = [standard.publicationNotice, standard.officialElectronicAnnex];
+    if (pair.some(Boolean) && !pair.every(Boolean)) errors.push(`${prefix} el aviso de publicación y el anexo electrónico van juntos`);
+    if (!pair.every(Boolean) && !standard.officialDocument) errors.push(`${prefix} falta una fuente oficial registrada`);
+    const registeredSources = [...pair, standard.officialDocument].filter((source): source is OfficialDocument => Boolean(source));
+    for (const source of registeredSources) {
+      if (!/^https:\/\//.test(source.url) || !/^[0-9a-f]{64}$/.test(source.sha256)) errors.push(`${prefix} fuente oficial sin URL https o SHA-256`);
+    }
 
     for (const clause of standard.verifiedClauses) {
       if (!clause.clauseId?.trim()) errors.push(`${prefix} cláusula sin clauseId`);
@@ -250,11 +262,12 @@ describe('registro normativo de Diseño', () => {
       },
     };
     const excerpt = 'Extracto normativo de prueba';
+    const annex = currentStandard.officialElectronicAnnex!;
     const validClause: VerifiedClause = {
       clauseId: 'fixture-clause',
       pages: [7],
-      sourceUrl: currentStandard.officialElectronicAnnex.url,
-      sourceSha256: currentStandard.officialElectronicAnnex.sha256,
+      sourceUrl: annex.url,
+      sourceSha256: annex.sha256,
       evidence: [{ page: 7, excerpt, excerptSha256: sha256(Buffer.from(excerpt, 'utf8')), verifiedAt: '2026-09-14' }],
     };
 
@@ -303,5 +316,30 @@ describe('registro normativo de Diseño', () => {
       }],
     };
     expect(normativeRegistryErrors(coherentVerified)).toEqual([]);
+
+    // Un documento oficial único (BOE, ACI) basta como fuente, con su URL y su hash.
+    const singleDocument = { url: 'https://www.boe.es/fixture.pdf', sha256: 'a'.repeat(64) };
+    const { publicationNotice: _notice, officialElectronicAnnex: _annex, ...withoutPair } = currentStandard;
+    const officialDocumentOnly: NormativeRegistry = {
+      policy,
+      standards: [{
+        ...withoutPair,
+        officialDocument: singleDocument,
+        status: 'official-clauses-verified',
+        clauseVerificationStatus: 'verified',
+        implementationGate: 'open-for-verified-clauses-only',
+        verifiedClauses: [{ ...validClause, sourceUrl: singleDocument.url, sourceSha256: singleDocument.sha256 }],
+      }],
+    };
+    expect(normativeRegistryErrors(officialDocumentOnly)).toEqual([]);
+    // La cláusula debe citar ese documento, no el de otra norma.
+    expect(normativeRegistryErrors({ policy, standards: [{ ...officialDocumentOnly.standards[0]!, verifiedClauses: [validClause] }] }))
+      .toContain(`${currentStandard.id}: evidencia no coincide con una fuente oficial registrada`);
+    expect(normativeRegistryErrors({ policy, standards: [{ ...pendingStandard, publicationNotice: undefined, officialElectronicAnnex: undefined }] }))
+      .toContain(`${currentStandard.id}: falta una fuente oficial registrada`);
+    expect(normativeRegistryErrors({ policy, standards: [{ ...pendingStandard, officialElectronicAnnex: undefined }] }))
+      .toContain(`${currentStandard.id}: el aviso de publicación y el anexo electrónico van juntos`);
+    expect(normativeRegistryErrors({ policy, standards: [{ ...withoutPair, ...pendingStandard, publicationNotice: undefined, officialElectronicAnnex: undefined, officialDocument: { url: 'http://x', sha256: 'no' } }] }))
+      .toContain(`${currentStandard.id}: fuente oficial sin URL https o SHA-256`);
   });
 });
