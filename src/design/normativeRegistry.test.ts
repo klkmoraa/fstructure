@@ -105,7 +105,7 @@ const normativeRegistryErrors = (registry: NormativeRegistry): string[] => {
     if (!pair.every(Boolean) && !standard.officialDocument) errors.push(`${prefix} falta una fuente oficial registrada`);
     const registeredSources = [...pair, standard.officialDocument].filter((source): source is OfficialDocument => Boolean(source));
     for (const source of registeredSources) {
-      if (!/^https:\/\//.test(source.url) || !/^[0-9a-f]{64}$/.test(source.sha256)) errors.push(`${prefix} fuente oficial sin URL https o SHA-256`);
+      if (!source.url.startsWith('https://') || !/^[0-9a-f]{64}$/.test(source.sha256)) errors.push(`${prefix} fuente oficial sin URL https o SHA-256`);
     }
 
     for (const clause of standard.verifiedClauses) {
