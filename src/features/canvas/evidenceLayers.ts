@@ -42,7 +42,7 @@ export const isEvidenceLayerActive = (
 ): boolean => {
   if (id === 'heatmap') return layers.heatmap;
   const definition = EVIDENCE_LAYERS.find((item) => item.id === id);
-  return Boolean(layers.results && definition?.resultTab === resultTab);
+  return Boolean(layers.results && !layers.heatmap && definition?.resultTab === resultTab);
 };
 
 /**
@@ -67,6 +67,7 @@ export const applyEvidenceLayerChoice = (
     actions.dispatchLayers({ type: 'set', layer: 'results', visible: false });
     return;
   }
+  if (current.layers.heatmap) actions.dispatchLayers({ type: 'set', layer: 'heatmap', visible: false });
   actions.setResultTab(tab);
   if (!current.layers.results) actions.dispatchLayers({ type: 'set', layer: 'results', visible: true });
   actions.revealResultOverlay?.();
@@ -87,6 +88,7 @@ export const activateEvidenceLayer = (
   }
   const definition = EVIDENCE_LAYERS.find((item) => item.id === id);
   if (!definition?.resultTab) return;
+  actions.dispatchLayers({ type: 'set', layer: 'heatmap', visible: false });
   actions.setResultTab(definition.resultTab);
   actions.dispatchLayers({ type: 'set', layer: 'results', visible: true });
   actions.revealResultOverlay?.();

@@ -4,6 +4,9 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
+- [x] Restaurar el diagrama axial N de armaduras sin sacrificar la lectura T/C/0; rojo para compresión y azul para tensión, con cursor y gráfico individual en Resultados (20-oct-2026).
+- [x] Mejorar el mapa experimental de fluencia/índice elástico: escala η 0–2, referencia Fy, máximo verificable, cobertura y barra seleccionada; barra sin evaluar distinguible y acceso directo desde Evidencia (20-oct-2026).
+
 - [x] Interfaz más despejada: Home compacta con recientes a mano, cinco inicios 2D equivalentes, herramientas secundarias en Carga/Más y modos en una sola fila en teléfono; historial accesible desde utilidades (20-oct-2026).
 - [x] Armaduras 2D: tensión, compresión y sin esfuerzo sobre cada barra con T/C/0, patrón, signo y unidades; leyenda de selección y tabla global en Axial, sin confundir resultados inválidos con cero (20-oct-2026).
 - [x] Por separado o proyecto completo: las mismas pantallas (Modelo 2D, Modelo 3D y cada pieza de Diseño) como archivo individual sin enlaces, o el proyecto con 2D, 3D y Diseño enlazados; Home con ambas entradas y Proyectos filtra individuales.

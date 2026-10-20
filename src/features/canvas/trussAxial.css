@@ -1,7 +1,7 @@
 /* Both signs belong to the axial signal; stroke pattern and T/C/0 also carry
    meaning, including monochrome printing and colour vision differences. */
 .truss-axial-member,.truss-axial-key { --truss-ink:var(--sc-color-axial-tension); }
-.truss-axial-member.compression,.truss-axial-key.compression { --truss-ink:color-mix(in srgb,var(--sc-color-axial-compression) 68%,var(--text)); }
+.truss-axial-member.compression,.truss-axial-key.compression { --truss-ink:var(--sc-color-axial-compression); }
 .truss-axial-member.zero,.truss-axial-key.zero { --truss-ink:var(--muted); }
 .truss-axial-member line { stroke:var(--truss-ink); stroke-width:4; stroke-linecap:round; fill:none; }
 .truss-axial-member.compression line { stroke-dasharray:9 5; }
@@ -44,3 +44,8 @@
   .truss-axial-table .truss-axial-key { gap:3px; }
   .truss-axial-table .truss-axial-key i { width:12px; }
 }
+
+details.truss-axial-summary { border-top:1px solid var(--border); }
+details.truss-axial-summary > summary { cursor:pointer; font-size:12px; font-weight:600; }
+details.truss-axial-summary > summary small { color:var(--muted); font-weight:400; }
+details.truss-axial-summary[open] > summary { margin-bottom:12px; }
