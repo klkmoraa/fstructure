@@ -14,6 +14,8 @@ import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { ResultSummary } from './ResultSummary';
 import { MemberSheet } from './MemberSheet';
+import { TrussAxialTable } from '../canvas/TrussAxialPresentation';
+import { trussAxialReadings } from './trussAxial';
 import { NumericQualityCard } from './NumericQualityCard';
 import { deriveClassroomProgress, type ClassroomProgressStepId } from '../../education/classroomProgress';
 import { formatFixed, formatScientific } from '../../utils/numberFormat';
@@ -98,8 +100,8 @@ interface ResultsPanelProps {
 }
 
 export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenChange, defaultDesktopExpanded = false }: ResultsPanelProps) => {
-  const { project, analysis, resultTab, setResultTab, analyze, selection, isAnalyzing, selectedCombinationId, setInfluenceCanvasState } = useProject();
-  const { t } = useI18n();
+  const { project, analysis, resultTab, setResultTab, analyze, selection, isAnalyzing, selectedCombinationId, setInfluenceCanvasState, setSelection, setResultCursor } = useProject();
+  const { t, language } = useI18n();
   const isMobile = presentation === 'sheet';
   const [height, setHeight] = useState(() => isMobile ? Math.min(330, window.innerHeight * 0.4) : 285);
   const [drag, setDrag] = useState<{ y: number; height: number } | null>(null);
@@ -138,6 +140,8 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
   }, [analysis?.memberResults, project.memberLoads, project.members, project.nodalLoads, selection, t]);
   const selectedMemberId = resultContext.memberId;
   const memberResult = selectedMemberId ? analysis?.memberResults.find((result) => result.memberId === selectedMemberId) : undefined;
+  const trussReadings = useMemo(() => trussAxialReadings(project, analysis), [project, analysis]);
+  const pureTruss = project.members.length > 0 && project.members.every((member) => member.type === 'truss');
   const availableTabs = tabs;
   const [sheetOpen, setSheetOpen] = useState(false);
   // Elegir una magnitud desde el lienzo (o la paleta) cierra la lámina.
@@ -469,7 +473,8 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
         }} /> : null}
         {analysis && !analysis.success ? <FailedResults onOpenModelDoctor={() => emitWorkspaceCommand('open-model-doctor')} /> : null}
         {analysis?.success && activeTab.id === 'summary' ? <ResultSummary /> : null}
-        {analysis?.success && ['axial', 'shear', 'moment'].includes(activeTab.id) ? <DiagramView type={activeTab.id as 'axial' | 'shear' | 'moment'} memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
+        {analysis?.success && activeTab.id === 'axial' && pureTruss && trussReadings.size > 0 ? <TrussAxialTable project={project} readings={trussReadings} language={language} selectedMemberId={selectedMemberId} onSelect={(id) => { setSelection({ kind: 'member', id }); setResultCursor(null); }} /> : null}
+        {analysis?.success && ['axial', 'shear', 'moment'].includes(activeTab.id) && !(activeTab.id === 'axial' && pureTruss && trussReadings.size > 0) ? <DiagramView type={activeTab.id as 'axial' | 'shear' | 'moment'} memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
         {analysis?.success && activeTab.id === 'sheet' ? <MemberSheet memberResult={memberResult} memberId={selectedMemberId ?? ''} /> : null}
         {analysis?.success && activeTab.id === 'deformed' ? <DeformationView memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
         {analysis?.success && activeTab.id === 'influence' ? <Suspense fallback={<div className="results-view-loading" role="status" aria-label={t('results.loadingInfluence')}><LoaderCircle className="spin" size={20} aria-hidden="true" /><span>{t('results.loadingInfluence')}</span></div>}>

@@ -93,6 +93,8 @@ const CanvasResultLayerImpl = ({
     const ni = nodeMap.get(member.i); const nj = nodeMap.get(member.j);
     if (!resultsAllowed || !view.showResultOverlay || !result || !ni || !nj || !['axial', 'shear', 'moment'].includes(resultTab) || !result.diagramSegments.length) return null;
     const key = resultTab as DiagramQuantity;
+    // Two-force members use the signed T/C/0 reading on the bar itself.
+    if (key === 'axial' && member.type === 'truss') return null;
     const frame = {
       result, axis: memberAxis(member, ni, nj), side: view.diagramSide === 'negative' ? -1 : 1,
       pixelScale: scaleFor(result), cameraScale: camera.scale, toScreen,
@@ -177,7 +179,7 @@ const CanvasResultLayerImpl = ({
     if (!resultsAllowed || !resultCursor || !analysis?.success) return null;
     const member = memberMap.get(resultCursor.memberId);
     const result = resultMap.get(resultCursor.memberId);
-    if (!member || !result) return null;
+    if (!member || !result || (resultTab === 'axial' && member.type === 'truss')) return null;
     const ni = nodeMap.get(member.i);
     const nj = nodeMap.get(member.j);
     if (!ni || !nj) return null;

@@ -11,7 +11,6 @@ import {
   MousePointer2,
   MoreHorizontal,
   MoveDiagonal2,
-  PanelsTopLeft,
   RotateCcw,
   Ruler,
   Scissors,
@@ -34,6 +33,7 @@ import {
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
 import { useShellComposition } from '../workspace/useShellComposition';
 import { SurfacePresentationContext } from '../workspace/SurfacePresentationContext';
+import { ToolDockMenu } from './ToolDockMenu';
 
 const toolIcons: Record<Tool, LucideIcon> = {
   select: MousePointer2,
@@ -72,21 +72,11 @@ const toolTones: Record<Tool, ToolTone> = {
   delete: 'destructive',
 };
 
-type DesktopDockGroup = 'navigate' | 'build' | 'loads' | 'refine';
-
-// Las cotas visibles se controlan desde Capas; una segunda herramienta de
-// colocación duplicaba ese estado sin añadir una acción distinta al flujo.
+const PRIMARY_DOCK_TOOLS: readonly Tool[] = ['select', 'node', 'member', 'support'];
+const LOAD_DOCK_TOOLS: readonly Tool[] = ['pointLoad', 'distributedLoad', 'moment'];
+const SECONDARY_DOCK_TOOLS: readonly Tool[] = ['pan', 'split', 'cut', 'delete'];
+// Dimensions remain available through Layers.
 const HIDDEN_RAIL_TOOL_IDS = new Set<Tool>(['dimension']);
-
-const DESKTOP_DOCK_GROUPS: readonly {
-  id: DesktopDockGroup;
-  sourceGroups: readonly (typeof TOOL_GROUPS)[number]['id'][];
-}[] = [
-  { id: 'navigate', sourceGroups: ['navigate'] },
-  { id: 'build', sourceGroups: ['create'] },
-  { id: 'loads', sourceGroups: ['loads'] },
-  { id: 'refine', sourceGroups: ['inspect', 'edit'] },
-] as const;
 
 /**
  * Tooltip local del riel, visible por foco y no sólo por hover (CRI-98 §4).
@@ -171,14 +161,15 @@ const RegisteredToolButton = ({
 export const ToolRail = () => {
   const { activeTool, setActiveTool, project, selection } = useProject();
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [desktopDockCollapsed, setDesktopDockCollapsed] = useState(false);
+  const [dockMenu, setDockMenu] = useState<'loads' | 'more' | null>(null);
+  const [lastLoadTool, setLastLoadTool] = useState<Tool>('pointLoad');
   const { shellClass } = useShellComposition();
   const surfacePresentation = useContext(SurfacePresentationContext);
   const generatorOpen = surfacePresentation?.stateFor('generator').open ?? false;
   const generatorWasOpenRef = useRef(generatorOpen);
   /** Expanded (`X2`) lleva etiqueta; Medium (`M1`) y Compact (`K0`) son icon-only. */
   const compact = shellClass !== 'X2';
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const classroom = project.settings.calculationMode === 'classroom';
   const activeDefinition = TOOL_REGISTRY.find((tool) => tool.id === activeTool);
   const revealAdvanced = showAdvanced || Boolean(activeDefinition?.classroomAdvanced);
@@ -204,69 +195,54 @@ export const ToolRail = () => {
 
   const selectTool = (tool: Tool) => setActiveTool(tool);
 
-  const renderDockGroup = (dockGroup: (typeof DESKTOP_DOCK_GROUPS)[number]) => {
-    const groupTools = visibleTools.filter((tool) => dockGroup.sourceGroups.includes(tool.group));
-    const headingId = `dock-group-${dockGroup.id}`;
-    const label = dockGroup.id === 'navigate'
-      ? t('toolbar.groupNavigate')
-      : dockGroup.id === 'build'
-        ? t('toolbar.groupCreate')
-        : dockGroup.id === 'loads'
-          ? t('toolbar.groupLoads')
-          : `${t('toolbar.groupInspect')} · ${t('toolbar.groupEdit')}`;
+  useEffect(() => {
+    if (LOAD_DOCK_TOOLS.includes(activeTool)) setLastLoadTool(activeTool);
+  }, [activeTool]);
 
-    return <section
-      key={dockGroup.id}
-      className={`tool-group dock-group dock-group-${dockGroup.id}`}
-      role="group"
-      aria-labelledby={headingId}
-      data-dock-group={dockGroup.id}
-    >
-      <h2 id={headingId} className="tool-group-heading">{label}</h2>
+  const activeLoad = LOAD_DOCK_TOOLS.includes(activeTool);
+  const activeSecondary = SECONDARY_DOCK_TOOLS.includes(activeTool);
+  const loadDefinition = TOOL_REGISTRY.find((tool) => tool.id === (activeLoad ? activeTool : lastLoadTool))!;
+  const menuTool = (definition: ToolDefinition) => <button key={definition.id} type="button"
+    aria-pressed={activeTool === definition.id} data-tool-id={definition.id}
+    onClick={() => selectTool(definition.id)}>
+    <ToolGlyph definition={definition} size={20} /><span>{t(definition.labelKey)}</span><kbd>{definition.shortcut}</kbd>
+  </button>;
+
+  const primaryDock = <>
+    <section className="tool-group dock-group dock-group-build" role="group" aria-label={t('toolbar.groupCreate')}>
       <div className="tool-group-actions">
-        {groupTools.map((definition) => {
-          const tipId = `tool-rail-tip-${definition.id}`;
-          // El dock permanece silencioso: sólo la herramienta activa se nombra en X2.
-          const active = activeTool === definition.id;
-          const isButtonCompact = shellClass === 'X2' ? !active : true;
-          return <RailTooltip key={definition.id} id={tipId} content={`${t(definition.labelKey)} (${definition.shortcut})`} placement="top">
-            <RegisteredToolButton
-              definition={definition}
-              label={t(definition.labelKey)}
-              active={active}
-              compact={isButtonCompact}
-              onSelect={selectTool}
-              aria-describedby={tipId}
-            />
+        {PRIMARY_DOCK_TOOLS.map((id) => {
+          const definition = TOOL_REGISTRY.find((tool) => tool.id === id)!;
+          const tipId = `tool-rail-tip-${id}`;
+          return <RailTooltip key={id} id={tipId} content={`${t(definition.labelKey)} (${definition.shortcut})`} placement="top">
+            <RegisteredToolButton definition={definition} label={t(definition.labelKey)} active={activeTool === id}
+              compact={shellClass !== 'X2' || activeTool !== id} onSelect={selectTool} aria-describedby={tipId} />
           </RailTooltip>;
         })}
-        {dockGroup.id === 'build' ? <RailTooltip id="tool-rail-tip-generator" content={t('generator.launcher')} placement="top">
-          <EditorToolButton
-            className="tool-button tool-structure-generator is-compact"
-            label={t('generator.launcher')}
-            icon={<Grid3x3 size={22} strokeWidth={1.8} />}
-            tone="structure"
-            compact
-            onClick={() => emitWorkspaceCommand('open-structure-generator')}
-            aria-describedby="tool-rail-tip-generator"
-            data-structure-generator-command
-          />
-        </RailTooltip> : null}
-        {dockGroup.id === 'refine' && canEditSelection ? <RailTooltip id="tool-rail-tip-structural-edit" content={t('canvas.structuralEditLauncher')} placement="top">
-          <EditorToolButton
-            className="tool-button tool-structural-edit is-compact"
-            label={t('canvas.structuralEditLauncher')}
-            icon={<Move size={22} strokeWidth={1.8} />}
-            tone="structure"
-            compact
-            onClick={() => emitWorkspaceCommand('open-structural-edit')}
-            aria-describedby="tool-rail-tip-structural-edit"
-            data-structural-edit-command
-          />
-        </RailTooltip> : null}
       </div>
-    </section>;
-  };
+    </section>
+    <section className="tool-group dock-group dock-group-loads" role="group" aria-label={t('toolbar.groupLoads')}>
+      <ToolDockMenu label={t('toolbar.loads')} activeTool={activeLoad ? activeTool : undefined}
+        open={dockMenu === 'loads'} onOpenChange={(open) => setDockMenu(open ? 'loads' : null)}
+        trigger={<><ToolGlyph definition={loadDefinition} size={20} /><span>{activeLoad ? t(loadDefinition.labelKey) : t('toolbar.loadsShort')}</span></>}>
+        {TOOL_REGISTRY.filter((tool) => LOAD_DOCK_TOOLS.includes(tool.id)).map(menuTool)}
+      </ToolDockMenu>
+    </section>
+    <section className="tool-group dock-group dock-group-refine" role="group" aria-label={t('toolbar.groupEdit')}>
+      <ToolDockMenu label={language === 'es' ? 'Más herramientas' : 'More tools'} activeTool={activeSecondary ? activeTool : undefined}
+        open={dockMenu === 'more'} onOpenChange={(open) => setDockMenu(open ? 'more' : null)}
+        trigger={<>{activeSecondary && activeDefinition ? <ToolGlyph definition={activeDefinition} size={20} /> : <MoreHorizontal size={20} aria-hidden="true" />}<span>{activeSecondary && activeDefinition ? t(activeDefinition.labelKey) : t('toolbar.moreShort')}</span></>}>
+        {TOOL_REGISTRY.filter((tool) => SECONDARY_DOCK_TOOLS.includes(tool.id)).map(menuTool)}
+        <div className="tool-dock-menu__divider" />
+        <button type="button" data-structure-generator-command onClick={() => emitWorkspaceCommand('open-structure-generator')}>
+          <Grid3x3 size={20} aria-hidden="true" /><span>{t('generator.launcher')}</span>
+        </button>
+        {canEditSelection ? <button type="button" data-structural-edit-command onClick={() => emitWorkspaceCommand('open-structural-edit')}>
+          <Move size={20} aria-hidden="true" /><span>{t('canvas.structuralEditLauncher')}</span>
+        </button> : null}
+      </ToolDockMenu>
+    </section>
+  </>;
 
   const isFloatingDock = shellClass === 'X2' || shellClass === 'M1';
   const showActiveLabel = shellClass === 'X2';
@@ -274,26 +250,15 @@ export const ToolRail = () => {
   return (
     <>
       <aside
-        className={`toolbar tool-rail${isFloatingDock ? ' is-floating-dock' : ' is-compact'}${desktopDockCollapsed ? ' is-dock-collapsed' : ''}`}
+        className={`toolbar tool-rail${isFloatingDock ? ' is-floating-dock' : ' is-compact'}`}
         aria-label={t('toolbar.label')}
         data-tool-rail={isFloatingDock ? 'dock' : 'compact'}
         data-mesa-dock={isFloatingDock ? '' : undefined}
         /* La hoja expande una sola etiqueta: la herramienta activa. */
-        data-tool-rail-labels={showActiveLabel && !desktopDockCollapsed ? 'active' : undefined}
+        data-tool-rail-labels={showActiveLabel ? 'active' : undefined}
       >
         <div className="desktop-tool-list" data-desktop-dock-tools={isFloatingDock ? 'true' : undefined}>
-          {isFloatingDock ? desktopDockCollapsed && activeDefinition
-            ? <RailTooltip id="tool-rail-tip-active-tool" content={`${t(activeDefinition.labelKey)} (${activeDefinition.shortcut})`} placement="top">
-              <RegisteredToolButton
-                definition={activeDefinition}
-                label={t(activeDefinition.labelKey)}
-                active
-                compact={compact}
-                onSelect={selectTool}
-                aria-describedby="tool-rail-tip-active-tool"
-              />
-            </RailTooltip>
-            : DESKTOP_DOCK_GROUPS.map(renderDockGroup) : TOOL_GROUPS.map((group) => {
+          {isFloatingDock ? primaryDock : TOOL_GROUPS.map((group) => {
             const groupTools = toolsInGroup(group.id, visibleTools);
             if (!groupTools.length && !(group.id === 'edit' && canEditSelection)) return null;
             const headingId = `tool-group-${group.id}`;
@@ -340,14 +305,7 @@ export const ToolRail = () => {
               </div>
             </section>;
           })}
-          {shellClass === 'X2' ? <button
-            type="button"
-            className="dock-collapse-toggle"
-            aria-label={t(desktopDockCollapsed ? 'toolbar.expandDock' : 'toolbar.collapseDock')}
-            aria-expanded={!desktopDockCollapsed}
-            onClick={() => setDesktopDockCollapsed((collapsed) => !collapsed)}
-          ><PanelsTopLeft size={18} aria-hidden="true" /></button> : null}
-          {classroom ? <button
+          {classroom && !isFloatingDock ? <button
             className="tool-button tool-more desktop-advanced-toggle"
             aria-label={showAdvanced ? t('toolbar.hideAdvanced') : t('toolbar.showAdvanced')}
             aria-expanded={showAdvanced}

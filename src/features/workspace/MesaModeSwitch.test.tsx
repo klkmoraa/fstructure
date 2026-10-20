@@ -7,6 +7,15 @@ import { MesaModeSwitch } from './MesaModeSwitch';
 afterEach(() => cleanup());
 
 describe('MesaModeSwitch', () => {
+  it('changes modes through the compact native selector', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<MesaModeSwitch mode="model" onChange={onChange} language="es" />);
+    const select = screen.getByRole('combobox', { name: 'Modo de la mesa' });
+    await user.selectOptions(select, 'design');
+    expect(onChange).toHaveBeenCalledWith('design');
+  });
+
   it('marca el modo actual y cambia sólo al elegir otro', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

@@ -1,0 +1,46 @@
+/* Both signs belong to the axial signal; stroke pattern and T/C/0 also carry
+   meaning, including monochrome printing and colour vision differences. */
+.truss-axial-member,.truss-axial-key { --truss-ink:var(--sc-color-axial-tension); }
+.truss-axial-member.compression,.truss-axial-key.compression { --truss-ink:color-mix(in srgb,var(--sc-color-axial-compression) 68%,var(--text)); }
+.truss-axial-member.zero,.truss-axial-key.zero { --truss-ink:var(--muted); }
+.truss-axial-member line { stroke:var(--truss-ink); stroke-width:4; stroke-linecap:round; fill:none; }
+.truss-axial-member.compression line { stroke-dasharray:9 5; }
+.truss-axial-member.zero line { stroke-dasharray:1 6; stroke-width:3; }
+.truss-axial-member text { fill:var(--truss-ink); font:600 11px var(--sc-font-mono); paint-order:stroke; stroke:var(--canvas-bg,var(--surface)); stroke-width:5px; stroke-linejoin:round; }
+.truss-axial-legend { position:absolute; top:64px; left:12px; z-index:8; display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; max-width:min(500px,calc(100% - 24px)); padding:9px 12px; border:1px solid var(--border); border-radius:var(--sc-radius-control); background:var(--surface); box-shadow:var(--sc-shadow-xs); pointer-events:none; font-size:11px; }
+.truss-axial-legend > strong { font-size:11px; }
+.truss-axial-legend > small { flex-basis:100%; color:var(--muted); }
+.truss-axial-key { display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
+.truss-axial-key i { width:20px; border-top:3px solid var(--truss-ink); }
+.truss-axial-key.compression i { border-top-style:dashed; }
+.truss-axial-key.zero i { border-top-style:dotted; }
+.truss-axial-key b { color:var(--truss-ink); font-family:var(--sc-font-mono); }
+.truss-axial-key small { color:var(--muted); }
+.truss-axial-summary { padding:14px; min-width:0; }
+.truss-axial-summary header { margin-bottom:12px; }
+.truss-axial-summary header strong { font-size:15px; }
+.truss-axial-summary p { color:var(--muted); font-size:12px; margin:5px 0 0; }
+.truss-axial-table caption { text-align:left; color:var(--muted); font-size:11px; padding:0 0 8px; }
+.truss-axial-table th,.truss-axial-table td { text-align:left; }
+.truss-axial-table td:last-child { font-family:var(--sc-font-mono); white-space:nowrap; }
+.truss-axial-table button { padding:6px 10px; font-family:var(--sc-font-mono); }
+.truss-axial-table .is-selected :is(th,td) { background:var(--sc-color-surface-2); }
+@media (max-width:600px) {
+  .truss-axial-legend { gap:5px 8px; padding:7px 9px; font-size:10px; }
+  .truss-axial-legend > strong { flex-basis:100%; }
+  .truss-axial-summary { padding:12px; }
+  .truss-axial-table :is(th,td) { padding:7px; font-size:11px; }
+}
+
+.truss-axial-selected { flex-basis:100%; padding-top:5px; border-top:1px solid var(--border); font-size:11px; }
+.truss-axial-selected b { font-family:var(--sc-font-mono); }
+
+/* Unlike the dense N/V/M tables, this three-column reading fits a phone. */
+.results-panel .truss-axial-table { min-width:0; width:100%; }
+.truss-axial-summary .table-wrap { padding:0; }
+.truss-axial-summary .truss-axial-table button { border:1px solid var(--border); border-radius:var(--sc-radius-control); background:var(--surface); color:var(--text); cursor:pointer; min-height:32px; }
+@media (max-width:600px) {
+  .results-panel .truss-axial-table :is(th,td) { padding:7px 4px; font-size:11px; }
+  .truss-axial-table .truss-axial-key { gap:3px; }
+  .truss-axial-table .truss-axial-key i { width:12px; }
+}

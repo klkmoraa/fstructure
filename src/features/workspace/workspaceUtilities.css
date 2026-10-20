@@ -250,3 +250,27 @@
 .workspace-utilities .workspace-utilities__tools .workspace-topbar__icon-button:not(:has(span))::after { content: attr(aria-label); }
 .workspace-utilities .workspace-utilities__tools button:disabled { display: none; }
 .workspace-utilities .workspace-utilities__tools .workspace-utilities__item { min-height: 44px; }
+.workspace-utilities__history { display: none; }
+@media (max-width: 760px) {
+  .workspace-utilities__history {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 0 0 8px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--sc-color-border-soft);
+  }
+  .workspace-utilities__history button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--sc-color-border-soft);
+    border-radius: var(--sc-radius-control);
+    background: var(--sc-color-surface-2);
+    color: var(--sc-color-text-primary);
+    font: inherit;
+  }
+  .workspace-utilities__history button:disabled { opacity: .4; }
+}

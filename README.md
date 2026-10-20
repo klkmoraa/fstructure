@@ -22,6 +22,30 @@ Rutas: `?surface=welcome` (Home, con `&view=<sección>`), `?project=<id>&tool=mo
 (FS-A03) se retiró: sus enlaces abren la Home y los estudios guardados se
 conservan en el proyecto.
 
+## Interfaz y lectura de armaduras
+
+La Home reúne el proyecto abierto y los recientes antes de las herramientas.
+La mesa 2D deja a mano selección, nudos, barras y apoyos; **Carga** agrupa las
+cargas y **Más** reúne las operaciones secundarias. La herramienta activa
+sigue visible al cerrar su menú. En teléfono, 2D, 3D y Diseño comparten un
+selector compacto; Deshacer y Rehacer están en las utilidades de la mesa.
+
+Para leer una armadura 2D, pulsa **Analizar** y elige **N · Axial**. Las barras
+indican **T · tensión (+)**, **C · compresión (−)** o **0 · sin esfuerzo**, con
+color, patrón de línea y fuerza en las unidades del proyecto. La leyenda
+muestra la lectura completa de la barra seleccionada. En una armadura pura,
+**Resultados → Axial** ofrece además una tabla de todas las barras: elegir
+una fila selecciona ese miembro en el modelo.
+
+En pantallas pequeñas sólo se muestran cifras donde hay espacio y sobre la
+barra seleccionada. La clasificación usa el resultado actual del solver;
+un resultado ausente o no confiable no se presenta como fuerza cero. Esta
+lectura describe la fuerza axial, no comprueba la resistencia ni el pandeo
+del miembro.
+
+Las capturas y criterios de la interfaz están en
+[la ficha del brandbook](docs/brandbook/index.html).
+
 ## Desarrollo
 
 ```sh

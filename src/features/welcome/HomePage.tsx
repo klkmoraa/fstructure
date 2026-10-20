@@ -1,4 +1,4 @@
-import { Suspense, lazy, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Suspense, lazy, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -63,11 +63,10 @@ const PIECE_ICON: Record<SingleWorkTool, ReactNode> = {
 const copy = {
   es: {
     title: 'Modela, analiza y diseña estructuras.',
-    lead: 'Calcula cada cosa por separado o lleva un proyecto completo, con el 2D, el 3D y el diseño enlazados.',
-    open: 'Proyecto abierto', openSingle: 'Cálculo individual abierto', continue: 'Continuar', create: 'Nuevo',
+    open: 'Proyecto abierto', openSingle: 'Cálculo individual abierto', continue: 'Continuar',
     nodes: 'nudos', members: 'barras', loads: 'cargas',
-    single: 'Calcular por separado',
-    singleLead: 'Cada pantalla sola, con tus datos: se guarda aparte y no se enlaza con nada.',
+    single: 'Cálculo individual',
+    singleLead: 'Un archivo independiente por cálculo.',
     pieces: [
       { id: 'model2d', title: 'Modelo 2D', role: 'Vigas, marcos y armaduras' },
       { id: 'space3d', title: 'Modelo 3D', role: 'Marcos espaciales' },
@@ -79,14 +78,14 @@ const copy = {
       { id: 'frame', title: 'Pórtico', role: 'Vigas y columnas juntas' },
     ],
     project: 'Proyecto completo',
-    projectLead: 'Todo enlazado: el 3D trae el pórtico del 2D y Diseño toma las acciones del modelo.',
+    projectLead: '2D, 3D y diseño enlazados en un archivo.',
     newProject: 'Nuevo proyecto',
     modes: [
       { id: 'model', title: 'Modelo 2D', role: 'Marcos planos, vigas y armaduras', scene: 'model2d' },
       { id: '3d', title: 'Modelo 3D', role: 'Edificios y marcos espaciales', scene: 'space3d' },
       { id: 'design', title: 'Diseño', role: 'Vigas, columnas y zapatas del modelo', scene: 'design' },
     ],
-    recent: 'Proyectos recientes', all: 'Ver todos', more: 'Más',
+    recent: 'Recientes', all: 'Ver todos', more: 'Recursos',
     home: 'Inicio', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar',
     language: 'Idioma', theme: 'Cambiar tema', search: 'Buscar', clear: 'Borrar búsqueda',
     openTemplate: 'Abrir',
@@ -99,11 +98,10 @@ const copy = {
   },
   en: {
     title: 'Model, analyse and design structures.',
-    lead: 'Calculate each thing on its own or run a complete project, with 2D, 3D and design linked.',
-    open: 'Open project', openSingle: 'Open single calculation', continue: 'Continue', create: 'New',
+    open: 'Open project', openSingle: 'Open single calculation', continue: 'Continue',
     nodes: 'nodes', members: 'members', loads: 'loads',
-    single: 'Calculate on its own',
-    singleLead: 'Each screen alone, with your data: saved apart and linked to nothing.',
+    single: 'Individual calculation',
+    singleLead: 'A separate file for each calculation.',
     pieces: [
       { id: 'model2d', title: '2D model', role: 'Beams, frames and trusses' },
       { id: 'space3d', title: '3D model', role: 'Space frames' },
@@ -115,14 +113,14 @@ const copy = {
       { id: 'frame', title: 'Frame', role: 'Beams and columns together' },
     ],
     project: 'Complete project',
-    projectLead: 'Everything linked: 3D brings the 2D frame and Design takes the model’s actions.',
+    projectLead: '2D, 3D and design linked in one file.',
     newProject: 'New project',
     modes: [
       { id: 'model', title: '2D model', role: 'Plane frames, beams and trusses', scene: 'model2d' },
       { id: '3d', title: '3D model', role: 'Buildings and space frames', scene: 'space3d' },
       { id: 'design', title: 'Design', role: 'Concrete beams, columns and footings', scene: 'design' },
     ],
-    recent: 'Recent projects', all: 'View all', more: 'More',
+    recent: 'Recent', all: 'View all', more: 'Resources',
     home: 'Home', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import',
     language: 'Language', theme: 'Change theme', search: 'Search', clear: 'Clear search',
     openTemplate: 'Open',
@@ -166,12 +164,9 @@ const scene = (id: string, mode: 'day' | 'night') => `./assets/suite/${id}-${mod
 /**
  * Home de FStructure: la única portada de la app.
  *
- * Arriba lo que se hace a diario —continuar lo abierto—. Luego las dos formas
- * de trabajar con las mismas pantallas: **por separado** (Modelo 2D, Modelo 3D
- * o una pieza de Diseño, cada una en su propio archivo sin enlaces) y el
- * **proyecto completo** (2D, 3D y Diseño enlazados). Debajo, los recientes y
- * los accesos (plantillas, aula, importar, biblioteca), que se abren como
- * páginas de la misma Home con una flecha para volver.
+ * Continuar y recuperar lo reciente primero; después, cálculos individuales
+ * y modos del proyecto enlazado. Los recursos abren secciones de la misma Home.
+ * La portada no carga escenas decorativas ni código de las mesas.
  */
 export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomePageProps) => {
   const { project, replaceProject, updateProjectView } = useProject();
@@ -222,27 +217,36 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
   ];
 
   const home = <>
-    <section className="fh-hero" aria-labelledby="fh-title">
-      <div className="fh-hero__copy">
-        <h1 id="fh-title" className="fh-hero__title">{text.title}</h1>
-        <p className="fh-hero__lead">{text.lead}</p>
-        <div className="fh-current" aria-label={currentSingle ? text.openSingle : text.open}>
-          <div className="fh-current__info">
-            <span className="fh-current__label">{currentSingle ? `${text.openSingle} · ${SINGLE_WORK_LABEL[currentSingle][language]}` : text.open}</span>
-            <strong className="fh-current__name" title={project.name}>{project.name}</strong>
-            <span className="fh-current__counts"><b>{project.nodes.length}</b> {text.nodes} · <b>{project.members.length}</b> {text.members} · <b>{loadCount}</b> {text.loads}</span>
-          </div>
-          <div className="fh-current__actions">
-            <button type="button" className="fh-button fh-button--primary" onClick={() => onOpenWorkspace(modeOf(project))}><Play size={16} fill="currentColor" aria-hidden="true" />{text.continue}</button>
-            <button type="button" className="fh-button" onClick={() => openProject(createBlankProject())}><FilePlus2 size={16} aria-hidden="true" />{text.create}</button>
-            <ProjectSaveButton />
-          </div>
+    <header className="fh-heading">
+      <h1 id="fh-title" className="fh-heading__title">{text.title}</h1>
+      <nav className="fh-shortcuts" aria-label={text.more}>
+        {links.map(({ id, label, Icon }) => <button key={id} type="button" onClick={() => navigate(id)}>
+          <Icon size={16} aria-hidden="true" />{label}
+        </button>)}
+      </nav>
+    </header>
+
+    <div className="fh-start">
+      <section className="fh-current" aria-label={currentSingle ? text.openSingle : text.open}>
+        <div className="fh-current__info">
+          <span className="fh-current__label">{currentSingle ? `${text.openSingle} · ${SINGLE_WORK_LABEL[currentSingle][language]}` : text.open}</span>
+          <strong className="fh-current__name" title={project.name}>{project.name}</strong>
+          {currentSingle && currentSingle !== 'model2d' && currentSingle !== 'space3d' ? null : <span className="fh-current__counts"><b>{project.nodes.length}</b> {text.nodes} · <b>{project.members.length}</b> {text.members} · <b>{loadCount}</b> {text.loads}</span>}
         </div>
-      </div>
-      <figure className="fh-hero__stage" aria-hidden="true">
-        <SceneImage src={scene('portal', mode)} alt="" decoding="async" />
-      </figure>
-    </section>
+        <div className="fh-current__actions">
+          <button type="button" className="fh-button fh-button--primary" onClick={() => onOpenWorkspace(modeOf(project))}><Play size={16} fill="currentColor" aria-hidden="true" />{text.continue}</button>
+          <button type="button" className="fh-button" onClick={() => openProject(createBlankProject())}><FilePlus2 size={16} aria-hidden="true" />{text.newProject}</button>
+          <ProjectSaveButton />
+        </div>
+      </section>
+      <section className="fh-section fh-recent-section" aria-labelledby="fh-recent">
+        <header className="fh-section__head">
+          <h2 id="fh-recent" className="fh-section__title">{text.recent}</h2>
+          <button type="button" className="fh-link" onClick={() => navigate('projects')}>{text.all}<ArrowRight size={15} aria-hidden="true" /></button>
+        </header>
+        <div className="fh-recents"><ProjectHub variant="recent" limit={3} onOpen={(record, mode) => openProject(record.project, undefined, record.revision, mode)} /></div>
+      </section>
+    </div>
 
     <section className="fh-section" aria-labelledby="fh-single">
       <header className="fh-section__intro">
@@ -250,7 +254,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
         <p className="fh-section__lead">{text.singleLead}</p>
       </header>
       <div className="fh-pieces">
-        {text.pieces.map((item, index) => <button key={item.id} type="button" className="fh-piece" style={{ '--i': index } as CSSProperties} onClick={() => openSingle(item.id)}>
+        {text.pieces.map((item) => <button key={item.id} type="button" className="fh-piece" onClick={() => openSingle(item.id)}>
           <span className="fh-piece__icon" aria-hidden="true"><svg viewBox="0 0 24 24">{PIECE_ICON[item.id]}</svg></span>
           <span className="fh-piece__copy"><strong>{item.title}</strong><span>{item.role}</span></span>
         </button>)}
@@ -258,39 +262,18 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
     </section>
 
     <section className="fh-section" aria-labelledby="fh-project">
-      <header className="fh-section__intro fh-section__intro--action">
-        <div>
-          <h2 id="fh-project" className="fh-section__title">{text.project}</h2>
-          <p className="fh-section__lead">{text.projectLead}</p>
-        </div>
-        <button type="button" className="fh-button" onClick={() => openProject(createBlankProject())}><FilePlus2 size={16} aria-hidden="true" />{text.newProject}</button>
+      <header className="fh-section__intro">
+        <h2 id="fh-project" className="fh-section__title">{text.project}</h2>
+        <p className="fh-section__lead">{text.projectLead}</p>
       </header>
       <div className="fh-modes">
-        {text.modes.map((item, index) => <button key={item.id} type="button" className="fh-mode" style={{ '--i': index } as CSSProperties} onClick={() => openProjectMode(item.id)}>
+        {text.modes.map((item) => <button key={item.id} type="button" className="fh-mode" onClick={() => openProjectMode(item.id)}>
           <span className="fh-mode__scene"><SceneImage src={scene(item.scene, mode)} alt="" decoding="async" loading="lazy" /></span>
-          <span className="fh-mode__copy"><small>{index + 1}</small><strong>{item.title}</strong><span>{item.role}</span></span>
+          <span className="fh-mode__copy"><strong>{item.title}</strong><span>{item.role}</span></span>
           <ArrowRight className="fh-mode__go" size={18} aria-hidden="true" />
         </button>)}
       </div>
     </section>
-
-    <div className="fh-split">
-      <section className="fh-section" aria-labelledby="fh-recent">
-        <header className="fh-section__head">
-          <h2 id="fh-recent" className="fh-section__title">{text.recent}</h2>
-          <button type="button" className="fh-link" onClick={() => navigate('projects')}>{text.all}<ArrowRight size={15} aria-hidden="true" /></button>
-        </header>
-        <div className="fh-recents"><ProjectHub variant="recent" limit={4} onOpen={(record, mode) => openProject(record.project, undefined, record.revision, mode)} /></div>
-      </section>
-      <section className="fh-section" aria-labelledby="fh-more">
-        <h2 id="fh-more" className="fh-section__title">{text.more}</h2>
-        <nav className="fh-links" aria-labelledby="fh-more">
-          {links.map(({ id, label, Icon }) => <button key={id} type="button" className="fh-links__item" onClick={() => navigate(id)}>
-            <span className="fh-links__icon" aria-hidden="true"><Icon size={18} /></span>{label}<ArrowRight className="fh-links__go" size={16} aria-hidden="true" />
-          </button>)}
-        </nav>
-      </section>
-    </div>
   </>;
 
   const searchable = view === 'projects' || view === 'templates';

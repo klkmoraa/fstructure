@@ -1,4 +1,4 @@
-import { Box, DraftingCompass, PenLine } from 'lucide-react';
+import { Box, ChevronDown, DraftingCompass, PenLine } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { MesaMode } from '../../shared/navigation/projectUrl';
 import { preloadMesaMode } from './toolSurfaces';
@@ -40,6 +40,13 @@ export function MesaModeSwitch({ mode, onChange, language }: { mode: MesaMode; o
     { id: 'design' as const, short: es ? 'Diseño' : 'Design', label: es ? 'Diseño' : 'Design', hint: es ? 'Diseñar en concreto el modelo y elementos sueltos' : 'Concrete design of the model and single elements', Icon: DraftingCompass },
   ];
   return <div className="workspace-topbar__mode-group" data-workspace-group="mode" role="group" aria-label={es ? 'Modo de la mesa' : 'Workspace mode'}>
+    <label className="workspace-topbar__mode-select">
+      <select aria-label={es ? 'Modo de la mesa' : 'Workspace mode'} value={mode}
+        onChange={(event) => { const next = event.currentTarget.value as MesaMode; if (next !== mode) onChange(next); }}>
+        {options.map(({ id, short }) => <option key={id} value={id}>{short}</option>)}
+      </select>
+      <ChevronDown size={13} aria-hidden="true" />
+    </label>
     {options.map(({ id, short, label, hint, Icon }, index) => <button key={id} type="button"
       className={'workspace-topbar__action-button workspace-topbar__mode-button' + (mode === id ? ' is-active' : '')}
       aria-pressed={mode === id} aria-label={label} title={`${hint} (Alt+${es ? 'Mayús' : 'Shift'}+${index + 1})`} data-mesa-mode={id}

@@ -16,6 +16,18 @@
   --mesa-dock-shadow: var(--sc-shadow-lifted);
 }
 
+/* Un borde suave basta para separar la mesa: sin dos marcos en relieve. */
+@media (min-width: 761px) {
+  .app-shell.workspace-screen[data-shell-class] .center-stage {
+    border: 1px solid var(--sc-color-border-soft);
+    box-shadow: none;
+  }
+  .app-shell.workspace-screen[data-shell-class] .center-stage > .canvas-host {
+    border: 0;
+    box-shadow: none;
+  }
+}
+
 /* --- Barra: la misma altura en todas ------------------------------------------ */
 /* La fila del shell del 2D salía de los 64 px del Inicio y dejaba 6 px de hueco. */
 .app-shell { --fstructure-header-height: var(--mesa-bar-h); }

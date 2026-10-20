@@ -4,6 +4,8 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
+- [x] Interfaz más despejada: Home compacta con recientes a mano, cinco inicios 2D equivalentes, herramientas secundarias en Carga/Más y modos en una sola fila en teléfono; historial accesible desde utilidades (20-oct-2026).
+- [x] Armaduras 2D: tensión, compresión y sin esfuerzo sobre cada barra con T/C/0, patrón, signo y unidades; leyenda de selección y tabla global en Axial, sin confundir resultados inválidos con cero (20-oct-2026).
 - [x] Por separado o proyecto completo: las mismas pantallas (Modelo 2D, Modelo 3D y cada pieza de Diseño) como archivo individual sin enlaces, o el proyecto con 2D, 3D y Diseño enlazados; Home con ambas entradas y Proyectos filtra individuales.
 - [x] Individual → proyecto: «Convertir en proyecto completo» crea una copia sin `workScope` y deja el original intacto (15-oct-2026).
 - [x] Mesas individuales listas para calcular: el Modelo 2D vacío ofrece cinco inicios (viga apoyada, voladizo, viga continua, pórtico y armadura Pratt) que se calculan al elegirlos y se deshacen; Sección a flexión abre con su momento; una pieza sola no muestra selector de elementos.

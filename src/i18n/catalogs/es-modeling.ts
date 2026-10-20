@@ -969,7 +969,7 @@ export const esModeling = {
   'inspector.trussShort': 'Armadura',
   'inspector.rigidShort': 'Rígido',
   'modelStart.title': 'Empieza tu modelo 2D',
-  'modelStart.body': 'Elige una estructura lista para calcular y edítala, o dibuja la tuya.',
+  'modelStart.body': 'Elige una estructura o dibuja la tuya.',
   'modelStart.more': 'Otros inicios',
   'modelStart.beamSimple': 'Viga apoyada',
   'modelStart.beamSimpleHint': '6 m · CM 15 y CV 8 kN/m',
@@ -981,7 +981,7 @@ export const esModeling = {
   'modelStart.framePortalHint': '6 × 3.5 m empotrado · muerta, viva y sismo',
   'modelStart.trussPratt': 'Armadura Pratt',
   'modelStart.trussPrattHint': '8 m en 4 tableros · cargas en nudos',
-  'modelStart.generate': 'Generar con medidas propias',
-  'modelStart.draw': 'Dibujar nudos y barras',
+  'modelStart.generate': 'Usar mis medidas',
+  'modelStart.draw': 'Dibujar desde cero',
   'modelStart.note': 'Concreto 30 × 50 y acero HSS de catálogo; todo se edita después.',
 } as const;

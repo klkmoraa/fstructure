@@ -1,0 +1,62 @@
+.app-shell .tool-rail .tool-dock-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: var(--sc-color-text-secondary);
+  font: var(--sc-font-weight-semibold) 12px var(--sc-font-ui);
+  box-shadow: none;
+}
+.app-shell .tool-rail .tool-dock-menu__trigger:hover,
+.app-shell .tool-rail .tool-dock-menu__trigger[aria-expanded='true'] {
+  background: var(--sc-color-surface-2);
+  color: var(--sc-color-text-primary);
+}
+.app-shell .tool-rail .tool-dock-menu__trigger[aria-pressed='true'] {
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+}
+.tool-dock-menu__panel {
+  position: fixed;
+  z-index: 90;
+  display: grid;
+  gap: 3px;
+  padding: 7px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-primary);
+  box-shadow: var(--sc-shadow-lifted);
+}
+.tool-dock-menu__panel button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--sc-radius-control);
+  background: transparent;
+  color: inherit;
+  font: var(--sc-font-weight-medium) 13px var(--sc-font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.tool-dock-menu__panel button > svg { flex: none; width: 20px; height: 20px; }
+.tool-dock-menu__panel button > span { flex: 1; }
+.tool-dock-menu__panel kbd { color: var(--sc-color-text-muted); font: 11px var(--sc-font-mono); }
+.tool-dock-menu__panel button:hover { background: var(--sc-color-surface-2); }
+.tool-dock-menu__panel button[aria-pressed='true'] { background: var(--sc-color-surface-inset); color: var(--sc-color-action-primary); }
+.tool-dock-menu__panel button:focus-visible,
+.app-shell .tool-rail .tool-dock-menu__trigger:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: -2px; }
+.tool-dock-menu__divider { height: 1px; margin: 4px 6px; background: var(--sc-color-border-soft); }

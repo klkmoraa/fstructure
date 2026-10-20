@@ -214,6 +214,8 @@
 
 .workspace-topbar__tool-status > .workspace-topbar__tool-status-copy { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-topbar__tool-status strong { color: var(--sc-color-text-primary); }
+/* El botón principal ya invita a calcular; sólo se publica el estado de una corrida. */
+.workspace-topbar__tool-status[data-analysis-state='ready'] { display: none; }
 
 .workspace-topbar__status-badge {
   flex: none;
@@ -335,6 +337,7 @@
 }
 
 .workspace-topbar__mode-button.is-active svg { color: var(--fs-family-analisis); }
+.workspace-topbar__mode-select { display: none; }
 
 /* Sólo icono: el texto de los botones secundarios se queda en el title. */
 .workspace-topbar__actions .workspace-topbar__action-button:not(.is-primary) > span { display: none; }
@@ -478,6 +481,40 @@
   .workspace-topbar__mode-group { order: 0; flex: 0 1 auto; }
   .workspace-topbar__mode-button { flex: none; }
   .workspace-topbar__mode-button > span { display: none; }
+}
+
+/* El modo cabe en la misma fila: el lienzo recupera la segunda franja. */
+@media (max-width: 760px) {
+  :root:root:has(.workspace-topbar__mode-group) { --topbar-h: calc(54px + env(safe-area-inset-top)); }
+  .workspace-topbar { flex-wrap: nowrap; gap: 4px; }
+  .workspace-topbar__mode-group { order: 0; flex: none; padding: 0; background: transparent; box-shadow: none; }
+  .workspace-topbar__mode-group > .workspace-topbar__mode-button { display: none; }
+  .workspace-topbar__mode-select { position: relative; display: flex; align-items: center; }
+  .workspace-topbar__mode-select select {
+    appearance: none;
+    width: 76px;
+    min-height: 40px;
+    padding: 0 23px 0 10px;
+    border: 1px solid var(--sc-color-border-soft);
+    border-radius: var(--sc-radius-control);
+    background: var(--sc-color-surface-inset);
+    color: var(--sc-color-text-primary);
+    font: var(--sc-font-weight-semibold) 12px var(--sc-font-ui);
+    cursor: pointer;
+  }
+  .workspace-topbar__mode-select svg { position: absolute; right: 7px; pointer-events: none; }
+  .workspace-topbar__mode-select select:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
+  .workspace-topbar__history-group { display: none; }
+  .workspace-topbar__project { padding-inline: 2px; }
+}
+
+@media (min-width: 390px) and (max-width: 760px) {
+  .workspace-topbar__action-button.is-primary { padding-inline: 9px; gap: 4px; }
+  .workspace-topbar__action-button.is-primary > span { display: inline; }
+}
+
+@media (max-height: 500px) and (min-width: 561px) and (max-width: 760px) {
+  :root:root:has(.workspace-topbar__mode-group) { --topbar-h: calc(48px + env(safe-area-inset-top)); }
 }
 
 @media (prefers-reduced-motion: reduce) {

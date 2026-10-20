@@ -22,12 +22,7 @@ const startCopy = (id: ModelStartId, t: (key: TranslationKey) => string) => <>
 </>;
 
 /**
- * Modelo 2D vacío: estructuras pequeñas y completas que se calculan al
- * elegirlas, más el generador y el dibujo libre. Es la misma pauta que el
- * lienzo vacío del modo 3D: un solo inicio relleno con el acento (el primero,
- * la viga apoyada), los demás inicios en una lista sin relleno y el generador
- * y el dibujo libre como acciones fantasma. Ninguna otra acción pesa como la
- * primaria.
+ * Inicios listos para calcular y una salida directa al dibujo libre.
  */
 export function ModelStartCard({ onStart, onGenerate, onDraw }: {
   onStart: (id: ModelStartId) => void;
@@ -35,21 +30,17 @@ export function ModelStartCard({ onStart, onGenerate, onDraw }: {
   onDraw: () => void;
 }) {
   const { t } = useI18n();
-  const [primary, ...others] = MODEL_STARTS;
   return <div className="model-start" data-testid="model-start">
     <section className="model-start__card" aria-labelledby="model-start-title">
       <h2 id="model-start-title">{t('modelStart.title')}</h2>
       <p className="model-start__body">{t('modelStart.body')}</p>
-      <button type="button" className="model-start__primary" onClick={() => onStart(primary)}>{startCopy(primary, t)}</button>
-      <p id="model-start-more" className="model-start__label">{t('modelStart.more')}</p>
-      <div className="model-start__options" role="group" aria-labelledby="model-start-more">
-        {others.map((id) => <button key={id} type="button" className="model-start__option" onClick={() => onStart(id)}>{startCopy(id, t)}</button>)}
+      <div className="model-start__options" role="group" aria-label={t('modelStart.more')}>
+        {MODEL_STARTS.map((id) => <button key={id} type="button" className="model-start__option" title={t(COPY[id].hint)} onClick={() => onStart(id)}>{startCopy(id, t)}</button>)}
       </div>
       <div className="model-start__secondary">
+        <Button variant="primary" size="touch" onClick={onDraw}>{t('modelStart.draw')}</Button>
         <Button variant="ghost" size="touch" onClick={onGenerate}>{t('modelStart.generate')}</Button>
-        <Button variant="ghost" size="touch" onClick={onDraw}>{t('modelStart.draw')}</Button>
       </div>
-      <p className="model-start__note">{t('modelStart.note')}</p>
     </section>
   </div>;
 }

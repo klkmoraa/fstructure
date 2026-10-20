@@ -61,6 +61,8 @@ import {
   toGlobalVector,
 } from '../../graphics/structureGeometry';
 import { CanvasResultLayer, diagramPixelScaleFor } from './CanvasResultLayer';
+import { TrussAxialLayer, TrussAxialLegend } from './TrussAxialPresentation';
+import { trussAxialReadings } from '../results/trussAxial';
 import { diagramScreenPoint, diagramScreenPolyline, reactionArrows } from './resultGeometry';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
 import { CanvasMiniMap } from './CanvasMiniMap';
@@ -520,6 +522,8 @@ export const StructuralCanvas = ({
   const units = project.settings.units;
   const selectionFilter = view.selectionFilter;
   const resultsAllowed = true;
+  const trussReadings = useMemo(() => trussAxialReadings(project, analysis), [project, analysis]);
+  const trussAxialActive = resultTab === 'axial' && layers.results && !stackActive && !structuralEditDraft && view.showResultOverlay && trussReadings.size > 0;
   const lengthLabel = unitLabel(units, 'length');
   const forceLabel = unitLabel(units, 'force');
   const momentLabel = unitLabel(units, 'moment');
@@ -2349,6 +2353,7 @@ export const StructuralCanvas = ({
     }
     if (diagramDrawn && diagramQuantity) {
       for (const member of project.members) {
+        if (diagramQuantity === 'axial' && member.type === 'truss') continue;
         const frame = diagramFrameFor(member);
         if (!frame) continue;
         labelObstacles.push({ points: diagramScreenPolyline(frame, frame.result.diagramSegments, diagramQuantity), clearance: LABEL_CLEARANCE.diagram });
@@ -2564,6 +2569,7 @@ export const StructuralCanvas = ({
     if (!stackActive && diagramQuantity && view.showResultOverlay) {
       const quantity = diagramQuantity;
       for (const member of project.members) {
+        if (quantity === 'axial' && member.type === 'truss') continue;
         const frame = diagramFrameFor(member);
         if (!frame) continue;
         const { result } = frame;
@@ -2808,6 +2814,15 @@ export const StructuralCanvas = ({
         />
 
 
+
+        {trussAxialActive ? <TrussAxialLayer
+          project={project}
+          readings={trussReadings}
+          toScreen={toScreen}
+          language={language}
+          showValues={layers.labels && view.showResultValues}
+          selectedMemberId={selection?.kind === 'member' ? selection.id : undefined}
+        /> : null}
 
         <CanvasResultLayer
           slot="annotations"
@@ -3061,7 +3076,8 @@ export const StructuralCanvas = ({
         onActivate={activateRepeat}
         onCancel={() => { setRepeatRecipe(null); setMemberStart(null); setActiveTool('select'); }}
       />
-      {!stackActive && layers.results && layers.labels && resultsAllowed && analysis?.success && ['axial', 'shear', 'moment'].includes(resultTab) ? <div className={`canvas-result-legend ${resultTab}`} aria-label={t('canvas.diagramConvention')} data-canvas-chrome="result-legend"><strong>{resultTab === 'axial' ? `N · ${t('results.axial')}` : resultTab === 'shear' ? `V · ${t('results.shear')}` : `M · ${t('results.moment')}`}</strong><span><i /> {t('canvas.exactCurveScale', { scale: t(view.diagramScaleMode === 'individual' ? 'canvas.scaleByMember' : 'canvas.scaleCommon') })}</span><small>{t('canvas.diagramSideDescription', { side: view.diagramSide === 'positive' ? '+y' : '−y' })}</small></div> : null}
+      {trussAxialActive && layers.labels ? <TrussAxialLegend project={project} readings={trussReadings} language={language} selectedMemberId={selection?.kind === 'member' ? selection.id : undefined} /> : null}
+      {!trussAxialActive && !structuralEditDraft && !stackActive && layers.results && layers.labels && resultsAllowed && analysis?.success && ['axial', 'shear', 'moment'].includes(resultTab) ? <div className={`canvas-result-legend ${resultTab}`} aria-label={t('canvas.diagramConvention')} data-canvas-chrome="result-legend"><strong>{resultTab === 'axial' ? `N · ${t('results.axial')}` : resultTab === 'shear' ? `V · ${t('results.shear')}` : `M · ${t('results.moment')}`}</strong><span><i /> {t('canvas.exactCurveScale', { scale: t(view.diagramScaleMode === 'individual' ? 'canvas.scaleByMember' : 'canvas.scaleCommon') })}</span><small>{t('canvas.diagramSideDescription', { side: view.diagramSide === 'positive' ? '+y' : '−y' })}</small></div> : null}
       {demandLegend ? <div className="canvas-demand-legend" aria-label={t('canvas.demandLegendTitle')} data-canvas-chrome="demand-legend" data-testid="canvas-demand-legend">
         <strong>{t('canvas.demandLegendTitle')}</strong>
         {/* La rampa se declara con sus dos extremos y la referencia: sin esto el

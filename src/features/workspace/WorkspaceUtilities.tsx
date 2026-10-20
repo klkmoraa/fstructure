@@ -9,15 +9,14 @@ import {
   FileText,
   Moon,
   MoreHorizontal,
-  MoveDown,
   PencilRuler,
-  RotateCcw,
+  Redo2,
   Sheet,
-  Sigma,
   SlidersHorizontal,
   Sparkles,
   Stethoscope,
   Sun,
+  Undo2,
 } from 'lucide-react';
 import { APP_VERSION } from '../../appVersion';
 import { useI18n } from '../../i18n/useI18n';
@@ -47,9 +46,9 @@ export const WorkspaceUtilities = ({
 }: {
   onOpenUnitsEditor?: (trigger?: HTMLElement | null) => void;
 }) => {
-  const { project, updateProjectView } = useProjectModel();
+  const { project, updateProjectView, canUndo, canRedo, undo, redo } = useProjectModel();
   const { analysis, ensureEducationTrace, selectedCombinationId } = useProjectAnalysis();
-  const { theme, setTheme, setActiveTool } = useWorkspaceUI();
+  const { theme, setTheme } = useWorkspaceUI();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [unitPickerOpen, setUnitPickerOpen] = useState(false);
@@ -136,10 +135,6 @@ export const WorkspaceUtilities = ({
     updateProjectView((draft) => ({ ...draft, settings: { ...draft.settings, units } }));
     setUnitPickerOpen(false);
   };
-  const openTool = (tool: 'pointLoad' | 'distributedLoad' | 'moment') => {
-    setActiveTool(tool);
-    setOpen(false);
-  };
   const openAssistant = () => {
     emitWorkspaceCommand('open-local-assistant', { trigger: triggerRef.current });
     setOpen(false);
@@ -166,23 +161,21 @@ export const WorkspaceUtilities = ({
       aria-haspopup="dialog"
     ><MoreHorizontal size={19} aria-hidden="true" /></button>
     {open ? <section className="workspace-utilities__panel" role="dialog" aria-label={t('topbar.utilities')}>
+      <div className="workspace-utilities__history" role="group" aria-label={t('toolbar.primary')}>
+        <button type="button" disabled={!canUndo} onClick={run(undo)}><Undo2 size={17} aria-hidden="true" />{t('history.undo')}</button>
+        <button type="button" disabled={!canRedo} onClick={run(redo)}><Redo2 size={17} aria-hidden="true" />{t('history.redo')}</button>
+      </div>
       <div className="workspace-utilities__list" role="menu">
         <PromoteToProjectItem onDone={() => setOpen(false)} />
         {item(FileText, preparingPdf ? t('workspace.utilityPdfPreparing') : t('portable.previewLabel'), () => void openPdf(), { disabled: preparingPdf })}
         {item(Sheet, t('datasheet.title'), run(() => emitWorkspaceCommand('open-datasheet')))}
         {item(ClipboardList, t('workspace.utilityBom'), run(() => emitWorkspaceCommand('open-structural-bom')))}
+      </div>
+      <div className="workspace-utilities__list workspace-utilities__group" role="menu">
         {item(Stethoscope, t('workspace.utilityDoctor'), run(() => emitWorkspaceCommand('open-model-doctor')))}
         {item(Eye, t('workspace.utilityLayers'), run(() => emitWorkspaceCommand('open-view-settings')))}
         {item(Sparkles, t('workspace.utilityAssistant'), run(openAssistant))}
         {item(SlidersHorizontal, t('workspace.utilityLoadSetup'), run(() => emitWorkspaceCommand('open-analysis-setup')))}
-      </div>
-      <div className="workspace-utilities__group" role="group" aria-label={t('workspace.utilityLoadsSection')}>
-        <span className="workspace-utilities__label">{t('workspace.utilityLoadsSection')}</span>
-        <div className="workspace-utilities__chips" aria-label={t('toolbar.loads')}>
-          <button type="button" onClick={() => openTool('pointLoad')}><MoveDown size={16} aria-hidden="true" />{t('toolbar.pointLoad')}</button>
-          <button type="button" onClick={() => openTool('distributedLoad')}><Sigma size={16} aria-hidden="true" />{t('toolbar.distributedLoad')}</button>
-          <button type="button" onClick={() => openTool('moment')}><RotateCcw size={16} aria-hidden="true" />{t('toolbar.moment')}</button>
-        </div>
       </div>
       <div className="workspace-utilities__group" role="group" aria-label={t('units.label')}>
         <span className="workspace-utilities__label">{t('units.label')}</span>

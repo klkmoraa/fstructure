@@ -35,6 +35,38 @@ beforeEach(() => localStorage.clear());
 afterEach(() => cleanup());
 
 describe('ToolRail surface handoff', () => {
+  it('keeps load and secondary tools reachable through compact menus', async () => {
+    const user = userEvent.setup();
+    const backgroundRef = createRef<HTMLDivElement>();
+    const { container } = render(
+      <ShellCompositionContext.Provider value={{ shellClass: 'X2', phone: false }}>
+        <ProjectProvider>
+          <SurfacePresentationProvider shellClass="X2" backgroundRef={backgroundRef}>
+            <div ref={backgroundRef}><ToolRail /><GeneratorStateHarness /></div>
+          </SurfacePresentationProvider>
+        </ProjectProvider>
+      </ShellCompositionContext.Provider>,
+    );
+
+    expect(container.querySelector('[data-tool-id="delete"]')).toBeNull();
+    const loads = screen.getByRole('button', { name: 'Herramientas de carga' });
+    await user.click(loads);
+    await user.click(screen.getByRole('button', { name: /Carga distribuida/ }));
+    expect(screen.getByLabelText('herramienta activa').textContent).toBe('distributedLoad');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(loads.getAttribute('data-active-tool')).toBe('distributedLoad');
+
+    const more = screen.getByRole('button', { name: 'Más herramientas' });
+    await user.click(more);
+    await user.click(screen.getByRole('button', { name: /Dividir/ }));
+    expect(screen.getByLabelText('herramienta activa').textContent).toBe('split');
+    expect(more.getAttribute('data-active-tool')).toBe('split');
+    await user.click(more);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(more);
+  });
+
   it('returns to Seleccionar when the structure generator closes', async () => {
     const user = userEvent.setup();
     const backgroundRef = createRef<HTMLDivElement>();

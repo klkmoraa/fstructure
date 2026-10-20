@@ -969,7 +969,7 @@ export const enModeling = {
   'inspector.trussShort': 'Truss',
   'inspector.rigidShort': 'Rigid',
   'modelStart.title': 'Start your 2D model',
-  'modelStart.body': 'Pick a structure ready to analyze and edit it, or draw your own.',
+  'modelStart.body': 'Pick a structure or draw your own.',
   'modelStart.more': 'Other starting points',
   'modelStart.beamSimple': 'Simply supported beam',
   'modelStart.beamSimpleHint': '6 m · D 15 and L 8 kN/m',
@@ -981,7 +981,7 @@ export const enModeling = {
   'modelStart.framePortalHint': '6 × 3.5 m fixed · dead, live and seismic',
   'modelStart.trussPratt': 'Pratt truss',
   'modelStart.trussPrattHint': '8 m in 4 panels · joint loads',
-  'modelStart.generate': 'Generate with your own dimensions',
-  'modelStart.draw': 'Draw nodes and members',
+  'modelStart.generate': 'Use my dimensions',
+  'modelStart.draw': 'Draw from scratch',
   'modelStart.note': 'Catalog 30 × 50 concrete and HSS steel; everything stays editable.',
 } as const;
