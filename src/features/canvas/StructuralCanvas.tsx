@@ -62,6 +62,7 @@ import {
 } from '../../graphics/structureGeometry';
 import { CanvasResultLayer, diagramPixelScaleFor } from './CanvasResultLayer';
 import { TrussAxialLayer, TrussAxialLegend } from './TrussAxialPresentation';
+import { ElasticDemandLegend } from './ElasticDemandLegend';
 import { trussAxialReadings } from '../results/trussAxial';
 import { diagramScreenPoint, diagramScreenPolyline, reactionArrows } from './resultGeometry';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
@@ -81,7 +82,7 @@ import {
 } from './candidatePicker';
 import { SurfacePresentationContext } from '../workspace/SurfacePresentationContext';
 import { readCanvasViewSettings, withCanvasViewSettings } from '../view/canvasViewSettings';
-import { ELASTIC_SATURATION_RATIO, elasticDemandView, elasticIndexPaint } from '../results/elasticDemand';
+import { elasticDemandView } from '../results/elasticDemand';
 import { CoordinateEntry, type CoordinateOrigin, type CoordinatePreview } from './CoordinateEntry';
 import { resolveRepeatRecipe, type RepeatRecipe } from './repeatAction';
 import { RepeatActionOverlay } from './RepeatActionOverlay';
@@ -522,8 +523,9 @@ export const StructuralCanvas = ({
   const units = project.settings.units;
   const selectionFilter = view.selectionFilter;
   const resultsAllowed = true;
+  const demandMapActive = layers.heatmap && resultsAllowed && !stackActive && !structuralEditDraft;
   const trussReadings = useMemo(() => trussAxialReadings(project, analysis), [project, analysis]);
-  const trussAxialActive = resultTab === 'axial' && layers.results && !stackActive && !structuralEditDraft && view.showResultOverlay && trussReadings.size > 0;
+  const trussAxialActive = resultTab === 'axial' && layers.results && !demandMapActive && !stackActive && !structuralEditDraft && view.showResultOverlay && trussReadings.size > 0;
   const lengthLabel = unitLabel(units, 'length');
   const forceLabel = unitLabel(units, 'force');
   const momentLabel = unitLabel(units, 'moment');
@@ -564,7 +566,7 @@ export const StructuralCanvas = ({
      que pinta CanvasResultLayer cuando esa evidencia está visible. */
   const visibleFitBounds = useMemo(() => {
     const bounds = modelBounds(project.nodes);
-    if (!layers.results || stackActive || resultTab !== 'deformed' || analysis?.success !== true) return bounds;
+    if (!layers.results || demandMapActive || stackActive || resultTab !== 'deformed' || analysis?.success !== true) return bounds;
     const points = project.nodes.map(({ x, y }) => ({ x, y }));
     const scale = deformedDisplayScale(project, analysis);
     for (const member of project.members) {
@@ -588,7 +590,7 @@ export const StructuralCanvas = ({
       );
     }
     return modelBounds(points);
-  }, [analysis, layers.results, nodeMap, nodeResultMap, project, resultMap, resultTab, stackActive]);
+  }, [analysis, demandMapActive, layers.results, nodeMap, nodeResultMap, project, resultMap, resultTab, stackActive]);
   /**
    * El mapa de demanda es una lectura derivada, no un estado: se recalcula sólo
    * cuando la capa está encendida, así el coste no lo paga quien no lo pidió.
@@ -598,29 +600,11 @@ export const StructuralCanvas = ({
    * no aparece en el mapa: conserva su color de dibujo técnico en lugar de
    * recibir un η fabricado.
    */
-  const demandMapActive = layers.heatmap && resultsAllowed && !stackActive;
   const demandView = useMemo(
     () => demandMapActive ? elasticDemandView(project, analysis) : null,
     [analysis, demandMapActive, project],
   );
   const heatmapRatios = demandView?.ratios ?? EMPTY_DEMAND_RATIOS;
-  /**
-   * Leyenda del mapa: sin ella el color es un adorno. Declara qué significa la
-   * rampa, cuántos miembros entraron realmente en la lectura y si algún η superó
-   * el techo de la rampa —punto en el que el color deja de distinguir magnitud y
-   * hay que leer el número—.
-   */
-  const demandLegend = useMemo(() => {
-    if (!demandView) return null;
-    const ratios = [...demandView.ratios.values()];
-    return {
-      evaluated: demandView.status === 'available' ? demandView.evaluated : 0,
-      total: demandView.total,
-      unevaluated: demandView.unevaluated.size,
-      saturated: ratios.some((ratio) => elasticIndexPaint(ratio).saturated),
-      maxRatio: ratios.length ? Math.max(...ratios) : null,
-    };
-  }, [demandView]);
   /** Rectángulo de modelo que cabe hoy en pantalla; es lo que el radar enmarca. */
   const minimapViewport = useMemo(() => {
     if (!canvasMeasured || !size.width || !size.height) return null;
@@ -2238,6 +2222,7 @@ export const StructuralCanvas = ({
   const stackAvailable = Boolean(!structuralEditDraft && analysis?.success && analysis.memberResults.some((result) => result.diagramSegments.length > 0));
   useEffect(() => { if (!stackAvailable && stackActive) setStackActive(false); }, [stackAvailable, stackActive]);
   useEffect(() => { if (stackActive && activeTool !== 'select' && activeTool !== 'pan') setStackActive(false); }, [activeTool, stackActive]);
+  useEffect(() => { if (stackActive && layers.heatmap) setStackActive(false); }, [layers.heatmap, stackActive]);
   // ACM is an analysis drawing, not an editor composition. Its own traces are
   // meaningful only when reaction labels, load arrows and local axes do not
   // compete with them. This is presentation-only; the persisted layer choice
@@ -2258,6 +2243,7 @@ export const StructuralCanvas = ({
   const toggleStack = useCallback(() => {
     if (!stackActive) {
       setActiveTool('select');
+      if (layers.heatmap) dispatchLayers({ type: 'set', layer: 'heatmap', visible: false });
       if (!layers.results) dispatchLayers({ type: 'set', layer: 'results', visible: true });
       cameraBeforeStackRef.current = cameraRef.current;
       if (!stackInitializedRef.current) {
@@ -2266,7 +2252,7 @@ export const StructuralCanvas = ({
       }
     }
     setStackActive((current) => !current);
-  }, [analysis, dispatchLayers, layers.results, setActiveTool, stackActive]);
+  }, [analysis, dispatchLayers, layers.heatmap, layers.results, setActiveTool, stackActive]);
   const toggleStackQuantityChoice = useCallback((quantity: StackQuantity) => {
     setStackQuantities((current) => {
       const next = toggleStackQuantity(current, quantity);
@@ -2285,6 +2271,7 @@ export const StructuralCanvas = ({
     updateCamera(restored);
   }, [fitModel, project, size, stackActive, stackQuantities.length, updateCamera]);
   useEffect(() => onWorkspaceCommand('toggle-diagram-stack', toggleStack), [toggleStack]);
+  useEffect(() => onWorkspaceCommand('activate-evidence-layer', () => setStackActive(false)), []);
 
   const mechanismPixelScale = useMemo(() => {
     let maximum = 0;
@@ -2327,7 +2314,7 @@ export const StructuralCanvas = ({
     const selectedNodeIds = selectionVisualState.nodeIds;
     const selectedMemberIds = selectionVisualState.memberIds;
     const diagramQuantity = ['axial', 'shear', 'moment'].includes(resultTab) ? resultTab as DiagramQuantity : null;
-    const resultsDrawn = layers.results && !structuralEditDraft && resultsAllowed && Boolean(analysis?.success);
+    const resultsDrawn = layers.results && !demandMapActive && !structuralEditDraft && resultsAllowed && Boolean(analysis?.success);
     const diagramDrawn = resultsDrawn && !stackActive && view.showResultOverlay && diagramQuantity !== null;
     /** El mismo marco con el que `CanvasResultLayer` lleva el diagrama de la barra a la pantalla. */
     const diagramFrameFor = (member: MemberModel) => {
@@ -2353,7 +2340,6 @@ export const StructuralCanvas = ({
     }
     if (diagramDrawn && diagramQuantity) {
       for (const member of project.members) {
-        if (diagramQuantity === 'axial' && member.type === 'truss') continue;
         const frame = diagramFrameFor(member);
         if (!frame) continue;
         labelObstacles.push({ points: diagramScreenPolyline(frame, frame.result.diagramSegments, diagramQuantity), clearance: LABEL_CLEARANCE.diagram });
@@ -2542,7 +2528,7 @@ export const StructuralCanvas = ({
     }
   }
 
-  if (layers.results && layers.labels && resultsAllowed && view.showResultValues && analysis?.success) {
+  if (layers.results && !demandMapActive && layers.labels && resultsAllowed && view.showResultValues && analysis?.success) {
     for (const node of project.nodes) {
       const result = nodeResultMap.get(node.id);
       if (!result) continue;
@@ -2569,11 +2555,14 @@ export const StructuralCanvas = ({
     if (!stackActive && diagramQuantity && view.showResultOverlay) {
       const quantity = diagramQuantity;
       for (const member of project.members) {
-        if (quantity === 'axial' && member.type === 'truss') continue;
         const frame = diagramFrameFor(member);
         if (!frame) continue;
         const { result } = frame;
         const length = frame.axis.length;
+        // En una armadura compacta los diagramas siguen completos; las cifras
+        // se leen al seleccionar o acercar la barra, sin rodearla de etiquetas.
+        if (quantity === 'axial' && member.type === 'truss' && compactCanvasChrome
+          && length * camera.scale < 110 && !selectedMemberIds.includes(member.id)) continue;
         const ordinates = result.criticalPoints.filter((point) => point.quantity === quantity).map((point) => point.value);
         // Un diagrama constante —el axial de una barra de armadura— no tiene un
         // punto más extremo que otro: la cifra se ancla a media barra, lejos
@@ -2594,14 +2583,16 @@ export const StructuralCanvas = ({
           const anchor = diagramScreenPoint(frame, constant ? result.length / 2 : point.x, point.value);
           // Hacia donde crece la ordenada: fuera del diagrama, junto a la curva.
           const outward = (point.value >= 0 ? 1 : -1) * frame.side;
-          const text = `${quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M'} ${point.kind === 'maximum' ? 'máx' : 'mín'} ${formatFixed(toDisplay(point.value, units, displayQuantity), 2)} ${quantityUnit}`;
+          const symbol = quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M';
+          const label = constant ? symbol : `${symbol} ${point.kind === 'maximum' ? 'máx' : 'mín'}`;
+          const text = `${label} ${formatFixed(toDisplay(point.value, units, displayQuantity), 2)} ${quantityUnit}`;
           smartLabelCandidates.push({
             id: `result:${member.id}:${quantity}:${point.kind}`,
             text,
             anchor,
             priority: 2,
             forceVisible: true,
-            tone: quantity,
+            tone: quantity === 'axial' ? point.value < 0 ? 'axial-compression' : 'axial-tension' : quantity,
             preferredOffset: smartLabelOffsetToward(text, { x: frame.axis.normal.x * outward, y: -frame.axis.normal.y * outward }, RESULT_LABEL_GAP),
           });
         }
@@ -2620,7 +2611,9 @@ export const StructuralCanvas = ({
     structuralEditDraft,
     analysis,
     camera,
+    compactCanvasChrome,
     stackActive,
+    demandMapActive,
     distributedLabel,
     forceLabel,
     globalDiagramMax,
@@ -2780,7 +2773,7 @@ export const StructuralCanvas = ({
           lengthLabel={lengthLabel}
           forceLabel={forceLabel}
           momentLabel={momentLabel}
-          showResults={layers.results && !stackActive && !structuralEditDraft}
+          showResults={layers.results && !demandMapActive && !stackActive && !structuralEditDraft}
           showDiagnostics={layers.diagnostics && !structuralEditDraft}
           size={size}
           t={t}
@@ -2820,7 +2813,7 @@ export const StructuralCanvas = ({
           readings={trussReadings}
           toScreen={toScreen}
           language={language}
-          showValues={layers.labels && view.showResultValues}
+          showValues={false}
           selectedMemberId={selection?.kind === 'member' ? selection.id : undefined}
         /> : null}
 
@@ -2846,7 +2839,7 @@ export const StructuralCanvas = ({
           lengthLabel={lengthLabel}
           forceLabel={forceLabel}
           momentLabel={momentLabel}
-          showResults={layers.results && !structuralEditDraft}
+          showResults={layers.results && !demandMapActive && !structuralEditDraft}
           showDiagnostics={layers.diagnostics && !structuralEditDraft}
           size={size}
           t={t}
@@ -3077,24 +3070,16 @@ export const StructuralCanvas = ({
         onCancel={() => { setRepeatRecipe(null); setMemberStart(null); setActiveTool('select'); }}
       />
       {trussAxialActive && layers.labels ? <TrussAxialLegend project={project} readings={trussReadings} language={language} selectedMemberId={selection?.kind === 'member' ? selection.id : undefined} /> : null}
-      {!trussAxialActive && !structuralEditDraft && !stackActive && layers.results && layers.labels && resultsAllowed && analysis?.success && ['axial', 'shear', 'moment'].includes(resultTab) ? <div className={`canvas-result-legend ${resultTab}`} aria-label={t('canvas.diagramConvention')} data-canvas-chrome="result-legend"><strong>{resultTab === 'axial' ? `N · ${t('results.axial')}` : resultTab === 'shear' ? `V · ${t('results.shear')}` : `M · ${t('results.moment')}`}</strong><span><i /> {t('canvas.exactCurveScale', { scale: t(view.diagramScaleMode === 'individual' ? 'canvas.scaleByMember' : 'canvas.scaleCommon') })}</span><small>{t('canvas.diagramSideDescription', { side: view.diagramSide === 'positive' ? '+y' : '−y' })}</small></div> : null}
-      {demandLegend ? <div className="canvas-demand-legend" aria-label={t('canvas.demandLegendTitle')} data-canvas-chrome="demand-legend" data-testid="canvas-demand-legend">
-        <strong>{t('canvas.demandLegendTitle')}</strong>
-        {/* La rampa se declara con sus dos extremos y la referencia: sin esto el
-            color es decoración y el usuario no sabe qué está mirando. */}
-        <span className="canvas-demand-ramp" aria-hidden="true" />
-        <span className="canvas-demand-scale"><i>η 0</i><i>η 1</i><i>{`η ${ELASTIC_SATURATION_RATIO}+`}</i></span>
-        <small>{t('canvas.demandLegendMeaning')}</small>
-        <small data-testid="canvas-demand-coverage">{t(
-          demandLegend.unevaluated > 0 ? 'canvas.demandLegendCoveragePartial' : 'canvas.demandLegendCoverageComplete',
-          { evaluated: demandLegend.evaluated, total: demandLegend.total, unevaluated: demandLegend.unevaluated },
-        )}</small>
-        {demandLegend.unevaluated > 0 ? <small className="canvas-demand-unevaluated">{t('canvas.demandLegendUnevaluated')}</small> : null}
-        {demandLegend.saturated ? <small className="canvas-demand-saturated" data-testid="canvas-demand-saturated">{t('canvas.demandLegendSaturated', {
-          saturation: formatFixed(ELASTIC_SATURATION_RATIO, 2),
-          max: formatFixed(demandLegend.maxRatio ?? 0, 2),
-        })}</small> : null}
-      </div> : null}
+      {!demandMapActive && !trussAxialActive && !structuralEditDraft && !stackActive && layers.results && layers.labels && resultsAllowed && analysis?.success && ['axial', 'shear', 'moment'].includes(resultTab) ? <div className={`canvas-result-legend ${resultTab}`} aria-label={t('canvas.diagramConvention')} data-canvas-chrome="result-legend"><strong>{resultTab === 'axial' ? `N · ${t('results.axial')}` : resultTab === 'shear' ? `V · ${t('results.shear')}` : `M · ${t('results.moment')}`}</strong><span><i /> {t('canvas.exactCurveScale', { scale: t(view.diagramScaleMode === 'individual' ? 'canvas.scaleByMember' : 'canvas.scaleCommon') })}</span><small>{t('canvas.diagramSideDescription', { side: view.diagramSide === 'positive' ? '+y' : '−y' })}</small></div> : null}
+      {demandView ? <ElasticDemandLegend
+        view={demandView}
+        selectedMemberId={selection?.kind === 'member' ? selection.id : undefined}
+        onSelectMember={(id) => {
+          setSelection({ kind: 'member', id });
+          setResultCursor(null);
+          emitWorkspaceCommand('focus-object', { kind: 'member', id });
+        }}
+      /> : null}
       {memberStart ? <div className="canvas-hint" role="status" aria-label={t('canvas.touchDestinationNode')}><span className="canvas-hint__chain">{memberStart} →</span><button type="button" onClick={() => setMemberStart(null)} aria-label={t('canvas.cancelMemberCreation')}><X size={14} /></button></div> : null}
       <CoordinateEntry
         open={coordinateEntryOpen}

@@ -99,6 +99,23 @@ const pointLoad = (id: string, magnitude: number): MemberLoad => ({
 const arrowTailYs = (container: HTMLElement) => [...container.querySelectorAll<SVGLineElement>('.load-symbol--distributed line[marker-end]')]
   .map((line) => Number(line.getAttribute('y1')));
 
+describe('CanvasGeometryLayer elastic map', () => {
+  it('only publishes a member ratio while its map is active', () => {
+    const draw = (active: boolean) => <svg><CanvasGeometryLayer
+      {...props}
+      slot="members"
+      project={{ ...project, members: [member] }}
+      heatmapRatios={new Map([[member.id, 1.25]])}
+      demandMapActive={active}
+    /></svg>;
+    const { container, rerender } = render(draw(true));
+    expect(container.querySelector('.member-object')?.getAttribute('data-demand-ratio')).toBe('1.25');
+    rerender(draw(false));
+    expect(container.querySelector('.member-object')?.hasAttribute('data-demand-ratio')).toBe(false);
+    expect(container.querySelector('.member-object')?.classList.contains('has-demand')).toBe(false);
+  });
+});
+
 describe('sentido de los momentos aplicados', () => {
   it.each(['nodal', 'member'] as const)('invierte el arco %s al cambiar el signo: positivo antihorario', (kind) => {
     const loadProject = (value: number) => ({ ...project, members: [member],

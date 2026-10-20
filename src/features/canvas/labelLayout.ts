@@ -10,7 +10,7 @@ export type SmartLabelPriority = 0 | 1 | 2 | 3;
  */
 export type SmartLabelTone =
   | 'load-point' | 'load-distributed' | 'load-moment'
-  | 'neutral' | 'selection' | 'force' | 'shear' | 'moment' | 'dimension' | 'axial' | 'reaction';
+  | 'neutral' | 'selection' | 'force' | 'shear' | 'moment' | 'dimension' | 'axial' | 'axial-tension' | 'axial-compression' | 'reaction';
 
 export interface SmartLabelCandidate {
   id: string;

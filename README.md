@@ -31,11 +31,20 @@ sigue visible al cerrar su menú. En teléfono, 2D, 3D y Diseño comparten un
 selector compacto; Deshacer y Rehacer están en las utilidades de la mesa.
 
 Para leer una armadura 2D, pulsa **Analizar** y elige **N · Axial**. Las barras
-indican **T · tensión (+)**, **C · compresión (−)** o **0 · sin esfuerzo**, con
+indican **T · tensión (+, azul)**, **C · compresión (−, rojo)** o **0 · sin esfuerzo**, con
 color, patrón de línea y fuerza en las unidades del proyecto. La leyenda
-muestra la lectura completa de la barra seleccionada. En una armadura pura,
-**Resultados → Axial** ofrece además una tabla de todas las barras: elegir
-una fila selecciona ese miembro en el modelo.
+muestra la lectura completa de la barra seleccionada. **El diagrama axial N se conserva**
+sobre todas las barras, con sus ordenadas, escala y lectura por cursor; en
+**Resultados → Axial** el gráfico individual y la tabla global están disponibles
+al mismo tiempo. Elegir una fila selecciona ese miembro en el modelo.
+
+**Fluencia** abre el mapa del índice elástico estimado η con escala de 0 a 200 %,
+marcador en **100 % del Fy declarado**, cobertura y máximo evaluado. La barra
+seleccionada muestra su η sin sustituir su color de demanda; las barras sin Fy
+verificable quedan punteadas y nunca se interpretan como η = 0. Desde el mapa
+puedes volver a Axial y viceversa sin perder el resultado. **Este mapa no
+certifica fluencia, resistencia, estabilidad ni cumplimiento normativo:** no
+incluye pandeo ni factores de diseño.
 
 En pantallas pequeñas sólo se muestran cifras donde hay espacio y sobre la
 barra seleccionada. La clasificación usa el resultado actual del solver;

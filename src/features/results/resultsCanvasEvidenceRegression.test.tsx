@@ -1,0 +1,167 @@
+// @vitest-environment jsdom
+import { cleanup, render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { act, useReducer, useState } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createDefaultProject } from '../../data/defaultProject';
+import { PROJECT_STORAGE_KEY } from '../../data/projectStorage';
+import { ProjectProvider } from '../../store/ProjectContext';
+import { ResultsPanel } from './ResultsPanel';
+import { onWorkspaceCommand } from '../workspace/workspaceCommands';
+import { createEditorLayerState, editorLayerReducer, type EditorLayerState } from '../canvas/editorLayers';
+import { activateEvidenceLayer, applyEvidenceLayerChoice, isEvidenceLayerActive } from '../canvas/evidenceLayers';
+import type { ResultTab } from '../../store/WorkspaceUIContext';
+import { CanvasEvidenceRail } from '../canvas/CanvasEvidenceRail';
+
+beforeEach(() => {
+  localStorage.clear();
+  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(createDefaultProject()));
+});
+afterEach(cleanup);
+
+/**
+ * El defecto que esta prueba guarda: elegir «Cortante» en el Centro analítico
+ * movía `resultTab` y nada más. La capa `results` del lienzo nace apagada, así
+ * que el dibujo NO cambiaba y sólo las fichas del riel del lienzo encendían el
+ * diagrama: la elección se veía en el panel y no en el modelo.
+ */
+describe('elegir una magnitud en Resultados enciende esa capa en el lienzo', () => {
+  it('publica la intención de evidencia para N, V, M y la deformada', () => {
+    const received: string[] = [];
+    const stop = onWorkspaceCommand('activate-evidence-layer', ({ layer }) => received.push(layer));
+    const { container } = render(<ProjectProvider><div className="app-shell"><ResultsPanel status="active" defaultDesktopExpanded /></div></ProjectProvider>);
+
+    for (const tab of ['axial', 'shear', 'moment', 'deformed'] as const) {
+      act(() => { container.querySelector<HTMLButtonElement>(`[data-result-tab="${tab}"]`)!.click(); });
+    }
+    stop();
+
+    expect(received).toEqual(['axial', 'shear', 'moment', 'deformed']);
+  });
+
+  it('el resumen no enciende ninguna capa: no es una lectura del dibujo', () => {
+    const received: string[] = [];
+    const stop = onWorkspaceCommand('activate-evidence-layer', ({ layer }) => received.push(layer));
+    const { container } = render(<ProjectProvider><div className="app-shell"><ResultsPanel status="active" defaultDesktopExpanded /></div></ProjectProvider>);
+
+    act(() => { container.querySelector<HTMLButtonElement>('[data-result-tab="summary"]')!.click(); });
+    stop();
+
+    expect(received).toEqual([]);
+  });
+
+  it('mantiene Influencia como una pestaña del panel, sin pedir una vista densa', () => {
+    const received: string[] = [];
+    const stop = onWorkspaceCommand('activate-evidence-layer', ({ layer }) => received.push(layer));
+    const { container } = render(<ProjectProvider><div className="app-shell"><ResultsPanel status="active" defaultDesktopExpanded /></div></ProjectProvider>);
+
+    const influence = container.querySelector<HTMLButtonElement>('[data-result-tab="influence"]');
+    expect(influence).not.toBeNull();
+    act(() => { influence!.click(); });
+    stop();
+
+    expect(influence?.getAttribute('aria-selected')).toBe('true');
+    expect(received).toEqual([]);
+  });
+
+  /** El shell aplica la intención sobre los mismos dos mandos que el riel. */
+  it('aplicarla deja la capa encendida aunque el lienzo abriera con resultados apagados', () => {
+    let layers: EditorLayerState = createEditorLayerState();
+    let resultTab: ResultTab = 'summary';
+    expect(layers.results).toBe(false);
+
+    activateEvidenceLayer('shear', {
+      setResultTab: (tab) => { resultTab = tab; },
+      dispatchLayers: vi.fn((action) => { layers = editorLayerReducer(layers, action); }),
+    });
+
+    expect(resultTab).toBe('shear');
+    expect(isEvidenceLayerActive('shear', resultTab, layers)).toBe(true);
+  });
+
+  it('al elegir una lectura vuelve visible su superposición de resultados', () => {
+    let layers: EditorLayerState = createEditorLayerState();
+    let resultTab: ResultTab = 'summary';
+    let overlayVisible = false;
+
+    applyEvidenceLayerChoice('moment', { resultTab, layers }, {
+      setResultTab: (tab) => { resultTab = tab; },
+      dispatchLayers: vi.fn((action) => { layers = editorLayerReducer(layers, action); }),
+      revealResultOverlay: () => { overlayVisible = true; },
+    });
+
+    expect(isEvidenceLayerActive('moment', resultTab, layers)).toBe(true);
+    expect(overlayVisible).toBe(true);
+  });
+
+  it('fluencia ocupa el lienzo y al apagarla devuelve el diagrama anterior', () => {
+    let layers: EditorLayerState = { ...createEditorLayerState(), results: true };
+    let resultTab: ResultTab = 'axial';
+    const actions = {
+      setResultTab: (tab: ResultTab) => { resultTab = tab; },
+      dispatchLayers: (action: Parameters<typeof editorLayerReducer>[1]) => { layers = editorLayerReducer(layers, action); },
+    };
+
+    applyEvidenceLayerChoice('heatmap', { resultTab, layers }, actions);
+    expect(isEvidenceLayerActive('heatmap', resultTab, layers)).toBe(true);
+    expect(isEvidenceLayerActive('axial', resultTab, layers)).toBe(false);
+    expect(layers.results).toBe(true);
+
+    applyEvidenceLayerChoice('heatmap', { resultTab, layers }, actions);
+    expect(isEvidenceLayerActive('axial', resultTab, layers)).toBe(true);
+  });
+
+  it('elegir Axial desde Fluencia recupera N aunque ya fuera la magnitud seleccionada', () => {
+    let layers: EditorLayerState = { ...createEditorLayerState(), results: true, heatmap: true };
+    let resultTab: ResultTab = 'axial';
+    let overlayVisible = false;
+
+    applyEvidenceLayerChoice('axial', { resultTab, layers }, {
+      setResultTab: (tab) => { resultTab = tab; },
+      dispatchLayers: (action) => { layers = editorLayerReducer(layers, action); },
+      revealResultOverlay: () => { overlayVisible = true; },
+    });
+
+    expect(layers.heatmap).toBe(false);
+    expect(isEvidenceLayerActive('axial', resultTab, layers)).toBe(true);
+    expect(overlayVisible).toBe(true);
+  });
+
+  it('abrir una magnitud desde Resultados desactiva el mapa que tapaba su diagrama', () => {
+    let layers: EditorLayerState = { ...createEditorLayerState(), heatmap: true };
+    let resultTab: ResultTab = 'summary';
+
+    activateEvidenceLayer('axial', {
+      setResultTab: (tab) => { resultTab = tab; },
+      dispatchLayers: (action) => { layers = editorLayerReducer(layers, action); },
+    });
+
+    expect(layers.heatmap).toBe(false);
+    expect(isEvidenceLayerActive('axial', resultTab, layers)).toBe(true);
+  });
+
+  it('sale de Diagramas al elegir Axial o Fluencia sin apagar la lectura solicitada', async () => {
+    const user = userEvent.setup();
+    const Rail = () => {
+      const [layers, dispatch] = useReducer(editorLayerReducer, { ...createEditorLayerState(), results: true });
+      const [resultTab, setResultTab] = useState<ResultTab>('axial');
+      const [stackActive, setStackActive] = useState(true);
+      return <CanvasEvidenceRail layers={layers} dispatch={dispatch} resultTab={resultTab} setResultTab={setResultTab} visible stackAvailable stackActive={stackActive} onStackToggle={() => setStackActive((active) => !active)} />;
+    };
+    const { container } = render(<ProjectProvider><Rail /></ProjectProvider>);
+    const axial = container.querySelector<HTMLButtonElement>('[data-evidence-layer="axial"]')!;
+    const heatmap = container.querySelector<HTMLButtonElement>('[data-evidence-layer="heatmap"]')!;
+    const stack = container.querySelector<HTMLButtonElement>('[data-evidence-layer="stack"]')!;
+
+    expect(axial.getAttribute('aria-pressed')).toBe('false');
+    await user.click(axial);
+    expect(stack.getAttribute('aria-pressed')).toBe('false');
+    expect(axial.getAttribute('aria-pressed')).toBe('true');
+
+    await user.click(stack);
+    await user.click(heatmap);
+    expect(stack.getAttribute('aria-pressed')).toBe('false');
+    expect(heatmap.getAttribute('aria-pressed')).toBe('true');
+    expect(axial.getAttribute('aria-pressed')).toBe('false');
+  });
+});

@@ -12,6 +12,7 @@ import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { modeShapePoints, modeShapeScaleFor } from './modeShapePath';
 import { deformedDisplayScale } from './deformedPresentation';
 import { diagramScreenPoint, reactionArrows, reactionClearanceFor } from './resultGeometry';
+import { AxialDiagramSigns } from './TrussAxialPresentation';
 
 type MemberResult = AnalysisResult['memberResults'][number];
 type NodeResult = AnalysisResult['nodeResults'][number];
@@ -93,8 +94,6 @@ const CanvasResultLayerImpl = ({
     const ni = nodeMap.get(member.i); const nj = nodeMap.get(member.j);
     if (!resultsAllowed || !view.showResultOverlay || !result || !ni || !nj || !['axial', 'shear', 'moment'].includes(resultTab) || !result.diagramSegments.length) return null;
     const key = resultTab as DiagramQuantity;
-    // Two-force members use the signed T/C/0 reading on the bar itself.
-    if (key === 'axial' && member.type === 'truss') return null;
     const frame = {
       result, axis: memberAxis(member, ni, nj), side: view.diagramSide === 'negative' ? -1 : 1,
       pixelScale: scaleFor(result), cameraScale: camera.scale, toScreen,
@@ -132,12 +131,16 @@ const CanvasResultLayerImpl = ({
     });
     fillCommands.push(`L ${baselineEnd.x} ${baselineEnd.y}`, 'Z');
     jumpCommands.push(`M ${lastPoint.x} ${lastPoint.y} L ${baselineEnd.x} ${baselineEnd.y}`);
-    return <g key={member.id} className={`diagram-shape ${key}`}>
+    const paths = <>
       <path d={fillCommands.join(' ')} className="diagram-fill" />
       {/* `pathLength` normaliza la longitud a 1: el trazo se dibuja al mismo
           ritmo tanto en una barra corta como en una larga. */}
       <path d={lineCommands.join(' ')} className="diagram-line-exact" pathLength={1} />
       <path d={jumpCommands.join(' ')} className="diagram-jumps" />
+    </>;
+    return <g key={member.id} className={`diagram-shape ${key}`}>
+      {key === 'axial' ? <AxialDiagramSigns baselineStart={baselineStart} baselineEnd={baselineEnd} positivePoint={locate(0, 1)}
+        extent={Math.max(size.width, size.height, Math.abs(result.minAxial * frame.pixelScale), Math.abs(result.maxAxial * frame.pixelScale), 1) * 4}>{paths}</AxialDiagramSigns> : paths}
     </g>;
   };
 
@@ -179,7 +182,7 @@ const CanvasResultLayerImpl = ({
     if (!resultsAllowed || !resultCursor || !analysis?.success) return null;
     const member = memberMap.get(resultCursor.memberId);
     const result = resultMap.get(resultCursor.memberId);
-    if (!member || !result || (resultTab === 'axial' && member.type === 'truss')) return null;
+    if (!member || !result) return null;
     const ni = nodeMap.get(member.i);
     const nj = nodeMap.get(member.j);
     if (!ni || !nj) return null;

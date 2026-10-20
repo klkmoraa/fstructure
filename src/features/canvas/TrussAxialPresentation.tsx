@@ -1,3 +1,4 @@
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import type { ProjectModel } from '../../types';
 import { toDisplay } from '../../foundation/units';
 import { unitLabel } from '../../engine/units';
@@ -10,6 +11,33 @@ type Props = { project: ProjectModel; readings: ReadonlyMap<string, TrussAxialRe
 const forceText = (reading: TrussAxialReading, project: ProjectModel) => {
   const value = toDisplay(reading.axial, project.settings.units, 'force');
   return `${value > 0 ? '+' : ''}${formatFixed(value, 2)} ${unitLabel(project.settings.units, 'force')}`;
+};
+
+type ScreenPoint = { x: number; y: number };
+
+/** Clip the existing exact curve at N=0. The sign follows the positive
+ * ordinate, including inclined members and the reversed diagram side. */
+export const AxialDiagramSigns = ({ baselineStart, baselineEnd, positivePoint, extent, children }: {
+  baselineStart: ScreenPoint; baselineEnd: ScreenPoint; positivePoint: ScreenPoint; extent: number; children: ReactNode;
+}) => {
+  const id = useId();
+  const length = Math.hypot(baselineEnd.x - baselineStart.x, baselineEnd.y - baselineStart.y) || 1;
+  const dx = (baselineEnd.x - baselineStart.x) / length;
+  const dy = (baselineEnd.y - baselineStart.y) / length;
+  const ordinate = Math.hypot(positivePoint.x - baselineStart.x, positivePoint.y - baselineStart.y) || 1;
+  const nx = (positivePoint.x - baselineStart.x) / ordinate;
+  const ny = (positivePoint.y - baselineStart.y) / ordinate;
+  const a = { x: baselineStart.x - dx * extent, y: baselineStart.y - dy * extent };
+  const b = { x: baselineEnd.x + dx * extent, y: baselineEnd.y + dy * extent };
+  return <>{(['tension', 'compression'] as const).map((state) => {
+    const side = state === 'tension' ? 1 : -1;
+    const clipId = `${id}-${state}`;
+    const points = [a, b, { x: b.x + side * nx * extent, y: b.y + side * ny * extent }, { x: a.x + side * nx * extent, y: a.y + side * ny * extent }];
+    return <g key={state}>
+      <defs><clipPath id={clipId} clipPathUnits="userSpaceOnUse"><polygon points={points.map((point) => `${point.x},${point.y}`).join(' ')} /></clipPath></defs>
+      <g data-axial-state={state} clipPath={`url(#${clipId})`} style={{ '--axial': `var(--sc-color-axial-${state})` } as CSSProperties}>{children}</g>
+    </g>;
+  })}</>;
 };
 
 /** Axial evidence sits over the technical member line; all interaction stays
@@ -44,14 +72,16 @@ export const TrussAxialLegend = ({ readings, language, project, selectedMemberId
   {selectedMemberId && readings.has(selectedMemberId) ? <div className="truss-axial-selected"><strong>{selectedMemberId}</strong> · {trussAxialLabel(readings.get(selectedMemberId)!.state, language)} · <b>{forceText(readings.get(selectedMemberId)!, project)}</b></div> : null}
 </div>;
 
-export const TrussAxialTable = ({ project, readings, language, onSelect, selectedMemberId }: Props & { onSelect: (id: string) => void; selectedMemberId?: string }) => {
+export const TrussAxialTable = ({ project, readings, language, onSelect, selectedMemberId, collapsible = false }: Props & { collapsible?: boolean; onSelect: (id: string) => void; selectedMemberId?: string }) => {
   if (!readings.size) return null;
-  return <section className="truss-axial-summary">
+  const Container = collapsible ? 'details' : 'section';
+  return <Container className="truss-axial-summary">
+    {collapsible ? <summary>{language === 'es' ? 'Fuerza axial de todas las barras' : 'Axial force in every member'} <small>({readings.size})</small></summary> : null}
     <header><div><strong>{language === 'es' ? 'Qué hace cada barra' : 'What each member carries'}</strong><p>{language === 'es' ? 'Elige una barra para inspeccionarla. Tensión positiva; compresión negativa.' : 'Select a member to inspect it. Tension is positive; compression is negative.'}</p></div></header>
     <div className="table-wrap"><table className="results-table truss-axial-table"><caption>{language === 'es' ? 'Fuerza axial de todas las barras' : 'Axial force in every member'}</caption><thead><tr><th>{language === 'es' ? 'Barra' : 'Member'}</th><th>{language === 'es' ? 'Estado' : 'State'}</th><th>N · {unitLabel(project.settings.units, 'force')}</th></tr></thead><tbody>{[...readings.values()].map((reading) => <tr key={reading.memberId} className={reading.memberId === selectedMemberId ? 'is-selected' : undefined}>
       <th scope="row"><button type="button" onClick={() => onSelect(reading.memberId)} aria-pressed={reading.memberId === selectedMemberId}>{reading.memberId}</button></th>
       <td><span className={`truss-axial-key ${reading.state}`}><i aria-hidden="true" /><b>{trussAxialSymbol(reading.state)}</b> {trussAxialLabel(reading.state, language)}</span></td>
       <td>{forceText(reading, project)}</td>
     </tr>)}</tbody></table></div>
-  </section>;
+  </Container>;
 };

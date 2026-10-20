@@ -636,7 +636,7 @@ const CanvasGeometryLayerImpl = ({
           const selected = selectedMemberIds.includes(member.id);
           const previewed = candidatePreview?.kind === 'member' && candidatePreview.id === member.id;
           const learningHighlighted = learningFocus?.memberIds.includes(member.id) ?? false;
-          const demandRatio = heatmapRatios.get(member.id);
+          const demandRatio = demandMapActive ? heatmapRatios.get(member.id) : undefined;
           // Gancho de diagnóstico, no un número en pantalla: se redondea sin
           // `toFixed` para no depender del locale ni de la política de
           // presentación, que gobierna sólo lo que el usuario lee.
@@ -646,6 +646,12 @@ const CanvasGeometryLayerImpl = ({
              técnico normal: sería indistinguible de uno con η baja. Se marca como
              **no evaluado** y la leyenda cuenta cuántos son. */
           const unevaluated = demandMapActive && demandRatio === undefined;
+          const memberLabel = t('canvas.memberAria', { id: member.id, i: member.i, j: member.j });
+          const demandLabel = demandRatio === undefined ? null : t('elastic.value', {
+            ratio: formatFixed(demandRatio, 2, 'canvas'),
+            percent: formatFixed(demandRatio * 100, 1, 'canvas'),
+          });
+          const accessibleLabel = [memberLabel, demandLabel ?? (unevaluated ? t('elastic.unavailableTitle') : null)].filter(Boolean).join(' · ');
           return (
             <g
               key={member.id}
@@ -656,21 +662,22 @@ const CanvasGeometryLayerImpl = ({
               data-demand-at-reference={paint?.atReference ? 'true' : undefined}
               data-demand-saturated={paint?.saturated ? 'true' : undefined}
               data-elastic-index={unevaluated ? 'unevaluated' : paint ? 'evaluated' : undefined}
-              /* El color térmico viaja como custom property y no como `stroke`:
-                 así la selección y el foco pedagógico siguen ganando por CSS. */
+              /* El color viaja aparte de los halos de selección: la interacción
+                 no debe cambiar la magnitud que representa el mapa. */
               style={paint === null ? undefined : { '--member-demand-color': paint.color } as CSSProperties}
               className={`member-object ${selected ? 'selected' : ''}${previewed ? ' candidate-preview' : ''} ${learningHighlighted ? 'learning-highlight' : ''} ${member.type}${paint === null ? '' : ' has-demand'}${unevaluated ? ' is-unevaluated' : ''}`}
               data-candidate-preview={previewed ? 'true' : undefined}
               role="button"
               tabIndex={interactive ? 0 : -1}
               aria-keyshortcuts="Enter Space"
-              aria-label={t('canvas.memberAria', { id: member.id, i: member.i, j: member.j })}
+              aria-label={accessibleLabel}
               aria-pressed={selected}
               onPointerDown={(event) => onObjectPointerDown(event, { kind: 'member', id: member.id })}
               onKeyDown={(event: ReactKeyboardEvent<SVGGElement>) => onObjectKeyDown(event, { kind: 'member', id: member.id })}
               onPointerMove={(event) => onShowCut(event, member)}
               onPointerLeave={onCutLeave}
             >
+              {demandMapActive ? <title>{accessibleLabel}</title> : null}
               {selected ? <line className="member-selection-halo" x1={a.x} y1={a.y} x2={b.x} y2={b.y} /> : null}
               {previewed ? <line className="candidate-preview-halo" x1={a.x} y1={a.y} x2={b.x} y2={b.y} /> : null}
               <line className="member-hit" x1={a.x} y1={a.y} x2={b.x} y2={b.y} />

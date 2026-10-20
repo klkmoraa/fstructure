@@ -2,7 +2,7 @@ import type { Dispatch } from 'react';
 import { useI18n } from '../../i18n/useI18n';
 import type { ResultTab } from '../../store/ProjectContext';
 import type { EditorLayerAction, EditorLayerState } from './editorLayers';
-import { applyEvidenceLayerChoice, EVIDENCE_LAYERS, isEvidenceLayerActive } from './evidenceLayers';
+import { activateEvidenceLayer, applyEvidenceLayerChoice, EVIDENCE_LAYERS, isEvidenceLayerActive } from './evidenceLayers';
 import { STACK_QUANTITIES, STACK_SYMBOLS, type StackQuantity } from './diagramStack';
 
 const stackLabelKeys: Readonly<Record<StackQuantity, 'results.axial' | 'results.shear' | 'results.moment'>> = {
@@ -46,12 +46,18 @@ export const CanvasEvidenceRail = ({
       key={id}
       type="button"
       className={`canvas-evidence-layer canvas-evidence-layer--${id}`}
-      aria-pressed={isEvidenceLayerActive(id, resultTab, layers)}
+      aria-pressed={!stackActive && isEvidenceLayerActive(id, resultTab, layers)}
       /* La ficha se lee corta; el nombre completo de la capa sigue siendo el
          nombre accesible para que no dependa de la abreviatura. */
       aria-label={chipLabelKey ? t(labelKey) : undefined}
       data-evidence-layer={id}
-      onClick={() => applyEvidenceLayerChoice(id, { resultTab, layers }, { setResultTab, dispatchLayers: dispatch, revealResultOverlay })}
+      onClick={() => {
+        const actions = { setResultTab, dispatchLayers: dispatch, revealResultOverlay };
+        if (stackActive) {
+          onStackToggle?.();
+          activateEvidenceLayer(id, actions);
+        } else applyEvidenceLayerChoice(id, { resultTab, layers }, actions);
+      }}
     >{t(chipLabelKey ?? labelKey)}</button>)}
     <button
       type="button"

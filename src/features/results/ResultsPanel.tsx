@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type CSSProperties } from 'react';
 import { AlertCircle, ChevronUp, CircleDotDashed, GripHorizontal, LoaderCircle, X } from 'lucide-react';
 import { useProject, type ResultTab } from '../../store/ProjectContext';
 import { evaluateDeformationAt, evaluateDiagramAt, segmentBezierControls } from '../../engine/diagram';
@@ -14,7 +14,7 @@ import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { ResultSummary } from './ResultSummary';
 import { MemberSheet } from './MemberSheet';
-import { TrussAxialTable } from '../canvas/TrussAxialPresentation';
+import { AxialDiagramSigns, TrussAxialTable } from '../canvas/TrussAxialPresentation';
 import { trussAxialReadings } from './trussAxial';
 import { NumericQualityCard } from './NumericQualityCard';
 import { deriveClassroomProgress, type ClassroomProgressStepId } from '../../education/classroomProgress';
@@ -473,8 +473,8 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
         }} /> : null}
         {analysis && !analysis.success ? <FailedResults onOpenModelDoctor={() => emitWorkspaceCommand('open-model-doctor')} /> : null}
         {analysis?.success && activeTab.id === 'summary' ? <ResultSummary /> : null}
-        {analysis?.success && activeTab.id === 'axial' && pureTruss && trussReadings.size > 0 ? <TrussAxialTable project={project} readings={trussReadings} language={language} selectedMemberId={selectedMemberId} onSelect={(id) => { setSelection({ kind: 'member', id }); setResultCursor(null); }} /> : null}
-        {analysis?.success && ['axial', 'shear', 'moment'].includes(activeTab.id) && !(activeTab.id === 'axial' && pureTruss && trussReadings.size > 0) ? <DiagramView type={activeTab.id as 'axial' | 'shear' | 'moment'} memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
+        {analysis?.success && ['axial', 'shear', 'moment'].includes(activeTab.id) ? <DiagramView type={activeTab.id as 'axial' | 'shear' | 'moment'} memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
+        {analysis?.success && activeTab.id === 'axial' && pureTruss && trussReadings.size > 0 ? <TrussAxialTable collapsible project={project} readings={trussReadings} language={language} selectedMemberId={selectedMemberId} onSelect={(id) => { setSelection({ kind: 'member', id }); setResultCursor(null); }} /> : null}
         {analysis?.success && activeTab.id === 'sheet' ? <MemberSheet memberResult={memberResult} memberId={selectedMemberId ?? ''} /> : null}
         {analysis?.success && activeTab.id === 'deformed' ? <DeformationView memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
         {analysis?.success && activeTab.id === 'influence' ? <Suspense fallback={<div className="results-view-loading" role="status" aria-label={t('results.loadingInfluence')}><LoaderCircle className="spin" size={20} aria-hidden="true" /><span>{t('results.loadingInfluence')}</span></div>}>
@@ -533,6 +533,12 @@ const DiagramView = ({ type, memberResult, memberId, isMobile }: { type: Diagram
   const min = type === 'axial' ? memberResult.minAxial : type === 'shear' ? memberResult.minShear : memberResult.minMoment;
   const max = type === 'axial' ? memberResult.maxAxial : type === 'shear' ? memberResult.maxShear : memberResult.maxMoment;
   const peak = Math.max(Math.abs(min), Math.abs(max), 1e-9);
+  const constantAxial = type === 'axial' && Math.abs(max - min) <= peak * 1e-8;
+  const axialPeak = Math.max(Math.abs(memberResult.minAxial), Math.abs(memberResult.maxAxial), 1e-9);
+  const axialInk = (value: number) => Math.abs(value) <= axialPeak * 1e-8 ? 'var(--muted)' : `var(--sc-color-axial-${value < 0 ? 'compression' : 'tension'})`;
+  const axialStyle = (value: number): CSSProperties | undefined => type === 'axial' ? { '--axial': axialInk(value) } as CSSProperties : undefined;
+  const signedExtreme = (value: number, card: ReactNode) => type === 'axial' ? <div style={{ display: 'grid', minWidth: 0, ...axialStyle(value) }}>{card}</div> : card;
+  const zeroAxial = constantAxial && axialInk(min) === 'var(--muted)';
   const maxAbs = Math.max(Math.abs(min), Math.abs(max), Math.abs(envelope?.minimum.value ?? 0), Math.abs(envelope?.maximum.value ?? 0), 1e-9);
   const L = memberResult.length;
   const pinnedX = resultCursor?.memberId === memberId && resultCursor.pinned ? Math.max(0, Math.min(L, resultCursor.x)) : null;
@@ -651,47 +657,52 @@ const DiagramView = ({ type, memberResult, memberId, isMobile }: { type: Diagram
     event.stopPropagation();
     setResultCursor({ memberId, x: Math.max(0, Math.min(L, next)), pinned: true });
   };
-  return <div className="diagram-result-layout">
+  const chartPaths = <>
+    {memberResult.diagramJumps.map((jump) => {
+      const left = evaluateDiagramAt(memberResult.diagramSegments, memberResult.diagramJumps, jump.x, 'left');
+      const right = evaluateDiagramAt(memberResult.diagramSegments, memberResult.diagramJumps, jump.x, 'right');
+      return left && right ? <line key={`jump-${jump.x}`} className="chart-jump" x1={sx(jump.x)} y1={sy(left[type])} x2={sx(jump.x)} y2={sy(right[type])} /> : null;
+    })}
+    <path className={`chart-fill ${envelopeMode ? 'muted' : ''}`} d={fillCommands.join(' ')} />
+    <path className={`chart-line ${envelopeMode ? 'muted' : ''}`} d={lineCommands.join(' ')} fill="none" />
+  </>;
+  return <div className="diagram-result-layout" style={constantAxial ? axialStyle(min) : undefined}>
     {/* Máximo y mínimo del diagrama son extremos y van en tarjeta: mismo
         componente, misma materia y los mismos datos que en el resumen. La
         lectura del cursor no es un extremo — sigue siendo lectura, y vive
         junto al gráfico. */}
     <ResultMetricRail isMobile={isMobile} className="diagram-focus-cards">
       {/* Un extremo nulo (el mínimo de una viga simple en sus apoyos) no es dato: no ocupa tarjeta. */}
-      {Math.abs(max) > peak * 0.005 || Math.abs(min) <= peak * 0.005 ? <ResultExtremeCard
-        label={`${shortLabel} · ${t('results.maximum')}`}
+      {Math.abs(max) > peak * 0.005 || Math.abs(min) <= peak * 0.005 ? signedExtreme(max, <ResultExtremeCard
+        label={constantAxial ? shortLabel : `${shortLabel} · ${t('results.maximum')}`}
         value={formatFixed(displayValue(max), 2)}
         unit={unit}
         position={maxPoint ? `${memberId} · x ${formatFixed(toDisplay(maxPoint.x, units, 'length'), 2)} ${lengthUnit}` : memberId}
         reliability={reliability}
         accent={colorClass}
-      /> : null}
-      {Math.abs(min) > peak * 0.005 ? <ResultExtremeCard
+      />) : null}
+      {!constantAxial && Math.abs(min) > peak * 0.005 ? signedExtreme(min, <ResultExtremeCard
         label={`${shortLabel} · ${t('results.minimum')}`}
         value={formatFixed(displayValue(min), 2)}
         unit={unit}
         position={minPoint ? `${memberId} · x ${formatFixed(toDisplay(minPoint.x, units, 'length'), 2)} ${lengthUnit}` : memberId}
         reliability={reliability}
         accent={colorClass}
-     /> : null}
-      {cursorPoint ? <div className="diagram-cursor-readout diagram-cursor-metric"><span>{t('results.cursorValue')}</span><strong>{formatFixed(displayValue(cursorPoint[type]), 3)} {unit}</strong><small>x {formatFixed(toDisplay(cursorPoint.x, units, 'length'), 2)} {lengthUnit}</small></div> : null}
+     />) : null}
+      {cursorPoint ? <div className="diagram-cursor-readout diagram-cursor-metric" style={type === 'axial' ? { color: axialInk(cursorPoint.axial) } : undefined}><span>{t('results.cursorValue')}</span><strong>{formatFixed(displayValue(cursorPoint[type]), 3)} {unit}</strong><small>x {formatFixed(toDisplay(cursorPoint.x, units, 'length'), 2)} {lengthUnit}</small></div> : null}
     </ResultMetricRail>
     <div className={`diagram-chart ${colorClass}`} data-testid="diagram-chart"><div className="diagram-chart-heading"><label><span>{t('results.member')}</span><select aria-label={t('results.memberForDiagram')} value={memberId} onChange={(event) => { setSelection({ kind: 'member', id: event.target.value }); setResultCursor(null); }}>{memberOptions.map((member) => <option key={member.memberId} value={member.memberId}>{member.memberId}</option>)}</select></label><strong>{label}</strong><button className="envelope-toggle" aria-pressed={envelopeMode} disabled={envelopeBusy} title={t('results.compareAllCases')} onClick={() => { if (!envelopeScenarios) runEnvelopeAnalysis(); setEnvelopeMode((current) => !current); }}>{envelopeBusy ? '…' : 'Env.'}</button><small>{envelopeMode ? t('results.scenarioCount', { count: envelope?.includedScenarioIds.length ?? 0 }) : pinnedX === null ? t('results.pointerHint') : t('results.pinnedHint')}</small></div><span id={cursorHelpId} className="sr-only">{t('results.chartKeyboardHelp')}</span><svg tabIndex={0} role="img" aria-label={diagramAriaLabel} aria-describedby={cursorHelpId} aria-keyshortcuts="ArrowLeft ArrowRight Home End Escape" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" onKeyDown={movePinnedByKeyboard} onPointerMove={(event) => setHoverX(pointerX(event))} onPointerDown={(event) => pinAt(pointerX(event))} onPointerLeave={() => setHoverX(null)}>
       <title>{diagramAriaLabel}</title><desc>{t('results.chartKeyboardHelp')}</desc>
       <line className="chart-axis" x1="0" y1={baseline} x2={width} y2={baseline} />
       {xTicks.map((x) => <g className="chart-tick" key={`tick-${x}`}><line x1={sx(x)} y1={baseline - 4} x2={sx(x)} y2={baseline + 4} /></g>)}
       {memberResult.diagramSegments.slice(1).map((segment) => <line key={segment.x0} className="chart-break" x1={sx(segment.x0)} y1="20" x2={sx(segment.x0)} y2={height - 20} />)}
-      {memberResult.diagramJumps.map((jump) => {
-        const left = evaluateDiagramAt(memberResult.diagramSegments, memberResult.diagramJumps, jump.x, 'left');
-        const right = evaluateDiagramAt(memberResult.diagramSegments, memberResult.diagramJumps, jump.x, 'right');
-        return left && right ? <line key={`jump-${jump.x}`} className="chart-jump" x1={sx(jump.x)} y1={sy(left[type])} x2={sx(jump.x)} y2={sy(right[type])} /> : null;
-      })}
-      <path className={`chart-fill ${envelopeMode ? 'muted' : ''}`} d={fillCommands.join(' ')} />
-      <path className={`chart-line ${envelopeMode ? 'muted' : ''}`} d={lineCommands.join(' ')} fill="none" />
+      {type === 'axial' && !zeroAxial ? <AxialDiagramSigns baselineStart={{ x: 0, y: baseline }} baselineEnd={{ x: width, y: baseline }} positivePoint={{ x: 0, y: baseline - 1 }} extent={width * 2}>
+        {chartPaths}
+      </AxialDiagramSigns> : chartPaths}
       {envelopeMode && envelope ? <><path className="envelope-line minimum" d={envelopePath('minimum')} fill="none" /><path className="envelope-line maximum" d={envelopePath('maximum')} fill="none" /></> : null}
-      {displayCritical.map((point, index) => <g className={`chart-critical ${point.kind}`} key={`${point.kind}-${point.side}-${point.x}-${index}`}><circle cx={sx(point.x)} cy={sy(point.value)} r={point.kind === 'zero' ? 4 : 3.2} /></g>)}
-      {cursorPoint ? <g className={`chart-hover ${pinnedX === null ? '' : 'pinned'}`}><line x1={sx(cursorPoint.x)} y1="16" x2={sx(cursorPoint.x)} y2={height - 18} /><circle cx={sx(cursorPoint.x)} cy={sy(cursorPoint[type])} r="4" /></g> : null}
-    </svg><div className="chart-tick-labels" aria-hidden="true">{xTicks.map((x) => <span key={`label-${x}`} data-edge={x === 0 ? 'start' : x === L ? 'end' : undefined} style={{ left: `${(sx(x) / width) * 100}%` }}>{formatFixed(toDisplay(x, units, 'length'), 2)}</span>)}</div>{cursorPoint ? <div className={`diagram-cursor-readout ${cursorJump || envelopeCursorJump ? 'at-jump' : ''}`} role={pinnedX !== null ? 'status' : undefined} aria-live={pinnedX !== null ? 'polite' : undefined} aria-atomic={pinnedX !== null ? true : undefined}><span className="cursor-position"><b>x</b>{formatFixed(toDisplay(cursorPoint.x, units, 'length'), 3)} {unitLabel(units, 'length')}</span>{envelopeCursor ? <><span className="envelope-min"><b>{t('results.minimum')}</b>{formatFixed(displayValue(envelopeCursor.minimum), 3)} {unit}</span><span className="envelope-max"><b>{t('results.maximum')}</b>{formatFixed(displayValue(envelopeCursor.maximum), 3)} {unit}</span><small>{envelopeCursor.minimumScenario} → {envelopeCursor.maximumScenario}</small>{envelopeCursorJump && envelopeCursorLeft && envelopeCursorRight ? <><small>{t('results.envelopeDiscontinuityReading', { quantity: t('results.minimum'), left: formatFixed(displayValue(envelopeCursorLeft.minimum), 3), right: formatFixed(displayValue(envelopeCursorRight.minimum), 3), unit })}</small><small>{t('results.envelopeDiscontinuityReading', { quantity: t('results.maximum'), left: formatFixed(displayValue(envelopeCursorLeft.maximum), 3), right: formatFixed(displayValue(envelopeCursorRight.maximum), 3), unit })}</small></> : null}</> : <><span className="axial-text"><b>N</b>{formatFixed(toDisplay(cursorPoint.axial, units, 'force'), 3)} {unitLabel(units, 'force')}</span><span className="shear-text"><b>V</b>{formatFixed(toDisplay(cursorPoint.shear, units, 'force'), 3)} {unitLabel(units, 'force')}</span><span className="moment-text"><b>M</b>{formatFixed(toDisplay(cursorPoint.moment, units, 'moment'), 3)} {unitLabel(units, 'moment')}</span>{cursorJump && cursorLeft && cursorRight ? <small>{t('results.discontinuityReading', { left: formatFixed(displayValue(cursorLeft[type]), 3), right: formatFixed(displayValue(cursorRight[type]), 3), unit })}</small> : null}</>}</div> : <div className="diagram-cursor-placeholder">{t('results.exactDiagramCursor')}</div>}</div>
+      {displayCritical.map((point, index) => <g className={`chart-critical ${point.kind}`} key={`${point.kind}-${point.side}-${point.x}-${index}`} style={type === 'axial' ? { color: axialInk(point.value) } : undefined}><circle cx={sx(point.x)} cy={sy(point.value)} r={point.kind === 'zero' ? 4 : 3.2} /></g>)}
+      {cursorPoint ? <g className={`chart-hover ${pinnedX === null ? '' : 'pinned'}`}><line x1={sx(cursorPoint.x)} y1="16" x2={sx(cursorPoint.x)} y2={height - 18} /><circle cx={sx(cursorPoint.x)} cy={sy(cursorPoint[type])} r="4" style={type === 'axial' ? { fill: axialInk(cursorPoint.axial) } : undefined} /></g> : null}
+    </svg><div className="chart-tick-labels" aria-hidden="true">{xTicks.map((x) => <span key={`label-${x}`} data-edge={x === 0 ? 'start' : x === L ? 'end' : undefined} style={{ left: `${(sx(x) / width) * 100}%` }}>{formatFixed(toDisplay(x, units, 'length'), 2)}</span>)}</div>{cursorPoint ? <div className={`diagram-cursor-readout ${cursorJump || envelopeCursorJump ? 'at-jump' : ''}`} role={pinnedX !== null ? 'status' : undefined} aria-live={pinnedX !== null ? 'polite' : undefined} aria-atomic={pinnedX !== null ? true : undefined}><span className="cursor-position"><b>x</b>{formatFixed(toDisplay(cursorPoint.x, units, 'length'), 3)} {unitLabel(units, 'length')}</span>{envelopeCursor ? <><span className="envelope-min"><b>{t('results.minimum')}</b>{formatFixed(displayValue(envelopeCursor.minimum), 3)} {unit}</span><span className="envelope-max"><b>{t('results.maximum')}</b>{formatFixed(displayValue(envelopeCursor.maximum), 3)} {unit}</span><small>{envelopeCursor.minimumScenario} → {envelopeCursor.maximumScenario}</small>{envelopeCursorJump && envelopeCursorLeft && envelopeCursorRight ? <><small>{t('results.envelopeDiscontinuityReading', { quantity: t('results.minimum'), left: formatFixed(displayValue(envelopeCursorLeft.minimum), 3), right: formatFixed(displayValue(envelopeCursorRight.minimum), 3), unit })}</small><small>{t('results.envelopeDiscontinuityReading', { quantity: t('results.maximum'), left: formatFixed(displayValue(envelopeCursorLeft.maximum), 3), right: formatFixed(displayValue(envelopeCursorRight.maximum), 3), unit })}</small></> : null}</> : <><span className="axial-text" style={{ '--axial': axialInk(cursorPoint.axial) } as CSSProperties}><b>N</b>{formatFixed(toDisplay(cursorPoint.axial, units, 'force'), 3)} {unitLabel(units, 'force')}</span><span className="shear-text"><b>V</b>{formatFixed(toDisplay(cursorPoint.shear, units, 'force'), 3)} {unitLabel(units, 'force')}</span><span className="moment-text"><b>M</b>{formatFixed(toDisplay(cursorPoint.moment, units, 'moment'), 3)} {unitLabel(units, 'moment')}</span>{cursorJump && cursorLeft && cursorRight ? <small>{t('results.discontinuityReading', { left: formatFixed(displayValue(cursorLeft[type]), 3), right: formatFixed(displayValue(cursorRight[type]), 3), unit })}</small> : null}</>}</div> : <div className="diagram-cursor-placeholder">{t('results.exactDiagramCursor')}</div>}</div>
   </div>;
 };
 

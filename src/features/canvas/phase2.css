@@ -1387,80 +1387,26 @@ button,
 }
 
 /* --- Mapa de demanda estructural -------------------------------------- */
-/* Rampa secuencial de magnitud, no semáforo de seguridad: el color dice cuánta
-   demanda elástica estimada hay, nunca si eso es aceptable. Las barras sin η
-   publicable (sin Fy o W verificables, o análisis no confiable) no entran en el
-   mapa y conservan su trazo técnico — el mapa no rellena huecos.
-
-   El color cede ante selección y foco pedagógico: el estado de interacción
-   manda sobre la lectura. */
-.member-object.has-demand .member-line { stroke:var(--member-demand-color); }
-/* Alcanzar la referencia Fy se redunda en forma, no sólo en color. */
+/* La línea conserva la magnitud evaluada al seleccionar o enfocar la barra.
+   El halo y el grosor comunican interacción sin sustituir su lectura. */
+.member-object.has-demand .member-line,
+.member-object.has-demand:is(:hover,:focus-visible,.selected,.learning-highlight) .member-line {
+  stroke:var(--member-demand-color);
+}
+/* Alcanzar la referencia Fy también se distingue por el patrón. */
 .member-object.has-demand[data-demand-at-reference='true'] .member-line {
   stroke-dasharray:7 3;
 }
-/* Un miembro que no pudo evaluarse no puede parecer uno de η baja: se dibuja
-   punteado y atenuado, y la leyenda cuenta cuántos son. */
-.member-object.is-unevaluated .member-line {
+/* Sin datos no equivale a demanda cero, incluso al seleccionar la barra. */
+.member-object.is-unevaluated .member-line,
+.member-object.is-unevaluated:is(:hover,:focus-visible,.selected,.learning-highlight) .member-line {
   stroke:var(--sc-color-demand-unevaluated);
   stroke-dasharray:2 4;
-  opacity:.55;
+  opacity:.65;
 }
-.member-object.has-demand.selected .member-line,
-.member-object.has-demand.learning-highlight .member-line,
-.member-object.is-unevaluated.selected .member-line,
-.member-object.is-unevaluated.learning-highlight .member-line {
-  stroke:var(--selection);
-  stroke-dasharray:none;
-  opacity:1;
-}
-
-/* --- Leyenda del mapa de demanda -------------------------------------- */
-/* Sin leyenda el color es decoración: declara qué mide la rampa, cuántos
-   miembros entraron en la lectura y dónde deja de distinguir magnitud. */
-.canvas-demand-legend {
-  position:absolute;
-  inset-block-end:12px;
-  inset-inline-start:12px;
-  z-index:3;
-  max-width:min(320px,calc(100% - 24px));
-  padding:9px 11px;
-  display:grid;
-  gap:5px;
-  border:var(--sc-surface-edge);
-  border-radius:var(--sc-radius-sm);
-  background:var(--sc-color-surface-1);
-  box-shadow:var(--sc-shadow-xs);
-  color:var(--muted);
-  font-size:var(--sc-font-size-caption);
-  line-height:var(--sc-line-height-compact);
-  pointer-events:none;
-}
-.canvas-demand-legend strong { color:var(--text); font-size:12px; }
-.canvas-demand-legend small { margin:0; }
-.canvas-demand-ramp {
-  height:9px;
-  border-radius:var(--sc-radius-pill);
-  background:linear-gradient(
-    90deg,
-    var(--sc-color-demand-base) 0%,
-    var(--sc-color-demand-peak) 50%,
-    var(--sc-color-demand-reference) 50%,
-    var(--sc-color-demand-reference-peak) 100%
-  );
-}
-.canvas-demand-scale {
-  display:flex;
-  justify-content:space-between;
-  font-family:var(--sc-font-mono);
-  font-variant-numeric:var(--sc-numeric-variant);
-}
-.canvas-demand-scale i { font-style:normal; }
-.canvas-demand-unevaluated { color:var(--sc-color-demand-unevaluated); }
-.canvas-demand-saturated { color:var(--sc-color-state-warning-foreground); }
-
-@media (max-width: 640px) {
-  .canvas-demand-legend { inset-block-end:8px; inset-inline-start:8px; max-width:calc(100% - 16px); }
+.member-object.has-demand:is(.selected,:focus-visible,.learning-highlight) .member-line,
+.member-object.is-unevaluated:is(.selected,:focus-visible,.learning-highlight) .member-line {
+  stroke-width:5;
 }
 
 /* --- Minimapa radar ---------------------------------------------------- */
@@ -1967,6 +1913,8 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .smart-label.tone-dimension { color:var(--dimension); }
 .smart-label.tone-dimension rect { fill:color-mix(in srgb,var(--surface) 82%,transparent); stroke:color-mix(in srgb,var(--dimension) 34%,transparent); filter:none; }
 .smart-label.tone-axial { color:var(--axial); }
+.smart-label.tone-axial-tension { color:var(--sc-color-axial-tension); }
+.smart-label.tone-axial-compression { color:var(--sc-color-axial-compression); }
 /* La reacción es un resultado del apoyo, no una fuerza axial de la barra:
    compartían color y no había forma de distinguirlas en la misma vista. */
 .smart-label.tone-reaction { color:var(--reaction); }

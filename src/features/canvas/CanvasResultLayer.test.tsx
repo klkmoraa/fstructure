@@ -3,6 +3,7 @@ import { render } from '@testing-library/react';
 import { expect, it } from 'vitest';
 import { createBlankProject } from '../../data/defaultProject';
 import { analyzeProject } from '../../engine/solver';
+import { availableSolver2dCorpus, resolveCorpusProject } from '../../engine/solver2dCorpus';
 import { CanvasResultLayer } from './CanvasResultLayer';
 
 it('muestra la deformada de una viga con rótula y cargas en N sin alterar sus resultados', () => {
@@ -39,4 +40,30 @@ it('muestra la deformada de una viga con rótula y cargas en N sin alterar sus r
     [...path.getAttribute('d')!.matchAll(/[ML] [\d.e+-]+ ([\d.e+-]+)/g)].map((match) => Math.abs(Number(match[1]))));
   expect(Math.max(...ys)).toBeGreaterThan(20);
   expect(JSON.stringify(analysis)).toBe(original);
+});
+
+
+it('restaura los diagramas N y su cursor exacto en los miembros de armadura', () => {
+  const project = resolveCorpusProject(availableSolver2dCorpus.find((item) => item.id === 'triangular-truss')!);
+  const analysis = analyzeProject(project);
+  const member = analysis.memberResults.find((item) => item.memberId === 'AB')!;
+  expect(analysis.success).toBe(true);
+  const { container } = render(<svg><CanvasResultLayer
+    slot="diagrams" project={project} analysis={analysis} resultTab="axial" resultsAllowed
+    resultCursor={{ memberId: 'AB', x: member.length / 2, pinned: true }} influenceCanvasState={null} modeShapeState={null}
+    camera={{ scale: 40, x: 0, y: 0 }} toScreen={(x, y) => ({ x: x * 40, y: -y * 40 })}
+    nodeMap={new Map(project.nodes.map((node) => [node.id, node]))}
+    memberMap={new Map(project.members.map((item) => [item.id, item]))}
+    resultMap={new Map(analysis.memberResults.map((item) => [item.memberId, item]))}
+    nodeResultMap={new Map(analysis.nodeResults.map((node) => [node.nodeId, node]))}
+    mechanismMap={new Map()} mechanismPixelScale={1} globalDiagramMax={37.5}
+    units="kN-m" lengthLabel="m" forceLabel="kN" momentLabel="kN·m"
+    showResults showDiagnostics={false} size={{ width: 400, height: 400 }} t={((key: string) => key) as never}
+  /></svg>);
+  expect(container.querySelectorAll('.diagram-shape.axial')).toHaveLength(3);
+  expect(container.querySelector('.diagram-line-exact')?.getAttribute('d')).toContain('C');
+  const cursor = container.querySelector('.result-cursor-marker');
+  expect(cursor?.textContent).toContain('N 22.500 kN');
+  // The positive N ordinate is offset from AB's physical midpoint (120, 0).
+  expect(cursor?.getAttribute('transform')).toBe('translate(120 -40.8)');
 });

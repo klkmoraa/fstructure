@@ -431,7 +431,7 @@
   --sc-color-demand-base: #a8d5f4;
   --sc-color-demand-peak: #1668b0;
   --sc-color-demand-reference: var(--fs-pink);
-  --sc-color-demand-reference-peak: var(--fs-pink-ink);
+  --sc-color-demand-reference-peak: #7e1f78;
   --sc-color-demand-unevaluated: var(--fs-gray-400);
 
   /* Roles estructurales. La estructura en reposo es TINTA: un pórtico sin
@@ -446,8 +446,10 @@
   --sc-color-structure-release: var(--fs-gray-500);
 
   --sc-color-reaction: var(--sc-color-technical-reaction);
-  --sc-color-axial-tension: var(--fs-blue);
-  --sc-color-axial-compression: var(--fs-blue-ink);
+  /* Signo axial: azul para tensión y rojo para compresión. Los roles de
+     resultados distinguen ambas fuerzas, independientemente del acento. */
+  --sc-color-axial-tension: #006f9b;
+  --sc-color-axial-compression: #bf3735;
   --sc-color-shear-positive: var(--fs-green);
   --sc-color-shear-negative: var(--fs-green);
   --sc-color-moment-positive: var(--fs-signal-moment);
@@ -973,7 +975,10 @@
   --sc-color-envelope: #8d8f8c;
   --sc-color-demand-base: #1668b0;
   --sc-color-demand-peak: #a8d5f4;
+  --sc-color-demand-reference-peak: #ffc9ef;
   --sc-color-demand-unevaluated: #5f6669;
+  --sc-color-axial-tension: #69c7ff;
+  --sc-color-axial-compression: #ff9389;
 
   /* Las tres áreas traslúcidas llevan el hex literal de su tono porque
      `rgb()` no acepta una variable en sus canales. Al recalibrarse la señal,
