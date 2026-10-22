@@ -47,7 +47,7 @@ const categoryOf = (issue: ValidationIssue): ModelDoctorCategory => {
   if (hasAnyPrefix(id, ['node-on-member-', 'isolated-', 'hinge-connectivity-', 'hinge-no-frame-'])) return 'topology';
   if (hasAnyPrefix(id, ['E-', 'A-', 'I-', 'EA-', 'EI-', 'G-', 'As-', 'GAs-', 'density-', 'timoshenko-', 'release-type-', 'rotational-spring-', 'rigid-offset-'])) return 'properties';
   if (hasAnyPrefix(id, ['missing-', 'initial-effect-member-', 'initial-effect-case-', 'prescribed-node-', 'prescribed-case-', 'nodal-node-', 'nodal-case-', 'member-load-member-', 'member-load-case-', 'combination-'])) return 'references';
-  if (id === 'no-supports') return 'supports';
+  if (id === 'no-supports' || id.startsWith('truss-transverse-mechanism-')) return 'supports';
   if (hasAnyPrefix(id, ['support-', 'spring-', 'prescribed-', 'prescribed-support-', 'prescribed-component-', 'prescribed-value-'])) return 'supports';
   if (hasAnyPrefix(id, ['nodal-', 'member-load-', 'rigid-load-', 'truss-member-load-', 'distributed-', 'horizontal-basis-', 'vertical-basis-', 'point-', 'free-rotation-moment-', 'hinge-moment-', 'no-loads', 'self-weight-'])) return 'loads';
   if (hasAnyPrefix(id, ['initial-effect-'])) return 'properties';

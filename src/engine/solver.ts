@@ -22,6 +22,7 @@ import type { LinearSolverPolicy } from '../foundation/linearAlgebra';
 import { memberInteriorRatioAtPoint, nodeHasStructuralActivity } from '../data/modelOperations';
 import { withResolvedGeneratedLoads } from './generatedLoads';
 import { abortedAnalysis } from './analysisFailure';
+import { trussMechanismIssues } from './trussMechanism';
 import {
   buildDeformationCurve,
   buildExactDiagrams,
@@ -939,7 +940,7 @@ export const validateProject = (project: ProjectModel): ValidationIssue[] => {
     }
     if (!caseIds.has(load.caseId)) push({ id: `member-load-case-${load.id}`, severity: 'error', title: 'Caso de carga inexistente', message: `La carga ${load.id} referencia el caso ${load.caseId}.`, objectId: load.id, suggestedFix: 'Selecciona un caso de carga existente.' });
     if (member.type === 'rigid') push({ id: `rigid-load-${load.id}`, severity: 'error', title: 'Carga sobre vínculo rígido', message: `La carga ${load.id} no puede aplicarse directamente al vínculo rígido ${member.id}.`, objectId: load.id, suggestedFix: 'Aplica la carga a sus nodos o a un miembro deformable.' });
-    if (member.type === 'truss') push({ id: `truss-member-load-${load.id}`, severity: 'error', title: 'Carga intermedia en barra de armadura', message: `La barra ${member.id} se modela como elemento de dos fuerzas y no admite cargas entre nodos.`, objectId: load.id, suggestedFix: 'Crea un nodo en la posición de la carga y aplícala como carga nodal.' });
+    if (member.type === 'truss') push({ id: `truss-member-load-${load.id}`, severity: 'error', title: 'Carga intermedia en barra de armadura', message: `La barra ${member.id} se modela como elemento de dos fuerzas y no admite cargas entre nodos.`, objectId: load.id, suggestedFix: 'Si la barra resiste flexión, usa un miembro de pórtico con E e I adecuados. Para una armadura, aplica la carga en un nudo triangulado: dividir una barra en dos tramos colineales no aporta rigidez transversal.' });
     if (load.type === 'distributed') {
       if (![load.start, load.end, load.qxStart ?? 0, load.qxEnd ?? 0, load.qyStart ?? 0, load.qyEnd ?? 0].every(finiteValue)) push({ id: `distributed-value-${load.id}`, severity: 'error', title: 'Carga distribuida inválida', message: `La carga ${load.id} contiene magnitudes no numéricas.`, objectId: load.id, suggestedFix: 'Introduce valores finitos.' });
       if (load.start < 0 || load.start > 1 || load.end < 0 || load.end > 1 || load.end - load.start <= 1e-12) push({ id: `distributed-domain-${load.id}`, severity: 'error', title: 'Dominio de carga inválido', message: `El intervalo de ${load.id} debe cumplir 0 ≤ inicio < fin ≤ 1.`, objectId: load.id, suggestedFix: 'Corrige las posiciones inicial y final; la intensidad inicial corresponde al extremo de menor coordenada.' });
@@ -1002,7 +1003,7 @@ export const validateProject = (project: ProjectModel): ValidationIssue[] => {
       suggestedFix: 'Para un reparto controlado, cambia a modo Completo y define E, A, I o G·As; para ejercicios isostáticos puedes continuar en modo Aula.',
     });
   }
-  return issues;
+  return [...issues, ...trussMechanismIssues(project)];
 };
 
 export const selectedFactors = (project: ProjectModel, combination?: LoadCombination | null): Record<string, number> => {

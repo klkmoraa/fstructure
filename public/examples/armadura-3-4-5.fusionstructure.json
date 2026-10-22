@@ -1,0 +1,199 @@
+{
+  "schemaVersion": 10,
+  "id": "armadura-3-4-5-triangulada",
+  "name": "Armadura 3–4–5 · triangulada · propiedades de referencia",
+  "nodes": [
+    {
+      "id": "N1",
+      "x": 0,
+      "y": 0,
+      "support": {
+        "type": "pin"
+      }
+    },
+    {
+      "id": "N2",
+      "x": 0,
+      "y": 4,
+      "support": {
+        "type": "none"
+      }
+    },
+    {
+      "id": "N3",
+      "x": 3,
+      "y": 4,
+      "support": {
+        "type": "none"
+      }
+    },
+    {
+      "id": "N4",
+      "x": 3,
+      "y": 3,
+      "support": {
+        "type": "roller",
+        "angleDeg": 90
+      }
+    },
+    {
+      "id": "N5",
+      "x": 1.5,
+      "y": 4,
+      "support": {
+        "type": "none"
+      }
+    }
+  ],
+  "members": [
+    {
+      "id": "M1",
+      "i": "N1",
+      "j": "N2",
+      "type": "truss",
+      "E": 200000000,
+      "A": 0.01,
+      "I": 0,
+      "materialOrigin": "custom",
+      "sectionOrigin": "custom"
+    },
+    {
+      "id": "M2",
+      "i": "N2",
+      "j": "N5",
+      "type": "truss",
+      "E": 200000000,
+      "A": 0.01,
+      "I": 0,
+      "materialOrigin": "custom",
+      "sectionOrigin": "custom"
+    },
+    {
+      "id": "M3",
+      "i": "N5",
+      "j": "N3",
+      "type": "truss",
+      "E": 200000000,
+      "A": 0.01,
+      "I": 0,
+      "materialOrigin": "custom",
+      "sectionOrigin": "custom"
+    },
+    {
+      "id": "M4",
+      "i": "N1",
+      "j": "N3",
+      "type": "truss",
+      "E": 200000000,
+      "A": 0.01,
+      "I": 0,
+      "materialOrigin": "custom",
+      "sectionOrigin": "custom"
+    },
+    {
+      "id": "M5",
+      "i": "N3",
+      "j": "N4",
+      "type": "truss",
+      "E": 200000000,
+      "A": 0.01,
+      "I": 0,
+      "materialOrigin": "custom",
+      "sectionOrigin": "custom"
+    },
+    {
+      "id": "M6",
+      "i": "N1",
+      "j": "N5",
+      "type": "truss",
+      "E": 200000000,
+      "A": 0.01,
+      "I": 0,
+      "materialOrigin": "custom",
+      "sectionOrigin": "custom"
+    },
+    {
+      "id": "M7",
+      "i": "N1",
+      "j": "N4",
+      "type": "truss",
+      "E": 200000000,
+      "A": 0.01,
+      "I": 0,
+      "materialOrigin": "custom",
+      "sectionOrigin": "custom"
+    }
+  ],
+  "loadCases": [
+    {
+      "id": "LC1",
+      "name": "Caso 1",
+      "category": "other",
+      "active": true,
+      "selfWeightFactor": 0
+    }
+  ],
+  "combinations": [],
+  "nodalLoads": [
+    {
+      "id": "P1",
+      "nodeId": "N2",
+      "caseId": "LC1",
+      "fx": 49.03325,
+      "fy": 0,
+      "mz": 0
+    },
+    {
+      "id": "P2",
+      "nodeId": "N5",
+      "caseId": "LC1",
+      "fx": 0,
+      "fy": -14.709975,
+      "mz": 0
+    }
+  ],
+  "prescribedDisplacements": [],
+  "memberLoads": [],
+  "memberInitialEffects": [],
+  "nodeLinks": [],
+  "multiPointConstraints": [],
+  "nodalMasses": [],
+  "generatedLoadSources": [],
+  "movingLoadCases": [],
+  "designAssignments": [],
+  "settings": {
+    "units": "t-m",
+    "language": "es",
+    "gridSize": 1,
+    "snap": true,
+    "snapTargets": {
+      "grid": true,
+      "nodes": true,
+      "midpoints": true,
+      "intersections": true,
+      "perpendicular": true
+    },
+    "selectionFilter": {
+      "nodes": true,
+      "members": true,
+      "loads": true
+    },
+    "showGrid": true,
+    "showNodeLabels": true,
+    "showMemberLabels": false,
+    "showLocalAxes": false,
+    "showLoads": true,
+    "showDimensions": true,
+    "showResultValues": true,
+    "diagramScale": 1,
+    "diagramScaleMode": "common",
+    "showResultOverlay": true,
+    "deformedScale": 80,
+    "diagramSide": "positive",
+    "calculationMode": "complete",
+    "workScope": {
+      "kind": "single",
+      "tool": "model2d"
+    }
+  }
+}
