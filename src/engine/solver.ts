@@ -23,6 +23,7 @@ import { memberInteriorRatioAtPoint, nodeHasStructuralActivity } from '../data/m
 import { withResolvedGeneratedLoads } from './generatedLoads';
 import { abortedAnalysis } from './analysisFailure';
 import { trussMechanismIssues } from './trussMechanism';
+import { solveTrussEquilibrium } from './trussEquilibrium';
 import {
   buildDeformationCurve,
   buildExactDiagrams,
@@ -2485,6 +2486,9 @@ export const analyzeProject = (
           : 'Revisa las restricciones de ese nodo, la conectividad de sus miembros y las liberaciones cercanas. El grado indicado es un candidato numérico, no un modo propio completo.'
         : undefined,
     });
-    return abortedResult(issues, { mechanism });
+    const trussEquilibrium = singular && mechanism && !pDeltaActive
+      && !options?.pDeltaAxialForces && !options?.nodeLinkLinearizations
+      ? solveTrussEquilibrium(project, selectedFactors(project, combination)) : undefined;
+    return abortedResult(issues, { mechanism, ...(trussEquilibrium ? { trussEquilibrium } : {}) });
   }
 };

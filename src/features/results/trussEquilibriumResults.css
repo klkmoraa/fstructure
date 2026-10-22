@@ -1,0 +1,7 @@
+.truss-equilibrium-results { padding: 16px; color: var(--text); }
+.truss-equilibrium-results h3 { margin: 0 0 8px; font-size: 15px; }
+.truss-equilibrium-results p { margin: 0 0 16px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.truss-equilibrium-results table { width: 100%; border-collapse: collapse; margin-block: 12px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.truss-equilibrium-results caption { text-align: left; padding-block: 8px; color: var(--muted); }
+.truss-equilibrium-results th, .truss-equilibrium-results td { padding: 8px; border-bottom: 1px solid var(--border); text-align: right; }
+.truss-equilibrium-results th:first-child { text-align: left; }

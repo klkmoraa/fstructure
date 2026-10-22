@@ -43,6 +43,7 @@ describe('photo truss mechanism regression', () => {
     const result = analyzeProject(photoModel());
     expect(result.success).toBe(false);
     expect(result.mechanism?.nullity).toBe(2);
+    expect(result.trussEquilibrium).toBeUndefined();
     expect(trussMechanismIssues(photoModel()).map(issue => issue.objectId).sort()).toEqual(['N4', 'N5']);
     expect(result.issues.filter(issue => issue.id.startsWith('truss-transverse-'))).toHaveLength(2);
   });

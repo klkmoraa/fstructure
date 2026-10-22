@@ -19,7 +19,7 @@ type WorkspaceStorageState = 'ready' | 'recovered' | 'issue';
  * «Listo para analizar» encima de una corrida que falló: el estado más
  * importante quedaba escondido detrás del más inocuo.
  */
-type WorkspaceAnalysisState = 'ready' | 'running' | 'resolved' | 'failed';
+type WorkspaceAnalysisState = 'ready' | 'running' | 'resolved' | 'partial' | 'failed';
 
 export interface WorkspaceTopBarLabels {
   solverName: string;
@@ -35,6 +35,7 @@ export interface WorkspaceTopBarLabels {
   analysisRunning: string;
   analysisResolved: string;
   analysisFailed: string;
+  analysisPartial: string;
   undo: string;
   redo: string;
   analyze: string;
@@ -129,7 +130,7 @@ export const WorkspaceTopBar = ({
   const analysisFailed = analysisState === 'failed';
   const analysisLabel = analysisRunning
     ? labels.analysisRunning
-    : analysisFailed
+    : analysisState === 'partial' ? labels.analysisPartial : analysisFailed
       ? labels.analysisFailed
       : analysisState === 'resolved'
       ? labels.analysisResolved
@@ -232,7 +233,7 @@ export const WorkspaceTopBar = ({
           className="workspace-topbar__status-chip workspace-topbar__tool-status"
           role="status"
           data-analysis-state={analysisState}
-          data-tone={analysisRunning ? 'running' : analysisFailed ? 'error' : analysisState === 'resolved' ? 'ok' : 'neutral'}
+          data-tone={analysisRunning ? 'running' : analysisState === 'partial' ? 'warning' : analysisFailed ? 'error' : analysisState === 'resolved' ? 'ok' : 'neutral'}
           title={analysisLabel}
         >
           <span className="workspace-topbar__status-dot" aria-hidden="true" />

@@ -20,6 +20,7 @@ const labels: WorkspaceTopBarLabels = {
   analysisRunning: 'Analizando…',
   analysisResolved: 'Análisis actualizado',
   analysisFailed: 'No se pudo analizar',
+  analysisPartial: 'Sólo equilibrio · inestable',
   undo: 'Deshacer',
   redo: 'Rehacer',
   analyze: 'Analizar',

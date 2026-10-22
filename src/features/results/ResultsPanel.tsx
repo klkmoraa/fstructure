@@ -13,6 +13,7 @@ import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { ResultSummary } from './ResultSummary';
+import { TrussEquilibriumResults } from './TrussEquilibriumResults';
 import { MemberSheet } from './MemberSheet';
 import { AxialDiagramSigns, TrussAxialTable } from '../canvas/TrussAxialPresentation';
 import { trussAxialReadings } from './trussAxial';
@@ -107,8 +108,11 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
   const [drag, setDrag] = useState<{ y: number; height: number } | null>(null);
   const mobileExpanded = status === 'active';
   const [panelMode, setPanelMode] = useState<ResultsPanelMode>(readResultsMode);
-  const [desktopExpanded, setDesktopExpanded] = useState(defaultDesktopExpanded);
+  const [desktopExpanded, setDesktopExpanded] = useState(defaultDesktopExpanded || Boolean(analysis?.trussEquilibrium));
   const previousAnalysisRef = useRef(analysis);
+  useEffect(() => {
+    if (analysis?.trussEquilibrium) setDesktopExpanded(true);
+  }, [analysis]);
   const resizeFrameRef = useRef<number | null>(null);
   const pendingHeightRef = useRef<number | null>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -173,7 +177,7 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
       ?? project.loadCases.find((item) => item.id === targetId)?.name
       ?? targetId;
     if (!analysis?.success) return {
-      title: analysis ? t('results.compactUnresolved') : t('results.compactWaiting'),
+      title: analysis?.trussEquilibrium ? t('analysis.statusPartial') : analysis ? t('results.compactUnresolved') : t('results.compactWaiting'),
       detail: t('results.compactForTarget', { target }),
     };
     const summary = summarizeAnalysisResults(analysis);
@@ -508,11 +512,11 @@ const EmptyResults = ({ onAnalyze }: { onAnalyze: () => void }) => {
 };
 
 const FailedResults = ({ onOpenModelDoctor }: { onOpenModelDoctor: () => void }) => {
-  const { analysis } = useProject();
-  const { t } = useI18n();
+  const { analysis, project } = useProject();
+  const { t, language } = useI18n();
   return <div className="failed-results-layout">
-    {analysis ? <NumericQualityCard analysis={analysis} /> : null}
-    <div className="failed-results"><AlertCircle size={28} /><div><strong>{t('results.failedTitle')}</strong><p>{t('results.failedBody')}</p></div><button onClick={onOpenModelDoctor}>{t('modelDoctor.open')}</button></div>
+    {analysis?.trussEquilibrium ? <TrussEquilibriumResults result={analysis.trussEquilibrium} units={project.settings.units} language={language} /> : analysis ? <NumericQualityCard analysis={analysis} /> : null}
+    <div className="failed-results"><AlertCircle size={28} />{!analysis?.trussEquilibrium ? <div><strong>{t('results.failedTitle')}</strong><p>{t('results.failedBody')}</p></div> : null}<button onClick={onOpenModelDoctor}>{t('modelDoctor.open')}</button></div>
   </div>;
 };
 

@@ -10,6 +10,7 @@ export const enAnalysis = {
   'analysis.statusStale': 'Results out of date',
   'analysis.statusWarning': 'Review warnings',
   'analysis.statusError': 'Analysis failed',
+  'analysis.statusPartial': 'Equilibrium only · unstable',
   'reliability.lineLabel': 'Reliability',
   'reliability.levelReliable': 'Reliable',
   'reliability.levelLimited': 'Limited',

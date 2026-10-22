@@ -140,6 +140,7 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
           analysisRunning: t('analysis.running'),
           analysisResolved: t('analysis.statusResolved'),
           analysisFailed: t('analysis.statusError'),
+          analysisPartial: t('analysis.statusPartial'),
           undo: t('history.undo'),
           redo: t('history.redo'),
           analyze: t('analysis.run'),

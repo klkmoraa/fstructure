@@ -209,6 +209,9 @@ const WorkspaceBrokerContent = ({
     * Centro analítico sigue a un toque en la barra superior, cuando se pide.
     */
   useEffect(() => {
+    if (analysis?.trussEquilibrium && analysis !== reportedAnalysisRef.current) {
+      emitWorkspaceCommand('open-results', {});
+    }
     if (analysis?.success && analysis !== reportedAnalysisRef.current) {
       // Sin flexión en ninguna barra (una armadura) la lectura de gobierno es el axial.
       const bending = analysis.memberResults.some((member) => Math.max(Math.abs(member.maxMoment), Math.abs(member.minMoment)) > 1e-9);
@@ -328,7 +331,7 @@ const WorkspaceBrokerContent = ({
         // Colapsar las dos en `ready` anunciaba «Listo para analizar» encima de
         // un análisis que no salió.
         : analysis
-          ? (analysis.success ? 'resolved' : 'failed')
+          ? (analysis.success ? 'resolved' : analysis.trussEquilibrium ? 'partial' : 'failed')
           : 'ready'}
       resultsOpen={results.open}
       canUndo={canUndo}

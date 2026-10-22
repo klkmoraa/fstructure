@@ -745,6 +745,12 @@ export interface PDeltaDiagnostics {
 
 export interface AnalysisResult {
   success: boolean;
+  /** Unique first-order joint forces only; never a stable displacement solution or a design result. */
+  trussEquilibrium?: {
+    memberForces: Array<{ memberId: string; axial: number }>;
+    reactions: Array<{ nodeId: string; rx: number; ry: number }>;
+    normalizedResidual: number;
+  };
   issues: ValidationIssue[];
   nodeResults: NodeResult[];
   memberResults: MemberResult[];

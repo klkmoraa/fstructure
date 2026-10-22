@@ -7,6 +7,7 @@ import { analyzeProject } from '../../engine/solver';
 import { availableSolver2dCorpus, resolveCorpusProject } from '../../engine/solver2dCorpus';
 import { ProjectProvider, useProject } from '../../store/ProjectContext';
 import { ResultsPanel } from './ResultsPanel';
+import partialExample from '../../../public/examples/armadura-fijo-movil.fusionstructure.json';
 
 beforeEach(() => {
   localStorage.clear();
@@ -20,6 +21,18 @@ function AnalyzedTruss() {
   useEffect(() => { analyze(); setSelection({ kind: 'member', id: 'AB' }); setResultTab('axial'); }, [analyze, setSelection, setResultTab]);
   return <ResultsPanel status="active" defaultDesktopExpanded />;
 }
+
+it('muestra las fuerzas parciales sin habilitar una deformada ni presentar el análisis como estable', async () => {
+  localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(partialExample));
+  render(<ProjectProvider><div className="app-shell"><AnalyzedTruss /></div></ProjectProvider>);
+  expect(await screen.findByRole('heading', { name: 'Equilibrio de fuerzas · Experimental' })).not.toBeNull();
+  expect(screen.getByText('-1.000')).not.toBeNull();
+  expect(screen.getByText('1.000')).not.toBeNull();
+  expect(screen.queryByText('No se generaron resultados')).toBeNull();
+  fireEvent.click(screen.getByRole('tab', { name: 'Deformada' }));
+  expect(screen.getByRole('region', { name: 'Sólo equilibrio de fuerzas' })).not.toBeNull();
+  expect(screen.queryByRole('img')).toBeNull();
+});
 
 it('conserva el diagrama N individual y el cursor al seleccionar una barra desde la tabla global', async () => {
   const { container } = render(<ProjectProvider><div className="app-shell"><AnalyzedTruss /></div></ProjectProvider>);

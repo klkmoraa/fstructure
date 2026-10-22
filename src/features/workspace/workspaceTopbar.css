@@ -207,6 +207,8 @@
 .workspace-topbar__tool-status[data-tone='warn'] > .workspace-topbar__status-dot { background: var(--sc-color-state-warning); }
 .workspace-topbar__tool-status[data-tone='error'] > .workspace-topbar__status-dot { background: var(--sc-color-state-error); }
 .workspace-topbar__tool-status[data-tone='error'] { color: var(--sc-color-state-error-foreground); }
+.workspace-topbar__tool-status[data-tone='warning'] > .workspace-topbar__status-dot { background: var(--sc-color-state-warning); }
+.workspace-topbar__tool-status[data-tone='warning'] { color: var(--sc-color-state-warning-foreground); }
 .workspace-topbar__tool-status[data-tone='running'] > .workspace-topbar__status-dot {
   background: var(--sc-color-action-primary);
   animation: workspace-topbar-pulse 1.1s var(--sc-ease-standard) infinite alternate;

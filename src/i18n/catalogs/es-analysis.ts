@@ -10,6 +10,7 @@ export const esAnalysis = {
   'analysis.statusStale': 'Resultados desactualizados',
   'analysis.statusWarning': 'Revisar advertencias',
   'analysis.statusError': 'No se pudo analizar',
+  'analysis.statusPartial': 'Sólo equilibrio · inestable',
   'reliability.lineLabel': 'Fiabilidad',
   'reliability.levelReliable': 'Confiable',
   'reliability.levelLimited': 'Limitada',

@@ -22,10 +22,22 @@ class ElementsOracleTest(unittest.TestCase):
         if isinstance(expected, dict):
             for key, value in expected.items():
                 self.assert_close(actual[key], value, f"{path}.{key}")
+        elif isinstance(expected, list):
+            self.assertIsInstance(actual, list, path)
+            self.assertEqual(len(actual), len(expected), path)
+            for index, value in enumerate(expected):
+                self.assert_close(actual[index], value, f"{path}[{index}]")
         elif isinstance(expected, (int, float)) and not isinstance(expected, bool):
             self.assertTrue(math.isclose(actual, expected, rel_tol=1e-9, abs_tol=1e-9), f"{path}: {actual!r} != {expected!r}")
         else:
             self.assertEqual(actual, expected, path)
+
+    def test_nested_numeric_tolerance(self):
+        self.assert_close([[1.0 + 1e-14]], [[1.0]], "roundoff")
+        with self.assertRaises(AssertionError):
+            self.assert_close([[1.01]], [[1.0]], "different")
+        with self.assertRaises(AssertionError):
+            self.assert_close([[1.0, 2.0]], [[1.0]], "length")
 
     def test_fixture_inventory(self):
         # NTC, NSR-10 y E.060 cubiertos en columnas, zapatas y bloques.
