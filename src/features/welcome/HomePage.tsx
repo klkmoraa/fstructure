@@ -1,4 +1,4 @@
-import { Suspense, lazy, useRef, useState, type ReactNode } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -6,7 +6,9 @@ import {
   BookOpen,
   FilePlus2,
   FileUp,
+  FolderOpen,
   GraduationCap,
+  House,
   LayoutTemplate,
   Moon,
   Play,
@@ -37,7 +39,7 @@ const PortableImportCenter = lazy(() => import('../import-export/PortableImportC
 const PersonalLibraryView = lazy(() => import('../library/PersonalLibraryView').then((module) => ({ default: module.PersonalLibraryView })));
 const NewExerciseDialog = lazy(() => import('./NewExerciseDialog').then((module) => ({ default: module.NewExerciseDialog })));
 
-type HomeView = 'home' | 'projects' | 'templates' | 'library' | 'classroom' | 'import';
+type HomeView = 'home' | 'projects' | 'templates' | 'resources' | 'library' | 'classroom' | 'import';
 
 interface HomePageProps {
   /** Abre la mesa (por omisión en el modo 2D). */
@@ -85,8 +87,12 @@ const copy = {
       { id: '3d', title: 'Modelo 3D', role: 'Edificios y marcos espaciales', scene: 'space3d' },
       { id: 'design', title: 'Diseño', role: 'Vigas, columnas y zapatas del modelo', scene: 'design' },
     ],
-    recent: 'Recientes', all: 'Ver todos', more: 'Recursos',
+    recent: 'Recientes', all: 'Ver todos', resources: 'Recursos', navigation: 'Navegación principal',
     home: 'Inicio', projects: 'Proyectos', templates: 'Plantillas', library: 'Biblioteca', classroom: 'Aula', import: 'Importar',
+    resourcesLead: 'Ejercicios, archivos y referencias para tu trabajo.',
+    classroomBody: 'Modelos en blanco y ejercicios de sección a flexión.',
+    importBody: 'Abre un proyecto, un expediente o geometría DXF.',
+    libraryBody: 'Reutiliza tus materiales, secciones y vistas guardadas.',
     language: 'Idioma', theme: 'Cambiar tema', search: 'Buscar', clear: 'Borrar búsqueda',
     openTemplate: 'Abrir',
     classroomStart: 'Resolver sección y acero',
@@ -120,8 +126,12 @@ const copy = {
       { id: '3d', title: '3D model', role: 'Buildings and space frames', scene: 'space3d' },
       { id: 'design', title: 'Design', role: 'Concrete beams, columns and footings', scene: 'design' },
     ],
-    recent: 'Recent', all: 'View all', more: 'Resources',
+    recent: 'Recent', all: 'View all', resources: 'Resources', navigation: 'Main navigation',
     home: 'Home', projects: 'Projects', templates: 'Templates', library: 'Library', classroom: 'Classroom', import: 'Import',
+    resourcesLead: 'Exercises, files and references for your work.',
+    classroomBody: 'Blank models and flexural section exercises.',
+    importBody: 'Open a project, a record or DXF geometry.',
+    libraryBody: 'Reuse your saved materials, sections and views.',
     language: 'Language', theme: 'Change theme', search: 'Search', clear: 'Clear search',
     openTemplate: 'Open',
     classroomStart: 'Design section and reinforcement',
@@ -150,7 +160,7 @@ const assetForExample = (name: string): ThreeStructuralAssetId => {
   return 'portal:single-bay';
 };
 
-const VIEWS: readonly HomeView[] = ['projects', 'templates', 'library', 'classroom', 'import'];
+const VIEWS: readonly HomeView[] = ['projects', 'templates', 'resources', 'library', 'classroom', 'import'];
 
 /** La sección abierta vive en la URL (`view=`): recargar o compartir la conserva. */
 const readView = (): HomeView => {
@@ -164,8 +174,8 @@ const scene = (id: string, mode: 'day' | 'night') => `./assets/suite/${id}-${mod
 /**
  * Home de FStructure: la única portada de la app.
  *
- * Continuar y recuperar lo reciente primero; después, cálculos individuales
- * y modos del proyecto enlazado. Los recursos abren secciones de la misma Home.
+ * Continuar primero; después, cálculos individuales, modos del proyecto
+ * enlazado y recientes. Los recursos abren secciones de la misma Home.
  * La portada no carga escenas decorativas ni código de las mesas.
  */
 export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomePageProps) => {
@@ -181,14 +191,30 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
   const [dxfOpen, setDxfOpen] = useState(false);
   const [exerciseOpen, setExerciseOpen] = useState(false);
 
+  useEffect(() => {
+    const restoreView = () => {
+      setView(readView());
+      setQuery('');
+      setImportOpen(false);
+      setDxfOpen(false);
+      setExerciseOpen(false);
+      if (mainRef.current) mainRef.current.scrollTop = 0;
+    };
+    window.addEventListener('popstate', restoreView);
+    return () => window.removeEventListener('popstate', restoreView);
+  }, []);
+
   const navigate = (next: HomeView) => {
     setView(next);
     setQuery('');
+    setImportOpen(false);
+    setDxfOpen(false);
+    setExerciseOpen(false);
     if (typeof window === 'undefined') return;
     const url = new URL(window.location.href);
     if (next === 'home') url.searchParams.delete('view');
     else url.searchParams.set('view', next);
-    window.history.replaceState(window.history.state, '', url);
+    if (url.href !== window.location.href) window.history.pushState(window.history.state, '', url);
     if (mainRef.current) mainRef.current.scrollTop = 0;
   };
 
@@ -209,44 +235,37 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
   const normalized = query.trim().toLocaleLowerCase(language);
   const examples = exampleProjects.filter((example) => `${example.name} ${example.description}`.toLocaleLowerCase(language).includes(normalized));
 
-  const links = [
+  const resourceView = view === 'classroom' || view === 'import' || view === 'library';
+  const activeNav = resourceView ? 'resources' : view;
+  const navigation = [
+    { id: 'home' as const, label: text.home, Icon: House },
+    { id: 'projects' as const, label: text.projects, Icon: FolderOpen },
     { id: 'templates' as const, label: text.templates, Icon: LayoutTemplate },
-    { id: 'classroom' as const, label: text.classroom, Icon: GraduationCap },
-    { id: 'import' as const, label: text.import, Icon: Upload },
-    { id: 'library' as const, label: text.library, Icon: BookOpen },
+    { id: 'resources' as const, label: text.resources, Icon: BookOpen },
+  ];
+  const resources = [
+    { id: 'classroom' as const, label: text.classroom, description: text.classroomBody, Icon: GraduationCap },
+    { id: 'import' as const, label: text.import, description: text.importBody, Icon: Upload },
+    { id: 'library' as const, label: text.library, description: text.libraryBody, Icon: BookOpen },
   ];
 
   const home = <>
     <header className="fh-heading">
       <h1 id="fh-title" className="fh-heading__title">{text.title}</h1>
-      <nav className="fh-shortcuts" aria-label={text.more}>
-        {links.map(({ id, label, Icon }) => <button key={id} type="button" onClick={() => navigate(id)}>
-          <Icon size={16} aria-hidden="true" />{label}
-        </button>)}
-      </nav>
     </header>
 
-    <div className="fh-start">
-      <section className="fh-current" aria-label={currentSingle ? text.openSingle : text.open}>
-        <div className="fh-current__info">
-          <span className="fh-current__label">{currentSingle ? `${text.openSingle} · ${SINGLE_WORK_LABEL[currentSingle][language]}` : text.open}</span>
-          <strong className="fh-current__name" title={project.name}>{project.name}</strong>
-          {currentSingle && currentSingle !== 'model2d' && currentSingle !== 'space3d' ? null : <span className="fh-current__counts"><b>{project.nodes.length}</b> {text.nodes} · <b>{project.members.length}</b> {text.members} · <b>{loadCount}</b> {text.loads}</span>}
-        </div>
-        <div className="fh-current__actions">
-          <button type="button" className="fh-button fh-button--primary" onClick={() => onOpenWorkspace(modeOf(project))}><Play size={16} fill="currentColor" aria-hidden="true" />{text.continue}</button>
-          <button type="button" className="fh-button" onClick={() => openProject(createBlankProject())}><FilePlus2 size={16} aria-hidden="true" />{text.newProject}</button>
-          <ProjectSaveButton />
-        </div>
-      </section>
-      <section className="fh-section fh-recent-section" aria-labelledby="fh-recent">
-        <header className="fh-section__head">
-          <h2 id="fh-recent" className="fh-section__title">{text.recent}</h2>
-          <button type="button" className="fh-link" onClick={() => navigate('projects')}>{text.all}<ArrowRight size={15} aria-hidden="true" /></button>
-        </header>
-        <div className="fh-recents"><ProjectHub variant="recent" limit={3} onOpen={(record, mode) => openProject(record.project, undefined, record.revision, mode)} /></div>
-      </section>
-    </div>
+    <section className="fh-current" aria-label={currentSingle ? text.openSingle : text.open}>
+      <div className="fh-current__info">
+        <span className="fh-current__label">{currentSingle ? `${text.openSingle} · ${SINGLE_WORK_LABEL[currentSingle][language]}` : text.open}</span>
+        <strong className="fh-current__name" title={project.name}>{project.name}</strong>
+        {currentSingle && currentSingle !== 'model2d' && currentSingle !== 'space3d' ? null : <span className="fh-current__counts"><b>{project.nodes.length}</b> {text.nodes} · <b>{project.members.length}</b> {text.members} · <b>{loadCount}</b> {text.loads}</span>}
+      </div>
+      <button type="button" className="fh-button fh-button--primary fh-current__continue" onClick={() => onOpenWorkspace(modeOf(project))}><Play size={14} fill="currentColor" aria-hidden="true" />{text.continue}</button>
+      <div className="fh-current__actions">
+        <button type="button" className="fh-button" onClick={() => openProject(createBlankProject())}><FilePlus2 size={16} aria-hidden="true" />{text.newProject}</button>
+        <ProjectSaveButton />
+      </div>
+    </section>
 
     <section className="fh-section" aria-labelledby="fh-single">
       <header className="fh-section__intro">
@@ -274,6 +293,14 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
         </button>)}
       </div>
     </section>
+
+    <section className="fh-section fh-recent-section" aria-labelledby="fh-recent">
+      <header className="fh-section__head">
+        <h2 id="fh-recent" className="fh-section__title">{text.recent}</h2>
+        <button type="button" className="fh-link" onClick={() => navigate('projects')}>{text.all}<ArrowRight size={15} aria-hidden="true" /></button>
+      </header>
+      <div className="fh-recents"><ProjectHub variant="recent" limit={3} onOpen={(record, mode) => openProject(record.project, undefined, record.revision, mode)} /></div>
+    </section>
   </>;
 
   const searchable = view === 'projects' || view === 'templates';
@@ -299,7 +326,15 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
           <span className="fh-card__action">{text.classroomStart}<ArrowRight size={14} aria-hidden="true" /></span>
         </button>
       </div>
-        : view === 'library' ? <Suspense fallback={null}><PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} /></Suspense>
+        : view === 'resources' ? <div className="fh-resources">
+          <p className="fh-section__lead">{text.resourcesLead}</p>
+          <div className="fh-links fh-links--resources">{resources.map(({ id, label, description, Icon }) => <button key={id} type="button" className="fh-links__item" aria-labelledby={`fh-resource-${id}`} aria-describedby={`fh-resource-${id}-description`} onClick={() => navigate(id)}>
+            <span className="fh-links__icon" aria-hidden="true"><Icon size={21} /></span>
+            <span className="fh-links__text"><strong id={`fh-resource-${id}`}>{label}</strong><small id={`fh-resource-${id}-description`}>{description}</small></span>
+            <ArrowRight className="fh-links__go" size={18} aria-hidden="true" />
+          </button>)}</div>
+        </div>
+          : view === 'library' ? <Suspense fallback={null}><PersonalLibraryView language={language} units={project.settings.units} theme={theme} view={readCanvasViewSettings(project)} /></Suspense>
           : <div className="fh-links fh-links--wide">
             <button type="button" className="fh-links__item" onClick={() => setImportOpen(true)}><span className="fh-links__icon" aria-hidden="true"><FileUp size={18} /></span><span className="fh-links__text"><strong>{text.importPortable}</strong><small>{text.importPortableBody}</small></span><ArrowRight className="fh-links__go" size={16} aria-hidden="true" /></button>
             <button type="button" className="fh-links__item" onClick={() => setDxfOpen(true)}><span className="fh-links__icon" aria-hidden="true"><Upload size={18} /></span><span className="fh-links__text"><strong>{text.importDxf}</strong><small>{text.importDxfBody}</small></span><ArrowRight className="fh-links__go" size={16} aria-hidden="true" /></button>
@@ -311,6 +346,12 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
         <button type="button" className="fh-brand" onClick={() => navigate('home')} aria-label={`FStructure · ${text.home}`}>
           <FStructureMark size={26} /><strong>FStructure</strong>
         </button>
+        <nav className="fh-nav" aria-label={text.navigation}>
+          {navigation.map(({ id, label, Icon }) => <button key={id} type="button" className="fh-nav__item" aria-current={activeNav === id ? 'page' : undefined} onClick={() => navigate(id)}>
+            <span className="fh-nav__icon"><Icon size={20} aria-hidden="true" /></span>
+            <span>{label}</span>
+          </button>)}
+        </nav>
         <div className="fh-prefs">
           <div className="fh-segmented" role="group" aria-label={text.language}>
             {(['es', 'en'] as const).map((item) => <button key={item} type="button" aria-pressed={language === item}
@@ -325,7 +366,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
       <div className="fh-body">
         {view === 'home' ? home : <section className="fh-page" aria-labelledby="fh-page-title">
           <header className="fh-page__head">
-            <button type="button" className="fh-back" onClick={() => navigate('home')}><ArrowLeft size={18} aria-hidden="true" />{text.home}</button>
+            {resourceView ? <button type="button" className="fh-back" onClick={() => navigate('resources')}><ArrowLeft size={18} aria-hidden="true" />{text.resources}</button> : null}
             <h1 id="fh-page-title" className="fh-page__title">{text[view]}</h1>
             {searchable ? <label className="fh-search">
               <Search size={16} aria-hidden="true" />

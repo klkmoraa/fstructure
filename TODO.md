@@ -4,6 +4,9 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
+- [x] Interfaz móvil: navegación persistente de Home y Recursos, dock 2D etiquetado, hoja Más accesible, campos táctiles legibles y zoom separado del teclado (25-oct-2026). [Ficha y capturas](docs/brandbook/mobile-refresh-2026-10-25.md).
+- [ ] Confirmar en iPhone físico el teclado tras ampliar la página y los márgenes seguros en Safari y PWA instalada; la actualización móvil del 25-oct se verificó en Chromium con entrada táctil emulada.
+
 - [x] Restaurar el diagrama axial N de armaduras sin sacrificar la lectura T/C/0; rojo para compresión y azul para tensión, con cursor y gráfico individual en Resultados (20-oct-2026).
 - [x] Mejorar el mapa experimental de fluencia/índice elástico: escala η 0–2, referencia Fy, máximo verificable, cobertura y barra seleccionada; barra sin evaluar distinguible y acceso directo desde Evidencia (20-oct-2026).
 

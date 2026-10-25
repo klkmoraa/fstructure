@@ -68,6 +68,18 @@ button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .5; }
 input[type='checkbox'], input[type='radio'] { accent-color: var(--sc-color-action-primary); }
 
+/* En pantalla táctil los campos se leen sin ampliar automáticamente la página
+   al recibir foco. La especificidad vence los tamaños compactos del inspector,
+   incluso cuando su CSS llega después con la mesa; etiquetas y tablas conservan
+   su densidad y el texto sigue siendo seleccionable. */
+@media (pointer: coarse) {
+  :root:root input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  :root:root select,
+  :root:root textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
 /* Un anillo de tinta separado del control. Es la única señal de foco del
    sistema: se lee sobre el papel, sobre un plano de tinta y en alto contraste,
    y no introduce un color que la interfaz no tiene. */

@@ -31,6 +31,7 @@ const screens = [
   { name: 'home', url: '?surface=welcome', title: /Modela, analiza y diseña|Model, analyze/i },
   { name: 'proyectos', url: '?surface=welcome&view=projects', title: /Proyectos|Projects/i },
   { name: 'plantillas', url: '?surface=welcome&view=templates', title: /Plantillas|Templates/i },
+  { name: 'recursos', url: '?surface=welcome&view=resources', title: /Recursos|Resources/i },
   { name: 'biblioteca', url: '?surface=welcome&view=library', title: /Biblioteca|Library/i },
   { name: 'aula', url: '?surface=welcome&view=classroom', title: /Aula|Classroom/i },
   { name: 'importar', url: '?surface=welcome&view=import', title: /Importar|Import/i },

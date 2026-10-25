@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDefaultProject } from '../../data/defaultProject';
@@ -53,6 +53,68 @@ describe('HomePage: por separado o proyecto completo', () => {
     await user.click(screen.getByRole('button', { name: /Edificios y marcos espaciales/ }));
     expect(onOpenSpace3D).toHaveBeenCalledTimes(1);
     expect(await screen.findByText('Proyecto abierto')).toBeTruthy();
+  });
+});
+
+describe('HomePage: navegación y recursos', () => {
+  it('conserva el acceso al aula, la importación y la biblioteca desde Recursos', async () => {
+    window.history.replaceState({}, '', '?surface=welcome');
+    const user = userEvent.setup();
+    const onOpenWorkspace = vi.fn();
+    render(<ProjectProvider><HomePage onOpenWorkspace={onOpenWorkspace} onOpenSpace3D={vi.fn()} onOpenDesign={vi.fn()} /></ProjectProvider>);
+    const navigation = within(screen.getByRole('navigation', { name: 'Navegación principal' }));
+
+    await user.click(navigation.getByRole('button', { name: 'Recursos' }));
+    await user.click(screen.getByRole('button', { name: 'Aula' }));
+    await user.click(screen.getByRole('button', { name: /Resolver sección y acero/ }));
+    expect(onOpenWorkspace).toHaveBeenLastCalledWith('design');
+    expect(navigation.getByRole('button', { name: 'Recursos' }).getAttribute('aria-current')).toBe('page');
+
+    await user.click(navigation.getByRole('button', { name: 'Recursos' }));
+    await user.click(screen.getByRole('button', { name: 'Importar' }));
+    expect(new URLSearchParams(window.location.search).get('view')).toBe('import');
+    expect(screen.getByRole('button', { name: /Geometría DXF/ })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /Proyecto o expediente/ }));
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    await user.keyboard('{Escape}');
+
+    await user.click(navigation.getByRole('button', { name: 'Recursos' }));
+    await user.click(screen.getByRole('button', { name: 'Biblioteca' }));
+    await user.click(await screen.findByRole('button', { name: 'Crear favorito' }));
+    expect(screen.getByRole('textbox', { name: 'Nombre del favorito' })).toBeTruthy();
+
+    await user.click(navigation.getByRole('button', { name: 'Inicio' }));
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(onOpenWorkspace).toHaveBeenLastCalledWith('design');
+  });
+
+  it('cierra el diálogo abierto y restaura la sección al retroceder y avanzar en el historial', async () => {
+    window.history.replaceState({}, '', '?surface=welcome');
+    const user = userEvent.setup();
+    render(<ProjectProvider><HomePage onOpenWorkspace={vi.fn()} onOpenSpace3D={vi.fn()} onOpenDesign={vi.fn()} /></ProjectProvider>);
+    const navigation = within(screen.getByRole('navigation', { name: 'Navegación principal' }));
+    await user.click(navigation.getByRole('button', { name: 'Recursos' }));
+    await user.click(screen.getByRole('button', { name: 'Importar' }));
+    expect(screen.getByRole('heading', { name: 'Importar', level: 1 })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /Proyecto o expediente/ }));
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+
+    window.history.back();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Recursos', level: 1 })).toBeTruthy());
+    expect(new URLSearchParams(window.location.search).get('view')).toBe('resources');
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    window.history.back();
+    await waitFor(() => expect(navigation.getByRole('button', { name: 'Inicio' }).getAttribute('aria-current')).toBe('page'));
+    expect(new URLSearchParams(window.location.search).has('view')).toBe(false);
+
+    window.history.forward();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Recursos', level: 1 })).toBeTruthy());
+    expect(navigation.getByRole('button', { name: 'Recursos' }).getAttribute('aria-current')).toBe('page');
+
+    window.history.forward();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Importar', level: 1 })).toBeTruthy());
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
 

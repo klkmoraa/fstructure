@@ -51,10 +51,10 @@ describe('dock dinámico', () => {
   it('Carga recuerda el último tipo elegido en su cápsula', async () => {
     const user = userEvent.setup();
     montar();
-    await user.click(screen.getByRole('button', { name: 'Herramientas de carga' }));
+    await user.click(screen.getByRole('button', { name: 'Carga' }));
     await user.click(screen.getByRole('button', { name: 'Carga distribuida' }));
-    await user.click(screen.getByRole('button', { name: 'Seleccionar' }));
-    await user.click(screen.getByRole('button', { name: 'Herramientas de carga' }));
+    await user.click(screen.getByRole('button', { name: 'Elegir' }));
+    await user.click(screen.getByRole('button', { name: 'Carga' }));
     expect(screen.getByLabelText('herramienta activa').textContent).toBe('distributedLoad');
   });
 
@@ -66,6 +66,29 @@ describe('dock dinámico', () => {
     await user.click(screen.getByRole('menuitemradio', { name: /Desplazar/ }));
     expect(screen.getByLabelText('herramienta activa').textContent).toBe('pan');
     expect(screen.queryByRole('dialog', { name: 'Más herramientas' })).toBeNull();
+  });
+
+  it('la hoja mantiene el teclado dentro y devuelve el foco al cerrar', async () => {
+    const user = userEvent.setup();
+    montar();
+    const trigger = screen.getByRole('button', { name: 'Más herramientas' });
+    await user.click(trigger);
+    const sheet = screen.getByRole('dialog', { name: 'Más herramientas' });
+    const close = within(sheet).getByRole('button', { name: 'Cerrar' });
+    const last = within(sheet).getByRole('menuitem', { name: 'Vista' });
+    await vi.waitFor(() => expect(document.activeElement).toBe(close));
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(last);
+    await user.tab();
+    expect(document.activeElement).toBe(close);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: 'Más herramientas' })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    await user.click(trigger);
+    await user.click(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(screen.queryByRole('dialog', { name: 'Más herramientas' })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
 
   it('el valor de una carga se escribe con el teclado del teléfono y conserva su sentido', async () => {

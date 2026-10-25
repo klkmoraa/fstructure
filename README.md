@@ -24,11 +24,16 @@ conservan en el proyecto.
 
 ## Interfaz y lectura de armaduras
 
-La Home reúne el proyecto abierto y los recientes antes de las herramientas.
+La Home ofrece navegación persistente a Inicio, Proyectos, Plantillas y
+Recursos; en teléfono queda al pie. El proyecto abierto precede a las
+herramientas y los recientes siguen disponibles debajo y en Proyectos.
 La mesa 2D deja a mano selección, nudos, barras y apoyos; **Carga** agrupa las
 cargas y **Más** reúne las operaciones secundarias. La herramienta activa
 sigue visible al cerrar su menú. En teléfono, 2D, 3D y Diseño comparten un
 selector compacto; Deshacer y Rehacer están en las utilidades de la mesa.
+El dock 2D muestra etiquetas y la hoja Más dispone de cierre y navegación por
+teclado. Los campos táctiles usan al menos 16 px y el zoom de página permanece
+disponible fuera del lienzo. [Ficha móvil y capturas actuales](docs/brandbook/mobile-refresh-2026-10-25.md).
 
 Para leer una armadura 2D, pulsa **Analizar** y elige **N · Axial**. Las barras
 indican **T · tensión (+, azul)**, **C · compresión (−, rojo)** o **0 · sin esfuerzo**, con

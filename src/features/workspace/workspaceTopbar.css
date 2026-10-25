@@ -494,8 +494,8 @@
   .workspace-topbar__mode-select { position: relative; display: flex; align-items: center; }
   .workspace-topbar__mode-select select {
     appearance: none;
-    width: 76px;
-    min-height: 40px;
+    width: 64px;
+    min-height: 44px;
     padding: 0 23px 0 10px;
     border: 1px solid var(--sc-color-border-soft);
     border-radius: var(--sc-radius-control);
@@ -505,6 +505,8 @@
     cursor: pointer;
   }
   .workspace-topbar__mode-select svg { position: absolute; right: 7px; pointer-events: none; }
+  /* Diseño necesita su palabra completa también con los 16 px táctiles. */
+  .workspace-topbar__mode-group:has([data-mesa-mode='design'][aria-pressed='true']) .workspace-topbar__mode-select select { width: 94px; }
   .workspace-topbar__mode-select select:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
   .workspace-topbar__history-group { display: none; }
   .workspace-topbar__project { padding-inline: 2px; }

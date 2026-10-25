@@ -89,27 +89,53 @@ export function useModel2DShortcuts({ paletteBlocked, toggleSurface, canUndo, ca
   }, [canRedo, canUndo, redo, undo]);
 }
 
-/** Publica en el shell la altura visible y el teclado del teléfono como variables CSS. */
+const hasKeyboardFocus = () => {
+  const active = document.activeElement;
+  if (active instanceof HTMLInputElement) {
+    return !active.disabled && !active.readOnly && active.inputMode !== 'none'
+      && ['text', 'search', 'email', 'url', 'tel', 'password', 'number'].includes(active.type);
+  }
+  if (active instanceof HTMLTextAreaElement) return !active.disabled && !active.readOnly && active.inputMode !== 'none';
+  if (!(active instanceof HTMLElement) || active.inputMode === 'none') return false;
+  const editable = active.closest('[contenteditable]');
+  return editable !== null && ['', 'true', 'plaintext-only'].includes(editable.getAttribute('contenteditable')?.toLowerCase() ?? '');
+};
+
+/** Publica la oclusión del teclado sin confundirla con el zoom de página. */
 export function useVisualViewportSync(shellRef: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const viewport = window.visualViewport;
     const shell = shellRef.current;
     if (!viewport || !shell) return undefined;
     const syncViewport = () => {
-      const bottom = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
-      shell.style.setProperty('--sc-visual-viewport-height', `${viewport.height}px`);
-      shell.style.setProperty('--sc-visual-viewport-top', `${viewport.offsetTop}px`);
+      // La altura multiplicada por la escala elimina sólo el efecto del zoom:
+      // un teclado abierto después del pellizco sigue restando espacio visible.
+      const keyboardOcclusion = window.innerHeight - viewport.height * viewport.scale;
+      const keyboardOpen = hasKeyboardFocus() && keyboardOcclusion > 120;
+      const bottom = keyboardOpen ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+      shell.style.setProperty('--sc-visual-viewport-height', `${keyboardOpen ? viewport.height : window.innerHeight}px`);
+      shell.style.setProperty('--sc-visual-viewport-top', `${keyboardOpen ? viewport.offsetTop : 0}px`);
       shell.style.setProperty('--sc-visual-viewport-bottom', `${bottom}px`);
-      // El teclado del teléfono está arriba: el dock se aparta y lo que se
-      // escribe sube por encima del teclado (ver `mobileDock.css`).
-      shell.toggleAttribute('data-keyboard', bottom > 120);
+      // Sólo al escribir con el teclado abierto movemos las hojas y apartamos
+      // el dock; durante un pellizco sin teclado se conserva la geometría de mesa.
+      shell.toggleAttribute('data-keyboard', keyboardOpen);
     };
     syncViewport();
     viewport.addEventListener('resize', syncViewport);
     viewport.addEventListener('scroll', syncViewport);
+    window.addEventListener('resize', syncViewport);
+    document.addEventListener('focusin', syncViewport);
+    document.addEventListener('focusout', syncViewport);
     return () => {
       viewport.removeEventListener('resize', syncViewport);
       viewport.removeEventListener('scroll', syncViewport);
+      window.removeEventListener('resize', syncViewport);
+      document.removeEventListener('focusin', syncViewport);
+      document.removeEventListener('focusout', syncViewport);
+      shell.removeAttribute('data-keyboard');
+      shell.style.removeProperty('--sc-visual-viewport-height');
+      shell.style.removeProperty('--sc-visual-viewport-top');
+      shell.style.removeProperty('--sc-visual-viewport-bottom');
     };
   }, [shellRef]);
 }
@@ -119,12 +145,17 @@ export function useVisualViewportSync(shellRef: RefObject<HTMLDivElement | null>
  * girar o redimensionar, sube a una altura legible cuando se pide para leer o
  * editar, y recorre sus alturas con el asa.
  */
+const inspectorViewportHeight = () => {
+  const viewport = window.visualViewport;
+  return viewport && Math.abs(viewport.scale - 1) <= 0.01 ? viewport.height : window.innerHeight;
+};
+
 export function useInspectorDetent({ preferences: layout, setPreference }: LayoutController, shellClass: ShellClass) {
   useEffect(() => {
     const normalizeDetent = () => {
       const next = normalizeInspectorDetent(layout.inspectorDetent, {
         width: window.innerWidth,
-        height: window.visualViewport?.height ?? window.innerHeight,
+        height: inspectorViewportHeight(),
       });
       if (next !== layout.inspectorDetent) setPreference('inspectorDetent', next);
     };
@@ -148,7 +179,7 @@ export function useInspectorDetent({ preferences: layout, setPreference }: Layou
   const cycleInspectorDetent = useCallback((direction: 1 | -1) => {
     const next = nextAvailableInspectorDetent(layout.inspectorDetent, direction, {
       width: window.innerWidth,
-      height: window.visualViewport?.height ?? window.innerHeight,
+      height: inspectorViewportHeight(),
     });
     if (next !== layout.inspectorDetent) setPreference('inspectorDetent', next);
   }, [layout.inspectorDetent, setPreference]);

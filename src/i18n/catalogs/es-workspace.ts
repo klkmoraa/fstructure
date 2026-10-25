@@ -551,6 +551,7 @@ export const esWorkspace = {
   'dock.panel': 'Panel',
   'dock.layers': 'Vista',
   'dock.fullCanvas': 'Lienzo completo',
+  'dock.select': 'Elegir',
   'dock.member': 'Barra',
   'dock.load': 'Carga',
   'dock.flip': 'Invertir sentido',

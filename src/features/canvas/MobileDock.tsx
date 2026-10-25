@@ -28,6 +28,7 @@ import { useProject } from '../../store/ProjectContext';
 import { singleWorkTool } from '../../shared/project/workScope';
 import type { Selection, Tool } from '../../types';
 import { CoordinateEntryGlyph } from '../../design-system/icons/structural';
+import { useModalFocus } from '../../design-system/components/modalFocus';
 import { readCanvasViewSettings, withCanvasViewSettings } from '../view/canvasViewSettings';
 import { emitWorkspaceCommand, onWorkspaceCommand } from '../workspace/workspaceCommands';
 import { StructuralToolIcon } from './StructuralToolIcon';
@@ -49,6 +50,7 @@ const PRIMARY_TOOLS: readonly Tool[] = ['select', 'node', 'member', 'support'];
 const SECONDARY_TOOLS: readonly Tool[] = ['pan', 'cut', 'split', 'delete'];
 
 const SHORT_LABEL: Partial<Record<Tool, TranslationKey>> = {
+  select: 'dock.select',
   member: 'dock.member',
   pointLoad: 'dock.load',
   distributedLoad: 'dock.load',
@@ -66,8 +68,9 @@ const ToolIcon = ({ tool, size = 22 }: { tool: Tool; size?: number }) => {
   return Icon ? <Icon size={size} strokeWidth={1.9} aria-hidden="true" /> : <StructuralToolIcon tool={tool} size={size} />;
 };
 
-const DockKey = ({ label, pressed, onClick, children, className = '', ...rest }: {
+const DockKey = ({ label, title = label, pressed, onClick, children, className = '', ...rest }: {
   label: string;
+  title?: string;
   pressed?: boolean;
   onClick: () => void;
   children: ReactNode;
@@ -79,7 +82,7 @@ const DockKey = ({ label, pressed, onClick, children, className = '', ...rest }:
   type="button"
   className={`mdock__key${className ? ` ${className}` : ''}`}
   aria-label={label}
-  title={label}
+  title={title}
   aria-pressed={pressed}
   onClick={onClick}
   {...rest}
@@ -150,24 +153,21 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   }, [editorVisible]);
   useEffect(() => { if (isLoadTool(activeTool)) setLastLoad(activeTool); }, [activeTool]);
 
-  useEffect(() => {
-    if (!moreOpen) return undefined;
-    const frame = window.requestAnimationFrame(() => sheetRef.current?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true }));
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      setMoreOpen(false);
-      moreButtonRef.current?.focus({ preventScroll: true });
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [moreOpen]);
+  const closeSheet = () => {
+    setMoreOpen(false);
+    moreButtonRef.current?.focus({ preventScroll: true });
+  };
+  useModalFocus({
+    open: moreOpen,
+    containerRef: sheetRef,
+    onEscape: closeSheet,
+    // Las acciones que abren otra hoja le ceden el foco. Cerrar/escapar sí lo
+    // devuelve a Más, sin que una restauración tardía se lo robe a esa hoja.
+    restoreFocus: false,
+  });
 
   const choose = (tool: Tool) => {
-    setMoreOpen(false);
+    if (moreOpen) closeSheet();
     setActiveTool(tool);
   };
 
@@ -367,8 +367,12 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   const moreActive = SECONDARY_TOOLS.includes(activeTool);
 
   const sheet = moreOpen && typeof document !== 'undefined' ? createPortal(<>
-    <button type="button" className="mdock-sheet__scrim" aria-hidden="true" tabIndex={-1} onPointerDown={() => setMoreOpen(false)} />
-    <div ref={sheetRef} className="mdock-sheet" role="dialog" aria-modal="true" aria-label={t('toolbar.more')}>
+    <button type="button" className="mdock-sheet__scrim" aria-hidden="true" tabIndex={-1} onClick={closeSheet} />
+    <div ref={sheetRef} className="mdock-sheet" role="dialog" aria-modal="true" aria-label={t('toolbar.more')} tabIndex={-1}>
+      <header className="mdock-sheet__header">
+        <strong>{t('toolbar.more')}</strong>
+        <button type="button" className="mdock-sheet__close" aria-label={t('toolbar.close')} onClick={closeSheet}><X size={20} aria-hidden="true" /></button>
+      </header>
       <div className="mdock-sheet__grid" role="menu" aria-label={t('toolbar.more')}>
         {secondaryTools.map((tool) => <button key={tool} type="button" role="menuitemradio" aria-checked={activeTool === tool}
           className={`mdock-tile${activeTool === tool ? ' is-active' : ''}${tool === 'delete' ? ' is-danger' : ''}`}
@@ -399,17 +403,20 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
     <nav className="mdock" aria-label={t('dock.label')} data-context={contextKind || undefined} data-editor={editor ? '' : undefined}>
       {editor ?? (context ? <div key={contextKind} className="mdock__context" role="toolbar" aria-label={contextLabel}>{context}</div> : null)}
       <div className="mdock__bar" role="toolbar" aria-label={t('toolbar.primary')}>
-        {PRIMARY_TOOLS.map((tool) => <DockKey key={tool} label={toolLabel(tool)} pressed={activeTool === tool} onClick={() => choose(tool)} data-tool-id={tool}>
+        {PRIMARY_TOOLS.map((tool) => <DockKey key={tool} label={shortLabel(tool)} title={toolLabel(tool)} pressed={activeTool === tool} onClick={() => choose(tool)} data-tool-id={tool}>
           <ToolIcon tool={tool} />
+          <span className="mdock__key-label" aria-hidden="true">{shortLabel(tool)}</span>
         </DockKey>)}
-        <DockKey label={t('toolbar.loads')} pressed={isLoadTool(activeTool)} onClick={() => choose(lastLoad)} data-tool-id="loads">
+        <DockKey label={t('toolbar.loadsShort')} title={t('toolbar.loads')} pressed={isLoadTool(activeTool)} onClick={() => choose(lastLoad)} data-tool-id="loads">
           <ToolIcon tool={isLoadTool(activeTool) ? activeTool : lastLoad} />
+          <span className="mdock__key-label" aria-hidden="true">{t('toolbar.loadsShort')}</span>
         </DockKey>
         <span className="mdock__rule" aria-hidden="true" />
         <button ref={moreButtonRef} type="button" className={`mdock__key${moreActive ? ' is-tinted' : ''}`}
           aria-label={t('toolbar.more')} title={t('toolbar.more')} aria-haspopup="dialog" aria-expanded={moreOpen}
           onClick={() => setMoreOpen((open) => !open)}>
           {moreActive ? <ToolIcon tool={activeTool} /> : <Ellipsis size={22} strokeWidth={1.9} aria-hidden="true" />}
+          <span className="mdock__key-label" aria-hidden="true">{t('toolbar.moreShort')}</span>
         </button>
       </div>
     </nav>

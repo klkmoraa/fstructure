@@ -551,6 +551,7 @@ export const enWorkspace = {
   'dock.panel': 'Panel',
   'dock.layers': 'View',
   'dock.fullCanvas': 'Full canvas',
+  'dock.select': 'Select',
   'dock.member': 'Member',
   'dock.load': 'Load',
   'dock.flip': 'Reverse direction',
