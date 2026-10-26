@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { watchServiceWorker } from './shared/appUpdate';
 import './design-system/fstructure.css';
+import './design-system/softClay.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('FStructure root element is missing.');
