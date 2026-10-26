@@ -9,6 +9,7 @@ import { MobileDock } from '../canvas/MobileDock';
 import { Instrument } from '../shell/Instrument';
 import { ClassroomGuide } from '../classroom/ClassroomGuide';
 import { ToastNotification } from './ToastNotification';
+import { defaultAnalysisLayer } from './analysisFeedback';
 import { useI18n } from '../../i18n/useI18n';
 import { useProject } from '../../store/ProjectContext';
 import { useWorkspaceUI } from '../../store/WorkspaceUIContext';
@@ -214,12 +215,11 @@ const WorkspaceBrokerContent = ({
       emitWorkspaceCommand('open-results', {});
     }
     if (analysis?.success && analysis !== reportedAnalysisRef.current) {
-      // Sin flexión en ninguna barra (una armadura) la lectura de gobierno es el axial.
-      const bending = analysis.memberResults.some((member) => Math.max(Math.abs(member.maxMoment), Math.abs(member.minMoment)) > 1e-9);
-      activateEvidenceLayer(bending || !analysis.memberResults.length ? 'moment' : 'axial', { setResultTab, dispatchLayers: dispatchEditorLayers, revealResultOverlay });
+      // El tipo de barra, no un momento nulo para esta carga, elige la lectura inicial.
+      activateEvidenceLayer(defaultAnalysisLayer(project), { setResultTab, dispatchLayers: dispatchEditorLayers, revealResultOverlay });
     }
     reportedAnalysisRef.current = analysis;
-  }, [analysis, revealResultOverlay, setResultTab]);
+  }, [analysis, project, revealResultOverlay, setResultTab]);
 
   // Abrir Resultados no debe dejar al lado una ficha de edición completa.
   // La transición se produce una vez por apertura: si después la persona

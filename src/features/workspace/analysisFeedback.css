@@ -1,0 +1,3 @@
+.sc-toast-card__action { display:inline-flex; align-items:center; justify-content:center; min-height:44px; max-width:100%; margin-top:8px; padding:8px 12px; border:1px solid var(--sc-color-border); border-radius:var(--sc-radius-sm); background:var(--sc-color-surface-2); color:var(--sc-color-text-primary); font:inherit; font-size:13px; font-weight:600; line-height:1.35; white-space:normal; overflow-wrap:anywhere; text-align:center; cursor:pointer; }
+.sc-toast-card__action:focus-visible { outline:var(--sc-focus-ring-width) solid var(--sc-color-action-primary); outline-offset:2px; }
+.sc-toast-card__action:active { box-shadow:var(--sc-shadow-pressed); }

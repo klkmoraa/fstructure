@@ -6,6 +6,7 @@ import type { ShellClass } from './shellComposition';
 import type { SurfaceId } from './surfacePresentation';
 import { nextAvailableInspectorDetent, normalizeInspectorDetent, type useWorkspaceLayoutPreferences } from './useWorkspaceLayoutPreferences';
 import { emitWorkspaceCommand } from './workspaceCommands';
+import { analysisFeedback } from './analysisFeedback';
 
 /*
  * Efectos del shell del Modelo 2D que no dependen de su composición: atajos
@@ -144,8 +145,8 @@ type PendingModelDoctorNotification = {
 };
 
 /**
- * Tras un análisis pedido por la persona, avisa con un toast si el Doctor del
- * modelo encuentra algo. Sólo la última petición cuenta y un cambio de
+ * Tras un análisis pedido por la persona, muestra el estado real de la corrida
+ * y una acción explícita para revisar sus resultados o sus límites. Sólo la última petición cuenta y un cambio de
  * proyecto la descarta.
  */
 export function useModelDoctorNotification({ project, analysis, isAnalyzing, t }: {
@@ -190,23 +191,13 @@ export function useModelDoctorNotification({ project, analysis, isAnalyzing, t }
     }
     if (!request.hasStarted || analysis === request.analysisAtRequest) return undefined;
 
-    let current = true;
-    void import('../model-doctor/modelDoctorDiagnostics').then(({ buildModelDoctorReport }) => {
-      if (!current || pendingModelDoctorNotificationIdRef.current !== request.id) return;
-      const report = buildModelDoctorReport(project);
-      if (report.total > 0) {
-        emitWorkspaceCommand('show-toast', {
-          message: t('modelDoctor.toastTitle'),
-          description: t('modelDoctor.toastDescription'),
-          tone: 'warning',
-        });
-      }
-      if (pendingModelDoctorNotificationIdRef.current === request.id) {
-        pendingModelDoctorNotificationIdRef.current = null;
-        setPendingModelDoctorNotification(null);
-      }
-    });
-    return () => { current = false; };
+    if (!analysis) return undefined;
+    if (pendingModelDoctorNotificationIdRef.current !== request.id) return undefined;
+    // Consume before emitting: Strict Mode and view updates must not duplicate it.
+    pendingModelDoctorNotificationIdRef.current = null;
+    setPendingModelDoctorNotification(null);
+    emitWorkspaceCommand('show-toast', analysisFeedback(analysis, project.settings.language, t('modelDoctor.open')));
+    return undefined;
   }, [analysis, isAnalyzing, pendingModelDoctorNotification, project, t]);
 
   return { requestNotification, resetNotification };

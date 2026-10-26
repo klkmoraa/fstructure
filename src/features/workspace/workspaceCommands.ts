@@ -15,6 +15,16 @@ import type { Selection } from '../../types';
 import type { EvidenceLayerId } from '../canvas/evidenceLayers';
 import type { DenseResultRequest } from '../results/denseResults';
 
+/** Serializable, opt-in actions: notifications never execute arbitrary callbacks. */
+export interface WorkspaceToast {
+  id?: string;
+  message: string;
+  description?: string;
+  tone?: 'success' | 'info' | 'warning' | 'error';
+  durationMs?: number;
+  action?: { label: string; command: 'open-model-doctor' | 'open-results' };
+}
+
 /** A selection that names exactly one object; `multi` and `null` cannot be focused. */
 export type FocusableSelection = Extract<NonNullable<Selection>, { id: string }>;
 
@@ -98,12 +108,7 @@ interface WorkspaceCommands {
   /** Abre en el dock del teléfono el valor de la carga recién colocada. */
   'edit-load-value': { id: string };
   /** Show a toast notification on screen. */
-  'show-toast': {
-    message: string;
-    description?: string;
-    tone?: 'success' | 'info' | 'warning' | 'error';
-    durationMs?: number;
-  };
+  'show-toast': WorkspaceToast;
 }
 
 type WorkspaceCommand = keyof WorkspaceCommands;
