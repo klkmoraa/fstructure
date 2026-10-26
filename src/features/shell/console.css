@@ -62,8 +62,11 @@
    se queda en blanco. */
 .console button > svg { flex: none; }
 
-.console button:hover,
 .console button:focus-visible { background: var(--surface-2); }
+
+@media (hover: hover) and (pointer: fine) {
+.console button:hover { background: var(--surface-2); }
+}
 /* El fondo por sí solo no es un indicador de foco: es el mismo que da el
    puntero. El anillo sí, y aquí va hacia dentro porque la consola mide 52px y
    un anillo desplazado se saldría del riel. */
@@ -124,8 +127,11 @@
     border-width: 1px 0 0;
   }
 
-  .console:hover,
   .console:focus-within { width: 100%; box-shadow: var(--sc-shadow-sheet); }
+
+  @media (hover: hover) and (pointer: fine) {
+.console:hover { width: 100%; box-shadow: var(--sc-shadow-sheet); }
+  }
 
   /* En K0 la etiqueta no cabe: el nombre accesible vive en `aria-label`. */
   .console__label { display: none; }
@@ -226,12 +232,20 @@
       transform var(--sc-motion-control) var(--sc-ease-press);
   }
 
-  .console__foot > button:hover:not(:disabled),
   .console__foot > button:focus-visible {
     border-color: var(--sc-color-border);
     background: var(--sc-color-surface-elevated);
     box-shadow: var(--sc-shadow-lifted);
     color: var(--sc-color-text-primary);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+.console__foot > button:hover:not(:disabled) {
+    border-color: var(--sc-color-border);
+    background: var(--sc-color-surface-elevated);
+    box-shadow: var(--sc-shadow-lifted);
+    color: var(--sc-color-text-primary);
+  }
   }
 
   .console__foot > button:active:not(:disabled) {

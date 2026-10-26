@@ -30,6 +30,7 @@
   background: var(--sc-color-bg-app);
   color-scheme: light;
   font-synthesis: none;
+  font-optical-sizing: auto;
   text-rendering: optimizeLegibility;
   font-variant-numeric: var(--sc-numeric-variant);
   font-feature-settings: var(--sc-numeric-features);
@@ -83,7 +84,7 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--sc-color-actio
 /* Un anillo de tinta separado del control. Es la única señal de foco del
    sistema: se lee sobre el papel, sobre un plano de tinta y en alto contraste,
    y no introduce un color que la interfaz no tiene. */
-:where(button, input, select, textarea, summary, [role='button'], [role='tab']):focus-visible {
+:where(a[href], button, input, select, textarea, summary, [role='button'], [role='tab']):focus-visible {
   outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
   outline-offset: var(--sc-focus-ring-offset);
 }
@@ -114,13 +115,13 @@ input[type='checkbox'], input[type='radio'] { accent-color: var(--sc-color-actio
 .structural-canvas { background-color: var(--sc-color-bg-canvas); }
 
 /* ---- Interacción -------------------------------------------------------
-   Sin volumen no hay nada que hundir: un control pulsado cambia de plano, no
-   de posición. `--sc-press-transform` es `none` en la fundación y se conserva
-   como token para que un tema alternativo pueda devolverle el hundimiento sin
-   tocar una sola regla. */
+   La pulsación responde al contacto y hunde la arcilla. El token conserva el
+   estado visual sin desplazamiento cuando se pide movimiento reducido. */
 button:not(:disabled), summary, [role='tab'], [role='radio'] {
   transform-origin: center;
   touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
 }
 button:not(:disabled):active { transform: var(--sc-press-transform); transition-duration: var(--motion-press); }
 
@@ -131,8 +132,8 @@ button, input, select, textarea, summary, [role='button'], [role='tab'] {
 .sc-spinner__ring { border-color: color-mix(in srgb, currentColor 20%, transparent); border-top-color: currentColor; }
 
 /* ---- Movimiento --------------------------------------------------------
-   Cortas y sin rebote. Una interfaz plana que rebota se lee como una lámina
-   suelta, no como un instrumento. */
+   Entradas breves y continuas; las herramientas frecuentes responden sin
+   bloquear la interacción ni añadir rebote decorativo. */
 @keyframes native-screen-in { from { opacity:.8; } to { opacity:1; } }
 @keyframes native-menu-in { from { opacity:0; transform:translate3d(0,-4px,0); } to { opacity:1; transform:translate3d(0,0,0); } }
 @keyframes native-dialog-in { from { opacity:0; transform:translate3d(0,6px,0); } to { opacity:1; transform:translate3d(0,0,0); } }
@@ -151,5 +152,13 @@ button, input, select, textarea, summary, [role='button'], [role='tab'] {
   }
 }
 
+@media (prefers-reduced-transparency: reduce) {
+  *, *::before, *::after { backdrop-filter: none !important; }
+}
+
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid Highlight !important; outline-offset: 2px; }
+}
+
 /* Mientras llega el código de la mesa: el mismo fondo, sin parpadeo blanco. */
-.app-shell-loading { height: 100dvh; background: var(--sc-color-bg-app, var(--sc-color-surface-0, #f7f6f1)); }
+.app-shell-loading { height: 100dvh; background: var(--sc-color-bg-app); }

@@ -4,15 +4,19 @@
 .stiffness-editor > header > span { font: 500 12px var(--sc-font-mono); color: var(--sc-color-text-secondary); }
 .stiffness-editor__settings { display: grid; gap: 10px; }
 .stiffness-editor__select { display: grid; gap: 6px; font-size: 12px; color: var(--sc-color-text-secondary); }
-.stiffness-editor__select select { width: 100%; min-height: 36px; padding: 6px 10px; border: 1px solid var(--sc-color-border-soft); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); font: 500 12px var(--sc-font-ui); }
-.stiffness-editor__segmented { display: flex; padding: 3px; gap: 3px; border-radius: var(--sc-radius-control); background: var(--sc-color-surface-inset); }
-.stiffness-editor__segmented button { flex: 1; min-height: 32px; padding: 6px 8px; border: 1px solid transparent; border-radius: var(--sc-radius-control); background: transparent; box-shadow: none; color: var(--sc-color-text-secondary); font: 500 12px var(--sc-font-ui); }
-.stiffness-editor__segmented button[aria-pressed='true'] { background: var(--sc-color-surface-1); border-color: var(--sc-color-border-soft); box-shadow: var(--sc-shadow-xs); color: var(--sc-color-text-primary); }
+.stiffness-editor__select select { width: 100%; min-height: 36px; padding: 6px 10px; border: 1px solid var(--sc-color-border-soft); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-inset); color: var(--sc-color-text-primary); font: 500 12px var(--sc-font-ui); box-shadow: var(--sc-shadow-inset); }
+.stiffness-editor__segmented { display: flex; padding: 3px; gap: 3px; border-radius: var(--sc-radius-control); background: var(--sc-color-surface-inset); box-shadow: var(--sc-shadow-inset); }
+.stiffness-editor__segmented button { flex: 1; min-height: 32px; padding: 6px 8px; border: 1px solid transparent; border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); box-shadow: var(--sc-shadow-xs); color: var(--sc-color-text-secondary); font: 500 12px var(--sc-font-ui); }
+.stiffness-editor__segmented button[aria-pressed='true'] { background: var(--sc-color-surface-inset); border-color: var(--sc-color-border-soft); box-shadow: var(--sc-shadow-selected); color: var(--sc-color-action-ink); }
 .stiffness-editor__hint, .stiffness-editor__relative { margin: 0; font-size: 11px; line-height: 1.5; color: var(--sc-color-text-secondary); }
 .stiffness-editor__relative { border-left: 2px solid var(--sc-color-state-warning-foreground); padding-left: 8px; }
-.stiffness-editor__apply { min-height: 36px; padding: 8px 10px; border: 1px solid var(--sc-color-border-soft); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); font-size: 11px; text-align: left; }
+.stiffness-editor__apply { min-height: 36px; padding: 8px 10px; border: 1px solid var(--sc-color-border-soft); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); font-size: 11px; text-align: left; box-shadow: var(--sc-shadow-xs); }
 .stiffness-editor__disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; cursor: pointer; list-style: none; font-size: 11px; color: var(--sc-color-text-secondary); }
 .stiffness-editor__disclosure > summary::-webkit-details-marker { display: none; }
 .stiffness-editor__disclosure[open] > summary svg { transform: rotate(90deg); }
 .stiffness-editor :is(button, select, summary):focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
-@media (max-width: 1023px) { .stiffness-editor__segmented button, .stiffness-editor__select select, .stiffness-editor__apply, .stiffness-editor__disclosure > summary { min-height: 44px; } }
+@media (pointer: coarse), (max-width: 1023px) { .stiffness-editor__segmented button, .stiffness-editor__select select, .stiffness-editor__apply, .stiffness-editor__disclosure > summary { min-height: 44px; } }
+@media (hover: hover) and (pointer: fine) {
+  .stiffness-editor button:not(:disabled):not([aria-pressed='true']):hover:not(:active) { box-shadow: var(--sc-shadow-raised); }
+}
+.stiffness-editor button:not(:disabled):active { box-shadow: var(--sc-shadow-pressed); transform: var(--sc-press-transform); }

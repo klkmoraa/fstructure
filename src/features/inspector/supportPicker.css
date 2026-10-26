@@ -28,7 +28,7 @@
   color: var(--sc-color-text-muted);
 }
 
-.support-picker__legend .is-free { color: var(--sc-color-state-success); }
+.support-picker__legend .is-free { color: var(--sc-color-state-success-foreground); }
 .support-picker__legend .is-restrained { color: var(--sc-color-text-secondary); }
 
 .support-picker__tabs .sc-tabs__list { gap: 2px; }
@@ -62,13 +62,16 @@
   cursor: pointer;
   text-align: center;
   transition: var(--sc-transition-control-no-transform);
+  box-shadow: var(--sc-shadow-xs);
 }
 
+@media (hover: hover) and (pointer: fine) {
 .support-tile:hover { background: var(--sc-color-fill-quaternary); }
-.support-tile:active { background: var(--sc-color-fill-tertiary); }
+}
+.support-tile:active { background: var(--sc-color-surface-inset); box-shadow: var(--sc-shadow-pressed); }
 
 .support-tile:focus-visible {
-  outline: 3px solid var(--sc-color-focus);
+  outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
   outline-offset: 2px;
 }
 
@@ -78,10 +81,11 @@
    tiene que verse. */
 .support-tile.is-active {
   border-color: var(--sc-color-action-primary);
-  background: var(--sc-color-action-subtle);
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-selected);
 }
 
-.support-tile.is-focused { box-shadow: inset 0 0 0 2px var(--sc-color-action-primary); }
+.support-tile.is-focused { box-shadow: var(--sc-shadow-selected); }
 
 .support-tile__dot {
   position: absolute;
@@ -101,7 +105,9 @@
   border-style: dashed;
 }
 
+@media (hover: hover) and (pointer: fine) {
 .support-tile.is-unavailable:hover { background: var(--sc-color-surface-1); }
+}
 
 .support-tile__glyph { display: block; line-height: 0; }
 
@@ -187,26 +193,33 @@
 .support-detail__chips { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .support-chip {
+  min-width: var(--sc-control-height-sm);
+  min-height: var(--sc-control-height-sm);
   font-family: var(--sc-font-mono);
   font-size: var(--sc-font-size-caption);
   padding: 3px 8px;
   border: var(--sc-border-width) solid var(--sc-color-border);
-  border-radius: var(--sc-radius-xs);
-  background: transparent;
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
   color: var(--sc-color-text-secondary);
   cursor: pointer;
   transition: var(--sc-transition-control-no-transform);
 }
 
-.support-chip:hover { background: var(--sc-color-fill-quaternary); }
+@media (hover: hover) and (pointer: fine) {
+.support-chip:not(.is-active):hover:not(:active) { box-shadow: var(--sc-shadow-raised); }
+}
 
 .support-chip.is-active {
   border-color: var(--sc-color-action-primary);
-  background: var(--sc-color-action-subtle);
-  color: var(--sc-color-action-ink-on-soft);
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-action-ink);
+  box-shadow: var(--sc-shadow-selected);
 }
 
-.support-chip:focus-visible { outline: 3px solid var(--sc-color-focus); outline-offset: 2px; }
+.support-chip:active { box-shadow: var(--sc-shadow-pressed); transform: var(--sc-press-transform); }
+.support-chip:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
 
 .support-detail__dof { display: flex; flex-wrap: wrap; gap: 4px; }
 
@@ -265,15 +278,19 @@
   padding: 0 var(--sc-space-3);
   border: var(--sc-border-width) solid var(--sc-color-border);
   border-radius: var(--sc-radius-control);
-  background: transparent;
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
   color: var(--sc-color-text-link);
   font-size: var(--sc-font-size-caption);
   cursor: pointer;
   transition: var(--sc-transition-control-no-transform);
 }
 
-.support-picker__library:hover { background: var(--sc-color-fill-quaternary); }
-.support-picker__library:focus-visible { outline: 3px solid var(--sc-color-focus); outline-offset: 2px; }
+@media (hover: hover) and (pointer: fine) {
+.support-picker__library:hover:not(:active) { box-shadow: var(--sc-shadow-raised); }
+}
+.support-picker__library:active { box-shadow: var(--sc-shadow-pressed); transform: var(--sc-press-transform); }
+.support-picker__library:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
 
 /* LA BIBLIOTECA. Lectura, no un segundo selector: aquí no se pulsa nada que
    cambie el modelo. */
@@ -290,7 +307,7 @@
   font-size: var(--sc-font-size-caption);
 }
 
-.support-library__legend .is-free { color: var(--sc-color-state-success); }
+.support-library__legend .is-free { color: var(--sc-color-state-success-foreground); }
 .support-library__legend .is-restrained { color: var(--sc-color-text-secondary); }
 
 .support-library__section { display: flex; flex-direction: column; gap: var(--sc-space-2); }
@@ -323,6 +340,7 @@
   border: var(--sc-border-width) solid var(--sc-color-border-soft);
   border-radius: var(--sc-radius-card);
   background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
 }
 
 .support-library__card.is-unavailable { border-style: dashed; }
@@ -362,14 +380,15 @@
   font-size: 10px;
   padding: 2px 6px;
   border-radius: var(--sc-radius-pill);
-  background: var(--sc-color-state-warning);
+  background: var(--sc-color-surface-1);
+  border: var(--sc-border-width) solid var(--sc-color-state-warning);
   color: var(--sc-color-state-warning-foreground);
 }
 
 .support-library__rule {
   padding: var(--sc-space-3);
   border-radius: var(--sc-radius-card);
-  background: var(--sc-color-accent-blue-soft);
+  background: var(--sc-color-surface-1);
   border: var(--sc-border-width) solid var(--sc-color-action-edge);
 }
 
@@ -441,7 +460,7 @@
   fill: var(--sc-color-technical-reaction);
 }
 
-/* La tarjeta activa tiñe su símbolo de acento: es el mismo azul del borde, y
+/* La tarjeta activa tiñe su símbolo de acento: es el mismo coral del borde, y
    así el estado seleccionado se lee sin depender sólo del filete. */
 .support-tile.is-active .support-glyph,
 .support-tile.is-active .support-glyph__body,
@@ -450,6 +469,12 @@
 }
 
 .support-tile.is-active .support-glyph__body { fill: var(--sc-color-action-primary); }
+
+.support-tile:not(.is-unavailable):active { box-shadow: var(--sc-shadow-pressed); }
+
+@media (pointer: coarse), (max-width: 760px) {
+  .support-chip { min-width: var(--sc-control-height-touch); min-height: var(--sc-control-height-touch); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .support-tile,

@@ -5,10 +5,14 @@
 .profile-editor__section h3 { margin: 0; font: 600 13px var(--sc-font-ui); color: var(--sc-color-text-primary); }
 .profile-editor__dimensions { display: grid; gap: 10px; }
 .profile-editor__text { display: grid; gap: 6px; color: var(--sc-color-text-secondary); font: 500 12px var(--sc-font-ui); }
-.profile-editor__text input { min-width: 0; width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid var(--sc-color-border-soft); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); font: 500 12px var(--sc-font-ui); }
+.profile-editor__text input { min-width: 0; width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid var(--sc-color-border-soft); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-inset); color: var(--sc-color-text-primary); font: 500 12px var(--sc-font-ui); box-shadow: var(--sc-shadow-inset); }
 .profile-editor__hint { margin: 0; color: var(--sc-color-text-secondary); font-size: 11px; line-height: 1.5; }
-.profile-editor__action { width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid var(--sc-color-border-soft); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); font: 500 11px var(--sc-font-ui); text-align: left; }
+.profile-editor__action { width: 100%; min-height: 36px; padding: 8px 10px; border: 1px solid var(--sc-color-border-soft); border-radius: var(--sc-radius-control); background: var(--sc-color-surface-1); color: var(--sc-color-text-primary); font: 500 11px var(--sc-font-ui); text-align: left; box-shadow: var(--sc-shadow-xs); }
 .profile-editor__action:disabled { opacity: .55; }
 .profile-editor__error { margin: 0; padding-inline-start: 8px; border-left: 2px solid var(--sc-color-state-error-foreground); color: var(--sc-color-state-error-foreground); font-size: 11px; line-height: 1.5; }
 .profile-editor :is(input,button,select):focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 2px; }
-@media (max-width: 1023px) { .profile-editor__text input, .profile-editor__action { min-height: 44px; } }
+@media (pointer: coarse), (max-width: 1023px) { .profile-editor__text input, .profile-editor__action { min-height: 44px; } }
+@media (hover: hover) and (pointer: fine) {
+  .profile-editor__action:not(:disabled):hover:not(:active) { box-shadow: var(--sc-shadow-raised); }
+}
+.profile-editor__action:not(:disabled):active { box-shadow: var(--sc-shadow-pressed); transform: var(--sc-press-transform); }

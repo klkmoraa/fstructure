@@ -8,10 +8,13 @@
 .support-placement-popover header strong { font-size:11px; }
 .support-placement-popover p { margin:0; color:var(--muted); font-size:9px; line-height:1.4; }
 .support-placement-close { width:26px; height:26px; display:grid; place-items:center; border:0; border-radius:var(--sc-radius-card); background:var(--surface-2); color:var(--muted); font-size:16px; line-height:1; }
-.support-placement-close:hover { color:var(--text); background:var(--border-soft); }
+@media (hover: hover) and (pointer: fine) {
+.support-placement-close:hover { color:var(--text); background:var(--border-soft); } }
 .support-placement-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; }
 .support-placement-options button { min-height:28px; padding:4px 6px; border:1px solid var(--border-soft); border-radius:var(--sc-radius-card); background:var(--surface-2); color:var(--text); font:inherit; font-size:9px; font-weight:700; text-align:left; }
-.support-placement-options button:hover,.support-placement-options button:focus-visible { border-color:var(--focus); color:var(--accent); }
+.support-placement-options button:focus-visible { border-color:var(--focus); color:var(--sc-color-action-ink); }
+@media (hover: hover) and (pointer: fine) {
+.support-placement-options button:hover { border-color:var(--focus); color:var(--sc-color-action-ink); } }
 .support-placement-options button.active { border-color:color-mix(in srgb,var(--accent) 48%,var(--border-soft)); background:var(--accent-soft); color:var(--accent-on-soft); }
 .support-placement-angle { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px; color:var(--muted); font-size:9px; }
 .support-placement-angle-control { display:flex; align-items:center; border:1px solid var(--border-soft); border-radius:var(--sc-radius-card); background:var(--surface-2); overflow:hidden; }
@@ -21,7 +24,8 @@
 .grid-lines line { stroke: var(--grid); stroke-width: 1; }
 .member-line { stroke: var(--member); stroke-width: 3; stroke-linecap: round; transition: stroke var(--motion-fast) var(--ease-native), stroke-width var(--motion-fast) var(--ease-native); }
 .member-hit { stroke: transparent; stroke-width: 18; }
-.member-object:hover:not(.selected) .member-line { stroke: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.member-object:hover:not(.selected) .member-line { stroke: var(--accent); } }
 .member-object.selected .member-line { stroke: var(--member); stroke-width: 3.6; }
 .member-object:focus-visible .member-line { stroke:var(--focus); stroke-width:5; }
 .member-object:focus-visible { outline:var(--sc-focus-ring-width) solid var(--focus); outline-offset:3px; }
@@ -38,7 +42,7 @@
 .selection-marquee-label rect { fill:color-mix(in srgb,var(--surface) 92%,transparent); stroke:var(--border); }
 .selection-marquee-label text { fill:var(--text); font-size:10px; font-weight:750; }
 .member-preview line { stroke:var(--accent); stroke-width:2; stroke-dasharray:7 5; }
-.member-preview text { fill:var(--accent); font-size:10px; font-weight:750; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:4px; }
+.member-preview text { fill:var(--sc-color-action-ink); font-size:10px; font-weight:750; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:4px; }
 .member-object.truss .member-line { stroke-dasharray: 0; }
 .member-object.rigid .member-line { stroke: var(--axis); stroke-width: 5; }
 .smart-label-layer { pointer-events:none; }
@@ -48,7 +52,8 @@
 .node-selection-halo { fill:color-mix(in srgb,var(--selection) 12%,transparent); stroke:var(--selection); stroke-width:2; stroke-dasharray:3 2; pointer-events:none; vector-effect:non-scaling-stroke; }
 .node-selection-cross { fill:none; stroke:var(--selection); stroke-width:1.25; opacity:.78; pointer-events:none; vector-effect:non-scaling-stroke; }
 .node-object .internal-hinge-symbol { fill: var(--canvas-bg); stroke: var(--axis); stroke-width: 2; stroke-dasharray: 2 2; pointer-events: none; }
-.node-object:hover:not(.selected) .node-dot { stroke: var(--accent); stroke-width: 3; r: 8px; }
+@media (hover: hover) and (pointer: fine) {
+.node-object:hover:not(.selected) .node-dot { stroke: var(--accent); stroke-width: 3; r: 8px; } }
 .node-object.selected .node-dot { fill:var(--canvas-bg); stroke:var(--selection); stroke-width:3; r:8px; }
 .node-object.candidate-preview .node-dot { stroke:var(--focus); stroke-width:3; }
 .node-object:focus-visible .node-dot { stroke:var(--focus); stroke-width:4; r:9px; }
@@ -62,8 +67,10 @@
 .support-symbol .support-spring-coil, .support-symbol .support-spring-arc, .support-symbol .support-spring-spiral, .support-symbol .support-spring line { stroke: var(--member); }
 .support-symbol .support-guide-track { stroke: var(--member); opacity: 0.75; }
 .support-symbol .support-hatch { stroke: var(--member); }
-.support-symbol:hover .support-body-fill { fill: color-mix(in srgb, var(--accent) 18%, var(--surface)); stroke: var(--accent); }
-.support-symbol:hover .support-pin-dot, .support-symbol:hover .support-roller-wheel, .support-symbol:hover .support-baseplate, .support-symbol:hover .support-spring-coil, .support-symbol:hover .support-spring-arc, .support-symbol:hover .support-spring-spiral, .support-symbol:hover .support-spring line, .support-symbol:hover .support-guide-track, .support-symbol:hover .support-hatch { stroke: var(--accent); }
+@media (hover: hover) and (pointer: fine) {
+.support-symbol:hover .support-body-fill { fill: color-mix(in srgb, var(--accent) 18%, var(--surface)); stroke: var(--accent); } }
+@media (hover: hover) and (pointer: fine) {
+.support-symbol:hover .support-pin-dot, .support-symbol:hover .support-roller-wheel, .support-symbol:hover .support-baseplate, .support-symbol:hover .support-spring-coil, .support-symbol:hover .support-spring-arc, .support-symbol:hover .support-spring-spiral, .support-symbol:hover .support-spring line, .support-symbol:hover .support-guide-track, .support-symbol:hover .support-hatch { stroke: var(--accent); } }
 .support-symbol.selected .support-body-fill { fill: color-mix(in srgb, var(--selection) 20%, var(--surface)); stroke: var(--selection); }
 .support-symbol.selected .support-pin-dot, .support-symbol.selected .support-roller-wheel, .support-symbol.selected .support-baseplate, .support-symbol.selected .support-spring-coil, .support-symbol.selected .support-spring-arc, .support-symbol.selected .support-spring-spiral, .support-symbol.selected .support-spring line, .support-symbol.selected .support-guide-track, .support-symbol.selected .support-hatch { stroke: var(--selection); }
 .support-selection-frame { fill:color-mix(in srgb,var(--selection) 8%,transparent); stroke:var(--selection); stroke-width:1.5; stroke-dasharray:4 3; vector-effect:non-scaling-stroke; }
@@ -100,14 +107,14 @@
 .multi-selection-frame { fill:color-mix(in srgb,var(--selection) 7%,transparent); stroke:var(--selection); stroke-width:1.5; stroke-dasharray:7 5; vector-effect:non-scaling-stroke; }
 .multi-selection-handle { fill:var(--surface); stroke:var(--selection); stroke-width:1.5; vector-effect:non-scaling-stroke; }
 .multi-selection-badge rect { fill:color-mix(in srgb,var(--selection) 12%,var(--surface)); stroke:var(--selection); stroke-width:1; }
-.multi-selection-badge text { fill:var(--selection); font-size:10px; font-weight:800; }
+.multi-selection-badge text { fill:var(--sc-color-text-primary); font-size:10px; font-weight:800; }
 .deformed-layer path { fill: none; stroke: var(--deformed); stroke-width: 2.6; stroke-dasharray: 6 4; stroke-linecap: round; }
 .mode-shape-layer { fill:none; pointer-events:none; }.mode-shape-layer path { fill:none; stroke-width:2.6; stroke-dasharray:10 5; stroke-linecap:round; }.mode-shape-layer.is-modal { color:var(--deformed); }.mode-shape-layer.is-modal path { stroke:var(--deformed); }.mode-shape-layer.is-buckling { color:var(--warning); }.mode-shape-layer.is-buckling path { stroke:var(--warning); }
 .mechanism-layer { pointer-events: none; }
-.mechanism-member { stroke: var(--sc-color-signal-alert-ink); stroke-width: 4; stroke-dasharray: 9 6; }
+.mechanism-member { stroke: var(--fs-signal-attention); stroke-width: 4; stroke-dasharray: 9 6; }
 .mechanism-node line, .mechanism-node path { fill: none; stroke: var(--warning); stroke-width: 2; stroke-dasharray: 4 3; }
 .mechanism-node circle { fill: color-mix(in srgb, var(--warning) 20%, var(--canvas-bg)); stroke: var(--warning); stroke-width: 2.5; }
-.mechanism-node text { fill: var(--warning); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
+.mechanism-node text { fill: var(--sc-color-state-warning-foreground); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
 .mechanism-caption rect { fill: color-mix(in srgb, var(--warning) 12%, var(--canvas-bg)); stroke: color-mix(in srgb, var(--warning) 55%, var(--border)); }
 .mechanism-caption text { fill: var(--text); font-size: 10px; font-weight: 650; }
 .mechanism-caption text:last-child { fill: var(--muted); font-size: 9px; font-weight: 500; }
@@ -121,15 +128,17 @@
 .canvas-controls { position: absolute; left: 14px; bottom: 18px; display: flex; flex-direction: column; border-radius: var(--sc-radius-control); overflow: hidden; }
 .canvas-controls button { width: var(--sc-control-height-md); height: var(--sc-control-height-md); border: 0; background: transparent; display: grid; place-items: center; }
 .canvas-controls button + button { border-top: 1px solid var(--border-soft); }
-.canvas-controls button:hover { background: var(--surface-2); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-controls button:hover { background: var(--surface-2); } }
 .canvas-mode-badge { position:absolute; z-index:4; left:14px; top:12px; max-width:min(430px,calc(100% - 28px)); display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:var(--sc-radius-control); font-size:var(--sc-font-size-technical); color:var(--muted); pointer-events:none; }
 .canvas-mode-badge strong { color:var(--text); font-size:13px; }
 .canvas-mode-badge.has-context strong::after { content:'·'; margin-left:8px; color:var(--subtle); }
 .canvas-mode-badge.placing-load { pointer-events:auto; border-color:color-mix(in srgb,var(--force) 42%,var(--border)); box-shadow:var(--sc-shadow-floating); }
-.canvas-mode-badge.placing-load strong { color:var(--force); white-space:nowrap; }
+.canvas-mode-badge.placing-load strong { color:var(--sc-color-text-primary); white-space:nowrap; }
 .canvas-mode-badge.placing-load .canvas-action-instruction { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .canvas-mode-badge.placing-load button { width:28px; height:28px; margin:-3px -5px -3px 0; flex:0 0 auto; display:grid; place-items:center; border:0; border-radius:var(--sc-radius-card); background:var(--surface-2); color:var(--muted); }
-.canvas-mode-badge.placing-load button:hover { color:var(--text); background:var(--border-soft); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-mode-badge.placing-load button:hover { color:var(--text); background:var(--border-soft); } }
 .touch-gesture-hint { display:none; }
 /* Coordinate readout is informational. It must never steal a structural
    selection gesture from geometry beneath the floating canvas chrome. */
@@ -162,7 +171,8 @@
   cursor:pointer;
   transition:var(--sc-transition-control);
 }
-.canvas-coordinate-trigger:hover { color:var(--sc-color-text-primary); box-shadow:var(--sc-shadow-lifted); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-coordinate-trigger:hover { color:var(--sc-color-text-primary); box-shadow:var(--sc-shadow-lifted); } }
 .canvas-coordinate-trigger:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 .canvas-coordinate-trigger:focus-visible { outline:var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset:var(--sc-focus-ring-offset); }
 /* Abierto es una cavidad: la tecla está DENTRO mientras su panel está fuera. */
@@ -264,7 +274,7 @@
   display:inline-flex;
   align-items:center;
   padding:0 9px;
-  border-radius:13px;
+  border-radius:var(--sc-radius-control);
   background:color-mix(in srgb,var(--sc-color-selection-stroke) 16%,transparent);
   color:var(--sc-color-text-primary);
   font:var(--sc-font-weight-semibold) var(--sc-font-size-label)/1 var(--sc-font-ui);
@@ -315,7 +325,7 @@
 }
 .coordinate-entry__resolved svg { flex:none; color:var(--sc-color-text-muted); }
 
-.coordinate-entry__error { margin:0; color:var(--sc-color-signal-moment-ink); font-size:var(--sc-font-size-caption); }
+.coordinate-entry__error { margin:0; color:var(--sc-color-state-error-foreground); font-size:var(--sc-font-size-caption); }
 
 .coordinate-entry__place {
   min-height:var(--sc-control-height-touch);
@@ -332,7 +342,8 @@
   font-size:var(--sc-font-size-control);
   font-weight:var(--sc-font-weight-bold);
 }
-.coordinate-entry__place:hover { background:var(--sc-color-action-hover); box-shadow:var(--sc-shadow-action-hover); }
+@media (hover: hover) and (pointer: fine) {
+.coordinate-entry__place:hover { background:var(--sc-color-action-hover); box-shadow:var(--sc-shadow-action-hover); } }
 .coordinate-entry__place:active { box-shadow:var(--sc-shadow-action-pressed); transform:var(--sc-press-transform); }
 
 /* La previsualización: la cruz de destino, su punto y —si hay origen— la medida
@@ -372,11 +383,12 @@
     padding:8px;
     gap:6px;
     transform:translateX(-50%);
-    border-radius:22px;
+    border-radius:var(--sc-radius-panel);
   }
 }
 
-.canvas-hint { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); border-radius: var(--sc-radius-pill); padding: 7px 9px 7px 13px; font-size: 12px; display:flex; align-items:center; gap:8px; pointer-events:none; }.canvas-hint button { width:24px; height:24px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--surface-2); color:var(--muted); pointer-events:auto; }.canvas-hint button:hover { color:var(--text); background:var(--border-soft); }
+.canvas-hint { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); border-radius: var(--sc-radius-pill); padding: 7px 9px 7px 13px; font-size: 12px; display:flex; align-items:center; gap:8px; pointer-events:none; }.canvas-hint button { width:24px; height:24px; display:grid; place-items:center; border:0; border-radius:50%; background:var(--surface-2); color:var(--muted); pointer-events:auto; }@media (hover: hover) and (pointer: fine) {
+.canvas-hint button:hover { color:var(--text); background:var(--border-soft); } }
 .cut-tooltip { position: absolute; z-index: 28; width:min(226px,calc(100% - 20px)); border-radius: var(--sc-radius-card); padding:8px 10px; display:flex; flex-direction:column; gap:4px; font-size:10px; pointer-events:none; }
 .cut-title-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .cut-title-row > span { color:var(--muted); font-size:10px; }
@@ -384,7 +396,7 @@
 .cut-values span { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:9px; font-variant-numeric:tabular-nums; }
 .cut-tooltip strong { margin-bottom: 2px; }
 .reaction-symbol { stroke: var(--reaction); fill: none; stroke-width: 2.2; }
-.reaction-symbol text { fill: var(--reaction); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
+.reaction-symbol text { fill: var(--sc-color-text-primary); font-size: 11px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
 .local-axes line { stroke: var(--axis); stroke-width: 1.5; }
 .local-axes text { fill: var(--axis); font-size: 10px; font-weight: 700; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 3px; }
 
@@ -505,7 +517,7 @@ button,
   .canvas-mode-badge { max-width:calc(100% - 82px); overflow:hidden; white-space:nowrap; }
   .inspector-panel {
     height:min(52dvh,480px);
-    border-radius:var(--sc-radius-panel) 18px 0 0;
+    border-radius:var(--sc-radius-panel) var(--sc-radius-card) 0 0;
   }
   .inspector-scroll {
     overscroll-behavior:contain;
@@ -540,7 +552,7 @@ button,
     width:min(420px,62vw);
     height:100%;
     --inspector-border-width:0 0 0 1px;
-    border-radius:var(--sc-radius-panel) 0 0 18px;
+    border-radius:var(--sc-radius-panel) 0 0 var(--sc-radius-card);
   }
   .inspector-panel::before { display:none; }
   .results-panel { min-height:180px; max-height:56dvh; height:min(46dvh,320px)!important; }
@@ -722,7 +734,7 @@ button,
   font-weight:750;
   letter-spacing:.045em;
 }
-.canvas-view-chips span.active { color:var(--accent); }
+.canvas-view-chips span.active { color:var(--sc-color-action-ink); }
 .canvas-controls {
   z-index:9;
   left:auto;
@@ -864,7 +876,8 @@ button,
   border-radius:var(--sc-radius-card);
   color:var(--muted);
 }
-.canvas-layer-trigger:hover { color:var(--text); background:var(--surface); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-layer-trigger:hover { color:var(--text); background:var(--surface); } }
 .canvas-layer-trigger.active {
   border-color:color-mix(in srgb,var(--accent) 36%,var(--border));
   background:var(--accent-soft);
@@ -904,7 +917,8 @@ button,
   background:transparent;
   color:var(--muted);
 }
-.canvas-layer-panel>header button:hover { background:var(--surface-2); color:var(--text); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-layer-panel>header button:hover { background:var(--surface-2); color:var(--text); } }
 .canvas-layer-list {
   min-height:0;
   display:grid;
@@ -927,7 +941,8 @@ button,
   color:var(--text);
   text-align:left;
 }
-.canvas-layer-row:hover:not(:disabled) { background:var(--surface-2); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-layer-row:hover:not(:disabled) { background:var(--surface-2); } }
 .canvas-layer-row:disabled { cursor:default; opacity:.86; }
 /* CRI-105 · el interruptor de capas vive UNA sola vez, en
    `design-system/components/ui.css` como `.sc-layer-toggle__switch`.
@@ -947,7 +962,8 @@ button,
   font-size:12px;
   font-weight:650;
 }
-.canvas-layer-reset:hover { color:var(--accent); border-color:color-mix(in srgb,var(--accent) 32%,var(--border)); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-layer-reset:hover { color:var(--sc-color-action-ink); border-color:color-mix(in srgb,var(--accent) 32%,var(--border)); } }
 
 @media (max-width:1023px) {
   .canvas-layer-trigger {
@@ -1108,18 +1124,29 @@ button,
   position: absolute; width: 1px; height: 1px;
   overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;
 }
+@media (hover: hover) and (pointer: fine) {
 .tool-rail .tool-button:hover:not(:disabled),
 .tool-rail.is-compact .tool-button:hover:not(:disabled) {
   background: var(--sc-color-surface-2);
   color: var(--sc-color-text-primary);
   box-shadow: none;
   transform: none;
-}
+} }
 /* Elegida: tinta plena. */
 .tool-rail .tool-button.active,
 .tool-rail .tool-button.is-active,
 .tool-rail.is-compact .tool-button.active,
-.tool-rail.is-compact .tool-button.is-active,
+.tool-rail.is-compact .tool-button.is-active {
+  border-color: var(--sc-color-action-primary);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+  /* La tecla elegida es el único punto del riel con volumen: es la que dice
+     qué va a pasar cuando toques el lienzo, y con el riel entero plano no
+     tenía forma de distinguirse de un hover salvo por el color. */
+  box-shadow: var(--sc-shadow-action);
+  transform: none;
+}
+@media (hover: hover) and (pointer: fine) {
 .tool-rail .tool-button.active:hover:not(:disabled),
 .tool-rail .tool-button.is-active:hover:not(:disabled),
 .tool-rail.is-compact .tool-button.active:hover:not(:disabled),
@@ -1132,7 +1159,7 @@ button,
      tenía forma de distinguirse de un hover salvo por el color. */
   box-shadow: var(--sc-shadow-action);
   transform: none;
-}
+} }
 /* Pulsar sí responde: el riel no se mueve al pasar por encima —sería un
    temblor con teclas de 38px cada 2px—, pero una tecla que se acciona se
    hunde el píxel del sistema. */
@@ -1159,7 +1186,7 @@ button,
   content: '';
   position: absolute; inset-inline-start: 0; inset-block: 6px;
   width: 2px;
-  border-radius: 999px;
+  border-radius: var(--sc-radius-pill);
   background: var(--tool-color, var(--sc-color-action-foreground));
 }
 .tool-rail .tool-button.destructive,
@@ -1190,8 +1217,9 @@ button,
 
 @media (prefers-reduced-motion:reduce) {
   .tool-rail.is-compact .tool-button,
-  .tool-rail.is-compact .tool-button:hover:not(:disabled),
   .tool-rail.is-compact .tool-button:active:not(:disabled) { transform:none; transition:none; }
+  @media (hover: hover) and (pointer: fine) {
+.tool-rail.is-compact .tool-button:hover:not(:disabled) { transform:none; transition:none; } }
 }
 
 /* El disparador de capas comparte la gramática: cavidad al estar abierto. El
@@ -1203,9 +1231,10 @@ button,
   box-shadow:var(--sc-depth-raised-shadow);
   transition:var(--sc-transition-control);
 }
-.canvas-layer-trigger:hover { box-shadow:var(--sc-shadow-sm); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-layer-trigger:hover { box-shadow:var(--sc-shadow-sm); } }
 .canvas-layer-trigger.active {
-  color:var(--accent);
+  color:var(--sc-color-action-ink);
   background:var(--sc-color-surface-inset);
   border-color:color-mix(in srgb,var(--accent) 30%,var(--border));
   box-shadow:var(--sc-shadow-pressed);
@@ -1262,14 +1291,15 @@ button,
   cursor:pointer;
   transition:var(--sc-transition-control);
 }
-.canvas-evidence-layer:hover { color:var(--sc-color-text-primary); box-shadow:var(--sc-shadow-xs); }
-.canvas-evidence-layer[aria-pressed='true'] { color:var(--accent); border-color:color-mix(in srgb,var(--accent) 42%,var(--sc-color-border-soft)); background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
-.canvas-evidence-layer--axial[aria-pressed='true'] { color:var(--axial); border-color:color-mix(in srgb,var(--axial) 46%,var(--sc-color-border-soft)); }
-.canvas-evidence-layer--shear[aria-pressed='true'] { color:var(--shear); border-color:color-mix(in srgb,var(--shear) 46%,var(--sc-color-border-soft)); }
-.canvas-evidence-layer--moment[aria-pressed='true'] { color:var(--moment); border-color:color-mix(in srgb,var(--moment) 46%,var(--sc-color-border-soft)); }
-.canvas-evidence-layer--deformed[aria-pressed='true'] { color:var(--deformed); border-color:color-mix(in srgb,var(--deformed) 46%,var(--sc-color-border-soft)); }
-.canvas-evidence-layer--heatmap[aria-pressed='true'] { color:var(--yield); border-color:color-mix(in srgb,var(--yield) 46%,var(--sc-color-border-soft)); }
-.canvas-evidence-layer--stack[aria-pressed='true'] { color:var(--moment); border-color:color-mix(in srgb,var(--moment) 46%,var(--sc-color-border-soft)); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-evidence-layer:hover { color:var(--sc-color-text-primary); box-shadow:var(--sc-shadow-xs); } }
+.canvas-evidence-layer[aria-pressed='true'] { color:var(--sc-color-action-ink); border-color:color-mix(in srgb,var(--accent) 42%,var(--sc-color-border-soft)); background:var(--sc-color-surface-inset); box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
+.canvas-evidence-layer--axial[aria-pressed='true'] { color:var(--fs-signal-axial-ink); border-color:color-mix(in srgb,var(--axial) 46%,var(--sc-color-border-soft)); }
+.canvas-evidence-layer--shear[aria-pressed='true'] { color:var(--fs-signal-shear-ink); border-color:color-mix(in srgb,var(--shear) 46%,var(--sc-color-border-soft)); }
+.canvas-evidence-layer--moment[aria-pressed='true'] { color:var(--fs-signal-moment-ink); border-color:color-mix(in srgb,var(--moment) 46%,var(--sc-color-border-soft)); }
+.canvas-evidence-layer--deformed[aria-pressed='true'] { color:var(--fs-signal-deformed-ink); border-color:color-mix(in srgb,var(--deformed) 46%,var(--sc-color-border-soft)); }
+.canvas-evidence-layer--heatmap[aria-pressed='true'] { color:var(--fs-signal-yield-ink); border-color:color-mix(in srgb,var(--yield) 46%,var(--sc-color-border-soft)); }
+.canvas-evidence-layer--stack[aria-pressed='true'] { color:var(--fs-signal-moment-ink); border-color:color-mix(in srgb,var(--moment) 46%,var(--sc-color-border-soft)); }
 .canvas-evidence-stack-choices { display:flex; gap:2px; padding-left:2px; }
 .canvas-evidence-stack-choice { min-width:26px; height:26px; padding:0 6px; border:1px solid var(--sc-color-border-soft); border-radius:var(--sc-radius-card); color:var(--muted); background:var(--surface); font-size:11px; font-weight:750; }
 .canvas-evidence-stack-choice[aria-pressed='true'] { color:var(--accent-on-soft); border-color:color-mix(in srgb,var(--accent) 44%,var(--sc-color-border-soft)); background:var(--accent-soft); }
@@ -1296,14 +1326,17 @@ button,
 .diagram-stack-reading circle { stroke:var(--canvas-bg); stroke-width:1.25; }
 .diagram-stack-reading text { font-size:8.5px; font-weight:750; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:3px; }
 .diagram-stack-member-lane.axial .diagram-stack-member-line { stroke:var(--axial); }
-.diagram-stack-member-lane.axial .diagram-stack-member-fill,.diagram-stack-member-lane.axial .diagram-stack-reading circle,.diagram-stack-member-lane.axial .diagram-stack-reading text { fill:var(--axial); }
+.diagram-stack-member-lane.axial .diagram-stack-member-fill,.diagram-stack-member-lane.axial .diagram-stack-reading circle { fill:var(--axial); }
+.diagram-stack-member-lane.axial .diagram-stack-reading text { fill:var(--fs-signal-axial-ink); }
 .diagram-stack-member-lane.shear .diagram-stack-member-line { stroke:var(--shear); }
-.diagram-stack-member-lane.shear .diagram-stack-member-fill,.diagram-stack-member-lane.shear .diagram-stack-reading circle,.diagram-stack-member-lane.shear .diagram-stack-reading text { fill:var(--shear); }
+.diagram-stack-member-lane.shear .diagram-stack-member-fill,.diagram-stack-member-lane.shear .diagram-stack-reading circle { fill:var(--shear); }
+.diagram-stack-member-lane.shear .diagram-stack-reading text { fill:var(--fs-signal-shear-ink); }
 .diagram-stack-member-lane.moment .diagram-stack-member-line { stroke:var(--moment); }
-.diagram-stack-member-lane.moment .diagram-stack-member-fill,.diagram-stack-member-lane.moment .diagram-stack-reading circle,.diagram-stack-member-lane.moment .diagram-stack-reading text { fill:var(--moment); }
-.diagram-stack-panel.axial .diagram-stack-panel-title { fill:var(--axial); }
-.diagram-stack-panel.shear .diagram-stack-panel-title { fill:var(--shear); }
-.diagram-stack-panel.moment .diagram-stack-panel-title { fill:var(--moment); }
+.diagram-stack-member-lane.moment .diagram-stack-member-fill,.diagram-stack-member-lane.moment .diagram-stack-reading circle { fill:var(--moment); }
+.diagram-stack-member-lane.moment .diagram-stack-reading text { fill:var(--fs-signal-moment-ink); }
+.diagram-stack-panel.axial .diagram-stack-panel-title { fill:var(--fs-signal-axial-ink); }
+.diagram-stack-panel.shear .diagram-stack-panel-title { fill:var(--fs-signal-shear-ink); }
+.diagram-stack-panel.moment .diagram-stack-panel-title { fill:var(--fs-signal-moment-ink); }
 
 /* La lámina estrecha sólo aprieta la tipografía y los trazos. NO apaga el
    modelo: la máscara opaca y la regla `~ g { display:none }` que llevaba
@@ -1377,9 +1410,10 @@ button,
   cursor:pointer;
   transition:var(--sc-transition-control);
 }
-.canvas-layer-preset:hover { color:var(--text); box-shadow:var(--sc-shadow-sm); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-layer-preset:hover { color:var(--text); box-shadow:var(--sc-shadow-sm); } }
 .canvas-layer-preset.active {
-  color:var(--accent);
+  color:var(--sc-color-action-ink);
   background:var(--sc-color-surface-inset);
   border-color:color-mix(in srgb,var(--accent) 30%,var(--border));
   box-shadow:var(--sc-shadow-pressed);
@@ -1426,7 +1460,8 @@ button,
   cursor:pointer;
   transition:var(--sc-transition-control);
 }
-.canvas-minimap:hover { box-shadow:var(--sc-shadow-sm); }
+@media (hover: hover) and (pointer: fine) {
+.canvas-minimap:hover { box-shadow:var(--sc-shadow-sm); } }
 .canvas-minimap:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 .canvas-minimap svg { width:100%; height:100%; display:block; }
 .canvas-minimap-members line { stroke:var(--muted); stroke-width:1.4; opacity:.72; }
@@ -1520,22 +1555,23 @@ button,
 
 @media (prefers-reduced-motion:reduce) {
   .tool-button,
-  .tool-button:hover:not(:disabled),
   .tool-button.active,
   .tool-button:active:not(:disabled),
-  .segmented-control button:hover:not(:disabled),
   .segmented-control button.active,
   .canvas-layer-trigger,
-  .canvas-layer-trigger:hover,
-  .canvas-layer-preset:hover,
   .canvas-layer-preset.active,
-  .canvas-minimap:hover,
   .canvas-minimap:active,
-  .section-viewer-modes button:hover:not(:disabled),
   .section-viewer-modes button.active,
-  .result-tabs button:hover:not(.active),
   .result-tabs button.active,
   .results-mode-control button[aria-pressed='true'] { transform:none; transition:none; }
+  @media (hover: hover) and (pointer: fine) {
+.tool-button:hover:not(:disabled),
+  .segmented-control button:hover:not(:disabled),
+  .canvas-layer-trigger:hover,
+  .canvas-layer-preset:hover,
+  .canvas-minimap:hover,
+  .section-viewer-modes button:hover:not(:disabled),
+  .result-tabs button:hover:not(.active) { transform:none; transition:none; } }
 }
 
 /* En reposo la retícula orienta sin competir con la estructura; la interacción
@@ -1744,7 +1780,7 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 }
 
 .structural-edit-preview-layer {
-  color: var(--accent);
+  color: var(--sc-color-action-ink);
   opacity: 0.88;
 }
 
@@ -1870,7 +1906,7 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
   .canvas-host .canvas-mode-badge.placing-load button { grid-column: 2; grid-row: 1 / 3; width: 44px; height: 44px; margin: 0; }
 }
 
-:root[data-theme='dark'] .tool-button.active { color: var(--accent); }
+:root[data-theme='dark'] .tool-button.active { color: var(--sc-color-action-ink); }
 
 .structural-canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: default; }
 .structural-canvas { user-select:none; -webkit-user-select:none; overscroll-behavior:contain; }
@@ -1881,15 +1917,15 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .member-object:focus-visible { outline:none; }
 .snap-glyph circle { fill:color-mix(in srgb,var(--canvas-bg) 76%,transparent); stroke:var(--accent); stroke-width:1.5; }
 .snap-glyph path { fill:none; stroke:var(--accent); stroke-width:1.4; }
-.snap-glyph text { fill:var(--accent); font-size:9px; font-weight:750; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:3px; }
+.snap-glyph text { fill:var(--sc-color-action-ink); font-size:9px; font-weight:750; paint-order:stroke; stroke:var(--canvas-bg); stroke-width:3px; }
 .snap-glyph.intersection circle { stroke:var(--moment); }
 .snap-glyph.intersection path { stroke:var(--moment); }
-.snap-glyph.intersection text { fill:var(--moment); }
+.snap-glyph.intersection text { fill:var(--fs-signal-moment-ink); }
 .snap-glyph.perpendicular circle { stroke:var(--shear); }
 .snap-glyph.perpendicular path { stroke:var(--shear); }
-.snap-glyph.perpendicular text { fill:var(--shear); }
+.snap-glyph.perpendicular text { fill:var(--fs-signal-shear-ink); }
 .member-label { font-size: 11px; fill: var(--muted); paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
-.smart-label { color:var(--muted); }
+.smart-label { --smart-label-ink:var(--sc-color-text-primary); color:var(--muted); }
 .smart-label rect {
   fill:color-mix(in srgb,var(--surface) 98%,var(--canvas-bg));
   stroke:color-mix(in srgb,currentColor 35%,var(--border));
@@ -1897,24 +1933,24 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
   filter:drop-shadow(0 1px 3px color-mix(in srgb,var(--text) 10%,transparent));
   vector-effect:non-scaling-stroke;
 }
-.smart-label text { fill:currentColor; font-size:10.5px; font-weight:720; letter-spacing:.015em; font-feature-settings:"tnum"; }
+.smart-label text { fill:var(--smart-label-ink); font-size:10.5px; font-weight:720; letter-spacing:.015em; font-feature-settings:"tnum"; }
 .smart-label.priority-0 text,.smart-label.priority-1 text { font-weight:780; }
 .smart-label.priority-3 { opacity:.92; }
 .smart-label.tone-selection { color:var(--selection); }
 .smart-label.tone-selection rect { fill:color-mix(in srgb,var(--selection) 12%,var(--surface)); stroke:var(--selection); stroke-width:1.6; }
 .smart-label.tone-force { color:var(--force); }
-/* La etiqueta de una carga toma el color de SU tipo, el mismo `--load-ink`
-   que pinta el símbolo que anota. */
+/* El color de cada carga conserva el tipo en guías y bordes;
+   la cifra usa tinta independiente para leerse sobre el lienzo. */
 .smart-label.tone-load-point { color:var(--sc-color-load-point); }
 .smart-label.tone-load-distributed { color:var(--sc-color-load-distributed); }
 .smart-label.tone-load-moment { color:var(--sc-color-load-moment-applied); }
-.smart-label.tone-shear { color:var(--shear); }
-.smart-label.tone-moment { color:var(--moment); }
+.smart-label.tone-shear { --smart-label-ink:var(--fs-signal-shear-ink); color:var(--shear); }
+.smart-label.tone-moment { --smart-label-ink:var(--fs-signal-moment-ink); color:var(--moment); }
 .smart-label.tone-dimension { color:var(--dimension); }
 .smart-label.tone-dimension rect { fill:color-mix(in srgb,var(--surface) 82%,transparent); stroke:color-mix(in srgb,var(--dimension) 34%,transparent); filter:none; }
-.smart-label.tone-axial { color:var(--axial); }
-.smart-label.tone-axial-tension { color:var(--sc-color-axial-tension); }
-.smart-label.tone-axial-compression { color:var(--sc-color-axial-compression); }
+.smart-label.tone-axial { --smart-label-ink:var(--fs-signal-axial-ink); color:var(--axial); }
+.smart-label.tone-axial-tension { --smart-label-ink:var(--fs-signal-axial-ink); color:var(--sc-color-axial-tension); }
+.smart-label.tone-axial-compression { --smart-label-ink:var(--fs-signal-axial-ink); color:var(--sc-color-axial-compression); }
 /* La reacción es un resultado del apoyo, no una fuerza axial de la barra:
    compartían color y no había forma de distinguirlas en la misma vista. */
 .smart-label.tone-reaction { color:var(--reaction); }
@@ -1932,11 +1968,12 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .node-object:focus-visible { outline:none; }
 .node-object text { font-size: 12px; font-weight: 600; fill: var(--text); paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
 .support-symbol { stroke: var(--member); fill: none; vector-effect: non-scaling-stroke; transition: stroke var(--motion-fast) var(--ease-native), stroke-width var(--motion-fast) var(--ease-native); }
-.support-symbol:hover { stroke: var(--accent); stroke-width: 2.4; }
+@media (hover: hover) and (pointer: fine) {
+.support-symbol:hover { stroke: var(--accent); stroke-width: 2.4; } }
 .support-symbol.selected { stroke: var(--selection); }
 .load-symbol { stroke: var(--load-ink); color: var(--load-ink); fill: none; stroke-width: 2.2; cursor: pointer; }
 .point-load-stack-guide { fill:none; stroke:color-mix(in srgb,var(--sc-color-load-point) 44%,transparent); stroke-width:1; stroke-dasharray:3 4; pointer-events:none; vector-effect:non-scaling-stroke; }
-.load-symbol text, .distributed-symbol text { fill: var(--load-ink); stroke: none; font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
+.load-symbol text, .distributed-symbol text { fill: var(--sc-color-text-primary); stroke: none; font-size: 12px; font-weight: 600; paint-order: stroke; stroke: var(--canvas-bg); stroke-width: 4px; }
 /* Una carga distribuida es una ACCIÓN aplicada, no un cortante. Pintarla con
    la señal del cortante la volvía indistinguible de un resultado interno en la
    única pantalla donde los dos conviven. El color sale de `--load-ink`, que

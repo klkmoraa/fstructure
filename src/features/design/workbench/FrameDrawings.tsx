@@ -158,6 +158,9 @@ export function FrameElevation({ result, kind, selected, onSelect }: {
   return <svg className="dw-drawing dw-frame" viewBox={`0 0 ${WIDTH} ${height}`} role="img" aria-label={description} data-kind={kind}>
     <defs>
       <marker id="dw-frame-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+        <path d="M0,0 L10,5 L0,10 Z" className="dw-load__head dw-load__head--distributed" />
+      </marker>
+      <marker id="dw-frame-point-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
         <path d="M0,0 L10,5 L0,10 Z" className="dw-load__head" />
       </marker>
     </defs>
@@ -239,7 +242,7 @@ export function FrameElevation({ result, kind, selected, onSelect }: {
         const label = `Carga puntual ${formatNumber(total, 1)} kN (CM ${formatNumber(point.deadKn, 1)} + CV ${formatNumber(point.liveKn, 1)}) a ${formatNumber(point.atM, 2)} m de ${member.label}`;
         return <g key={`${member.index}-${position}`} aria-label={label}>
           <title>{label}</title>
-          <line x1={base.x} x2={base.x} y1={base.y - 34} y2={base.y - 5} markerEnd="url(#dw-frame-arrow)" />
+          <line x1={base.x} x2={base.x} y1={base.y - 34} y2={base.y - 5} markerEnd="url(#dw-frame-point-arrow)" />
           <text x={base.x + 4} y={base.y - 28}>{`${formatNumber(total, 0)} kN`}</text>
         </g>;
       }))}

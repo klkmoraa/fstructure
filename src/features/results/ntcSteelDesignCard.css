@@ -19,7 +19,7 @@
 .ntc-design-card__header > div { gap: var(--sc-space-2); }
 .ntc-design-card__header > div > span { display: grid; gap: 2px; }
 .ntc-design-card__header small { color: var(--muted); font-family: var(--sc-font-mono); }
-.ntc-design-card__header b { padding: 5px 9px; border-radius: 999px; background: color-mix(in oklab, var(--surface) 82%, var(--sc-color-state-warning)); color: var(--text); font-size: var(--sc-font-size-caption); }
+.ntc-design-card__header b { padding: 5px 9px; border-radius: var(--sc-radius-pill); background: color-mix(in oklab, var(--surface) 82%, var(--sc-color-state-warning)); color: var(--text); font-size: var(--sc-font-size-caption); }
 
 .ntc-design-card__standard { justify-content: space-between; gap: var(--sc-space-2); flex-wrap: wrap; font-size: var(--sc-font-size-caption); }
 .ntc-design-card__standard span:first-child { font-family: var(--sc-font-mono); color: var(--muted); }

@@ -160,6 +160,9 @@ export function BeamElevation({ result, interactive = false, supports = 'ideal' 
     aria-label={`Elevación de la viga de ${spans.length} ${spans.length === 1 ? 'claro' : 'claros'}: momento máximo ${formatNumber(result.extremes.positiveMomentKnm)} kN·m, negativo ${formatNumber(result.extremes.negativeMomentKnm)} kN·m y cortante ${formatNumber(result.extremes.shearKn)} kN${interactive ? '. Usa las flechas para leer los valores en cada sección' : ''}`}>
     <defs>
       <marker id="dw-arrow" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6">
+        <path d="M0,0 L5,10 L10,0 Z" className="dw-load__head dw-load__head--distributed" />
+      </marker>
+      <marker id="dw-arrow-point" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6">
         <path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" />
       </marker>
     </defs>
@@ -183,7 +186,7 @@ export function BeamElevation({ result, interactive = false, supports = 'ideal' 
           <text x={(x0 + x1) / 2} y={loadTop - 6} textAnchor="middle">{`${formatNumber(w, 1)} kN/m`}</text>
         </g> : null}
         {pointKn > 0 ? <g className="dw-load dw-load--point">
-          <line x1={px} x2={px} y1={14} y2={beamTop - 3} markerEnd="url(#dw-arrow)" />
+          <line x1={px} x2={px} y1={14} y2={beamTop - 3} markerEnd="url(#dw-arrow-point)" />
           <text x={px + 6} y={20}>{`${formatNumber(pointKn, 0)} kN`}</text>
         </g> : null}
       </g>;
@@ -318,7 +321,8 @@ function CompactFreeBody({ width, label, result, spans, extras, maxW }: {
 
   return <svg className="dw-drawing dw-fbd--compact" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label}>
     <defs>
-      <marker id="dw-fbd-load-compact" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
+      <marker id="dw-fbd-load-compact" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head dw-load__head--distributed" /></marker>
+      <marker id="dw-fbd-point-compact" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
       <marker id="dw-fbd-reaction-compact" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="7" markerHeight="7"><path d="M0,10 L5,0 L10,10 Z" className="dw-fbd__head" /></marker>
     </defs>
     {spans.map((span, index) => {
@@ -336,11 +340,11 @@ function CompactFreeBody({ width, label, result, spans, extras, maxW }: {
       </g>;
     })}
     {spans.map((span, index) => span.pu > 0 ? <g key={`p${index}`} className="dw-load dw-load--point">
-      <line x1={scaleX(span.startM + span.pointAtM)} x2={scaleX(span.startM + span.pointAtM)} y1={loadTop} y2={beamY - 4} markerEnd={loadArrow} />
+      <line x1={scaleX(span.startM + span.pointAtM)} x2={scaleX(span.startM + span.pointAtM)} y1={loadTop} y2={beamY - 4} markerEnd="url(#dw-fbd-point-compact)" />
     </g> : null)}
     {extras.map((load, index) => load.kind === 'point'
       ? <g key={`e${index}`} className="dw-load dw-load--point">
-        <line x1={scaleX(load.startX)} x2={scaleX(load.startX)} y1={loadTop + 8} y2={beamY - 4} markerEnd={loadArrow} />
+        <line x1={scaleX(load.startX)} x2={scaleX(load.startX)} y1={loadTop + 8} y2={beamY - 4} markerEnd="url(#dw-fbd-point-compact)" />
       </g>
       : <g key={`e${index}`} className="dw-load dw-load--patch">
         <polyline points={`${scaleX(load.startX)},${beamY - 10 - 36 * load.startKn / maxW} ${scaleX(load.endX)},${beamY - 10 - 36 * load.endKn / maxW}`} />
@@ -425,7 +429,8 @@ export function BeamFreeBody({ result, bare = false }: { result: BeamDesignResul
     ? <CompactFreeBody width={measured} label={label} result={result} spans={spans} extras={extras} maxW={maxW} />
     : <svg className="dw-drawing" viewBox={`0 0 ${WIDTH} ${height}`} role="img" aria-label={label}>
       <defs>
-        <marker id="dw-fbd-load" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
+        <marker id="dw-fbd-load" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head dw-load__head--distributed" /></marker>
+        <marker id="dw-fbd-point" viewBox="0 0 10 10" refX="5" refY="9" markerWidth="6" markerHeight="6"><path d="M0,0 L5,10 L10,0 Z" className="dw-load__head" /></marker>
         <marker id="dw-fbd-reaction" viewBox="0 0 10 10" refX="5" refY="1" markerWidth="7" markerHeight="7"><path d="M0,10 L5,0 L10,10 Z" className="dw-fbd__head" /></marker>
       </defs>
       {spans.map((span, index) => {
@@ -443,14 +448,14 @@ export function BeamFreeBody({ result, bare = false }: { result: BeamDesignResul
             <text x={(x0 + x1) / 2} y={top - 6} textAnchor="middle">{`wu = ${formatNumber(span.wu, 1)} kN/m`}</text>
           </g> : null}
           {span.pu > 0 ? <g className="dw-load dw-load--point">
-            <line x1={scaleX(span.startM + span.pointAtM)} x2={scaleX(span.startM + span.pointAtM)} y1={18} y2={beamY - 4} markerEnd="url(#dw-fbd-load)" />
+            <line x1={scaleX(span.startM + span.pointAtM)} x2={scaleX(span.startM + span.pointAtM)} y1={18} y2={beamY - 4} markerEnd="url(#dw-fbd-point)" />
             <text x={scaleX(span.startM + span.pointAtM) + 6} y={24}>{`Pu = ${formatNumber(span.pu, 1)} kN`}</text>
           </g> : null}
         </g>;
       })}
       {extras.map((load, index) => load.kind === 'point'
         ? <g key={`extra-${index}`} className="dw-load dw-load--point">
-          <line x1={scaleX(load.startX)} x2={scaleX(load.startX)} y1={30} y2={beamY - 4} markerEnd="url(#dw-fbd-load)" />
+          <line x1={scaleX(load.startX)} x2={scaleX(load.startX)} y1={30} y2={beamY - 4} markerEnd="url(#dw-fbd-point)" />
           <text x={scaleX(load.startX) + 6} y={36}>{`${formatNumber(load.startKn, 1)} kN`}</text>
         </g>
         : <g key={`extra-${index}`} className="dw-load dw-load--patch">

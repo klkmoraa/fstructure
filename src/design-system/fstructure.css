@@ -1,8 +1,8 @@
 /*
  * FStructure · adaptación directa del brandbook web
  *
- * Únicas referencias: `FusionStructureBrand/brandbook-site/app/globals.css`
- * y el HTML/JSX de `app/sections/Patterns.tsx`. Esta capa traduce esa misma
+ * Referencia: `FusionStructureBrand/tokens/tokens.json` y sus patrones web.
+ * Esta capa traduce esa misma
  * retícula, materia, tipografía y jerarquía al DOM real del Solver 2D.
  * FStructure pertenece a Análisis: la marca conserva tinta neutra y sólo su
  * registro, controles activos y acciones primarias usan salmón.
@@ -13,6 +13,7 @@
   --fstructure-rail-width: 88px;
   --fstructure-header-height: 64px;
   --fstructure-status-height: 24px;
+  --fstructure-dock-key: 38px;
 }
 
 /* Mesa de trabajo ------------------------------------------------------- */
@@ -64,10 +65,10 @@
 
   .app-shell[data-shell-class='X2'] > .console.console .console__foot > button,
   .app-shell[data-shell-class='M1'] > .console.console .console__foot > button {
-    width: 38px;
-    min-width: 38px;
-    height: 38px;
-    min-height: 38px;
+    width: var(--fstructure-dock-key);
+    min-width: var(--fstructure-dock-key);
+    height: var(--fstructure-dock-key);
+    min-height: var(--fstructure-dock-key);
     padding: 0;
     display: grid;
     place-items: center;
@@ -76,14 +77,16 @@
     background: var(--sc-color-surface-1);
     box-shadow: var(--sc-shadow-xs);
     color: var(--sc-color-text-secondary);
-    transition: all var(--sc-motion-fast) var(--sc-ease-standard);
+    transition: var(--sc-transition-control);
   }
 
-  .app-shell[data-shell-class='X2'] > .console.console .console__foot > button:hover,
+  @media (hover: hover) and (pointer: fine) {
+.app-shell[data-shell-class='X2'] > .console.console .console__foot > button:hover,
   .app-shell[data-shell-class='M1'] > .console.console .console__foot > button:hover {
     background: var(--sc-color-surface-2);
     border-color: var(--sc-color-border-strong, var(--sc-color-border));
     color: var(--sc-color-text-primary);
+  }
   }
 
   .app-shell[data-shell-class='X2'] > .console.console .console__foot .console__label,
@@ -110,11 +113,7 @@
     border: 1px solid var(--sc-color-border-soft);
     border-radius: var(--sc-radius-panel);
     background: var(--sc-color-surface-1);
-    box-shadow:
-      0 8px 24px rgba(0, 0, 0, 0.4),
-      0 2px 6px rgba(0, 0, 0, 0.2),
-      inset 1px 1.5px 2px var(--sc-clay-light),
-      inset -1px -1.5px 2px var(--sc-clay-dark-soft);
+    box-shadow: var(--sc-shadow-floating);
     transform: translateX(-50%);
   }
 
@@ -160,9 +159,9 @@
 
   .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-rail-tooltip-anchor,
   .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-rail-tooltip-anchor {
-    width: 38px;
-    height: 38px;
-    flex: 0 0 38px;
+    width: var(--fstructure-dock-key);
+    height: var(--fstructure-dock-key);
+    flex: 0 0 var(--fstructure-dock-key);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -176,18 +175,18 @@
   /* Todas las herramientas en reposo: exactamente 38px de alto y ancho, glifo centrado */
   .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger),
   .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger) {
-    width: 38px;
-    min-width: 38px;
-    height: 38px;
-    min-height: 38px;
-    max-height: 38px;
+    width: var(--fstructure-dock-key);
+    min-width: var(--fstructure-dock-key);
+    height: var(--fstructure-dock-key);
+    min-height: var(--fstructure-dock-key);
+    max-height: var(--fstructure-dock-key);
     padding: 0;
     display: grid;
     place-items: center;
-    border: 1px solid transparent;
+    border: 1px solid var(--sc-color-border-soft);
     border-radius: var(--sc-radius-control);
-    background: transparent;
-    box-shadow: none;
+    background: var(--sc-color-surface-1);
+    box-shadow: var(--sc-shadow-xs);
     color: var(--sc-color-text-secondary);
     transition:
       background-color var(--sc-motion-fast) var(--sc-ease-standard),
@@ -196,20 +195,21 @@
       box-shadow var(--sc-motion-fast) var(--sc-ease-standard);
   }
 
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger):hover:not(:disabled),
-  .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger):hover:not(:disabled) {
+  @media (hover: hover) and (pointer: fine) {
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger):hover:not(:disabled), .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock :is(.tool-button, .sc-popover__trigger):hover:not(:disabled) {
     background: var(--sc-color-surface-2);
     border-color: var(--sc-color-border-soft);
     color: var(--sc-color-text-primary);
+  }
   }
 
   /* Herramienta activa: píldora horizontal armónica que no cambia su altura (38px) ni se deforma */
   .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock[data-tool-rail-labels='active'] .tool-button:not(.is-compact) {
     width: auto;
-    min-width: 38px;
-    height: 38px;
-    min-height: 38px;
-    max-height: 38px;
+    min-width: var(--fstructure-dock-key);
+    height: var(--fstructure-dock-key);
+    min-height: var(--fstructure-dock-key);
+    max-height: var(--fstructure-dock-key);
     padding: 0 11px 0 8px;
     display: inline-grid;
     grid-template-columns: 20px auto;
@@ -251,8 +251,8 @@
   .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .dock-collapse-toggle {
     width: 32px;
     min-width: 32px;
-    height: 38px;
-    min-height: 38px;
+    height: var(--fstructure-dock-key);
+    min-height: var(--fstructure-dock-key);
     padding: 0;
     margin-inline-start: 4px;
     display: grid;
@@ -263,10 +263,12 @@
     color: var(--sc-color-text-muted);
   }
 
-  .app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-collapse-toggle:hover,
+  @media (hover: hover) and (pointer: fine) {
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .dock-collapse-toggle:hover,
   .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .dock-collapse-toggle:hover {
     background: var(--sc-color-surface-2);
     color: var(--sc-color-text-primary);
+  }
   }
 
   .app-shell[data-shell-class='X2'] > .workspace {
@@ -391,16 +393,23 @@
 /* Estado activo = pieza realmente presionada. Se conserva el salmón del
    Brandbook y se añade su sombra seleccionada para que el cambio de plano sea
    legible en móvil y escritorio, sin la raya lateral heredada. */
-.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active),
-.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled),
-.app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active),
-.app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled) {
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active), .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active) {
   --tool-color: var(--sc-color-action-foreground);
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);
   box-shadow: var(--sc-shadow-selected);
   transform: none;
+}
+@media (hover: hover) and (pointer: fine) {
+.app-shell[data-shell-class='X2'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled), .app-shell[data-shell-class='M1'] .tool-rail.is-floating-dock .tool-button:is(.active, .is-active):hover:not(:disabled) {
+  --tool-color: var(--sc-color-action-foreground);
+  border-color: var(--sc-color-action-primary);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-selected);
+  transform: none;
+}
 }
 
 /* En X2 estas tres acciones son la consola persistente del riel. El nombre ya
@@ -440,17 +449,19 @@
   .number-control,
   .select-field select,
   .compact-select,
-  .segmented-control,
-  .inspector-summary,
-  .selection-card,
-  .inspector-note,
-  .effect-card,
-  .combination-card,
-  .norm-source
+  .segmented-control
 ) {
   border-color: var(--sc-color-border-soft);
   background: var(--sc-color-surface-inset);
   box-shadow: var(--sc-shadow-inset);
+}
+
+@media (pointer: coarse) {
+  :root { --fstructure-dock-key: var(--sc-size-target-touch); }
+  .app-shell[data-shell-class] .tool-rail.is-floating-dock .dock-collapse-toggle {
+    width: var(--sc-size-target-touch);
+    min-width: var(--sc-size-target-touch);
+  }
 }
 
 .import-center-backdrop,

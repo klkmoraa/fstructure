@@ -114,7 +114,9 @@
 
 .structural-bom__provenance { display: flex; gap: 4px; flex-wrap: wrap; }
 .structural-bom__provenance button { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 7px; border: 1px solid var(--bom-line); color: var(--sc-color-text-primary); background: var(--sc-color-surface-2); font: 650 0.72rem var(--sc-font-mono); }
+@media (hover: hover) and (pointer: fine) {
 .structural-bom__provenance button:hover { border-color: var(--sc-color-action-ink); }
+}
 .structural-bom__warning { display: inline-flex !important; align-items: center; gap: 4px; color: var(--sc-color-state-warning-foreground) !important; }
 .structural-bom__empty,
 .structural-bom__excluded { margin: 0; padding: 12px; border-radius: var(--sc-radius-md); color: var(--sc-color-text-secondary); background: var(--sc-color-surface-2); }

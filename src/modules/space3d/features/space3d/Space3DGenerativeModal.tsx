@@ -216,19 +216,11 @@ function Space3DWireframePreview({ project }: { readonly project: Space3DProject
         className="space3d-wireframe-svg"
         aria-hidden="true"
       >
-        <defs>
-          <radialGradient id="space3d-wire-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <rect width="280" height="170" fill="url(#space3d-wire-glow)" rx="6" />
-
         {/* Barras estructurales */}
         <path
           d={pathData}
           fill="none"
-          stroke="var(--sc-color-brand-primary, #3b82f6)"
+          stroke="var(--sc-color-structure-member)"
           strokeWidth="1.2"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -243,7 +235,7 @@ function Space3DWireframePreview({ project }: { readonly project: Space3DProject
             cx={pt.x.toFixed(1)}
             cy={pt.y.toFixed(1)}
             r="1.8"
-            fill="var(--sc-color-text-primary, #ffffff)"
+            fill="var(--sc-color-structure-node)"
             opacity="0.9"
           />
         ))}

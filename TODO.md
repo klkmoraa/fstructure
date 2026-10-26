@@ -4,6 +4,7 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
+- [x] Alineación al canon de marca y claymorfismo funcional en Home, 2D, 3D, Diseño y editores auxiliares (25-oct-2026); gates y capturas Día/Noche en la [ficha de entrega](docs/brandbook/brand-alignment-2026-10-25.md).
 - [x] Interfaz móvil: navegación persistente de Home y Recursos, dock 2D etiquetado, hoja Más accesible, campos táctiles legibles y zoom separado del teclado (25-oct-2026). [Ficha y capturas](docs/brandbook/mobile-refresh-2026-10-25.md).
 - [ ] Confirmar en iPhone físico el teclado tras ampliar la página y los márgenes seguros en Safari y PWA instalada; la actualización móvil del 25-oct se verificó en Chromium con entrada táctil emulada.
 

@@ -7,21 +7,29 @@
   min-width: 44px;
   min-height: 40px;
   padding: 0 10px;
-  border: 1px solid transparent;
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-control);
-  background: transparent;
+  background: var(--sc-color-surface-1);
   color: var(--sc-color-text-secondary);
   font: var(--sc-font-weight-semibold) 12px var(--sc-font-ui);
-  box-shadow: none;
+  box-shadow: var(--sc-shadow-xs);
 }
-.app-shell .tool-rail .tool-dock-menu__trigger:hover,
+@media (hover: hover) and (pointer: fine) {
+  .app-shell .tool-rail .tool-dock-menu__trigger:hover:not(:active):not([aria-expanded='true']):not([aria-pressed='true']) {
+    background: var(--sc-color-surface-elevated);
+    color: var(--sc-color-text-primary);
+    box-shadow: var(--sc-shadow-raised);
+  }
+}
 .app-shell .tool-rail .tool-dock-menu__trigger[aria-expanded='true'] {
-  background: var(--sc-color-surface-2);
+  background: var(--sc-color-surface-inset);
   color: var(--sc-color-text-primary);
+  box-shadow: var(--sc-shadow-pressed);
 }
 .app-shell .tool-rail .tool-dock-menu__trigger[aria-pressed='true'] {
   background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-selected);
 }
 .tool-dock-menu__panel {
   position: fixed;
@@ -31,11 +39,11 @@
   padding: 7px;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border: 1px solid var(--sc-color-border-soft);
+  border: var(--sc-depth-floating-border);
   border-radius: var(--sc-radius-panel);
-  background: var(--sc-color-surface-1);
+  background: var(--sc-color-surface-floating);
   color: var(--sc-color-text-primary);
-  box-shadow: var(--sc-shadow-lifted);
+  box-shadow: var(--sc-shadow-floating);
 }
 .tool-dock-menu__panel button {
   display: flex;
@@ -55,8 +63,23 @@
 .tool-dock-menu__panel button > svg { flex: none; width: 20px; height: 20px; }
 .tool-dock-menu__panel button > span { flex: 1; }
 .tool-dock-menu__panel kbd { color: var(--sc-color-text-muted); font: 11px var(--sc-font-mono); }
-.tool-dock-menu__panel button:hover { background: var(--sc-color-surface-2); }
-.tool-dock-menu__panel button[aria-pressed='true'] { background: var(--sc-color-surface-inset); color: var(--sc-color-action-primary); }
+@media (hover: hover) and (pointer: fine) {
+  .tool-dock-menu__panel button:hover:not(:active) { background: var(--sc-color-surface-2); }
+}
+.tool-dock-menu__panel button[aria-pressed='true'] { background: var(--sc-color-surface-inset); color: var(--sc-color-action-ink); box-shadow: var(--sc-shadow-pressed); }
+.tool-dock-menu__panel button:active:not(:disabled),
+.app-shell .tool-rail .tool-dock-menu__trigger:active:not(:disabled) { box-shadow: var(--sc-shadow-pressed); }
 .tool-dock-menu__panel button:focus-visible,
 .app-shell .tool-rail .tool-dock-menu__trigger:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: -2px; }
 .tool-dock-menu__divider { height: 1px; margin: 4px 6px; background: var(--sc-color-border-soft); }
+
+@media (pointer: coarse) {
+  .app-shell .tool-rail .tool-dock-menu__trigger { min-height: var(--sc-size-target-touch); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tool-dock-menu__panel button,
+  .app-shell .tool-rail .tool-dock-menu__trigger { transition: none; }
+  .tool-dock-menu__panel button:active:not(:disabled),
+  .app-shell .tool-rail .tool-dock-menu__trigger:active:not(:disabled) { transform: none; }
+}

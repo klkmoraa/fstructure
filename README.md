@@ -4,6 +4,13 @@ Aplicación web de cálculo estructural de FusionStructure. Publicada en
 https://klkmoraa.github.io/fstructure/. Local-first y **experimental**: no es
 software certificado ni sustituye la revisión de una persona responsable.
 
+## Alineación visual · 25 de octubre de 2026
+
+Home, Modelo 2D, Modelo 3D, Diseño y sus editores auxiliares comparten el canon
+de FusionStructure: arcilla funcional, tipografía y roles de color, con datos
+y gráficos planos para conservar su lectura. Alcance, criterios, verificación
+y capturas en la [ficha de alineación de marca](docs/brandbook/brand-alignment-2026-10-25.md).
+
 ## Mesas
 
 Una sola Home: retoma el proyecto abierto, entra directo a un modo de la mesa

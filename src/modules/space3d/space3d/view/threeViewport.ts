@@ -28,7 +28,7 @@ import {
   DoubleSide, ExtrudeGeometry, Float32BufferAttribute, Group, HemisphereLight, InstancedMesh, LineBasicMaterial,
   LineSegments, MathUtils, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, OrthographicCamera, Path,
   PerspectiveCamera, Plane, Points, PointsMaterial, Quaternion, Raycaster, Scene, Shape, ShapeGeometry, SphereGeometry, Sprite,
-  SpriteMaterial, Vector2, Vector3, WebGLRenderer,
+  SpriteMaterial, SRGBColorSpace, Vector2, Vector3, WebGLRenderer,
   type Camera, type Material, type Object3D,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -178,6 +178,7 @@ const TOKEN_COLORS = {
   axisY: ['--sc-color-action-ink', '#468c09'],
   axisZ: ['--sc-color-brand-secondary', '#0f95d1'],
   label: ['--sc-color-text-secondary', '#607068'],
+  labelInk: ['--sc-color-text-primary', '#14171a'],
   draft: ['--sc-color-action-primary', '#ff8e80'],
   surface: ['--sc-color-surface-elevated', '#fbfbf8'],
 } as const;
@@ -308,8 +309,10 @@ const makeLabel = (text: string, color: Color, size: number, options: { backgrou
   context.fillText(text, width / 2, height / 2 + 2, options.ring ? height - 20 : inkWidth);
 
   const texture = new CanvasTexture(canvas);
+  // El canvas contiene tintas sRGB; interpretarlas como lineales las aclara.
+  texture.colorSpace = SRGBColorSpace;
   texture.needsUpdate = true;
-  const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+  const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthTest: false, toneMapped: false }));
   // `size` es la altura en fracción del alto de vista; el visor la convierte
   // en unidades de mundo en cada cuadro (`fitLabels`). En la brújula, que
   // tiene cámara fija, es directamente la altura en mundo.
@@ -1150,7 +1153,7 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
       const nodal = model.loads.filter((load) => inScopeNodes.has(load.nodeId)).slice(0, 80);
       for (const load of nodal) {
         const value = `${formatLabel(load.magnitude)} ${load.kind === 'force' ? 'kN' : 'kN·m'}`;
-        const label = makeLabel(value, load.kind === 'force' ? palette.load : palette.loadMoment, size, { background: palette.surface });
+        const label = makeLabel(value, palette.labelInk, size, { background: palette.surface });
         if (!label) break;
         label.position.copy(vec(load.origin)).addScaledVector(vec(load.direction), -loadLength * (0.45 + 0.55 * load.relative) * 1.12);
         labelsGroup.add(label);
@@ -1181,7 +1184,7 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
           }
           const magnitude = peak.vector.length();
           if (magnitude === 0) continue;
-          const label = makeLabel(`${formatLabel(magnitude)} kN/m`, palette.loadDistributed, size * 0.9, { background: palette.surface });
+          const label = makeLabel(`${formatLabel(magnitude)} kN/m`, palette.labelInk, size * 0.9, { background: palette.surface });
           if (!label) break;
           label.position.copy(vec(member.start).lerp(vec(member.end), peak.t)).addScaledVector(peak.vector.clone().normalize(), -loadLength * 0.95);
           labelsGroup.add(label);
@@ -1192,7 +1195,6 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
     // Valores de diagrama: el pico de cada barra, con prioridad a los mayores.
     const diagram = model.diagram;
     if (diagram) {
-      const color = componentColor(diagram.component);
       const candidates = scoped
         .filter((member) => member.diagram && Math.abs(member.diagram.peak.value) > diagram.maxAbs * 0.02)
         .sort((a, b) => Math.abs(b.diagram!.peak.value) - Math.abs(a.diagram!.peak.value));
@@ -1210,7 +1212,7 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
           const key = `${station.x.toFixed(3)}:${station.value.toPrecision(4)}`;
           if (seen.has(key) || Math.abs(station.value) < diagram.maxAbs * 0.01) continue;
           seen.add(key);
-          const label = makeLabel(formatLabel(station.value), color, size * 0.9, { background: palette.surface });
+          const label = makeLabel(formatLabel(station.value), palette.labelInk, size * 0.9, { background: palette.surface });
           if (!label) break;
           const along = vec(member.start).lerp(vec(member.end), member.length > 0 ? station.x / member.length : 0);
           label.position.copy(along).addScaledVector(vec(data.direction), station.value * diagram.scale * 1.12 + Math.sign(station.value || 1) * model.bounds.span * 0.01);
@@ -1222,7 +1224,7 @@ export const createSpace3DViewport = (options: Space3DViewportOptions): Space3DV
     if (model.reactions.length > 0 && model.reactions.length <= 60) {
       const reactionLength = Math.max(model.bounds.span * 0.14, 0.35);
       for (const reaction of model.reactions) {
-        const label = makeLabel(`${formatLabel(reaction.magnitude)} kN`, palette.reaction, size, { background: palette.surface });
+        const label = makeLabel(`${formatLabel(reaction.magnitude)} kN`, palette.labelInk, size, { background: palette.surface });
         if (!label) break;
         const length = reactionLength * (0.5 + 0.5 * reaction.relative);
         label.position.copy(vec(reaction.origin)).addScaledVector(vec(reaction.direction), -length - reactionLength * 0.3);

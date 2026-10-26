@@ -9,8 +9,9 @@
   align-items: flex-start;
   gap: 9px;
   padding: 10px 12px;
+  border-inline-start: 2px solid var(--sc-color-state-warning);
   border-radius: var(--sc-radius-card);
-  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  background: var(--sc-color-surface-1);
   color: var(--text);
   font-size: 0.84rem;
 }
@@ -31,9 +32,10 @@
 .dxf-file-field input {
   min-height: 58px;
   padding: 9px 10px;
-  border: 1px dashed color-mix(in srgb, var(--accent) 42%, var(--border));
+  border: 1px dashed var(--sc-color-border);
   border-radius: var(--sc-radius-card);
-  background: color-mix(in srgb, var(--accent) 4%, var(--surface-2));
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
   color: var(--text-muted);
   font-size: 0.76rem;
   cursor: pointer;
@@ -43,24 +45,28 @@
   min-height: 38px;
   margin-inline-end: 11px;
   padding: 0 13px;
-  border: 1px solid color-mix(in srgb, var(--accent) 58%, var(--border));
-  border-radius: var(--sc-radius-card);
-  background: var(--accent-fill, var(--accent));
-  color: var(--accent-foreground);
-  box-shadow: var(--sc-shadow-action, 0 3px 0 rgb(0 0 0 / .16));
+  border: 1px solid var(--sc-color-action-edge);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-action-primary);
+  color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-action);
   font: inherit;
   font-weight: 750;
   cursor: pointer;
 }
 
-.dxf-file-field input:hover::file-selector-button {
-  box-shadow: var(--sc-shadow-action-hover, 0 5px 0 rgb(0 0 0 / .18));
-
+@media (hover: hover) and (pointer: fine) {
+  .dxf-file-field input:hover:not(:active)::file-selector-button {
+    background: var(--sc-color-action-hover);
+    box-shadow: var(--sc-shadow-action-hover);
+  }
 }
 
+.dxf-file-field input:active::file-selector-button { background: var(--sc-color-action-pressed); box-shadow: var(--sc-shadow-action-pressed); }
+
 .dxf-file-field input:focus-visible {
-  outline: none;
-  box-shadow: var(--sc-ring-focus);
+  outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
+  outline-offset: var(--sc-focus-ring-offset);
 }
 
 .dxf-import-controls {
@@ -139,4 +145,12 @@
   .dxf-preview {
     min-height: 140px;
   }
+}
+
+@media (pointer: coarse) {
+  .dxf-file-field input::file-selector-button { min-height: var(--sc-size-target-touch); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dxf-file-field input::file-selector-button { transition: none; }
 }

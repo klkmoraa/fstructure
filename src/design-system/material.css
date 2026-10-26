@@ -4,10 +4,9 @@
  * selectores. Cambiar cómo se ve una superficie es editar un bloque aquí, no
  * perseguir reglas repartidas por las hojas de feature.
  *
- * Este archivo es la aplicación literal de la regla 3 de la fundación: la
- * profundidad es el filete. Cinco de los seis niveles no llevan sombra —lo que
- * los distingue es el plano de fondo y el borde de 1px— y sólo lo que puede
- * TAPAR contenido (popover, hoja, modal, toast) recibe la sombra de contacto.
+ * Arcilla funcional: campos hundidos, controles y paneles elevados, menús y
+ * hojas delante del contenido. Una sola luz, con la misma geometría en ambos
+ * temas. Las filas, celdas y el dibujo técnico conservan un plano de lectura.
  *
  * Se importa desde `App.tsx` DESPUÉS de `styles.css`, así que vive en el chunk
  * de entrada y gana la cascada sin necesitar `!important`.
@@ -22,14 +21,10 @@
    que separa una fila de la siguiente es la línea de la propia rejilla. */
 .sc-surface[data-level='flat'],
 [data-level='flat'],
-.number-control,
-.select-field select,
 .effect-card,
 .combination-card,
 .norm-source,
-.compact-toggle-grid label,
 .inspector-note,
-.load-tool-grid button,
 .matrix-view,
 .education-explorer,
 .diagram-cursor-readout,
@@ -46,7 +41,11 @@
    simplemente encima de un gris distinto. */
 .sc-surface[data-level='inset'],
 [data-level='inset'],
-.toolbar {
+.toolbar,
+.number-control,
+.select-field select,
+.compact-toggle-grid label,
+.inspector-numeric-field__control {
   background: var(--sc-color-surface-inset);
   border: 1px solid var(--sc-color-border-soft);
   box-shadow: var(--sc-shadow-inset);
@@ -59,6 +58,7 @@
    propio. Sigue siendo UN escalón: lo que tapa contenido está en `floating`. */
 .sc-surface[data-level='raised'],
 [data-level='raised'],
+.load-tool-grid button,
 .topbar,
 .inspector-panel,
 .results-panel {
@@ -128,7 +128,6 @@
 .datasheet-grid tbody th,
 .datasheet-grid tbody td,
 .datasheet-cell-editor,
-.inspector-numeric-field__control,
 .inspector-derived-list > div,
 .matrix-view table,
 .results-table tbody tr {

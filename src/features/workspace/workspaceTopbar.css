@@ -17,7 +17,9 @@
   align-items: center;
   gap: 12px;
   padding: 8px clamp(12px, 1.6vw, 20px);
-  background: var(--sc-color-bg-app);
+  border-bottom: 1px solid var(--sc-color-border-soft);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
   color: var(--sc-color-text-primary);
   z-index: var(--sc-z-topbar, 30);
 }
@@ -40,11 +42,11 @@
   display: grid;
   place-items: center;
   padding: 0;
-  border: 0;
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-control);
-  background: transparent;
+  background: var(--sc-color-surface-1);
   color: var(--sc-color-text-primary);
-  box-shadow: none;
+  box-shadow: var(--sc-shadow-xs);
 }
 
 .workspace-topbar__brand .fs-mark { width: 26px; height: 26px; }
@@ -59,23 +61,26 @@
   align-items: center;
   gap: 8px;
   padding: 0 8px;
-  border: 0;
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-control);
-  background: transparent;
+  background: var(--sc-color-surface-1);
   color: var(--sc-color-text-primary);
   text-align: left;
-  box-shadow: none;
+  box-shadow: var(--sc-shadow-xs);
 }
 
-.workspace-topbar__brand:hover,
-.workspace-topbar__project:hover,
-.workspace-topbar__project[aria-expanded='true'] { background: var(--sc-color-surface-inset); }
+@media (hover: hover) and (pointer: fine) {
+  .workspace-topbar__brand:hover:not(:active),
+  .workspace-topbar__project:hover:not(:active):not([aria-expanded='true']) { background: var(--sc-color-surface-elevated); box-shadow: var(--sc-shadow-raised); }
+}
+
+.workspace-topbar__project[aria-expanded='true'] { background: var(--sc-color-surface-inset); box-shadow: var(--sc-shadow-pressed); }
 
 .workspace-topbar__project-copy { min-width: 0; display: grid; gap: 1px; }
 
 .workspace-topbar__eyebrow {
   overflow: hidden;
-  color: var(--fs-family-analisis);
+  color: var(--sc-color-action-ink);
   font-family: var(--sc-font-mono);
   font-size: 10px;
   font-weight: var(--sc-font-weight-semibold);
@@ -99,7 +104,9 @@
 
 /* El lápiz sólo aparece al señalar: el nombre ya dice que se puede editar. */
 .workspace-topbar__rename-hint { flex: none; color: var(--sc-color-text-muted); opacity: 0; transition: opacity var(--sc-motion-control) var(--sc-ease-standard); }
-.workspace-topbar__project:hover .workspace-topbar__rename-hint,
+@media (hover: hover) and (pointer: fine) {
+  .workspace-topbar__project:hover:not(:active) .workspace-topbar__rename-hint { opacity: .8; }
+}
 .workspace-topbar__project:focus-visible .workspace-topbar__rename-hint { opacity: .8; }
 
 .workspace-topbar__project-editor {
@@ -111,10 +118,10 @@
   display: grid;
   gap: 10px;
   padding: 12px;
-  border: var(--sc-depth-raised-border);
-  border-radius: var(--sc-radius-card);
-  background: var(--sc-color-surface-1);
-  box-shadow: var(--sc-shadow-lifted);
+  border: var(--sc-depth-floating-border);
+  border-radius: var(--sc-radius-panel);
+  background: var(--sc-color-surface-floating);
+  box-shadow: var(--sc-shadow-floating);
 }
 
 .workspace-topbar__project-editor label {
@@ -132,6 +139,7 @@
   border: 1px solid var(--sc-color-border);
   border-radius: var(--sc-radius-control);
   background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
   color: var(--sc-color-text-primary);
   font: inherit;
 }
@@ -144,15 +152,17 @@
   border: 1px solid var(--sc-color-border-soft);
   border-radius: var(--sc-radius-control);
   background: var(--sc-color-surface-elevated);
+  box-shadow: var(--sc-shadow-xs);
   color: var(--sc-color-text-primary);
   font: inherit;
   font-weight: var(--sc-font-weight-semibold);
 }
 
 .workspace-topbar__project-editor-actions button[type='submit'] {
-  border-color: var(--fs-family-analisis);
-  background: var(--fs-family-analisis);
+  border-color: var(--sc-color-action-edge);
+  background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);
+  box-shadow: var(--sc-shadow-action);
 }
 
 .workspace-topbar__status {
@@ -211,7 +221,7 @@
 .workspace-topbar__tool-status[data-tone='warning'] { color: var(--sc-color-state-warning-foreground); }
 .workspace-topbar__tool-status[data-tone='running'] > .workspace-topbar__status-dot {
   background: var(--sc-color-action-primary);
-  animation: workspace-topbar-pulse 1.1s var(--sc-ease-standard) infinite alternate;
+  animation: workspace-topbar-pulse var(--sc-motion-pulse) var(--sc-ease-standard) infinite alternate;
 }
 
 .workspace-topbar__tool-status > .workspace-topbar__tool-status-copy { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -291,28 +301,36 @@
   justify-content: center;
   gap: 6px;
   padding: 0 8px;
-  border: 1px solid transparent;
+  border: var(--sc-surface-edge);
   border-radius: var(--sc-radius-control);
-  background: transparent;
+  background: var(--sc-color-surface-1);
   color: var(--sc-color-text-secondary);
   font-size: var(--sc-font-size-caption);
   font-weight: var(--sc-font-weight-semibold);
   white-space: nowrap;
-  box-shadow: none;
+  box-shadow: var(--sc-shadow-xs);
   transition:
     background-color var(--sc-motion-control) var(--sc-ease-standard),
     border-color var(--sc-motion-control) var(--sc-ease-standard),
-    color var(--sc-motion-control) var(--sc-ease-standard);
+    color var(--sc-motion-control) var(--sc-ease-standard),
+    box-shadow var(--sc-motion-control) var(--sc-ease-standard);
 }
 
-.workspace-topbar__icon-button:hover:not(:disabled),
-.workspace-topbar__action-button:hover:not(:disabled) {
-  background: var(--sc-color-surface-inset);
-  color: var(--sc-color-text-primary);
+@media (hover: hover) and (pointer: fine) {
+  .workspace-topbar__icon-button:hover:not(:active):not(:disabled),
+  .workspace-topbar__action-button:hover:not(:active):not(:disabled):not(.is-active) {
+    background: var(--sc-color-surface-inset);
+    color: var(--sc-color-text-primary);
+    box-shadow: var(--sc-shadow-raised);
+  }
 }
 
+.workspace-topbar__brand:active:not(:disabled),
+.workspace-topbar__project:active:not(:disabled),
+.workspace-topbar__project-editor-actions button:active:not(:disabled),
 .workspace-topbar__icon-button:active:not(:disabled),
-.workspace-topbar__action-button:active:not(:disabled) { background: var(--sc-color-surface-pressed); }
+.workspace-topbar__action-button:active:not(:disabled) { background: var(--sc-color-surface-pressed); box-shadow: var(--sc-shadow-pressed); }
+.workspace-topbar__project-editor-actions button[type='submit']:active:not(:disabled) { background: var(--sc-color-action-pressed); box-shadow: var(--sc-shadow-action-pressed); }
 
 .workspace-topbar__icon-button:disabled,
 .workspace-topbar__action-button:disabled { cursor: not-allowed; opacity: .4; }
@@ -322,14 +340,17 @@
 .workspace-topbar__icon-button:focus-visible,
 .workspace-topbar__action-button:focus-visible {
   outline: var(--sc-focus-ring-width, 2px) solid var(--sc-color-focus, var(--focus));
-  outline-offset: 1px;
+  outline-offset: var(--sc-focus-ring-offset);
 }
 
 .workspace-topbar__action-button.is-active {
   border-color: color-mix(in srgb, var(--fs-family-analisis) 38%, transparent);
-  background: color-mix(in srgb, var(--fs-family-analisis) 10%, var(--sc-color-surface-1));
-  color: var(--fs-family-analisis);
+  background: var(--sc-color-surface-inset);
+  color: var(--sc-color-action-ink);
+  box-shadow: var(--sc-shadow-selected);
 }
+
+.workspace-topbar__mode-button:not(.is-active) { border-color: transparent; background: transparent; box-shadow: none; }
 
 .workspace-topbar__mode-button.is-active {
   border-color: transparent;
@@ -338,7 +359,7 @@
   color: var(--sc-color-text-primary);
 }
 
-.workspace-topbar__mode-button.is-active svg { color: var(--fs-family-analisis); }
+.workspace-topbar__mode-button.is-active svg { color: var(--sc-color-action-ink); }
 .workspace-topbar__mode-select { display: none; }
 
 /* Sólo icono: el texto de los botones secundarios se queda en el title. */
@@ -347,17 +368,20 @@
 .workspace-topbar__action-button.is-primary {
   margin-inline-start: 8px;
   padding: 0 16px;
-  border-color: var(--fs-family-analisis);
+  border-color: var(--sc-color-action-edge);
   border-radius: var(--sc-radius-pill);
-  background: var(--fs-family-analisis);
+  background: var(--sc-color-action-primary);
   color: var(--sc-color-action-foreground);
   box-shadow: var(--sc-shadow-action);
 }
 
-.workspace-topbar__action-button.is-primary:hover:not(:disabled) {
-  border-color: var(--sc-color-action-hover);
-  background: var(--sc-color-action-hover);
-  color: var(--sc-color-action-foreground);
+@media (hover: hover) and (pointer: fine) {
+  .workspace-topbar__action-button.is-primary:hover:not(:active):not(:disabled) {
+    border-color: var(--sc-color-action-hover);
+    background: var(--sc-color-action-hover);
+    color: var(--sc-color-action-foreground);
+    box-shadow: var(--sc-shadow-action-hover);
+  }
 }
 
 .workspace-topbar__action-button.is-primary:active:not(:disabled) {
@@ -500,6 +524,7 @@
     border: 1px solid var(--sc-color-border-soft);
     border-radius: var(--sc-radius-control);
     background: var(--sc-color-surface-inset);
+    box-shadow: var(--sc-shadow-inset);
     color: var(--sc-color-text-primary);
     font: var(--sc-font-weight-semibold) 12px var(--sc-font-ui);
     cursor: pointer;
@@ -510,6 +535,30 @@
   .workspace-topbar__mode-select select:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
   .workspace-topbar__history-group { display: none; }
   .workspace-topbar__project { padding-inline: 2px; }
+}
+
+/* El área táctil cabe en la franja existente; no cambia el anclaje del lienzo. */
+@media (pointer: coarse) {
+  .workspace-topbar__brand,
+  .workspace-topbar__project,
+  .workspace-topbar__icon-button,
+  .workspace-topbar__action-button { min-width: var(--sc-size-target-touch); height: var(--sc-size-target-touch); }
+  .workspace-topbar__project { min-width: 0; }
+  .workspace-topbar__project-editor :is(input, button) { min-height: var(--sc-size-target-touch); }
+}
+
+@media (pointer: coarse) and (max-width: 760px) {
+  .workspace-topbar { padding-block: calc(4px + env(safe-area-inset-top)) 4px; }
+}
+
+@media (pointer: coarse) and (max-height: 500px) and (min-width: 561px) {
+  .workspace-topbar { padding-block: calc(1px + env(safe-area-inset-top)) 1px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-topbar button { transition: none; }
+  .workspace-topbar button:active:not(:disabled) { transform: none; }
+  .workspace-topbar__tool-status[data-tone='running'] > .workspace-topbar__status-dot { animation: none; }
 }
 
 @media (min-width: 390px) and (max-width: 760px) {

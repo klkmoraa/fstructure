@@ -95,6 +95,12 @@ describe('standalone FStructure', () => {
     await user.click(document.querySelector<HTMLButtonElement>('.workspace-utilities__trigger')!);
     await user.click(screen.getByRole('menuitem', { name: 'Convertir en proyecto completo' }));
     expect(await screen.findByRole('group', { name: 'Modo de la mesa' }, { timeout: 8000 })).toBeTruthy();
+    // El shell ya puede mostrar la copia mientras la sesión sincroniza la URL.
+    await waitFor(() => {
+      const routedId = new URLSearchParams(window.location.search).get('project');
+      expect(routedId).toBeTruthy();
+      expect(routedId).not.toBe(originalId);
+    });
     const copyId = new URLSearchParams(window.location.search).get('project');
     expect(copyId).not.toBe(originalId);
     expect(new URLSearchParams(window.location.search).get('mode')).toBe('design');

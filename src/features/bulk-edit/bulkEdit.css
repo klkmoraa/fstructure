@@ -36,7 +36,7 @@
   width: var(--sc-control-height-touch);
   height: var(--sc-control-height-touch);
   border-radius: var(--sc-radius-md);
-  color: var(--sc-color-action-primary);
+  color: var(--sc-color-action-ink);
   background: color-mix(in srgb, var(--sc-color-action-primary) 12%, var(--sc-color-surface-1));
 }
 
@@ -250,7 +250,9 @@
   transition: var(--sc-transition-control);
 }
 
+@media (hover: hover) and (pointer: fine) {
 .bulk-field__action:hover { color: var(--sc-color-text-primary); box-shadow: var(--sc-shadow-xs); }
+}
 .bulk-field__action[aria-pressed='true'] { border-color: var(--sc-color-action-primary); background: var(--sc-color-surface-inset); }
 
 .bulk-field__compatibility { color: var(--sc-color-text-muted); font-size: var(--sc-font-size-label); }

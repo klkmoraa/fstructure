@@ -5,7 +5,7 @@
 .revision-comparison__saved-runs h3,
 .revision-comparison__saved-runs p { margin: 0; }
 .revision-comparison__saved-runs header p { margin-top: 3px; color: var(--sc-color-text-secondary); font-size: 0.78rem; }
-.revision-comparison__saved-runs-count { display: inline-flex; min-width: 28px; min-height: 28px; align-items: center; justify-content: center; border-radius: 999px; color: var(--sc-color-text-primary); background: var(--sc-color-surface-1); font: 700 0.78rem var(--sc-font-mono); }
+.revision-comparison__saved-runs-count { display: inline-flex; min-width: 28px; min-height: 28px; align-items: center; justify-content: center; border-radius: var(--sc-radius-pill); color: var(--sc-color-text-primary); background: var(--sc-color-surface-1); font: 700 0.78rem var(--sc-font-mono); }
 .revision-comparison__save-run { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
 .revision-comparison__save-run label { display: grid; gap: 4px; }
 .revision-comparison__save-run label > span { color: var(--sc-color-text-muted); font-size: 0.72rem; }
@@ -56,7 +56,7 @@
 .revision-comparison td small,
 .revision-comparison td code { display: block; margin-top: 3px; overflow-wrap: anywhere; }
 .revision-comparison td button { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; margin-top: 5px; padding: 0 7px; border: 1px solid var(--sc-color-border); border-radius: var(--sc-radius-md); color: var(--sc-color-text-primary); background: var(--sc-color-surface-2); font: 650 0.72rem var(--sc-font-mono); cursor: pointer; }
-.revision-change-badge { display: inline-flex; padding: 3px 7px; border-radius: 999px; color: var(--sc-color-text-primary); background: var(--sc-color-surface-2); font-weight: 700; }
+.revision-change-badge { display: inline-flex; padding: 3px 7px; border-radius: var(--sc-radius-pill); color: var(--sc-color-text-primary); background: var(--sc-color-surface-2); font-weight: 700; }
 .revision-change-badge--added { color: var(--sc-color-state-success-foreground); }
 .revision-change-badge--removed { color: var(--sc-color-state-error-foreground); }
 .revision-comparison__no-changes,

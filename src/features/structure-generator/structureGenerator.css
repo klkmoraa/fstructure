@@ -36,7 +36,7 @@
   width: min(520px, calc(100% - 24px));
   max-height: calc(100% - 24px);
   border-color:var(--sc-color-border-soft);
-  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--sc-color-text-primary) 5%,transparent),var(--sc-shadow-sm);
+  box-shadow:var(--sc-shadow-floating);
 }
 
 .structure-generator[data-surface-presentation='sheet'] {
@@ -106,10 +106,12 @@
   transition: transform 140ms cubic-bezier(.2,.8,.2,1), box-shadow 140ms ease, border-color 140ms ease, background 140ms ease;
 }
 
+@media (hover: hover) and (pointer: fine) {
 .structure-generator__families > button:hover { box-shadow: var(--sc-shadow-sm); }
+}
 .structure-generator__families > button:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
 .structure-generator__families > button[aria-checked='true'] {
-  color: var(--accent);
+  color: var(--sc-color-action-ink);
   background: var(--accent-soft);
   border-color: color-mix(in srgb, var(--accent) 48%, var(--sc-color-border));
   box-shadow: var(--sc-shadow-pressed);

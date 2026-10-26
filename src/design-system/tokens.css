@@ -7,7 +7,7 @@
  * hay `!important` de reconciliación y no hay una segunda verdad. Editar la
  * identidad de FusionStructure es editar este archivo.
  *
- * Implementa el brandbook de FusionStructure (`brandbook-site/`): su papel, su
+ * Implementa `FusionStructureBrand/tokens/tokens.json` v2.0.0: su papel, su
  * carbón, sus seis señales de dominio y su escala de movimiento. Donde el
  * brandbook publica un valor que no aguanta la prueba de contraste sobre las
  * cuatro superficies del producto, aquí vive el escalón que sí la aguanta y el
@@ -18,12 +18,11 @@
  *  1. EL CHROME ES NEUTRO; LA ACCIÓN IDENTIFICA EL PRODUCTO. Fondos,
  *     superficies, bordes y texto son papel en Día y carbón en Noche. La
  *     acción primaria de FStructure usa el salmón de la familia Análisis. La
- *     temperatura del papel es mínima y constante —la desviación entre canales
- *     nunca pasa de 12— y nunca se convierte en un tinte de marca. El acento es
- *     la tinta misma: carbón sobre papel en Día, papel sobre carbón en Noche.
+ *     temperatura del papel es mínima y constante. El acento de Análisis usa
+ *     su tinta accesible en texto y carbón sobre sus rellenos.
  *
  *  2. EL COLOR ES DEL DOMINIO. Seis señales entran en la aplicación —axial,
- *     cortante, momento, acción, deformada y aviso— y sólo para significar algo
+ *     cortante, momento, fluencia, deformada y atención— y sólo para significar algo
  *     que el solver o el modelo dicen. Se usan como TRAZO, no como relleno de
  *     superficie. Un panel nunca se tiñe; una línea sí.
  *
@@ -41,12 +40,9 @@
  *
  * INVARIANZA POR TEMA
  * ---------------------------------------------------------------------------
- * Las seis señales se declaran UNA sola vez en `:root` y no se redefinen en
- * Noche: un momento flector no cambia de significado al apagar la luz. El
- * bloque `[data-theme='dark']` sólo puede redefinir neutros —fondos,
- * superficies, filetes, tintas de texto— y las TINTAS de señal y de estado, que
- * se apoyan sobre esas superficies y sí tienen que recalibrarse para seguir
- * legibles.
+ * El par Día/Noche recalibra neutros, seis señales y estados sin cambiar su
+ * significado. Geometría, tipografía y luz conservan su contrato; los números
+ * pequeños usan tinta legible y el color del resultado queda en su trazo.
  *
  * Capas de este archivo:
  *   1. Primitivas — la rampa de papel y las seis señales.
@@ -65,7 +61,7 @@
   /* 1 · PRIMITIVAS                                                      */
   /* ------------------------------------------------------------------ */
 
-  /* PAPEL Y TINTA. Valores literales de `FusionStructureBrand/app/globals.css`.
+  /* PAPEL Y TINTA. Valores de `FusionStructureBrand/tokens/tokens.json`.
      Los escalones históricos que no existen en el brandbook apuntan al vecino
      canónico más próximo; no introducen una paleta paralela. */
   --sc-white: #ffffff;
@@ -112,10 +108,9 @@
 
      Se adopta la del brandbook. El valor se recalibra en Noche y con eso
      desaparece la distinción trazo/tinta: el valor de Día ya está en escalón
-     de tinta sobre papel (≥5:1 medido sobre `--fs-paper-25`) y el de Noche
-     sobre carbón, así que la misma variable sirve para la línea del diagrama y
-     para la cifra que la nombra. `-ink` sigue existiendo como alias para los
-     dos centenares de roles que ya lo nombran.
+     gráfico sobre papel (≥3:1 sobre `--fs-paper-25`) y el de Noche sobre
+     carbón. La señal conserva el trazo; `-ink` separa la lectura de cifras y
+     etiquetas pequeñas, que requieren el contraste de la tinta del tema.
 
      Lo que cambia de significado, y no sólo de valor:
        · `moment` pasa de rosa a ROJO — es el rojo del brandbook;
@@ -135,22 +130,22 @@
      momento para que el logo no parezca un resultado del solver. */
   --fs-brand-register: #1aa57a;
 
-  /* Con el par Día/Noche, la tinta ES la señal. Se conservan los nombres para
-     no reescribir los roles que los consumen. */
-  --fs-signal-axial-ink: var(--fs-signal-axial);
-  --fs-signal-shear-ink: var(--fs-signal-shear);
-  --fs-signal-moment-ink: var(--fs-signal-moment);
-  --fs-signal-deformed-ink: var(--fs-signal-deformed);
-  --fs-signal-yield-ink: var(--fs-signal-yield);
-  --fs-signal-attention-ink: var(--fs-signal-attention);
+  /* Los símbolos y trazos mantienen su color; las cifras pequeñas se leen en
+     tinta neutra. La semántica también está en N, V, M, Δ, Fy y sus etiquetas. */
+  --fs-signal-axial-ink: var(--sc-color-text-primary);
+  --fs-signal-shear-ink: var(--sc-color-text-primary);
+  --fs-signal-moment-ink: var(--sc-color-text-primary);
+  --fs-signal-deformed-ink: var(--sc-color-text-primary);
+  --fs-signal-yield-ink: var(--sc-color-text-primary);
+  --fs-signal-attention-ink: var(--sc-color-text-primary);
 
   /* Alias de migración. `alert` era el nombre viejo de `attention`; `action` es
      el rol destructivo del chrome, que comparte el rojo del momento porque
      nunca comparten campo visual: uno es cromo, el otro es lienzo. */
   --fs-signal-alert: var(--fs-signal-attention);
-  --fs-signal-alert-ink: var(--fs-signal-attention);
+  --fs-signal-alert-ink: var(--fs-signal-attention-ink);
   --fs-signal-action: var(--fs-signal-moment);
-  --fs-signal-action-ink: var(--fs-signal-moment);
+  --fs-signal-action-ink: var(--fs-signal-moment-ink);
 
   /* LA SÉPTIMA FAMILIA · LAS CARGAS, VIVAS.
      ---------------------------------------------------------------------
@@ -244,7 +239,7 @@
   --sc-color-text-secondary: var(--fs-gray-700);
   --sc-color-text-muted: var(--fs-gray-600);
   --sc-color-text-tertiary: var(--fs-gray-600);
-  --sc-color-text-subtle: var(--fs-gray-500);
+  --sc-color-text-subtle: var(--fs-gray-600);
   --sc-color-text-technical: var(--fs-gray-800);
   --sc-color-text-unit: var(--fs-gray-600);
   --sc-color-text-disabled: var(--fs-gray-400);
@@ -253,17 +248,17 @@
      para componentes inactivos: ese texto hay que poder leerlo. 5,74:1. */
   --sc-color-text-disabled-content: var(--fs-gray-700);
   --sc-color-text-inverse: var(--fs-gray-0);
-  --sc-color-text-on-action: var(--fs-gray-0);
+  --sc-color-text-on-action: var(--sc-color-action-foreground);
   /* Un enlace no se distingue por color en este sistema: lo hace por subrayado
      y por peso. La tinta es la misma del texto. */
   --sc-color-text-link: var(--fs-gray-950);
 
   /* Filetes. Tres pesos: el que separa datos, el que dibuja un control y el que
      tiene que sobrevivir encima del lienzo. */
-  --sc-color-border-soft: var(--fs-gray-150);
-  --sc-color-border: var(--fs-gray-200);
+  --sc-color-border-soft: var(--fs-gray-200);
+  --sc-color-border: var(--fs-gray-300);
   --sc-color-border-strong: var(--fs-gray-400);
-  --sc-color-divider: var(--fs-gray-150);
+  --sc-color-divider: var(--fs-gray-200);
   /* El chrome que flota sobre el dibujo técnico necesita un filete que no
      desaparezca contra el lienzo blanco ni contra una línea de diagrama. */
   --sc-color-border-canvas-chrome: var(--fs-gray-400);
@@ -273,8 +268,8 @@
      presta a resultados: aparece sólo en controles que ejecutan una decisión.
      La etiqueta es carbón porque el blanco no alcanza contraste sobre salmón. */
   --sc-color-action-primary: var(--fs-family-analisis);
-  --sc-color-action-hover: color-mix(in srgb, var(--fs-family-analisis) 88%, var(--sc-color-text-primary));
-  --sc-color-action-pressed: color-mix(in srgb, var(--fs-family-analisis) 78%, var(--sc-color-text-primary));
+  --sc-color-action-hover: var(--fs-family-analisis);
+  --sc-color-action-pressed: var(--fs-family-analisis);
   --sc-color-action-foreground: #14171a;
   --sc-color-action-edge: var(--fs-family-analisis);
   --sc-color-action-ink: #c23a33;
@@ -287,7 +282,7 @@
   --sc-color-accent-violet-soft: var(--fs-gray-50);
 
   /* Foco usa el registro del producto y siempre conserva separación física. */
-  --sc-color-focus: var(--fs-family-analisis);
+  --sc-color-focus: var(--sc-color-action-ink);
   --sc-color-selection: var(--fs-gray-100);
   --sc-color-selection-stroke: var(--fs-gray-950);
   --sc-color-selection-outline: var(--fs-gray-950);
@@ -308,9 +303,9 @@
   --sc-color-state-pending: var(--fs-gray-500);
   /* Tintas de estado: el mismo hue en el escalón que un texto necesita. Éstas
      SÍ se recalibran en Noche, porque su fondo cambia. */
-  --sc-color-state-success-foreground: var(--fs-green-ink);
-  --sc-color-state-warning-foreground: var(--fs-yellow-ink);
-  --sc-color-state-error-foreground: var(--fs-red-ink);
+  --sc-color-state-success-foreground: var(--fs-status-disponible);
+  --sc-color-state-warning-foreground: var(--fs-status-experimental);
+  --sc-color-state-error-foreground: var(--sc-color-action-ink);
 
   /* Rellenos plenos de estado. Existen para el caso —raro— en que un estado
      tiene que gritar: un error bloqueante. Llevan su propia tinta encima. */
@@ -493,10 +488,10 @@
   --sc-space-2: 8px;
   --sc-space-3: 12px;
   --sc-space-4: 16px;
-  --sc-space-5: 20px;
-  --sc-space-6: 24px;
-  --sc-space-7: 32px;
-  --sc-space-8: 40px;
+  --sc-space-5: 24px;
+  --sc-space-6: 32px;
+  --sc-space-7: 48px;
+  --sc-space-8: 64px;
 
   --sc-size-icon-sm: 14px;
   --sc-size-icon-md: 16px;
@@ -533,7 +528,7 @@
   --sc-radius-hero: var(--sc-radius-panel);
 
   /* ------------------------------------------------------------------ */
-  /* 5 · MATERIA · copia semántica de `app/globals.css`                  */
+  /* 5 · MATERIA · roles del canon `tokens/tokens.json`                  */
   /* ------------------------------------------------------------------ */
   --sc-clay-light: rgb(255 255 255 / 85%);
   --sc-clay-dark: rgb(20 23 26 / 14%);
@@ -607,33 +602,34 @@
   --sc-font-weight-heavy: 700;
   --sc-font-weight-display: 600;
 
-  /* Escala corta y densa. El sistema anterior abría hasta 40px de display; sin
-     color ni sombra que ordenen la pantalla, el tamaño es el instrumento de
-     jerarquía que queda, y por eso se usa con más disciplina, no con más rango. */
-  --sc-font-size-display-xl: 26px;
-  --sc-font-size-display-md: 19px;
-  --sc-font-size-screen: 16px;
-  --sc-font-size-title: 15px;
-  --sc-font-size-subtitle: 13px;
-  --sc-font-size-lead: 13px;
-  --sc-font-size-panel: 12.5px;
-  --sc-font-size-body: 12.5px;
-  --sc-font-size-control: 12px;
-  --sc-font-size-technical: 11.5px;
-  --sc-font-size-caption: 11px;
-  --sc-font-size-label: 10px;
-  --sc-font-size-xs: 10px;
+  /* Escala canónica. La lectura y los controles tienen roles propios; sólo
+     datos y etiquetas usan densidad técnica. rem respeta el tamaño de texto
+     elegido en el navegador sin cambiar el valor a 16px de raíz. */
+  --sc-font-size-display-xl: clamp(2.875rem, 7vw, 6.75rem);
+  --sc-font-size-display-md: clamp(1.75rem, 3.4vw, 2.75rem);
+  --sc-font-size-screen: var(--sc-font-size-display-md);
+  --sc-font-size-title: 1.25rem;
+  --sc-font-size-subtitle: 1.25rem;
+  --sc-font-size-lead: 1rem;
+  --sc-font-size-panel: 1.25rem;
+  --sc-font-size-body: 1rem;
+  --sc-font-size-control: .875rem;
+  --sc-font-size-technical: .78125rem;
+  --sc-font-size-caption: .78125rem;
+  --sc-font-size-label: .65625rem;
+  --sc-font-size-xs: var(--sc-font-size-label);
 
-  --sc-line-height-display: 1.1;
+  --sc-line-height-display: .94;
+  --sc-line-height-title: 1.08;
   --sc-line-height-tight: 1.2;
   --sc-line-height-compact: 1.35;
-  --sc-line-height-control: 1.2;
-  --sc-line-height-body: 1.5;
+  --sc-line-height-control: 1.4;
+  --sc-line-height-body: 1.55;
   --sc-line-height-relaxed: 1.6;
 
   --sc-tracking-display: -0.03em;
   --sc-tracking-tight: -0.02em;
-  --sc-tracking-control: -0.01em;
+  --sc-tracking-control: 0;
   --sc-tracking-technical: 0;
   --sc-tracking-eyebrow: 0.09em;
   --sc-tracking-wide: 0.06em;
@@ -645,10 +641,9 @@
   /* ------------------------------------------------------------------ */
   /* 7 · CONTROLES, LAYOUT Y DENSIDAD                                    */
   /* ------------------------------------------------------------------ */
-  /* Controles más bajos que en cualquiera de los dos productos de origen. Con
-     el filete de 1px como único delimitador, un control de 36px se lee vacío. */
-  --sc-control-height-sm: 24px;
-  --sc-control-height-md: 28px;
+  /* Ratón: controles compactos legibles. En toque pasan al objetivo de 44px. */
+  --sc-control-height-sm: 32px;
+  --sc-control-height-md: 36px;
   --sc-control-height-touch: 44px;
 
   --sc-density-row-compact: 24px;
@@ -844,9 +839,7 @@
 /* ==================================================================== */
 /* 10 · TEMA NOCHE                                                       */
 /* ==================================================================== */
-/* Sólo neutros y tintas de estado. Ni un hue del dominio se repite aquí: el
-   bloque es corto a propósito, y que lo sea es la prueba de que la identidad
-   vive en `:root`. */
+/* El par Noche cambia materiales y tintas, no la geometría del sistema. */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
@@ -869,16 +862,16 @@
   --sc-color-fill-quaternary: #1b1f22;
 
   --sc-color-text-primary: #f2f4f3;
-  --sc-color-text-secondary: #8b9599;
-  --sc-color-text-muted: #5e6a6f;
-  --sc-color-text-tertiary: #5e6a6f;
-  --sc-color-text-subtle: #465055;
+  --sc-color-text-secondary: #b4bdc0;
+  --sc-color-text-muted: #8b9599;
+  --sc-color-text-tertiary: #8b9599;
+  --sc-color-text-subtle: #8b9599;
   --sc-color-text-technical: #b4bdc0;
   --sc-color-text-unit: #8b9599;
   --sc-color-text-disabled: #5e6a6f;
   --sc-color-text-disabled-content: #8b9599;
   --sc-color-text-inverse: #0e1113;
-  --sc-color-text-on-action: #0e1113;
+  --sc-color-text-on-action: var(--sc-color-action-foreground);
   --sc-color-text-link: #f2f4f3;
 
   --sc-color-border-soft: #252a2e;
@@ -889,8 +882,8 @@
 
   /* El salmón se recalibra sobre carbón; la geometría no cambia. */
   --sc-color-action-primary: var(--fs-family-analisis);
-  --sc-color-action-hover: color-mix(in srgb, var(--fs-family-analisis) 88%, var(--sc-color-text-primary));
-  --sc-color-action-pressed: color-mix(in srgb, var(--fs-family-analisis) 78%, var(--sc-color-bg-canvas));
+  --sc-color-action-hover: var(--fs-family-analisis);
+  --sc-color-action-pressed: var(--fs-family-analisis);
   --sc-color-action-foreground: #14171a;
   --sc-color-action-edge: var(--fs-family-analisis);
   --sc-color-action-ink: var(--fs-family-analisis);
@@ -907,15 +900,11 @@
   --sc-color-selection-outline: #f2f4f3;
 
   /* LAS SEIS SEÑALES EN NOCHE, y la familia pastel de las cargas.
-     Se recalibra la SEÑAL, no una tinta aparte: desde la adopción del par
-     Día/Noche del brandbook la señal y su tinta son la misma variable, así que
-     todo lo que cuelga de ellas —trazo del diagrama, cifra de la leyenda,
-     icono de la herramienta— se recalibra de una vez y no puede
-     descuadrarse. */
+     Los trazos usan su señal y las cifras heredan la tinta legible del tema. */
   --fs-signal-axial: #63c5ff;
   --fs-signal-moment: #ff8e80;
   --fs-signal-shear: #55c990;
-  --fs-signal-deformed: #a990ff;
+  --fs-signal-deformed: #9b87ff;
   --fs-signal-yield: #ef7ab9;
   --fs-signal-attention: #f3c553;
   --fs-brand-register: #1aa57a;
@@ -998,4 +987,37 @@
   --sc-clay-dark-soft: rgb(0 0 0 / 35%);
   --sc-clay-dark-strong: rgb(0 0 0 / 70%);
   --sc-clay-veil: rgb(0 0 0 / 62%);
+}
+
+/* La densidad sigue al dispositivo de entrada, también en una tablet ancha. */
+@media (pointer: coarse) {
+  :root {
+    --sc-control-height-sm: var(--sc-size-target-touch);
+    --sc-control-height-md: var(--sc-size-target-touch);
+  }
+}
+
+/* El estado hundido sigue visible mediante luz y borde sin mover la pieza. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --sc-press-transform: none;
+    --sc-press-transform-flat: none;
+    --sc-motion-distance-factor: 0;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root, :root[data-theme='dark'] {
+    --sc-color-border-soft: var(--sc-color-text-secondary);
+    --sc-color-border: var(--sc-color-text-secondary);
+    --sc-color-border-strong: var(--sc-color-text-primary);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root, :root[data-theme='dark'] {
+    --sc-color-overlay-soft: var(--sc-color-bg-app);
+    --sc-color-overlay-sheet: var(--sc-color-bg-app);
+    --sc-color-overlay-strong: var(--sc-color-bg-app);
+  }
 }

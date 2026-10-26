@@ -39,7 +39,7 @@
   display: grid;
   place-items: center;
   border-radius: var(--sc-radius-md);
-  color: var(--sc-color-action-primary);
+  color: var(--sc-color-action-ink);
   background: color-mix(in srgb, var(--sc-color-action-primary) 12%, var(--sc-color-surface-1));
 }
 
@@ -85,7 +85,7 @@
 .model-doctor-filters button[aria-pressed='true'] {
   border-color: var(--sc-color-action-primary);
   background: var(--sc-color-surface-inset);
-  color: var(--sc-color-action-primary);
+  color: var(--sc-color-action-ink);
   box-shadow: var(--sc-shadow-pressed);
 }
 
@@ -128,7 +128,9 @@
   box-shadow: none;
   font-weight: var(--sc-font-weight-semibold);
 }
+@media (hover: hover) and (pointer: fine) {
 .model-doctor-explain:hover { color: var(--sc-color-text-primary); background: var(--sc-color-surface-elevated); box-shadow: var(--sc-shadow-xs); }
+}
 
 .model-doctor-finding__detail {
   display: grid;
@@ -158,7 +160,7 @@
   border:var(--sc-border-width) solid color-mix(in srgb,var(--sc-color-state-success) 24%,var(--sc-color-border-soft));
   border-radius:var(--sc-radius-panel);
   background:var(--sc-color-surface-1);
-  box-shadow:0 6px 0 color-mix(in srgb,var(--sc-color-text-primary) 7%,transparent),var(--sc-shadow-md);
+  box-shadow:var(--sc-shadow-floating);
   color: var(--sc-color-state-success);
   text-align: left;
 }
@@ -208,7 +210,7 @@
 .model-doctor-repair-applied { display: flex; align-items: center; gap: var(--sc-space-2); color: var(--sc-color-state-success); background: color-mix(in srgb, var(--sc-color-state-success) 10%, var(--sc-color-surface-1)); }
 .model-doctor-preview__groups { display: grid; gap: var(--sc-space-3); }
 .model-doctor-guided-repair__steps { display: grid; gap: var(--sc-space-3); margin: 0; padding: var(--sc-space-4) var(--sc-space-4) var(--sc-space-4) calc(var(--sc-space-4) + 1.15rem); color: var(--sc-color-text-secondary); line-height: var(--sc-line-height-relaxed); background: var(--sc-color-surface-inset); border: var(--sc-border-width) solid var(--sc-color-border-soft); border-radius: var(--sc-radius-md); }
-.model-doctor-guided-repair__steps li::marker { color: var(--sc-color-action-primary); font-weight: var(--sc-font-weight-bold); }
+.model-doctor-guided-repair__steps li::marker { color: var(--sc-color-action-ink); font-weight: var(--sc-font-weight-bold); }
 .model-doctor-preview__groups > section {
   padding: var(--sc-space-4);
   border: var(--sc-border-width) solid var(--sc-color-border-soft);

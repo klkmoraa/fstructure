@@ -25,7 +25,8 @@ describe('composición visual de FStructure', () => {
     expect(css).toContain('background: transparent;');
     expect(css).toContain('stroke: var(--sc-color-canvas-grid-strong);');
     expect(css).toContain(".app-shell.workspace-screen[data-shell-class='K0'] .center-stage");
-    expect(css).toContain('@media (max-width: 760px)');
+    const mesaChrome = readFileSync(`${SRC}/features/workspace/mesaChrome.css`, 'utf8');
+    expect(mesaChrome).toContain('@media (max-width: 760px)');
   });
 
   it('usa iconografía óptica y movimiento diferido sin cargar otro runtime', () => {

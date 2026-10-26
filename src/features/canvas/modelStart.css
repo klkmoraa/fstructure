@@ -62,7 +62,9 @@
 }
 
 .model-start__option + .model-start__option { border-top: var(--sc-border-width) solid var(--sc-color-border-soft); }
+@media (hover: hover) and (pointer: fine) {
 .model-start__option:hover { background: var(--sc-color-surface-1); }
+}
 
 .model-start__option:focus-visible {
   outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);

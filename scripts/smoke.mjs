@@ -1,6 +1,6 @@
 /**
  * Pruebas de humo de la app compilada: la Home, sus secciones, la mesa 2D
- * vacía y una pieza individual, en Día y Noche, a 1440 px y a 390 px.
+ * vacía, la mesa 3D y las piezas de Diseño, en Día y Noche, a 1440 y 390 px.
  *
  * Por cada pantalla comprueba que no haya errores de página ni de consola,
  * que no haya desplazamiento horizontal y que se vea su título; guarda una
@@ -36,7 +36,14 @@ const screens = [
   { name: 'aula', url: '?surface=welcome&view=classroom', title: /Aula|Classroom/i },
   { name: 'importar', url: '?surface=welcome&view=import', title: /Importar|Import/i },
   { name: 'mesa-2d', url: '?tool=model2d', selector: '[data-testid="structural-canvas"], .structural-canvas, canvas, svg' },
+  { name: 'mesa-3d', url: '?tool=model2d&mode=3d', selector: '.space3d-stage' },
+  { name: 'mesa-diseno', url: '?tool=model2d&mode=design', selector: '[data-testid="design-workbench"]' },
   { name: 'pieza-viga', url: '?surface=welcome', click: /^Viga/, selector: '[data-testid="design-workbench"]' },
+  { name: 'pieza-columna', url: '?surface=welcome', click: /^Columna/, selector: '[data-testid="design-workbench"]' },
+  { name: 'pieza-zapata', url: '?surface=welcome', click: /^Zapata/, selector: '[data-testid="design-workbench"]' },
+  { name: 'pieza-flexion', url: '?surface=welcome', click: /^Sección a flexión/, selector: '[data-testid="design-workbench"]' },
+  { name: 'pieza-seccion', url: '?surface=welcome', click: /^Estudio de sección/, selector: '[data-testid="design-workbench"]' },
+  { name: 'pieza-portico', url: '?surface=welcome', click: /^Pórtico/, selector: '[data-testid="design-workbench"]' },
 ];
 const variants = [
   { label: '1440-dia', width: 1440, height: 900, theme: 'light' },
@@ -66,7 +73,7 @@ try {
   for (const variant of variants) {
     for (const screen of screens) {
       // Cada pantalla en un contexto nuevo: sin proyectos ni preferencias de la anterior.
-      const context = await browser.newContext({ viewport: { width: variant.width, height: variant.height }, colorScheme: variant.theme === 'dark' ? 'dark' : 'light', serviceWorkers: 'block' });
+      const context = await browser.newContext({ viewport: { width: variant.width, height: variant.height }, hasTouch: variant.width < 900, isMobile: variant.width < 900, colorScheme: variant.theme === 'dark' ? 'dark' : 'light', serviceWorkers: 'block' });
       await context.addInitScript((theme) => { try { localStorage.setItem('fusionstructure.theme', theme); } catch { /* sin almacenamiento */ } }, variant.theme);
       const page = await context.newPage();
       const errors = [];

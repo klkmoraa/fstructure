@@ -12,7 +12,7 @@
   --mdock-pad: 4px;
   --mdock-bar: calc(var(--mdock-key) + var(--mdock-pad) * 2);
   --mdock-bottom: max(8px, env(safe-area-inset-bottom, 0px));
-  --mdock-context: 44px;
+  --mdock-context: 52px;
   /* Lo que el lienzo cede a la cápsula cuando aparece: su altura y su aire. */
   --mdock-lift: 0px;
   /* Las hojas (inspector, resultados) se apoyan sobre el dock, nunca debajo. */
@@ -45,7 +45,7 @@
   gap: 2px;
   padding: var(--mdock-pad, 4px);
   border: 1px solid var(--sc-color-border-soft);
-  border-radius: var(--sc-radius-sheet);
+  border-radius: var(--sc-radius-panel);
   background: var(--sc-color-surface-1);
   box-shadow: var(--sc-shadow-lifted);
 }
@@ -59,10 +59,10 @@
   padding: 0;
   display: grid;
   place-items: center;
-  border: 0;
-  border-radius: calc(var(--mdock-key, 44px) / 2);
-  background: transparent;
-  box-shadow: none;
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
   color: var(--sc-color-text-secondary);
   -webkit-tap-highlight-color: transparent;
   transition:
@@ -81,10 +81,10 @@
 }
 .mdock__key-label {
   max-width: 100%;
-  font: 600 10px/1.1 var(--sc-font-ui);
+  font: 600 var(--sc-font-size-label)/1.1 var(--sc-font-ui);
   white-space: nowrap;
 }
-.mdock__key:active:not(:disabled) { transform: scale(.94); }
+.mdock__key:active:not(:disabled) { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
 .mdock__key:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: -2px; }
 .mdock__key[aria-pressed='true'] {
   background: var(--sc-color-action-primary);
@@ -93,8 +93,9 @@
 }
 .mdock__key.is-tinted,
 .mdock__key[aria-expanded='true'] {
-  background: color-mix(in srgb, var(--sc-color-action-primary) 16%, transparent);
+  background: var(--sc-color-surface-inset);
   color: var(--sc-color-action-ink);
+  box-shadow: var(--sc-shadow-selected);
 }
 
 .mdock__rule {
@@ -112,14 +113,14 @@
   bottom: calc(100% + 6px);
   width: max-content;
   max-width: 100%;
-  height: var(--mdock-context, 44px);
+  height: var(--mdock-context, 52px);
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 3px;
   border: 1px solid var(--sc-color-border-soft);
-  border-radius: calc(var(--mdock-context, 44px) / 2);
+  border-radius: var(--sc-radius-pill);
   background: var(--sc-color-surface-floating);
   box-shadow: var(--sc-shadow-floating, var(--sc-shadow-lifted));
   transform: translateX(-50%);
@@ -130,26 +131,30 @@
 
 .mdock__chip {
   flex: none;
-  height: 36px;
+  height: var(--sc-size-target-touch);
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 0 12px 0 10px;
-  border-radius: 18px;
+  border-radius: var(--sc-radius-pill);
   background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
   color: var(--sc-color-text-primary);
   font: var(--sc-font-weight-semibold, 600) 13px/1 var(--sc-font-ui);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .mdock__chip > svg { width: 17px; height: 17px; flex: none; color: var(--sc-color-text-secondary); }
+.mdock__context > .mdock__chip { flex: 0 1 auto; min-width: 0; }
+.mdock__chip > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mdock__context > .mdock__grow { min-width: 0; }
 
 .mdock__key--sm {
   flex: none;
-  width: 38px;
-  height: 38px;
-  min-height: 38px;
-  border-radius: 19px;
+  width: var(--sc-size-target-touch);
+  height: var(--sc-size-target-touch);
+  min-height: var(--sc-size-target-touch);
+  border-radius: var(--sc-radius-control);
 }
 .mdock__key--sm > svg { width: 19px; height: 19px; }
 .mdock__key--done {
@@ -177,8 +182,8 @@
   inset: 0;
   z-index: 60;
   border: 0;
-  background: var(--sc-color-overlay-soft, rgba(0, 0, 0, .3));
-  animation: mdock-fade 160ms var(--sc-ease-standard) both;
+  background: var(--sc-color-overlay-soft);
+  animation: mdock-fade var(--sc-motion-quick) var(--sc-ease-standard) both;
 }
 .mdock-sheet {
   position: fixed;
@@ -198,7 +203,7 @@
   box-shadow: var(--sc-shadow-modal, var(--sc-shadow-lifted));
   transform: translateX(-50%);
   transform-origin: 85% 100%;
-  animation: mdock-sheet-in 180ms var(--sc-ease-enter) both;
+  animation: mdock-sheet-in var(--sc-motion-bridge) var(--sc-ease-enter) both;
 }
 .mdock-sheet__header {
   display: flex;
@@ -219,8 +224,9 @@
   border-radius: var(--sc-radius-control);
   background: var(--sc-color-surface-inset);
   color: var(--sc-color-text-secondary);
+  box-shadow: var(--sc-shadow-xs);
 }
-.mdock-sheet__close:active { transform: scale(.97); }
+.mdock-sheet__close:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
 .mdock-sheet__close:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: -2px; }
 @keyframes mdock-sheet-in {
   from { opacity: 0; transform: translateX(-50%) translateY(8px) scale(.98); }
@@ -242,7 +248,7 @@
   gap: 6px;
   padding: 8px 4px;
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--sc-radius-card);
   background: transparent;
   color: var(--sc-color-text-primary);
   font: var(--sc-font-weight-medium, 500) 12px/1.2 var(--sc-font-ui);
@@ -255,19 +261,19 @@
   height: 40px;
   display: grid;
   place-items: center;
-  border-radius: 14px;
+  border-radius: var(--sc-radius-control);
   background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-xs);
   color: var(--sc-color-text-secondary);
 }
 .mdock-tile__icon > svg { width: 22px; height: 22px; }
-.mdock-tile:active { background: var(--sc-color-surface-inset); }
+.mdock-tile:active { background: var(--sc-color-surface-inset); box-shadow: var(--sc-shadow-pressed); }
 .mdock-tile:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: -2px; }
-.mdock-tile.is-active .mdock-tile__icon { background: var(--sc-color-action-primary); color: var(--sc-color-action-foreground); }
+.mdock-tile.is-active .mdock-tile__icon { background: var(--sc-color-action-primary); color: var(--sc-color-action-foreground); box-shadow: var(--sc-shadow-selected); }
 .mdock-tile.is-danger .mdock-tile__icon { color: var(--sc-color-tool-destructive, var(--sc-color-state-error)); }
 
 @media (max-width: 370px) {
   .mdock__chip { padding-inline: 8px 10px; }
-  .mdock__key--sm { width: 36px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -277,11 +283,11 @@
 /* --- El lienzo cede el pie a la cápsula ----------------------------------- */
 .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host :is(.canvas-controls, .canvas-status, .canvas-minimap, .canvas-feedback) {
   translate: 0 calc(-1 * var(--mdock-lift, 0px));
-  transition: translate var(--sc-motion-standard, 220ms) var(--sc-ease-standard);
+  transition: translate var(--sc-motion-standard) var(--sc-ease-standard);
 }
 .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host .global-axes {
   translate: 0 calc(-1 * var(--mdock-lift, 0px));
-  transition: translate var(--sc-motion-standard, 220ms) var(--sc-ease-standard);
+  transition: translate var(--sc-motion-standard) var(--sc-ease-standard);
 }
 
 /* El dock ya nombra la herramienta, la barra en curso y abre las coordenadas:
@@ -294,12 +300,12 @@
 .mdock__chip--value {
   border: 0;
   cursor: pointer;
-  background: color-mix(in srgb, var(--sc-color-load-point) 16%, var(--sc-color-surface-inset));
+  background: var(--sc-color-surface-inset);
   -webkit-tap-highlight-color: transparent;
 }
 .mdock__chip--value > svg { color: var(--sc-color-load-point); }
 .mdock__chip--value small { color: var(--sc-color-text-secondary); font-weight: var(--sc-font-weight-medium, 500); font-size: 11px; }
-.mdock__chip--value:active { transform: scale(.97); }
+.mdock__chip--value:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
 .mdock__chip--value:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
 
 .mdock__editor {
@@ -312,11 +318,11 @@
   margin: 0;
   padding: var(--mdock-pad, 4px);
   border: 1px solid var(--sc-color-border-soft);
-  border-radius: calc(var(--mdock-key, 44px) / 2 + var(--mdock-pad, 4px));
+  border-radius: var(--sc-radius-panel);
   background: var(--sc-color-surface-floating);
   box-shadow: var(--sc-shadow-floating, var(--sc-shadow-lifted));
   transform-origin: 50% 100%;
-  animation: mdock-editor-in 200ms var(--sc-ease-emphasized, cubic-bezier(.2, .9, .3, 1.1)) both;
+  animation: mdock-editor-in var(--sc-motion-bridge) var(--sc-ease-enter) both;
 }
 @keyframes mdock-editor-in {
   from { opacity: 0; transform: scale(.96); }
@@ -326,22 +332,23 @@
 .mdock[data-editor] .mdock__bar { display: none; }
 .mdock__key--flip {
   width: 44px;
-  background: color-mix(in srgb, var(--sc-color-load-point) 16%, var(--sc-color-surface-inset));
+  background: var(--sc-color-surface-1);
   color: var(--sc-color-load-point);
 }
-.mdock__key--apply { width: 44px; background: var(--sc-color-action-primary); color: var(--sc-color-action-foreground); }
+.mdock__key--apply { width: 44px; background: var(--sc-color-action-primary); color: var(--sc-color-action-foreground); box-shadow: var(--sc-shadow-action); }
 .mdock__editor-field {
   flex: 1 1 auto;
   min-width: 0;
-  height: 40px;
+  height: var(--sc-size-target-touch);
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 0 12px;
-  border: 1px solid var(--sc-color-focus);
-  border-radius: 20px;
+  border: 1px solid var(--sc-color-border);
+  border-radius: var(--sc-radius-control);
   background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
   color: var(--sc-color-text-primary);
 }
 .mdock__editor-field input {
@@ -360,6 +367,7 @@
   text-align: right;
 }
 .mdock__editor-field input::placeholder { color: var(--sc-color-text-muted); }
+.mdock__editor-field:focus-within { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
 .mdock__editor-field small { flex: none; color: var(--sc-color-text-secondary); font-size: 12px; font-weight: var(--sc-font-weight-medium, 500); }
 @media (prefers-reduced-motion: reduce) { .mdock__editor { animation: none; } }
 
@@ -399,7 +407,7 @@
   width: min(272px, calc(100% - 16px));
   gap: 8px;
   padding: 10px;
-  border-radius: 18px;
+  border-radius: var(--sc-radius-panel);
   background: var(--sc-color-surface-floating);
   box-shadow: var(--sc-shadow-floating, var(--sc-shadow-lg));
 }
@@ -419,8 +427,9 @@
   gap: 2px;
   padding: 4px 2px;
   border: 1px solid transparent;
-  border-radius: 12px;
-  background: var(--sc-color-surface-inset);
+  border-radius: var(--sc-radius-control);
+  background: var(--sc-color-surface-1);
+  box-shadow: var(--sc-shadow-xs);
   color: var(--sc-color-text-primary);
   font: var(--sc-font-weight-semibold, 600) 10px/1.1 var(--sc-font-ui);
   text-align: center;
@@ -434,13 +443,14 @@
 }
 .app-shell .support-placement-grid .support-placement-options button.active {
   border-color: var(--sc-color-action-primary);
-  background: color-mix(in srgb, var(--sc-color-action-primary) 14%, var(--sc-color-surface-inset));
+  background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-selected);
   color: var(--sc-color-text-primary);
 }
 .app-shell .support-placement-glyph { display: grid; place-items: center; width: 44px; height: 34px; overflow: hidden; color: var(--sc-color-text-secondary); }
 .app-shell .support-placement-glyph svg { width: 44px; height: 44px; }
 .app-shell .support-placement-angle { font-size: 12px; }
-.app-shell .support-placement-angle-control { border-radius: 10px; }
+.app-shell .support-placement-angle-control { border-radius: var(--sc-radius-control); box-shadow: var(--sc-shadow-inset); }
 .app-shell .support-placement-angle-control input { height: 36px; font-size: 14px; }
 
 /* En el teléfono la elección sube desde el dock: no tapa el nudo ni se sale. */
@@ -451,7 +461,7 @@
   width: min(calc(100% - 16px), 460px);
   max-height: calc(100% - 24px);
   transform: translateX(-50%);
-  border-radius: 22px;
+  border-radius: var(--sc-radius-panel);
 }
 .app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .support-placement-grid .support-placement-options button { min-height: 70px; font-size: 11px; }
 
@@ -481,18 +491,17 @@
 .mdock__chip--chain {
   border: 0;
   cursor: pointer;
-  background: color-mix(in srgb, var(--sc-color-action-primary) 14%, var(--sc-color-surface-inset));
+  background: var(--sc-color-surface-inset);
   -webkit-tap-highlight-color: transparent;
 }
 .mdock__chip--chain > svg:last-child { width: 14px; height: 14px; color: var(--sc-color-text-secondary); }
-.mdock__chip--chain:active { transform: scale(.97); }
+.mdock__chip--chain:active { transform: var(--sc-press-transform); box-shadow: var(--sc-shadow-pressed); }
 .mdock__chip--chain:focus-visible { outline: 2px solid var(--sc-color-focus); outline-offset: 1px; }
 
 /* Dirección de la carga: ↓ → ↑ ← a un toque; el valor sigue en el campo. */
 .mdock__dirs { flex: none; display: flex; gap: 2px; }
-.mdock__key--dir { width: 36px; height: 40px; min-height: 40px; border-radius: 12px; }
-.mdock__key--dir[aria-pressed='true'] { background: color-mix(in srgb, var(--sc-color-load-point) 22%, var(--sc-color-surface-inset)); color: var(--sc-color-load-point); box-shadow: none; }
-@media (max-width: 380px) { .mdock__key--dir { width: 32px; } }
+.mdock__key--dir { width: var(--sc-size-target-touch); height: var(--sc-size-target-touch); min-height: var(--sc-size-target-touch); border-radius: var(--sc-radius-control); }
+.mdock__key--dir[aria-pressed='true'] { border-color: var(--sc-color-load-point); background: var(--sc-color-surface-inset); color: var(--sc-color-load-point); box-shadow: var(--sc-shadow-pressed); }
 
 /* Dirección y ángulo en su fila; el valor, aplicar y cerrar, en la siguiente. */
 .mdock__editor .mdock__dirs { flex: 1 1 100%; align-items: center; gap: 4px; }
@@ -500,14 +509,15 @@
 .mdock__angle {
   flex: 1.3 1 0;
   min-width: 0;
-  height: 40px;
+  height: var(--sc-size-target-touch);
   box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 4px;
   padding: 0 10px;
-  border-radius: 12px;
+  border-radius: var(--sc-radius-control);
   background: var(--sc-color-surface-inset);
+  box-shadow: var(--sc-shadow-inset);
   color: var(--sc-color-text-secondary);
 }
 .mdock__angle input {
@@ -524,4 +534,23 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
-.mdock__angle:focus-within { box-shadow: 0 0 0 1px var(--sc-color-focus); }
+.mdock__angle:focus-within { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: var(--sc-focus-ring-offset); }
+
+@media (hover: hover) and (pointer: fine) {
+  .mdock__key:hover:not(:disabled):not(:active):not([aria-pressed='true']):not([aria-expanded='true']),
+  .mdock-sheet__close:hover:not(:active),
+  .mdock-tile:not(.is-active):hover:not(:active) .mdock-tile__icon { box-shadow: var(--sc-shadow-raised); }
+}
+
+@media (pointer: coarse) {
+  .app-shell .support-placement-angle-control input { height: var(--sc-size-target-touch); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mdock :is(button, input),
+  .mdock-sheet button,
+  .app-shell.workspace-screen[data-shell-class='K0'] .canvas-host :is(.canvas-controls, .canvas-status, .canvas-minimap, .canvas-feedback, .global-axes) { transition: none; }
+  .mdock button:active:not(:disabled),
+  .mdock-sheet button:active:not(:disabled),
+  .app-shell .support-placement-options button:active:not(:disabled) { transform: none; }
+}

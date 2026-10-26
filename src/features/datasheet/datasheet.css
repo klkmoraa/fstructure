@@ -350,9 +350,11 @@
   transition: var(--sc-transition-control);
 }
 
+@media (hover: hover) and (pointer: fine) {
 .datasheet-focus-action:hover:not(:disabled) {
   background: var(--sc-color-action-hover);
   box-shadow: var(--sc-shadow-action-hover);
+}
 }
 
 .datasheet-focus-action:disabled {
