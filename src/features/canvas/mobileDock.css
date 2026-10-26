@@ -171,8 +171,8 @@
   padding: 0 2px;
 }
 
-/* Con una hoja abierta (propiedades, resultados) la cápsula cede su sitio. */
-.app-shell[data-shell-class='K0']:has(.inspector-panel.mobile-open, .results-panel[data-surface-status='active']:not(.mobile-collapsed)) .mdock__context {
+/* La cápsula cede su sitio a la hoja y a la confirmación de coincidencias. */
+.app-shell[data-shell-class='K0']:has(.inspector-panel.mobile-open, .results-panel[data-surface-status='active']:not(.mobile-collapsed), .candidate-picker) .mdock__context {
   display: none;
 }
 
@@ -281,7 +281,8 @@
 }
 
 /* --- El lienzo cede el pie a la cápsula ----------------------------------- */
-.app-shell.workspace-screen[data-shell-class='K0'] .canvas-host :is(.canvas-controls, .canvas-status, .canvas-minimap, .canvas-feedback) {
+/* El feedback se ancla arriba: desplazarlo con el pie lo ocultaba bajo las capas. */
+.app-shell.workspace-screen[data-shell-class='K0'] .canvas-host :is(.canvas-controls, .canvas-status, .canvas-minimap) {
   translate: 0 calc(-1 * var(--mdock-lift, 0px));
   transition: translate var(--sc-motion-standard) var(--sc-ease-standard);
 }
@@ -337,7 +338,7 @@
 }
 .mdock__key--apply { width: 44px; background: var(--sc-color-action-primary); color: var(--sc-color-action-foreground); box-shadow: var(--sc-shadow-action); }
 .mdock__editor-field {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
   height: var(--sc-size-target-touch);
   box-sizing: border-box;
@@ -404,7 +405,9 @@
 
 /* --- Apoyo al tocar un nudo: mosaicos con su dibujo ----------------------- */
 .app-shell .support-placement-popover {
-  width: min(272px, calc(100% - 16px));
+  width: min(250px, calc(100% - 16px));
+  max-height: min(var(--support-placement-room, 100%), calc(100% - 24px));
+  container-type: inline-size;
   gap: 8px;
   padding: 10px;
   border-radius: var(--sc-radius-panel);
@@ -414,13 +417,13 @@
 .app-shell .support-placement-popover header strong { font-size: 13px; }
 .app-shell .support-placement-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
 }
 .app-shell .support-placement-grid > .support-placement-options { display: contents; }
 .app-shell .support-placement-grid .support-placement-options button {
   min-width: 0;
-  min-height: 62px;
+  min-height: 76px;
   display: grid;
   justify-items: center;
   align-content: center;
@@ -437,9 +440,16 @@
 }
 .app-shell .support-placement-grid .support-placement-options button > span:last-child {
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: 2.4em;
+  display: grid;
+  place-items: center;
+  line-height: 1.2;
+  white-space: normal;
+  text-wrap: balance;
+}
+/* Las cuatro columnas sólo aparecen cuando cada nombre tiene espacio real. */
+@container (min-width: 330px) {
+  .app-shell .support-placement-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .app-shell .support-placement-grid .support-placement-options button.active {
   border-color: var(--sc-color-action-primary);
@@ -463,7 +473,7 @@
   transform: translateX(-50%);
   border-radius: var(--sc-radius-panel);
 }
-.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .support-placement-grid .support-placement-options button { min-height: 70px; font-size: 11px; }
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock) .support-placement-grid .support-placement-options button { min-height: 76px; font-size: 11px; }
 
 /* Con el dock, el pie de estado sobra en K0: el estado vive en la barra y el
    pie quedaba entre el lienzo y el dock, tapado por la cápsula. */

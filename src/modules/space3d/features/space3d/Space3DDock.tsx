@@ -2,7 +2,7 @@
  * Dock de herramientas de la mesa 3D, con la forma del dock de FStructure 2D:
  * una pieza flotante centrada al pie del lienzo en escritorio y una barra fija
  * al pie de la pantalla en un teléfono. La herramienta activa se pinta con el
- * color de acción y, en escritorio, enseña su nombre.
+ * color de acción. En teléfono todas las herramientas enseñan su nombre.
  *
  * Los nombres accesibles son los mismos que tenía la cinta («Nuevo nudo»…):
  * el atajo de teclado vive en el `title`.
@@ -30,6 +30,7 @@ interface Space3DDockProps {
 interface DockButtonProps {
   readonly icon: ReactNode;
   readonly label: string;
+  readonly shortLabel?: string;
   readonly name?: string;
   readonly title: string;
   readonly active?: boolean;
@@ -39,10 +40,11 @@ interface DockButtonProps {
   readonly className?: string;
 }
 
-const DockButton = ({ icon, label, name, title, active, pressed, disabled, onClick, className }: DockButtonProps) => <button
+const DockButton = ({ icon, label, shortLabel, name, title, active, pressed, disabled, onClick, className }: DockButtonProps) => <button
   type="button"
   className={`space3d-dock-button${className ? ` ${className}` : ''}`}
   data-active={active || undefined}
+  data-short-label={shortLabel ? true : undefined}
   aria-pressed={active ?? pressed}
   aria-label={name ?? label}
   title={title}
@@ -51,13 +53,14 @@ const DockButton = ({ icon, label, name, title, active, pressed, disabled, onCli
 >
   {icon}
   <span className="space3d-dock-label">{label}</span>
+  {shortLabel ? <span className="space3d-dock-short-label" aria-hidden="true">{shortLabel}</span> : null}
 </button>;
 
 export const Space3DDock = ({ t, tool, onTool, hasNodes, onGenerate, explorer, onExplorer, split, onSplit }: Space3DDockProps) => {
   const shortcut = (label: string, key: string) => `${label} (${t('space3d.shortcut', { key })})`;
   return <nav className="space3d-dock" data-mesa-dock="" aria-label={t('space3d.dock.label')}>
     <div className="space3d-dock-group">
-      <DockButton icon={<MousePointer2 size={18} aria-hidden="true" />} label={t('space3d.toolSelect')} title={shortcut(t('space3d.toolSelect'), 'V')}
+      <DockButton icon={<MousePointer2 size={18} aria-hidden="true" />} label={t('space3d.toolSelect')} shortLabel={t('space3d.dock.selectShort')} title={shortcut(t('space3d.toolSelect'), 'V')}
         active={tool === 'select'} onClick={() => onTool('select')} />
     </div>
     <div className="space3d-dock-group">
@@ -73,7 +76,7 @@ export const Space3DDock = ({ t, tool, onTool, hasNodes, onGenerate, explorer, o
         active={tool === 'load'} disabled={!hasNodes} onClick={() => onTool('load')} />
     </div>
     <div className="space3d-dock-group">
-      <DockButton icon={<Sparkles size={18} aria-hidden="true" />} label={t('space3d.dock.generate')} title={shortcut(t('space3d.dock.generate'), 'G')} onClick={onGenerate} />
+      <DockButton icon={<Sparkles size={18} aria-hidden="true" />} label={t('space3d.dock.generate')} shortLabel={t('space3d.dock.generateShort')} title={shortcut(t('space3d.dock.generate'), 'G')} onClick={onGenerate} />
     </div>
     {/* Paneles de la vista: en un teléfono no hay sitio para ellos y se retiran. */}
     <div className="space3d-dock-group space3d-dock-group--view">

@@ -46,20 +46,45 @@
 .shell-tool-inspector { grid-column: 2; grid-row: 1; }
 .shell-tool-slot--mobile { display: contents; }
 .shell-mobile-sheet {
-  margin: auto 0 0;
+  position: fixed;
+  inset: auto 0 var(--sc-visual-viewport-bottom, 0px);
+  margin: 0;
   width: 100%;
   max-width: 100%;
-  /* Nunca más del 45 % del alto: el modelo queda a la vista encima. */
-  max-height: 45dvh;
-  padding: 12px;
+  /* Reposo deja el modelo visible; ampliar presta más alto a la edición. */
+  height: min(58dvh, 540px, calc(var(--sc-visual-viewport-height, 100dvh) - 16px));
+  max-height: calc(var(--sc-visual-viewport-height, 100dvh) - 16px);
+  padding: 0;
   border: 1px solid var(--sc-color-border);
   border-radius: var(--sc-radius-sheet) var(--sc-radius-sheet) 0 0;
   background: var(--sc-color-surface-floating);
   box-shadow: var(--sc-shadow-sheet);
   color: var(--sc-color-text-primary);
+  overflow: hidden;
+}
+.shell-mobile-sheet[open] { display: flex; flex-direction: column; }
+.shell-mobile-sheet[data-expanded] { height: min(82dvh, calc(var(--sc-visual-viewport-height, 100dvh) - 16px)); }
+.shell-mobile-sheet__header { display: flex; flex: none; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--sc-color-border-soft); }
+.shell-mobile-sheet__header > strong { flex: 1; font-size: var(--sc-font-size-body); }
+.shell-mobile-sheet__header > button { flex: none; }
+.shell-mobile-sheet__header > .workspace-topbar__action-button { min-width: max-content; padding-inline: 12px; }
+.shell-mobile-sheet__header > button > :is(svg, span) { flex: none; }
+.shell-mobile-sheet > .shell-tool-slot--inspector {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 12px max(12px, env(safe-area-inset-bottom));
   overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 12px;
 }
 .shell-mobile-sheet::backdrop { background: var(--sc-color-overlay-sheet); }
+/* Diseño tiene paneles internos: se adapta todo el taller al espacio visible
+   del teclado. El 3D conserva su cámara y sólo eleva la hoja de propiedades. */
+.app-shell[data-keyboard]:has(.native-workspace-mode[data-workspace-mode='design']) {
+  position: fixed;
+  inset: var(--sc-visual-viewport-top, 0px) 0 auto;
+  height: var(--sc-visual-viewport-height, 100dvh);
+}
 .shell-tool-inspector:has(.space3d-inspector) { width: min(344px, 30vw); }
 /* El panel lateral es la misma pieza elevada que el inspector de 2D, y se
    pliega con su interruptor de la barra superior para dar el ancho al lienzo. */

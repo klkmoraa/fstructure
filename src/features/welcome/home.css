@@ -468,7 +468,8 @@
   .fh-current__continue { min-height: 46px; gap: 6px; padding-inline: 12px; font-size: 13px; }
   .fh .fh-current__actions .fh-button { padding-inline: 4px; gap: 6px; }
   .fh-pieces { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .fh-piece { grid-template-columns: 30px minmax(0, 1fr); align-content: start; gap: 8px; min-height: 100px; padding: 12px; }
+  /* Una fila común admite títulos de dos líneas y alinea las descripciones. */
+  .fh-piece { grid-template-columns: 30px minmax(0, 1fr); grid-template-rows: minmax(36px, auto) auto; align-content: start; gap: 8px; min-height: 100px; padding: 12px; }
   .fh-piece__icon { width: 30px; height: 32px; }
   .fh-piece__icon svg { width: 21px; height: 21px; }
   .fh-piece__copy { display: contents; }

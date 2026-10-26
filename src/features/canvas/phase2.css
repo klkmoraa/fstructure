@@ -7,7 +7,7 @@
 .support-placement-popover header { display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .support-placement-popover header strong { font-size:11px; }
 .support-placement-popover p { margin:0; color:var(--muted); font-size:9px; line-height:1.4; }
-.support-placement-close { width:26px; height:26px; display:grid; place-items:center; border:0; border-radius:var(--sc-radius-card); background:var(--surface-2); color:var(--muted); font-size:16px; line-height:1; }
+.support-placement-close { flex:none; width:44px; height:44px; display:grid; place-items:center; padding:0; border:0; border-radius:var(--sc-radius-card); background:var(--surface-2); color:var(--muted); line-height:1; }
 @media (hover: hover) and (pointer: fine) {
 .support-placement-close:hover { color:var(--text); background:var(--border-soft); } }
 .support-placement-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px; }
@@ -48,6 +48,11 @@
 .smart-label-layer { pointer-events:none; }
 .smart-label-leader { stroke:currentColor; stroke-width:1.2; stroke-dasharray:3 3; opacity:.65; vector-effect:non-scaling-stroke; }
 .node-object .node-hit { fill:transparent; stroke:transparent; pointer-events:all; }
+/* Sólo se amplía la captura: las barras y los nudos conservan su trazo técnico. */
+@media (pointer:coarse) {
+  .structural-canvas .member-hit { stroke-width:44px; stroke-linecap:round; pointer-events:stroke; }
+  .structural-canvas .node-hit { r:22px; }
+}
 .node-object .node-dot { fill: var(--node-fill); stroke: var(--member); stroke-width: 2; transition: fill var(--motion-fast) var(--ease-native), stroke var(--motion-fast) var(--ease-native), stroke-width var(--motion-fast) var(--ease-native); pointer-events:none; }
 .node-selection-halo { fill:color-mix(in srgb,var(--selection) 12%,transparent); stroke:var(--selection); stroke-width:2; stroke-dasharray:3 2; pointer-events:none; vector-effect:non-scaling-stroke; }
 .node-selection-cross { fill:none; stroke:var(--selection); stroke-width:1.25; opacity:.78; pointer-events:none; vector-effect:non-scaling-stroke; }
@@ -144,6 +149,7 @@
    selection gesture from geometry beneath the floating canvas chrome. */
 .canvas-feedback { position:absolute; z-index:6; left:50%; top:58px; transform:translateX(-50%); width:max-content; max-width:calc(100% - 28px); padding:9px 12px; border-radius:var(--sc-radius-control); color:var(--text); font-size:var(--sc-font-size-label); line-height:1.4; text-align:center; pointer-events:none; }
 .canvas-host .canvas-feedback { border-color:color-mix(in srgb,var(--warning) 35%,var(--border)); }
+.canvas-host .canvas-feedback[role='status'] { border-color:var(--border); }
 .canvas-result-legend { position:absolute; left:16px; top:54px; z-index:8; width:min(260px,calc(100% - 32px)); padding:9px 11px; border-radius:var(--sc-radius-control); display:grid; grid-template-columns:auto 1fr; align-items:center; gap:4px 9px; pointer-events:none; }
 .canvas-result-legend strong { font-size:var(--sc-font-size-label); }
 .canvas-result-legend span { color:var(--muted); font-size:var(--sc-font-size-technical); display:flex; align-items:center; gap:6px; }
@@ -1986,15 +1992,16 @@ body:has(.structural-edit-surface) .app-shell .tool-rail.is-floating-dock {
 .distributed-symbol.selected .load-hit { stroke: color-mix(in srgb, var(--selection) 22%, transparent) !important; }
 .load-symbol:focus-visible,
 .distributed-symbol:focus-visible { outline: var(--sc-focus-ring-width) solid var(--focus); outline-offset: 3px; }
-.candidate-picker { position:absolute; z-index:34; width:min(244px,calc(100% - 16px)); display:grid; gap:7px; padding:10px; border:1px solid var(--border); border-radius:var(--sc-radius-card); background:var(--surface); color:var(--text); box-shadow:var(--sc-shadow-sm); }
+.candidate-picker { position:absolute; z-index:34; box-sizing:border-box; width:min(244px,calc(100% - 16px)); display:grid; grid-template-rows:auto minmax(0,1fr) auto; gap:7px; padding:10px; border:1px solid var(--border); border-radius:var(--sc-radius-card); background:var(--surface); color:var(--text); box-shadow:var(--sc-shadow-sm); }
 .candidate-picker>strong { font-size:10px; }
-.candidate-picker [role='listbox'] { display:grid; gap:4px; outline:none; }
+.candidate-picker [role='listbox'] { display:grid; gap:4px; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:3px; margin:-3px; outline:none; }
 .candidate-picker [role='listbox']:focus-visible { box-shadow:var(--sc-ring-focus); border-radius:var(--sc-radius-card); }
 .candidate-picker [role='option'],.candidate-picker footer button { width:100%; min-height:32px; padding:6px 8px; border:1px solid var(--border-soft); border-radius:var(--sc-radius-card); background:var(--surface-2); color:var(--text); font:inherit; font-size:10px; font-weight:700; text-align:left; }
 .candidate-picker [role='option'][aria-selected='true'] { border-style:dashed; border-color:var(--focus); outline:1px solid var(--focus); outline-offset:1px; }
 .candidate-picker footer { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.candidate-picker footer button { text-align:center; }
 .candidate-picker footer button:last-child { background:var(--accent-fill); color:var(--accent-foreground); text-align:center; }
-.candidate-picker-sheet { left:8px!important; right:8px; top:auto!important; bottom:calc(8px + env(safe-area-inset-bottom)); width:auto; max-width:none; }
+.candidate-picker-sheet { left:8px!important; right:8px; top:auto!important; bottom:calc(8px + env(safe-area-inset-bottom)); width:auto; max-width:none; max-height:min(50dvh,calc(100% - 16px)); }
 
 /* El reposo/hover/activo del volumen los define `.sc-tool-button` en
    `design-system/components/ui.css` (CRI-98): reposo `RAISED`, activo

@@ -11,7 +11,7 @@ function CircularColumnSection({ result }: { result: ColumnDesignResult }) {
   const cy = size / 2 - 4;
   const hoop = (diameter / 2 - coverMm - dt / 2) * scale;
   const spiral = result.ties.spiral;
-  return <svg className="dw-drawing dw-drawing--section" viewBox={`0 0 ${size} ${size + 30}`} role="img"
+  return <svg className="dw-drawing dw-drawing--section" viewBox={`-18 -12 ${size + 36} ${size + 42}`} role="img"
     aria-label={`Sección circular de columna de ${diameter / 10} centímetros de diámetro con ${result.bars.length} varillas ${rebarLabel(db)}${spiral ? ` y zuncho ${rebarLabel(dt)} a paso de ${formatNumber(spiral.pitchMm / 10, 1)} centímetros` : ''}`}>
     <circle className="dw-concrete" cx={cx} cy={cy} r={radius} />
     <circle className="dw-stirrup" cx={cx} cy={cy} r={hoop} style={{ strokeWidth: Math.max(1.5, dt * scale) }} />
@@ -55,7 +55,9 @@ export function ColumnSection({ result }: { result: ColumnDesignResult }) {
   const verticalGrapas = restrained(xBars, result.ties.crossTiesParallelToY);
   const horizontalGrapas = restrained(yBars, result.ties.crossTiesParallelToX);
   const hook = Math.min(9, Math.max(4, dt * scale * 2));
-  return <svg className="dw-drawing dw-drawing--section" viewBox={`0 0 ${size} ${size + 30}`} role="img"
+  // El marco incluye las cotas y los ejes; las coordenadas de la sección y
+  // del armado permanecen iguales para que la anotación no se recorte.
+  return <svg className="dw-drawing dw-drawing--section" viewBox={`-18 -12 ${size + 36} ${size + 42}`} role="img"
     aria-label={`Sección de columna ${b / 10} por ${h / 10} centímetros con ${result.bars.length} varillas ${rebarLabel(db)}`}>
     <rect className="dw-concrete" x={ox} y={oy} width={width} height={height} />
     <rect className="dw-stirrup" x={ox + inset} y={oy + inset} width={width - 2 * inset} height={height - 2 * inset}

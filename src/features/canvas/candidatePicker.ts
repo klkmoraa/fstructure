@@ -1,6 +1,7 @@
-import type { Selection } from '../../types';
+import type { MemberModel, NodeModel, Selection } from '../../types';
+import type { ModelPoint } from './canvasInteraction';
 
-/** An explicit canvas identity. Candidate selection never compares geometry or material values. */
+/** Candidates retain the model's explicit identity even when their hit areas overlap. */
 export interface CandidateTarget {
   kind: 'node' | 'member' | 'nodalLoad' | 'memberLoad';
   id: string;
@@ -16,6 +17,46 @@ export interface CandidatePickerState {
 }
 
 export type CandidatePickerCycle = 'next' | 'previous' | 'first' | 'last';
+
+/** Expanded finger targets can overlap. Preserve the hit type, then choose its nearest geometry. */
+export const nearestGeometryCandidate = (
+  target: CandidateTarget,
+  candidates: readonly CandidateTarget[],
+  point: ModelPoint,
+  nodes: ReadonlyMap<string, NodeModel>,
+  members: ReadonlyMap<string, MemberModel>,
+): CandidateTarget => {
+  if (target.kind !== 'node' && target.kind !== 'member') return target;
+  const distance = (candidate: CandidateTarget): number => {
+    if (candidate.kind === 'node') {
+      const node = nodes.get(candidate.id);
+      return node ? Math.hypot(point.x - node.x, point.y - node.y) : Infinity;
+    }
+    const member = members.get(candidate.id);
+    const start = member ? nodes.get(member.i) : undefined;
+    const end = member ? nodes.get(member.j) : undefined;
+    if (!start || !end) return Infinity;
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const lengthSquared = dx * dx + dy * dy;
+    const ratio = lengthSquared > 0
+      ? Math.min(1, Math.max(0, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared))
+      : 0;
+    return Math.hypot(point.x - start.x - ratio * dx, point.y - start.y - ratio * dy);
+  };
+  let nearest = target;
+  let nearestDistance = distance(target);
+  for (const candidate of candidates) {
+    if (candidate.kind !== target.kind) continue;
+    const candidateDistance = distance(candidate);
+    // Equal geometry keeps the browser's stable paint order; the picker resolves it explicitly.
+    if (candidateDistance < nearestDistance) {
+      nearest = candidate;
+      nearestDistance = candidateDistance;
+    }
+  }
+  return nearest;
+};
 
 const shouldOpenCandidatePicker = (candidateCount: number): boolean => candidateCount > 1;
 

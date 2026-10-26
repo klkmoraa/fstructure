@@ -29,7 +29,7 @@ export function StripFootingSection({ result }: { result: StripFootingResult }) 
   const cover = result.input.coverMm * scale;
   const count = Math.min(result.distribution.barCount, 24);
   const arrows = 9;
-  return <svg className="dw-drawing" viewBox={`0 0 ${W} ${oy + t + 110}`} role="img"
+  return <svg className="dw-drawing" viewBox={`-40 0 ${W + 80} ${oy + t + 110}`} role="img"
     aria-label={`Corte de zapata corrida de ${formatNumber(result.widthMm / 10, 0)} centímetros de ancho y ${formatNumber(result.thicknessMm / 10, 0)} de peralte bajo muro de ${formatNumber(result.input.wallWidthMm / 10, 0)} centímetros`}>
     <SoilArrowMarker />
     <defs>

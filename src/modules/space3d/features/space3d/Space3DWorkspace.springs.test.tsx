@@ -86,7 +86,10 @@ describe('Space3DWorkspace · resortes de apoyo y zonas rígidas', () => {
     await user.click(screen.getByRole('button', { name: 'Volver al modelo' }));
 
     await user.click(screen.getAllByRole('button', { name: 'Analizar' })[0]);
-    await user.click(await screen.findByRole('button', { name: /^Resultados/ }));
+    // N1 sigue seleccionado y tiene su propio acceso a resultados. Este
+    // recorrido abre las tablas generales desde el centro analítico.
+    const resultsBand = await screen.findByRole('region', { name: 'Centro analítico' });
+    await user.click(within(resultsBand).getByRole('button', { name: 'Resultados' }));
     await user.selectOptions(await screen.findByRole('combobox', { name: 'Tablas detalladas' }), 'nodes');
     // La reacción del resorte cierra el momento de empotramiento P·L = 48 kN·m.
     const springRow = await screen.findByText('Reacción (con resorte)');

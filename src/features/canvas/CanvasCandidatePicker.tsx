@@ -44,12 +44,17 @@ export const CandidatePicker = ({
   labels = { title: 'Candidatos de selección', cancel: 'Cancelar', confirm: 'Seleccionar' },
 }: CandidatePickerProps) => {
   const listboxRef = useRef<HTMLDivElement>(null);
+  const activeOptionRef = useRef<HTMLButtonElement>(null);
   const active = state.candidates[state.activeIndex]!;
   const activeId = `candidate-option-${active.kind}-${active.id}`;
 
   useEffect(() => {
     listboxRef.current?.focus({ preventScroll: true });
   }, []);
+
+  useEffect(() => {
+    activeOptionRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [activeId]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const cycle = cycleForKey(event.key);
@@ -65,20 +70,21 @@ export const CandidatePicker = ({
       onConfirm();
       return;
     }
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      event.nativeEvent.stopImmediatePropagation();
-      onCancel();
-    }
   };
 
   return <section
     className={`candidate-picker candidate-picker-${presentation}`}
     data-candidate-picker
     data-surface-presentation={presentation}
-    style={{ left: state.anchor.x, top: state.anchor.y }}
+    style={{ left: state.anchor.x, top: state.anchor.y, maxHeight: presentation === 'floating' ? `min(420px, calc(100% - ${state.anchor.y + 8}px))` : undefined }}
     aria-label={labels.title}
+    onKeyDown={(event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.nativeEvent.stopImmediatePropagation();
+      onCancel();
+    }}
   >
     <strong>{labels.title}</strong>
     <div
@@ -93,13 +99,18 @@ export const CandidatePicker = ({
         const selected = index === state.activeIndex;
         return <button
           key={`${candidate.kind}:${candidate.id}`}
+          ref={selected ? activeOptionRef : undefined}
           id={`candidate-option-${candidate.kind}-${candidate.id}`}
           type="button"
           role="option"
+          tabIndex={-1}
           aria-selected={selected}
           data-minimum-target="44"
           data-candidate-active={selected ? 'true' : undefined}
-          onClick={() => onSetActive(index)}
+          onClick={() => {
+            onSetActive(index);
+            listboxRef.current?.focus({ preventScroll: true });
+          }}
         >{labelForCandidate(candidate)}</button>;
       })}
     </div>

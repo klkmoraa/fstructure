@@ -34,6 +34,7 @@ export const esModeling = {
   'canvas.scaleByMember': 'por miembro',
   'canvas.scaleCommon': 'común',
   'canvas.diagramSideDescription': 'Se dibuja hacia {side} local · valores positivos mantienen el color y el trazo',
+  'canvas.touchOverlapHint': 'Toca otra vez para elegir entre objetos',
   'canvas.touchDestinationNode': 'Toca el nodo destino',
   'canvas.cancelMemberCreation': 'Cancelar creación de miembro',
   // Entrada por coordenadas: el panel que sustituye a la regleta siempre

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TranslationKey } from '../../i18n/catalogs';
 import type { AnalysisResult, ProjectModel } from '../../types';
 import { isOwnHistoryScope } from './commandRegistry';
@@ -9,7 +9,7 @@ import { emitWorkspaceCommand } from './workspaceCommands';
 
 /*
  * Efectos del shell del Modelo 2D que no dependen de su composición: atajos
- * globales, altura visible del teléfono, altura de la hoja del inspector y el
+ * globales, altura de la hoja del inspector y el
  * aviso del Doctor tras un análisis. `WorkspaceShell` los usa tal cual.
  */
 
@@ -87,57 +87,6 @@ export function useModel2DShortcuts({ paletteBlocked, toggleSurface, canUndo, ca
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [canRedo, canUndo, redo, undo]);
-}
-
-const hasKeyboardFocus = () => {
-  const active = document.activeElement;
-  if (active instanceof HTMLInputElement) {
-    return !active.disabled && !active.readOnly && active.inputMode !== 'none'
-      && ['text', 'search', 'email', 'url', 'tel', 'password', 'number'].includes(active.type);
-  }
-  if (active instanceof HTMLTextAreaElement) return !active.disabled && !active.readOnly && active.inputMode !== 'none';
-  if (!(active instanceof HTMLElement) || active.inputMode === 'none') return false;
-  const editable = active.closest('[contenteditable]');
-  return editable !== null && ['', 'true', 'plaintext-only'].includes(editable.getAttribute('contenteditable')?.toLowerCase() ?? '');
-};
-
-/** Publica la oclusión del teclado sin confundirla con el zoom de página. */
-export function useVisualViewportSync(shellRef: RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    const viewport = window.visualViewport;
-    const shell = shellRef.current;
-    if (!viewport || !shell) return undefined;
-    const syncViewport = () => {
-      // La altura multiplicada por la escala elimina sólo el efecto del zoom:
-      // un teclado abierto después del pellizco sigue restando espacio visible.
-      const keyboardOcclusion = window.innerHeight - viewport.height * viewport.scale;
-      const keyboardOpen = hasKeyboardFocus() && keyboardOcclusion > 120;
-      const bottom = keyboardOpen ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
-      shell.style.setProperty('--sc-visual-viewport-height', `${keyboardOpen ? viewport.height : window.innerHeight}px`);
-      shell.style.setProperty('--sc-visual-viewport-top', `${keyboardOpen ? viewport.offsetTop : 0}px`);
-      shell.style.setProperty('--sc-visual-viewport-bottom', `${bottom}px`);
-      // Sólo al escribir con el teclado abierto movemos las hojas y apartamos
-      // el dock; durante un pellizco sin teclado se conserva la geometría de mesa.
-      shell.toggleAttribute('data-keyboard', keyboardOpen);
-    };
-    syncViewport();
-    viewport.addEventListener('resize', syncViewport);
-    viewport.addEventListener('scroll', syncViewport);
-    window.addEventListener('resize', syncViewport);
-    document.addEventListener('focusin', syncViewport);
-    document.addEventListener('focusout', syncViewport);
-    return () => {
-      viewport.removeEventListener('resize', syncViewport);
-      viewport.removeEventListener('scroll', syncViewport);
-      window.removeEventListener('resize', syncViewport);
-      document.removeEventListener('focusin', syncViewport);
-      document.removeEventListener('focusout', syncViewport);
-      shell.removeAttribute('data-keyboard');
-      shell.style.removeProperty('--sc-visual-viewport-height');
-      shell.style.removeProperty('--sc-visual-viewport-top');
-      shell.style.removeProperty('--sc-visual-viewport-bottom');
-    };
-  }, [shellRef]);
 }
 
 /**

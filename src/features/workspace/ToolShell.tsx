@@ -14,6 +14,7 @@ import { LazySurface } from './LazySurface';
 import { toolIdentity } from './toolCatalog';
 import { ShellMoreMenu } from './ShellMoreMenu';
 import { usePageZoomGuard } from './usePageZoomGuard';
+import { useVisualViewportSync } from './useVisualViewportSync';
 import '../../design-system/components/ui.css';
 import './phase1.css';
 import { SINGLE_WORK_LABEL, singleWorkTool } from '../../shared/project/workScope';
@@ -77,6 +78,7 @@ const ToolContent = ({ variant, onModeChange }: Pick<SurfaceProps, 'variant' | '
 const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfaceProps) => {
   const shellRef = useRef<HTMLDivElement>(null);
   usePageZoomGuard();
+  useVisualViewportSync(shellRef);
   const { shellClass } = useShellComposition();
   const { t, language } = useI18n();
   const { project, storageIssue, storageMessage, renameProject } = useProject();
@@ -170,7 +172,7 @@ const ToolSurface = ({ variant, projectId, onOpenHome, onModeChange }: SurfacePr
           </Suspense>
         </ToolErrorBoundary>
       </section>}
-      inspector={hasInspector ? <ShellInspectorHost /> : null}
+      inspector={hasInspector ? <ShellInspectorHost language={language} /> : null}
       floatingActions={<ShellSlotHost slot="mobile" />}
       instrument={<>
         {storageIssue ? <p className="shell-storage-notice" role="status">{storageMessage}</p> : null}

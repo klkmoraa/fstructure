@@ -41,7 +41,7 @@ const HISTORY_SCOPES = new WeakMap<object, Map<string, object>>();
 function ProjectDesignSaveStatus({ storage }: { storage: ProjectWorkbenchStorage }) {
   const save = useSyncExternalStore(storage.subscribe, () => storage.saveState, () => storage.saveState);
   return <>
-    {save.status === 'pending' ? <p role="status" className="dw-storage-status">Borrador aceptado; guardado del proyecto pendiente.</p> : null}
+    {save.status === 'pending' ? <p role="status" className="dw-storage-status">Guardando cambios…</p> : null}
     {save.status === 'failed' ? <p role="alert" className="dw-storage-status">
       No se pudo guardar en este dispositivo. El borrador sigue disponible. {save.error}
       <button type="button" className="sc-button sc-button--touch sc-button--secondary" onClick={() => { void storage.retry().catch(() => undefined); }}>Reintentar guardado</button>

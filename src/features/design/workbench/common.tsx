@@ -175,7 +175,7 @@ export function BarSelect({ label, value, onChange, allowAuto = false, minimumDi
   const options = catalog.filter((size) => size.diameterMm >= minimumDiameterMm);
   const hasCurrentValue = (allowAuto && value === 'auto') || options.some((size) => String(size.diameterMm) === value);
   const inheritedSize = catalog.find((size) => String(size.diameterMm) === value);
-  return <Select label={label} value={value} onChange={(event) => onChange(event.currentTarget.value)}>
+  return <Select className="dw-bar-select" label={label} value={value} onChange={(event) => onChange(event.currentTarget.value)}>
     {allowAuto ? <option value="auto">Automático</option> : null}
     {!hasCurrentValue ? <option value={value} key={`inherited-${value}`}>{inheritedSize
       ? `${inheritedSize.label} · Ø ${inheritedSize.diameterMm} mm · valor guardado fuera del rango editable`
@@ -194,10 +194,10 @@ export function GroupSelect({ value, onChange, groups }: { value: string; onChan
 
 
 
-export function FieldGroup({ title, children, columns = 2, action }: { title: string; children: ReactNode; columns?: 1 | 2 | 3; action?: ReactNode }) {
-  const id = useId();
-  return <section className="dw-group" aria-labelledby={id}>
-    <header><h3 id={id} className="dw-eyebrow">{title}</h3>{action}</header>
+export function FieldGroup({ id, title, children, columns = 2, action }: { id?: string; title: string; children: ReactNode; columns?: 1 | 2 | 3; action?: ReactNode }) {
+  const headingId = useId();
+  return <section id={id} className="dw-group" aria-labelledby={headingId} tabIndex={id ? -1 : undefined}>
+    <header><h3 id={headingId} className="dw-eyebrow">{title}</h3>{action}</header>
     <div className="dw-group__grid" data-columns={columns}>{children}</div>
   </section>;
 }

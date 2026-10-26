@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cameraToCenterPoint, cameraToFitBounds, canvasSafeRect, expandBoundsForDecoration, LOAD_DECORATION_RESERVE_PX } from './canvasChromeGeometry';
+import { cameraToCenterPoint, cameraToFitBounds, canvasLabelSafeRect, canvasSafeRect, expandBoundsForDecoration, LOAD_DECORATION_RESERVE_PX } from './canvasChromeGeometry';
 
 describe('canvasChromeGeometry', () => {
   it('encuadra los apoyos por encima de la barra flotante de escritorio', () => {
@@ -32,6 +32,30 @@ describe('canvasChromeGeometry', () => {
 
     expect(modelCenter.x).toBe(viewport.width / 2);
     expect(modelCenter.y).toBe(viewport.height / 2);
+  });
+
+  it('aprovecha la franja inferior para rótulos de un lienzo compacto bajo sin desplazar la cámara', () => {
+    const viewport = { width: 806, height: 232 };
+    const fitArea = canvasSafeRect(viewport);
+    const labelArea = canvasLabelSafeRect(viewport, true);
+    const camera = cameraToFitBounds({ minX: 0, maxX: 6, minY: 0, maxY: 4 }, viewport);
+
+    expect(labelArea.x).toBe(fitArea.x);
+    expect(labelArea.y).toBe(fitArea.y);
+    expect(labelArea.width).toBe(fitArea.width);
+    expect(labelArea.y + labelArea.height).toBe(viewport.height - 12);
+    expect(labelArea.height - fitArea.height).toBe(50);
+    expect(camera.x + 3 * camera.scale).toBe(fitArea.x + fitArea.width / 2);
+    expect(camera.y - 2 * camera.scale).toBe(fitArea.y + fitArea.height / 2);
+    expect(camera.y - 2 * camera.scale).not.toBe(labelArea.y + labelArea.height / 2);
+  });
+
+  it.each([
+    [{ width: 390, height: 709 }, true],
+    [{ width: 1200, height: 616 }, false],
+    [{ width: 806, height: 232 }, false],
+  ] as const)('conserva la reserva habitual fuera del lienzo compacto bajo %o', (viewport, compact) => {
+    expect(canvasLabelSafeRect(viewport, compact)).toEqual(canvasSafeRect(viewport));
   });
 
   it('mantiene finita la cámara cuando los límites del modelo son corruptos', () => {

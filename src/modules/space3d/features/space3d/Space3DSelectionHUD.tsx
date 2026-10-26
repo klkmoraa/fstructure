@@ -4,7 +4,7 @@
  * Provides immediate contextual readouts and rapid actions right on the 3D canvas
  * (both desktop and mobile) when an entity is selected.
  */
-import { ArrowRight, Edit3, Spline, Trash2, Weight, X } from 'lucide-react';
+import { ArrowRight, ChartNoAxesCombined, Edit3, Spline, Trash2, Weight, X } from 'lucide-react';
 import { Button, IconButton } from '../../../../design-system/components/controls';
 import type { Space3DAnalysisResult, Space3DProjectV1 } from '../../space3d/model/types';
 import type { Space3DSelection } from '../../space3d/store/Space3DProjectContext';
@@ -24,6 +24,7 @@ interface Space3DSelectionHUDProps {
   readonly analysis: Space3DAnalysisResult | null;
   readonly onDeselect: () => void;
   readonly onOpenEditor: () => void;
+  readonly onOpenResults?: (trigger: HTMLElement) => void;
   readonly onDelete: () => void;
   readonly onStartConnectMember?: (fromNodeId: string) => void;
   readonly onAddLoadToNode?: (nodeId: string) => void;
@@ -36,12 +37,19 @@ export const Space3DSelectionHUD = ({
   analysis,
   onDeselect,
   onOpenEditor,
+  onOpenResults,
   onDelete,
   onStartConnectMember,
   onAddLoadToNode,
   t,
 }: Space3DSelectionHUDProps) => {
   const num = (v: number) => formatSpace3DNumber(v, { significantDigits: 4 });
+  const resultsAction = onOpenResults ? <Button
+    size="sm"
+    className="space3d-hud-action-btn"
+    leadingIcon={<ChartNoAxesCombined size={14} />}
+    onClick={(event) => onOpenResults(event.currentTarget)}
+  >{t('space3d.band.open')}</Button> : null;
 
   if (selection.kind === 'node') {
     const node = project.nodes.find((item) => item.id === selection.id);
@@ -68,7 +76,7 @@ export const Space3DSelectionHUD = ({
           <IconButton
             size="sm"
             className="space3d-hud-close"
-            label={t('space3d.cancelEdit')}
+            label={t('space3d.selection.clear')}
             onClick={onDeselect}
           >
             <X size={15} aria-hidden="true" />
@@ -97,11 +105,31 @@ export const Space3DSelectionHUD = ({
         )}
 
         <div className="space3d-hud-actions">
+          <Button
+            size="sm"
+            variant="primary"
+            className="space3d-hud-action-btn space3d-hud-action-btn--primary"
+            leadingIcon={<Edit3 size={14} />}
+            onClick={onOpenEditor}
+          >
+            {t('space3d.hudEdit')}
+          </Button>
+          {nodeResult ? resultsAction : null}
+          <IconButton
+            size="sm"
+            variant="danger"
+            className="space3d-hud-action-btn space3d-hud-action-btn--danger"
+            onClick={onDelete}
+            label={t('space3d.deleteEntity')}
+          >
+            <Trash2 size={14} aria-hidden="true" />
+          </IconButton>
+        </div>
+        {onStartConnectMember || onAddLoadToNode ? <div className="space3d-hud-actions space3d-hud-actions--secondary">
           {onStartConnectMember && (
             <Button
               size="sm"
-              variant="primary"
-              className="space3d-hud-action-btn space3d-hud-action-btn--primary"
+              className="space3d-hud-action-btn"
               leadingIcon={<Spline size={14} />}
               onClick={() => onStartConnectMember(node.id)}
               title={t('space3d.hudConnectMemberTitle')}
@@ -120,25 +148,7 @@ export const Space3DSelectionHUD = ({
               {t('space3d.hudAddLoad')}
             </Button>
           )}
-          <Button
-            size="sm"
-            className="space3d-hud-action-btn"
-            leadingIcon={<Edit3 size={14} />}
-            onClick={onOpenEditor}
-            title={t('space3d.saveNode')}
-          >
-            {t('space3d.hudEdit')}
-          </Button>
-          <IconButton
-            size="sm"
-            variant="danger"
-            className="space3d-hud-action-btn space3d-hud-action-btn--danger"
-            onClick={onDelete}
-            label={t('space3d.deleteEntity')}
-          >
-            <Trash2 size={14} aria-hidden="true" />
-          </IconButton>
-        </div>
+        </div> : null}
       </div>
     );
   }
@@ -169,7 +179,7 @@ export const Space3DSelectionHUD = ({
           <IconButton
             size="sm"
             className="space3d-hud-close"
-            label={t('space3d.cancelEdit')}
+            label={t('space3d.selection.clear')}
             onClick={onDeselect}
           >
             <X size={15} aria-hidden="true" />
@@ -210,6 +220,7 @@ export const Space3DSelectionHUD = ({
           >
             {t('space3d.hudEditSection')}
           </Button>
+          {memberResult ? resultsAction : null}
           <IconButton
             size="sm"
             variant="danger"
@@ -239,7 +250,7 @@ export const Space3DSelectionHUD = ({
         <IconButton
           size="sm"
           className="space3d-hud-close"
-          label={t('space3d.cancelEdit')}
+          label={t('space3d.selection.clear')}
           onClick={onDeselect}
         >
           <X size={15} aria-hidden="true" />

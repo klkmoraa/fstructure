@@ -4,6 +4,13 @@ Aplicación web de cálculo estructural de FusionStructure. Publicada en
 https://klkmoraa.github.io/fstructure/. Local-first y **experimental**: no es
 software certificado ni sustituye la revisión de una persona responsable.
 
+## Encuadre y alineación de texto · 26 de octubre de 2026
+
+Tarjetas, títulos, campos, botones y cifras comparten reservas y alineaciones
+según su función. Los nombres largos se acomodan en móvil, las cotas quedan
+dentro del dibujo y la pieza activa permanece visible en su selector.
+[Ficha de encuadre, medidas y capturas](docs/brandbook/text-alignment-2026-10-26.md).
+
 ## Alineación visual · 25 de octubre de 2026
 
 Home, Modelo 2D, Modelo 3D, Diseño y sus editores auxiliares comparten el canon
@@ -40,7 +47,12 @@ sigue visible al cerrar su menú. En teléfono, 2D, 3D y Diseño comparten un
 selector compacto; Deshacer y Rehacer están en las utilidades de la mesa.
 El dock 2D muestra etiquetas y la hoja Más dispone de cierre y navegación por
 teclado. Los campos táctiles usan al menos 16 px y el zoom de página permanece
-disponible fuera del lienzo. [Ficha móvil y capturas actuales](docs/brandbook/mobile-refresh-2026-10-25.md).
+disponible fuera del lienzo. El segundo toque sobre una selección ambigua abre
+los objetos superpuestos; arrastrar y pellizcar conservan el modelo. El dock
+3D muestra sus seis nombres y devuelve la selección al cerrar el inspector.
+Diseño ofrece Dibujo, Datos y Resultados estables, zoom por botones y accesos
+directos a cargas, sección y armado de la viga. El teclado ajusta el espacio
+de edición en las tres mesas. [Ficha táctil y capturas actuales](docs/brandbook/mobile-canvas-flow-2026-10-26.md).
 
 Para leer una armadura 2D, pulsa **Analizar** y elige **N · Axial**. Las barras
 indican **T · tensión (+, azul)**, **C · compresión (−, rojo)** o **0 · sin esfuerzo**, con

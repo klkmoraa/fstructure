@@ -65,6 +65,52 @@ describe('colocación de etiquetas del lienzo', () => {
     expect(placed[0].rect.y + placed[0].rect.height).toBeLessThanOrEqual(BOUNDS.y + BOUNDS.height);
   });
 
+  it('usa el espacio lateral libre antes de superponer cifras obligatorias en un lienzo bajo', () => {
+    const bounds = { x: 0, y: 0, width: 900, height: 124 };
+    const labels = Array.from({ length: 12 }, (_, index) => candidate({
+      id: `reaction:${index}`, text: `Ry = ${index + 10}.00 kN`,
+      anchor: { x: 760, y: 62 }, priority: 1,
+    }));
+    const obstacle = { points: [{ x: 430, y: 0 }, { x: 430, y: 124 }], clearance: 10 };
+    const placed = layoutSmartLabels(labels, bounds, 120, [], [obstacle]);
+
+    expect(placed).toHaveLength(labels.length);
+    expect(placed.map((label) => label.text).sort()).toEqual(labels.map((label) => label.text).sort());
+    for (const [index, label] of placed.entries()) {
+      expect(smartLabelRectHitsObstacle(label.rect, obstacle)).toBe(false);
+      for (const other of placed.slice(index + 1)) {
+        expect(smartLabelRectsOverlap(label.rect, other.rect), `${label.id} tapa a ${other.id}`).toBe(false);
+      }
+    }
+    expect(placed.some((label) => label.rect.x < 450 && label.leader)).toBe(true);
+  });
+
+  it('encuentra un hueco estrecho junto a una reserva sin invadirla', () => {
+    const bounds = { x: 0, y: 0, width: 900, height: 180 };
+    const label = candidate({ id: 'mandatory', text: 'M = 10.00 kN·m', anchor: { x: 800, y: 90 }, priority: 1 });
+    const [{ rect: size }] = layoutSmartLabels([label], bounds, 120);
+    // Sólo queda un hueco con 1 px de holgura, fuera de los anillos locales.
+    // Sus bordes están determinados por reservas, no por la rejilla regular.
+    const right = 100 + size.width + 9;
+    const bottom = 70 + size.height + 9;
+    const reserved = [
+      { x: 0, y: 0, width: 92, height: 180 },
+      { x: right, y: 0, width: 900 - right, height: 180 },
+      { x: 100, y: 0, width: size.width + 1, height: 62 },
+      { x: 100, y: bottom, width: size.width + 1, height: 180 - bottom },
+    ];
+    const [placed] = layoutSmartLabels([label], bounds, 120, reserved);
+
+    expect(placed.text).toBe(label.text);
+    expect(placed.anchor).toEqual(label.anchor);
+    expect(placed.rect.x).toBeGreaterThanOrEqual(100);
+    expect(placed.rect.x).toBeLessThanOrEqual(101);
+    expect(placed.rect.y).toBeGreaterThanOrEqual(70);
+    expect(placed.rect.y).toBeLessThanOrEqual(71);
+    expect(reserved.some((rect) => smartLabelRectsOverlap(placed.rect, rect))).toBe(false);
+    expect(placed.leader).toBe(true);
+  });
+
   it('el identificador de una barra y el valor de su carga dejan de disputarse el punto medio', () => {
     // Los dos rótulos de una viga cargada: el valor de la distribuida ancla en
     // el centro del tramo, y el identificador anclaba ahí también. Uno de los

@@ -4,6 +4,8 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 ## Producto
 
+- [x] Encuadre y texto: tarjetas de Inicio, cabeceras centradas, campos por filas, opciones completas, cotas dentro del dibujo y cifras del canvas; generador, menús e inspector 3D adaptados a 320 px (26-oct-2026). [Ficha y capturas](docs/brandbook/text-alignment-2026-10-26.md).
+- [x] Canvas y flujo táctil: captura 2D de 44 px y coincidencias por segundo toque; gestos separados de edición; dock 3D nombrado y selección al cerrar; vistas estables, zoom y apartados de viga en Diseño; teclado compartido y hoja ampliable (26-oct-2026). [Ficha y evidencia](docs/brandbook/mobile-canvas-flow-2026-10-26.md).
 - [x] Alineación al canon de marca y claymorfismo funcional en Home, 2D, 3D, Diseño y editores auxiliares (25-oct-2026); gates y capturas Día/Noche en la [ficha de entrega](docs/brandbook/brand-alignment-2026-10-25.md).
 - [x] Interfaz móvil: navegación persistente de Home y Recursos, dock 2D etiquetado, hoja Más accesible, campos táctiles legibles y zoom separado del teclado (25-oct-2026). [Ficha y capturas](docs/brandbook/mobile-refresh-2026-10-25.md).
 - [ ] Confirmar en iPhone físico el teclado tras ampliar la página y los márgenes seguros en Safari y PWA instalada; la actualización móvil del 25-oct se verificó en Chromium con entrada táctil emulada.
@@ -31,8 +33,8 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [x] Chrome común de las mesas (`mesaChrome.css`): barra, tarjeta, dock y pie con la misma geometría; la transición de modo anima cada pieza por separado y 3D ↔ Diseño comparten shell.
 - [ ] Proyectos por herramienta: miniatura generada de cada modelo 3D o elemento de Diseño; hoy usan la escena de la herramienta y el resumen de su rama local.
 - [ ] Modo Diseño con el lenguaje del modo Modelo (el 3D ya lo tiene: dock, fichas, banda de resultados, franja de estado).
-- [x] 2D en teléfono: dock dinámico con cápsula contextual (coordenadas y valor de la carga con el teclado completo del teléfono, ajuste, P · q · M, sentido de la carga, acciones de la selección), barras encadenadas, apoyos en mosaicos, Inspector en filas con «Avanzado» por fila, sin zoom de página ni reencuadres solos.
-- [ ] Llevar el dock dinámico (cápsula contextual) al 3D y a Diseño en teléfono.
+- [x] 2D en teléfono: dock dinámico con cápsula contextual (coordenadas y valor de la carga con el teclado completo del teléfono, ajuste, P · q · M, sentido de la carga, acciones de la selección), barras encadenadas, apoyos en mosaicos, Inspector en filas con «Avanzado» por fila, con gestos confinados al lienzo y sin reencuadres solos.
+- [x] Acciones contextuales en teléfono: 3D con Editar/Resultados y regreso a la selección; Diseño con Dibujo/Datos/Resultados y accesos al apartado de la viga (26-oct-2026).
 - [x] Una sola Home (FEM retirado): proyecto abierto, tarjetas 2D · 3D · Diseño, recientes y secciones en la URL.
 - [ ] Exportar o reabrir los estudios FEM que quedaron guardados en proyectos viejos (hoy se conservan intactos en el registro, sin interfaz).
 - [x] 3D: resortes en apoyos y zonas rígidas en el estático y el editor, contrastados con PyNite (esquema 3D v5).

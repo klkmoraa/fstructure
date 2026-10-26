@@ -49,8 +49,9 @@ import { DataSurfaceRetainedStateProvider } from './DataSurfaceRetainedState';
 import { LazySurface } from './LazySurface';
 import { ShellToolSlotsProvider, ShellSlotHost, ShellMobileSurface } from './ShellToolSlots';
 import { usePageZoomGuard } from './usePageZoomGuard';
+import { useVisualViewportSync } from './useVisualViewportSync';
 import { model2dTopBarLabels } from './model2dTopBarLabels';
-import { focusStableLauncherIfUnclaimed, useInspectorDetent, useModel2DShortcuts, useModelDoctorNotification, useVisualViewportSync } from './useModel2DShellEffects';
+import { focusStableLauncherIfUnclaimed, useInspectorDetent, useModel2DShortcuts, useModelDoctorNotification } from './useModel2DShellEffects';
 
 const LazyCommandPalette = lazy(() => import('./CommandPalette').then((module) => ({ default: module.CommandPalette })));
 const LazyLocalCommandAssistant = lazy(() => import('../ai/LocalCommandAssistant').then((module) => ({ default: module.LocalCommandAssistant })));

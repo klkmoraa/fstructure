@@ -46,11 +46,12 @@ const isElementKind = (value: unknown): value is ElementKind => ELEMENTS.some((i
 
 const VERDICT_TONE: Record<Verdict['status'], ShellStatusTone> = { pass: 'ok', warning: 'warn', fail: 'error', error: 'warn' };
 
-/** Anchos de la mesa: en `wide` caben los dos paneles junto al lienzo; en `narrow` sólo uno; en `phone` son hojas inferiores. */
+/** El mismo umbral que el layout: un teléfono girado conserva sus tres vistas. */
+const PHONE_QUERY = '(max-width: 760px), (max-width: 1023px) and (max-height: 500px)';
 type Room = 'wide' | 'narrow' | 'phone';
 const readRoom = (): Room => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'wide';
-  if (window.matchMedia('(max-width: 760px)').matches) return 'phone';
+  if (window.matchMedia(PHONE_QUERY).matches) return 'phone';
   return window.matchMedia('(max-width: 1240px)').matches ? 'narrow' : 'wide';
 };
 const initialPanels = (room: Room): Record<WorkbenchPanel, boolean> =>
@@ -191,32 +192,49 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
-  // Cada elemento monta su propia barra; el foco del teclado se mueve cuando ya existe la nueva.
+  // Cada elemento monta su propia barra: el elegido debe seguir visible si
+  // el selector necesita desplazamiento horizontal, sin mover el formulario.
   const [focusRequest, setFocusRequest] = useState(0);
   useEffect(() => {
-    if (focusRequest > 0) buttons.current[offered.findIndex((item) => item.id === element)]?.focus();
-  }, [element, focusRequest]);
+    const activeButton = buttons.current[offered.findIndex((item) => item.id === element)];
+    const strip = activeButton?.closest<HTMLElement>('.dw-dock__group');
+    if (activeButton && strip) {
+      const selected = activeButton.getBoundingClientRect();
+      const visible = strip.getBoundingClientRect();
+      if (selected.left < visible.left) strip.scrollLeft += selected.left - visible.left;
+      else if (selected.right > visible.right) strip.scrollLeft += selected.right - visible.right;
+    }
+    if (focusRequest > 0) activeButton?.focus({ preventScroll: true });
+  }, [element, focusRequest, loadCount]);
 
   // Paneles: preferencia de la sesión, no se guarda en el proyecto.
   const room = useRef<Room>(readRoom());
+  const lastPanel = useRef<WorkbenchPanel>('inputs');
   const [panels, setPanels] = useState(() => initialPanels(room.current));
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') return;
-    const queries = [window.matchMedia('(max-width: 760px)'), window.matchMedia('(max-width: 1240px)')];
+    const queries = [window.matchMedia(PHONE_QUERY), window.matchMedia('(max-width: 1240px)')];
     const onChange = () => {
       const next = readRoom();
       if (next === room.current) return;
       room.current = next;
-      setPanels(initialPanels(next));
+      // Girar o redimensionar no cambia la tarea. Sólo resolvemos el caso en
+      // que dos paneles abiertos dejan de caber, conservando el último usado.
+      setPanels((current) => next !== 'wide' && current.inputs && current.results
+        ? { inputs: lastPanel.current === 'inputs', results: lastPanel.current === 'results' }
+        : { ...current });
     };
     queries.forEach((query) => query.addEventListener('change', onChange));
     return () => queries.forEach((query) => query.removeEventListener('change', onChange));
   }, []);
-  const setPanel = useCallback((panel: WorkbenchPanel, open: boolean) => setPanels((current) => {
-    // Sin espacio para los dos, abrir uno cierra el otro.
-    if (open && room.current !== 'wide') return { inputs: panel === 'inputs', results: panel === 'results' };
-    return { ...current, [panel]: open };
-  }), []);
+  const setPanel = useCallback((panel: WorkbenchPanel, open: boolean) => {
+    if (open) lastPanel.current = panel;
+    setPanels((current) => {
+      // Sin espacio para los dos, abrir uno cierra el otro.
+      if (open && room.current !== 'wide') return { inputs: panel === 'inputs', results: panel === 'results' };
+      return { ...current, [panel]: open };
+    });
+  }, []);
 
   const setElement = (next: ElementKind) => {
     if (!commitWorkbenchBatch(storage, { element: next }).accepted) return;
@@ -425,6 +443,7 @@ export function DesignWorkbench({ scope, elements: allowedElements, nativeTool =
     }} /> : null;
   const chrome: WorkbenchChrome = {
     elements, codeControl, code, panels, setPanel, onReport, memoryBar, onHistory, modelSource, modelAxes, contextualOrigin, onPickMembers,
+    mobile: room.current === 'phone',
     onSaveAxes: (axes) => memory.saveAxes(axes),
     ...(nativeTool ? { onVerdict } : {}),
     ...(onOpenModel ? { onOpenModel } : {}),

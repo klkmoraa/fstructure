@@ -332,7 +332,8 @@ const overlapArea = (first: SmartLabelRect, second: SmartLabelRect): number => {
  *    una armadura cruzaba las barras vecinas. Las barras, las curvas de los
  *    diagramas y las flechas de reacción entran como `obstacles`, y una
  *    posición que invade su margen se descarta. Si no queda ninguna libre,
- *    una etiqueta obligatoria prefiere compartir sitio con otra etiqueta antes
+ *    una etiqueta obligatoria busca también fuera de los anillos locales. Si
+ *    el área segura está agotada, prefiere compartir sitio con otra etiqueta antes
  *    que tapar un trazo, y la que se aleja de su ancla lleva guía.
  */
 export const layoutSmartLabels = (
@@ -354,6 +355,8 @@ export const layoutSmartLabels = (
     .sort((first, second) => first.priority - second.priority || first.id.localeCompare(second.id));
   const placed: PlacedSmartLabel[] = [];
   const blocked = obstacleIndex(obstacles, bounds);
+  const exhaustedFallbackSizes = new Set<string>();
+  let reservedEdgeBudget = 64;
   const occupied = (rect: SmartLabelRect): SmartLabelRect[] => [
     ...reserved.filter((other) => smartLabelRectsOverlap(rect, other)),
     ...placed.filter((label) => smartLabelRectsOverlap(rect, label.rect)).map((label) => label.rect),
@@ -390,7 +393,52 @@ export const layoutSmartLabels = (
 
     if (!selectedRect) {
       if (candidate.priority >= 2 && !candidate.forceVisible) continue;
-      selectedRect = leastCrowded?.rect ?? nearestBlocked ?? rectAt(candidate, preferred, bounds);
+      // En horizontal puede quedar sitio al otro lado del lienzo, fuera de los
+      // anillos locales. Antes de apilar una cifra obligatoria, busca un hueco
+      // en el área segura; las mismas exclusiones siguen protegiendo el dibujo.
+      const occupiedRects = [...reserved, ...placed.map((label) => label.rect)];
+      const maxX = bounds.x + bounds.width - size.width;
+      const maxY = bounds.y + bounds.height - size.height;
+      // Un hueco junto a los ejes o al radar puede ser más estrecho que un
+      // paso de rejilla. Como máximo 64 intentos entre TODAS las etiquetas.
+      reservedEdges: for (const reservation of reserved) {
+        for (const x of [reservation.x + reservation.width + LABEL_GAP, reservation.x - size.width - LABEL_GAP]) {
+          for (const other of occupiedRects) {
+            for (const y of [other.y + other.height + LABEL_GAP, other.y - size.height - LABEL_GAP]) {
+              if (reservedEdgeBudget === 0) break reservedEdges;
+              reservedEdgeBudget -= 1;
+              if (x < bounds.x || x > maxX || y < bounds.y || y > maxY) continue;
+              const rect = { x, y, ...size };
+              if (occupiedRects.some((otherRect) => smartLabelRectsOverlap(rect, otherRect)) || blocked(rect)) continue;
+              selectedRect = rect;
+              break reservedEdges;
+            }
+          }
+        }
+      }
+      const sizeKey = `${size.width}:${size.height}`;
+      // Lo ya colocado sólo aumenta: si esta rejilla no tenía hueco para una
+      // caja del mismo tamaño, repetirla para la siguiente no puede liberarlo.
+      if (!selectedRect && !exhaustedFallbackSizes.has(sizeKey)) {
+        // A lo sumo 25 × 17 posiciones, sólo si fallaron los anillos locales.
+        const stepX = Math.max((size.width + LABEL_GAP) / 2, bounds.width / 24);
+        const stepY = Math.max(size.height + LABEL_GAP, bounds.height / 16);
+        let nearestFreeDistance = Infinity;
+        for (let y = bounds.y; y <= maxY; y += stepY) {
+          for (let x = bounds.x; x <= maxX; x += stepX) {
+            const rect = { x, y, ...size };
+            if (occupiedRects.some((other) => smartLabelRectsOverlap(rect, other)) || blocked(rect)) continue;
+            const center = rectCenter(rect);
+            const distance = Math.hypot(center.x - preferredCenter.x, center.y - preferredCenter.y);
+            if (distance < nearestFreeDistance) {
+              selectedRect = rect;
+              nearestFreeDistance = distance;
+            }
+          }
+        }
+        if (!selectedRect) exhaustedFallbackSizes.add(sizeKey);
+      }
+      selectedRect ??= leastCrowded?.rect ?? nearestBlocked ?? rectAt(candidate, preferred, bounds);
     }
 
     const center = rectCenter(selectedRect);

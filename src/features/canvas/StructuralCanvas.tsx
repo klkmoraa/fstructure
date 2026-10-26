@@ -42,7 +42,7 @@ import {
   type ScreenPoint,
 } from './canvasInteraction';
 import { toolFromShortcut } from './toolRegistry';
-import { cameraToCenterPoint, cameraToFitBounds, canvasSafeInsetsFor, canvasSafeRect, expandBoundsForDecoration } from './canvasChromeGeometry';
+import { cameraToCenterPoint, cameraToFitBounds, canvasLabelSafeRect, canvasSafeInsetsFor, canvasSafeRect, expandBoundsForDecoration } from './canvasChromeGeometry';
 import type { EditorLayerAction, EditorLayerState } from './editorLayers';
 import { CanvasChrome } from './CanvasChrome';
 import { layoutSmartLabels, smartLabelDetailForScale, smartLabelOffsetToward, type SmartLabelCandidate, type SmartLabelObstacle } from './labelLayout';
@@ -77,6 +77,7 @@ import {
   candidateToSelection,
   createCandidatePickerState,
   cycleCandidatePicker,
+  nearestGeometryCandidate,
   type CandidatePickerState,
   type CandidateTarget,
 } from './candidatePicker';
@@ -118,6 +119,7 @@ import { supportForCanvasPlacement } from './supportPlacementModel';
 import type { StructureGenerationGhost } from '../../data/generators/generatorGhost';
 import { GlobalAxes, SmartLabelLayer } from './CanvasVisualOverlays';
 import { useStableCanvasEvent } from './useStableCanvasEvent';
+import { useCanvasDockReservation } from './useCanvasDockReservation';
 import { DISTRIBUTED_BASE_HEIGHT_PX, pointLoadLabelAnchor, resolveMemberLoadPresentation } from './loadPresentation';
 
 /**
@@ -323,6 +325,8 @@ export const StructuralCanvas = ({
   const [camera, setCamera] = useState<Camera>({ scale: 85, x: 260, y: 500 });
   const [memberStart, setMemberStart] = useState<string | null>(null);
   const [stackActive, setStackActive] = useState(false);
+  const dockLabelReservation = useCanvasDockReservation(svgRef, size, compactCanvasChrome && !stackActive
+    && canvasLabelSafeRect(size, true).height > canvasSafeRect(size).height);
   const [stackQuantities, setStackQuantities] = useState<StackQuantity[]>(readStoredStackQuantities);
   const [cut, setCut] = useState<CutInfo | null>(null);
   const [interaction, setInteractionState] = useState<CanvasInteraction>(IDLE_INTERACTION);
@@ -401,7 +405,7 @@ export const StructuralCanvas = ({
     CAMERA_MEMORY.set(project.id, { camera, size, geometry: memoryGeometry });
   }, [camera, size, project.id, memoryGeometry]);
   const feedbackTimerRef = useRef<number | null>(null);
-  const [canvasFeedback, setCanvasFeedback] = useState('');
+  const [canvasFeedback, setCanvasFeedback] = useState<{ message: string; role: 'alert' | 'status' } | null>(null);
 
   const selectionBox = interaction.kind === 'selection-box' ? interaction : null;
   const candidatePreview = candidatePicker ? activeCandidate(candidatePicker) : null;
@@ -700,11 +704,11 @@ export const StructuralCanvas = ({
     cancelProjectTransaction();
   }, [cancelProjectTransaction]);
 
-  const showCanvasFeedback = useCallback((message: string) => {
+  const showCanvasFeedback = useCallback((message: string, role: 'alert' | 'status' = 'alert') => {
     if (feedbackTimerRef.current !== null) window.clearTimeout(feedbackTimerRef.current);
-    setCanvasFeedback(message);
+    setCanvasFeedback({ message, role });
     feedbackTimerRef.current = window.setTimeout(() => {
-      setCanvasFeedback('');
+      setCanvasFeedback(null);
       feedbackTimerRef.current = null;
     }, 2400);
   }, []);
@@ -1148,6 +1152,7 @@ export const StructuralCanvas = ({
     clientX: number,
     clientY: number,
     fallback: StructuralTarget,
+    pointerType = 'mouse',
   ): CandidateTarget[] => {
     const candidates: CandidateTarget[] = [];
     const seen = new Set<string>();
@@ -1167,21 +1172,28 @@ export const StructuralCanvas = ({
       append(object?.dataset.structureKind, object?.dataset.structureId);
     }
     if (fallback.kind !== 'background') append(fallback.kind, fallback.id);
+    const primary = pointerType === 'touch' && fallback.kind !== 'background'
+      ? nearestGeometryCandidate(fallback, candidates, screenToModelPoint(localScreenPoint(clientX, clientY), cameraRef.current), nodeMap, memberMap)
+      : fallback;
+    if (pointerType === 'touch' && primary.kind !== 'background') {
+      const primaryIndex = candidates.findIndex((candidate) => candidate.kind === primary.kind && candidate.id === primary.id);
+      if (primaryIndex > 0) candidates.unshift(...candidates.splice(primaryIndex, 1));
+    }
     // SVG hit-testing does not consistently report a member exactly at one of
     // its endpoint nodes. The model already owns that exact incidence through
     // IDs, so complete the node stack from topology rather than tolerances or
     // coordinate comparisons. A shared node can therefore offer its node,
     // attached members, and its nodal loads as one precise candidate set.
-    if (fallback.kind === 'node') {
+    if (primary.kind === 'node') {
       for (const member of project.members) {
-        if (member.i === fallback.id || member.j === fallback.id) append('member', member.id);
+        if (member.i === primary.id || member.j === primary.id) append('member', member.id);
       }
       for (const load of project.nodalLoads) {
-        if (load.nodeId === fallback.id) append('nodalLoad', load.id);
+        if (load.nodeId === primary.id) append('nodalLoad', load.id);
       }
     }
     return candidates;
-  }, [project.members, project.nodalLoads, selectionFilter.loads, selectionFilter.members, selectionFilter.nodes]);
+  }, [localScreenPoint, memberMap, nodeMap, project.members, project.nodalLoads, selectionFilter.loads, selectionFilter.members, selectionFilter.nodes]);
 
   const closeCandidatePicker = useCallback(() => {
     setCandidatePicker(null);
@@ -1365,13 +1377,16 @@ export const StructuralCanvas = ({
   };
 
   const openSupportPlacement = useCallback((nodeId: string, client: ScreenPoint, initialType: SupportPlacementType = 'pin', initialAngleDeg = 90, initialPresetId?: string) => {
-    setSupportPlacement({
+    const placement = {
       nodeId,
       anchor: localScreenPoint(client.x, client.y),
       initialType,
       initialAngleDeg: Number.isFinite(initialAngleDeg) ? initialAngleDeg : 90,
       initialPresetId,
-    });
+    };
+    // La hoja puede ocupar el punto tocado. Montarla después de la secuencia
+    // pointerup/click evita que ese mismo toque elija un apoyo por accidente.
+    window.requestAnimationFrame(() => setSupportPlacement(placement));
   }, [localScreenPoint]);
 
   const applySupportPlacement = useCallback((type: SupportPlacementType, angleDeg: number, presetId?: string) => {
@@ -1670,7 +1685,8 @@ export const StructuralCanvas = ({
             ? selectionFilter.loads
             : true;
       if (!selectable) return;
-      const candidates = candidateTargetsAtPoint(event.clientX, event.clientY, resolvedTarget);
+      const candidates = candidateTargetsAtPoint(event.clientX, event.clientY, resolvedTarget, event.pointerType);
+      if (event.pointerType === 'touch' && candidates.length) resolvedTarget = candidates[0];
       if (candidates.length > 1) {
         if (event.pointerType === 'touch') startPending(event, resolvedTarget, candidates);
         else openCandidatePicker(candidates, localScreenPoint(event.clientX, event.clientY), event.shiftKey);
@@ -1921,7 +1937,24 @@ export const StructuralCanvas = ({
         });
       } else transitionInteraction(IDLE_INTERACTION);
     } else if (current.kind === 'pending' && current.pointerId === event.pointerId) {
-      if (!cancelled) performTargetAction(current.target, current.tool, { x: event.clientX, y: event.clientY }, current.shiftKey);
+      const end = { x: event.clientX, y: event.clientY };
+      // Mobile browsers can coalesce the last move away. Recheck at release so
+      // a drag cannot place/delete geometry or apply a load as though it were a tap.
+      if (!cancelled && movedPastThreshold(current.start, end, current.pointerType)) {
+        if (current.pointerType === 'touch') updateCamera(panCameraFrom(cameraRef.current, current.start, end));
+      } else if (!cancelled) {
+        const overlappingTouch = current.pointerType === 'touch' && current.tool === 'select' && current.candidates.length > 1;
+        const touchedSelection = current.target.kind !== 'background' && selection?.kind === current.target.kind && selection.id === current.target.id;
+        // First tap selects directly. A second tap offers the same explicit
+        // choices as long press, without requiring a timed gesture.
+        if (overlappingTouch && touchedSelection && !current.shiftKey) {
+          setCanvasFeedback(null);
+          openCandidatePicker(current.candidates, current.anchor);
+        } else {
+          performTargetAction(current.target, current.tool, end, current.shiftKey);
+          if (overlappingTouch) showCanvasFeedback(t('canvas.touchOverlapHint'), 'status');
+        }
+      }
       transitionInteraction(IDLE_INTERACTION);
     } else if (current.kind === 'pan' && current.pointerId === event.pointerId) {
       if (!cancelled && !current.moved && current.clearSelectionOnTap) {
@@ -2605,13 +2638,22 @@ export const StructuralCanvas = ({
     // acabar debajo de él. Mismas medidas que `.canvas-minimap` en phase2.css.
     const minimapShown = size.width >= 1024 && (project.members.length >= 12 || project.nodes.length >= 16);
     const reservedRects = minimapShown ? [{ x: size.width - 12 - 132 - 8, y: size.height - 104 - 88 - 8, width: 132 + 16, height: 88 + 16 }] : [];
-    return layoutSmartLabels(smartLabelCandidates, canvasSafeRect(stackActive ? { ...size, height: diagramDclHeight(project, size) } : size), camera.scale, reservedRects, labelObstacles);
+    const labelViewport = stackActive ? { ...size, height: diagramDclHeight(project, size) } : size;
+    const labelBounds = canvasLabelSafeRect(labelViewport, compactCanvasChrome && !stackActive);
+    if (labelBounds.height > canvasSafeRect(labelViewport).height) {
+      // GlobalAxes ocupa esta esquina; liberar la franja para cifras no les
+      // permite tapar sus flechas ni sus letras X/Y.
+      reservedRects.push({ x: 34, y: size.height - 120, width: 90, height: 90 });
+      if (dockLabelReservation) reservedRects.push(dockLabelReservation);
+    }
+    return layoutSmartLabels(smartLabelCandidates, labelBounds, camera.scale, reservedRects, labelObstacles);
   }, [
     activeTool,
     structuralEditDraft,
     analysis,
     camera,
     compactCanvasChrome,
+    dockLabelReservation,
     stackActive,
     demandMapActive,
     distributedLabel,
@@ -3058,7 +3100,7 @@ export const StructuralCanvas = ({
         sceneId={CANVAS_SCENE_ID}
         canvasHeight={size.height}
       /> : null}
-      {canvasFeedback ? <div className="canvas-feedback" role="alert">{canvasFeedback}</div> : null}
+      {canvasFeedback ? <div className="canvas-feedback" role={canvasFeedback.role}>{canvasFeedback.message}</div> : null}
       <RepeatActionOverlay
         available={!compactCanvasChrome && Boolean(repeatCandidate) && !structuralEditDraft}
         active={Boolean(repeatRecipe)}

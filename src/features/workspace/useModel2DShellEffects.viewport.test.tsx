@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useInspectorDetent, useVisualViewportSync } from './useModel2DShellEffects';
+import { useInspectorDetent } from './useModel2DShellEffects';
+import { useVisualViewportSync } from './useVisualViewportSync';
 
 class TestViewport extends EventTarget {
   height = 800;
@@ -120,6 +121,36 @@ describe('useVisualViewportSync', () => {
     textarea.focus();
     viewport.resize(470);
     expect(shell.hasAttribute('data-keyboard')).toBe(true);
+  });
+
+  it('revela el campo al reducirse el teclado desplazando sólo su panel', () => {
+    let nextFrame: FrameRequestCallback | undefined;
+    const frame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { nextFrame = callback; return 1; });
+    const panel = document.createElement('div');
+    panel.style.overflowY = 'auto';
+    panel.append(field);
+    shell.append(panel);
+    Object.defineProperties(panel, { scrollHeight: { value: 700 }, clientHeight: { value: 390 } });
+    panel.getBoundingClientRect = () => ({ top: 80, bottom: 470 } as DOMRect);
+    field.getBoundingClientRect = () => ({ top: 520, bottom: 564 } as DOMRect);
+    const scrollPage = vi.spyOn(window, 'scrollTo');
+    try {
+      mountSync();
+      field.focus();
+      viewport.resize(470);
+      nextFrame?.(0);
+      expect(panel.scrollTop).toBe(106);
+      expect(scrollPage).not.toHaveBeenCalled();
+      // Una ampliación de página no vuelve a mover el formulario.
+      panel.scrollTop = 0;
+      frame.mockClear();
+      viewport.resize(400, 2);
+      expect(frame).not.toHaveBeenCalled();
+      expect(panel.scrollTop).toBe(0);
+    } finally {
+      frame.mockRestore();
+      scrollPage.mockRestore();
+    }
   });
 
   it('acepta contenido editable y descarta una reducción pequeña de la barra del navegador', () => {

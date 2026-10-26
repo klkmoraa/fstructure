@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { Fragment, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { SegmentedControl, Select } from '../../../design-system/components/controls';
 import { LayerToggle, UnitField } from '../../../design-system/components/editor';
 import { MAX_SPANS, barsText, beamClearSpanMm, designBeam, flangeWidthLimit } from '../../../design/elements/beam';
@@ -88,6 +88,7 @@ function SpanTable({ spans, points, onChange, onAdd, onRemove }: {
 }
 
 export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
+  const sectionId = useId();
   const { draft, set, reset, replace, accept } = useStoredDraft('beam', BEAM_DEFAULTS);
   const storage = useWorkbenchStorage();
   const storedDetails = useStoredBeamDetails(storage);
@@ -226,9 +227,14 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     }}
     verdict={result.ok ? { status: result.status, label: verdictLabel(result.status, result.governingRatio) } : missingDataVerdict(result.errors)}
     caption={result.ok ? describeBeam(result.input) : undefined}
+    inputSections={[
+      { id: `${sectionId}-loads`, label: 'Claros y cargas', name: 'Ir a claros y cargas' },
+      { id: `${sectionId}-section`, label: 'Sección', name: 'Ir a sección y materiales' },
+      { id: `${sectionId}-rebar`, label: 'Armado', name: 'Ir a armado' },
+    ]}
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} />
-      <FieldGroup title="Claros y cargas" columns={1}>
+      <FieldGroup id={`${sectionId}-loads`} title="Claros y cargas" columns={1}>
         <SpanTable
           spans={spans}
           points={draft.points === 'yes'}
@@ -285,7 +291,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <div className="dw-end"><span aria-hidden="true">Izquierdo</span><SegmentedControl label="Extremo izquierdo" size="sm" value={draft.leftEnd} options={ENDS} onValueChange={set('leftEnd')} /></div>
         <div className="dw-end"><span aria-hidden="true">Derecho</span><SegmentedControl label="Extremo derecho" size="sm" value={draft.rightEnd} options={ENDS} onValueChange={set('rightEnd')} /></div>
       </FieldGroup>
-      <FieldGroup title="Geometría y materiales" action={<InlineAction label={sectionSearch ? 'Cancelar búsqueda' : 'Proponer sección'} title="Dimensionar: la sección de menor área que cumple" onClick={proposeSection} />}>
+      <FieldGroup id={`${sectionId}-section`} title="Geometría y materiales" action={<InlineAction label={sectionSearch ? 'Cancelar búsqueda' : 'Proponer sección'} title="Dimensionar: la sección de menor área que cumple" onClick={proposeSection} />}>
         {sectionNote ? <p className="dw-span-all" role="status">{sectionNote}</p> : null}
         {sectionPreview?.key === sectionSnapshotKey ? <div className="dw-action-note dw-span-all" role="status">
           <span>Vista previa: {sectionPreview.width} × {sectionPreview.height} cm. Se conservan claros, cargas, detalle y armado actual.</span>
@@ -329,7 +335,7 @@ export function BeamWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
         <MaterialFields fc={draft.fc} onFcChange={set('fc')} fy={draft.fy} onFyChange={set('fy')} fyv={draft.fyv} onFyvChange={set('fyv')} />
         <div className="dw-span-all"><ActionNote text={sectionNote} /></div>
       </FieldGroup>
-      <FieldGroup title="Acero longitudinal y transversal">
+      <FieldGroup id={`${sectionId}-rebar`} title="Acero longitudinal y transversal">
         <BarSelect label="Estribo" value={draft.stirrup} onChange={set('stirrup')} allowAuto usage="transverse" />
         <div className="dw-span-all">
           <SegmentedControl label="Armado" size="sm" value={own ? 'own' : 'auto'} onValueChange={set('rebarMode')}

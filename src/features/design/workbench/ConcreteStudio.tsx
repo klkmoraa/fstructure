@@ -102,10 +102,10 @@ export function ConcreteStudio({ chrome }: { chrome: WorkbenchChrome }) {
     inputs={<>
       <div className="cs-intro"><span className="cs-experimental"><CircleDashed size={12} aria-hidden="true" />LABORATORIO DE SECCIONES</span></div>
       <FieldGroup title="Datos del problema">
-        <Select label="Método de diseño" value={draft.philosophy} onChange={(event) => set('philosophy')(event.currentTarget.value)}>
+        <Select className="dw-span-all" label="Método de diseño" value={draft.philosophy} onChange={(event) => set('philosophy')(event.currentTarget.value)}>
           {SECTION_PHILOSOPHIES.map((item) => <option key={item.value} value={item.value}>{item.short} · {item.label}</option>)}
         </Select>
-        {draft.philosophy !== 'allowable' ? <Select label="Base de las solicitaciones" value={draft.demandBasis} onChange={(event) => set('demandBasis')(event.currentTarget.value)}>
+        {draft.philosophy !== 'allowable' ? <Select className="dw-span-all" label="Base de las solicitaciones" value={draft.demandBasis} onChange={(event) => set('demandBasis')(event.currentTarget.value)}>
           <option value="factored">Últimas · ya factorizadas</option><option value="service">Servicio · aplicar factor global</option>
         </Select> : null}
         {draft.philosophy !== 'allowable' && draft.demandBasis === 'service' ? <NumberField label="Factor global de demanda" value={draft.loadFactor} unit="×" min={1} onChange={set('loadFactor')} hint="Aplicado a N, M y V; no genera combinaciones normativas." /> : null}

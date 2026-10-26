@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { X } from 'lucide-react';
 import type { SupportType } from '../../types';
 import { SupportGlyph } from '../inspector/SupportGlyph';
 import type { SupportGlyphName } from '../inspector/supportCatalog';
@@ -100,7 +101,7 @@ export const SupportPlacementPopover = ({
       role="dialog"
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
-      style={{ left, top }}
+      style={{ left, top, '--support-placement-room': `${Math.max(1, viewport.height - top - 8)}px` } as CSSProperties}
       onKeyDown={(event) => {
         if (event.key !== 'Escape') return;
         event.preventDefault();
@@ -110,7 +111,7 @@ export const SupportPlacementPopover = ({
     >
       <header>
         <strong id={titleId}>{title}</strong>
-        <button type="button" className="support-placement-close" aria-label={cancelLabel} onClick={onCancel}>×</button>
+        <button type="button" className="support-placement-close" aria-label={cancelLabel} onClick={onCancel}><X size={18} aria-hidden="true" /></button>
       </header>
       <p id={descriptionId} className="sr-only">{description}</p>
       {/* Un mosaico por apoyo, con su dibujo: se elige mirando, no leyendo. */}

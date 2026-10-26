@@ -258,8 +258,9 @@
   font-variant-numeric: var(--sc-numeric-variant);
 }
 .sc-field__control input::placeholder { color: var(--sc-color-text-muted); opacity: 1; }
-.sc-field__control--select select { appearance: none; padding-right: var(--sc-space-7); }
-.sc-field__select-icon { position: absolute; right: var(--sc-space-3); pointer-events: none; color: var(--sc-color-text-muted); }
+/* Reserva la flecha y un margen real, sin quitarle media columna al valor. */
+.sc-field__control--select select { appearance: none; padding-inline: var(--sc-space-2) calc(var(--sc-size-icon-sm) + var(--sc-space-3)); }
+.sc-field__select-icon { position: absolute; right: var(--sc-space-2); width: var(--sc-size-icon-sm); height: var(--sc-size-icon-sm); pointer-events: none; color: var(--sc-color-text-muted); }
 .sc-field__control--select { position: relative; }
 .sc-field__affix { flex: 0 0 auto; display: grid; place-items: center; color: var(--sc-color-text-secondary); font-size: var(--sc-font-size-label); }
 .sc-field__affix:first-child { padding-left: var(--sc-space-3); }

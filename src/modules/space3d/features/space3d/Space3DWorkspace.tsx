@@ -303,12 +303,19 @@ const WorkspaceBody = ({
     typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1600px)').matches
   ));
   const [animate, setAnimate] = useState(false);
-  const [sheetExpanded, setLocalSheetExpanded] = useState(false);
+  const [localSheetExpanded, setLocalSheetExpanded] = useState(false);
   const shellInspector = useShellInspector();
-  const setSheetExpanded = (value: boolean | ((current: boolean) => boolean)) => {
+  // La X, Escape y el fondo cierran la hoja desde el shell. Su estado real
+  // gobierna las capas del lienzo para que el HUD reaparezca al volver.
+  const sheetExpanded = shellInspector?.mobile ? shellInspector.open : localSheetExpanded;
+  const setSheetExpanded = useCallback((value: boolean) => {
     setLocalSheetExpanded(value);
-    if (shellInspector?.mobile && value !== false && document.activeElement instanceof HTMLElement) shellInspector.show(document.activeElement);
-  };
+    if (value) {
+      if (document.activeElement instanceof HTMLElement) shellInspector?.reveal(document.activeElement);
+    } else if (shellInspector?.mobile && shellInspector.open) {
+      shellInspector.close();
+    }
+  }, [shellInspector]);
   const [resultMode, setResultMode] = useState<Space3DResultMode>('model');
   const [lastAnalyzedAt, setLastAnalyzedAt] = useState<number | null>(null);
   const [analysisMode, setAnalysisMode] = useState<Space3DAnalysisMode>('linear');
@@ -539,8 +546,7 @@ const WorkspaceBody = ({
       setEditorTarget(null);
       setSheetExpanded(false);
     }
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [openEditor, select]);
+  }, [openEditor, select, setSheetExpanded]);
 
   /** Aplica una selección múltiple y deja como primaria la última elegida. */
   const applySelection = useCallback((next: Space3DSelectionSet, primary: Space3DSelection | null) => {
@@ -558,8 +564,7 @@ const WorkspaceBody = ({
       setEditorTarget(null);
       if (size === 0) { setAssignKind(null); setSheetExpanded(false); }
     }
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignKind, openEditor, select]);
+  }, [assignKind, openEditor, select, setSheetExpanded]);
 
   // Barras pedidas desde Diseño («Ver en 3D»): quedan seleccionadas al abrir.
   const appliedStartSelection = useRef(false);
@@ -587,8 +592,7 @@ const WorkspaceBody = ({
     setSelection(EMPTY_SPACE3D_SELECTION);
     openEditor(kind === 'load' ? { kind, id: null, initialNodeId } : { kind, id: null }, true);
     setSheetExpanded(true);
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [openEditor, select]);
+  }, [openEditor, select, setSheetExpanded]);
 
   const clearToolSelection = useCallback(() => {
     select(null);
@@ -741,8 +745,7 @@ const WorkspaceBody = ({
     setPanel('model');
     setSheetExpanded(true);
     if (tool !== 'select') { setTool('select'); setMemberFrom(null); }
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [tool]);
+  }, [setSheetExpanded, tool]);
 
   // Accesos rápidos por teclado para modelado fluido
   useEffect(() => {
@@ -1240,7 +1243,7 @@ const WorkspaceBody = ({
             target={editorTarget}
             t={t}
             onSubmit={submit}
-            onCancel={() => { setEditorTarget(null); select(null); setSelection(EMPTY_SPACE3D_SELECTION); }}
+            onCancel={() => { setEditorTarget(null); setSheetExpanded(false); }}
             onDelete={remove}
             focusOnOpen={editorFocus}
           />
@@ -1493,6 +1496,10 @@ const WorkspaceBody = ({
                   openEditor({ kind: selectedEntity.kind, id: selectedEntity.id }, true);
                   setSheetExpanded(true);
                 }}
+                onOpenResults={(element) => {
+                  setResultsTab(selectedEntity.kind === 'member' ? 'members' : 'nodes');
+                  openResults(element);
+                }}
                 onDelete={() => {
                   const target = editorTarget?.id ? editorTarget : { kind: selectedEntity.kind, id: selectedEntity.id };
                   remove(target);
@@ -1502,7 +1509,7 @@ const WorkspaceBody = ({
                 t={t}
               />
             ) : null}
-            {resultMode !== 'model' && !modeShape ? (
+            {tool === 'select' && resultMode !== 'model' && !modeShape ? (
               <Space3DResultsLegend
                 resultMode={resultMode}
                 analysis={currentAnalysis}
@@ -1512,6 +1519,11 @@ const WorkspaceBody = ({
               />
             ) : null}
           </div>
+
+          {hasContent && tool === 'select' && !selectedEntity && selectionSize === 0 && resultMode === 'model' && !modeShape ? <p className="space3d-touch-hint">
+            {t(view.scope.kind === '3d' ? 'space3d.touch.orbit' : 'space3d.touch.pan')}
+            <span>{t('space3d.touch.camera')}</span>
+          </p> : null}
 
           {scaleControl ? <div className="space3d-stage-scale">{scaleControl}</div> : null}
         </section>
@@ -1545,15 +1557,16 @@ const WorkspaceBody = ({
 
     <ShellContribution slot="inspector">
       <div className="space3d-inspector">
-        {/* Con resultados, la ruta ya se recorrió: basta una línea y el panel es para los números. */}
-        <Space3DGuide
+        {/* Al editar, el objeto y sus campos van primero. La ruta pertenece a la
+            exploración del modelo; no desplaza los campos bajo la hoja móvil. */}
+        {panel !== 'model' || (!editorTarget && !assignKind && selectionSize <= 1) ? <Space3DGuide
           compact={guide.next === 'explore-results' || guide.next === 'running'}
           guide={guide}
           t={t}
           analysisLabel={stateLabel}
           onAction={onGuideAction}
           actionDone={exploring}
-        />
+        /> : null}
         <div className="space3d-tabs" role="tablist" aria-label={t('space3d.inspectorTabs')}>
           <button type="button" role="tab" id="space3d-tab-model" className="space3d-tab" aria-controls="space3d-panel-model"
             aria-selected={panel === 'model'} tabIndex={panel === 'model' ? 0 : -1} onClick={() => setPanel('model')}>

@@ -144,7 +144,8 @@ export const Space3DCanvas = ({
   const viewportRef = useRef<Space3DViewport | null>(null);
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
-  const pointerDownPos = useRef<{ x: number; y: number; pointerId: number; window: boolean; additive: boolean } | null>(null);
+  const pointerDownPos = useRef<{ x: number; y: number; pointerId: number; window: boolean; additive: boolean; moved: boolean } | null>(null);
+  const activePointers = useRef(new Set<number>());
   const windowSelectRef = useRef(onWindowSelect);
   windowSelectRef.current = onWindowSelect;
   const [band, setBand] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
@@ -361,13 +362,26 @@ export const Space3DCanvas = ({
           tabIndex={0}
           data-drafting={draft ? true : undefined}
           onPointerDown={(event) => {
+            if (event.button !== 0) return;
+            activePointers.current.add(event.pointerId);
+            // Dos dedos pertenecen a la cámara. Ninguno de sus levantamientos
+            // debe convertirse después en un toque de selección o de dibujo.
+            if (activePointers.current.size > 1) {
+              if (pointerDownPos.current?.window) viewportRef.current?.setNavigationEnabled?.(true);
+              pointerDownPos.current = null;
+              setBand(null);
+              return;
+            }
             const additive = event.ctrlKey || event.metaKey || event.shiftKey;
-            const windowMode = event.button === 0 && !draftRef.current && Boolean(windowSelectRef.current) && (windowSelect || event.shiftKey);
-            pointerDownPos.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, window: windowMode, additive };
+            // En planta, un dedo desplaza y un toque elige. La ventana sigue
+            // disponible con ratón; no toma por sorpresa los gestos táctiles.
+            const windowMode = event.pointerType !== 'touch' && !draftRef.current && Boolean(windowSelectRef.current) && (windowSelect || event.shiftKey);
+            pointerDownPos.current = { x: event.clientX, y: event.clientY, pointerId: event.pointerId, window: windowMode, additive, moved: false };
             if (windowMode) viewportRef.current?.setNavigationEnabled?.(false);
           }}
           onPointerMove={(event) => {
             const start = pointerDownPos.current;
+            if (start?.pointerId === event.pointerId && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) start.moved = true;
             if (start?.window && start.pointerId === event.pointerId) {
               const rect = event.currentTarget.getBoundingClientRect();
               setBand({ x0: start.x - rect.left, y0: start.y - rect.top, x1: event.clientX - rect.left, y1: event.clientY - rect.top });
@@ -389,6 +403,7 @@ export const Space3DCanvas = ({
             setHover(null);
           }}
           onPointerUp={(event) => {
+            activePointers.current.delete(event.pointerId);
             const start = pointerDownPos.current;
             if (start?.window) {
               viewportRef.current?.setNavigationEnabled?.(true);
@@ -406,7 +421,7 @@ export const Space3DCanvas = ({
             }
             // Orbit/pan is movement, not duration. A stationary slow press remains
             // a valid touch selection for users with reduced motor dexterity.
-            if (Math.hypot(dx, dy) > 6) return;
+            if (start.moved || Math.hypot(dx, dy) > 6) return;
             if (draftRef.current && draftPickRef.current) {
               const { selection, point } = resolvePick(event.clientX - rect.left, event.clientY - rect.top);
               draftPickRef.current({ selection, point });
@@ -415,6 +430,7 @@ export const Space3DCanvas = ({
             selectRef.current?.(viewportRef.current?.pickAt(event.clientX - rect.left, event.clientY - rect.top) ?? null, { additive: start.additive });
           }}
           onPointerCancel={(event) => {
+            activePointers.current.delete(event.pointerId);
             if (pointerDownPos.current?.pointerId === event.pointerId) {
               if (pointerDownPos.current.window) viewportRef.current?.setNavigationEnabled?.(true);
               pointerDownPos.current = null;

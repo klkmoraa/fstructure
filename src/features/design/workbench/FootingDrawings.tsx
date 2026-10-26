@@ -43,7 +43,7 @@ export function FootingPlan({ result }: { result: FootingDesignResult }) {
   const yLine = (support.shearDepthMm / 2 + result.directions.y.effectiveDepthMm) * scale;
   const ex = result.service.eccentricityXMm * scale;
   const ey = result.service.eccentricityYMm * scale;
-  return <svg className="dw-drawing dw-drawing--plan" viewBox={`0 0 ${W} 290`} role="img"
+  return <svg className="dw-drawing dw-drawing--plan" viewBox={`0 -12 ${W} 302`} role="img"
     aria-label={`Planta de zapata de ${formatNumber(bx / 1000, 2)} por ${formatNumber(by / 1000, 2)} metros`}>
     <rect className="dw-concrete" x={ox} y={oy} width={w} height={h} />
     <g className="dw-rebar-grid">

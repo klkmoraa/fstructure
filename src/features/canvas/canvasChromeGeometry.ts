@@ -79,6 +79,18 @@ export const canvasSafeRect = (
 };
 
 /**
+ * La cámara conserva márgenes simétricos para centrar el modelo. Los rótulos
+ * de un lienzo compacto bajo sí pueden usar la franja inferior: el dock vive
+ * fuera del SVG y la cámara queda protegida por el margen derecho.
+ */
+export const canvasLabelSafeRect = (viewport: ViewportSize, compact: boolean): CanvasSafeRect => {
+  const insets = canvasSafeInsetsFor(viewport);
+  return canvasSafeRect(viewport, compact && viewport.width <= 1023 && viewport.height <= 320
+    ? { ...insets, bottom: 12 }
+    : insets);
+};
+
+/**
  * Lo que una carga dibuja ALREDEDOR de su nudo, en píxeles de pantalla.
  *
  * El encuadre siempre midió `modelBounds(project.nodes)`, que son los nudos y

@@ -34,6 +34,7 @@ export const enModeling = {
   'canvas.scaleByMember': 'per member',
   'canvas.scaleCommon': 'common',
   'canvas.diagramSideDescription': 'Drawn toward local {side} · positive values retain their color and stroke',
+  'canvas.touchOverlapHint': 'Tap again to choose between objects',
   'canvas.touchDestinationNode': 'Tap the destination node',
   'canvas.cancelMemberCreation': 'Cancel member creation',
   // Coordinate entry: the panel that replaces the always-on strip. It opens

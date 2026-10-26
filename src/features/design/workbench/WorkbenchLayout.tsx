@@ -1,4 +1,4 @@
-import { ClipboardCheck, Maximize2, Minus, PenLine, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ClipboardCheck, Minus, PenLine, Plus, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { DesignCodeId } from '../../../design/elements/codes';
 import type { ExternalStructureAxes, ExternalStructureSource } from '../../../design/elements/structure';
@@ -21,6 +21,8 @@ export interface WorkbenchChrome {
   readonly code: DesignCodeId;
   readonly panels: Readonly<Record<WorkbenchPanel, boolean>>;
   readonly setPanel: (panel: WorkbenchPanel, open: boolean) => void;
+  /** En teléfono las vistas se seleccionan; tocar la activa conserva su contexto. */
+  readonly mobile?: boolean;
   /** Instantánea del diseño vigente, para copiar la memoria o exportar el PDF. */
   readonly onReport: (report: DesignReport | null) => void;
   /** Estado del elemento en la memoria del proyecto, sobre los resultados. */
@@ -109,32 +111,54 @@ const clampZoom = (value: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value
  */
 function useStageZoom() {
   const scroller = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const [zoom, setZoomState] = useState(1);
   const zoomRef = useRef(1);
-  const anchor = useRef<{ x: number; y: number; left: number; top: number; ratio: number } | null>(null);
+  type Anchor = { x: number; y: number; contentX: number; contentY: number };
+  const anchor = useRef<Anchor | null>(null);
+
+  const applyAnchor = useCallback((target: Anchor, value: number) => {
+    const element = scroller.current;
+    const drawing = content.current;
+    if (!element || !drawing) return;
+    const rect = element.getBoundingClientRect();
+    const bounds = drawing.getBoundingClientRect();
+    // Se mide el origen real de la lámina: el padding y el centrado no escalan.
+    element.scrollLeft += bounds.left - rect.left + target.contentX * value - target.x;
+    element.scrollTop += bounds.top - rect.top + target.contentY * value - target.y;
+  }, []);
+
+  const zoomAt = useCallback((next: number, target: Anchor | null) => {
+    const value = clampZoom(next);
+    if (value === zoomRef.current) {
+      // En el límite de zoom los dos dedos todavía pueden desplazar el dibujo.
+      if (target) applyAnchor(target, value);
+      return;
+    }
+    anchor.current = target;
+    zoomRef.current = value;
+    setZoomState(value);
+  }, [applyAnchor]);
 
   const setZoom = useCallback((next: number, point?: { x: number; y: number }) => {
     const element = scroller.current;
-    const value = clampZoom(next);
-    if (value === zoomRef.current) return;
-    if (element) {
+    const drawing = content.current;
+    let target: Anchor | null = null;
+    if (element && drawing) {
       const rect = element.getBoundingClientRect();
+      const bounds = drawing.getBoundingClientRect();
       const x = point ? point.x - rect.left : element.clientWidth / 2;
       const y = point ? point.y - rect.top : element.clientHeight / 2;
-      anchor.current = { x, y, left: element.scrollLeft + x, top: element.scrollTop + y, ratio: value / zoomRef.current };
+      target = { x, y, contentX: (rect.left + x - bounds.left) / zoomRef.current, contentY: (rect.top + y - bounds.top) / zoomRef.current };
     }
-    zoomRef.current = value;
-    setZoomState(value);
-  }, []);
+    zoomAt(next, target);
+  }, [zoomAt]);
 
   useLayoutEffect(() => {
-    const element = scroller.current;
     const target = anchor.current;
     anchor.current = null;
-    if (!element || !target) return;
-    element.scrollLeft = target.left * target.ratio - target.x;
-    element.scrollTop = target.top * target.ratio - target.y;
-  }, [zoom]);
+    if (target) applyAnchor(target, zoom);
+  }, [zoom, applyAnchor]);
 
   useEffect(() => {
     const element = scroller.current;
@@ -144,23 +168,29 @@ function useStageZoom() {
       event.preventDefault();
       setZoom(zoomRef.current * Math.exp(-event.deltaY * 0.004), { x: event.clientX, y: event.clientY });
     };
-    let pinch: { distance: number; zoom: number } | null = null;
+    let pinch: { distance: number; zoom: number; contentX: number; contentY: number } | null = null;
     const measure = (touches: TouchList) => {
       const [a, b] = [touches[0]!, touches[1]!];
       return { distance: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
     };
     const onTouchStart = (event: TouchEvent) => {
-      if (event.touches.length === 2) pinch = { distance: measure(event.touches).distance, zoom: zoomRef.current };
+      pinch = null;
+      if (event.touches.length !== 2 || !content.current) return;
+      const { distance, x, y } = measure(event.touches);
+      const bounds = content.current.getBoundingClientRect();
+      pinch = { distance, zoom: zoomRef.current, contentX: (x - bounds.left) / zoomRef.current, contentY: (y - bounds.top) / zoomRef.current };
+      event.preventDefault();
     };
     const onTouchMove = (event: TouchEvent) => {
       if (!pinch || event.touches.length !== 2) return;
       event.preventDefault();
       const { distance, x, y } = measure(event.touches);
-      if (pinch.distance > 0) setZoom(pinch.zoom * distance / pinch.distance, { x, y });
+      const rect = element.getBoundingClientRect();
+      if (pinch.distance > 0) zoomAt(pinch.zoom * distance / pinch.distance, { x: x - rect.left, y: y - rect.top, contentX: pinch.contentX, contentY: pinch.contentY });
     };
-    const onTouchEnd = (event: TouchEvent) => { if (event.touches.length < 2) pinch = null; };
+    const onTouchEnd = () => { pinch = null; };
     element.addEventListener('wheel', onWheel, { passive: false });
-    element.addEventListener('touchstart', onTouchStart, { passive: true });
+    element.addEventListener('touchstart', onTouchStart, { passive: false });
     element.addEventListener('touchmove', onTouchMove, { passive: false });
     element.addEventListener('touchend', onTouchEnd);
     element.addEventListener('touchcancel', onTouchEnd);
@@ -171,9 +201,9 @@ function useStageZoom() {
       element.removeEventListener('touchend', onTouchEnd);
       element.removeEventListener('touchcancel', onTouchEnd);
     };
-  }, [setZoom]);
+  }, [setZoom, zoomAt]);
 
-  return { scroller, zoom, setZoom };
+  return { scroller, content, zoom, setZoom };
 }
 
 /**
@@ -182,10 +212,18 @@ function useStageZoom() {
  * pantalla completa —Dibujo, Datos, Resultados— con pestañas fijas abajo y el
  * elemento arriba.
  */
-export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption, results, report, onReset, noReview = false }: {
+interface InputSection {
+  readonly id: string;
+  readonly label: string;
+  readonly name: string;
+}
+
+export function WorkbenchLayout({ chrome, title, inputs, inputSections, stage, verdict, caption, results, report, onReset, noReview = false }: {
   chrome: WorkbenchChrome;
   title: string;
   inputs: ReactNode;
+  /** Atajos del formulario, sin desmontar sus campos ni cambiar sus datos. */
+  inputSections?: readonly InputSection[];
   stage: ReactNode;
   verdict: Verdict;
   /** Resumen corto del elemento junto al veredicto. */
@@ -199,12 +237,29 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
   const { onReport, onVerdict, panels, setPanel } = chrome;
   useEffect(() => onReport(report), [report, onReport]);
   useEffect(() => { onVerdict?.({ status: verdict.status, label: verdict.label, ...(verdict.detail ? { detail: verdict.detail } : {}) }); }, [verdict.status, verdict.label, verdict.detail, onVerdict]);
-  const { scroller, zoom, setZoom } = useStageZoom();
+  const { scroller, content, zoom, setZoom } = useStageZoom();
   const canShowResults = verdict.status !== 'error';
   const percent = verdict.label.split(' · ')[1];
   const inputsRef = useRef<HTMLFormElement>(null);
+  const stageButton = useRef<HTMLButtonElement>(null);
   const inputId = useId();
   const resultsId = useId();
+  const stageId = useId();
+  const showStage = () => {
+    setPanel('inputs', false);
+    setPanel('results', false);
+    stageButton.current?.focus({ preventScroll: true });
+  };
+  const goToInputSection = (section: InputSection) => {
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(section.id);
+      if (!target || !inputsRef.current?.contains(target)) return;
+      // Enfocar el apartado ofrece continuidad con teclado/lector sin abrir
+      // el teclado virtual antes de que la persona elija un campo.
+      target.focus({ preventScroll: true });
+      target.scrollIntoView?.({ block: 'start' });
+    });
+  };
   const reviewInputs = () => {
     setPanel('inputs', true);
     window.requestAnimationFrame(() => {
@@ -218,6 +273,7 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
   return <div className="dw-layout" data-inputs={panels.inputs ? 'open' : 'closed'} data-results={panels.results && canShowResults ? 'open' : 'closed'}>
     <form ref={inputsRef} id={inputId} className="dw-panel dw-inputs" aria-label="Datos del elemento" data-open={panels.inputs} onSubmit={(event) => event.preventDefault()}>
       <header className="dw-panel__head">
+        <button type="button" className="dw-panel__back" onClick={showStage} aria-label="Volver al dibujo"><ChevronLeft size={18} aria-hidden="true" /><span>Dibujo</span></button>
         <h2>{title}</h2>
         <button type="button" className="dw-icon-button" onClick={onReset} aria-label="Restablecer el ejemplo" title="Restablecer el ejemplo">
           <RotateCcw size={15} aria-hidden="true" />
@@ -226,12 +282,15 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
           <X size={16} aria-hidden="true" />
         </button>
       </header>
+      {inputSections?.length ? <nav className="dw-input-sections" aria-label={`Apartados de ${title.toLocaleLowerCase('es')}`}>
+        {inputSections.map((section) => <button key={section.id} type="button" aria-label={section.name} aria-controls={section.id} onClick={() => goToInputSection(section)}>{section.label}</button>)}
+      </nav> : null}
       <div className="dw-panel__body">{chrome.contextualOrigin}{inputs}</div>
     </form>
 
-    <section className="dw-stage" aria-label="Lámina de diseño">
+    <section id={stageId} className="dw-stage" aria-label="Lámina de diseño">
       <div className="dw-stage__scroll" ref={scroller}>
-        <div className="dw-stage__content" style={{ '--dw-zoom': zoom } as CSSProperties}>{stage}</div>
+        <div ref={content} className="dw-stage__content" style={{ '--dw-zoom': zoom } as CSSProperties}>{stage}</div>
       </div>
       <div className="dw-hud dw-hud--start">
         {onVerdict ? null : <button type="button" className="dw-badge dw-badge--button" data-status={verdict.status}
@@ -247,13 +306,14 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
       {!canShowResults && !noReview ? <div className="dw-review-inputs"><button type="button" onClick={reviewInputs}>Revisar datos</button></div> : null}
       <div className="dw-zoom" role="group" aria-label="Zoom del lienzo" data-zoomed={zoom !== 1}>
         <button type="button" className="dw-zoom__step" onClick={() => setZoom(zoom / 1.25)} disabled={zoom <= ZOOM_MIN} aria-label="Alejar" title="Alejar"><Minus size={16} aria-hidden="true" /></button>
-        <button type="button" onClick={() => setZoom(1)} disabled={zoom === 1} aria-label="Tamaño normal" title="Tamaño normal"><Maximize2 size={15} aria-hidden="true" /></button>
+        <button type="button" className="dw-zoom__reset" onClick={() => setZoom(1)} disabled={zoom === 1} aria-label={`Tamaño normal. Zoom actual ${Math.round(zoom * 100)} %`} title="Volver al tamaño normal"><span>{Math.round(zoom * 100)} %</span></button>
         <button type="button" className="dw-zoom__step" onClick={() => setZoom(zoom * 1.25)} disabled={zoom >= ZOOM_MAX} aria-label="Acercar" title="Acercar"><Plus size={16} aria-hidden="true" /></button>
       </div>
     </section>
 
     <section id={resultsId} className="dw-panel dw-results" aria-label="Resultados" data-open={panels.results && canShowResults}>
       <header className="dw-panel__head dw-panel__head--results">
+        <button type="button" className="dw-panel__back" onClick={showStage} aria-label="Volver al dibujo"><ChevronLeft size={18} aria-hidden="true" /><span>Dibujo</span></button>
         <h2>Resultados</h2>
         <button type="button" className="dw-icon-button dw-panel__close" onClick={() => setPanel('results', false)} aria-label="Ocultar resultados" title="Ocultar resultados">
           <X size={16} aria-hidden="true" />
@@ -267,15 +327,15 @@ export function WorkbenchLayout({ chrome, title, inputs, stage, verdict, caption
       {chrome.elements}
       <span className="dw-dock__divider" aria-hidden="true" />
       <div className="dw-views" role="group" aria-label="Vistas">
-        <button type="button" className="dw-view dw-view--stage" aria-pressed={!panels.inputs && !(panels.results && canShowResults)}
-          onClick={() => { setPanel('inputs', false); setPanel('results', false); }}>
+        <button ref={stageButton} type="button" className="dw-view dw-view--stage" aria-pressed={!panels.inputs && !(panels.results && canShowResults)} aria-controls={stageId}
+          onClick={showStage}>
           <PenLine size={18} aria-hidden="true" /><span>Dibujo</span>
         </button>
-        <button type="button" className="dw-view" aria-pressed={panels.inputs} aria-controls={inputId} title="Editar geometría, materiales y demandas" onClick={() => setPanel('inputs', !panels.inputs)}>
+        <button type="button" className="dw-view" aria-pressed={panels.inputs} aria-controls={inputId} title="Editar geometría, materiales y demandas" onClick={() => setPanel('inputs', chrome.mobile || !panels.inputs)}>
           <SlidersHorizontal size={18} aria-hidden="true" /><span>Datos</span>
         </button>
         <button type="button" className="dw-view" aria-pressed={panels.results && canShowResults} aria-label="Resultados" aria-controls={resultsId} title={canShowResults ? 'Consultar comprobaciones y memoria' : verdict.detail ?? 'Corrige los datos del elemento para consultar los resultados'}
-          disabled={!canShowResults} data-status={verdict.status} onClick={() => setPanel('results', !panels.results)}>
+          disabled={!canShowResults} data-status={verdict.status} onClick={() => setPanel('results', chrome.mobile || !panels.results)}>
           <ClipboardCheck size={18} aria-hidden="true" /><span>Resultados</span>
           {percent ? <em aria-hidden="true"><i />{percent}</em> : null}
         </button>

@@ -120,7 +120,7 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
     inputs={<>
       <IdentityGroup tag={draft.tag} place={draft.place} onTag={set('tag')} onPlace={set('place')} />
       <FieldGroup title="Objetivo" columns={1}>
-        <SegmentedControl label="Objetivo de flexión" value={objective} onValueChange={(value) => set('objective')(value)} options={[
+        <SegmentedControl className="dw-flexure-objective" label="Objetivo de flexión" value={objective} onValueChange={(value) => set('objective')(value)} options={[
           { value: 'required', label: 'Calcular acero' }, { value: 'check', label: 'Revisar armado' }, { value: 'dimensions', label: 'Dimensionar sección' },
         ]} />
         <p className="dw-help">{objective === 'required' ? 'Obtén As requerida para el momento dado.' : objective === 'check' ? 'Comprueba el armado capturado frente al momento dado.' : 'Busca la menor área de sección con las barras elegidas; sólo revisa flexión.'}</p>
@@ -168,13 +168,13 @@ export function FlexureWorkbench({ chrome }: { chrome: WorkbenchChrome }) {
       </FieldGroup> : null}
     </>}
     stage={<Plate title="Sección rectangular" note={visibleResult ? `Mu ${formatNumber(input.momentKnM)} kN·m · tensión ${visibleResult.layout.tensionBed === 'top' ? 'arriba' : 'abajo'}` : missingDataText(missingFlexure(draft))}>
-      <svg viewBox="0 0 320 220" role="img" aria-label="Esquema de sección rectangular a flexión">
+      <svg className="dw-drawing" viewBox="0 0 320 220" role="img" aria-label="Esquema de sección rectangular a flexión">
         <rect x="90" y="30" width="140" height="160" fill="none" stroke="currentColor" strokeWidth="2" />
         {visibleResult?.layout.bars?.map((bar, index) => {
           const scale = Math.min(140 / visibleWidthMm, 160 / visibleHeightMm);
           return <circle key={index} cx={90 + bar.xMm / visibleWidthMm * 140} cy={visibleResult.layout.tensionBed === 'bottom' ? 190 - bar.fromFaceMm / visibleHeightMm * 160 : 30 + bar.fromFaceMm / visibleHeightMm * 160} r={Math.max(1, Math.min(5, bar.diameterMm * scale / 2))} fill="currentColor" />;
         })}
-        <text fill="currentColor" x="160" y="18" textAnchor="middle">b = {preview ? formatNumber(visibleWidthMm / 10, 0) : draft.width || '—'} cm</text><text fill="currentColor" x="244" y="110">h = {preview ? formatNumber(visibleHeightMm / 10, 0) : draft.height || '—'} cm</text>
+        <text fill="currentColor" x="160" y="18" textAnchor="middle">b = {preview ? formatNumber(visibleWidthMm / 10, 0) : draft.width || '—'} cm</text><text fill="currentColor" x="244" y="110" dominantBaseline="middle">h = {preview ? formatNumber(visibleHeightMm / 10, 0) : draft.height || '—'} cm</text>
         <text fill="currentColor" x="160" y="212" textAnchor="middle">{visibleResult ? `Lecho a tensión ${visibleResult.layout.tensionBed === 'top' ? 'superior' : 'inferior'}` : 'Sección sin escalar'}</text>
       </svg>
     </Plate>}

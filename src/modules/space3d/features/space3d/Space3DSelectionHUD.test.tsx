@@ -5,8 +5,29 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { translate } from '../../i18n/catalogs';
 import { Space3DSelectionHUD } from './Space3DSelectionHUD';
 import { generateSpace3DFrame } from '../../space3d/engine/space3dGenerative';
+import { analyzeSpace3DProject } from '../../space3d/engine/solver';
 
 afterEach(cleanup);
+
+it('offers results only for an analyzed selection and keeps editing independent', async () => {
+  const user = userEvent.setup();
+  const project = generateSpace3DFrame({ baysX: 1, bayWidthX: 4, storiesY: 1, storyHeightY: 3, baysZ: 1, bayDepthZ: 4, baseSupport: 'fixed', gravityLoadPerNode: 20 });
+  const onOpenResults = vi.fn();
+  const onOpenEditor = vi.fn();
+  const props = {
+    selection: { kind: 'member' as const, id: project.members[0].id }, project,
+    onDeselect: vi.fn(), onOpenEditor, onOpenResults, onDelete: vi.fn(),
+    t: (key: Parameters<typeof translate>[1], vars?: Record<string, string | number>) => translate('es', key, vars),
+  };
+  const { rerender } = render(<Space3DSelectionHUD {...props} analysis={null} />);
+  expect(screen.queryByRole('button', { name: 'Resultados' })).toBeNull();
+
+  rerender(<Space3DSelectionHUD {...props} analysis={analyzeSpace3DProject(project, 'LC1')} />);
+  const results = screen.getByRole('button', { name: 'Resultados' });
+  await user.click(results);
+  expect(onOpenResults).toHaveBeenCalledWith(results);
+  expect(onOpenEditor).not.toHaveBeenCalled();
+});
 
 it('renders node details and triggers rapid action callbacks in HUD', async () => {
   const user = userEvent.setup();

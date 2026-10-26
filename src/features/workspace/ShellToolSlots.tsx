@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { PanelRight, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, PanelRight, X } from 'lucide-react';
 
 /**
  * `statusbar` y `dock` viven al pie del shell, donde FStructure 2D pinta su
@@ -95,22 +95,30 @@ export function ShellInspectorTrigger({ label = 'Panel', menu = false }: { label
   return <button type="button" className="workspace-topbar__icon-button" aria-label="Inspector de herramienta"
     aria-haspopup="dialog" aria-expanded={slots.open} onClick={(event) => slots.show(event.currentTarget)}><PanelRight size={17} aria-hidden="true" /></button>;
 }
-export function ShellInspectorHost() {
+export function ShellInspectorHost({ language = 'es' }: { language?: 'es' | 'en' }) {
   const slots = useContext(Context);
   const dialog = useRef<HTMLDialogElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const text = language === 'en'
+    ? { title: 'Inspector', label: 'Tool inspector', close: 'Close tool inspector', expand: 'Expand', reduce: 'Reduce', expandLabel: 'Expand panel', reduceLabel: 'Reduce panel' }
+    : { title: 'Inspector', label: 'Inspector de herramienta', close: 'Cerrar inspector de herramienta', expand: 'Ampliar', reduce: 'Reducir', expandLabel: 'Ampliar panel', reduceLabel: 'Reducir panel' };
+  useEffect(() => {
+    if (!slots?.open || !slots.mobile) setExpanded(false);
+  }, [slots?.open, slots?.mobile]);
   useEffect(() => {
     const element = dialog.current;
     if (!element || !slots?.mobile) return;
     if (slots.open) {
       if (element.showModal) element.showModal();
       else element.setAttribute('open', '');
-      element.querySelector<HTMLButtonElement>('button')?.focus();
+      element.querySelector<HTMLButtonElement>('[data-shell-close]')?.focus({ preventScroll: true });
     } else if (element.close) element.close();
     else element.removeAttribute('open');
   }, [slots?.open, slots?.mobile]);
   if (!slots) return null;
   if (!slots.mobile) return <aside className="shell-tool-inspector" data-collapsed={slots.collapsed || undefined}><ShellSlotHost slot="inspector" /></aside>;
-  return <ShellMobileSurface><dialog ref={dialog} className="shell-mobile-sheet" aria-label="Inspector de herramienta" aria-modal="true"
+  return <ShellMobileSurface><dialog ref={dialog} className="shell-mobile-sheet" data-expanded={expanded || undefined} aria-label={text.label} aria-modal="true"
+    onClose={slots.close}
     onCancel={(event) => { event.preventDefault(); slots.close(); }}
     // La hoja deja ver el modelo encima: tocar ese fondo la cierra, como cualquier hoja inferior.
     onClick={(event) => {
@@ -126,7 +134,15 @@ export function ShellInspectorHost() {
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
-    <button type="button" className="workspace-topbar__icon-button" aria-label="Cerrar inspector de herramienta" onClick={slots.close}><X size={18} aria-hidden="true" /></button>
+    <header className="shell-mobile-sheet__header">
+      <strong>{text.title}</strong>
+      <button type="button" className="workspace-topbar__action-button" aria-label={expanded ? text.reduceLabel : text.expandLabel}
+        aria-expanded={expanded} onClick={() => setExpanded((current) => !current)}>
+        {expanded ? <ChevronDown size={18} aria-hidden="true" /> : <ChevronUp size={18} aria-hidden="true" />}
+        <span>{expanded ? text.reduce : text.expand}</span>
+      </button>
+      <button type="button" className="workspace-topbar__icon-button" data-shell-close aria-label={text.close} onClick={slots.close}><X size={18} aria-hidden="true" /></button>
+    </header>
     <ShellSlotHost slot="inspector" />
   </dialog></ShellMobileSurface>;
 }
