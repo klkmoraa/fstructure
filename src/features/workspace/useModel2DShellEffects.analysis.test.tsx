@@ -33,7 +33,7 @@ const mount = (project: ProjectModel) => {
 };
 
 describe('user-requested analysis feedback', () => {
-  it('reports the 13 m support-loaded beam as computed with relative stiffness, not a failure', async () => {
+  it('keeps the computed relative-stiffness beam silent without changing its results', async () => {
     const project = beam();
     const before = structuredClone(project);
     const analysis = analyzeProject(project);
@@ -43,9 +43,8 @@ describe('user-requested analysis feedback', () => {
     const member = analysis.memberResults[0];
     for (const value of [member.maxAxial, member.minAxial, member.maxShear, member.minShear, member.maxMoment, member.minMoment]) expect(value).toBeCloseTo(0, 9);
     const h = mount(project); h.start(); h.finish(analysis);
-    await waitFor(() => expect(h.notices).toHaveLength(1));
-    expect(h.notices[0].tone).toBe('info');
-    expect(h.notices[0].action?.command).toBe('open-results');
+    await act(async () => {});
+    expect(h.notices).toEqual([]);
     expect(analysis.issues.some(issue => issue.id === 'relative-stiffness')).toBe(true);
     expect(project).toEqual(before);
   });
@@ -101,7 +100,9 @@ describe('user-requested analysis feedback', () => {
   });
   it('shows only the newest request and never repeats it on a view rerender', async () => {
     const project = beam(); const h = mount(project); h.start(); h.start();
-    const result = analyzeProject(project); h.finish(result);
+    const result = analyzeProject(project);
+    result.issues.push({ id: 'numeric-warning', severity: 'warning', title: 'Limit', message: 'Review precision' });
+    h.finish(result);
     await waitFor(() => expect(h.notices).toHaveLength(1));
     h.rerender({ ...h.initial, project: { ...project }, analysis: result });
     await act(async () => {});

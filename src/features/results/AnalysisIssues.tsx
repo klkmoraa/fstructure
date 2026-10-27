@@ -11,10 +11,10 @@ export function AnalysisIssues({ analysis }: { analysis: AnalysisResult }) {
   const hasErrors = issues.some(issue => issue.severity === 'error');
   const relative = issues.some(issue => issue.id === 'relative-stiffness');
   return <details className="analysis-issues" open={hasErrors || undefined}>
-    <summary>{en ? 'Calculation notes' : 'Notas del cálculo'} <span>({issues.length})</span></summary>
+    <summary>{en ? 'Notes' : 'Notas'} <span>({issues.length})</span></summary>
     {relative ? <p className="analysis-issues__reference">{en
-      ? 'Reference stiffness: this calculation does not validate physical displacements. The small-displacement check also uses that reference. Enter real properties to assess physical behavior.'
-      : 'Rigidez de referencia: este cálculo no valida los desplazamientos físicos. El aviso de pequeñas deformaciones también usa esa referencia. Introduce propiedades reales para revisar el comportamiento físico.'}</p> : null}
+      ? 'Relative stiffness does not validate physical displacements.'
+      : 'La rigidez relativa no valida desplazamientos físicos.'}</p> : null}
     <ul>{issues.map((issue, index) => <li key={`${issue.id}-${index}`} data-severity={issue.severity}>
       <strong>{issue.title}</strong>
       <p>{issue.message}</p>

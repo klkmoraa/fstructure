@@ -196,7 +196,12 @@ export function useModelDoctorNotification({ project, analysis, isAnalyzing, t }
     // Consume before emitting: Strict Mode and view updates must not duplicate it.
     pendingModelDoctorNotificationIdRef.current = null;
     setPendingModelDoctorNotification(null);
-    emitWorkspaceCommand('show-toast', analysisFeedback(analysis, project.settings.language, t('modelDoctor.open')));
+    const notice = analysisFeedback(analysis, project.settings.language, t('modelDoctor.open'));
+    // Routine confirmations do not cover the drawing. Every warning and error
+    // still follows the existing notification path, with its original details.
+    if (notice.tone === 'warning' || notice.tone === 'error') {
+      emitWorkspaceCommand('show-toast', notice);
+    }
     return undefined;
   }, [analysis, isAnalyzing, pendingModelDoctorNotification, project, t]);
 
