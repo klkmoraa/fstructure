@@ -36,7 +36,7 @@ html:root[data-theme='dark'] {
   .workspace-topbar__brand, .workspace-topbar__project,
   .workspace-topbar__icon-button,
   .workspace-topbar__action-button:not(.is-primary):not(.is-active)
-) {
+):not(:active):not([aria-expanded='true']) {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -54,7 +54,7 @@ html:root[data-theme='dark'] {
 .app-shell.workspace-screen .mdock .mdock__context {
   box-shadow: var(--sc-shadow-lifted);
 }
-.app-shell.workspace-screen .mdock .mdock__key {
+.app-shell.workspace-screen .mdock .mdock__key:not(.mdock__key--apply) {
   border-color: transparent;
   background: transparent;
   box-shadow: none;
@@ -175,9 +175,9 @@ html:root[data-theme='dark'] {
 
 /* Touch/keyboard feedback remains available on quiet controls. */
 @media (hover: hover) and (pointer: fine) {
-  .app-shell.workspace-screen .workspace-topbar :is(.workspace-topbar__brand, .workspace-topbar__project, .workspace-topbar__icon-button):hover:not(:disabled),
-  .app-shell.workspace-screen .mdock .mdock__key:hover:not(:disabled):not([aria-pressed='true']),
-  .fh .fh-icon-button:hover:not(:disabled) {
+  .app-shell.workspace-screen .workspace-topbar :is(.workspace-topbar__brand, .workspace-topbar__project, .workspace-topbar__icon-button):hover:not(:disabled):not(:active):not([aria-expanded='true']),
+  .app-shell.workspace-screen .mdock .mdock__key:hover:not(:disabled):not(:active):not([aria-pressed='true']):not([aria-expanded='true']):not(.mdock__key--apply),
+  .fh .fh-icon-button:hover:not(:disabled):not(:active) {
     background: var(--sc-color-surface-2);
     box-shadow: var(--sc-shadow-xs);
   }

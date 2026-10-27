@@ -101,15 +101,20 @@ describe('dock dinámico', () => {
     expect(campo.readOnly).toBe(false);
     expect(campo.getAttribute('inputmode')).toBe('text');
     expect(document.activeElement).toBe(campo);
+    await user.clear(campo);
     await user.type(campo, '35 kN{Enter}');
     // 20 kN hacia abajo → 35 kN hacia abajo.
     expect(screen.getByLabelText('NL1 fy').textContent).toBe('-35');
 
     await user.click(screen.getByRole('button', { name: 'Valor de NL1' }));
     await user.click(screen.getByRole('button', { name: 'Hacia arriba' }));
+    expect(screen.getByLabelText('NL1 fy').textContent).toBe('-35');
+    await user.click(screen.getByRole('button', { name: 'Aplicar' }));
     expect(screen.getByLabelText('NL1 fy').textContent).toBe('35');
+    await user.click(screen.getByRole('button', { name: 'Valor de NL1' }));
     // Horizontal: la misma magnitud, ahora en X.
     await user.click(screen.getByRole('button', { name: 'Hacia la derecha' }));
+    await user.click(screen.getByRole('button', { name: 'Aplicar' }));
     expect(screen.getByLabelText('NL1 fy').textContent).toBe('0');
   });
 

@@ -1,0 +1,9 @@
+/* Invalid drafts remain legible without covering controls. */
+.mdock__editor .mdock__editor-error {
+  flex: 1 1 100%; margin: 0; padding: 4px 8px 6px;
+  color: var(--sc-color-state-error-foreground); font-size: 13px; line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.mdock__editor :is(.mdock__editor-field, .mdock__angle):has([aria-invalid='true']) {
+  outline: 2px solid var(--sc-color-state-error-foreground); outline-offset: -2px;
+}

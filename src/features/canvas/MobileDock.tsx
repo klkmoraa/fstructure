@@ -1,8 +1,5 @@
 import {
   ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
   Check,
   DraftingCompass,
   Ellipsis,
@@ -20,7 +17,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
@@ -33,9 +30,9 @@ import { readCanvasViewSettings, withCanvasViewSettings } from '../view/canvasVi
 import { emitWorkspaceCommand, onWorkspaceCommand } from '../workspace/workspaceCommands';
 import { StructuralToolIcon } from './StructuralToolIcon';
 import { TOOL_REGISTRY } from './toolRegistry';
-import { readLoadQuickValue, withLoadDirection, withLoadFlipped, withLoadMagnitude, type LoadQuickValue } from './loadQuickValue';
-import { parseLocalizedDecimal } from './quickEntry';
-import { fromDisplay, toDisplay } from '../../foundation/units';
+import { readLoadQuickValue, type LoadQuickValue } from './loadQuickValue';
+import { MobileLoadEditor } from './MobileLoadEditor';
+import { toDisplay } from '../../foundation/units';
 import { unitLabel } from '../../engine/units';
 import { formatFixed } from '../../utils/numberFormat';
 import './mobileDock.css';
@@ -124,9 +121,7 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   const [lastLoad, setLastLoad] = useState<LoadTool>('pointLoad');
   const [moreOpen, setMoreOpen] = useState(false);
   const [placement, setPlacement] = useState<{ memberStart: string | null; coordinateEntryOpen: boolean }>({ memberStart: null, coordinateEntryOpen: false });
-  const [valueEditor, setValueEditor] = useState<{ id: string; draft: string } | null>(null);
-  const [angleDraft, setAngleDraft] = useState<string | null>(null);
-  const valueInputRef = useRef<HTMLInputElement>(null);
+  const [valueEditor, setValueEditor] = useState<{ id: string; projectId: string; unitsKey: string } | null>(null);
   // El teclado del teléfono sólo sube si el foco llega dentro del toque. Al
   // colocar una carga el editor aún no existe: este campo invisible recibe el
   // foco en el mismo toque y lo cede al del valor en cuanto aparece.
@@ -139,18 +134,16 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   useEffect(() => onWorkspaceCommand('canvas-placement-state', setPlacement), []);
   const loadValue = readLoadQuickValue(project, selection);
   const loadValueId = loadValue?.id ?? null;
-  // El editor pertenece a una carga: si la selección cambia, se cierra.
+  const unitsKey = JSON.stringify(project.settings.units);
+  // An editor belongs to this project, unit system, selection and tool.
   useEffect(() => {
-    setValueEditor((current) => current && current.id === loadValueId ? current : null);
-  }, [loadValueId]);
+    setValueEditor(current => current && (current.id !== loadValueId || current.projectId !== project.id || current.unitsKey !== unitsKey || activeTool !== 'select') ? null : current);
+  }, [loadValueId, project.id, unitsKey, activeTool]);
   useEffect(() => onWorkspaceCommand('edit-load-value', ({ id }) => {
     focusProxyRef.current?.focus({ preventScroll: true });
-    setValueEditor({ id, draft: '' });
-  }), []);
-  const editorVisible = Boolean(valueEditor && loadValue && valueEditor.id === loadValue.id);
-  useLayoutEffect(() => {
-    if (editorVisible) valueInputRef.current?.focus({ preventScroll: true });
-  }, [editorVisible]);
+    setValueEditor({ id, projectId: project.id, unitsKey });
+  }), [project.id, unitsKey]);
+  const editorVisible = Boolean(valueEditor && loadValue && valueEditor.id === loadValue.id && valueEditor.projectId === project.id && valueEditor.unitsKey === unitsKey && activeTool === 'select');
   useEffect(() => { if (isLoadTool(activeTool)) setLastLoad(activeTool); }, [activeTool]);
 
   const closeSheet = () => {
@@ -245,7 +238,7 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
     context = <>
       {loadValue ? <button type="button" className="mdock__chip mdock__chip--value" data-tone="load"
         aria-label={t('dock.loadValue', { load: chip.label })} aria-expanded={editorVisible}
-        onClick={() => setValueEditor({ id: loadValue.id, draft: '' })}>
+        onClick={() => setValueEditor({ id: loadValue.id, projectId: project.id, unitsKey })}>
         <LoadDirectionGlyph value={loadValue} />
         <span>{formatFixed(toDisplay(loadValue.magnitude, units, loadValue.quantity), 2)}</span>
         <small>{unitLabel(units, loadValue.quantity)}</small>
@@ -272,93 +265,7 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
     </>;
   }
 
-  const applyLoadValue = (draft: string) => {
-    const unit = loadValue ? unitLabel(project.settings.units, loadValue.quantity) : undefined;
-    const typed = parseLocalizedDecimal(draft, unit);
-    if (typed !== null && loadValue && selection) {
-      const magnitude = fromDisplay(Math.abs(typed), project.settings.units, loadValue.quantity);
-      updateProject((next) => withLoadMagnitude(next, selection, magnitude));
-    }
-    setValueEditor(null);
-  };
-  // El dock se convierte en el campo del valor, con el teclado del teléfono:
-  // ↵ (o ✓) aplica, la flecha invierte el sentido y × lo deja como estaba.
-  const editor = editorVisible && valueEditor && loadValue && selection ? <form
-    className="mdock__editor"
-    aria-label={t('dock.loadValue', { load: loadValue.id })}
-    onSubmit={(event) => { event.preventDefault(); applyLoadValue(valueEditor.draft); }}
-  >
-    {loadValue.quantity === 'moment' ? <button type="button" className="mdock__key mdock__key--sm mdock__key--flip" aria-label={t('dock.flip')} title={t('dock.flip')}
-      onPointerDown={(event) => event.preventDefault()}
-      onClick={() => updateProject((next) => withLoadFlipped(next, selection))}>
-      <LoadDirectionGlyph value={loadValue} size={20} />
-    </button> : <div className="mdock__dirs" role="group" aria-label={t('dock.direction')}>
-      {([['down', -90, ArrowDown], ['right', 0, ArrowRight], ['up', 90, ArrowUp], ['left', 180, ArrowLeft]] as const).map(([id, angle, Icon]) => {
-        const active = Math.abs(((loadValue.direction - angle + 540) % 360) - 180) < 1;
-        return <button key={id} type="button" className="mdock__key mdock__key--sm mdock__key--dir" aria-pressed={active}
-          aria-label={t(`dock.dir.${id}`)} title={t(`dock.dir.${id}`)}
-          onPointerDown={(event) => event.preventDefault()}
-          onClick={() => updateProject((next) => withLoadDirection(next, selection, angle))}>
-          <Icon size={18} strokeWidth={2.2} aria-hidden="true" />
-        </button>;
-      })}
-      <label className="mdock__angle">
-        <span aria-hidden="true">∠</span>
-        <input
-          type="text"
-          inputMode="text"
-          enterKeyHint="done"
-          autoComplete="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          aria-label={t('dock.angle')}
-          value={angleDraft ?? String(Math.round(loadValue.direction * 100) / 100)}
-          onFocus={(event) => event.currentTarget.select()}
-          onChange={(event) => setAngleDraft(event.target.value)}
-          onBlur={() => {
-            const typed = angleDraft === null ? null : parseLocalizedDecimal(angleDraft, '°');
-            if (typed !== null) updateProject((next) => withLoadDirection(next, selection, typed));
-            setAngleDraft(null);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') { event.preventDefault(); event.currentTarget.blur(); valueInputRef.current?.focus({ preventScroll: true }); }
-            else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setAngleDraft(null); event.currentTarget.blur(); }
-          }}
-        />
-        <small>°</small>
-      </label>
-    </div>}
-    <label className="mdock__editor-field">
-      <input
-        ref={valueInputRef}
-        type="text"
-        inputMode="text"
-        enterKeyHint="done"
-        autoComplete="off"
-        autoCapitalize="off"
-        autoCorrect="off"
-        spellCheck={false}
-        aria-label={t('dock.loadValue', { load: loadValue.id })}
-        placeholder={formatFixed(toDisplay(loadValue.magnitude, project.settings.units, loadValue.quantity), 2)}
-        value={valueEditor.draft}
-        onChange={(event) => setValueEditor({ ...valueEditor, draft: event.target.value })}
-        onKeyDown={(event) => {
-          if (event.key !== 'Escape') return;
-          event.preventDefault();
-          event.stopPropagation();
-          setValueEditor(null);
-        }}
-      />
-      <small>{unitLabel(project.settings.units, loadValue.quantity)}</small>
-    </label>
-    <button type="submit" className="mdock__key mdock__key--sm mdock__key--apply" aria-label={t('dock.apply')} title={t('dock.apply')}>
-      <Check size={19} strokeWidth={2.2} aria-hidden="true" />
-    </button>
-    <button type="button" className="mdock__key mdock__key--sm" aria-label={t('toolbar.close')} onClick={() => setValueEditor(null)}>
-      <X size={18} strokeWidth={2} aria-hidden="true" />
-    </button>
-  </form> : null;
+  const editor = editorVisible && selection ? <MobileLoadEditor selection={selection} onClose={() => setValueEditor(null)} /> : null;
 
   const secondaryTools = SECONDARY_TOOLS.filter((tool) => {
     const definition = TOOL_REGISTRY.find((item) => item.id === tool);
