@@ -43,3 +43,20 @@ it('keeps a timed notice available while its action has keyboard focus', () => {
   act(() => vi.advanceTimersByTime(1000));
   expect(screen.getByRole('button', { name: 'Review' })).toBe(action);
 });
+it('a reference-stiffness result opens Results, never Model Doctor', async () => {
+  const { createDefaultProject } = await import('../../data/defaultProject');
+  const { setStiffnessDefaults } = await import('../../data/memberStiffness');
+  const { analyzeProject } = await import('../../engine/solver');
+  const { analysisFeedback } = await import('./analysisFeedback');
+  const result = analyzeProject(setStiffnessDefaults(createDefaultProject(), { mode: 'EI', factor: 1 }, true));
+  result.issues = result.issues.filter(issue => issue.id === 'relative-stiffness');
+  let results = 0; let doctor = 0;
+  stops.push(onWorkspaceCommand('open-results', () => { results += 1; }));
+  stops.push(onWorkspaceCommand('open-model-doctor', () => { doctor += 1; }));
+  mount();
+  const notice = analysisFeedback(result, 'es', 'Doctor');
+  act(() => emitWorkspaceCommand('show-toast', notice));
+  expect(results).toBe(0); expect(doctor).toBe(0);
+  fireEvent.click(screen.getByRole('button', { name: notice.action!.label }));
+  expect(results).toBe(1); expect(doctor).toBe(0);
+});

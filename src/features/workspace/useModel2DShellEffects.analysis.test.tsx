@@ -45,7 +45,7 @@ describe('user-requested analysis feedback', () => {
     const h = mount(project); h.start(); h.finish(analysis);
     await waitFor(() => expect(h.notices).toHaveLength(1));
     expect(h.notices[0].tone).toBe('info');
-    expect(h.notices[0].action?.command).toBe('open-model-doctor');
+    expect(h.notices[0].action?.command).toBe('open-results');
     expect(analysis.issues.some(issue => issue.id === 'relative-stiffness')).toBe(true);
     expect(project).toEqual(before);
   });

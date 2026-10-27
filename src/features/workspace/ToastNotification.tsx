@@ -37,6 +37,7 @@ function ToastCard({ toast, dismiss, closeLabel, ref }: {
       exit={reducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: -10 }}
       transition={reducedMotion ? { duration: 0.01 } : { type: 'spring', stiffness: 420, damping: 28 }}
       className={`sc-toast-card sc-toast-card--${toast.tone}`}
+      data-compact={toast.compact || undefined}
       role={toast.tone === 'error' ? 'alert' : 'status'}
       aria-live={toast.tone === 'error' ? 'assertive' : 'polite'}
       aria-atomic="true"

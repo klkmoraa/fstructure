@@ -22,6 +22,8 @@ export interface WorkspaceToast {
   description?: string;
   tone?: 'success' | 'info' | 'warning' | 'error';
   durationMs?: number;
+  /** Quiet analysis feedback; critical failures retain the full card. */
+  compact?: boolean;
   action?: { label: string; command: 'open-model-doctor' | 'open-results' };
 }
 

@@ -13,6 +13,7 @@ import { toDisplay } from '../../foundation/units';
 import { useI18n } from '../../i18n/useI18n';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { ResultSummary } from './ResultSummary';
+import { AnalysisIssues } from './AnalysisIssues';
 import { TrussEquilibriumResults } from './TrussEquilibriumResults';
 import { MemberSheet } from './MemberSheet';
 import { AxialDiagramSigns, TrussAxialTable } from '../canvas/TrussAxialPresentation';
@@ -475,6 +476,7 @@ export const ResultsPanel = ({ presentation = 'dock', status = 'active', onOpenC
           emitWorkspaceCommand('analysis-requested');
           analyze();
         }} /> : null}
+        {analysis ? <AnalysisIssues analysis={analysis} /> : null}
         {analysis && !analysis.success ? <FailedResults onOpenModelDoctor={() => emitWorkspaceCommand('open-model-doctor')} /> : null}
         {analysis?.success && activeTab.id === 'summary' ? <ResultSummary /> : null}
         {analysis?.success && ['axial', 'shear', 'moment'].includes(activeTab.id) ? <DiagramView type={activeTab.id as 'axial' | 'shear' | 'moment'} memberResult={memberResult} memberId={selectedMemberId ?? ''} isMobile={isMobile} /> : null}
