@@ -36,6 +36,9 @@ import { toDisplay } from '../../foundation/units';
 import { unitLabel } from '../../engine/units';
 import { formatFixed } from '../../utils/numberFormat';
 import './mobileDock.css';
+import './mobileSelection.css';
+import { mobileSelectionLabels } from './mobileSelectionLabels';
+import { MobileHistoryActions } from './MobileHistoryActions';
 
 type LoadTool = Extract<Tool, 'pointLoad' | 'distributedLoad' | 'moment'>;
 const LOAD_TOOLS: readonly LoadTool[] = ['pointLoad', 'distributedLoad', 'moment'];
@@ -116,8 +119,8 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   onOpenInspector: () => void;
   inspectorOpen: boolean;
 }) => {
-  const { t } = useI18n();
-  const { project, activeTool, setActiveTool, selection, setSelection, executeProjectCommand, updateProject, updateProjectView } = useProject();
+  const { t, language } = useI18n();
+  const { project, activeTool, setActiveTool, selection, setSelection, executeProjectCommand, updateProject, updateProjectView, canUndo, canRedo } = useProject();
   const [lastLoad, setLastLoad] = useState<LoadTool>('pointLoad');
   const [moreOpen, setMoreOpen] = useState(false);
   const [placement, setPlacement] = useState<{ memberStart: string | null; coordinateEntryOpen: boolean }>({ memberStart: null, coordinateEntryOpen: false });
@@ -184,6 +187,7 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
   };
 
   const selectedMember = selection?.kind === 'member' ? project.members.find((member) => member.id === selection.id) : undefined;
+  const selectionCopy = mobileSelectionLabels(selection, language);
   const structural = selection?.kind === 'node' || selection?.kind === 'member' || selection?.kind === 'multi';
   const placing = activeTool === 'node' || activeTool === 'member';
 
@@ -244,25 +248,36 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
         <small>{unitLabel(units, loadValue.quantity)}</small>
       </button> : <span className="mdock__chip" data-tone="selection">
         {chip.tool ? <ToolIcon tool={chip.tool} size={17} /> : <Layers3 size={17} strokeWidth={1.9} aria-hidden="true" />}
-        <span>{chip.label}</span>
+        <span className="mdock__selection-name"><small>{selectionCopy.kind}</small>{chip.label}</span>
       </span>}
-      <DockKey className="mdock__key--sm" label={t('dock.properties')} pressed={inspectorOpen} onClick={onOpenInspector}>
+      <DockKey className="mdock__key--sm" label={selectionCopy.editLabel} pressed={inspectorOpen} onClick={onOpenInspector}>
         <SlidersHorizontal size={18} strokeWidth={1.9} aria-hidden="true" />
+        <span className="mdock__action-label">{selectionCopy.edit}</span>
       </DockKey>
       {structural ? <DockKey className="mdock__key--sm" label={t('contextualActions.structuralEdit')} onClick={() => emitWorkspaceCommand('open-structural-edit')}>
         <Move size={18} strokeWidth={1.9} aria-hidden="true" />
+        <span className="mdock__action-label">{selectionCopy.move}</span>
       </DockKey> : null}
       {selectedMember && !singleWorkTool(project) && (selectedMember.type === 'frame' || selectedMember.type === 'truss') ? <DockKey className="mdock__key--sm" label={t('contextualActions.designMember')} onClick={() => emitWorkspaceCommand('open-member-design', { memberId: selectedMember.id })}>
         <DraftingCompass size={18} strokeWidth={1.9} aria-hidden="true" />
+        <span className="mdock__action-label">{selectionCopy.design}</span>
       </DockKey> : null}
       <DockKey className="mdock__key--sm mdock__key--danger" label={t('inspector.deleteSelection')} onClick={deleteSelection}>
         <Trash2 size={18} strokeWidth={1.9} aria-hidden="true" />
+        <span className="mdock__action-label">{selectionCopy.remove}</span>
       </DockKey>
       <span className="mdock__grow" />
       <DockKey className="mdock__key--sm" label={t('dock.deselect')} onClick={() => setSelection(null)}>
         <X size={18} strokeWidth={2} aria-hidden="true" />
+        <span className="mdock__action-label">{selectionCopy.deselect}</span>
       </DockKey>
     </>;
+  }
+
+  if (!context && activeTool === 'select' && (canUndo || canRedo)) {
+    contextKind = 'history';
+    contextLabel = selectionCopy.history;
+    context = <MobileHistoryActions />;
   }
 
   const editor = editorVisible && selection ? <MobileLoadEditor selection={selection} onClose={() => setValueEditor(null)} /> : null;
@@ -330,8 +345,7 @@ export const MobileDock = ({ onOpenInspector, inspectorOpen }: {
     <input ref={focusProxyRef} className="mdock__focus-proxy" type="text" inputMode="text" tabIndex={-1} aria-hidden="true"
       onFocus={(event) => {
         // Si nadie toma el foco a tiempo, el teclado no se queda abierto solo.
-        const proxy = event.currentTarget;
-        window.setTimeout(() => { if (document.activeElement === proxy) proxy.blur(); }, 400);
+        const proxy = event.currentTarget; window.setTimeout(() => { if (document.activeElement === proxy) proxy.blur(); }, 400);
       }} />
     {sheet}
   </>;

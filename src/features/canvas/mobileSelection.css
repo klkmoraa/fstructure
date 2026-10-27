@@ -1,0 +1,32 @@
+/* Selection has one material surface; verbs stay visible without extra menus. */
+.app-shell.workspace-screen[data-shell-class='K0']:has(.mdock[data-context='selection']) {
+  --mdock-context: 64px;
+}
+.mdock[data-context='selection'] .mdock__context { border-radius: var(--sc-radius-card); }
+.mdock[data-context='selection'] .mdock__key--sm {
+  height: 56px;
+  min-height: 56px;
+  grid-template-rows: 24px 14px;
+  align-content: center;
+  row-gap: 2px;
+}
+.mdock__action-label { font: 500 10px/1.2 var(--sc-font-ui); white-space: nowrap; }
+.mdock__selection-name { display: grid; gap: 3px; text-align: left; }
+.mdock__selection-name small { color: var(--sc-color-text-secondary); font: 500 10px/1.1 var(--sc-font-ui); text-transform: capitalize; }
+.mdock__history-action {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-width: 44px; min-height: 44px; padding: 0 12px; border: 1px solid transparent;
+  border-radius: var(--sc-radius-control); background: transparent; color: var(--sc-color-text-primary);
+  font: 500 12px/1 var(--sc-font-ui); cursor: pointer;
+}
+.mdock__history-action:disabled { color: var(--sc-color-text-muted); opacity: .5; cursor: default; }
+.mdock__history-action:active:not(:disabled) { background: var(--sc-color-surface-inset); box-shadow: var(--sc-shadow-inset); }
+.mdock__history-action:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: -2px; }
+@media (hover: hover) and (pointer: fine) {
+  .mdock__history-action:hover:not(:disabled):not(:active) { background: var(--sc-color-surface-2); }
+}
+/* At 320px the type and identifier carry more information than a duplicate glyph. */
+@media (max-width: 360px) {
+  .mdock[data-context='selection'] .mdock__chip[data-tone='selection'] { padding-inline: 7px; }
+  .mdock[data-context='selection'] .mdock__chip[data-tone='selection'] > svg { display: none; }
+}

@@ -28,7 +28,8 @@ interface CanvasPointerProfile {
   minimumHitTarget: number;
 }
 
-const MIN_CAMERA_SCALE = 15;
+// Fitting a long model on a phone must remain zoomable without jumping inward.
+export const MIN_CAMERA_SCALE = 1e-6;
 const MAX_CAMERA_SCALE = 260;
 export const LONG_PRESS_MS = 480;
 /** Smaller than the 9 px touch-pan threshold: any deliberate slow pan cancels long press. */

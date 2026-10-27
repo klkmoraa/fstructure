@@ -1,4 +1,4 @@
-import type { CanvasCamera, ViewportSize } from './canvasInteraction';
+import { MIN_CAMERA_SCALE, type CanvasCamera, type ViewportSize } from './canvasInteraction';
 
 interface CanvasSafeInsets {
   top: number;
@@ -152,12 +152,12 @@ export const cameraToFitBounds = (
   bounds: ModelBounds,
   viewport: ViewportSize,
   insets: CanvasSafeInsets = canvasSafeInsetsFor(viewport),
-  minScale = 24,
+  minScale = MIN_CAMERA_SCALE,
   maxScale = 150,
 ): CanvasCamera => {
   const safeBounds = finiteModelBounds(bounds);
   const safe = canvasSafeRect(viewport, insets);
-  const safeMinScale = finiteAtLeast(minScale, 1, 24);
+  const safeMinScale = finiteAtLeast(minScale, MIN_CAMERA_SCALE, MIN_CAMERA_SCALE);
   const safeMaxScale = Number.isFinite(maxScale)
     ? Math.max(safeMinScale, maxScale)
     : Math.max(safeMinScale, 150);
