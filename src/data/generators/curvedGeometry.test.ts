@@ -23,6 +23,7 @@ describe('parametric segmented geometries', () => {
   });
   it('rejects invalid inputs before generating geometry', () => {
     expect(() => circularArch(0, 2, 12)).toThrow();
+    expect(() => circularArch(10, 6, 12)).toThrow(/flecha/);
     expect(() => circularRing(4, 2)).toThrow();
     expect(() => pitchedPortal(8, 3, 4, { x: 9, y: 6 })).toThrow();
   });
