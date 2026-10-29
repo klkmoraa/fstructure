@@ -1,5 +1,5 @@
 import type { LoadCombination, MemberModel, ProjectModel } from '../types';
-import { analyzeProject as analyzeStraight, memberGeometry as straightGeometry, frameLocalStiffness as straightStiffness, validateProject as validateStraight, type AnalyzeProjectOptions } from './straightSolver';
+import { analyzeProject as analyzeStraight, frameLocalStiffness as straightStiffness, validateProject as validateStraight, type AnalyzeProjectOptions } from './straightSolver';
 import { prepareCurvedAnalysis, restoreCurvedAnalysis } from './curvedMemberAnalysis';
 import { abortedAnalysis } from './analysisFailure';
 export * from './straightSolver';
@@ -20,10 +20,6 @@ export const analyzeProject = (project: ProjectModel, combination?: LoadCombinat
 };
 
 /** Other engines must opt into a curved formulation instead of using a chord. */
-export const memberGeometry: typeof straightGeometry = (member, nodes) => {
-  if (member.curve) throw new Error('Esta operación aún no admite barras curvas. Usa el análisis estático lineal.');
-  return straightGeometry(member, nodes);
-};
 export const frameLocalStiffness = (member: MemberModel, length: number) => {
   if (member.curve) throw new Error('La rigidez recta no se puede aplicar a una barra curva.');
   return straightStiffness(member, length);
@@ -32,7 +28,8 @@ export const validateProject = (project: ProjectModel) => {
   if (!project.members.some(m => m.curve)) return validateStraight(project);
   try {
     const mesh = prepareCurvedAnalysis(project);
-    return validateStraight(mesh.project).map(issue => ({ ...issue,
+    const replace = (text: string) => text.replace(/__curve_internal_\d+/g, id => mesh.physicalId.get(id) ?? 'barra curva');
+    return validateStraight(mesh.project).map(issue => ({ ...issue, id: replace(issue.id), message: replace(issue.message),
       objectId: issue.objectId ? mesh.physicalId.get(issue.objectId) ?? issue.objectId : undefined }));
   } catch (error) {
     return [{ id: 'curve-validation', severity: 'error' as const, title: 'Geometría curva no válida', message: error instanceof Error ? error.message : String(error) }];

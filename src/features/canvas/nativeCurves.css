@@ -1,0 +1,11 @@
+.native-curve path { fill: none; vector-effect: non-scaling-stroke; }
+.native-curve .member-line { stroke: var(--member-demand-color, var(--text)); stroke-width: 3; }
+.native-curve .member-hit { stroke: transparent; stroke-width: 18; pointer-events: stroke; }
+.native-curve .member-selection-halo { stroke: var(--accent); stroke-width: 9; opacity: .28; }
+.native-curve .candidate-preview-halo { stroke: var(--accent); stroke-width: 11; opacity: .2; }
+.native-curve-dimension { fill: var(--text); font: 11px var(--font-mono, monospace); paint-order: stroke; stroke: var(--sc-color-surface-1); stroke-width: 3; }
+.native-curve-load line, .native-curve-load path { fill: none; stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.native-curve-load.selected { filter: drop-shadow(0 0 3px var(--accent)); }
+.structure-generation-ghost__members path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; }
+.native-curve:focus-visible .member-line { stroke-width: 5; }
+.curved-generator__preview svg path { fill: none; stroke: currentColor; stroke-width: 2; }
