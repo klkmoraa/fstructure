@@ -12,6 +12,7 @@ export const auditCurvedEquilibrium = (project: ProjectModel, result: AnalysisRe
   if (!result.equilibrium || !result.loadAudit || result.nodeResults.length !== project.nodes.length
     || !result.displacements.length) return result;
   const { source, referencePoint } = result.loadAudit;
+  if (!referencePoint) return result;
   const nodes = new Map(project.nodes.map(node => [node.id, node]));
   const width = Math.max(...project.nodes.map(n => n.x)) - Math.min(...project.nodes.map(n => n.x));
   const height = Math.max(...project.nodes.map(n => n.y)) - Math.min(...project.nodes.map(n => n.y));
