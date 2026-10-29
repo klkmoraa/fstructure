@@ -17,7 +17,10 @@ export type GeneratorKind =
   | 'portal-frame'
   | 'multi-story-frame'
   | 'truss'
-  | 'grid';
+  | 'grid'
+  | 'circular-arch'
+  | 'circular-ring'
+  | 'pitched-portal';
 
 /** Topologías de cercha de cordones paralelos, explícitas y verificables. */
 export type TrussTopology = 'pratt' | 'warren' | 'howe';
@@ -51,6 +54,9 @@ export type GeneratorParams =
     /** Montantes intermedios de la Warren; Pratt y Howe los llevan siempre. */
     readonly includeVerticals?: boolean;
   })
+  | (GeneratorCommonParams & { readonly kind: 'circular-arch'; readonly span: number; readonly rise: number; readonly segments: number })
+  | (GeneratorCommonParams & { readonly kind: 'circular-ring'; readonly radius: number; readonly segments: number })
+  | (GeneratorCommonParams & { readonly kind: 'pitched-portal'; readonly span: number; readonly leftHeight: number; readonly rightHeight: number; readonly ridge?: { readonly x: number; readonly y: number } })
   | (GeneratorCommonParams & {
     readonly kind: 'grid';
     readonly columns: SpacingSpec;
@@ -68,7 +74,10 @@ export type GeneratedMemberRole =
   | 'vertical'
   | 'diagonal'
   | 'grid-horizontal'
-  | 'grid-vertical';
+  | 'grid-vertical'
+  | 'arc-segment'
+  | 'ring-segment'
+  | 'roof';
 
 export type GeneratorWarningCode =
   | 'no-supports'
