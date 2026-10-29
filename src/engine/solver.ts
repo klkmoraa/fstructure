@@ -1,6 +1,7 @@
 import type { LoadCombination, MemberModel, ProjectModel } from '../types';
 import { analyzeProject as analyzeStraight, frameLocalStiffness as straightStiffness, validateProject as validateStraight, type AnalyzeProjectOptions } from './straightSolver';
 import { prepareCurvedAnalysis, restoreCurvedAnalysis } from './curvedMemberAnalysis';
+import { auditCurvedEquilibrium } from './curvedEquilibrium';
 import { abortedAnalysis } from './analysisFailure';
 export * from './straightSolver';
 
@@ -13,7 +14,8 @@ export const analyzeProject = (project: ProjectModel, combination?: LoadCombinat
       throw new Error('P-Delta y contactos con barras curvas aún no están verificados. Usa análisis estático lineal; la curva no se sustituirá por su cuerda.');
     }
     const mesh = prepareCurvedAnalysis(project);
-    return restoreCurvedAnalysis(project, mesh, analyzeStraight(mesh.project, combination, { ...options, includeEducationTrace: false }));
+    const result = analyzeStraight(mesh.project, combination, { ...options, includeEducationTrace: false });
+    return restoreCurvedAnalysis(project, mesh, auditCurvedEquilibrium(mesh.project, result));
   } catch (error) {
     return abortedAnalysis([{ id: 'curved-analysis', severity: 'error', title: 'Revisar barra curva', message: error instanceof Error ? error.message : String(error) }]);
   }
