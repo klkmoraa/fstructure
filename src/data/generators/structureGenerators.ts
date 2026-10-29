@@ -12,6 +12,7 @@ import type {
   TrussTopology,
 } from './generatorTypes';
 import { validateGeneratedStructure } from './generatorValidation';
+import { circularArch, circularRing, pitchedPortal, type SegmentedGeometry } from './curvedGeometry';
 
 /**
  * Núcleo determinista de generación 2D (CRI-38, fase 1).
@@ -282,6 +283,25 @@ const buildGrid = (
   return { builder, description: 'Retícula estructural', supportCandidateIds: grid[0], warnings: [] };
 };
 
+
+const buildSegmented = (
+  builder: GeneratedGeometryBuilder,
+  geometry: SegmentedGeometry,
+  description: string,
+  memberRole: GeneratedMemberRole,
+  supports: 'ends' | 'none',
+): FamilyResult => {
+  const ids = geometry.points.map((p, index) => builder.addNode(p.x, p.y, supports === 'ends' && (index === 0 || index === geometry.points.length - 1) ? 'base' : 'joint'));
+  for (let i = 0; i < ids.length - 1; i += 1) builder.addMember(ids[i], ids[i + 1], memberRole);
+  if (geometry.closed) builder.addMember(ids[ids.length - 1], ids[0], memberRole);
+  return {
+    builder,
+    description,
+    supportCandidateIds: supports === 'ends' ? [ids[0], ids[ids.length - 1]] : [],
+    warnings: [],
+  };
+};
+
 const buildFamily = (
   params: GeneratorParams,
   properties: ResolvedGeneratorMemberProperties,
@@ -302,6 +322,12 @@ const buildFamily = (
       return buildTruss(builder('truss'), params);
     case 'grid':
       return buildGrid(builder('frame'), params);
+    case 'circular-arch':
+      return buildSegmented(builder('frame'), circularArch(params.span, params.rise, params.segments), 'Arco circular', 'arc-segment', 'ends');
+    case 'circular-ring':
+      return buildSegmented(builder('frame'), circularRing(params.radius, params.segments), 'Anillo circular', 'ring-segment', 'none');
+    case 'pitched-portal':
+      return buildSegmented(builder('frame'), pitchedPortal(params.span, params.leftHeight, params.rightHeight, params.ridge), 'Pórtico inclinado', 'roof', 'ends');
     default:
       throw new Error('El generador solicitado no es válido.');
   }
