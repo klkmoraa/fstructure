@@ -13,6 +13,7 @@ import type { Language } from '../../i18n/catalogs';
 import type { UnitSystemId } from '../../foundation/units';
 import type { SurfacePresentation, SurfaceStatus } from '../workspace/surfacePresentation';
 import { GeneratorFamilyPreview } from './GeneratorFamilyPreview';
+import { CurvedGeneratorFields, isCurvedGeneratorFamily } from './CurvedGeneratorFields';
 import { createStructureGeneratorTranslator } from './structureGeneratorCopy';
 import {
   GENERATOR_FAMILIES,
@@ -33,6 +34,7 @@ import {
   presentGeneratorWarnings,
 } from './structureGeneratorSummary';
 import './structureGenerator.css';
+import './curvedGenerator.css';
 
 /**
  * Panel de «Generar estructura» (CRI-38, fase 3).
@@ -216,6 +218,7 @@ export const StructureGeneratorPanel = ({
 
   const geometryFields = <div className="structure-generator__geometry">
     {spacingFields.map(renderSpacing)}
+    <CurvedGeneratorFields form={form} errors={errors} units={units} language={language} onChange={patch} />
 
     {form.family === 'portal-frame' ? <UnitField
       label={t('height')}
@@ -433,6 +436,8 @@ export const StructureGeneratorPanel = ({
       {/* El encabezado recibe el foco: el botón que abrió la revisión ya no
           existe, y sin esto el foco cae en `<body>`. */}
       <h3 className="structure-generator__review-title" tabIndex={-1} ref={reviewTitleRef}>{t('review.title')}</h3>
+      {isCurvedGeneratorFamily(form.family) ? <p className="structure-generator__hint">{t('curve.independent')}</p> : null}
+      {form.family === 'circular-arch' || form.family === 'circular-ring' ? <p className="curved-generator__notice">{t('curve.approximation')}</p> : null}
       {summaryList}
       {warningList}
       {decisions > 0 ? <p className="structure-generator__decisions">{t('review.decisions', { count: decisions })}</p> : null}
@@ -464,6 +469,7 @@ export const StructureGeneratorPanel = ({
 
       <div className="structure-generator__parameter-stage" data-generator-stage="parameters">
         {geometryFields}
+        {form.family === 'circular-ring' ? <p className="curved-generator__notice">{t('curve.ringSupports')}</p> : <>
         <SegmentedControl
           size="sm"
           className="structure-generator__wide"
@@ -473,6 +479,7 @@ export const StructureGeneratorPanel = ({
           onValueChange={(value) => patch({ support: value as GeneratorFormState['support'] })}
         />
         <small className="structure-generator__hint">{t(`support.detail.${form.support}` as never)}</small>
+        </>}
       </div>
 
       <Accordion

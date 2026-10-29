@@ -1,4 +1,5 @@
 import { translate, type Language, type TranslationKey } from '../../i18n/catalogs';
+import { curvedGeneratorCopy, type CurvedGeneratorCopyKey } from './curvedGeneratorCopy';
 
 /**
  * Acceso a la copia de «Generar estructura».
@@ -12,7 +13,7 @@ import { translate, type Language, type TranslationKey } from '../../i18n/catalo
 type StripGeneratorPrefix<Key> = Key extends `generator.${infer Rest}` ? Rest : never;
 
 /** Las claves `generator.*` del catálogo, sin el prefijo. */
-type StructureGeneratorCopyKey = StripGeneratorPrefix<TranslationKey>;
+type StructureGeneratorCopyKey = StripGeneratorPrefix<TranslationKey> | CurvedGeneratorCopyKey;
 
 type StructureGeneratorTranslate = (
   key: StructureGeneratorCopyKey,
@@ -23,7 +24,13 @@ const translateStructureGenerator = (
   language: Language,
   key: StructureGeneratorCopyKey,
   variables?: Record<string, string | number>,
-): string => translate(language, `generator.${key}` as TranslationKey, variables);
+): string => {
+  if (Object.prototype.hasOwnProperty.call(curvedGeneratorCopy.en, key)) {
+    const text = curvedGeneratorCopy[language === 'en' ? 'en' : 'es'][key as CurvedGeneratorCopyKey];
+    return text.replace(/\{(\w+)\}/g, (_, name: string) => String(variables?.[name] ?? `{${name}}`));
+  }
+  return translate(language, `generator.${key}` as TranslationKey, variables);
+};
 
 export const createStructureGeneratorTranslator = (language: Language): StructureGeneratorTranslate =>
   (key, variables) => translateStructureGenerator(language, key, variables);

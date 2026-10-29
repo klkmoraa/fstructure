@@ -60,6 +60,9 @@ const MEMBER_ROLE_ORDER: readonly GeneratedMemberRole[] = [
   'diagonal',
   'grid-horizontal',
   'grid-vertical',
+  'arc-segment',
+  'ring-segment',
+  'roof',
 ];
 
 const count = (value: number, language: Language): string =>

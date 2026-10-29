@@ -68,6 +68,16 @@ export interface GeneratorFormState {
   readonly columns: GeneratorSpacingDraft;
   readonly rows: GeneratorSpacingDraft;
   readonly gridMembers: GridMemberMode;
+  readonly curveSpan: string;
+  readonly curveRise: string;
+  readonly curveRadius: string;
+  readonly curveSegments: string;
+  readonly portalSpan: string;
+  readonly leftHeight: string;
+  readonly rightHeight: string;
+  readonly roofKind: 'mono' | 'gable';
+  readonly ridgeX: string;
+  readonly ridgeY: string;
   readonly support: GeneratorSupportChoice;
   readonly propertiesSource: GeneratorPropertiesSource;
   readonly materialId: string;
@@ -94,7 +104,16 @@ export type GeneratorFormField =
   | 'sectionId'
   | 'elasticModulus'
   | 'area'
-  | 'inertia';
+  | 'inertia'
+  | 'curveSpan'
+  | 'curveRise'
+  | 'curveRadius'
+  | 'curveSegments'
+  | 'portalSpan'
+  | 'leftHeight'
+  | 'rightHeight'
+  | 'ridgeX'
+  | 'ridgeY';
 
 export type GeneratorFormErrors = Readonly<Partial<Record<GeneratorFormField, string>>>;
 
@@ -125,6 +144,16 @@ export const DEFAULT_GENERATOR_FORM: GeneratorFormState = {
   columns: uniformSpacing('4', '6'),
   rows: uniformSpacing('3', '3.5'),
   gridMembers: 'both',
+  curveSpan: '10',
+  curveRise: '3',
+  curveRadius: '5',
+  curveSegments: '24',
+  portalSpan: '8',
+  leftHeight: '3',
+  rightHeight: '4',
+  roofKind: 'gable',
+  ridgeX: '4',
+  ridgeY: '6',
   support: 'none',
   propertiesSource: 'catalog',
   materialId: 'steel-a992',
@@ -170,6 +199,9 @@ export const GENERATOR_FAMILIES: readonly GeneratorKind[] = [
   'multi-story-frame',
   'truss',
   'grid',
+  'circular-arch',
+  'circular-ring',
+  'pitched-portal',
 ];
 
 export const TRUSS_TOPOLOGIES: readonly TrussTopology[] = ['pratt', 'warren', 'howe'];
@@ -189,6 +221,9 @@ export const GENERATOR_SPACING_FIELDS: Readonly<Record<GeneratorKind, readonly G
   'multi-story-frame': ['bays', 'stories'],
   truss: ['panels'],
   grid: ['columns', 'rows'],
+  'circular-arch': [],
+  'circular-ring': [],
+  'pitched-portal': [],
 };
 
 export type GeneratorSpacingField = Extract<
@@ -346,7 +381,8 @@ export const buildGeneratorParams = (
       y: fromDisplay(originY ?? 0, units, 'length'),
     },
     properties,
-    ...(resolveSupport(form.support) ? { baseSupport: resolveSupport(form.support)! } : {}),
+    ...(form.family !== 'circular-ring' && resolveSupport(form.support)
+      ? { baseSupport: resolveSupport(form.support)! } : {}),
   };
 
   let params: GeneratorParams;
@@ -388,6 +424,46 @@ export const buildGeneratorParams = (
         columns: collector.spacing('columns', form.columns),
         rows: collector.spacing('rows', form.rows),
         members: form.gridMembers,
+      };
+      break;
+    case 'circular-arch':
+    case 'circular-ring': {
+      const segments = parseNumber(form.curveSegments);
+      const minimum = form.family === 'circular-ring' ? 3 : 2;
+      if (segments === null || !Number.isInteger(segments) || segments < minimum || segments > MAX_SPACING_DIVISIONS) {
+        errors.curveSegments = `Escribe un entero entre ${minimum} y ${MAX_SPACING_DIVISIONS}.`;
+      }
+      if (form.family === 'circular-arch') {
+        params = {
+          ...common,
+          kind: 'circular-arch',
+          span: collector.positive('curveSpan', form.curveSpan, 'Escribe un claro mayor que cero.'),
+          rise: collector.positive('curveRise', form.curveRise, 'Escribe una flecha mayor que cero.'),
+          segments: segments ?? minimum,
+        };
+      } else {
+        params = {
+          ...common,
+          kind: 'circular-ring',
+          radius: collector.positive('curveRadius', form.curveRadius, 'Escribe un radio mayor que cero.'),
+          segments: segments ?? minimum,
+        };
+      }
+      break;
+    }
+    case 'pitched-portal':
+      params = {
+        ...common,
+        kind: 'pitched-portal',
+        span: collector.positive('portalSpan', form.portalSpan, 'Escribe un claro mayor que cero.'),
+        leftHeight: collector.positive('leftHeight', form.leftHeight, 'Escribe una altura mayor que cero.'),
+        rightHeight: collector.positive('rightHeight', form.rightHeight, 'Escribe una altura mayor que cero.'),
+        ...(form.roofKind === 'gable' ? {
+          ridge: {
+            x: collector.positive('ridgeX', form.ridgeX, 'Escribe una posición de cumbrera mayor que cero.'),
+            y: collector.positive('ridgeY', form.ridgeY, 'Escribe una altura de cumbrera mayor que cero.'),
+          },
+        } : {}),
       };
       break;
     default:

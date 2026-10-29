@@ -1,0 +1,35 @@
+/* Eight families on desktop; the existing mobile horizontal picker is preserved. */
+@media (min-width: 761px) {
+  .structure-generator[data-generator-layout='family-parameters-review'] .structure-generator__families {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.curved-generator__fields { display: grid; gap: 10px; min-width: 0; }
+.curved-generator__fields p { margin: 0; }
+.curved-generator__preview {
+  display: grid; gap: 6px; margin: 0; padding: 8px;
+  border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-color-surface-1);
+  color: var(--text);
+}
+.curved-generator__preview svg { display: block; width: 100%; height: 136px; }
+.curved-generator__preview line {
+  stroke: currentColor; stroke-width: 1.5; vector-effect: non-scaling-stroke;
+}
+.curved-generator__preview circle {
+  fill: var(--sc-color-surface-1); stroke: currentColor; stroke-width: 1;
+}
+.curved-generator__preview circle[data-supported='true'] { fill: currentColor; }
+.curved-generator__preview figcaption {
+  text-align: center; color: var(--muted); font-size: .8rem; line-height: 1.4;
+}
+.curved-generator__notice {
+  margin: 0; padding: 10px; border: var(--sc-surface-edge);
+  border-radius: var(--sc-radius-sm); background: var(--sc-color-surface-2);
+  color: var(--text); font-size: .8rem; line-height: 1.45;
+}
+@media (max-width: 760px) {
+  .curved-generator__fields input { font-size: 16px; min-height: 44px; }
+  .curved-generator__preview svg { height: 110px; }
+}
