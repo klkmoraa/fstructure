@@ -21,6 +21,7 @@ const point = (x: number, y: number): GeometryPoint => ({ x: round(x), y: round(
 export const circularArch = (span: number, rise: number, segments: number): SegmentedGeometry => {
   positive(span, 'El claro');
   positive(rise, 'La flecha');
+  if (rise > span / 2) throw new Error('La flecha no puede superar la mitad del claro en este generador de arco menor o semicircular.');
   divisions(segments, 2);
   const radius = span * span / (8 * rise) + rise / 2;
   const cy = rise - radius;
