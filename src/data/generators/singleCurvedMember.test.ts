@@ -25,12 +25,11 @@ describe('single curved member, not a chain of drafting nodes', () => {
     project.nodalLoads = [{ id: 'P', nodeId: project.nodes.at(-1)!.id, caseId: project.loadCases[0].id, fx: 0, fy: -1, mz: 0 }];
     const snapshot = JSON.stringify(project);
     const result = analyzeProject(project, null, { includeEducationTrace: false });
-    expect(result.success).toBe(true);
+    expect(result.success, JSON.stringify(result.issues)).toBe(true);
     expect(result.nodeResults).toHaveLength(2);
     expect(result.memberResults).toHaveLength(1);
     expect(JSON.stringify(project)).toBe(snapshot);
-    // Castigliano: semicircular, extensible Euler-Bernoulli cantilever,
-    // unit vertical end force, radius 1. This checks bending, not just drawing.
+    // Castigliano: extensible Euler-Bernoulli semicircular cantilever, R=1.
     const expectedUy = -(3 * Math.PI / (2 * properties.E * properties.I) + Math.PI / (2 * properties.E * properties.A));
     const tip = result.nodeResults.find(n => n.nodeId === project.nodes.at(-1)!.id)!;
     expect(Math.abs((tip.uy - expectedUy) / expectedUy)).toBeLessThan(0.002);
