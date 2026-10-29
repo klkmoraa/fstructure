@@ -43,6 +43,28 @@ describe('splitMemberAt', () => {
     const touching = project.members.filter((member) => member.i === result.nodeId || member.j === result.nodeId);
     expect(touching).toHaveLength(2);
   });
+
+  it('conserva liberaciones de axial, cortante y momento sólo en extremos originales', () => {
+    const project = createDefaultProject();
+    const original = project.members.find((member) => member.id === 'M2')!;
+    original.releases = {
+      iAxial: true, iShear: true, iMoment: true,
+      jAxial: true, jShear: true, jMoment: true,
+    };
+
+    const result = splitMemberAt(project, 'M2', 0.5);
+    const first = project.members.find((member) => member.id === result.firstMemberId)!;
+    const second = project.members.find((member) => member.id === result.secondMemberId)!;
+
+    expect(first.releases).toMatchObject({ iAxial: true, iShear: true, iMoment: true });
+    expect(first.releases?.jAxial).toBeUndefined();
+    expect(first.releases?.jShear).toBeUndefined();
+    expect(first.releases?.jMoment).toBeUndefined();
+    expect(second.releases).toMatchObject({ jAxial: true, jShear: true, jMoment: true });
+    expect(second.releases?.iAxial).toBeUndefined();
+    expect(second.releases?.iShear).toBeUndefined();
+    expect(second.releases?.iMoment).toBeUndefined();
+  });
 });
 
 describe('repairProjectTopology', () => {
