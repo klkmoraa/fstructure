@@ -23,13 +23,18 @@ export const circularArch = (span: number, rise: number, segments: number): Segm
   positive(rise, 'La flecha');
   if (rise > span / 2) throw new Error('La flecha no puede superar la mitad del claro en este generador de arco menor o semicircular.');
   divisions(segments, 2);
-  const radius = span * span / (8 * rise) + rise / 2;
-  const cy = rise - radius;
-  const start = Math.atan2(-cy, -span / 2);
-  const end = Math.atan2(-cy, span / 2);
+  const halfSpan = span / 2;
+  const radius = (halfSpan / rise) * (halfSpan / 2) + rise / 2;
+  if (!Number.isFinite(radius)) throw new Error('Las dimensiones no producen un radio finito.');
+  // Parameterise from the crown, avoiding atan2(-0, -R) at a semicircle.
+  // The half-angle identity also avoids subtracting two large radii for shallow arches.
+  const halfAngle = 2 * Math.atan2(rise, halfSpan);
   const points = Array.from({ length: segments + 1 }, (_, i) => {
-    const angle = start + (end - start) * i / segments;
-    return point(span / 2 + radius * Math.cos(angle), cy + radius * Math.sin(angle));
+    const angle = -halfAngle + 2 * halfAngle * i / segments;
+    return point(
+      halfSpan + radius * Math.sin(angle),
+      rise - 2 * radius * Math.sin(angle / 2) ** 2,
+    );
   });
   // Exact endpoints avoid residual floating-point noise.
   points[0] = point(0, 0);

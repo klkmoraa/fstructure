@@ -290,9 +290,13 @@ const buildSegmented = (
   description: string,
   memberRole: GeneratedMemberRole,
   supports: 'ends' | 'none',
+  columnEnds = false,
 ): FamilyResult => {
   const ids = geometry.points.map((p, index) => builder.addNode(p.x, p.y, supports === 'ends' && (index === 0 || index === geometry.points.length - 1) ? 'base' : 'joint'));
-  for (let i = 0; i < ids.length - 1; i += 1) builder.addMember(ids[i], ids[i + 1], memberRole);
+  for (let i = 0; i < ids.length - 1; i += 1) {
+    const role = columnEnds && (i === 0 || i === ids.length - 2) ? 'column' : memberRole;
+    builder.addMember(ids[i], ids[i + 1], role);
+  }
   if (geometry.closed) builder.addMember(ids[ids.length - 1], ids[0], memberRole);
   return {
     builder,
@@ -327,7 +331,7 @@ const buildFamily = (
     case 'circular-ring':
       return buildSegmented(builder('frame'), circularRing(params.radius, params.segments), 'Anillo circular', 'ring-segment', 'none');
     case 'pitched-portal':
-      return buildSegmented(builder('frame'), pitchedPortal(params.span, params.leftHeight, params.rightHeight, params.ridge), 'Pórtico inclinado', 'roof', 'ends');
+      return buildSegmented(builder('frame'), pitchedPortal(params.span, params.leftHeight, params.rightHeight, params.ridge), 'Pórtico inclinado', 'roof', 'ends', true);
     default:
       throw new Error('El generador solicitado no es válido.');
   }

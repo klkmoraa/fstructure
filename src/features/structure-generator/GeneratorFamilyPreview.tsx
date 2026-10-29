@@ -28,5 +28,17 @@ export const GeneratorFamilyPreview = ({ family }: { family: GeneratorKind }) =>
       <path d="m18 38 40 9 22-25-40-9-22 25Zm13 3 22-25m-4 29 22-25M25 30l40 9M33 21l40 9" {...common} />
       <g>{nodes([[18, 38], [40, 13], [80, 22], [58, 47]])}</g>
     </> : null}
+    {family === 'circular-arch' ? <>
+      <path d="M12 42L15 30L23 18L35 11L48 8L61 11L73 18L81 30L84 42" {...common} />
+      <g>{nodes([[12, 42], [23, 18], [48, 8], [73, 18], [84, 42]])}</g>
+    </> : null}
+    {family === 'circular-ring' ? <>
+      <path d="M70 27L64 12L48 6L32 12L26 27L32 42L48 48L64 42Z" {...common} />
+      <g>{nodes([[70, 27], [48, 6], [26, 27], [48, 48]])}</g>
+    </> : null}
+    {family === 'pitched-portal' ? <>
+      <path d="M16 44V26L43 8L80 20V44" {...common} />
+      <g>{nodes([[16, 44], [16, 26], [43, 8], [80, 20], [80, 44]])}</g>
+    </> : null}
   </svg>;
 };
