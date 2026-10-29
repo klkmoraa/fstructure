@@ -338,7 +338,7 @@ const splitMember = (project: ProjectModel, memberId: string, ratio: number, exi
   const first: MemberModel = {
     ...original,
     j: nodeId,
-    releases: original.releases ? { iMoment: original.releases.iMoment } : undefined,
+    releases: original.releases ? { iAxial: original.releases.iAxial, iShear: original.releases.iShear, iMoment: original.releases.iMoment } : undefined,
     rigidOffsetJ: 0,
     rotationalSpringJ: undefined,
   };
@@ -346,7 +346,7 @@ const splitMember = (project: ProjectModel, memberId: string, ratio: number, exi
     ...original,
     id: secondMemberId,
     i: nodeId,
-    releases: original.releases ? { jMoment: original.releases.jMoment } : undefined,
+    releases: original.releases ? { jAxial: original.releases.jAxial, jShear: original.releases.jShear, jMoment: original.releases.jMoment } : undefined,
     rigidOffsetI: 0,
     rotationalSpringI: undefined,
   };
