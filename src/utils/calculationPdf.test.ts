@@ -16,7 +16,7 @@ const solved = (id: ModelStartId) => {
 /** Texto de todas las páginas, con pdf.js como lo leería un visor. */
 const extractText = async (bytes: Uint8Array): Promise<string> => {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
-  const document = await pdfjs.getDocument({ data: bytes.slice(), useWorkerFetch: false, isEvalSupported: false }).promise;
+  const document = await pdfjs.getDocument({ data: bytes.slice(), useWorkerFetch: false }).promise;
   const pages: string[] = [];
   for (let number = 1; number <= document.numPages; number += 1) {
     const content = await (await document.getPage(number)).getTextContent();
