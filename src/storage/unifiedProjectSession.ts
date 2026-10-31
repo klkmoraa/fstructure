@@ -5,7 +5,8 @@ import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBund
 import type { JsonValue, LinkedSpace3DBranchV1, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
 import { canonicalJsonKey } from './bundleValidation';
 import { inspectDesignDocument } from '../shared/project/designWorkbenchCodec';
-import { savePromotedProject } from './promoteProject';
+import { saveDuplicatedProject, savePromotedProject } from './promoteProject';
+import { renameBundleProject, restoreBundleRecovery, restoreModel2DIntoBundle } from './bundleLibraryActions';
 import { BundleConflictError, IndexedDbUnifiedBundleRepository, type LegacyBundleStorage, type StoredBundleRecord, type UnifiedBundleRepository } from './unifiedBundleRepository';
 
 type UnifiedStorageStatus = { issue: 'conflict' | 'load-failed' | 'save-failed' | 'recovered' | null; message: string | null };
@@ -132,6 +133,61 @@ export class UnifiedProjectSession {
     if (!source) throw new Error(`No existe el proyecto ${sourceId}.`);
     if (live) source.model2d = normalizeProject(structuredClone(live));
     return savePromotedProject(this.repository, source, name, stored ? stored.libraryState ?? 'saved' : 'draft');
+  }
+  /** Serializa una acción de la biblioteca con los guardados de esta mesa. */
+  private exclusive<T>(operation: () => Promise<T>): Promise<T> {
+    const run = this.chain.catch(() => undefined).then(operation);
+    this.chain = run;
+    return run;
+  }
+  /**
+   * «Duplicar»: el bundle entero con id nuevo. `live` es el 2D de la mesa
+   * cuando se duplica el proyecto abierto (puede ir por delante del guardado).
+   */
+  duplicateProject(sourceId: string, name: string, live?: ProjectModel): Promise<StoredBundleRecord> {
+    if (live && live.id !== sourceId) return Promise.reject(new Error('El proyecto de la mesa no coincide con el que se duplica.'));
+    return this.exclusive(async () => {
+      const stored = await this.repository.openBundle(sourceId);
+      const pending = this.working.get(sourceId);
+      const source = structuredClone(pending ?? stored?.bundle ?? null)
+        ?? (live ? createUnifiedProjectBundle(normalizeProject(live), crypto.randomUUID()) : null);
+      if (!source) throw new Error(`No existe el proyecto ${sourceId}.`);
+      if (live) source.model2d = normalizeProject(structuredClone(live));
+      return saveDuplicatedProject(this.repository, source, name, stored ? stored.libraryState ?? 'saved' : 'draft');
+    });
+  }
+  /**
+   * Renombra un proyecto que no está en la mesa (el abierto se renombra en la
+   * mesa y lo guarda el autoguardado). La revisión conocida se actualiza para
+   * que el siguiente guardado de esta sesión no choque con su propio cambio.
+   */
+  renameProject(id: string, name: string): Promise<StoredBundleRecord> {
+    return this.exclusive(async () => {
+      const record = await renameBundleProject(this.repository, id, name);
+      if (this.records.has(id)) this.records.set(id, record);
+      const pending = this.working.get(id);
+      if (pending) pending.model2d = { ...pending.model2d, name };
+      return structuredClone(record);
+    });
+  }
+  /** Restaura una recuperación del bundle como versión canónica (ver `restoreBundleRecovery`). */
+  restoreRecovery(recoveryId: string, live?: ProjectModel): Promise<StoredBundleRecord> {
+    return this.exclusive(async () => this.afterRestore(await restoreBundleRecovery(this.repository, recoveryId, live)));
+  }
+  /** Restaura un 2D del espejo (recuperación o versión) dentro del bundle canónico. */
+  restoreModel2D(model: ProjectModel, live?: ProjectModel): Promise<StoredBundleRecord> {
+    return this.exclusive(async () => this.afterRestore(await restoreModel2DIntoBundle(this.repository, model, live)));
+  }
+  /**
+   * La mesa puede tener abierta la versión reemplazada: hasta que la vuelva a
+   * abrir (`open`), sus guardados se rechazan en vez de pisar lo restaurado.
+   * Lo que tenía sin guardar ya quedó como respaldo en la restauración.
+   */
+  private afterRestore(record: StoredBundleRecord): StoredBundleRecord {
+    this.records.delete(record.id);
+    this.working.delete(record.id);
+    this.blocked.add(record.id);
+    return structuredClone(record);
   }
   saveSpace3D(project: ProjectModel, branch: LinkedSpace3DBranchV1): Promise<StoredBundleRecord> {
     return this.save(project, structuredClone(branch));

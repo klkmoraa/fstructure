@@ -27,6 +27,7 @@ export const ProjectVersions = ({
   t,
   onRestored,
   onChanged,
+  restoreVersion,
 }: {
   repository: ProjectRepository;
   record: StoredProjectRecord;
@@ -34,6 +35,8 @@ export const ProjectVersions = ({
   t: (key: Phase2TranslationKey, variables?: Record<string, string | number>) => string;
   onRestored: (record: StoredProjectRecord) => void;
   onChanged: () => void;
+  /** Con bundle canónico, la versión (sólo 2D) se restaura dentro del bundle y no se consume. */
+  restoreVersion?: (version: NamedVersion) => Promise<StoredProjectRecord>;
 }) => {
   const [versions, setVersions] = useState<NamedVersion[]>([]);
   const [name, setName] = useState('');
@@ -68,7 +71,7 @@ export const ProjectVersions = ({
   };
   const restore = async (version: NamedVersion) => {
     setBusy(true);
-    try { const restored = await restoreNamedVersion(repository, version.id); await refresh(); onChanged(); onRestored(restored); }
+    try { const restored = restoreVersion ? await restoreVersion(version) : await restoreNamedVersion(repository, version.id); await refresh(); onChanged(); onRestored(restored); }
     catch { setError(t('hub.versionsFailed')); }
     finally { setBusy(false); }
   };

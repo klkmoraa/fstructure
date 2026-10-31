@@ -23,6 +23,8 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 - [x] DCL de la zapata de lindero y de la franja de la losa, con ΣFy (R1 = 800 kN, R2 = 1 000 kN de referencia).
 - [x] Viga → zapata: «Diseñar zapata» en cada apoyo de la tabla de reacciones (sin el momento del apoyo, que se captura a mano).
 - [x] Al recargar en la Home se reabre el último archivo de este navegador (antes se abría uno en blanco).
+- [x] Proyectos actúa sobre el bundle canónico: Restaurar, Duplicar (con 3D, Diseño y FEM) y Renombrar ya no se pierden con el siguiente autoguardado; las recuperaciones de conflicto del bundle se listan (31-oct-2026).
+- [ ] Recuperaciones de un 3D suelto (`unmatched-space3d`, sin 2D): siguen guardadas en el registro, pero Proyectos aún no las muestra ni ofrece abrirlas como proyecto nuevo.
 
 - [x] Momento individual y Diagramas: misma normal local y convención de signos, centésimas en valores grandes y extremo derecho legible junto al zoom.
 

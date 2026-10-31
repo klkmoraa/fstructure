@@ -18,7 +18,8 @@ export interface StoredBundleRecord {
 export interface BundleRecoveryRecord {
   id: string;
   projectId: string | null;
-  reason: 'conflict' | 'migration' | 'unmatched-space3d';
+  /** `manual`: la versión canónica que una restauración reemplazó (copia de respaldo). */
+  reason: 'conflict' | 'migration' | 'unmatched-space3d' | 'manual';
   checksum: string;
   createdAt: string;
   bundle?: UnifiedProjectBundleV1;
@@ -56,6 +57,15 @@ export interface UnifiedBundleRepository {
   /** 0 means create; updates require the revision returned by openBundle. */
   saveBundle(bundle: UnifiedProjectBundleV1, expectedRevision: number): Promise<StoredBundleRecord>;
   setLibraryState(ids: readonly string[], state: NonNullable<StoredBundleRecord['libraryState']>): Promise<void>;
+  /**
+   * Reemplaza la versión canónica en una sola transacción: la que había (y cada
+   * `backups` adicional) queda como recuperación `manual`, se escribe la nueva
+   * revisión y, sólo entonces, se consume `consumedRecoveryId`. Si la revisión
+   * cambió no escribe nada: lo que se restauraba sigue donde estaba.
+   */
+  restoreBundle(bundle: UnifiedProjectBundleV1, expectedRevision: number, options?: { consumedRecoveryId?: string; backups?: readonly UnifiedProjectBundleV1[] }): Promise<StoredBundleRecord>;
+  /** Descarta una recuperación por decisión explícita de la persona. */
+  deleteRecovery(id: string): Promise<void>;
   migrateLegacy(storage: LegacyBundleStorage): Promise<BundleLibrarySnapshot>;
 }
 export class BundleConflictError extends Error {
@@ -149,6 +159,9 @@ class IndexedDbBundleDatabase implements BundleDatabase {
               for (const store of stores) {
                 for (const [id, record] of state[store]) {
                   if (before[store].get(id) !== record) tx.objectStore(store).put(record);
+                }
+                for (const id of before[store].keys()) {
+                  if (!state[store].has(id)) tx.objectStore(store).delete(id);
                 }
               }
             }
@@ -249,6 +262,45 @@ abstract class BundleRepository implements UnifiedBundleRepository {
     // Throw only AFTER the recovery transaction has committed.
     if (outcome.conflict) throw new BundleConflictError(id, recoveryId);
     return structuredClone(outcome.record);
+  }
+  async restoreBundle(input: UnifiedProjectBundleV1, expectedRevision: number, options: { consumedRecoveryId?: string; backups?: readonly UnifiedProjectBundleV1[] } = {}): Promise<StoredBundleRecord> {
+    if (!Number.isInteger(expectedRevision) || expectedRevision < 0) throw new Error('An explicit nonnegative expected revision is required');
+    const bundle = validateBundle(input);
+    const checksum = await sha256(canonicalSerialize(bundle));
+    const id = bundle.manifest.projectId;
+    const timestamp = new Date().toISOString();
+    // Hashing yields: every checksum is computed before the transaction opens.
+    const backups = await Promise.all((options.backups ?? []).map(async (item) => {
+      const copy = validateBundle(item);
+      if (copy.manifest.projectId !== id) throw new Error('A restore backup must belong to the restored project');
+      return { id: crypto.randomUUID(), projectId: id, reason: 'manual' as const, createdAt: timestamp, checksum: await sha256(canonicalSerialize(copy)), bundle: copy };
+    }));
+    const replacedId = crypto.randomUUID();
+    const record = await this.database.transaction(true, (state) => {
+      const current = state.bundles.get(id);
+      if (current?.libraryState === 'deleted') throw new Error(`Project ${id} was deleted`);
+      if ((current?.revision ?? 0) !== expectedRevision) throw new Error(`Bundle ${id} changed before the restore; nothing was replaced`);
+      const consumed = options.consumedRecoveryId;
+      if (consumed && !state.recoveries.has(consumed)) throw new Error(`Recovery ${consumed} no longer exists`);
+      for (const backup of backups) state.recoveries.set(backup.id, backup);
+      if (current && current.checksum === checksum) {
+        if (consumed) state.recoveries.delete(consumed);
+        return current;
+      }
+      if (current) state.recoveries.set(replacedId, { id: replacedId, projectId: id, reason: 'manual', createdAt: timestamp, checksum: current.checksum, bundle: current.bundle });
+      const next: StoredBundleRecord = { id, revision: expectedRevision + 1, updatedAt: timestamp, checksum, bundle,
+        libraryState: current?.libraryState ?? 'saved' };
+      state.bundles.set(id, next);
+      // Same transaction: the recovery disappears only together with the durable restored revision.
+      if (consumed) state.recoveries.delete(consumed);
+      return next;
+    });
+    return structuredClone(record);
+  }
+  async deleteRecovery(id: string): Promise<void> {
+    await this.database.transaction(true, (state) => {
+      if (!state.recoveries.delete(id)) throw new Error(`Recovery ${id} does not exist`);
+    });
   }
   async migrateLegacy(storage: LegacyBundleStorage): Promise<BundleLibrarySnapshot> {
     const snapshot = await this.snapshot();

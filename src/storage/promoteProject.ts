@@ -12,9 +12,19 @@ import type { StoredBundleRecord, UnifiedBundleRepository } from './unifiedBundl
  * que no hace falta versión ni migración nuevas.
  */
 export function promoteBundleToProject(source: UnifiedProjectBundleV1, target: { projectId: string; name: string }): UnifiedProjectBundleV1 {
-  const bundle = structuredClone(source);
+  const bundle = copyBundleAs(source, target);
   const { workScope: _single, ...settings } = bundle.model2d.settings;
-  bundle.model2d = { ...bundle.model2d, id: target.projectId, name: target.name, settings };
+  bundle.model2d = { ...bundle.model2d, settings };
+  return bundle;
+}
+
+/**
+ * Copia completa con identidad nueva (id del 2D, del manifiesto y de la rama
+ * 3D). Todo lo demás —2D, 3D, Diseño, estudios FEM y `workScope`— pasa tal cual.
+ */
+export function copyBundleAs(source: UnifiedProjectBundleV1, target: { projectId: string; name: string }): UnifiedProjectBundleV1 {
+  const bundle = structuredClone(source);
+  bundle.model2d = { ...bundle.model2d, id: target.projectId, name: target.name };
   bundle.manifest = { ...bundle.manifest, projectId: target.projectId };
   if (bundle.space3d) {
     const { model } = bundle.space3d;
@@ -44,8 +54,26 @@ export async function savePromotedProject(
   projectId: string = crypto.randomUUID(),
 ): Promise<StoredBundleRecord> {
   if (source.manifest.projectId === projectId) throw new Error('La copia necesita un identificador distinto del original.');
-  const promoted = promoteBundleToProject(source, { projectId, name });
-  const record = await repository.saveBundle(promoted, 0);
+  return saveCopy(repository, promoteBundleToProject(source, { projectId, name }), libraryState);
+}
+
+/**
+ * «Duplicar»: el bundle entero (2D, 3D, Diseño y FEM) con id nuevo; un archivo
+ * individual sigue siendo individual. Nunca escribe sobre el original.
+ */
+export async function saveDuplicatedProject(
+  repository: UnifiedBundleRepository,
+  source: UnifiedProjectBundleV1,
+  name: string,
+  libraryState: StoredBundleRecord['libraryState'] = 'draft',
+  projectId: string = crypto.randomUUID(),
+): Promise<StoredBundleRecord> {
+  if (source.manifest.projectId === projectId) throw new Error('La copia necesita un identificador distinto del original.');
+  return saveCopy(repository, copyBundleAs(source, { projectId, name }), libraryState);
+}
+
+async function saveCopy(repository: UnifiedBundleRepository, copy: UnifiedProjectBundleV1, libraryState: StoredBundleRecord['libraryState']): Promise<StoredBundleRecord> {
+  const record = await repository.saveBundle(copy, 0);
   if (libraryState === 'saved' && record.libraryState !== 'saved') {
     await repository.setLibraryState([record.id], 'saved');
     return { ...record, libraryState: 'saved' };

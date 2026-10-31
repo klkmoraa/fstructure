@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SINGLE_WORK_LABEL, singleWorkMode, singleWorkTool } from '../../shared/project/workScope';
 import type { MesaMode } from '../../shared/navigation/projectUrl';
-import { promotedProjectName, savePromotedProject } from '../../storage/promoteProject';
+import { promotedProjectName, saveDuplicatedProject, savePromotedProject } from '../../storage/promoteProject';
+import { renameBundleProject, restoreBundleRecovery, restoreModel2DIntoBundle } from '../../storage/bundleLibraryActions';
+import { normalizeProject } from '../../data/migrate';
 import { Copy, FolderOpen, Layers, MoreHorizontal, Pencil, RotateCcw, Save, ShieldAlert, Trash2 } from 'lucide-react';
 import { usePhase2I18n } from '../../i18n/usePhase2I18n';
 import { useI18n } from '../../i18n/useI18n';
@@ -11,7 +13,7 @@ import { createBlankProject } from '../../data/defaultProject';
 import { createUnifiedProjectBundle } from '../../shared/project/unifiedProjectBundle';
 import type { ProjectModel } from '../../types';
 import type { ToolId } from '../../shared/contracts';
-import type { StoredBundleRecord, UnifiedBundleRepository } from '../../storage/unifiedBundleRepository';
+import type { BundleRecoveryRecord, StoredBundleRecord, UnifiedBundleRepository } from '../../storage/unifiedBundleRepository';
 import { toolIdentity } from '../workspace/toolCatalog';
 import { recentProjectPresentation } from './recentProjectPresentation';
 import {
@@ -99,6 +101,22 @@ const recoveryDifference = (saved: ProjectModel | undefined, recovered: ProjectM
   loads: projectLoadCount(recovered) - (saved ? projectLoadCount(saved) : 0),
 });
 
+/**
+ * Una recuperación de la lista: del espejo (sólo 2D) o del bundle canónico
+ * (2D, 3D, Diseño y FEM; p. ej. la edición rechazada por un conflicto).
+ */
+type HubRecovery = Pick<RecoveryRecord, 'id' | 'projectId' | 'createdAt' | 'project'> & {
+  reason: RecoveryRecord['reason'] | BundleRecoveryRecord['reason'];
+  /** `version`: una versión con nombre del espejo; se restaura sin consumirla. */
+  source: 'mirror' | 'bundle' | 'version';
+};
+
+/** La fila de Proyectos de un registro del bundle: el bundle manda sobre el espejo. */
+const bundleProjectRecord = (record: StoredBundleRecord): StoredProjectRecord => ({
+  id: record.id, name: record.bundle.model2d.name, project: record.bundle.model2d, schemaVersion: record.bundle.model2d.schemaVersion,
+  revision: record.revision, checksum: record.checksum, updatedAt: record.updatedAt,
+});
+
 const recoveryAgeMinutes = (createdAt: string) => Math.max(0, Math.round((Date.now() - new Date(createdAt).getTime()) / 60_000));
 
 export const ProjectHub = ({
@@ -125,12 +143,12 @@ export const ProjectHub = ({
   const { language } = useI18n();
   const { t } = usePhase2I18n(language);
   const { theme } = useWorkspaceUI();
-  const { project: currentProject, replaceProject } = useProjectModel();
+  const { project: currentProject, replaceProject, renameProject: renameLiveProject } = useProjectModel();
   const session = useSharedToolState()?.session;
   const canonicalRepository = bundleRepository ?? session?.repository;
   const activeRepository = repository ?? (typeof indexedDB === 'undefined' ? null : getProjectRepository());
   const [projects, setProjects] = useState<StoredProjectRecord[]>([]);
-  const [recoveries, setRecoveries] = useState<RecoveryRecord[]>([]);
+  const [recoveries, setRecoveries] = useState<HubRecovery[]>([]);
   const [bundles, setBundles] = useState<Map<string, StoredBundleRecord>>(new Map());
   // Sólo la primera lectura muestra «Abriendo…»: las relecturas en segundo plano
   // conservan lo que hay en pantalla en vez de parpadear y mover la lista.
@@ -182,18 +200,22 @@ export const ProjectHub = ({
       ]);
       const deleted = new Set(bundleSnapshot?.deletedProjectIds ?? []);
       const merged = new Map(snapshot.projects.filter((record) => !deleted.has(record.id)).map((record) => [record.id, record]));
-      for (const record of bundleSnapshot?.bundles ?? []) {
-        if (!merged.has(record.id)) merged.set(record.id, {
-          id: record.id, name: record.bundle.model2d.name, project: record.bundle.model2d,
-          schemaVersion: record.bundle.model2d.schemaVersion, revision: record.revision, checksum: record.checksum, updatedAt: record.updatedAt,
-        });
-      }
+      // El bundle es la versión canónica: su nombre y su 2D ganan al espejo.
+      for (const record of bundleSnapshot?.bundles ?? []) merged.set(record.id, bundleProjectRecord(record));
       setProjects([...merged.values()].filter((record) => {
         const bundle = bundleSnapshot?.bundles.find((item) => item.id === record.id);
         return !(bundle?.libraryState === 'draft' && record.name === 'Proyecto sin título' && projectEntityCount(record.project) === 0
           && !bundle.bundle.space3d && !Object.keys(bundle.bundle.design ?? {}).length && !bundle.bundle.fem.length);
       }));
-      setRecoveries(snapshot.recoveries.filter((recovery) => recovery.reason !== 'version' && !deleted.has(recovery.projectId)));
+      setRecoveries([
+        ...snapshot.recoveries.filter((recovery) => recovery.reason !== 'version' && !deleted.has(recovery.projectId))
+          .map((recovery): HubRecovery => ({ ...recovery, source: 'mirror' })),
+        // Sólo las que traen un bundle se pueden presentar y restaurar; las de
+        // un 3D suelto siguen guardadas en el registro sin tocarse.
+        ...(bundleSnapshot?.recoveries ?? []).flatMap((recovery): HubRecovery[] => recovery.bundle && recovery.projectId && !deleted.has(recovery.projectId)
+          ? [{ id: recovery.id, projectId: recovery.projectId, reason: recovery.reason, createdAt: recovery.createdAt, project: normalizeProject(recovery.bundle.model2d), source: 'bundle' }]
+          : []),
+      ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
       setBundles(new Map((bundleSnapshot?.bundles ?? []).map((record) => [record.id, record])));
       setError(null);
     } catch {
@@ -230,14 +252,46 @@ export const ProjectHub = ({
     }
   }, [recoveries]);
 
-  const duplicate = async (record: StoredProjectRecord) => {
+  /** La mesa del proyecto abierto puede ir por delante de su último guardado. */
+  const liveFor = (id: string) => (session && id === currentProject.id ? currentProject : undefined);
+  const usesSession = Boolean(session && session.repository === canonicalRepository);
+
+  /** El espejo de compatibilidad se reescribe desde el bundle; si falla, el bundle ya está guardado. */
+  const mirrorBundle = async (record: StoredBundleRecord) => {
     if (!activeRepository) return;
     try {
-      await activeRepository.duplicateProject(record.id, t('hub.copyName', { name: record.name }));
+      const previous = await activeRepository.openProject(record.id);
+      await activeRepository.saveProject(record.bundle.model2d, previous?.revision);
+    } catch { /* espejo opcional */ }
+  };
+
+  /* «Duplicar» copia el bundle entero (2D, 3D, Diseño y FEM) con id nuevo;
+     sin bundle canónico (modo antiguo) sigue copiando el espejo. */
+  const duplicate = async (record: StoredProjectRecord) => {
+    const name = t('hub.copyName', { name: record.name });
+    if (!canonicalRepository) {
+      if (!activeRepository) return;
+      try {
+        await activeRepository.duplicateProject(record.id, name);
+        await refresh();
+      } catch {
+        setError(t('hub.unavailable'));
+      }
+      return;
+    }
+    setBusy(true);
+    try {
+      const live = liveFor(record.id) ?? (bundles.has(record.id) ? undefined : record.project);
+      const copy = usesSession && session
+        ? await session.duplicateProject(record.id, name, live)
+        : await saveDuplicatedProject(canonicalRepository,
+          (await canonicalRepository.openBundle(record.id))?.bundle ?? createUnifiedProjectBundle(record.project, crypto.randomUUID()),
+          name, bundles.get(record.id)?.libraryState ?? (bundles.has(record.id) ? 'saved' : 'draft'));
+      await mirrorBundle(copy);
       await refresh();
     } catch {
       setError(t('hub.unavailable'));
-    }
+    } finally { setBusy(false); }
   };
 
   /* «Convertir en proyecto completo»: copia nueva sin workScope con todo el
@@ -263,15 +317,39 @@ export const ProjectHub = ({
     } finally { setBusy(false); }
   };
 
+  /* Renombrar cambia `model2d.name` en el bundle con un guardado revisado. El
+     proyecto abierto se renombra en la mesa: su autoguardado lo escribe y no
+     queda un guardado pendiente con el nombre viejo que lo revierta. */
   const commitRename = async () => {
-    if (!editing?.name.trim() || !activeRepository) return;
+    const name = editing?.name.trim();
+    if (!editing || !name) return;
+    if (!canonicalRepository) {
+      if (!activeRepository) return;
+      try {
+        await activeRepository.renameProject(editing.id, name);
+        setEditing(null);
+        await refresh();
+      } catch {
+        setError(t('hub.unavailable'));
+      }
+      return;
+    }
+    setBusy(true);
     try {
-      await activeRepository.renameProject(editing.id, editing.name.trim());
+      if (liveFor(editing.id)) renameLiveProject(name);
+      else {
+        const source = projects.find((record) => record.id === editing.id);
+        const record = bundles.has(editing.id) || !source
+          ? usesSession && session ? await session.renameProject(editing.id, name) : await renameBundleProject(canonicalRepository, editing.id, name)
+          // Sólo en el espejo (anterior al bundle): se crea su bundle ya con el nombre nuevo.
+          : await canonicalRepository.saveBundle(createUnifiedProjectBundle({ ...source.project, name }, crypto.randomUUID()), 0);
+        await mirrorBundle(record);
+      }
       setEditing(null);
       await refresh();
     } catch {
       setError(t('hub.unavailable'));
-    }
+    } finally { setBusy(false); }
   };
 
   const changeRetention = async (records: StoredProjectRecord[], state: 'saved' | 'draft' | 'deleted') => {
@@ -338,14 +416,30 @@ export const ProjectHub = ({
     }
   };
 
-  const restore = async (recovery: RecoveryRecord) => {
-    if (!activeRepository) return;
+  /* Con bundle canónico, restaurar escribe una revisión nueva del bundle (la
+     versión reemplazada queda como recuperación) y sólo después se descarta
+     la recuperación; luego se abre, y la mesa recarga la versión restaurada. */
+  const restoreCanonical = async (recovery: HubRecovery): Promise<StoredProjectRecord> => {
+    if (!canonicalRepository) throw new Error(t('hub.unavailable'));
+    const live = liveFor(recovery.projectId);
+    const record = recovery.source === 'bundle'
+      ? usesSession && session ? await session.restoreRecovery(recovery.id, live) : await restoreBundleRecovery(canonicalRepository, recovery.id, live)
+      : usesSession && session ? await session.restoreModel2D(recovery.project, live) : await restoreModel2DIntoBundle(canonicalRepository, recovery.project, live);
+    if (recovery.source === 'mirror') {
+      try { await activeRepository?.deleteRecovery(recovery.id); } catch { /* queda en la lista; lo restaurado ya está guardado */ }
+    }
+    await mirrorBundle(record);
+    return bundleProjectRecord(record);
+  };
+
+  const restore = async (recovery: HubRecovery) => {
+    if (!activeRepository && !canonicalRepository) return;
     const current = projects.find((record) => record.id === recovery.projectId);
     const difference = recoveryDifference(current?.project, recovery.project);
     const summary = t('hub.recoveryDifference', difference);
     if (!window.confirm(`${t('hub.restoreConfirm', { name: recovery.project.name })}\n\n${summary}`)) return;
     try {
-      const record = await activeRepository.restoreRecovery(recovery.id);
+      const record = canonicalRepository || !activeRepository ? await restoreCanonical(recovery) : await activeRepository.restoreRecovery(recovery.id);
       recordLocalMetric(window.localStorage, { name: 'recovery_decision', code: 'restore', entityDelta: projectEntityCount(recovery.project) - (current ? projectEntityCount(current.project) : 0), recoveryAgeMinutes: recoveryAgeMinutes(recovery.createdAt) });
       await refresh();
       onOpen(record);
@@ -354,14 +448,15 @@ export const ProjectHub = ({
     }
   };
 
-  const discardRecovery = async (recovery: RecoveryRecord, keepSaved = false) => {
-    if (!activeRepository) return;
+  const discardRecovery = async (recovery: HubRecovery, keepSaved = false) => {
+    const owner = recovery.source === 'bundle' ? canonicalRepository : activeRepository;
+    if (!owner) return;
     const current = projects.find((record) => record.id === recovery.projectId);
     const difference = recoveryDifference(current?.project, recovery.project);
     const confirmation = keepSaved ? t('hub.keepSavedConfirm', { name: recovery.project.name, ...difference }) : t('hub.discardConfirm', { name: recovery.project.name });
     if (!window.confirm(confirmation)) return;
     try {
-      await activeRepository.deleteRecovery(recovery.id);
+      await owner.deleteRecovery(recovery.id);
       recordLocalMetric(window.localStorage, {
         name: keepSaved ? 'recovery_decision' : 'recovery_abandoned',
         code: keepSaved ? 'keep-saved' : 'discard',
@@ -510,6 +605,7 @@ export const ProjectHub = ({
         t={t}
         onRestored={onOpen}
         onChanged={() => { void refresh(); }}
+        restoreVersion={canonicalRepository ? (version) => restoreCanonical({ ...version, source: 'version' }) : undefined}
       /> : null}</div>;
       })}
     </div> : null}
@@ -520,7 +616,7 @@ export const ProjectHub = ({
         const conflict = recovery.reason === 'conflict' && current;
         const difference = recoveryDifference(current?.project, recovery.project);
         const signed = (value: number) => `${value > 0 ? '+' : ''}${value}`;
-        return <article className={`project-hub__recovery${conflict ? ' is-conflict' : ''}`} key={recovery.id}>
+        return <article className={`project-hub__recovery${conflict ? ' is-conflict' : ''}`} key={`${recovery.source}:${recovery.id}`}>
           <header>
             {conflict ? <ShieldAlert size={18} aria-hidden="true" /> : <RotateCcw size={18} aria-hidden="true" />}
             <strong>{conflict ? t('hub.conflictTitle') : recovery.project.name}</strong>
