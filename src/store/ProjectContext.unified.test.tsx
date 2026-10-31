@@ -45,7 +45,8 @@ it('surfaces a cross-client conflict and preserves the remote canonical and reje
   const repo = new IndexedDbUnifiedBundleRepository();
   render(<ProjectProvider unified><Probe /></ProjectProvider>);
   await screen.findByRole('button', { name: 'Edit' });
-  await waitFor(async () => expect((await repo.openBundle(project.id))?.revision).toBe(2));
+  // La migración guarda la revisión 1; el autoguardado sin cambios ya no la sube.
+  await waitFor(async () => expect((await repo.openBundle(project.id))?.revision).toBe(1));
   const remote = (await repo.openBundle(project.id))!;
   remote.bundle.model2d.name = 'Remote wins';
   await repo.saveBundle(remote.bundle, remote.revision);

@@ -130,7 +130,9 @@ export const classifyStructure = (project: ProjectModel): StructureClassificatio
   const reactionCount = nodes.reduce((total, node) => total + supportRestraintCount(node.support), 0);
 
   const axisNodeIds = axisOrder(nodes) ?? [];
-  const collinear = axisNodeIds.length === nodes.length && nodes.length >= 2;
+  // Un arco entre nudos alineados no es una viga: su eje no es la cuerda.
+  const curved = members.some((member) => member.curve);
+  const collinear = !curved && axisNodeIds.length === nodes.length && nodes.length >= 2;
   const pinJointed = members.length > 0
     && members.every((member) => member.type === 'truss')
     && nodes.every((node) => node.support.type !== 'fixed');

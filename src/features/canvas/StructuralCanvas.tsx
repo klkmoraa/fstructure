@@ -58,6 +58,7 @@ import {
   memberAxis,
   modelBounds,
   pointAtGrossRatio,
+  structureBounds,
   toGlobalVector,
 } from '../../graphics/structureGeometry';
 import { CanvasResultLayer, diagramPixelScaleFor } from './CanvasResultLayer';
@@ -569,15 +570,26 @@ export const StructuralCanvas = ({
      el pórtico aparentemente descentrado. El encuadre usa los mismos puntos
      que pinta CanvasResultLayer cuando esa evidencia está visible. */
   const visibleFitBounds = useMemo(() => {
-    const bounds = modelBounds(project.nodes);
+    // Incluye la clave de los arcos: con sólo los nudos, «Ajustar» recortaba la barra curva.
+    const bounds = structureBounds(project.nodes, project.members);
     if (!layers.results || demandMapActive || stackActive || resultTab !== 'deformed' || analysis?.success !== true) return bounds;
-    const points = project.nodes.map(({ x, y }) => ({ x, y }));
+    const points = [{ x: bounds.minX, y: bounds.minY }, { x: bounds.maxX, y: bounds.maxY }];
     const scale = deformedDisplayScale(project, analysis);
     for (const member of project.members) {
       const result = resultMap.get(member.id);
       const start = nodeMap.get(member.i);
       const end = nodeMap.get(member.j);
       if (!result || !start || !end || member.type === 'rigid') continue;
+      // La deformada de un arco no sigue la cuerda; sus extremos se añaden abajo.
+      if (member.curve) {
+        const startResult = nodeResultMap.get(member.i);
+        const endResult = nodeResultMap.get(member.j);
+        points.push(
+          { x: start.x + scale * (startResult?.ux ?? 0), y: start.y + scale * (startResult?.uy ?? 0) },
+          { x: end.x + scale * (endResult?.ux ?? 0), y: end.y + scale * (endResult?.uy ?? 0) },
+        );
+        continue;
+      }
       const { c, s } = memberAxis(member, start, end);
       for (const point of result.deformation) {
         const grossX = (result.startOffset ?? 0) + point.x;

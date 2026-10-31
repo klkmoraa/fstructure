@@ -15,6 +15,7 @@ import { SharedToolStateProvider } from './SharedToolState';
 import { useThemePreference } from './themePreference';
 import { analysisWorkerRequest, createAnalysisWorker, runAnalysisWithTrace, runFallbackAnalysis, type AnalysisWorkerMessage } from './projectAnalysisRunner';
 import { readLastOpenProject, useProjectPersistence, type ProjectStorageState } from './projectPersistence';
+import { straightenImpossibleCurves } from '../graphics/memberCurve';
 
 // oxlint-disable-next-line react/only-export-components
 export { useProjectModel } from './ProjectModelContext';
@@ -147,8 +148,9 @@ export const ProjectProvider = ({ children, unified = false }: { children: React
     affectsAnalysis = true,
   ) => {
     recordHistory(previous, description, affectsAnalysis);
-    if (affectsAnalysis) publishAnalysisAffectingProject(next);
-    else publishProject(next);
+    const committed = straightenImpossibleCurves(next);
+    if (affectsAnalysis) publishAnalysisAffectingProject(committed);
+    else publishProject(committed);
   }, [publishAnalysisAffectingProject, publishProject, recordHistory]);
 
   useEffect(() => () => {

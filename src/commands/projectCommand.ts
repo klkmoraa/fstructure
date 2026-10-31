@@ -403,7 +403,7 @@ export const applyProjectPatch = (project: ProjectModel, patch: ProjectPatch): P
 
 /** Propiedades que sólo un pórtico puede sostener; el solver rechaza el resto. */
 const FRAME_ONLY_FIELDS = [
-  'beamTheory', 'releases', 'rotationalSpringI', 'rotationalSpringJ', 'rigidOffsetI', 'rigidOffsetJ', 'shearArea',
+  'beamTheory', 'releases', 'rotationalSpringI', 'rotationalSpringJ', 'rigidOffsetI', 'rigidOffsetJ', 'shearArea', 'curve',
 ] as const;
 
 const setOrClear = <Entity, Key extends keyof Entity>(
@@ -673,6 +673,8 @@ export const compileProjectCommand = (project: ProjectModel, command: ProjectCom
     delete changes.sectionId;
     delete changes.sectionOrigin;
     const updated = { ...current, ...changes, id: command.memberId };
+    // Una armadura o una barra rígida no puede ser curva (`normalizeProject` la rechazaría).
+    if (updated.type !== 'frame') delete updated.curve;
     if (materialChanged) {
       delete updated.materialId;
       updated.materialOrigin = 'custom';

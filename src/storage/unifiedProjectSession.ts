@@ -154,7 +154,7 @@ export class UnifiedProjectSession {
     else if (femStudy !== undefined) working.fem = upsertFemStudy(working.fem, femStudy);
     else if (design !== undefined) working.design = design;
     else {
-      if (JSON.stringify(working.model2d) !== JSON.stringify(detached)) working.manifest.sourceVersion = crypto.randomUUID();
+      if (canonicalJsonKey(working.model2d) !== canonicalJsonKey(detached)) working.manifest.sourceVersion = crypto.randomUUID();
       working.model2d = detached;
     }
     this.working.set(detached.id, working);
@@ -185,6 +185,14 @@ export class UnifiedProjectSession {
       else {
         bundle.manifest.sourceVersion = working.manifest.sourceVersion;
         bundle.model2d = detached;
+      }
+      // Un guardado sin cambios (el autoguardado al abrir, por ejemplo) no sube
+      // la revisión: si lo hiciera, abrir el proyecto en otra pestaña dejaría a
+      // la primera en conflicto con su siguiente edición.
+      if (current && canonicalJsonKey(bundle) === canonicalJsonKey(current.bundle)) {
+        clearWorking(current.bundle);
+        clearFailure();
+        return structuredClone(current);
       }
       try {
         const record = await this.repository.saveBundle(bundle, current?.revision ?? 0);

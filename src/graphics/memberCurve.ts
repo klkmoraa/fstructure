@@ -89,3 +89,29 @@ export const curveBoundsPoints = (arc: CircularArcGeometry): CurvePoint[] => {
 
 export const memberCurveLength = (member: MemberModel, i: NodeModel, j: NodeModel): number =>
   circularMemberGeometry(member, i, j)?.length ?? Math.hypot(j.x - i.x, j.y - i.y);
+
+/**
+ * Una barra que ya no puede ser curva vuelve a ser recta: si dejó de ser de
+ * marco (armadura o rígida) o si sus dos nudos quedaron en el mismo punto.
+ * Sin esto, `normalizeProject` rechaza el proyecto y el autoguardado falla en
+ * cada edición. El cambio queda en el historial, así que se deshace con él.
+ */
+export const straightenImpossibleCurves = <Project extends { nodes: NodeModel[]; members: MemberModel[] }>(project: Project): Project => {
+  const nodes = new Map(project.nodes.map((node) => [node.id, node]));
+  const impossible = (member: MemberModel) => {
+    if (!member.curve) return false;
+    if (member.type !== 'frame') return true;
+    const i = nodes.get(member.i), j = nodes.get(member.j);
+    return !i || !j || !(Math.hypot(j.x - i.x, j.y - i.y) > 1e-10);
+  };
+  if (!project.members.some(impossible)) return project;
+  return {
+    ...project,
+    members: project.members.map((member) => {
+      if (!impossible(member)) return member;
+      const straight = structuredClone(member);
+      delete straight.curve;
+      return straight;
+    }),
+  };
+};

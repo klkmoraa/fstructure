@@ -31,6 +31,7 @@ import { ThreeStructuralImage, type ThreeStructuralAssetId } from '../structural
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { SceneImage } from '../../design-system/components/SceneImage';
 import { presentExample } from './examplePresentation';
+import { createId } from '../../utils/id';
 import './home.css';
 
 // Lo que sólo se abre a pedido (biblioteca, importar, ejercicio nuevo) llega al abrirlo.
@@ -385,7 +386,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
     </main>
 
     <Suspense fallback={null}>
-    {importOpen ? <PortableImportCenter open currentProjectName={project.name} onClose={() => setImportOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { setImportOpen(false); openProject(outcome.project, outcome.restoredAnalysis); }} /> : null}
+    {importOpen ? <PortableImportCenter open currentProjectName={project.name} onClose={() => setImportOpen(false)} onSaveCurrent={() => exportProjectJson(project)} onImported={(outcome) => { setImportOpen(false); openProject({ ...outcome.project, id: createId() }, outcome.restoredAnalysis); }} /> : null}
     {dxfOpen ? <DxfImportDialog open onOpenChange={setDxfOpen} onImported={() => { setDxfOpen(false); onOpenWorkspace(); }} /> : null}
     {exerciseOpen ? <NewExerciseDialog open onClose={() => setExerciseOpen(false)} onCreate={(next) => { setExerciseOpen(false); openProject(next); }} /> : null}
     </Suspense>

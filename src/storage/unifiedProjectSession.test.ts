@@ -257,3 +257,16 @@ it('keeps a failed Design save in the working copy until a later write commits i
   expect(saved.bundle.design).toEqual(design);
   expect(session.status.issue).toBeNull();
 });
+it('does not bump the revision on an unchanged save, so opening the project in another tab keeps the first one saving', async () => {
+  const database = new InMemoryBundleDatabase();
+  const project = createDefaultProject();
+  const first = new UnifiedProjectSession(new InMemoryUnifiedBundleRepository(database));
+  const saved = await first.save2D(project);
+  const second = new UnifiedProjectSession(new InMemoryUnifiedBundleRepository(database));
+  const opened = await second.open(project.id);
+  const idle = await second.save2D(opened!);
+  expect(idle.revision).toBe(saved.revision);
+  const edited = await first.save2D({ ...project, name: 'Editado en la primera pestaña' });
+  expect(edited.revision).toBe(saved.revision + 1);
+  expect(first.status.issue).toBeNull();
+});
