@@ -19,7 +19,7 @@ import { TYPE } from './pdfTheme';
 import type { ReportContext } from './reportContext';
 import type { SolutionMethodId } from '../../analysis-methods/methodRegistry';
 
-const METHOD_LABEL: Record<SolutionMethodId, string> = {
+export const METHOD_LABEL: Record<SolutionMethodId, string> = {
   'matrix-stiffness': 'Matriz de rigidez',
   'double-integration': 'Doble integración',
   'conjugate-beam': 'Viga conjugada',

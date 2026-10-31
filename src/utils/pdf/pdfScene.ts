@@ -10,7 +10,10 @@
  * Everything here draws through `layout.page`, which must always be read at the moment of use —
  * a page break replaces it — and takes its colours from the palette, never from a literal.
  */
-import type {  NodeModel, SupportDefinition } from '../../types';
+import type { MemberLoad, NodeModel, SupportDefinition } from '../../types';
+import { toDisplay } from '../../foundation/units';
+import { unitLabel } from '../../engine/units';
+import { TYPE } from './pdfTheme';
 import type { SectionGeometry } from '../../features/inspector/sectionGeometry';
 import {
   distributedIntensityAt,
@@ -212,7 +215,7 @@ export const drawNodeDot = (
   id: string,
   color: PdfColor,
   size = 3,
-  labelSize = 6.5,
+  labelSize = 7.4,
 ): void => {
   const page = layout.page;
   page.drawCircle({ x: location.x, y: location.y, size, color: layout.palette.paper, borderColor: color, borderWidth: 1.1 });
@@ -391,10 +394,37 @@ export const drawMemberLoads = (
   const { layout, project, index, scenarioFactors } = context;
   const { palette, fonts } = layout;
   const page = layout.page;
+  const labelSize = TYPE.micro + 0.6;
+  // Las cargas repartidas de varios casos sobre el mismo tramo y en el mismo sentido se dibujan
+  // como UNA, ya multiplicada por los factores del escenario exportado: es la carga con la que
+  // se escriben las ecuaciones. Antes cada caso dibujaba sus flechas y su identificador interno
+  // («CM-V1 [0-0.5]») en el mismo sitio y los textos se encimaban.
+  const combined = new Map<string, MemberLoad>();
+  const singles: { load: MemberLoad; factor: number }[] = [];
   for (const load of project.memberLoads) {
     if (options.onlyMemberIds && !options.onlyMemberIds.has(load.memberId)) continue;
     const factor = scenarioFactors[load.caseId] ?? 0;
     if (factor === 0) continue;
+    if (load.type !== 'distributed') {
+      singles.push({ load, factor });
+      continue;
+    }
+    const key = [load.memberId, load.coordinateSystem, load.lengthBasis, number(Math.min(load.start, load.end)), number(Math.max(load.start, load.end))].join('|');
+    const scaled = (value: number | undefined) => (value ?? 0) * factor;
+    const current = combined.get(key);
+    if (!current) {
+      combined.set(key, { ...load, qxStart: scaled(load.qxStart), qxEnd: scaled(load.qxEnd ?? load.qxStart), qyStart: scaled(load.qyStart), qyEnd: scaled(load.qyEnd ?? load.qyStart) });
+    } else {
+      combined.set(key, {
+        ...current,
+        qxStart: (current.qxStart ?? 0) + scaled(load.qxStart), qxEnd: (current.qxEnd ?? 0) + scaled(load.qxEnd ?? load.qxStart),
+        qyStart: (current.qyStart ?? 0) + scaled(load.qyStart), qyEnd: (current.qyEnd ?? 0) + scaled(load.qyEnd ?? load.qyStart),
+      });
+    }
+  }
+  const drawn: { load: MemberLoad; factor: number }[] = [...[...combined.values()].map((load) => ({ load, factor: 1 })), ...singles];
+  const label = (text: string, x: number, y: number) => page.drawText(pdfText(text), { x, y, size: labelSize, font: fonts.bold, color: palette.load });
+  for (const { load, factor } of drawn) {
     const member = index.member(load.memberId);
     if (!member) continue;
     const startNode = index.node(member.i);
@@ -408,13 +438,14 @@ export const drawMemberLoads = (
     const atFlexibleRatio = (ratio: number) => lerpPoint(screenStart, screenEnd, grossRatioFromFlexible(axis, ratio));
     const globalVector = (x: number, y: number): [number, number] =>
       toGlobalVector(axis, load.coordinateSystem, x, y);
-    const actionColor = palette.load;
+    const actionColor = load.type === 'distributed' ? palette.loadDistributed : palette.load;
     if (load.type === 'distributed') {
       const startRatio = Math.min(load.start, load.end);
       const endRatio = Math.min(Math.max(load.start, load.end), limit);
       if (!(endRatio > startRatio)) continue;
       const arrowTails: Point[] = [];
-      const count = 7;
+      const screenLength = Math.hypot(screenEnd.x - screenStart.x, screenEnd.y - screenStart.y) * (endRatio - startRatio);
+      const count = Math.max(4, Math.min(11, Math.round(screenLength / 28) + 1));
       for (let arrowIndex = 0; arrowIndex < count; arrowIndex += 1) {
         const t = arrowIndex / (count - 1);
         const ratio = startRatio + (endRatio - startRatio) * t;
@@ -424,20 +455,30 @@ export const drawMemberLoads = (
         if (tail) arrowTails.push(tail);
       }
       if (arrowTails.length > 1) page.drawLine({ start: arrowTails[0], end: arrowTails.at(-1)!, thickness: 0.9, color: actionColor });
-      const label = atFlexibleRatio((startRatio + endRatio) / 2);
-      page.drawText(pdfText(`${load.id} [${number(startRatio)}-${number(endRatio)}]`), { x: label.x + 3, y: label.y + 20, size: 6, font: fonts.bold, color: actionColor });
+      const qStart = Math.hypot(load.qxStart ?? 0, load.qyStart ?? 0);
+      const qEnd = Math.hypot(load.qxEnd ?? 0, load.qyEnd ?? 0);
+      const unit = unitLabel(project.settings.units, 'distributedForce');
+      const magnitude = (value: number) => number(toDisplay(value, project.settings.units, 'distributedForce'), 4);
+      const text = Math.abs(qStart - qEnd) <= Math.max(qStart, qEnd) * 1e-9
+        ? `q = ${magnitude(qStart)} ${unit}`
+        : `q = ${magnitude(qStart)} → ${magnitude(qEnd)} ${unit}`;
+      const anchor = arrowTails.length ? arrowTails[Math.floor(arrowTails.length / 2)]! : atFlexibleRatio((startRatio + endRatio) / 2);
+      const width = fonts.bold.widthOfTextAtSize(pdfText(text), labelSize);
+      label(text, anchor.x - width / 2, anchor.y + 4);
     } else if (load.type === 'point') {
       const position = Math.min(1, Math.max(0, load.position ?? 0.5));
       if (position > limit) continue;
       const [gx, gy] = globalVector((load.px ?? 0) * factor, (load.py ?? 0) * factor);
       const location = atFlexibleRatio(position);
       const tail = drawArrow(layout, location, gx, gy, actionColor, 22) ?? location;
-      page.drawText(pdfText(load.id), { x: tail.x + 2, y: tail.y + 5, size: 6, font: fonts.bold, color: actionColor });
+      const magnitude = Math.hypot(load.px ?? 0, load.py ?? 0) * Math.abs(factor);
+      label(`P = ${number(toDisplay(magnitude, project.settings.units, 'force'), 4)} ${unitLabel(project.settings.units, 'force')}`, tail.x + 3, tail.y + 4);
     } else {
       const position = Math.min(1, Math.max(0, load.position ?? 0.5));
       if (position > limit) continue;
       const location = atFlexibleRatio(position);
-      page.drawText(pdfText(`${load.id}: M x ${number(factor)}`), { x: location.x + 4, y: location.y + 8, size: 6, font: fonts.bold, color: actionColor });
+      const value = (load.moment ?? 0) * factor;
+      label(`M = ${number(toDisplay(value, project.settings.units, 'moment'), 4)} ${unitLabel(project.settings.units, 'moment')}`, location.x + 4, location.y + 9);
     }
   }
 };

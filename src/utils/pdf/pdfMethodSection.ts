@@ -50,6 +50,7 @@ import { pdfText } from './pdfGlyphs';
 import { asWorkedEquation, drawWorkedEquation, measureWorkedEquation, type EquationInput } from './pdfEquation';
 import type { PdfTableColumn, PdfTableOptions } from './pdfBuilder';
 import type { ReportContext } from './reportContext';
+import { TYPE } from './pdfTheme';
 import { SOLUTION_METHODS, applicableMethods, type SolutionMethodId } from '../../analysis-methods/methodRegistry';
 import type { AnalysisResult, LoadCombination, ProjectModel } from '../../types';
 
@@ -143,8 +144,8 @@ const drawWorked = (context: ReportContext, caption: string | undefined, equatio
   if (caption) layout.text(caption, 7.9, layout.fonts.bold, layout.palette.ink, 12);
   for (const input of equations) {
     const equation = asWorkedEquation(input);
-    layout.ensure(measureWorkedEquation(layout, equation, 8.4, 16));
-    layout.y -= drawWorkedEquation(layout, equation, 8.4, 16, layout.rgb(0.24, 0.28, 0.34), `(${layout.nextEquationNumber()})`);
+    layout.ensure(measureWorkedEquation(layout, equation, TYPE.math, 16));
+    layout.y -= drawWorkedEquation(layout, equation, TYPE.math, 16, layout.palette.ink, `(${layout.nextEquationNumber()})`);
   }
 };
 
@@ -152,14 +153,15 @@ const drawWorked = (context: ReportContext, caption: string | undefined, equatio
 const drawRelation = (context: ReportContext, equation: EquationInput): void => {
   const { layout } = context;
   const worked = asWorkedEquation(equation);
-  layout.ensure(measureWorkedEquation(layout, worked, 8.4, 16));
-  layout.y -= drawWorkedEquation(layout, worked, 8.4, 16, layout.rgb(0.24, 0.28, 0.34), `(${layout.nextEquationNumber()})`);
+  layout.ensure(measureWorkedEquation(layout, worked, TYPE.math, 16));
+  layout.y -= drawWorkedEquation(layout, worked, TYPE.math, 16, layout.palette.ink, `(${layout.nextEquationNumber()})`);
 };
 
 /**
- * Technical records without a grid. Each result is read top-to-bottom as a calculation note:
- * identifier first, then labelled values and typeset relations. This replaces spreadsheet-like
- * tables inside the chosen method while keeping every number and unit available for checking.
+ * Datos del método. Sin fórmulas son una tabla: cada fila un nudo, un tramo o una condición, y
+ * cada columna se compara de un vistazo (antes cada dato ocupaba dos renglones y una condición
+ * de cuatro valores llenaba media página). Con fórmulas, cada fila es un bloque compacto: el
+ * identificador, los datos cortos en una línea y cada relación en la suya, alineada.
  */
 const drawCalculationRecords = (
   context: ReportContext,
@@ -169,29 +171,24 @@ const drawCalculationRecords = (
 ): void => {
   if (!columns.length || !rows.length) return;
   const { layout } = context;
-  const size = options.size ?? 7.8;
+  const size = options.size ?? TYPE.small;
   const indent = options.indent ?? 0;
+  if (!columns.some((column) => column.math)) {
+    layout.table(columns, rows, { ...options, size });
+    return;
+  }
   for (const row of rows) {
-    layout.ensure(Math.max(34, columns.length * 15));
-    layout.text(
-      `${columns[0]?.header ?? 'Dato'}: ${row[0] ?? '—'}`,
-      size + 0.4,
-      layout.fonts.bold,
-      layout.palette.ink,
-      indent,
-    );
-    for (let index = 1; index < columns.length; index += 1) {
-      const column = columns[index]!;
+    layout.ensure(size * 5);
+    layout.text(`${columns[0]?.header ?? 'Dato'}: ${row[0] ?? '—'}`, size + 0.6, layout.fonts.bold, layout.palette.ink, indent);
+    const facts = columns.slice(1).flatMap((column, offset) => column.math ? [] : [`${column.header}: ${String(row[offset + 1] ?? '—')}`]);
+    if (facts.length) layout.text(facts.join('   ·   '), size, layout.fonts.regular, layout.palette.inkSoft, indent + 12);
+    columns.forEach((column, index) => {
+      if (!column.math || index === 0) return;
       const value = String(row[index] ?? '—');
-      layout.text(column.header, Math.max(6.6, size - 0.6), layout.fonts.bold, layout.palette.inkSoft, indent + 12);
-      if (column.math) {
-        const equationIndent = indent + 24;
-        layout.ensure(layout.measureMathBlock(value, size, equationIndent));
-        layout.y -= layout.drawMathBlockAt(value, size, equationIndent, layout.palette.ink);
-      } else {
-        layout.text(value, size, layout.fonts.regular, layout.palette.ink, indent + 24);
-      }
-    }
+      const relation = value.includes('=') ? value : `${column.header} = ${value}`;
+      layout.ensure(layout.measureMathBlock(relation, size + 0.6, indent + 12));
+      layout.y -= layout.drawMathBlockAt(relation, size + 0.6, indent + 12, layout.palette.ink);
+    });
     layout.gap(2);
   }
 };

@@ -1,8 +1,9 @@
 /**
- * Text sanitising and wrapping for the standard PDF fonts.
+ * Text sanitising and wrapping for the report fonts.
  *
- * Prose is drawn in Helvetica, which only carries WinAnsi, so `pdfText` transliterates
- * every engineering glyph explicitly instead of dropping to a replacement box.
+ * With the embedded IBM Plex Sans every glyph it carries is drawn as is. Without it (the
+ * standard fonts only carry WinAnsi) `pdfText` transliterates every engineering glyph
+ * explicitly instead of dropping to a replacement box.
  */
 import type { PDFFont } from 'pdf-lib';
 
@@ -20,6 +21,9 @@ const SCRIPT_GLYPHS = new Map<string, string>([
   ['ᵃ', '^a'], ['ᵉ', '^e'], ['ᵍ', '^g'], ['ˡ', '^l'], ['ⁿ', '^n'],
 ]);
 
+
+/** `^2`, `_e`… para un índice Unicode que la fuente no dibuja; `undefined` si no es un índice. */
+export const scriptMarker = (character: string): string | undefined => SCRIPT_GLYPHS.get(character);
 
 /** Standard PDF fonts use WinAnsi; transliterate engineering glyphs explicitly. */
 const PDF_GLYPHS = new Map<string, string>([
@@ -57,8 +61,22 @@ const transliterate = (value: unknown, keep: (character: string) => boolean): st
     })
     .join('');
 
-/** Prose for the WinAnsi faces: every glyph outside Latin-1 is spelled out. */
-export const pdfText = (value: unknown): string => transliterate(value, () => false);
+/**
+ * Caracteres que la fuente incrustada de esta exportación sabe dibujar. Con IBM Plex Sans
+ * (`pdfFonts.ts`) se conservan ξ, ≤, x², Σ…; sin ella (`null`) todo lo que no es WinAnsi se
+ * deletrea como antes. `createCalculationReport` la fija al empezar y la retira al terminar.
+ */
+let coverage: ReadonlySet<number> | null = null;
+
+export const setPdfGlyphCoverage = (codePoints: readonly number[] | null): void => {
+  coverage = codePoints ? new Set(codePoints) : null;
+};
+
+/** ¿Dibuja la fuente de esta exportación el carácter tal cual? */
+export const pdfDrawsGlyph = (character: string): boolean => coverage?.has(character.codePointAt(0) ?? -1) ?? false;
+
+/** Prose for the report faces: Unicode when the embedded font has the glyph, spelled out otherwise. */
+export const pdfText = (value: unknown): string => transliterate(value, pdfDrawsGlyph);
 
 export const wrapText = (text: string, font: PDFFont, size: number, maxWidth: number): string[] => {
   const paragraphs = pdfText(text).split(/\r?\n/);

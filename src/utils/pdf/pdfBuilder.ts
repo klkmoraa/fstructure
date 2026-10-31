@@ -245,9 +245,14 @@ export class PdfLayout {
     return this.partCount;
   }
 
-  heading(content: string, level: HeadingLevel = 1): void {
+  heading(text: string, level: HeadingLevel = 1): void {
+    // Los procedimientos se escribieron como «parte 5» («5.2 Conversión de apoyos»); la parte
+    // del procedimiento cambia de número según el orden y las partes que se incluyan, así que
+    // el número se toma de la parte en curso.
+    const content = this.partCount > 0 ? text.replace(/^5(?=(\.\d+)*\.?\s)/, String(this.partCount)) : text;
     const size = level === 1 ? TYPE.section : level === 2 ? TYPE.sub : TYPE.small;
-    this.ensure(size * 3.2);
+    // Un título nunca queda solo al pie: pide sitio para él y unos renglones de lo que encabeza.
+    this.ensure(size * 3.2 + TYPE.body * 5);
     this.y -= SPACE * (level === 1 ? 3 : 2);
     this.page.drawText(pdfText(content), {
       x: MARGIN,
@@ -398,20 +403,21 @@ export class PdfLayout {
    * in one sequence, the same way displayed equations are.
    */
   figure(height: number, draw: (rect: { x: number; y: number; width: number; height: number }) => void, caption?: string): number {
-    const captionHeight = caption ? TYPE.small * 1.5 : 0;
+    // El pie se parte en renglones: antes era una sola línea y los largos salían de la página.
+    const captionLines = caption ? wrapText(`Figura ${this.figureCount + 1} — ${caption}`, this.fonts.regular, TYPE.small, this.contentWidth) : [];
+    const captionHeight = captionLines.length * TYPE.small * 1.4 + (captionLines.length ? SPACE * 0.5 : 0);
     this.ensure(height + captionHeight + SPACE * 3);
     const top = this.y;
     const bottom = top - height;
     draw({ x: MARGIN, y: bottom, width: this.contentWidth, height });
     this.figureCount += 1;
     this.y = bottom - SPACE;
-    if (caption) {
-      const text = pdfText(`Figura ${this.figureCount} — ${caption}`);
-      this.page.drawText(text, {
-        x: MARGIN, y: this.y - TYPE.small, size: TYPE.small, font: this.fonts.regular, color: this.palette.inkSoft,
+    captionLines.forEach((line, index) => {
+      this.page.drawText(line, {
+        x: MARGIN, y: this.y - TYPE.small - index * TYPE.small * 1.4, size: TYPE.small, font: this.fonts.regular, color: this.palette.inkSoft,
       });
-      this.y -= captionHeight;
-    }
+    });
+    this.y -= captionHeight;
     this.y -= SPACE * 2;
     return this.figureCount;
   }
@@ -426,7 +432,8 @@ export class PdfLayout {
    */
   table(columns: readonly PdfTableColumn[], rows: readonly (readonly string[])[], options: PdfTableOptions = {}): void {
     if (!columns.length) return;
-    const size = options.size ?? TYPE.small;
+    // Ninguna tabla por debajo de 8.2 pt: las de 7 pt de los métodos no se leían impresas.
+    const size = Math.max(options.size ?? TYPE.small, TYPE.small - 0.6);
     const indent = options.indent ?? 0;
     const zebra = options.zebra ?? false;
     const left = MARGIN + indent;

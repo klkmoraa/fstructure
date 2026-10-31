@@ -6,7 +6,8 @@
  */
 import { evaluateSegment } from '../../engine/diagram';
 import { memberAxis } from '../../graphics/structureGeometry';
-import { clearDisplay, display, formatPolynomial, quantityUnit, unitFor } from './pdfFormat';
+import { clearCell, clearDisplay, display, formatPolynomial, quantityUnit, unitFor } from './pdfFormat';
+import { TYPE } from './pdfTheme';
 import { drawFreeBodyScene, type FreeBodyScene } from './pdfFreeBody';
 import type { AnalysisResult } from '../../types';
 import type { ReportContext } from './reportContext';
@@ -107,9 +108,30 @@ export const drawSegmentCalculationPart = (context: ReportContext): void => {
     return;
   }
 
+  // Una barra de armadura sólo lleva N constante: cortarla tramo a tramo llenaba decenas de
+  // páginas con N(ξ) = cte, V = 0, M = 0. Sus fuerzas van en una tabla.
+  const trussResults = analysis.memberResults.filter((result) => context.index.member(result.memberId)?.type === 'truss');
+  if (trussResults.length) {
+    layout.heading('Barras de armadura', 2);
+    layout.text('En una barra articulada en sus dos extremos y sin carga entre ellos, N es constante y V = M = 0: no hace falta cortarla por tramos.', TYPE.small);
+    const reference = Math.max(1, ...trussResults.map((result) => Math.abs(result.diagram[0]?.axial ?? 0)));
+    layout.table([
+      { header: 'Barra', width: 60 },
+      { header: 'Nudos', width: 90 },
+      { header: `Longitud (${unitFor(project, 'length')})`, align: 'right' },
+      { header: `N (${unitFor(project, 'force')})`, align: 'right' },
+      { header: 'Trabajo', width: 80 },
+    ], trussResults.map((result) => {
+      const member = context.index.member(result.memberId)!;
+      const axial = result.diagram[0]?.axial ?? 0;
+      const state = Math.abs(axial) <= reference * 1e-9 ? 'sin esfuerzo' : axial > 0 ? 'tensión (T)' : 'compresión (C)';
+      return [member.id, `${member.i} → ${member.j}`, clearCell(project, result.length, 'length'), clearCell(project, axial, 'force', reference), state];
+    }));
+  }
+
   for (const result of analysis.memberResults) {
     const member = context.index.member(result.memberId);
-    if (!member || !result.diagramSegments.length) continue;
+    if (!member || !result.diagramSegments.length || member.type === 'truss') continue;
     layout.heading(`Barra ${member.id}: ${member.i} → ${member.j}`, 2);
     layout.text(`Longitud analizada: ${display(project, result.length, 'length')}. Los cortes siguen los intervalos exactos publicados por el solver; no son una interpolación gráfica.`, 8.2);
     for (const [segmentIndex, segment] of result.diagramSegments.entries()) {

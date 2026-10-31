@@ -10,7 +10,9 @@ import { atomize, translateExpression } from './mathLatex';
 import { isVectorMathAvailable, MathTypesetError, typesetLatex } from './mathTypeset';
 import type { ParsedFormula } from './mathTypeset';
 import { drawFormula, measureFormula } from './mathVector';
-import { pdfText, wrapText } from './pdfGlyphs';
+import { pdfText } from './pdfGlyphs';
+import { drawRuns, mathRuns, measureRuns } from './pdfInlineMath';
+import type { PDFFont } from 'pdf-lib';
 import type { PdfLayout } from './pdfBuilder';
 import type { PdfColor } from './reportContext';
 
@@ -63,11 +65,11 @@ export const needsMath = (value: string): boolean => translateExpression(value).
  * Matches `\dfrac` as well as `\frac`: quotients are set in display style now, and a block
  * measured as a single-height line would have its next neighbour drawn over its denominator.
  */
-export const hasFraction = (expression: string): boolean => /\\d?frac\{/.test(translateExpression(expression));
+export const hasFraction = (expression: string): boolean => isVectorMathAvailable && /\\d?frac\{/.test(translateExpression(expression));
 
 export const mathWidth = (layout: PdfLayout, expression: string, size: number): number => {
   const parsed = safeTypeset(expression);
-  if (!parsed) return layout.fonts.mathRegular.widthOfTextAtSize(pdfText(expression), size);
+  if (!parsed) return measureRuns(mathRuns(expression), layout.fonts.mathRegular, size);
   return measureFormula(parsed, size).widthPt;
 };
 
@@ -99,14 +101,14 @@ interface MathBlockOptions {
  * `drawMathBlock` draws such an expression as plain prose anyway (see `safeTypeset`), so the
  * packing only has to stay finite and roughly sane.
  */
-const packMathLines = (expression: string, width: number, size: number, indent: number): string[] => {
+const packMathLines = (expression: string, width: number, size: number, indent: number, font: PDFFont): string[] => {
   const atoms = atomize(expression);
   if (!atoms.length) return [];
 
   const lineWidth = (line: readonly string[]): number => {
     const joined = line.join(' ');
     const parsed = safeTypeset(joined);
-    if (!parsed) return pdfText(joined).length * size * 0.5;
+    if (!parsed) return measureRuns(mathRuns(joined), font, size);
     return measureFormula(parsed, size).widthPt;
   };
 
@@ -149,7 +151,7 @@ export const drawMathBlock = (
   options: MathBlockOptions = {},
 ): number => {
   const indent = options.continuationIndent ?? size * 1.6;
-  const lines = packMathLines(expression, width, size, indent);
+  const lines = packMathLines(expression, width, size, indent, layout.fonts.mathRegular);
   if (!lines.length) return 0;
 
   let consumed = 0;
@@ -163,15 +165,11 @@ export const drawMathBlock = (
       drawFormula(layout.page, layout.vectorOps, parsed, cursor, baseline, size, color);
       consumed += size * (hasFraction(lineExpression) ? 2.05 : 1.45);
     } else {
-      // The packer only had a character-count estimate for this line, so re-wrap it against the
-      // real font rather than trusting that estimate to have kept it inside the column.
-      const wrapped = wrapText(lineExpression, layout.fonts.regular, size, width - (index === 0 ? 0 : indent));
+      // Sin motor TeX: la misma fuente del documento a tres alturas (`pdfInlineMath.ts`), con
+      // el ancho que el empaquetador ya midió así.
       baseline = top - consumed - size;
-      for (const text of wrapped.length ? wrapped : [pdfText(lineExpression)]) {
-        baseline = top - consumed - size;
-        layout.page.drawText(text, { x: cursor, y: baseline, size, font: layout.fonts.regular, color });
-        consumed += size * 1.45;
-      }
+      drawRuns(layout.page, mathRuns(lineExpression), cursor, baseline, size, layout.fonts.mathRegular, color);
+      consumed += size * 1.5;
     }
     if (options.tag && index === lines.length - 1) {
       const tag = pdfText(options.tag);

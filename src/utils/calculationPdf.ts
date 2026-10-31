@@ -15,6 +15,8 @@ import { createPortablePayload } from './portablePayload';
 import { PdfLayout } from './pdf/pdfBuilder';
 import { createPalette } from './pdf/pdfTheme';
 import { safeFilename } from './pdf/pdfFormat';
+import { loadReportFontFaces } from './pdf/pdfFonts';
+import { setPdfGlyphCoverage } from './pdf/pdfGlyphs';
 import { drawSummaryPart } from './pdf/pdfSummarySection';
 import { drawSegmentCalculationPart } from './pdf/pdfSegmentCalculationSection';
 import { drawScopePart } from './pdf/pdfScopeSection';
@@ -31,6 +33,7 @@ import {
   type CalculationReportArtifact,
   type CalculationReportOptions,
   type ReportContext,
+  type ReportFonts,
 } from './pdf/reportContext';
 import type { AnalysisResult, ProjectModel } from '../types';
 import { DEFAULT_SOLUTION_METHOD, type SolutionMethodId } from '../analysis-methods/methodRegistry';
@@ -95,61 +98,83 @@ export const createCalculationReport = async (
     createPortablePayload(project, analysis, options),
   ]);
   const pdf = await PDFDocument.create();
-  const fonts = {
-    regular: await pdf.embedFont(StandardFonts.Helvetica),
-    bold: await pdf.embedFont(StandardFonts.HelveticaBold),
-    mathRegular: await pdf.embedFont(StandardFonts.TimesRoman),
-    mathItalic: await pdf.embedFont(StandardFonts.TimesRomanItalic),
-    mathSymbol: await pdf.embedFont(StandardFonts.Symbol),
-  };
-  const context: ReportContext = {
-    layout: new PdfLayout(pdf, fonts, createPalette(rgb), rgb, { concatTransformationMatrix, pushGraphicsState, popGraphicsState }),
-    project,
-    analysis,
-    payload,
-    options,
-    solutionMethod,
-    combination,
-    scenarioFactors,
-    index: createModelIndex(project, analysis),
-  };
-  const { layout } = context;
-
-  // The first two sheets are front matter and are written last: the cover needs nothing from
-  // the body, but the contents page cannot be set until every part knows the page it landed
-  // on — the same reason `stampChrome` waits for the final page to exist.
-  const coverIndex = layout.pages.indexOf(layout.page);
-  layout.newPage();
-  const contentsIndex = layout.pages.indexOf(layout.page);
-
-  // Part one is the document: it is never dropped. Everything after it is a part the reader
-  // may not need in this particular copy, and because the numbering is assigned by
-  // `layout.part` as each one opens, a shortened report never shows a gap where a part used
-  // to be.
-  drawSummaryPart(context);
-  if (options.includeDiagrams !== false) {
-    drawSegmentCalculationPart(context);
+  // IBM Plex Sans en subconjunto (griego, operadores, índices); si no se puede leer, las
+  // fuentes estándar de siempre con sus transliteraciones.
+  const faces = await loadReportFontFaces();
+  let fonts: ReportFonts;
+  if (faces) {
+    const { default: fontkit } = await import('@pdf-lib/fontkit');
+    pdf.registerFontkit(fontkit);
+    const [regular, bold, italic] = await Promise.all([
+      pdf.embedFont(faces.regular, { subset: true }),
+      pdf.embedFont(faces.bold, { subset: true }),
+      pdf.embedFont(faces.italic, { subset: true }),
+    ]);
+    fonts = { regular, bold, mathRegular: regular, mathItalic: italic, mathSymbol: regular };
+  } else {
+    fonts = {
+      regular: await pdf.embedFont(StandardFonts.Helvetica),
+      bold: await pdf.embedFont(StandardFonts.HelveticaBold),
+      mathRegular: await pdf.embedFont(StandardFonts.TimesRoman),
+      mathItalic: await pdf.embedFont(StandardFonts.TimesRomanItalic),
+      mathSymbol: await pdf.embedFont(StandardFonts.Symbol),
+    };
   }
-  if (options.includeScope !== false) drawScopePart(context);
-  if (options.includeProcedure !== false) drawProcedurePart(context);
-  if (options.includeMaterials !== false) drawMaterialsPart(context);
-  if (options.includeAnnex !== false) {
-    drawModelPart(context);
-    drawResultsPart(context);
-    if (options.includeEducationTrace !== false && analysis.educationTrace) drawTracePart(context);
+  setPdfGlyphCoverage(faces ? fonts.regular.getCharacterSet() : null);
+  try {
+    const context: ReportContext = {
+      layout: new PdfLayout(pdf, fonts, createPalette(rgb), rgb, { concatTransformationMatrix, pushGraphicsState, popGraphicsState }),
+      project,
+      analysis,
+      payload,
+      options,
+      solutionMethod,
+      combination,
+      scenarioFactors,
+      index: createModelIndex(project, analysis),
+    };
+    const { layout } = context;
+
+    // The first two sheets are front matter and are written last: the cover needs nothing from
+    // the body, but the contents page cannot be set until every part knows the page it landed
+    // on — the same reason `stampChrome` waits for the final page to exist.
+    const coverIndex = layout.pages.indexOf(layout.page);
+    layout.newPage();
+    const contentsIndex = layout.pages.indexOf(layout.page);
+
+    // Part one is the document: it is never dropped. Everything after it is a part the reader
+    // may not need in this particular copy, and because the numbering is assigned by
+    // `layout.part` as each one opens, a shortened report never shows a gap where a part used
+    // to be.
+    drawSummaryPart(context);
+    // El procedimiento elegido va enseguida del resumen: es lo que esta copia viene a mostrar.
+    if (options.includeProcedure !== false) drawProcedurePart(context);
+    if (options.includeDiagrams !== false) {
+      drawSegmentCalculationPart(context);
+    }
+    if (options.includeScope !== false) drawScopePart(context);
+    if (options.includeMaterials !== false) drawMaterialsPart(context);
+    if (options.includeAnnex !== false) {
+      drawModelPart(context);
+      drawResultsPart(context);
+      if (options.includeEducationTrace !== false && analysis.educationTrace) drawTracePart(context);
+    }
+
+    drawCoverPage(context, coverIndex, PROFESSIONAL_NOTE);
+    drawContentsPage(layout, contentsIndex);
+    attachOutline(pdf, { PDFName, PDFArray, PDFNumber, PDFHexString }, layout.sections);
+    layout.stampChrome(project.name, DOCUMENT_TITLE);
+
+    const bytes = await attachPortablePayload(context);
+    return {
+      bytes,
+      filename: `${safeFilename(project.name)}-memoria-${METHOD_FILENAME[solutionMethod]}.pdf`,
+      payload,
+      solutionMethod,
+      methodAvailability,
+    };
+  } finally {
+    // Otros PDF (Diseño) siguen con las fuentes estándar: la cobertura no se queda puesta.
+    setPdfGlyphCoverage(null);
   }
-
-  drawCoverPage(context, coverIndex, PROFESSIONAL_NOTE);
-  drawContentsPage(layout, contentsIndex);
-  attachOutline(pdf, { PDFName, PDFArray, PDFNumber, PDFHexString }, layout.sections);
-  layout.stampChrome(project.name, DOCUMENT_TITLE);
-
-  const bytes = await attachPortablePayload(context);
-  return {
-    bytes,
-    filename: `${safeFilename(project.name)}-memoria-${METHOD_FILENAME[solutionMethod]}.pdf`,
-    payload,
-    solutionMethod,
-    methodAvailability,
-  };
 };

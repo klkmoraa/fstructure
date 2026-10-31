@@ -22,6 +22,8 @@ export const esAnalysis = {
   'analysis.order': 'Orden del análisis',
   'analysis.orderFirst': 'Primer orden',
   'analysis.orderPDelta': 'P-Delta',
+  'method.exportTitleAvailable': 'Resolver por ({count} métodos aplican)',
+  'method.exportUnavailable': 'No aplican a este modelo ({count})',
   'method.exportTitle': 'Método para este PDF ({count})',
   'method.appliesNow': 'Disponible para este modelo',
   'method.unavailableForModel': 'No aplica a este modelo',

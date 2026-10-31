@@ -25,10 +25,16 @@ export const drawWordmark = (
   size: number,
   color: PdfColor,
 ): number => {
-  page.drawText('structure', { x, y, size, font: layout.fonts.regular, color });
-  const offset = layout.fonts.regular.widthOfTextAtSize('structure', size);
-  page.drawText('Co', { x: x + offset, y, size, font: layout.fonts.bold, color });
-  return offset + layout.fonts.bold.widthOfTextAtSize('Co', size);
+  // La marca de FStructure (`public/favicon-light.svg`): la ménsula y la franja roja de la
+  // familia Análisis. Mide `markSize` de alto con la base en `y`.
+  const markSize = size * 1.9;
+  const scale = markSize / 48;
+  const top = y + markSize * 0.82;
+  page.drawSvgPath('M8 5h9v38H8z M17 5h24v5.5L17 14z', { x: x - 7.5 * scale, y: top, scale, color });
+  page.drawSvgPath('M17 21h17v5L17 30z', { x: x - 7.5 * scale, y: top, scale, color: layout.palette.accentFill });
+  const textX = x + markSize * 0.82;
+  page.drawText('FStructure', { x: textX, y: y + markSize * 0.22, size, font: layout.fonts.bold, color });
+  return textX - x + layout.fonts.bold.widthOfTextAtSize('FStructure', size);
 };
 
 /**

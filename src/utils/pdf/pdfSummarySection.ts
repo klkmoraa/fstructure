@@ -14,6 +14,7 @@ import type { DiagramQuantity } from '../../types';
 import { resolveNumericQualityState } from '../../engine/reliability';
 import { clearCell, clearDisplay, clearNumber, display, unitFor } from './pdfFormat';
 import { drawGlobalDcl } from './pdfDiagrams';
+import { drawResultDiagram, quantityExtreme } from './pdfResultDiagrams';
 import { equilibriumSums } from './pdfSubstitution';
 import { TYPE } from './pdfTheme';
 import type { ReportContext } from './reportContext';
@@ -85,6 +86,23 @@ export const drawSummaryPart = (context: ReportContext): void => {
     (rect) => drawGlobalDcl(context, rect, true),
     'Diagrama de cuerpo libre: geometría, apoyos, acciones aplicadas y reacciones obtenidas.',
   );
+
+  // Diagramas de fuerzas internas: la respuesta entera de un vistazo, antes de los números.
+  const diagramHeight = Math.min(230, Math.max(170, layout.contentWidth * 0.42));
+  const quantities = (['axial', 'shear', 'moment'] as const).filter((quantity) => quantityExtreme(context, quantity) > 1e-9
+    && (quantity === 'axial' || project.members.some((member) => member.type !== 'truss')));
+  if (quantities.length) {
+    layout.heading('Diagramas de fuerzas internas');
+    const names = { axial: 'fuerza axial N (+ tensión)', shear: 'fuerza cortante V', moment: 'momento flector M' } as const;
+    for (const quantity of quantities) {
+      layout.figure(
+        diagramHeight,
+        (rect) => drawResultDiagram(context, rect, quantity),
+        `Diagrama de ${names[quantity]} en ${unitFor(project, quantity === 'moment' ? 'moment' : 'force')}: curva exacta del solver, misma escala en todas las barras, `
+        + 'positivo hacia la izquierda de cada barra (de i a j).',
+      );
+    }
+  }
 
   layout.heading('Equilibrio global');
   layout.text(

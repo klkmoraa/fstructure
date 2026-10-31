@@ -20,6 +20,7 @@ import { drawFactColumn, drawWordmark } from './pdfChrome';
 import { MARGIN, type PdfLayout } from './pdfBuilder';
 import { SPACE, TYPE } from './pdfTheme';
 import type { ReportContext } from './reportContext';
+import { METHOD_LABEL } from './pdfProcedureSection';
 
 const formatStamp = (value: string): string => {
   const stamp = new Date(value);
@@ -38,32 +39,32 @@ export const drawCoverPage = (context: ReportContext, pageIndex: number, profess
   if (!page) return;
   layout.markBare(pageIndex);
 
-  // A single dark field down the left third: the document's one strong graphic gesture, and
-  // the thing that makes a printed stack of these findable by spine.
+  // Una franja oscura a la izquierda con la marca: el único gesto gráfico fuerte de la
+  // portada, y lo que hace encontrable una pila impresa por el lomo.
   const rail = 118;
   page.drawRectangle({ x: 0, y: 0, width: rail, height, color: palette.band });
-  drawWordmark(layout, page, 26, height - 60, 12, palette.paper);
-  page.drawText(pdfText('MEMORIA DE'), { x: 26, y: 96, size: TYPE.micro, font: fonts.bold, color: palette.inkFaint });
-  page.drawText(pdfText('CÁLCULO'), { x: 26, y: 86, size: TYPE.micro, font: fonts.bold, color: palette.inkFaint });
+  page.drawRectangle({ x: rail - 5, y: 0, width: 5, height, color: palette.accentFill });
+  drawWordmark(layout, page, 24, height - 64, 12.5, palette.paper);
+  page.drawText(pdfText('MEMORIA DE'), { x: 24, y: 96, size: TYPE.micro, font: fonts.bold, color: palette.inkFaint });
+  page.drawText(pdfText('CÁLCULO'), { x: 24, y: 85, size: TYPE.micro, font: fonts.bold, color: palette.inkFaint });
 
   const left = rail + 46;
   const measure = width - left - MARGIN;
 
-  page.drawText(pdfText('Memoria de cálculo estructural'), {
-    x: left, y: height - 132, size: TYPE.display, font: fonts.bold, color: palette.ink,
+  page.drawText(pdfText('MEMORIA DE CÁLCULO ESTRUCTURAL'), {
+    x: left, y: height - 104, size: TYPE.micro + 0.6, font: fonts.bold, color: palette.accent,
   });
-  page.drawLine({
-    start: { x: left, y: height - 152 },
-    end: { x: width - MARGIN, y: height - 152 },
-    thickness: 1.4,
-    color: palette.accent,
-  });
-
-  const nameSize = project.name.length > 44 ? 13 : 17;
-  const nameLines = wrapText(project.name, fonts.regular, nameSize, measure).slice(0, 2);
+  const nameSize = project.name.length > 40 ? 22 : TYPE.display;
+  const nameLines = wrapText(project.name, fonts.bold, nameSize, measure).slice(0, 2);
   nameLines.forEach((line, index) => page.drawText(line, {
-    x: left, y: height - 182 - index * nameSize * 1.3, size: nameSize, font: fonts.regular, color: palette.inkSoft,
+    x: left, y: height - 140 - index * nameSize * 1.15, size: nameSize, font: fonts.bold, color: palette.ink,
   }));
+  const afterName = height - 140 - (nameLines.length - 1) * nameSize * 1.15;
+  page.drawRectangle({ x: left, y: afterName - 22, width: 46, height: 3, color: palette.accentFill });
+  // El procedimiento elegido es lo que distingue esta copia de las demás del mismo proyecto.
+  page.drawText(pdfText(`Procedimiento: ${METHOD_LABEL[context.solutionMethod]}`), {
+    x: left, y: afterName - 46, size: TYPE.sub + 2, font: fonts.regular, color: palette.inkSoft,
+  });
 
   const facts: [string, string][] = [
     ['Escenario', options.scenarioName ?? 'Análisis activo'],
@@ -72,7 +73,7 @@ export const drawCoverPage = (context: ReportContext, pageIndex: number, profess
     ['Versión de la aplicación', payload.provenance.appVersion],
     ['Integridad SHA-256', payload.checksum.value],
   ];
-  drawFactColumn(layout, page, left, height - 268, measure, facts, palette.inkFaint, palette.ink);
+  drawFactColumn(layout, page, left, afterName - 104, measure, facts, palette.inkFaint, palette.ink);
 
   page.drawLine({
     start: { x: left, y: 168 },

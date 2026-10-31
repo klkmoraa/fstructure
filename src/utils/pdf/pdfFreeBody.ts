@@ -197,7 +197,7 @@ export const axialDirection = (
   return { fx: axis.c * sign, fy: axis.s * sign };
 };
 
-const LABEL_SIZE = 5.9;
+const LABEL_SIZE = 7.6;
 
 /**
  * Writes a mark's label beside it without letting it run out of the frame.

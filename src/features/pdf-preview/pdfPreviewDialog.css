@@ -42,3 +42,8 @@
 @media (pointer: coarse) {
   .pdf-preview-dialog__options label { min-height: var(--sc-size-target-touch); align-items: center; }
 }
+
+/* Los métodos que no aplican quedan plegados: la lista empieza por lo que sí se puede hacer. */
+.pdf-preview-dialog__unavailable-methods { margin-top: 6px; }
+.pdf-preview-dialog__unavailable-methods summary { min-height: 36px; display: flex; align-items: center; color: var(--text-muted); font-size: 12px; font-weight: 650; cursor: pointer; }
+.pdf-preview-dialog__unavailable-methods label { opacity: .72; }

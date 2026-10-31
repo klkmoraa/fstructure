@@ -22,6 +22,8 @@ export const enAnalysis = {
   'analysis.order': 'Analysis order',
   'analysis.orderFirst': 'First order',
   'analysis.orderPDelta': 'P-Delta',
+  'method.exportTitleAvailable': 'Solve by ({count} methods apply)',
+  'method.exportUnavailable': 'Not applicable to this model ({count})',
   'method.exportTitle': 'Method for this PDF ({count})',
   'method.appliesNow': 'Available for this model',
   'method.unavailableForModel': 'Not applicable to this model',

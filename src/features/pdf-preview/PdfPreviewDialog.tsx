@@ -153,6 +153,10 @@ export const PdfPreviewDialog = ({ artifact, onClose, onDownload, onRebuild }: P
   }, [documentProxy, pageNumber]);
 
   const pageCount = documentProxy?.numPages ?? 0;
+  const methodRows = SOLUTION_METHODS.map((method) => {
+    const methodState = currentArtifact.methodAvailability?.[method.id];
+    return { method, available: methodState?.available ?? method.id === DEFAULT_SOLUTION_METHOD, reasonKey: methodState?.reasonKey };
+  });
   return <Dialog
     open
     onOpenChange={(open) => { if (!open) onClose(); }}
@@ -165,24 +169,29 @@ export const PdfPreviewDialog = ({ artifact, onClose, onDownload, onRebuild }: P
     <div className="pdf-preview-dialog__meta"><FileText size={18} aria-hidden="true" /><span>{currentArtifact.filename}</span><span className="pdf-preview-dialog__engine">{t(currentArtifact.renderEngine === 'reportlab' ? 'portable.previewEngineReportLab' : 'portable.previewEngineBrowser')}</span>{pageCount > 0 ? <span>{t('portable.previewPage', { page: pageNumber, total: pageCount })}</span> : null}</div>
     <div className="pdf-preview-dialog__workspace">
       <aside className="pdf-preview-dialog__options" aria-label={t('portable.previewContentTitle')}>
+        {/* Primero los procedimientos con los que este modelo se puede resolver; los demás, plegados con su motivo. */}
         <fieldset className="pdf-preview-dialog__methods">
-          <legend>{t('method.exportTitle', { count: SOLUTION_METHODS.length })}</legend>
-          {SOLUTION_METHODS.map((method) => {
-            const methodState = currentArtifact.methodAvailability?.[method.id];
-            const available = methodState?.available ?? method.id === DEFAULT_SOLUTION_METHOD;
-            return <label key={method.id}>
-              <input
-                type="radio"
-                name="pdf-solution-method"
-                value={method.id}
-                checked={solutionMethod === method.id}
-                disabled={rebuilding || !available}
-                onChange={() => setSolutionMethod(method.id)}
-              />
+          <legend>{t('method.exportTitleAvailable', { count: methodRows.filter((row) => row.available).length })}</legend>
+          {methodRows.filter((row) => row.available).map(({ method }) => <label key={method.id}>
+            <input
+              type="radio"
+              name="pdf-solution-method"
+              value={method.id}
+              checked={solutionMethod === method.id}
+              disabled={rebuilding}
+              onChange={() => setSolutionMethod(method.id)}
+            />
+            <span>{t(method.labelKey as TranslationKey)}</span>
+            <small>{t('method.appliesNow')}</small>
+          </label>)}
+          {methodRows.some((row) => !row.available) ? <details className="pdf-preview-dialog__unavailable-methods">
+            <summary>{t('method.exportUnavailable', { count: methodRows.filter((row) => !row.available).length })}</summary>
+            {methodRows.filter((row) => !row.available).map(({ method, reasonKey }) => <label key={method.id}>
+              <input type="radio" name="pdf-solution-method" value={method.id} checked={false} disabled />
               <span>{t(method.labelKey as TranslationKey)}</span>
-              <small>{t((available ? 'method.appliesNow' : methodState?.reasonKey ?? 'method.unavailableForModel') as TranslationKey)}</small>
-            </label>;
-          })}
+              <small>{t((reasonKey ?? 'method.unavailableForModel') as TranslationKey)}</small>
+            </label>)}
+          </details> : null}
         </fieldset>
         <strong>{t('portable.previewContentTitle')}</strong>
         {PREVIEW_SECTIONS.map((section) => <label key={section}><input type="checkbox" checked={selection[section]} disabled={rebuilding || Boolean(HOSTED_BY[section] && !selection[HOSTED_BY[section]!] )} onChange={() => setSelection((current) => ({ ...current, [section]: !current[section] }))} /><span>{t(`portable.preview.${section}`)}</span></label>)}

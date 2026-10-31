@@ -24,7 +24,7 @@ import type { MethodOfSectionsResult } from '../../analysis-methods/methodOfSect
 import type { PortalMethodResult } from '../../analysis-methods/portalMethod';
 import type { ThreeMomentResult } from '../../analysis-methods/threeMoment';
 import type { VirtualWorkResult } from '../../analysis-methods/virtualWork';
-import { clearCell, displayCell, unitFor } from './pdfFormat';
+import { clearCell, clearDisplay, displayCell, unitFor } from './pdfFormat';
 import { axialDirection, memberMidpoint, type FreeBodyScene, type SceneForce } from './pdfFreeBody';
 import type { Point } from './pdfScene';
 import type { ReportContext } from './reportContext';
@@ -83,13 +83,22 @@ const externalActionsOn = (
       });
     }
   }
+  // Las cargas de varios casos en el mismo nudo, sumadas con los factores del escenario: una
+  // flecha con su valor, no una por caso con su identificador encimado.
+  const nodal = new Map<string, { fx: number; fy: number }>();
   for (const load of project.nodalLoads) {
     if (!kept.has(load.nodeId)) continue;
     const factor = scenarioFactors[load.caseId] ?? 0;
     if (factor === 0 || (load.fx === 0 && load.fy === 0)) continue;
+    const sum = nodal.get(load.nodeId) ?? { fx: 0, fy: 0 };
+    nodal.set(load.nodeId, { fx: sum.fx + load.fx * factor, fy: sum.fy + load.fy * factor });
+  }
+  for (const [nodeId, { fx, fy }] of nodal) {
+    const magnitude = Math.hypot(fx, fy);
+    if (!(magnitude > 1e-12)) continue;
     forces.push({
-      place: { nodeId: load.nodeId }, fx: load.fx * factor, fy: load.fy * factor, tone: 'load',
-      length: 24, label: load.id,
+      place: { nodeId }, fx, fy, tone: 'load',
+      length: 24, label: `P = ${clearDisplay(project, magnitude, 'force', magnitude)}`,
     });
   }
   return forces;

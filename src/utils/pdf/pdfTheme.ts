@@ -35,42 +35,46 @@ const fromHex = (hex: string): [number, number, number] => {
  * the one thing that needs colour to be understood — which quantity a curve represents.
  */
 const REPORT_TOKENS = {
-  /** `--sc-white` */
+  /** Papel de impresión: blanco puro (el `--fs-paper-0` de pantalla tiñe la impresión). */
   paper: '#ffffff',
-  /** `--sc-grey-100`: the tint behind a zebra row or a quiet block. */
-  tint: '#f5f5f7',
-  /** `--sc-grey-150` */
-  tintDeep: '#efeff1',
-  /** `--sc-grey-300`: every hairline in the document. */
-  rule: '#d2d2d7',
-  /** `--sc-grey-500` */
-  inkFaint: '#8e8e93',
-  /** `--sc-grey-600` = `--sc-color-text-secondary` */
-  inkSoft: '#6e6e73',
-  /** `--sc-grey-900` = `--sc-color-text-primary` */
-  ink: '#1d1d1f',
-  /** `--sc-grey-950`: the cover ground and the part numerals. */
-  band: '#141416',
-  /** `--sc-blue-fill` = `--sc-color-action-primary`: the only brand colour on the page. */
-  accent: '#0071eb',
-  /** `--sc-color-technical-axial` */
-  axial: '#2f73c8',
-  /** `--sc-color-technical-shear` */
-  shear: '#168a6c',
-  /** `--sc-color-technical-moment` */
-  moment: '#d85c4a',
-  /** `--sc-color-technical-reaction` */
-  reaction: '#0040dd',
-  /** `--sc-sys-indigo-light` = `--sc-color-load-point` */
-  load: '#3634a3',
-  /** `--sc-color-technical-deformed` */
-  deformed: '#5e46c8',
-  /** `--sc-sys-green-light` = `--sc-color-state-success` */
-  ok: '#248a3d',
-  /** `--sc-sys-yellow-light` */
-  warn: '#b25000',
-  /** `--sc-sys-red-light` */
-  danger: '#d70015',
+  /** `--fs-paper-50`: fondo de una fila alterna o de un bloque tranquilo. */
+  tint: '#f7f6f1',
+  /** `--fs-paper-100` */
+  tintDeep: '#edefe9',
+  /** `--fs-paper-300`: cada filete del documento; impreso, el 200 desaparece. */
+  rule: '#c6cdc6',
+  /** `--fs-paper-500` */
+  inkFaint: '#7e8a84',
+  /** `--fs-paper-600` = `--sc-color-text-tertiary` */
+  inkSoft: '#5c6a6f',
+  /** `--fs-paper-900` = `--sc-color-text-primary` */
+  ink: '#14171a',
+  /** `--fs-paper-950`: fondo de la portada y los numerales de parte. */
+  band: '#14171a',
+  /** `--sc-color-action-ink`: el acento de FStructure (familia Análisis) como texto sobre papel. */
+  accent: '#c23a33',
+  /** `--fs-family-analisis`: el acento en relleno (la franja de la marca). */
+  accentFill: '#ed4b46',
+  /** `--fs-signal-axial` */
+  axial: '#0f95d1',
+  /** `--fs-signal-shear` */
+  shear: '#468c09',
+  /** `--fs-signal-moment` */
+  moment: '#ed4b46',
+  /** `--sc-color-technical-reaction` = `--fs-green` */
+  reaction: '#468c09',
+  /** `--fs-load-point` */
+  load: '#1a4fe0',
+  /** `--fs-load-distributed` */
+  loadDistributed: '#ee5116',
+  /** `--fs-signal-deformed` */
+  deformed: '#8b5cf6',
+  /** `--fs-status-disponible` */
+  ok: '#2f7d32',
+  /** `--fs-signal-attention`, oscurecido para texto impreso */
+  warn: '#b35c00',
+  /** `--sc-color-action-ink` */
+  danger: '#c23a33',
 } as const;
 
 type ReportTokenName = keyof typeof REPORT_TOKENS;
@@ -84,19 +88,21 @@ type ReportTokenName = keyof typeof REPORT_TOKENS;
  */
 export const TYPE = {
   /** Cover title. */
-  display: 26,
+  display: 30,
   /** Project name on the cover, part titles. */
-  title: 16,
+  title: 20,
   /** Section heading inside a part. */
-  section: 10.8,
+  section: 13,
   /** Sub-heading. */
-  sub: 8.8,
-  /** Running body copy. */
-  body: 8.6,
+  sub: 10.5,
+  /** Running body copy: 10 pt de Plex Sans se lee impreso sin esfuerzo. */
+  body: 10,
+  /** Ecuaciones desarrolladas. */
+  math: 10,
   /** Captions, table cells, the running head. */
-  small: 7.4,
+  small: 8.8,
   /** Labels in small caps, the footer. */
-  micro: 6.3,
+  micro: 7.4,
 } as const;
 
 /** Vertical rhythm. Every gap in the document is a multiple of this. */
@@ -112,6 +118,8 @@ export interface ReportPalette {
   readonly ink: PdfColor;
   readonly band: PdfColor;
   readonly accent: PdfColor;
+  readonly accentFill: PdfColor;
+  readonly loadDistributed: PdfColor;
   readonly reaction: PdfColor;
   readonly load: PdfColor;
   readonly deformed: PdfColor;
@@ -134,6 +142,8 @@ export const createPalette = (rgb: RgbFactory): ReportPalette => {
     ink: of('ink'),
     band: of('band'),
     accent: of('accent'),
+    accentFill: of('accentFill'),
+    loadDistributed: of('loadDistributed'),
     reaction: of('reaction'),
     load: of('load'),
     deformed: of('deformed'),

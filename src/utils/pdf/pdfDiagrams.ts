@@ -3,11 +3,14 @@ import {
   createProjection,
   drawArrow,
   drawMemberLoads,
+  drawMomentArc,
   drawNodeDot,
   drawSupportGlyph,
   type Point,
 } from './pdfScene';
 import { pdfText } from './pdfGlyphs';
+import { TYPE } from './pdfTheme';
+import { memberPolyline } from './pdfResultDiagrams';
 import {
   clearDisplay,
   
@@ -38,18 +41,22 @@ export const drawGlobalDcl = (
   const projection = createProjection(project.nodes, {
     left: left + 42,
     right: right - 42,
-    bottom: bottom + 30,
-    top: top - 22,
+    bottom: bottom + (includeReactions ? 62 : 30),
+    top: top - 40,
   });
   const point = (nodeId: string): Point | undefined => {
     const node = index.node(nodeId);
     return node ? projection.at(node.x, node.y) : undefined;
   };
   for (const member of project.members) {
-    const start = point(member.i); const end = point(member.j);
-    if (!start || !end) continue;
-    page.drawLine({ start, end, thickness: member.type === 'rigid' ? 3 : 2, color: palette.ink });
-    page.drawText(pdfText(member.id), { x: (start.x + end.x) / 2 + 3, y: (start.y + end.y) / 2 + 3, size: 6.5, font: fonts.bold, color: palette.inkSoft });
+    const ni = index.node(member.i); const nj = index.node(member.j);
+    if (!ni || !nj) continue;
+    // Un arco se dibuja sobre su curva, no sobre la cuerda.
+    const line = memberPolyline(member, ni, nj, projection.at);
+    for (let k = 1; k < line.length; k += 1) page.drawLine({ start: line[k - 1]!, end: line[k]!, thickness: member.type === 'rigid' ? 3 : 2, color: palette.ink });
+    const middle = line[Math.floor(line.length / 2)]!;
+    const labelAt = line.length > 2 ? middle : { x: (line[0]!.x + line[1]!.x) / 2, y: (line[0]!.y + line[1]!.y) / 2 };
+    page.drawText(pdfText(member.id), { x: labelAt.x + 3, y: labelAt.y + 3, size: 7.6, font: fonts.bold, color: palette.inkSoft });
   }
   for (const node of project.nodes) {
     const location = point(node.id);
@@ -67,28 +74,33 @@ export const drawGlobalDcl = (
   if (includeReactions) {
     const reactionColor = palette.reaction;
     const reactionReference = Math.max(1, ...analysis.nodeResults.flatMap((result) => [Math.abs(result.rx), Math.abs(result.ry)]));
+    const momentReference = Math.max(1, ...analysis.nodeResults.map((result) => Math.abs(result.rm)));
+    const size = TYPE.micro + 0.4;
     for (const result of analysis.nodeResults) {
       const location = point(result.nodeId);
       if (!location) continue;
-      const components: Array<{ value: number; fx: number; fy: number; label: string }> = [
-        { value: result.rx, fx: result.rx, fy: 0, label: 'Rx' },
-        { value: result.ry, fx: 0, fy: result.ry, label: 'Ry' },
-      ];
-      for (const component of components) {
-        if (Math.abs(component.value) <= reactionReference * 1e-9) continue;
-        const tail = drawArrow(layout, location, component.fx, component.fy, reactionColor, 25);
-        if (!tail) continue;
-        const value = clearDisplay(project, component.value, 'force', reactionReference);
-        const labelX = component.fx === 0 ? tail.x + 4 : Math.min(location.x, tail.x) - 2;
-        const labelY = component.fy === 0 ? tail.y + 5 : tail.y + (component.value < 0 ? -8 : 4);
-        page.drawText(pdfText(`${component.label} ${value}`), {
-          x: labelX,
-          y: labelY,
-          size: 6.2,
-          font: fonts.bold,
-          color: reactionColor,
-        });
+      const lines: string[] = [];
+      if (Math.abs(result.rx) > reactionReference * 1e-9) {
+        drawArrow(layout, location, result.rx, 0, reactionColor, 25);
+        lines.push(`Rx = ${clearDisplay(project, result.rx, 'force', reactionReference)}`);
       }
+      if (Math.abs(result.ry) > reactionReference * 1e-9) {
+        drawArrow(layout, location, 0, result.ry, reactionColor, 25);
+        lines.push(`Ry = ${clearDisplay(project, result.ry, 'force', reactionReference)}`);
+      }
+      if (Math.abs(result.rm) > momentReference * 1e-9) {
+        // El momento de un empotramiento, con su sentido.
+        drawMomentArc(layout, location, result.rm >= 0 ? 1 : -1, 13, reactionColor);
+        lines.push(`Mr = ${clearDisplay(project, result.rm, 'moment', momentReference)}`);
+      }
+      // Las cifras de un apoyo, apiladas bajo él y dentro del marco: antes cada una iba junto a
+      // su flecha y en un empotramiento se tapaban entre sí.
+      const widths = lines.map((line) => fonts.bold.widthOfTextAtSize(pdfText(line), size));
+      const blockWidth = Math.max(0, ...widths);
+      const x = Math.min(Math.max(location.x - blockWidth / 2, left + 4), right - blockWidth - 4);
+      lines.forEach((line, lineIndex) => {
+        page.drawText(pdfText(line), { x, y: location.y - 34 - lineIndex * size * 1.3, size, font: fonts.bold, color: reactionColor });
+      });
     }
   }
 };
@@ -161,7 +173,7 @@ export const drawElasticCurve = (
   page.drawText(pdfText('Curva elástica (escala vertical exagerada)'), {
     x: plotLeft,
     y: bottom + 4,
-    size: 6.2,
+    size: 7.6,
     font: fonts.regular,
     color: rgb(0.38, 0.44, 0.40),
   });
