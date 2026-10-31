@@ -32,6 +32,7 @@ export const METHOD_LABEL: Record<SolutionMethodId, string> = {
   'method-of-sections': 'Cortes / secciones',
   'method-of-joints': 'Método de los nudos',
   'castigliano-truss': 'Castigliano / trabajo mínimo',
+  'moment-distribution-frame': 'Cross (distribución de momentos) en marcos',
 };
 
 /**

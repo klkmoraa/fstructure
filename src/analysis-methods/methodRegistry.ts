@@ -13,7 +13,7 @@
 import type { ProjectModel } from '../types';
 import { classifyStructure, type StructureClassification } from './structureClassification';
 
-export type SolutionMethodId = 'matrix-stiffness' | 'double-integration' | 'portal-method' | 'cantilever-method' | 'three-moment' | 'virtual-work' | 'castigliano-truss' | 'hardy-cross' | 'kani-frame' | 'method-of-sections' | 'method-of-joints' | 'conjugate-beam';
+export type SolutionMethodId = 'matrix-stiffness' | 'double-integration' | 'portal-method' | 'cantilever-method' | 'three-moment' | 'virtual-work' | 'castigliano-truss' | 'hardy-cross' | 'kani-frame' | 'method-of-sections' | 'method-of-joints' | 'conjugate-beam' | 'moment-distribution-frame';
 
 export const DEFAULT_SOLUTION_METHOD: SolutionMethodId = 'matrix-stiffness';
 
@@ -141,6 +141,21 @@ export const SOLUTION_METHODS: readonly SolutionMethodDefinition[] = [
     // measuring the gap, not by guessing it from the geometry, and declares itself inapplicable
     // rather than narrate anything less exact than that.
     applies: (classification) => classification.kind === 'frame',
+  },
+  {
+    id: 'moment-distribution-frame',
+    labelKey: 'method.momentDistributionFrame',
+    // Cross on a whole frame, sidesway included: the non-sway distribution plus one distribution
+    // per independent joint-translation mode of the axially rigid frame, superposed so the
+    // virtual work of every mode vanishes (the storey-shear equation on an orthogonal frame). A
+    // beam is a frame with no sway modes, so indeterminate beams — fixed ends included, which
+    // `hardy-cross` rejects — are offered too. Its deeper requirements (rigid joints, straight
+    // members, no springs or imposed motions) and its proof against an axially rigid matrix run
+    // are `solveMomentDistributionFrame`'s job.
+    applies: (classification) => (
+      classification.kind === 'frame'
+      || ((classification.kind === 'simple-beam' || classification.kind === 'continuous-beam') && classification.indeterminacy >= 1)
+    ),
   },
 ];
 

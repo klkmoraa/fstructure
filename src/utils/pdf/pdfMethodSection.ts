@@ -22,7 +22,9 @@ import { solveVirtualWork, type VirtualWorkResult } from '../../analysis-methods
 import { solveMethodOfSections, type MethodOfSectionsResult } from '../../analysis-methods/methodOfSections';
 import { solveMethodOfJoints, type MethodOfJointsResult } from '../../analysis-methods/methodOfJoints';
 import { solveCastiglianoTruss, type CastiglianoTrussResult } from '../../analysis-methods/castiglianoTruss';
+import { solveMomentDistributionFrame } from '../../analysis-methods/momentDistributionFrame';
 import { drawElasticCurve } from './pdfDiagrams';
+import { drawCrossFrameSection } from './pdfMethodCrossFrame';
 import { drawFreeBodyScene, type FreeBodyScene } from './pdfFreeBody';
 import {
   cantileverScenes,
@@ -94,6 +96,7 @@ export const inspectPdfMethodAvailability = (
   if (shallow.has('method-of-sections')) inspect('method-of-sections', solveMethodOfSections(project, analysis, combination));
   if (shallow.has('method-of-joints')) inspect('method-of-joints', solveMethodOfJoints(project, analysis, combination));
   if (shallow.has('castigliano-truss')) inspect('castigliano-truss', solveCastiglianoTruss(project, analysis, combination));
+  if (shallow.has('moment-distribution-frame')) inspect('moment-distribution-frame', solveMomentDistributionFrame(project, analysis, combination));
   return availability;
 };
 
@@ -104,7 +107,7 @@ export const inspectPdfMethodAvailability = (
  * same primitive as every other drawing in the document — a method figure can be referred to
  * from the prose exactly like the free-body diagram of part one.
  */
-const drawScenes = (
+export const drawScenes = (
   context: ReportContext,
   scenes: readonly FreeBodyScene[],
   caption: (scene: FreeBodyScene, index: number) => string,
@@ -138,7 +141,7 @@ const expression = (coefficients: readonly number[], variable = 'x'): string => 
  * display equations. Every method section reaches for this, so that "the real calculation"
  * looks the same wherever the reader finds it.
  */
-const drawWorked = (context: ReportContext, caption: string | undefined, equations: readonly EquationInput[]): void => {
+export const drawWorked = (context: ReportContext, caption: string | undefined, equations: readonly EquationInput[]): void => {
   if (!equations.length) return;
   const { layout } = context;
   if (caption) layout.text(caption, 7.9, layout.fonts.bold, layout.palette.ink, 12);
@@ -150,7 +153,7 @@ const drawWorked = (context: ReportContext, caption: string | undefined, equatio
 };
 
 /** A single relation drawn the same way, for the sections that write one at a time. */
-const drawRelation = (context: ReportContext, equation: EquationInput): void => {
+export const drawRelation = (context: ReportContext, equation: EquationInput): void => {
   const { layout } = context;
   const worked = asWorkedEquation(equation);
   layout.ensure(measureWorkedEquation(layout, worked, TYPE.math, 16));
@@ -1247,7 +1250,7 @@ const drawMethodOfJoints = (context: ReportContext, solution: MethodOfJointsResu
   );
 };
 
-const REJECTION_MESSAGE = 'El método elegido no aplica a esta estructura; el procedimiento se reporta con el método matricial.';
+export const REJECTION_MESSAGE = 'El método elegido no aplica a esta estructura; el procedimiento se reporta con el método matricial.';
 
 const drawPortalMethod = (context: ReportContext, solution: PortalMethodResult): void => {
   const { layout, project } = context;
@@ -1700,5 +1703,6 @@ export const drawMethodSection = (context: ReportContext): boolean => {
     drawCastiglianoTruss(context, solution);
     return true;
   }
+  if (solutionMethod === 'moment-distribution-frame') return drawCrossFrameSection(context);
   return false;
 };

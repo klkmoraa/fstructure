@@ -56,6 +56,7 @@ const METHOD_FILENAME: Record<SolutionMethodId, string> = {
   'method-of-sections': 'cortes',
   'method-of-joints': 'nudos',
   'castigliano-truss': 'castigliano',
+  'moment-distribution-frame': 'cross-marcos',
 };
 
 /**
