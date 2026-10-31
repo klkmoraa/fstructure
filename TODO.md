@@ -54,13 +54,16 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 Corregido en esa entrega: el guardado sin cambios ya no sube la revisión (abrir el proyecto en otra pestaña bloqueaba la primera), importar crea siempre un archivo nuevo, una barra curva que pasa a armadura o rígida o cuyos nudos coinciden vuelve a ser recta (antes rompía todo guardado), un arco no se clasifica como viga y «Ajustar» incluye la clave del arco.
 
-- [ ] Datos: «Restaurar» una recuperación del Hub escribe en el espejo y el bundle la pisa; «Duplicar» copia sólo el 2D (pierde 3D, Diseño y FEM) y «Renombrar» se revierte con el autoguardado. Llevar las tres al repositorio de bundles.
-- [ ] Datos: las recuperaciones por conflicto del bundle no se muestran en Proyectos ni tienen límite; el modo unificado no escucha el evento `storage` de otras pestañas.
+- [ ] Datos: las recuperaciones del bundle no tienen límite; el modo unificado no escucha el evento `storage` de otras pestañas (restaurar, duplicar y renombrar ya van al bundle).
 - [ ] Datos: guardar al ocultar la página (`pagehide`/`visibilitychange`); hoy se pierden los últimos 250 ms (600 ms en Diseño).
 - [ ] PWA: al activar una versión nueva, las otras pestañas abiertas pierden sus chunks `lazy()` (caché borrada y hashes nuevos en Pages); recargarlas todas o conservar la caché anterior hasta que cierren.
 - [ ] IndexedDB: `onblocked` deja la biblioteca rechazada hasta recargar y no hay `onversionchange`.
-- [ ] Barras curvas: el PDF las dibuja rectas (escena, cargas y encuadre); las líneas de influencia miden la cuerda; las fuerzas de extremo mezclan el marco del primer y del último subsegmento; los snaps de punto medio/intersección usan la cuerda; «Longitud» del Inspector muestra la cuerda; una sola barra curva desactiva el diseño de concreto de todo el modelo.
-- [ ] Interfaz: con el modelo vacío, «Analizar» (2D y 3D) y «Continuar» en la Home siguen como acción principal; mostrar el inicio en su lugar.
+- [ ] Barras curvas: el PDF las dibuja rectas (escena, cargas y encuadre); las líneas de influencia miden la cuerda; los snaps de punto medio/intersección usan la cuerda; «Longitud» del Inspector muestra la cuerda; una sola barra curva desactiva el diseño de concreto de todo el modelo. (N y V ya siguen la tangente del arco, 31-oct.)
+- [ ] Interfaz: con el modelo vacío, «Analizar» (2D y 3D) y «Continuar» en la Home siguen como acción principal.
+- [x] Creación rápida del 2D: tipo en un toque (viga, voladizo, continua, pórtico, armadura, arco), medidas con vista previa y «Crear y calcular»; generador avanzado a un clic (31-oct-2026).
+- [x] Resultados legibles en modelos grandes: sólo el extremo global y la barra elegida fuerzan su cifra; las cargas ceden y se atenúan bajo un diagrama; la leyenda reserva su caja (31-oct-2026).
+- [ ] Generador avanzado: empieza con apoyos «Ninguno» y sin cargas, así que lo generado no se calcula hasta completarlo; ofrecer apoyos y cargas por omisión como la creación rápida.
+- [ ] Teléfono: con resultados en un pórtico, las reacciones aún se apartan con guías largas; agrupar Rx/Ry/Mᵣ por apoyo en una sola caja.
 
 ## Diseño (de `docs/research/concrete-design`)
 
