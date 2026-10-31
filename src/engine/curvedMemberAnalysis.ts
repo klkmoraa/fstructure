@@ -119,23 +119,120 @@ export const prepareCurvedAnalysis = (source: ProjectModel): CurvedAnalysisMesh 
   return { project, groups, physicalId };
 };
 
-const rescale = <T extends readonly number[]>(values: T, ratio: number): T => values.map((value, power) => value / ratio ** power) as unknown as T;
+/** Componentes (x, y, giro) de un vector expresadas en la base girada δ. */
+const toEndTangent = (values: readonly number[], { cos, sin }: { cos: number; sin: number }) => {
+  const [x = 0, y = 0, z = 0] = values;
+  return [x * cos + y * sin, -x * sin + y * cos, z];
+};
+
+/** Extremos, ceros y saltos de la barra curva completa, sobre la longitud del arco. */
+const curvedCriticalPoints = (segments: readonly DiagramSegment[], length: number, jumps: MemberResult['criticalPoints']): MemberResult['criticalPoints'] => {
+  const points: MemberResult['criticalPoints'] = [...jumps];
+  if (!segments.length) return points;
+  const samples: Array<{ x: number; axial: number; shear: number; moment: number }> = [];
+  for (const segment of segments) {
+    const h = segment.x1 - segment.x0;
+    samples.push({ x: segment.x0, axial: segment.axial[0], shear: segment.shear[0], moment: evaluatePolynomial(segment.moment, 0) });
+    const shearEnd = evaluatePolynomial(segment.shear, h);
+    // El momento es extremo donde V cruza cero dentro del segmento.
+    if (Math.sign(segment.shear[0]) !== Math.sign(shearEnd) && segment.shear[1] !== 0) {
+      const xi = -segment.shear[0] / segment.shear[1];
+      if (xi > 0 && xi < h) {
+        samples.push({ x: segment.x0 + xi, axial: evaluatePolynomial(segment.axial, xi), shear: 0, moment: evaluatePolynomial(segment.moment, xi) });
+        points.push({ x: segment.x0 + xi, quantity: 'shear', value: 0, kind: 'zero' });
+      }
+    }
+    samples.push({ x: segment.x1, axial: evaluatePolynomial(segment.axial, h), shear: shearEnd, moment: evaluatePolynomial(segment.moment, h) });
+  }
+  for (const quantity of ['axial', 'shear', 'moment'] as const) {
+    const start = samples[0], end = samples.at(-1)!;
+    points.push({ x: 0, quantity, value: start[quantity], kind: 'end' }, { x: length, quantity, value: end[quantity], kind: 'end' });
+    const max = samples.reduce((a, b) => b[quantity] > a[quantity] ? b : a);
+    const min = samples.reduce((a, b) => b[quantity] < a[quantity] ? b : a);
+    points.push({ x: max.x, quantity, value: max[quantity], kind: 'maximum' }, { x: min.x, quantity, value: min[quantity], kind: 'minimum' });
+  }
+  return points;
+};
+
+/** Coeficientes de p(ξ) reescritos en ζ = (ξ − a)·ratio: el mismo polinomio, otro origen y otra escala. */
+const shiftPolynomial = (coefficients: readonly number[], a: number, ratio: number): number[] => {
+  const shifted = coefficients.map(() => 0);
+  coefficients.forEach((value, power) => {
+    let binomial = 1;
+    for (let k = 0; k <= power; k++) {
+      shifted[k] += value * binomial * a ** (power - k);
+      binomial = binomial * (power - k) / (k + 1);
+    }
+  });
+  return shifted.map((value, power) => value / ratio ** power);
+};
+
+/** Muestras por segmento de cada tramo interno; con tramos de ≤ 2.8° la lectura es continua. */
+const SAMPLES_PER_SEGMENT = 4;
+
+/**
+ * Los tramos internos son cuerdas: cada uno reporta N y V en su propia
+ * dirección, y al unirlos el cortante saltaba en cada cuerda (dientes de
+ * sierra). Aquí N y V se giran a la tangente real del arco en cada punto y se
+ * recalculan los extremos de la barra completa, no los del primer tramo.
+ */
 const combineMemberResult = (group: CurvedGroup, results: ReadonlyMap<string, MemberResult>): MemberResult | undefined => {
   const children = group.pieces.map(p => results.get(p.memberId));
   if (children.some(r => !r)) return undefined;
   const first = children[0]!, last = children.at(-1)!;
+  const arcLength = group.arc.length;
   const diagramSegments: DiagramSegment[] = [], deformation: DeformationPoint[] = [], deformationSegments: DeformationSegment[] = [];
-  const diagram: MemberResult['diagram'] = [], diagramJumps: MemberResult['diagramJumps'] = [], criticalPoints: MemberResult['criticalPoints'] = [];
+  const diagram: MemberResult['diagram'] = [], diagramJumps: MemberResult['diagramJumps'] = [], jumpPoints: MemberResult['criticalPoints'] = [];
+  // Giro de la cuerda del tramo a la tangente del arco en la fracción t de la barra.
+  const turn = (piece: Piece, t: number) => {
+    const tangent = curveTangentAt(group.arc, t);
+    return { cos: piece.c * tangent.x + piece.s * tangent.y, sin: piece.c * tangent.y - piece.s * tangent.x };
+  };
   group.pieces.forEach((piece, index) => {
-    const result = children[index]!, offset = piece.t0 * group.arc.length;
-    const ratio = (piece.t1 - piece.t0) * group.arc.length / result.length;
-    for (const segment of result.diagramSegments) diagramSegments.push({ ...segment,
-      x0: offset + segment.x0 * ratio, x1: offset + segment.x1 * ratio,
-      axial: rescale(segment.axial, ratio), shear: rescale(segment.shear, ratio), moment: rescale(segment.moment, ratio),
-      distributedAxial: rescale(segment.distributedAxial, ratio), distributedTransverse: rescale(segment.distributedTransverse, ratio) });
-    diagram.push(...result.diagram.map(p => ({ ...p, x: offset + p.x * ratio })));
-    diagramJumps.push(...result.diagramJumps.map(p => ({ ...p, x: offset + p.x * ratio })));
-    criticalPoints.push(...result.criticalPoints.map(p => ({ ...p, x: offset + p.x * ratio })));
+    const result = children[index]!, offset = piece.t0 * arcLength;
+    const ratio = (piece.t1 - piece.t0) * arcLength / result.length;
+    const tAt = (x: number) => piece.t0 + (piece.t1 - piece.t0) * Math.min(1, Math.max(0, x / result.length));
+    const toArc = (x: number, axial: number, shear: number) => {
+      const { cos, sin } = turn(piece, tAt(x));
+      return { axial: axial * cos - shear * sin, shear: shear * cos + axial * sin };
+    };
+    for (const segment of result.diagramSegments) {
+      const h = segment.x1 - segment.x0;
+      const samples = Array.from({ length: SAMPLES_PER_SEGMENT + 1 }, (_, k) => {
+        const xi = h * k / SAMPLES_PER_SEGMENT;
+        return { xi, ...toArc(segment.x0 + xi, evaluatePolynomial(segment.axial, xi), evaluatePolynomial(segment.shear, xi)) };
+      });
+      for (let k = 0; k < SAMPLES_PER_SEGMENT; k++) {
+        const a = samples[k], b = samples[k + 1], width = (b.xi - a.xi) * ratio;
+        if (!(width > 0)) continue;
+        const axialSlope = (b.axial - a.axial) / width, shearSlope = (b.shear - a.shear) / width;
+        const moment = shiftPolynomial(segment.moment, a.xi, ratio);
+        diagramSegments.push({
+          x0: offset + (segment.x0 + a.xi) * ratio, x1: offset + (segment.x0 + b.xi) * ratio,
+          axial: [a.axial, axialSlope, 0], shear: [a.shear, shearSlope, 0],
+          moment: [moment[0] ?? 0, moment[1] ?? 0, moment[2] ?? 0, moment[3] ?? 0],
+          distributedAxial: [-axialSlope, 0], distributedTransverse: [shearSlope, 0],
+        });
+      }
+    }
+    diagram.push(...result.diagram.map(p => ({ ...p, ...toArc(p.x, p.axial, p.shear), x: offset + p.x * ratio })));
+    diagramJumps.push(...result.diagramJumps.map(p => {
+      const rotated = toArc(p.x, p.axialDelta, p.shearDelta);
+      return { ...p, x: offset + p.x * ratio, axialDelta: rotated.axial, shearDelta: rotated.shear };
+    }));
+    // Un salto (carga puntual) sigue siendo un punto crítico; los extremos de cada cuerda no.
+    for (const point of result.criticalPoints) {
+      if (point.kind !== 'jump') continue;
+      const value = point.quantity === 'moment' ? point.value
+        : (() => {
+          const at = result.diagramSegments.find(s => point.x >= s.x0 - 1e-12 && point.x <= s.x1 + 1e-12);
+          if (!at) return point.value;
+          const xi = point.x - at.x0;
+          const rotated = toArc(point.x, evaluatePolynomial(at.axial, xi), evaluatePolynomial(at.shear, xi));
+          return point.quantity === 'axial' ? rotated.axial : rotated.shear;
+        })();
+      jumpPoints.push({ ...point, x: offset + point.x * ratio, value });
+    }
     const cosine = group.arc.c * piece.c + group.arc.s * piece.s, sine = group.arc.c * piece.s - group.arc.s * piece.c;
     for (const segment of result.deformationSegments) {
       const samples = Array.from({ length: 5 }, (_, sample) => {
@@ -153,6 +250,8 @@ const combineMemberResult = (group: CurvedGroup, results: ReadonlyMap<string, Me
       }
     }
   });
+  const criticalPoints = curvedCriticalPoints(diagramSegments, arcLength, jumpPoints);
+  const turn0 = turn(group.pieces[0], 0), turn1 = turn(group.pieces.at(-1)!, 1);
   const deformationCriticalPoints: DeformationCriticalPoint[] = [];
   if (deformation.length) for (const quantity of ['u', 'v', 'theta'] as const) {
     const max = deformation.reduce((a, b) => b[quantity] > a[quantity] ? b : a);
@@ -161,12 +260,13 @@ const combineMemberResult = (group: CurvedGroup, results: ReadonlyMap<string, Me
     deformationCriticalPoints.push({ x: max.x, quantity, value: max[quantity], kind: 'maximum' }, { x: min.x, quantity, value: min[quantity], kind: 'minimum' });
   }
   const extremes = (key: 'axial' | 'shear' | 'moment', maximum: boolean) => {
-    const values = [...diagram.map(p => p[key]), ...criticalPoints.filter(p => p.quantity === key).map(p => p.value)];
+    const values = criticalPoints.filter(p => p.quantity === key).map(p => p.value);
     return maximum ? Math.max(...values) : Math.min(...values);
   };
   return { ...first, memberId: group.member.id, length: group.arc.length, totalLength: group.arc.length, startOffset: 0, endOffset: 0,
-    localDisplacements: [...first.localDisplacements.slice(0, 3), ...last.localDisplacements.slice(3, 6)],
-    localEndForces: [...first.localEndForces.slice(0, 3), ...last.localEndForces.slice(3, 6)],
+    // Cada extremo en la tangente del arco en ese extremo (antes, la cuerda del primer y del último tramo).
+    localDisplacements: [...toEndTangent(first.localDisplacements.slice(0, 3), turn0), ...toEndTangent(last.localDisplacements.slice(3, 6), turn1)],
+    localEndForces: [...toEndTangent(first.localEndForces.slice(0, 3), turn0), ...toEndTangent(last.localEndForces.slice(3, 6), turn1)],
     diagram, diagramSegments, diagramJumps, criticalPoints, deformation, deformationSegments, deformationCriticalPoints,
     maxAxial: extremes('axial', true), minAxial: extremes('axial', false), maxShear: extremes('shear', true), minShear: extremes('shear', false),
     maxMoment: extremes('moment', true), minMoment: extremes('moment', false),

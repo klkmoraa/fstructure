@@ -118,7 +118,8 @@ describe('standalone FStructure', () => {
     await screen.findByTestId('home');
     await user.click(screen.getAllByRole('button', { name: /^Modelo 2D/ })[0]!);
     expect(await screen.findByRole('heading', { name: 'Empieza tu modelo 2D' }, { timeout: 8000 })).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: /^Viga apoyada/ }));
+    await user.click(screen.getByRole('radio', { name: 'Viga' }));
+    await user.click(screen.getByRole('button', { name: 'Crear y calcular' }));
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Empieza tu modelo 2D' })).toBeNull());
     await user.click(screen.getAllByRole('button', { name: /^Deshacer/ })[0]!);
     expect(await screen.findByRole('heading', { name: 'Empieza tu modelo 2D' })).toBeTruthy();

@@ -11,7 +11,7 @@
 }
 
 .model-start__card {
-  width: min(420px, 100%);
+  width: min(460px, 100%);
   margin: auto;
   padding: var(--sc-space-5);
   border: var(--sc-border-width) solid var(--sc-color-border-soft);
@@ -38,39 +38,45 @@
   line-height: 1.45;
 }
 
-.model-start__options {
+/* Tipo en un toque: seis mosaicos con su silueta. */
+.model-start__types {
   display: grid;
-  overflow: hidden;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sc-space-1);
+}
+
+.model-start__type {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-height: 60px;
+  padding: var(--sc-space-2) var(--sc-space-1);
   border: var(--sc-border-width) solid var(--sc-color-border-soft);
   border-radius: var(--sc-radius-md);
-}
-
-.model-start__option {
-  display: flex;
-  align-items: center;
-  gap: var(--sc-space-3);
-  width: 100%;
-  min-height: 52px;
-  color: inherit;
+  background: var(--sc-color-surface-1);
+  color: var(--sc-color-text-secondary);
   font: inherit;
-  text-align: left;
+  font-size: 12px;
+  font-weight: var(--sc-font-weight-semibold);
   cursor: pointer;
-  padding: var(--sc-space-2) var(--sc-space-3);
-  border: 0;
-  border-radius: 0;
-  background: transparent;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
 }
 
-.model-start__option + .model-start__option { border-top: var(--sc-border-width) solid var(--sc-color-border-soft); }
 @media (hover: hover) and (pointer: fine) {
-.model-start__option:hover { background: var(--sc-color-surface-1); }
+  .model-start__type:hover { border-color: var(--sc-color-border-strong); color: var(--sc-color-text-primary); }
 }
 
-.model-start__option:focus-visible {
+.model-start__type.is-selected {
+  border-color: var(--sc-color-action-edge);
+  background: var(--sc-color-action-subtle);
+  color: var(--sc-color-action-ink);
+  box-shadow: inset 0 0 0 1px var(--sc-color-action-edge);
+}
+
+.model-start__type:focus-visible {
   outline: var(--sc-focus-ring-width) solid var(--sc-color-focus);
-  outline-offset: calc(var(--sc-focus-ring-width) * -1);
+  outline-offset: 2px;
 }
-
 
 .model-start__glyph {
   flex: none;
@@ -83,30 +89,130 @@
   stroke-linejoin: round;
 }
 
-.model-start__copy { display: grid; gap: 1px; min-width: 0; }
-.model-start__copy strong { font-size: 14px; font-weight: var(--sc-font-weight-semibold); }
-.model-start__copy span { color: var(--sc-color-text-secondary); font-family: var(--sc-font-mono); font-size: 11px; }
+.model-start__form { display: grid; gap: var(--sc-space-3); margin-top: var(--sc-space-3); }
 
-.model-start__secondary {
+/* Vista previa a escala con las medidas que se escriben. */
+.model-start__preview {
+  display: block;
+  width: 100%;
+  height: 112px;
+  border-radius: var(--sc-radius-md);
+  background: var(--sc-color-surface-inset);
+}
+
+.model-start__bar { fill: none; stroke: var(--sc-color-text-primary); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.model-start__bar--truss { stroke-width: 1.4; }
+.model-start__load { fill: none; stroke: var(--sc-color-text-tertiary); stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; }
+.model-start__support { fill: none; stroke: var(--sc-color-text-secondary); stroke-width: 1.3; stroke-linejoin: round; }
+
+.model-start__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sc-space-2) var(--sc-space-3);
+}
+
+.model-start__field { display: grid; gap: 4px; min-width: 0; }
+.model-start__field label { color: var(--sc-color-text-secondary); font-size: 12px; font-weight: var(--sc-font-weight-semibold); }
+
+.model-start__input {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 40px;
+  border: var(--sc-border-width) solid var(--sc-color-border-soft);
+  border-radius: var(--sc-radius-sm, 8px);
+  background: var(--sc-color-surface-1);
+}
+
+.model-start__input:focus-within { border-color: var(--sc-color-focus); box-shadow: 0 0 0 1px var(--sc-color-focus); }
+.model-start__field.has-error .model-start__input { border-color: var(--sc-color-error-solid); }
+
+.model-start__input input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  padding: 0 var(--sc-space-2);
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font-family: var(--sc-font-mono);
+  font-size: 16px; /* 16 px: Safari no amplía la página al enfocar. */
+  font-variant-numeric: tabular-nums;
+}
+
+.model-start__input small {
+  flex: none;
+  padding-right: var(--sc-space-2);
+  color: var(--sc-color-text-tertiary);
+  font-family: var(--sc-font-mono);
+  font-size: 11px;
+}
+
+.model-start__error { color: var(--sc-color-error-solid); font-size: 11px; }
+
+.model-start__note {
+  margin: 0;
+  color: var(--sc-color-text-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.model-start__actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--sc-space-1) var(--sc-space-2);
-  margin-top: var(--sc-space-2);
+  gap: var(--sc-space-2);
+}
+
+.model-start__actions .sc-button:first-child { flex: 1 1 auto; }
+
+/* Lo profesional queda a un clic, sin competir con «Crear y calcular». */
+.model-start__advanced {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-2);
+  width: 100%;
+  margin-top: var(--sc-space-3);
+  padding: var(--sc-space-2) 0 0;
+  border: 0;
+  border-top: var(--sc-border-width) solid var(--sc-color-border-soft);
+  background: transparent;
+  color: var(--sc-color-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.model-start__advanced span { display: grid; gap: 1px; }
+.model-start__advanced strong { font-size: 13px; font-weight: var(--sc-font-weight-semibold); }
+.model-start__advanced small { color: var(--sc-color-text-secondary); font-size: 12px; }
+.model-start__advanced:focus-visible { outline: var(--sc-focus-ring-width) solid var(--sc-color-focus); outline-offset: 4px; border-radius: 4px; }
+
+@media (hover: hover) and (pointer: fine) {
+  .model-start__advanced:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .model-start__type { transition: none; }
 }
 
 @media (max-width: 760px) {
-  .model-start { padding: 16px 12px 24px; }
+  .model-start { padding: 12px 12px 24px; }
   .model-start__body { font-size: 12px; }
-  .model-start__copy span { display: none; }
-  .model-start__option { min-height: 48px; }
   .model-start__card h2 { font-size: 20px; }
   .model-start__card { padding: var(--sc-space-4); }
-  /* Las dos acciones secundarias comparten fila y parten su texto. */
-  .model-start__secondary { flex-wrap: nowrap; }
-  .model-start__secondary .sc-button { flex: 1 1 0; min-width: 0; padding-inline: var(--sc-space-2); white-space: normal; text-align: center; }
+  .model-start__type { min-height: 56px; }
+  .model-start__preview { height: 96px; }
+  .model-start__actions .sc-button { flex: 1 1 0; min-width: 0; padding-inline: var(--sc-space-2); white-space: normal; text-align: center; }
 }
-
 
 /* Antes de dibujar, el zoom y las coordenadas no necesitan ocupar el inicio. */
 .canvas-host:has(.model-start) :is(.canvas-controls, .canvas-coordinate-launcher, .canvas-top-controls) { visibility: hidden; }
+
+/* Con un diagrama N, V o M a la vista, las cargas quedan de contexto y no
+   compiten con él; al pasar el puntero sobre ellas recuperan su color. */
+.structural-canvas[data-diagram-visible='true'] .load-layer { opacity: 0.22; transition: opacity 160ms ease; }
+@media (hover: hover) and (pointer: fine) {
+  .structural-canvas[data-diagram-visible='true'] .load-layer:hover { opacity: 1; }
+}

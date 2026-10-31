@@ -109,8 +109,11 @@ const buildChecks = (result: AnalysisResult): ReliabilityCheck[] => {
       limitedAbove: 1e-12, unreliableAbove: 1e-8, value: result.linearResidual, required: true,
     },
     {
+      // La cota tiene un piso de κ·ε (precisión doble). Con 1e-9 cualquier
+      // κ > 4.5e6 quedaba «limitado» aunque la condición acepta hasta 1e10, y
+      // cada arco (malla interna fina) avisaba sin motivo. Mismo margen que κ.
       id: 'forward-error', label: 'Cota de error hacia adelante',
-      limitedAbove: 1e-9, unreliableAbove: 1e-4, value: result.forwardErrorBound, required: true,
+      limitedAbove: 1e10 * Number.EPSILON, unreliableAbove: 1e-4, value: result.forwardErrorBound, required: true,
     },
     {
       // A boolean condition mapped onto the same scale: 1 means the refinement

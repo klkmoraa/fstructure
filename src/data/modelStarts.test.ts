@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeProject } from '../engine/solver';
 import { createBlankProject } from './defaultProject';
-import { MODEL_STARTS, withModelStart, type ModelStartId } from './modelStarts';
+import { MODEL_STARTS, MODEL_START_DEFAULTS, modelStartFieldError, modelStartValid, withModelStart, type ModelStartId, type ModelStartParams } from './modelStarts';
 
 const G = 9.80665;
-const service = (id: ModelStartId) => {
-  const project = withModelStart(createBlankProject(), id);
+const service = (id: ModelStartId, params?: Partial<ModelStartParams>) => {
+  const project = withModelStart(createBlankProject(), id, { ...MODEL_START_DEFAULTS[id], ...params });
   const result = analyzeProject(project, project.combinations.find((item) => item.id === 'SERV'), { includeEducationTrace: false });
   expect(result.success).toBe(true);
   return { project, result, ry: (nodeId: string) => result.nodeResults.find((node) => node.nodeId === nodeId)!.ry };
@@ -48,5 +48,37 @@ describe('inicios del Modelo 2D', () => {
   it('sólo escribe en un modelo vacío', () => {
     const project = withModelStart(createBlankProject(), 'beam-simple');
     expect(withModelStart(project, 'truss-pratt')).toBe(project);
+  });
+
+  it('armadura Pratt de seis tableros: cada apoyo toma la mitad de las cargas de los cinco nudos superiores', () => {
+    const { ry, project } = service('truss-pratt', { span: 12, count: 6, height: 2.5, dead: 8, live: 4 });
+    expect(project.members.filter((member) => member.type === 'truss')).toHaveLength(6 + 4 + 6 + 5);
+    expect(ry('B0')).toBeCloseTo(5 * 12 / 2, 3);
+    expect(ry('B6')).toBeCloseTo(5 * 12 / 2, 3);
+  });
+
+  it('pórtico de dos claros y tres niveles: la vertical total es la carga de las vigas más el peso propio', () => {
+    const { project, result } = service('frame-portal', { count: 2, span: 5, levels: 3, height: 3, dead: 10, live: 5, lateral: 0 });
+    expect(project.nodes.filter((node) => node.support.type === 'fixed')).toHaveLength(3);
+    const vertical = result.nodeResults.reduce((total, node) => total + node.ry, 0);
+    expect(vertical).toBeGreaterThan(3 * 2 * 5 * 15);
+  });
+
+  it('arco biarticulado: la carga vertical se reparte por igual y aparece empuje', () => {
+    const { project, result } = service('arch', { span: 12, height: 4 });
+    expect(project.members[0]!.curve?.bulge).toBeCloseTo(2 * 4 / 12, 12);
+    const [left, right] = result.nodeResults;
+    expect(left!.ry).toBeCloseTo(right!.ry, 3);
+    expect(Math.abs(left!.rx)).toBeGreaterThan(1);
+    expect(left!.rx).toBeCloseTo(-right!.rx, 3);
+  });
+
+  it('rechaza medidas fuera de alcance sin tocar el proyecto', () => {
+    const blank = createBlankProject();
+    expect(modelStartFieldError('arch', 'height', { ...MODEL_START_DEFAULTS.arch, span: 6, height: 4 })?.key).toBe('rise');
+    expect(modelStartFieldError('truss-pratt', 'count', { ...MODEL_START_DEFAULTS['truss-pratt'], count: 5 })?.key).toBe('even');
+    expect(modelStartFieldError('frame-portal', 'levels', { ...MODEL_START_DEFAULTS['frame-portal'], levels: 0 })?.key).toBe('range');
+    expect(modelStartValid('beam-simple', { ...MODEL_START_DEFAULTS['beam-simple'], span: Number.NaN })).toBe(false);
+    expect(withModelStart(blank, 'arch', { ...MODEL_START_DEFAULTS.arch, height: 99 })).toBe(blank);
   });
 });

@@ -51,6 +51,7 @@ import { emitWorkspaceCommand, onWorkspaceCommand, type FocusableSelection } fro
 import { withModelStart } from '../../data/modelStarts';
 import { ModelStartCard } from './ModelStartCard';
 import { CanvasGeometryLayer, type StructuralTarget } from './CanvasGeometryLayer';
+import { useCanvasLegendReservation } from './useCanvasLegendReservation';
 import {
   flexibleRatioFromGross,
   grossRatioAtPoint,
@@ -328,6 +329,7 @@ export const StructuralCanvas = ({
   const [stackActive, setStackActive] = useState(false);
   const dockLabelReservation = useCanvasDockReservation(svgRef, size, compactCanvasChrome && !stackActive
     && canvasLabelSafeRect(size, true).height > canvasSafeRect(size).height);
+  const legendLabelReservation = useCanvasLegendReservation(svgRef, size, `${resultTab}:${stackActive}:${layers.results}:${layers.labels}:${analysis?.success}:${view.diagramScaleMode}:${view.diagramSide}`);
   const [stackQuantities, setStackQuantities] = useState<StackQuantity[]>(readStoredStackQuantities);
   const [cut, setCut] = useState<CutInfo | null>(null);
   const [interaction, setInteractionState] = useState<CanvasInteraction>(IDLE_INTERACTION);
@@ -2361,6 +2363,9 @@ export const StructuralCanvas = ({
     const diagramQuantity = ['axial', 'shear', 'moment'].includes(resultTab) ? resultTab as DiagramQuantity : null;
     const resultsDrawn = layers.results && !demandMapActive && !structuralEditDraft && resultsAllowed && Boolean(analysis?.success);
     const diagramDrawn = resultsDrawn && !stackActive && view.showResultOverlay && diagramQuantity !== null;
+    // Con un diagrama a la vista mandan sus cifras: las de las cargas sólo se
+    // ponen si caben junto a su flecha, en vez de irse lejos con una guía.
+    const loadLabelPriority = diagramDrawn ? 2 as const : 1 as const;
     /** El mismo marco con el que `CanvasResultLayer` lleva el diagrama de la barra a la pantalla. */
     const diagramFrameFor = (member: MemberModel) => {
       const result = resultMap.get(member.id);
@@ -2465,7 +2470,7 @@ export const StructuralCanvas = ({
           id: `nodal-load:${load.id}`,
           text: `${formatFixed(toDisplay(magnitude, units, 'force'), 2)} ${forceLabel}`,
           anchor: { x: point.x - ux * 62, y: point.y - uy * 62 - 5 },
-          priority: selected ? 0 : 1,
+          priority: selected ? 0 : loadLabelPriority,
           tone: selected ? 'selection' : 'load-point',
           preferredOffset: { x: 0, y: 0 },
           forceVisible: selected,
@@ -2475,7 +2480,7 @@ export const StructuralCanvas = ({
           id: `nodal-moment:${load.id}`,
           text: `${formatFixed(toDisplay(load.mz, units, 'moment'), 2)} ${momentLabel}`,
           anchor: { x: point.x, y: point.y - 38 },
-          priority: selected ? 0 : 1,
+          priority: selected ? 0 : loadLabelPriority,
           tone: selected ? 'selection' : 'load-moment',
           preferredOffset: { x: 0, y: 0 },
           forceVisible: selected,
@@ -2496,7 +2501,7 @@ export const StructuralCanvas = ({
       };
       const selected = selectionVisualState.memberLoadId === load.id;
       if (!selected && !layers.labels) continue;
-      const priority = selected ? 0 as const : 1 as const;
+      const priority = selected ? 0 as const : loadLabelPriority;
       // Una carga es una ACCIÓN aplicada, y su etiqueta se pinta con el color
       // de su TIPO. Antes las tres compartían dos tonos de resultado —`force`,
       // que es el azul de la puntual, y `moment`, que es el rojo del momento
@@ -2599,6 +2604,8 @@ export const StructuralCanvas = ({
 
     if (!stackActive && diagramQuantity && view.showResultOverlay) {
       const quantity = diagramQuantity;
+      // En el teléfono no hay sitio para los extremos de cada barra: sólo una barra suelta los lleva todos.
+      const forceAllExtrema = project.members.filter((member) => member.type !== 'rigid').length <= (compactCanvasChrome ? 1 : 6);
       for (const member of project.members) {
         const frame = diagramFrameFor(member);
         if (!frame) continue;
@@ -2636,7 +2643,10 @@ export const StructuralCanvas = ({
             text,
             anchor,
             priority: 2,
-            forceVisible: true,
+            // En un modelo grande sólo son obligatorios el extremo global y la
+            // barra elegida; el resto aparece donde quepa junto a su barra.
+            forceVisible: forceAllExtrema || selectedMemberIds.includes(member.id)
+              || Math.abs(point.value) >= globalDiagramMax * (1 - 1e-9),
             tone: quantity === 'axial' ? point.value < 0 ? 'axial-compression' : 'axial-tension' : quantity,
             preferredOffset: smartLabelOffsetToward(text, { x: frame.axis.normal.x * outward, y: -frame.axis.normal.y * outward }, RESULT_LABEL_GAP),
           });
@@ -2658,6 +2668,7 @@ export const StructuralCanvas = ({
       reservedRects.push({ x: 34, y: size.height - 120, width: 90, height: 90 });
       if (dockLabelReservation) reservedRects.push(dockLabelReservation);
     }
+    if (legendLabelReservation) reservedRects.push(legendLabelReservation);
     return layoutSmartLabels(smartLabelCandidates, labelBounds, camera.scale, reservedRects, labelObstacles);
   }, [
     activeTool,
@@ -2666,6 +2677,7 @@ export const StructuralCanvas = ({
     camera,
     compactCanvasChrome,
     dockLabelReservation,
+    legendLabelReservation,
     stackActive,
     demandMapActive,
     distributedLabel,
@@ -2718,6 +2730,8 @@ export const StructuralCanvas = ({
         ref={svgRef}
         className={`structural-canvas tool-${activeTool} interaction-${interaction.kind} ${spacePressed ? 'space-pan-ready' : ''}`}
         data-interaction={interaction.kind}
+        data-diagram-visible={!stackActive && !demandMapActive && !structuralEditDraft && layers.results && view.showResultOverlay
+          && analysis?.success === true && ['axial', 'shear', 'moment'].includes(resultTab) ? 'true' : undefined}
         viewBox={`0 0 ${size.width} ${stackActive ? diagramDclHeight(project, size) : size.height}`}
         role="application"
         aria-label={t('canvas.workspace')}
@@ -2975,8 +2989,10 @@ export const StructuralCanvas = ({
       </div>
 
       {/* El Aula construye su modelo desde cero a propósito: allí no se ofrecen inicios. */}
-      {!project.nodes.length && activeTool === 'select' && !stackActive && !structuralEditDraft && project.settings.calculationMode !== 'classroom' ? <ModelStartCard
-        onStart={(id) => updateProject((draft) => withModelStart(draft, id), true)}
+      {/* Con el generador abierto la tarjeta se retira: antes quedaba cortada detrás de él. */}
+      {!project.nodes.length && activeTool === 'select' && !stackActive && !structuralEditDraft && !generatorOpen && project.settings.calculationMode !== 'classroom' ? <ModelStartCard
+        units={project.settings.units}
+        onStart={(id, params) => updateProject((draft) => withModelStart(draft, id, params), true)}
         onGenerate={() => emitWorkspaceCommand('open-structure-generator')}
         onDraw={() => setActiveTool('node')}
       /> : null}
