@@ -22,7 +22,7 @@ export const drawModelPart = (context: ReportContext): void => {
   const { layout, project, analysis, payload, scenarioFactors, index } = context;
 
   layout.part(
-    'Modelo y acciones',
+    'Anexo B · Modelo y acciones',
     'La entrada exacta del análisis: geometría, secciones, apoyos, cargas y su auditoría.',
   );
 

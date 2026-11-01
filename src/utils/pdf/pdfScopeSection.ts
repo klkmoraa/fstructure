@@ -17,7 +17,7 @@ export const drawScopePart = (context: ReportContext): void => {
   const units = project.settings.units;
 
   layout.part(
-    'Unidades, convenciones y alcance',
+    'Anexo A · Unidades, convenciones y alcance',
     'La base de lectura de todas las cifras del documento, y lo que el análisis deliberadamente no cubre.',
   );
 

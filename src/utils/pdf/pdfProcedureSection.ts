@@ -138,7 +138,7 @@ const drawGenericProcedure = (context: ReportContext): void => {
 export const drawProcedurePart = (context: ReportContext): void => {
   const { layout, solutionMethod: method } = context;
   layout.part(
-    'Procedimiento y cálculos',
+    'Análisis',
     method && method !== 'matrix-stiffness'
       ? 'El método elegido, desarrollado con los números de esta estructura.'
       : 'Cada paso del análisis matricial, con la operación que realmente se hizo.',

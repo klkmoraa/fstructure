@@ -16,7 +16,7 @@ export const drawResultsPart = (context: ReportContext): void => {
   const { layout, project, analysis } = context;
 
   layout.part(
-    'Resultados nodales y por miembro',
+    'Anexo C · Resultados nodales y por miembro',
     'Reacciones, desplazamientos y el detalle completo de cada miembro del modelo.',
   );
 

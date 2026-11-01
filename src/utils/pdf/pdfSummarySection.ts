@@ -41,7 +41,7 @@ export const drawSummaryPart = (context: ReportContext): void => {
   const { layout, project, analysis } = context;
   const { palette, fonts } = layout;
 
-  layout.part('Resumen del análisis', 'Cifras gobernantes, diagrama de cuerpo libre, equilibrio y calidad numérica.');
+  layout.part('Resultados del análisis', 'Cifras gobernantes, cuerpo libre con reacciones, diagramas N, V y M, equilibrio y calidad numérica.');
 
   const axial = absoluteExtreme(context, 'axial');
   const shear = absoluteExtreme(context, 'shear');

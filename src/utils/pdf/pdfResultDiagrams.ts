@@ -16,7 +16,7 @@ import { memberAxis, pointAtGrossRatio } from '../../graphics/structureGeometry'
 import type { DiagramQuantity, MemberModel, MemberResult, NodeModel } from '../../types';
 import { clearDisplay } from './pdfFormat';
 import { pdfText } from './pdfGlyphs';
-import { createProjection, drawNodeDot, drawSupportGlyph, type Point, type Rect } from './pdfScene';
+import { createModelProjection, drawNodeDot, drawSupportGlyph, memberPolyline, type Point, type Rect } from './pdfScene';
 import { TYPE } from './pdfTheme';
 import type { ReportContext } from './reportContext';
 
@@ -46,15 +46,7 @@ const stationOn = (member: MemberModel, i: NodeModel, j: NodeModel, result: Memb
   };
 };
 
-/** El trazo del eje de una barra (recta o arco) en coordenadas de página. */
-export const memberPolyline = (member: MemberModel, i: NodeModel, j: NodeModel, at: (x: number, y: number) => Point): Point[] => {
-  const arc = circularMemberGeometry(member, i, j);
-  if (!arc) return [at(i.x, i.y), at(j.x, j.y)];
-  return Array.from({ length: 49 }, (_, index) => {
-    const point = curvePointAt(arc, index / 48);
-    return at(point.x, point.y);
-  });
-};
+export { memberPolyline } from './pdfScene';
 
 /** Polígono cerrado en una trayectoria SVG para `drawSvgPath` con origen (0, 0). */
 const svgPath = (points: readonly Point[]): string =>
@@ -67,15 +59,8 @@ export const drawResultDiagram = (context: ReportContext, rect: Rect, quantity: 
   page.drawRectangle({ x: rect.x, y: rect.y, width: rect.width, height: rect.height, borderWidth: 0.5, borderColor: palette.rule, color: palette.paper });
   if (!project.nodes.length) return;
 
-  // La geometría a encuadrar incluye la clave de los arcos, no sólo los nudos.
-  const outline: NodeModel[] = [...project.nodes];
-  for (const member of project.members) {
-    const i = index.node(member.i), j = index.node(member.j);
-    const arc = i && j ? circularMemberGeometry(member, i, j) : undefined;
-    if (arc) for (let k = 1; k < 8; k += 1) outline.push({ ...i!, ...curvePointAt(arc, k / 8), id: `${member.id}:${k}` });
-  }
   const amplitude = Math.min(rect.height, rect.width) * 0.17;
-  const projection = createProjection(outline, {
+  const projection = createModelProjection(project, {
     left: rect.x + 30 + amplitude * 0.6,
     right: rect.x + rect.width - 30 - amplitude * 0.6,
     bottom: rect.y + 26 + amplitude * 0.75,

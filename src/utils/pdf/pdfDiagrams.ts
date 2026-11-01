@@ -1,6 +1,6 @@
 
 import {
-  createProjection,
+  createModelProjection,
   drawArrow,
   drawMemberLoads,
   drawMomentArc,
@@ -38,7 +38,7 @@ export const drawGlobalDcl = (
   const bottom = rect.y;
   const top = rect.y + rect.height;
   page.drawRectangle({ x: left, y: bottom, width: rect.width, height: rect.height, borderWidth: 0.5, borderColor: palette.rule, color: palette.paper });
-  const projection = createProjection(project.nodes, {
+  const projection = createModelProjection(project, {
     left: left + 42,
     right: right - 42,
     bottom: bottom + (includeReactions ? 62 : 30),

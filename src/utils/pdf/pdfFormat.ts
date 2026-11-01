@@ -19,8 +19,12 @@ export const safeFilename = (name: string): string => name
   .replace(/\s+/g, '-')
   .toLowerCase() || 'fusionstructure-project';
 
+/**
+ * Un residuo de punto flotante (7.1e-15 donde el valor es cero) no es una cifra: se escribe 0.
+ * Ninguna magnitud del informe en m, kN o rad tiene sentido por debajo de 1e-11.
+ */
 export const number = (value: number, digits = 6): string =>
-  formatNumber(value, 'report', { significantDigits: digits });
+  formatNumber(Math.abs(value) < 1e-11 ? 0 : value, 'report', { significantDigits: digits });
 
 export const clearNumber = (value: number, reference = 1, digits = 5): string =>
   formatNearZero(value, reference, 'report', { significantDigits: digits });

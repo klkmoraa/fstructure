@@ -23,7 +23,7 @@ export const drawTracePart = (context: ReportContext): void => {
   if (!trace) return;
 
   layout.part(
-    'Traza del sistema resuelto',
+    'Anexo D · Traza del sistema resuelto',
     'Grados de libertad, matrices ensambladas y la contribución de cada elemento.',
   );
 

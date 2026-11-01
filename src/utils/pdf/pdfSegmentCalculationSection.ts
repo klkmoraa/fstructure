@@ -4,11 +4,12 @@
  * summary, but it cannot replace the cut that explains why a polynomial applies on a given
  * interval.
  */
-import { evaluateSegment } from '../../engine/diagram';
+import { evaluateDiagramAt, evaluateSegment } from '../../engine/diagram';
+import { circularMemberGeometry, curveTangentAt } from '../../graphics/memberCurve';
 import { memberAxis } from '../../graphics/structureGeometry';
 import { clearCell, clearDisplay, display, formatPolynomial, quantityUnit, unitFor } from './pdfFormat';
 import { TYPE } from './pdfTheme';
-import { drawFreeBodyScene, type FreeBodyScene } from './pdfFreeBody';
+import { drawFreeBodyScene, sceneHeightFor, type FreeBodyScene } from './pdfFreeBody';
 import type { AnalysisResult } from '../../types';
 import type { ReportContext } from './reportContext';
 
@@ -98,6 +99,57 @@ const drawEquations = (context: ReportContext, segment: Segment): void => {
 };
 
 /** Writes the report in the same order an engineer solves it: member, interval, free body, cut and equations. */
+/**
+ * Una barra curva no se corta tramo a tramo: el solver la resuelve con una malla interna de
+ * cuerdas y sus «tramos» son cientos (la memoria de un arco llegaba a 193 páginas). Se escribe
+ * como en un libro: N, V y M a lo largo del arco, en estaciones, con la tangente de cada una.
+ */
+const drawCurvedMember = (context: ReportContext, result: AnalysisResult['memberResults'][number]): void => {
+  const { layout, project, index } = context;
+  const member = index.member(result.memberId);
+  const i = member ? index.node(member.i) : undefined;
+  const j = member ? index.node(member.j) : undefined;
+  const arc = member && i && j ? circularMemberGeometry(member, i, j) : undefined;
+  if (!member || !arc) return;
+  layout.heading(`Barra curva ${member.id}: ${member.i} → ${member.j}`, 2);
+  layout.text(
+    `Arco circular de radio ${display(project, arc.radius, 'length')}, cuerda ${display(project, arc.chord, 'length')} y longitud `
+    + `${display(project, arc.length, 'length')}. En cada estación s (medida sobre el arco desde ${member.i}) el corte es perpendicular `
+    + 'a la tangente: N va a lo largo de ella y V perpendicular, a la izquierda de i → j. Los valores salen del análisis matricial.',
+    TYPE.small,
+  );
+  const stations = 12;
+  const reference = (quantity: 'axial' | 'shear' | 'moment') => Math.max(1, ...result.criticalPoints.filter((point) => point.quantity === quantity).map((point) => Math.abs(point.value)));
+  const rows = Array.from({ length: stations + 1 }, (_, k) => {
+    const s = arc.length * k / stations;
+    const value = evaluateDiagramAt(result.diagramSegments, result.diagramJumps, s, k === stations ? 'left' : 'right');
+    const tangent = curveTangentAt(arc, k / stations);
+    const angle = Math.atan2(tangent.y, tangent.x) * 180 / Math.PI;
+    return [
+      clearCell(project, s, 'length'),
+      `${angle.toFixed(1)}°`,
+      clearCell(project, value?.axial ?? 0, 'force', reference('axial')),
+      clearCell(project, value?.shear ?? 0, 'force', reference('shear')),
+      clearCell(project, value?.moment ?? 0, 'moment', reference('moment')),
+    ];
+  });
+  layout.table([
+    { header: `s (${unitFor(project, 'length')})`, align: 'right' },
+    { header: 'Tangente', align: 'right' },
+    { header: `N (${unitFor(project, 'force')})`, align: 'right' },
+    { header: `V (${unitFor(project, 'force')})`, align: 'right' },
+    { header: `M (${unitFor(project, 'moment')})`, align: 'right' },
+  ], rows);
+  const extreme = (quantity: 'axial' | 'shear' | 'moment', kind: 'maximum' | 'minimum') => result.criticalPoints.find((point) => point.quantity === quantity && point.kind === kind);
+  const lines = (['axial', 'shear', 'moment'] as const).flatMap((quantity) => {
+    const max = extreme(quantity, 'maximum'), min = extreme(quantity, 'minimum');
+    const symbol = quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M';
+    const unit = quantity === 'moment' ? 'moment' as const : 'force' as const;
+    return [max, min].flatMap((point) => point ? [`${symbol} ${point === max ? 'máx' : 'mín'} = ${clearDisplay(project, point.value, unit, reference(quantity))} en s = ${display(project, point.x, 'length')}`] : []);
+  });
+  layout.keyValues([['Extremos en el arco', lines.join('  ·  ')]]);
+};
+
 export const drawSegmentCalculationPart = (context: ReportContext): void => {
   const { layout, analysis, project } = context;
   layout.part(
@@ -133,6 +185,10 @@ export const drawSegmentCalculationPart = (context: ReportContext): void => {
   for (const result of analysis.memberResults) {
     const member = context.index.member(result.memberId);
     if (!member || !result.diagramSegments.length || member.type === 'truss') continue;
+    if (member.curve) {
+      drawCurvedMember(context, result);
+      continue;
+    }
     layout.heading(`Barra ${member.id}: ${member.i} → ${member.j}`, 2);
     layout.text(`Longitud analizada: ${display(project, result.length, 'length')}. Los cortes siguen los intervalos exactos publicados por el solver; no son una interpolación gráfica.`, 8.2);
     for (const [segmentIndex, segment] of result.diagramSegments.entries()) {
@@ -140,7 +196,7 @@ export const drawSegmentCalculationPart = (context: ReportContext): void => {
       const scene = segmentScene(context, result, segment, segmentIndex + 1);
       if (scene) {
         layout.figure(
-          210,
+          sceneHeightFor(context, 210),
           (rect) => drawFreeBodyScene(context, rect, scene),
           `Cuerpo libre de la barra ${member.id}, tramo ${segmentIndex + 1}; las acciones N, V y M se muestran en el corte local.`,
         );

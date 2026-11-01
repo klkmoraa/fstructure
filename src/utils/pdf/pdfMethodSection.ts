@@ -27,7 +27,7 @@ import { solveStaticsSections } from '../../analysis-methods/staticsSections';
 import { drawStaticsSections } from './pdfMethodStaticsSections';
 import { drawElasticCurve } from './pdfDiagrams';
 import { drawCrossFrameSection } from './pdfMethodCrossFrame';
-import { drawFreeBodyScene, type FreeBodyScene } from './pdfFreeBody';
+import { drawFreeBodyScene, sceneHeightFor, type FreeBodyScene } from './pdfFreeBody';
 import {
   cantileverScenes,
   castiglianoScenes,
@@ -118,7 +118,7 @@ export const drawScenes = (
   if (context.options.includeMethodFreeBodies === false) return;
   for (const [index, scene] of scenes.entries()) {
     context.layout.figure(
-      SCENE_HEIGHT,
+      sceneHeightFor(context, SCENE_HEIGHT),
       (rect) => drawFreeBodyScene(context, rect, scene),
       caption(scene, index),
     );

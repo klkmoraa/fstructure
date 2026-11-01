@@ -18,6 +18,7 @@ import { safeFilename } from './pdf/pdfFormat';
 import { loadReportFontFaces } from './pdf/pdfFonts';
 import { setPdfGlyphCoverage } from './pdf/pdfGlyphs';
 import { drawSummaryPart } from './pdf/pdfSummarySection';
+import { drawConclusionsPart, drawGeneralDataPart } from './pdf/pdfMemoirSections';
 import { drawSegmentCalculationPart } from './pdf/pdfSegmentCalculationSection';
 import { drawScopePart } from './pdf/pdfScopeSection';
 import { drawProcedurePart } from './pdf/pdfProcedureSection';
@@ -148,14 +149,16 @@ export const createCalculationReport = async (
     // may not need in this particular copy, and because the numbering is assigned by
     // `layout.part` as each one opens, a shortened report never shows a gap where a part used
     // to be.
-    drawSummaryPart(context);
-    // El procedimiento elegido va enseguida del resumen: es lo que esta copia viene a mostrar.
-    if (options.includeProcedure !== false) drawProcedurePart(context);
-    if (options.includeDiagrams !== false) {
-      drawSegmentCalculationPart(context);
-    }
-    if (options.includeScope !== false) drawScopePart(context);
+    // El orden de una memoria de cálculo: datos → materiales → análisis por el método elegido →
+    // resultados → cálculo por tramo → conclusiones; y después los anexos, que el lector puede
+    // quitar sin que cambie la numeración del cuerpo.
+    drawGeneralDataPart(context);
     if (options.includeMaterials !== false) drawMaterialsPart(context);
+    if (options.includeProcedure !== false) drawProcedurePart(context);
+    drawSummaryPart(context);
+    if (options.includeDiagrams !== false) drawSegmentCalculationPart(context);
+    drawConclusionsPart(context, PROFESSIONAL_NOTE);
+    if (options.includeScope !== false) drawScopePart(context);
     if (options.includeAnnex !== false) {
       drawModelPart(context);
       drawResultsPart(context);

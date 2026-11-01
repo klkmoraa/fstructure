@@ -25,7 +25,7 @@ import type {
 } from '../../analysis-methods/staticsSections';
 import { asWorkedEquation, drawWorkedEquation, measureWorkedEquation, type EquationInput } from './pdfEquation';
 import { clearNumber, number } from './pdfFormat';
-import { drawFreeBodyScene, type FreeBodyScene, type SceneForce, type SceneMoment } from './pdfFreeBody';
+import { drawFreeBodyScene, sceneHeightFor, type FreeBodyScene, type SceneForce, type SceneMoment } from './pdfFreeBody';
 import { segmentScene } from './pdfSegmentCalculationSection';
 import { dimensionalFigure, dimensionalUnit, signedSum } from './pdfSubstitution';
 import type { ReportContext } from './reportContext';
@@ -78,7 +78,7 @@ const drawEquations = (context: ReportContext, caption: string | undefined, equa
 
 const drawScene = (context: ReportContext, scene: FreeBodyScene | undefined, caption: string): void => {
   if (!scene || context.options.includeMethodFreeBodies === false) return;
-  context.layout.figure(SCENE_HEIGHT, (rect) => drawFreeBodyScene(context, rect, scene), caption);
+  context.layout.figure(sceneHeightFor(context, SCENE_HEIGHT), (rect) => drawFreeBodyScene(context, rect, scene), caption);
 };
 
 const negligible = (value: number, scale: number): boolean => Math.abs(value) <= 1e-9 * Math.max(1, Math.abs(scale));

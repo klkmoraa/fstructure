@@ -10,7 +10,8 @@
  * Everything here draws through `layout.page`, which must always be read at the moment of use —
  * a page break replaces it — and takes its colours from the palette, never from a literal.
  */
-import type { MemberLoad, NodeModel, SupportDefinition } from '../../types';
+import type { MemberLoad, MemberModel, NodeModel, ProjectModel, SupportDefinition } from '../../types';
+import { circularMemberGeometry, curvePointAt } from '../../graphics/memberCurve';
 import { toDisplay } from '../../foundation/units';
 import { unitLabel } from '../../engine/units';
 import { TYPE } from './pdfTheme';
@@ -18,7 +19,7 @@ import type { SectionGeometry } from '../../features/inspector/sectionGeometry';
 import {
   distributedIntensityAt,
   grossRatioFromFlexible,
-  lerpPoint,
+  pointAtGrossRatio,
   memberAxis,
   modelBounds,
   toGlobalVector,
@@ -56,16 +57,44 @@ export interface Projection {
 /** Uniform model -> page transform that centres the structure inside `plot`. */
 export const createProjection = (nodes: readonly NodeModel[], plot: PlotBox): Projection => {
   const { minX, maxX, minY, maxY } = modelBounds(nodes);
-  const scale = Math.min(
-    (plot.right - plot.left) / Math.max(maxX - minX, 1),
-    (plot.top - plot.bottom) / Math.max(maxY - minY, 1),
-  );
+  // Una viga no tiene alto y una columna sola no tiene ancho: esa dimensión no limita la escala
+  // (antes contaba como 1 m y una viga en una figura baja quedaba diminuta).
+  const width = maxX - minX, height = maxY - minY;
+  const extent = Math.max(width, height, 1e-9);
+  const byWidth = width > extent * 1e-6 ? (plot.right - plot.left) / width : Number.POSITIVE_INFINITY;
+  const byHeight = height > extent * 1e-6 ? (plot.top - plot.bottom) / height : Number.POSITIVE_INFINITY;
+  const scale = Number.isFinite(Math.min(byWidth, byHeight)) ? Math.min(byWidth, byHeight) : 1;
   const offsetX = (plot.left + plot.right - (maxX - minX) * scale) / 2;
   const offsetY = (plot.bottom + plot.top - (maxY - minY) * scale) / 2;
   return {
     at: (x, y) => ({ x: offsetX + (x - minX) * scale, y: offsetY + (y - minY) * scale }),
     scale,
   };
+};
+
+/** El trazo del eje de una barra (recta o arco) en coordenadas de página. */
+export const memberPolyline = (member: MemberModel, i: NodeModel, j: NodeModel, at: (x: number, y: number) => Point): Point[] => {
+  const arc = circularMemberGeometry(member, i, j);
+  if (!arc) return [at(i.x, i.y), at(j.x, j.y)];
+  return Array.from({ length: 49 }, (_, index) => {
+    const point = curvePointAt(arc, index / 48);
+    return at(point.x, point.y);
+  });
+};
+
+/**
+ * Encuadre del modelo entero: los nudos y, en una barra curva, su arco. Con sólo los nudos la
+ * clave de un arco quedaba fuera de la figura.
+ */
+export const createModelProjection = (project: Pick<ProjectModel, 'nodes' | 'members'>, plot: PlotBox): Projection => {
+  const outline: NodeModel[] = [...project.nodes];
+  const nodes = new Map(project.nodes.map((node) => [node.id, node]));
+  for (const member of project.members) {
+    const i = nodes.get(member.i), j = nodes.get(member.j);
+    const arc = i && j ? circularMemberGeometry(member, i, j) : undefined;
+    if (arc) for (let k = 1; k < 16; k += 1) outline.push({ ...i!, ...curvePointAt(arc, k / 16), id: `${member.id}:${k}` });
+  }
+  return createProjection(outline, plot);
 };
 
 /**
@@ -253,13 +282,15 @@ export const drawGhostModel = (
     if (!ni || !nj) continue;
     const solid = solidMembers === undefined || solidMembers.has(member.id);
     if (!solid && options.hideGhost) continue;
-    page.drawLine({
-      start: projection.at(ni.x, ni.y),
-      end: projection.at(nj.x, nj.y),
+    // Una barra curva se dibuja sobre su arco, también como fantasma.
+    const line = memberPolyline(member, ni, nj, projection.at);
+    for (let k = 1; k < line.length; k += 1) page.drawLine({
+      start: line[k - 1]!,
+      end: line[k]!,
       thickness: solid ? (member.type === 'rigid' ? 3 : 2) : 0.8,
       color: solid ? palette.ink : palette.inkFaint,
       opacity: solid ? 1 : 0.5,
-      dashArray: solid ? undefined : [2.4, 2.4],
+      dashArray: solid || line.length > 2 ? undefined : [2.4, 2.4],
     });
   }
   for (const node of project.nodes) {
@@ -375,6 +406,8 @@ interface MemberLoadOptions {
   readonly onlyMemberIds?: ReadonlySet<string>;
   /** Station, 0..1 along the member, past which a load is not drawn. */
   readonly upTo?: (memberId: string) => number;
+  /** Donde se apuntan las cajas de las cifras de carga, para que otras etiquetas las eviten. */
+  readonly labelBoxes?: Rect[];
 }
 
 /**
@@ -423,7 +456,11 @@ export const drawMemberLoads = (
     }
   }
   const drawn: { load: MemberLoad; factor: number }[] = [...[...combined.values()].map((load) => ({ load, factor: 1 })), ...singles];
-  const label = (text: string, x: number, y: number) => page.drawText(pdfText(text), { x, y, size: labelSize, font: fonts.bold, color: palette.load });
+  const label = (text: string, x: number, y: number) => {
+    const shown = pdfText(text);
+    options.labelBoxes?.push({ x, y: y - 1, width: fonts.bold.widthOfTextAtSize(shown, labelSize), height: labelSize + 2 });
+    page.drawText(shown, { x, y, size: labelSize, font: fonts.bold, color: palette.load });
+  };
   for (const { load, factor } of drawn) {
     const member = index.member(load.memberId);
     if (!member) continue;
@@ -435,9 +472,13 @@ export const drawMemberLoads = (
     const axis = memberAxis(member, startNode, endNode);
     if (!(axis.length > 0) || !(axis.flexibleLength > 0)) continue;
     const limit = options.upTo?.(load.memberId) ?? 1;
-    const atFlexibleRatio = (ratio: number) => lerpPoint(screenStart, screenEnd, grossRatioFromFlexible(axis, ratio));
-    const globalVector = (x: number, y: number): [number, number] =>
-      toGlobalVector(axis, load.coordinateSystem, x, y);
+    // Sobre el eje real: en un arco, la flecha cae en el arco y no en la cuerda.
+    const atFlexibleRatio = (ratio: number) => {
+      const point = pointAtGrossRatio(axis, grossRatioFromFlexible(axis, ratio));
+      return projection.at(point.x, point.y);
+    };
+    const globalVector = (x: number, y: number, ratio = 0.5): [number, number] =>
+      toGlobalVector(axis, load.coordinateSystem, x, y, ratio);
     const actionColor = load.type === 'distributed' ? palette.loadDistributed : palette.load;
     if (load.type === 'distributed') {
       const startRatio = Math.min(load.start, load.end);
@@ -450,7 +491,7 @@ export const drawMemberLoads = (
         const t = arrowIndex / (count - 1);
         const ratio = startRatio + (endRatio - startRatio) * t;
         const intensity = distributedIntensityAt(load, t);
-        const [gx, gy] = globalVector(intensity.qx * factor, intensity.qy * factor);
+        const [gx, gy] = globalVector(intensity.qx * factor, intensity.qy * factor, ratio);
         const tail = drawArrow(layout, atFlexibleRatio(ratio), gx, gy, actionColor, 16);
         if (tail) arrowTails.push(tail);
       }
@@ -468,7 +509,7 @@ export const drawMemberLoads = (
     } else if (load.type === 'point') {
       const position = Math.min(1, Math.max(0, load.position ?? 0.5));
       if (position > limit) continue;
-      const [gx, gy] = globalVector((load.px ?? 0) * factor, (load.py ?? 0) * factor);
+      const [gx, gy] = globalVector((load.px ?? 0) * factor, (load.py ?? 0) * factor, position);
       const location = atFlexibleRatio(position);
       const tail = drawArrow(layout, location, gx, gy, actionColor, 22) ?? location;
       const magnitude = Math.hypot(load.px ?? 0, load.py ?? 0) * Math.abs(factor);

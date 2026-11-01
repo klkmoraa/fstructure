@@ -20,7 +20,7 @@ import { pdfText, wrapText } from './pdfGlyphs';
 import { TYPE } from './pdfTheme';
 import {
   createFocusProjection,
-  createProjection,
+  createModelProjection,
   drawArrow,
   drawDashedLine,
   drawGhostModel,
@@ -207,6 +207,11 @@ const LABEL_SIZE = 7.6;
  * from, which is exactly where a reader is looking. The clamp is what keeps a long value on a
  * bar near the right edge from being sliced off by the figure border.
  */
+/** Cajas de las etiquetas ya escritas en la figura en curso: ninguna otra se pone encima. */
+let placedLabels: Rect[] = [];
+
+const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width + 1.5 && b.x < a.x + a.width + 1.5 && a.y < b.y + b.height + 1 && b.y < a.y + a.height + 1;
+
 const placeLabel = (
   layout: PdfLayout,
   text: string,
@@ -219,15 +224,32 @@ const placeLabel = (
   const label = pdfText(text);
   const width = font.widthOfTextAtSize(label, LABEL_SIZE);
   const normal = { x: -direction.y, y: direction.x };
-  const x = at.x + direction.x * 6 + normal.x * 5 - (direction.x < -0.4 ? width : 0);
-  const y = at.y + direction.y * 6 + normal.y * 5 - LABEL_SIZE * 0.35;
-  layout.page.drawText(label, {
+  const clampBox = (x: number, y: number): Rect => ({
     x: Math.min(Math.max(x, frame.x + 4), frame.x + frame.width - width - 4),
     y: Math.min(Math.max(y, frame.y + 4), frame.y + frame.height - LABEL_SIZE - 4),
-    size: LABEL_SIZE,
-    font,
-    color,
+    width,
+    height: LABEL_SIZE + 1,
   });
+  const baseX = at.x + direction.x * 6 + normal.x * 5 - (direction.x < -0.4 ? width : 0);
+  const baseY = at.y + direction.y * 6 + normal.y * 5 - LABEL_SIZE * 0.35;
+  // Primero donde siempre; si choca con otra etiqueta, se aparta a lo largo de la normal (a
+  // un lado y al otro) y después a lo largo de la flecha, hasta encontrar sitio.
+  const steps = [0, 1, -1, 2, -2, 3, -3];
+  let box = clampBox(baseX, baseY);
+  search: for (const along of [0, 1, 2]) {
+    for (const step of steps) {
+      const candidate = clampBox(
+        baseX + normal.x * step * (LABEL_SIZE + 3) + direction.x * along * 10,
+        baseY + normal.y * step * (LABEL_SIZE + 3) + direction.y * along * 10,
+      );
+      if (!placedLabels.some((other) => overlaps(candidate, other))) {
+        box = candidate;
+        break search;
+      }
+    }
+  }
+  placedLabels.push(box);
+  layout.page.drawText(label, { x: box.x, y: box.y, size: LABEL_SIZE, font, color });
 };
 
 export const drawFreeBodyScene = (
@@ -238,6 +260,7 @@ export const drawFreeBodyScene = (
   const { layout, project } = context;
   const { palette, fonts } = layout;
   if (!project.nodes.length) return;
+  placedLabels = [];
   const page = layout.page;
   page.drawRectangle({
     x: rect.x, y: rect.y, width: rect.width, height: rect.height,
@@ -256,7 +279,7 @@ export const drawFreeBodyScene = (
   const focusNode = scene.focus ? context.index.node(scene.focus.nodeId) : undefined;
   const projection = focusNode && scene.focus
     ? createFocusProjection({ x: focusNode.x, y: focusNode.y }, scene.focus.radius, plot)
-    : createProjection(project.nodes, plot);
+    : createModelProjection(project, plot);
 
   if (scene.title) {
     page.drawText(pdfText(scene.title.toUpperCase()), {
@@ -269,6 +292,15 @@ export const drawFreeBodyScene = (
     solidNodeIds: scene.keptNodeIds ? new Set(scene.keptNodeIds) : undefined,
     hideGhost: scene.hideGhost,
   });
+
+  // Los nudos dibujados y sus nombres también ocupan sitio: ninguna cifra se escribe encima.
+  for (const node of project.nodes) {
+    const solid = !scene.keptNodeIds || scene.keptNodeIds.includes(node.id);
+    if (!solid) continue;
+    const at = projection.at(node.x, node.y);
+    placedLabels.push({ x: at.x - 4, y: at.y - 4, width: 8, height: 8 });
+    placedLabels.push({ x: at.x + 5, y: at.y + 3, width: fonts.bold.widthOfTextAtSize(pdfText(node.id), 7.4), height: 8.4 });
+  }
 
   // A focused scene draws the joint itself on top of the ghost, so it never disappears under
   // the bars that meet there.
@@ -306,6 +338,7 @@ export const drawFreeBodyScene = (
       upTo: (memberId) => partial && memberId === partial.memberId
         ? (partial.keep === 'start' ? partial.ratio : 1)
         : 1,
+      labelBoxes: placedLabels,
     });
   }
 
@@ -397,4 +430,17 @@ export const drawFreeBodyScene = (
       });
     });
   }
+};
+
+/**
+ * Alto de una figura de cuerpo libre según la forma del modelo: una viga es una línea y en un
+ * marco de 186 pt quedaba un hueco de dos tercios; un marco o una armadura conservan su alto.
+ */
+export const sceneHeightFor = (context: ReportContext, tall = 186): number => {
+  const ys = context.project.nodes.map((node) => node.y);
+  const xs = context.project.nodes.map((node) => node.x);
+  const rise = Math.max(...ys) - Math.min(...ys);
+  const span = Math.max(1e-9, Math.max(...xs) - Math.min(...xs));
+  const curved = context.project.members.some((member) => member.curve);
+  return !curved && rise <= span * 1e-6 ? Math.min(tall, 138) : tall;
 };
