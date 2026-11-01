@@ -18,10 +18,11 @@ if (typeof window !== 'undefined') {
     globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
       const path = raw.startsWith('/') ? raw : (() => { try { return new URL(raw).pathname; } catch { return ''; } })();
-      if (path.startsWith('/node_modules/')) {
+      if (path.startsWith('/node_modules/') || path.startsWith('/@fs/')) {
         const { readFile } = await import('node:fs/promises');
-        const bytes = await readFile(`${process.cwd()}${decodeURIComponent(path)}`);
-        return new Response(bytes);
+        // `/@fs/` es la ruta absoluta que Vite da a un archivo fuera de la raíz (un node_modules enlazado).
+        const file = path.startsWith('/@fs/') ? decodeURIComponent(path.slice(4)) : `${process.cwd()}${decodeURIComponent(path)}`;
+        return new Response(await readFile(file));
       }
       return original(input, init);
     }) as typeof fetch;

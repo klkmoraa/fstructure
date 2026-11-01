@@ -73,7 +73,7 @@ Corregido en esa entrega: el guardado sin cambios ya no sube la revisión (abrir
 - [x] Portal y voladizo aplican al pórtico de inicio en U2: reparten la carga lateral en los nudos y declaran en la memoria la gravitacional (cargas verticales en vigas, a lo largo de columnas, peso propio) para superponerla aparte; la carga lateral sobre una barra sigue rechazándose.
 - [x] Cross en marcos con liberaciones de momento y articulaciones internas (3EI/L sin transporte, MEP de barra empotrada–articulada, extremos liberados en las ecuaciones de desplazamiento); la clasificación y secciones cuentan n − 1 condiciones en una rótula donde llegan n barras.
 - [ ] Cross en marcos y secciones: barras curvas y resortes siguen fuera (los rechazan con su motivo). Portal/voladizo no convierten viento repartido en columnas a cargas en nudos (lo rechazan).
-- [ ] El PDF aún dibuja los arcos rectos en los cuerpos libres de los métodos (el DCL global y los diagramas N/V/M ya los curvan).
+- [x] Memoria con orden profesional (datos generales → materiales → análisis → resultados → cálculo por tramo → conclusiones con firmas → anexos); arcos curvos en todos los dibujos y tabla por estaciones; etiquetas de cuerpo libre sin encimarse (1-nov-2026).
 
 ## Diseño (de `docs/research/concrete-design`)
 
