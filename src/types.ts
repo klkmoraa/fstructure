@@ -381,7 +381,7 @@ export interface ProjectSettings {
    * Classical procedure selected for explanation and the calculation report.
    * The matrix stiffness solver remains the authoritative analysis engine.
    */
-  solutionMethod?: 'matrix-stiffness' | 'double-integration' | 'portal-method' | 'cantilever-method' | 'three-moment' | 'virtual-work' | 'castigliano-truss' | 'hardy-cross' | 'kani-frame' | 'method-of-sections' | 'method-of-joints' | 'conjugate-beam' | 'moment-distribution-frame';
+  solutionMethod?: 'matrix-stiffness' | 'double-integration' | 'portal-method' | 'cantilever-method' | 'three-moment' | 'virtual-work' | 'castigliano-truss' | 'hardy-cross' | 'kani-frame' | 'method-of-sections' | 'method-of-joints' | 'conjugate-beam' | 'moment-distribution-frame' | 'statics-sections';
   /** Overrides merged over `DEFAULT_PDELTA_CONFIG`; unset fields keep their default. */
   pDeltaConfig?: Partial<PDeltaConfig>;
   /** Cálculo individual; ausente = proyecto completo. */

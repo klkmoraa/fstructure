@@ -13,7 +13,7 @@
 import type { ProjectModel } from '../types';
 import { classifyStructure, type StructureClassification } from './structureClassification';
 
-export type SolutionMethodId = 'matrix-stiffness' | 'double-integration' | 'portal-method' | 'cantilever-method' | 'three-moment' | 'virtual-work' | 'castigliano-truss' | 'hardy-cross' | 'kani-frame' | 'method-of-sections' | 'method-of-joints' | 'conjugate-beam' | 'moment-distribution-frame';
+export type SolutionMethodId = 'matrix-stiffness' | 'double-integration' | 'portal-method' | 'cantilever-method' | 'three-moment' | 'virtual-work' | 'castigliano-truss' | 'hardy-cross' | 'kani-frame' | 'method-of-sections' | 'method-of-joints' | 'conjugate-beam' | 'moment-distribution-frame' | 'statics-sections';
 
 export const DEFAULT_SOLUTION_METHOD: SolutionMethodId = 'matrix-stiffness';
 
@@ -93,6 +93,19 @@ export const SOLUTION_METHODS: readonly SolutionMethodDefinition[] = [
     // when the truss itself is statically determinate — unlike Virtual Work, which needs no such
     // restriction. `solveMethodOfSections` is what actually searches for a valid cut per member.
     applies: (classification) => classification.kind === 'truss' && classification.indeterminacy === 0,
+  },
+  {
+    id: 'statics-sections',
+    labelKey: 'method.staticsSections',
+    // The Method of Sections for bending members: free body of the whole structure, three
+    // equilibrium equations plus one ΣM = 0 per hinge, then a cut per stretch of every member.
+    // Pure statics only closes on a determinate beam or frame; its deeper requirements —
+    // straight members, no springs or links, no closed ring of members, every reaction and
+    // every diagram landing on the solver's — are `solveStaticsSections`'s job.
+    applies: (classification) => (
+      (classification.kind === 'simple-beam' || classification.kind === 'continuous-beam' || classification.kind === 'frame')
+      && classification.indeterminacy === 0
+    ),
   },
   {
     id: 'method-of-joints',

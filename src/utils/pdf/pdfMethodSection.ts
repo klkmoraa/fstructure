@@ -23,6 +23,8 @@ import { solveMethodOfSections, type MethodOfSectionsResult } from '../../analys
 import { solveMethodOfJoints, type MethodOfJointsResult } from '../../analysis-methods/methodOfJoints';
 import { solveCastiglianoTruss, type CastiglianoTrussResult } from '../../analysis-methods/castiglianoTruss';
 import { solveMomentDistributionFrame } from '../../analysis-methods/momentDistributionFrame';
+import { solveStaticsSections } from '../../analysis-methods/staticsSections';
+import { drawStaticsSections } from './pdfMethodStaticsSections';
 import { drawElasticCurve } from './pdfDiagrams';
 import { drawCrossFrameSection } from './pdfMethodCrossFrame';
 import { drawFreeBodyScene, type FreeBodyScene } from './pdfFreeBody';
@@ -97,6 +99,7 @@ export const inspectPdfMethodAvailability = (
   if (shallow.has('method-of-joints')) inspect('method-of-joints', solveMethodOfJoints(project, analysis, combination));
   if (shallow.has('castigliano-truss')) inspect('castigliano-truss', solveCastiglianoTruss(project, analysis, combination));
   if (shallow.has('moment-distribution-frame')) inspect('moment-distribution-frame', solveMomentDistributionFrame(project, analysis, combination));
+  if (shallow.has('statics-sections')) inspect('statics-sections', solveStaticsSections(project, analysis, combination));
   return availability;
 };
 
@@ -1704,5 +1707,14 @@ export const drawMethodSection = (context: ReportContext): boolean => {
     return true;
   }
   if (solutionMethod === 'moment-distribution-frame') return drawCrossFrameSection(context);
+  if (solutionMethod === 'statics-sections') {
+    const solution = solveStaticsSections(project, analysis, combination);
+    if (!solution.applicable) {
+      context.layout.text(pdfText(REJECTION_MESSAGE), 8.3, context.layout.fonts.regular, undefined, 8);
+      return false;
+    }
+    drawStaticsSections(context, solution);
+    return true;
+  }
   return false;
 };

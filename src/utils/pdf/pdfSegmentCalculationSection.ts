@@ -17,7 +17,8 @@ type Segment = MemberResult['diagramSegments'][number];
 
 const clamp = (value: number, lower: number, upper: number): number => Math.max(lower, Math.min(upper, value));
 
-const segmentScene = (
+/** The left free body of one member cut inside one stretch; the Method of Sections reuses it. */
+export const segmentScene = (
   context: ReportContext,
   result: MemberResult,
   segment: Segment,
