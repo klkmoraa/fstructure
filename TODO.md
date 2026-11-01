@@ -68,9 +68,10 @@ Corregido en esa entrega: el guardado sin cambios ya no sube la revisión (abrir
 ## Memoria PDF (31-oct-2026)
 
 - [x] Rediseño: IBM Plex Sans incrustada, fórmulas con índices reales y sin LaTeX crudo, diagramas N/V/M de la estructura, cuerpos libres con cargas combinadas y rotuladas, marca FStructure, el método elegido enseguida del resumen.
+- [x] Método de secciones para vigas y marcos isostáticos (DCL con incógnitas, resultantes, ΣF y ΣM con números, reacciones, cortes N/V/M y M máx donde V = 0), verificado contra el solver.
 - [x] Cross (distribución de momentos) en marcos y vigas hiperestáticas, con desplazamiento lateral por entrepiso y cada barra por secciones; verificado contra el análisis matricial axialmente rígido y el real.
 - [ ] Portal y voladizo rechazan el pórtico de inicio («carga lateral en barras»): revisar si el peso propio axial de las columnas debe contar como tal.
-- [ ] Cross en marcos: barras curvas, liberaciones y resortes siguen fuera (los rechaza con su motivo).
+- [ ] Cross en marcos y secciones: barras curvas, liberaciones y resortes siguen fuera (los rechazan con su motivo); secciones tampoco cubre nudos con rótula donde llegan tres o más barras.
 - [ ] El PDF aún dibuja los arcos rectos en los cuerpos libres de los métodos (el DCL global y los diagramas N/V/M ya los curvan).
 
 ## Diseño (de `docs/research/concrete-design`)
