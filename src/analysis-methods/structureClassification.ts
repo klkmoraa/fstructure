@@ -124,6 +124,38 @@ const beamIndeterminacy = (project: ProjectModel, axisNodeIds: readonly string[]
   return restraints - 2 - conditions;
 };
 
+/**
+ * Equations of condition a frame's hinges and moment releases add, counted node by node.
+ *
+ * At a node where n frame ends meet, every pinned end — a moment release of that end, or all n
+ * of them when the node is an internal hinge — adds one equation (the end moment is zero).
+ * When *every* end at the node is pinned and no support holds its rotation, one of those n
+ * equations repeats the node's own ΣM = 0 and is not independent: n − 1 conditions. That is
+ * what makes a crown hinge joining three members give two conditions, not one, and two members
+ * pinned to each other at a common node the single condition of a hinge — while a single end
+ * pinned at an otherwise rigid joint still gives its one. Truss bars keep the legacy reading
+ * (three internal unknowns, no conditions), so a frame that mixes them reads as before.
+ */
+const frameConditionCount = (project: ProjectModel, members: readonly ProjectModel['members'][number][]): number => {
+  let conditions = 0;
+  for (const node of project.nodes) {
+    let ends = 0;
+    let pinned = 0;
+    for (const member of members) {
+      if (member.type !== 'frame') continue;
+      for (const [nodeId, released] of [[member.i, member.releases?.iMoment], [member.j, member.releases?.jMoment]] as const) {
+        if (nodeId !== node.id) continue;
+        ends += 1;
+        if (node.internalHinge || released) pinned += 1;
+      }
+    }
+    if (!pinned) continue;
+    const rotationHeld = node.support.type === 'fixed' || (node.support.type === 'custom' && Boolean(node.support.restrainR));
+    conditions += pinned === ends && !rotationHeld ? pinned - 1 : pinned;
+  }
+  return conditions;
+};
+
 export const classifyStructure = (project: ProjectModel): StructureClassification => {
   const nodes = project.nodes;
   const members = project.members.filter((member) => member.type !== 'rigid');
@@ -143,16 +175,11 @@ export const classifyStructure = (project: ProjectModel): StructureClassificatio
       ? (members.length === 1 ? 'simple-beam' : 'continuous-beam')
       : members.length > 0 ? 'frame' : 'other';
 
-  const releases = members.reduce((total, member) => (
-    total + Number(Boolean(member.releases?.iMoment)) + Number(Boolean(member.releases?.jMoment))
-  ), 0);
-  const internalHinges = nodes.reduce((total, node) => total + Number(Boolean(node.internalHinge)), 0);
-
   const indeterminacy = kind === 'simple-beam' || kind === 'continuous-beam'
     ? beamIndeterminacy(project, axisNodeIds)
     : kind === 'truss'
       ? members.length + reactionCount - 2 * nodes.length
-      : reactionCount + 3 * members.length - 3 * nodes.length - releases - internalHinges;
+      : reactionCount + 3 * members.length - 3 * nodes.length - frameConditionCount(project, members);
 
   return { kind, reactionCount, indeterminacy, collinear, axisNodeIds: collinear ? axisNodeIds : [], pinJointed };
 };

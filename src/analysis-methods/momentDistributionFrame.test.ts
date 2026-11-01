@@ -230,7 +230,159 @@ describe('Cross (distribución de momentos) en marcos', () => {
     }
   });
 
-  it('se retira ante una articulación interna, una liberación o una barra curva', () => {
+  it('viga empotrada–articulada por una liberación: rigidez 3EI/L, sin transporte y MEP de wL²/8', () => {
+    // A (empotrado) — 6 m, w = 20 kN/m — B (rodillo), con la barra liberada en B: M_A = wL²/8 = 90 kN·m.
+    const w = 20;
+    const L = 6;
+    const propped = model(
+      [node('A', 0, 0, { type: 'fixed' }), node('B', L, 0, { type: 'roller', angleDeg: 90 })],
+      [{ ...frame('AB', 'A', 'B'), releases: { jMoment: true } }],
+      [uniform('AB', 0, -w)],
+    );
+    const solution = solve(propped);
+    const [ab] = solution.members;
+    expect(ab).toMatchObject({ releasedI: false, releasedJ: true });
+    // The isolated propped member already is the answer: no joint left to balance.
+    expect(ab.fixedEndMomentI).toBeCloseTo((w * L * L) / 8, 9);
+    expect(ab.fixedEndMomentJ).toBe(0);
+    expect(ab.femTerms?.[0]).toMatchObject({ kind: 'uniform', momentI: expect.closeTo(90, 9), momentJ: 0 });
+    expect(solution.nonSway.cycleCount).toBe(0);
+    expect(solution.ends.map((end) => [end.stiffnessCoefficient, end.carryOverFactor])).toEqual([[3, 0], [0, 0]]);
+    expect(ab.finalMomentI).toBeCloseTo(90, 9);
+    expect(ab.finalMomentJ).toBe(0);
+    // In the diagram convention the fixed end hogs: M(0) = −wL²/8, and the solver says the same.
+    const analysis = analyzeProject(propped);
+    expect(analysis.memberResults[0].diagramSegments[0].moment[0]).toBeCloseTo(-(w * L * L) / 8, 9);
+    // R_A = 5wL/8 = 75 kN, and the span maximum 9wL²/128 at x = 5L/8 = 3.75 m.
+    expect(ab.shearStart).toBeCloseTo(75, 9);
+    expect(ab.spanMaximum.x).toBeCloseTo(3.75, 9);
+    expect(ab.spanMaximum.value).toBeCloseTo((9 * w * L * L) / 128, 9);
+    expect(solution.verification.rigidResidual).toBeLessThan(1e-8);
+    expect(solution.verification.solverResidual).toBeLessThan(1e-8);
+
+    // The same propping by a fixed support whose member end is released gives the same moments.
+    const onFixed = model(
+      [node('A', 0, 0, { type: 'fixed' }), node('B', L, 0, { type: 'fixed' })],
+      [{ ...frame('AB', 'A', 'B'), releases: { jMoment: true } }],
+      [uniform('AB', 0, -w)],
+    );
+    expect(solve(onFixed).members[0].finalMomentI).toBeCloseTo(90, 9);
+  });
+
+  it('reparte con 3EI/L junto a un extremo liberado: viga empotrada–rodillo–liberada', () => {
+    // A (empotrado) — 6 m, w = 20 — B (rodillo) — 4 m, P = 30 al centro — C (empotrado, barra liberada en C).
+    // En B: K(BA) = 4EI/6, K(BC) = 3EI/4 → FD = 0.470588 y 0.529412. MEP: ±60 en AB; en BC,
+    // empotrada en B y articulada en C, Pab(L + b)/(2L²) = 30·2·2·6/32 = 22.5 y 0.
+    // Desequilibrio −60 + 22.5 = −37.5; se reparten 17.647 y 19.853; transporte 8.824 a A y nada a C.
+    const project = model(
+      [node('A', 0, 0, { type: 'fixed' }), node('B', 6, 0, { type: 'roller', angleDeg: 90 }), node('C', 10, 0, { type: 'fixed' })],
+      [frame('AB', 'A', 'B'), { ...frame('BC', 'B', 'C'), releases: { jMoment: true } }],
+      [uniform('AB', 0, -20), point('BC', -30, 0.5)],
+    );
+    const solution = solve(project);
+    const [ab, bc] = solution.members;
+    expect(bc.fixedEndMomentI).toBeCloseTo(22.5, 9);
+    expect(bc.fixedEndMomentJ).toBe(0);
+    expect(bc.femTerms?.[0]).toMatchObject({ kind: 'point', momentI: expect.closeTo(22.5, 9), momentJ: 0 });
+    const joint = solution.joints.find((entry) => entry.nodeId === 'B')!;
+    const [toA, toC] = joint.endIndices.map((index) => solution.ends[index]);
+    expect(toA.distributionFactor).toBeCloseTo((4 / 6) / (4 / 6 + 3 / 4), 12);
+    expect(toC.distributionFactor).toBeCloseTo((3 / 4) / (4 / 6 + 3 / 4), 12);
+    expect(toC).toMatchObject({ stiffnessCoefficient: 3, carryOverFactor: 0 });
+    // C is a fixed support with every end released: nothing to balance, and it stays at zero.
+    expect(solution.joints.find((entry) => entry.nodeId === 'C')).toMatchObject({ rotates: false, hinged: true });
+    expect(solution.nonSway.cycleCount).toBe(1);
+    const balanceB = 37.5 / (4 / 6 + 3 / 4);
+    expect(ab.finalMomentI).toBeCloseTo(60 + (balanceB * (4 / 6)) / 2, 9);
+    expect(ab.finalMomentJ).toBeCloseTo(-60 + balanceB * (4 / 6), 9);
+    expect(bc.finalMomentI).toBeCloseTo(22.5 + balanceB * (3 / 4), 9);
+    expect(bc.finalMomentJ).toBe(0);
+    expect(ab.finalMomentJ + bc.finalMomentI).toBeCloseTo(0, 9);
+    expect(ab.finalMomentI).toBeCloseTo(68.8235294, 6);
+    expect(solution.verification.solverResidual).toBeLessThan(1e-8);
+  });
+
+  it('pórtico con una base articulada y carga lateral: la liberación y el apoyo articulado coinciden', () => {
+    // A (base de AB) articulada, D empotrada; columnas h = 4 m con I = 1e-4, viga L = 6 m con I = 2e-4.
+    // En B: K(BA) = 3EI_c/h = 15000, K(BC) = 4EI_v/L = 26666.7 → FD = 0.36 y 0.64.
+    const P = 20;
+    const build = (pinnedBy: 'release' | 'support') => model(
+      [node('A', 0, 0, { type: pinnedBy === 'support' ? 'pin' : 'fixed' }), node('B', 0, 4), node('C', 6, 4), node('D', 6, 0, { type: 'fixed' })],
+      [
+        { ...frame('AB', 'A', 'B', 1e-4), ...(pinnedBy === 'release' ? { releases: { iMoment: true } } : {}) },
+        frame('BC', 'B', 'C', 2e-4),
+        frame('DC', 'D', 'C', 1e-4),
+      ],
+      [],
+      [nodal('B', P)],
+    );
+    const released = build('release');
+    const solution = solve(released);
+    const joint = solution.joints.find((entry) => entry.nodeId === 'B')!;
+    expect(joint.endIndices.map((index) => solution.ends[index].distributionFactor)).toEqual([expect.closeTo(0.36, 12), expect.closeTo(0.64, 12)]);
+    // Storey drift form survives the release: one mode, the storey-shear equation.
+    expect(solution.storeyForm).toBe(true);
+    expect(solution.modes).toHaveLength(1);
+    // Sway FEM: −3EIψ/h at B only on AB, −6EIψ/h at both ends of DC; the larger one is the «100».
+    const [mode] = solution.modes;
+    const swayFem = (memberId: string) => solution.ends.flatMap((end, index) => (end.memberId === memberId ? [mode.distribution.initial[index]] : []));
+    expect(swayFem('AB')).toEqual([0, expect.closeTo(50, 9)]);
+    expect(swayFem('DC')).toEqual([expect.closeTo(100, 9), expect.closeTo(100, 9)]);
+    const [ab, , dc] = solution.members;
+    expect(ab.finalMomentI).toBe(0);
+    expect(storeyShear(solution, ['AB', 'DC'], 4)).toBeCloseTo(P, 9);
+    // The fixed column takes more than half the shear: it is the stiffer one.
+    expect((dc.finalMomentI + dc.finalMomentJ) / 4).toBeGreaterThan(P / 2);
+    expect(rigidGap(released, solution)).toBeLessThan(1e-6);
+
+    // Modelled with a pin support instead, Cross balances A with FD = 1 and lands on the same moments.
+    const pinned = solve(build('support'));
+    solution.final.forEach((value, index) => expect(pinned.final[index]).toBeCloseTo(value, 7));
+  });
+
+  it('marco con articulación interna en la viga: la articulación no reparte y su modo vertical entra en las ecuaciones', () => {
+    // Pórtico empotrado de 6 × 4 m con la viga articulada en su centro H; w = 10 kN/m en las dos mitades.
+    const build = (lateral: number) => model(
+      [node('A', 0, 0, { type: 'fixed' }), node('B', 0, 4), { ...node('H', 3, 4), internalHinge: true }, node('C', 6, 4), node('D', 6, 0, { type: 'fixed' })],
+      [frame('AB', 'A', 'B'), frame('BH', 'B', 'H'), frame('HC', 'H', 'C'), frame('DC', 'D', 'C')],
+      [uniform('BH', 0, -10), uniform('HC', 0, -10)],
+      lateral ? [nodal('B', lateral)] : [],
+    );
+    const gravity = solve(build(0));
+    expect(gravity.joints.find((joint) => joint.nodeId === 'H')).toMatchObject({ rotates: false, hinged: true });
+    const [ab, bh, hc, dc] = gravity.members;
+    // Each half is fixed at its column and pinned at H: MEP wL²/8 = 11.25 at the fixed end only.
+    expect(bh.fixedEndMomentI).toBeCloseTo(11.25, 9);
+    expect(bh.fixedEndMomentJ).toBe(0);
+    expect(hc.fixedEndMomentI).toBe(0);
+    expect(hc.fixedEndMomentJ).toBeCloseTo(-11.25, 9);
+    // Two translation modes: the sway, and H moving vertically, which turns both halves.
+    expect(gravity.storeyForm).toBe(false);
+    expect(gravity.modes).toHaveLength(2);
+    // A mano, por simetría: el cortante en H es nulo, así que cada mitad trabaja en voladizo desde su
+    // columna: M = wL²/2 = 45 kN·m en B y en C; la columna lo recibe arriba y lo transporta a la mitad
+    // a su base empotrada (no hay desplazamiento lateral): 22.5 kN·m.
+    expect(bh.finalMomentI).toBeCloseTo(45, 7);
+    expect(ab.finalMomentJ).toBeCloseTo(-45, 7);
+    expect(ab.finalMomentI).toBeCloseTo(-22.5, 7);
+    expect(hc.finalMomentJ).toBeCloseTo(-45, 7);
+    expect(dc.finalMomentJ).toBeCloseTo(45, 7);
+    expect(dc.finalMomentI).toBeCloseTo(22.5, 7);
+    expect(bh.finalMomentJ).toBe(0);
+    expect(hc.finalMomentI).toBe(0);
+    expect(rigidGap(build(0), gravity)).toBeLessThan(1e-6);
+
+    // With a lateral load the answer is no longer symmetric; it still lands on the rigid run.
+    const swayed = solve(build(15));
+    expect(Math.abs(swayed.swayFactors[0])).toBeGreaterThan(1e-3);
+    expect(swayed.members[1].finalMomentJ).toBe(0);
+    expect(rigidGap(build(15), swayed)).toBeLessThan(1e-6);
+    for (const joint of swayed.joints.filter((entry) => entry.rotates)) {
+      expect(joint.endIndices.reduce((sum, index) => sum + swayed.final[index], 0)).toBeCloseTo(joint.appliedMoment, 8);
+    }
+  });
+
+  it('se retira ante una barra curva, una barra de armadura o una liberación de cortante', () => {
     const base = (): ProjectModel => model(
       [node('A', 0, 0, { type: 'fixed' }), node('B', 0, 4), node('C', 6, 4), node('D', 6, 0, { type: 'fixed' })],
       [frame('AB', 'A', 'B'), frame('BC', 'B', 'C'), frame('DC', 'D', 'C')],
@@ -239,17 +391,17 @@ describe('Cross (distribución de momentos) en marcos', () => {
     );
     const outcome = (project: ProjectModel) => solveMomentDistributionFrame(project, analyzeProject(project));
 
-    const hinged = base();
-    hinged.nodes[1] = { ...hinged.nodes[1], internalHinge: true };
-    expect(outcome(hinged)).toEqual({ applicable: false, reasonKey: 'method.rejectedContinuityRequired' });
-
-    const released = base();
-    released.members[1] = { ...released.members[1], releases: { jMoment: true } };
-    expect(outcome(released)).toEqual({ applicable: false, reasonKey: 'method.rejectedContinuityRequired' });
-
     const curved = base();
     curved.members[1] = { ...curved.members[1], curve: { kind: 'circular-arc', bulge: 0.3 } };
     expect(outcome(curved)).toEqual({ applicable: false, reasonKey: 'method.rejectedCurvedMember' });
+
+    const shear = base();
+    shear.members[1] = { ...shear.members[1], releases: { jShear: true, jMoment: true } };
+    expect(outcome(shear)).toEqual({ applicable: false, reasonKey: 'method.rejectedContinuityRequired' });
+
+    const braced = base();
+    braced.members.push({ ...frame('AC', 'A', 'C'), type: 'truss' });
+    expect(outcome(braced)).toEqual({ applicable: false, reasonKey: 'method.rejectedContinuityRequired' });
 
     // A determinate beam has nothing to distribute and is not offered.
     const simple = model(

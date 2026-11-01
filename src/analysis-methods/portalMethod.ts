@@ -24,10 +24,16 @@
  * builds the honest comparison: a lateral-load-only variant of the project, solved exactly by
  * `analyzeProject`, alongside the Portal Method's own base reactions. The gap between them is
  * the point, not a defect — it is what tells a reader how good the approximation is here.
+ *
+ * The method analyses lateral load only. Gravity on the frame — vertical loads across the
+ * beams, loads along the columns, self-weight — is not refused but *declared* (`excluded`): its
+ * effect comes from a separate analysis and is superposed, as in the textbook. A member load
+ * that does push the frame sideways is still refused (`lateralActions.ts`).
  */
-import { analyzeProject, selectedFactors } from '../engine/solver';
+import { analyzeProject } from '../engine/solver';
 import type { LoadCombination, ProjectModel } from '../types';
 import { buildFrameGrid, restrainsRotation, type FrameGrid } from './frameGeometry';
+import { lateralOnlyProject, splitLateralActions, type ExcludedAction } from './lateralActions';
 import { classifyStructure } from './structureClassification';
 
 export interface PortalColumn {
@@ -86,6 +92,8 @@ export interface PortalMethodResult {
   baseChecks: PortalBaseCheck[];
   /** Largest gap between the method's own base reactions and the lateral-only solve, disclosed rather than hidden. */
   reactionGap: { force: number; moment: number };
+  /** Gravity actions of the combination this lateral analysis leaves out, to be superposed separately. */
+  excluded: ExcludedAction[];
 }
 
 interface PortalMethodRejection {
@@ -107,16 +115,12 @@ export const solvePortalMethod = (
   const grid = buildFrameGrid(project);
   if (!grid) return { applicable: false, reasonKey: 'method.rejectedGrid' };
 
-  const factors = selectedFactors(project, combination);
-  const memberLoadActive = project.memberLoads.some((load) => (factors[load.caseId] ?? 0) !== 0);
-  if (memberLoadActive) return { applicable: false, reasonKey: 'method.rejectedMemberLateralLoad' };
-
-  const combinedFx = new Map<string, number>();
-  for (const load of project.nodalLoads) {
-    const factor = factors[load.caseId] ?? 0;
-    if (factor === 0 || load.fx === 0) continue;
-    combinedFx.set(load.nodeId, (combinedFx.get(load.nodeId) ?? 0) + factor * load.fx);
-  }
+  // Lateral joint loads are what this method distributes; gravity (vertical loads on the beams,
+  // loads along the columns, self-weight) is declared and left to a separate analysis; a
+  // genuinely lateral member load is refused. See `lateralActions.ts`.
+  const split = splitLateralActions(project, combination, grid);
+  if (!split.applicable) return split;
+  const combinedFx = split.nodalFx;
 
   const lines = grid.columnLines.length;
   const stories = grid.storyLevels.length - 1;
@@ -147,16 +151,7 @@ export const solvePortalMethod = (
   // Lateral-only variant of the model: the honest oracle to disclose the gap against, isolating
   // exactly the load this method reasons about so the comparison is not muddied by gravity loads
   // the Portal Method never claimed to carry.
-  const lateralOnlyProject: ProjectModel = {
-    ...project,
-    loadCases: [{ id: 'LATERAL', name: 'lateral', category: 'other', active: true }],
-    combinations: [],
-    memberLoads: [],
-    nodalLoads: Array.from(combinedFx, ([nodeId, fx]) => ({
-      id: `LATERAL-${nodeId}`, nodeId, caseId: 'LATERAL', fx, fy: 0, mz: 0,
-    })),
-  };
-  const lateralAnalysis = analyzeProject(lateralOnlyProject, null, { includeEducationTrace: false });
+  const lateralAnalysis = analyzeProject(lateralOnlyProject(project, combinedFx), null, { includeEducationTrace: false });
   if (!lateralAnalysis.success) return { applicable: false, reasonKey: 'method.rejectedGeometry' };
 
   // Column shear, and the moment each column exerts on its two joints — both fixed by the
@@ -268,5 +263,6 @@ export const solvePortalMethod = (
     beams,
     baseChecks,
     reactionGap: { force: forceGap, moment: momentGap },
+    excluded: split.excluded,
   };
 };

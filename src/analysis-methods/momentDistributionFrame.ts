@@ -10,8 +10,15 @@
  *    empotramiento perfecto (MEP) sale de `analyzeProject` sobre la barra aislada empotrada en
  *    ambos extremos — igual que en Kani, nada se re-deriva aquí. Los nudos que pueden girar
  *    (todo nudo cuyo apoyo no restringe el giro: libres, articulados, deslizantes) se equilibran
- *    en cada ciclo con rigidez 4EI/L y factor de transporte ½. Un extremo articulado es un nudo
+ *    en cada ciclo con rigidez 4EI/L y factor de transporte ½. Un apoyo articulado es un nudo
  *    más con factor de distribución 1.
+ *
+ *    Un extremo de barra *liberado* —una liberación de momento de la barra, o cualquier extremo
+ *    que llega a un nudo con articulación interna— no tiene momento: no se equilibra ni recibe
+ *    transporte. El otro extremo de esa barra trabaja con la rigidez modificada 3EI/L y no
+ *    transporta nada, y el MEP de la barra es el de la barra aislada empotrada en su extremo
+ *    continuo y articulada en el liberado (empotrada–articulada), obtenido por el mismo análisis
+ *    aislado. Una barra liberada en sus dos extremos no toma momento: no entra en el reparto.
  * 2. **Modos de desplazamiento.** Con las barras indeformables axialmente, las traslaciones de
  *    nudo compatibles son el espacio nulo de las restricciones (u_j − u_i)·e = 0 de cada barra y
  *    de los apoyos. Cada modo k impone a cada barra un giro de cuerda ψ = (δu_j − δu_i)·n/L, y
@@ -22,7 +29,10 @@
  *        G_k(s) = Σ_barras (M_i + M_j)·ψᵏ + Σ_barras Wᵏ + Σ_nudos P·δuᵏ = 0,
  *
  *    donde Wᵏ, el trabajo de las cargas de barra en el movimiento rígido de esa barra, es menos el
- *    de las reacciones de la barra aislada empotrada: Wᵏ = −[R_i·δu_i + R_j·δu_j + (Mr_i + Mr_j)·ψ].
+ *    de las reacciones de la barra aislada (empotrada, o empotrada–articulada si tiene un extremo
+ *    liberado): Wᵏ = −[R_i·δu_i + R_j·δu_j + (Mr_i + Mr_j)·ψ]. Un extremo liberado tiene M = 0 y
+ *    Mr = 0, así que entra en la ecuación sólo por sus fuerzas. El MEP de desplazamiento de una
+ *    barra empotrada–articulada es −3EIψ/L en su extremo continuo y 0 en el liberado.
  *    En un pórtico ortogonal de entrepisos, tomando como modo k «el entrepiso k y todo lo de
  *    encima se trasladan juntos», esta ecuación es exactamente la de cortante de entrepiso.
  *
@@ -67,18 +77,28 @@ export interface CrossEnd {
   nodeId: string;
   farNodeId: string;
   end: 'i' | 'j';
-  /** Rigidez a flexión 4EI/L. */
+  /**
+   * Rigidez a flexión: 4EI/L, 3EI/L si el otro extremo está liberado, 0 si éste lo está.
+   * `stiffnessCoefficient` es el 4, el 3 o el 0.
+   */
   stiffness: number;
-  /** Factor de distribución; 0 donde el nudo no se equilibra (empotramiento). */
+  stiffnessCoefficient: 4 | 3 | 0;
+  /** Extremo liberado (liberación de momento o articulación interna): su momento es siempre 0. */
+  released: boolean;
+  /** Factor de distribución; 0 donde el nudo no se equilibra (empotramiento) y en un extremo liberado. */
   distributionFactor: number;
+  /** Fracción de lo equilibrado aquí que se transporta al otro extremo: ½, o 0 si aquél está liberado. */
+  carryOverFactor: number;
   /** Índice del otro extremo de la misma barra, que recibe el transporte. */
   partner: number;
 }
 
 export interface CrossJoint {
   nodeId: string;
-  /** Se equilibra en cada ciclo: su apoyo no restringe el giro. */
+  /** Se equilibra en cada ciclo: su apoyo no restringe el giro y algún extremo continuo llega a él. */
   rotates: boolean;
+  /** Todos los extremos que llegan al nudo están liberados: una articulación, sin nada que repartir. */
+  hinged: boolean;
   /** Momento nodal aplicado (antihorario), bajo la combinación. */
   appliedMoment: number;
   endIndices: number[];
@@ -124,10 +144,13 @@ export interface CrossMember {
   EI: number;
   cos: number;
   sin: number;
+  /** Extremos liberados: el MEP es el de la barra empotrada–articulada (o nulo si lo están ambos). */
+  releasedI: boolean;
+  releasedJ: boolean;
   /** MEP de las cargas de la barra, sobre la barra, antihorario positivo. */
   fixedEndMomentI: number;
   fixedEndMomentJ: number;
-  /** Reacciones de la barra aislada empotrada, globales, sobre la barra. */
+  /** Reacciones de la barra aislada (empotrada o empotrada–articulada), globales, sobre la barra. */
   fixedEndReactionI: { fx: number; fy: number; m: number };
   fixedEndReactionJ: { fx: number; fy: number; m: number };
   /** Presente sólo cuando las fórmulas del libro reproducen el MEP del análisis aislado. */
@@ -317,7 +340,7 @@ const distribute = (
     if (largest <= tolerance) break;
     const carryOver = new Array<number>(ends.length).fill(0);
     balance.forEach((value, index) => {
-      if (value !== 0) carryOver[ends[index].partner] += 0.5 * value;
+      if (value !== 0) carryOver[ends[index].partner] += ends[index].carryOverFactor * value;
     });
     for (let index = 0; index < ends.length; index += 1) current[index] += balance[index] + carryOver[index];
     if (cycles.length < RECORDED_CYCLES) cycles.push({ balance, carryOver });
@@ -379,14 +402,20 @@ const momentExtremes = (
 
 /**
  * Términos de fórmula del MEP: carga uniforme en toda la barra (wL²/12) y carga puntual
- * (Pab²/L²). Devuelve `undefined` si la barra lleva otra clase de carga — momento, carga
- * parcial, trapecial — y el MEP se queda sólo con el valor del análisis aislado.
+ * (Pab²/L²), o sus contrapartes de la barra empotrada–articulada (wL²/8 y Pab(L + b)/2L² en el
+ * extremo empotrado) cuando un extremo está liberado. Devuelve `undefined` si la barra lleva otra
+ * clase de carga — momento, carga parcial, trapecial — y el MEP se queda sólo con el valor del
+ * análisis aislado.
  */
 const femTermsOf = (
   project: ProjectModel,
   geometry: MemberGeometry,
   factors: Record<string, number>,
+  releasedI: boolean,
+  releasedJ: boolean,
 ): CrossFemTerm[] | undefined => {
+  // Pinned at both ends: a simply supported member has no end moment, and nothing to print.
+  if (releasedI && releasedJ) return [];
   const { member, length: L, cos: c, sin: s } = geometry;
   const transverse = (x: number, y: number, system: 'global' | 'local'): number => (system === 'local' ? y : -s * x + c * y);
   const terms: CrossFemTerm[] = [];
@@ -412,7 +441,12 @@ const femTermsOf = (
       if (Math.abs(P) <= 1e-14) continue;
       const a = Math.min(1, Math.max(0, load.position ?? 0.5)) * L;
       const b = L - a;
-      terms.push({ kind: 'point', label: load.id, value: P, a, momentI: (P * a * b * b) / (L * L), momentJ: -(P * a * a * b) / (L * L) });
+      const [momentI, momentJ] = releasedJ
+        ? [(P * a * b * (L + b)) / (2 * L * L), 0]
+        : releasedI
+          ? [0, -(P * a * b * (L + a)) / (2 * L * L)]
+          : [(P * a * b * b) / (L * L), -(P * a * a * b) / (L * L)];
+      terms.push({ kind: 'point', label: load.id, value: P, a, momentI, momentJ });
     } else {
       return undefined;
     }
@@ -434,8 +468,8 @@ const femTermsOf = (
       kind: 'uniform',
       label: uniformLabels.join(' + '),
       value: uniform,
-      momentI: (uniform * L * L) / 12,
-      momentJ: -(uniform * L * L) / 12,
+      momentI: releasedI ? 0 : (uniform * L * L) / (releasedJ ? 8 : 12),
+      momentJ: releasedJ ? 0 : -(uniform * L * L) / (releasedI ? 8 : 12),
     });
   }
   return terms;
@@ -454,8 +488,13 @@ export const solveMomentDistributionFrame = (
   if (isBeam && classification.indeterminacy < 1) return reject('method.rejectedStaticallyDeterminate');
   if (!project.members.length) return reject('method.rejectedNotFrame');
 
-  if (project.nodes.some((node) => node.internalHinge)
-    || project.members.some((member) => member.type !== 'frame' || Object.values(member.releases ?? {}).some(Boolean))) {
+  // Moment releases and internal hinges are part of the method (modified stiffness 3EI/L, no
+  // carry-over, propped-cantilever fixed-end moments). A truss bar, a rigid link, or a release of
+  // axial force or shear is not: the members have to be frame members, continuous in u and v.
+  if (project.members.some((member) => (
+    member.type !== 'frame'
+    || Boolean(member.releases?.iAxial || member.releases?.iShear || member.releases?.jAxial || member.releases?.jShear)
+  ))) {
     return reject('method.rejectedContinuityRequired');
   }
 
@@ -481,6 +520,10 @@ export const solveMomentDistributionFrame = (
   if (!analysis.success) return reject('method.rejectedGeometry');
 
   const byId = new Map(project.nodes.map((node) => [node.id, node]));
+  // A pinned end: the member's own moment release, or any end that reaches an internal hinge.
+  const releasedAt = (member: MemberModel, end: 'i' | 'j'): boolean => Boolean(
+    (end === 'i' ? member.releases?.iMoment : member.releases?.jMoment) || byId.get(end === 'i' ? member.i : member.j)?.internalHinge,
+  );
   const geometries: MemberGeometry[] = [];
   for (const member of project.members) {
     const i = byId.get(member.i);
@@ -492,14 +535,16 @@ export const solveMomentDistributionFrame = (
   }
 
   // ---------------------------------------------------------------------------------------
-  // Momentos de empotramiento perfecto: la barra aislada, empotrada en sus dos extremos.
+  // Momentos de empotramiento perfecto: la barra aislada, empotrada en sus dos extremos — o
+  // articulada en el que esté liberado: un nudo empotrado con la barra liberada en él es un
+  // apoyo articulado para esa barra.
   // ---------------------------------------------------------------------------------------
   const isolatedRuns = new Map<string, { localEndForces: number[]; segments: { x0: number; x1: number; moment: number[] }[]; reactionI: { fx: number; fy: number; m: number }; reactionJ: { fx: number; fy: number; m: number } }>();
   for (const { member, i, j } of geometries) {
     const isolated: ProjectModel = {
       ...prepared,
-      nodes: [{ ...i, support: { type: 'fixed' } }, { ...j, support: { type: 'fixed' } }],
-      members: [member],
+      nodes: [{ ...i, support: { type: 'fixed' }, internalHinge: false }, { ...j, support: { type: 'fixed' }, internalHinge: false }],
+      members: [{ ...member, releases: { iMoment: releasedAt(member, 'i'), jMoment: releasedAt(member, 'j') } }],
       memberLoads: prepared.memberLoads.filter((load) => load.memberId === member.id),
       nodalLoads: [],
       prescribedDisplacements: [],
@@ -528,10 +573,22 @@ export const solveMomentDistributionFrame = (
   // ---------------------------------------------------------------------------------------
   const ends: CrossEnd[] = [];
   for (const { member, length } of geometries) {
-    const stiffness = (4 * member.E * member.I) / length;
     const first = ends.length;
-    ends.push({ memberId: member.id, nodeId: member.i, farNodeId: member.j, end: 'i', stiffness, distributionFactor: 0, partner: first + 1 });
-    ends.push({ memberId: member.id, nodeId: member.j, farNodeId: member.i, end: 'j', stiffness, distributionFactor: 0, partner: first });
+    const releasedI = releasedAt(member, 'i');
+    const releasedJ = releasedAt(member, 'j');
+    // 4EI/L with ½ carried over; 3EI/L and nothing carried when the far end is pinned; nothing at
+    // all at a pinned end.
+    const end = (released: boolean, farReleased: boolean): Pick<CrossEnd, 'stiffness' | 'stiffnessCoefficient' | 'released' | 'carryOverFactor'> => {
+      const stiffnessCoefficient = released ? 0 : farReleased ? 3 : 4;
+      return {
+        stiffness: (stiffnessCoefficient * member.E * member.I) / length,
+        stiffnessCoefficient,
+        released,
+        carryOverFactor: released || farReleased ? 0 : 0.5,
+      };
+    };
+    ends.push({ memberId: member.id, nodeId: member.i, farNodeId: member.j, end: 'i', ...end(releasedI, releasedJ), distributionFactor: 0, partner: first + 1 });
+    ends.push({ memberId: member.id, nodeId: member.j, farNodeId: member.i, end: 'j', ...end(releasedJ, releasedI), distributionFactor: 0, partner: first });
   }
   const appliedMoment = new Map<string, number>();
   const nodalForce = new Map<string, { fx: number; fy: number }>();
@@ -547,15 +604,22 @@ export const solveMomentDistributionFrame = (
     const endIndices = ends.flatMap((end, index) => (end.nodeId === node.id ? [index] : []));
     if (!endIndices.length) continue;
     const stiffnessSum = endIndices.reduce((sum, index) => sum + ends[index].stiffness, 0);
-    const rotates = !restrainsRotation(node.support);
+    const hinged = endIndices.every((index) => ends[index].released);
+    // A node where every end is pinned has nothing to balance: its rotation belongs to no member.
+    const rotates = !restrainsRotation(node.support) && !hinged && stiffnessSum > 0;
     if (rotates) for (const index of endIndices) ends[index].distributionFactor = ends[index].stiffness / stiffnessSum;
-    joints.push({ nodeId: node.id, rotates, appliedMoment: appliedMoment.get(node.id) ?? 0, endIndices, stiffnessSum });
+    joints.push({ nodeId: node.id, rotates, hinged, appliedMoment: appliedMoment.get(node.id) ?? 0, endIndices, stiffnessSum });
   }
 
   const members: CrossMember[] = geometries.map(({ member, length, cos, sin }) => {
     const run = isolatedRuns.get(member.id)!;
     const lef = run.localEndForces;
-    const femSum = lef[2] + lef[5];
+    const releasedI = releasedAt(member, 'i');
+    const releasedJ = releasedAt(member, 'j');
+    // A pinned end carries no moment: the isolated run gives round-off there, written as 0.
+    const femI = releasedI ? 0 : lef[2];
+    const femJ = releasedJ ? 0 : lef[5];
+    const femSum = femI + femJ;
     return {
       memberId: member.id,
       nodeI: member.i,
@@ -564,8 +628,10 @@ export const solveMomentDistributionFrame = (
       EI: member.E * member.I,
       cos,
       sin,
-      fixedEndMomentI: lef[2],
-      fixedEndMomentJ: lef[5],
+      releasedI,
+      releasedJ,
+      fixedEndMomentI: femI,
+      fixedEndMomentJ: femJ,
       fixedEndReactionI: run.reactionI,
       fixedEndReactionJ: run.reactionJ,
       isostaticShearStart: lef[1] - femSum / length,
@@ -584,7 +650,7 @@ export const solveMomentDistributionFrame = (
   });
   // The textbook formulas are printed only where they reproduce the isolated analysis exactly.
   members.forEach((entry, index) => {
-    const terms = femTermsOf(prepared, geometries[index], factors);
+    const terms = femTermsOf(prepared, geometries[index], factors, entry.releasedI, entry.releasedJ);
     if (!terms) return;
     const sumI = terms.reduce((sum, term) => sum + term.momentI, 0);
     const sumJ = terms.reduce((sum, term) => sum + term.momentJ, 0);
@@ -637,7 +703,7 @@ export const solveMomentDistributionFrame = (
   // up by the same amount, so only the columns of storey s turn and its virtual-work equation
   // is that storey's shear equation.
   let storeys: CrossSwayMode['storey'][] | undefined;
-  const grid = unitModes.length ? buildFrameGrid(project) : undefined;
+  const grid = unitModes.length ? buildFrameGrid(project, { allowReleases: true }) : undefined;
   if (grid && unitModes.length === grid.storyLevels.length - 1) {
     const drifts: number[][] = [];
     const storeyInfo: NonNullable<CrossSwayMode['storey']>[] = [];
@@ -684,11 +750,18 @@ export const solveMomentDistributionFrame = (
   for (const [index, vector] of unitModes.entries()) {
     const psi = geometries.map((geometry) => chordRotation(vector, geometry));
     unitRotations.push(psi);
-    const unitFem = geometries.map((geometry, m) => (6 * geometry.member.E * geometry.member.I * psi[m]) / geometry.length);
+    // −6EIψ/L at both ends of a continuous member; −3EIψ/L at the continuous end of a member
+    // pinned at the other, 0 at the pinned end. Ends 2m and 2m + 1 again.
+    const unitFem = geometries.flatMap((geometry, m) => {
+      const [endI, endJ] = [ends[2 * m], ends[2 * m + 1]];
+      const both = endI.stiffnessCoefficient === 4 && endJ.stiffnessCoefficient === 4;
+      const value = (coefficient: number) => (coefficient === 0 ? 0 : -((both ? 6 : 3) * geometry.member.E * geometry.member.I * psi[m]) / geometry.length);
+      return [value(endI.stiffnessCoefficient), value(endJ.stiffnessCoefficient)];
+    });
     const largest = Math.max(0, ...unitFem.map((value) => Math.abs(value)));
     if (!(largest > 0)) return reject('method.rejectedGeometry');
     const delta = referenceSwayMoment / largest;
-    const swayFem = unitFem.flatMap((value) => [-value * delta, -value * delta]);
+    const swayFem = unitFem.map((value) => value * delta);
     const distribution = distribute(ends, joints, swayFem, () => 0);
     if (!distribution) return reject('method.rejectedNotConverged');
     modes.push({

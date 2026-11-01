@@ -58,6 +58,15 @@ const nearestIndex = (value: number, levels: readonly number[], tolerance: numbe
 export const restrainsRotation = (support: SupportDefinition): boolean =>
   support.type === 'fixed' || (support.type === 'custom' && Boolean(support.restrainR));
 
+interface FrameGridOptions {
+  /**
+   * Accept internal hinges and moment releases. Portal and Cantilever assume rigid joints and
+   * never pass it; Cross only needs the grid to name its storey drifts — a translation of the
+   * nodes, which a pinned end does not change — and handles the pinned ends itself.
+   */
+  allowReleases?: boolean;
+}
+
 /**
  * Reduces a frame to its storey/column-line grid, or returns `undefined` when the geometry does
  * not honestly reduce to one.
@@ -66,7 +75,7 @@ export const restrainsRotation = (support: SupportDefinition): boolean =>
  * width — a setback or an irregular plan is exactly the case a reader would need to reason about
  * by hand differently than this module does, so it withdraws instead of guessing.
  */
-export const buildFrameGrid = (project: ProjectModel): FrameGrid | undefined => {
+export const buildFrameGrid = (project: ProjectModel, options: FrameGridOptions = {}): FrameGrid | undefined => {
   const nodes = project.nodes;
   if (nodes.length < 4) return undefined;
   const xs = nodes.map((node) => node.x);
@@ -93,7 +102,7 @@ export const buildFrameGrid = (project: ProjectModel): FrameGrid | undefined => 
   const grid = nodeGrid as string[][];
 
   // No internal hinge anywhere in the grid: the Portal Method assumes fully rigid joints.
-  if (nodes.some((node) => node.internalHinge)) return undefined;
+  if (!options.allowReleases && nodes.some((node) => node.internalHinge)) return undefined;
 
   const columns: (FrameColumn | undefined)[][] = columnLines.map(() => new Array(storyLevels.length).fill(undefined));
   const beams: (FrameBeam | undefined)[][] = columnLines.slice(0, -1).map(() => new Array(storyLevels.length).fill(undefined));
@@ -108,7 +117,8 @@ export const buildFrameGrid = (project: ProjectModel): FrameGrid | undefined => 
   };
 
   const rigidOrReleased = (member: ProjectModel['members'][number]): boolean => (
-    member.type !== 'frame' || Boolean(member.releases?.iMoment) || Boolean(member.releases?.jMoment)
+    member.type !== 'frame'
+    || (!options.allowReleases && (Boolean(member.releases?.iMoment) || Boolean(member.releases?.jMoment)))
   );
 
   for (let c = 0; c < columnLines.length; c += 1) {

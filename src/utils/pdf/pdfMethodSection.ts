@@ -27,6 +27,7 @@ import { solveStaticsSections } from '../../analysis-methods/staticsSections';
 import { drawStaticsSections } from './pdfMethodStaticsSections';
 import { drawElasticCurve } from './pdfDiagrams';
 import { drawCrossFrameSection } from './pdfMethodCrossFrame';
+import { drawLateralScope } from './pdfMethodLateralScope';
 import { drawFreeBodyScene, sceneHeightFor, type FreeBodyScene } from './pdfFreeBody';
 import {
   cantileverScenes,
@@ -1282,6 +1283,7 @@ const drawPortalMethod = (context: ReportContext, solution: PortalMethodResult):
     + 'creyéndola exacta.',
     8.3, fonts.regular, palette.ink, 8,
   );
+  drawLateralScope(context, solution.excluded, 'Método del Portal');
 
   layout.heading('5.1 Retícula y cortante por planta', 2);
   const stories = solution.grid.storyLevels.length - 1;
@@ -1466,6 +1468,7 @@ const drawCantileverMethod = (context: ReportContext, solution: CantileverMethod
     + 'modelo lateral exacto en vez de exigir que coincidan.',
     8.3, fonts.regular, palette.ink, 8,
   );
+  drawLateralScope(context, solution.excluded, 'Método del Voladizo');
 
   layout.heading('5.1 Columnas: axial por flexión, cortante y momento', 2);
   layout.text(

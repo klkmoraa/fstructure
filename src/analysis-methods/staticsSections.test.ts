@@ -156,6 +156,47 @@ describe('método de secciones para vigas y marcos isostáticos', () => {
     expect(momentAt(solution, 'V1', 3)).toBeCloseTo(0, 9);
   });
 
+  it('articulación donde concurren tres barras: n − 1 = 2 condiciones, y la estática se cierra', () => {
+    // Pórtico de dos crujías con la articulación C en lo alto de la columna central: llegan a C la
+    // viga izquierda, la derecha y la columna G–C. Apoyos: pasador en A y en G, rodillo en E.
+    // g = 5 + 3·5 − 3·6 − (3 − 1) = 0; con una sola condición por la articulación se leería g = 1.
+    const project = model({
+      nodes: [
+        node('A', 0, 0, { type: 'pin' }), node('B', 0, 4), node('C', 4, 4, { type: 'none' }, { internalHinge: true }),
+        node('D', 8, 4), node('E', 8, 0, { type: 'roller', angleDeg: 90 }), node('G', 4, 0, { type: 'pin' }),
+      ],
+      members: [bar('C1', 'A', 'B'), bar('V1', 'B', 'C'), bar('V2', 'C', 'D'), bar('C2', 'D', 'E'), bar('C3', 'G', 'C')],
+      memberLoads: [uniform('q1', 'V1', -10), uniform('q2', 'V2', -10)],
+      nodalLoads: [nodal('H', 'B', 20, 0)],
+    });
+    expect(applicableMethods(project).map((method) => method.id)).toContain('statics-sections');
+    const solution = solve(project);
+    expect(solution.classification.indeterminacy).toBe(0);
+    // A mano. Parte D–E respecto a C: 4·R_y(E) − 40·2 = 0 → R_y(E) = 20. La columna G–C, biarticulada
+    // y sin carga, sólo toma axial: R_x(G) = 0. ΣFx: R_x(A) = −20. Parte A–B respecto a C:
+    // 4·R_x(A) − 4·R_y(A) + 40·2 = 0 → R_y(A) = 0. ΣFy: R_y(G) = 80 − 20 − 0 = 60.
+    expect(reaction(solution, 'R_y(E)')).toBeCloseTo(20, 9);
+    expect(reaction(solution, 'R_x(G)')).toBeCloseTo(0, 9);
+    expect(reaction(solution, 'R_x(A)')).toBeCloseTo(-20, 9);
+    expect(reaction(solution, 'R_y(A)')).toBeCloseTo(0, 9);
+    expect(reaction(solution, 'R_y(G)')).toBeCloseTo(60, 9);
+    // Tres ecuaciones de articulación en C, una por barra; dos independientes y la tercera, comprobación.
+    const hinges = solution.equations.filter((equation) => equation.kind === 'hinge');
+    expect(hinges.map((equation) => equation.release)).toEqual([
+      { memberId: 'V1', nodeId: 'C' }, { memberId: 'V2', nodeId: 'C' }, { memberId: 'C3', nodeId: 'C' },
+    ]);
+    expect(hinges.filter((equation) => equation.independent)).toHaveLength(2);
+    expect(solution.equations.filter((equation) => equation.independent)).toHaveLength(5);
+    // Momento nulo en los tres extremos que llegan a C; 20·4 = 80 en la cabeza de la columna A–B y
+    // wL²/8 = 20 al centro de C–D, que trabaja como viga simple.
+    expect(momentAt(solution, 'V1', 4)).toBeCloseTo(0, 9);
+    expect(momentAt(solution, 'V2', 0)).toBeCloseTo(0, 9);
+    expect(momentAt(solution, 'C3', 4)).toBeCloseTo(0, 9);
+    expect(Math.abs(momentAt(solution, 'C1', 4))).toBeCloseTo(80, 9);
+    expect(momentAt(solution, 'V2', 2)).toBeCloseTo(20, 9);
+    expect(solution.diagramResidual.moment).toBeLessThan(1e-6);
+  });
+
   it('rodillo inclinado, barra declarada al revés, trapecio local parcial, proyección horizontal y par', () => {
     // No hay cifra a mano aquí: lo que se prueba es que cada lectura de las cargas coincide con
     // la del solver (reacciones, auditoría de cargas y diagramas), o el método se rechazaría.

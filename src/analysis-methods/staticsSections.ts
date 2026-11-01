@@ -617,7 +617,11 @@ export const solveStaticsSections = (
     buildEquation('moment', allNodeIds, allMemberIds, nodeById.get(centreId)),
   ];
 
-  // One ΣM = 0 per released member end, written for the side with fewer unknowns.
+  // One ΣM = 0 per released member end, written for the side with fewer unknowns. At a hinge
+  // where n members meet that is n equations, the moment at the hinge end of each member about
+  // the hinge, but only n − 1 of them are independent: together they add up to the node's own
+  // ΣM = 0, already implied by the global sums. The greedy choice below keeps n − 1 and the
+  // last one stays as a check, exactly as `classifyStructure` counts n − 1 conditions there.
   for (const member of project.members) {
     for (const end of ['i', 'j'] as const) {
       const nodeId = end === 'i' ? member.i : member.j;

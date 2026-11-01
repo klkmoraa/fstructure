@@ -98,7 +98,8 @@ export const SOLUTION_METHODS: readonly SolutionMethodDefinition[] = [
     id: 'statics-sections',
     labelKey: 'method.staticsSections',
     // The Method of Sections for bending members: free body of the whole structure, three
-    // equilibrium equations plus one ΣM = 0 per hinge, then a cut per stretch of every member.
+    // equilibrium equations plus one ΣM = 0 per hinge (n − 1 where n members meet at it), then a
+    // cut per stretch of every member.
     // Pure statics only closes on a determinate beam or frame; its deeper requirements —
     // straight members, no springs or links, no closed ring of members, every reaction and
     // every diagram landing on the solver's — are `solveStaticsSections`'s job.
@@ -121,7 +122,8 @@ export const SOLUTION_METHODS: readonly SolutionMethodDefinition[] = [
     labelKey: 'method.portalMethod',
     // A deliberately approximate method for lateral load on a rectangular building frame. Its
     // deeper requirements — a clean storey/column-line grid, no lateral load on the members
-    // themselves, an actual lateral load to narrate — can only be checked by trying to reduce
+    // themselves (gravity on them is declared and left to a separate analysis, not refused), an
+    // actual lateral load to narrate — can only be checked by trying to reduce
     // the frame to that grid, which is `solvePortalMethod`'s job; the selector only offers it
     // where the shallow shape (a frame) makes that attempt plausible.
     applies: (classification) => classification.kind === 'frame',
@@ -162,9 +164,10 @@ export const SOLUTION_METHODS: readonly SolutionMethodDefinition[] = [
     // per independent joint-translation mode of the axially rigid frame, superposed so the
     // virtual work of every mode vanishes (the storey-shear equation on an orthogonal frame). A
     // beam is a frame with no sway modes, so indeterminate beams — fixed ends included, which
-    // `hardy-cross` rejects — are offered too. Its deeper requirements (rigid joints, straight
-    // members, no springs or imposed motions) and its proof against an axially rigid matrix run
-    // are `solveMomentDistributionFrame`'s job.
+    // `hardy-cross` rejects — are offered too. Moment releases and internal hinges are part of
+    // it (3EI/L, no carry-over, propped fixed-end moments). Its deeper requirements (frame
+    // members continuous in force, straight members, no springs or imposed motions) and its
+    // proof against an axially rigid matrix run are `solveMomentDistributionFrame`'s job.
     applies: (classification) => (
       classification.kind === 'frame'
       || ((classification.kind === 'simple-beam' || classification.kind === 'continuous-beam') && classification.indeterminacy >= 1)

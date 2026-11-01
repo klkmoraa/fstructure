@@ -55,4 +55,40 @@ describe('memoria con Cross en marcos', () => {
     expect(artifact.methodAvailability['hardy-cross'].available).toBe(false);
     expect(isPdf(artifact.bytes)).toBe(true);
   }, 30_000);
+
+  it('narra un marco con articulación interna en la viga y una base liberada', async () => {
+    const frame = (id: string, i: string, j: string) => ({ id, i, j, type: 'frame' as const, E: 2e8, A: 0.01, I: 1e-4 });
+    const project: ProjectModel = {
+      ...createBlankProject(),
+      nodes: [
+        { id: 'A', x: 0, y: 0, support: { type: 'fixed' } },
+        { id: 'B', x: 0, y: 4, support: { type: 'none' } },
+        { id: 'H', x: 3, y: 4, support: { type: 'none' }, internalHinge: true },
+        { id: 'C', x: 6, y: 4, support: { type: 'none' } },
+        { id: 'D', x: 6, y: 0, support: { type: 'fixed' } },
+      ],
+      members: [{ ...frame('AB', 'A', 'B'), releases: { iMoment: true } }, frame('BH', 'B', 'H'), frame('HC', 'H', 'C'), frame('DC', 'D', 'C')],
+      memberLoads: [
+        { id: 'w1', memberId: 'BH', caseId: 'LC1', type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1, qxStart: 0, qxEnd: 0, qyStart: -10, qyEnd: -10 },
+        { id: 'P', memberId: 'HC', caseId: 'LC1', type: 'point', coordinateSystem: 'global', lengthBasis: 'real', start: 0.5, end: 0.5, position: 0.5, px: 0, py: -20 },
+      ],
+      nodalLoads: [{ id: 'H1', nodeId: 'B', caseId: 'LC1', fx: 12, fy: 0, mz: 0 }],
+    };
+    const artifact = await report(project, { LC1: 1 }, 'Caso 1');
+    expect(artifact.methodAvailability['moment-distribution-frame']).toEqual({ available: true });
+    expect(artifact.solutionMethod).toBe('moment-distribution-frame');
+    expect(isPdf(artifact.bytes)).toBe(true);
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const document = await pdfjs.getDocument({ data: artifact.bytes.slice(), useWorkerFetch: false }).promise;
+    const pages: string[] = [];
+    for (let number = 1; number <= document.numPages; number += 1) {
+      const content = await (await document.getPage(number)).getTextContent();
+      pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '));
+    }
+    const text = pages.join(' ').replace(/\s+/g, ' ');
+    expect(text).toContain('Procedimiento: Cross');
+    expect(text).toContain('Extremos liberados');
+    expect(text).toContain('H (articulación)');
+    expect(text).toContain('3EI/L');
+  }, 30_000);
 });

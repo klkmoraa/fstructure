@@ -622,9 +622,22 @@ export const drawStaticsSections = (context: ReportContext, solution: StaticsSec
   }
   const dependent = equations.filter((equation) => !equation.independent && equation.kind === 'hinge').length;
   if (dependent) {
+    // Where three or more members meet at a hinge, the repeated equation is not «the other side»
+    // of a two-member hinge but the node's own ΣM = 0: n ends, n − 1 independent conditions.
+    const endsAtHinge = new Map<string, number>();
+    for (const equation of equations) {
+      if (equation.kind === 'hinge' && equation.release) {
+        endsAtHinge.set(equation.release.nodeId, (endsAtHinge.get(equation.release.nodeId) ?? 0) + 1);
+      }
+    }
+    const crowded = [...endsAtHinge].filter(([, count]) => count >= 3);
     layout.note(
       `${dependent === 1 ? 'Otra ecuación de articulación' : `Otras ${dependent} ecuaciones de articulación`} (el mismo punto visto `
-      + 'desde el otro lado) no aporta información nueva; se usa sólo como comprobación y también se cumple.',
+      + 'desde el otro lado) no aporta información nueva; se usa sólo como comprobación y también se cumple.'
+      + crowded.map(([nodeId, count]) => (
+        ` En ${nodeId} concurren ${count} barras: de sus ${count} ecuaciones de momento nulo sólo ${count - 1} son independientes, `
+        + 'porque juntas equivalen al equilibrio de momentos del propio nudo, que las sumas globales ya imponen.'
+      )).join(''),
       8,
     );
   }

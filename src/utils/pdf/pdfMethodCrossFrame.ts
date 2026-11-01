@@ -135,40 +135,56 @@ const femWorked = (context: ReportContext, member: CrossMember): { caption: stri
   const valuesI: string[] = [];
   const valuesJ: string[] = [];
   const described: string[] = [];
+  // Fixed–fixed, or fixed at one end and pinned at the released one: the propped-cantilever
+  // formulas, written only at the fixed end (the pinned one is zero, said once below).
+  const proppedAtI = member.releasedJ && !member.releasedI;
+  const proppedAtJ = member.releasedI && !member.releasedJ;
   let point = 0;
   for (const term of terms) {
     if (term.kind === 'uniform') {
       const w = dimensionalFigure(project, term.value, 1, -1);
-      symbolI.push('wL^2/12');
-      symbolJ.push('wL^2/12');
-      valuesI.push(`(${w})(${L})^2/12`);
-      valuesJ.push(`(${w})(${L})^2/12`);
+      const divisor = proppedAtI || proppedAtJ ? 8 : 12;
+      symbolI.push(`wL^2/${divisor}`);
+      symbolJ.push(`wL^2/${divisor}`);
+      valuesI.push(`(${w})(${L})^2/${divisor}`);
+      valuesJ.push(`(${w})(${L})^2/${divisor}`);
       described.push(`w = ${w} ${dimensionalUnit(project, 1, -1)} (${term.label})`);
     } else {
       point += 1;
       const P = dimensionalFigure(project, term.value, 1, 0);
       const a = lengthFigure(context, term.a ?? 0);
       const b = lengthFigure(context, member.length - (term.a ?? 0));
-      symbolI.push(`P_${point} a_${point} b_${point}^2/L^2`);
-      symbolJ.push(`P_${point} a_${point}^2 b_${point}/L^2`);
-      valuesI.push(`(${P})(${a})(${b})^2/(${L})^2`);
-      valuesJ.push(`(${P})(${a})^2(${b})/(${L})^2`);
+      if (proppedAtI) {
+        // Pinned at j: c = b, the distance from the load to the pinned end.
+        symbolI.push(`P_${point} a_${point} b_${point}(L + b_${point})/(2L^2)`);
+        valuesI.push(`(${P})(${a})(${b})((${L}) + (${b}))/(2(${L})^2)`);
+      } else if (proppedAtJ) {
+        // Pinned at i: c = a.
+        symbolJ.push(`P_${point} a_${point} b_${point}(L + a_${point})/(2L^2)`);
+        valuesJ.push(`(${P})(${a})(${b})((${L}) + (${a}))/(2(${L})^2)`);
+      } else {
+        symbolI.push(`P_${point} a_${point} b_${point}^2/L^2`);
+        symbolJ.push(`P_${point} a_${point}^2 b_${point}/L^2`);
+        valuesI.push(`(${P})(${a})(${b})^2/(${L})^2`);
+        valuesJ.push(`(${P})(${a})^2(${b})/(${L})^2`);
+      }
       described.push(`P${point} = ${P} ${dimensionalUnit(project, 1, 0)} a ${a} ${unitFor(project, 'length')} de i (${term.label})`);
     }
   }
   const unit = unitFor(project, 'moment');
+  const pinned = proppedAtI ? `; extremo j (${member.nodeJ}) liberado: MEP_j = 0` : proppedAtJ ? `; extremo i (${member.nodeI}) liberado: MEP_i = 0` : '';
   return {
-    caption: `Barra ${member.memberId} (L = ${L} ${unitFor(project, 'length')}): ${described.join('; ')}.`,
+    caption: `Barra ${member.memberId} (L = ${L} ${unitFor(project, 'length')}): ${described.join('; ')}${pinned}.`,
     equations: [
-      {
+      ...(proppedAtJ ? [] : [{
         lhs: `MEP_i(${member.memberId})`, symbolic: symbolI.join(' + '), substituted: valuesI.join(' + '),
         result: momentFigure(context, member.fixedEndMomentI, scale), unit,
-      },
-      {
+      }]),
+      ...(proppedAtI ? [] : [{
         // The j end carries the opposite sense: −(Σ …), written once rather than term by term.
         lhs: `MEP_j(${member.memberId})`, symbolic: `−(${symbolJ.join(' + ')})`, substituted: `−(${valuesJ.join(' + ')})`,
         result: momentFigure(context, member.fixedEndMomentJ, scale), unit,
-      },
+      }]),
     ],
   };
 };
@@ -212,43 +228,70 @@ const memberScenes = (context: ReportContext, solution: CrossFrameResult): FreeB
   });
 };
 
-const drawHypotheses = (context: ReportContext): void => {
+/** Barras con algún extremo liberado, y los nudos donde todos lo están, para nombrarlos. */
+const releasedParts = (solution: CrossFrameResult): { members: CrossMember[]; hinges: CrossJoint[] } => ({
+  members: solution.members.filter((member) => member.releasedI || member.releasedJ),
+  hinges: solution.joints.filter((joint) => joint.hinged),
+});
+
+const drawHypotheses = (context: ReportContext, solution: CrossFrameResult): void => {
+  const released = releasedParts(solution);
+  const anyReleased = released.members.length > 0;
   context.layout.heading('5.1 Hipótesis', 2);
   context.layout.bullets([
     'Barras axialmente indeformables: ninguna barra cambia de longitud, así que sus dos extremos sólo pueden '
       + 'desplazarse uno respecto del otro en dirección perpendicular a la barra.',
-    'EI constante en cada barra, nudos rígidos, pequeños desplazamientos y análisis de primer orden.',
+    `EI constante en cada barra, nudos rígidos${anyReleased ? ' salvo los extremos liberados' : ''}, pequeños `
+      + 'desplazamientos y análisis de primer orden.',
     'Rigidez de cada extremo 4EI/L y factor de transporte 1/2. Los nudos cuyo apoyo no restringe el giro (libres, '
-      + 'articulados o deslizantes) se equilibran en cada ciclo; un extremo articulado es un nudo con factor de '
+      + 'articulados o deslizantes) se equilibran en cada ciclo; un apoyo articulado es un nudo con factor de '
       + 'distribución 1. Los empotramientos no se equilibran: sólo reciben transporte.',
+    ...(anyReleased
+      ? ['Extremos liberados (liberación de momento de la barra o articulación interna del nudo): su momento es nulo, '
+        + 'no se equilibran ni reciben transporte. El otro extremo de esa barra tiene la rigidez modificada 3EI/L y '
+        + 'no transporta nada, y los momentos de empotramiento de la barra son los de la barra empotrada en el '
+        + 'extremo continuo y articulada en el liberado. Una barra liberada en sus dos extremos no toma momento. '
+        + `Aquí: ${released.members.map((member) => `${member.memberId} (${[member.releasedI ? member.nodeI : '', member.releasedJ ? member.nodeJ : ''].filter(Boolean).join(' y ')})`).join(', ')}`
+        + (released.hinges.length ? `; articulación en ${released.hinges.map((joint) => joint.nodeId).join(', ')}.` : '.')]
+      : []),
     'Signos: momentos de extremo sobre la barra, antihorarios positivos; giro de cuerda, antihorario positivo. '
-      + 'Un desplazamiento relativo de los extremos produce en ambos un momento de empotramiento −6EI(giro)/L.',
+      + 'Un desplazamiento relativo de los extremos produce en ambos un momento de empotramiento −6EI(giro)/L'
+      + (anyReleased ? '; en una barra con un extremo liberado, −3EI(giro)/L en el continuo y 0 en el liberado.' : '.'),
   ]);
 };
 
 const drawStiffness = (context: ReportContext, solution: CrossFrameResult, memberById: ReadonlyMap<string, CrossMember>): void => {
   const { layout, project } = context;
   layout.heading('5.2 Rigideces y factores de distribución', 2);
+  const anyReleased = solution.ends.some((end) => end.released);
   prose(context, 'Por nudo, la rigidez K = 4EI/L de cada extremo que concurre en él y su factor de distribución '
-    + 'FD = K/ΣK. Un nudo que no gira tiene FD = 0 en todos sus extremos.');
+    + 'FD = K/ΣK. Un nudo que no gira tiene FD = 0 en todos sus extremos.'
+    + (anyReleased
+      ? ' Un extremo cuya barra está liberada en el otro extremo tiene K = 3EI/L; un extremo liberado, K = 0, y un '
+        + 'nudo donde todos los extremos están liberados es una articulación: no reparte nada.'
+      : ''));
   const stiffnessUnit = dimensionalUnit(project, 1, 1);
+  const jointLabel = (joint: CrossJoint) => (joint.rotates ? joint.nodeId : `${joint.nodeId} (${joint.hinged ? 'articulación' : 'empotrado'})`);
+  const formula = (coefficient: number) => (coefficient === 0 ? 'liberado' : `${coefficient}EI/L`);
   layout.table(
     [
       { header: 'Nudo', width: 80 },
       { header: 'Barra', width: 50 },
       { header: `EI (${dimensionalUnit(project, 1, 2)})`, ...NUMERIC },
       { header: `L (${unitFor(project, 'length')})`, ...NUMERIC },
-      { header: `K = 4EI/L (${stiffnessUnit})`, ...NUMERIC },
+      ...(anyReleased ? [{ header: 'Rigidez', width: 50 }] : []),
+      { header: anyReleased ? `K (${stiffnessUnit})` : `K = 4EI/L (${stiffnessUnit})`, ...NUMERIC },
       { header: 'FD', ...NUMERIC },
     ],
     solution.joints.flatMap((joint) => joint.endIndices.map((index) => {
       const end = solution.ends[index];
       const member = memberById.get(end.memberId)!;
       return [
-        joint.rotates ? joint.nodeId : `${joint.nodeId} (empotrado)`,
+        jointLabel(joint),
         end.memberId,
         dimensionalFigure(project, member.EI, 1, 2),
         lengthFigure(context, member.length),
+        ...(anyReleased ? [formula(end.stiffnessCoefficient)] : []),
         dimensionalFigure(project, end.stiffness, 1, 1),
         joint.rotates ? number(end.distributionFactor, 4) : '0',
       ];
@@ -262,7 +305,7 @@ const drawStiffness = (context: ReportContext, solution: CrossFrameResult, membe
   const stiffness = (value: number) => dimensionalFigure(project, value, 1, 1, busiest.stiffnessSum);
   drawWorked(context, `Nudo ${busiest.nodeId}, como ejemplo (rigideces en ${stiffnessUnit}):`, [
     {
-      lhs: `ΣK(${busiest.nodeId})`, symbolic: 'Σ 4EI/L',
+      lhs: `ΣK(${busiest.nodeId})`, symbolic: busiest.endIndices.some((index) => solution.ends[index].stiffnessCoefficient !== 4) ? 'Σ K' : 'Σ 4EI/L',
       substituted: busiest.endIndices.map((index) => stiffness(solution.ends[index].stiffness)).join(' + '),
       result: stiffness(busiest.stiffnessSum), unit: stiffnessUnit,
     },
@@ -281,7 +324,12 @@ const drawFixedEndMoments = (context: ReportContext, solution: CrossFrameResult)
   prose(context, 'Cada barra aislada y empotrada en sus dos extremos, bajo sus propias cargas de esta combinación (peso '
     + 'propio incluido). Donde la carga es uniforme en toda la barra o puntual, el valor se escribe además con la '
     + 'fórmula del libro; w y P se miden perpendiculares a la barra, positivos hacia −y local (hacia abajo en una viga '
-    + 'dibujada de izquierda a derecha), con a y b medidos desde los extremos i y j.');
+    + 'dibujada de izquierda a derecha), con a y b medidos desde los extremos i y j.'
+    + (solution.members.some((member) => member.releasedI || member.releasedJ)
+      ? ' Una barra con un extremo liberado se aísla empotrada en el continuo y articulada en el liberado: su MEP es '
+        + 'wL²/8, o Pab(L + c)/(2L²) con c la distancia de la carga al extremo articulado, en el extremo empotrado, y '
+        + 'nulo en el articulado.'
+      : ''));
   layout.table(
     [
       { header: 'Barra', width: 54 },
@@ -352,17 +400,24 @@ const drawSway = (context: ReportContext, solution: CrossFrameResult, memberById
         : `Traslación (x, y) de los nudos, en ${lengthUnit}: ${mode.translations
           .map((entry) => `${entry.nodeId} (${lengthFigure(context, entry.ux)}, ${lengthFigure(context, entry.uy)})`)
           .join('; ')}.`));
-    drawWorked(context, 'Giro de cuerda y momento de empotramiento por desplazamiento, igual en ambos extremos:',
-      mode.chordRotations.map((entry) => {
-        const member = memberById.get(entry.memberId)!;
-        return {
-          lhs: `MEP_Δ(${entry.memberId})`,
-          symbolic: '−6EIψ/L',
-          substituted: `−6(${dimensionalFigure(project, member.EI, 1, 2)})(${number(entry.psi, 5)})/(${lengthFigure(context, member.length)})`,
-          result: momentFigure(context, (-6 * member.EI * entry.psi) / member.length),
-          unit: momentUnit,
-        };
-      }));
+    const anyReleased = solution.members.some((member) => member.releasedI || member.releasedJ);
+    drawWorked(context, anyReleased
+      ? 'Giro de cuerda y momento de empotramiento por desplazamiento: igual en ambos extremos de una barra continua; '
+        + 'en una barra con un extremo liberado, sólo en el continuo (una barra liberada en los dos no toma momento):'
+      : 'Giro de cuerda y momento de empotramiento por desplazamiento, igual en ambos extremos:',
+    mode.chordRotations.flatMap((entry) => {
+      const member = memberById.get(entry.memberId)!;
+      if (member.releasedI && member.releasedJ) return [];
+      const coefficient = member.releasedI || member.releasedJ ? 3 : 6;
+      const at = member.releasedJ ? `, ${member.nodeI}` : member.releasedI ? `, ${member.nodeJ}` : '';
+      return [{
+        lhs: `MEP_Δ(${entry.memberId}${at})`,
+        symbolic: `−${coefficient}EIψ/L`,
+        substituted: `−${coefficient}(${dimensionalFigure(project, member.EI, 1, 2)})(${number(entry.psi, 5)})/(${lengthFigure(context, member.length)})`,
+        result: momentFigure(context, (-coefficient * member.EI * entry.psi) / member.length),
+        unit: momentUnit,
+      }];
+    }));
     drawCrossTable(context, solution, mode.distribution, 'MEP despl.');
   }
 
@@ -398,8 +453,11 @@ const drawSway = (context: ReportContext, solution: CrossFrameResult, memberById
   } else {
     prose(context, 'Ecuación de trabajo virtual de cada modo k: el marco se mueve como mecanismo según ese modo (barras '
       + 'rígidas, nudos articulados) y el trabajo de todas las acciones tiene que ser nulo. W es el trabajo de las '
-      + 'cargas de cada barra, igual a menos el de las reacciones de esa barra empotrada; con el modo normalizado a '
-      + `desplazamiento unitario cada término queda en ${forceUnit}.`);
+      + 'cargas de cada barra, igual a menos el de las reacciones de esa barra empotrada'
+      + (solution.ends.some((end) => end.released)
+        ? ' (empotrada–articulada si tiene un extremo liberado; ahí M = 0 y Mr = 0, y el extremo entra sólo por sus fuerzas)'
+        : '')
+      + `; con el modo normalizado a desplazamiento unitario cada término queda en ${forceUnit}.`);
     drawRelation(context, 'G_k = Σ(M_i + M_j)ψ^k + ΣW^k + ΣP·δu^k = 0');
     drawRelation(context, 'W^k = −[R_i·δu_i^k + R_j·δu_j^k + (Mr_i + Mr_j)ψ^k]');
     const reference = Math.max(1e-9, ...solution.equations.flatMap((equation) => [
@@ -615,6 +673,7 @@ export const drawCrossFrame = (context: ReportContext, solution: CrossFrameResul
   const { layout } = context;
   const memberById = new Map(solution.members.map((member) => [member.memberId, member]));
   const hasSway = solution.modes.length > 0;
+  const anyReleased = solution.ends.some((end) => end.released);
 
   layout.heading('5. Procedimiento: Cross (distribución de momentos) en marcos');
   layout.text(
@@ -622,6 +681,10 @@ export const drawCrossFrame = (context: ReportContext, solution: CrossFrameResul
     + 'propias cargas. Después se sueltan los nudos que pueden girar: cada uno reparte su desequilibrio entre las '
     + 'barras que concurren en él, en proporción a su rigidez, y transmite la mitad de lo repartido al otro extremo de '
     + 'cada barra. Ciclo tras ciclo el desequilibrio desaparece, sin resolver un sistema de ecuaciones. '
+    + (anyReleased
+      ? 'Los extremos liberados de este modelo (articulaciones y liberaciones de momento) no se empotran: la barra se '
+        + 'empotra sólo en su extremo continuo, que trabaja con rigidez 3EI/L y no transmite nada al liberado. '
+      : '')
     + (hasSway
       ? 'Este modelo, además, puede trasladar sus nudos: cada modo de desplazamiento se distribuye por separado y la '
         + 'proporción correcta de cada uno se fija con una ecuación de equilibrio por modo.'
@@ -629,7 +692,7 @@ export const drawCrossFrame = (context: ReportContext, solution: CrossFrameResul
     8.7, layout.fonts.regular, undefined, 8,
   );
 
-  drawHypotheses(context);
+  drawHypotheses(context, solution);
   drawStiffness(context, solution, memberById);
   drawFixedEndMoments(context, solution);
 
@@ -637,7 +700,7 @@ export const drawCrossFrame = (context: ReportContext, solution: CrossFrameResul
   const shownCycles = solution.nonSway.cycles.length;
   prose(context, (hasSway ? 'Con los nudos impedidos de trasladarse, se' : 'Se')
     + ' equilibran a la vez todos los nudos que giran y luego se transporta la mitad de lo repartido al otro extremo '
-    + 'de cada barra. '
+    + (anyReleased ? 'de cada barra, salvo hacia un extremo liberado, que no recibe nada. ' : 'de cada barra. ')
     + (solution.nonSway.cycleCount > shownCycles
       ? `Se muestran los primeros ${shownCycles} ciclos; el reparto convergió en ${solution.nonSway.cycleCount} y la fila `
         + '«Ciclos» suma lo que aportaron los restantes. '

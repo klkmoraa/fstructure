@@ -31,10 +31,15 @@
  * flexure-formula step in particular got its sign wrong on the first attempt — a plain
  * magnitude-times-arm computation, missing the actual signed torque of a horizontal force about
  * a point — and the fix is what the comment on `overturningMoment` below explains.
+ *
+ * Like Portal, it analyses lateral load only: the combination's gravity actions are declared in
+ * `excluded`, to be superposed from a separate analysis, and only a member load that pushes the
+ * frame sideways is refused (`lateralActions.ts`).
  */
-import { analyzeProject, selectedFactors } from '../engine/solver';
+import { analyzeProject } from '../engine/solver';
 import type { LoadCombination, ProjectModel } from '../types';
 import { buildFrameGrid, restrainsRotation, type FrameGrid } from './frameGeometry';
+import { lateralOnlyProject, splitLateralActions, type ExcludedAction } from './lateralActions';
 import { classifyStructure } from './structureClassification';
 
 export interface CantileverColumn {
@@ -83,6 +88,8 @@ export interface CantileverMethodResult {
   beams: CantileverBeam[];
   baseChecks: CantileverBaseCheck[];
   reactionGap: { force: number; moment: number };
+  /** Gravity actions of the combination this lateral analysis leaves out, to be superposed separately. */
+  excluded: ExcludedAction[];
 }
 
 interface CantileverMethodRejection {
@@ -104,9 +111,11 @@ export const solveCantileverMethod = (
   const grid = buildFrameGrid(project);
   if (!grid) return { applicable: false, reasonKey: 'method.rejectedGrid' };
 
-  const factors = selectedFactors(project, combination);
-  const memberLoadActive = project.memberLoads.some((load) => (factors[load.caseId] ?? 0) !== 0);
-  if (memberLoadActive) return { applicable: false, reasonKey: 'method.rejectedMemberLateralLoad' };
+  // Lateral joint loads are what this method distributes; gravity (vertical loads on the beams,
+  // loads along the columns, self-weight) is declared and left to a separate analysis; a
+  // genuinely lateral member load is refused. See `lateralActions.ts`.
+  const split = splitLateralActions(project, combination, grid);
+  if (!split.applicable) return split;
 
   const lines = grid.columnLines.length;
   const stories = grid.storyLevels.length - 1;
@@ -126,12 +135,7 @@ export const solveCantileverMethod = (
   if (baseFixities.size > 1) return { applicable: false, reasonKey: 'method.rejectedMixedBase' };
   const groundPinned = baseFixities.has(false);
 
-  const combinedFx = new Map<string, number>();
-  for (const load of project.nodalLoads) {
-    const factor = factors[load.caseId] ?? 0;
-    if (factor === 0 || load.fx === 0) continue;
-    combinedFx.set(load.nodeId, (combinedFx.get(load.nodeId) ?? 0) + factor * load.fx);
-  }
+  const combinedFx = split.nodalFx;
   const loadAtLevel = (level: number): number => {
     let sum = 0;
     for (let c = 0; c < lines; c += 1) sum += combinedFx.get(grid.nodeGrid[c][level]) ?? 0;
@@ -141,16 +145,8 @@ export const solveCantileverMethod = (
     .some((load) => Math.abs(load) > NEAR_ZERO);
   if (!anyLateralLoad) return { applicable: false, reasonKey: 'method.rejectedNoLateralLoad' };
 
-  const lateralOnlyProject: ProjectModel = {
-    ...project,
-    loadCases: [{ id: 'LATERAL', name: 'lateral', category: 'other', active: true }],
-    combinations: [],
-    memberLoads: [],
-    nodalLoads: Array.from(combinedFx, ([nodeId, fx]) => ({
-      id: `LATERAL-${nodeId}`, nodeId, caseId: 'LATERAL', fx, fy: 0, mz: 0,
-    })),
-  };
-  const lateralAnalysis = analyzeProject(lateralOnlyProject, null, { includeEducationTrace: false });
+  // The honest oracle, as in the Portal Method: the same frame under the lateral joint loads alone.
+  const lateralAnalysis = analyzeProject(lateralOnlyProject(project, combinedFx), null, { includeEducationTrace: false });
   if (!lateralAnalysis.success) return { applicable: false, reasonKey: 'method.rejectedGeometry' };
 
   const inflectionFractionOf = (story: number): number => (story === 1 && groundPinned ? 0 : 0.5);
@@ -295,5 +291,6 @@ export const solveCantileverMethod = (
     beams,
     baseChecks,
     reactionGap: { force: forceGap, moment: momentGap },
+    excluded: split.excluded,
   };
 };

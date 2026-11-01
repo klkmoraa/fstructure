@@ -46,6 +46,8 @@ export const enAnalysis = {
   'method.rejectedSecondOrder': 'Not applicable: the analysis is second order (P-Delta)',
   'method.rejectedTooManySwayModes': 'Not applicable: too many sway modes to narrate',
   'method.rejectedRigidMismatch': 'Not applicable: it does not match the axially rigid analysis',
+  'method.rejectedContinuityRequired': 'Not applicable: it has hinges, releases or truss members the method does not admit',
+  'method.rejectedMemberLateralLoad': 'Not applicable: a member carries lateral load; the method only distributes lateral joint loads',
   'method.staticsSections': 'Sections (statics and cuts)',
   'method.rejectedStaticsKind': 'Plane beams and frames only',
   'method.rejectedIndeterminateStatics': 'Statically indeterminate: statics alone cannot find the reactions',

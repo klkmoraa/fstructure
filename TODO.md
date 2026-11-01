@@ -70,8 +70,9 @@ Corregido en esa entrega: el guardado sin cambios ya no sube la revisión (abrir
 - [x] Rediseño: IBM Plex Sans incrustada, fórmulas con índices reales y sin LaTeX crudo, diagramas N/V/M de la estructura, cuerpos libres con cargas combinadas y rotuladas, marca FStructure, el método elegido enseguida del resumen.
 - [x] Método de secciones para vigas y marcos isostáticos (DCL con incógnitas, resultantes, ΣF y ΣM con números, reacciones, cortes N/V/M y M máx donde V = 0), verificado contra el solver.
 - [x] Cross (distribución de momentos) en marcos y vigas hiperestáticas, con desplazamiento lateral por entrepiso y cada barra por secciones; verificado contra el análisis matricial axialmente rígido y el real.
-- [ ] Portal y voladizo rechazan el pórtico de inicio («carga lateral en barras»): revisar si el peso propio axial de las columnas debe contar como tal.
-- [ ] Cross en marcos y secciones: barras curvas, liberaciones y resortes siguen fuera (los rechazan con su motivo); secciones tampoco cubre nudos con rótula donde llegan tres o más barras.
+- [x] Portal y voladizo aplican al pórtico de inicio en U2: reparten la carga lateral en los nudos y declaran en la memoria la gravitacional (cargas verticales en vigas, a lo largo de columnas, peso propio) para superponerla aparte; la carga lateral sobre una barra sigue rechazándose.
+- [x] Cross en marcos con liberaciones de momento y articulaciones internas (3EI/L sin transporte, MEP de barra empotrada–articulada, extremos liberados en las ecuaciones de desplazamiento); la clasificación y secciones cuentan n − 1 condiciones en una rótula donde llegan n barras.
+- [ ] Cross en marcos y secciones: barras curvas y resortes siguen fuera (los rechazan con su motivo). Portal/voladizo no convierten viento repartido en columnas a cargas en nudos (lo rechazan).
 - [ ] El PDF aún dibuja los arcos rectos en los cuerpos libres de los métodos (el DCL global y los diagramas N/V/M ya los curvan).
 
 ## Diseño (de `docs/research/concrete-design`)

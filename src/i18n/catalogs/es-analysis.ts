@@ -46,6 +46,8 @@ export const esAnalysis = {
   'method.rejectedSecondOrder': 'No aplica: el análisis es de segundo orden (P-Delta)',
   'method.rejectedTooManySwayModes': 'No aplica: demasiados modos de desplazamiento para narrarlos',
   'method.rejectedRigidMismatch': 'No aplica: no coincide con el análisis axialmente rígido',
+  'method.rejectedContinuityRequired': 'No aplica: tiene articulaciones, liberaciones o barras de armadura que el método no admite',
+  'method.rejectedMemberLateralLoad': 'No aplica: una barra lleva carga lateral; el método sólo reparte la carga lateral en los nudos',
   'method.staticsSections': 'Método de secciones (estática y cortes)',
   'method.rejectedStaticsKind': 'Sólo vigas y marcos planos',
   'method.rejectedIndeterminateStatics': 'Hiperestática: la estática sola no determina las reacciones',
