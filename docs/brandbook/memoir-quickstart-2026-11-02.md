@@ -33,7 +33,7 @@ La memoria sigue el orden de una memoria de oficina: **Datos generales** (objeto
 | Esquema de cada método | Datos (tabla de magnitud, símbolo, valor, unidad) → Planteamiento (la ecuación sin números y «donde:») → Desarrollo (sustituciones numeradas) → Resultados (recuadro con filete del acento) → Comprobación (una línea verde o ámbar contra el análisis matricial). |
 | Color | Acento de la familia Análisis (`#C23A33` en texto, `#ED4B46` en la franja de la marca); N, V y M con sus señales; tensión azul y compresión roja en armaduras. |
 | Marca | La ménsula con la franja roja y «FStructure» en la portada; la portada nombra el procedimiento de esa copia. |
-| Dibujos | Cargas sumadas con los factores del escenario y rotuladas con su magnitud; reacciones apiladas bajo su apoyo; arcos sobre su curva; las cifras buscan hueco y no cruzan barras. |
+| Dibujos | Cargas sumadas con los factores del escenario y rotuladas con su magnitud; reacciones apiladas bajo su apoyo; arcos sobre su curva; las cifras buscan hueco y evitan otras cifras, barras, flechas y cortes; en armaduras cada barra lleva su cifra en el punto medio (T azul, C rojo). |
 
 El diálogo de exportación ofrece primero los métodos que aplican al modelo y pliega los demás con su motivo.
 
@@ -41,6 +41,8 @@ El diálogo de exportación ofrece primero los métodos que aplican al modelo y 
 ![Portada](assets/memoir-2026-11-02-pdf-cover.png)
 ![Datos generales](assets/memoir-2026-11-02-pdf-general-data.png)
 ![Cross en marcos: tabla de distribución](assets/memoir-2026-11-02-pdf-cross-table.png)
+![Tres momentos: planteamiento, desarrollo y resultados](assets/memoir-2026-11-02-pdf-three-moment.png)
+![Armadura por trabajo virtual: cada barra rotulada en su punto medio](assets/memoir-2026-11-02-pdf-truss-virtual-work.png)
 ![Resultados: cuerpo libre y diagramas](assets/memoir-2026-11-02-pdf-results.png)
 ![Conclusiones y firmas](assets/memoir-2026-11-02-pdf-conclusions.png)
 
