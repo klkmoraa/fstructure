@@ -61,6 +61,6 @@ describe('memoria PDF con trabajo mínimo en arcos', () => {
     expect(fixed.methodAvailability['arch-least-work']).toEqual({ available: true });
     const text = await textOf(fixed.bytes);
     expect(text).toContain('voladizo curvo');
-    expect(text).toMatch(/X_?3/);
+    expect(text).toMatch(/X_?\s?3/);
   }, 60_000);
 });

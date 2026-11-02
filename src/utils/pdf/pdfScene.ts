@@ -395,6 +395,22 @@ export const sectionShapeBox = (rect: Rect, geometry: SectionGeometry): Rect => 
   };
 };
 
+/**
+ * Cajas pequeñas a lo largo de un trazo (una barra, una flecha), cada 5 pt: una cifra que las
+ * evita no se escribe encima de la barra ni de las flechas de carga. Antes sólo se evitaban
+ * otras cifras y un momento de apoyo quedaba escrito sobre la carga repartida.
+ */
+export const strokeBoxes = (from: Point, to: Point, pad = 1.5): Rect[] => {
+  const length = Math.hypot(to.x - from.x, to.y - from.y);
+  const steps = Math.max(1, Math.ceil(length / 5));
+  return Array.from({ length: steps + 1 }, (_, step) => ({
+    x: from.x + (to.x - from.x) * step / steps - pad,
+    y: from.y + (to.y - from.y) * step / steps - pad,
+    width: pad * 2,
+    height: pad * 2,
+  }));
+};
+
 interface MemberLoadOptions {
   /**
    * Members whose loads are drawn. Absent draws every member's.
@@ -492,10 +508,17 @@ export const drawMemberLoads = (
         const ratio = startRatio + (endRatio - startRatio) * t;
         const intensity = distributedIntensityAt(load, t);
         const [gx, gy] = globalVector(intensity.qx * factor, intensity.qy * factor, ratio);
-        const tail = drawArrow(layout, atFlexibleRatio(ratio), gx, gy, actionColor, 16);
-        if (tail) arrowTails.push(tail);
+        const head = atFlexibleRatio(ratio);
+        const tail = drawArrow(layout, head, gx, gy, actionColor, 16);
+        if (tail) {
+          arrowTails.push(tail);
+          options.labelBoxes?.push(...strokeBoxes(head, tail));
+        }
       }
-      if (arrowTails.length > 1) page.drawLine({ start: arrowTails[0], end: arrowTails.at(-1)!, thickness: 0.9, color: actionColor });
+      if (arrowTails.length > 1) {
+        page.drawLine({ start: arrowTails[0], end: arrowTails.at(-1)!, thickness: 0.9, color: actionColor });
+        options.labelBoxes?.push(...strokeBoxes(arrowTails[0]!, arrowTails.at(-1)!));
+      }
       const qStart = Math.hypot(load.qxStart ?? 0, load.qyStart ?? 0);
       const qEnd = Math.hypot(load.qxEnd ?? 0, load.qyEnd ?? 0);
       const unit = unitLabel(project.settings.units, 'distributedForce');
@@ -512,6 +535,7 @@ export const drawMemberLoads = (
       const [gx, gy] = globalVector((load.px ?? 0) * factor, (load.py ?? 0) * factor, position);
       const location = atFlexibleRatio(position);
       const tail = drawArrow(layout, location, gx, gy, actionColor, 22) ?? location;
+      options.labelBoxes?.push(...strokeBoxes(location, tail));
       const magnitude = Math.hypot(load.px ?? 0, load.py ?? 0) * Math.abs(factor);
       label(`P = ${number(toDisplay(magnitude, project.settings.units, 'force'), 4)} ${unitLabel(project.settings.units, 'force')}`, tail.x + 3, tail.y + 4);
     } else {

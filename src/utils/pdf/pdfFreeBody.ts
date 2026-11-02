@@ -27,6 +27,8 @@ import {
   drawMemberLoads,
   drawMomentArc,
   drawNodeDot,
+  memberPolyline,
+  strokeBoxes,
   drawSupportGlyph,
   type Point,
   type Projection,
@@ -221,8 +223,8 @@ const placeLabel = (
   color: PdfColor,
   font = layout.fonts.bold,
 ): void => {
-  const label = pdfText(text);
-  const width = font.widthOfTextAtSize(label, LABEL_SIZE);
+  // Con índices reales: «R_x(N10)» se dibuja Rₓ(N10), como en las ecuaciones de abajo.
+  const width = layout.richWidth(text, font, LABEL_SIZE);
   const normal = { x: -direction.y, y: direction.x };
   const clampBox = (x: number, y: number): Rect => ({
     x: Math.min(Math.max(x, frame.x + 4), frame.x + frame.width - width - 4),
@@ -232,24 +234,28 @@ const placeLabel = (
   });
   const baseX = at.x + direction.x * 6 + normal.x * 5 - (direction.x < -0.4 ? width : 0);
   const baseY = at.y + direction.y * 6 + normal.y * 5 - LABEL_SIZE * 0.35;
-  // Primero donde siempre; si choca con otra etiqueta, se aparta a lo largo de la normal (a
-  // un lado y al otro) y después a lo largo de la flecha, hasta encontrar sitio.
-  const steps = [0, 1, -1, 2, -2, 3, -3];
+  // Primero donde siempre; si choca con otra etiqueta, una barra o una flecha, se aparta a lo
+  // largo de la normal (a un lado y al otro) y después a lo largo de la flecha. Si no hay hueco
+  // limpio, se queda donde menos tapa.
+  const steps = [0, 1, -1, 2, -2, 3, -3, 4, -4, 5, -5];
   let box = clampBox(baseX, baseY);
-  search: for (const along of [0, 1, 2]) {
+  let fewest = Number.POSITIVE_INFINITY;
+  search: for (const along of [0, 1, 2, 3]) {
     for (const step of steps) {
       const candidate = clampBox(
         baseX + normal.x * step * (LABEL_SIZE + 3) + direction.x * along * 10,
         baseY + normal.y * step * (LABEL_SIZE + 3) + direction.y * along * 10,
       );
-      if (!placedLabels.some((other) => overlaps(candidate, other))) {
+      const hits = placedLabels.reduce((count, other) => count + (overlaps(candidate, other) ? 1 : 0), 0);
+      if (hits < fewest) {
+        fewest = hits;
         box = candidate;
-        break search;
+        if (hits === 0) break search;
       }
     }
   }
   placedLabels.push(box);
-  layout.page.drawText(label, { x: box.x, y: box.y, size: LABEL_SIZE, font, color });
+  layout.drawRich(text, { x: box.x, y: box.y, size: LABEL_SIZE, font, color });
 };
 
 export const drawFreeBodyScene = (
@@ -292,6 +298,17 @@ export const drawFreeBodyScene = (
     solidNodeIds: scene.keptNodeIds ? new Set(scene.keptNodeIds) : undefined,
     hideGhost: scene.hideGhost,
   });
+
+  // Las barras dibujadas también, las sólidas y las fantasma: una cifra no se escribe sobre
+  // una barra.
+  for (const member of project.members) {
+    if (scene.hideGhost && scene.keptMemberIds && !scene.keptMemberIds.includes(member.id)) continue;
+    const ni = context.index.node(member.i);
+    const nj = context.index.node(member.j);
+    if (!ni || !nj) continue;
+    const line = memberPolyline(member, ni, nj, projection.at);
+    for (let k = 1; k < line.length; k += 1) placedLabels.push(...strokeBoxes(line[k - 1]!, line[k]!));
+  }
 
   // Los nudos dibujados y sus nombres también ocupan sitio: ninguna cifra se escribe encima.
   for (const node of project.nodes) {
