@@ -44,7 +44,7 @@ import {
   threeMomentScenes,
   virtualWorkScenes,
 } from './pdfMethodScenes';
-import { clearNumber, displayCell, number, unitFor } from './pdfFormat';
+import { clearNumber, displayCell, formatPolynomial, number, unitFor } from './pdfFormat';
 import {
   agrees,
   dimensionalFigure,
@@ -128,20 +128,6 @@ export const drawScenes = (
       caption(scene, index),
     );
   }
-};
-
-/** `32.5 − 5x + 0.5x²` from coefficient array, in the global axis variable. */
-const expression = (coefficients: readonly number[], variable = 'x'): string => {
-  const reference = coefficients.reduce((largest, value) => Math.max(largest, Math.abs(value)), 0);
-  const terms: string[] = [];
-  coefficients.forEach((coefficient, power) => {
-    if (Math.abs(coefficient) <= Math.max(reference, 1) * 1e-10) return;
-    const magnitude = clearNumber(Math.abs(coefficient), Math.max(reference, 1), 5);
-    const factor = power === 0 ? magnitude : power === 1 ? `${magnitude} ${variable}` : `${magnitude} ${variable}^${power}`;
-    const sign = coefficient < 0 ? '−' : '+';
-    terms.push(terms.length === 0 ? `${coefficient < 0 ? '−' : ''}${factor}` : `${sign} ${factor}`);
-  });
-  return terms.join(' ') || '0';
 };
 
 /**
@@ -746,55 +732,99 @@ const drawThreeMoment = (context: ReportContext, solution: ThreeMomentResult): v
   const lengthUnit = unitFor(project, 'length');
   const momentUnit = unitFor(project, 'moment');
   const supports = solution.supportMoments;
+  const spans = solution.spans;
   const momentScale = Math.max(1, ...supports.map((entry) => Math.abs(entry.value)));
-  const moment = (value: number) => clearNumber(value, momentScale);
+  // Todo en las unidades del proyecto: longitudes, momentos, EI (F·L²) y momentos estáticos (F·L³).
+  const moment = (value: number) => dimensionalFigure(project, value, 1, 1, momentScale);
+  const length = (value: number) => dimensionalFigure(project, value, 0, 1);
+  // Con EI igual en todos los vanos se cancela y la ecuación queda como en los libros, con
+  // longitudes y momentos; si cambia, cada vano entra con su longitud reducida L′ = L·EI_c/(EI).
+  // Antes los coeficientes eran L/EI, cifras de 6.4 × 10⁻⁵ que nadie escribe a mano.
+  const EIc = spans[0]?.EI ?? 1;
+  const uniform = spans.every((span) => Math.abs(span.EI - EIc) <= 1e-9 * Math.abs(EIc));
+  const reduced = (span: (typeof spans)[number]) => span.length * EIc / span.EI;
+  const loadTerm = (firstMoment: number, span: (typeof spans)[number]) => firstMoment * EIc / (span.EI * span.length);
+  const rhsScale = Math.max(1, ...spans.map((span) => Math.abs(loadTerm(span.firstMomentLeft, span)) + Math.abs(loadTerm(span.firstMomentRight, span))));
+  const rhs = (value: number) => dimensionalFigure(project, value, 1, 2, rhsScale * 6);
 
   layout.heading('5. Método de los tres momentos (ecuación de Clapeyron)');
-  memoirNote(context, `Viga continua de ${solution.spans.length} vanos, hiperestática de grado ${solution.classification.indeterminacy}. `
-    + 'Incógnitas: los momentos en los apoyos interiores. Se escribe una ecuación de Clapeyron por cada apoyo interior.');
+  memoirNote(context, `Viga continua de ${spans.length} vanos, hiperestática de grado ${solution.classification.indeterminacy}. `
+    + 'Incógnitas: los momentos en los apoyos interiores, con una ecuación de Clapeyron por cada uno.');
 
   memoirStep(context, '5.1 Datos de los vanos');
-  memoirNote(context, 'Cada vano se toma como viga simplemente apoyada bajo sus propias cargas (momento libre M₀). '
-    + 'A·ā y A·b̄ son los momentos estáticos del diagrama M₀/EI respecto a cada extremo.');
+  memoirNote(context, 'Cada vano se toma como viga simplemente apoyada bajo sus propias cargas (momento libre M₀); A·a y A·b son los '
+    + 'momentos estáticos de su diagrama M₀ respecto a los extremos izquierdo y derecho.');
+  const firstMomentUnit = dimensionalUnit(project, 1, 3);
   layout.table([
     { header: 'Vano' },
     { header: `L (${lengthUnit})`, align: 'right' },
-    { header: 'EI (kN·m²)', align: 'right' },
-    { header: 'A·ā (kN·m³)', align: 'right' },
-    { header: 'A·b̄ (kN·m³)', align: 'right' },
-  ], solution.spans.map((span, index) => [
+    { header: `EI (${dimensionalUnit(project, 1, 2)})`, align: 'right' },
+    ...(uniform ? [] : [{ header: `L′ (${lengthUnit})`, align: 'right' as const }]),
+    { header: `A·a (${firstMomentUnit})`, align: 'right' },
+    { header: `A·b (${firstMomentUnit})`, align: 'right' },
+  ], spans.map((span, index) => [
     `${index + 1}  (${span.leftNodeId} – ${span.rightNodeId})`,
-    number(span.length),
-    number(span.EI),
-    clearNumber(span.firstMomentLeft, Math.max(1, Math.abs(span.firstMomentLeft))),
-    clearNumber(span.firstMomentRight, Math.max(1, Math.abs(span.firstMomentRight))),
+    length(span.length),
+    dimensionalFigure(project, span.EI, 1, 2),
+    ...(uniform ? [] : [length(reduced(span))]),
+    dimensionalFigure(project, span.firstMomentLeft, 1, 3, Math.max(1, Math.abs(span.firstMomentLeft))),
+    dimensionalFigure(project, span.firstMomentRight, 1, 3, Math.max(1, Math.abs(span.firstMomentRight))),
   ]));
 
   memoirStep(context, '5.2 Planteamiento');
-  memoirFormula(context, 'M_{i−1} L_i/(EI)_i + 2 M_i (L_i/(EI)_i + L_{i+1}/(EI)_{i+1}) + M_{i+1} L_{i+1}/(EI)_{i+1} = −6 (A_i ā_i/(EI L)_i + A_{i+1} b̄_{i+1}/(EI L)_{i+1})', [
-    ['M_i', `momento en el apoyo interior i (${momentUnit})`],
-    ['L_i, (EI)_i', 'longitud y rigidez del vano a la izquierda del apoyo i'],
-    ['A ā, A b̄', 'momento estático del diagrama de momento libre respecto al extremo lejano'],
-  ]);
+  if (uniform) {
+    memoirFormula(context, 'M_{i−1} L_i + 2 M_i (L_i + L_{i+1}) + M_{i+1} L_{i+1} = −6 (A_i a_i/L_i + A_{i+1} b_{i+1}/L_{i+1})', [
+      ['M_i', `momento en el apoyo interior i (${momentUnit})`],
+      ['L_i', 'claro del vano a la izquierda del apoyo i'],
+      ['A_i a_i', 'momento estático del diagrama M₀ del vano i respecto a su extremo izquierdo'],
+      ['A_{i+1} b_{i+1}', 'el del vano i + 1 respecto a su extremo derecho'],
+    ]);
+    memoirNote(context, `EI es igual en todos los vanos (${dimensionalFigure(project, EIc, 1, 2)} ${dimensionalUnit(project, 1, 2)}) y se cancela.`);
+  } else {
+    memoirFormula(context, 'M_{i−1} L′_i + 2 M_i (L′_i + L′_{i+1}) + M_{i+1} L′_{i+1} = −6 (A_i a_i L′_i/L_i^2 + A_{i+1} b_{i+1} L′_{i+1}/L_{i+1}^2)', [
+      ['M_i', `momento en el apoyo interior i (${momentUnit})`],
+      ['L′_i', 'longitud reducida del vano i, L_i EI_c/(EI)_i, con EI_c la del primer vano'],
+      ['A_i a_i, A_{i+1} b_{i+1}', 'momentos estáticos del diagrama M₀ respecto al extremo lejano de cada vano'],
+    ]);
+    memoirNote(context, 'Es la ecuación general multiplicada por EI_c: EI cambia de un vano a otro y cada uno entra con su longitud reducida.');
+  }
 
   memoirStep(context, '5.3 Desarrollo');
-  const equations: EquationInput[] = [];
-  for (const [k, left] of solution.spans.slice(0, -1).entries()) {
-    const right = solution.spans[k + 1]!;
-    const [mPrev, mHere, mNext] = [supports[k]?.value ?? 0, supports[k + 1]?.value ?? 0, supports[k + 2]?.value ?? 0];
-    const fl = left.length / left.EI;
-    const fr = right.length / right.EI;
-    const lhs = fl * mPrev + 2 * (fl + fr) * mHere + fr * mNext;
-    const rhs = -6 * (left.firstMomentLeft / (left.EI * left.length) + right.firstMomentRight / (right.EI * right.length));
-    if (Math.abs(lhs - rhs) > 1e-6 * Math.max(1, Math.abs(rhs))) continue;
-    const node = supports[k + 1]?.nodeId ?? String(k + 1);
-    const [sPrev, sHere, sNext] = [supports[k]?.symbol ?? `M_${k}`, supports[k + 1]?.symbol ?? `M_${k + 1}`, supports[k + 2]?.symbol ?? `M_${k + 2}`];
-    equations.push(`Apoyo ${node}:  ${number(fl)} ${sPrev} + 2(${number(fl)} + ${number(fr)}) ${sHere} + ${number(fr)} ${sNext} = −6(${number(left.firstMomentLeft)}/${number(left.EI * left.length)} + ${number(right.firstMomentRight)}/${number(right.EI * right.length)}) = ${number(rhs)}`);
-  }
   const known = supports.filter((_entry, index) => index === 0 || index === supports.length - 1)
     .map((entry) => `${entry.symbol} = ${moment(entry.value)} ${momentUnit}`).join(';  ');
-  if (known) memoirNote(context, `Extremos simplemente apoyados: ${known}.`);
+  if (known) memoirNote(context, `Momentos conocidos en los extremos: ${known}.`);
+  const equations: EquationInput[] = [];
+  const written: { node: string; fl: number; fr: number; right: number }[] = [];
+  for (const [k, left] of spans.slice(0, -1).entries()) {
+    const right = spans[k + 1]!;
+    const [mPrev, mHere, mNext] = [supports[k]?.value ?? 0, supports[k + 1]?.value ?? 0, supports[k + 2]?.value ?? 0];
+    const fl = reduced(left);
+    const fr = reduced(right);
+    const lhs = fl * mPrev + 2 * (fl + fr) * mHere + fr * mNext;
+    const termLeft = loadTerm(left.firstMomentLeft, left);
+    const termRight = loadTerm(right.firstMomentRight, right);
+    const total = -6 * (termLeft + termRight);
+    if (Math.abs(lhs - total) > 1e-6 * Math.max(1, Math.abs(total))) continue;
+    const node = supports[k + 1]?.nodeId ?? String(k + 1);
+    const [sPrev, sHere, sNext] = [supports[k]?.symbol ?? `M_${k}`, supports[k + 1]?.symbol ?? `M_${k + 1}`, supports[k + 2]?.symbol ?? `M_${k + 2}`];
+    const loads = uniform
+      ? `−6(${dimensionalFigure(project, left.firstMomentLeft, 1, 3)}/${length(left.length)} + ${dimensionalFigure(project, right.firstMomentRight, 1, 3)}/${length(right.length)})`
+      : `−6(${rhs(termLeft)} + ${rhs(termRight)})`;
+    equations.push(`Apoyo ${node}:  (${length(fl)}) ${sPrev} + 2(${length(fl)} + ${length(fr)}) ${sHere} + (${length(fr)}) ${sNext} = ${loads} = ${rhs(total)}`);
+    written.push({ node, fl, fr, right: total });
+  }
   memoirWork(context, equations);
+  // Con un solo apoyo interior la ecuación da la incógnita directamente; con más, es un sistema
+  // tridiagonal y se da su solución.
+  if (supports.length === 3 && written.length === 1) {
+    const [first, middle, last] = supports as [typeof supports[number], typeof supports[number], typeof supports[number]];
+    const { fl, fr, right } = written[0]!;
+    memoirWork(context, [
+      `${middle.symbol} = (${rhs(right)} − (${length(fl)})(${moment(first.value)}) − (${length(fr)})(${moment(last.value)}))/(2(${length(fl)} + ${length(fr)})) = ${moment(middle.value)} ${momentUnit}`,
+    ]);
+  } else if (written.length > 1) {
+    memoirNote(context, `Las ${written.length} ecuaciones forman un sistema tridiagonal; su solución:`);
+  }
 
   memoirResults(context, 'Momentos en los apoyos', supports.map((entry) => [`${entry.symbol} (${entry.nodeId})`, `${moment(entry.value)} ${momentUnit}`]));
 
@@ -805,12 +835,14 @@ const drawThreeMoment = (context: ReportContext, solution: ThreeMomentResult): v
   );
 
   memoirStep(context, '5.4 Momento flector en cada vano');
-  memoirFormula(context, 'M(x) = M_0(x) + M_{izq} (1 − x/L) + M_{der} x/L');
-  memoirWork(context, solution.segments.map((segment, index) => `M_{${index + 1}}(x) = ${expression(segment.moment)}  (${number(segment.x0)} ≤ x ≤ ${number(segment.x1)} ${lengthUnit})`));
+  memoirFormula(context, 'M(x) = M_0(x) + M_{izq} (1 − x/L) + M_{der} x/L', [
+    ['x', `distancia desde el apoyo izquierdo de la viga (${lengthUnit})`],
+  ]);
+  memoirWork(context, solution.segments.map((segment, index) => `M_{${index + 1}}(x) = ${formatPolynomial(project, 'moment', segment.moment, 'x')}  (${length(segment.x0)} ≤ x ≤ ${length(segment.x1)} ${lengthUnit})`));
 
   memoirStep(context, '5.5 Comprobación');
   const worst = supports.reduce((largest, entry) => Math.max(largest, Math.abs(entry.value - entry.solverMoment)), 0);
-  memoirCheck(context, `momentos de apoyo contra el análisis matricial, diferencia máxima ${clearNumber(worst, momentScale)} ${momentUnit}.`, worst <= 1e-3 * momentScale);
+  memoirCheck(context, `momentos de apoyo contra el análisis matricial, diferencia máxima ${moment(worst)} ${momentUnit}.`, worst <= 1e-3 * momentScale);
 };
 
 /** «isostática» o «hiperestática de grado g», para la frase que abre un método de armaduras. */
