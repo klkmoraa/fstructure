@@ -5,6 +5,7 @@ export const esAnalysis = {
   'analysis.running': 'Analizando…',
   'analysis.runningLabel': 'Analizando estructura',
   'analysis.statusReady': 'Listo para analizar',
+  'analysis.nothingToAnalyze': 'Nada que analizar todavía: dibuja una barra o elige un inicio.',
   'analysis.statusCalculating': 'Calculando…',
   'analysis.statusResolved': 'Análisis actualizado',
   'analysis.statusStale': 'Resultados desactualizados',

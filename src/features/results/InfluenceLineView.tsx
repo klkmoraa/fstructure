@@ -20,6 +20,7 @@ import { axleTrainFromMovingLoadCase } from '../../engine/generatedLoads';
 import { useInfluenceAnalysis } from '../../engine/useInfluenceAnalysis';
 import { unitLabel } from '../../engine/units';
 import { fromDisplay, toDisplay } from '../../foundation/units';
+import { memberCurveLength } from '../../graphics/memberCurve';
 import type { DiagramQuantity, ProjectModel, Selection } from '../../types';
 import type { InfluenceCanvasState } from '../../store/ProjectContext';
 import { useI18n } from '../../i18n/useI18n';
@@ -109,7 +110,8 @@ const memberDeformableLength = (project: ProjectModel, memberId: string): number
   const nodeI = project.nodes.find((node) => node.id === member.i);
   const nodeJ = project.nodes.find((node) => node.id === member.j);
   if (!nodeI || !nodeJ) return 0;
-  return Math.max(0, Math.hypot(nodeJ.x - nodeI.x, nodeJ.y - nodeI.y)
+  // Sobre el arco en una barra curva, como el motor y sus diagramas.
+  return Math.max(0, memberCurveLength(member, nodeI, nodeJ)
     - (member.rigidOffsetI ?? 0) - (member.rigidOffsetJ ?? 0));
 };
 

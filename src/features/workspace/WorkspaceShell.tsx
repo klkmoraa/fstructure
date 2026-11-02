@@ -346,6 +346,9 @@ const WorkspaceBrokerContent = ({
         emitWorkspaceCommand('analysis-requested');
         analyze();
       }}
+      // Con el modelo vacío la acción principal es dibujar o elegir un inicio,
+      // no «Analizar»: queda secundario y explica por qué.
+      analyzeUnavailableReason={project.members.length ? null : t('analysis.nothingToAnalyze')}
       // ALTERNA. `openSurface` sobre una superficie ya activa sólo renueva su
       // activación, así que el botón no podía apagar lo que anunciaba encendido
       // con `aria-pressed`. Se usa el mismo comando que el riel de la consola,

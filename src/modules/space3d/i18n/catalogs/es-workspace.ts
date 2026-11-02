@@ -320,6 +320,7 @@ export const esWorkspace = {
   'space3d.newLoad': 'Nueva carga',
   'space3d.analyze': 'Analizar',
   'space3d.analyzing': 'Analizando…',
+  'space3d.analyzeEmpty': 'Nada que analizar todavía: genera una estructura o coloca nudos y barras.',
   'space3d.analysisModeLinear': 'Lineal',
   'space3d.analysisModePDelta': 'P-Delta',
   'space3d.analysisModeModal': 'Modal',

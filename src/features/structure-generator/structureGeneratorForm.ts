@@ -36,7 +36,7 @@ import type { UnitSystemId } from '../../foundation/units';
 
 export type GeneratorSpacingMode = 'uniform' | 'list';
 
-/** Apoyo base ofrecido por la superficie; `none` es el valor seguro por defecto. */
+/** Apoyo base ofrecido por la superficie. */
 export type GeneratorSupportChoice = Extract<SupportType, 'none' | 'pin' | 'roller' | 'fixed'>;
 
 export type GeneratorPropertiesSource = 'catalog' | 'explicit';
@@ -79,6 +79,12 @@ export interface GeneratorFormState {
   readonly ridgeX: string;
   readonly ridgeY: string;
   readonly support: GeneratorSupportChoice;
+  /**
+   * Si la persona eligió el apoyo. Mientras no lo haga, el apoyo sigue al de
+   * la familia (`GENERATOR_FAMILY_SUPPORT`); una elección explícita —también
+   * «Ninguno»— se conserva al cambiar de familia.
+   */
+  readonly supportChosen: boolean;
   readonly propertiesSource: GeneratorPropertiesSource;
   readonly materialId: string;
   readonly sectionId: string;
@@ -125,9 +131,42 @@ const uniformSpacing = (count: string, spacing: string): GeneratorSpacingDraft =
   ({ mode: 'uniform', count, spacing, list: '' });
 
 /**
+ * Apoyo usual de cada familia en sus nudos de apoyo: lo que se dibujaría a mano
+ * para que lo generado se pueda calcular sin completarlo. Pórticos y retículas
+ * empotrados en la base; vigas, armaduras y arcos articulados (una viga
+ * continua o una armadura con articulación en cada apoyo es estable; un rodillo
+ * solo, no). El anillo no tiene apoyos que generar.
+ */
+export const GENERATOR_FAMILY_SUPPORT: Readonly<Record<GeneratorKind, GeneratorSupportChoice>> = {
+  'continuous-beam': 'pin',
+  'portal-frame': 'fixed',
+  'multi-story-frame': 'fixed',
+  truss: 'pin',
+  grid: 'fixed',
+  'circular-arch': 'pin',
+  'circular-ring': 'none',
+  'pitched-portal': 'fixed',
+};
+
+/** Cambia de familia; el apoyo sigue al de la nueva familia salvo que se haya elegido. */
+export const withGeneratorFamily = (form: GeneratorFormState, family: GeneratorKind): GeneratorFormState => ({
+  ...form,
+  family,
+  support: form.supportChosen ? form.support : GENERATOR_FAMILY_SUPPORT[family],
+});
+
+/** Una elección explícita de apoyo: desde aquí ya no la cambia la familia. */
+export const withGeneratorSupport = (form: GeneratorFormState, support: GeneratorSupportChoice): GeneratorFormState => ({
+  ...form,
+  support,
+  supportChosen: true,
+});
+
+/**
  * Valores iniciales. Son un punto de partida editable, no una plantilla: cada
- * cifra es una que el usuario cambiaría de todos modos, y ninguna introduce
- * apoyos, cargas ni propiedades que no haya pedido — el apoyo nace en `none`.
+ * cifra es una que el usuario cambiaría de todos modos. El apoyo nace en el
+ * usual de la familia, para que lo generado se pueda calcular; no se añaden
+ * cargas ni propiedades que no se hayan pedido.
  */
 export const DEFAULT_GENERATOR_FORM: GeneratorFormState = {
   family: 'continuous-beam',
@@ -154,7 +193,8 @@ export const DEFAULT_GENERATOR_FORM: GeneratorFormState = {
   roofKind: 'gable',
   ridgeX: '4',
   ridgeY: '6',
-  support: 'none',
+  support: GENERATOR_FAMILY_SUPPORT['continuous-beam'],
+  supportChosen: false,
   propertiesSource: 'catalog',
   materialId: 'steel-a992',
   sectionId: 'w12x53',

@@ -11,10 +11,24 @@ export interface SnapCandidate extends SnapTarget {
   sourceIds?: string[];
 }
 
+/**
+ * Arco circular de una barra curva: centro, radio, ángulo de inicio y barrido
+ * con signo (|barrido| ≤ π). Una barra curva no tiene «cuerda» física: sus
+ * snaps de punto medio, perpendicular e intersección se toman sobre el arco.
+ */
+export interface SnapArc {
+  center: SnapTarget;
+  radius: number;
+  startAngle: number;
+  sweep: number;
+}
+
 export interface SnapSegment {
   id: string;
   start: SnapTarget;
   end: SnapTarget;
+  /** Presente sólo en barras curvas. */
+  arc?: SnapArc;
 }
 
 type SnapModeToggles = Partial<Record<SnapKind, boolean>>;
@@ -154,6 +168,94 @@ interface BoundedSegment {
   maxY: number;
 }
 
+const arcPointAt = (arc: SnapArc, ratio: number): SnapTarget => {
+  const angle = arc.startAngle + arc.sweep * ratio;
+  return { x: arc.center.x + arc.radius * Math.cos(angle), y: arc.center.y + arc.radius * Math.sin(angle) };
+};
+
+/**
+ * Fracción del arco (0 en el inicio, 1 en el final) del punto de la
+ * circunferencia `point`, o `null` si cae fuera del barrido. `point` ya debe
+ * estar sobre la circunferencia: sólo se mira su ángulo.
+ */
+const arcRatioOf = (arc: SnapArc, point: SnapTarget, epsilon: number): number | null => {
+  if (!(Math.abs(arc.sweep) > 0)) return null;
+  const delta = Math.atan2(point.y - arc.center.y, point.x - arc.center.x) - arc.startAngle;
+  for (const turn of [0, 1, -1, 2, -2]) {
+    const ratio = (delta + turn * 2 * Math.PI) / arc.sweep;
+    if (ratio >= -epsilon && ratio <= 1 + epsilon) return Math.min(1, Math.max(0, ratio));
+  }
+  return null;
+};
+
+/** Caja del arco: sus extremos y los puntos cardinales que caen dentro del barrido. */
+const arcBounds = (arc: SnapArc, start: SnapTarget, end: SnapTarget) => {
+  const points = [start, end];
+  for (const angle of [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2]) {
+    const point = { x: arc.center.x + arc.radius * Math.cos(angle), y: arc.center.y + arc.radius * Math.sin(angle) };
+    if (arcRatioOf(arc, point, 0) !== null) points.push(point);
+  }
+  return {
+    minX: Math.min(...points.map((point) => point.x)), maxX: Math.max(...points.map((point) => point.x)),
+    minY: Math.min(...points.map((point) => point.y)), maxY: Math.max(...points.map((point) => point.y)),
+  };
+};
+
+/** Un cruce con la fracción de cada miembro en él (recta: t; arco: fracción del barrido). */
+interface CurvedCrossing { point: SnapTarget; first: number; second: number }
+
+/** Cortes de la recta finita `segment` con el arco `arc` (0, 1 o 2). */
+const lineArcCrossings = (segment: SnapSegment, arc: SnapArc, epsilon: number): CurvedCrossing[] => {
+  const dx = segment.end.x - segment.start.x;
+  const dy = segment.end.y - segment.start.y;
+  const fx = segment.start.x - arc.center.x;
+  const fy = segment.start.y - arc.center.y;
+  const a = dx * dx + dy * dy;
+  const b = 2 * (fx * dx + fy * dy);
+  const c = fx * fx + fy * fy - arc.radius * arc.radius;
+  const discriminant = b * b - 4 * a * c;
+  const scale = Math.max(b * b, Math.abs(4 * a * c), Number.MIN_VALUE);
+  if (!(a > 0) || discriminant < -epsilon * scale) return [];
+  const root = Math.sqrt(Math.max(0, discriminant));
+  const ts = root <= epsilon * Math.sqrt(scale) ? [-b / (2 * a)] : [(-b - root) / (2 * a), (-b + root) / (2 * a)];
+  return ts.flatMap((t) => {
+    if (t < -epsilon || t > 1 + epsilon) return [];
+    const point = { x: segment.start.x + t * dx, y: segment.start.y + t * dy };
+    const ratio = arcRatioOf(arc, point, epsilon);
+    return ratio === null ? [] : [{ point: arcPointAt(arc, ratio), first: t, second: ratio }];
+  });
+};
+
+/** Cortes de dos arcos: las intersecciones de sus circunferencias que caen en ambos barridos. */
+const arcArcCrossings = (first: SnapArc, second: SnapArc, epsilon: number): CurvedCrossing[] => {
+  const dx = second.center.x - first.center.x;
+  const dy = second.center.y - first.center.y;
+  const distance = Math.hypot(dx, dy);
+  const scale = Math.max(first.radius, second.radius, 1);
+  // Circunferencias concéntricas (o la misma): no definen un punto único.
+  if (distance <= epsilon * scale) return [];
+  if (distance > first.radius + second.radius + epsilon * scale) return [];
+  if (distance < Math.abs(first.radius - second.radius) - epsilon * scale) return [];
+  const along = (first.radius ** 2 - second.radius ** 2 + distance ** 2) / (2 * distance);
+  const half = Math.sqrt(Math.max(0, first.radius ** 2 - along ** 2));
+  const base = { x: first.center.x + along * dx / distance, y: first.center.y + along * dy / distance };
+  const offsets = half <= epsilon * scale ? [0] : [half, -half];
+  return offsets.flatMap((offset) => {
+    const point = { x: base.x - offset * dy / distance, y: base.y + offset * dx / distance };
+    const a = arcRatioOf(first, point, epsilon);
+    const b = arcRatioOf(second, point, epsilon);
+    return a === null || b === null ? [] : [{ point: arcPointAt(first, a), first: a, second: b }];
+  });
+};
+
+/** Punto medio de cada barra: la clave del arco en una curva, no el centro de su cuerda. */
+export const buildMidpointSnapCandidates = (segments: SnapSegment[]): SnapCandidate[] => segments.map((segment) => {
+  const point = segment.arc
+    ? arcPointAt(segment.arc, 0.5)
+    : { x: (segment.start.x + segment.end.x) / 2, y: (segment.start.y + segment.end.y) / 2 };
+  return { ...point, kind: 'midpoint', sourceIds: [segment.id] };
+});
+
 /** Caps the bucket count so a single oversized member cannot blow up memory. */
 const MAX_GRID_AXIS_CELLS = 64;
 
@@ -253,10 +355,12 @@ export const buildIntersectionSnapCandidates = (
       segment,
       dx,
       dy,
-      minX: Math.min(segment.start.x, segment.end.x),
-      minY: Math.min(segment.start.y, segment.end.y),
-      maxX: Math.max(segment.start.x, segment.end.x),
-      maxY: Math.max(segment.start.y, segment.end.y),
+      ...(segment.arc ? arcBounds(segment.arc, segment.start, segment.end) : {
+        minX: Math.min(segment.start.x, segment.end.x),
+        minY: Math.min(segment.start.y, segment.end.y),
+        maxX: Math.max(segment.start.x, segment.end.x),
+        maxY: Math.max(segment.start.y, segment.end.y),
+      }),
     });
   }
   if (bounded.length < 2) return candidates;
@@ -274,6 +378,28 @@ export const buildIntersectionSnapCandidates = (
       // Narrow the broad phase: touching cells does not imply touching boxes.
       if (first.maxX < second.minX || second.maxX < first.minX) continue;
       if (first.maxY < second.minY || second.maxY < first.minY) continue;
+      if (first.segment.arc || second.segment.arc) {
+        // Una curva se corta sobre su arco; su cuerda no es una barra.
+        const firstArc = first.segment.arc;
+        const secondArc = second.segment.arc;
+        const crossings = firstArc && secondArc
+          ? arcArcCrossings(firstArc, secondArc, epsilon)
+          : firstArc
+            ? lineArcCrossings(second.segment, firstArc, epsilon).map((item) => ({ ...item, first: item.second, second: item.first }))
+            : lineArcCrossings(first.segment, secondArc!, epsilon);
+        const atEnd = (ratio: number) => ratio <= epsilon || ratio >= 1 - epsilon;
+        for (const crossing of crossings) {
+          if (!options.includeEndpoints && (atEnd(crossing.first) || atEnd(crossing.second))) continue;
+          const duplicate = index.findDuplicate(candidates, crossing.point);
+          if (duplicate) {
+            duplicate.sourceIds = [...new Set([...(duplicate.sourceIds ?? []), first.segment.id, second.segment.id])];
+          } else {
+            index.add(crossing.point, candidates.length);
+            candidates.push({ ...crossing.point, kind: 'intersection', sourceIds: [first.segment.id, second.segment.id] });
+          }
+        }
+        continue;
+      }
       const { dx: sx, dy: sy } = second;
 
       const denominator = cross(rx, ry, sx, sy);
@@ -312,21 +438,40 @@ export const buildPerpendicularSnapCandidates = (
   const candidates: SnapCandidate[] = [];
   const index = createCandidateIndex(epsilon);
 
-  for (const segment of segments) {
-    const dx = segment.end.x - segment.start.x;
-    const dy = segment.end.y - segment.start.y;
-    const lengthSquared = dx * dx + dy * dy;
-    if (lengthSquared <= epsilon * epsilon) continue;
-    const ratio = ((origin.x - segment.start.x) * dx + (origin.y - segment.start.y) * dy) / lengthSquared;
-    if (!options.includeExtensions && (ratio < -epsilon || ratio > 1 + epsilon)) continue;
-    const point = { x: segment.start.x + ratio * dx, y: segment.start.y + ratio * dy };
-    if (squaredDistance(point, origin) <= epsilon * epsilon) continue;
+  const add = (point: SnapTarget, segment: SnapSegment) => {
+    if (squaredDistance(point, origin) <= epsilon * epsilon) return;
     const duplicate = index.findDuplicate(candidates, point);
     if (duplicate) duplicate.sourceIds = [...new Set([...(duplicate.sourceIds ?? []), segment.id])];
     else {
       index.add(point, candidates.length);
       candidates.push({ ...point, kind: 'perpendicular', sourceIds: [segment.id] });
     }
+  };
+
+  for (const segment of segments) {
+    if (segment.arc) {
+      // Sobre un arco, la perpendicular desde el origen sigue el radio: el pie
+      // más cercano y el opuesto de la circunferencia, si caen en el barrido.
+      const { center, radius } = segment.arc;
+      const distance = Math.hypot(origin.x - center.x, origin.y - center.y);
+      if (distance <= epsilon * Math.max(1, radius)) continue;
+      for (const sign of [1, -1]) {
+        const foot = {
+          x: center.x + sign * radius * (origin.x - center.x) / distance,
+          y: center.y + sign * radius * (origin.y - center.y) / distance,
+        };
+        const ratio = arcRatioOf(segment.arc, foot, epsilon);
+        if (ratio !== null) add(arcPointAt(segment.arc, ratio), segment);
+      }
+      continue;
+    }
+    const dx = segment.end.x - segment.start.x;
+    const dy = segment.end.y - segment.start.y;
+    const lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared <= epsilon * epsilon) continue;
+    const ratio = ((origin.x - segment.start.x) * dx + (origin.y - segment.start.y) * dy) / lengthSquared;
+    if (!options.includeExtensions && (ratio < -epsilon || ratio > 1 + epsilon)) continue;
+    add({ x: segment.start.x + ratio * dx, y: segment.start.y + ratio * dy }, segment);
   }
 
   return candidates;

@@ -49,6 +49,7 @@ import { SupportPicker } from './SupportPicker';
 import { applySupportPreset, type SupportEntry } from './supportCatalog';
 import { emitWorkspaceCommand } from '../workspace/workspaceCommands';
 import { splitDistributedLoadAcrossChain, straightMemberChain } from './memberLoadChain';
+import { memberGeometrySummary } from './memberGeometry';
 import { pointLoadPolarFromVector, pointLoadVectorFromPolar, splitPointLoadIntoComponents } from './memberLoadVectors';
 import {
   InspectorAdvancedProperties,
@@ -170,8 +171,9 @@ export const InspectorProperties = () => {
   const selectedLoadMember = selectedMemberLoad ? project.members.find((member) => member.id === selectedMemberLoad.memberId) : null;
   const selectedLoadStart = selectedLoadMember ? nodeMap.get(selectedLoadMember.i) : undefined;
   const selectedLoadEnd = selectedLoadMember ? nodeMap.get(selectedLoadMember.j) : undefined;
+  // Sobre el arco en una barra curva: ahí se miden las posiciones de sus cargas.
   const selectedLoadLength = selectedLoadMember && selectedLoadStart && selectedLoadEnd
-    ? Math.max(1e-9, Math.hypot(selectedLoadEnd.x - selectedLoadStart.x, selectedLoadEnd.y - selectedLoadStart.y) - (selectedLoadMember.rigidOffsetI ?? 0) - (selectedLoadMember.rigidOffsetJ ?? 0))
+    ? Math.max(1e-9, memberGeometrySummary(selectedLoadMember, selectedLoadStart, selectedLoadEnd).length - (selectedLoadMember.rigidOffsetI ?? 0) - (selectedLoadMember.rigidOffsetJ ?? 0))
     : 1;
   const selectedLoadChain = selectedMemberLoad?.type === 'distributed'
     ? straightMemberChain(project, selectedMemberLoad.memberId)
@@ -693,8 +695,7 @@ export const InspectorProperties = () => {
     {selectedMember ? (() => {
       const ni = nodeMap.get(selectedMember.i);
       const nj = nodeMap.get(selectedMember.j);
-      const length = ni && nj ? Math.hypot(nj.x - ni.x, nj.y - ni.y) : Number.NaN;
-      const angle = ni && nj ? Math.atan2(nj.y - ni.y, nj.x - ni.x) * 180 / Math.PI : Number.NaN;
+      const geometry = memberGeometrySummary(selectedMember, ni, nj);
       return <>
         <InspectorPropertyGroup title={t('inspector.frequentProperties')} description={t('inspector.memberFrequentDescription')}>
           <div className="inspector-segmented-row">
@@ -752,8 +753,13 @@ export const InspectorProperties = () => {
           <InspectorDerivedList rows={[
             { label: t('inspector.nodeI'), value: selectedMember.i },
             { label: t('inspector.nodeJ'), value: selectedMember.j },
-            { label: t('inspector.length'), value: formatPhysical(length, units, 'length') },
-            { label: t('inspector.angle'), value: formatInspectorValue(angle, '°', { maximumFractionDigits: 2 }) },
+            // En una curva, la longitud es la del arco; cuerda y radio quedan como datos secundarios.
+            { label: t('inspector.length'), value: formatPhysical(geometry.length, units, 'length'), ...(geometry.arc ? { description: t('inspector.arcLengthNote') } : {}) },
+            ...(geometry.arc ? [
+              { label: t('inspector.chord'), value: formatPhysical(geometry.arc.chord, units, 'length') },
+              { label: t('inspector.radius'), value: formatPhysical(geometry.arc.radius, units, 'length') },
+            ] : []),
+            { label: t('inspector.angle'), value: formatInspectorValue(geometry.angleDeg, '°', { maximumFractionDigits: 2 }), ...(geometry.arc ? { description: t('inspector.chordAngleNote') } : {}) },
             ...(memberResult && (!classroomMode || resultsVisible) ? [
               { label: t('inspector.maxAxial'), value: formatPhysical(memberResult.maxAxial, units, 'force') },
               { label: t('inspector.maxShear'), value: formatPhysical(memberResult.maxShear, units, 'force') },

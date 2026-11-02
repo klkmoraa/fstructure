@@ -110,6 +110,37 @@ describe('el Modelo 2D como fuente de Estructura', () => {
     expect(beam.spans[0]!.lengthM).toBeCloseTo(length, 8);
     expect(outOfScopeChecks('frame', selectedCode, { inclinedBeams: true })).toContainEqual(expect.objectContaining({ id: 'scope-inclined-beam-axial', status: 'out-of-scope' }));
   });
+  it('una barra curva no apaga el diseño: la viga recta se diseña y el arco queda fuera con su motivo', () => {
+    const concrete = { type: 'frame' as const, E: 25e6, A: .3 * .55, I: .3 * .55 ** 3 / 12 };
+    const uniform = (id: string, memberId: string, q: number): MemberLoad => ({ id, memberId, caseId: 'D', type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1, qyStart: -q, qyEnd: -q });
+    const project: ProjectModel = { ...createBlankProject(),
+      nodes: [
+        { id: 'A', x: 0, y: 0, support: { type: 'pin' } }, { id: 'B', x: 6, y: 0, support: { type: 'roller', angleDeg: 90 } },
+        { id: 'C', x: 10, y: 0, support: { type: 'pin' } }, { id: 'D', x: 20, y: 0, support: { type: 'pin' } },
+      ],
+      members: [
+        { id: 'V', i: 'A', j: 'B', ...concrete },
+        { id: 'Arco', i: 'C', j: 'D', ...concrete, curve: { kind: 'circular-arc', bulge: 0.6 } },
+      ],
+      loadCases: [{ id: 'D', name: 'Muerta', category: 'permanent', active: true, selfWeightFactor: 0 }],
+      memberLoads: [uniform('qV', 'V', 20), uniform('qArco', 'Arco', 15)],
+    };
+    const external = model2dDesignSource(project);
+    expect(external.errors).toEqual([]);
+    expect(external.summary).toMatchObject({ beams: 1, columns: 0, skipped: 1 });
+    const source = external.create({ braced: true })!;
+    expect(source.members.find((member) => member.id === 'Arco')).toMatchObject({ kind: 'other', reason: expect.stringMatching(/barra curva/) });
+    const combinations = designCode(code).loadCombinations('B');
+    const result = designStructure(source, { ...options, includeSelfWeight: false, combinations, lateralCombinations: [] });
+    if (!result.ok) throw new Error(result.errors.join('\n'));
+    // Viga simplemente apoyada, independiente del arco: M = wL²/8 y V = wL/2.
+    const factor = Math.max(...combinations.map((c) => c.dead));
+    expect(result.beams.map((beam) => beam.label)).toEqual(['Viga V']);
+    expect(result.beams[0]!.result.extremes.positiveMomentKnm).toBeCloseTo(factor * 20 * 6 ** 2 / 8, 6);
+    expect(result.beams[0]!.result.extremes.shearKn).toBeCloseTo(factor * 20 * 6 / 2, 6);
+    expect(result.skipped).toEqual([expect.objectContaining({ id: 'Arco', reason: expect.stringMatching(/barra curva/) })]);
+  });
+
   it('diseña igual el pórtico dibujado en el 2D que el generado por el taller', () => {
     const generated = designFrame(frameInput);
     if (!generated.ok) throw new Error(generated.errors.join('\n'));

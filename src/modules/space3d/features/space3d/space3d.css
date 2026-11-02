@@ -81,7 +81,8 @@
 
 .space3d-button:active:not(:disabled) { box-shadow: var(--sc-shadow-inset); }
 
-.space3d-button:disabled {
+.space3d-button:disabled,
+.space3d-button[aria-disabled='true'] {
   color: var(--sc-color-text-disabled);
   cursor: not-allowed;
   opacity: 0.7;

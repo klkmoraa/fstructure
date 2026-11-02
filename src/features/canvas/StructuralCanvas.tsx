@@ -12,12 +12,14 @@ import { copyModelSelection, ensureNodeAtPoint, pasteModelClipboard, structuralS
 import { discardIncompatiblePrescribedDisplacements } from '../../data/supportSemantics';
 import {
   buildIntersectionSnapCandidates,
+  buildMidpointSnapCandidates,
   buildPerpendicularSnapCandidates,
   resolveSnap,
   type SnapCandidate,
   type SnapKind,
   type SnapSegment,
 } from '../../utils/snapping';
+import { memberSnapSegments } from './snapSegments';
 import { selectGeometryByBox } from '../../utils/selectionGeometry';
 import { useI18n } from '../../i18n/useI18n';
 import { usePhase2I18n } from '../../i18n/usePhase2I18n';
@@ -493,24 +495,14 @@ export const StructuralCanvas = ({
   const memberLoadPresentationMap = useMemo(() => new Map(
     resolveMemberLoadPresentation(project.memberLoads).map((presentation) => [presentation.load.id, presentation]),
   ), [project.memberLoads]);
-  const snapSegments = useMemo<SnapSegment[]>(() => project.members.flatMap((member) => {
-    const start = nodeMap.get(member.i);
-    const end = nodeMap.get(member.j);
-    return start && end ? [{ id: member.id, start, end }] : [];
-  }), [nodeMap, project.members]);
+  // Las curvas llevan su arco: sus snaps caen sobre la barra, no sobre la cuerda.
+  const snapSegments = useMemo<SnapSegment[]>(() => memberSnapSegments(project.members, nodeMap), [nodeMap, project.members]);
   const baseSnapCandidates = useMemo<SnapCandidate[]>(() => {
     const candidates: SnapCandidate[] = [];
     if (view.snapTargets.nodes) {
       for (const node of project.nodes) candidates.push({ x: node.x, y: node.y, kind: 'node', sourceIds: [node.id] });
     }
-    if (view.snapTargets.midpoints) {
-      for (const segment of snapSegments) candidates.push({
-        x: (segment.start.x + segment.end.x) / 2,
-        y: (segment.start.y + segment.end.y) / 2,
-        kind: 'midpoint',
-        sourceIds: [segment.id],
-      });
-    }
+    if (view.snapTargets.midpoints) candidates.push(...buildMidpointSnapCandidates(snapSegments));
     if (view.snapTargets.intersections && snapSegments.length <= 500) {
       candidates.push(...buildIntersectionSnapCandidates(snapSegments));
     }

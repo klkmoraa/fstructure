@@ -334,6 +334,8 @@
 
 .workspace-topbar__icon-button:disabled,
 .workspace-topbar__action-button:disabled { cursor: not-allowed; opacity: .4; }
+/* Sin nada que analizar: secundario y atenuado, pero enfocable (lleva su motivo en el title). */
+.workspace-topbar__action-button[aria-disabled='true'] { cursor: not-allowed; opacity: .55; }
 
 .workspace-topbar__project:focus-visible,
 .workspace-topbar__brand:focus-visible,

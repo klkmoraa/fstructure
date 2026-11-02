@@ -23,6 +23,8 @@ import {
   TRUSS_TOPOLOGIES,
   explicitPropertiesFromCatalog,
   spacingDraftDivisions,
+  withGeneratorFamily,
+  withGeneratorSupport,
   type GeneratorFormErrors,
   type GeneratorFormState,
   type GeneratorSpacingDraft,
@@ -165,7 +167,7 @@ export const StructureGeneratorPanel = ({
     else if (key === 'ArrowRight' || key === 'ArrowDown') next = (index + 1) % GENERATOR_FAMILIES.length;
     else next = (index - 1 + GENERATOR_FAMILIES.length) % GENERATOR_FAMILIES.length;
     const family = GENERATOR_FAMILIES[next];
-    patch({ family });
+    onFormChange(withGeneratorFamily(form, family));
     window.requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(`[data-generator-family="${family}"]`)?.focus());
   };
 
@@ -454,7 +456,7 @@ export const StructureGeneratorPanel = ({
             aria-label={t(`family.${family}`)}
             tabIndex={selected ? 0 : -1}
             data-generator-family={family}
-            onClick={() => patch({ family })}
+            onClick={() => onFormChange(withGeneratorFamily(form, family))}
             onKeyDown={(event) => {
               if (!['Home', 'End', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp'].includes(event.key)) return;
               event.preventDefault();
@@ -476,9 +478,9 @@ export const StructureGeneratorPanel = ({
           label={t('support.label')}
           value={form.support}
           options={GENERATOR_SUPPORT_CHOICES.map((choice) => ({ value: choice, label: t(`support.${choice}`) }))}
-          onValueChange={(value) => patch({ support: value as GeneratorFormState['support'] })}
+          onValueChange={(value) => onFormChange(withGeneratorSupport(form, value as GeneratorFormState['support']))}
         />
-        <small className="structure-generator__hint">{t(`support.detail.${form.support}` as never)}</small>
+        <small className="structure-generator__hint">{form.supportChosen ? null : <>{t('support.familyDefault')} </>}{t(`support.detail.${form.support}` as never)}</small>
         </>}
       </div>
 

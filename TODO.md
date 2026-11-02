@@ -59,11 +59,14 @@ Corregido en esa entrega: el guardado sin cambios ya no sube la revisión (abrir
 - [x] Datos: guardar al ocultar la página. `pagehide` y `visibilitychange` a oculta vacían los guardados pendientes (`src/shared/pendingWrites`: el 2D y Diseño, por la misma sesión y cola); también antes de «Recargar» (2-nov-2026).
 - [x] PWA: si otra pestaña activa la versión nueva, las demás muestran «Nueva versión lista · Recargar» (`controllerchange`) y recargar no espera otro cambio de worker; si un chunk falla (`vite:preloadError` o los `lazy()` de la mesa), se guarda lo pendiente y se recarga una sola vez (`sessionStorage` evita el bucle; sin red no se recarga) (2-nov-2026).
 - [x] IndexedDB: una apertura rechazada o bloqueada ya no queda cacheada (la siguiente llamada abre de nuevo y una conexión tardía se cierra); `versionchange` y `close` cierran y olvidan la conexión, en la biblioteca y en el bundle (`src/storage/openDatabase`) (2-nov-2026).
-- [ ] Barras curvas: el PDF las dibuja rectas (escena, cargas y encuadre); las líneas de influencia miden la cuerda; los snaps de punto medio/intersección usan la cuerda; «Longitud» del Inspector muestra la cuerda; una sola barra curva desactiva el diseño de concreto de todo el modelo. (N y V ya siguen la tangente del arco, 31-oct.)
-- [ ] Interfaz: con el modelo vacío, «Analizar» (2D y 3D) y «Continuar» en la Home siguen como acción principal.
+- [x] Barras curvas en el PDF: encuadre con la clave, cargas y fantasmas sobre el arco y tabla de N, V y M por estaciones (1-nov-2026).
+- [x] Barras curvas sobre su arco (2-nov-2026): las líneas de influencia miden el arco (ajuste cortado en las estaciones de su malla; probado con el inicio «Arco» contra el método de las fuerzas) y el lienzo las dibuja sobre él; punto medio (la clave), perpendicular y cruces se toman sobre el arco y el nudo que cae ahí divide la curva y queda conectado (una curva con zonas rígidas no ofrece esos snaps); el Inspector da la longitud del arco con cuerda y radio; una barra curva ya no apaga el diseño: entra al análisis y queda fuera del concreto con su motivo, y las vigas y columnas rectas se diseñan.
+- [x] Interfaz: con el modelo vacío, «Analizar» (2D y 3D) deja de ser la acción principal: queda secundario, enfocable y dice por qué en su title (2-nov-2026).
+- [ ] Interfaz: con el modelo vacío, «Continuar» en la Home sigue como acción principal.
 - [x] Creación rápida del 2D: tipo en un toque (viga, voladizo, continua, pórtico, armadura, arco), medidas con vista previa y «Crear y calcular»; generador avanzado a un clic (31-oct-2026).
 - [x] Resultados legibles en modelos grandes: sólo el extremo global y la barra elegida fuerzan su cifra; las cargas ceden y se atenúan bajo un diagrama; la leyenda reserva su caja (31-oct-2026).
-- [ ] Generador avanzado: empieza con apoyos «Ninguno» y sin cargas, así que lo generado no se calcula hasta completarlo; ofrecer apoyos y cargas por omisión como la creación rápida.
+- [x] Generador avanzado: nace con el apoyo usual de cada familia (empotrado en pórticos y retículas, articulado en vigas, armaduras y arcos) y respeta el que se elija, también «Ninguno»; lo generado es estable sin completarlo (2-nov-2026).
+- [ ] Generador avanzado: sigue sin cargas por omisión; ofrecerlas como la creación rápida.
 - [ ] Teléfono: con resultados en un pórtico, las reacciones aún se apartan con guías largas; agrupar Rx/Ry/Mᵣ por apoyo en una sola caja.
 
 ## Memoria PDF (31-oct-2026)

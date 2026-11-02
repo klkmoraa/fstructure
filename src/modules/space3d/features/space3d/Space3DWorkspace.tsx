@@ -960,15 +960,19 @@ const WorkspaceBody = ({
     time: new Intl.DateTimeFormat(language === 'es' ? 'es' : 'en', { hour: 'numeric', minute: '2-digit' }).format(lastAnalyzedAt),
   });
 
+  // Sin nudos o sin barras no hay nada que analizar: «Analizar» deja de ser la
+  // acción principal (roja) y queda secundario, enfocable y con su motivo.
+  const nothingToAnalyze = !runningAny && (project.nodes.length === 0 || project.members.length === 0);
   const analyzeButton = (className: string) => <button
     type="button"
-    className={className}
+    className={nothingToAnalyze ? className.replace(/\s*\bis-primary\b/, '') : className}
     aria-label={runningAny ? t('space3d.analyzing') : t('space3d.analyze')}
-    title={runningAny ? t('space3d.analyzing') : t('space3d.analyze')}
-    onClick={() => { void runSelectedAnalysis(); }}
+    title={nothingToAnalyze ? t('space3d.analyzeEmpty') : runningAny ? t('space3d.analyzing') : t('space3d.analyze')}
+    {...(nothingToAnalyze ? { 'aria-disabled': true, 'data-wide-label': '' } : {})}
+    onClick={() => { if (!nothingToAnalyze) void runSelectedAnalysis(); }}
     disabled={analysisBlocked}
   >
-    <Play size={17} fill="currentColor" aria-hidden="true" /><span>{runningAny ? t('space3d.analyzing') : t('space3d.analyze')}</span>
+    <Play size={17} fill={nothingToAnalyze ? 'none' : 'currentColor'} aria-hidden="true" /><span>{runningAny ? t('space3d.analyzing') : t('space3d.analyze')}</span>
   </button>;
 
   const layersControl = <Popover

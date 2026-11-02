@@ -320,6 +320,7 @@ export const enWorkspace = {
   'space3d.newLoad': 'New load',
   'space3d.analyze': 'Analyse',
   'space3d.analyzing': 'Analysing…',
+  'space3d.analyzeEmpty': 'Nothing to analyse yet: generate a structure or place nodes and members.',
   'space3d.analysisModeLinear': 'Linear',
   'space3d.analysisModePDelta': 'P-Delta',
   'space3d.analysisModeModal': 'Modal',

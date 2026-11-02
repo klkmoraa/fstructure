@@ -5,6 +5,7 @@ export const enAnalysis = {
   'analysis.running': 'Analyzing…',
   'analysis.runningLabel': 'Analyzing structure',
   'analysis.statusReady': 'Ready to analyze',
+  'analysis.nothingToAnalyze': 'Nothing to analyze yet: draw a member or pick a starting model.',
   'analysis.statusCalculating': 'Calculating…',
   'analysis.statusResolved': 'Analysis up to date',
   'analysis.statusStale': 'Results out of date',

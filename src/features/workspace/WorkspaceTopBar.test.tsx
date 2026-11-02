@@ -344,4 +344,35 @@ describe('WorkspaceTopBar', () => {
     expect(projectGroupRules.some((rule) => rule.includes('overflow: hidden'))).toBe(false);
   });
 
+  it('con el modelo vacío «Analizar» deja de ser la acción principal, pero se alcanza con el teclado y dice por qué', async () => {
+    const user = userEvent.setup();
+    const onAnalyze = vi.fn();
+    const reason = 'Nada que analizar todavía: dibuja una barra o elige un inicio.';
+    const { rerender } = render(<WorkspaceTopBar labels={labels} projectName="Modelo"
+      storageState="ready" analysisState="ready" resultsOpen={false} canUndo={false} canRedo={false}
+      onOpenHome={vi.fn()} onRenameProject={vi.fn()} onUndo={vi.fn()} onRedo={vi.fn()}
+      onAnalyze={onAnalyze} analyzeUnavailableReason={reason} onOpenResults={vi.fn()} />);
+
+    const waiting = screen.getByRole('button', { name: 'Analizar' });
+    expect(waiting.classList.contains('is-primary')).toBe(false);
+    expect(waiting.getAttribute('aria-disabled')).toBe('true');
+    expect(waiting.getAttribute('title')).toBe(reason);
+    expect((waiting as HTMLButtonElement).disabled).toBe(false);
+    waiting.focus();
+    expect(document.activeElement).toBe(waiting);
+    await user.keyboard('{Enter}');
+    await user.click(waiting);
+    expect(onAnalyze).not.toHaveBeenCalled();
+
+    rerender(<WorkspaceTopBar labels={labels} projectName="Modelo"
+      storageState="ready" analysisState="ready" resultsOpen={false} canUndo={false} canRedo={false}
+      onOpenHome={vi.fn()} onRenameProject={vi.fn()} onUndo={vi.fn()} onRedo={vi.fn()}
+      onAnalyze={onAnalyze} analyzeUnavailableReason={null} onOpenResults={vi.fn()} />);
+    const ready = screen.getByRole('button', { name: 'Analizar' });
+    expect(ready.classList.contains('is-primary')).toBe(true);
+    expect(ready.hasAttribute('aria-disabled')).toBe(false);
+    await user.click(ready);
+    expect(onAnalyze).toHaveBeenCalledOnce();
+  });
+
 });

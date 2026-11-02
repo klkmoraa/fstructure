@@ -5,7 +5,8 @@ import type { CanvasCamera } from './canvasInteraction';
 import { evaluateDeformationAt, evaluateDiagramAt, segmentBezierControls } from '../../engine/diagram';
 import { unitLabel } from '../../engine/units';
 import { toDisplay } from '../../foundation/units';
-import { memberAxis } from '../../graphics/structureGeometry';
+import { memberAxis, pointAtGrossRatio } from '../../graphics/structureGeometry';
+import { curvedMemberPath, curveTangentAt } from '../../graphics/memberCurve';
 import { formatFixed, formatScientific } from '../../utils/numberFormat';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
@@ -225,11 +226,13 @@ const CanvasResultLayerImpl = ({
       if (!member || !result || !ni || !nj) return [];
       const axis = memberAxis(member, ni, nj);
       if (axis.length <= 1e-12) return [];
+      // Una barra curva se recorre sobre su arco, no sobre la cuerda.
+      if (axis.curve) return [{ memberId, d: curvedMemberPath(axis.curve, toScreen) }];
       const { c, s } = axis;
       const start = result.startOffset ?? 0;
       const a = toScreen(ni.x + c * start, ni.y + s * start);
       const b = toScreen(ni.x + c * (start + result.length), ni.y + s * (start + result.length));
-      return [{ memberId, a, b }];
+      return [{ memberId, d: `M ${a.x} ${a.y} L ${b.x} ${b.y}` }];
     });
     const source = (() => {
       const marker = influenceCanvasState.source;
@@ -241,9 +244,9 @@ const CanvasResultLayerImpl = ({
       if (!member || !result || !ni || !nj) return null;
       const axis = memberAxis(member, ni, nj);
       if (axis.length <= 1e-12) return null;
-      const { c, s } = axis;
       const localX = (result.startOffset ?? 0) + Math.max(0, Math.min(1, marker.ratio)) * result.length;
-      const point = toScreen(ni.x + c * localX, ni.y + s * localX);
+      const model = pointAtGrossRatio(axis, localX / axis.length);
+      const point = toScreen(model.x, model.y);
       const ordinate = influenceCanvasState.target.quantity === 'moment'
         ? `${formatFixed(toDisplay(marker.ordinate, units, 'length'), 4)} ${lengthLabel}`
         : formatFixed(marker.ordinate, 4);
@@ -258,14 +261,15 @@ const CanvasResultLayerImpl = ({
       if (!member || !result || !ni || !nj) return null;
       const axis = memberAxis(member, ni, nj);
       if (axis.length <= 1e-12) return null;
-      const { c, s } = axis;
       const x = Math.max(0, Math.min(result.length, marker.x));
-      const localX = (result.startOffset ?? 0) + x;
-      const point = toScreen(ni.x + c * localX, ni.y + s * localX);
+      const ratio = ((result.startOffset ?? 0) + x) / axis.length;
+      const model = pointAtGrossRatio(axis, ratio);
+      const point = toScreen(model.x, model.y);
+      const { x: c, y: s } = axis.curve ? curveTangentAt(axis.curve, ratio) : { x: axis.c, y: axis.s };
       return { point, nx: -s, ny: c, label: `${marker.quantity === 'axial' ? 'N' : marker.quantity === 'shear' ? 'V' : 'M'} · x ${formatFixed(toDisplay(x, units, 'length'), 3)} ${lengthLabel}` };
     })();
     return <g className="influence-canvas-overlay" pointerEvents="none">
-      {path.map((item) => <line key={item.memberId} className="influence-path" x1={item.a.x} y1={item.a.y} x2={item.b.x} y2={item.b.y} />)}
+      {path.map((item) => <path key={item.memberId} className="influence-path" fill="none" d={item.d} />)}
       {target ? <g className="influence-target"><line x1={target.point.x - target.nx * 16} y1={target.point.y + target.ny * 16} x2={target.point.x + target.nx * 16} y2={target.point.y - target.ny * 16} /><circle cx={target.point.x} cy={target.point.y} r="4" /><text x={target.point.x + 10} y={target.point.y - 18}>{target.label}</text></g> : null}
       {source ? <g className="influence-unit-load"><line x1={source.point.x} y1={source.point.y - 55} x2={source.point.x} y2={source.point.y - 8} markerEnd="url(#arrow-purple)" /><circle cx={source.point.x} cy={source.point.y} r="5" /><text x={source.point.x + (source.point.x > size.width * 0.65 ? -10 : 10)} y={source.point.y - 62} textAnchor={source.point.x > size.width * 0.65 ? 'end' : 'start'}>{formatFixed(toDisplay(1, units, 'force'), 3)} {forceLabel} · ψ {source.ordinate}</text></g> : null}
     </g>;

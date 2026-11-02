@@ -6,6 +6,16 @@ interface Piece { memberId: string; t0: number; t1: number; chord: number; c: nu
 interface CurvedGroup { member: MemberModel; arc: CircularArcGeometry; pieces: Piece[] }
 export interface CurvedAnalysisMesh { project: ProjectModel; groups: CurvedGroup[]; physicalId: ReadonlyMap<string, string> }
 
+/**
+ * Estaciones fijas (fracción del arco, de 0 a 1) de la malla privada: tramos de
+ * ≤ 2.8°. Las cargas de barra añaden las suyas; las líneas de influencia cortan
+ * en éstas, porque entre dos de ellas la respuesta es suave.
+ */
+export const curvedMeshRatios = (arc: Pick<CircularArcGeometry, 'sweep'>): number[] => {
+  const count = Math.max(8, Math.ceil(Math.abs(arc.sweep) / (Math.PI / 64)));
+  return Array.from({ length: count + 1 }, (_, i) => i / count);
+};
+
 /** This mesh is disposable solver input, never a saved or editable project. */
 export const prepareCurvedAnalysis = (source: ProjectModel): CurvedAnalysisMesh => {
   const project = structuredClone(source);
@@ -38,8 +48,7 @@ export const prepareCurvedAnalysis = (source: ProjectModel): CurvedAnalysisMesh 
     const ni = nodes.get(member.i), nj = nodes.get(member.j);
     if (!ni || !nj) throw new Error(`${member.id}: falta un nudo extremo de la curva.`);
     const arc = circularMemberGeometry(member, ni, nj)!;
-    const count = Math.max(8, Math.ceil(Math.abs(arc.sweep) / (Math.PI / 64)));
-    const locations = new Set(Array.from({ length: count + 1 }, (_, i) => i / count));
+    const locations = new Set(curvedMeshRatios(arc));
     for (const load of source.memberLoads.filter(l => l.memberId === member.id)) {
       for (const t of load.type === 'distributed' ? [load.start, load.end] : [load.position ?? 0.5]) {
         if (!Number.isFinite(t) || t < 0 || t > 1) throw new Error(`${load.id}: la posición de la carga debe estar entre 0 y 1.`);

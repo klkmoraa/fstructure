@@ -123,6 +123,10 @@ export function model2dDesignSource(project: ProjectModel, analyzeCases?: (reque
       ...(loads.point ? { displayPoint: loads.point } : {}),
     };
     if (member.type !== 'frame') return { ...base, kind: 'other' as const, reason: member.type === 'truss' ? 'barra de armadura (sólo axial)' : 'brazo rígido' };
+    // Un arco entra al análisis con su geometría real (y así da sus acciones a
+    // las vigas y columnas rectas), pero no se diseña: las revisiones de viga y
+    // columna de concreto son de barras rectas.
+    if (member.curve) return { ...base, kind: 'other' as const, reason: 'barra curva (arco): las revisiones de vigas y columnas de concreto son para barras rectas; el arco se revisa aparte' };
     if (member.propertyProfile === 'exercise') return { ...base, kind: 'other' as const, reason: 'perfil de ejercicios sin sección física definida' };
     const customSection = activeCustomSection(member);
     if (member.customSection && member.sectionOrigin !== 'catalog' && !customSection) return { ...base, kind: 'other' as const, reason: 'las medidas personalizadas no coinciden con A e I; vuelve a aplicar la geometría' };
@@ -188,7 +192,9 @@ export function model2dDesignSource(project: ProjectModel, analyzeCases?: (reque
   const liveCases = projected.filter((item) => item.case.kind === 'live').length;
   const lateralCases = projected.filter((item) => item.case.kind === 'lateral').length;
   if (!project.members.length) errors.push('El Modelo 2D está vacío: dibuja barras, apoyos y cargas.');
-  else if (!beams && !columns) errors.push('El Modelo 2D no tiene barras de concreto que diseñar (vigas o columnas con material de concreto).');
+  else if (!beams && !columns) errors.push(project.members.some((member) => member.curve)
+    ? 'El Modelo 2D no tiene vigas ni columnas rectas de concreto que diseñar; las barras curvas (arcos) no se diseñan con estas revisiones.'
+    : 'El Modelo 2D no tiene barras de concreto que diseñar (vigas o columnas con material de concreto).');
   if (project.members.length && !deadCases && !liveCases) errors.push('El Modelo 2D no tiene casos permanentes ni variables activos con cargas.');
   const nonlinear = project.members.some((member) => member.axialBehavior && member.axialBehavior !== 'both')
     || (project.nodeLinks ?? []).some((link) => link.behavior !== 'linear');

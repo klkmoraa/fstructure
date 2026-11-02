@@ -72,6 +72,12 @@ interface WorkspaceTopBarProps {
   onUndo: () => void;
   onRedo: () => void;
   onAnalyze: () => void;
+  /**
+   * Por qué todavía no hay nada que analizar (modelo vacío). Mientras exista,
+   * «Analizar» deja de ser la acción principal: queda como botón secundario,
+   * enfocable, con este motivo como descripción y sin efecto al pulsarlo.
+   */
+  analyzeUnavailableReason?: string | null;
   /** Alterna Resultados. Recibe el disparador para que el foco vuelva a él. */
   onOpenResults: (trigger: HTMLElement | null) => void;
   /** Abre el modo de trabajo, casos y combinaciones de cálculo. */
@@ -111,6 +117,7 @@ export const WorkspaceTopBar = ({
   onUndo,
   onRedo,
   onAnalyze,
+  analyzeUnavailableReason = null,
   onOpenResults,
   onOpenCalculationExperience,
   utilities,
@@ -278,10 +285,19 @@ export const WorkspaceTopBar = ({
       {utilities}
       {primaryAction}
       {contextActive ? <div className="workspace-topbar__calculate-group" data-workspace-group="calculate">
-        <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>
-          <Play size={17} fill="currentColor" aria-hidden="true" />
-          <span>{analysisRunning ? labels.analysisRunning : labels.analyze}</span>
-        </button>
+        {analyzeUnavailableReason && !analysisRunning
+          // `aria-disabled` y no `disabled`: sigue en el orden de tabulación y
+          // el lector de pantalla lee el motivo; sólo deja de ser la acción roja.
+          ? <button type="button" className="workspace-topbar__action-button" data-wide-label aria-disabled="true"
+            aria-label={labels.analyze} title={analyzeUnavailableReason}
+            onClick={(event) => event.preventDefault()}>
+            <Play size={17} aria-hidden="true" />
+            <span>{labels.analyze}</span>
+          </button>
+          : <button type="button" className="workspace-topbar__action-button is-primary" onClick={onAnalyze} disabled={analysisRunning} aria-label={analysisRunning ? labels.analysisRunning : labels.analyze}>
+            <Play size={17} fill="currentColor" aria-hidden="true" />
+            <span>{analysisRunning ? labels.analysisRunning : labels.analyze}</span>
+          </button>}
       </div> : null}
     </nav>
   </header>;

@@ -3,6 +3,8 @@ import { evaluateDiagramAt, evaluatePolynomial, rootsInInterval } from './diagra
 import { solveLinearSystem } from '../foundation/linearAlgebra';
 import { isTrustedForCombination, resolveReliability, worstLevel } from './reliability';
 import { analyzeProject } from './solver';
+import { circularMemberGeometry, memberCurveLength } from '../graphics/memberCurve';
+import { curvedMeshRatios } from './curvedMemberAnalysis';
 
 const GEOMETRY_EPS = 1e-10;
 const UNIT_CASE_ID = '__fusionstructure_influence_unit__';
@@ -210,10 +212,25 @@ const memberLength = (member: MemberModel, project: ProjectModel): number => {
   const nodeI = project.nodes.find((node) => node.id === member.i);
   const nodeJ = project.nodes.find((node) => node.id === member.j);
   if (!nodeI || !nodeJ) throw new Error(`El miembro ${member.id} referencia un nodo inexistente.`);
-  const gross = Math.hypot(nodeJ.x - nodeI.x, nodeJ.y - nodeI.y);
+  // Una barra curva se recorre sobre el arco: ahí miden la carga móvil, el
+  // corte objetivo y los diagramas del análisis, no sobre la cuerda.
+  const gross = memberCurveLength(member, nodeI, nodeJ);
   const length = gross - (member.rigidOffsetI ?? 0) - (member.rigidOffsetJ ?? 0);
   if (!(length > GEOMETRY_EPS)) throw new Error(`El miembro ${member.id} no tiene longitud deformable positiva.`);
   return length;
+};
+
+/**
+ * En una barra curva la respuesta sólo es suave entre dos estaciones fijas de su
+ * malla de cálculo: se ajusta un tramo por cada una, sin cruzarlas.
+ */
+const curvedPathStations = (project: ProjectModel, member: OrderedInfluenceMember): number[] => {
+  const model = project.members.find((candidate) => candidate.id === member.memberId);
+  const nodeI = model ? project.nodes.find((node) => node.id === model.i) : undefined;
+  const nodeJ = model ? project.nodes.find((node) => node.id === model.j) : undefined;
+  const arc = model?.curve && nodeI && nodeJ ? circularMemberGeometry(model, nodeI, nodeJ) : undefined;
+  if (!arc) return [];
+  return curvedMeshRatios(arc).map((ratio) => member.pathStart + (member.reversed ? 1 - ratio : ratio) * member.length);
 };
 
 /** Orders a selected set of frame members as one connected, open, non-branched chain. */
@@ -490,6 +507,7 @@ export const buildInfluenceLine = (
   const tolerance = Math.max(1, path.length) * GEOMETRY_EPS;
   const breakpoints = uniqueSorted([
     ...path.members.flatMap((member) => [member.pathStart, member.pathEnd]),
+    ...path.members.flatMap((member) => curvedPathStations(project, member)),
     ...(targetPathPosition !== undefined
       && targetPathPosition > tolerance
       && targetPathPosition < path.length - tolerance ? [targetPathPosition] : []),
@@ -597,11 +615,18 @@ export const buildInfluenceLine = (
 
   if (!segments.length) throw new Error('La trayectoria no produjo intervalos de influencia.');
   const jumps: InfluenceJump[] = [];
+  // Dentro de una barra curva, los cortes del ajuste (estaciones de su malla y
+  // subdivisiones) no son físicos: la línea es continua ahí salvo en el corte
+  // objetivo, y la diferencia entre dos cúbicas vecinas es sólo su error de ajuste.
+  const curvedMembers = path.members.filter((member) => project.members.find((model) => model.id === member.memberId)?.curve);
+  const continuousAt = (position: number) => !(targetPathPosition !== undefined && Math.abs(position - targetPathPosition) <= tolerance)
+    && curvedMembers.some((member) => position > member.pathStart + tolerance && position < member.pathEnd - tolerance);
   for (let index = 1; index < segments.length; index += 1) {
     const previous = segments[index - 1];
     const next = segments[index];
     if (Math.abs(previous.pathEnd - next.pathStart) > tolerance) continue;
     const position = next.pathStart;
+    if (continuousAt(position)) continue;
     const left = segmentValue(previous, position);
     const right = segmentValue(next, position);
     const delta = right - left;
