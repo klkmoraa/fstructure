@@ -10,6 +10,7 @@
  * which is what lets a reader scan the column rather than read the sentences.
  */
 import { unitLabel } from '../../engine/units';
+import { formulationLabel } from './pdfSummarySection';
 import type { ReportContext } from './reportContext';
 
 export const drawScopePart = (context: ReportContext): void => {
@@ -18,7 +19,7 @@ export const drawScopePart = (context: ReportContext): void => {
 
   layout.part(
     'Anexo A · Unidades, convenciones y alcance',
-    'La base de lectura de todas las cifras del documento, y lo que el análisis deliberadamente no cubre.',
+    'Unidades, convenciones de signo, alcance del análisis y sus advertencias.',
   );
 
   layout.heading('Unidades de presentación');
@@ -28,19 +29,19 @@ export const drawScopePart = (context: ReportContext): void => {
     ['Momento', unitLabel(units, 'moment')],
     ['Carga distribuida', unitLabel(units, 'distributedForce')],
     ['Rotación', 'rad'],
-    ['Precisión interna', 'doble precisión IEEE-754; el redondeo es sólo de presentación'],
-    ['Cero mostrado', 'un valor por debajo de la tolerancia relativa del solver se presenta como 0'],
+    ['Precisión', 'cálculo en doble precisión; se redondea sólo al presentar, a cuatro cifras significativas'],
+    ['Cero', 'un valor menor que la tolerancia relativa del análisis se escribe 0'],
   ]);
 
   layout.heading('Convenciones de signo');
   layout.text(
-    '+X apunta a la derecha y +Y hacia arriba. El eje local x de cada miembro va del nodo i al nodo j, '
-    + 'y el eje local y gira 90 grados en sentido antihorario respecto de x.',
+    '+X hacia la derecha y +Y hacia arriba. El eje local x de cada barra va del nudo i al nudo j; '
+    + 'el eje local y está girado 90° en sentido antihorario.',
   );
   layout.gap();
   layout.keyValues([
-    ['N axial', 'positivo en tracción, según el eje local x del miembro'],
-    ['V cortante', 'positivo según el eje local y del miembro'],
+    ['N axial', 'positivo en tensión, según el eje local x de la barra'],
+    ['V cortante', 'positivo según el eje local y de la barra'],
     ['M momento', 'positivo cuando tracciona la fibra del lado local -y'],
     ['Reacciones', 'en ejes globales, con el signo de la fuerza que el apoyo ejerce sobre la estructura'],
     ['Deformada', 'desplazamientos nodales en ejes globales; la escala del dibujo es ilustrativa'],
@@ -48,10 +49,10 @@ export const drawScopePart = (context: ReportContext): void => {
 
   layout.heading('Alcance del análisis');
   layout.keyValues([
-    ['Formulación', analysis.educationTrace?.formulation ?? 'análisis estático lineal 2D'],
-    ['Elemento de marco', 'Euler-Bernoulli con deformación axial y flexión'],
-    ['Elemento de armadura', 'rigidez axial exclusivamente'],
-    ['Hipótesis', 'comportamiento elástico lineal, pequeñas deformaciones y propiedades prismáticas por miembro'],
+    ['Formulación', formulationLabel(analysis.educationTrace?.formulation)],
+    ['Barra de marco', 'Euler–Bernoulli, con deformación axial y por flexión'],
+    ['Barra de armadura', 'sólo rigidez axial'],
+    ['Hipótesis', 'material elástico lineal, pequeñas deformaciones y propiedades constantes en cada barra'],
   ]);
 
   layout.heading('Limitaciones declaradas');

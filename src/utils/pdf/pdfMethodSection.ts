@@ -849,224 +849,236 @@ const drawThreeMoment = (context: ReportContext, solution: ThreeMomentResult): v
   memoirCheck(context, `momentos de apoyo contra el análisis matricial, diferencia máxima ${clearNumber(worst, momentScale)} ${momentUnit}.`, worst <= 1e-3 * momentScale);
 };
 
+/** «isostática» o «hiperestática de grado g», para la frase que abre un método de armaduras. */
+const trussDegree = (indeterminacy: number): string => indeterminacy === 0 ? 'isostática' : `hiperestática de grado ${indeterminacy}`;
+
 const drawVirtualWork = (context: ReportContext, solution: VirtualWorkResult): void => {
   const { layout, project } = context;
-  const { fonts, palette } = layout;
   const lengthUnit = unitFor(project, 'length');
   const forceUnit = unitFor(project, 'force');
   const componentLabel = (component: 'ux' | 'uy') => (component === 'ux' ? 'horizontal' : 'vertical');
+  const narrated = solution.narrated;
+  const contributions = narrated.contributions;
+  const forceScale = Math.max(1, ...contributions.map((entry) => Math.abs(entry.axialForce)));
+  const displacementScale = Math.max(1e-12, ...solution.displacements.map((entry) => Math.abs(entry.solverValue)));
+  const displacement = (value: number) => dimensionalFigure(project, value, 0, 1, displacementScale);
+  const symbol = (nodeId: string, component: 'ux' | 'uy') => `Δ_${component === 'ux' ? 'x' : 'y'}(${nodeId})`;
 
-  layout.heading('5. Procedimiento: Trabajo Virtual (carga unitaria)');
-  layout.text(
-    'Para hallar el desplazamiento de un nudo se retira la carga real, se aplica una única carga '
-    + 'virtual unitaria en ese nudo y en la dirección de interés, y se halla la fuerza que esa '
-    + 'carga virtual produce en cada barra. El desplazamiento es la suma, en toda la armadura, de '
-    + 'la fuerza real de cada barra por su fuerza virtual y su longitud, entre su rigidez axial:',
-    8.7, fonts.regular, undefined, 8,
-  );
-  // The identity `Δ = Σ nNL/AE` is replaced by the sum this truss actually adds up: one
-  // quotient per bar, with its own virtual force, real force, length and axial stiffness,
-  // and the total that came out. The sum is checked against the value the method solved for
-  // before it is printed, so what appears is arithmetic that closes.
-  const contributions = solution.narrated.contributions;
-  const contributionTotal = contributions.reduce((sum, entry) => sum + entry.contribution, 0);
-  if (contributions.length && Math.abs(contributionTotal - solution.narrated.total) <= 1e-8 * Math.max(1, Math.abs(solution.narrated.total))) {
-    const forceScale = Math.max(1, ...contributions.map((entry) => Math.abs(entry.axialForce)));
-    const terms = contributions.slice(0, 8).map((entry) => (
-      `(${number(entry.virtualForce, 5)})(${dimensionalFigure(project, entry.axialForce, 1, 0, forceScale)})`
-      + `(${dimensionalFigure(project, entry.length, 0, 1)})/`
-      + `((${dimensionalFigure(project, entry.A, 0, 2)})(${dimensionalFigure(project, entry.E, 1, -2)}))`
-    ));
-    const shown = contributions.length > 8 ? [...terms, '...'] : terms;
-    const equation = {
-      lhs: 'Δ',
-      symbolic: 'Σ nNL/AE',
-      substituted: shown.join(' + '),
-      result: dimensionalFigure(project, solution.narrated.total, 0, 1),
-      unit: lengthUnit,
-    };
-    layout.text(
-      `Nudo ${solution.narrated.nodeId}, componente ${componentLabel(solution.narrated.component)}:`
-      + ` fuerzas en ${forceUnit}, longitudes en ${lengthUnit}, áreas en ${dimensionalUnit(project, 0, 2)}, E en ${dimensionalUnit(project, 1, -2)}.`,
-      7.9, fonts.bold, palette.ink, 12,
-    );
-    drawRelation(context, equation);
-  }
+  layout.heading('5. Método del trabajo virtual (carga unitaria)');
+  memoirNote(context, `Armadura ${trussDegree(solution.classification.indeterminacy)}. El desplazamiento de un nudo se obtiene con una carga `
+    + 'unitaria virtual aplicada en él, en la dirección buscada.');
 
-  layout.heading('5.1 Desplazamientos en cada nudo libre', 2);
-  layout.text(
-    'La última columna es lo que el análisis matricial reporta en ese mismo grado de libertad: '
-    + 'el método y el solver tienen que coincidir.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Nudo', width: 60 },
-      { header: 'Componente', width: 90 },
-      { header: `Trabajo virtual (${lengthUnit})`, ...NUMERIC },
-      { header: `Análisis matricial (${lengthUnit})`, ...NUMERIC },
-    ],
-    solution.displacements.map((entry) => [
-      entry.nodeId,
-      componentLabel(entry.component),
-      displayCell(project, entry.value, 'length'),
-      displayCell(project, entry.solverValue, 'length'),
-    ]),
-    { size: 7.8 },
-  );
+  memoirStep(context, '5.1 Datos');
+  memoirNote(context, 'Barras con su sección y su fuerza real N bajo las cargas del escenario:');
+  layout.table([
+    { header: 'Barra', width: 56 },
+    { header: `L (${lengthUnit})`, ...NUMERIC },
+    { header: `E (${dimensionalUnit(project, 1, -2)})`, ...NUMERIC },
+    { header: `A (${dimensionalUnit(project, 0, 2)})`, ...NUMERIC },
+    { header: `N (${forceUnit})`, ...NUMERIC },
+  ], contributions.map((entry) => [
+    entry.memberId,
+    dimensionalFigure(project, entry.length, 0, 1),
+    dimensionalFigure(project, entry.E, 1, -2),
+    dimensionalFigure(project, entry.A, 0, 2),
+    dimensionalFigure(project, entry.axialForce, 1, 0, forceScale),
+  ]));
 
+  memoirStep(context, '5.2 Planteamiento');
+  memoirFormula(context, 'Δ = Σ n N L/(E A)', [
+    ['Δ', `desplazamiento del nudo en la dirección de la carga unitaria (${lengthUnit})`],
+    ['N', `fuerza de la barra bajo las cargas reales (${forceUnit}), positiva en tensión`],
+    ['n', 'fuerza de la barra bajo la carga unitaria (adimensional)'],
+    ['L, E, A', 'longitud, módulo de elasticidad y área de la barra'],
+  ]);
   drawScenes(
     context,
     virtualWorkScenes(context, solution),
     (scene) => scene.title === 'sistema real'
-      ? 'Sistema real: la armadura bajo las cargas del proyecto, con la fuerza axial N de cada barra.'
-      : `Sistema virtual: la misma armadura con una única carga unitaria en ${solution.narrated.nodeId}, con la fuerza n de cada barra.`,
+      ? 'Sistema real: la armadura bajo las cargas del escenario, con la fuerza N de cada barra.'
+      : `Sistema virtual: carga unitaria en ${narrated.nodeId}, con la fuerza n de cada barra.`,
   );
 
-  layout.heading(`5.2 Detalle por barra: ${solution.narrated.nodeId}, componente ${componentLabel(solution.narrated.component)}`, 2);
-  layout.text(
-    'El nudo con mayor desplazamiento, desarrollado barra por barra: Nᵢ es la fuerza bajo la '
-    + 'carga real, nᵢ la fuerza bajo la carga virtual unitaria.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Barra', width: 56 },
-      { header: `L (${lengthUnit})`, ...NUMERIC },
-      { header: `Nᵢ (${forceUnit})`, ...NUMERIC, math: true },
-      { header: 'nᵢ', ...NUMERIC, math: true },
-      { header: `Aporte (${lengthUnit})`, ...NUMERIC },
-    ],
-    solution.narrated.contributions.map((entry) => [
-      entry.memberId,
-      number(entry.length, 5),
-      displayCell(project, entry.axialForce, 'force'),
-      clearNumber(entry.virtualForce, Math.max(1, Math.abs(entry.virtualForce))),
-      displayCell(project, entry.contribution, 'length'),
-    ]),
-    { size: 7.6 },
-  );
+  memoirStep(context, `5.3 Desarrollo: nudo ${narrated.nodeId}, dirección ${componentLabel(narrated.component)}`);
+  memoirNote(context, 'Se desarrolla el nudo de mayor desplazamiento; cada fila es el término de una barra.');
+  const termScale = Math.max(1e-12, ...contributions.map((entry) => Math.abs(entry.contribution)));
+  layout.table([
+    { header: 'Barra', width: 56 },
+    { header: 'n', ...NUMERIC },
+    { header: `N (${forceUnit})`, ...NUMERIC },
+    { header: `L (${lengthUnit})`, ...NUMERIC },
+    { header: `n N L/(E A) (${lengthUnit})`, ...NUMERIC },
+  ], contributions.map((entry) => [
+    entry.memberId,
+    clearNumber(entry.virtualForce, 1, 4),
+    dimensionalFigure(project, entry.axialForce, 1, 0, forceScale),
+    dimensionalFigure(project, entry.length, 0, 1),
+    dimensionalFigure(project, entry.contribution, 0, 1, termScale),
+  ]));
+  const contributionTotal = contributions.reduce((sum, entry) => sum + entry.contribution, 0);
+  const closes = contributions.length > 0 && agrees(contributionTotal, narrated.total, displacementScale);
+  const present = contributions.filter((entry) => Math.abs(entry.contribution) > termScale * 1e-9);
+  memoirWork(context, [{
+    lhs: symbol(narrated.nodeId, narrated.component),
+    // La regla va dentro de la sustitución: una suma larga se parte en renglones y así no se pierde.
+    substituted: closes && present.length
+      ? `Σ n N L/(E A) = ${signedSum(present.map((entry) => dimensionalFigure(project, entry.contribution, 0, 1, termScale))).replace(/ - /g, ' − ')}`
+      : 'Σ n N L/(E A)',
+    result: displacement(narrated.total),
+    unit: lengthUnit,
+  }]);
 
-  layout.heading('5.3 Verificación contra el análisis matricial', 2);
-  layout.text(
-    `Diferencia máxima entre este método y el análisis matricial, en cualquier grado de libertad: ${clearNumber(solution.residual, 1)} ${lengthUnit}.`,
-    8.7, fonts.bold, palette.ink, 8,
+  memoirStep(context, '5.4 Resultados');
+  memoirResults(context, 'Desplazamiento desarrollado', [[symbol(narrated.nodeId, narrated.component), `${displacement(narrated.total)} ${lengthUnit}`]]);
+  memoirNote(context, 'Con la carga unitaria en cada nudo libre y en cada dirección:');
+  const nodes = [...new Set(solution.displacements.map((entry) => entry.nodeId))];
+  const valueOf = (nodeId: string, component: 'ux' | 'uy') => solution.displacements.find((entry) => entry.nodeId === nodeId && entry.component === component);
+  layout.table([
+    { header: 'Nudo', width: 70 },
+    { header: `Δ_x (${lengthUnit})`, ...NUMERIC },
+    { header: `Δ_y (${lengthUnit})`, ...NUMERIC },
+  ], nodes.map((nodeId) => {
+    const ux = valueOf(nodeId, 'ux');
+    const uy = valueOf(nodeId, 'uy');
+    return [nodeId, ux ? displacement(ux.value) : '—', uy ? displacement(uy.value) : '—'];
+  }));
+
+  memoirStep(context, '5.5 Comprobación');
+  memoirCheck(
+    context,
+    `desplazamientos contra el análisis matricial, diferencia máxima ${clearNumber(solution.residual, displacementScale)} ${lengthUnit}.`,
+    solution.residual <= 1e-3 * displacementScale,
   );
 };
 
 const drawCastiglianoTruss = (context: ReportContext, solution: CastiglianoTrussResult): void => {
-  const { layout, project } = context;
-  const { fonts, palette } = layout;
+  const { layout, project, index } = context;
   const lengthUnit = unitFor(project, 'length');
   const forceUnit = unitFor(project, 'force');
   const componentLabel = (component: 'ux' | 'uy') => (component === 'ux' ? 'horizontal' : 'vertical');
+  const forceScale = Math.max(1, ...solution.members.map((member) => Math.abs(member.force)), ...solution.members.map((member) => Math.abs(member.primaryForce)));
+  const force = (value: number) => dimensionalFigure(project, value, 1, 0, forceScale);
+  const degree = solution.classification.indeterminacy;
+  const single = solution.redundants.length === 1 ? solution.redundants[0] : undefined;
 
-  layout.heading('5. Procedimiento: Castigliano (teorema del trabajo mínimo)');
-  layout.text(
-    'La armadura tiene más reacciones de las que el equilibrio por sí solo puede fijar. El '
-    + 'teorema del trabajo mínimo dice que la energía de deformación es estacionaria respecto de '
-    + 'cada reacción redundante — y para una armadura articulada, esa condición es exactamente el '
-    + 'trabajo virtual: el desplazamiento de la estructura liberada en la dirección de cada '
-    + 'redundante, bajo las cargas reales y el resto de redundantes, tiene que ser cero, porque en '
-    + 'la estructura real ese apoyo no se mueve.',
-    8.7, fonts.regular, undefined, 8,
-  );
-  // The stationarity condition is stated in the paragraph above; printing `∂U/∂Xₖ = 0` again
-  // as symbols added no figure. What each redundant actually came out as, and the force it
-  // leaves in every bar, are the tables of §5.2 and §5.3 below — all of them real values,
-  // each next to what the matrix analysis reports at the same place.
+  layout.heading('5. Método de Castigliano (trabajo mínimo)');
+  memoirNote(context, `Armadura hiperestática de grado ${degree}. `
+    + (degree === 1
+      ? 'Se libera una reacción (la redundante) y se fija con la condición de energía de deformación mínima.'
+      : `Se liberan ${degree} reacciones (las redundantes) y se fijan con la condición de energía de deformación mínima.`));
 
-  layout.heading('5.1 Clasificación estática', 2);
-  layout.text(
-    `g = ${solution.classification.indeterminacy}: la armadura es externamente hiperestática de ese grado. Se liberan esas reacciones para dejar una armadura isostática —la estructura primaria— cuya fuerza de barra bajo las cargas reales se puede seguir.`,
-    8.7, fonts.regular, undefined, 8,
-  );
+  memoirStep(context, '5.1 Datos');
+  layout.table([
+    { header: 'Redundante', width: 80, math: true },
+    { header: 'Apoyo', width: 80 },
+    { header: 'Dirección' },
+  ], solution.redundants.map((redundant) => [redundant.symbol, redundant.nodeId, componentLabel(redundant.component)]));
+  memoirNote(context, 'Estructura primaria: la armadura sin esas reacciones, isostática. N_0 es la fuerza de cada barra en ella bajo las cargas reales:');
+  layout.table([
+    { header: 'Barra', width: 56 },
+    { header: `L (${lengthUnit})`, ...NUMERIC },
+    { header: `E (${dimensionalUnit(project, 1, -2)})`, ...NUMERIC },
+    { header: `A (${dimensionalUnit(project, 0, 2)})`, ...NUMERIC },
+    { header: `N_0 (${forceUnit})`, ...NUMERIC },
+  ], solution.members.map((member) => {
+    const model = index.member(member.memberId);
+    return [
+      member.memberId,
+      dimensionalFigure(project, member.length, 0, 1),
+      model ? dimensionalFigure(project, model.E, 1, -2) : '—',
+      model ? dimensionalFigure(project, model.A, 0, 2) : '—',
+      force(member.primaryForce),
+    ];
+  }));
 
-  layout.heading('5.2 Redundantes elegidas y verificadas', 2);
-  layout.text(
-    'La última columna es lo que el análisis matricial obtiene en ese mismo apoyo, sobre la '
-    + 'estructura original: el método y el solver tienen que coincidir.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Redundante', width: 60, math: true },
-      { header: 'Apoyo', width: 60 },
-      { header: 'Dirección', width: 76 },
-      { header: `Castigliano (${forceUnit})`, ...NUMERIC },
-      { header: `Análisis matricial (${forceUnit})`, ...NUMERIC },
-    ],
-    solution.redundants.map((redundant) => [
-      redundant.symbol,
-      redundant.nodeId,
-      componentLabel(redundant.component),
-      displayCell(project, redundant.value, 'force'),
-      displayCell(project, redundant.solverReaction, 'force'),
-    ]),
-    { size: 7.8 },
-  );
-
+  memoirStep(context, '5.2 Planteamiento');
+  memoirFormula(context, '∂U/∂X_k = Σ N (∂N/∂X_k) L/(E A) = 0,    N = N_0 + Σ n_k X_k', [
+    ['U', 'energía de deformación de la armadura'],
+    ['X_k', `redundante k (${forceUnit})`],
+    ['N_0', 'fuerza de la barra en la estructura primaria bajo las cargas reales'],
+    ['n_k', 'fuerza de la barra por X_k = 1, es decir ∂N/∂X_k'],
+  ]);
   drawScenes(
     context,
     castiglianoScenes(context, solution),
     (scene) => scene.title === 'estructura primaria'
-      ? 'Estructura primaria: la armadura con las redundantes liberadas, con la fuerza N₀ de cada barra.'
-      : `${scene.title}: la incógnita que la condición de desplazamiento nulo en ese apoyo determina.`,
+      ? 'Estructura primaria: las redundantes liberadas, con la fuerza N₀ de cada barra.'
+      : `${scene.title}: la incógnita que fija la condición de desplazamiento nulo en su apoyo.`,
   );
 
-  layout.heading('5.3 Fuerza final en cada barra', 2);
-  layout.text(
-    'Fuerza en la estructura primaria bajo las cargas reales, más la contribución de cada '
-    + 'redundante ya resuelta — contrastada, barra por barra, contra el análisis matricial de la '
-    + 'estructura original.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
+  memoirStep(context, '5.3 Desarrollo');
+  // Con una sola redundante, n = (N − N₀)/X es exacto y la condición se escribe entera:
+  // X = −Σ N₀ n L/(EA) / Σ n² L/(EA). Con varias, sus contribuciones no se separan barra a barra.
+  const rows = single && Math.abs(single.value) > 1e-9 ? solution.members.flatMap((member) => {
+    const model = index.member(member.memberId);
+    const EA = model ? model.E * model.A : 0;
+    if (!(EA > 0) || !(member.length > 0)) return [];
+    const n = (member.force - member.primaryForce) / single.value;
+    return [{ id: member.memberId, n0: member.primaryForce, n, load: member.primaryForce * n * member.length / EA, flexibility: n * n * member.length / EA }];
+  }) : [];
+  const delta10 = rows.reduce((sum, row) => sum + row.load, 0);
+  const delta11 = rows.reduce((sum, row) => sum + row.flexibility, 0);
+  const developed = single !== undefined && rows.length === solution.members.length && delta11 > 0
+    && agrees(-delta10 / delta11, single.value, forceScale);
+  if (single && developed) {
+    memoirNote(context, `Con una redundante, la condición ∂U/∂${single.symbol} = 0 da ${single.symbol} = −δ_{10}/δ_{11}. Términos de cada barra:`);
+    const loadScale = Math.max(1e-12, ...rows.map((row) => Math.abs(row.load)));
+    const flexibilityScale = Math.max(1e-12, ...rows.map((row) => Math.abs(row.flexibility)));
+    layout.table([
       { header: 'Barra', width: 56 },
-      { header: `L (${lengthUnit})`, ...NUMERIC },
-      { header: `Primaria N₀ (${forceUnit})`, ...NUMERIC, math: true },
-      { header: `Final (${forceUnit})`, ...NUMERIC },
-      { header: `Análisis matricial (${forceUnit})`, ...NUMERIC },
-    ],
-    solution.members.map((member) => [
-      member.memberId,
-      number(member.length, 5),
-      displayCell(project, member.primaryForce, 'force'),
-      displayCell(project, member.force, 'force'),
-      displayCell(project, member.solverForce, 'force'),
-    ]),
-    { size: 7.4 },
-  );
+      { header: `N_0 (${forceUnit})`, ...NUMERIC },
+      { header: 'n', ...NUMERIC },
+      { header: `N_0 n L/(E A) (${lengthUnit})`, ...NUMERIC },
+      { header: `n^2 L/(E A) (${dimensionalUnit(project, -1, 1)})`, ...NUMERIC },
+    ], rows.map((row) => [
+      row.id,
+      force(row.n0),
+      clearNumber(row.n, 1, 4),
+      dimensionalFigure(project, row.load, 0, 1, loadScale),
+      dimensionalFigure(project, row.flexibility, -1, 1, flexibilityScale),
+    ]));
+    memoirWork(context, [
+      // La suma de cada columna de la tabla: la regla basta, los sumandos están arriba.
+      { lhs: 'δ_{10}', substituted: 'Σ N_0 n L/(E A)', result: dimensionalFigure(project, delta10, 0, 1), unit: lengthUnit },
+      { lhs: 'δ_{11}', substituted: 'Σ n^2 L/(E A)', result: dimensionalFigure(project, delta11, -1, 1), unit: dimensionalUnit(project, -1, 1) },
+      {
+        lhs: single.symbol,
+        symbolic: '−δ_{10}/δ_{11}',
+        substituted: `−(${dimensionalFigure(project, delta10, 0, 1)})/(${dimensionalFigure(project, delta11, -1, 1)})`,
+        result: force(single.value),
+        unit: forceUnit,
+      },
+    ]);
+  } else {
+    memoirNote(context, `Las ${degree} condiciones ∂U/∂X_k = 0 forman un sistema lineal en las redundantes; su solución está en 5.4.`);
+  }
 
-  // The final force of every bar, as the sum that produced it. With a single redundant the
-  // influence coefficient is recoverable exactly — it is the change per unit of X — so the
-  // product is written out; with several redundants only their combined contribution is
-  // separable, and that is what gets printed rather than a factor nobody could check.
-  const single = solution.redundants.length === 1 ? solution.redundants[0] : undefined;
-  const forceScale = Math.max(1, ...solution.members.map((member) => Math.abs(member.force)));
-  drawWorked(
+  memoirStep(context, '5.4 Resultados');
+  memoirResults(context, 'Redundantes', solution.redundants.map((redundant) => [
+    `${redundant.symbol} (${redundant.nodeId}, ${componentLabel(redundant.component)})`,
+    `${force(redundant.value)} ${forceUnit}`,
+  ]));
+  memoirNote(context, single && developed ? `Fuerza final de cada barra, N = N_0 + n ${single.symbol}:` : 'Fuerza final de cada barra, N = N_0 + Σ n_k X_k:');
+  layout.table([
+    { header: 'Barra', width: 56 },
+    { header: `N_0 (${forceUnit})`, ...NUMERIC },
+    { header: single && developed ? `n ${single.symbol} (${forceUnit})` : `Σ n_k X_k (${forceUnit})`, ...NUMERIC },
+    { header: `N (${forceUnit})`, ...NUMERIC },
+    { header: 'Estado', width: 90 },
+  ], solution.members.map((member) => [
+    member.memberId,
+    force(member.primaryForce),
+    force(member.force - member.primaryForce),
+    force(member.force),
+    Math.abs(member.force) <= forceScale * 1e-9 ? 'sin fuerza' : member.force > 0 ? 'tensión' : 'compresión',
+  ]));
+
+  memoirStep(context, '5.5 Comprobación');
+  memoirCheck(
     context,
-    single
-      ? `Fuerza final de cada barra: la primaria más la contribución de ${single.symbol} = ${displayCell(project, single.value, 'force')} ${forceUnit}.`
-      : `Fuerza final de cada barra: la primaria más la contribución conjunta de las ${solution.redundants.length} redundantes, en ${forceUnit}.`,
-    solution.members.slice(0, 10).map((member) => {
-      const contribution = member.force - member.primaryForce;
-      const primary = dimensionalFigure(project, member.primaryForce, 1, 0, forceScale);
-      const total = dimensionalFigure(project, member.force, 1, 0, forceScale);
-      if (single && Math.abs(single.value) > 1e-9) {
-        const influence = contribution / single.value;
-        return `N(${member.memberId}) = ${primary} + (${number(influence, 6)})(${dimensionalFigure(project, single.value, 1, 0, forceScale)}) = ${total} ${forceUnit}`;
-      }
-      return `N(${member.memberId}) = ${primary} + ${dimensionalFigure(project, contribution, 1, 0, forceScale)} = ${total} ${forceUnit}`;
-    }),
-  );
-
-  layout.heading('5.4 Verificación contra el análisis matricial', 2);
-  layout.text(
-    `Diferencia máxima: ${clearNumber(solution.reactionResidual, 1)} ${forceUnit} en las reacciones redundantes, `
-    + `${clearNumber(solution.forceResidual, 1)} ${forceUnit} en la fuerza de barra.`,
-    8.7, fonts.bold, palette.ink, 8,
+    `redundantes y fuerzas de barra contra el análisis matricial, diferencias máximas ${clearNumber(solution.reactionResidual, forceScale)} `
+      + `y ${clearNumber(solution.forceResidual, forceScale)} ${forceUnit}.`,
+    Math.max(solution.reactionResidual, solution.forceResidual) <= 1e-3 * forceScale,
   );
 };
 
@@ -1539,52 +1551,109 @@ const drawKaniFrame = (context: ReportContext, solution: KaniResult): void => {
   );
 };
 
+/**
+ * Datos de los dos métodos de equilibrio de armaduras: cada barra con sus cosenos directores,
+ * las reacciones del equilibrio global y las cargas en los nudos.
+ */
+const drawTrussStaticsData = (context: ReportContext): void => {
+  const { layout, project, analysis, index } = context;
+  const lengthUnit = unitFor(project, 'length');
+  const forceUnit = unitFor(project, 'force');
+  memoirNote(context, 'Barras (de i a j) con sus cosenos directores c = cos θ, s = sen θ:');
+  layout.table([
+    { header: 'Barra', width: 56 },
+    { header: 'Nudos', width: 80 },
+    { header: `L (${lengthUnit})`, ...NUMERIC },
+    { header: 'c', ...NUMERIC },
+    { header: 's', ...NUMERIC },
+  ], project.members.flatMap((member) => {
+    const i = index.node(member.i);
+    const j = index.node(member.j);
+    if (!i || !j) return [];
+    const length = Math.hypot(j.x - i.x, j.y - i.y);
+    if (!(length > 0)) return [];
+    return [[member.id, `${member.i} – ${member.j}`, dimensionalFigure(project, length, 0, 1), number((j.x - i.x) / length, 4), number((j.y - i.y) / length, 4)]];
+  }));
+  const reacting = analysis.nodeResults.filter((node) => Math.abs(node.rx) + Math.abs(node.ry) > 0);
+  const loads = new Map<string, { fx: number; fy: number }>();
+  for (const load of project.nodalLoads) {
+    const factor = context.scenarioFactors[load.caseId] ?? 0;
+    if (!factor) continue;
+    const total = loads.get(load.nodeId) ?? { fx: 0, fy: 0 };
+    loads.set(load.nodeId, { fx: total.fx + factor * load.fx, fy: total.fy + factor * load.fy });
+  }
+  const scale = Math.max(1, ...reacting.flatMap((node) => [Math.abs(node.rx), Math.abs(node.ry)]), ...[...loads.values()].flatMap((load) => [Math.abs(load.fx), Math.abs(load.fy)]));
+  const rows = project.nodes.flatMap((node) => {
+    const reaction = reacting.find((entry) => entry.nodeId === node.id);
+    const load = loads.get(node.id);
+    if (!reaction && !load) return [];
+    const cell = (value: number | undefined) => value === undefined ? '—' : dimensionalFigure(project, value, 1, 0, scale);
+    return [[node.id, cell(load?.fx), cell(load?.fy), cell(reaction?.rx), cell(reaction?.ry)]];
+  });
+  if (rows.length) {
+    memoirNote(context, 'Cargas en los nudos (ya con su factor) y reacciones del equilibrio global:');
+    layout.table([
+      { header: 'Nudo', width: 56 },
+      { header: `P_x (${forceUnit})`, ...NUMERIC },
+      { header: `P_y (${forceUnit})`, ...NUMERIC },
+      { header: `R_x (${forceUnit})`, ...NUMERIC },
+      { header: `R_y (${forceUnit})`, ...NUMERIC },
+    ], rows);
+  }
+};
+
+/** Fuerzas finales de un método de equilibrio, con el paso en que se hallaron. */
+const drawTrussForces = (
+  context: ReportContext,
+  stepHeader: string,
+  forces: ReadonlyArray<{ memberId: string; step: string; value: number }>,
+): void => {
+  const { layout, project } = context;
+  const scale = Math.max(1, ...forces.map((entry) => Math.abs(entry.value)));
+  layout.table([
+    { header: 'Barra', width: 56 },
+    { header: stepHeader, width: 110 },
+    { header: `N (${unitFor(project, 'force')})`, ...NUMERIC },
+    { header: 'Estado', width: 96 },
+  ], forces.map((entry) => [
+    entry.memberId,
+    entry.step,
+    dimensionalFigure(project, entry.value, 1, 0, scale),
+    Math.abs(entry.value) <= scale * 1e-9 ? 'sin fuerza' : entry.value > 0 ? 'tensión' : 'compresión',
+  ]));
+};
+
 const drawMethodOfSections = (context: ReportContext, solution: MethodOfSectionsResult): void => {
   const { layout, project, index } = context;
-  const { fonts, palette } = layout;
   const forceUnit = unitFor(project, 'force');
+  const scale = Math.max(1, ...solution.cuts.flatMap((cut) => cut.members.map((member) => Math.abs(member.solverValue))));
 
-  layout.heading('5. Procedimiento: Cortes / secciones');
-  layout.text(
-    'Cada corte atraviesa tres barras o menos. El DCL conserva un lado de la armadura y resuelve '
-    + 'ΣFx = 0, ΣFy = 0 y ΣM = 0 con sus cargas, reacciones y cosenos directores reales.',
-    8.7, fonts.regular, undefined, 8,
-  );
+  layout.heading('5. Método de las secciones (cortes)');
+  memoirNote(context, `Armadura ${trussDegree(solution.classification.indeterminacy)}. Cada corte atraviesa tres barras o menos; `
+    + 'el lado conservado se resuelve con las tres ecuaciones de equilibrio.');
 
-  layout.heading('5.1 Cortes y fuerzas de barra', 2);
-  layout.text(
-    'La última columna es lo que el análisis matricial obtiene para esa misma barra: el método '
-    + 'y el solver tienen que coincidir.',
-    8.3, fonts.regular, undefined, 8,
-  );
+  memoirStep(context, '5.1 Datos');
+  drawTrussStaticsData(context);
+
+  memoirStep(context, '5.2 Planteamiento');
+  memoirFormula(context, 'ΣF_x = 0,    ΣF_y = 0,    ΣM_O = 0', [
+    ['N', `fuerza de cada barra cortada (${forceUnit}), positiva en tensión`],
+    ['c, s', 'cosenos de la barra medidos desde el lado conservado hacia el corte'],
+    ['F_x, F_y', 'carga más reacción en un nudo del lado conservado'],
+    ['O', 'primer nudo del lado conservado, centro de momentos'],
+  ]);
+
+  memoirStep(context, '5.3 Desarrollo');
   for (const [cutIndex, cut] of solution.cuts.entries()) {
-    layout.ensure(40);
-    layout.text(
-      `Corte ${cutIndex + 1}: lado conservado {${cut.keptNodeIds.join(', ')}}`,
-      8, fonts.bold, palette.ink, 8,
-    );
-    drawCalculationRecords(context,
-      [
-        { header: 'Barra', width: 70 },
-        { header: `Método de cortes (${forceUnit})`, ...NUMERIC },
-        { header: `Análisis matricial (${forceUnit})`, ...NUMERIC },
-      ],
-      cut.members.map((member) => [
-        member.memberId,
-        displayCell(project, member.value, 'force'),
-        displayCell(project, member.solverValue, 'force'),
-      ]),
-      { size: 7.6 },
-    );
-    // The cut itself, before its arithmetic: which side was kept, where the imaginary line
-    // runs, and the axial force each severed bar exerts on that side.
+    layout.ensure(context.options.includeMethodFreeBodies === false ? 90 : 250);
+    layout.heading(`Corte ${cutIndex + 1}: barras ${cut.members.map((member) => member.memberId).join(', ')}`, 3);
     drawScenes(
       context,
       sectionCutScenes(context, { ...solution, cuts: [cut] }),
-      () => `Corte ${cutIndex + 1}: cuerpo libre de {${cut.keptNodeIds.join(', ')}} y las fuerzas de barra que el corte expone.`,
+      () => `Corte ${cutIndex + 1}: cuerpo libre de {${cut.keptNodeIds.join(', ')}} con las fuerzas de las barras cortadas.`,
     );
-    // The same equilibrium the cut was solved with, added up: each severed bar's force times
-    // its own direction cosine, plus the reactions and loads of the retained nodes.
+    // El equilibrio con que se resolvió el corte, sumado: cada barra cortada por su coseno,
+    // más las reacciones y cargas de los nudos conservados.
     const kept = new Set(cut.keptNodeIds);
     const bars = cut.members.flatMap((member) => {
       const model = index.member(member.memberId);
@@ -1592,91 +1661,84 @@ const drawMethodOfSections = (context: ReportContext, solution: MethodOfSections
       const nodeId = kept.has(model.i) ? model.i : kept.has(model.j) ? model.j : undefined;
       return nodeId ? [{ memberId: member.memberId, nodeId, force: member.value }] : [];
     });
-    drawWorked(context, undefined, freeBodyEquations(context, cut.keptNodeIds, bars));
+    memoirWork(context, freeBodyEquations(context, cut.keptNodeIds, bars));
   }
-  if (solution.unresolvedMemberIds.length) {
-    layout.text(
-      `Sin un corte de tres barras o menos que las aísle: ${solution.unresolvedMemberIds.join(', ')}.`,
-      7.8, fonts.regular, undefined, 8,
-    );
+  // Una barra que no tuvo corte propio puede haber salido en el de otra: sólo se nombran las que
+  // ningún corte resolvió.
+  const cutIds = new Set(solution.cuts.flatMap((cut) => cut.members.map((member) => member.memberId)));
+  const unresolved = solution.unresolvedMemberIds.filter((memberId) => !cutIds.has(memberId));
+  if (unresolved.length) {
+    memoirNote(context, `Sin un corte de tres barras o menos que las aísle, no se resuelven por este método: ${unresolved.join(', ')}.`);
   }
 
-  layout.heading('5.2 Verificación contra el análisis matricial', 2);
-  layout.text(
-    `Diferencia máxima, en cualquier barra resuelta: ${clearNumber(solution.residual, 1)} ${forceUnit}.`,
-    8.7, fonts.bold, palette.ink, 8,
+  memoirStep(context, '5.4 Resultados');
+  drawTrussForces(context, 'Corte', solution.cuts.flatMap((cut, cutIndex) => cut.members.map((member) => ({
+    memberId: member.memberId, step: String(cutIndex + 1), value: member.value,
+  }))));
+
+  memoirStep(context, '5.5 Comprobación');
+  memoirCheck(
+    context,
+    `fuerzas de barra contra el análisis matricial, diferencia máxima ${clearNumber(solution.residual, scale)} ${forceUnit}.`,
+    solution.residual <= 1e-3 * scale,
   );
 };
 
 const drawMethodOfJoints = (context: ReportContext, solution: MethodOfJointsResult): void => {
   const { layout, project } = context;
-  const { fonts, palette } = layout;
   const forceUnit = unitFor(project, 'force');
+  const scale = Math.max(1, ...solution.steps.flatMap((step) => step.members.map((member) => Math.abs(member.solverValue))));
+  const solved = solution.steps.flatMap((entry) => entry.members);
 
-  layout.heading('5. Procedimiento: Método de los Nudos');
-  layout.text(
-    'Cada nudo de la armadura tiene sólo dos ecuaciones de equilibrio —la suma horizontal y la '
-    + 'vertical de las fuerzas que concurren en él—, así que '
-    + 'un nudo sólo se resuelve de una vez cuando le quedan como mucho dos fuerzas de barra por '
-    + 'conocer. El procedimiento recorre los nudos en el orden en que esa condición se va '
-    + 'cumpliendo —normalmente empezando en un apoyo o un extremo libre— resolviendo en cada uno '
-    + 'las fuerzas que aún faltan a partir de las reacciones, las cargas y las barras ya resueltas '
-    + 'que concurren ahí, y repite hasta agotar la armadura.',
-    8.7, fonts.regular, undefined, 8,
-  );
+  layout.heading('5. Método de los nudos');
+  memoirNote(context, `Armadura ${trussDegree(solution.classification.indeterminacy)}. Se recorren los nudos con dos fuerzas de barra `
+    + 'desconocidas o menos y en cada uno se plantea el equilibrio de las fuerzas concurrentes.');
 
-  layout.heading('5.1 Nudos y fuerzas de barra', 2);
-  layout.text(
-    'La última columna es lo que el análisis matricial obtiene para esa misma barra: el método y '
-    + 'el solver tienen que coincidir. El orden de los nudos es el orden en que el procedimiento '
-    + 'pudo resolverlos, no el orden en que aparecen en el modelo.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  for (const [stepIndex, step] of solution.steps.entries()) {
-    layout.ensure(40);
-    layout.text(`Nudo ${stepIndex + 1}: ${step.nodeId}`, 8, fonts.bold, palette.ink, 8);
-    drawCalculationRecords(context,
-      [
-        { header: 'Barra', width: 70 },
-        { header: `Método de los nudos (${forceUnit})`, ...NUMERIC },
-        { header: `Análisis matricial (${forceUnit})`, ...NUMERIC },
-      ],
-      step.members.map((member) => [
-        member.memberId,
-        displayCell(project, member.value, 'force'),
-        displayCell(project, member.solverValue, 'force'),
-      ]),
-      { size: 7.6 },
-    );
+  memoirStep(context, '5.1 Datos');
+  drawTrussStaticsData(context);
+
+  memoirStep(context, '5.2 Planteamiento');
+  memoirFormula(context, 'ΣF_x = Σ N c + F_x = 0,    ΣF_y = Σ N s + F_y = 0', [
+    ['N', `fuerza de cada barra que llega al nudo (${forceUnit}), positiva en tensión`],
+    ['c, s', 'cosenos de la barra medidos desde el nudo hacia fuera'],
+    ['F_x, F_y', 'carga más reacción en el nudo'],
+  ]);
+
+  memoirStep(context, '5.3 Desarrollo');
+  memoirNote(context, `Orden de resolución: ${solution.steps.map((step) => step.nodeId).join(' → ')}.`);
+  for (const step of solution.steps) {
+    layout.ensure(context.options.includeMethodFreeBodies === false ? 90 : 250);
+    layout.heading(`Nudo ${step.nodeId}: se hallan ${step.members.map((member) => `N_{${member.memberId}}`).join(' y ')}`, 3);
     drawScenes(
       context,
       jointScenes(context, { ...solution, steps: [step] }),
-      () => `Nudo ${step.nodeId}: cuerpo libre del nudo con cada barra concurrente, su reacción y su carga.`,
+      () => `Nudo ${step.nodeId}: cuerpo libre con cada barra concurrente, su reacción y su carga.`,
     );
-    // Every bar meeting this joint — the ones just solved and the ones already known — times
-    // its direction cosine, plus the reaction and the load applied there: the two sums the
-    // reader would write by hand, closed on zero.
+    // Todas las barras que llegan al nudo —las de este paso y las ya conocidas— por su coseno,
+    // más la reacción y la carga: las dos sumas que se escriben a mano, cerradas en cero.
     const meeting = project.members
       .filter((member) => member.i === step.nodeId || member.j === step.nodeId)
       .flatMap((member) => {
-        const force = solution.steps
-          .flatMap((entry) => entry.members)
-          .find((entry) => entry.memberId === member.id);
-        return force ? [{ memberId: member.id, nodeId: step.nodeId, force: force.value }] : [];
+        const found = solved.find((entry) => entry.memberId === member.id);
+        return found ? [{ memberId: member.id, nodeId: step.nodeId, force: found.value }] : [];
       });
-    drawWorked(context, undefined, freeBodyEquations(context, [step.nodeId], meeting));
+    memoirWork(context, freeBodyEquations(context, [step.nodeId], meeting));
   }
-  if (solution.unresolvedMemberIds.length) {
-    layout.text(
-      `Ningún nudo llegó a tener dos o menos incógnitas para resolver: ${solution.unresolvedMemberIds.join(', ')}.`,
-      7.8, fonts.regular, undefined, 8,
-    );
+  const unresolved = solution.unresolvedMemberIds.filter((memberId) => !solved.some((entry) => entry.memberId === memberId));
+  if (unresolved.length) {
+    memoirNote(context, `Ningún nudo llegó a dos incógnitas o menos para: ${unresolved.join(', ')}.`);
   }
 
-  layout.heading('5.2 Verificación contra el análisis matricial', 2);
-  layout.text(
-    `Diferencia máxima, en cualquier barra resuelta: ${clearNumber(solution.residual, 1)} ${forceUnit}.`,
-    8.7, fonts.bold, palette.ink, 8,
+  memoirStep(context, '5.4 Resultados');
+  drawTrussForces(context, 'Nudo', solution.steps.flatMap((step) => step.members.map((member) => ({
+    memberId: member.memberId, step: step.nodeId, value: member.value,
+  }))));
+
+  memoirStep(context, '5.5 Comprobación');
+  memoirCheck(
+    context,
+    `fuerzas de barra contra el análisis matricial, diferencia máxima ${clearNumber(solution.residual, scale)} ${forceUnit}.`,
+    solution.residual <= 1e-3 * scale,
   );
 };
 

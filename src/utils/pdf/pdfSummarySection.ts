@@ -1,23 +1,27 @@
 /**
- * Part 1 — the analysis in one reading: governing figures, the free-body diagram, the
- * equilibrium sums carried out, the reactions, and the numeric quality of the solve.
+ * Resultados del análisis en una lectura: cifras que gobiernan, cuerpo libre con reacciones,
+ * diagramas N, V y M, equilibrio global desarrollado, reacciones y calidad numérica.
  *
- * The page this replaces was built at absolute coordinates: four KPI cards at a fixed `y`, a
- * 242-point panel of equilibrium rows on the left and another of reactions on the right, both
- * of which silently stopped at five entries because that was all the box held. A model with
- * nine supports simply lost four of them.
- *
- * Everything flows now. The reactions table prints every restrained node, the equilibrium
- * sums print in full, and the page breaks by itself when the model is large.
+ * Todo fluye con el texto: la tabla de reacciones lleva todos los apoyos y las sumas de
+ * equilibrio se escriben completas, aunque el modelo sea grande.
  */
 import type { DiagramQuantity } from '../../types';
 import { resolveNumericQualityState } from '../../engine/reliability';
 import { clearCell, clearDisplay, clearNumber, display, unitFor } from './pdfFormat';
+import { memoirNote, memoirWork } from './pdfMemoirKit';
 import { drawGlobalDcl } from './pdfDiagrams';
 import { drawResultDiagram, quantityExtreme } from './pdfResultDiagrams';
 import { equilibriumSums } from './pdfSubstitution';
 import { TYPE } from './pdfTheme';
+import type { PdfTableColumn } from './pdfBuilder';
 import type { ReportContext } from './reportContext';
+
+const NUMERIC: Pick<PdfTableColumn, 'align'> = { align: 'right' };
+
+/** La formulación del análisis, en palabras. */
+export const formulationLabel = (formulation: string | undefined): string => formulation === 'linear-static-mixed-beam'
+  ? 'estático lineal, Euler–Bernoulli y Timoshenko'
+  : formulation === 'linear-static-euler-bernoulli' ? 'estático lineal, Euler–Bernoulli' : 'estático lineal 2D';
 
 /** Largest |value| of a quantity across the model, preferring the engine's critical points. */
 const absoluteExtreme = (
@@ -98,38 +102,38 @@ export const drawSummaryPart = (context: ReportContext): void => {
       layout.figure(
         diagramHeight,
         (rect) => drawResultDiagram(context, rect, quantity),
-        `Diagrama de ${names[quantity]} en ${unitFor(project, quantity === 'moment' ? 'moment' : 'force')}: curva exacta del solver, misma escala en todas las barras, `
-        + 'positivo hacia la izquierda de cada barra (de i a j).',
+        `Diagrama de ${names[quantity]} en ${unitFor(project, quantity === 'moment' ? 'moment' : 'force')}; misma escala en todas las barras, `
+        + 'positivo a la izquierda de cada barra (de i a j).',
       );
     }
   }
 
   layout.heading('Equilibrio global');
-  layout.text(
-    'Las tres sumas que cierran el modelo, escritas con los números que se sumaron: la resultante '
-    + 'de las acciones aplicadas y, término a término, la reacción de cada apoyo.',
-  );
-  for (const sum of equilibriumSums(context)) {
-    layout.ensure(layout.measureMathBlock(sum.equation, TYPE.body, 12));
-    layout.y -= layout.drawMathBlockAt(sum.equation, TYPE.body, 12, palette.ink, `(${layout.nextEquationNumber()})`);
-  }
-  layout.gap();
-  layout.keyValues([
-    ['Residuo normalizado del cierre', clearNumber(analysis.equilibrium.normalizedResidual)],
-    ['Residuo algebraico del sistema', clearNumber(analysis.residualNorm)],
-    ['Número de condición estimado', clearNumber(analysis.conditionEstimate)],
-  ]);
+  memoirNote(context, 'Se suman la resultante de las cargas y, término a término, la reacción de cada apoyo.');
+  memoirWork(context, equilibriumSums(context).map((sum) => sum.worked));
+  layout.table([
+    { header: 'Residuo del cierre', ...NUMERIC },
+    { header: 'Residuo del sistema', ...NUMERIC },
+    { header: 'Número de condición', ...NUMERIC },
+  ], [[clearNumber(analysis.equilibrium.normalizedResidual), clearNumber(analysis.residualNorm), clearNumber(analysis.conditionEstimate)]]);
 
   layout.heading('Reacciones en los apoyos');
   const supported = analysis.nodeResults.filter((node) => Math.abs(node.rx) + Math.abs(node.ry) + Math.abs(node.rm) > 1e-10);
   if (!supported.length) {
     layout.note('El modelo no reporta ninguna reacción distinta de cero.');
   } else {
-    layout.keyValues(supported.map((node) => [
-      `Nodo ${node.nodeId}`,
-      `Rx = ${clearCell(project, node.rx, 'force', reactionMaximum)} ${unitFor(project, 'force')}  ·  `
-      + `Ry = ${clearCell(project, node.ry, 'force', reactionMaximum)} ${unitFor(project, 'force')}  ·  `
-      + `M = ${clearCell(project, node.rm, 'moment', moment ? Math.abs(moment.value) : 1)} ${unitFor(project, 'moment')}`,
+    const momentReference = moment ? Math.abs(moment.value) : 1;
+    const withMoments = supported.some((node) => Math.abs(node.rm) > 0) || project.members.some((member) => member.type !== 'truss');
+    layout.table([
+      { header: 'Apoyo', width: 70 },
+      { header: `R_x (${unitFor(project, 'force')})`, ...NUMERIC },
+      { header: `R_y (${unitFor(project, 'force')})`, ...NUMERIC },
+      ...(withMoments ? [{ header: `M (${unitFor(project, 'moment')})`, ...NUMERIC }] : []),
+    ], supported.map((node) => [
+      node.nodeId,
+      clearCell(project, node.rx, 'force', reactionMaximum),
+      clearCell(project, node.ry, 'force', reactionMaximum),
+      ...(withMoments ? [clearCell(project, node.rm, 'moment', momentReference)] : []),
     ]));
   }
 
@@ -147,15 +151,14 @@ export const drawSummaryPart = (context: ReportContext): void => {
     `Calidad numérica: ${qualityLabel}`,
     `Número de condición estimado ${clearNumber(analysis.conditionEstimate)}; residuo lineal `
     + `${clearNumber(analysis.linearResidual ?? analysis.residualNorm)}; cota de error `
-    + `${clearNumber(analysis.forwardErrorBound ?? Number.NaN)}. Es un diagnóstico del solver: `
-    + 'mide cuánto puede confiarse en la aritmética, no si la estructura es segura.',
+    + `${clearNumber(analysis.forwardErrorBound ?? Number.NaN)}. Mide la fiabilidad de la aritmética, `
+    + 'no la seguridad de la estructura.',
   );
 
-  const formulation = analysis.educationTrace?.formulation ?? 'análisis estático lineal 2D';
-  layout.heading('Hipótesis de esta corrida', 2);
+  layout.heading('Hipótesis del análisis', 2);
   layout.text(
-    `${analysis.pDelta?.experimental ? 'P-Delta experimental; ' : ''}${formulation}; pequeñas deformaciones; `
-    + 'propiedades prismáticas por miembro.',
+    `${analysis.pDelta?.experimental ? 'P-Delta experimental; ' : ''}Análisis ${formulationLabel(analysis.educationTrace?.formulation)}; `
+    + 'pequeñas deformaciones; propiedades constantes en cada barra.',
     TYPE.small,
     fonts.regular,
     palette.inkSoft,

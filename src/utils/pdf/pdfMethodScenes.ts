@@ -270,8 +270,7 @@ export const jointScenes = (
       keptMemberIds: meeting.map((member) => member.id),
       forces,
       legend: 'Cuerpo libre del nudo: cada barra que concurre, con la fuerza que ejerce sobre él '
-        + '—hacia fuera en tracción, hacia dentro en compresión—, más la reacción y la carga aplicadas ahí. '
-        + 'Las dos sumas de fuerzas de abajo son exactamente este dibujo.',
+        + '—hacia fuera en tracción, hacia dentro en compresión—, más la reacción y la carga aplicadas ahí.',
     }];
   });
 };
@@ -356,7 +355,7 @@ export const castiglianoScenes = (
     }),
     notes: [...releasedNodes].map((nodeId) => ({ place: { nodeId }, text: 'apoyo liberado' })),
     legend: 'La armadura con las reacciones redundantes liberadas, bajo las cargas reales: N₀ es la fuerza '
-      + 'de barra de ese estado isostático, la primera mitad de la suma que resuelve cada redundante.',
+      + 'de cada barra en ese estado isostático.',
   };
 
   const redundantScenes = solution.redundants.map<FreeBodyScene>((redundant) => ({
@@ -371,8 +370,7 @@ export const castiglianoScenes = (
       label: `${redundant.symbol} = ${displayCell(context.project, redundant.value, 'force')} ${unitFor(context.project, 'force')}`,
     }],
     notes: [{ place: { nodeId: redundant.nodeId }, text: 'desplazamiento impuesto nulo' }],
-    legend: `En la estructura real ${redundant.nodeId} no se mueve en esa dirección: esa condición es la que `
-      + `fija ${redundant.symbol}, y la última columna de la tabla es lo que el análisis matricial obtiene ahí.`,
+    legend: `En la estructura real ${redundant.nodeId} no se mueve en esa dirección: esa condición fija ${redundant.symbol}.`,
   }));
 
   return [primary, ...redundantScenes];

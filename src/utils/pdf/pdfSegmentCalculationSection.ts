@@ -7,8 +7,10 @@
 import { evaluateDiagramAt, evaluateSegment } from '../../engine/diagram';
 import { circularMemberGeometry, curveTangentAt } from '../../graphics/memberCurve';
 import { memberAxis } from '../../graphics/structureGeometry';
-import { clearCell, clearDisplay, display, formatPolynomial, quantityUnit, unitFor } from './pdfFormat';
-import { TYPE } from './pdfTheme';
+import { toDisplay } from '../../foundation/units';
+import { clearCell, clearDisplay, clearNumber, display, formatPolynomial, number, quantityUnit, unitFor } from './pdfFormat';
+import { memoirNote, memoirWork } from './pdfMemoirKit';
+import type { WorkedEquation } from './pdfEquation';
 import { drawFreeBodyScene, sceneHeightFor, type FreeBodyScene } from './pdfFreeBody';
 import type { AnalysisResult } from '../../types';
 import type { ReportContext } from './reportContext';
@@ -67,38 +69,55 @@ export const segmentScene = (
       },
     ],
     moments: [{ place: { at }, sign: values.moment, label: `M(s) = ${clearDisplay(project, values.moment, 'moment', momentReference)}`, tone: 'moment' }],
-    legend: 'Se conserva el cuerpo libre izquierdo. Las cargas visibles son las reales hasta el corte; N, V y M se leen en los ejes locales del miembro.',
+    legend: 'Se conserva el cuerpo libre izquierdo. Las cargas visibles son las reales hasta el corte; N, V y M se leen en los ejes locales de la barra.',
   };
 };
 
-const drawEquations = (context: ReportContext, segment: Segment): void => {
-  const { layout, project } = context;
-  const middle = (segment.x0 + segment.x1) / 2;
-  const values = evaluateSegment(segment, middle);
-  const equations: Array<{ symbol: 'N' | 'V' | 'M'; key: 'axial' | 'shear' | 'moment'; value: number }> = [
-    { symbol: 'N', key: 'axial', value: values.axial },
-    { symbol: 'V', key: 'shear', value: values.shear },
-    { symbol: 'M', key: 'moment', value: values.moment },
-  ];
-  layout.heading('Ecuaciones del tramo y sustitución en el corte', 3);
-  for (const { symbol, key, value } of equations) {
-    const relation = `${symbol}(\\xi) = ${formatPolynomial(project, key, segment[key], '\\xi')}`;
-    layout.text(`${symbol}(s)`, 7.8, layout.fonts.bold, layout.palette.ink);
-    layout.ensure(layout.measureMathBlock(relation, 8.2, 12));
-    layout.y -= layout.drawMathBlockAt(relation, 8.2, 12, layout.palette.ink, `(${layout.nextEquationNumber()})`);
-    layout.keyValues([[
-      `Corte en s = ${display(project, middle, 'length')}`,
-      clearDisplay(project, value, quantityUnit(key)),
-    ]], 150);
-  }
-  layout.keyValues([
-    ['Dominio del tramo', `${display(project, segment.x0, 'length')} ≤ s ≤ ${display(project, segment.x1, 'length')}`],
-    ['Variable local', `ξ = s - ${display(project, segment.x0, 'length')}; el origen de la ecuación es el inicio de este tramo.`],
-    ['Unidades', `N y V en ${unitFor(project, 'force')}; M en ${unitFor(project, 'moment')}.`],
-  ], 132);
+/** `c₀ + c₁(ξ) + c₂(ξ)²` con ξ ya sustituido, para la línea que evalúa el corte. */
+const substitutedPolynomial = (coefficients: readonly number[], at: string): string => {
+  const reference = Math.max(1, ...coefficients.map((value) => Math.abs(value)));
+  const terms = coefficients.flatMap((coefficient, power) => {
+    if (Math.abs(coefficient) <= reference * 1e-10) return [];
+    const magnitude = clearNumber(Math.abs(coefficient), reference, 5);
+    const factor = power === 0 ? magnitude : power === 1 ? `${magnitude}(${at})` : `${magnitude}(${at})^${power}`;
+    return [{ negative: coefficient < 0, factor }];
+  });
+  return terms.map((term, index) => index === 0 ? `${term.negative ? '−' : ''}${term.factor}` : `${term.negative ? '−' : '+'} ${term.factor}`).join(' ') || '0';
 };
 
-/** Writes the report in the same order an engineer solves it: member, interval, free body, cut and equations. */
+/**
+ * Las funciones del tramo y su valor en el corte, en una línea cada una:
+ * `M(ξ) = 49.74 ξ − 13.27 ξ² = 49.74(2.5) − 13.27(2.5)² = 41.4 kN·m`.
+ */
+const drawEquations = (context: ReportContext, segment: Segment): void => {
+  const { project } = context;
+  const middle = (segment.x0 + segment.x1) / 2;
+  const values = evaluateSegment(segment, middle);
+  const lengthScale = toDisplay(1, project.settings.units, 'length');
+  const station = clearNumber((middle - segment.x0) * lengthScale, Math.max(1, segment.x1 * lengthScale), 5);
+  const equations: WorkedEquation[] = (['axial', 'shear', 'moment'] as const).map((key) => {
+    const symbol = key === 'axial' ? 'N' : key === 'shear' ? 'V' : 'M';
+    const unit = unitFor(project, quantityUnit(key));
+    const polynomial = formatPolynomial(project, key, segment[key], 'ξ');
+    const value = clearCell(project, values[key], quantityUnit(key));
+    if (polynomial === '0') return { lhs: `${symbol}(ξ)`, result: '0', unit };
+    // Los coeficientes en unidades de presentación, igual que `formatPolynomial`, para que la
+    // sustitución dé, con la calculadora, la cifra impresa.
+    const yScale = toDisplay(1, project.settings.units, quantityUnit(key));
+    const converted = segment[key].map((coefficient, power) => coefficient * yScale / lengthScale ** power);
+    const xi = (middle - segment.x0) * lengthScale;
+    const evaluated = converted.reduce((sum, coefficient, power) => sum + coefficient * xi ** power, 0);
+    const closes = Math.abs(evaluated - values[key] * yScale) <= 1e-6 * Math.max(1, ...converted.map(Math.abs));
+    const constant = converted.slice(1).every((coefficient) => Math.abs(coefficient) <= Math.max(1, ...converted.map(Math.abs)) * 1e-10);
+    if (constant) return { lhs: `${symbol}(ξ)`, result: value, unit };
+    return closes
+      ? { lhs: `${symbol}(ξ)`, symbolic: polynomial, substituted: substitutedPolynomial(converted, station), result: value, unit }
+      : { lhs: `${symbol}(ξ)`, substituted: polynomial, unit };
+  });
+  const origin = segment.x0 > 0 ? `ξ = s − ${display(project, segment.x0, 'length')}` : 'ξ = s';
+  memoirWork(context, equations, `Funciones del tramo (${origin}) y su valor en el corte, ξ = ${station} ${unitFor(project, 'length')}:`);
+};
+
 /**
  * Una barra curva no se corta tramo a tramo: el solver la resuelve con una malla interna de
  * cuerdas y sus «tramos» son cientos (la memoria de un arco llegaba a 193 páginas). Se escribe
@@ -112,12 +131,12 @@ const drawCurvedMember = (context: ReportContext, result: AnalysisResult['member
   const arc = member && i && j ? circularMemberGeometry(member, i, j) : undefined;
   if (!member || !arc) return;
   layout.heading(`Barra curva ${member.id}: ${member.i} → ${member.j}`, 2);
-  layout.text(
-    `Arco circular de radio ${display(project, arc.radius, 'length')}, cuerda ${display(project, arc.chord, 'length')} y longitud `
-    + `${display(project, arc.length, 'length')}. En cada estación s (medida sobre el arco desde ${member.i}) el corte es perpendicular `
-    + 'a la tangente: N va a lo largo de ella y V perpendicular, a la izquierda de i → j. Los valores salen del análisis matricial.',
-    TYPE.small,
-  );
+  memoirNote(context, `Arco circular; s se mide sobre el arco desde ${member.i}. N es tangente al arco y V normal, a la izquierda de i → j.`);
+  layout.table([
+    { header: `Radio (${unitFor(project, 'length')})`, align: 'right' },
+    { header: `Cuerda (${unitFor(project, 'length')})`, align: 'right' },
+    { header: `Longitud (${unitFor(project, 'length')})`, align: 'right' },
+  ], [[clearCell(project, arc.radius, 'length'), clearCell(project, arc.chord, 'length'), clearCell(project, arc.length, 'length')]]);
   const stations = 12;
   const reference = (quantity: 'axial' | 'shear' | 'moment') => Math.max(1, ...result.criticalPoints.filter((point) => point.quantity === quantity).map((point) => Math.abs(point.value)));
   const rows = Array.from({ length: stations + 1 }, (_, k) => {
@@ -127,7 +146,7 @@ const drawCurvedMember = (context: ReportContext, result: AnalysisResult['member
     const angle = Math.atan2(tangent.y, tangent.x) * 180 / Math.PI;
     return [
       clearCell(project, s, 'length'),
-      `${angle.toFixed(1)}°`,
+      number(angle, 4),
       clearCell(project, value?.axial ?? 0, 'force', reference('axial')),
       clearCell(project, value?.shear ?? 0, 'force', reference('shear')),
       clearCell(project, value?.moment ?? 0, 'moment', reference('moment')),
@@ -135,29 +154,40 @@ const drawCurvedMember = (context: ReportContext, result: AnalysisResult['member
   });
   layout.table([
     { header: `s (${unitFor(project, 'length')})`, align: 'right' },
-    { header: 'Tangente', align: 'right' },
+    { header: 'Tangente (°)', align: 'right' },
     { header: `N (${unitFor(project, 'force')})`, align: 'right' },
     { header: `V (${unitFor(project, 'force')})`, align: 'right' },
     { header: `M (${unitFor(project, 'moment')})`, align: 'right' },
   ], rows);
   const extreme = (quantity: 'axial' | 'shear' | 'moment', kind: 'maximum' | 'minimum') => result.criticalPoints.find((point) => point.quantity === quantity && point.kind === kind);
-  const lines = (['axial', 'shear', 'moment'] as const).flatMap((quantity) => {
-    const max = extreme(quantity, 'maximum'), min = extreme(quantity, 'minimum');
-    const symbol = quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M';
+  const extremes = (['axial', 'shear', 'moment'] as const).flatMap((quantity) => {
+    const max = extreme(quantity, 'maximum');
+    const min = extreme(quantity, 'minimum');
+    if (!max && !min) return [];
     const unit = quantity === 'moment' ? 'moment' as const : 'force' as const;
-    return [max, min].flatMap((point) => point ? [`${symbol} ${point === max ? 'máx' : 'mín'} = ${clearDisplay(project, point.value, unit, reference(quantity))} en s = ${display(project, point.x, 'length')}`] : []);
+    const cell = (point: typeof max) => point ? clearCell(project, point.value, unit, reference(quantity)) : '—';
+    const where = (point: typeof max) => point ? clearCell(project, point.x, 'length') : '—';
+    return [[`${quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M'} (${unitFor(project, unit)})`, cell(max), where(max), cell(min), where(min)]];
   });
-  layout.keyValues([['Extremos en el arco', lines.join('  ·  ')]]);
+  if (extremes.length) {
+    layout.table([
+      { header: 'Extremos en el arco' },
+      { header: 'Máximo', align: 'right' },
+      { header: `en s (${unitFor(project, 'length')})`, align: 'right' },
+      { header: 'Mínimo', align: 'right' },
+      { header: `en s (${unitFor(project, 'length')})`, align: 'right' },
+    ], extremes);
+  }
 };
 
 export const drawSegmentCalculationPart = (context: ReportContext): void => {
   const { layout, analysis, project } = context;
   layout.part(
     'Cálculo por miembro y por tramo',
-    'Diagramas N, V y M: cada intervalo lleva su cuerpo libre, corte local y ecuaciones N(s), V(s) y M(s).',
+    'Cada tramo de cada barra: cuerpo libre, corte y funciones N, V y M.',
   );
   if (!analysis.memberResults.length) {
-    layout.note('El análisis no produjo miembros para documentar por tramos.');
+    layout.note('El análisis no dio barras que documentar por tramos.');
     return;
   }
 
@@ -166,18 +196,18 @@ export const drawSegmentCalculationPart = (context: ReportContext): void => {
   const trussResults = analysis.memberResults.filter((result) => context.index.member(result.memberId)?.type === 'truss');
   if (trussResults.length) {
     layout.heading('Barras de armadura', 2);
-    layout.text('En una barra articulada en sus dos extremos y sin carga entre ellos, N es constante y V = M = 0: no hace falta cortarla por tramos.', TYPE.small);
+    memoirNote(context, 'Barras articuladas sin carga entre sus extremos: N constante y V = M = 0.');
     const reference = Math.max(1, ...trussResults.map((result) => Math.abs(result.diagram[0]?.axial ?? 0)));
     layout.table([
       { header: 'Barra', width: 60 },
       { header: 'Nudos', width: 90 },
       { header: `Longitud (${unitFor(project, 'length')})`, align: 'right' },
       { header: `N (${unitFor(project, 'force')})`, align: 'right' },
-      { header: 'Trabajo', width: 80 },
+      { header: 'Estado', width: 90 },
     ], trussResults.map((result) => {
       const member = context.index.member(result.memberId)!;
       const axial = result.diagram[0]?.axial ?? 0;
-      const state = Math.abs(axial) <= reference * 1e-9 ? 'sin esfuerzo' : axial > 0 ? 'tensión (T)' : 'compresión (C)';
+      const state = Math.abs(axial) <= reference * 1e-9 ? 'sin fuerza' : axial > 0 ? 'tensión' : 'compresión';
       return [member.id, `${member.i} → ${member.j}`, clearCell(project, result.length, 'length'), clearCell(project, axial, 'force', reference), state];
     }));
   }
@@ -189,16 +219,18 @@ export const drawSegmentCalculationPart = (context: ReportContext): void => {
       drawCurvedMember(context, result);
       continue;
     }
-    layout.heading(`Barra ${member.id}: ${member.i} → ${member.j}`, 2);
-    layout.text(`Longitud analizada: ${display(project, result.length, 'length')}. Los cortes siguen los intervalos exactos publicados por el solver; no son una interpolación gráfica.`, 8.2);
+    layout.heading(`Barra ${member.id}: ${member.i} → ${member.j}, L = ${display(project, result.length, 'length')}`, 2);
+    if (result.diagramSegments.length > 1) memoirNote(context, 'Un tramo por cada cambio de carga; en cada uno las funciones son exactas.');
     for (const [segmentIndex, segment] of result.diagramSegments.entries()) {
-      layout.heading(`Tramo ${segmentIndex + 1}: ${display(project, segment.x0, 'length')} ≤ s ≤ ${display(project, segment.x1, 'length')}`, 3);
       const scene = segmentScene(context, result, segment, segmentIndex + 1);
+      // El título del tramo no se queda solo al pie: va con su figura.
+      layout.ensure(scene ? sceneHeightFor(context, 210) + 60 : 90);
+      layout.heading(`Tramo ${segmentIndex + 1}: ${display(project, segment.x0, 'length')} ≤ s ≤ ${display(project, segment.x1, 'length')}`, 3);
       if (scene) {
         layout.figure(
           sceneHeightFor(context, 210),
           (rect) => drawFreeBodyScene(context, rect, scene),
-          `Cuerpo libre de la barra ${member.id}, tramo ${segmentIndex + 1}; las acciones N, V y M se muestran en el corte local.`,
+          `Barra ${member.id}, tramo ${segmentIndex + 1}: cuerpo libre hasta el corte, con N, V y M en ejes locales.`,
         );
       }
       drawEquations(context, segment);

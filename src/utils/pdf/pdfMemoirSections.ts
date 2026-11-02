@@ -9,7 +9,8 @@ import { classifyStructure } from '../../analysis-methods/structureClassificatio
 import { resolveNumericQualityState } from '../../engine/reliability';
 import type { DiagramQuantity } from '../../types';
 import { drawGlobalDcl } from './pdfDiagrams';
-import { clearDisplay, clearNumber, display, unitFor } from './pdfFormat';
+import { clearCell, clearNumber, display, unitFor } from './pdfFormat';
+import { memoirNote } from './pdfMemoirKit';
 import { METHOD_LABEL } from './pdfProcedureSection';
 import { SPACE, TYPE } from './pdfTheme';
 import type { ReportContext } from './reportContext';
@@ -26,33 +27,36 @@ const describeStructure = (context: ReportContext): string => {
   const { project } = context;
   const classification = classifyStructure(project);
   const g = classification.indeterminacy;
-  const degree = g === 0 ? 'isostática (g = 0)' : g > 0 ? `hiperestática de grado ${g}` : 'un mecanismo (g < 0)';
   const curved = project.members.filter((member) => member.curve).length;
-  const kind = {
-    'simple-beam': 'una viga de un claro',
-    'continuous-beam': 'una viga continua',
-    frame: curved ? 'un marco plano con barras curvas' : 'un marco plano',
-    truss: 'una armadura plana',
-    other: 'una estructura plana',
-  }[classification.kind];
-  return `Se trata de ${kind}, ${degree}.`;
+  const [kind, feminine] = ({
+    'simple-beam': ['una viga de un claro', true],
+    'continuous-beam': ['una viga continua', true],
+    frame: [curved ? 'un marco plano con barras curvas' : 'un marco plano', false],
+    truss: ['una armadura plana', true],
+    other: ['una estructura plana', true],
+  } as const)[classification.kind];
+  const ending = feminine ? 'a' : 'o';
+  const degree = g === 0 ? `isostátic${ending} (g = 0)` : g > 0 ? `hiperestátic${ending} de grado ${g}` : 'un mecanismo (g < 0)';
+  return `Es ${kind}, ${degree}.`;
 };
 
 /** Parte 1: objeto, tipo de estructura, modelo de cálculo, escenario de carga e hipótesis. */
 export const drawGeneralDataPart = (context: ReportContext): void => {
   const { layout, project, analysis, scenarioFactors, options, solutionMethod } = context;
-  layout.part('Datos generales', 'Objeto del cálculo, modelo, cargas del escenario e hipótesis.');
+  layout.part('Datos generales', 'Objeto del cálculo, modelo, escenario de carga e hipótesis.');
 
   layout.heading('Objeto');
   const supports = project.nodes.filter((node) => node.support.type !== 'none').length;
   const frames = project.members.filter((member) => member.type === 'frame').length;
   const trusses = project.members.filter((member) => member.type === 'truss').length;
-  layout.text(
-    `Esta memoria documenta el análisis estructural de «${project.name}»: ${project.nodes.length} nudos, `
-    + `${project.members.length} barras (${frames} de marco${trusses ? `, ${trusses} de armadura` : ''}) y ${supports} apoyos. `
-    + `${describeStructure(context)} Los resultados se obtienen por el método matricial de rigidez y el procedimiento `
-    + `se desarrolla a mano por ${METHOD_LABEL[solutionMethod]}, verificado contra esos resultados.`,
-  );
+  const count = (value: number, noun: string) => `${value} ${noun}${value === 1 ? '' : 's'}`;
+  const kinds = [frames ? `${frames} de marco` : '', trusses ? `${trusses} de armadura` : ''].filter(Boolean).join(', ');
+  memoirNote(context, `Se analiza «${project.name}»: ${count(project.nodes.length, 'nudo')}, ${count(project.members.length, 'barra')}`
+    + `${kinds ? ` (${kinds})` : ''} y ${count(supports, 'apoyo')}. ${describeStructure(context)}`);
+  memoirNote(context, solutionMethod === 'matrix-stiffness'
+    ? 'Las solicitaciones se obtienen por el método matricial de rigidez, desarrollado paso a paso en la parte de análisis.'
+    : `Las solicitaciones se obtienen por el método matricial de rigidez; el procedimiento se desarrolla por `
+      + `${METHOD_LABEL[solutionMethod]} y se comprueba contra ese análisis.`);
 
   layout.figure(
     Math.min(240, Math.max(180, layout.contentWidth * 0.44)),
@@ -61,7 +65,7 @@ export const drawGeneralDataPart = (context: ReportContext): void => {
   );
 
   layout.heading('Escenario de carga');
-  layout.text(`Escenario: ${options.scenarioName ?? 'análisis activo'}. Cada caso entra con el factor de la tabla; el peso propio, cuando se considera, va dentro de su caso.`);
+  memoirNote(context, `Escenario «${options.scenarioName ?? 'análisis activo'}»: cada caso se multiplica por su factor; el peso propio, si se considera, forma parte de su caso.`);
   layout.table([
     { header: 'Caso', width: 64 },
     { header: 'Nombre' },
@@ -76,7 +80,7 @@ export const drawGeneralDataPart = (context: ReportContext): void => {
       loadCase.id,
       loadCase.name,
       CATEGORY[loadCase.category] ?? loadCase.category,
-      loadCase.selfWeightFactor ? `× ${clearNumber(loadCase.selfWeightFactor)}` : '—',
+      loadCase.selfWeightFactor ? `× ${clearNumber(loadCase.selfWeightFactor)}` : 'no',
       String(actions),
       clearNumber(scenarioFactors[loadCase.id] ?? 0),
     ];
@@ -87,8 +91,8 @@ export const drawGeneralDataPart = (context: ReportContext): void => {
     'Análisis estático lineal de primer orden: material elástico lineal y pequeños desplazamientos.',
     'Barras de marco de Euler–Bernoulli con deformación axial; barras de armadura sólo con rigidez axial.',
     'Propiedades (E, A, I) constantes en cada barra; nudos rígidos salvo las rótulas y liberaciones declaradas.',
-    'Las cargas actúan en el plano de la estructura; no se consideran pandeo, torsión ni efectos fuera del plano.',
-    `Análisis resuelto ${analysis.success ? 'con éxito' : 'con incidencias'}; los valores se presentan en las unidades del proyecto.`,
+    'Cargas en el plano de la estructura; no se consideran pandeo, torsión ni efectos fuera del plano.',
+    `Análisis ${analysis.success ? 'resuelto sin errores' : 'con incidencias'}; las cifras están en las unidades del proyecto.`,
   ]);
 };
 
@@ -107,23 +111,23 @@ const extreme = (context: ReportContext, quantity: DiagramQuantity) => {
 export const drawConclusionsPart = (context: ReportContext, professionalNote: string): void => {
   const { layout, project, analysis, solutionMethod } = context;
   const { palette, fonts } = layout;
-  layout.part('Conclusiones', 'Las cifras que gobiernan, cómo se verificaron y el alcance de esta memoria.');
+  layout.part('Conclusiones', 'Cifras que gobiernan, verificación y alcance.');
 
   layout.heading('Resultados que gobiernan');
   const rows: string[][] = [];
   const reaction = analysis.nodeResults.reduce<{ value: number; node: string; component: string } | undefined>((best, node) => {
-    for (const [component, value] of [['Rx', node.rx], ['Ry', node.ry]] as const) {
+    for (const [component, value] of [['R_x', node.rx], ['R_y', node.ry]] as const) {
       if (!best || Math.abs(value) > Math.abs(best.value)) best = { value, node: node.nodeId, component };
     }
     return best;
   }, undefined);
-  if (reaction) rows.push(['Reacción máxima', clearDisplay(project, reaction.value, 'force', Math.abs(reaction.value)), `${reaction.component} en ${reaction.node}`]);
+  if (reaction) rows.push(['Reacción máxima', clearCell(project, reaction.value, 'force', Math.abs(reaction.value)), unitFor(project, 'force'), `${reaction.component} en ${reaction.node}`]);
   const names: Record<DiagramQuantity, string> = { axial: 'Fuerza axial |N| máxima', shear: 'Cortante |V| máximo', moment: 'Momento |M| máximo' };
   for (const quantity of ['axial', 'shear', 'moment'] as const) {
     const found = extreme(context, quantity);
     if (!found || Math.abs(found.value) < 1e-9) continue;
     const unit = quantity === 'moment' ? 'moment' as const : 'force' as const;
-    rows.push([names[quantity], clearDisplay(project, found.value, unit, Math.abs(found.value)), `barra ${found.memberId}, x = ${display(project, found.x, 'length')}`]);
+    rows.push([names[quantity], clearCell(project, found.value, unit, Math.abs(found.value)), unitFor(project, unit), `barra ${found.memberId}, x = ${display(project, found.x, 'length')}`]);
   }
   const displacement = analysis.nodeResults.reduce<{ value: number; node: string } | undefined>((best, node) => {
     const value = Math.hypot(node.ux, node.uy);
@@ -132,19 +136,28 @@ export const drawConclusionsPart = (context: ReportContext, professionalNote: st
   if (displacement && displacement.value > 0) {
     // Una flecha se lee en milímetros: «1.53 mm», no «0.00153091 m».
     const inMetres = unitFor(project, 'length') === 'm';
-    const shown = inMetres ? `${(displacement.value * 1000).toFixed(2)} mm` : display(project, displacement.value, 'length');
-    rows.push(['Desplazamiento nodal máximo', shown, `nudo ${displacement.node}`]);
+    rows.push([
+      'Desplazamiento nodal máximo',
+      inMetres ? clearNumber(displacement.value * 1000) : clearCell(project, displacement.value, 'length'),
+      inMetres ? 'mm' : unitFor(project, 'length'),
+      `nudo ${displacement.node}`,
+    ]);
   }
-  layout.table([{ header: 'Magnitud' }, { header: 'Valor', align: 'right', width: 130 }, { header: 'Dónde', width: 170 }], rows);
+  layout.table([
+    { header: 'Magnitud' },
+    { header: 'Valor', align: 'right', width: 90 },
+    { header: 'Unidad', width: 60 },
+    { header: 'Dónde', width: 150 },
+  ], rows);
 
   layout.heading('Verificación');
   const quality = resolveNumericQualityState(analysis);
   layout.bullets([
-    `Equilibrio global: residuo normalizado ${clearNumber(analysis.equilibrium.normalizedResidual)}; las tres sumas cierran con los números de la parte de resultados.`,
+    `Equilibrio global: residuo normalizado ${clearNumber(analysis.equilibrium.normalizedResidual)}; las tres sumas están desarrolladas en «Resultados del análisis».`,
     solutionMethod === 'matrix-stiffness'
-      ? 'Procedimiento: método matricial de rigidez, desarrollado paso a paso en la parte de análisis.'
-      : `Procedimiento: ${METHOD_LABEL[solutionMethod]}, desarrollado a mano y contrastado barra a barra con el análisis matricial en su propia sección.`,
-    `Calidad numérica del solver: ${{ stable: 'estable', limited: 'limitada', unreliable: 'no confiable', failed: 'fallida', unavailable: 'no disponible' }[quality]} (número de condición ${clearNumber(analysis.conditionEstimate)}).`,
+      ? 'Procedimiento: método matricial de rigidez, paso a paso en la parte de análisis.'
+      : `Procedimiento: ${METHOD_LABEL[solutionMethod]}, comprobado contra el análisis matricial al final de su desarrollo.`,
+    `Calidad numérica del análisis matricial: ${{ stable: 'estable', limited: 'limitada', unreliable: 'no confiable', failed: 'fallida', unavailable: 'no disponible' }[quality]} (número de condición ${clearNumber(analysis.conditionEstimate)}).`,
   ]);
 
   layout.heading('Alcance');
