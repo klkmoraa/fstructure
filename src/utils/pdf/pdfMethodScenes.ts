@@ -487,9 +487,7 @@ export const doubleIntegrationScenes = (
   solution.segments,
   solution.axis.length,
   (index) => `tramo ${index + 1}`,
-  'La viga cortada dentro del tramo: sobre la porción izquierda actúan las cargas y reacciones ya conocidas, '
-  + 'y en la cara del corte aparecen V(x) y M(x). Igualar el momento de esa porción a M(x) es la ecuación que '
-  + 'las dos integraciones resuelven, con los coeficientes que se listan al lado.',
+  'Porción izquierda del corte con sus cargas y reacciones; en la cara del corte, V(x) y M(x).',
 );
 
 export const conjugateBeamScenes = (
@@ -501,8 +499,7 @@ export const conjugateBeamScenes = (
   solution.segments,
   solution.axis.length,
   (index) => `tramo ${index + 1}`,
-  'El corte del que sale M(x), la carga ficticia w* = M/EI de la viga conjugada. El giro y la flecha reales '
-  + 'son el cortante y el momento de esa viga ficticia en este mismo punto.',
+  'Porción izquierda del corte; su M(x), dividido entre EI, es la carga w* de la viga conjugada.',
 );
 
 interface SpanEnds {
@@ -570,12 +567,9 @@ export const hardyCrossScenes = (
       rightNodeId: span.rightNodeId,
       momentLeft: moments.get(span.leftNodeId) ?? span.finalMomentLeft,
       momentRight: moments.get(span.rightNodeId) ?? span.finalMomentRight,
-      extra: `FEM ${displayCell(context.project, span.fixedEndMomentLeft, 'moment')} / `
-        + `${displayCell(context.project, span.fixedEndMomentRight, 'moment')} ${unitFor(context.project, 'moment')}`,
     })),
     (index) => `vano ${index + 1}`,
-    'El vano con los momentos ya convergidos en sus extremos. La nota recuerda el momento de empotramiento '
-    + 'perfecto del que partió el reparto, antes de distribuir y transmitir.',
+    'El vano aislado con sus cargas y los momentos de apoyo después del reparto.',
   );
 };
 

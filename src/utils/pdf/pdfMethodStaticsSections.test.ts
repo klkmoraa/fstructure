@@ -74,7 +74,7 @@ describe('memoria PDF con el método de secciones', () => {
     }
     const text = pages.join(' ').replace(/\s+/g, ' ');
     expect(text).toContain('(arco circular)');
-    expect(text).toContain('Corte donde |M| es mayor');
+    expect(text).toContain('Corte de |M| máximo');
     expect(text).toContain('M mat.');
 
     const bulge = Math.tan(Math.asin(5 / (34 / 6)) / 4);

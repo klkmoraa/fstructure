@@ -238,146 +238,409 @@ const beamShearEquations = (
   });
 };
 
-const drawDoubleIntegration = (context: ReportContext, solution: DoubleIntegrationResult): void => {
-  const { layout, project } = context;
-  const { fonts, palette } = layout;
-  const lengthUnit = unitFor(project, 'length');
-  const scaleLabel = solution.uniformEI ? 'EI ' : '';
+// ---------------------------------------------------------------------------------------
+// Elástica por tramos: doble integración y viga conjugada comparten la escritura.
+// ---------------------------------------------------------------------------------------
 
-  layout.heading('5. Procedimiento: Método de la Doble Integración');
-  layout.text(
-    'La ecuación de la elástica se integra dos veces: la primera integración del momento da el giro, '
-    + 'la segunda la flecha. Cada integración deja una constante por tramo, y en una viga hiperestática '
-    + 'las reacciones redundantes son incógnitas más: las condiciones de contorno y de continuidad las '
-    + 'determinan todas a la vez. Todo lo que sigue son esas integrales ya resueltas, con los '
-    + 'coeficientes reales de esta viga.',
-    8.7, fonts.regular, undefined, 8,
-  );
-  // The three generic relations that used to sit here — `EI y″ = M`, and its two integrals —
-  // are the method, not this beam. They are developed with real coefficients a few lines
-  // below, one set per stretch, so printing them again as symbols only delayed the numbers.
+type Dimension = readonly [force: number, length: number];
 
-  layout.heading('5.1 Clasificación estática', 2);
-  const degree = solution.classification.indeterminacy;
-  layout.text(
-    degree === 0
-      ? `La viga es isostática: las ${solution.classification.reactionCount} componentes de reacción quedan determinadas por la estática.`
-      : `g = ${degree}: la viga es hiperestática de grado ${degree}, así que ${degree === 1 ? 'una reacción es incógnita' : `${degree} reacciones son incógnitas`} hasta imponer la compatibilidad.`,
-    8.7, fonts.regular, undefined, 8,
-  );
+/** Horner, para leer un polinomio de la elástica en un punto. */
+const valueAt = (coefficients: readonly number[], x: number): number =>
+  coefficients.reduceRight((total, coefficient) => total * x + coefficient, 0);
 
-  if (solution.redundants.length) {
-    layout.heading('5.2 Redundantes elegidas y verificadas', 2);
-    layout.text(
-      'Se liberan estos apoyos para dejar una estructura isostática cuyo diagrama de momentos se puede '
-      + 'seguir; su reacción pasa a ser la incógnita. La última columna es lo que el análisis matricial '
-      + 'obtiene en ese mismo apoyo: el método y el solver tienen que coincidir.',
-      8.3, fonts.regular, undefined, 8,
-    );
-    drawCalculationRecords(context,
-      [
-        { header: 'Redundante', width: 74, math: true },
-        { header: 'Apoyo', width: 64 },
-        { header: `Doble integración (${unitFor(project, 'force')})`, ...NUMERIC },
-        { header: `Análisis matricial (${unitFor(project, 'force')})`, ...NUMERIC },
-      ],
-      solution.redundants.map((redundant) => [
-        redundant.symbol,
-        redundant.nodeId,
-        displayCell(project, redundant.value, 'force'),
-        displayCell(project, redundant.solverReaction, 'force'),
-      ]),
-      { size: 7.8 },
-    );
-  }
+/** Una cifra de tabla con el signo menos tipográfico, como en las fórmulas. */
+const cellText = (text: string): string => text.replace(/^-(?=[\d.])/, '−');
 
-  layout.heading(`5.${solution.redundants.length ? 3 : 2} Momento, giro y flecha por tramos`, 2);
-  layout.text(
-    solution.uniformEI
-      ? `Con EI = ${number(solution.EI, 6)} kN·m² constante, se factoriza y las expresiones se escriben como EI θ y EI y. La variable x se mide desde el extremo izquierdo de la viga.`
-      : 'La rigidez cambia entre tramos, así que EI no se puede factorizar: las expresiones son directamente θ(x) e y(x). La variable x se mide desde el extremo izquierdo de la viga.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawScenes(
-    context,
-    doubleIntegrationScenes(context, solution),
-    (_scene, index) => `Tramo ${index + 1}: el corte del que sale M(x), la ecuación que las dos integraciones resuelven.`,
-  );
-  for (const [index, segment] of solution.segments.entries()) {
-    layout.ensure(58);
-    layout.text(
-      `Tramo ${index + 1}: de x = ${number(segment.x0, 5)} a x = ${number(segment.x1, 5)} ${lengthUnit}`,
-      8, fonts.bold, palette.ink, 8,
-    );
-    for (const relation of [
-      `M(x) = ${expression(segment.moment)}`,
-      `${scaleLabel}θ(x) = ${expression(segment.slope)}`,
-      `${scaleLabel}y(x) = ${expression(segment.deflection)}`,
-    ]) {
-      drawRelation(context, relation);
+/** Dos lecturas de la misma cifra: iguales salvo el redondeo de la máquina. */
+const closeTo = (a: number, b: number): boolean => Math.abs(a - b) <= 1e-6 * Math.max(Math.abs(a), Math.abs(b)) + 1e-15;
+
+/** `x_1`, `x_{12}`: índice de tramo listo para la notación del kit. */
+const stretchIndex = (k: number): string => (k + 1 < 10 ? `${k + 1}` : `{${k + 1}}`);
+
+/** `49.74 x − 13.27 x^2` en las unidades de presentación: cada coeficiente con su dimensión. */
+const unitPolynomial = (project: ProjectModel, coefficients: readonly number[], dimension: Dimension, span: number): string => {
+  const magnitudes = coefficients.map((coefficient, power) => Math.abs(coefficient) * Math.max(1, span) ** power);
+  const reference = Math.max(0, ...magnitudes);
+  const terms: string[] = [];
+  coefficients.forEach((coefficient, power) => {
+    if (!(magnitudes[power]! > reference * 1e-9)) return;
+    const value = dimensionalValue(project, coefficient, dimension[0], dimension[1] - power);
+    const magnitude = number(Math.abs(value));
+    const factor = power === 0 ? magnitude : power === 1 ? `${magnitude} x` : `${magnitude} x^${power}`;
+    terms.push(terms.length ? `${value < 0 ? '−' : '+'} ${factor}` : `${value < 0 ? '−' : ''}${factor}`);
+  });
+  return terms.join(' ') || '0';
+};
+
+/**
+ * Con EI constante las expresiones se escriben como EI θ y EI y (kN·m², kN·m³); si EI cambia
+ * entre tramos, como θ e y.
+ */
+interface ElasticFamily {
+  readonly prefix: string;
+  readonly slope: Dimension;
+  readonly deflection: Dimension;
+}
+
+const elasticFamily = (uniformEI: boolean): ElasticFamily => (uniformEI
+  ? { prefix: 'EI ', slope: [1, 2], deflection: [1, 3] }
+  : { prefix: '', slope: [0, 0], deflection: [0, 1] });
+
+interface ElasticStretch {
+  readonly x0: number;
+  readonly x1: number;
+  readonly EI: number;
+  readonly moment: readonly number[];
+  readonly slope: readonly number[];
+  readonly deflection: readonly number[];
+  readonly constantSymbols: readonly [string, string];
+}
+
+interface ElasticCondition {
+  readonly statement: string;
+  readonly kind: 'deflection' | 'slope' | 'continuity';
+  readonly x: number;
+}
+
+/** Lo que sale de integrar M, sin constantes: el giro sin C₁ y la flecha sin C₁ x + C₂. */
+const particularSlope = (stretch: ElasticStretch): number[] => [0, ...stretch.slope.slice(1)];
+const particularDeflection = (stretch: ElasticStretch): number[] => [0, 0, ...stretch.deflection.slice(2)];
+const slopeConstant = (stretch: ElasticStretch): number => stretch.slope[0] ?? 0;
+const deflectionConstant = (stretch: ElasticStretch): number => stretch.deflection[0] ?? 0;
+
+/**
+ * Las constantes se leen de los polinomios ya resueltos: el término independiente del giro es
+ * C₁ y reaparece como coeficiente de x en la flecha. Si no coincide, nada de lo que sigue se
+ * escribe con constantes.
+ */
+const constantsReadable = (stretches: readonly ElasticStretch[]): boolean => stretches.every((stretch) => {
+  const constant = slopeConstant(stretch);
+  const linear = stretch.deflection[1] ?? 0;
+  return Math.abs(constant - linear) <= 1e-9 * Math.max(Math.abs(constant), Math.abs(linear)) + 1e-300;
+});
+
+const withConstants = (particular: string, constants: string): string => (particular === '0' ? constants : `${particular} + ${constants}`);
+
+/** Integración de un tramo: M dado, giro y flecha con sus dos constantes todavía como símbolos. */
+const integrationEquations = (
+  project: ProjectModel,
+  family: ElasticFamily,
+  stretch: ElasticStretch,
+  k: number,
+  span: number,
+  names: { readonly slope: string; readonly deflection: string; readonly load: (k: number) => string },
+): EquationInput[] => {
+  const [c1, c2] = stretch.constantSymbols;
+  return [
+    `M_${stretchIndex(k)}(x) = ${unitPolynomial(project, stretch.moment, [1, 1], span)}`,
+    {
+      lhs: `${names.slope}_${stretchIndex(k)}(x)`,
+      symbolic: `∫ ${names.load(k)} dx + ${c1}`,
+      substituted: withConstants(unitPolynomial(project, particularSlope(stretch), family.slope, span), c1),
+    },
+    {
+      lhs: `${names.deflection}_${stretchIndex(k)}(x)`,
+      symbolic: `∫ ${names.slope}_${stretchIndex(k)}(x) dx + ${c2}`,
+      substituted: withConstants(unitPolynomial(project, particularDeflection(stretch), family.deflection, span), `${c1} x + ${c2}`),
+    },
+  ];
+};
+
+/**
+ * Cada condición escrita con los polinomios del tramo: término conocido + constantes = 0. Se
+ * comprueba con las constantes ya resueltas antes de imprimirla; si una no cierra, no se
+ * imprime ninguna (`undefined`).
+ */
+const conditionEquations = (
+  project: ProjectModel,
+  family: ElasticFamily,
+  stretches: readonly ElasticStretch[],
+  conditions: readonly ElasticCondition[],
+  names: { readonly slope: string; readonly deflection: string },
+): EquationInput[] | undefined => {
+  const near = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+  const stretchAt = (x: number) => {
+    const found = stretches.findIndex((stretch) => x >= stretch.x0 - 1e-9 && x <= stretch.x1 + 1e-9);
+    return found < 0 ? stretches.length - 1 : found;
+  };
+  const equations: EquationInput[] = [];
+  for (const condition of conditions) {
+    const quantity = condition.kind === 'slope' || (condition.kind === 'continuity' && condition.statement.startsWith('θ'))
+      ? 'slope' as const
+      : 'deflection' as const;
+    const dimension = family[quantity];
+    const x = condition.x;
+    let known = 0;
+    const unknowns: { coefficient: number; symbol: string; value: number; length: boolean }[] = [];
+    const add = (k: number, sign: 1 | -1) => {
+      const stretch = stretches[k]!;
+      const [c1, c2] = stretch.constantSymbols;
+      if (quantity === 'slope') {
+        known += sign * valueAt(particularSlope(stretch), x);
+        unknowns.push({ coefficient: sign, symbol: c1, value: slopeConstant(stretch), length: false });
+        return;
+      }
+      known += sign * valueAt(particularDeflection(stretch), x);
+      unknowns.push({ coefficient: sign * x, symbol: c1, value: slopeConstant(stretch), length: true });
+      unknowns.push({ coefficient: sign, symbol: c2, value: deflectionConstant(stretch), length: false });
+    };
+    const xText = dimensionalFigure(project, x, 0, 1);
+    let lhs: string;
+    if (condition.kind === 'continuity') {
+      const k = stretches.findIndex((stretch) => near(stretch.x1, x));
+      if (k < 0 || k + 1 >= stretches.length) return undefined;
+      add(k, 1);
+      add(k + 1, -1);
+      lhs = `${names[quantity]}_${stretchIndex(k)}(${xText}) − ${names[quantity]}_${stretchIndex(k + 1)}(${xText})`;
+    } else {
+      const k = stretchAt(x);
+      add(k, 1);
+      lhs = `${names[quantity]}_${stretchIndex(k)}(${xText})`;
     }
+    const parts = [known, ...unknowns.map((unknown) => unknown.coefficient * unknown.value)];
+    const scale = Math.max(...parts.map((part) => Math.abs(part)));
+    const total = parts.reduce((sum, part) => sum + part, 0);
+    if (!(Math.abs(total) <= 1e-6 * scale + 1e-14)) return undefined;
+    const terms: string[] = [];
+    if (Math.abs(known) > 1e-9 * scale) terms.push(dimensionalFigure(project, known, dimension[0], dimension[1], scale));
+    for (const unknown of unknowns) {
+      if (Math.abs(unknown.coefficient) <= 1e-12) continue;
+      const magnitude = Math.abs(unknown.coefficient);
+      const factor = unknown.length ? dimensionalFigure(project, magnitude, 0, 1) : number(magnitude);
+      const text = factor === '1' ? unknown.symbol : `${factor} ${unknown.symbol}`;
+      terms.push(unknown.coefficient < 0 ? `−${text}` : text);
+    }
+    equations.push({ lhs, substituted: signedSum(terms), result: '0' });
   }
+  return equations;
+};
 
-  layout.heading(`5.${solution.redundants.length ? 4 : 3} Condiciones y sistema resuelto`, 2);
-  layout.text(
-    `${solution.conditions.length} condiciones para ${solution.constants.length + solution.redundants.length} incógnitas: `
-    + 'continuidad de giro y flecha en cada frontera entre tramos, flecha nula en cada apoyo y giro nulo '
-    + 'en cada empotramiento. El sistema es cuadrado por construcción.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [{ header: 'Condición', flex: 2.2, math: true }, { header: 'Tipo', width: 84 }, { header: `x (${lengthUnit})`, ...NUMERIC, width: 58 }],
-    solution.conditions.map((condition) => [
-      condition.statement,
-      condition.kind === 'continuity' ? 'continuidad' : condition.kind === 'slope' ? 'giro impuesto' : 'flecha impuesta',
-      number(condition.x, 5),
-    ]),
-    { size: 7.4 },
-  );
-  drawCalculationRecords(context,
-    [{ header: 'Constante', width: 74, math: true }, { header: 'Valor', ...NUMERIC }],
-    solution.constants.map((constant) => [constant.symbol, clearNumber(constant.value, Math.max(1, Math.abs(constant.value)))]),
-    { size: 7.6 },
-  );
+/** El enunciado de las condiciones que aplican, en símbolos. */
+const conditionFormula = (conditions: readonly ElasticCondition[], names: { readonly slope: string; readonly deflection: string }, conjugate: boolean): string => {
+  const parts: string[] = [];
+  if (conditions.some((condition) => condition.kind === 'deflection')) parts.push(conjugate ? `${names.deflection}(x_a) = 0` : 'y(x_a) = 0');
+  if (conditions.some((condition) => condition.kind === 'slope')) parts.push(conjugate ? `${names.slope}(x_e) = 0` : 'θ(x_e) = 0');
+  if (conditions.some((condition) => condition.kind === 'continuity')) {
+    parts.push(`${names.slope}_k(x_k) = ${names.slope}_{k+1}(x_k)`, `${names.deflection}_k(x_k) = ${names.deflection}_{k+1}(x_k)`);
+  }
+  return parts.join(',   ');
+};
 
-  layout.heading(`5.${solution.redundants.length ? 5 : 4} Verificación contra el análisis matricial`, 2);
-  layout.text(
-    'Los dos caminos parten del mismo modelo y llegan por separado: si no coincidieran, el procedimiento '
-    + 'de arriba estaría mal. Estas son las diferencias máximas medidas.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [{ header: 'Contraste', flex: 2 }, { header: 'Diferencia máxima', ...NUMERIC }, { header: 'Unidad', width: 74 }],
-    [
-      ['Reacciones redundantes', clearNumber(solution.reactionResidual, 1), unitFor(project, 'force')],
-      ['Flecha a lo largo de la viga', clearNumber(solution.deflectionResidual, 1), unitFor(project, 'length')],
-    ],
-    { size: 7.8 },
-  );
+const conditionWhere = (conditions: readonly ElasticCondition[], conjugate: boolean): [string, string][] => [
+  ...(conditions.some((condition) => condition.kind === 'deflection')
+    ? [['x_a', conjugate ? 'extremo con flecha nula en la viga real: la conjugada no tiene momento ahí' : 'abscisa de cada apoyo (flecha nula)'] as [string, string]]
+    : []),
+  ...(conditions.some((condition) => condition.kind === 'slope')
+    ? [['x_e', conjugate ? 'empotramiento real: extremo libre de la conjugada, sin cortante' : 'abscisa de cada empotramiento (giro nulo)'] as [string, string]]
+    : []),
+  ...(conditions.some((condition) => condition.kind === 'continuity')
+    ? [['x_k', 'frontera entre los tramos k y k + 1'] as [string, string]]
+    : []),
+];
 
-  const peakAbsolute = Math.abs(solution.maxDeflection.value);
-  layout.text(
-    `Flecha máxima ${displayCell(project, peakAbsolute, 'length')} ${lengthUnit} en x = ${number(solution.maxDeflection.x, 5)} ${lengthUnit}.`,
-    8.7, fonts.bold, palette.ink, 8,
-  );
+/** Constantes con su unidad, para el recuadro de resultados. */
+const constantRows = (project: ProjectModel, family: ElasticFamily, stretches: readonly ElasticStretch[]): [string, string][] => {
+  const unitOf = (dimension: Dimension) => (dimension[0] === 0 && dimension[1] === 0 ? 'rad' : dimensionalUnit(project, dimension[0], dimension[1]));
+  return stretches.flatMap((stretch) => [
+    [stretch.constantSymbols[0], `${dimensionalFigure(project, slopeConstant(stretch), family.slope[0], family.slope[1])} ${unitOf(family.slope)}`],
+    [stretch.constantSymbols[1], `${dimensionalFigure(project, deflectionConstant(stretch), family.deflection[0], family.deflection[1])} ${unitOf(family.deflection)}`],
+  ] as [string, string][]);
+};
 
+/** La elástica con las constantes sustituidas y la flecha máxima, cuando su cociente cierra. */
+const elasticCurveEquations = (
+  project: ProjectModel,
+  family: ElasticFamily,
+  stretches: readonly ElasticStretch[],
+  span: number,
+  EI: number,
+  maxDeflection: { x: number; value: number },
+  deflectionName: string,
+): EquationInput[] => {
+  const lengthUnit = unitFor(project, 'length');
+  const curves: EquationInput[] = stretches.map((stretch, k) => `${deflectionName}_${stretchIndex(k)}(x) = ${unitPolynomial(project, stretch.deflection, family.deflection, span)}`);
+  const presentation = family.prefix ? EI : 1;
+  const k = stretches.findIndex((stretch) => maxDeflection.x >= stretch.x0 - 1e-9 && maxDeflection.x <= stretch.x1 + 1e-9
+    && closeTo(valueAt(stretch.deflection, maxDeflection.x) / presentation, maxDeflection.value));
+  if (k < 0) return curves;
+  const at = dimensionalFigure(project, maxDeflection.x, 0, 1);
+  const raw = valueAt(stretches[k]!.deflection, maxDeflection.x);
+  const result = displayCell(project, maxDeflection.value, 'length');
+  return [
+    ...curves,
+    family.prefix
+      ? {
+        lhs: 'y_{máx}', symbolic: `${deflectionName}_${stretchIndex(k)}(${at})/EI`,
+        substituted: `(${dimensionalFigure(project, raw, 1, 3)})/(${dimensionalFigure(project, EI, 1, 2)})`,
+        result, unit: lengthUnit,
+      }
+      : { lhs: 'y_{máx}', substituted: `${deflectionName}_${stretchIndex(k)}(${at})`, result, unit: lengthUnit },
+  ];
+};
+
+const elasticCurveFigure = (context: ReportContext, stretches: readonly ElasticStretch[], length: number): void => {
+  const { layout } = context;
   layout.ensure(120);
   layout.y -= 8;
   drawElasticCurve(
     layout,
-    solution.segments.map((segment) => ({
-      x0: segment.x0,
-      x1: segment.x1,
-      deflection: segment.deflection,
-    })),
-    solution.axis.length,
+    stretches.map((stretch) => ({ x0: stretch.x0, x1: stretch.x1, deflection: [...stretch.deflection] })),
+    length,
     layout.margin,
     layout.y - 104,
     layout.contentWidth,
     104,
-    palette.quantity.moment,
+    layout.palette.quantity.moment,
   );
   layout.y -= 112;
+};
+
+const SUPPORT_NAME: Record<string, string> = {
+  pin: 'articulado',
+  roller: 'rodillo',
+  fixed: 'empotramiento',
+  custom: 'apoyo',
+};
+
+/** Tabla de tramos: dónde vale cada polinomio, su rigidez y sus dos constantes. */
+const stretchTable = (context: ReportContext, stretches: readonly ElasticStretch[]): void => {
+  const { project } = context;
+  const lengthUnit = unitFor(project, 'length');
+  context.layout.table([
+    { header: 'Tramo' },
+    { header: `x inicial (${lengthUnit})`, ...NUMERIC },
+    { header: `x final (${lengthUnit})`, ...NUMERIC },
+    { header: `EI (${dimensionalUnit(project, 1, 2)})`, ...NUMERIC },
+    { header: 'Constantes' },
+  ], stretches.map((stretch, k) => [
+    String(k + 1),
+    dimensionalFigure(project, stretch.x0, 0, 1),
+    dimensionalFigure(project, stretch.x1, 0, 1),
+    dimensionalFigure(project, stretch.EI, 1, 2),
+    stretch.constantSymbols.join(', '),
+  ]));
+};
+
+const drawDoubleIntegration = (context: ReportContext, solution: DoubleIntegrationResult): void => {
+  const { layout, project } = context;
+  const lengthUnit = unitFor(project, 'length');
+  const forceUnit = unitFor(project, 'force');
+  const momentUnit = unitFor(project, 'moment');
+  const family = elasticFamily(solution.uniformEI);
+  const names = {
+    slope: `${family.prefix}θ`,
+    deflection: `${family.prefix}y`,
+    load: (k: number) => (family.prefix ? `M_${stretchIndex(k)}(x)` : `M_${stretchIndex(k)}(x)/(EI)_${stretchIndex(k)}`),
+  };
+  const stretches: ElasticStretch[] = solution.segments;
+  const span = solution.axis.length;
+  const degree = solution.classification.indeterminacy;
+  const redundantNames = solution.redundants.map((redundant) => redundant.symbol).join(', ');
+
+  layout.heading('5. Método de la doble integración');
+  memoirNote(context, `Viga de ${dimensionalFigure(project, span, 0, 1)} ${lengthUnit}, `
+    + `${degree === 0 ? 'isostática' : `hiperestática de grado ${degree}`}. Incógnitas: `
+    + `${degree ? `${degree === 1 ? 'la redundante' : 'las redundantes'} ${redundantNames} y ` : ''}`
+    + `las ${2 * stretches.length} constantes de integración, dos por tramo.`);
+
+  memoirStep(context, '5.1 Datos');
+  const redundantAt = new Map(solution.redundants.map((redundant) => [redundant.nodeId, redundant.symbol]));
+  const supports = new Map<string, { x: number; conditions: string[] }>();
+  for (const condition of solution.conditions) {
+    if (condition.kind === 'continuity') continue;
+    const nodeId = /en (\S+)$/.exec(condition.statement)?.[1];
+    if (!nodeId) continue;
+    const entry = supports.get(nodeId) ?? { x: condition.x, conditions: [] };
+    entry.conditions.push(condition.kind === 'slope' ? 'θ = 0' : 'y = 0');
+    supports.set(nodeId, entry);
+  }
+  layout.table([
+    { header: 'Apoyo' },
+    { header: `x (${lengthUnit})`, ...NUMERIC },
+    { header: 'Tipo' },
+    { header: 'Condición' },
+  ], [...supports].map(([nodeId, entry]) => [
+    nodeId,
+    dimensionalFigure(project, entry.x, 0, 1),
+    SUPPORT_NAME[context.index.node(nodeId)?.support.type ?? ''] ?? 'apoyo',
+    `${entry.conditions.join(', ')}${redundantAt.has(nodeId) ? ` (redundante ${redundantAt.get(nodeId)})` : ''}`,
+  ]));
+  stretchTable(context, stretches);
+  memoirNote(context, `x se mide desde ${solution.axis.stations[0]?.nodeId ?? 'el extremo izquierdo'}; y positiva hacia arriba, M positivo con tracción abajo.`);
+
+  memoirStep(context, '5.2 Planteamiento');
+  memoirFormula(context, 'EI d^{2}y/dx^{2} = M(x)', [
+    ['y(x)', `flecha (${lengthUnit})`],
+    ['θ(x) = dy/dx', 'giro (rad)'],
+    ['M(x)', `momento flector del tramo (${momentUnit})`],
+    ['EI', `rigidez a flexión (${dimensionalUnit(project, 1, 2)})`],
+  ]);
+  memoirFormula(context, family.prefix
+    ? 'EI θ(x) = ∫ M(x) dx + C_1,    EI y(x) = ∫ EI θ(x) dx + C_2'
+    : 'θ(x) = ∫ M(x)/EI dx + C_1,    y(x) = ∫ θ(x) dx + C_2', [
+    ['C_1, C_2', 'constantes de integración de cada tramo'],
+  ]);
+  if (solution.redundants.length) {
+    memoirNote(context, `M(x) incluye ${redundantNames} como carga en ${solution.redundants.map((redundant) => redundant.nodeId).join(', ')}; `
+      + 'su apoyo aporta la condición y = 0 que la determina.');
+  }
+
+  drawScenes(
+    context,
+    doubleIntegrationScenes(context, solution),
+    (_scene, k) => `Tramo ${k + 1}: corte en x y momento M(x) de la porción izquierda.`,
+  );
+
+  memoirStep(context, '5.3 Desarrollo');
+  memoirNote(context, `x en ${lengthUnit}; M en ${momentUnit}, ${names.slope} en ${family.prefix ? dimensionalUnit(project, 1, 2) : 'rad'} `
+    + `y ${names.deflection} en ${family.prefix ? dimensionalUnit(project, 1, 3) : lengthUnit}.`);
+  for (const [k, stretch] of stretches.entries()) {
+    memoirWork(
+      context,
+      integrationEquations(project, family, stretch, k, span, names),
+      `Tramo ${k + 1}: ${dimensionalFigure(project, stretch.x0, 0, 1)} ≤ x ≤ ${dimensionalFigure(project, stretch.x1, 0, 1)} ${lengthUnit}`,
+    );
+  }
+
+  memoirStep(context, '5.4 Condiciones de contorno');
+  memoirFormula(context, conditionFormula(solution.conditions, names, false), conditionWhere(solution.conditions, false));
+  const conditionWork = constantsReadable(stretches)
+    ? conditionEquations(project, family, stretches, solution.conditions, names)
+    : undefined;
+  if (conditionWork) {
+    memoirNote(context, `${solution.conditions.length} ecuaciones para ${solution.conditions.length} incógnitas`
+      + `${degree ? `; se escriben con ${redundantNames} ya sustituida en M(x)` : ''}:`);
+    memoirWork(context, conditionWork);
+  }
+  memoirResults(context, degree ? 'Redundantes y constantes de integración' : 'Constantes de integración', [
+    ...solution.redundants.map((redundant): [string, string] => [`${redundant.symbol} (${redundant.nodeId})`, `${displayCell(project, redundant.value, 'force')} ${forceUnit}`]),
+    ...(constantsReadable(stretches) ? constantRows(project, family, stretches) : []),
+  ]);
+
+  memoirStep(context, '5.5 Resultados');
+  memoirWork(context, elasticCurveEquations(project, family, stretches, span, solution.EI, solution.maxDeflection, names.deflection), 'Elástica con las constantes sustituidas:');
+  memoirResults(context, 'Flecha máxima', [
+    ['y_{máx}', `${displayCell(project, solution.maxDeflection.value, 'length')} ${lengthUnit}`],
+    ['x', `${dimensionalFigure(project, solution.maxDeflection.x, 0, 1)} ${lengthUnit}`],
+  ]);
+  elasticCurveFigure(context, stretches, solution.axis.length);
+
+  memoirStep(context, '5.6 Comprobación');
+  const deflectionScale = Math.max(1e-12, Math.abs(solution.maxDeflection.value));
+  const reactionScale = Math.max(1, ...solution.redundants.map((redundant) => Math.abs(redundant.value)));
+  const worstRedundant = solution.redundants.reduce<typeof solution.redundants[number] | undefined>(
+    (worst, redundant) => !worst || Math.abs(redundant.value - redundant.solverReaction) > Math.abs(worst.value - worst.solverReaction) ? redundant : worst,
+    undefined,
+  );
+  const deflectionGap = `${displayCell(project, solution.deflectionResidual, 'length')} ${lengthUnit}`;
+  memoirCheck(
+    context,
+    worstRedundant
+      ? `${worstRedundant.symbol} = ${displayCell(project, worstRedundant.value, 'force')} ${forceUnit}; análisis matricial `
+        + `${displayCell(project, worstRedundant.solverReaction, 'force')} ${forceUnit}; flecha: diferencia ${deflectionGap}.`
+      : `flecha contra el análisis matricial, diferencia máxima ${deflectionGap}.`,
+    solution.deflectionResidual <= 1e-3 * deflectionScale + 1e-12 && solution.reactionResidual <= 1e-3 * reactionScale,
+  );
 };
 
 const CONJUGATE_KIND_LABEL: Record<ConjugateSupportKind, string> = {
@@ -389,144 +652,129 @@ const CONJUGATE_KIND_LABEL: Record<ConjugateSupportKind, string> = {
 
 const drawConjugateBeam = (context: ReportContext, solution: ConjugateBeamResult): void => {
   const { layout, project } = context;
-  const { fonts, palette } = layout;
   const lengthUnit = unitFor(project, 'length');
-  const scaleLabel = solution.uniformEI ? 'EI ' : '';
+  const momentUnit = unitFor(project, 'moment');
+  const family = elasticFamily(solution.uniformEI);
+  const names = {
+    slope: 'V^*',
+    deflection: 'M^*',
+    load: (k: number) => `${family.prefix ? 'M' : 'w^*'}_${stretchIndex(k)}(x)`,
+  };
+  const stretches: ElasticStretch[] = solution.segments.map((segment) => ({
+    x0: segment.x0,
+    x1: segment.x1,
+    EI: segment.EI,
+    moment: segment.moment,
+    slope: segment.conjugateShear,
+    deflection: segment.conjugateMoment,
+    constantSymbols: segment.constantSymbols,
+  }));
+  const span = solution.axis.length;
 
-  layout.heading('5. Procedimiento: Método de la Viga Conjugada');
-  layout.text(
-    'La elástica se resuelve sin integrar a mano: se construye una segunda viga, la conjugada, '
-    + 'cargada con el diagrama de momentos de la real dividido por su rigidez, y cada apoyo se '
-    + 'convierte por una tabla fija '
-    + '— un apoyo simple sigue siendo simple, un empotramiento pasa a extremo libre, un extremo libre '
-    + 'pasa a empotramiento. El giro y la flecha de la viga real son entonces el cortante y el momento '
-    + 'de esa viga ficticia, que se hallan por la misma estática de siempre.',
-    8.7, fonts.regular, undefined, 8,
-  );
-  // `w* = M/EI`, `θ = V*`, `y = M*` state the correspondence; §5.3 below carries it out with
-  // this beam's own coefficients, stretch by stretch, which is what the reader checks.
+  layout.heading('5. Método de la viga conjugada');
+  memoirNote(context, `Viga isostática de ${dimensionalFigure(project, span, 0, 1)} ${lengthUnit}, sin apoyos intermedios. `
+    + `Incógnitas: el giro y la flecha, que son el cortante y el momento de la viga conjugada cargada con M/EI.`);
 
-  layout.heading('5.1 Clasificación estática', 2);
-  layout.text(
-    `La viga es isostática: las ${solution.classification.reactionCount} componentes de reacción quedan `
-    + 'determinadas por la estática, y no hay apoyo ni rótula entre los dos extremos — condición que '
-    + 'la tabla de conversión de apoyos exige.',
-    8.7, fonts.regular, undefined, 8,
-  );
+  memoirStep(context, '5.1 Datos');
+  layout.table([
+    { header: 'Nudo' },
+    { header: `x (${lengthUnit})`, ...NUMERIC },
+    { header: 'Apoyo real' },
+    { header: 'Apoyo conjugado' },
+  ], solution.ends.map((end) => [
+    end.nodeId,
+    dimensionalFigure(project, end.x, 0, 1),
+    CONJUGATE_KIND_LABEL[end.realKind],
+    CONJUGATE_KIND_LABEL[end.conjugateKind],
+  ]));
+  stretchTable(context, stretches);
+  memoirNote(context, `x se mide desde ${solution.ends[0].nodeId}; y positiva hacia arriba, M positivo con tracción abajo.`);
 
-  layout.heading('5.2 Conversión de apoyos', 2);
-  layout.text(
-    'Cada extremo real se convierte en su contrapartida conjugada. Cuando el conjugado tiene una '
-    + 'reacción de fuerza, su valor es el giro real en ese punto; cuando tiene una reacción de '
-    + 'momento, su valor es la flecha real ahí.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Nudo', width: 60 },
-      { header: 'Apoyo real', width: 96 },
-      { header: 'Apoyo conjugado', width: 96 },
-      { header: `Reacción·fuerza (${scaleLabel}θ)`, ...NUMERIC },
-      { header: `Reacción·momento (${scaleLabel}y)`, ...NUMERIC },
-    ],
-    solution.ends.map((end) => [
-      end.nodeId,
-      CONJUGATE_KIND_LABEL[end.realKind],
-      CONJUGATE_KIND_LABEL[end.conjugateKind],
-      end.reactionForce === undefined ? '—' : clearNumber(end.reactionForce, Math.max(1, Math.abs(end.reactionForce))),
-      end.reactionMoment === undefined ? '—' : clearNumber(end.reactionMoment, Math.max(1, Math.abs(end.reactionMoment))),
-    ]),
-    { size: 7.8 },
-  );
+  memoirStep(context, '5.2 Planteamiento');
+  memoirFormula(context, 'w^*(x) = M(x)/EI,    θ(x) = V^*(x),    y(x) = M^*(x)', [
+    ['w^*', 'carga de la viga conjugada'],
+    ['V^*, M^*', 'cortante y momento de la viga conjugada'],
+    ['θ, y', 'giro y flecha de la viga real'],
+  ]);
+  memoirFormula(context, family.prefix
+    ? 'V^*(x) = ∫ M(x) dx + C_1,    M^*(x) = ∫ V^*(x) dx + C_2'
+    : 'V^*(x) = ∫ w^*(x) dx + C_1,    M^*(x) = ∫ V^*(x) dx + C_2', [
+    ['C_1, C_2', 'constantes de cada tramo, fijadas por los apoyos de la conjugada'],
+  ]);
+  if (family.prefix) memoirNote(context, 'Con EI constante la conjugada se carga con M(x): su cortante es EI θ y su momento EI y.');
 
-  layout.heading('5.3 Carga ficticia, cortante y momento del conjugado por tramo', 2);
-  layout.text(
-    solution.uniformEI
-      ? `Con EI = ${number(solution.EI, 6)} kN·m² constante, se factoriza y las expresiones se escriben como EI θ y EI y. La variable x se mide desde el extremo izquierdo de la viga.`
-      : 'La rigidez cambia entre tramos, así que EI no se puede factorizar: las expresiones son directamente θ(x) e y(x). La variable x se mide desde el extremo izquierdo de la viga.',
-    8.3, fonts.regular, undefined, 8,
-  );
   drawScenes(
     context,
     conjugateBeamScenes(context, solution),
-    (_scene, index) => `Tramo ${index + 1}: el corte del que sale M(x), la carga ficticia w* = M/EI de la viga conjugada.`,
+    (_scene, k) => `Tramo ${k + 1}: corte en x; M(x) de la porción izquierda es la carga de la conjugada.`,
   );
-  for (const [index, segment] of solution.segments.entries()) {
-    layout.ensure(70);
-    layout.text(
-      `Tramo ${index + 1}: de x = ${number(segment.x0, 5)} a x = ${number(segment.x1, 5)} ${lengthUnit}`,
-      8, fonts.bold, palette.ink, 8,
+
+  memoirStep(context, '5.3 Desarrollo');
+  memoirNote(context, `x en ${lengthUnit}; M en ${momentUnit}, V* en ${family.prefix ? dimensionalUnit(project, 1, 2) : 'rad'} `
+    + `y M* en ${family.prefix ? dimensionalUnit(project, 1, 3) : lengthUnit}.`);
+  for (const [k, stretch] of stretches.entries()) {
+    const equations = integrationEquations(project, family, stretch, k, span, names);
+    const load = family.prefix
+      ? []
+      : [`w^*_${stretchIndex(k)}(x) = M_${stretchIndex(k)}(x)/(EI)_${stretchIndex(k)} = (${unitPolynomial(project, stretch.moment, [1, 1], span)})/`
+        + `(${dimensionalFigure(project, stretch.EI, 1, 2)}) = ${unitPolynomial(project, solution.segments[k]!.fictitiousLoad, [0, -1], span)}`];
+    memoirWork(
+      context,
+      [equations[0]!, ...load, ...equations.slice(1)],
+      `Tramo ${k + 1}: ${dimensionalFigure(project, stretch.x0, 0, 1)} ≤ x ≤ ${dimensionalFigure(project, stretch.x1, 0, 1)} ${lengthUnit}`,
     );
-    for (const relation of [
-      `M(x) = ${expression(segment.moment)}`,
-      `w*(x) = ${expression(segment.fictitiousLoad)}`,
-      `${scaleLabel}θ(x) = V*(x) = ${expression(segment.conjugateShear)}`,
-      `${scaleLabel}y(x) = M*(x) = ${expression(segment.conjugateMoment)}`,
-    ]) {
-      drawRelation(context, relation);
-    }
   }
 
-  layout.heading('5.4 Condiciones y sistema resuelto', 2);
-  layout.text(
-    `${solution.conditions.length} condiciones para ${solution.constants.length} incógnitas: continuidad de `
-    + 'giro y flecha en cada frontera entre tramos, flecha nula en cada apoyo y giro nulo en cada '
-    + 'empotramiento. El sistema es cuadrado por construcción.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [{ header: 'Condición', flex: 2.2, math: true }, { header: 'Tipo', width: 84 }, { header: `x (${lengthUnit})`, ...NUMERIC, width: 58 }],
-    solution.conditions.map((condition) => [
-      condition.statement,
-      condition.kind === 'continuity' ? 'continuidad' : condition.kind === 'slope' ? 'giro impuesto' : 'flecha impuesta',
-      number(condition.x, 5),
+  memoirStep(context, '5.4 Apoyos de la viga conjugada');
+  memoirFormula(context, conditionFormula(solution.conditions, names, true), conditionWhere(solution.conditions, true));
+  const readable = constantsReadable(stretches);
+  const conditionWork = readable ? conditionEquations(project, family, stretches, solution.conditions, names) : undefined;
+  if (conditionWork) memoirWork(context, conditionWork);
+  if (readable) memoirResults(context, 'Constantes de integración', constantRows(project, family, stretches));
+
+  memoirStep(context, '5.5 Resultados');
+  // Las reacciones de la conjugada son el giro y la flecha reales en los extremos.
+  const presentation = family.prefix ? solution.EI : 1;
+  const EIText = dimensionalFigure(project, solution.EI, 1, 2);
+  const endWork: EquationInput[] = solution.ends.flatMap((end) => {
+    const k = end.x <= stretches[0]!.x0 + 1e-9 ? 0 : stretches.length - 1;
+    const stretch = stretches[k]!;
+    const at = dimensionalFigure(project, end.x, 0, 1);
+    const out: EquationInput[] = [];
+    const shear = valueAt(stretch.slope, end.x);
+    if (end.reactionForce !== undefined && closeTo(shear / presentation, end.reactionForce)) {
+      out.push(family.prefix
+        ? { lhs: `θ(${end.nodeId})`, symbolic: `V^*_${stretchIndex(k)}(${at})/EI`, substituted: `(${dimensionalFigure(project, shear, 1, 2)})/(${EIText})`, result: number(end.reactionForce), unit: 'rad' }
+        : { lhs: `θ(${end.nodeId})`, substituted: `V^*_${stretchIndex(k)}(${at})`, result: number(end.reactionForce), unit: 'rad' });
+    }
+    const bending = valueAt(stretch.deflection, end.x);
+    if (end.reactionMoment !== undefined && closeTo(bending / presentation, end.reactionMoment)) {
+      out.push(family.prefix
+        ? { lhs: `y(${end.nodeId})`, symbolic: `M^*_${stretchIndex(k)}(${at})/EI`, substituted: `(${dimensionalFigure(project, bending, 1, 3)})/(${EIText})`, result: displayCell(project, end.reactionMoment, 'length'), unit: lengthUnit }
+        : { lhs: `y(${end.nodeId})`, substituted: `M^*_${stretchIndex(k)}(${at})`, result: displayCell(project, end.reactionMoment, 'length'), unit: lengthUnit });
+    }
+    return out;
+  });
+  memoirWork(context, endWork, 'Reacciones de la conjugada: giro y flecha reales en los extremos.');
+  memoirWork(context, elasticCurveEquations(project, family, stretches, span, solution.EI, solution.maxDeflection, 'M^*'), 'Elástica con las constantes sustituidas:');
+  memoirResults(context, 'Giros y flecha máxima', [
+    ...solution.ends.flatMap((end): [string, string][] => [
+      ...(end.reactionForce !== undefined ? [[`θ(${end.nodeId})`, `${number(end.reactionForce)} rad`] as [string, string]] : []),
+      ...(end.reactionMoment !== undefined ? [[`y(${end.nodeId})`, `${displayCell(project, end.reactionMoment, 'length')} ${lengthUnit}`] as [string, string]] : []),
     ]),
-    { size: 7.4 },
-  );
-  drawCalculationRecords(context,
-    [{ header: 'Constante', width: 74, math: true }, { header: 'Valor', ...NUMERIC }],
-    solution.constants.map((constant) => [constant.symbol, clearNumber(constant.value, Math.max(1, Math.abs(constant.value)))]),
-    { size: 7.6 },
-  );
+    ['y_{máx}', `${displayCell(project, solution.maxDeflection.value, 'length')} ${lengthUnit} en x = ${dimensionalFigure(project, solution.maxDeflection.x, 0, 1)} ${lengthUnit}`],
+  ]);
+  elasticCurveFigure(context, stretches, solution.axis.length);
 
-  layout.heading('5.5 Verificación contra el análisis matricial', 2);
-  layout.text(
-    'Los dos caminos parten del mismo modelo y llegan por separado: si no coincidieran, el procedimiento '
-    + 'de arriba estaría mal. Estas son las diferencias máximas medidas.',
-    8.3, fonts.regular, undefined, 8,
+  memoirStep(context, '5.6 Comprobación');
+  const slopeScale = Math.max(1e-12, ...solution.ends.map((end) => Math.abs(end.reactionForce ?? 0)));
+  const deflectionScale = Math.max(1e-12, Math.abs(solution.maxDeflection.value));
+  memoirCheck(
+    context,
+    `giro y flecha contra el análisis matricial: diferencias ${number(solution.slopeResidual)} rad `
+    + `y ${displayCell(project, solution.deflectionResidual, 'length')} ${lengthUnit}.`,
+    solution.slopeResidual <= 1e-3 * slopeScale + 1e-12 && solution.deflectionResidual <= 1e-3 * deflectionScale + 1e-12,
   );
-  drawCalculationRecords(context,
-    [{ header: 'Contraste', flex: 2 }, { header: 'Diferencia máxima', ...NUMERIC }, { header: 'Unidad', width: 74 }],
-    [
-      ['Giro a lo largo de la viga', clearNumber(solution.slopeResidual, 1), 'rad'],
-      ['Flecha a lo largo de la viga', clearNumber(solution.deflectionResidual, 1), unitFor(project, 'length')],
-    ],
-    { size: 7.8 },
-  );
-
-  const peakAbsolute = Math.abs(solution.maxDeflection.value);
-  layout.text(
-    `Flecha máxima ${displayCell(project, peakAbsolute, 'length')} ${lengthUnit} en x = ${number(solution.maxDeflection.x, 5)} ${lengthUnit}.`,
-    8.7, fonts.bold, palette.ink, 8,
-  );
-
-  layout.ensure(120);
-  layout.y -= 8;
-  drawElasticCurve(
-    layout,
-    solution.segments.map((segment) => ({
-      x0: segment.x0,
-      x1: segment.x1,
-      deflection: segment.conjugateMoment,
-    })),
-    solution.axis.length,
-    layout.margin,
-    layout.y - 104,
-    layout.contentWidth,
-    104,
-    palette.quantity.moment,
-  );
-  layout.y -= 112;
 };
 
 const drawThreeMoment = (context: ReportContext, solution: ThreeMomentResult): void => {
@@ -822,131 +1070,268 @@ const drawCastiglianoTruss = (context: ReportContext, solution: CastiglianoTruss
   );
 };
 
+/** Un renglón de la tabla de Cross: un valor por extremo de vano, vacío donde no actúa. */
+interface CrossRow {
+  readonly label: string;
+  readonly values: readonly (number | undefined)[];
+}
+
+/**
+ * La tabla de Cross, rehecha con las mismas operaciones y en el mismo orden que
+ * `solveHardyCross`: liberación de los extremos articulados de la orilla y, ciclo a ciclo, el
+ * equilibrio de cada nudo interior con su transmisión. Devuelve `undefined` si su suma no
+ * coincide con los momentos que el método reporta: entonces no se imprime.
+ */
+const crossTable = (solution: HardyCrossResult): { columns: string[]; factors: (number | undefined)[]; rows: CrossRow[]; final: number[] } | undefined => {
+  const { spans } = solution;
+  const spanCount = spans.length;
+  const interior = spanCount - 1;
+  if (interior < 1) return undefined;
+  const width = 2 * interior;
+  const column = (joint: number, side: 0 | 1) => 2 * (joint - 1) + side;
+  const empty = () => new Array<number | undefined>(width).fill(undefined);
+  const columns = Array.from({ length: interior }, (_, offset) => {
+    const left = spans[offset]!;
+    const right = spans[offset + 1]!;
+    return [`${left.rightNodeId}–${left.leftNodeId}`, `${right.leftNodeId}–${right.rightNodeId}`];
+  }).flat();
+  const left = spans.map((span, s) => (s > 0 ? span.fixedEndMomentLeft : 0));
+  const right = spans.map((span, s) => (s < spanCount - 1 ? span.fixedEndMomentRight : 0));
+  const factors = empty();
+  const fixedEnd = empty();
+  for (let joint = 1; joint <= interior; joint += 1) {
+    const kLeft = spans[joint - 1]!.stiffnessRight;
+    const kRight = spans[joint]!.stiffnessLeft;
+    const total = kLeft + kRight;
+    if (total > 0) {
+      factors[column(joint, 0)] = kLeft / total;
+      factors[column(joint, 1)] = kRight / total;
+    }
+    fixedEnd[column(joint, 0)] = right[joint - 1];
+    fixedEnd[column(joint, 1)] = left[joint];
+  }
+  const rows: CrossRow[] = [{ label: 'MEP', values: fixedEnd }];
+  const release = empty();
+  release[column(1, 0)] = -0.5 * spans[0]!.fixedEndMomentLeft;
+  right[0]! += release[column(1, 0)]!;
+  const lastRelease = -0.5 * spans[spanCount - 1]!.fixedEndMomentRight;
+  release[column(interior, 1)] = (release[column(interior, 1)] ?? 0) + lastRelease;
+  left[spanCount - 1]! += lastRelease;
+  rows.push({ label: `Liberación de ${spans[0]!.leftNodeId} y ${spans[spanCount - 1]!.rightNodeId}`, values: release });
+
+  const TOLERANCE = 1e-9;
+  for (let sweep = 0; sweep < 2000; sweep += 1) {
+    let unbalancedMax = 0;
+    for (let joint = 1; joint <= interior; joint += 1) {
+      const unbalanced = right[joint - 1]! + left[joint]!;
+      unbalancedMax = Math.max(unbalancedMax, Math.abs(unbalanced));
+      if (Math.abs(unbalanced) <= TOLERANCE) continue;
+      const kLeft = spans[joint - 1]!.stiffnessRight;
+      const kRight = spans[joint]!.stiffnessLeft;
+      const total = kLeft + kRight;
+      if (!(total > 0)) continue;
+      const toLeft = (-unbalanced * kLeft) / total;
+      const toRight = (-unbalanced * kRight) / total;
+      const values = empty();
+      right[joint - 1]! += toLeft;
+      left[joint]! += toRight;
+      values[column(joint, 0)] = toLeft;
+      values[column(joint, 1)] = toRight;
+      if (joint - 1 > 0) {
+        left[joint - 1]! += 0.5 * toLeft;
+        values[column(joint - 1, 1)] = 0.5 * toLeft;
+      }
+      if (joint < spanCount - 1) {
+        right[joint]! += 0.5 * toRight;
+        values[column(joint + 1, 0)] = 0.5 * toRight;
+      }
+      rows.push({ label: `Ciclo ${sweep + 1}, nudo ${spans[joint - 1]!.rightNodeId}`, values });
+    }
+    if (unbalancedMax <= TOLERANCE) break;
+  }
+
+  const final = empty().map((_, position) => {
+    const joint = Math.floor(position / 2) + 1;
+    return position % 2 === 0 ? right[joint - 1]! : left[joint]!;
+  });
+  const scale = Math.max(1, ...spans.map((span) => Math.max(Math.abs(span.fixedEndMomentLeft), Math.abs(span.fixedEndMomentRight))));
+  for (let joint = 1; joint <= interior; joint += 1) {
+    if (!agrees(final[column(joint, 0)]!, -spans[joint - 1]!.finalMomentRight, scale)) return undefined;
+    if (!agrees(final[column(joint, 1)]!, spans[joint]!.finalMomentLeft, scale)) return undefined;
+  }
+  return { columns, factors, rows, final };
+};
+
 const drawHardyCross = (context: ReportContext, solution: HardyCrossResult): void => {
   const { layout, project } = context;
-  const { fonts, palette } = layout;
   const lengthUnit = unitFor(project, 'length');
   const momentUnit = unitFor(project, 'moment');
+  const stiffnessUnit = dimensionalUnit(project, 1, 1);
+  const { spans } = solution;
+  const momentScale = Math.max(1, ...spans.map((span) => Math.max(Math.abs(span.fixedEndMomentLeft), Math.abs(span.fixedEndMomentRight))));
+  const moment = (value: number) => dimensionalFigure(project, value, 1, 1, momentScale);
 
-  layout.heading('5. Procedimiento: Hardy Cross (distribución de momentos)');
-  layout.text(
-    'Cada vano se empotra en imaginación en sus dos extremos y se calcula el momento que '
-    + 'desarrollaría así, bajo sus propias cargas — el momento de empotramiento perfecto. Cada '
-    + 'apoyo interior reparte ese desequilibrio entre sus vanos, en proporción a la rigidez '
-    + 'relativa de cada uno, y transmite la mitad de lo repartido al extremo lejano de ese vano. '
-    + 'Repitiendo esto apoyo por apoyo, el desequilibrio se hace cada vez más pequeño hasta '
-    + 'desaparecer — sin resolver ningún sistema de ecuaciones.',
-    8.7, fonts.regular, undefined, 8,
-  );
-  layout.text(
-    'En los dos extremos simples de la viga, el momento de empotramiento perfecto se libera de '
-    + 'una vez: se transmite la mitad al apoyo vecino y ese extremo no vuelve a tocarse, y la '
-    + 'rigidez de ese vano baja una cuarta parte para reflejarlo. Las rigideces que la tabla de '
-    + 'abajo lista son ya las usadas en el reparto.',
-    8.3, fonts.regular, undefined, 8,
-  );
+  layout.heading('5. Método de Hardy Cross (distribución de momentos)');
+  memoirNote(context, `Viga continua de ${spans.length} vanos, hiperestática de grado ${solution.classification.indeterminacy}. `
+    + 'Incógnitas: los momentos en los apoyos interiores, que se obtienen por reparto sucesivo sin resolver sistemas.');
 
-  layout.heading('5.1 Momentos de empotramiento perfecto y rigidez por vano', 2);
-  drawCalculationRecords(context,
-    [
-      { header: 'Vano', width: 70 },
-      { header: `L (${lengthUnit})`, ...NUMERIC },
-      { header: `FEM izq. (${momentUnit})`, ...NUMERIC },
-      { header: `FEM der. (${momentUnit})`, ...NUMERIC },
-      { header: 'Rigidez izq.', ...NUMERIC },
-      { header: 'Rigidez der.', ...NUMERIC },
-    ],
-    solution.spans.map((span) => [
-      `${span.leftNodeId}–${span.rightNodeId}`,
-      number(span.length, 5),
-      displayCell(project, span.fixedEndMomentLeft, 'moment'),
-      displayCell(project, span.fixedEndMomentRight, 'moment'),
-      clearNumber(span.stiffnessLeft, Math.max(1, Math.abs(span.stiffnessLeft))),
-      clearNumber(span.stiffnessRight, Math.max(1, Math.abs(span.stiffnessRight))),
-    ]),
-    { size: 7.6 },
-  );
+  memoirStep(context, '5.1 Datos');
+  layout.table([
+    { header: 'Vano' },
+    { header: `L (${lengthUnit})`, ...NUMERIC },
+    { header: `EI (${dimensionalUnit(project, 1, 2)})`, ...NUMERIC },
+    { header: `MEP extremo izq. (${momentUnit})`, ...NUMERIC },
+    { header: `MEP extremo der. (${momentUnit})`, ...NUMERIC },
+  ], spans.map((span) => [
+    `${span.leftNodeId}–${span.rightNodeId}`,
+    dimensionalFigure(project, span.length, 0, 1),
+    dimensionalFigure(project, span.EI, 1, 2),
+    cellText(moment(span.fixedEndMomentLeft)),
+    cellText(moment(span.fixedEndMomentRight)),
+  ]));
+  memoirNote(context, 'MEP: momento de empotramiento perfecto del vano bajo sus cargas, con los dos extremos fijos; horario positivo.');
 
-  // The distribution factor is the whole method, and it is a quotient of two numbers that are
-  // already in the table above. Written out per joint, the reader can repeat the split by hand.
-  for (const [k, span] of solution.spans.slice(0, -1).entries()) {
-    const right = solution.spans[k + 1];
+  memoirStep(context, '5.2 Planteamiento');
+  memoirFormula(context, 'M_{ij} = MEP_{ij} + Σ ΔM_{ij} + (1/2) Σ ΔM_{ji}', [
+    ['M_{ij}', `momento final en el extremo i del vano ij (${momentUnit}), horario positivo`],
+    ['ΔM_{ij} = −FD_{ij} ΣM_i', 'parte del desequilibrio ΣM_i que toma el extremo al equilibrar el nudo i'],
+    ['(1/2) ΔM_{ji}', 'transmisión desde el extremo opuesto del mismo vano'],
+  ]);
+
+  memoirStep(context, '5.3 Rigideces y factores de distribución');
+  memoirFormula(context, 'FD_{ij} = K_{ij}/ΣK_i,    K_{ij} = 4EI/L', [
+    ['K_{ij}', `rigidez del extremo i (${stiffnessUnit}); 3EI/L si el extremo opuesto es el apoyo articulado de la orilla`],
+    ['ΣK_i', 'suma de las rigideces de los extremos que llegan al nudo i'],
+  ]);
+  const stiffnessWork: EquationInput[] = [];
+  const outerEnd = (span: HardyCrossResult['spans'][number], side: 'left' | 'right') => (side === 'left' ? span.spanIndex === 0 : span.spanIndex === spans.length - 1);
+  const stiffnessLabel = (near: string, far: string) => `K_{${near}–${far}}`;
+  for (const span of spans) {
+    for (const side of ['left', 'right'] as const) {
+      if (outerEnd(span, side)) continue;
+      const value = side === 'left' ? span.stiffnessLeft : span.stiffnessRight;
+      const factor = outerEnd(span, side === 'left' ? 'right' : 'left') ? 3 : 4;
+      if (!agrees(factor * span.EI / span.length, value, value)) continue;
+      const [near, far] = side === 'left' ? [span.leftNodeId, span.rightNodeId] : [span.rightNodeId, span.leftNodeId];
+      stiffnessWork.push({
+        lhs: stiffnessLabel(near, far), symbolic: `${factor}EI/L`,
+        substituted: `${factor}(${dimensionalFigure(project, span.EI, 1, 2)})/(${dimensionalFigure(project, span.length, 0, 1)})`,
+        result: dimensionalFigure(project, value, 1, 1), unit: stiffnessUnit,
+      });
+    }
+  }
+  for (const [k, span] of spans.slice(0, -1).entries()) {
+    const right = spans[k + 1]!;
+    const node = span.rightNodeId;
     const kLeft = span.stiffnessRight;
     const kRight = right.stiffnessLeft;
     const total = kLeft + kRight;
     if (!(total > 0)) continue;
-    const stiffness = (value: number) => dimensionalFigure(project, value, 1, 2, total);
-    drawWorked(context, `Apoyo interior ${span.rightNodeId}: rigideces en ${dimensionalUnit(project, 1, 2)}.`, [
-      {
-        lhs: `ΣK(${span.rightNodeId})`, symbolic: 'K_izq + K_der',
-        substituted: `${stiffness(kLeft)} + ${stiffness(kRight)}`, result: stiffness(total),
-        unit: dimensionalUnit(project, 1, 2),
-      },
-      {
-        lhs: `D(${span.leftNodeId}–${span.rightNodeId})`, symbolic: 'K_izq/ΣK',
-        substituted: `(${stiffness(kLeft)})/(${stiffness(total)})`, result: number(kLeft / total, 6),
-      },
-      {
-        lhs: `D(${right.leftNodeId}–${right.rightNodeId})`, symbolic: 'K_der/ΣK',
-        substituted: `(${stiffness(kRight)})/(${stiffness(total)})`, result: number(kRight / total, 6),
-      },
-    ]);
+    const stiffness = (value: number) => dimensionalFigure(project, value, 1, 1, total);
+    const leftLabel = stiffnessLabel(node, span.leftNodeId);
+    const rightLabel = stiffnessLabel(node, right.rightNodeId);
+    stiffnessWork.push(
+      { lhs: `ΣK_{${node}}`, symbolic: `${leftLabel} + ${rightLabel}`, substituted: `${stiffness(kLeft)} + ${stiffness(kRight)}`, result: stiffness(total), unit: stiffnessUnit },
+      { lhs: `FD_{${node}–${span.leftNodeId}}`, symbolic: `${leftLabel}/ΣK_{${node}}`, substituted: `(${stiffness(kLeft)})/(${stiffness(total)})`, result: number(kLeft / total) },
+      { lhs: `FD_{${node}–${right.rightNodeId}}`, symbolic: `${rightLabel}/ΣK_{${node}}`, substituted: `(${stiffness(kRight)})/(${stiffness(total)})`, result: number(kRight / total) },
+    );
   }
+  memoirWork(context, stiffnessWork);
 
-  layout.heading('5.2 Momentos de apoyo tras converger', 2);
-  layout.text(
-    `El reparto convergió en ${solution.iterationCount} pasada${solution.iterationCount === 1 ? '' : 's'} `
-    + '(ningún apoyo quedó con desequilibrio medible). La última columna es lo que el análisis '
-    + 'matricial obtiene en ese mismo apoyo: el método y el solver tienen que coincidir.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Apoyo', width: 90 },
-      { header: `Hardy Cross (${momentUnit})`, ...NUMERIC },
-      { header: `Análisis matricial (${momentUnit})`, ...NUMERIC },
-    ],
-    solution.joints.map((joint) => [
-      joint.nodeId,
-      displayCell(project, joint.value, 'moment'),
-      displayCell(project, joint.solverMoment, 'moment'),
-    ]),
-    { size: 7.8 },
-  );
+  memoirStep(context, '5.4 Reparto de momentos');
+  const table = spans.length - 1 <= 5 ? crossTable(solution) : undefined;
+  if (table) {
+    memoirNote(context, `Los extremos articulados de la orilla se liberan una vez: su MEP pasa al nudo vecino con factor −1/2. `
+      + 'Cada ciclo equilibra un nudo y transmite la mitad de lo repartido al extremo opuesto.');
+    // Lo que ya no cambia la cuarta cifra se suma en un solo renglón, para que la tabla cierre.
+    const significant = (row: CrossRow) => row.values.some((value) => value !== undefined && Math.abs(value) >= 5e-5 * momentScale);
+    // MEP y liberación siempre; después, los ciclos mientras muevan la cuarta cifra.
+    const shown: CrossRow[] = table.rows.slice(0, 2);
+    const cycles = table.rows.slice(2);
+    const rest = new Array<number>(table.columns.length).fill(0);
+    let restCount = 0;
+    for (const row of cycles) {
+      if (!restCount && shown.length < 16 && significant(row)) {
+        shown.push(row);
+        continue;
+      }
+      restCount += 1;
+      row.values.forEach((value, position) => { rest[position]! += value ?? 0; });
+    }
+    const cell = (value: number | undefined) => (value === undefined ? '' : cellText(moment(value)));
+    layout.table(
+      [{ header: `Extremo (${momentUnit})`, width: 128 }, ...table.columns.map((header) => ({ header, ...NUMERIC }))],
+      [
+        ['FD', ...table.factors.map((value) => (value === undefined ? '' : number(value)))],
+        ...shown.map((row) => [row.label, ...row.values.map(cell)]),
+        ...(restCount ? [[`Resto (${restCount} equilibrios)`, ...rest.map(cell)]] : []),
+        ['M final', ...table.final.map(cell)],
+      ],
+      { size: TYPE.small - 0.6 },
+    );
+    memoirNote(context, `${solution.iterationCount
+      ? `El reparto converge en ${solution.iterationCount} ciclo${solution.iterationCount === 1 ? '' : 's'}.`
+      : 'Tras la liberación los nudos ya están en equilibrio.'} El momento flector en cada apoyo es el del extremo del vano a su derecha.`);
+  } else {
+    layout.table([
+      { header: 'Apoyo' },
+      { header: `M (${momentUnit})`, ...NUMERIC },
+    ], solution.joints.map((joint) => [joint.nodeId, cellText(moment(joint.value))]));
+  }
+  const supportIds = [spans[0]!.leftNodeId, ...spans.map((span) => span.rightNodeId)];
+  const jointMoment = new Map(solution.joints.map((joint) => [joint.nodeId, joint.value]));
+  memoirResults(context, 'Momentos en los apoyos', supportIds.map((nodeId) => [`M(${nodeId})`, `${moment(jointMoment.get(nodeId) ?? 0)} ${momentUnit}`]));
 
   drawScenes(
     context,
     hardyCrossScenes(context, solution),
-    (_scene, index) => `Vano ${index + 1}: los momentos de extremo ya convergidos, junto al empotramiento perfecto del que partió el reparto.`,
+    (_scene, k) => `Vano ${k + 1} con los momentos de extremo después del reparto.`,
   );
 
-  layout.heading('5.3 Momento final por tramo', 2);
-  layout.text(
-    'El momento libre de cada vano —el que tendría como viga simplemente apoyada bajo sus '
-    + 'propias cargas— más la corrección lineal entre los momentos de apoyo ya convergidos. La '
-    + 'variable x se mide desde el extremo izquierdo de la viga.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  for (const [index, segment] of solution.segments.entries()) {
-    layout.ensure(40);
-    layout.text(
-      `Tramo ${index + 1}: de x = ${number(segment.x0, 5)} a x = ${number(segment.x1, 5)} ${lengthUnit}`,
-      8, fonts.bold, palette.ink, 8,
-    );
-    const expressionText = `M(x) = ${expression(segment.moment)}`;
-    drawRelation(context, expressionText);
+  memoirStep(context, '5.5 Momento flector en cada vano');
+  memoirFormula(context, 'M(x) = M_0(x) + M_i + (M_j − M_i)(x − x_i)/L', [
+    ['M_0(x)', 'momento del vano simplemente apoyado bajo sus cargas'],
+    ['M_i, M_j', 'momentos en los apoyos izquierdo y derecho del vano'],
+    ['x_i', 'abscisa del apoyo izquierdo'],
+  ]);
+  const positionOf = new Map(solution.axis.stations.map((station) => [station.nodeId, station.x]));
+  const span = solution.axis.length;
+  memoirNote(context, `x en ${lengthUnit}, M en ${momentUnit}.`);
+  for (const [k, segment] of solution.segments.entries()) {
+    const lhs = `M_${stretchIndex(k)}(x)`;
+    const final = unitPolynomial(project, segment.moment, [1, 1], span);
+    const owner = spans.find((entry) => {
+      const x0 = positionOf.get(entry.leftNodeId);
+      const x1 = positionOf.get(entry.rightNodeId);
+      return x0 !== undefined && x1 !== undefined && segment.x0 >= x0 - 1e-9 && segment.x1 <= x1 + 1e-9;
+    });
+    const xi = owner ? positionOf.get(owner.leftNodeId) : undefined;
+    const range = `${dimensionalFigure(project, segment.x0, 0, 1)} ≤ x ≤ ${dimensionalFigure(project, segment.x1, 0, 1)} ${lengthUnit}`;
+    if (!owner || xi === undefined || !(owner.length > 0)) {
+      memoirWork(context, [`${lhs} = ${final}`], range);
+      continue;
+    }
+    // M₀ es lo que queda al quitar la corrección lineal entre los dos momentos de apoyo.
+    const slope = (owner.finalMomentRight - owner.finalMomentLeft) / owner.length;
+    const free = segment.moment.map((coefficient, power) => coefficient - (power === 0 ? owner.finalMomentLeft - slope * xi : power === 1 ? slope : 0));
+    const operand = (value: number) => {
+      const text = moment(value);
+      return text.startsWith('−') || text.startsWith('-') ? `(${text})` : text;
+    };
+    memoirWork(context, [{
+      lhs,
+      symbolic: 'M_0(x) + M_i + (M_j − M_i)(x − x_i)/L',
+      substituted: `(${unitPolynomial(project, free, [1, 1], span)}) + ${operand(owner.finalMomentLeft)} `
+        + `+ (${operand(owner.finalMomentRight)} − ${operand(owner.finalMomentLeft)})(x − ${dimensionalFigure(project, xi, 0, 1)})/${dimensionalFigure(project, owner.length, 0, 1)}`,
+      result: final,
+    }], `Vano ${owner.leftNodeId}–${owner.rightNodeId}: ${range}`);
   }
 
-  layout.heading('5.4 Verificación contra el análisis matricial', 2);
-  layout.text(
-    'Los dos caminos parten del mismo modelo y llegan por separado: si no coincidieran, el '
-    + 'procedimiento de arriba estaría mal. Ésta es la diferencia máxima medida, entre el momento '
-    + 'de apoyo que resuelve este método y el que reporta el análisis matricial en ese mismo punto.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  layout.text(
-    `Diferencia máxima: ${clearNumber(solution.momentResidual, 1)} ${momentUnit}.`,
-    8.7, fonts.bold, palette.ink, 8,
+  memoirStep(context, '5.6 Comprobación');
+  memoirCheck(
+    context,
+    `momentos de apoyo contra el análisis matricial, diferencia máxima ${moment(solution.momentResidual)} ${momentUnit}.`,
+    solution.momentResidual <= 1e-3 * momentScale,
   );
 };
 

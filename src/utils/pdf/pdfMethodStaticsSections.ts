@@ -1,18 +1,14 @@
 /**
- * The Method of Sections for beams and frames, narrated the way a student solves it.
+ * Método de secciones en vigas y marcos isostáticos, escrito como memoria de cálculo.
  *
- * Free-body diagram of the whole structure → each load reduced to its resultant → the
- * equilibrium equations with the actual numbers (ΣFx, ΣFy, ΣM about a support and ΣM = 0 of
- * one side of every hinge) → the reactions, one at a time where an equation leaves a single
- * unknown → for every member and every stretch between discontinuities, a cut at distance s
- * with N(s), V(s) and M(s) written term by term from the left free body → the values at the
- * ends of the stretch and the extreme moment where V = 0 → the comparison with the matrix
- * analysis.
+ * Datos (reacciones incógnita, cuerpo libre y cargas) → planteamiento (ΣF = 0, ΣM = 0) →
+ * reacciones (resultantes, ecuaciones con los números y despeje) → fuerzas internas por cortes,
+ * barra por barra y tramo por tramo, con N(s), V(s) y M(s) → comprobación contra el análisis
+ * matricial.
  *
- * Every figure printed here was solved by `src/analysis-methods/staticsSections.ts`, which
- * already required it to agree with the analysis the rest of the document reports. This file
- * only writes it down; it uses the layout API as it is and builds its scenes from the shared
- * free-body primitives, reusing the per-stretch cut of `pdfSegmentCalculationSection`.
+ * Todas las cifras vienen de `src/analysis-methods/staticsSections.ts`, que ya las comprobó
+ * contra el análisis matricial; este archivo sólo las escribe, con las piezas de
+ * `pdfMemoirKit` y las figuras de cuerpo libre comunes.
  */
 import type {
   CutStretch,
@@ -23,33 +19,40 @@ import type {
   StaticsSectionsResult,
   StaticsUnknown,
 } from '../../analysis-methods/staticsSections';
-import { asWorkedEquation, drawWorkedEquation, measureWorkedEquation, type EquationInput } from './pdfEquation';
-import { drawArcMemberCuts } from './pdfMethodArcSections';
-import { clearNumber, number } from './pdfFormat';
+import { asWorkedEquation, type EquationInput } from './pdfEquation';
+import { drawArcMemberCuts, memoirCheckFitted, memoirFormulaParts } from './pdfMethodArcSections';
+import { clearNumber, number, unitFor } from './pdfFormat';
 import { drawFreeBodyScene, sceneHeightFor, type FreeBodyScene, type SceneForce, type SceneMoment } from './pdfFreeBody';
+import { memoirNote, memoirResults, memoirStep, memoirWork } from './pdfMemoirKit';
 import { segmentScene } from './pdfSegmentCalculationSection';
 import { dimensionalFigure, dimensionalUnit, signedSum } from './pdfSubstitution';
+import type { PdfTableColumn } from './pdfBuilder';
 import type { ReportContext } from './reportContext';
 
 /** Same height the other method sections give a free body. */
 const SCENE_HEIGHT = 186;
+const NUMERIC: Pick<PdfTableColumn, 'align'> = { align: 'right' };
+const DEGREES = 180 / Math.PI;
 
 const KIND_LABEL: Record<StaticsSectionsResult['classification']['kind'], string> = {
-  'simple-beam': 'una viga de un tramo',
-  'continuous-beam': 'una viga de varios tramos',
-  frame: 'un marco plano',
-  truss: 'una armadura',
-  other: 'una estructura',
+  'simple-beam': 'Viga isostática de un tramo',
+  'continuous-beam': 'Viga isostática de varios tramos',
+  frame: 'Marco plano isostático',
+  truss: 'Armadura isostática',
+  other: 'Estructura isostática',
 };
 
 const SUPPORT_LABEL: Record<string, string> = {
-  pin: 'pasador',
+  pin: 'articulado',
   roller: 'rodillo',
   fixed: 'empotramiento',
-  custom: 'apoyo personalizado',
+  custom: 'apoyo',
 };
 
 const SUPERSCRIPT = ['', '', '²', '³', '⁴'];
+
+/** Una cifra de tabla con el signo menos tipográfico, como en las fórmulas. */
+const cellText = (text: string): string => text.replace(/^-(?=[\d.])/, '−');
 
 interface Figures {
   /** Presentation figure of a force^f · length^l quantity, coherent with every other operand. */
@@ -62,19 +65,15 @@ const figuresFor = (context: ReportContext): Figures => ({
   unit: (forcePower, lengthPower) => dimensionalUnit(context.project, forcePower, lengthPower),
 });
 
-const drawEquations = (context: ReportContext, caption: string | undefined, equations: readonly EquationInput[]): void => {
+/** Desarrollo numerado; `R = 36.7 = 36.7 kN` no dice nada dos veces: la sustitución que es su resultado se quita. */
+const work = (context: ReportContext, equations: readonly EquationInput[], caption?: string): void => {
   if (!equations.length) return;
-  const { layout } = context;
-  if (caption) layout.text(caption, 7.9, layout.fonts.bold, layout.palette.ink, 12);
-  for (const input of equations) {
+  memoirWork(context, equations.map((input) => {
     const parsed = asWorkedEquation(input);
-    // `R = 36.7 = 36.7 kN` says nothing twice: a substitution that is its own result goes.
-    const equation = parsed.substituted !== undefined && parsed.substituted === parsed.result
+    return parsed.substituted !== undefined && parsed.substituted === parsed.result
       ? { ...parsed, substituted: undefined, symbolic: undefined }
       : parsed;
-    layout.ensure(measureWorkedEquation(layout, equation, 8.4, 16));
-    layout.y -= drawWorkedEquation(layout, equation, 8.4, 16, layout.rgb(0.24, 0.28, 0.34), `(${layout.nextEquationNumber()})`);
-  }
+  }), caption);
 };
 
 const drawScene = (context: ReportContext, scene: FreeBodyScene | undefined, caption: string): void => {
@@ -135,36 +134,31 @@ const equationLabel = (equation: EquilibriumEquation): string => {
   switch (equation.kind) {
     case 'fx': return 'ΣF_x';
     case 'fy': return 'ΣF_y';
-    default: return `ΣM(${equation.centreNodeId})`;
+    default: return `ΣM_{${equation.centreNodeId}}`;
   }
 };
 
-const unknownSense = (context: ReportContext, unknown: StaticsUnknown): string => {
-  const node = context.index.node(unknown.nodeId);
-  const support = SUPPORT_LABEL[node?.support.type ?? ''] ?? 'apoyo';
-  if (unknown.kind === 'moment') return `${support} en ${unknown.nodeId}: momento de reacción, positivo antihorario`;
-  if (unknown.direction.y === 0) return `${support} en ${unknown.nodeId}: fuerza horizontal, positiva hacia +x`;
-  if (unknown.direction.x === 0) return `${support} en ${unknown.nodeId}: fuerza vertical, positiva hacia +y`;
-  return `${support} en ${unknown.nodeId}: fuerza a lo largo de la normal del rodillo, `
-    + `(${number(unknown.direction.x, 4)}, ${number(unknown.direction.y, 4)})`;
+/** Sentido supuesto de una reacción, para la tabla de incógnitas. */
+const unknownSense = (unknown: StaticsUnknown): string => {
+  if (unknown.kind === 'moment') return 'antihorario';
+  if (unknown.direction.y === 0) return unknown.direction.x > 0 ? '+x' : '−x';
+  if (unknown.direction.x === 0) return unknown.direction.y > 0 ? '+y' : '−y';
+  return `normal (${number(unknown.direction.x, 4)}, ${number(unknown.direction.y, 4)})`;
 };
 
 const resultantSource = (resultant: LoadResultant): string => {
-  const where = resultant.memberId ? `barra ${resultant.memberId}` : `nudo ${resultant.nodeId}`;
+  const factor = resultant.factor !== 1 ? `, × ${number(resultant.factor, 4)}` : '';
+  const on = resultant.memberId ?? resultant.nodeId ?? '';
   switch (resultant.kind) {
-    case 'nodal': return `carga ${resultant.sourceId} en el ${where}`;
-    case 'couple': return `par ${resultant.sourceId} en ${resultant.memberId ? `la ${where}` : `el ${where}`}`;
-    case 'point': return `carga puntual ${resultant.sourceId} sobre la ${where}`;
-    case 'uniform': return `carga repartida ${resultant.sourceId} sobre la ${where}: bloque uniforme`;
-    case 'triangular': return `carga repartida ${resultant.sourceId} sobre la ${where}: triángulo de la variación`;
-    case 'self-weight': return `peso propio de la ${where}`;
-    case 'arc': return `carga repartida ${resultant.sourceId} sobre el arco ${resultant.memberId}: resultante integrada`;
+    case 'nodal': return `nodal ${resultant.sourceId} en ${on}${factor}`;
+    case 'couple': return `par ${resultant.sourceId} en ${on}${factor}`;
+    case 'point': return `puntual ${resultant.sourceId} en ${on}${factor}`;
+    case 'uniform': return `${resultant.sourceId} en ${on}, parte uniforme${factor}`;
+    case 'triangular': return `${resultant.sourceId} en ${on}, parte triangular${factor}`;
+    case 'self-weight': return `peso propio de ${on}${factor}`;
+    case 'arc': return `${resultant.sourceId} sobre el arco ${on}${factor}`;
   }
 };
-
-const basisLabel = (basis: LoadResultant['basis']): string => basis === 'horizontal'
-  ? 'proyección horizontal'
-  : basis === 'vertical' ? 'proyección vertical' : 'longitud real';
 
 /** Nodal loads, couples and self-weight resultants: what `includeMemberLoads` does not draw. */
 const pushLoadMarks = (
@@ -206,8 +200,7 @@ const wholeStructureScene = (context: ReportContext, solution: StaticsSectionsRe
     includeMemberLoads: true,
     forces,
     moments,
-    legend: 'Reacciones dibujadas con el sentido supuesto (positivo): un valor negativo significa que actúan al revés. '
-      + 'Las cargas son las del escenario exportado; el peso propio se dibuja como su resultante.',
+    legend: 'Reacciones con su sentido supuesto: un valor negativo actúa al revés. El peso propio se dibuja como su resultante.',
   };
 };
 
@@ -342,6 +335,10 @@ const startMarks = (member: MemberCuts): { forces: SceneForce[]; moments: SceneM
   return { forces, moments };
 };
 
+/** Horner, para leer N, V o M de un tramo en un punto. */
+const valueAt = (coefficients: readonly number[], s: number): number =>
+  coefficients.reduceRight((total, coefficient) => total * s + coefficient, 0);
+
 const drawStretch = (
   context: ReportContext,
   figures: Figures,
@@ -350,15 +347,7 @@ const drawStretch = (
   index: number,
   scale: { force: number; moment: number },
 ): void => {
-  const { layout } = context;
-  const { fonts, palette } = layout;
   const { fig, unit } = figures;
-  layout.ensure(48);
-  layout.text(
-    `Tramo ${index + 1}: ${fig(stretch.s0, 0, 1)} ≤ s ≤ ${fig(stretch.s1, 0, 1)} ${unit(0, 1)}`,
-    8, fonts.bold, palette.ink, 8,
-  );
-
   const result = context.index.memberResult(member.memberId);
   const middle = (stretch.s0 + stretch.s1) / 2;
   const segment = result?.diagramSegments.find((entry) => middle >= entry.x0 && middle <= entry.x1);
@@ -369,18 +358,12 @@ const drawStretch = (
       drawScene(
         context,
         { ...scene, forces: [...(scene.forces ?? []), ...marks.forces], moments: [...(scene.moments ?? []), ...marks.moments] },
-        `Barra ${member.memberId}, tramo ${index + 1}: cuerpo libre izquierdo cortado en s, con lo que el lado de ${member.startNodeId} le transmite en el inicio.`,
+        `Barra ${member.memberId}, tramo ${index + 1}: cuerpo libre izquierdo cortado en s.`,
       );
     }
   }
 
-  const labels = stretch.terms.flatMap((term) => term.kind === 'start' ? [] : [term.label]);
-  layout.text(
-    labels.length
-      ? `A la izquierda del corte actúan N₀, V₀, M₀ y las cargas ${[...new Set(labels)].join(', ')}.`
-      : 'A la izquierda del corte sólo actúan N₀, V₀ y M₀: el tramo no lleva carga antes del corte.',
-    7.9, fonts.regular, undefined, 12,
-  );
+  const labels = [...new Set(stretch.terms.flatMap((term) => (term.kind === 'start' ? [] : [term.label])))];
   const equations: EquationInput[] = QUANTITIES.map(({ key, symbol, lengthPower }) => {
     const reference = key === 'moment' ? scale.moment : scale.force;
     const terms = stretch.terms.flatMap((term) => cutTermTexts(figures, term, key, reference));
@@ -391,20 +374,34 @@ const drawStretch = (
       unit: unit(1, lengthPower),
     };
   });
-  drawEquations(context, undefined, equations);
+  work(
+    context,
+    equations,
+    `Tramo ${index + 1}: ${fig(stretch.s0, 0, 1)} ≤ s ≤ ${fig(stretch.s1, 0, 1)} ${unit(0, 1)}`
+    + `${labels.length ? `; cargas antes del corte: ${labels.join(', ')}` : '; sin cargas antes del corte'}`,
+  );
 
-  const values = (label: string, at: number, entry: CutStretch['start']): readonly [string, string] => [
-    `s = ${fig(at, 0, 1)} ${unit(0, 1)}${label}`,
-    `N = ${fig(entry.axial, 1, 0, scale.force)} ${unit(1, 0)} · V = ${fig(entry.shear, 1, 0, scale.force)} ${unit(1, 0)} · `
-    + `M = ${fig(entry.moment, 1, 1, scale.moment)} ${unit(1, 1)}`,
+  // Valores en los extremos del tramo y, donde V se anula, el momento extremo.
+  const extremes = stretch.shearZeros.filter((zero) => Math.abs(valueAt(stretch.shear, zero.s)) <= 1e-6 * scale.force
+    && Math.abs(valueAt(stretch.moment, zero.s) - zero.moment) <= 1e-6 * scale.moment);
+  const row = (label: string, s: number, values: { axial: number; shear: number; moment: number }) => [
+    label,
+    cellText(fig(s, 0, 1)),
+    cellText(fig(values.axial, 1, 0, scale.force)),
+    cellText(fig(values.shear, 1, 0, scale.force)),
+    cellText(fig(values.moment, 1, 1, scale.moment)),
   ];
-  layout.keyValues([values(' (inicio del tramo)', stretch.s0, stretch.start), values(' (fin del tramo)', stretch.s1, stretch.end)], 150);
-  for (const zero of stretch.shearZeros) {
-    drawEquations(context, 'V(s) se anula dentro del tramo, en s*; ahí M(s) alcanza su extremo:', [
-      { lhs: 's*', result: fig(zero.s, 0, 1), unit: unit(0, 1) },
-      { lhs: 'M(s*)', substituted: `M(${fig(zero.s, 0, 1)})`, result: fig(zero.moment, 1, 1, scale.moment), unit: unit(1, 1) },
-    ]);
-  }
+  context.layout.table([
+    { header: 'Punto', width: 96 },
+    { header: `s (${unit(0, 1)})`, ...NUMERIC },
+    { header: `N (${unit(1, 0)})`, ...NUMERIC },
+    { header: `V (${unit(1, 0)})`, ...NUMERIC },
+    { header: `M (${unit(1, 1)})`, ...NUMERIC },
+  ], [
+    row('inicio del tramo', stretch.s0, stretch.start),
+    ...extremes.map((zero) => row('V = 0', zero.s, { axial: valueAt(stretch.axial, zero.s), shear: 0, moment: zero.moment })),
+    row('fin del tramo', stretch.s1, stretch.end),
+  ]);
 };
 
 /**
@@ -419,7 +416,7 @@ const startEquations = (figures: Figures, member: MemberCuts, scale: { force: nu
   const fy = `(${fig(start.fy, 1, 0, scale.force)})`;
   const minus = (negative: boolean) => negative ? '−' : '';
   const unitCosine = (value: number) => Math.abs(Math.abs(value) - 1) <= 1e-12;
-  // N₀ = −(ΣF_x c + ΣF_y s), V₀ = −ΣF_x s + ΣF_y c, with c or s equal to ±1 and the other zero.
+  // N₀ = −(ΣF_x cos α + ΣF_y sen α), V₀ = −ΣF_x sen α + ΣF_y cos α, con un coseno ±1 y el otro nulo.
   const along = unitCosine(member.c)
     ? {
       axial: [`${minus(member.c > 0)}ΣF_x`, `${minus(member.c > 0)}${fx}`],
@@ -435,21 +432,29 @@ const startEquations = (figures: Figures, member: MemberCuts, scale: { force: nu
   const s = `(${number(member.s, 4)})`;
   return [
     {
-      lhs: 'N₀', symbolic: along?.axial[0] ?? '−(ΣF_x c + ΣF_y s)',
+      lhs: 'N_0', symbolic: along?.axial[0] ?? '−(ΣF_x cos α + ΣF_y sen α)',
       substituted: along?.axial[1] ?? `−(${fx}${c} + ${fy}${s})`,
       result: fig(start.axial, 1, 0, scale.force), unit: unit(1, 0),
     },
     {
-      lhs: 'V₀', symbolic: along?.shear[0] ?? '−ΣF_x s + ΣF_y c',
+      lhs: 'V_0', symbolic: along?.shear[0] ?? '−ΣF_x sen α + ΣF_y cos α',
       substituted: along?.shear[1] ?? `−${fx}${s} + ${fy}${c}`,
       result: fig(start.shear, 1, 0, scale.force), unit: unit(1, 0),
     },
     {
-      lhs: 'M₀', symbolic: `−ΣM(${member.startNodeId})`,
+      lhs: 'M_0', symbolic: `−ΣM_{${member.startNodeId}}`,
       substituted: `−(${fig(start.moment, 1, 1, scale.moment)})`,
       result: fig(start.bending, 1, 1, scale.moment), unit: unit(1, 1),
     },
   ];
+};
+
+/** Lo que queda del lado del nudo inicial al cortar la barra justo después de él. */
+const sideNote = (member: MemberCuts): string => {
+  const { start } = member;
+  const others = start.memberIds.length ? ` y ${start.memberIds.join(', ')}` : '';
+  return `Lado de ${member.startNodeId}: nudos ${start.nodeIds.join(', ')}${others}; `
+    + `acciones ${start.actions.map((action) => action.label).join(', ') || 'ninguna'}.`;
 };
 
 const drawMember = (context: ReportContext, figures: Figures, member: MemberCuts, scale: { force: number; moment: number }): void => {
@@ -459,22 +464,11 @@ const drawMember = (context: ReportContext, figures: Figures, member: MemberCuts
     return;
   }
   const { layout } = context;
-  const { fonts, palette } = layout;
   const { fig, unit } = figures;
   const { start } = member;
   layout.heading(`Barra ${member.memberId}: ${member.startNodeId} → ${member.endNodeId}`, 3);
-  layout.text(
-    `L = ${fig(member.length, 0, 1)} ${unit(0, 1)}; cosenos directores c = ${number(member.c, 4)}, s = ${number(member.s, 4)}. `
-    + `La distancia s se mide desde ${member.startNodeId}; N es positiva a tensión, V(s) es la suma de las fuerzas en +y local `
-    + 'a la izquierda del corte y M(s) cumple dM/ds = V.',
-    8.1, fonts.regular, undefined, 8,
-  );
-  const others = start.memberIds.length ? ` y las barras ${start.memberIds.join(', ')}` : '';
-  layout.text(
-    `Al cortar ${member.memberId} justo después de ${member.startNodeId}, a ese lado quedan los nudos {${start.nodeIds.join(', ')}}${others}. `
-    + 'Sus acciones externas ya son conocidas; su resultante es lo que el inicio de la barra recibe.',
-    8.1, fonts.regular, undefined, 8,
-  );
+  memoirNote(context, `L = ${fig(member.length, 0, 1)} ${unit(0, 1)}, α = ${number(Math.atan2(member.s, member.c) * DEGREES, 4)}°, `
+    + `s desde ${member.startNodeId}. ${sideNote(member)}`);
   const origin = context.index.node(member.startNodeId);
   const forceTerms = (component: 'fx' | 'fy') => start.actions
     .filter((action) => !negligible(action[component], scale.force))
@@ -488,33 +482,22 @@ const drawMember = (context: ReportContext, figures: Figures, member: MemberCuts
     if (!negligible(dy * action.fx, scale.moment)) terms.push(product(figures, dy, action.fx, -Math.sign(dy * action.fx), scale.force));
     return terms;
   }) : [];
-  const sideLabel = `lado ${member.startNodeId}`;
-  drawEquations(context, `Acciones del lado de ${member.startNodeId}: ${start.actions.map((action) => action.label).join(', ') || 'ninguna'}.`, [
-    { lhs: `ΣF_x(${sideLabel})`, substituted: forceTerms('fx').length ? signedSum(forceTerms('fx')) : '0', result: fig(start.fx, 1, 0, scale.force), unit: unit(1, 0) },
-    { lhs: `ΣF_y(${sideLabel})`, substituted: forceTerms('fy').length ? signedSum(forceTerms('fy')) : '0', result: fig(start.fy, 1, 0, scale.force), unit: unit(1, 0) },
-    { lhs: `ΣM(${member.startNodeId})`, substituted: momentTerms.length ? signedSum(momentTerms) : '0', result: fig(start.moment, 1, 1, scale.moment), unit: unit(1, 1) },
-  ]);
-
-  drawEquations(
-    context,
-    'Fuerzas internas justo después del nudo inicial (s = 0⁺), en ejes locales de la barra:',
-    startEquations(figures, member, scale),
-  );
+  work(context, [
+    { lhs: 'ΣF_x', substituted: forceTerms('fx').length ? signedSum(forceTerms('fx')) : '0', result: fig(start.fx, 1, 0, scale.force), unit: unit(1, 0) },
+    { lhs: 'ΣF_y', substituted: forceTerms('fy').length ? signedSum(forceTerms('fy')) : '0', result: fig(start.fy, 1, 0, scale.force), unit: unit(1, 0) },
+    { lhs: `ΣM_{${member.startNodeId}}`, substituted: momentTerms.length ? signedSum(momentTerms) : '0', result: fig(start.moment, 1, 1, scale.moment), unit: unit(1, 1) },
+    ...startEquations(figures, member, scale),
+  ], `Acciones del lado de ${member.startNodeId} y fuerzas internas en s = 0⁺`);
 
   member.stretches.forEach((stretch, index) => drawStretch(context, figures, member, stretch, index, scale));
-  layout.text(
-    `Momento de mayor valor absoluto en ${member.memberId}: M = ${fig(member.peakMoment.value, 1, 1, scale.moment)} ${unit(1, 1)} `
-    + `en s = ${fig(member.peakMoment.s, 0, 1)} ${unit(0, 1)}.`,
-    8.3, fonts.bold, palette.ink, 8,
-  );
 };
 
 export const drawStaticsSections = (context: ReportContext, solution: StaticsSectionsResult): void => {
-  const { layout } = context;
-  const { fonts, palette } = layout;
+  const { layout, project } = context;
   const figures = figuresFor(context);
   const { fig, unit } = figures;
   const { unknowns, equations } = solution;
+  const lengthUnit = unitFor(project, 'length');
   const independent = equations.filter((equation) => equation.independent);
   const hinges = independent.filter((equation) => equation.kind === 'hinge');
   const forceScale = Math.max(
@@ -524,118 +507,115 @@ export const drawStaticsSections = (context: ReportContext, solution: StaticsSec
   );
   const extent = Math.max(1, ...solution.members.map((member) => member.length));
   const scale = { force: forceScale, moment: forceScale * extent };
+  const arcs = solution.members.filter((member) => member.arc);
+  const kind = arcs.length && arcs.length === solution.members.length ? 'Arco isostático' : KIND_LABEL[solution.classification.kind];
 
-  layout.heading('5. Procedimiento: Método de secciones (estática y cortes)');
-  layout.text(
-    'La estructura es isostática: sus reacciones salen sólo de las ecuaciones de equilibrio, y cada fuerza '
-    + 'interna sale de cortar la barra y equilibrar el trozo que queda a un lado. No interviene ninguna rigidez. '
-    + 'El orden es el de la pizarra: cuerpo libre, resultantes, ecuaciones, reacciones y, barra por barra, '
-    + 'un corte por tramo con N(s), V(s) y M(s).',
-    8.7, fonts.regular, undefined, 8,
-  );
+  layout.heading('5. Método de secciones');
+  memoirNote(context, `${kind}: ${unknowns.length} reacciones y ${independent.length} ecuaciones independientes `
+    + `(3 de equilibrio${hinges.length ? ` y ${hinges.length} de articulación` : ''}). Incógnitas: las reacciones; después, N, V y M por cortes.`);
 
   // 5.1 ---------------------------------------------------------------------------------------
-  layout.heading('5.1 Clasificación y diagrama de cuerpo libre', 2);
-  layout.text(
-    `Es ${KIND_LABEL[solution.classification.kind]} con ${unknowns.length} componentes de reacción. `
-    + `Hay 3 ecuaciones de equilibrio global${hinges.length ? ` y ${hinges.length} de articulación (ΣM = 0 de una parte)` : ''}: `
-    + `${independent.length} ecuaciones independientes para ${unknowns.length} incógnitas, g = 0.`,
-    8.3, fonts.regular, undefined, 8,
-  );
-  layout.keyValues(unknowns.map((unknown) => [unknown.symbol, unknownSense(context, unknown)]), 110);
-  drawScene(context, wholeStructureScene(context, solution), 'Diagrama de cuerpo libre de la estructura completa, con las reacciones como incógnitas.');
+  memoirStep(context, '5.1 Datos');
+  layout.table([
+    { header: 'Reacción' },
+    { header: 'Apoyo' },
+    { header: 'Sentido supuesto' },
+  ], unknowns.map((unknown) => [
+    unknown.symbol,
+    `${SUPPORT_LABEL[context.index.node(unknown.nodeId)?.support.type ?? ''] ?? 'apoyo'} en ${unknown.nodeId}`,
+    unknownSense(unknown),
+  ]));
+  drawScene(context, wholeStructureScene(context, solution), 'Cuerpo libre de la estructura completa, con las reacciones como incógnitas.');
+  const couples = solution.resultants.some((resultant) => resultant.kind === 'couple');
+  layout.table([
+    { header: 'Carga', width: 44 },
+    { header: 'Origen' },
+    { header: `F_x (${unit(1, 0)})`, ...NUMERIC, width: 64 },
+    { header: `F_y (${unit(1, 0)})`, ...NUMERIC, width: 64 },
+    ...(couples ? [{ header: `C (${unit(1, 1)})`, ...NUMERIC, width: 64 }] : []),
+    { header: `x (${lengthUnit})`, ...NUMERIC, width: 54 },
+    { header: `y (${lengthUnit})`, ...NUMERIC, width: 54 },
+  ], solution.resultants.map((resultant) => [
+    resultant.label,
+    resultantSource(resultant),
+    resultant.kind === 'couple' ? '—' : cellText(fig(resultant.fx, 1, 0, scale.force)),
+    resultant.kind === 'couple' ? '—' : cellText(fig(resultant.fy, 1, 0, scale.force)),
+    ...(couples ? [resultant.kind === 'couple' ? cellText(fig(resultant.couple, 1, 1, scale.moment)) : '—'] : []),
+    cellText(fig(resultant.at.x, 0, 1)),
+    cellText(fig(resultant.at.y, 0, 1)),
+  ]));
+  memoirNote(context, 'Cargas ya factorizadas; (x, y) es un punto de su línea de acción.');
+  if (solution.loadCheck) {
+    const { statics, referencePoint, residual } = solution.loadCheck;
+    memoirNote(context, `Suma de cargas: ΣF_x = ${fig(statics.fx, 1, 0, scale.force)} ${unit(1, 0)}, ΣF_y = ${fig(statics.fy, 1, 0, scale.force)} ${unit(1, 0)}, `
+      + `ΣM = ${fig(statics.mz, 1, 1, scale.moment)} ${unit(1, 1)} respecto a (${fig(referencePoint.x, 0, 1)}, ${fig(referencePoint.y, 0, 1)}) ${lengthUnit}; `
+      + `igual a la auditoría de cargas del análisis (diferencia relativa ${clearNumber(residual, 1)}).`);
+  }
 
   // 5.2 ---------------------------------------------------------------------------------------
-  layout.heading('5.2 Resultantes de las cargas', 2);
-  layout.text(
-    'Cada carga se reduce a una fuerza en un punto. Una carga repartida trapecial se separa en un bloque uniforme '
-    + '(resultante q·L en el centro del tramo cargado, de longitud L) y un triángulo con la variación (resultante '
-    + 'Δq·L/2 a dos tercios desde el inicio a). Las intensidades ya incluyen el factor del escenario.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  for (const resultant of solution.resultants) {
-    const factor = resultant.factor !== 1 ? ` (factor ${number(resultant.factor, 4)})` : '';
-    const equations: EquationInput[] = [];
-    if (resultant.intensity !== undefined && resultant.basisLength !== undefined) {
-      const magnitude = Math.hypot(resultant.fx, resultant.fy);
-      const triangle = resultant.kind === 'triangular';
-      equations.push({
-        lhs: `|${resultant.label}|`,
-        symbolic: triangle ? 'Δq L/2' : resultant.kind === 'self-weight' ? 'w L' : 'q L',
-        substituted: `(${fig(resultant.intensity, 1, -1)})(${fig(resultant.basisLength, 0, 1)})${triangle ? '/2' : ''}`,
-        result: fig(magnitude, 1, 0),
-        unit: unit(1, 0),
-      });
-      if (resultant.loadStart !== undefined && resultant.loadLength !== undefined && resultant.station !== undefined) {
-        equations.push({
-          lhs: `s(${resultant.label})`,
-          symbolic: triangle ? 'a + 2L/3' : 'a + L/2',
-          substituted: `${fig(resultant.loadStart, 0, 1)} + ${triangle ? '2' : ''}(${fig(resultant.loadLength, 0, 1)})/${triangle ? '3' : '2'}`,
-          result: fig(resultant.station, 0, 1),
-          unit: unit(0, 1),
-        });
-      }
-    }
-    drawEquations(context, `${resultant.label}: ${resultantSource(resultant)}${factor}`, equations);
-    if (!equations.length) layout.text(`${resultant.label}: ${resultantSource(resultant)}${factor}`, 7.9, fonts.bold, palette.ink, 12);
-    if (resultant.arcSpan) {
-      // On an arc the resultant is an integral along the curve; its line of action is what counts.
-      layout.text(
-        `Sobre el arco, de s = ${fig(resultant.arcSpan.from, 0, 1)} a ${fig(resultant.arcSpan.from + resultant.arcSpan.length, 0, 1)} `
-        + `${unit(0, 1)}: F = ∫ q dL y ΣM = ∫ r × q dL a lo largo de la curva${resultant.intensity !== undefined ? ' (q constante y de dirección fija: |F| = q L)' : ''}; `
-        + 'el punto dado es uno de su recta de acción.',
-        7.9, fonts.regular, undefined, 12,
-      );
-    }
-    const position = `(${fig(resultant.at.x, 0, 1)}, ${fig(resultant.at.y, 0, 1)}) ${unit(0, 1)}`;
-    const basis = resultant.basis && resultant.basis !== 'real' ? `; L medida en ${basisLabel(resultant.basis)}` : '';
-    layout.keyValues([[
-      resultant.kind === 'couple' ? 'Par' : 'Componentes',
-      resultant.kind === 'couple'
-        ? `C = ${fig(resultant.couple, 1, 1)} ${unit(1, 1)} (antihorario positivo), en ${position}`
-        : `F_x = ${fig(resultant.fx, 1, 0, scale.force)} ${unit(1, 0)}, F_y = ${fig(resultant.fy, 1, 0, scale.force)} ${unit(1, 0)}, aplicada en ${position}`
-          + `${resultant.station !== undefined && resultant.memberId ? `, a ${fig(resultant.station, 0, 1)} ${unit(0, 1)} del nudo inicial de ${resultant.memberId}` : ''}${basis}`,
-    ]], 110);
-  }
-  if (solution.loadCheck) {
-    const { statics, solver, referencePoint, residual } = solution.loadCheck;
-    layout.text(
-      `Suma de todas las resultantes, con momentos respecto a (${fig(referencePoint.x, 0, 1)}, ${fig(referencePoint.y, 0, 1)}) ${unit(0, 1)}: `
-      + `ΣF_x = ${fig(statics.fx, 1, 0, scale.force)} ${unit(1, 0)}, ΣF_y = ${fig(statics.fy, 1, 0, scale.force)} ${unit(1, 0)}, `
-      + `ΣM = ${fig(statics.mz, 1, 1, scale.moment)} ${unit(1, 1)}. La auditoría independiente de cargas del análisis da `
-      + `${fig(solver.fx, 1, 0, scale.force)}, ${fig(solver.fy, 1, 0, scale.force)} y ${fig(solver.mz, 1, 1, scale.moment)}; `
-      + `diferencia relativa ${clearNumber(residual, 1)}.`,
-      8.1, fonts.regular, undefined, 8,
-    );
-  }
+  memoirStep(context, '5.2 Planteamiento');
+  memoirFormulaParts(context, ['ΣF_x = 0', 'ΣF_y = 0', 'ΣM_O = 0', ...(hinges.length ? ['ΣM_{art} = 0'] : [])], [
+    ['ΣF_x, ΣF_y', 'suma de fuerzas, positivas hacia +x y +y'],
+    ['ΣM_O', 'suma de momentos respecto a un punto O, antihorario positivo (brazo × fuerza)'],
+    ...(hinges.length ? [['ΣM_{art}', 'momentos de una de las partes respecto a la articulación'] as [string, string]] : []),
+  ]);
 
   // 5.3 ---------------------------------------------------------------------------------------
-  layout.heading('5.3 Ecuaciones de equilibrio', 2);
-  layout.text(
-    'Fuerzas positivas hacia +x y +y; momentos positivos en sentido antihorario. En las sumas de momentos cada '
-    + 'carga aparece como brazo × fuerza con el signo de su giro, y cada incógnita lleva su brazo como coeficiente.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  for (const equation of independent) {
-    if (equation.kind === 'hinge') {
-      const release = equation.release!;
-      layout.text(
-        `Articulación en ${release.nodeId} (extremo de ${release.memberId}): el momento ahí es nulo, así que la parte `
-        + `{${equation.nodeIds.join(', ')}}${equation.memberIds.length ? ` con ${equation.memberIds.join(', ')}` : ''} `
-        + 'suma cero en momentos respecto a ese punto. Se toma el lado con menos incógnitas.',
-        8.1, fonts.regular, undefined, 8,
-      );
-      drawScene(context, hingeScene(context, solution, equation), `Parte a un lado de la articulación ${release.nodeId}: ΣM(${release.nodeId}) = 0.`);
+  memoirStep(context, '5.3 Reacciones');
+  const resultantWork: EquationInput[] = [];
+  for (const resultant of solution.resultants) {
+    if (resultant.intensity === undefined || resultant.basisLength === undefined) continue;
+    const magnitude = Math.hypot(resultant.fx, resultant.fy);
+    const triangle = resultant.kind === 'triangular';
+    resultantWork.push({
+      lhs: `|${resultant.label}|`,
+      symbolic: triangle ? 'Δq L/2' : resultant.kind === 'self-weight' ? 'w L' : 'q L',
+      substituted: `(${fig(resultant.intensity, 1, -1)})(${fig(resultant.basisLength, 0, 1)})${triangle ? '/2' : ''}`,
+      result: fig(magnitude, 1, 0),
+      unit: unit(1, 0),
+    });
+    if (resultant.loadStart !== undefined && resultant.loadLength !== undefined && resultant.station !== undefined) {
+      resultantWork.push({
+        lhs: `s(${resultant.label})`,
+        symbolic: triangle ? 'a + 2L/3' : 'a + L/2',
+        substituted: `${fig(resultant.loadStart, 0, 1)} + ${triangle ? '2' : ''}(${fig(resultant.loadLength, 0, 1)})/${triangle ? '3' : '2'}`,
+        result: fig(resultant.station, 0, 1),
+        unit: unit(0, 1),
+      });
     }
+  }
+  work(context, resultantWork, 'Resultantes de las cargas repartidas (L medida según la base de cada carga):');
+  const onArcs = solution.resultants.filter((resultant) => resultant.arcSpan);
+  if (onArcs.length) {
+    memoirNote(context, `${onArcs.map((resultant) => resultant.label).join(', ')}: ${onArcs.length === 1 ? 'carga' : 'cargas'} sobre el arco, `
+      + `F = ∫ q dL a lo largo de la curva${onArcs.every((resultant) => resultant.intensity !== undefined) ? '; con q constante, |F| = q L' : ''}.`);
+  }
+
+  let pending: EquationInput[] = [];
+  const flush = () => {
+    work(context, pending, 'Ecuaciones de equilibrio:');
+    pending = [];
+  };
+  for (const equation of independent) {
     const terms = equationTerms(figures, equation, unknowns, scale);
     const moment = equation.kind === 'moment' || equation.kind === 'hinge';
-    drawEquations(context, undefined, [{
+    const relation: EquationInput = {
       lhs: equationLabel(equation),
       substituted: terms.length ? signedSum(terms) : '0',
       result: '0',
       unit: unit(1, moment ? 1 : 0),
-    }]);
+    };
+    if (equation.kind !== 'hinge') {
+      pending.push(relation);
+      continue;
+    }
+    flush();
+    const release = equation.release!;
+    drawScene(context, hingeScene(context, solution, equation), `Parte a un lado de la articulación ${release.nodeId}: ΣM = 0 respecto a ${release.nodeId}.`);
+    work(context, [relation], `Articulación en ${release.nodeId}: parte ${equation.nodeIds.join(', ')}`
+      + `${equation.memberIds.length ? ` con ${equation.memberIds.join(', ')}` : ''}, la de menos incógnitas`);
   }
+  flush();
   const dependent = equations.filter((equation) => !equation.independent && equation.kind === 'hinge').length;
   if (dependent) {
     // Where three or more members meet at a hinge, the repeated equation is not «the other side»
@@ -647,19 +627,11 @@ export const drawStaticsSections = (context: ReportContext, solution: StaticsSec
       }
     }
     const crowded = [...endsAtHinge].filter(([, count]) => count >= 3);
-    layout.note(
-      `${dependent === 1 ? 'Otra ecuación de articulación' : `Otras ${dependent} ecuaciones de articulación`} (el mismo punto visto `
-      + 'desde el otro lado) no aporta información nueva; se usa sólo como comprobación y también se cumple.'
-      + crowded.map(([nodeId, count]) => (
-        ` En ${nodeId} concurren ${count} barras: de sus ${count} ecuaciones de momento nulo sólo ${count - 1} son independientes, `
-        + 'porque juntas equivalen al equilibrio de momentos del propio nudo, que las sumas globales ya imponen.'
-      )).join(''),
-      8,
-    );
+    memoirNote(context, `${dependent === 1 ? 'La ecuación de la otra parte' : `Otras ${dependent} ecuaciones de articulación`} `
+      + 'no aporta información nueva: se cumple y sirve de comprobación.'
+      + crowded.map(([nodeId, count]) => ` En ${nodeId} concurren ${count} barras: sólo ${count - 1} de sus ecuaciones son independientes.`).join(''));
   }
 
-  // 5.4 ---------------------------------------------------------------------------------------
-  layout.heading('5.4 Reacciones', 2);
   const solved = new Set<number>();
   for (const step of solution.steps) {
     const equation = equations[step.equation]!;
@@ -686,75 +658,67 @@ export const drawStaticsSections = (context: ReportContext, solution: StaticsSec
       const coefficientText = moment && unknown.kind === 'force' ? fig(coefficient, 0, 1) : number(coefficient, 6);
       const lengthPower = unknown.kind === 'moment' ? 1 : 0;
       const names = knownUnknowns.map(({ other }) => unknowns[other]!.symbol);
-      drawEquations(
+      work(
         context,
-        `De ${equationLabel(equation)}${names.length ? `, con ${names.join(', ')} ya ${names.length === 1 ? 'conocida' : 'conocidas'}` : ''}:`,
         [{
           lhs: unknown.symbol,
           substituted: Math.abs(coefficient - 1) <= 1e-12 || flip ? numerator : `(${numerator})/(${coefficientText})`,
           result: fig(unknown.value, 1, lengthPower, scale.force),
           unit: unit(1, lengthPower),
         }],
+        `De ${equationLabel(equation)} = 0${names.length ? `, con ${names.join(', ')} ya ${names.length === 1 ? 'conocida' : 'conocidas'}` : ''}:`,
       );
       solved.add(index);
       continue;
     }
-    drawEquations(
+    work(
       context,
-      `Las ecuaciones ${step.equations.map((entry) => equationLabel(equations[entry]!)).join(', ')} se resuelven simultáneamente:`,
       step.unknowns.map((index) => {
         const unknown = unknowns[index]!;
         const lengthPower = unknown.kind === 'moment' ? 1 : 0;
         return { lhs: unknown.symbol, result: fig(unknown.value, 1, lengthPower, scale.force), unit: unit(1, lengthPower) };
       }),
+      `Sistema de ${step.equations.map((entry) => equationLabel(equations[entry]!)).join(', ')}:`,
     );
     step.unknowns.forEach((index) => solved.add(index));
   }
-  layout.text(
-    'Cada reacción contra lo que obtiene el análisis matricial en el mismo apoyo: el método y el solver tienen que coincidir.',
-    8.1, fonts.regular, undefined, 8,
-  );
-  layout.keyValues(unknowns.map((unknown) => {
+  memoirResults(context, 'Reacciones', unknowns.map((unknown) => {
     const lengthPower = unknown.kind === 'moment' ? 1 : 0;
-    const reversed = unknown.value < 0 && !negligible(unknown.value, scale.force) ? '; actúa al revés del sentido supuesto' : '';
-    return [
-      unknown.symbol,
-      `${fig(unknown.value, 1, lengthPower, scale.force)} ${unit(1, lengthPower)} por estática · `
-      + `${fig(unknown.solverValue, 1, lengthPower, scale.force)} ${unit(1, lengthPower)} por el análisis matricial${reversed}`,
-    ];
-  }), 110);
+    return [unknown.symbol, `${fig(unknown.value, 1, lengthPower, scale.force)} ${unit(1, lengthPower)}`];
+  }));
+  if (unknowns.some((unknown) => unknown.value < 0 && !negligible(unknown.value, scale.force))) {
+    memoirNote(context, 'Un valor negativo actúa en sentido contrario al supuesto.');
+  }
+
+  // 5.4 ---------------------------------------------------------------------------------------
+  memoirStep(context, '5.4 Fuerzas internas por cortes');
+  if (solution.members.some((member) => !member.arc)) {
+    memoirFormulaParts(context, ['N(s) = N_0 − ΣP_x', 'V(s) = V_0 + ΣP_y', 'M(s) = M_0 + V_0 s + ΣP_y (s − a)'], [
+      ['s', 'distancia desde el nudo inicial de la barra'],
+      ['P_x, P_y', 'cargas antes del corte, en ejes de la barra, aplicadas en s = a'],
+      ['N, V, M', 'N positiva a tensión; dM/ds = V'],
+    ]);
+    memoirFormulaParts(context, ['N_0 = −(ΣF_x cos α + ΣF_y sen α)', 'V_0 = −ΣF_x sen α + ΣF_y cos α', 'M_0 = −ΣM_i'], [
+      ['ΣF, ΣM_i', 'resultante de las acciones del lado del nudo inicial i'],
+      ['α', 'inclinación de la barra, de i a j'],
+    ]);
+  }
+  for (const member of solution.members) drawMember(context, figures, member, scale);
+  memoirResults(context, 'Momentos máximos', solution.members.map((member) => [
+    `M_{máx}(${member.memberId})`,
+    `${fig(member.peakMoment.value, 1, 1, scale.moment)} ${unit(1, 1)}, s = ${fig(member.peakMoment.s, 0, 1)} ${unit(0, 1)}`,
+  ]));
 
   // 5.5 ---------------------------------------------------------------------------------------
-  layout.heading('5.5 Fuerzas internas por cortes', 2);
-  layout.text(
-    'Cada barra se corta a una distancia s de su nudo inicial y se conserva el cuerpo libre izquierdo: todo lo que '
-    + 'queda del lado de ese nudo más el trozo [0, s]. El lado del nudo entrega N₀, V₀ y M₀ en el inicio; las cargas '
-    + 'del trozo se suman encima. La expresión cambia sólo donde empieza o termina una carga, así que hay un corte por tramo.'
-    + (solution.members.some((member) => member.arc)
-      ? ' Un arco se corta en estaciones: con la tangente girando, N, V y M no son polinomios en s, y cada corte se '
-        + 'escribe con su ángulo φ.'
-      : ''),
-    8.3, fonts.regular, undefined, 8,
-  );
-  for (const member of solution.members) drawMember(context, figures, member, scale);
-
-  // 5.6 ---------------------------------------------------------------------------------------
-  layout.heading('5.6 Verificación contra el análisis matricial', 2);
-  layout.text(
-    'Los dos caminos parten del mismo modelo y llegan por separado; si no coincidieran, el procedimiento de arriba '
-    + 'estaría mal y no se habría impreso. Diferencias máximas medidas:',
-    8.3, fonts.regular, undefined, 8,
-  );
-  layout.keyValues([
-    ['Reacciones (fuerza)', `${clearNumber(solution.reactionResidual.force, 1)} ${unit(1, 0)}`],
-    ['Reacciones (momento)', `${clearNumber(solution.reactionResidual.moment, 1)} ${unit(1, 1)}`],
-    ['N y V a lo largo de las barras', `${clearNumber(solution.diagramResidual.force, 1)} ${unit(1, 0)}`],
-    ['M a lo largo de las barras', `${clearNumber(solution.diagramResidual.moment, 1)} ${unit(1, 1)}`],
-    ...(solution.loadCheck ? [['Resultante de cargas (relativa)', clearNumber(solution.loadCheck.residual, 1)] as const] : []),
-  ], 170);
-  layout.text(
-    `Momento de mayor valor absoluto en la estructura: ${fig(solution.peakMoment.value, 1, 1, scale.moment)} ${unit(1, 1)} `
-    + `en la barra ${solution.peakMoment.memberId}, s = ${fig(solution.peakMoment.s, 0, 1)} ${unit(0, 1)}.`,
-    8.7, fonts.bold, palette.ink, 8,
+  memoirStep(context, '5.5 Comprobación');
+  const forceGap = Math.max(solution.reactionResidual.force, solution.diagramResidual.force);
+  const momentGap = Math.max(solution.reactionResidual.moment, solution.diagramResidual.moment);
+  const tolerance = Math.max(1e-3, ...arcs.map((member) => member.arc!.tolerance));
+  const gaps = `${fig(forceGap, 1, 0, scale.force)} ${unit(1, 0)} y ${fig(momentGap, 1, 1, scale.moment)} ${unit(1, 1)}`;
+  memoirCheckFitted(
+    context,
+    `reacciones y diagramas contra el análisis matricial, diferencias máximas ${gaps}.`,
+    `reacciones y diagramas, diferencias con el análisis matricial ${gaps}.`,
+    forceGap <= tolerance * scale.force && momentGap <= tolerance * scale.moment,
   );
 };
