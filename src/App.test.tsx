@@ -37,7 +37,7 @@ describe('standalone FStructure', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Modela, analiza y diseña estructuras.' })).toBeTruthy();
     expect(screen.queryByText(/Elementos finitos/)).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+    await user.click(screen.getByRole('button', { name: /^(Continuar|Empezar a modelar)$/ }));
 
     expect(await screen.findByLabelText('Inspector')).toBeTruthy();
     expect(new URLSearchParams(window.location.search).get('tool')).toBe('model2d');

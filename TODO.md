@@ -62,12 +62,12 @@ Corregido en esa entrega: el guardado sin cambios ya no sube la revisión (abrir
 - [x] Barras curvas en el PDF: encuadre con la clave, cargas y fantasmas sobre el arco y tabla de N, V y M por estaciones (1-nov-2026).
 - [x] Barras curvas sobre su arco (2-nov-2026): las líneas de influencia miden el arco (ajuste cortado en las estaciones de su malla; probado con el inicio «Arco» contra el método de las fuerzas) y el lienzo las dibuja sobre él; punto medio (la clave), perpendicular y cruces se toman sobre el arco y el nudo que cae ahí divide la curva y queda conectado (una curva con zonas rígidas no ofrece esos snaps); el Inspector da la longitud del arco con cuerda y radio; una barra curva ya no apaga el diseño: entra al análisis y queda fuera del concreto con su motivo, y las vigas y columnas rectas se diseñan.
 - [x] Interfaz: con el modelo vacío, «Analizar» (2D y 3D) deja de ser la acción principal: queda secundario, enfocable y dice por qué en su title (2-nov-2026).
-- [ ] Interfaz: con el modelo vacío, «Continuar» en la Home sigue como acción principal.
+- [x] Interfaz: con el modelo vacío, la Home dice «Modelo vacío» y su acción es «Empezar a modelar», que lleva a la creación rápida (2-nov-2026).
 - [x] Creación rápida del 2D: tipo en un toque (viga, voladizo, continua, pórtico, armadura, arco), medidas con vista previa y «Crear y calcular»; generador avanzado a un clic (31-oct-2026).
 - [x] Resultados legibles en modelos grandes: sólo el extremo global y la barra elegida fuerzan su cifra; las cargas ceden y se atenúan bajo un diagrama; la leyenda reserva su caja (31-oct-2026).
 - [x] Generador avanzado: nace con el apoyo usual de cada familia (empotrado en pórticos y retículas, articulado en vigas, armaduras y arcos) y respeta el que se elija, también «Ninguno»; lo generado es estable sin completarlo (2-nov-2026).
-- [ ] Generador avanzado: sigue sin cargas por omisión; ofrecerlas como la creación rápida.
-- [ ] Teléfono: con resultados en un pórtico, las reacciones aún se apartan con guías largas; agrupar Rx/Ry/Mᵣ por apoyo en una sola caja.
+- [ ] Generador avanzado: sigue sin cargas por omisión (su comando verificado sólo cubre nudos y barras; añadir cargas exige ampliar `structure.generate` y sus instantáneas). La creación rápida sí crea modelos cargados.
+- [x] Teléfono: las reacciones de cada apoyo van en una sola línea («Rx · Ry kN · Mr kN·m»); «Mᵣ» se escribe «Mr» porque la fuente del lienzo no tiene el subíndice (2-nov-2026).
 
 ## Memoria PDF (31-oct-2026)
 

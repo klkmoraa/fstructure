@@ -66,7 +66,7 @@ const PIECE_ICON: Record<SingleWorkTool, ReactNode> = {
 const copy = {
   es: {
     title: 'Modela, analiza y diseña estructuras.',
-    open: 'Proyecto abierto', openSingle: 'Cálculo individual abierto', continue: 'Continuar',
+    open: 'Proyecto abierto', openSingle: 'Cálculo individual abierto', continue: 'Continuar', start: 'Empezar a modelar', emptyModel: 'Modelo vacío: elige una estructura, sus medidas y calcula.',
     nodes: 'nudos', members: 'barras', loads: 'cargas',
     single: 'Cálculo individual',
     singleLead: 'Un archivo independiente por cálculo.',
@@ -105,7 +105,7 @@ const copy = {
   },
   en: {
     title: 'Model, analyse and design structures.',
-    open: 'Open project', openSingle: 'Open single calculation', continue: 'Continue',
+    open: 'Open project', openSingle: 'Open single calculation', continue: 'Continue', start: 'Start modelling', emptyModel: 'Empty model: pick a structure, its dimensions and run.',
     nodes: 'nodes', members: 'members', loads: 'loads',
     single: 'Individual calculation',
     singleLead: 'A separate file for each calculation.',
@@ -232,6 +232,7 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
     if (id === 'model') onOpenWorkspace(); else if (id === '3d') onOpenSpace3D(); else onOpenDesign('project');
   };
   const currentSingle = singleWorkTool(project);
+  const emptyModel = modeOf(project) === 'model' && (!currentSingle || currentSingle === 'model2d') && project.nodes.length === 0 && project.members.length === 0;
   const loadCount = project.nodalLoads.length + project.memberLoads.length;
   const normalized = query.trim().toLocaleLowerCase(language);
   const examples = exampleProjects.filter((example) => `${example.name} ${example.description}`.toLocaleLowerCase(language).includes(normalized));
@@ -259,9 +260,12 @@ export const HomePage = ({ onOpenWorkspace, onOpenSpace3D, onOpenDesign }: HomeP
       <div className="fh-current__info">
         <span className="fh-current__label">{currentSingle ? `${text.openSingle} · ${SINGLE_WORK_LABEL[currentSingle][language]}` : text.open}</span>
         <strong className="fh-current__name" title={project.name}>{project.name}</strong>
-        {currentSingle && currentSingle !== 'model2d' && currentSingle !== 'space3d' ? null : <span className="fh-current__counts"><b>{project.nodes.length}</b> {text.nodes} · <b>{project.members.length}</b> {text.members} · <b>{loadCount}</b> {text.loads}</span>}
+        {currentSingle && currentSingle !== 'model2d' && currentSingle !== 'space3d' ? null : emptyModel
+          ? <span className="fh-current__counts">{text.emptyModel}</span>
+          : <span className="fh-current__counts"><b>{project.nodes.length}</b> {text.nodes} · <b>{project.members.length}</b> {text.members} · <b>{loadCount}</b> {text.loads}</span>}
       </div>
-      <button type="button" className="fh-button fh-button--primary fh-current__continue" onClick={() => onOpenWorkspace(modeOf(project))}><Play size={14} fill="currentColor" aria-hidden="true" />{text.continue}</button>
+      {/* Con el modelo vacío no hay nada que «continuar»: la acción lleva a la creación rápida. */}
+      <button type="button" className="fh-button fh-button--primary fh-current__continue" onClick={() => onOpenWorkspace(modeOf(project))}><Play size={14} fill="currentColor" aria-hidden="true" />{emptyModel ? text.start : text.continue}</button>
       <div className="fh-current__actions">
         <button type="button" className="fh-button" onClick={() => openProject(createBlankProject())}><FilePlus2 size={16} aria-hidden="true" />{text.newProject}</button>
         <ProjectSaveButton />

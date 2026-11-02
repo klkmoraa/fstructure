@@ -2575,6 +2575,22 @@ export const StructuralCanvas = ({
       const result = nodeResultMap.get(node.id);
       if (!result) continue;
       const point = toScreen(node.x, node.y);
+      // En el teléfono no hay sitio para tres cifras por apoyo con sus guías: van juntas en
+      // una caja bajo el apoyo («Rx 7.87 · Ry 82.46 kN · Mr 4.04 kN·m»).
+      if (compactCanvasChrome) {
+        const parts = reactionArrows(point, result, node.support.type).map((arrow) => {
+          const value = arrow.component === 'rx' ? result.rx : result.ry;
+          return `${arrow.component === 'rx' ? 'Rx' : 'Ry'} ${formatFixed(toDisplay(value, units, 'force'), 2)}`;
+        });
+        const force = parts.length ? `${parts.join(' · ')} ${forceLabel}` : '';
+        const moment = Math.abs(result.rm) > 1e-8 ? `Mr ${formatFixed(toDisplay(result.rm, units, 'moment'), 2)} ${momentLabel}` : '';
+        const text = [force, moment].filter(Boolean).join(' · ');
+        if (text) smartLabelCandidates.push({
+          id: `reaction:${node.id}:group`, text, anchor: { x: point.x, y: point.y + 30 }, priority: 1, tone: 'reaction',
+          preferredOffset: smartLabelOffsetToward(text, { x: 0, y: 1 }, REACTION_LABEL_GAP),
+        });
+        continue;
+      }
       // Cada cifra se ancla a la mitad de su flecha y se pone a su lado, no
       // encima: Rx sobre la horizontal, Ry a la derecha de la vertical.
       for (const arrow of reactionArrows(point, result, node.support.type)) {
@@ -2590,7 +2606,7 @@ export const StructuralCanvas = ({
         });
       }
       if (Math.abs(result.rm) > 1e-8) {
-        smartLabelCandidates.push({ id: `reaction:${node.id}:rm`, text: `Mᵣ = ${formatFixed(toDisplay(result.rm, units, 'moment'), 2)} ${momentLabel}`, anchor: { x: point.x, y: point.y - 38 }, priority: 1, tone: 'moment', preferredOffset: { x: 0, y: 0 } });
+        smartLabelCandidates.push({ id: `reaction:${node.id}:rm`, text: `Mr = ${formatFixed(toDisplay(result.rm, units, 'moment'), 2)} ${momentLabel}`, anchor: { x: point.x, y: point.y - 38 }, priority: 1, tone: 'moment', preferredOffset: { x: 0, y: 0 } });
       }
     }
 
