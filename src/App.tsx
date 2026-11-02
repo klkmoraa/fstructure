@@ -9,6 +9,7 @@ import { peekToolIntent, setToolIntent } from './features/workspace/toolIntent';
 import { preloadMesaMode } from './features/workspace/toolSurfaces';
 import { HomePage } from './features/welcome/HomePage';
 import { UpdateNotice } from './features/app-update/UpdateNotice';
+import { loadOrReload } from './shared/appUpdate';
 import { toolRegistry } from './features/workspace/toolRegistry';
 import { useI18n } from './i18n/useI18n';
 import { useProjectNavigation } from './shared/navigation/useProjectNavigation';
@@ -22,8 +23,9 @@ const loadMotionFeatures = () => import('./design-system/motionFeatures')
    pide en segundo plano en cuanto el navegador queda libre. */
 const loadWorkspaceShell = () => import('./features/workspace/WorkspaceShell');
 const loadMesaModeShell = () => import('./features/workspace/ToolShell');
-const WorkspaceShell = lazy(loadWorkspaceShell);
-const MesaModeShell = lazy(() => loadMesaModeShell().then((module) => ({ default: module.MesaModeShell })));
+// Si su chunk ya no existe (versión nueva activada en otra pestaña), se guarda y se recarga.
+const WorkspaceShell = lazy(loadOrReload(loadWorkspaceShell));
+const MesaModeShell = lazy(loadOrReload(() => loadMesaModeShell().then((module) => ({ default: module.MesaModeShell }))));
 const preloadShells = () => { void loadWorkspaceShell().catch(() => undefined); void loadMesaModeShell().catch(() => undefined); };
 const ShellLoading = () => <div className="app-shell-loading" role="status" aria-label="Cargando la mesa" />;
 

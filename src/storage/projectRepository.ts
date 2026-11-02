@@ -4,6 +4,7 @@ import { PROJECT_STORAGE_KEY, type StorageLike } from '../data/projectStorage';
 import type { ProjectModel } from '../types';
 import { createId } from '../utils/id';
 import type { AnalysisRunRecord } from './analysisRuns';
+import { CachedDatabase } from './openDatabase';
 
 export type { AnalysisRunRecord,  } from './analysisRuns';
 
@@ -247,25 +248,21 @@ const transactionDone = (transaction: IDBTransaction): Promise<void> => new Prom
 });
 
 export class IndexedDbProjectRepository implements ProjectRepository {
-  private databasePromise: Promise<IDBDatabase> | null = null;
-  private readonly factory: IDBFactory;
-  constructor(factory: IDBFactory = indexedDB) { this.factory = factory; }
+  private readonly connection: CachedDatabase;
+  constructor(factory: IDBFactory = indexedDB) {
+    this.connection = new CachedDatabase(factory, DATABASE_NAME, DATABASE_VERSION, (database) => {
+      if (!database.objectStoreNames.contains(PROJECTS_STORE)) database.createObjectStore(PROJECTS_STORE, { keyPath: 'id' });
+      if (!database.objectStoreNames.contains(RECOVERIES_STORE)) database.createObjectStore(RECOVERIES_STORE, { keyPath: 'id' });
+      if (!database.objectStoreNames.contains(ANALYSIS_RUNS_STORE)) database.createObjectStore(ANALYSIS_RUNS_STORE, { keyPath: 'id' });
+      if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE, { keyPath: 'key' });
+    }, {
+      failed: 'No se pudo abrir IndexedDB.',
+      blocked: 'IndexedDB está bloqueado por otra pestaña con una versión anterior; ciérrala o recárgala y vuelve a intentarlo.',
+    });
+  }
 
   private database(): Promise<IDBDatabase> {
-    this.databasePromise ??= new Promise((resolve, reject) => {
-      const request = this.factory.open(DATABASE_NAME, DATABASE_VERSION);
-      request.onupgradeneeded = () => {
-        const database = request.result;
-        if (!database.objectStoreNames.contains(PROJECTS_STORE)) database.createObjectStore(PROJECTS_STORE, { keyPath: 'id' });
-        if (!database.objectStoreNames.contains(RECOVERIES_STORE)) database.createObjectStore(RECOVERIES_STORE, { keyPath: 'id' });
-        if (!database.objectStoreNames.contains(ANALYSIS_RUNS_STORE)) database.createObjectStore(ANALYSIS_RUNS_STORE, { keyPath: 'id' });
-        if (!database.objectStoreNames.contains(META_STORE)) database.createObjectStore(META_STORE, { keyPath: 'key' });
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error ?? new Error('No se pudo abrir IndexedDB.'));
-      request.onblocked = () => reject(new Error('IndexedDB está bloqueado por otra pestaña.'));
-    });
-    return this.databasePromise;
+    return this.connection.open();
   }
 
   async listProjects() {

@@ -4,6 +4,7 @@ import type { ProjectModel } from '../types';
 import type { ProjectRepository } from '../storage/projectRepository';
 import { recordLocalMetric } from '../analytics/localMetrics';
 import type { UnifiedProjectSession } from '../storage/unifiedProjectSession';
+import { registerPendingWrite } from '../shared/pendingWrites';
 
 // Kept here as a literal so the optional IndexedDB module can remain lazy in
 // the editor shell; this key carries only revision notifications, never data.
@@ -40,7 +41,9 @@ interface ProjectPersistenceOptions {
  * Autoguardado del Modelo 2D: el bundle unificado cuando la mesa es el proyecto
  * completo; si no, la biblioteca IndexedDB con su espejo compatible en
  * `localStorage`, la migración del guardado antiguo y la protección de
- * conflictos entre pestañas. Nada sale del dispositivo.
+ * conflictos entre pestañas. Nada sale del dispositivo. El guardado espera
+ * 250 ms, salvo que `flushPendingWrites` lo adelante (al ocultar o cerrar la
+ * página, antes de copiar o de recargar); va por la misma sesión y su cola.
  *
  * Devuelve las referencias de revisión que `replaceProject` actualiza al abrir
  * otra versión.
@@ -53,6 +56,15 @@ export function useProjectPersistence({
   const repositoryBlockedProjectIdRef = useRef<string | null>(null);
   const repositorySaveChainRef = useRef<Promise<void>>(Promise.resolve());
   const projectChecksumRef = useRef<((project: ProjectModel) => Promise<string>) | null>(null);
+  /** El guardado que espera sus 250 ms; `flushPendingWrites` lo adelanta (al ocultar la página, antes de copiar o recargar). */
+  const pendingSaveRef = useRef<(() => Promise<void>) | null>(null);
+
+  useEffect(() => registerPendingWrite(async () => {
+    const save = pendingSaveRef.current;
+    pendingSaveRef.current = null;
+    // Nunca rechaza: un fallo ya queda en el estado de almacenamiento, como en el autoguardado.
+    if (save) await save().catch(() => undefined);
+  }), []);
 
   useEffect(() => {
     if (!unified || !unifiedReady) return;
@@ -136,11 +148,11 @@ export function useProjectPersistence({
 
   useEffect(() => {
     if (transactionActive || !unifiedReady) return;
-    const handle = window.setTimeout(() => {
+    const save = (): Promise<void> => {
       if (unified) {
         const session = unifiedSessionRef.current;
-        if (!session) return;
-        void session.save2D(project).then(async (record) => {
+        if (!session) return Promise.resolve();
+        return session.save2D(project).then(async (record) => {
           setStorageState(session.status);
           // Compatibility library surfaces read this mirror. Only the bundle owns revisions.
           const { getProjectRepository } = await import('../storage/projectRepository');
@@ -150,7 +162,6 @@ export function useProjectPersistence({
         }).catch((error: unknown) => setStorageState(session.status.issue ? session.status : {
           issue: 'repository-degraded', message: `Bundle guardado; espejo de biblioteca no disponible: ${String(error)}`,
         }));
-        return;
       }
       try {
         const repository = repositoryRef.current;
@@ -162,11 +173,11 @@ export function useProjectPersistence({
         };
         if (!repository) {
           persistCompatible(project);
-          return;
+          return Promise.resolve();
         }
         // A conflict is already a durable recovery. Do not keep rewriting the
         // compatibility mirror while the user is deciding which revision wins.
-        if (repositoryBlockedProjectIdRef.current === project.id) return;
+        if (repositoryBlockedProjectIdRef.current === project.id) return Promise.resolve();
         repositorySaveChainRef.current = repositorySaveChainRef.current.catch(() => undefined).then(async () => {
           const expected = repositoryRevisionRef.current?.projectId === project.id
             ? repositoryRevisionRef.current.revision
@@ -198,14 +209,26 @@ export function useProjectPersistence({
             });
           }
         });
+        return repositorySaveChainRef.current;
       } catch (error) {
         setStorageState({
           issue: 'save-failed',
           message: error instanceof Error ? error.message : 'No se pudo guardar el proyecto.',
         });
+        return Promise.resolve();
       }
+    };
+    pendingSaveRef.current = save;
+    const handle = window.setTimeout(() => {
+      // Ya lo adelantó `flushPendingWrites`, o lo reemplazó un cambio posterior.
+      if (pendingSaveRef.current !== save) return;
+      pendingSaveRef.current = null;
+      void save();
     }, 250);
-    return () => window.clearTimeout(handle);
+    return () => {
+      window.clearTimeout(handle);
+      if (pendingSaveRef.current === save) pendingSaveRef.current = null;
+    };
   }, [project, persistenceRevision, transactionActive, unified, unifiedReady, unifiedSessionRef, setStorageState]);
 
   return { repositoryRevisionRef, repositoryBlockedProjectIdRef };

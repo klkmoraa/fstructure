@@ -5,7 +5,7 @@ import { useProjectModel } from '../../store/ProjectContext';
 import { useSharedToolState } from '../../store/SharedToolState';
 import { singleWorkTool } from '../../shared/project/workScope';
 import { promotedProjectName } from '../../storage/promoteProject';
-import { flushPendingWrites } from './pendingWrites';
+import { flushPendingWrites } from '../../shared/pendingWrites';
 
 /**
  * «Convertir en proyecto completo» del menú «⋯» de la mesa, sólo en un archivo

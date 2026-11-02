@@ -54,10 +54,11 @@ Lista corta y viva. Se tacha o se borra al terminar; el detalle va en el commit.
 
 Corregido en esa entrega: el guardado sin cambios ya no sube la revisión (abrir el proyecto en otra pestaña bloqueaba la primera), importar crea siempre un archivo nuevo, una barra curva que pasa a armadura o rígida o cuyos nudos coinciden vuelve a ser recta (antes rompía todo guardado), un arco no se clasifica como viga y «Ajustar» incluye la clave del arco.
 
-- [ ] Datos: las recuperaciones del bundle no tienen límite; el modo unificado no escucha el evento `storage` de otras pestañas (restaurar, duplicar y renombrar ya van al bundle).
-- [ ] Datos: guardar al ocultar la página (`pagehide`/`visibilitychange`); hoy se pierden los últimos 250 ms (600 ms en Diseño).
-- [ ] PWA: al activar una versión nueva, las otras pestañas abiertas pierden sus chunks `lazy()` (caché borrada y hashes nuevos en Pages); recargarlas todas o conservar la caché anterior hasta que cierren.
-- [ ] IndexedDB: `onblocked` deja la biblioteca rechazada hasta recargar y no hay `onversionchange`.
+- [ ] Datos: las recuperaciones del bundle no tienen límite.
+- [x] Datos: el modo unificado se entera de otras pestañas. Cada revisión guardada (2D, 3D, Diseño, renombrar, restaurar) se avisa por `BroadcastChannel` (sólo id y revisión, local al navegador); la pestaña con el mismo proyecto abierto muestra el conflicto en cuanto llega, sin bloquear ni descartar: su próxima edición queda como recuperación (2-nov-2026).
+- [x] Datos: guardar al ocultar la página. `pagehide` y `visibilitychange` a oculta vacían los guardados pendientes (`src/shared/pendingWrites`: el 2D y Diseño, por la misma sesión y cola); también antes de «Recargar» (2-nov-2026).
+- [x] PWA: si otra pestaña activa la versión nueva, las demás muestran «Nueva versión lista · Recargar» (`controllerchange`) y recargar no espera otro cambio de worker; si un chunk falla (`vite:preloadError` o los `lazy()` de la mesa), se guarda lo pendiente y se recarga una sola vez (`sessionStorage` evita el bucle; sin red no se recarga) (2-nov-2026).
+- [x] IndexedDB: una apertura rechazada o bloqueada ya no queda cacheada (la siguiente llamada abre de nuevo y una conexión tardía se cierra); `versionchange` y `close` cierran y olvidan la conexión, en la biblioteca y en el bundle (`src/storage/openDatabase`) (2-nov-2026).
 - [ ] Barras curvas: el PDF las dibuja rectas (escena, cargas y encuadre); las líneas de influencia miden la cuerda; los snaps de punto medio/intersección usan la cuerda; «Longitud» del Inspector muestra la cuerda; una sola barra curva desactiva el diseño de concreto de todo el modelo. (N y V ya siguen la tangente del arco, 31-oct.)
 - [ ] Interfaz: con el modelo vacío, «Analizar» (2D y 3D) y «Continuar» en la Home siguen como acción principal.
 - [x] Creación rápida del 2D: tipo en un toque (viga, voladizo, continua, pórtico, armadura, arco), medidas con vista previa y «Crear y calcular»; generador avanzado a un clic (31-oct-2026).

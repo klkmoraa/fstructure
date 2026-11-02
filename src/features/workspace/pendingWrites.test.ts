@@ -4,7 +4,7 @@ import { createUnifiedProjectBundle } from '../../shared/project/unifiedProjectB
 import { InMemoryUnifiedBundleRepository } from '../../storage/unifiedBundleRepository';
 import { UnifiedProjectSession } from '../../storage/unifiedProjectSession';
 import { createProjectWorkbenchStorage } from '../design/workbench/workbenchStorage';
-import { flushPendingWrites, registerPendingWrite } from './pendingWrites';
+import { flushPendingWrites, registerPendingWrite } from '../../shared/pendingWrites';
 
 it('la copia lleva el cambio de Diseño aún en su espera de 600 ms', async () => {
   const repository = new InMemoryUnifiedBundleRepository();

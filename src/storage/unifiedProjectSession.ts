@@ -8,6 +8,7 @@ import { inspectDesignDocument } from '../shared/project/designWorkbenchCodec';
 import { saveDuplicatedProject, savePromotedProject } from './promoteProject';
 import { renameBundleProject, restoreBundleRecovery, restoreModel2DIntoBundle } from './bundleLibraryActions';
 import { BundleConflictError, IndexedDbUnifiedBundleRepository, type LegacyBundleStorage, type StoredBundleRecord, type UnifiedBundleRepository } from './unifiedBundleRepository';
+import { createBroadcastRevisionChannel, type BundleRevisionChannel, type BundleRevisionNotice } from './bundleRevisionChannel';
 
 type UnifiedStorageStatus = { issue: 'conflict' | 'load-failed' | 'save-failed' | 'recovered' | null; message: string | null };
 
@@ -52,7 +53,34 @@ export class UnifiedProjectSession {
     return () => { this.statusListeners.delete(listener); };
   }
   readonly repository: UnifiedBundleRepository;
-  constructor(repository: UnifiedBundleRepository) { this.repository = repository; }
+  private readonly channel?: BundleRevisionChannel;
+  /** El proyecto de la mesa: el último abierto o guardado. Sólo su revisión ajena se avisa. */
+  private active?: string;
+  /** `channel` avisa a las otras pestañas de cada revisión que esta escribe, y escucha las suyas. */
+  constructor(repository: UnifiedBundleRepository, channel?: BundleRevisionChannel) {
+    this.repository = repository;
+    this.channel = channel;
+    channel?.listen((notice) => this.noteRevision(notice));
+  }
+  private announce(record: StoredBundleRecord) {
+    this.channel?.post({ projectId: record.id, revision: record.revision });
+  }
+  /**
+   * Otra pestaña guardó una revisión más nueva del proyecto abierto aquí. Se
+   * avisa ya con el estado de conflicto, en vez de esperar a la próxima
+   * edición. No se bloquea ni se descarta nada: el próximo guardado de esta
+   * pestaña lleva su revisión vieja, así que el repositorio lo conserva como
+   * recuperación y no pisa la otra versión (ni la otra pisa esta).
+   */
+  private noteRevision(notice: BundleRevisionNotice) {
+    if (notice.projectId !== this.active || this.blocked.has(notice.projectId)) return;
+    const known = this.records.get(notice.projectId)?.revision;
+    if (known === undefined || notice.revision <= known) return;
+    this.status = {
+      issue: 'conflict',
+      message: 'Otra pestaña guardó una versión más nueva de este proyecto. Vuelve a abrirlo desde Proyectos para seguir con ella; si editas aquí, la edición se guarda aparte como recuperación y no la sobrescribe.',
+    };
+  }
   currentBundle(id: string) { return structuredClone(this.working.get(id) ?? this.records.get(id)?.bundle ?? null); }
 
   /**
@@ -88,6 +116,7 @@ export class UnifiedProjectSession {
       const record = await this.repository.openBundle(id);
       if (!record) return null;
       this.records.set(id, record);
+      this.active = id;
       this.working.delete(id);
       this.blocked.delete(id);
       if (this.status.issue === 'conflict') this.status = { issue: null, message: null };
@@ -165,6 +194,7 @@ export class UnifiedProjectSession {
     return this.exclusive(async () => {
       const record = await renameBundleProject(this.repository, id, name);
       if (this.records.has(id)) this.records.set(id, record);
+      this.announce(record);
       const pending = this.working.get(id);
       if (pending) pending.model2d = { ...pending.model2d, name };
       return structuredClone(record);
@@ -184,6 +214,7 @@ export class UnifiedProjectSession {
    * Lo que tenía sin guardar ya quedó como respaldo en la restauración.
    */
   private afterRestore(record: StoredBundleRecord): StoredBundleRecord {
+    this.announce(record);
     this.records.delete(record.id);
     this.working.delete(record.id);
     this.blocked.add(record.id);
@@ -204,6 +235,7 @@ export class UnifiedProjectSession {
   }
   private save(project: ProjectModel, branch?: LinkedSpace3DBranchV1, femStudy?: JsonValue, design?: JsonValue): Promise<StoredBundleRecord> {
     const detached = structuredClone(project);
+    this.active = detached.id;
     if (this.blocked.has(detached.id)) return Promise.reject(new Error(this.status.message ?? 'Reopen the canonical project before saving.'));
     const working = this.currentBundle(detached.id) ?? createUnifiedProjectBundle(detached, branch?.sourceVersion ?? crypto.randomUUID());
     if (branch) working.space3d = branch;
@@ -253,6 +285,7 @@ export class UnifiedProjectSession {
       try {
         const record = await this.repository.saveBundle(bundle, current?.revision ?? 0);
         this.records.set(detached.id, record);
+        this.announce(record);
         clearWorking(record.bundle);
         clearFailure();
         return record;
@@ -268,4 +301,4 @@ export class UnifiedProjectSession {
   }
 }
 
-export const createUnifiedProjectSession = () => new UnifiedProjectSession(new IndexedDbUnifiedBundleRepository());
+export const createUnifiedProjectSession = () => new UnifiedProjectSession(new IndexedDbUnifiedBundleRepository(), createBroadcastRevisionChannel());

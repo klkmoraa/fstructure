@@ -8,6 +8,7 @@ import { IndexedDbUnifiedBundleRepository } from '../storage/unifiedBundleReposi
 import { createDefaultProject } from '../data/defaultProject';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
 import { PROJECT_STORAGE_KEY, PROJECT_BACKUP_KEY, PROJECT_RECOVERY_KEY } from '../data/projectStorage';
+import { flushPendingWritesOnHide } from '../shared/pendingWrites';
 
 beforeEach(() => { globalThis.indexedDB = new IDBFactory(); localStorage.clear(); window.history.replaceState(null, '', '/'); });
 afterEach(cleanup);
@@ -77,5 +78,24 @@ it('shows corrupt canonical record diagnostics without changing original source 
   expect(await screen.findByText(/integrity failure/)).toBeTruthy();
   expect(localStorage.getItem(PROJECT_STORAGE_KEY)).toBe(raw);
   expect((await repo.snapshot()).integrityDiagnostics).toHaveLength(1);
+});
+
+it('al ocultar la página guarda la última edición sin esperar el autoguardado', async () => {
+  const project = createDefaultProject();
+  const repo = new IndexedDbUnifiedBundleRepository();
+  await repo.saveBundle(createUnifiedProjectBundle({ ...project, name: 'Canonical' }, 'v1'), 0);
+  window.history.replaceState(null, '', `/?project=${project.id}`);
+  const stop = flushPendingWritesOnHide(window);
+  try {
+    const view = render(<ProjectProvider unified><Probe /></ProjectProvider>);
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Canonical'));
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    // Se cierra la pestaña dentro de los 250 ms: desmontar cancela el temporizador,
+    // así que sólo el guardado adelantado por `pagehide` puede llegar al bundle.
+    window.dispatchEvent(new Event('pagehide'));
+    view.unmount();
+    await waitFor(async () => expect((await repo.openBundle(project.id))?.bundle.model2d.name).toBe('Edited canonical'));
+    expect((await repo.openBundle(project.id))?.revision).toBe(2);
+  } finally { stop(); }
 });
 

@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '../../design-system/components/controls';
 import { applyAppUpdate, SETTLE_BEFORE_RELOAD_MS, subscribeAppUpdate } from '../../shared/appUpdate';
+import { flushPendingWrites } from '../../shared/pendingWrites';
 import { useI18n } from '../../i18n/useI18n';
 import './updateNotice.css';
 
@@ -18,7 +19,10 @@ export function UpdateNotice() {
     : { ready: 'New version ready', reload: 'Reload', reloading: 'Reloading…', later: 'Later', note: 'Your work is saved before reloading.' };
   const reload = () => {
     setReloading(true);
-    window.setTimeout(() => { if (!applyAppUpdate()) setReloading(false); }, SETTLE_BEFORE_RELOAD_MS);
+    // El 2D y Diseño no esperan su autoguardado: se escriben ya, y luego se cambia de versión.
+    void flushPendingWrites().catch(() => undefined).finally(() => {
+      window.setTimeout(() => { if (!applyAppUpdate()) setReloading(false); }, SETTLE_BEFORE_RELOAD_MS);
+    });
   };
   return <aside className="app-update-notice" role="status" aria-live="polite">
     <span className="app-update-notice__copy"><strong>{text.ready}</strong><small>{text.note}</small></span>

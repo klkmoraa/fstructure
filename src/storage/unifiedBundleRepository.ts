@@ -3,6 +3,7 @@ import { parseSpace3DDraft } from '../modules/space3d/space3d/data/codec';
 import type { UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
 import { canonicalSerialize, sha256, validateBundle } from './bundleValidation';
 import { prepareLegacyImports, type LegacyBundleStorage } from './legacyBundleSources';
+import { CachedDatabase } from './openDatabase';
 export { canonicalSerialize, sha256 } from './bundleValidation';
 export type { LegacyBundleStorage } from './legacyBundleSources';
 
@@ -114,29 +115,14 @@ export class InMemoryBundleDatabase implements BundleDatabase {
 
 /** Separate database avoids changing the existing 2D repository's public contract. */
 class IndexedDbBundleDatabase implements BundleDatabase {
-  private readonly factory: IDBFactory;
-  private database?: Promise<IDBDatabase>;
-  constructor(factory: IDBFactory) { this.factory = factory; }
-  private open(): Promise<IDBDatabase> {
-    if (!this.database) {
-      this.database = new Promise<IDBDatabase>((resolve, reject) => {
-        const request = this.factory.open('structureCo.unified-bundles', 1);
-        request.onupgradeneeded = () => {
-          for (const name of stores) if (!request.result.objectStoreNames.contains(name)) request.result.createObjectStore(name, { keyPath: 'id' });
-        };
-        request.onerror = () => reject(request.error ?? new Error('Cannot open bundle database'));
-        request.onblocked = () => reject(new Error('Bundle database upgrade is blocked by another connection'));
-        request.onsuccess = () => {
-          const db = request.result;
-          db.onversionchange = () => { db.close(); this.database = undefined; };
-          resolve(db);
-        };
-      }).catch((error: unknown) => { this.database = undefined; throw error; });
-    }
-    return this.database;
+  private readonly connection: CachedDatabase;
+  constructor(factory: IDBFactory) {
+    this.connection = new CachedDatabase(factory, 'structureCo.unified-bundles', 1, (database) => {
+      for (const name of stores) if (!database.objectStoreNames.contains(name)) database.createObjectStore(name, { keyPath: 'id' });
+    }, { failed: 'Cannot open bundle database', blocked: 'Bundle database upgrade is blocked by another connection' });
   }
   async transaction<T>(write: boolean, operation: (state: State) => T): Promise<T> {
-    const db = await this.open();
+    const db = await this.connection.open();
     return new Promise<T>((resolve, reject) => {
       const tx = db.transaction([...stores], write ? 'readwrite' : 'readonly');
       const state = emptyState();

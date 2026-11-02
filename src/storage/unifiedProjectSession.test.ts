@@ -4,6 +4,7 @@ import { normalizeProject } from '../data/migrate';
 import { createUnifiedProjectBundle } from '../shared/project/unifiedProjectBundle';
 import { InMemoryBundleDatabase, InMemoryUnifiedBundleRepository, type StoredBundleRecord } from './unifiedBundleRepository';
 import { UnifiedProjectSession } from './unifiedProjectSession';
+import type { BundleRevisionChannel, BundleRevisionNotice } from './bundleRevisionChannel';
 import { createSpace3DPortalExample } from '../modules/space3d/space3d/model/defaultProject';
 import type { JsonValue, UnifiedProjectBundleV1 } from '../shared/project/unifiedProjectBundle';
 
@@ -269,4 +270,46 @@ it('does not bump the revision on an unchanged save, so opening the project in a
   const edited = await first.save2D({ ...project, name: 'Editado en la primera pestaña' });
   expect(edited.revision).toBe(saved.revision + 1);
   expect(first.status.issue).toBeNull();
+});
+
+/** Varias sesiones conectadas como pestañas: cada aviso llega a las demás, no a quien lo envía. */
+const revisionHub = () => {
+  const tabs = new Set<{ listener?: (notice: BundleRevisionNotice) => void }>();
+  return () => {
+    const tab: { listener?: (notice: BundleRevisionNotice) => void } = {};
+    tabs.add(tab);
+    const channel: BundleRevisionChannel = {
+      post: (notice) => tabs.forEach((other) => { if (other !== tab) other.listener?.(structuredClone(notice)); }),
+      listen: (listener) => { tab.listener = listener; return () => { tab.listener = undefined; }; },
+    };
+    return channel;
+  };
+};
+it('avisa en cuanto otra pestaña guarda una revisión más nueva del proyecto abierto, sin pisar ninguna de las dos', async () => {
+  const database = new InMemoryBundleDatabase();
+  const connect = revisionHub();
+  const repo = new InMemoryUnifiedBundleRepository(database);
+  const project = createDefaultProject();
+  const first = new UnifiedProjectSession(repo, connect());
+  const second = new UnifiedProjectSession(new InMemoryUnifiedBundleRepository(database), connect());
+  const elsewhere = new UnifiedProjectSession(new InMemoryUnifiedBundleRepository(database), connect());
+  await first.save2D(project);
+  await second.open(project.id);
+  await elsewhere.save2D({ ...createDefaultProject(), id: 'otro', name: 'Otro proyecto' });
+  // Guardar el proyecto abierto en la segunda pestaña: la primera se entera sin editar nada.
+  await second.save2D({ ...project, name: 'Segunda pestaña' });
+  expect(second.status.issue).toBeNull();
+  expect(first.status.issue).toBe('conflict');
+  expect(first.status.message).toMatch(/otra pestaña/i);
+  expect(elsewhere.status.issue).toBeNull();
+  // Su próxima edición queda como recuperación: ni pisa la versión nueva ni se pierde.
+  await expect(first.save2D({ ...project, name: 'Primera pestaña' })).rejects.toThrow(/changed/);
+  expect((await repo.openBundle(project.id))?.bundle.model2d.name).toBe('Segunda pestaña');
+  expect((await repo.snapshot()).recoveries.map((item) => item.bundle?.model2d.name)).toEqual(['Primera pestaña']);
+  // Abrir la versión nueva quita el aviso, y un aviso viejo o el propio no lo devuelven.
+  await first.open(project.id);
+  expect(first.status.issue).toBeNull();
+  await first.save2D({ ...project, name: 'Primera, al día' });
+  expect(first.status.issue).toBeNull();
+  expect(second.status.issue).toBe('conflict');
 });

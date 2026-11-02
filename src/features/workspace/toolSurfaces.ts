@@ -1,17 +1,19 @@
 import { lazy } from 'react';
 import type { ToolId } from '../../shared/contracts';
+import { loadOrReload } from '../../shared/appUpdate';
 import { toolRegistry } from './toolRegistry';
 
-const surface = (id: ToolId) => lazy(async () => ({ default: await toolRegistry.find((tool) => tool.id === id)!.load() }));
+// Un chunk que ya no existe (versión nueva activada en otra pestaña) recarga la página tras guardar.
+const surface = (id: ToolId) => lazy(loadOrReload(async () => ({ default: await toolRegistry.find((tool) => tool.id === id)!.load() })));
 
 export const Model2DTool = surface('model2d');
 const loadDesignMode = () => import('./adapters/DesignSurface');
 const loadSpace3DMode = () => import('./adapters/Space3DSurface');
 
 /** Modo Diseño de la mesa de FStructure: el taller de concreto sobre el mismo proyecto. */
-export const DesignModeTool = lazy(loadDesignMode);
+export const DesignModeTool = lazy(loadOrReload(loadDesignMode));
 /** Modo 3D de la mesa de FStructure: el modelo espacial del mismo proyecto. */
-export const Space3DModeTool = lazy(loadSpace3DMode);
+export const Space3DModeTool = lazy(loadOrReload(loadSpace3DMode));
 
 /**
  * Descarga el código de un modo antes de entrar: al pasar el puntero por su
