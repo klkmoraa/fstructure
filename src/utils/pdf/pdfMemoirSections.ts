@@ -9,7 +9,7 @@ import { classifyStructure } from '../../analysis-methods/structureClassificatio
 import { resolveNumericQualityState } from '../../engine/reliability';
 import type { DiagramQuantity } from '../../types';
 import { drawGlobalDcl } from './pdfDiagrams';
-import { clearDisplay, clearNumber, display } from './pdfFormat';
+import { clearDisplay, clearNumber, display, unitFor } from './pdfFormat';
 import { METHOD_LABEL } from './pdfProcedureSection';
 import { SPACE, TYPE } from './pdfTheme';
 import type { ReportContext } from './reportContext';
@@ -129,7 +129,12 @@ export const drawConclusionsPart = (context: ReportContext, professionalNote: st
     const value = Math.hypot(node.ux, node.uy);
     return !best || value > best.value ? { value, node: node.nodeId } : best;
   }, undefined);
-  if (displacement && displacement.value > 0) rows.push(['Desplazamiento nodal máximo', display(project, displacement.value, 'length'), `nudo ${displacement.node}`]);
+  if (displacement && displacement.value > 0) {
+    // Una flecha se lee en milímetros: «1.53 mm», no «0.00153091 m».
+    const inMetres = unitFor(project, 'length') === 'm';
+    const shown = inMetres ? `${(displacement.value * 1000).toFixed(2)} mm` : display(project, displacement.value, 'length');
+    rows.push(['Desplazamiento nodal máximo', shown, `nudo ${displacement.node}`]);
+  }
   layout.table([{ header: 'Magnitud' }, { header: 'Valor', align: 'right', width: 130 }, { header: 'Dónde', width: 170 }], rows);
 
   layout.heading('Verificación');

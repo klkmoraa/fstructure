@@ -49,7 +49,7 @@ export const CALCULATION_PDF_EXPORT_DEFAULTS = {
   includeScope: false,
   includeProcedure: true,
   includeMethodFreeBodies: true,
-  includeMaterials: false,
+  includeMaterials: true,
   includeAnnex: false,
   includeEducationTrace: false,
 } as const satisfies CalculationReportOptions;
