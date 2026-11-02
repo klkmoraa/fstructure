@@ -38,6 +38,8 @@ export class UnifiedProjectSession {
   // Session working copies include pending/failed writes; committed records alone own revisions.
   private working = new Map<string, UnifiedProjectBundleV1>();
   private blocked = new Set<string>();
+  /** Recuperación de conflicto de cada proyecto bloqueado: las ediciones siguientes la actualizan. */
+  private conflictRecovery = new Map<string, string>();
   private chain: Promise<unknown> = Promise.resolve();
   private initialization?: Promise<ProjectModel>;
   private storageStatus: UnifiedStorageStatus = { issue: null, message: null };
@@ -119,6 +121,7 @@ export class UnifiedProjectSession {
       this.active = id;
       this.working.delete(id);
       this.blocked.delete(id);
+      this.conflictRecovery.delete(id);
       if (this.status.issue === 'conflict') this.status = { issue: null, message: null };
       return normalizeProject(record.bundle.model2d);
     } catch (error) {
@@ -220,6 +223,24 @@ export class UnifiedProjectSession {
     this.blocked.add(record.id);
     return structuredClone(record);
   }
+  private saveIntoRecovery(project: ProjectModel, recoveryId: string, branch?: LinkedSpace3DBranchV1, femStudy?: JsonValue, design?: JsonValue): Promise<StoredBundleRecord> {
+    const working = this.currentBundle(project.id) ?? createUnifiedProjectBundle(project, branch?.sourceVersion ?? crypto.randomUUID());
+    if (branch) working.space3d = branch;
+    else if (femStudy !== undefined) working.fem = upsertFemStudy(working.fem, femStudy);
+    else if (design !== undefined) working.design = design;
+    else {
+      if (canonicalJsonKey(working.model2d) !== canonicalJsonKey(project)) working.manifest.sourceVersion = crypto.randomUUID();
+      working.model2d = project;
+    }
+    this.working.set(project.id, working);
+    const write = this.chain.catch(() => undefined).then(async () => {
+      await this.repository.updateRecovery(recoveryId, structuredClone(working));
+      this.status = { issue: 'conflict', message: `Otra pestaña guardó una versión distinta de este proyecto. Lo que editas aquí sigue a salvo en la recuperación ${recoveryId}; elige cuál conservar en Proyectos.` };
+      throw new BundleConflictError(project.id, recoveryId);
+    });
+    this.chain = write;
+    return write;
+  }
   saveSpace3D(project: ProjectModel, branch: LinkedSpace3DBranchV1): Promise<StoredBundleRecord> {
     return this.save(project, structuredClone(branch));
   }
@@ -236,7 +257,13 @@ export class UnifiedProjectSession {
   private save(project: ProjectModel, branch?: LinkedSpace3DBranchV1, femStudy?: JsonValue, design?: JsonValue): Promise<StoredBundleRecord> {
     const detached = structuredClone(project);
     this.active = detached.id;
-    if (this.blocked.has(detached.id)) return Promise.reject(new Error(this.status.message ?? 'Reopen the canonical project before saving.'));
+    if (this.blocked.has(detached.id)) {
+      // Tras un conflicto la pestaña sigue editando: cada edición actualiza la misma
+      // recuperación en vez de rechazarse (antes sólo la primera quedaba guardada).
+      const recoveryId = this.conflictRecovery.get(detached.id);
+      if (!recoveryId) return Promise.reject(new Error(this.status.message ?? 'Reopen the canonical project before saving.'));
+      return this.saveIntoRecovery(detached, recoveryId, branch, femStudy, design);
+    }
     const working = this.currentBundle(detached.id) ?? createUnifiedProjectBundle(detached, branch?.sourceVersion ?? crypto.randomUUID());
     if (branch) working.space3d = branch;
     else if (femStudy !== undefined) working.fem = upsertFemStudy(working.fem, femStudy);
@@ -290,8 +317,10 @@ export class UnifiedProjectSession {
         clearFailure();
         return record;
       } catch (error) {
-        if (error instanceof BundleConflictError) this.blocked.add(detached.id);
-        else this.failedWrite = { projectId: detached.id, space3d: Boolean(branch), fem: femStudy !== undefined, design: design !== undefined };
+        if (error instanceof BundleConflictError) {
+          this.blocked.add(detached.id);
+          this.conflictRecovery.set(detached.id, error.recoveryId);
+        } else this.failedWrite = { projectId: detached.id, space3d: Boolean(branch), fem: femStudy !== undefined, design: design !== undefined };
         this.status = { issue: error instanceof BundleConflictError ? 'conflict' : 'save-failed', message: error instanceof Error ? error.message : String(error) };
         throw error;
       }

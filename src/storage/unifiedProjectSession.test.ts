@@ -313,3 +313,19 @@ it('avisa en cuanto otra pestaña guarda una revisión más nueva del proyecto a
   expect(first.status.issue).toBeNull();
   expect(second.status.issue).toBe('conflict');
 });
+it('keeps saving every edit made after a cross-tab conflict into the same recovery', async () => {
+  const database = new InMemoryBundleDatabase();
+  const project = createDefaultProject();
+  const first = new UnifiedProjectSession(new InMemoryUnifiedBundleRepository(database));
+  await first.save2D(project);
+  const second = new UnifiedProjectSession(new InMemoryUnifiedBundleRepository(database));
+  const opened = (await second.open(project.id))!;
+  await second.save2D({ ...opened, name: 'Desde la otra pestaña' });
+  await expect(first.save2D({ ...project, name: 'Edición 1' })).rejects.toThrow();
+  await expect(first.save2D({ ...project, name: 'Edición 2' })).rejects.toThrow();
+  await expect(first.save2D({ ...project, name: 'Edición 3' })).rejects.toThrow();
+  const recoveries = (await new InMemoryUnifiedBundleRepository(database).snapshot()).recoveries.filter((item) => item.reason === 'conflict');
+  expect(recoveries).toHaveLength(1);
+  expect(recoveries[0]!.bundle?.model2d.name).toBe('Edición 3');
+  expect((await second.open(project.id))?.name).toBe('Desde la otra pestaña');
+});

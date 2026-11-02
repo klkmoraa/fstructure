@@ -67,6 +67,11 @@ export interface UnifiedBundleRepository {
   restoreBundle(bundle: UnifiedProjectBundleV1, expectedRevision: number, options?: { consumedRecoveryId?: string; backups?: readonly UnifiedProjectBundleV1[] }): Promise<StoredBundleRecord>;
   /** Descarta una recuperación por decisión explícita de la persona. */
   deleteRecovery(id: string): Promise<void>;
+  /**
+   * Reescribe el contenido de una recuperación de conflicto con la edición más reciente de la
+   * misma pestaña: una pestaña en conflicto sigue editando y nada de lo que hace se pierde.
+   */
+  updateRecovery(id: string, bundle: UnifiedProjectBundleV1): Promise<void>;
   migrateLegacy(storage: LegacyBundleStorage): Promise<BundleLibrarySnapshot>;
 }
 export class BundleConflictError extends Error {
@@ -286,6 +291,17 @@ abstract class BundleRepository implements UnifiedBundleRepository {
   async deleteRecovery(id: string): Promise<void> {
     await this.database.transaction(true, (state) => {
       if (!state.recoveries.delete(id)) throw new Error(`Recovery ${id} does not exist`);
+    });
+  }
+  async updateRecovery(id: string, input: UnifiedProjectBundleV1): Promise<void> {
+    const bundle = validateBundle(input);
+    const checksum = await sha256(canonicalSerialize(bundle));
+    const timestamp = new Date().toISOString();
+    await this.database.transaction(true, (state) => {
+      const current = state.recoveries.get(id);
+      if (!current || current.reason !== 'conflict') throw new Error(`Recovery ${id} is not a conflict recovery`);
+      if (current.projectId !== bundle.manifest.projectId) throw new Error(`Recovery ${id} belongs to another project`);
+      state.recoveries.set(id, { ...current, bundle, checksum, createdAt: timestamp });
     });
   }
   async migrateLegacy(storage: LegacyBundleStorage): Promise<BundleLibrarySnapshot> {
