@@ -239,10 +239,18 @@ export class PdfLayout {
       x: MARGIN, y: top - TYPE.display, size: TYPE.display, font: this.fonts.bold, color: this.palette.tintDeep,
     });
     const numeralWidth = this.fonts.bold.widthOfTextAtSize(numeral, TYPE.display) + SPACE * 4;
-    this.page.drawText(pdfText(title), {
-      x: MARGIN + numeralWidth, y: top - TYPE.title - 2, size: TYPE.title, font: this.fonts.bold, color: this.palette.ink,
+    // Un título largo («Análisis · Cross (distribución de momentos) en marcos») se reduce hasta
+    // un 15 % y, si aún no cabe, pasa a un segundo renglón: nunca se sale del margen.
+    const available = this.contentWidth - numeralWidth;
+    const shown = pdfText(title);
+    const fitted = Math.max(TYPE.title * 0.85, Math.min(TYPE.title, TYPE.title * available / Math.max(1, this.fonts.bold.widthOfTextAtSize(shown, TYPE.title))));
+    const titleLines = wrapText(title, this.fonts.bold, fitted, available).slice(0, 2);
+    titleLines.forEach((line, index) => {
+      this.page.drawText(line, {
+        x: MARGIN + numeralWidth, y: top - fitted - 2 - index * fitted * 1.15, size: fitted, font: this.fonts.bold, color: this.palette.ink,
+      });
     });
-    this.y = top - TYPE.title - SPACE * 3;
+    this.y = top - fitted - (titleLines.length - 1) * fitted * 1.15 - SPACE * 3;
     if (standfirst) {
       const lines = wrapText(standfirst, this.fonts.regular, TYPE.small, this.contentWidth - numeralWidth);
       for (const line of lines.slice(0, 2)) {

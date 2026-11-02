@@ -111,6 +111,12 @@ export interface ScenePartialMember {
   readonly keep: 'start' | 'end';
 }
 
+export interface SceneBarValue {
+  readonly memberId: string;
+  readonly text: string;
+  readonly tone?: SceneTone;
+}
+
 export interface FreeBodyScene {
   /** Small-caps tag inside the frame; the numbered caption is `layout.figure`'s job. */
   readonly title?: string;
@@ -132,6 +138,12 @@ export interface FreeBodyScene {
   readonly forces?: readonly SceneForce[];
   readonly moments?: readonly SceneMoment[];
   readonly notes?: readonly SceneNote[];
+  /**
+   * La cifra de cada barra escrita en su punto medio, sobre la barra y con fondo de papel, como
+   * en un diagrama de fuerzas de armadura. Con una flecha y un rótulo por barra, una armadura
+   * de 13 barras encimaba las cifras en los nudos.
+   */
+  readonly barValues?: readonly SceneBarValue[];
   /** Frame the drawing on one node instead of the whole model. */
   readonly focus?: { readonly nodeId: string; readonly radius: number };
   /** Legend line under the drawing, naming what the marks mean. */
@@ -211,6 +223,13 @@ const LABEL_SIZE = 7.6;
  */
 /** Cajas de las etiquetas ya escritas en la figura en curso: ninguna otra se pone encima. */
 let placedLabels: Rect[] = [];
+/**
+ * Trazos que una cifra evita (barras, flechas), con su peso: encimarse con otra cifra cuesta 10,
+ * cruzar una barra o una flecha 2 y una barra fantasma 1. Si no hay hueco limpio, la cifra se
+ * queda donde menos cuesta: antes tapa una línea gris que otra cifra.
+ */
+let placedStrokes: { readonly box: Rect; readonly weight: number }[] = [];
+const addStrokes = (boxes: readonly Rect[], weight = 2) => { for (const box of boxes) placedStrokes.push({ box, weight }); };
 
 const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width + 1.5 && b.x < a.x + a.width + 1.5 && a.y < b.y + b.height + 1 && b.y < a.y + a.height + 1;
 
@@ -246,7 +265,8 @@ const placeLabel = (
         baseX + normal.x * step * (LABEL_SIZE + 3) + direction.x * along * 10,
         baseY + normal.y * step * (LABEL_SIZE + 3) + direction.y * along * 10,
       );
-      const hits = placedLabels.reduce((count, other) => count + (overlaps(candidate, other) ? 1 : 0), 0);
+      const hits = placedLabels.reduce((count, other) => count + (overlaps(candidate, other) ? 10 : 0), 0)
+        + placedStrokes.reduce((count, other) => count + (overlaps(candidate, other.box) ? other.weight : 0), 0);
       if (hits < fewest) {
         fewest = hits;
         box = candidate;
@@ -267,6 +287,7 @@ export const drawFreeBodyScene = (
   const { palette, fonts } = layout;
   if (!project.nodes.length) return;
   placedLabels = [];
+  placedStrokes = [];
   const page = layout.page;
   page.drawRectangle({
     x: rect.x, y: rect.y, width: rect.width, height: rect.height,
@@ -307,10 +328,12 @@ export const drawFreeBodyScene = (
     const nj = context.index.node(member.j);
     if (!ni || !nj) continue;
     const line = memberPolyline(member, ni, nj, projection.at);
-    for (let k = 1; k < line.length; k += 1) placedLabels.push(...strokeBoxes(line[k - 1]!, line[k]!));
+    const solid = !scene.keptMemberIds || scene.keptMemberIds.includes(member.id);
+    for (let k = 1; k < line.length; k += 1) addStrokes(strokeBoxes(line[k - 1]!, line[k]!), solid ? 2 : 1);
   }
 
   // Los nudos dibujados y sus nombres también ocupan sitio: ninguna cifra se escribe encima.
+  const nodeBoxStart = placedLabels.length;
   for (const node of project.nodes) {
     const solid = !scene.keptNodeIds || scene.keptNodeIds.includes(node.id);
     if (!solid) continue;
@@ -318,6 +341,7 @@ export const drawFreeBodyScene = (
     placedLabels.push({ x: at.x - 4, y: at.y - 4, width: 8, height: 8 });
     placedLabels.push({ x: at.x + 5, y: at.y + 3, width: fonts.bold.widthOfTextAtSize(pdfText(node.id), 7.4), height: 8.4 });
   }
+  const nodeBoxes = placedLabels.slice(nodeBoxStart);
 
   // A focused scene draws the joint itself on top of the ghost, so it never disappears under
   // the bars that meet there.
@@ -344,6 +368,7 @@ export const drawFreeBodyScene = (
     }
   }
 
+  const loadStrokes: Rect[] = [];
   if (scene.includeMemberLoads) {
     const partial = scene.partialMember;
     drawMemberLoads(context, projection, {
@@ -356,13 +381,17 @@ export const drawFreeBodyScene = (
         ? (partial.keep === 'start' ? partial.ratio : 1)
         : 1,
       labelBoxes: placedLabels,
+      strokeObstacles: loadStrokes,
     });
   }
+
+  addStrokes(loadStrokes);
 
   if (scene.cut) {
     const from = projection.at(scene.cut.from.x, scene.cut.from.y);
     const to = projection.at(scene.cut.to.x, scene.cut.to.y);
     drawDashedLine(layout, from, to, palette.ink, 1.1);
+    addStrokes(strokeBoxes(from, to));
     if (scene.cut.label) {
       const along = Math.hypot(to.x - from.x, to.y - from.y) || 1;
       const where = scene.cut.labelAt ?? 'end';
@@ -375,6 +404,39 @@ export const drawFreeBodyScene = (
       placeLabel(layout, scene.cut.label, anchor, direction, rect, palette.ink);
     }
   }
+
+  // Cifras de barra: en el punto medio y, si ahí chocan con otra, un poco hacia un extremo.
+  const barBoxes: Rect[] = [];
+  for (const value of scene.barValues ?? []) {
+    const member = context.index.member(value.memberId);
+    const ni = member ? context.index.node(member.i) : undefined;
+    const nj = member ? context.index.node(member.j) : undefined;
+    if (!member || !ni || !nj) continue;
+    const line = memberPolyline(member, ni, nj, projection.at);
+    const pointAt = (t: number): Point => {
+      const position = t * (line.length - 1);
+      const k = Math.min(line.length - 2, Math.floor(position));
+      const local = position - k;
+      return { x: line[k]!.x + (line[k + 1]!.x - line[k]!.x) * local, y: line[k]!.y + (line[k + 1]!.y - line[k]!.y) * local };
+    };
+    const size = LABEL_SIZE - 0.4;
+    const width = layout.richWidth(value.text, fonts.bold, size);
+    let chosen: Rect | undefined;
+    for (const t of [0.5, 0.38, 0.62, 0.28, 0.72]) {
+      const at = pointAt(t);
+      const box = { x: at.x - width / 2 - 1.5, y: at.y - size * 0.5 - 1.5, width: width + 3, height: size + 3 };
+      if (![...barBoxes, ...nodeBoxes].some((other) => overlaps(box, other))) {
+        chosen = box;
+        break;
+      }
+      chosen ??= box;
+    }
+    if (!chosen) continue;
+    barBoxes.push(chosen);
+    page.drawRectangle({ x: chosen.x, y: chosen.y, width: chosen.width, height: chosen.height, color: palette.paper });
+    layout.drawRich(value.text, { x: chosen.x + 1.5, y: chosen.y + 1.5 + size * 0.18, size, font: fonts.bold, color: toneColor(context, value.tone ?? 'axial') });
+  }
+  placedLabels.push(...barBoxes);
 
   for (const force of scene.forces ?? []) {
     const anchored = resolvePlace(context, force.place, projection);
@@ -389,7 +451,10 @@ export const drawFreeBodyScene = (
       ? { x: anchored.x + force.fx / magnitude * length, y: anchored.y + force.fy / magnitude * length }
       : anchored;
     const tail = drawArrow(layout, head, force.fx, force.fy, color, length);
-    if (!tail || !force.label) continue;
+    if (!tail) continue;
+    // La flecha también ocupa sitio: ni su cifra ni las siguientes se escriben sobre ella.
+    addStrokes(strokeBoxes(head, tail));
+    if (!force.label) continue;
     // The label goes at the far end of the arrow from the body it belongs to — the head for a
     // force leaving, the tail for one arriving — nudged perpendicular to the shaft so it never
     // lies along the member the arrow springs from.

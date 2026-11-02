@@ -5,11 +5,9 @@
  * its own thresholds (1e-5/1e7 here, 1e-4/1e8 in `clearNumber`, 1e-4/1e7 on screen), so a
  * value could appear in three shapes across the app, the PDF and the annex.
  */
-import type { DiagramQuantity, MemberLoad, ProjectModel } from '../../types';
+import type { DiagramQuantity, ProjectModel } from '../../types';
 import { unitLabel } from '../../engine/units';
 import { toDisplay, type UnitQuantity } from '../../foundation/units';
-import { memberAxis } from '../../graphics/structureGeometry';
-import type { ModelIndex } from './reportContext';
 
 export const safeFilename = (name: string): string => name
   .normalize('NFKD')
@@ -25,6 +23,13 @@ export const safeFilename = (name: string): string => name
  * donde el valor es cero) se escribe 0: ninguna magnitud en m, kN o rad lo necesita.
  */
 const memoirNumber = (value: number, significant: number): string => {
+  const text = plainMemoirNumber(value, significant);
+  // El signo menos de imprenta (−), no el guion: −82.91 se lee como un número, -82.91 no tanto.
+  // Sin la fuente incrustada, `pdfText` lo vuelve guion.
+  return text.startsWith('-') ? `−${text.slice(1)}` : text;
+};
+
+const plainMemoirNumber = (value: number, significant: number): string => {
   if (!Number.isFinite(value)) return 'n/d';
   if (Math.abs(value) < 1e-11) return '0';
   const digits = Math.max(1, Math.min(significant, 4));
@@ -63,10 +68,10 @@ export const formatPolynomial = (
   const terms: string[] = [];
   converted.forEach((coefficient, power) => {
     if (Math.abs(coefficient) <= reference * 1e-10) return;
-    const sign = coefficient < 0 ? '-' : '+';
+    const sign = coefficient < 0 ? '−' : '+';
     const magnitude = clearNumber(Math.abs(coefficient), reference, 5);
     const factor = power === 0 ? magnitude : power === 1 ? `${magnitude} ${variable}` : `${magnitude} ${variable}^${power}`;
-    terms.push(terms.length === 0 ? `${coefficient < 0 ? '-' : ''}${factor}` : `${sign} ${factor}`);
+    terms.push(terms.length === 0 ? `${coefficient < 0 ? '−' : ''}${factor}` : `${sign} ${factor}`);
   });
   return terms.join(' ') || '0';
 };
@@ -96,34 +101,3 @@ export const clearCell = (project: ProjectModel, value: number, quantity: UnitQu
   return clearNumber(displayValue, displayReference);
 };
 
-const loadBasisLabel = (basis: MemberLoad['lengthBasis']): string => basis === 'horizontal'
-  ? 'proyección horizontal'
-  : basis === 'vertical' ? 'proyección vertical' : 'longitud real';
-
-const flexibleMemberLength = (index: ModelIndex, memberId: string): number | undefined => {
-  const member = index.member(memberId);
-  if (!member) return undefined;
-  const ni = index.node(member.i);
-  const nj = index.node(member.j);
-  if (!ni || !nj) return undefined;
-  return memberAxis(member, ni, nj).flexibleLength;
-};
-
-export const memberLoadDescription = (project: ProjectModel, index: ModelIndex, load: MemberLoad): string => {
-  const length = flexibleMemberLength(index, load.memberId);
-  if (load.type === 'distributed') {
-    const start = Math.min(load.start, load.end);
-    const end = Math.max(load.start, load.end);
-    const span = end - start;
-    const interval = length !== undefined
-      ? `dominio x/L=${number(start)} -> ${number(end)} (x=${display(project, start * length, 'length')} -> ${display(project, end * length, 'length')}; longitud real cargada=${display(project, span * length, 'length')}; cobertura=${number(span * 100)}%)`
-      : `dominio x/L=${number(start)} -> ${number(end)} (cobertura=${number(span * 100)}%)`;
-    const intensity = `qx=${display(project, load.qxStart ?? 0, 'distributedForce')} -> ${display(project, load.qxEnd ?? load.qxStart ?? 0, 'distributedForce')}, qy=${display(project, load.qyStart ?? 0, 'distributedForce')} -> ${display(project, load.qyEnd ?? load.qyStart ?? 0, 'distributedForce')}`;
-    return `${interval}; base=${loadBasisLabel(load.lengthBasis)}; ${intensity}`;
-  }
-  const position = Math.min(1, Math.max(0, load.position ?? 0.5));
-  const station = length !== undefined ? `x/L=${number(position)} (x=${display(project, position * length, 'length')})` : `x/L=${number(position)}`;
-  return load.type === 'point'
-    ? `${station}; Px=${display(project, load.px ?? 0, 'force')}, Py=${display(project, load.py ?? 0, 'force')}`
-    : `${station}; M=${display(project, load.moment ?? 0, 'moment')}`;
-};

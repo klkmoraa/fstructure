@@ -24,8 +24,8 @@ import type { MethodOfSectionsResult } from '../../analysis-methods/methodOfSect
 import type { PortalMethodResult } from '../../analysis-methods/portalMethod';
 import type { ThreeMomentResult } from '../../analysis-methods/threeMoment';
 import type { VirtualWorkResult } from '../../analysis-methods/virtualWork';
-import { clearCell, clearDisplay, displayCell, unitFor } from './pdfFormat';
-import { axialDirection, memberMidpoint, type FreeBodyScene, type SceneForce } from './pdfFreeBody';
+import { clearCell, clearDisplay, displayCell, number, unitFor } from './pdfFormat';
+import { axialDirection, memberMidpoint, type FreeBodyScene, type SceneBarValue, type SceneForce, type SceneTone } from './pdfFreeBody';
 import type { Point } from './pdfScene';
 import type { ReportContext } from './reportContext';
 
@@ -286,34 +286,24 @@ export const virtualWorkScenes = (
   const realScale = Math.max(1e-12, ...contributions.map((entry) => Math.abs(entry.axialForce)));
   const virtualScale = Math.max(1e-12, ...contributions.map((entry) => Math.abs(entry.virtualForce)));
 
-  const barForces = (pick: (entry: typeof contributions[number]) => number, symbol: string, scale: number): SceneForce[] =>
-    contributions.flatMap((entry) => {
-      const member = context.index.member(entry.memberId);
-      const midpoint = memberMidpoint(context, entry.memberId);
-      if (!member || !midpoint) return [];
+  // Cada barra con su cifra en el punto medio: N con T o C en el sistema real, n con su signo
+  // en el virtual. Tensión en azul, compresión en rojo, como en el diagrama de resultados.
+  const barValues = (pick: (entry: typeof contributions[number]) => number, scale: number, withSense: boolean): SceneBarValue[] =>
+    contributions.map((entry) => {
       const value = pick(entry);
-      if (Math.abs(value) <= scale * 1e-9) return [];
-      const direction = axialDirection(context, entry.memberId, member.i, value);
-      if (!direction) return [];
-      return [{
-        place: { at: midpoint }, fx: direction.fx, fy: direction.fy, tone: 'axial' as const, anchor: 'tail' as const,
-        label: symbol === 'n'
-          ? `n(${entry.memberId}) = ${value.toFixed(3)}`
-          : barLabel(context, 'N', entry.memberId, value, scale),
-        length: 20,
-      }];
+      const zero = Math.abs(value) <= scale * 1e-9;
+      const tone: SceneTone = zero ? 'faint' : value > 0 ? 'axial' : 'moment';
+      if (!withSense) return { memberId: entry.memberId, text: zero ? '0' : number(value, 4), tone };
+      return { memberId: entry.memberId, text: zero ? '0' : `${clearCell(context.project, Math.abs(value), 'force', scale)} ${value > 0 ? 'T' : 'C'}`, tone };
     });
 
   const direction = narrated.component === 'ux' ? { fx: 1, fy: 0 } : { fx: 0, fy: 1 };
   return [
     {
       title: 'sistema real',
-      forces: [
-        ...externalActionsOn(context, context.project.nodes.map((node) => node.id)),
-        ...barForces((entry) => entry.axialForce, 'N', realScale),
-      ],
-      legend: 'Armadura bajo las cargas reales: N es la fuerza axial de cada barra en este estado. '
-        + 'Las cargas aplicadas y las reacciones son las del modelo.',
+      forces: externalActionsOn(context, context.project.nodes.map((node) => node.id)),
+      barValues: barValues((entry) => entry.axialForce, realScale, true),
+      legend: `Cargas reales y reacciones; en cada barra, N en ${unitFor(context.project, 'force')}: T tensión (azul), C compresión (rojo).`,
     },
     {
       title: 'sistema virtual (carga unitaria)',
@@ -322,10 +312,9 @@ export const virtualWorkScenes = (
           place: { nodeId: narrated.nodeId }, ...direction, tone: 'load', length: 30,
           label: `1 (${narrated.component === 'ux' ? 'horizontal' : 'vertical'}) en ${narrated.nodeId}`,
         },
-        ...barForces((entry) => entry.virtualForce, 'n', virtualScale),
       ],
-      legend: 'La misma armadura sin las cargas reales y con una sola carga unitaria en el nudo y la '
-        + 'dirección de interés: n es la fuerza que esa carga produce en cada barra.',
+      barValues: barValues((entry) => entry.virtualForce, virtualScale, false),
+      legend: 'Sólo la carga unitaria en el nudo y la dirección buscadas; en cada barra, n (positiva a tensión).',
     },
   ];
 };
@@ -341,21 +330,17 @@ export const castiglianoScenes = (
 
   const primary: FreeBodyScene = {
     title: 'estructura primaria',
-    forces: solution.members.flatMap<SceneForce>((entry) => {
-      const member = context.index.member(entry.memberId);
-      const midpoint = memberMidpoint(context, entry.memberId);
-      if (!member || !midpoint) return [];
-      if (Math.abs(entry.primaryForce) <= primaryScale * 1e-9) return [];
-      const direction = axialDirection(context, entry.memberId, member.i, entry.primaryForce);
-      if (!direction) return [];
-      return [{
-        place: { at: midpoint }, fx: direction.fx, fy: direction.fy, tone: 'axial' as const, anchor: 'tail' as const,
-        label: barLabel(context, 'N₀', entry.memberId, entry.primaryForce, primaryScale), length: 20,
-      }];
+    forces: externalActionsOn(context, context.project.nodes.map((node) => node.id)).filter((force) => force.tone !== 'reaction'),
+    barValues: solution.members.map((entry) => {
+      const zero = Math.abs(entry.primaryForce) <= primaryScale * 1e-9;
+      return {
+        memberId: entry.memberId,
+        text: zero ? '0' : `${clearCell(context.project, Math.abs(entry.primaryForce), 'force', primaryScale)} ${entry.primaryForce > 0 ? 'T' : 'C'}`,
+        tone: zero ? 'faint' as const : entry.primaryForce > 0 ? 'axial' as const : 'moment' as const,
+      };
     }),
     notes: [...releasedNodes].map((nodeId) => ({ place: { nodeId }, text: 'apoyo liberado' })),
-    legend: 'La armadura con las reacciones redundantes liberadas, bajo las cargas reales: N₀ es la fuerza '
-      + 'de cada barra en ese estado isostático.',
+    legend: `Redundantes liberadas, cargas reales; en cada barra, N₀ en ${unitFor(context.project, 'force')}: T tensión (azul), C compresión (rojo).`,
   };
 
   const redundantScenes = solution.redundants.map<FreeBodyScene>((redundant) => ({

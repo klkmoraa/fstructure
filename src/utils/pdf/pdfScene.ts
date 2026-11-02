@@ -424,6 +424,8 @@ interface MemberLoadOptions {
   readonly upTo?: (memberId: string) => number;
   /** Donde se apuntan las cajas de las cifras de carga, para que otras etiquetas las eviten. */
   readonly labelBoxes?: Rect[];
+  /** Donde se apuntan los trazos de las flechas de carga: una cifra los evita, pero cede antes que encimarse con otra. */
+  readonly strokeObstacles?: Rect[];
 }
 
 /**
@@ -512,12 +514,12 @@ export const drawMemberLoads = (
         const tail = drawArrow(layout, head, gx, gy, actionColor, 16);
         if (tail) {
           arrowTails.push(tail);
-          options.labelBoxes?.push(...strokeBoxes(head, tail));
+          options.strokeObstacles?.push(...strokeBoxes(head, tail));
         }
       }
       if (arrowTails.length > 1) {
         page.drawLine({ start: arrowTails[0], end: arrowTails.at(-1)!, thickness: 0.9, color: actionColor });
-        options.labelBoxes?.push(...strokeBoxes(arrowTails[0]!, arrowTails.at(-1)!));
+        options.strokeObstacles?.push(...strokeBoxes(arrowTails[0]!, arrowTails.at(-1)!));
       }
       const qStart = Math.hypot(load.qxStart ?? 0, load.qyStart ?? 0);
       const qEnd = Math.hypot(load.qxEnd ?? 0, load.qyEnd ?? 0);
@@ -535,7 +537,7 @@ export const drawMemberLoads = (
       const [gx, gy] = globalVector((load.px ?? 0) * factor, (load.py ?? 0) * factor, position);
       const location = atFlexibleRatio(position);
       const tail = drawArrow(layout, location, gx, gy, actionColor, 22) ?? location;
-      options.labelBoxes?.push(...strokeBoxes(location, tail));
+      options.strokeObstacles?.push(...strokeBoxes(location, tail));
       const magnitude = Math.hypot(load.px ?? 0, load.py ?? 0) * Math.abs(factor);
       label(`P = ${number(toDisplay(magnitude, project.settings.units, 'force'), 4)} ${unitLabel(project.settings.units, 'force')}`, tail.x + 3, tail.y + 4);
     } else {

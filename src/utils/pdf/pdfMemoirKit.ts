@@ -20,6 +20,23 @@ import type { ReportContext } from './reportContext';
 
 const FORMULA_INDENT = 18;
 
+/** Parte un texto con índices en renglones de `width` como máximo, midiendo como `drawRich`. */
+const wrapRich = (context: ReportContext, text: string, font: import('pdf-lib').PDFFont, size: number, width: number): string[] => {
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (line && context.layout.richWidth(candidate, font, size) > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = candidate;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+};
+
 /** Título numerado de un paso del procedimiento («3.2 Reacciones»). */
 export const memoirStep = (context: ReportContext, title: string): void => {
   context.layout.heading(title, 2);
@@ -71,11 +88,17 @@ export const memoirFormula = (
   if (where.length) {
     layout.text('donde:', TYPE.small, layout.fonts.regular, layout.palette.inkSoft, FORMULA_INDENT);
     for (const [symbol, meaning] of where) {
-      layout.ensure(TYPE.small * 1.7);
+      const symbolWidth = measureRuns(mathRuns(symbol), faces, TYPE.small + 0.6);
+      const textX = layout.margin + FORMULA_INDENT + 16 + Math.max(symbolWidth, 34);
+      // Un significado largo sigue en el renglón de abajo, alineado con su primera palabra.
+      const lines = wrapRich(context, `— ${meaning}`, layout.fonts.regular, TYPE.small, layout.margin + layout.contentWidth - textX);
+      layout.ensure(TYPE.small * 1.55 * lines.length + TYPE.small * 0.2);
       const baseline = layout.y - TYPE.small;
-      const used = drawRuns(layout.page, mathRuns(symbol), layout.margin + FORMULA_INDENT + 10, baseline, TYPE.small + 0.6, faces, layout.palette.ink);
-      layout.drawRich(`— ${meaning}`, { x: layout.margin + FORMULA_INDENT + 16 + Math.max(used, 34), y: baseline, size: TYPE.small, font: layout.fonts.regular, color: layout.palette.inkSoft });
-      layout.y -= TYPE.small * 1.55;
+      drawRuns(layout.page, mathRuns(symbol), layout.margin + FORMULA_INDENT + 10, baseline, TYPE.small + 0.6, faces, layout.palette.ink);
+      lines.forEach((line, index) => {
+        layout.drawRich(index ? `  ${line}` : line, { x: textX, y: baseline - index * TYPE.small * 1.45, size: TYPE.small, font: layout.fonts.regular, color: layout.palette.inkSoft });
+      });
+      layout.y -= TYPE.small * 1.45 * (lines.length - 1) + TYPE.small * 1.55;
     }
   }
   layout.gap(1);
@@ -134,9 +157,12 @@ export const memoirResults = (
  */
 export const memoirCheck = (context: ReportContext, text: string, ok: boolean): void => {
   const { layout } = context;
-  layout.ensure(TYPE.body * 2.4);
-  layout.drawRich(`${ok ? 'Comprobación' : 'Comprobación (revisar)'}: ${text}`, {
-    x: layout.margin, y: layout.y - TYPE.body, size: TYPE.body, font: layout.fonts.bold, color: ok ? layout.palette.ok : layout.palette.warn,
+  const lines = wrapRich(context, `${ok ? 'Comprobación' : 'Comprobación (revisar)'}: ${text}`, layout.fonts.bold, TYPE.body, layout.contentWidth);
+  layout.ensure(TYPE.body * (1.4 * lines.length + 1));
+  lines.forEach((line, index) => {
+    layout.drawRich(line, {
+      x: layout.margin, y: layout.y - TYPE.body - index * TYPE.body * 1.4, size: TYPE.body, font: layout.fonts.bold, color: ok ? layout.palette.ok : layout.palette.warn,
+    });
   });
-  layout.y -= TYPE.body * 1.9;
+  layout.y -= TYPE.body * 1.4 * (lines.length - 1) + TYPE.body * 1.9;
 };

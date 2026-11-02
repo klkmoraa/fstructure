@@ -387,7 +387,7 @@ export const freeBodyEquations = (
   const origin = index.node(keptNodeIds[0]);
   if (!origin) return [];
 
-  interface Term { fx: number; fy: number; x: number; y: number; bar?: SeveredBar; nodeId?: string }
+  interface Term { fx: number; fy: number; x: number; y: number; bar?: SeveredBar; nodeId?: string; c?: number; s?: number }
   const terms: Term[] = [];
   const scaleOfForces: number[] = [];
 
@@ -401,7 +401,7 @@ export const freeBodyEquations = (
     // Medido desde el nudo conservado hacia el otro extremo: una barra en tensión tira del nudo
     // hacia ella. (`memberAxis` usa los dos nudos en el orden en que se le pasan.)
     const axis = memberAxis(member, here, far);
-    terms.push({ fx: bar.force * axis.c, fy: bar.force * axis.s, x: here.x, y: here.y, bar });
+    terms.push({ fx: bar.force * axis.c, fy: bar.force * axis.s, x: here.x, y: here.y, bar, c: axis.c, s: axis.s });
     scaleOfForces.push(bar.force);
   }
   for (const nodeId of keptNodeIds) {
@@ -424,7 +424,7 @@ export const freeBodyEquations = (
     : `F_${component === 'fx' ? 'x' : 'y'}(${term.nodeId})`;
   const valued = (term: Term, component: 'fx' | 'fy'): string => {
     if (!term.bar) return dim(project, term[component], 1, 0, scale);
-    const cosine = term.bar.force === 0 ? 0 : term[component] / term.bar.force;
+    const cosine = (component === 'fx' ? term.c : term.s) ?? 0;
     return `(${dim(project, term.bar.force, 1, 0, scale)})(${number(cosine, 4)})`;
   };
 
@@ -432,7 +432,11 @@ export const freeBodyEquations = (
   for (const [component, symbol] of [['fx', 'ΣF_x'], ['fy', 'ΣF_y']] as const) {
     const total = terms.reduce((sum, term) => sum + term[component], 0);
     if (!agrees(total, 0, scale)) continue;
-    const present = terms.filter((term) => Math.abs(term[component]) > scale * 1e-12);
+    // Una barra de fuerza nula entra igual si tiene componente en esa dirección: es la suma que
+    // demuestra que su fuerza es cero (ΣF_y = N_{M1}(1) = 0 en un nudo sin carga vertical).
+    const present = terms.filter((term) => term.bar
+      ? Math.abs((component === 'fx' ? term.c : term.s) ?? 0) > 1e-9
+      : Math.abs(term[component]) > scale * 1e-12);
     if (!present.length) continue;
     equations.push({
       lhs: symbol,
