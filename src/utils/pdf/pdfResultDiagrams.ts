@@ -71,10 +71,27 @@ export const drawResultDiagram = (context: ReportContext, rect: Rect, quantity: 
   const scale = reference > 0 ? amplitude / reference : 0;
   const unit = quantity === 'moment' ? 'moment' as const : 'force' as const;
   const placed: Rect[] = [];
+  // Trazos que ninguna cifra debe cruzar: los ejes de las barras y las curvas de los diagramas.
+  // Se llenan cuando ya se conocen (más abajo), antes de escribir la primera cifra.
+  const strokes: Array<[Point, Point]> = [];
+  const crosses = (box: Rect, [a, b]: [Point, Point]) => {
+    // Liang–Barsky: ¿algún tramo del segmento cae dentro de la caja (con 1 pt de aire)?
+    const x0 = box.x - 1, x1 = box.x + box.width + 1, y0 = box.y - 1, y1 = box.y + box.height + 1;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    let enter = 0, exit = 1;
+    for (const [p, q] of [[-dx, a.x - x0], [dx, x1 - a.x], [-dy, a.y - y0], [dy, y1 - a.y]] as const) {
+      if (Math.abs(p) < 1e-12) { if (q < 0) return false; continue; }
+      const t = q / p;
+      if (p < 0) enter = Math.max(enter, t); else exit = Math.min(exit, t);
+      if (enter > exit) return false;
+    }
+    return true;
+  };
   const fits = (box: Rect) => box.x >= rect.x + 2 && box.x + box.width <= rect.x + rect.width - 2
     && box.y >= rect.y + 2 && box.y + box.height <= rect.y + rect.height - 2
     && !placed.some((other) => box.x < other.x + other.width + 2 && other.x < box.x + box.width + 2
-      && box.y < other.y + other.height + 1 && other.y < box.y + box.height + 1);
+      && box.y < other.y + other.height + 1 && other.y < box.y + box.height + 1)
+    && !strokes.some((segment) => crosses(box, segment));
   const written: Array<{ text: string; at: Point }> = [];
   const label = (text: string, at: Point, outward: Point, force: boolean) => {
     // La misma cifra en el mismo nudo (la viga y la columna que llegan a él, o el extremo
@@ -84,14 +101,18 @@ export const drawResultDiagram = (context: ReportContext, rect: Rect, quantity: 
     written.push({ text, at });
     const shown = pdfText(text);
     const width = fonts.bold.widthOfTextAtSize(shown, LABEL_SIZE);
-    const candidates = [1, 1.8, 2.8].map((reach) => ({
-      x: at.x + outward.x * 6 * reach - (outward.x < -0.3 ? width : outward.x > 0.3 ? 0 : width / 2),
-      y: at.y + outward.y * 6 * reach - (outward.y < -0.3 ? LABEL_SIZE : outward.y > 0.3 ? 0 : LABEL_SIZE / 2),
-    }));
+    // Más lejos a lo largo de la normal y, si no cabe, corrida a un lado o al otro.
+    const tangent = { x: -outward.y, y: outward.x };
+    const candidates = [1, 1.8, 2.8, 4].flatMap((reach) => [0, 1, -1].map((side) => ({
+      x: at.x + outward.x * 6 * reach + tangent.x * side * (width / 2 + 6) - (outward.x < -0.3 ? width : outward.x > 0.3 ? 0 : width / 2),
+      y: at.y + outward.y * 6 * reach + tangent.y * side * (LABEL_SIZE + 4) - (outward.y < -0.3 ? LABEL_SIZE : outward.y > 0.3 ? 0 : LABEL_SIZE / 2),
+    })));
     const box = candidates.map((origin) => ({ x: origin.x, y: origin.y - 1, width, height: LABEL_SIZE + 2 })).find(fits)
       ?? (force ? { x: Math.min(Math.max(candidates[0]!.x, rect.x + 4), rect.x + rect.width - width - 4), y: candidates[0]!.y - 1, width, height: LABEL_SIZE + 2 } : undefined);
     if (!box) return;
     placed.push(box);
+    // Un halo de papel: si una cifra obligada no encontró sitio libre, sigue legible.
+    page.drawRectangle({ x: box.x - 1.5, y: box.y, width: box.width + 3, height: box.height, color: palette.paper, opacity: 0.85 });
     page.drawText(shown, { x: box.x, y: box.y + 1.5, size: LABEL_SIZE, font: fonts.bold, color: palette.ink });
   };
 
@@ -158,6 +179,15 @@ export const drawResultDiagram = (context: ReportContext, rect: Rect, quantity: 
   if (scale === 0) {
     page.drawText(pdfText('Sin valores distintos de cero en este escenario.'), { x: rect.x + 12, y: rect.y + 12, size: TYPE.small, font: fonts.regular, color: palette.inkSoft });
     return;
+  }
+  // Obstáculos para las cifras: el eje de cada barra y la curva de cada diagrama.
+  for (const { member, i, j } of perMember) {
+    const line = memberPolyline(member, i, j, projection.at);
+    for (let k = 1; k < line.length; k += 1) strokes.push([line[k - 1]!, line[k]!]);
+  }
+  for (const { member, samples } of curves) {
+    if (trussBar(member)) continue;
+    for (let k = 1; k < samples.length; k += 1) strokes.push([samples[k - 1]!.tip, samples[k]!.tip]);
   }
   const symbol = quantity === 'axial' ? 'N' : quantity === 'shear' ? 'V' : 'M';
   const write = (value: number) => clearDisplay(project, value, unit, reference);

@@ -64,11 +64,27 @@ export const drawGlobalDcl = (
     drawNodeDot(layout, location, node.id, palette.ink);
     drawSupportGlyph(layout, location, node.support, palette.inkSoft);
   }
+  // Cargas en nudos: los casos del escenario sumados con sus factores, una flecha con su valor.
+  const nodal = new Map<string, { fx: number; fy: number }>();
   for (const load of project.nodalLoads) {
     const factor = scenarioFactors[load.caseId] ?? 0;
-    const location = point(load.nodeId);
-    if (!location || factor === 0 || (load.fx === 0 && load.fy === 0)) continue;
-    drawArrow(layout, location, load.fx * factor, load.fy * factor, palette.load, 24);
+    if (factor === 0 || (load.fx === 0 && load.fy === 0)) continue;
+    const sum = nodal.get(load.nodeId) ?? { fx: 0, fy: 0 };
+    nodal.set(load.nodeId, { fx: sum.fx + load.fx * factor, fy: sum.fy + load.fy * factor });
+  }
+  for (const [nodeId, { fx, fy }] of nodal) {
+    const location = point(nodeId);
+    const magnitude = Math.hypot(fx, fy);
+    if (!location || !(magnitude > 1e-12)) continue;
+    const tail = drawArrow(layout, location, fx, fy, palette.load, 28) ?? location;
+    const text = pdfText(`P = ${clearDisplay(project, magnitude, 'force', magnitude)}`);
+    const width = fonts.bold.widthOfTextAtSize(text, TYPE.micro + 0.4);
+    const horizontal = Math.abs(fx) >= Math.abs(fy);
+    page.drawText(text, {
+      x: horizontal ? (fx > 0 ? tail.x - width - 3 : tail.x + 3) : tail.x + 3,
+      y: horizontal ? tail.y + 4 : tail.y + (fy < 0 ? 2 : -10),
+      size: TYPE.micro + 0.4, font: fonts.bold, color: palette.load,
+    });
   }
   drawMemberLoads(context, projection);
   if (includeReactions) {
