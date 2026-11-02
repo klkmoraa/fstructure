@@ -17,6 +17,7 @@
  */
 import type { PDFDocument, PDFFont, PDFPage } from 'pdf-lib';
 import { pdfText, wrapText } from './pdfGlyphs';
+import { drawRuns, hasMathMarkup, mathRuns, measureRuns } from './pdfInlineMath';
 import { drawMathBlock, drawRawMath, mathWidth, rawMathWidth, hasFraction, needsMath } from './pdfMath';
 import { SPACE, TYPE, type ReportPalette } from './pdfTheme';
 import type { PdfColor, PdfVectorOps, ReportFonts, RgbFactory } from './reportContext';
@@ -137,6 +138,23 @@ export class PdfLayout {
     this.newPage();
   }
 
+  /**
+   * Un renglón de texto: si lleva marcas de índice o exponente (`R_x(N1)`, `× 10^{−5}`) se
+   * dibuja por tramos con subíndices y exponentes reales; si no, tal cual.
+   */
+  drawRich(text: string, options: { x: number; y: number; size: number; font: PDFFont; color: PdfColor; opacity?: number }): void {
+    if (hasMathMarkup(text)) {
+      drawRuns(this.page, mathRuns(text), options.x, options.y, options.size, options.font, options.color);
+      return;
+    }
+    this.page.drawText(pdfText(text), options);
+  }
+
+  /** Ancho de un renglón tal como lo dibuja `drawRich`. */
+  richWidth(text: string, font: PDFFont, size: number): number {
+    return hasMathMarkup(text) ? measureRuns(mathRuns(text), font, size) : font.widthOfTextAtSize(pdfText(text), size);
+  }
+
   newPage(): void {
     this.page = this.doc.addPage(PAGE_SIZE);
     this.pages.push(this.page);
@@ -181,7 +199,7 @@ export class PdfLayout {
     const lineHeight = size * 1.42;
     for (const line of lines) {
       this.ensure(lineHeight);
-      if (line) this.page.drawText(line, { x: MARGIN + indent, y: this.y - size, size, font, color });
+      if (line) this.drawRich(line, { x: MARGIN + indent, y: this.y - size, size, font, color });
       this.y -= lineHeight;
     }
   }
@@ -254,7 +272,7 @@ export class PdfLayout {
     // Un título nunca queda solo al pie: pide sitio para él y unos renglones de lo que encabeza.
     this.ensure(size * 3.2 + TYPE.body * 5);
     this.y -= SPACE * (level === 1 ? 3 : 2);
-    this.page.drawText(pdfText(content), {
+    this.drawRich(content, {
       x: MARGIN,
       y: this.y - size,
       size,
@@ -330,10 +348,10 @@ export class PdfLayout {
       const height = Math.max(labelLines.length, valueLines.length) * size * 1.4 + SPACE * 1.5;
       this.ensure(height);
       const top = this.y;
-      labelLines.forEach((line, index) => this.page.drawText(line, {
+      labelLines.forEach((line, index) => this.drawRich(line, {
         x: MARGIN, y: top - size - index * size * 1.4, size, font: this.fonts.bold, color: this.palette.inkSoft,
       }));
-      valueLines.forEach((line, index) => this.page.drawText(line, {
+      valueLines.forEach((line, index) => this.drawRich(line, {
         x: MARGIN + labelWidth, y: top - size - index * size * 1.4, size, font: this.fonts.regular, color: this.palette.ink,
       }));
       this.y = top - height;
@@ -354,7 +372,7 @@ export class PdfLayout {
       this.ensure(lines.length * lineHeight);
       const top = this.y;
       this.page.drawCircle({ x: MARGIN + 3, y: top - TYPE.body * 0.62, size: 1.3, color: this.palette.inkFaint });
-      lines.forEach((line, index) => this.page.drawText(line, {
+      lines.forEach((line, index) => this.drawRich(line, {
         x: MARGIN + 14, y: top - TYPE.body - index * lineHeight, size: TYPE.body, font: this.fonts.regular, color: this.palette.ink,
       }));
       this.y = top - lines.length * lineHeight - SPACE * 0.5;
@@ -388,7 +406,7 @@ export class PdfLayout {
       });
       cursor -= titleHeight;
     }
-    lines.forEach((line, index) => this.page.drawText(line, {
+    lines.forEach((line, index) => this.drawRich(line, {
       x: MARGIN + 12, y: cursor - TYPE.small - index * TYPE.small * 1.42, size: TYPE.small, font: this.fonts.regular, color: this.palette.ink,
     }));
     this.y = top - height - SPACE * 2;
@@ -413,7 +431,7 @@ export class PdfLayout {
     this.figureCount += 1;
     this.y = bottom - SPACE;
     captionLines.forEach((line, index) => {
-      this.page.drawText(line, {
+      this.drawRich(line, {
         x: MARGIN, y: this.y - TYPE.small - index * TYPE.small * 1.4, size: TYPE.small, font: this.fonts.regular, color: this.palette.inkSoft,
       });
     });
@@ -449,11 +467,11 @@ export class PdfLayout {
         const text = pdfText(column.header);
         const lines = wrapText(text, this.fonts.bold, headerSize, Math.max(1, widths[index] - CELL_PAD_X * 2));
         const shown = lines[0] ?? text;
-        const width = this.fonts.bold.widthOfTextAtSize(shown, headerSize);
+        const width = this.richWidth(shown, this.fonts.bold, headerSize);
         const x = column.align === 'right'
           ? offsets[index] + widths[index] - CELL_PAD_X - width
           : offsets[index] + CELL_PAD_X;
-        this.page.drawText(shown, { x, y: this.y - CELL_PAD_Y - headerSize, size: headerSize, font: this.fonts.bold, color: this.palette.inkSoft });
+        this.drawRich(shown, { x, y: this.y - CELL_PAD_Y - headerSize, size: headerSize, font: this.fonts.bold, color: this.palette.inkSoft });
       });
       this.y -= headerHeight;
       this.page.drawLine({
@@ -502,11 +520,11 @@ export class PdfLayout {
           return;
         }
         lines.forEach((line, lineIndex) => {
-          const width = this.fonts.regular.widthOfTextAtSize(line, size);
+          const width = this.richWidth(line, this.fonts.regular, size);
           const x = column.align === 'right'
             ? offsets[index] + widths[index] - CELL_PAD_X - width
             : offsets[index] + CELL_PAD_X;
-          this.page.drawText(line, { x, y: this.y - CELL_PAD_Y - size - lineIndex * lineHeight, size, font: this.fonts.regular, color: this.palette.ink });
+          this.drawRich(line, { x, y: this.y - CELL_PAD_Y - size - lineIndex * lineHeight, size, font: this.fonts.regular, color: this.palette.ink });
         });
       });
       this.y -= height;
@@ -558,39 +576,45 @@ export class PdfLayout {
    * Running head and footer on every page that is not front matter, stamped once the last page
    * exists so the count is real and each page knows the part it belongs to.
    */
-  stampChrome(projectName: string, documentTitle: string): void {
+  stampChrome(projectName: string, documentTitle: string, sheet: { method?: string; date?: string } = {}): void {
+    // Rótulo de memoria de cálculo: arriba, el proyecto, el documento y el método de esta copia;
+    // abajo, quién calculó y quién revisó, la fecha y la hoja. Es lo que identifica una hoja
+    // suelta de una memoria impresa.
+    const { palette, fonts } = this;
+    const size = TYPE.micro;
     for (const [index, page] of this.pages.entries()) {
       if (this.bare.has(index)) continue;
       const part = this.pageParts[index] || documentTitle;
-      const headY = this.height - 44;
-      page.drawText(pdfText(projectName), {
-        x: MARGIN, y: headY, size: TYPE.micro, font: this.fonts.bold, color: this.palette.ink,
-      });
-      const right = pdfText(part);
-      const rightWidth = this.fonts.regular.widthOfTextAtSize(right, TYPE.micro);
-      page.drawText(right, {
-        x: this.width - MARGIN - rightWidth, y: headY, size: TYPE.micro, font: this.fonts.regular, color: this.palette.inkSoft,
-      });
-      page.drawLine({
-        start: { x: MARGIN, y: headY - 7 },
-        end: { x: this.width - MARGIN, y: headY - 7 },
-        thickness: 0.5,
-        color: this.palette.rule,
+      const top = this.height - 30;
+      const bottomRule = top - 22;
+      page.drawLine({ start: { x: MARGIN, y: top }, end: { x: this.width - MARGIN, y: top }, thickness: 0.9, color: palette.ink });
+      page.drawLine({ start: { x: MARGIN, y: bottomRule }, end: { x: this.width - MARGIN, y: bottomRule }, thickness: 0.5, color: palette.rule });
+      // Franja del acento a la izquierda: la marca de la familia Análisis.
+      page.drawRectangle({ x: MARGIN, y: bottomRule + 0.5, width: 3, height: 21, color: palette.accentFill });
+      const cells: Array<[string, string, number]> = [
+        ['PROYECTO', projectName, 0],
+        ['DOCUMENTO', documentTitle, 0.36],
+        ...(sheet.method ? [['MÉTODO', sheet.method, 0.62] as [string, string, number]] : []),
+      ];
+      for (const [label, value, at] of cells) {
+        const x = MARGIN + 10 + at * (this.contentWidth - 10);
+        page.drawText(label, { x, y: top - 8.5, size: size - 1.4, font: fonts.bold, color: palette.inkFaint });
+        const width = (at === 0.62 ? 1 - at : at === 0 ? 0.34 : 0.24) * (this.contentWidth - 10) - 8;
+        const shown = wrapText(value, fonts.bold, size, width)[0] ?? '';
+        page.drawText(shown, { x, y: top - 18.5, size, font: fonts.bold, color: palette.ink });
+      }
+      // Lo que se está leyendo, bajo el rótulo y a la derecha.
+      const partText = pdfText(part);
+      page.drawText(partText, {
+        x: this.width - MARGIN - fonts.regular.widthOfTextAtSize(partText, size), y: bottomRule - 10, size, font: fonts.regular, color: palette.inkSoft,
       });
 
-      page.drawLine({
-        start: { x: MARGIN, y: 42 },
-        end: { x: this.width - MARGIN, y: 42 },
-        thickness: 0.5,
-        color: this.palette.rule,
-      });
-      page.drawText(pdfText(documentTitle), {
-        x: MARGIN, y: 30, size: TYPE.micro, font: this.fonts.regular, color: this.palette.inkFaint,
-      });
-      const folio = pdfText(`página ${index + 1} de ${this.pages.length}`);
-      const folioWidth = this.fonts.regular.widthOfTextAtSize(folio, TYPE.micro);
+      page.drawLine({ start: { x: MARGIN, y: 44 }, end: { x: this.width - MARGIN, y: 44 }, thickness: 0.5, color: palette.rule });
+      const signature = pdfText(`Calculó: ____________    Revisó: ____________    Fecha: ${sheet.date ?? '____________'}`);
+      page.drawText(signature, { x: MARGIN, y: 31, size, font: fonts.regular, color: palette.inkSoft });
+      const folio = pdfText(`Hoja ${index + 1} de ${this.pages.length}`);
       page.drawText(folio, {
-        x: this.width - MARGIN - folioWidth, y: 30, size: TYPE.micro, font: this.fonts.regular, color: this.palette.inkFaint,
+        x: this.width - MARGIN - fonts.bold.widthOfTextAtSize(folio, size), y: 31, size, font: fonts.bold, color: palette.ink,
       });
     }
   }

@@ -8,7 +8,8 @@
  * subíndice) que se miden y dibujan con la fuente incrustada.
  */
 import type { PDFFont, PDFPage } from 'pdf-lib';
-import { pdfDrawsGlyph, pdfText, scriptMarker } from './pdfGlyphs';
+import { pdfText, scriptMarker } from './pdfGlyphs';
+import { ALL_UNIT_LABELS } from '../../engine/units';
 import type { PdfColor } from './reportContext';
 
 /** 0 = línea base, 1 = superíndice, −1 = subíndice. */
@@ -128,8 +129,10 @@ const scriptArgument = (text: string, start: number): { value: string; next: num
 export const mathRuns = (expression: string): MathRun[] => {
   // Un índice Unicode que la fuente no tiene (ₑ, ˡ…) pasa a marca `_`/`^` ANTES de leer las
   // alturas: transliterado después salía como texto («f_e^l»).
+  // Todos los índices Unicode (², ₁, ᵧ, ⁻…) se dibujan por altura: así se ven igual en la cara
+  // de texto y en la de fórmulas, que no tienen los mismos glifos.
   const text = Array.from(polish(flattenLatex(expression)))
-    .map((character) => pdfDrawsGlyph(character) ? character : scriptMarker(character) ?? character)
+    .map((character) => scriptMarker(character) ?? character)
     .join('');
   const runs: MathRun[] = [];
   const push = (value: string, level: MathRun['level']) => {
@@ -157,9 +160,67 @@ export const mathRuns = (expression: string): MathRun[] => {
 
 const runSize = (run: MathRun, size: number) => run.level === 0 ? size : size * SCRIPT_SCALE;
 
+/**
+ * Caras de una fórmula: las variables (una letra, latina o griega minúscula) en cursiva y todo
+ * lo demás —cifras, operadores, unidades, nombres de nudos y barras, palabras— recto, como se
+ * escribe una ecuación a mano o en LaTeX.
+ */
+export interface MathFaces {
+  readonly upright: PDFFont;
+  readonly italic: PDFFont;
+}
+type FaceArgument = PDFFont | MathFaces;
+const isFaces = (value: FaceArgument): value is MathFaces => typeof (value as MathFaces).upright === 'object';
+
+/** Átomos de las unidades que el producto escribe (kN, m, rad, kgf…): van rectos tras una cifra. */
+const UNIT_ATOMS = new Set([...ALL_UNIT_LABELS].flatMap((label) => label.split(/[·/²³⁴^0-9 ]+/)).filter(Boolean));
+
+interface Piece { readonly text: string; readonly italic: boolean }
+
+/** Parte un tramo en piezas rectas y cursivas según la regla de arriba. */
+const piecesOf = (text: string): Piece[] => {
+  // Una griega mayúscula pegada a otra letra (ΣF, ΔX) es un operador sobre la variable: va sola.
+  const tokens = text.match(/[\u0391-\u03A9](?=\p{L})|\p{L}+\p{N}*|\p{N}+(?:[.,]\p{N}+)?|\s+|[\s\S]/gu) ?? [];
+  const pieces: Piece[] = [];
+  let afterNumber = false;
+  let inUnit = false;
+  for (const token of tokens) {
+    let italic = false;
+    if (/^\p{N}/u.test(token)) {
+      afterNumber = true;
+      inUnit = false;
+    } else if (/^\s+$/.test(token)) {
+      if (inUnit) inUnit = false;
+    } else if (/^\p{L}/u.test(token)) {
+      const word = token.replace(/\p{N}+$/u, '');
+      const label = word.length < token.length;
+      const unit = (afterNumber || inUnit) && UNIT_ATOMS.has(word);
+      if (unit) inUnit = true;
+      else {
+        inUnit = false;
+        const greekUpper = /^[\u0391-\u03A9]$/.test(word);
+        const variable = !label && (word.length === 1 || /^[A-Z]{2}$/.test(word));
+        italic = variable && !greekUpper;
+      }
+      afterNumber = false;
+    } else if (!(inUnit && /[·/]/.test(token))) {
+      afterNumber = false;
+      inUnit = false;
+    }
+    const last = pieces[pieces.length - 1];
+    if (last && last.italic === italic) pieces[pieces.length - 1] = { text: last.text + token, italic };
+    else pieces.push({ text: token, italic });
+  }
+  return pieces;
+};
+
+const pieceFont = (faces: FaceArgument, italic: boolean) => isFaces(faces) ? (italic ? faces.italic : faces.upright) : faces;
+const piecesFor = (run: MathRun, faces: FaceArgument): Piece[] => isFaces(faces) ? piecesOf(run.text) : [{ text: run.text, italic: false }];
+
 /** Ancho dibujado de los tramos. */
-export const measureRuns = (runs: readonly MathRun[], font: PDFFont, size: number): number =>
-  runs.reduce((total, run) => total + font.widthOfTextAtSize(pdfText(run.text), runSize(run, size)), 0);
+export const measureRuns = (runs: readonly MathRun[], faces: FaceArgument, size: number): number =>
+  runs.reduce((total, run) => total + piecesFor(run, faces).reduce((sum, piece) =>
+    sum + pieceFont(faces, piece.italic).widthOfTextAtSize(pdfText(piece.text), runSize(run, size)), 0), 0);
 
 /** Dibuja los tramos con la línea base en `baseline`; devuelve el ancho usado. */
 export const drawRuns = (
@@ -168,16 +229,22 @@ export const drawRuns = (
   x: number,
   baseline: number,
   size: number,
-  font: PDFFont,
+  faces: FaceArgument,
   color: PdfColor,
 ): number => {
   let cursor = x;
   for (const run of runs) {
-    const shown = pdfText(run.text);
     const scaled = runSize(run, size);
     const y = baseline + (run.level === 1 ? size * RISE : run.level === -1 ? -size * DROP : 0);
-    page.drawText(shown, { x: cursor, y, size: scaled, font, color });
-    cursor += font.widthOfTextAtSize(shown, scaled);
+    for (const piece of piecesFor(run, faces)) {
+      const shown = pdfText(piece.text);
+      const font = pieceFont(faces, piece.italic);
+      page.drawText(shown, { x: cursor, y, size: scaled, font, color });
+      cursor += font.widthOfTextAtSize(shown, scaled);
+    }
   }
   return cursor - x;
 };
+
+/** ¿Lleva el texto marcas de índice o exponente (`R_x`, `x^2`, `\\xi`)? Entonces se dibuja por tramos. */
+export const hasMathMarkup = (text: string): boolean => /[\p{L}\p{N})\]]_[\p{L}\p{N}{(]|[\p{L}\p{N})\]]\^[-−+\p{L}\p{N}{(]|\\[A-Za-z]{2,}/u.test(text);

@@ -139,23 +139,13 @@ const drawGenericProcedure = (context: ReportContext): void => {
 export const drawProcedurePart = (context: ReportContext): void => {
   const { layout, solutionMethod: method } = context;
   layout.part(
-    'Análisis',
-    method && method !== 'matrix-stiffness'
-      ? 'El método elegido, desarrollado con los números de esta estructura.'
-      : 'Cada paso del análisis matricial, con la operación que realmente se hizo.',
+    `Análisis · ${METHOD_LABEL[method]}`,
+    method === 'portal-method' || method === 'cantilever-method'
+      ? 'Método aproximado para carga lateral; su diferencia con el análisis exacto se indica al final.'
+      : method === 'matrix-stiffness'
+        ? 'Método matricial de rigidez, paso a paso con los números de esta estructura.'
+        : 'Procedimiento desarrollado con los números de esta estructura y comprobado contra el análisis matricial.',
   );
-  layout.keyValues([
-    ['Motor de resultados', 'Matriz de rigidez (autoritativo)'],
-    ['Procedimiento documentado', METHOD_LABEL[method]],
-    [
-      'Estado',
-      method === 'portal-method' || method === 'cantilever-method'
-        ? 'Aproximación didáctica; la brecha contra la matriz se muestra en el procedimiento.'
-        : method === 'matrix-stiffness'
-          ? 'Cálculo directo del motor.'
-          : 'Reconstrucción procedural verificada contra el análisis matricial.',
-    ],
-  ]);
   if (method === 'matrix-stiffness') {
     drawGenericProcedure(context);
     return;

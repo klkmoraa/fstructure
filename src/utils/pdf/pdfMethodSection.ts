@@ -54,6 +54,7 @@ import {
   signedSum,
 } from './pdfSubstitution';
 import { pdfText } from './pdfGlyphs';
+import { memoirCheck, memoirFormula, memoirNote, memoirResults, memoirStep, memoirWork } from './pdfMemoirKit';
 import { asWorkedEquation, drawWorkedEquation, measureWorkedEquation, type EquationInput } from './pdfEquation';
 import type { PdfTableColumn, PdfTableOptions } from './pdfBuilder';
 import type { ReportContext } from './reportContext';
@@ -530,133 +531,74 @@ const drawConjugateBeam = (context: ReportContext, solution: ConjugateBeamResult
 
 const drawThreeMoment = (context: ReportContext, solution: ThreeMomentResult): void => {
   const { layout, project } = context;
-  const { fonts, palette } = layout;
   const lengthUnit = unitFor(project, 'length');
   const momentUnit = unitFor(project, 'moment');
+  const supports = solution.supportMoments;
+  const momentScale = Math.max(1, ...supports.map((entry) => Math.abs(entry.value)));
+  const moment = (value: number) => clearNumber(value, momentScale);
 
-  layout.heading('5. Procedimiento: Teorema de los Tres Momentos');
-  layout.text(
-    'La incógnita aquí no es una reacción, como en la doble integración, sino el momento en cada '
-    + 'apoyo interior. Cada vano se resuelve primero como si fuera una viga simplemente apoyada '
-    + 'bajo sus propias cargas — el «momento libre» — y la ecuación de Clapeyron impone, en cada '
-    + 'apoyo interior, que la pendiente que ese momento libre produciría a cada lado, corregida '
-    + 'por los momentos de apoyo todavía desconocidos, coincida entre ambos vanos.',
-    8.7, fonts.regular, undefined, 8,
-  );
-  // Clapeyron's equation used to be printed as the identity and left there. What follows is
-  // the same equation once, per interior support, with this beam's own spans, stiffnesses,
-  // first moments and solved support moments substituted in — and it is only printed when
-  // both sides really do close on the solved moments, so the memoir never shows an equality
-  // that its own numbers do not satisfy.
-  for (const [k, span] of solution.spans.slice(0, -1).entries()) {
-    const right = solution.spans[k + 1];
-    const left = span;
-    const moments = solution.supportMoments;
-    const [mPrev, mHere, mNext] = [moments[k]?.value ?? 0, moments[k + 1]?.value ?? 0, moments[k + 2]?.value ?? 0];
-    const flexLeft = left.length / left.EI;
-    const flexRight = right.length / right.EI;
-    const lhs = flexLeft * mPrev + 2 * (flexLeft + flexRight) * mHere + flexRight * mNext;
+  layout.heading('5. Método de los tres momentos (ecuación de Clapeyron)');
+  memoirNote(context, `Viga continua de ${solution.spans.length} vanos, hiperestática de grado ${solution.classification.indeterminacy}. `
+    + 'Incógnitas: los momentos en los apoyos interiores. Se escribe una ecuación de Clapeyron por cada apoyo interior.');
+
+  memoirStep(context, '5.1 Datos de los vanos');
+  memoirNote(context, 'Cada vano se toma como viga simplemente apoyada bajo sus propias cargas (momento libre M₀). '
+    + 'A·ā y A·b̄ son los momentos estáticos del diagrama M₀/EI respecto a cada extremo.');
+  layout.table([
+    { header: 'Vano' },
+    { header: `L (${lengthUnit})`, align: 'right' },
+    { header: 'EI (kN·m²)', align: 'right' },
+    { header: 'A·ā (kN·m³)', align: 'right' },
+    { header: 'A·b̄ (kN·m³)', align: 'right' },
+  ], solution.spans.map((span, index) => [
+    `${index + 1}  (${span.leftNodeId} – ${span.rightNodeId})`,
+    number(span.length),
+    number(span.EI),
+    clearNumber(span.firstMomentLeft, Math.max(1, Math.abs(span.firstMomentLeft))),
+    clearNumber(span.firstMomentRight, Math.max(1, Math.abs(span.firstMomentRight))),
+  ]));
+
+  memoirStep(context, '5.2 Planteamiento');
+  memoirFormula(context, 'M_{i−1} L_i/(EI)_i + 2 M_i (L_i/(EI)_i + L_{i+1}/(EI)_{i+1}) + M_{i+1} L_{i+1}/(EI)_{i+1} = −6 (A_i ā_i/(EI L)_i + A_{i+1} b̄_{i+1}/(EI L)_{i+1})', [
+    ['M_i', `momento en el apoyo interior i (${momentUnit})`],
+    ['L_i, (EI)_i', 'longitud y rigidez del vano a la izquierda del apoyo i'],
+    ['A ā, A b̄', 'momento estático del diagrama de momento libre respecto al extremo lejano'],
+  ]);
+
+  memoirStep(context, '5.3 Desarrollo');
+  const equations: EquationInput[] = [];
+  for (const [k, left] of solution.spans.slice(0, -1).entries()) {
+    const right = solution.spans[k + 1]!;
+    const [mPrev, mHere, mNext] = [supports[k]?.value ?? 0, supports[k + 1]?.value ?? 0, supports[k + 2]?.value ?? 0];
+    const fl = left.length / left.EI;
+    const fr = right.length / right.EI;
+    const lhs = fl * mPrev + 2 * (fl + fr) * mHere + fr * mNext;
     const rhs = -6 * (left.firstMomentLeft / (left.EI * left.length) + right.firstMomentRight / (right.EI * right.length));
     if (Math.abs(lhs - rhs) > 1e-6 * Math.max(1, Math.abs(rhs))) continue;
-    const flex = (value: number) => dimensionalFigure(project, value, -1, -1, Math.max(flexLeft, flexRight));
-    const moment = (value: number) => dimensionalFigure(project, value, 1, 1, Math.max(1, Math.abs(mPrev), Math.abs(mHere), Math.abs(mNext)));
-    const equation = `${flex(flexLeft)}(${moment(mPrev)}) + 2(${flex(flexLeft)} + ${flex(flexRight)})(${moment(mHere)})`
-      + ` + ${flex(flexRight)}(${moment(mNext)}) = ${number(lhs, 6)} = ${number(rhs, 6)}`
-      + ` = −6(${dimensionalFigure(project, left.firstMomentLeft, 1, 3)}/${dimensionalFigure(project, left.EI * left.length, 1, 3)}`
-      + ` + ${dimensionalFigure(project, right.firstMomentRight, 1, 3)}/${dimensionalFigure(project, right.EI * right.length, 1, 3)})`;
-    layout.text(
-      `Apoyo interior ${moments[k + 1]?.nodeId ?? k + 1}: los coeficientes van en 1/(${unitFor(project, 'force')}·${lengthUnit}) y los momentos en ${momentUnit}.`,
-      7.9, fonts.bold, palette.ink, 12,
-    );
-    drawRelation(context, equation);
+    const node = supports[k + 1]?.nodeId ?? String(k + 1);
+    const [sPrev, sHere, sNext] = [supports[k]?.symbol ?? `M_${k}`, supports[k + 1]?.symbol ?? `M_${k + 1}`, supports[k + 2]?.symbol ?? `M_${k + 2}`];
+    equations.push(`Apoyo ${node}:  ${number(fl)} ${sPrev} + 2(${number(fl)} + ${number(fr)}) ${sHere} + ${number(fr)} ${sNext} = −6(${number(left.firstMomentLeft)}/${number(left.EI * left.length)} + ${number(right.firstMomentRight)}/${number(right.EI * right.length)}) = ${number(rhs)}`);
   }
+  const known = supports.filter((_entry, index) => index === 0 || index === supports.length - 1)
+    .map((entry) => `${entry.symbol} = ${moment(entry.value)} ${momentUnit}`).join(';  ');
+  if (known) memoirNote(context, `Extremos simplemente apoyados: ${known}.`);
+  memoirWork(context, equations);
 
-  layout.heading('5.1 Clasificación estática', 2);
-  const degree = solution.classification.indeterminacy;
-  layout.text(
-    `g = ${degree}: ${degree} apoyo${degree === 1 ? '' : 's'} interior${degree === 1 ? '' : 'es'}, y otras tantas ecuaciones de Clapeyron — una por cada pareja de vanos consecutivos.`,
-    8.7, fonts.regular, undefined, 8,
-  );
-
-  layout.heading('5.2 Vanos y momento libre', 2);
-  layout.text(
-    'El vano n se resuelve como viga simplemente apoyada entre sus dos apoyos, bajo sus propias '
-    + 'cargas. Aₙaₙ y Aₙbₙ son el primer momento de ese diagrama respecto de cada extremo — lo '
-    + 'que la ecuación de Clapeyron necesita, no el área ni el centroide por separado.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Vano', width: 70 },
-      { header: `L (${lengthUnit})`, ...NUMERIC },
-      { header: 'EI (kN·m²)', ...NUMERIC },
-      { header: `Aₙaₙ (kN·m³)`, ...NUMERIC, math: true },
-      { header: `Aₙbₙ (kN·m³)`, ...NUMERIC, math: true },
-    ],
-    solution.spans.map((span) => [
-      `${span.leftNodeId}–${span.rightNodeId}`,
-      number(span.length, 5),
-      number(span.EI, 6),
-      clearNumber(span.firstMomentLeft, Math.max(1, Math.abs(span.firstMomentLeft))),
-      clearNumber(span.firstMomentRight, Math.max(1, Math.abs(span.firstMomentRight))),
-    ]),
-    { size: 7.6 },
-  );
-
-  layout.heading('5.3 Momentos de apoyo resueltos', 2);
-  layout.text(
-    'La última columna es lo que el análisis matricial reporta en ese mismo apoyo: el método y '
-    + 'el solver tienen que coincidir.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Apoyo', width: 90, math: true },
-      { header: `Tres momentos (${momentUnit})`, ...NUMERIC },
-      { header: `Análisis matricial (${momentUnit})`, ...NUMERIC },
-    ],
-    solution.supportMoments.map((entry) => [
-      `${entry.symbol} — ${entry.nodeId}`,
-      displayCell(project, entry.value, 'moment'),
-      displayCell(project, entry.solverMoment, 'moment'),
-    ]),
-    { size: 7.8 },
-  );
+  memoirResults(context, 'Momentos en los apoyos', supports.map((entry) => [`${entry.symbol} (${entry.nodeId})`, `${moment(entry.value)} ${momentUnit}`]));
 
   drawScenes(
     context,
     threeMomentScenes(context, solution),
-    (_scene, index) => `Vano ${index + 1}: aislado bajo sus propias cargas, con los momentos de apoyo que Clapeyron resolvió.`,
+    (_scene, index) => `Vano ${index + 1} aislado con sus cargas y los momentos de apoyo obtenidos.`,
   );
 
-  layout.heading('5.4 Momento final por tramo', 2);
-  layout.text(
-    'El momento libre de cada vano, más la corrección lineal entre los momentos de apoyo que ya se '
-    + 'resolvieron. La variable x se mide desde el extremo izquierdo de la viga, y los coeficientes '
-    + 'de abajo son los de esta viga.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  for (const [index, segment] of solution.segments.entries()) {
-    layout.ensure(40);
-    layout.text(
-      `Tramo ${index + 1}: de x = ${number(segment.x0, 5)} a x = ${number(segment.x1, 5)} ${lengthUnit}`,
-      8, fonts.bold, palette.ink, 8,
-    );
-    const expressionText = `M(x) = ${expression(segment.moment)}`;
-    drawRelation(context, expressionText);
-  }
+  memoirStep(context, '5.4 Momento flector en cada vano');
+  memoirFormula(context, 'M(x) = M_0(x) + M_{izq} (1 − x/L) + M_{der} x/L');
+  memoirWork(context, solution.segments.map((segment, index) => `M_{${index + 1}}(x) = ${expression(segment.moment)}  (${number(segment.x0)} ≤ x ≤ ${number(segment.x1)} ${lengthUnit})`));
 
-  layout.heading('5.5 Verificación contra el análisis matricial', 2);
-  layout.text(
-    'Los dos caminos parten del mismo modelo y llegan por separado: si no coincidieran, el '
-    + 'procedimiento de arriba estaría mal. Ésta es la diferencia máxima medida, entre el momento '
-    + 'de apoyo que resuelve este método y el que reporta el análisis matricial en ese mismo punto.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  layout.text(
-    `Diferencia máxima: ${clearNumber(solution.momentResidual, 1)} ${momentUnit}.`,
-    8.7, fonts.bold, palette.ink, 8,
-  );
+  memoirStep(context, '5.5 Comprobación');
+  const worst = supports.reduce((largest, entry) => Math.max(largest, Math.abs(entry.value - entry.solverMoment)), 0);
+  memoirCheck(context, `momentos de apoyo contra el análisis matricial, diferencia máxima ${clearNumber(worst, momentScale)} ${momentUnit}.`, worst <= 1e-3 * momentScale);
 };
 
 const drawVirtualWork = (context: ReportContext, solution: VirtualWorkResult): void => {

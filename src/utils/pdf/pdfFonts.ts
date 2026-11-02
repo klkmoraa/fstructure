@@ -13,11 +13,19 @@
 import regularUrl from '@ibm/plex-sans/fonts/complete/woff/IBMPlexSans-Regular.woff?url';
 import semiboldUrl from '@ibm/plex-sans/fonts/complete/woff/IBMPlexSans-SemiBold.woff?url';
 import italicUrl from '@ibm/plex-sans/fonts/complete/woff/IBMPlexSans-Italic.woff?url';
+// Las fórmulas van en IBM Plex Serif: variables en cursiva, cifras y operadores rectos y el
+// resultado en seminegrita, como en una memoria escrita a mano o en LaTeX. El texto sigue en Sans.
+import mathRegularUrl from '@ibm/plex-serif/fonts/complete/woff/IBMPlexSerif-Regular.woff?url';
+import mathItalicUrl from '@ibm/plex-serif/fonts/complete/woff/IBMPlexSerif-Italic.woff?url';
+import mathBoldUrl from '@ibm/plex-serif/fonts/complete/woff/IBMPlexSerif-SemiBold.woff?url';
 
 export interface ReportFontFaces {
   readonly regular: Uint8Array;
   readonly bold: Uint8Array;
   readonly italic: Uint8Array;
+  readonly mathRegular: Uint8Array;
+  readonly mathItalic: Uint8Array;
+  readonly mathBold: Uint8Array;
 }
 
 const read = async (url: string): Promise<Uint8Array> => {
@@ -29,10 +37,10 @@ const read = async (url: string): Promise<Uint8Array> => {
 
 let cached: Promise<ReportFontFaces | null> | undefined;
 
-/** Las tres caras, o `null` si no se pudieron leer (la memoria usa entonces las estándar). */
+/** Las caras de texto y de fórmulas, o `null` si no se pudieron leer (la memoria usa entonces las estándar). */
 export const loadReportFontFaces = (): Promise<ReportFontFaces | null> => {
-  cached ??= Promise.all([read(regularUrl), read(semiboldUrl), read(italicUrl)])
-    .then(([regular, bold, italic]) => ({ regular, bold, italic }))
+  cached ??= Promise.all([read(regularUrl), read(semiboldUrl), read(italicUrl), read(mathRegularUrl), read(mathItalicUrl), read(mathBoldUrl)])
+    .then(([regular, bold, italic, mathRegular, mathItalic, mathBold]) => ({ regular, bold, italic, mathRegular, mathItalic, mathBold }))
     .catch(() => {
       // Un fallo no se recuerda: la siguiente exportación lo vuelve a intentar.
       cached = undefined;

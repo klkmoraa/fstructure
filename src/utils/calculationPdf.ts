@@ -21,7 +21,7 @@ import { drawSummaryPart } from './pdf/pdfSummarySection';
 import { drawConclusionsPart, drawGeneralDataPart } from './pdf/pdfMemoirSections';
 import { drawSegmentCalculationPart } from './pdf/pdfSegmentCalculationSection';
 import { drawScopePart } from './pdf/pdfScopeSection';
-import { drawProcedurePart } from './pdf/pdfProcedureSection';
+import { drawProcedurePart, METHOD_LABEL } from './pdf/pdfProcedureSection';
 import { drawModelPart } from './pdf/pdfModelSection';
 import { drawMaterialsPart } from './pdf/pdfMaterialsSection';
 import { drawResultsPart } from './pdf/pdfResultsSection';
@@ -109,12 +109,15 @@ export const createCalculationReport = async (
   if (faces) {
     const { default: fontkit } = await import('@pdf-lib/fontkit');
     pdf.registerFontkit(fontkit);
-    const [regular, bold, italic] = await Promise.all([
+    const [regular, bold, , mathRegular, mathItalic, mathBold] = await Promise.all([
       pdf.embedFont(faces.regular, { subset: true }),
       pdf.embedFont(faces.bold, { subset: true }),
       pdf.embedFont(faces.italic, { subset: true }),
+      pdf.embedFont(faces.mathRegular, { subset: true }),
+      pdf.embedFont(faces.mathItalic, { subset: true }),
+      pdf.embedFont(faces.mathBold, { subset: true }),
     ]);
-    fonts = { regular, bold, mathRegular: regular, mathItalic: italic, mathSymbol: regular };
+    fonts = { regular, bold, mathRegular, mathItalic, mathSymbol: mathRegular, mathBold };
   } else {
     fonts = {
       regular: await pdf.embedFont(StandardFonts.Helvetica),
@@ -122,6 +125,7 @@ export const createCalculationReport = async (
       mathRegular: await pdf.embedFont(StandardFonts.TimesRoman),
       mathItalic: await pdf.embedFont(StandardFonts.TimesRomanItalic),
       mathSymbol: await pdf.embedFont(StandardFonts.Symbol),
+      mathBold: await pdf.embedFont(StandardFonts.TimesRomanBold),
     };
   }
   setPdfGlyphCoverage(faces ? fonts.regular.getCharacterSet() : null);
@@ -169,7 +173,10 @@ export const createCalculationReport = async (
     drawCoverPage(context, coverIndex, PROFESSIONAL_NOTE);
     drawContentsPage(layout, contentsIndex);
     attachOutline(pdf, { PDFName, PDFArray, PDFNumber, PDFHexString }, layout.sections);
-    layout.stampChrome(project.name, DOCUMENT_TITLE);
+    const generated = new Date(payload.provenance.generatedAt);
+    const date = Number.isNaN(generated.valueOf()) ? undefined
+      : `${String(generated.getDate()).padStart(2, '0')}/${String(generated.getMonth() + 1).padStart(2, '0')}/${generated.getFullYear()}`;
+    layout.stampChrome(project.name, DOCUMENT_TITLE, { method: METHOD_LABEL[solutionMethod], date });
 
     const bytes = await attachPortablePayload(context);
     return {

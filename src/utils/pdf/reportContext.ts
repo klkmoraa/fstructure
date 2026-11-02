@@ -93,6 +93,8 @@ export interface ReportFonts {
   readonly mathItalic: import('pdf-lib').PDFFont;
   /** Adobe Symbol: the Greek and the operators the WinAnsi faces cannot encode. */
   readonly mathSymbol: import('pdf-lib').PDFFont;
+  /** Resultado de una fórmula (seminegrita de la cara de fórmulas). */
+  readonly mathBold?: import('pdf-lib').PDFFont;
 }
 
 /**

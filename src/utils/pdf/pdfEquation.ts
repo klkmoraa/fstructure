@@ -17,7 +17,7 @@
  */
 import { ALL_UNIT_LABELS } from '../../engine/units';
 import { translateExpression } from './mathLatex';
-import { drawMathBlock, hasFraction, mathWidth } from './pdfMath';
+import { drawMathBlock, hasFraction, mathFaces, mathWidth, resultFaces } from './pdfMath';
 import { drawRuns, mathRuns, measureRuns } from './pdfInlineMath';
 import { pdfText } from './pdfGlyphs';
 import type { PdfLayout } from './pdfBuilder';
@@ -165,11 +165,21 @@ const nativeRows = (equation: WorkedEquation): string[] => {
 
 const NATIVE_LEADING = 1.55;
 
-/** `lhs = regla = sustitución = resultado unidad` en un renglón, la forma de una nota de cálculo. */
-const nativeInline = (equation: WorkedEquation): string => {
+/**
+ * La relación en un renglón: `lhs = regla = sustitución = ` y el resultado aparte, porque se
+ * escribe en seminegrita (lo que se busca en una memoria es la cifra final).
+ */
+const nativeParts = (equation: WorkedEquation): { body: string; result?: string } => {
   const rows = nativeRows(equation);
-  return rows.length ? `${equation.lhs} = ${rows.join(' = ')}` : equation.lhs;
+  if (!rows.length) return { body: equation.lhs };
+  if (equation.result === undefined) return { body: `${equation.lhs} = ${rows.join(' = ')}` };
+  const body = [equation.lhs, ...rows.slice(0, -1)].join(' = ');
+  return { body: `${body} = `, result: rows[rows.length - 1] };
 };
+
+const partsWidth = (layout: PdfLayout, parts: { body: string; result?: string }, size: number) =>
+  measureRuns(mathRuns(parts.body), mathFaces(layout), size)
+  + (parts.result ? measureRuns(mathRuns(parts.result), resultFaces(layout), size) : 0);
 
 /**
  * Una relación corta cabe en un renglón y se lee mejor así; partirla en tres filas sólo tiene
@@ -177,20 +187,30 @@ const nativeInline = (equation: WorkedEquation): string => {
  * geometría de un pórtico llenaba páginas.
  */
 const fitsInline = (layout: PdfLayout, equation: WorkedEquation, size: number, available: number): boolean =>
-  measureRuns(mathRuns(nativeInline(equation)), layout.fonts.mathRegular, size) + size * 3 <= available * 0.94;
+  partsWidth(layout, nativeParts(equation), size) + size * 3 <= available * 0.94;
 
 /** Geometría del bloque alineado nativo, o `null` si no cabe en la medida. */
 const nativeAligned = (layout: PdfLayout, equation: WorkedEquation, size: number, available: number) => {
   const rows = nativeRows(equation);
   if (!rows.length) return null;
-  const font = layout.fonts.mathRegular;
-  const lhsWidth = measureRuns(mathRuns(equation.lhs), font, size);
-  const equals = font.widthOfTextAtSize(' = ', size);
+  const faces = mathFaces(layout);
+  const lhsWidth = measureRuns(mathRuns(equation.lhs), faces, size);
+  const equals = faces.upright.widthOfTextAtSize(' = ', size);
   // Reserva para el número de la ecuación, que va a la derecha.
   const tagRoom = size * 3;
-  const widest = Math.max(...rows.map((row) => measureRuns(mathRuns(row), font, size)));
+  const widest = Math.max(...rows.map((row, index) => measureRuns(mathRuns(row), index === rows.length - 1 && equation.result !== undefined ? resultFaces(layout) : faces, size)));
   if (lhsWidth + equals + widest + tagRoom > available) return null;
   return { rows, lhsWidth, equals };
+};
+
+/** El número de la ecuación, a la derecha y en gris. */
+const drawTag = (layout: PdfLayout, tag: string, baseline: number, size: number) => {
+  const shown = pdfText(tag);
+  const tagSize = size * 0.85;
+  const font = layout.fonts.regular;
+  layout.page.drawText(shown, {
+    x: layout.margin + layout.contentWidth - font.widthOfTextAtSize(shown, tagSize), y: baseline, size: tagSize, font, color: layout.palette.inkFaint,
+  });
 };
 
 /** Height `drawWorkedEquation` will consume, so a caller can break the page first. */
@@ -237,38 +257,28 @@ export const drawWorkedEquation = (
     return layout.drawRawMathAt(latex, size, indent, color, tag);
   }
   if (fitsInline(layout, equation, size, available)) {
-    const font = layout.fonts.mathRegular;
+    const parts = nativeParts(equation);
     const baseline = layout.y - size;
-    drawRuns(layout.page, mathRuns(nativeInline(equation)), layout.margin + indent, baseline, size, font, color);
-    if (tag) {
-      const shown = pdfText(tag);
-      const tagSize = size * 0.9;
-      layout.page.drawText(shown, {
-        x: layout.margin + layout.contentWidth - font.widthOfTextAtSize(shown, tagSize), y: baseline, size: tagSize, font, color: layout.palette.inkFaint,
-      });
-    }
+    const x = layout.margin + indent;
+    const used = drawRuns(layout.page, mathRuns(parts.body), x, baseline, size, mathFaces(layout), color);
+    if (parts.result) drawRuns(layout.page, mathRuns(parts.result), x + used, baseline, size, resultFaces(layout), color);
+    if (tag) drawTag(layout, tag, baseline, size);
     return size * NATIVE_LEADING + size * 0.35;
   }
   const native = nativeAligned(layout, equation, size, available);
   if (native) {
-    const font = layout.fonts.mathRegular;
+    const faces = mathFaces(layout);
     const x = layout.margin + indent;
     const column = x + native.lhsWidth;
     native.rows.forEach((row, index) => {
       const baseline = layout.y - size - index * size * NATIVE_LEADING;
-      if (index === 0) drawRuns(layout.page, mathRuns(equation.lhs), x, baseline, size, font, color);
-      layout.page.drawText(pdfText(' = '), { x: column, y: baseline, size, font, color });
-      drawRuns(layout.page, mathRuns(row), column + native.equals, baseline, size, font, color);
+      if (index === 0) drawRuns(layout.page, mathRuns(equation.lhs), x, baseline, size, faces, color);
+      layout.page.drawText(pdfText(' = '), { x: column, y: baseline, size, font: faces.upright, color });
+      const last = index === native.rows.length - 1 && equation.result !== undefined;
+      drawRuns(layout.page, mathRuns(row), column + native.equals, baseline, size, last ? resultFaces(layout) : faces, color);
     });
-    if (tag) {
-      // Junto al centro del bloque: numera la relación entera, no su última fila.
-      const shown = pdfText(tag);
-      const tagSize = size * 0.9;
-      const middle = layout.y - size - ((native.rows.length - 1) * size * NATIVE_LEADING) / 2;
-      layout.page.drawText(shown, {
-        x: layout.margin + layout.contentWidth - font.widthOfTextAtSize(shown, tagSize), y: middle, size: tagSize, font, color: layout.palette.inkFaint,
-      });
-    }
+    // Junto al centro del bloque: numera la relación entera, no su última fila.
+    if (tag) drawTag(layout, tag, layout.y - size - ((native.rows.length - 1) * size * NATIVE_LEADING) / 2, size);
     return native.rows.length * size * NATIVE_LEADING + size * 0.5;
   }
   return drawMathBlock(layout, inlineExpression(equation), layout.margin + indent, layout.y, available, size, color, { tag });

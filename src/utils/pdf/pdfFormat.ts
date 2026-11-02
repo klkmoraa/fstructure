@@ -9,7 +9,6 @@ import type { DiagramQuantity, MemberLoad, ProjectModel } from '../../types';
 import { unitLabel } from '../../engine/units';
 import { toDisplay, type UnitQuantity } from '../../foundation/units';
 import { memberAxis } from '../../graphics/structureGeometry';
-import { formatNearZero, formatNumber } from '../numberFormat';
 import type { ModelIndex } from './reportContext';
 
 export const safeFilename = (name: string): string => name
@@ -20,14 +19,34 @@ export const safeFilename = (name: string): string => name
   .toLowerCase() || 'fusionstructure-project';
 
 /**
- * Un residuo de punto flotante (7.1e-15 donde el valor es cero) no es una cifra: se escribe 0.
- * Ninguna magnitud del informe en m, kN o rad tiene sentido por debajo de 1e-11.
+ * Cifras de memoria de cálculo: cuatro significativas (79.59 kN, 0.5392, 2.161 rad), enteros
+ * desde mil (77 719 → 77719) y la notación científica escrita como en papel, `6.433 × 10^{−5}`
+ * (el exponente se dibuja volado), nunca `6.43344e-5`. Un residuo de punto flotante (7.1e-15
+ * donde el valor es cero) se escribe 0: ninguna magnitud en m, kN o rad lo necesita.
  */
-export const number = (value: number, digits = 6): string =>
-  formatNumber(Math.abs(value) < 1e-11 ? 0 : value, 'report', { significantDigits: digits });
+const memoirNumber = (value: number, significant: number): string => {
+  if (!Number.isFinite(value)) return 'n/d';
+  if (Math.abs(value) < 1e-11) return '0';
+  const digits = Math.max(1, Math.min(significant, 4));
+  const magnitude = Math.abs(value);
+  const strip = (text: string) => text.includes('.') ? text.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '') : text;
+  if (magnitude >= 1e6 || magnitude < 1e-3) {
+    const [mantissa, rawExponent] = value.toExponential(digits - 1).split('e');
+    const exponent = Number(rawExponent);
+    return `${strip(mantissa!)} × 10^{${exponent < 0 ? '−' : ''}${Math.abs(exponent)}}`;
+  }
+  if (magnitude >= 1000) return String(Math.round(value));
+  const text = strip(String(Number(value.toPrecision(digits))));
+  return text === '-0' ? '0' : text;
+};
 
-export const clearNumber = (value: number, reference = 1, digits = 5): string =>
-  formatNearZero(value, reference, 'report', { significantDigits: digits });
+export const number = (value: number, digits = 6): string => memoirNumber(value, digits);
+
+export const clearNumber = (value: number, reference = 1, digits = 5): string => {
+  const scale = Math.max(1, Math.abs(Number.isFinite(reference) ? reference : 1));
+  if (Number.isFinite(value) && Math.abs(value) <= 1e-9 * scale) return '0';
+  return memoirNumber(value, digits);
+};
 
 export const quantityUnit = (quantity: DiagramQuantity): UnitQuantity => quantity === 'moment' ? 'moment' : 'force';
 

@@ -11,10 +11,14 @@ import { isVectorMathAvailable, MathTypesetError, typesetLatex } from './mathTyp
 import type { ParsedFormula } from './mathTypeset';
 import { drawFormula, measureFormula } from './mathVector';
 import { pdfText } from './pdfGlyphs';
-import { drawRuns, mathRuns, measureRuns } from './pdfInlineMath';
-import type { PDFFont } from 'pdf-lib';
+import { drawRuns, mathRuns, measureRuns, type MathFaces } from './pdfInlineMath';
 import type { PdfLayout } from './pdfBuilder';
 import type { PdfColor } from './reportContext';
+
+/** Las caras de las fórmulas: Plex Serif recta y cursiva (o las estándar sin fuentes incrustadas). */
+export const mathFaces = (layout: Pick<PdfLayout, 'fonts'>): MathFaces => ({ upright: layout.fonts.mathRegular, italic: layout.fonts.mathItalic });
+/** Las del resultado de una relación: en seminegrita. */
+export const resultFaces = (layout: Pick<PdfLayout, 'fonts'>): MathFaces => ({ upright: layout.fonts.mathBold ?? layout.fonts.bold, italic: layout.fonts.mathBold ?? layout.fonts.bold });
 
 /** Expressions already reported by `safeTypeset`, so one bad string warns once, not per page. */
 const warnedExpressions = new Set<string>();
@@ -69,7 +73,7 @@ export const hasFraction = (expression: string): boolean => isVectorMathAvailabl
 
 export const mathWidth = (layout: PdfLayout, expression: string, size: number): number => {
   const parsed = safeTypeset(expression);
-  if (!parsed) return measureRuns(mathRuns(expression), layout.fonts.mathRegular, size);
+  if (!parsed) return measureRuns(mathRuns(expression), mathFaces(layout), size);
   return measureFormula(parsed, size).widthPt;
 };
 
@@ -101,14 +105,14 @@ interface MathBlockOptions {
  * `drawMathBlock` draws such an expression as plain prose anyway (see `safeTypeset`), so the
  * packing only has to stay finite and roughly sane.
  */
-const packMathLines = (expression: string, width: number, size: number, indent: number, font: PDFFont): string[] => {
+const packMathLines = (expression: string, width: number, size: number, indent: number, faces: MathFaces): string[] => {
   const atoms = atomize(expression);
   if (!atoms.length) return [];
 
   const lineWidth = (line: readonly string[]): number => {
     const joined = line.join(' ');
     const parsed = safeTypeset(joined);
-    if (!parsed) return measureRuns(mathRuns(joined), font, size);
+    if (!parsed) return measureRuns(mathRuns(joined), faces, size);
     return measureFormula(parsed, size).widthPt;
   };
 
@@ -151,7 +155,7 @@ export const drawMathBlock = (
   options: MathBlockOptions = {},
 ): number => {
   const indent = options.continuationIndent ?? size * 1.6;
-  const lines = packMathLines(expression, width, size, indent, layout.fonts.mathRegular);
+  const lines = packMathLines(expression, width, size, indent, mathFaces(layout));
   if (!lines.length) return 0;
 
   let consumed = 0;
@@ -168,7 +172,7 @@ export const drawMathBlock = (
       // Sin motor TeX: la misma fuente del documento a tres alturas (`pdfInlineMath.ts`), con
       // el ancho que el empaquetador ya midió así.
       baseline = top - consumed - size;
-      drawRuns(layout.page, mathRuns(lineExpression), cursor, baseline, size, layout.fonts.mathRegular, color);
+      drawRuns(layout.page, mathRuns(lineExpression), cursor, baseline, size, mathFaces(layout), color);
       consumed += size * 1.5;
     }
     if (options.tag && index === lines.length - 1) {
