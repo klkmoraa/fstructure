@@ -37,6 +37,17 @@ describe('memoria de cálculo PDF', () => {
     }
   }, 240_000);
 
+  it('el arco del inicio (biarticulado) se exporta por trabajo mínimo y por cada método que aplica', async () => {
+    const { project, analysis, combination } = solved('arch');
+    const availability = inspectPdfMethodAvailability(project, analysis, { id: '__pdf_export__', name: 'x', factors: combination.factors });
+    const methods = SOLUTION_METHODS.filter((method) => availability[method.id].available);
+    expect(methods.map((method) => method.id)).toContain('arch-least-work');
+    for (const method of methods) {
+      const report = await createCalculationReport(project, analysis, { solutionMethod: method.id, scenarioName: combination.name, scenarioFactors: combination.factors });
+      expect(report.bytes.length, method.id).toBeGreaterThan(10_000);
+    }
+  }, 240_000);
+
   it('incrusta IBM Plex Sans y escribe las fórmulas sin LaTeX ni marcas crudas', async () => {
     const { project, analysis, combination } = solved('beam-simple');
     const report = await createCalculationReport(project, analysis, { solutionMethod: 'conjugate-beam', scenarioName: combination.name, scenarioFactors: combination.factors });

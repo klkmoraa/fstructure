@@ -27,13 +27,14 @@
  *
  * The method analyses lateral load only. Gravity on the frame — vertical loads across the
  * beams, loads along the columns, self-weight — is not refused but *declared* (`excluded`): its
- * effect comes from a separate analysis and is superposed, as in the textbook. A member load
- * that does push the frame sideways is still refused (`lateralActions.ts`).
+ * effect comes from a separate analysis and is superposed, as in the textbook. A horizontal load
+ * on a column becomes two joint loads at its levels, split by statics and declared as part of the
+ * approximation (`conversions`); a sideways load on a beam is still refused (`lateralActions.ts`).
  */
 import { analyzeProject } from '../engine/solver';
 import type { LoadCombination, ProjectModel } from '../types';
 import { buildFrameGrid, restrainsRotation, type FrameGrid } from './frameGeometry';
-import { lateralOnlyProject, splitLateralActions, type ExcludedAction } from './lateralActions';
+import { baseLevelFx, lateralOnlyProject, splitLateralActions, type ExcludedAction, type LateralConversion } from './lateralActions';
 import { classifyStructure } from './structureClassification';
 
 export interface PortalColumn {
@@ -94,6 +95,10 @@ export interface PortalMethodResult {
   reactionGap: { force: number; moment: number };
   /** Gravity actions of the combination this lateral analysis leaves out, to be superposed separately. */
   excluded: ExcludedAction[];
+  /** Horizontal loads on columns, turned into joint loads at their levels. */
+  conversions: LateralConversion[];
+  /** Lateral load at each node after the conversion: what the storeys carry. */
+  jointLoads: Map<string, number>;
 }
 
 interface PortalMethodRejection {
@@ -151,7 +156,7 @@ export const solvePortalMethod = (
   // Lateral-only variant of the model: the honest oracle to disclose the gap against, isolating
   // exactly the load this method reasons about so the comparison is not muddied by gravity loads
   // the Portal Method never claimed to carry.
-  const lateralAnalysis = analyzeProject(lateralOnlyProject(project, combinedFx), null, { includeEducationTrace: false });
+  const lateralAnalysis = analyzeProject(lateralOnlyProject(project, split.directFx, split.lateralMemberLoads), null, { includeEducationTrace: false });
   if (!lateralAnalysis.success) return { applicable: false, reasonKey: 'method.rejectedGeometry' };
 
   // Column shear, and the moment each column exerts on its two joints — both fixed by the
@@ -238,7 +243,8 @@ export const solvePortalMethod = (
     const first = columnAt.get(`${c}-1`)!;
     const solver = solverByNode.get(nodeId);
     if (!solver) continue;
-    const approxRx = -first.shear;
+    // A lateral load at the foundation level goes straight into the support.
+    const approxRx = -first.shear - baseLevelFx(grid, combinedFx, c);
     const approxRy = -first.axial;
     const approxRm = -first.bottomMoment;
     baseChecks.push({
@@ -264,5 +270,7 @@ export const solvePortalMethod = (
     baseChecks,
     reactionGap: { force: forceGap, moment: momentGap },
     excluded: split.excluded,
+    conversions: split.conversions,
+    jointLoads: combinedFx,
   };
 };

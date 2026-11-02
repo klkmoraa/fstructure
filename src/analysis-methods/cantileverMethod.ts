@@ -39,7 +39,7 @@
 import { analyzeProject } from '../engine/solver';
 import type { LoadCombination, ProjectModel } from '../types';
 import { buildFrameGrid, restrainsRotation, type FrameGrid } from './frameGeometry';
-import { lateralOnlyProject, splitLateralActions, type ExcludedAction } from './lateralActions';
+import { baseLevelFx, lateralOnlyProject, splitLateralActions, type ExcludedAction, type LateralConversion } from './lateralActions';
 import { classifyStructure } from './structureClassification';
 
 export interface CantileverColumn {
@@ -90,6 +90,10 @@ export interface CantileverMethodResult {
   reactionGap: { force: number; moment: number };
   /** Gravity actions of the combination this lateral analysis leaves out, to be superposed separately. */
   excluded: ExcludedAction[];
+  /** Horizontal loads on columns, turned into joint loads at their levels. */
+  conversions: LateralConversion[];
+  /** Lateral load at each node after the conversion. */
+  jointLoads: Map<string, number>;
 }
 
 interface CantileverMethodRejection {
@@ -146,7 +150,7 @@ export const solveCantileverMethod = (
   if (!anyLateralLoad) return { applicable: false, reasonKey: 'method.rejectedNoLateralLoad' };
 
   // The honest oracle, as in the Portal Method: the same frame under the lateral joint loads alone.
-  const lateralAnalysis = analyzeProject(lateralOnlyProject(project, combinedFx), null, { includeEducationTrace: false });
+  const lateralAnalysis = analyzeProject(lateralOnlyProject(project, split.directFx, split.lateralMemberLoads), null, { includeEducationTrace: false });
   if (!lateralAnalysis.success) return { applicable: false, reasonKey: 'method.rejectedGeometry' };
 
   const inflectionFractionOf = (story: number): number => (story === 1 && groundPinned ? 0 : 0.5);
@@ -267,7 +271,8 @@ export const solveCantileverMethod = (
     const first = columnAt.get(`${c}-1`)!;
     const solver = solverByNode.get(nodeId);
     if (!solver) continue;
-    const approxRx = -first.shear;
+    // A lateral load at the foundation level goes straight into the support.
+    const approxRx = -first.shear - baseLevelFx(grid, combinedFx, c);
     const approxRy = -first.axial;
     const approxRm = -first.bottomMoment;
     baseChecks.push({
@@ -292,5 +297,7 @@ export const solveCantileverMethod = (
     baseChecks,
     reactionGap: { force: forceGap, moment: momentGap },
     excluded: split.excluded,
+    conversions: split.conversions,
+    jointLoads: combinedFx,
   };
 };

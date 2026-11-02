@@ -21,15 +21,38 @@
  * Convención (la del solver, en ejes locales de la barra): N positiva a tensión, V(s) = suma
  * de fuerzas en +y local a la izquierda del corte, M(s) positivo con dM/ds = V.
  *
- * Alcance deliberadamente estrecho: barras rectas, sin resortes ni vínculos, sin excentricidades
- * rígidas, sin anillos cerrados y sin segundo orden. Lo que no cabe se rechaza con una razón;
- * un método que no coincidiera con el solver no sería una segunda opinión, sería un error.
+ * Barras curvas (arcos circulares nativos): sus cargas se reducen sobre el arco verdadero
+ * (`arcStatics.ts`), las ecuaciones globales y de articulación son las mismas, y cada arco se
+ * corta en estaciones: N(φ), V(φ) y M(φ) salen del cuerpo libre izquierdo con N a lo largo de la
+ * tangente y V hacia la izquierda de i→j. Como el solver sustituye el arco por cuerdas, la
+ * comparación en un arco admite el mayor entre 1e-3 y 2δ/f relativo (δ, la flecha de una cuerda
+ * de su malla; f, la del arco): una diferencia de ese orden es la del polígono, no del método.
+ *
+ * Alcance deliberadamente estrecho: sin resortes ni vínculos, sin excentricidades rígidas, sin
+ * anillos cerrados y sin segundo orden. Lo que no cabe se rechaza con una razón; un método que no
+ * coincidiera con el solver no sería una segunda opinión, sería un error.
  */
 import { evaluateSegment } from '../engine/diagram';
 import { withResolvedGeneratedLoads } from '../engine/generatedLoads';
 import { selectedFactors } from '../engine/solver';
 import { solveLinearSystem } from '../foundation/linearAlgebra';
 import type { AnalysisResult, GlobalResultant, LoadCombination, MemberModel, NodeModel, ProjectModel } from '../types';
+import type { CircularArcGeometry } from '../graphics/memberCurve';
+import {
+  arcCutAt,
+  arcLoadsOf,
+  arcLoadsTotal,
+  arcPoint,
+  arcTangent,
+  basisLength as arcBasisLength,
+  distributedCentroid,
+  isUniformGlobal,
+  lineOfActionPoint,
+  memberArc,
+  nearConcentrated,
+  type ArcCut,
+  type ArcLoad,
+} from './arcStatics';
 import { add, evaluate, shift, trim } from './polynomialAlgebra';
 import { classifyStructure, type StructureClassification } from './structureClassification';
 
@@ -52,7 +75,7 @@ export interface StaticsUnknown {
   solverValue: number;
 }
 
-export type LoadResultantKind = 'nodal' | 'point' | 'couple' | 'uniform' | 'triangular' | 'self-weight';
+export type LoadResultantKind = 'nodal' | 'point' | 'couple' | 'uniform' | 'triangular' | 'self-weight' | 'arc';
 
 /** An applied action reduced to a force at a point (or a couple), straight from the project data. */
 export interface LoadResultant {
@@ -82,6 +105,8 @@ export interface LoadResultant {
   /** Distributed loads: where the loaded stretch starts and how long it is, along the member. */
   loadStart?: number;
   loadLength?: number;
+  /** Repartida sobre un arco: dónde empieza y cuánto mide el trozo cargado, a lo largo del arco. */
+  arcSpan?: { from: number; length: number };
 }
 
 /** One term of an equilibrium sum. */
@@ -182,16 +207,42 @@ export interface CutStretch {
   shearZeros: Array<{ s: number; moment: number }>;
 }
 
+/** One station of a curved member: the cut by statics and the solver at the same point. */
+export interface ArcStation extends ArcCut {
+  solver: StretchValues;
+}
+
+/** The cuts of a curved member, station by station: its N, V, M are not polynomials in s. */
+export interface ArcMemberCuts {
+  geometry: CircularArcGeometry;
+  loads: ArcLoad[];
+  /** Stations every 1/12 of the arc, for the table. */
+  stations: ArcStation[];
+  /** The cut written out in full: where |M| peaks. */
+  worked: ArcStation;
+  /** Polygon of the solver: chords, and the largest gap δ between a chord and the arc. */
+  solverChords: number;
+  chordSagitta: number;
+  /** Relative tolerance the arc is checked against: max(1e-3, 2δ/f). */
+  tolerance: number;
+  /** Largest gaps at the checked stations. */
+  residual: { force: number; moment: number };
+}
+
 export interface MemberCuts {
   memberId: string;
   startNodeId: string;
   endNodeId: string;
+  /** Length along the axis (the arc length on a curved member). */
   length: number;
-  /** Direction cosines of the member axis. */
+  /** Direction cosines of the member axis (its tangent at node i on a curved member). */
   c: number;
   s: number;
   start: MemberStartForces;
+  /** Polynomial stretches of a straight member; empty on a curved one. */
   stretches: CutStretch[];
+  /** Present on a curved member. */
+  arc?: ArcMemberCuts;
   /** Largest |M| on the member and where. */
   peakMoment: { s: number; value: number };
 }
@@ -221,6 +272,20 @@ type StaticsSectionsOutcome = StaticsSectionsResult | StaticsSectionsRejection;
 
 /** Relative tolerance against the solver's own numbers, as the method registry requires. */
 const MATCH_TOLERANCE = 1e-6;
+/** Floor of the relative tolerance on a curved member, which the solver meshes with chords. */
+export const ARC_MATCH_TOLERANCE = 1e-3;
+
+/**
+ * The solver's polygon for an arc (`prepareCurvedAnalysis`): one chord per π/64 of sweep, at
+ * least eight. Returns the chord count, the largest gap δ between a chord and the arc, and the
+ * relative tolerance max(1e-3, 2δ/f) with f the rise of the arc over its own chord.
+ */
+export const arcSolverPolygon = (arc: CircularArcGeometry): { chords: number; sagitta: number; rise: number; tolerance: number } => {
+  const chords = Math.max(8, Math.ceil(Math.abs(arc.sweep) / (Math.PI / 64)));
+  const sagitta = arc.radius * (1 - Math.cos(Math.abs(arc.sweep) / chords / 2));
+  const rise = arc.radius * (1 - Math.cos(Math.abs(arc.sweep) / 2));
+  return { chords, sagitta, rise, tolerance: Math.max(ARC_MATCH_TOLERANCE, (2 * sagitta) / Math.max(rise, 1e-12)) };
+};
 
 const reject = (reasonKey: string): StaticsSectionsRejection => ({ applicable: false, reasonKey });
 
@@ -268,6 +333,8 @@ interface MemberGeometry {
   length: number;
   c: number;
   s: number;
+  /** Circular arc of a curved member; `length` is then the arc length. */
+  arc?: CircularArcGeometry;
 }
 
 /** A member load in local axes, per unit real length, in the solver's own reading of it. */
@@ -359,12 +426,92 @@ const componentFrom = (
   return reached;
 };
 
+/** Stations of the table: every twelfth of the arc. */
+const TABLE_STATIONS = 12;
+/** Stations checked against the solver, and sampled for the peak moment. */
+const CHECK_STATIONS = 48;
+const PEAK_SAMPLES = 192;
+
+/**
+ * The cuts of one arc, station by station, each checked against the solver's diagram at the same
+ * arc length. Returns `undefined` when they do not land on it within the polygon's tolerance.
+ */
+const cutArc = (
+  arc: CircularArcGeometry,
+  loads: readonly ArcLoad[],
+  start: MemberStartForces,
+  analysis: AnalysisResult,
+  memberId: string,
+  forceScale: number,
+  momentScale: number,
+): { cuts: ArcMemberCuts; peak: { s: number; value: number } } | undefined => {
+  const result = analysis.memberResults.find((entry) => entry.memberId === memberId);
+  if (!result || !result.diagramSegments.length || (result.startOffset ?? 0) !== 0) return undefined;
+  const side = { fx: start.fx, fy: start.fy, moment: start.moment };
+  const solverAt = (s: number): StretchValues | undefined => {
+    const segment = result.diagramSegments.find((entry) => s >= entry.x0 && s <= entry.x1)
+      ?? (s <= result.diagramSegments[0]!.x0 ? result.diagramSegments[0] : result.diagramSegments[result.diagramSegments.length - 1]);
+    if (!segment) return undefined;
+    const value = evaluateSegment(segment, s);
+    return { axial: value.axial, shear: value.shear, moment: value.moment };
+  };
+  const station = (t: number): ArcStation | undefined => {
+    const cut = arcCutAt(arc, loads, side, t);
+    const solver = solverAt(cut.s);
+    return solver ? { ...cut, solver } : undefined;
+  };
+  const polygon = arcSolverPolygon(arc);
+  let force = 0;
+  let moment = 0;
+  for (let k = 0; k <= CHECK_STATIONS; k += 1) {
+    const t = k / CHECK_STATIONS;
+    // A concentrated action is a jump: the solver's diagram there could be either side of it.
+    if (nearConcentrated(loads, t)) continue;
+    const entry = station(t);
+    if (!entry) return undefined;
+    force = Math.max(force, Math.abs(entry.axial - entry.solver.axial), Math.abs(entry.shear - entry.solver.shear));
+    moment = Math.max(moment, Math.abs(entry.moment - entry.solver.moment));
+  }
+  if (force > polygon.tolerance * forceScale || moment > polygon.tolerance * momentScale) return undefined;
+
+  const stations: ArcStation[] = [];
+  for (let k = 0; k <= TABLE_STATIONS; k += 1) {
+    const entry = station(k / TABLE_STATIONS);
+    if (!entry) return undefined;
+    stations.push(entry);
+  }
+  // Peak |M|: sampled, then refined by golden section between the neighbours of the best sample.
+  const magnitude = (t: number) => Math.abs(arcCutAt(arc, loads, side, t).moment);
+  let best = 0;
+  for (let k = 1; k <= PEAK_SAMPLES; k += 1) if (magnitude(k / PEAK_SAMPLES) > magnitude(best / PEAK_SAMPLES)) best = k;
+  let low = Math.max(0, (best - 1) / PEAK_SAMPLES);
+  let high = Math.min(1, (best + 1) / PEAK_SAMPLES);
+  const ratio = (Math.sqrt(5) - 1) / 2;
+  for (let iteration = 0; iteration < 60; iteration += 1) {
+    const a = high - ratio * (high - low);
+    const b = low + ratio * (high - low);
+    if (magnitude(a) >= magnitude(b)) high = b;
+    else low = a;
+  }
+  const candidates = [best / PEAK_SAMPLES, (low + high) / 2];
+  const peakT = candidates.reduce((winner, t) => (magnitude(t) > magnitude(winner) ? t : winner), candidates[0]!);
+  const worked = station(peakT);
+  if (!worked) return undefined;
+  return {
+    cuts: {
+      geometry: arc, loads: [...loads], stations, worked,
+      solverChords: polygon.chords, chordSagitta: polygon.sagitta, tolerance: polygon.tolerance,
+      residual: { force, moment },
+    },
+    peak: { s: worked.s, value: worked.moment },
+  };
+};
+
 export const solveStaticsSections = (
   rawProject: ProjectModel,
   analysis: AnalysisResult,
   combination: LoadCombination | null = null,
 ): StaticsSectionsOutcome => {
-  if (rawProject.members.some((member) => member.curve)) return reject('method.rejectedCurvedMember');
   const classification = classifyStructure(rawProject);
   if (classification.kind !== 'simple-beam' && classification.kind !== 'continuous-beam' && classification.kind !== 'frame') {
     return reject('method.rejectedStaticsKind');
@@ -405,8 +552,17 @@ export const solveStaticsSections = (
     if (!ni || !nj || member.i === member.j) return reject('method.rejectedStaticsMembers');
     const length = Math.hypot(nj.x - ni.x, nj.y - ni.y);
     if (!(length > 0)) return reject('method.rejectedStaticsMembers');
-    geometryById.set(member.id, { member, ni, nj, length, c: (nj.x - ni.x) / length, s: (nj.y - ni.y) / length });
+    const arc = member.curve ? memberArc(member, nodeById) : undefined;
+    if (member.curve && !arc) return reject('method.rejectedStaticsMembers');
+    geometryById.set(member.id, {
+      member, ni, nj, length: arc ? arc.length : length, c: (nj.x - ni.x) / length, s: (nj.y - ni.y) / length,
+      ...(arc ? { arc } : {}),
+    });
   }
+  // On an arc the solver answers for its polygon of chords: the check admits the polygon's gap.
+  const tolerance = Math.max(MATCH_TOLERANCE, ...[...geometryById.values()].map((geometry) => (
+    geometry.arc ? arcSolverPolygon(geometry.arc).tolerance : MATCH_TOLERANCE
+  )));
 
   // Cuts only isolate a side when the members form a tree: one connected piece, no closed ring.
   const structural = new Set(project.members.flatMap((member) => [member.i, member.j]));
@@ -451,7 +607,7 @@ export const solveStaticsSections = (
   for (const load of project.memberLoads) {
     const factor = factors[load.caseId] ?? 0;
     const geometry = geometryById.get(load.memberId);
-    if (!factor || !geometry) continue;
+    if (!factor || !geometry || geometry.arc) continue;
     const { length } = geometry;
     const loads = localLoads.get(load.memberId)!;
     const vector = (x: number, y: number): { local: Vec2; global: Vec2 } => load.coordinateSystem === 'local'
@@ -517,7 +673,7 @@ export const solveStaticsSections = (
   if (selfWeightFactor !== 0) {
     for (const geometry of geometryById.values()) {
       const { member, length } = geometry;
-      if (!member.density || !(member.A > 0)) continue;
+      if (geometry.arc || !member.density || !(member.A > 0)) continue;
       const weight = (member.density * 9.80665 * member.A) / 1000 * selfWeightFactor;
       const local = toLocal(geometry, 0, -weight);
       localLoads.get(member.id)!.push({ kind: 'distributed', label: 'peso propio', a: 0, b: length, qxA: local.x, qxB: local.x, qyA: local.y, qyB: local.y });
@@ -525,6 +681,47 @@ export const solveStaticsSections = (
         sourceId: 'peso propio', kind: 'self-weight', memberId: member.id, fx: 0, fy: -weight * length, couple: 0,
         at: pointOn(geometry, length / 2), station: length / 2, factor: selfWeightFactor,
         intensity: Math.abs(weight), basisLength: length, basis: 'real', loadStart: 0, loadLength: length,
+      });
+    }
+  }
+
+  // Curved members: every load reduced on the arc itself, in the solver's own reading of it.
+  const arcLoads = new Map<string, ArcLoad[]>();
+  for (const geometry of geometryById.values()) {
+    const { arc, member } = geometry;
+    if (!arc) continue;
+    const loads = arcLoadsOf(project, member, arc, factors);
+    arcLoads.set(member.id, loads);
+    for (const load of loads) {
+      const factor = load.factor ?? 1;
+      if (load.kind === 'point') {
+        if (load.fx !== 0 || load.fy !== 0) {
+          pushResultant({ sourceId: load.label, kind: 'point', memberId: member.id, fx: load.fx, fy: load.fy, couple: 0, at: arcPoint(arc, load.t), station: load.t * arc.length, factor });
+        }
+        continue;
+      }
+      if (load.kind === 'couple') {
+        if (load.moment !== 0) {
+          pushResultant({ sourceId: load.label, kind: 'couple', memberId: member.id, fx: 0, fy: 0, couple: load.moment, at: arcPoint(arc, load.t), station: load.t * arc.length, factor });
+        }
+        continue;
+      }
+      const origin = { x: geometry.ni.x, y: geometry.ni.y };
+      const total = arcLoadsTotal(arc, [load], origin);
+      const centroid = distributedCentroid(arc, load, 0, 1);
+      const at = centroid ? lineOfActionPoint(total, origin, centroid) : undefined;
+      const arcSpan = { from: load.t0 * arc.length, length: (load.t1 - load.t0) * arc.length };
+      if (!at) {
+        // A distributed load whose forces cancel still turns the structure: a couple.
+        if (Math.abs(total.moment) > 0) {
+          pushResultant({ sourceId: load.label, kind: 'couple', memberId: member.id, fx: 0, fy: 0, couple: total.moment, at: origin, factor, arcSpan });
+        }
+        continue;
+      }
+      pushResultant({
+        sourceId: load.label, kind: load.label === 'peso propio' ? 'self-weight' : 'arc', memberId: member.id,
+        fx: total.fx, fy: total.fy, couple: 0, at, factor, basis: load.basis, arcSpan,
+        ...(isUniformGlobal(load) ? { intensity: Math.hypot(load.qxA, load.qyA), basisLength: arcBasisLength(arc, load.basis, load.t0, load.t1) } : {}),
       });
     }
   }
@@ -552,7 +749,7 @@ export const solveStaticsSections = (
       Math.abs(statics.fy - audit.source.fy),
       Math.abs(statics.mz - audit.source.mz) / extent,
     ) / Math.max(1, loadActivity);
-    if (residual > MATCH_TOLERANCE) return reject('method.rejectedStaticsMismatch');
+    if (residual > tolerance) return reject('method.rejectedStaticsMismatch');
     loadCheck = { referencePoint: reference, statics, solver: { ...audit.source }, residual };
   }
 
@@ -708,7 +905,7 @@ export const solveStaticsSections = (
     // A support that restrains no rotation reports none.
     if (own.some((unknown) => unknown.kind === 'moment')) reactionMomentResidual = Math.max(reactionMomentResidual, Math.abs(rm - solver.rm));
   }
-  if (reactionForceResidual > MATCH_TOLERANCE * reactionScale || reactionMomentResidual > MATCH_TOLERANCE * reactionScale * extent) {
+  if (reactionForceResidual > tolerance * reactionScale || reactionMomentResidual > tolerance * reactionScale * extent) {
     return reject('method.rejectedStaticsMismatch');
   }
 
@@ -771,12 +968,24 @@ export const solveStaticsSections = (
     const fx = actions.reduce((sum, action) => sum + action.fx, 0);
     const fy = actions.reduce((sum, action) => sum + action.fy, 0);
     const moment = actions.reduce((sum, action) => sum + momentAbout(origin, action.at, action.fx, action.fy, action.couple), 0);
+    // Along the member axis at node i: the chord of a straight member, the tangent of an arc.
+    const axis = geometry.arc ? arcTangent(geometry.arc, 0) : { x: geometry.c, y: geometry.s };
     const start: MemberStartForces = {
       nodeIds: sideNodeIds, memberIds: sideMemberIds, actions, fx, fy, moment,
-      axial: -(fx * geometry.c + fy * geometry.s),
-      shear: -fx * geometry.s + fy * geometry.c,
+      axial: -(fx * axis.x + fy * axis.y),
+      shear: -fx * axis.y + fy * axis.x,
       bending: -moment,
     };
+
+    if (geometry.arc) {
+      const outcome = cutArc(geometry.arc, arcLoads.get(member.id) ?? [], start, analysis, member.id, forceScale, momentScale);
+      if (!outcome) return reject('method.rejectedStaticsMismatch');
+      members.push({
+        memberId: member.id, startNodeId: member.i, endNodeId: member.j, length: geometry.arc.length, c: axis.x, s: axis.y,
+        start, stretches: [], arc: outcome.cuts, peakMoment: outcome.peak,
+      });
+      continue;
+    }
 
     const loads = localLoads.get(member.id)!;
     const tolerance = length * 1e-9;
@@ -860,8 +1069,14 @@ export const solveStaticsSections = (
       start, stretches, peakMoment: peak,
     });
   }
-  if (diagramForceResidual > MATCH_TOLERANCE * forceScale || diagramMomentResidual > MATCH_TOLERANCE * momentScale) {
+  // Without arcs `tolerance` is the strict one; with them, the straight members inherit the arcs' reactions.
+  if (diagramForceResidual > tolerance * forceScale || diagramMomentResidual > tolerance * momentScale) {
     return reject('method.rejectedStaticsMismatch');
+  }
+  for (const entry of members) {
+    if (!entry.arc) continue;
+    diagramForceResidual = Math.max(diagramForceResidual, entry.arc.residual.force);
+    diagramMomentResidual = Math.max(diagramMomentResidual, entry.arc.residual.moment);
   }
 
   const governing = members.reduce(

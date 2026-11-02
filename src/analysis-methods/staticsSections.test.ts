@@ -223,7 +223,7 @@ describe('método de secciones para vigas y marcos isostáticos', () => {
     expect(solution.members.find((entry) => entry.memberId === 'M1')!.stretches).toHaveLength(3);
   });
 
-  it('rechaza un marco hiperestático y una barra curva', () => {
+  it('rechaza un marco hiperestático; un arco hiperestático (biarticulado) tampoco', () => {
     const fixedPortal = model({
       nodes: [node('A', 0, 0, { type: 'fixed' }), node('B', 0, 4), node('C', 6, 4), node('D', 6, 0, { type: 'fixed' })],
       members: [bar('C1', 'A', 'B'), bar('V1', 'B', 'C'), bar('C2', 'C', 'D')],
@@ -232,12 +232,129 @@ describe('método de secciones para vigas y marcos isostáticos', () => {
     expect(solveStaticsSections(fixedPortal, analyzeProject(fixedPortal))).toEqual({ applicable: false, reasonKey: 'method.rejectedIndeterminateStatics' });
     expect(applicableMethods(fixedPortal).map((method) => method.id)).not.toContain('statics-sections');
 
-    const curved = model({
-      nodes: [node('A', 0, 0, { type: 'pin' }), node('B', 8, 0, { type: 'roller' })],
-      members: [bar('A1', 'A', 'B', { curve: { kind: 'circular-arc', bulge: 0.5 } })],
-      memberLoads: [uniform('q', 'A1', -5)],
+    // El arco del inicio de la app: dos pasadores, g = 1. La estática sola no lo resuelve.
+    const twoHinged = withModelStart(createBlankProject(), 'arch');
+    expect(applicableMethods(twoHinged).map((method) => method.id)).not.toContain('statics-sections');
+    expect(solveStaticsSections(twoHinged, analyzeProject(twoHinged))).toEqual({ applicable: false, reasonKey: 'method.rejectedIndeterminateStatics' });
+  });
+
+  describe('barras curvas (arcos circulares)', () => {
+    /** Valores de un arco en la fracción t, por estática y por el solver. */
+    const arcAt = (solution: StaticsSectionsResult, memberId: string, t: number) => {
+      const member = solution.members.find((entry) => entry.memberId === memberId)!;
+      return member.arc!.stations.find((station) => Math.abs(station.t - t) < 1e-12)!;
+    };
+
+    it('arco semicircular sobre pasador y rodillo, carga por proyección horizontal: la viga equivalente', () => {
+      // R = 5 m, claro 10 m, w = 20 kN/m de proyección horizontal. Sin empuje, las reacciones y el
+      // momento son los de la viga simple: R = wL/2 = 100 kN y M(x) = w x (L − x)/2; en la clave
+      // M = wL²/8 = 250 kN·m. El corte en φ (inclinación de la tangente) con V_b = w(L/2 − x):
+      // N = −V_b sen φ, V = V_b cos φ.
+      const project = model({
+        nodes: [node('A', 0, 0, { type: 'pin' }), node('B', 10, 0, { type: 'roller', angleDeg: 90 })],
+        members: [bar('A1', 'A', 'B', { curve: { kind: 'circular-arc', bulge: 1 } })],
+        memberLoads: [uniform('w', 'A1', -20, { lengthBasis: 'horizontal' })],
+      });
+      expect(applicableMethods(project).map((method) => method.id)).toContain('statics-sections');
+      const solution = solve(project);
+      expect(reaction(solution, 'R_y(A)')).toBeCloseTo(100, 6);
+      expect(reaction(solution, 'R_y(B)')).toBeCloseTo(100, 6);
+      expect(reaction(solution, 'R_x(A)')).toBeCloseTo(0, 6);
+      // La resultante sobre el arco: W = w·(proyección horizontal) = 200 kN en x̄ = 5 m.
+      const [w] = solution.resultants;
+      expect(w).toMatchObject({ kind: 'arc', intensity: 20 });
+      expect(w!.basisLength).toBeCloseTo(10, 12);
+      expect(w!.fy).toBeCloseTo(-200, 12);
+      expect(w!.at.x).toBeCloseTo(5, 12);
+      for (const t of [1 / 12, 3 / 12, 5 / 12, 6 / 12, 8 / 12, 11 / 12]) {
+        const station = arcAt(solution, 'A1', t);
+        const x = station.point.x;
+        const beamShear = 20 * (5 - x);
+        expect(station.moment).toBeCloseTo(10 * x * (10 - x), 9);
+        expect(station.axial).toBeCloseTo(-beamShear * Math.sin(station.slope), 9);
+        expect(station.shear).toBeCloseTo(beamShear * Math.cos(station.slope), 9);
+        // Y el solver, que malla el arco con cuerdas, cae a menos de 1e-3 de M máx.
+        expect(Math.abs(station.moment - station.solver.moment)).toBeLessThan(1e-3 * 250);
+      }
+      expect(solution.peakMoment.value).toBeCloseTo(250, 6);
+      expect(solution.peakMoment.s).toBeCloseTo(5 * Math.PI / 2, 4);
+      expect(solution.members[0]!.arc!.solverChords).toBe(64);
     });
-    expect(solveStaticsSections(curved, analyzeProject(curved))).toEqual({ applicable: false, reasonKey: 'method.rejectedCurvedMember' });
+
+    it('arco triarticulado circular: H = wL²/(8f) y M = M_viga − H·y', () => {
+      // Claro 10 m, flecha f = 3 m: R = (25 + 9)/6 = 5.667 m; cada mitad abre α = asen(5/R).
+      const R = 34 / 6;
+      const half = Math.asin(5 / R);
+      const bulge = Math.tan(half / 4);
+      const project = model({
+        nodes: [node('A', 0, 0, { type: 'pin' }), node('C', 5, 3, { type: 'none' }, { internalHinge: true }), node('B', 10, 0, { type: 'pin' })],
+        members: [bar('A1', 'A', 'C', { curve: { kind: 'circular-arc', bulge } }), bar('A2', 'C', 'B', { curve: { kind: 'circular-arc', bulge } })],
+        memberLoads: [uniform('w1', 'A1', -20, { lengthBasis: 'horizontal' }), uniform('w2', 'A2', -20, { lengthBasis: 'horizontal' })],
+      });
+      const solution = solve(project);
+      expect(solution.classification.indeterminacy).toBe(0);
+      const H = 20 * 100 / (8 * 3);
+      expect(reaction(solution, 'R_x(A)')).toBeCloseTo(H, 6);
+      expect(reaction(solution, 'R_x(B)')).toBeCloseTo(-H, 6);
+      expect(reaction(solution, 'R_y(A)')).toBeCloseTo(100, 6);
+      expect(solution.equations.filter((equation) => equation.kind === 'hinge' && equation.independent)).toHaveLength(1);
+      for (const memberId of ['A1', 'A2']) {
+        for (const station of solution.members.find((entry) => entry.memberId === memberId)!.arc!.stations) {
+          const { x, y } = station.point;
+          expect(station.moment).toBeCloseTo(10 * x * (10 - x) - H * y, 8);
+        }
+      }
+      // Momento nulo en la articulación de la clave, por los dos lados.
+      expect(arcAt(solution, 'A1', 1).moment).toBeCloseTo(0, 8);
+      expect(arcAt(solution, 'A2', 0).moment).toBeCloseTo(0, 8);
+    });
+
+    it('cargas locales, parciales, puntuales y peso propio sobre un arco: todo cae en el solver', () => {
+      const project = model({
+        nodes: [node('A', 0, 0, { type: 'pin' }), node('B', 8, 1, { type: 'roller', angleDeg: 90 })],
+        members: [bar('A1', 'A', 'B', { curve: { kind: 'circular-arc', bulge: 0.45 }, density: 2400 })],
+        memberLoads: [
+          { ...uniform('T', 'A1', 0), coordinateSystem: 'local', start: 0.1, end: 0.6, qxStart: 1, qxEnd: -2, qyStart: -3, qyEnd: -8 },
+          uniform('V', 'A1', -4, { lengthBasis: 'vertical', start: 0.3, end: 0.9 }),
+          point('P', 'A1', 0.7, -15, 4),
+          { ...point('Mo', 'A1', 0.4, 0), type: 'moment', moment: 9 },
+        ],
+      });
+      project.loadCases = project.loadCases.map((loadCase) => ({ ...loadCase, selfWeightFactor: 1 }));
+      const solution = solve(project);
+      const arc = solution.members[0]!.arc!;
+      expect(solution.resultants.map((entry) => entry.kind)).toEqual(['arc', 'arc', 'point', 'couple', 'self-weight']);
+      expect(arc.residual.moment).toBeLessThan(arc.tolerance * 100);
+      expect(solution.loadCheck!.residual).toBeLessThan(arc.tolerance);
+      expect(solution.reactionResidual.force).toBeLessThan(arc.tolerance * 100);
+    });
+
+    it('marco con cubierta en arco sobre dos columnas: rectas y curva cortadas en el mismo cálculo', () => {
+      // Pasador en A, rodillo en D: g = 0. Con w = 10 kN/m por proyección horizontal en 10 m y H = 20 kN
+      // en B, ΣM(A): 10·R_y(D) − 100·5 − 20·3 = 0 → R_y(D) = 56 kN; R_x(A) = −20 kN.
+      const solution = solve(model({
+        nodes: [node('A', 0, 0, { type: 'pin' }), node('B', 0, 3), node('C', 10, 3), node('D', 10, 0, { type: 'roller', angleDeg: 90 })],
+        members: [bar('C1', 'A', 'B'), bar('R1', 'B', 'C', { curve: { kind: 'circular-arc', bulge: 0.4 } }), bar('C2', 'D', 'C')],
+        memberLoads: [uniform('w', 'R1', -10, { lengthBasis: 'horizontal' })],
+        nodalLoads: [nodal('H', 'B', 20, 0)],
+      }));
+      expect(reaction(solution, 'R_y(D)')).toBeCloseTo(56, 6);
+      expect(reaction(solution, 'R_x(A)')).toBeCloseTo(-20, 6);
+      // La columna A–B: M(3) = −R_x(A)·3 en ejes locales, 60 kN·m en valor.
+      expect(Math.abs(momentAt(solution, 'C1', 3))).toBeCloseTo(60, 6);
+      expect(solution.members.find((entry) => entry.memberId === 'R1')!.arc!.stations[0]!.moment).toBeCloseTo(momentAt(solution, 'C1', 3), 6);
+    });
+
+    it('el método de secciones en un arco rechaza lo que no es suyo', () => {
+      const project = model({
+        nodes: [node('A', 0, 0, { type: 'pin' }), node('B', 8, 0, { type: 'roller' })],
+        members: [bar('A1', 'A', 'B', { curve: { kind: 'circular-arc', bulge: 0.5 } })],
+        memberLoads: [uniform('q', 'A1', -5)],
+      });
+      expect(solve(project).members[0]!.arc!.stations).toHaveLength(13);
+      const sprung = { ...project, nodes: project.nodes.map((entry) => entry.id === 'A' ? { ...entry, support: { type: 'pin' as const, spring: { kr: 100 } } } : entry) };
+      expect(solveStaticsSections(sprung, analyzeProject(sprung))).toEqual({ applicable: false, reasonKey: 'method.rejectedStaticsSupports' });
+    });
   });
 
   it('un proyecto guardado con este método lo conserva al reabrirse', () => {

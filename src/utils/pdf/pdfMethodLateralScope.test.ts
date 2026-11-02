@@ -48,4 +48,25 @@ describe('Portal y Voladizo en la memoria: lo que no reparten se declara', () =>
     expect(text).toContain('Peso propio de las barras: factor 1.2');
     expect(text).toContain('se superpone');
   }, 60_000);
+
+  it.each(['portal-method', 'cantilever-method'] as const)('%s convierte el viento sobre una columna y lo narra', async (solutionMethod) => {
+    const windy = {
+      ...project,
+      memberLoads: [...project.memberLoads, {
+        id: 'viento', memberId: 'C11', caseId: 'S', type: 'distributed' as const, coordinateSystem: 'global' as const, lengthBasis: 'real' as const,
+        start: 0, end: 1, qxStart: 2, qxEnd: 2, qyStart: 0, qyEnd: 0,
+      }],
+    };
+    const windyAnalysis = analyzeProject(windy, u2);
+    const availability = inspectPdfMethodAvailability(windy, windyAnalysis, { id: '__pdf_export__', name: u2.name, factors: u2.factors });
+    expect(availability[solutionMethod]).toEqual({ available: true });
+    const report = await createCalculationReport(windy, windyAnalysis, {
+      ...CALCULATION_PDF_EXPORT_DEFAULTS, solutionMethod, scenarioName: u2.name, scenarioFactors: u2.factors,
+    });
+    const text = await extractText(report.bytes);
+    expect(text).toContain('Cargas laterales sobre las columnas');
+    expect(text).toContain('Carga viento sobre la columna C11');
+    expect(text).toContain('parte de la aproximación');
+    expect(text).toContain('tras la conversión');
+  }, 60_000);
 });

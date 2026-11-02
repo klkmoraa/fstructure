@@ -254,6 +254,14 @@ const drawHypotheses = (context: ReportContext, solution: CrossFrameResult): voi
         + `Aquí: ${released.members.map((member) => `${member.memberId} (${[member.releasedI ? member.nodeI : '', member.releasedJ ? member.nodeJ : ''].filter(Boolean).join(' y ')})`).join(', ')}`
         + (released.hinges.length ? `; articulación en ${released.hinges.map((joint) => joint.nodeId).join(', ')}.` : '.')]
       : []),
+    ...(solution.springs.length
+      ? ['Resortes rotacionales de apoyo: el nudo gira y el resorte resiste con M_r = k_r·θ. En el reparto es una '
+        + 'rigidez más del nudo, K = k_r: entra en ΣK, toma su parte k_r/ΣK de cada desequilibrio y no transporta nada, '
+        + 'porque su otro extremo es el terreno. Como no se traslada, no entra en las ecuaciones de desplazamiento. La '
+        + 'reacción de momento del apoyo es −M_r. Aquí: '
+        + solution.springs.map((spring) => `${spring.nodeId} (k_r = ${dimensionalFigure(context.project, spring.stiffness, 1, 1)} `
+          + `${dimensionalUnit(context.project, 1, 1)}/rad)`).join(', ') + '.']
+      : []),
     'Signos: momentos de extremo sobre la barra, antihorarios positivos; giro de cuerda, antihorario positivo. '
       + 'Un desplazamiento relativo de los extremos produce en ambos un momento de empotramiento −6EI(giro)/L'
       + (anyReleased ? '; en una barra con un extremo liberado, −3EI(giro)/L en el continuo y 0 en el liberado.' : '.'),
@@ -264,34 +272,41 @@ const drawStiffness = (context: ReportContext, solution: CrossFrameResult, membe
   const { layout, project } = context;
   layout.heading('5.2 Rigideces y factores de distribución', 2);
   const anyReleased = solution.ends.some((end) => end.released);
+  const anySpring = solution.springs.length > 0;
   prose(context, 'Por nudo, la rigidez K = 4EI/L de cada extremo que concurre en él y su factor de distribución '
     + 'FD = K/ΣK. Un nudo que no gira tiene FD = 0 en todos sus extremos.'
     + (anyReleased
       ? ' Un extremo cuya barra está liberada en el otro extremo tiene K = 3EI/L; un extremo liberado, K = 0, y un '
         + 'nudo donde todos los extremos están liberados es una articulación: no reparte nada.'
-      : ''));
+      : '')
+    + (anySpring ? ' Un resorte rotacional de apoyo suma su k_r a ΣK como una fila más, sin barra ni transporte.' : ''));
   const stiffnessUnit = dimensionalUnit(project, 1, 1);
   const jointLabel = (joint: CrossJoint) => (joint.rotates ? joint.nodeId : `${joint.nodeId} (${joint.hinged ? 'articulación' : 'empotrado'})`);
-  const formula = (coefficient: number) => (coefficient === 0 ? 'liberado' : `${coefficient}EI/L`);
+  const formula = (index: number) => {
+    const end = solution.ends[index];
+    if (end.spring) return 'resorte k_r';
+    return end.stiffnessCoefficient === 0 ? 'liberado' : `${end.stiffnessCoefficient}EI/L`;
+  };
+  const showFormula = anyReleased || anySpring;
   layout.table(
     [
       { header: 'Nudo', width: 80 },
       { header: 'Barra', width: 50 },
       { header: `EI (${dimensionalUnit(project, 1, 2)})`, ...NUMERIC },
       { header: `L (${unitFor(project, 'length')})`, ...NUMERIC },
-      ...(anyReleased ? [{ header: 'Rigidez', width: 50 }] : []),
-      { header: anyReleased ? `K (${stiffnessUnit})` : `K = 4EI/L (${stiffnessUnit})`, ...NUMERIC },
+      ...(showFormula ? [{ header: 'Rigidez', width: 50 }] : []),
+      { header: showFormula ? `K (${stiffnessUnit})` : `K = 4EI/L (${stiffnessUnit})`, ...NUMERIC },
       { header: 'FD', ...NUMERIC },
     ],
     solution.joints.flatMap((joint) => joint.endIndices.map((index) => {
       const end = solution.ends[index];
-      const member = memberById.get(end.memberId)!;
+      const member = end.spring ? undefined : memberById.get(end.memberId);
       return [
         jointLabel(joint),
         end.memberId,
-        dimensionalFigure(project, member.EI, 1, 2),
-        lengthFigure(context, member.length),
-        ...(anyReleased ? [formula(end.stiffnessCoefficient)] : []),
+        member ? dimensionalFigure(project, member.EI, 1, 2) : '—',
+        member ? lengthFigure(context, member.length) : '—',
+        ...(showFormula ? [formula(index)] : []),
         dimensionalFigure(project, end.stiffness, 1, 1),
         joint.rotates ? number(end.distributionFactor, 4) : '0',
       ];
@@ -654,6 +669,28 @@ const drawVerification = (context: ReportContext, solution: CrossFrameResult, nu
     ]),
     { size: 7 },
   );
+  if (solution.springs.length) {
+    prose(context, 'Resortes rotacionales: la reacción de momento del apoyo es −M_r, contra la de las dos corridas matriciales.');
+    layout.table(
+      [
+        { header: 'Apoyo', width: 46 },
+        { header: `M_r Cross (${momentUnit})`, ...NUMERIC },
+        { header: 'Giro θ (rad)', ...NUMERIC },
+        { header: `−M_r (${momentUnit})`, ...NUMERIC },
+        { header: `Rígido (${momentUnit})`, ...NUMERIC },
+        { header: `Real (${momentUnit})`, ...NUMERIC },
+      ],
+      solution.springs.map((spring) => [
+        spring.nodeId,
+        momentFigure(context, spring.moment, reference),
+        number(spring.rotation, 5),
+        momentFigure(context, -spring.moment, reference),
+        momentFigure(context, spring.rigidReaction, reference),
+        momentFigure(context, spring.solverReaction, reference),
+      ]),
+      { size: 7 },
+    );
+  }
   const relative = (value: number, scale: number) => (scale > 0 ? value / scale : 0);
   const display = (value: number) => clearCell(project, value, 'moment', 1);
   layout.text(

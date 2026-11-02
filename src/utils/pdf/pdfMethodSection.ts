@@ -25,9 +25,11 @@ import { solveCastiglianoTruss, type CastiglianoTrussResult } from '../../analys
 import { solveMomentDistributionFrame } from '../../analysis-methods/momentDistributionFrame';
 import { solveStaticsSections } from '../../analysis-methods/staticsSections';
 import { drawStaticsSections } from './pdfMethodStaticsSections';
+import { solveArchLeastWork } from '../../analysis-methods/archLeastWork';
+import { drawArchLeastWorkSection } from './pdfMethodArchLeastWork';
 import { drawElasticCurve } from './pdfDiagrams';
 import { drawCrossFrameSection } from './pdfMethodCrossFrame';
-import { drawLateralScope } from './pdfMethodLateralScope';
+import { drawLateralConversions, drawLateralScope } from './pdfMethodLateralScope';
 import { drawFreeBodyScene, sceneHeightFor, type FreeBodyScene } from './pdfFreeBody';
 import {
   cantileverScenes,
@@ -101,6 +103,7 @@ export const inspectPdfMethodAvailability = (
   if (shallow.has('castigliano-truss')) inspect('castigliano-truss', solveCastiglianoTruss(project, analysis, combination));
   if (shallow.has('moment-distribution-frame')) inspect('moment-distribution-frame', solveMomentDistributionFrame(project, analysis, combination));
   if (shallow.has('statics-sections')) inspect('statics-sections', solveStaticsSections(project, analysis, combination));
+  if (shallow.has('arch-least-work')) inspect('arch-least-work', solveArchLeastWork(project, analysis, combination));
   return availability;
 };
 
@@ -1284,6 +1287,7 @@ const drawPortalMethod = (context: ReportContext, solution: PortalMethodResult):
     8.3, fonts.regular, palette.ink, 8,
   );
   drawLateralScope(context, solution.excluded, 'Método del Portal');
+  drawLateralConversions(context, solution.conversions, solution.jointLoads, 'Método del Portal');
 
   layout.heading('5.1 Retícula y cortante por planta', 2);
   const stories = solution.grid.storyLevels.length - 1;
@@ -1469,6 +1473,7 @@ const drawCantileverMethod = (context: ReportContext, solution: CantileverMethod
     8.3, fonts.regular, palette.ink, 8,
   );
   drawLateralScope(context, solution.excluded, 'Método del Voladizo');
+  drawLateralConversions(context, solution.conversions, solution.jointLoads, 'Método del Voladizo');
 
   layout.heading('5.1 Columnas: axial por flexión, cortante y momento', 2);
   layout.text(
@@ -1710,6 +1715,7 @@ export const drawMethodSection = (context: ReportContext): boolean => {
     return true;
   }
   if (solutionMethod === 'moment-distribution-frame') return drawCrossFrameSection(context);
+  if (solutionMethod === 'arch-least-work') return drawArchLeastWorkSection(context);
   if (solutionMethod === 'statics-sections') {
     const solution = solveStaticsSections(project, analysis, combination);
     if (!solution.applicable) {

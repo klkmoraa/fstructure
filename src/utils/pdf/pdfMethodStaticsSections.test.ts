@@ -51,6 +51,53 @@ describe('memoria PDF con el método de secciones', () => {
     expect(artifact.bytes.length).toBeGreaterThan(10_000);
   });
 
+  it('desarrolla un arco sobre pasador y rodillo, y uno triarticulado, corte por corte', async () => {
+    const pinRoller: ProjectModel = {
+      ...createBlankProject(),
+      name: 'Arco isostático',
+      nodes: [{ id: 'A', x: 0, y: 0, support: { type: 'pin' } }, { id: 'B', x: 10, y: 0, support: { type: 'roller', angleDeg: 90 } }],
+      members: [{ id: 'A1', i: 'A', j: 'B', ...SECTION, curve: { kind: 'circular-arc', bulge: 0.6 } }],
+      memberLoads: [{
+        id: 'w', memberId: 'A1', caseId: 'LC1', type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real',
+        start: 0, end: 1, qxStart: 0, qxEnd: 0, qyStart: -15, qyEnd: -15,
+      }],
+      nodalLoads: [],
+    };
+    const artifact = await report(pinRoller);
+    expect(artifact.methodAvailability['statics-sections']).toEqual({ available: true });
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const document = await pdfjs.getDocument({ data: artifact.bytes.slice(), useWorkerFetch: false }).promise;
+    const pages: string[] = [];
+    for (let number = 1; number <= document.numPages; number += 1) {
+      const content = await (await document.getPage(number)).getTextContent();
+      pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '));
+    }
+    const text = pages.join(' ').replace(/\s+/g, ' ');
+    expect(text).toContain('(arco circular)');
+    expect(text).toContain('Corte donde |M| es mayor');
+    expect(text).toContain('M mat.');
+
+    const bulge = Math.tan(Math.asin(5 / (34 / 6)) / 4);
+    const threeHinged = await report({
+      ...pinRoller,
+      nodes: [
+        { id: 'A', x: 0, y: 0, support: { type: 'pin' } },
+        { id: 'C', x: 5, y: 3, support: { type: 'none' }, internalHinge: true },
+        { id: 'B', x: 10, y: 0, support: { type: 'pin' } },
+      ],
+      members: [
+        { id: 'A1', i: 'A', j: 'C', ...SECTION, curve: { kind: 'circular-arc', bulge } },
+        { id: 'A2', i: 'C', j: 'B', ...SECTION, curve: { kind: 'circular-arc', bulge } },
+      ],
+      memberLoads: ['A1', 'A2'].map((memberId) => ({
+        id: `w-${memberId}`, memberId, caseId: 'LC1', type: 'distributed' as const, coordinateSystem: 'global' as const, lengthBasis: 'horizontal' as const,
+        start: 0, end: 1, qxStart: 0, qxEnd: 0, qyStart: -20, qyEnd: -20,
+      })),
+    });
+    expect(threeHinged.methodAvailability['statics-sections']).toEqual({ available: true });
+    expect(threeHinged.bytes.length).toBeGreaterThan(10_000);
+  }, 60_000);
+
   it('no ofrece el método a un pórtico empotrado', async () => {
     const fixed = pinRollerPortal();
     fixed.nodes = fixed.nodes.map((node) => node.support.type === 'none' ? node : { ...node, support: { type: 'fixed' } });

@@ -216,7 +216,7 @@ const normalizeSettings = (input: unknown): ProjectSettings => {
         'matrix-stiffness', 'double-integration', 'portal-method', 'cantilever-method',
         'three-moment', 'virtual-work', 'castigliano-truss', 'hardy-cross', 'kani-frame',
         'method-of-sections', 'method-of-joints', 'conjugate-beam',
-        'moment-distribution-frame', 'statics-sections',
+        'moment-distribution-frame', 'statics-sections', 'arch-least-work',
       ] as const),
     ...(raw.stiffnessDefaults === undefined ? {} : { stiffnessDefaults: normalizeStiffnessDefaults(raw.stiffnessDefaults) }),
     pDeltaConfig: normalizePDeltaConfig(raw.pDeltaConfig, 'settings.pDeltaConfig'),

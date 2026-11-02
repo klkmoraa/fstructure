@@ -24,6 +24,7 @@ import type {
   StaticsUnknown,
 } from '../../analysis-methods/staticsSections';
 import { asWorkedEquation, drawWorkedEquation, measureWorkedEquation, type EquationInput } from './pdfEquation';
+import { drawArcMemberCuts } from './pdfMethodArcSections';
 import { clearNumber, number } from './pdfFormat';
 import { drawFreeBodyScene, sceneHeightFor, type FreeBodyScene, type SceneForce, type SceneMoment } from './pdfFreeBody';
 import { segmentScene } from './pdfSegmentCalculationSection';
@@ -157,6 +158,7 @@ const resultantSource = (resultant: LoadResultant): string => {
     case 'uniform': return `carga repartida ${resultant.sourceId} sobre la ${where}: bloque uniforme`;
     case 'triangular': return `carga repartida ${resultant.sourceId} sobre la ${where}: triángulo de la variación`;
     case 'self-weight': return `peso propio de la ${where}`;
+    case 'arc': return `carga repartida ${resultant.sourceId} sobre el arco ${resultant.memberId}: resultante integrada`;
   }
 };
 
@@ -451,6 +453,11 @@ const startEquations = (figures: Figures, member: MemberCuts, scale: { force: nu
 };
 
 const drawMember = (context: ReportContext, figures: Figures, member: MemberCuts, scale: { force: number; moment: number }): void => {
+  // A curved member is cut station by station: its N, V and M are not polynomials in s.
+  if (member.arc) {
+    drawArcMemberCuts(context, member, scale);
+    return;
+  }
   const { layout } = context;
   const { fonts, palette } = layout;
   const { fig, unit } = figures;
@@ -571,6 +578,15 @@ export const drawStaticsSections = (context: ReportContext, solution: StaticsSec
     }
     drawEquations(context, `${resultant.label}: ${resultantSource(resultant)}${factor}`, equations);
     if (!equations.length) layout.text(`${resultant.label}: ${resultantSource(resultant)}${factor}`, 7.9, fonts.bold, palette.ink, 12);
+    if (resultant.arcSpan) {
+      // On an arc the resultant is an integral along the curve; its line of action is what counts.
+      layout.text(
+        `Sobre el arco, de s = ${fig(resultant.arcSpan.from, 0, 1)} a ${fig(resultant.arcSpan.from + resultant.arcSpan.length, 0, 1)} `
+        + `${unit(0, 1)}: F = ∫ q dL y ΣM = ∫ r × q dL a lo largo de la curva${resultant.intensity !== undefined ? ' (q constante y de dirección fija: |F| = q L)' : ''}; `
+        + 'el punto dado es uno de su recta de acción.',
+        7.9, fonts.regular, undefined, 12,
+      );
+    }
     const position = `(${fig(resultant.at.x, 0, 1)}, ${fig(resultant.at.y, 0, 1)}) ${unit(0, 1)}`;
     const basis = resultant.basis && resultant.basis !== 'real' ? `; L medida en ${basisLabel(resultant.basis)}` : '';
     layout.keyValues([[
@@ -713,7 +729,11 @@ export const drawStaticsSections = (context: ReportContext, solution: StaticsSec
   layout.text(
     'Cada barra se corta a una distancia s de su nudo inicial y se conserva el cuerpo libre izquierdo: todo lo que '
     + 'queda del lado de ese nudo más el trozo [0, s]. El lado del nudo entrega N₀, V₀ y M₀ en el inicio; las cargas '
-    + 'del trozo se suman encima. La expresión cambia sólo donde empieza o termina una carga, así que hay un corte por tramo.',
+    + 'del trozo se suman encima. La expresión cambia sólo donde empieza o termina una carga, así que hay un corte por tramo.'
+    + (solution.members.some((member) => member.arc)
+      ? ' Un arco se corta en estaciones: con la tangente girando, N, V y M no son polinomios en s, y cada corte se '
+        + 'escribe con su ángulo φ.'
+      : ''),
     8.3, fonts.regular, undefined, 8,
   );
   for (const member of solution.members) drawMember(context, figures, member, scale);

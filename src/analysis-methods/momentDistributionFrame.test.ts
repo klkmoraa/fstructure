@@ -412,4 +412,68 @@ describe('Cross (distribución de momentos) en marcos', () => {
     expect(applicableMethods(simple).map((method) => method.id)).not.toContain('moment-distribution-frame');
     expect(outcome(simple)).toEqual({ applicable: false, reasonKey: 'method.rejectedStaticallyDeterminate' });
   });
+
+  it('resorte rotacional en un apoyo: una rigidez más en ΣK, sin transporte (a mano)', () => {
+    // A (pasador con k_r = 4EI/L) — L = 6 m, w = 12 kN/m — B (empotrado). FD en A: 1/2 y 1/2.
+    // MEP: ±wL²/12 = ±36. El desequilibrio +36 en A se reparte −18 a la barra y −18 al resorte;
+    // la barra transporta −9 a B y el resorte nada. M_A = 18, M_r = −18, M_B = −45, y la reacción
+    // de momento en A es −M_r = +18 kN·m. Un solo ciclo: sólo A gira.
+    const kr = (4 * E * 1e-4) / 6;
+    const project = model(
+      [node('A', 0, 0, { type: 'pin', spring: { kr } }), node('B', 6, 0, { type: 'fixed' })],
+      [frame('AB', 'A', 'B')],
+      [uniform('AB', 0, -12)],
+    );
+    const solution = solve(project);
+    const [spring] = solution.springs;
+    expect(spring).toMatchObject({ nodeId: 'A', stiffness: kr });
+    expect(solution.ends[spring!.endIndex]).toMatchObject({ spring: true, carryOverFactor: 0, distributionFactor: 0.5 });
+    expect(solution.members[0]!.finalMomentI).toBeCloseTo(18, 9);
+    expect(solution.members[0]!.finalMomentJ).toBeCloseTo(-45, 9);
+    expect(spring!.moment).toBeCloseTo(-18, 9);
+    expect(spring!.solverReaction).toBeCloseTo(18, 6);
+    expect(solution.nonSway.cycleCount).toBe(1);
+  });
+
+  it('pórtico con bases articuladas y resorte rotacional: coincide con la corrida axialmente rígida', () => {
+    const portal = (kr: number) => model(
+      [node('A', 0, 0, { type: 'pin', spring: { kr } }), node('B', 0, 4), node('C', 6, 4), node('D', 6, 0, { type: 'pin', spring: { kr } })],
+      [frame('AB', 'A', 'B'), frame('BC', 'B', 'C', 2e-4), frame('DC', 'D', 'C')],
+      [uniform('BC', 0, -10)],
+      [nodal('B', 20)],
+    );
+    const project = portal(8000);
+    expect(applicableMethods(project).map((method) => method.id)).toContain('moment-distribution-frame');
+    const solution = solve(project);
+    expect(solution.modes).toHaveLength(1);
+    expect(rigidGap(project, solution)).toBeLessThan(1e-6);
+    const rigid = rigidReference(project);
+    for (const spring of solution.springs) {
+      // Cada base: el extremo de la columna y el resorte se equilibran, y la reacción es −M_r.
+      const joint = solution.joints.find((entry) => entry.nodeId === spring.nodeId)!;
+      expect(joint.endIndices.reduce((sum, index) => sum + solution.final[index], 0)).toBeCloseTo(0, 8);
+      expect(-spring.moment).toBeCloseTo(rigid.nodeResults.find((entry) => entry.nodeId === spring.nodeId)!.rm, 6);
+    }
+    // El cortante de entrepiso sigue cerrando: las columnas toman los 20 kN.
+    expect(storeyShear(solution, ['AB', 'DC'], 4)).toBeCloseTo(20, 6);
+    // Un resorte muy rígido se acerca al empotramiento; uno nulo deja la base articulada.
+    const stiff = solve(portal(1e12));
+    const fixed = solve(model(
+      [node('A', 0, 0, { type: 'fixed' }), node('B', 0, 4), node('C', 6, 4), node('D', 6, 0, { type: 'fixed' })],
+      [frame('AB', 'A', 'B'), frame('BC', 'B', 'C', 2e-4), frame('DC', 'D', 'C')],
+      [uniform('BC', 0, -10)],
+      [nodal('B', 20)],
+    ));
+    expect(stiff.members[0]!.finalMomentI).toBeCloseTo(fixed.members[0]!.finalMomentI, 4);
+    expect(solve(portal(0)).springs).toEqual([]);
+  });
+
+  it('un resorte de traslación sigue fuera del método', () => {
+    const project = model(
+      [node('A', 0, 0, { type: 'pin', spring: { kx: 5000 } }), node('B', 6, 0, { type: 'fixed' })],
+      [frame('AB', 'A', 'B')],
+      [uniform('AB', 0, -12)],
+    );
+    expect(solveMomentDistributionFrame(project, analyzeProject(project))).toEqual({ applicable: false, reasonKey: 'method.rejectedModelFeature' });
+  });
 });

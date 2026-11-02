@@ -13,7 +13,7 @@
 import type { ProjectModel } from '../types';
 import { classifyStructure, type StructureClassification } from './structureClassification';
 
-export type SolutionMethodId = 'matrix-stiffness' | 'double-integration' | 'portal-method' | 'cantilever-method' | 'three-moment' | 'virtual-work' | 'castigliano-truss' | 'hardy-cross' | 'kani-frame' | 'method-of-sections' | 'method-of-joints' | 'conjugate-beam' | 'moment-distribution-frame' | 'statics-sections';
+export type SolutionMethodId = 'matrix-stiffness' | 'double-integration' | 'portal-method' | 'cantilever-method' | 'three-moment' | 'virtual-work' | 'castigliano-truss' | 'hardy-cross' | 'kani-frame' | 'method-of-sections' | 'method-of-joints' | 'conjugate-beam' | 'moment-distribution-frame' | 'statics-sections' | 'arch-least-work';
 
 export const DEFAULT_SOLUTION_METHOD: SolutionMethodId = 'matrix-stiffness';
 
@@ -100,9 +100,10 @@ export const SOLUTION_METHODS: readonly SolutionMethodDefinition[] = [
     // The Method of Sections for bending members: free body of the whole structure, three
     // equilibrium equations plus one ΣM = 0 per hinge (n − 1 where n members meet at it), then a
     // cut per stretch of every member.
-    // Pure statics only closes on a determinate beam or frame; its deeper requirements —
-    // straight members, no springs or links, no closed ring of members, every reaction and
-    // every diagram landing on the solver's — are `solveStaticsSections`'s job.
+    // Pure statics only closes on a determinate beam or frame — circular arcs included, cut
+    // station by station; its deeper requirements — no springs or links, no closed ring of
+    // members, every reaction and every diagram landing on the solver's — are
+    // `solveStaticsSections`'s job.
     applies: (classification) => (
       (classification.kind === 'simple-beam' || classification.kind === 'continuous-beam' || classification.kind === 'frame')
       && classification.indeterminacy === 0
@@ -121,9 +122,9 @@ export const SOLUTION_METHODS: readonly SolutionMethodDefinition[] = [
     id: 'portal-method',
     labelKey: 'method.portalMethod',
     // A deliberately approximate method for lateral load on a rectangular building frame. Its
-    // deeper requirements — a clean storey/column-line grid, no lateral load on the members
-    // themselves (gravity on them is declared and left to a separate analysis, not refused), an
-    // actual lateral load to narrate — can only be checked by trying to reduce
+    // deeper requirements — a clean storey/column-line grid, no sideways load on a beam (gravity
+    // is declared and left to a separate analysis; wind on a column becomes joint loads by
+    // statics), an actual lateral load to narrate — can only be checked by trying to reduce
     // the frame to that grid, which is `solvePortalMethod`'s job; the selector only offers it
     // where the shallow shape (a frame) makes that attempt plausible.
     applies: (classification) => classification.kind === 'frame',
@@ -165,12 +166,25 @@ export const SOLUTION_METHODS: readonly SolutionMethodDefinition[] = [
     // virtual work of every mode vanishes (the storey-shear equation on an orthogonal frame). A
     // beam is a frame with no sway modes, so indeterminate beams — fixed ends included, which
     // `hardy-cross` rejects — are offered too. Moment releases and internal hinges are part of
-    // it (3EI/L, no carry-over, propped fixed-end moments). Its deeper requirements (frame
-    // members continuous in force, straight members, no springs or imposed motions) and its
-    // proof against an axially rigid matrix run are `solveMomentDistributionFrame`'s job.
+    // it (3EI/L, no carry-over, propped fixed-end moments), and so are rotational support springs
+    // (one more stiffness in ΣK). Its deeper requirements (frame members continuous in force,
+    // straight members, no translational springs or imposed motions) and its proof against an
+    // axially rigid matrix run are `solveMomentDistributionFrame`'s job.
     applies: (classification) => (
       classification.kind === 'frame'
       || ((classification.kind === 'simple-beam' || classification.kind === 'continuous-beam') && classification.indeterminacy >= 1)
+    ),
+  },
+  {
+    id: 'arch-least-work',
+    labelKey: 'method.archLeastWork',
+    // Least work (Castigliano) on one circular arc between two supports that statics alone
+    // cannot solve: two-hinged (the thrust H), fixed at both ends (three redundants) or fixed at
+    // one. Its deeper requirements — pins or fixed ends, no springs or releases — and its proof
+    // against the meshed matrix analysis are `solveArchLeastWork`'s job.
+    applies: (classification, project) => (
+      classification.kind === 'frame' && classification.indeterminacy >= 1
+      && project.members.length === 1 && Boolean(project.members[0]?.curve)
     ),
   },
 ];

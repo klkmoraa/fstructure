@@ -90,7 +90,7 @@ describe('Portal y Voladizo: la carga lateral se reparte, la gravitacional se de
     expect(solution.baseChecks.reduce((sum, check) => sum + check.solverRy, 0)).toBeCloseTo(0, 9);
   });
 
-  it('admite carga a lo largo de una columna y rechaza la que la empuja de lado', () => {
+  it('admite carga a lo largo de una columna, convierte la que la empuja de lado y rechaza la de una viga', () => {
     const base = portalStart();
     const u2 = combinationOf(base, 'U2');
     const withLoad = (load: MemberLoad): ProjectModel => ({ ...base, memberLoads: [...base.memberLoads, load] });
@@ -109,19 +109,82 @@ describe('Portal y Voladizo: la carga lateral se reparte, la gravitacional se de
     expect(axial.excluded).toContainEqual({ kind: 'column-axial', loadId: 'muro', memberId: 'C11', factor: 1 });
     // A local load along the column's own axis (local x) is the same thing.
     accepted(withLoad(columnLoad({ id: 'eje', coordinateSystem: 'local', qxStart: -2, qxEnd: -2 })));
-    // Viento repartido sobre la columna, global o en ejes locales, o una puntual horizontal: no.
-    rejected(withLoad(columnLoad({ id: 'viento', qxStart: 2, qxEnd: 2 })));
-    rejected(withLoad(columnLoad({ id: 'viento-local', coordinateSystem: 'local', qyStart: -2, qyEnd: -2 })));
-    rejected(withLoad(columnLoad({ id: 'P', type: 'point', position: 0.5, px: 5, py: 0, start: 0.5, end: 0.5 })));
-    // A sloping push on the beam has a horizontal part too.
+    // Viento repartido sobre la columna, global o en ejes locales, o una puntual horizontal: se
+    // convierte en cargas en los niveles, no se rechaza.
+    for (const load of [
+      columnLoad({ id: 'viento', qxStart: 2, qxEnd: 2 }),
+      columnLoad({ id: 'viento-local', coordinateSystem: 'local', qyStart: -2, qyEnd: -2 }),
+      columnLoad({ id: 'P', type: 'point', position: 0.5, px: 5, py: 0, start: 0.5, end: 0.5 }),
+    ]) {
+      const [portal, cantilever] = accepted(withLoad(load));
+      expect(portal.conversions.map((entry) => entry.loadId)).toEqual([load.id]);
+      expect(cantilever.conversions.map((entry) => entry.loadId)).toEqual([load.id]);
+    }
+    // A sloping push on the beam has a horizontal part too, and a beam has no levels to hand it to.
     rejected(withLoad(columnLoad({ id: 'inclinada', memberId: 'V11', caseId: 'CM', qxStart: 1, qxEnd: 1, qyStart: -3, qyEnd: -3 })));
-    // Wind generated on the column by a tributary surface is seen and refused like typed wind.
-    rejected({
+    // Wind generated on the column by a tributary surface is converted like typed wind.
+    const [generated] = accepted({
       ...base,
       generatedLoadSources: [{ id: 'viento', kind: 'tributary-surface', caseId: 'S', memberIds: ['C11'], pressure: 1, tributaryWidth: 3, direction: 'global-x' }],
     });
+    expect(generated.conversions).toHaveLength(1);
     // A load of an inactive case in the combination does not count either way.
-    accepted(withLoad(columnLoad({ id: 'otro', caseId: 'NOPE', qxStart: 2, qxEnd: 2 })));
+    const [inactive] = accepted(withLoad(columnLoad({ id: 'otro', caseId: 'NOPE', qxStart: 2, qxEnd: 2 })));
+    expect(inactive.conversions).toEqual([]);
+  });
+
+  it('viento repartido en una columna: su resultante se reparte por estática entre sus dos niveles', () => {
+    // w = 2 kN/m en toda la columna izquierda (h = 3.5 m): W = 7 kN a media altura, 3.5 kN al nivel 1
+    // y 3.5 kN directo a la base. Cortante de planta 30 + 3.5 = 33.5 kN; cada columna, 16.75 kN, y
+    // M = 16.75·1.75 = 29.3125 kN·m. La base de la columna cargada toma además los 3.5 kN de abajo.
+    const base = portalStart();
+    const u2 = combinationOf(base, 'U2');
+    const project: ProjectModel = { ...base, memberLoads: [...base.memberLoads, columnLoad({ id: 'viento', qxStart: 2, qxEnd: 2 })] };
+    const solution = portal(project, u2);
+    const [conversion] = solution.conversions;
+    expect(conversion).toMatchObject({ memberId: 'C11', kind: 'distributed', story: 1, height: 3.5 });
+    expect(conversion!.resultant).toBeCloseTo(7, 12);
+    expect(conversion!.centroid).toBeCloseTo(1.75, 12);
+    expect(conversion!.toTop).toBeCloseTo(3.5, 12);
+    expect(conversion!.toBottom).toBeCloseTo(3.5, 12);
+    expect(solution.storyShear).toEqual([expect.closeTo(33.5, 12)]);
+    for (const column of solution.columns) {
+      expect(column.shear).toBeCloseTo(16.75, 12);
+      expect(Math.abs(column.topMoment)).toBeCloseTo(29.3125, 12);
+    }
+    const loadedBase = solution.baseChecks.find((check) => check.nodeId === conversion!.bottomNodeId)!;
+    expect(loadedBase.approxRx).toBeCloseTo(-16.75 - 3.5, 12);
+    // The oracle carries the wind on the column as it is: its base shear adds up to −37 kN too.
+    expect(solution.baseChecks.reduce((sum, check) => sum + check.solverRx, 0)).toBeCloseTo(-37, 9);
+    expect(solution.baseChecks.reduce((sum, check) => sum + check.approxRx, 0)).toBeCloseTo(-37, 12);
+    // Voladizo: el mismo reparto, y el vuelco del corte a media altura lleva 33.5 kN a 1.75 m.
+    const flexure = cantilever(project, u2);
+    expect(flexure.conversions[0]!.toTop).toBeCloseTo(3.5, 12);
+    for (const column of flexure.columns) expect(Math.abs(column.axial)).toBeCloseTo((33.5 * 1.75) / 6, 12);
+  });
+
+  it('carga triangular parcial y columna declarada de arriba abajo: la estática del tramo', () => {
+    const base = portalStart();
+    const u2 = combinationOf(base, 'U2');
+    // Triángulo de 0 a 4 kN/m en la mitad superior de C11: W = 4·1.75/2 = 3.5 kN a 1.75 + 2·1.75/3 m
+    // de la base; al nivel 1 va W·z̄/h = 3.5·(1.75 + 7/6)/3.5 = 2.9167 kN, a la base el resto.
+    const triangle = columnLoad({ id: 'tri', start: 0.5, end: 1, qxStart: 0, qxEnd: 4 });
+    const solution = portal({ ...base, memberLoads: [...base.memberLoads, triangle] }, u2);
+    const [conversion] = solution.conversions;
+    const centroid = 1.75 + (2 * 1.75) / 3;
+    expect(conversion!.resultant).toBeCloseTo(3.5, 12);
+    expect(conversion!.centroid).toBeCloseTo(centroid, 12);
+    expect(conversion!.toTop).toBeCloseTo((3.5 * centroid) / 3.5, 12);
+    expect(conversion!.toTop + conversion!.toBottom).toBeCloseTo(3.5, 12);
+    // The same load on the same column declared from the top down lands on the same levels.
+    const flipped: ProjectModel = {
+      ...base,
+      members: base.members.map((member) => (member.id === 'C11' ? { ...member, i: member.j, j: member.i } : member)),
+      memberLoads: [...base.memberLoads, { ...triangle, start: 0, end: 0.5, qxStart: 4, qxEnd: 0 }],
+    };
+    const reversed = portal(flipped, u2).conversions[0]!;
+    expect(reversed.toTop).toBeCloseTo(conversion!.toTop, 12);
+    expect(reversed.toBottom).toBeCloseTo(conversion!.toBottom, 12);
   });
 
   it('sin carga lateral no hay nada que repartir', () => {

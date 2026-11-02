@@ -91,4 +91,35 @@ describe('memoria con Cross en marcos', () => {
     expect(text).toContain('H (articulación)');
     expect(text).toContain('3EI/L');
   }, 30_000);
+
+  it('narra un pórtico con bases articuladas sobre resortes rotacionales', async () => {
+    const frame = (id: string, i: string, j: string) => ({ id, i, j, type: 'frame' as const, E: 2e8, A: 0.01, I: 1e-4 });
+    const project: ProjectModel = {
+      ...createBlankProject(),
+      nodes: [
+        { id: 'A', x: 0, y: 0, support: { type: 'pin', spring: { kr: 8000 } } },
+        { id: 'B', x: 0, y: 4, support: { type: 'none' } },
+        { id: 'C', x: 6, y: 4, support: { type: 'none' } },
+        { id: 'D', x: 6, y: 0, support: { type: 'pin', spring: { kr: 8000 } } },
+      ],
+      members: [frame('AB', 'A', 'B'), frame('BC', 'B', 'C'), frame('DC', 'D', 'C')],
+      memberLoads: [
+        { id: 'w', memberId: 'BC', caseId: 'LC1', type: 'distributed', coordinateSystem: 'global', lengthBasis: 'real', start: 0, end: 1, qxStart: 0, qxEnd: 0, qyStart: -10, qyEnd: -10 },
+      ],
+      nodalLoads: [{ id: 'H1', nodeId: 'B', caseId: 'LC1', fx: 20, fy: 0, mz: 0 }],
+    };
+    const artifact = await report(project, { LC1: 1 }, 'Caso 1');
+    expect(artifact.methodAvailability['moment-distribution-frame']).toEqual({ available: true });
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const document = await pdfjs.getDocument({ data: artifact.bytes.slice(), useWorkerFetch: false }).promise;
+    const pages: string[] = [];
+    for (let number = 1; number <= document.numPages; number += 1) {
+      const content = await (await document.getPage(number)).getTextContent();
+      pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '));
+    }
+    const text = pages.join(' ').replace(/\s+/g, ' ');
+    expect(text).toContain('Resortes rotacionales de apoyo');
+    expect(text).toContain('resorte k_r');
+    expect(text).toContain('M_r Cross');
+  }, 30_000);
 });

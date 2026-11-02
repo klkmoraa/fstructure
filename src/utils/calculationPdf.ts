@@ -59,6 +59,7 @@ const METHOD_FILENAME: Record<SolutionMethodId, string> = {
   'castigliano-truss': 'castigliano',
   'moment-distribution-frame': 'cross-marcos',
   'statics-sections': 'secciones',
+  'arch-least-work': 'trabajo-minimo-arco',
 };
 
 /**

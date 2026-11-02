@@ -36,6 +36,13 @@
  *    En un pórtico ortogonal de entrepisos, tomando como modo k «el entrepiso k y todo lo de
  *    encima se trasladan juntos», esta ecuación es exactamente la de cortante de entrepiso.
  *
+ * Resortes rotacionales de apoyo. Un apoyo que no restringe el giro pero lleva un resorte k_r
+ * (`support.spring.kr`) es un nudo más que se equilibra, con el resorte como una rigidez más en
+ * ΣK: toma su parte k_r/ΣK del desequilibrio y no transporta nada (su otro «extremo» es el
+ * terreno). Su momento final M_r = k_r·θ es el que el nudo ejerce sobre el resorte; la reacción
+ * del apoyo es −M_r. El resorte no se traslada, así que no aparece en las ecuaciones de
+ * desplazamiento. Los resortes de traslación siguen fuera del método.
+ *
  * Convención de signos: momentos de extremo *sobre la barra*, antihorarios positivos (la misma
  * que `MemberResult.localEndForces[2]` y `[5]` y que las escenas de cuerpo libre); giros de
  * cuerda antihorarios positivos.
@@ -91,6 +98,27 @@ export interface CrossEnd {
   carryOverFactor: number;
   /** Índice del otro extremo de la misma barra, que recibe el transporte. */
   partner: number;
+  /**
+   * Resorte rotacional del apoyo, tratado como un extremo más del nudo: rigidez k_r, sin barra y
+   * sin transporte (`partner` es él mismo). `memberId` es `resorte`.
+   */
+  spring?: boolean;
+}
+
+/** Un resorte rotacional de apoyo y lo que tomó en el reparto. */
+export interface CrossSpring {
+  nodeId: string;
+  /** k_r, kN·m/rad. */
+  stiffness: number;
+  /** Índice de su extremo en `ends`. */
+  endIndex: number;
+  /** M_r = k_r·θ: momento que el nudo ejerce sobre el resorte. La reacción es −M_r. */
+  moment: number;
+  /** Giro del nudo, θ = M_r/k_r. */
+  rotation: number;
+  /** Momento de reacción del apoyo en la referencia axialmente rígida y en el análisis real. */
+  rigidReaction: number;
+  solverReaction: number;
 }
 
 export interface CrossJoint {
@@ -223,6 +251,8 @@ export interface CrossFrameResult {
   storeyForm: boolean;
   /** Momentos finales por extremo: M⁰ + Σ c_k·Mᵏ. */
   final: number[];
+  /** Resortes rotacionales de apoyo, en el orden de sus extremos. */
+  springs: CrossSpring[];
   verification: CrossVerification;
 }
 
@@ -243,8 +273,15 @@ export interface CrossFrameOptions {
 
 const reject = (reasonKey: string): CrossFrameRejection => ({ applicable: false, reasonKey });
 
-const hasSpring = (support: SupportDefinition): boolean => Boolean(support.spring)
-  && Object.values(support.spring ?? {}).some((value) => typeof value === 'number' && value !== 0 && Number.isFinite(value));
+/** Un resorte de traslación (kx, ky o normal): fuera del método. */
+const hasTranslationalSpring = (support: SupportDefinition): boolean => [support.spring?.kx, support.spring?.ky, support.spring?.kNormal]
+  .some((value) => typeof value === 'number' && value !== 0);
+
+/** k_r de un apoyo que deja girar el nudo; donde el apoyo restringe el giro, el resorte no trabaja. */
+const rotationalSpring = (support: SupportDefinition): number => {
+  const kr = support.spring?.kr;
+  return typeof kr === 'number' && Number.isFinite(kr) && kr > 0 && !restrainsRotation(support) ? kr : 0;
+};
 
 const hasPrescribed = (support: SupportDefinition): boolean => Object.values(support.prescribed ?? {})
   .some((value) => typeof value === 'number' && value !== 0);
@@ -508,7 +545,7 @@ export const solveMomentDistributionFrame = (
       || member.rotationalSpringI !== undefined || member.rotationalSpringJ !== undefined
       || Boolean(member.rigidOffsetI) || Boolean(member.rigidOffsetJ)
     ))
-    || project.nodes.some((node) => hasSpring(node.support) || hasPrescribed(node.support))
+    || project.nodes.some((node) => hasTranslationalSpring(node.support) || hasPrescribed(node.support))
     || (project.nodeLinks?.length ?? 0) > 0
     || (project.multiPointConstraints?.length ?? 0) > 0
     || (project.prescribedDisplacements ?? []).some((entry) => active(entry.caseId) && entry.value !== 0)
@@ -590,6 +627,21 @@ export const solveMomentDistributionFrame = (
     ends.push({ memberId: member.id, nodeId: member.i, farNodeId: member.j, end: 'i', ...end(releasedI, releasedJ), distributionFactor: 0, partner: first + 1 });
     ends.push({ memberId: member.id, nodeId: member.j, farNodeId: member.i, end: 'j', ...end(releasedJ, releasedI), distributionFactor: 0, partner: first });
   }
+  // A rotational support spring is one more stiffness at its joint: it takes its share of every
+  // unbalance and carries nothing over. Its ends follow every member end, so 2m and 2m + 1 are
+  // still member m's.
+  const memberEndCount = ends.length;
+  const connectedIds = new Set(ends.map((entry) => entry.nodeId));
+  for (const node of project.nodes) {
+    const kr = rotationalSpring(node.support);
+    if (!kr || !connectedIds.has(node.id)) continue;
+    const index = ends.length;
+    ends.push({
+      memberId: 'resorte', nodeId: node.id, farNodeId: node.id, end: 'i', stiffness: kr, stiffnessCoefficient: 0,
+      released: false, distributionFactor: 0, carryOverFactor: 0, partner: index, spring: true,
+    });
+  }
+  const springPadding = new Array<number>(ends.length - memberEndCount).fill(0);
   const appliedMoment = new Map<string, number>();
   const nodalForce = new Map<string, { fx: number; fy: number }>();
   for (const load of project.nodalLoads) {
@@ -664,7 +716,7 @@ export const solveMomentDistributionFrame = (
   // Etapa sin desplazamiento.
   // ---------------------------------------------------------------------------------------
   // Ends 2m and 2m + 1 are member m's i and j ends, in that order, throughout.
-  const loadFem = members.flatMap((member) => [member.fixedEndMomentI, member.fixedEndMomentJ]);
+  const loadFem = [...members.flatMap((member) => [member.fixedEndMomentI, member.fixedEndMomentJ]), ...springPadding];
   const nonSway = distribute(ends, joints, loadFem, (joint) => joint.appliedMoment);
   if (!nonSway) return reject('method.rejectedNotConverged');
 
@@ -757,7 +809,7 @@ export const solveMomentDistributionFrame = (
       const both = endI.stiffnessCoefficient === 4 && endJ.stiffnessCoefficient === 4;
       const value = (coefficient: number) => (coefficient === 0 ? 0 : -((both ? 6 : 3) * geometry.member.E * geometry.member.I * psi[m]) / geometry.length);
       return [value(endI.stiffnessCoefficient), value(endJ.stiffnessCoefficient)];
-    });
+    }).concat(springPadding);
     const largest = Math.max(0, ...unitFem.map((value) => Math.abs(value)));
     if (!(largest > 0)) return reject('method.rejectedGeometry');
     const delta = referenceSwayMoment / largest;
@@ -882,6 +934,21 @@ export const solveMomentDistributionFrame = (
     solverResidual = Math.max(solverResidual, Math.abs(member.finalMomentI - member.solverMomentI), Math.abs(member.finalMomentJ - member.solverMomentJ));
     solverReferenceMoment = Math.max(solverReferenceMoment, Math.abs(member.solverMomentI), Math.abs(member.solverMomentJ));
   }
+  // A spring's moment is the support's reaction, reversed: it has to be the rigid run's too.
+  const springs: CrossSpring[] = [];
+  for (const [endIndex, entry] of ends.entries()) {
+    if (!entry.spring) continue;
+    const rigidNode = rigid.nodeResults.find((result) => result.nodeId === entry.nodeId);
+    const solverNode = analysis.nodeResults.find((result) => result.nodeId === entry.nodeId);
+    if (!rigidNode || !solverNode) return reject('method.rejectedGeometry');
+    const moment = final[endIndex]!;
+    springs.push({
+      nodeId: entry.nodeId, stiffness: entry.stiffness, endIndex, moment, rotation: moment / entry.stiffness,
+      rigidReaction: rigidNode.rm, solverReaction: solverNode.rm,
+    });
+    rigidResidual = Math.max(rigidResidual, Math.abs(-moment - rigidNode.rm));
+    solverResidual = Math.max(solverResidual, Math.abs(-moment - solverNode.rm));
+  }
   if (!(rigidResidual <= RIGID_TOLERANCE * Math.max(referenceMoment, 1e-6))) return reject('method.rejectedRigidMismatch');
 
   return {
@@ -896,6 +963,7 @@ export const solveMomentDistributionFrame = (
     swayFactors,
     storeyForm: Boolean(storeys) && modes.length > 0,
     final,
+    springs,
     verification: {
       axialStiffnessFactor: AXIAL_STIFFNESS_FACTOR,
       rigidResidual,
