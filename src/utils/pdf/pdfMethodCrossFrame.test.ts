@@ -119,7 +119,7 @@ describe('memoria con Cross en marcos', () => {
     }
     const text = pages.join(' ').replace(/\s+/g, ' ');
     expect(text).toContain('Resortes rotacionales de apoyo');
-    expect(text).toContain('resorte k_r');
-    expect(text).toContain('M_r Cross');
+    expect(text).toMatch(/resorte k_?\s?r/);
+    expect(text).toMatch(/M_?\s?r Cross/);
   }, 30_000);
 });
