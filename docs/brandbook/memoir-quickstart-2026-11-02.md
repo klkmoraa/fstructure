@@ -26,8 +26,11 @@ La memoria sigue el orden de una memoria de oficina: **Datos generales** (objeto
 
 | Elemento | Canon aplicado |
 | --- | --- |
-| Tipografía | IBM Plex Sans incrustada en subconjunto (familia de la Plex Mono de la marca); cuerpo 10 pt, tablas ≥ 8.2 pt. Sin ella, las fuentes estándar. |
-| Fórmulas | Índices y exponentes reales a tres alturas; regla = sustitución = resultado en un renglón o alineadas en el «=». |
+| Tipografía | IBM Plex Sans para el texto e IBM Plex Serif para las fórmulas, incrustadas en subconjunto (familia de la Plex Mono de la marca); cuerpo 10 pt, tablas ≥ 8.2 pt. Sin ellas, las fuentes estándar. |
+| Fórmulas | IBM Plex Serif: variables en cursiva, cifras, operadores y unidades rectos, resultado en seminegrita; índices y exponentes reales a tres alturas, también en el texto y las tablas; regla = sustitución = resultado en un renglón o alineadas en el «=», numeradas a la derecha. |
+| Cifras | Cuatro significativas; enteros a partir de 1000; potencias de 10 como «× 10⁻⁵», nunca `e-5`; los ceros numéricos se escriben 0. |
+| Rótulo de hoja | Arriba proyecto, documento y método; abajo Calculó, Revisó, Fecha y Hoja n de N, como un plano. |
+| Esquema de cada método | Datos (tabla de magnitud, símbolo, valor, unidad) → Planteamiento (la ecuación sin números y «donde:») → Desarrollo (sustituciones numeradas) → Resultados (recuadro con filete del acento) → Comprobación (una línea verde o ámbar contra el análisis matricial). |
 | Color | Acento de la familia Análisis (`#C23A33` en texto, `#ED4B46` en la franja de la marca); N, V y M con sus señales; tensión azul y compresión roja en armaduras. |
 | Marca | La ménsula con la franja roja y «FStructure» en la portada; la portada nombra el procedimiento de esa copia. |
 | Dibujos | Cargas sumadas con los factores del escenario y rotuladas con su magnitud; reacciones apiladas bajo su apoyo; arcos sobre su curva; las cifras buscan hueco y no cruzan barras. |
