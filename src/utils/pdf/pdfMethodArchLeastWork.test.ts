@@ -46,10 +46,10 @@ describe('memoria PDF con trabajo mínimo en arcos', () => {
     expect(artifact.solutionMethod).toBe('arch-least-work');
     expect(artifact.filename).toMatch(/-memoria-trabajo-minimo-arco\.pdf$/);
     const text = await textOf(artifact.bytes);
-    expect(text).toContain('Trabajo mínimo (Castigliano) en el arco');
+    expect(text).toContain('Método del trabajo mínimo (Castigliano) en el arco');
     expect(text).toContain('Estructura liberada y redundantes');
     expect(text).toContain('Simpson');
-    expect(text).toContain('Verificación contra el análisis matricial');
+    expect(text).toMatch(/Comprobación: H = /);
     // Carga por metro de arco: la fórmula cerrada de proyección horizontal no se imprime.
     expect(text).not.toContain('Referencia clásica');
   }, 60_000);

@@ -42,7 +42,7 @@ describe('Portal y Voladizo en la memoria: lo que no reparten se declara', () =>
     });
     expect(report.solutionMethod).toBe(solutionMethod);
     const text = await extractText(report.bytes);
-    expect(text).toContain(`Procedimiento: ${name}`);
+    expect(text).toContain(name);
     expect(text).toContain('quedan fuera de este análisis');
     expect(text).toContain('Cargas verticales sobre las vigas: CM-V11 (V11, factor 1.2); CV-V11 (V11)');
     expect(text).toContain('Peso propio de las barras: factor 1.2');

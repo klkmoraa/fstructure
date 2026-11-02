@@ -86,7 +86,7 @@ describe('memoria con Cross en marcos', () => {
       pages.push(content.items.map((item) => ('str' in item ? item.str : '')).join(' '));
     }
     const text = pages.join(' ').replace(/\s+/g, ' ');
-    expect(text).toContain('Procedimiento: Cross');
+    expect(text).toContain('Método de Cross');
     expect(text).toContain('Extremos liberados');
     expect(text).toContain('H (articulación)');
     expect(text).toContain('3EI/L');

@@ -587,12 +587,11 @@ export const kaniScenes = (context: ReportContext, solution: KaniResult): FreeBo
       ],
       notes: [{
         place: { nodeId: member.nodeI },
-        text: `FEM ${displayCell(context.project, member.fixedEndMomentI, 'moment')} / `
+        text: `MEP ${displayCell(context.project, member.fixedEndMomentI, 'moment')} / `
           + `${displayCell(context.project, member.fixedEndMomentJ, 'moment')} ${unitFor(context.project, 'moment')}`,
       }],
       legend: 'La barra con los momentos de extremo que el reparto de Kani dejó, junto al momento de '
-        + 'empotramiento perfecto del que partió. Las dos últimas columnas de la tabla son lo que el análisis '
-        + 'matricial obtiene en esos mismos extremos.',
+        + 'empotramiento perfecto del que partió, con los signos del diagrama de momentos.',
     }];
   });
 
@@ -642,12 +641,12 @@ const storeyCutScenes = (
       cutPoints.push(at);
       forces.push({
         place: { at }, fx: column.shear >= 0 ? 1 : -1, fy: 0, tone: 'shear', anchor: 'tail', length: 22,
-        label: forceLabel(context, `V${column.columnIndex + 1}`, column.shear, shearScale),
+        label: forceLabel(context, `V(${String.fromCharCode(65 + column.columnIndex)})`, column.shear, shearScale),
       });
       if (Math.abs(column.axial) > axialScale * 1e-9) {
         forces.push({
           place: { at }, fx: 0, fy: column.axial >= 0 ? 1 : -1, tone: 'axial', anchor: 'tail', length: 20,
-          label: forceLabel(context, `N${column.columnIndex + 1}`, column.axial, axialScale),
+          label: forceLabel(context, `N(${String.fromCharCode(65 + column.columnIndex)})`, column.axial, axialScale),
         });
       }
     }
@@ -684,7 +683,7 @@ const storeyCutScenes = (
       ],
       legend: 'Corte horizontal por el punto de inflexión de cada columna de la planta. Sobre la porción '
         + 'superior actúan el cortante de planta acumulado y, en la cara del corte, el cortante y la axial de '
-        + 'cada columna: el equilibrio de este cuerpo libre es el reparto que la tabla de arriba tabula.',
+        + 'cada columna.',
     }];
   });
 };
@@ -698,7 +697,7 @@ const columnFreeBodyScenes = (
   return columns.flatMap((column) => {
     if (!context.index.member(column.memberId)) return [];
     return [{
-      title: `columna ${column.columnIndex + 1}, planta ${column.story}`,
+      title: `columna ${String.fromCharCode(65 + column.columnIndex)}, planta ${column.story}`,
       keptNodeIds: [column.bottomNodeId, column.topNodeId],
       keptMemberIds: [column.memberId],
       forces: [{

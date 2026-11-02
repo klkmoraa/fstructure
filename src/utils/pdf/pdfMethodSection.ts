@@ -29,7 +29,7 @@ import { solveArchLeastWork } from '../../analysis-methods/archLeastWork';
 import { drawArchLeastWorkSection } from './pdfMethodArchLeastWork';
 import { drawElasticCurve } from './pdfDiagrams';
 import { drawCrossFrameSection } from './pdfMethodCrossFrame';
-import { drawLateralConversions, drawLateralScope } from './pdfMethodLateralScope';
+import { drawLateralBaseCheck, drawLateralConversions, drawLateralScope, drawStoreyData, levelLoad, lineLabel } from './pdfMethodLateralScope';
 import { drawFreeBodyScene, sceneHeightFor, type FreeBodyScene } from './pdfFreeBody';
 import {
   cantileverScenes,
@@ -1335,111 +1335,207 @@ const drawHardyCross = (context: ReportContext, solution: HardyCrossResult): voi
   );
 };
 
+/** `memoirWork` para los marcos: ni un pie solo al final de una página ni un pie sin ecuaciones. */
+const keptWork = (context: ReportContext, equations: readonly EquationInput[], caption?: string): void => {
+  if (!equations.length) return;
+  if (caption) context.layout.ensure(TYPE.small * 1.5 + TYPE.math * 4);
+  memoirWork(context, equations, caption);
+};
+
 const drawKaniFrame = (context: ReportContext, solution: KaniResult): void => {
   const { layout, project } = context;
-  const { fonts, palette } = layout;
   const lengthUnit = unitFor(project, 'length');
   const momentUnit = unitFor(project, 'moment');
-
-  layout.heading('5. Procedimiento: Kani (rotación de nudos)');
-  layout.text(
-    'Cada barra se empotra en imaginación en sus dos extremos y se calcula el momento que '
-    + 'desarrollaría así bajo sus propias cargas — el momento de empotramiento perfecto, igual '
-    + 'que en Hardy Cross. Pero en vez de repartir y acarrear, cada nudo lleva un único «momento '
-    + 'de rotación» por barra que se recalcula en cada pasada a partir de los momentos de '
-    + 'rotación actuales en el otro extremo de cada barra que concurre en él. Repetido nudo por '
-    + 'nudo, converge sin resolver ningún sistema de ecuaciones — y, a diferencia de Hardy Cross, '
-    + 'trabaja de una vez sobre un nudo con más de dos barras, como cualquier nudo real de un '
-    + 'pórtico.',
-    8.7, fonts.regular, undefined, 8,
-  );
-  // `μᵢⱼ = −½(Kᵢⱼ/ΣKᵢ)` is the rule; below it is carried out on the busiest joint of this
-  // frame, with each bar's own EI/L, the sum they add up to, and the factor that came out.
-  const jointStiffness = new Map<string, { memberId: string; k: number }[]>();
+  const stiffnessUnit = dimensionalUnit(project, 1, 1);
+  const restrained = (nodeId: string): boolean => {
+    const support = context.index.node(nodeId)?.support;
+    return support?.type === 'fixed' || (support?.type === 'custom' && Boolean(support.restrainR));
+  };
+  // Kani's sign: the moment on the bar end, clockwise positive — the diagram value at i, its
+  // negative at j. Every relation below is written in it, so M_ij = MEP_ij + 2M′_ij + M′_ji holds
+  // at both ends alike.
+  const ends = solution.members.flatMap((member) => [
+    { member, nodeId: member.nodeI, farNodeId: member.nodeJ, fem: member.fixedEndMomentI, final: member.finalMomentI, solver: member.solverMomentI },
+    { member, nodeId: member.nodeJ, farNodeId: member.nodeI, fem: -member.fixedEndMomentJ, final: -member.finalMomentJ, solver: -member.solverMomentJ },
+  ]);
+  const scale = Math.max(1e-9, ...ends.flatMap((end) => [Math.abs(end.final), Math.abs(end.fem)]));
+  const moment = (value: number) => dimensionalFigure(project, value, 1, 1, scale);
+  const key = (memberId: string, nodeId: string) => `${memberId}@${nodeId}`;
+  // The converged rotation moments, recovered from the final moments: at both ends of a bar,
+  // M − MEP = 2M′(here) + M′(far), two equations in the bar's two M′.
+  const rotation = new Map<string, number>();
   for (const member of solution.members) {
-    const k = member.EI / member.length;
-    for (const nodeId of [member.nodeI, member.nodeJ]) {
-      jointStiffness.set(nodeId, [...(jointStiffness.get(nodeId) ?? []), { memberId: member.memberId, k }]);
-    }
+    const di = member.finalMomentI - member.fixedEndMomentI;
+    const dj = -member.finalMomentJ + member.fixedEndMomentJ;
+    rotation.set(key(member.memberId, member.nodeI), (2 * di - dj) / 3);
+    rotation.set(key(member.memberId, member.nodeJ), (2 * dj - di) / 3);
   }
-  const busiest = [...jointStiffness.entries()].reduce<[string, { memberId: string; k: number }[]] | undefined>(
-    (best, entry) => !best || entry[1].length > best[1].length ? entry : best,
-    undefined,
-  );
-  if (busiest && busiest[1].length > 1) {
-    const [nodeId, bars] = busiest;
-    const total = bars.reduce((sum, bar) => sum + bar.k, 0);
-    const stiffness = (value: number) => dimensionalFigure(project, value, 1, 2, total);
-    layout.text(
-      `Nudo ${nodeId}: rigideces K = EI/L en ${dimensionalUnit(project, 1, 2)}.`,
-      7.9, fonts.bold, palette.ink, 12,
-    );
-    drawRelation(context, {
-      lhs: `ΣK(${nodeId})`,
-      symbolic: 'Σ EI/L',
-      substituted: bars.map((bar) => stiffness(bar.k)).join(' + '),
-      result: stiffness(total),
-      unit: dimensionalUnit(project, 1, 2),
+  const rotationOf = (memberId: string, nodeId: string) => rotation.get(key(memberId, nodeId)) ?? 0;
+  const joints = [...new Set(ends.map((end) => end.nodeId))]
+    .filter((nodeId) => !restrained(nodeId))
+    .map((nodeId) => {
+      const here = ends.filter((end) => end.nodeId === nodeId);
+      const stiffness = here.reduce((sum, end) => sum + end.member.EI / end.member.length, 0);
+      return { nodeId, ends: here, stiffness, fem: here.reduce((sum, end) => sum + end.fem, 0) };
     });
-    for (const bar of bars) {
-      const factor = -0.5 * (bar.k / total);
-      drawRelation(context, {
-        lhs: `μ(${bar.memberId})`,
-        symbolic: '−½ (K_ij/ΣK_i)',
-        substituted: `−½ (${stiffness(bar.k)})/(${stiffness(total)})`,
-        result: number(factor, 6),
-      });
-    }
-  }
-  layout.text(
-    'El método no lleva término de bamboleo lateral: sólo es exacto si el pórtico no se '
-    + 'desplaza lateralmente bajo esta carga. Eso no se supone por la geometría — se comprueba '
-    + 'contrastando el resultado contra el análisis matricial, y si la brecha no es del tamaño '
-    + 'del ruido numérico, el método se retira en vez de narrar una aproximación sin decirlo.',
-    8.3, fonts.regular, palette.ink, 8,
-  );
+  // A restrained end never rotates: if the recovery says otherwise, the worked iteration is not printed.
+  const recovered = ends.every((end) => !restrained(end.nodeId) || Math.abs(rotationOf(end.member.memberId, end.nodeId)) <= 1e-6 * scale);
 
-  layout.heading('5.1 Momento de empotramiento perfecto y momento final por barra', 2);
-  layout.text(
-    `El reparto convergió en ${solution.iterationCount} pasada${solution.iterationCount === 1 ? '' : 's'}. `
-    + 'Las dos últimas columnas son lo que el análisis matricial obtiene en esos mismos extremos: '
-    + 'el método y el solver tienen que coincidir.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Barra', width: 60 },
-      { header: `L (${lengthUnit})`, ...NUMERIC },
-      { header: `FEM i (${momentUnit})`, ...NUMERIC },
-      { header: `FEM j (${momentUnit})`, ...NUMERIC },
-      { header: `M final i (${momentUnit})`, ...NUMERIC },
-      { header: `M final j (${momentUnit})`, ...NUMERIC },
-      { header: `Matricial i (${momentUnit})`, ...NUMERIC },
-      { header: `Matricial j (${momentUnit})`, ...NUMERIC },
-    ],
-    solution.members.map((member) => [
-      `${member.nodeI}–${member.nodeJ}`,
-      number(member.length, 5),
-      displayCell(project, member.fixedEndMomentI, 'moment'),
-      displayCell(project, member.fixedEndMomentJ, 'moment'),
-      displayCell(project, member.finalMomentI, 'moment'),
-      displayCell(project, member.finalMomentJ, 'moment'),
-      displayCell(project, member.solverMomentI, 'moment'),
-      displayCell(project, member.solverMomentJ, 'moment'),
-    ]),
-    { size: 7 },
-  );
+  layout.heading('5. Método de Kani (iteración de giros)');
+  memoirNote(context, `Marco sin desplazamiento lateral, hiperestático de grado ${solution.classification.indeterminacy}. `
+    + `Incógnitas: los momentos de giro M′ de ${joints.length} nudo${joints.length === 1 ? '' : 's'}, por iteración. EI constante por barra, primer orden.`);
+
+  memoirStep(context, '5.1 Datos');
+  layout.table([
+    { header: 'Barra', width: 54 },
+    { header: 'Nudos i – j', width: 96 },
+    { header: `L (${lengthUnit})`, ...NUMERIC },
+    { header: `EI (${dimensionalUnit(project, 1, 2)})`, ...NUMERIC },
+    { header: `K = EI/L (${stiffnessUnit})`, ...NUMERIC },
+  ], solution.members.map((member) => [
+    member.memberId,
+    `${member.nodeI} – ${member.nodeJ}`,
+    dimensionalFigure(project, member.length, 0, 1),
+    dimensionalFigure(project, member.EI, 1, 2),
+    dimensionalFigure(project, member.EI / member.length, 1, 1),
+  ]));
+  memoirNote(context, 'Signos: momento sobre el extremo de la barra, horario positivo. Sin desplazamiento lateral: lo confirma la comprobación final.');
+
+  memoirStep(context, '5.2 Factores de giro');
+  memoirFormula(context, 'μ_{ij} = −(1/2) K_{ij}/ΣK_i', [
+    ['K_{ij}', 'rigidez relativa de la barra ij, EI/L'],
+    ['ΣK_i', 'suma de las rigideces de las barras que llegan al nudo i'],
+    ['μ_{ij}', 'factor de giro; en cada nudo suman −1/2'],
+  ]);
+  const busiest = joints.reduce<(typeof joints)[number] | undefined>((best, joint) => (!best || joint.ends.length > best.ends.length ? joint : best), undefined);
+  if (busiest && busiest.ends.length > 1) {
+    const stiffness = (value: number) => dimensionalFigure(project, value, 1, 1, busiest.stiffness);
+    keptWork(context, [
+      {
+        lhs: `ΣK(${busiest.nodeId})`, symbolic: 'Σ EI/L',
+        substituted: busiest.ends.map((end) => stiffness(end.member.EI / end.member.length)).join(' + '),
+        result: stiffness(busiest.stiffness), unit: stiffnessUnit,
+      },
+      ...busiest.ends.map((end) => ({
+        lhs: `μ(${end.member.memberId}, ${busiest.nodeId})`, symbolic: '−(1/2) K/ΣK',
+        substituted: `−(1/2)(${stiffness(end.member.EI / end.member.length)})/(${stiffness(busiest.stiffness)})`,
+        result: number((-0.5 * end.member.EI) / end.member.length / busiest.stiffness, 4),
+      })),
+    ], `Nudo ${busiest.nodeId}:`);
+  }
+  layout.table([
+    { header: 'Nudo', width: 70 },
+    { header: 'Barra', width: 70 },
+    { header: `K (${stiffnessUnit})`, ...NUMERIC },
+    { header: `ΣK (${stiffnessUnit})`, ...NUMERIC },
+    { header: 'μ', ...NUMERIC },
+  ], joints.flatMap((joint) => joint.ends.map((end) => [
+    joint.nodeId,
+    end.member.memberId,
+    dimensionalFigure(project, end.member.EI / end.member.length, 1, 1),
+    dimensionalFigure(project, joint.stiffness, 1, 1),
+    number((-0.5 * end.member.EI) / end.member.length / joint.stiffness, 4),
+  ])));
+
+  memoirStep(context, '5.3 Momentos de empotramiento y de sujeción');
+  memoirFormula(context, 'ΣMEP_i = Σ_j MEP_{ij}', [
+    ['MEP_{ij}', 'momento de empotramiento perfecto del extremo ij (barra aislada y empotrada)'],
+    ['ΣMEP_i', 'momento de sujeción del nudo i'],
+  ]);
+  layout.table([
+    { header: 'Barra', width: 70 },
+    { header: 'Nudos i – j', width: 110 },
+    { header: `MEP_ij (${momentUnit})`, ...NUMERIC },
+    { header: `MEP_ji (${momentUnit})`, ...NUMERIC },
+  ], solution.members.map((member) => [
+    member.memberId,
+    `${member.nodeI} – ${member.nodeJ}`,
+    moment(member.fixedEndMomentI),
+    moment(-member.fixedEndMomentJ),
+  ]));
+  keptWork(context, joints.map((joint) => (joint.ends.length > 1
+    ? { lhs: `ΣMEP(${joint.nodeId})`, substituted: signedSum(joint.ends.map((end) => moment(end.fem))), result: moment(joint.fem), unit: momentUnit }
+    : { lhs: `ΣMEP(${joint.nodeId})`, result: moment(joint.fem), unit: momentUnit })));
+
+  memoirStep(context, '5.4 Iteración de los momentos de giro');
+  memoirFormula(context, 'M′_{ij} = μ_{ij} R_i,     R_i = ΣMEP_i + Σ M′_{ji}', [
+    ['M′_{ij}', 'momento de giro del extremo ij'],
+    ['ΣM′_{ji}', 'momentos de giro del otro extremo de las barras que llegan a i (0 si está empotrado)'],
+  ]);
+  memoirNote(context, `Se recorre nudo por nudo con los valores más recientes; convergió en ${solution.iterationCount} pasada${solution.iterationCount === 1 ? '' : 's'}. Valores convergidos:`);
+  if (recovered) {
+    const equations: EquationInput[] = [];
+    for (const joint of joints) {
+      const far = joint.ends.map((end) => rotationOf(end.member.memberId, end.farNodeId));
+      const R = joint.fem + far.reduce((sum, value) => sum + value, 0);
+      const closes = joint.ends.every((end) => agrees(
+        (-0.5 * end.member.EI) / end.member.length / joint.stiffness * R,
+        rotationOf(end.member.memberId, joint.nodeId),
+        scale,
+      ));
+      if (!closes) continue;
+      equations.push({
+        lhs: `R(${joint.nodeId})`, symbolic: 'ΣMEP + ΣM′_{ji}',
+        substituted: signedSum([moment(joint.fem), ...far.map((value) => moment(value))]),
+        result: moment(R), unit: momentUnit,
+      });
+      for (const end of joint.ends) {
+        const mu = (-0.5 * end.member.EI) / end.member.length / joint.stiffness;
+        equations.push({
+          lhs: `M′(${end.member.memberId}, ${joint.nodeId})`, symbolic: 'μ R',
+          substituted: `(${number(mu, 4)})(${moment(R)})`,
+          result: moment(rotationOf(end.member.memberId, joint.nodeId)), unit: momentUnit,
+        });
+      }
+    }
+    keptWork(context, equations);
+  }
+
+  memoirStep(context, '5.5 Momentos finales');
+  memoirFormula(context, 'M_{ij} = MEP_{ij} + 2M′_{ij} + M′_{ji}');
+  if (recovered) {
+    keptWork(context, ends.flatMap((end) => {
+      const here = rotationOf(end.member.memberId, end.nodeId);
+      const far = rotationOf(end.member.memberId, end.farNodeId);
+      if (!agrees(end.fem + 2 * here + far, end.final, scale)) return [];
+      return [{
+        lhs: `M(${end.member.memberId}, ${end.nodeId})`, symbolic: 'MEP + 2M′_{ij} + M′_{ji}',
+        substituted: `${moment(end.fem)} + 2(${moment(here)}) + (${moment(far)})`,
+        result: moment(end.final), unit: momentUnit,
+      }];
+    }));
+  }
+  const governing = solution.members.length <= 6
+    ? ends
+    : solution.members.map((member) => ends.filter((end) => end.member === member).reduce((a, b) => (Math.abs(b.final) > Math.abs(a.final) ? b : a)));
+  memoirResults(context, solution.members.length <= 6 ? 'Momentos finales de extremo' : 'Momento de extremo mayor por barra',
+    governing.map((end) => [`M(${end.member.memberId}, ${end.nodeId})`, `${moment(end.final)} ${momentUnit}`] as const));
 
   drawScenes(
     context,
     kaniScenes(context, solution),
-    (_scene, index) => `Barra ${solution.members[index]?.memberId ?? index + 1}: los momentos de extremo convergidos y el empotramiento perfecto de partida.`,
+    (_scene, index) => `Barra ${solution.members[index]?.memberId ?? index + 1}: momentos finales (signos del diagrama) y MEP de partida.`,
   );
 
-  layout.heading('5.2 Verificación contra el análisis matricial', 2);
-  layout.text(
-    `Diferencia máxima, en cualquier extremo de cualquier barra: ${clearNumber(solution.momentResidual, 1)} ${momentUnit}.`,
-    8.7, fonts.bold, palette.ink, 8,
+  memoirStep(context, '5.6 Comprobación');
+  layout.table([
+    { header: 'Barra', width: 70 },
+    { header: `M_ij Kani (${momentUnit})`, ...NUMERIC },
+    { header: `M_ji Kani (${momentUnit})`, ...NUMERIC },
+    { header: `M_ij matricial (${momentUnit})`, ...NUMERIC },
+    { header: `M_ji matricial (${momentUnit})`, ...NUMERIC },
+  ], solution.members.map((member) => [
+    member.memberId,
+    moment(member.finalMomentI),
+    moment(-member.finalMomentJ),
+    moment(member.solverMomentI),
+    moment(-member.solverMomentJ),
+  ]));
+  const reference = Math.max(...ends.map((end) => Math.abs(end.solver)));
+  memoirCheck(
+    context,
+    `Kani frente al análisis matricial, diferencia máxima ${dimensionalFigure(project, solution.momentResidual, 1, 1, 1)} ${momentUnit}.`,
+    solution.momentResidual <= Math.max(1e-6, reference * 1e-4),
   );
 };
 
@@ -1588,350 +1684,376 @@ export const REJECTION_MESSAGE = 'El método elegido no aplica a esta estructura
 
 const drawPortalMethod = (context: ReportContext, solution: PortalMethodResult): void => {
   const { layout, project } = context;
-  const { fonts, palette } = layout;
   const lengthUnit = unitFor(project, 'length');
   const forceUnit = unitFor(project, 'force');
   const momentUnit = unitFor(project, 'moment');
-  const lineLabel = (index: number) => String.fromCharCode(65 + index);
+  const { grid } = solution;
+  const stories = grid.storyLevels.length - 1;
+  const forceScale = Math.max(1e-9, ...solution.storyShear.map((value) => Math.abs(value)));
+  const momentScale = Math.max(1e-9, ...solution.columns.flatMap((column) => [Math.abs(column.bottomMoment), Math.abs(column.topMoment)]), ...solution.beams.map((beam) => Math.abs(beam.moment)));
+  const force = (value: number) => dimensionalFigure(project, value, 1, 0, forceScale);
+  const moment = (value: number) => dimensionalFigure(project, value, 1, 1, momentScale);
+  const length = (value: number) => dimensionalFigure(project, value, 0, 1);
+  const where = (column: { columnIndex: number; story: number }) => `${lineLabel(column.columnIndex)}, planta ${column.story}`;
+  const beamAt = (bay: number, story: number) => solution.beams.find((beam) => beam.bayIndex === bay && beam.story === story);
 
-  layout.heading('5. Procedimiento: Método del Portal');
-  layout.text(
-    'Método aproximado para carga lateral sobre un pórtico rectangular. Se apoya en tres '
-    + 'hipótesis: el momento se anula a media altura de cada columna y a media luz de cada viga '
-    + '(salvo en el primer piso, donde un apoyo que no restringe el giro fuerza el punto de '
-    + 'inflexión en el propio apoyo); el cortante de cada planta se reparte entre sus columnas '
-    + 'según el ancho tributario de piso que cada una soporta; y con esos cortantes la estructura '
-    + 'queda estáticamente determinada: el equilibrio de momento en cada nudo da el momento de '
-    + 'cada viga, y el equilibrio vertical, recorrido desde la cubierta hacia abajo, da la axial '
-    + 'de cada columna.',
-    8.7, fonts.regular, undefined, 8,
-  );
-  layout.text(
-    'A diferencia de un método exacto, éste no tiene por qué coincidir con el análisis matricial: '
-    + 'es una simplificación deliberada. Por eso esta sección no exige que las reacciones '
-    + 'coincidan — las contrasta, y declara la brecha, para que nadie firme una aproximación '
-    + 'creyéndola exacta.',
-    8.3, fonts.regular, palette.ink, 8,
-  );
+  layout.heading('5. Método del Portal');
+  memoirNote(context, `Pórtico de ${grid.columnLines.length} ejes y ${stories} planta${stories === 1 ? '' : 's'} bajo carga lateral. Método aproximado: `
+    + 'dos hipótesis lo vuelven isostático y su diferencia con el análisis matricial se declara al final.');
+  layout.bullets([
+    'Punto de inflexión a media altura de cada columna y a media luz de cada viga (en el apoyo si éste no restringe el giro).',
+    'El cortante de cada planta se reparte entre sus columnas en proporción a su ancho tributario.',
+  ]);
   drawLateralScope(context, solution.excluded, 'Método del Portal');
-  drawLateralConversions(context, solution.conversions, solution.jointLoads, 'Método del Portal');
 
-  layout.heading('5.1 Retícula y cortante por planta', 2);
-  const stories = solution.grid.storyLevels.length - 1;
-  layout.text(
-    `${solution.grid.columnLines.length} ejes de columna (${solution.grid.columnLines.map((_, index) => lineLabel(index)).join(', ')}) `
-    + `y ${stories} planta${stories === 1 ? '' : 's'}. El cortante de cada planta es la carga lateral acumulada de esa `
-    + 'planta hacia arriba.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Planta', width: 60 },
-      { header: `Cortante de planta (${forceUnit})`, ...NUMERIC },
-    ],
-    solution.storyShear.map((shear, index) => [String(index + 1), displayCell(project, shear, 'force')]),
-    { size: 7.8 },
-  );
+  memoirStep(context, '5.1 Datos');
+  drawLateralConversions(context, solution.conversions, solution.jointLoads);
+  const widths = grid.columnLines.map((_, index) => solution.columns.find((column) => column.columnIndex === index)?.tributaryWidth ?? 0);
+  layout.table([
+    { header: 'Eje', width: 60 },
+    { header: `x (${lengthUnit})`, ...NUMERIC },
+    { header: `Ancho tributario a (${lengthUnit})`, ...NUMERIC },
+  ], grid.columnLines.map((x, index) => [lineLabel(index), length(x), length(widths[index] ?? 0)]));
+  drawStoreyData(context, grid, solution.jointLoads);
 
-  // The storey shear is an accumulation, so it is written as one: the lateral load of this
-  // storey plus everything already carried down from above.
-  const storyLoads = solution.storyShear.map((shear, position) => shear - (solution.storyShear[position + 1] ?? 0));
-  const shearScale = Math.max(1, ...solution.storyShear.map((value) => Math.abs(value)));
-  drawWorked(
-    context,
-    `Cortante acumulado de cada planta, en ${forceUnit}.`,
-    solution.storyShear.map((shear, position) => {
-      const above = storyLoads.slice(position);
-      return `V(planta ${position + 1}) = ${signedSum(above.map((value) => dimensionalFigure(project, value, 1, 0, shearScale)))}`
-        + ` = ${dimensionalFigure(project, shear, 1, 0, shearScale)} ${forceUnit}`;
-    }),
-  );
+  memoirStep(context, '5.2 Cortante de planta');
+  memoirFormula(context, 'V_n = Σ_{k ≥ n} F_k', [
+    ['F_k', 'fuerza lateral en el nivel superior de la planta k'],
+    ['V_n', 'cortante de la planta n'],
+  ]);
+  keptWork(context, solution.storyShear.map((shear, position) => {
+    const above = Array.from({ length: stories - position }, (_, offset) => levelLoad(grid, solution.jointLoads, position + 1 + offset));
+    return above.length > 1
+      ? { lhs: `V_${position + 1}`, substituted: signedSum(above.map((value) => force(value))), result: force(shear), unit: forceUnit }
+      : { lhs: `V_${position + 1}`, result: force(shear), unit: forceUnit };
+  }));
 
-  drawScenes(
-    context,
-    portalScenes(context, solution),
-    (scene) => scene.title?.startsWith('planta') === true
-      ? `${scene.title}: corte horizontal por los puntos de inflexión, con el cortante de planta y lo que cada columna toma.`
-      : `${scene.title}: la columna aislada con su cortante y los momentos que ese cortante produce en sus extremos.`,
-  );
-
-  layout.heading('5.2 Columnas: cortante, momento y axial', 2);
-  drawCalculationRecords(context,
-    [
-      { header: 'Columna', width: 56 },
-      { header: 'Planta', width: 44 },
-      { header: `Ancho trib. (${lengthUnit})`, ...NUMERIC },
-      { header: `Cortante (${forceUnit})`, ...NUMERIC },
-      { header: `M inferior (${momentUnit})`, ...NUMERIC },
-      { header: `M superior (${momentUnit})`, ...NUMERIC },
-      { header: `Axial (${forceUnit})`, ...NUMERIC },
-    ],
-    solution.columns.map((column) => [
-      lineLabel(column.columnIndex),
-      String(column.story),
-      number(column.tributaryWidth, 4),
-      displayCell(project, column.shear, 'force'),
-      displayCell(project, column.bottomMoment, 'moment'),
-      displayCell(project, column.topMoment, 'moment'),
-      displayCell(project, column.axial, 'force'),
-    ]),
-    { size: 7.4 },
-  );
-  // Every column's shear is its own tributary share of the storey shear, and its two end
-  // moments are that shear times the distance to the point of inflection. Both are written as
-  // the product that produced them, and only where that product really gives the figure the
-  // table above lists.
-  for (const story of new Set(solution.columns.map((column) => column.story))) {
+  memoirStep(context, '5.3 Cortante y momentos en columnas');
+  memoirFormula(context, 'V_c = V_n a_c/Σa,     M_{inf} = V_c y_0,     M_{sup} = V_c (h − y_0)', [
+    ['a_c, Σa', 'ancho tributario de la columna y suma de la planta'],
+    ['y_0', 'altura del punto de inflexión: h/2, o 0 sobre un apoyo que no restringe el giro'],
+  ]);
+  memoirNote(context, 'Los momentos se escriben en valor absoluto; en la tabla, con su signo (momento sobre el nudo, antihorario positivo).');
+  for (let story = 1; story <= stories; story += 1) {
     const columns = solution.columns.filter((column) => column.story === story);
     const widthTotal = columns.reduce((sum, column) => sum + column.tributaryWidth, 0);
     const storyShear = solution.storyShear[story - 1] ?? 0;
     if (!(widthTotal > 0)) continue;
-    const equations: string[] = [];
+    const equations: EquationInput[] = [];
     for (const column of columns) {
-      const share = storyShear * column.tributaryWidth / widthTotal;
-      if (agrees(share, column.shear, storyShear)) {
-        equations.push(
-          `V(${lineLabel(column.columnIndex)}, planta ${story}) = ${displayCell(project, storyShear, 'force')}`
-          + ` · ${number(column.tributaryWidth, 6)}/${number(widthTotal, 6)}`
-          + ` = ${displayCell(project, column.shear, 'force')} ${forceUnit}`,
-        );
+      if (agrees(storyShear * column.tributaryWidth / widthTotal, column.shear, forceScale)) {
+        equations.push({
+          lhs: `V(${where(column)})`, symbolic: 'V_n a_c/Σa',
+          substituted: `(${force(storyShear)})(${length(column.tributaryWidth)})/(${length(widthTotal)})`,
+          result: force(column.shear), unit: forceUnit,
+        });
       }
-      const lever = column.height * column.inflectionFraction;
-      if (Math.abs(column.bottomMoment) > 1e-9 && agrees(Math.abs(column.bottomMoment), Math.abs(column.shear * lever), Math.abs(column.bottomMoment))) {
-        equations.push(
-          `M_inf(${lineLabel(column.columnIndex)}, planta ${story}) = ${displayCell(project, Math.abs(column.shear), 'force')}`
-          + ` · ${number(column.height, 6)} · ${number(column.inflectionFraction, 6)}`
-          + ` = ${displayCell(project, Math.abs(column.bottomMoment), 'moment')} ${momentUnit}`,
-        );
+      const y0 = column.height * column.inflectionFraction;
+      if (Math.abs(column.bottomMoment) > 1e-9 * momentScale && agrees(Math.abs(column.bottomMoment), Math.abs(column.shear * y0), momentScale)) {
+        equations.push({
+          lhs: `M_{inf}(${where(column)})`, symbolic: 'V_c y_0',
+          substituted: `(${force(Math.abs(column.shear))})(${length(y0)})`,
+          result: moment(Math.abs(column.bottomMoment)), unit: momentUnit,
+        });
+      }
+      if (agrees(Math.abs(column.topMoment), Math.abs(column.shear * (column.height - y0)), momentScale)
+        && Math.abs(column.inflectionFraction - 0.5) > 1e-9) {
+        equations.push({
+          lhs: `M_{sup}(${where(column)})`, symbolic: 'V_c (h − y_0)',
+          substituted: `(${force(Math.abs(column.shear))})(${length(column.height - y0)})`,
+          result: moment(Math.abs(column.topMoment)), unit: momentUnit,
+        });
       }
     }
-    drawWorked(context, `Planta ${story}: ancho tributario total ${number(widthTotal, 6)} ${lengthUnit}.`, equations);
+    keptWork(context, equations, `Planta ${story}: Σa = ${length(widthTotal)} ${lengthUnit}.`);
   }
-  layout.text(
-    'Axial positiva es tracción: en carga lateral unidireccional, las columnas de un lado del '
-    + 'pórtico entran en tracción y las del lado contrario en compresión — es la pareja de '
-    + 'fuerzas que resiste el vuelco.',
-    7.8, fonts.regular, undefined, 8,
+  drawScenes(
+    context,
+    portalScenes(context, solution),
+    (scene) => scene.title?.startsWith('planta') === true
+      ? `${scene.title}: corte por los puntos de inflexión, con el cortante de planta y lo que toma cada columna.`
+      : `${scene.title}: la columna aislada con su cortante y los momentos que produce en sus extremos.`,
   );
 
-  layout.heading('5.3 Vigas: momento y cortante', 2);
-  drawCalculationRecords(context,
-    [
-      { header: 'Vano', width: 70 },
-      { header: 'Planta', width: 44 },
-      { header: `Luz (${lengthUnit})`, ...NUMERIC },
-      { header: `Momento (${momentUnit})`, ...NUMERIC },
-      { header: `Cortante (${forceUnit})`, ...NUMERIC },
-    ],
-    solution.beams.map((beam) => [
-      `${lineLabel(beam.bayIndex)}–${lineLabel(beam.bayIndex + 1)}`,
-      String(beam.story),
-      number(beam.span, 4),
-      displayCell(project, beam.moment, 'moment'),
-      displayCell(project, beam.shear, 'force'),
-    ]),
-    { size: 7.4 },
-  );
-  drawWorked(context, `Cortante de cada viga, desde los dos momentos de sus extremos (${momentUnit} y ${forceUnit}).`, beamShearEquations(context, solution.beams, lineLabel));
+  memoirStep(context, '5.4 Vigas: momento y cortante');
+  memoirFormula(context, 'M_{der} = −(M_{sup} + M′_{inf}) − M_{izq},     V_v = −2M/L', [
+    ['M_{sup}, M′_{inf}', 'momentos sobre el nudo de la columna de abajo y de la de arriba'],
+    ['M_{izq}, M_{der}', 'momentos sobre el nudo de las vigas a su izquierda (0 en el eje exterior) y a su derecha'],
+    ['L', 'luz de la viga; momentos antihorarios positivos'],
+  ]);
+  keptWork(context, solution.beams.flatMap((beam) => {
+    const below = solution.columns.find((column) => column.columnIndex === beam.bayIndex && column.story === beam.story);
+    const above = solution.columns.find((column) => column.columnIndex === beam.bayIndex && column.story === beam.story + 1);
+    const left = beamAt(beam.bayIndex - 1, beam.story)?.moment ?? 0;
+    if (!below) return [];
+    const value = -(below.topMoment + (above?.bottomMoment ?? 0)) - left;
+    if (!agrees(value, beam.moment, momentScale)) return [];
+    return [{
+      lhs: `M(${lineLabel(beam.bayIndex)}–${lineLabel(beam.bayIndex + 1)}, planta ${beam.story})`, symbolic: '−(M_{sup} + M′_{inf}) − M_{izq}',
+      substituted: `−((${moment(below.topMoment)}) + (${moment(above?.bottomMoment ?? 0)})) − (${moment(left)})`,
+      result: moment(beam.moment), unit: momentUnit,
+    }];
+  }));
+  keptWork(context, beamShearEquations(context, solution.beams, lineLabel), 'Cortante de cada viga, en valor absoluto, |V| = 2|M|/L:');
+  layout.table([
+    { header: 'Vano', width: 70 },
+    { header: 'Planta', width: 50 },
+    { header: `L (${lengthUnit})`, ...NUMERIC },
+    { header: `M (${momentUnit})`, ...NUMERIC },
+    { header: `V (${forceUnit})`, ...NUMERIC },
+  ], solution.beams.map((beam) => [
+    `${lineLabel(beam.bayIndex)}–${lineLabel(beam.bayIndex + 1)}`,
+    String(beam.story),
+    length(beam.span),
+    moment(beam.moment),
+    force(beam.shear),
+  ]));
 
-  layout.heading('5.4 Contraste en la base: método aproximado frente al modelo lateral exacto', 2);
-  layout.text(
-    'Se aísla un modelo con únicamente la carga lateral de este proyecto y se resuelve con el '
-    + 'análisis matricial: es la comparación honesta, porque el Método del Portal tampoco '
-    + 'pretende explicar la carga vertical. Las columnas «matricial» son ese resultado exacto; '
-    + 'las «Portal», el de esta sección.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Columna', width: 54 },
-      { header: `Rx Portal (${forceUnit})`, ...NUMERIC },
-      { header: `Rx matricial (${forceUnit})`, ...NUMERIC },
-      { header: `Ry Portal (${forceUnit})`, ...NUMERIC },
-      { header: `Ry matricial (${forceUnit})`, ...NUMERIC },
-      { header: `M Portal (${momentUnit})`, ...NUMERIC },
-      { header: `M matricial (${momentUnit})`, ...NUMERIC },
-    ],
-    solution.baseChecks.map((check) => [
-      lineLabel(check.columnIndex),
-      displayCell(project, check.approxRx, 'force'),
-      displayCell(project, check.solverRx, 'force'),
-      displayCell(project, check.approxRy, 'force'),
-      displayCell(project, check.solverRy, 'force'),
-      displayCell(project, check.approxRm, 'moment'),
-      displayCell(project, check.solverRm, 'moment'),
-    ]),
-    { size: 7.4 },
-  );
-  layout.text(
-    `Mayor diferencia: ${clearNumber(solution.reactionGap.force, 1)} ${forceUnit} en fuerza, `
-    + `${clearNumber(solution.reactionGap.moment, 1)} ${momentUnit} en momento — el precio de la aproximación, a la vista.`,
-    8.7, fonts.bold, palette.ink, 8,
-  );
+  memoirStep(context, '5.5 Axiales de columna');
+  memoirFormula(context, 'N = N′ − 2M_{izq}/L_{izq} + 2M_{der}/L_{der}', [
+    ['N′', 'axial de la columna de arriba (0 bajo la cubierta); se recorre de arriba abajo'],
+    ['M_{izq}, M_{der}', 'momento de la viga a la izquierda y a la derecha del nudo'],
+    ['N', 'axial de la columna, positiva en tensión'],
+  ]);
+  const axialScale = Math.max(forceScale, ...solution.columns.map((column) => Math.abs(column.axial)));
+  keptWork(context, [...solution.columns].sort((a, b) => a.columnIndex - b.columnIndex || b.story - a.story).flatMap((column) => {
+    const above = solution.columns.find((entry) => entry.columnIndex === column.columnIndex && entry.story === column.story + 1);
+    const left = beamAt(column.columnIndex - 1, column.story);
+    const right = beamAt(column.columnIndex, column.story);
+    const value = (above?.axial ?? 0) - (left ? (2 * left.moment) / left.span : 0) + (right ? (2 * right.moment) / right.span : 0);
+    if (!agrees(value, column.axial, axialScale)) return [];
+    const terms = [
+      dimensionalFigure(project, above?.axial ?? 0, 1, 0, axialScale),
+      ...(left ? [`− 2(${moment(left.moment)})/(${length(left.span)})`] : []),
+      ...(right ? [`+ 2(${moment(right.moment)})/(${length(right.span)})`] : []),
+    ];
+    return [{
+      lhs: `N(${where(column)})`, symbolic: 'N′ − 2M_{izq}/L_{izq} + 2M_{der}/L_{der}',
+      substituted: terms.join(' '),
+      result: dimensionalFigure(project, column.axial, 1, 0, axialScale), unit: forceUnit,
+    }];
+  }));
+  layout.table([
+    { header: 'Columna', width: 60 },
+    { header: 'Planta', width: 50 },
+    { header: `a (${lengthUnit})`, ...NUMERIC },
+    { header: `V (${forceUnit})`, ...NUMERIC },
+    { header: `M_inf (${momentUnit})`, ...NUMERIC },
+    { header: `M_sup (${momentUnit})`, ...NUMERIC },
+    { header: `N (${forceUnit})`, ...NUMERIC },
+  ], solution.columns.map((column) => [
+    `${lineLabel(column.columnIndex)} (${column.memberId})`,
+    String(column.story),
+    length(column.tributaryWidth),
+    force(column.shear),
+    moment(column.bottomMoment),
+    moment(column.topMoment),
+    dimensionalFigure(project, column.axial, 1, 0, axialScale),
+  ]));
+
+  drawLateralBaseCheck(context, solution.baseChecks, solution.reactionGap, 'Portal', '5.6 Comprobación');
 };
 
 const drawCantileverMethod = (context: ReportContext, solution: CantileverMethodResult): void => {
   const { layout, project, index } = context;
-  const { fonts, palette } = layout;
   const lengthUnit = unitFor(project, 'length');
   const forceUnit = unitFor(project, 'force');
   const momentUnit = unitFor(project, 'moment');
-  const lineLabel = (index: number) => String.fromCharCode(65 + index);
+  const { grid } = solution;
+  const stories = grid.storyLevels.length - 1;
+  const forceScale = Math.max(1e-9, ...solution.columns.flatMap((column) => [Math.abs(column.shear), Math.abs(column.axial)]));
+  const momentScale = Math.max(1e-9, ...solution.columns.flatMap((column) => [Math.abs(column.bottomMoment), Math.abs(column.topMoment)]), ...solution.beams.map((beam) => Math.abs(beam.moment)));
+  const force = (value: number) => dimensionalFigure(project, value, 1, 0, forceScale);
+  const moment = (value: number) => dimensionalFigure(project, value, 1, 1, momentScale);
+  const length = (value: number) => dimensionalFigure(project, value, 0, 1);
+  const area = (value: number) => dimensionalFigure(project, value, 0, 2);
+  const where = (column: { columnIndex: number; story: number }) => `${lineLabel(column.columnIndex)}, planta ${column.story}`;
+  const beamAt = (bay: number, story: number) => solution.beams.find((beam) => beam.bayIndex === bay && beam.story === story);
+  const columnAt = (line: number, story: number) => solution.columns.find((column) => column.columnIndex === line && column.story === story);
+  const areaOf = (memberId: string) => index.member(memberId)?.A ?? 0;
 
-  layout.heading('5. Procedimiento: Método del Voladizo');
-  layout.text(
-    'Método aproximado para carga lateral sobre un pórtico rectangular. Comparte con el Método '
-    + 'del Portal el punto de inflexión a media altura de cada columna y a media luz de cada viga '
-    + '(salvo en el primer piso, donde un apoyo que no restringe el giro fuerza el punto de '
-    + 'inflexión en el propio apoyo), pero sustituye su segunda hipótesis: en vez de repartir el '
-    + 'cortante de planta por ancho tributario, trata la fila de columnas de cada planta como la '
-    + 'sección de un voladizo vertical que resiste el momento de vuelco — la axial de cada columna '
-    + 'es proporcional a su área y a su distancia al centroide de áreas de esa planta, la fórmula '
-    + 'de flexión aplicada a columnas discretas en vez de a una sección continua. Conocida esa '
-    + 'axial, el equilibrio vertical de cada nudo da el momento de cada viga, y el equilibrio de '
-    + 'momento en cada nudo —recorrido desde la cubierta hacia abajo— da el cortante de cada '
-    + 'columna.',
-    8.7, fonts.regular, undefined, 8,
-  );
-  layout.text(
-    'Como el Método del Portal, no tiene por qué coincidir con el análisis matricial: es una '
-    + 'simplificación deliberada, y esta sección contrasta sus reacciones en la base contra el '
-    + 'modelo lateral exacto en vez de exigir que coincidan.',
-    8.3, fonts.regular, palette.ink, 8,
-  );
+  layout.heading('5. Método del Voladizo');
+  memoirNote(context, `Pórtico de ${grid.columnLines.length} ejes y ${stories} planta${stories === 1 ? '' : 's'} bajo carga lateral. Método aproximado: `
+    + 'dos hipótesis lo vuelven isostático y su diferencia con el análisis matricial se declara al final.');
+  layout.bullets([
+    'Punto de inflexión a media altura de cada columna y a media luz de cada viga (en el apoyo si éste no restringe el giro).',
+    'En cada planta, la axial de cada columna es proporcional a su área y a su distancia al centroide de las áreas: la fila de '
+      + 'columnas trabaja como la sección de un voladizo.',
+  ]);
   drawLateralScope(context, solution.excluded, 'Método del Voladizo');
-  drawLateralConversions(context, solution.conversions, solution.jointLoads, 'Método del Voladizo');
 
-  layout.heading('5.1 Columnas: axial por flexión, cortante y momento', 2);
-  layout.text(
-    'La axial es la incógnita que este método resuelve primero, no la última: positiva es '
-    + 'tracción, y las columnas más alejadas del centroide de áreas son las que más trabajan.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Columna', width: 56 },
-      { header: 'Planta', width: 44 },
-      { header: `Dist. al centroide (${lengthUnit})`, ...NUMERIC },
-      { header: `Axial (${forceUnit})`, ...NUMERIC },
-      { header: `Cortante (${forceUnit})`, ...NUMERIC },
-      { header: `M inferior (${momentUnit})`, ...NUMERIC },
-      { header: `M superior (${momentUnit})`, ...NUMERIC },
-    ],
-    solution.columns.map((column) => [
-      lineLabel(column.columnIndex),
-      String(column.story),
-      number(column.centroidDistance, 4),
-      displayCell(project, column.axial, 'force'),
-      displayCell(project, column.shear, 'force'),
-      displayCell(project, column.bottomMoment, 'moment'),
-      displayCell(project, column.topMoment, 'moment'),
-    ]),
-    { size: 7.4 },
-  );
-  // The hypothesis of the method is that the axial force of a column is proportional to its
-  // own area times its distance to the storey's centroid. Instead of restating that as a
-  // formula, each column's quotient is divided out: if the hypothesis holds — and it does,
-  // because it is how the solution was built — every column of a storey lands on the same
-  // number, and the reader can see it land.
-  for (const story of new Set(solution.columns.map((column) => column.story))) {
+  memoirStep(context, '5.1 Datos');
+  drawLateralConversions(context, solution.conversions, solution.jointLoads);
+  layout.table([
+    { header: 'Columna', width: 80 },
+    { header: 'Planta', width: 50 },
+    { header: `x (${lengthUnit})`, ...NUMERIC },
+    { header: `A (${dimensionalUnit(project, 0, 2)})`, ...NUMERIC },
+  ], solution.columns.map((column) => [
+    `${lineLabel(column.columnIndex)} (${column.memberId})`,
+    String(column.story),
+    length(grid.columnLines[column.columnIndex] ?? 0),
+    area(areaOf(column.memberId)),
+  ]));
+  drawStoreyData(context, grid, solution.jointLoads);
+
+  // The flexure analogy, storey by storey: centroid, ΣA·d², overturning moment, and the axial of
+  // every column from them. Printed only where it rebuilds the axial forces the method found.
+  const storeys = Array.from({ length: stories }, (_, offset) => {
+    const story = offset + 1;
     const columns = solution.columns.filter((column) => column.story === story);
-    const quotients = columns.flatMap((column) => {
-      const member = index.member(column.memberId);
-      const denominator = member ? member.A * column.centroidDistance : 0;
-      if (!member || Math.abs(denominator) < 1e-12) return [];
-      return [{ column, area: member.A, quotient: column.axial / denominator }];
+    const areas = columns.map((column) => areaOf(column.memberId));
+    const totalArea = areas.reduce((sum, value) => sum + value, 0);
+    const centroid = totalArea > 0 ? columns.reduce((sum, column, k) => sum + areas[k] * (grid.columnLines[column.columnIndex] ?? 0), 0) / totalArea : 0;
+    const inertia = columns.reduce((sum, column, k) => sum + areas[k] * column.centroidDistance ** 2, 0);
+    const cut = grid.storyLevels[story - 1] + (columns[0]?.inflectionFraction ?? 0.5) * (grid.storyLevels[story] - grid.storyLevels[story - 1]);
+    const levels = Array.from({ length: stories - story + 1 }, (_, k) => story + k);
+    const overturning = levels.reduce((sum, level) => sum + levelLoad(grid, solution.jointLoads, level) * (grid.storyLevels[level] - cut), 0);
+    const closes = inertia > 0 && columns.every((column, k) => agrees(-overturning * areas[k] * column.centroidDistance / inertia, column.axial, forceScale))
+      && columns.every((column) => agrees(column.centroidDistance, (grid.columnLines[column.columnIndex] ?? 0) - centroid, 1));
+    return { story, columns, areas, totalArea, centroid, inertia, cut, levels, overturning, closes };
+  });
+
+  memoirStep(context, '5.2 Centroide y momento de vuelco');
+  memoirFormula(context, 'x̄ = ΣA x/ΣA,     M_v = Σ_{k ≥ n} F_k (z_k − z_c)', [
+    ['x̄', 'centroide de las áreas de las columnas de la planta'],
+    ['F_k, z_k', 'fuerza lateral y altura de cada nivel por encima del corte'],
+    ['z_c', 'altura del corte: el punto de inflexión de las columnas de la planta'],
+  ]);
+  for (const storey of storeys) {
+    if (!storey.closes) continue;
+    keptWork(context, [
+      {
+        lhs: `x̄_${storey.story}`, symbolic: 'ΣA x/ΣA',
+        substituted: `(${storey.columns.map((column, k) => `(${area(storey.areas[k])})(${length(grid.columnLines[column.columnIndex] ?? 0)})`).join(' + ')})/(${area(storey.totalArea)})`,
+        result: length(storey.centroid), unit: lengthUnit,
+      },
+      {
+        lhs: `ΣA d^2`, symbolic: 'ΣA (x − x̄)^2',
+        substituted: storey.columns.map((column, k) => `(${area(storey.areas[k])})(${length(column.centroidDistance)})^2`).join(' + '),
+        result: dimensionalFigure(project, storey.inertia, 0, 4), unit: dimensionalUnit(project, 0, 4),
+      },
+      {
+        lhs: `M_{v${storey.story}}`, symbolic: 'Σ F_k (z_k − z_c)',
+        substituted: storey.levels.map((level) => `(${force(levelLoad(grid, solution.jointLoads, level))})(${length(grid.storyLevels[level])} − ${length(storey.cut)})`).join(' + '),
+        result: moment(storey.overturning), unit: momentUnit,
+      },
+    ], `Planta ${storey.story} (z_c = ${length(storey.cut)} ${lengthUnit}):`);
+  }
+
+  memoirStep(context, '5.3 Axial de columnas');
+  memoirFormula(context, 'N_c = −M_v A_c d_c/Σ(A d^2)', [
+    ['d_c', 'distancia de la columna al centroide, x_c − x̄, positiva hacia +x'],
+    ['N_c', 'axial, positiva en tensión: con carga hacia +x queda a tensión el lado de −x'],
+  ]);
+  for (const storey of storeys) {
+    if (storey.closes) {
+      keptWork(context, storey.columns.map((column, k) => ({
+        lhs: `N(${where(column)})`, symbolic: '−M_v A d/ΣA d^2',
+        substituted: `−(${moment(storey.overturning)})(${area(storey.areas[k])})(${length(column.centroidDistance)})/(${dimensionalFigure(project, storey.inertia, 0, 4)})`,
+        result: force(column.axial), unit: forceUnit,
+      })));
+      continue;
+    }
+    // Without the overturning moment rebuilt, the hypothesis is still shown: N/(A·d) is one number per storey.
+    const quotients = storey.columns.flatMap((column, k) => {
+      const denominator = storey.areas[k] * column.centroidDistance;
+      return Math.abs(denominator) < 1e-12 ? [] : [{ column, area: storey.areas[k], quotient: column.axial / denominator }];
     });
     if (quotients.length < 2) continue;
-    drawWorked(
-      context,
-      `Planta ${story}: la axial dividida por el área y la distancia al centroide da el mismo número en cada columna — la hipótesis del método, comprobada sobre este pórtico.`,
-      quotients.map(({ column, area, quotient }) => (
-        `N(${lineLabel(column.columnIndex)})/(A · d) = ${displayCell(project, column.axial, 'force')}`
-        + `/((${number(dimensionalValue(project, area, 0, 2), 6)})(${number(column.centroidDistance, 6)}))`
-        + ` = ${number(dimensionalValue(project, quotient, 1, -3), 6)} ${dimensionalUnit(project, 1, -3)}`
-      )),
-    );
+    keptWork(context, quotients.map(({ column, area: value, quotient }) => ({
+      lhs: `N/(A d)(${where(column)})`,
+      substituted: `(${force(column.axial)})/((${area(value)})(${length(column.centroidDistance)}))`,
+      result: number(dimensionalValue(project, quotient, 1, -3), 4), unit: dimensionalUnit(project, 1, -3),
+    })), `Planta ${storey.story}: N/(A d) es el mismo en cada columna, la hipótesis del método.`);
   }
-  // And the two end moments of every column, as the shear times the distance to its own
-  // inflection point.
-  drawWorked(
-    context,
-    `Momento de extremo de cada columna, desde su cortante y su punto de inflexión (${momentUnit}).`,
-    solution.columns.flatMap((column) => {
-      const lever = column.height * column.inflectionFraction;
-      if (Math.abs(column.bottomMoment) <= 1e-9) return [];
-      if (!agrees(Math.abs(column.bottomMoment), Math.abs(column.shear * lever), Math.abs(column.bottomMoment))) return [];
-      return [
-        `M_inf(${lineLabel(column.columnIndex)}, planta ${column.story}) = ${displayCell(project, Math.abs(column.shear), 'force')}`
-        + ` · ${number(column.height, 6)} · ${number(column.inflectionFraction, 6)}`
-        + ` = ${displayCell(project, Math.abs(column.bottomMoment), 'moment')} ${momentUnit}`,
-      ];
-    }),
-  );
 
+  memoirStep(context, '5.4 Vigas: momento y cortante');
+  memoirFormula(context, 'M = (L/2)(N − N′ + 2M_{izq}/L_{izq}),     V_v = −2M/L', [
+    ['N, N′', 'axial de la columna bajo el nudo izquierdo de la viga y de la de arriba (0 bajo la cubierta)'],
+    ['M_{izq}, L_{izq}', 'momento y luz de la viga a la izquierda del nudo (0 en el eje exterior)'],
+  ]);
+  keptWork(context, solution.beams.flatMap((beam) => {
+    const below = columnAt(beam.bayIndex, beam.story);
+    const above = columnAt(beam.bayIndex, beam.story + 1);
+    const left = beamAt(beam.bayIndex - 1, beam.story);
+    if (!below) return [];
+    const value = (beam.span / 2) * (below.axial - (above?.axial ?? 0) + (left ? (2 * left.moment) / left.span : 0));
+    if (!agrees(value, beam.moment, momentScale)) return [];
+    return [{
+      lhs: `M(${lineLabel(beam.bayIndex)}–${lineLabel(beam.bayIndex + 1)}, planta ${beam.story})`, symbolic: '(L/2)(N − N′ + 2M_{izq}/L_{izq})',
+      substituted: `(${length(beam.span)}/2)((${force(below.axial)}) − (${force(above?.axial ?? 0)})`
+        + (left ? ` + 2(${moment(left.moment)})/(${length(left.span)}))` : ')'),
+      result: moment(beam.moment), unit: momentUnit,
+    }];
+  }));
+  keptWork(context, beamShearEquations(context, solution.beams, lineLabel), 'Cortante de cada viga, en valor absoluto, |V| = 2|M|/L:');
+  layout.table([
+    { header: 'Vano', width: 70 },
+    { header: 'Planta', width: 50 },
+    { header: `L (${lengthUnit})`, ...NUMERIC },
+    { header: `M (${momentUnit})`, ...NUMERIC },
+    { header: `V (${forceUnit})`, ...NUMERIC },
+  ], solution.beams.map((beam) => [
+    `${lineLabel(beam.bayIndex)}–${lineLabel(beam.bayIndex + 1)}`,
+    String(beam.story),
+    length(beam.span),
+    moment(beam.moment),
+    force(beam.shear),
+  ]));
+
+  memoirStep(context, '5.5 Columnas: momentos y cortante');
+  memoirFormula(context, 'M_{sup} = −(M′_{inf} + M_{izq} + M_{der}),     V = −M_{sup}/(h − y_0),     M_{inf} = −V y_0', [
+    ['M′_{inf}', 'momento sobre el nudo de la columna de arriba (0 bajo la cubierta), de arriba abajo'],
+    ['M_{izq}, M_{der}', 'momentos sobre el nudo de las vigas a su izquierda y a su derecha'],
+    ['y_0', 'altura del punto de inflexión: h/2, o 0 sobre un apoyo que no restringe el giro'],
+  ]);
+  keptWork(context, [...solution.columns].sort((a, b) => a.columnIndex - b.columnIndex || b.story - a.story).flatMap((column) => {
+    const above = columnAt(column.columnIndex, column.story + 1);
+    const left = beamAt(column.columnIndex - 1, column.story);
+    const right = beamAt(column.columnIndex, column.story);
+    const top = -((above?.bottomMoment ?? 0) + (left?.moment ?? 0) + (right?.moment ?? 0));
+    const clearance = column.height * (1 - column.inflectionFraction);
+    if (!agrees(top, column.topMoment, momentScale) || !(clearance > 0) || !agrees(-column.topMoment / clearance, column.shear, forceScale)) return [];
+    return [
+      {
+        lhs: `M_{sup}(${where(column)})`, symbolic: '−(M′_{inf} + M_{izq} + M_{der})',
+        substituted: `−((${moment(above?.bottomMoment ?? 0)}) + (${moment(left?.moment ?? 0)}) + (${moment(right?.moment ?? 0)}))`,
+        result: moment(column.topMoment), unit: momentUnit,
+      },
+      {
+        lhs: `V(${where(column)})`, symbolic: '−M_{sup}/(h − y_0)',
+        substituted: `−(${moment(column.topMoment)})/(${length(clearance)})`,
+        result: force(column.shear), unit: forceUnit,
+      },
+    ];
+  }));
+  layout.table([
+    { header: 'Columna', width: 60 },
+    { header: 'Planta', width: 50 },
+    { header: `d (${lengthUnit})`, ...NUMERIC },
+    { header: `N (${forceUnit})`, ...NUMERIC },
+    { header: `V (${forceUnit})`, ...NUMERIC },
+    { header: `M_inf (${momentUnit})`, ...NUMERIC },
+    { header: `M_sup (${momentUnit})`, ...NUMERIC },
+  ], solution.columns.map((column) => [
+    `${lineLabel(column.columnIndex)} (${column.memberId})`,
+    String(column.story),
+    length(column.centroidDistance),
+    force(column.axial),
+    force(column.shear),
+    moment(column.bottomMoment),
+    moment(column.topMoment),
+  ]));
   drawScenes(
     context,
     cantileverScenes(context, solution),
     (scene) => scene.title?.startsWith('planta') === true
-      ? `${scene.title}: corte horizontal por los puntos de inflexión, con la resultante lateral y lo que cada columna toma.`
-      : `${scene.title}: la columna aislada con su cortante y los momentos que ese cortante produce en sus extremos.`,
+      ? `${scene.title}: corte por los puntos de inflexión, con la resultante lateral y lo que toma cada columna.`
+      : `${scene.title}: la columna aislada con su cortante y los momentos que produce en sus extremos.`,
   );
 
-  layout.heading('5.2 Vigas: momento y cortante', 2);
-  drawCalculationRecords(context,
-    [
-      { header: 'Vano', width: 70 },
-      { header: 'Planta', width: 44 },
-      { header: `Luz (${lengthUnit})`, ...NUMERIC },
-      { header: `Momento (${momentUnit})`, ...NUMERIC },
-      { header: `Cortante (${forceUnit})`, ...NUMERIC },
-    ],
-    solution.beams.map((beam) => [
-      `${lineLabel(beam.bayIndex)}–${lineLabel(beam.bayIndex + 1)}`,
-      String(beam.story),
-      number(beam.span, 4),
-      displayCell(project, beam.moment, 'moment'),
-      displayCell(project, beam.shear, 'force'),
-    ]),
-    { size: 7.4 },
-  );
-  drawWorked(context, `Cortante de cada viga, desde los dos momentos de sus extremos (${momentUnit} y ${forceUnit}).`, beamShearEquations(context, solution.beams, lineLabel));
-
-  layout.heading('5.3 Contraste en la base: método aproximado frente al modelo lateral exacto', 2);
-  layout.text(
-    'Se aísla un modelo con únicamente la carga lateral de este proyecto y se resuelve con el '
-    + 'análisis matricial: es la comparación honesta, porque el Método del Voladizo tampoco '
-    + 'pretende explicar la carga vertical. Las columnas «matricial» son ese resultado exacto; '
-    + 'las «Voladizo», el de esta sección.',
-    8.3, fonts.regular, undefined, 8,
-  );
-  drawCalculationRecords(context,
-    [
-      { header: 'Columna', width: 54 },
-      { header: `Rx Voladizo (${forceUnit})`, ...NUMERIC },
-      { header: `Rx matricial (${forceUnit})`, ...NUMERIC },
-      { header: `Ry Voladizo (${forceUnit})`, ...NUMERIC },
-      { header: `Ry matricial (${forceUnit})`, ...NUMERIC },
-      { header: `M Voladizo (${momentUnit})`, ...NUMERIC },
-      { header: `M matricial (${momentUnit})`, ...NUMERIC },
-    ],
-    solution.baseChecks.map((check) => [
-      lineLabel(check.columnIndex),
-      displayCell(project, check.approxRx, 'force'),
-      displayCell(project, check.solverRx, 'force'),
-      displayCell(project, check.approxRy, 'force'),
-      displayCell(project, check.solverRy, 'force'),
-      displayCell(project, check.approxRm, 'moment'),
-      displayCell(project, check.solverRm, 'moment'),
-    ]),
-    { size: 7.4 },
-  );
-  layout.text(
-    `Mayor diferencia: ${clearNumber(solution.reactionGap.force, 1)} ${forceUnit} en fuerza, `
-    + `${clearNumber(solution.reactionGap.moment, 1)} ${momentUnit} en momento — el precio de la aproximación, a la vista.`,
-    8.7, fonts.bold, palette.ink, 8,
-  );
+  drawLateralBaseCheck(context, solution.baseChecks, solution.reactionGap, 'Voladizo', '5.6 Comprobación');
 };
 
 /**
