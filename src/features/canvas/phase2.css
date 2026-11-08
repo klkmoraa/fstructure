@@ -1470,7 +1470,7 @@ button,
 .canvas-minimap:hover { box-shadow:var(--sc-shadow-sm); } }
 .canvas-minimap:active { box-shadow:var(--sc-shadow-pressed); transform:var(--sc-press-transform); }
 .canvas-minimap svg { width:100%; height:100%; display:block; }
-.canvas-minimap-members line { stroke:var(--muted); stroke-width:1.4; opacity:.72; }
+.canvas-minimap-members line, .canvas-minimap-members path { stroke:var(--muted); stroke-width:1.4; opacity:.72; fill:none; }
 .canvas-minimap-nodes circle { fill:var(--accent); }
 .canvas-minimap-viewport {
   fill:color-mix(in srgb,var(--accent) 12%,transparent);
