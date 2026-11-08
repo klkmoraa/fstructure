@@ -436,13 +436,19 @@ export const drawMemberLoads = (
       const endRatio = Math.min(Math.max(load.start, load.end), limit);
       if (!(endRatio > startRatio)) continue;
       const arrowTails: Point[] = [];
+      const peakIntensity = Math.max(
+        Math.hypot(load.qxStart ?? 0, load.qyStart ?? 0),
+        Math.hypot(load.qxEnd ?? load.qxStart ?? 0, load.qyEnd ?? load.qyStart ?? 0),
+        1e-9,
+      );
       const count = 7;
       for (let arrowIndex = 0; arrowIndex < count; arrowIndex += 1) {
         const t = arrowIndex / (count - 1);
         const ratio = startRatio + (endRatio - startRatio) * t;
         const intensity = distributedIntensityAt(load, t);
         const [gx, gy] = globalVector(intensity.qx * factor, intensity.qy * factor, ratio);
-        const tail = drawArrow(layout, atFlexibleRatio(ratio), gx, gy, actionColor, 16);
+        const tail = drawArrow(layout, atFlexibleRatio(ratio), gx, gy, actionColor,
+          16 * Math.hypot(intensity.qx, intensity.qy) / peakIntensity);
         if (tail) arrowTails.push(tail);
       }
       if (arrowTails.length > 1) page.drawLine({ start: arrowTails[0], end: arrowTails.at(-1)!, thickness: 0.9, color: actionColor });
