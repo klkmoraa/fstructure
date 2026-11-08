@@ -2,6 +2,7 @@ import { memo, type ComponentProps, type CSSProperties } from 'react';
 import { CanvasGeometryLayer as StraightLayer } from './StraightCanvasGeometryLayer';
 import { circularMemberGeometry, curvedMemberPath, curvePointAt, curveTangentAt } from '../../graphics/memberCurve';
 import { distributedIntensityAt } from '../../graphics/structureGeometry';
+import { resolveMemberLoadPresentation, DISTRIBUTED_BASE_HEIGHT_PX } from './loadPresentation';
 import { elasticIndexPaint } from '../results/elasticDemand';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import { toDisplay } from '../../foundation/units';
@@ -16,6 +17,8 @@ export const CanvasGeometryLayer = memo((props: Props) => {
   const curves = props.project.members.filter(m => m.curve);
   if (!curves.length) return <StraightLayer {...props} />;
   const view = readCanvasViewSettings(props.project);
+  const presentationMap = new Map(resolveMemberLoadPresentation(props.project.memberLoads)
+    .map(presentation => [presentation.load.id, presentation]));
   if (props.slot === 'objects') {
     const ids = new Set(curves.map(m => m.id));
     return <>
@@ -33,21 +36,34 @@ export const CanvasGeometryLayer = memo((props: Props) => {
             const tangent = curveTangentAt(arc, t);
             return { x: tangent.x * x - tangent.y * y, y: -(tangent.y * x + tangent.x * y) };
           };
-          const arrow = (t: number, x: number, y: number, key: number) => {
+          const presentation = presentationMap.get(load.id);
+          const arrow = (t: number, x: number, y: number, key: number, height = 34, headOffset = 0) => {
             const base = station(t), direction = vector(t, x, y), length = Math.hypot(direction.x, direction.y);
-            if (length < 1e-12) return null;
-            return <line key={key} x1={base.x - direction.x / length * 34} y1={base.y - direction.y / length * 34}
-              x2={base.x} y2={base.y} markerEnd="url(#arrow-load-point)" />;
+            if (length < 1e-12 || height <= 0) return null;
+            const ux = direction.x / length, uy = direction.y / length;
+            const head = { x: base.x - ux * headOffset, y: base.y - uy * headOffset };
+            const tail = { x: head.x - ux * height, y: head.y - uy * height };
+            return <g key={key}>
+              {headOffset > 0 ? <line className="native-curve-load-guide" x1={base.x} y1={base.y} x2={head.x} y2={head.y} /> : null}
+              <line x1={tail.x} y1={tail.y} x2={head.x} y2={head.y} markerEnd="url(#arrow-load-point)" />
+            </g>;
           };
           return <g key={load.id} data-structure-object data-structure-kind="memberLoad" data-structure-id={load.id}
             className={`native-curve-load ${selected ? 'selected' : ''}`} role="button" tabIndex={props.interactive === false ? -1 : 0}
             aria-label={`${load.id} · ${member.id}`} aria-pressed={selected}
             onPointerDown={event => props.onObjectPointerDown(event, { kind: 'memberLoad', id: load.id })}
             onKeyDown={event => props.onObjectKeyDown(event, { kind: 'memberLoad', id: load.id })}>
-            {load.type === 'point' ? arrow(load.position ?? 0.5, load.px ?? 0, load.py ?? 0, 0) : null}
+            {load.type === 'point' ? arrow(load.position ?? 0.5, load.px ?? 0, load.py ?? 0, 0,
+              (presentation?.pointTailOffsetPx ?? 52) - (presentation?.pointHeadOffsetPx ?? 7),
+              presentation?.pointHeadOffsetPx ?? 7) : null}
             {load.type === 'distributed' ? Array.from({ length: 9 }, (_, n) => {
               const ratio = n / 8, t = load.start + ratio * (load.end - load.start);
-              const q = distributedIntensityAt(load, ratio); return arrow(t, q.qx, q.qy, n);
+              const q = distributedIntensityAt(load, ratio);
+              const startMagnitude = Math.hypot(load.qxStart ?? 0, load.qyStart ?? 0);
+              const endMagnitude = Math.hypot(load.qxEnd ?? load.qxStart ?? 0, load.qyEnd ?? load.qyStart ?? 0);
+              const maximum = Math.max(startMagnitude, endMagnitude, 1e-9);
+              const height = Math.hypot(q.qx, q.qy) / maximum * DISTRIBUTED_BASE_HEIGHT_PX;
+              return arrow(t, q.qx, q.qy, n, height, presentation?.distributedBaseOffsetPx ?? 0);
             }) : null}
             {load.type === 'moment' ? (() => {
               const p = station(load.position ?? 0.5);

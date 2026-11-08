@@ -10,16 +10,18 @@
  * Everything here draws through `layout.page`, which must always be read at the moment of use —
  * a page break replaces it — and takes its colours from the palette, never from a literal.
  */
-import type {  NodeModel, SupportDefinition } from '../../types';
+import type { MemberModel, NodeModel, SupportDefinition } from '../../types';
 import type { SectionGeometry } from '../../features/inspector/sectionGeometry';
 import {
   distributedIntensityAt,
   grossRatioFromFlexible,
-  lerpPoint,
   memberAxis,
   modelBounds,
+  pointAtGrossRatio,
+  structureBounds,
   toGlobalVector,
 } from '../../graphics/structureGeometry';
+import { circularMemberGeometry, curvePointAt } from '../../graphics/memberCurve';
 import { number } from './pdfFormat';
 import { pdfText } from './pdfGlyphs';
 import type { PdfLayout } from './pdfBuilder';
@@ -51,8 +53,8 @@ export interface Projection {
 }
 
 /** Uniform model -> page transform that centres the structure inside `plot`. */
-export const createProjection = (nodes: readonly NodeModel[], plot: PlotBox): Projection => {
-  const { minX, maxX, minY, maxY } = modelBounds(nodes);
+export const createProjection = (nodes: readonly NodeModel[], plot: PlotBox, members: readonly MemberModel[] = []): Projection => {
+  const { minX, maxX, minY, maxY } = members.length ? structureBounds(nodes, members) : modelBounds(nodes);
   const scale = Math.min(
     (plot.right - plot.left) / Math.max(maxX - minX, 1),
     (plot.top - plot.bottom) / Math.max(maxY - minY, 1),
@@ -228,6 +230,27 @@ interface GhostOptions {
   readonly hideGhost?: boolean;
 }
 
+/** Render the real member centreline in PDFs; never silently replace an arc with a chord. */
+export const drawProjectedMember = (
+  layout: PdfLayout, projection: Projection, member: MemberModel,
+  i: NodeModel, j: NodeModel,
+  style: { thickness: number; color: PdfColor; opacity?: number; dashArray?: number[] },
+): void => {
+  const arc = circularMemberGeometry(member, i, j);
+  if (!arc) {
+    layout.page.drawLine({ start: projection.at(i.x, i.y), end: projection.at(j.x, j.y), ...style });
+    return;
+  }
+  const segments = Math.max(32, Math.ceil(Math.abs(arc.sweep) * 28));
+  let previous = arc.start;
+  for (let n = 1; n <= segments; n += 1) {
+    const next = curvePointAt(arc, n / segments);
+    layout.page.drawLine({ start: projection.at(previous.x, previous.y),
+      end: projection.at(next.x, next.y), ...style });
+    previous = next;
+  }
+};
+
 /**
  * The whole structure under a free body: the retained part in ink, the rest a faint outline.
  *
@@ -250,9 +273,7 @@ export const drawGhostModel = (
     if (!ni || !nj) continue;
     const solid = solidMembers === undefined || solidMembers.has(member.id);
     if (!solid && options.hideGhost) continue;
-    page.drawLine({
-      start: projection.at(ni.x, ni.y),
-      end: projection.at(nj.x, nj.y),
+    drawProjectedMember(layout, projection, member, ni, nj, {
       thickness: solid ? (member.type === 'rigid' ? 3 : 2) : 0.8,
       color: solid ? palette.ink : palette.inkFaint,
       opacity: solid ? 1 : 0.5,
@@ -400,14 +421,15 @@ export const drawMemberLoads = (
     const startNode = index.node(member.i);
     const endNode = index.node(member.j);
     if (!startNode || !endNode) continue;
-    const screenStart = projection.at(startNode.x, startNode.y);
-    const screenEnd = projection.at(endNode.x, endNode.y);
     const axis = memberAxis(member, startNode, endNode);
     if (!(axis.length > 0) || !(axis.flexibleLength > 0)) continue;
     const limit = options.upTo?.(load.memberId) ?? 1;
-    const atFlexibleRatio = (ratio: number) => lerpPoint(screenStart, screenEnd, grossRatioFromFlexible(axis, ratio));
-    const globalVector = (x: number, y: number): [number, number] =>
-      toGlobalVector(axis, load.coordinateSystem, x, y);
+    const atFlexibleRatio = (ratio: number) => {
+      const point = pointAtGrossRatio(axis, grossRatioFromFlexible(axis, ratio));
+      return projection.at(point.x, point.y);
+    };
+    const globalVector = (x: number, y: number, ratio: number): [number, number] =>
+      toGlobalVector(axis, load.coordinateSystem, x, y, grossRatioFromFlexible(axis, ratio));
     const actionColor = palette.load;
     if (load.type === 'distributed') {
       const startRatio = Math.min(load.start, load.end);
@@ -419,7 +441,7 @@ export const drawMemberLoads = (
         const t = arrowIndex / (count - 1);
         const ratio = startRatio + (endRatio - startRatio) * t;
         const intensity = distributedIntensityAt(load, t);
-        const [gx, gy] = globalVector(intensity.qx * factor, intensity.qy * factor);
+        const [gx, gy] = globalVector(intensity.qx * factor, intensity.qy * factor, ratio);
         const tail = drawArrow(layout, atFlexibleRatio(ratio), gx, gy, actionColor, 16);
         if (tail) arrowTails.push(tail);
       }
@@ -429,7 +451,7 @@ export const drawMemberLoads = (
     } else if (load.type === 'point') {
       const position = Math.min(1, Math.max(0, load.position ?? 0.5));
       if (position > limit) continue;
-      const [gx, gy] = globalVector((load.px ?? 0) * factor, (load.py ?? 0) * factor);
+      const [gx, gy] = globalVector((load.px ?? 0) * factor, (load.py ?? 0) * factor, position);
       const location = atFlexibleRatio(position);
       const tail = drawArrow(layout, location, gx, gy, actionColor, 22) ?? location;
       page.drawText(pdfText(load.id), { x: tail.x + 2, y: tail.y + 5, size: 6, font: fonts.bold, color: actionColor });
