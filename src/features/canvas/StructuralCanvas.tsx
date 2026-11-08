@@ -57,10 +57,12 @@ import {
   grossRatioFromFlexible,
   memberAxis,
   modelBounds,
+  structureBounds,
   pointAtGrossRatio,
   toGlobalVector,
 } from '../../graphics/structureGeometry';
 import { CanvasResultLayer, diagramPixelScaleFor } from './CanvasResultLayer';
+import { curvePointAt } from '../../graphics/memberCurve';
 import { TrussAxialLayer, TrussAxialLegend } from './TrussAxialPresentation';
 import { ElasticDemandLegend } from './ElasticDemandLegend';
 import { trussAxialReadings } from '../results/trussAxial';
@@ -493,7 +495,7 @@ export const StructuralCanvas = ({
   const snapSegments = useMemo<SnapSegment[]>(() => project.members.flatMap((member) => {
     const start = nodeMap.get(member.i);
     const end = nodeMap.get(member.j);
-    return start && end ? [{ id: member.id, start, end }] : [];
+    return start && end ? [{ id: member.id, start, end, ...(member.curve ? { curve: memberAxis(member, start, end).curve } : {}) }] : [];
   }), [nodeMap, project.members]);
   const baseSnapCandidates = useMemo<SnapCandidate[]>(() => {
     const candidates: SnapCandidate[] = [];
@@ -501,12 +503,11 @@ export const StructuralCanvas = ({
       for (const node of project.nodes) candidates.push({ x: node.x, y: node.y, kind: 'node', sourceIds: [node.id] });
     }
     if (view.snapTargets.midpoints) {
-      for (const segment of snapSegments) candidates.push({
-        x: (segment.start.x + segment.end.x) / 2,
-        y: (segment.start.y + segment.end.y) / 2,
-        kind: 'midpoint',
-        sourceIds: [segment.id],
-      });
+      for (const segment of snapSegments) {
+        const point = segment.curve ? curvePointAt(segment.curve, 0.5)
+          : { x: (segment.start.x + segment.end.x) / 2, y: (segment.start.y + segment.end.y) / 2 };
+        candidates.push({ ...point, kind: 'midpoint', sourceIds: [segment.id] });
+      }
     }
     if (view.snapTargets.intersections && snapSegments.length <= 500) {
       candidates.push(...buildIntersectionSnapCandidates(snapSegments));
@@ -569,7 +570,7 @@ export const StructuralCanvas = ({
      el pórtico aparentemente descentrado. El encuadre usa los mismos puntos
      que pinta CanvasResultLayer cuando esa evidencia está visible. */
   const visibleFitBounds = useMemo(() => {
-    const bounds = modelBounds(project.nodes);
+    const bounds = structureBounds(project.nodes, project.members);
     if (!layers.results || demandMapActive || stackActive || resultTab !== 'deformed' || analysis?.success !== true) return bounds;
     const points = project.nodes.map(({ x, y }) => ({ x, y }));
     const scale = deformedDisplayScale(project, analysis);
@@ -578,12 +579,14 @@ export const StructuralCanvas = ({
       const start = nodeMap.get(member.i);
       const end = nodeMap.get(member.j);
       if (!result || !start || !end || member.type === 'rigid') continue;
-      const { c, s } = memberAxis(member, start, end);
+      const axis = memberAxis(member, start, end);
+      const { c, s } = axis;
       for (const point of result.deformation) {
         const grossX = (result.startOffset ?? 0) + point.x;
+        const base = pointAtGrossRatio(axis, grossX / axis.length);
         points.push({
-          x: start.x + c * grossX + scale * (c * point.u - s * point.v),
-          y: start.y + s * grossX + scale * (s * point.u + c * point.v),
+          x: base.x + scale * (c * point.u - s * point.v),
+          y: base.y + scale * (s * point.u + c * point.v),
         });
       }
       const startResult = nodeResultMap.get(member.i);
@@ -1527,9 +1530,7 @@ export const StructuralCanvas = ({
       const point = screenToModelPoint(localScreenPoint(client.x, client.y), cameraRef.current);
       const ni = nodeMap.get(member.i)!;
       const nj = nodeMap.get(member.j)!;
-      const dx = nj.x - ni.x;
-      const dy = nj.y - ni.y;
-      const ratio = clamp(((point.x - ni.x) * dx + (point.y - ni.y) * dy) / Math.max(dx * dx + dy * dy, 1e-18), 1e-6, 1 - 1e-6);
+      const ratio = clamp(grossRatioAtPoint(memberAxis(member, ni, nj), point), 1e-6, 1 - 1e-6);
       void executeProjectCommand({
         kind: 'member.split',
         description: `Dividir miembro ${member.id}`,
@@ -1603,9 +1604,7 @@ export const StructuralCanvas = ({
       const modelPoint = screenToModelPoint(localScreenPoint(client.x, client.y), cameraRef.current);
       const ni = nodeMap.get(member.i)!;
       const nj = nodeMap.get(member.j)!;
-      const dx = nj.x - ni.x;
-      const dy = nj.y - ni.y;
-      const ratio = clamp(((modelPoint.x - ni.x) * dx + (modelPoint.y - ni.y) * dy) / Math.max(dx * dx + dy * dy, 1e-18), 0, 1);
+      const ratio = clamp(grossRatioAtPoint(memberAxis(member, ni, nj), modelPoint), 0, 1);
       setCut({ memberId: member.id, ratio, point: memberValueAt(member.id, ratio), clientX: client.x, clientY: client.y, pinned: true });
       setSelection({ kind: 'member', id: member.id });
       return;
@@ -2400,8 +2399,15 @@ export const StructuralCanvas = ({
     if (!ni || !nj) continue;
     const a = toScreen(ni.x, ni.y);
     const b = toScreen(nj.x, nj.y);
-    labelObstacles.push({ points: [a, b], clearance: LABEL_CLEARANCE.member });
-    const anchor = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const axis = memberAxis(member, ni, nj);
+    const memberPoints = axis.curve
+      ? Array.from({ length: 17 }, (_, index) => {
+        const point = pointAtGrossRatio(axis, index / 16);
+        return toScreen(point.x, point.y);
+      }) : [a, b];
+    labelObstacles.push({ points: memberPoints, clearance: LABEL_CLEARANCE.member });
+    const middle = pointAtGrossRatio(axis, 0.5);
+    const anchor = toScreen(middle.x, middle.y);
     const selected = selectedMemberIds.includes(member.id);
     if (selected || (layers.labels && ((layers.ids && view.showMemberLabels) || member.stiffnessFactor !== undefined))) {
       // El identificador NO se ancla al punto medio. Ahí es donde una carga
@@ -2411,7 +2417,8 @@ export const StructuralCanvas = ({
       // acababan lado a lado con dos guías cruzándose sobre el miembro. A un
       // 30% del vano cada uno tiene su sitio, y la separación sigue el eje de
       // la barra, así que vale igual para una columna que para una viga.
-      const idAnchor = { x: a.x + (b.x - a.x) * MEMBER_LABEL_STATION, y: a.y + (b.y - a.y) * MEMBER_LABEL_STATION };
+      const idPoint = pointAtGrossRatio(axis, MEMBER_LABEL_STATION);
+      const idAnchor = toScreen(idPoint.x, idPoint.y);
       smartLabelCandidates.push({
         id: `member:${member.id}`,
         text: member.stiffnessFactor !== undefined && project.settings.stiffnessDefaults
@@ -2428,7 +2435,7 @@ export const StructuralCanvas = ({
     if (dimensionToolActive || (layers.labels && layers.dimensions && view.showLocalAxes)) {
       smartLabelCandidates.push({
         id: `dimension:${member.id}`,
-        text: `${formatFixed(toDisplay(Math.hypot(nj.x - ni.x, nj.y - ni.y), units, 'length'), 3)} ${lengthLabel}`,
+        text: `${formatFixed(toDisplay(axis.length, units, 'length'), 3)} ${lengthLabel}`,
         anchor,
         priority: dimensionToolActive ? 1 : 2,
         tone: 'dimension',
@@ -2501,7 +2508,7 @@ export const StructuralCanvas = ({
         const px = load.px ?? 0;
         const py = load.py ?? 0;
         const magnitude = Math.hypot(px, py) || 1;
-        const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, px, py);
+        const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, px, py, load.position ?? 0.5);
         const ux = gx / magnitude;
         const uy = -gy / magnitude;
         const presentation = memberLoadPresentationMap.get(load.id);
@@ -2541,7 +2548,7 @@ export const StructuralCanvas = ({
         const [qx, qy] = Math.hypot(meanQx, meanQy) > 1e-9
           ? [meanQx, meanQy]
           : startMagnitude >= endMagnitude ? [qxStart, qyStart] : [qxEnd, qyEnd];
-        const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, qx, qy);
+        const [gx, gy] = toGlobalVector(axis, load.coordinateSystem, qx, qy, labelStation);
         const magnitude = Math.hypot(gx, gy) || 1;
         const ux = gx / magnitude;
         const uy = -gy / magnitude;
