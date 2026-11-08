@@ -1,3 +1,4 @@
+import { memberCurveLength } from '../../graphics/memberCurve';
 import type { UnitQuantity } from '../../foundation/units';
 import { findStandardMaterial } from '../../data/standardMaterials';
 import { findStandardSection } from '../../data/standardSections';
@@ -435,7 +436,7 @@ export const projectDatasheetRows = (
     const end = nodeById.get(member.j);
     // Una barra puede referenciar un nudo ausente en un modelo importado a
     // medias: se muestra sin longitud en vez de propagar un NaN por la columna.
-    const length = start && end ? Math.hypot(end.x - start.x, end.y - start.y) : null;
+    const length = start && end ? memberCurveLength(member, start, end) : null;
     return memberRow(member, length, loadsByMember.get(member.id) ?? 0);
   });
 };

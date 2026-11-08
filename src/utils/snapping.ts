@@ -1,3 +1,4 @@
+import { curveBoundsPoints, curvePointAt, curveRatioAtPoint, type CircularArcGeometry } from '../graphics/memberCurve';
 export interface SnapTarget {
   x: number;
   y: number;
@@ -15,6 +16,7 @@ export interface SnapSegment {
   id: string;
   start: SnapTarget;
   end: SnapTarget;
+  curve?: CircularArcGeometry;
 }
 
 type SnapModeToggles = Partial<Record<SnapKind, boolean>>;
@@ -237,6 +239,51 @@ const buildSegmentGrid = (items: BoundedSegment[]) => {
  * A uniform grid provides the broad phase: only members whose bounding boxes
  * share a cell reach the exact cross-product test.
  */
+
+/** True if a point is on the finite circular arc, not merely its supporting circle. */
+const onFiniteArc = (arc: CircularArcGeometry, point: SnapTarget, epsilon: number): boolean => {
+  const nearest = curvePointAt(arc, curveRatioAtPoint(arc, point));
+  return Math.hypot(nearest.x - point.x, nearest.y - point.y) <= epsilon * Math.max(1, arc.radius);
+};
+
+const curvedSegmentIntersections = (a: SnapSegment, b: SnapSegment, epsilon: number): SnapTarget[] => {
+  const within = (segment: SnapSegment, point: SnapTarget) => {
+    if (segment.curve) return onFiniteArc(segment.curve, point, epsilon);
+    const dx = segment.end.x - segment.start.x, dy = segment.end.y - segment.start.y;
+    const ratio = ((point.x - segment.start.x) * dx + (point.y - segment.start.y) * dy) / Math.max(dx * dx + dy * dy, 1e-24);
+    return ratio >= -epsilon && ratio <= 1 + epsilon
+      && Math.abs(cross(dx, dy, point.x - segment.start.x, point.y - segment.start.y))
+        <= epsilon * Math.max(1, Math.hypot(dx, dy));
+  };
+  const raw: SnapTarget[] = [];
+  if (a.curve && b.curve) {
+    const c1 = a.curve.center, c2 = b.curve.center, r1 = a.curve.radius, r2 = b.curve.radius;
+    const dx = c2.x - c1.x, dy = c2.y - c1.y, distance = Math.hypot(dx, dy);
+    if (distance < epsilon || distance > r1 + r2 + epsilon || distance < Math.abs(r1 - r2) - epsilon) return [];
+    const advance = (r1 * r1 - r2 * r2 + distance * distance) / (2 * distance);
+    const h2 = r1 * r1 - advance * advance;
+    if (h2 < -epsilon) return [];
+    const h = Math.sqrt(Math.max(0, h2)), ux = dx / distance, uy = dy / distance;
+    raw.push({ x: c1.x + advance * ux - h * uy, y: c1.y + advance * uy + h * ux });
+    if (h > epsilon) raw.push({ x: c1.x + advance * ux + h * uy, y: c1.y + advance * uy - h * ux });
+  } else {
+    const arc = (a.curve ?? b.curve)!;
+    const line = a.curve ? b : a;
+    const dx = line.end.x - line.start.x, dy = line.end.y - line.start.y;
+    const ox = line.start.x - arc.center.x, oy = line.start.y - arc.center.y;
+    const A = dx * dx + dy * dy, B = 2 * (ox * dx + oy * dy);
+    if (A <= epsilon * epsilon) return [];
+    const discriminant = B * B - 4 * A * (ox * ox + oy * oy - arc.radius * arc.radius);
+    if (discriminant < -epsilon) return [];
+    const root = Math.sqrt(Math.max(0, discriminant));
+    for (const t of [(-B - root) / (2 * A), (-B + root) / (2 * A)]) {
+      const point = { x: line.start.x + t * dx, y: line.start.y + t * dy };
+      if (!raw.some(p => squaredDistance(p, point) <= epsilon * epsilon)) raw.push(point);
+    }
+  }
+  return raw.filter(point => within(a, point) && within(b, point));
+};
+
 export const buildIntersectionSnapCandidates = (
   segments: SnapSegment[],
   options: IntersectionCandidateOptions = {},
@@ -253,10 +300,10 @@ export const buildIntersectionSnapCandidates = (
       segment,
       dx,
       dy,
-      minX: Math.min(segment.start.x, segment.end.x),
-      minY: Math.min(segment.start.y, segment.end.y),
-      maxX: Math.max(segment.start.x, segment.end.x),
-      maxY: Math.max(segment.start.y, segment.end.y),
+      minX: Math.min(...(segment.curve ? curveBoundsPoints(segment.curve) : [segment.start, segment.end]).map(p => p.x)),
+      minY: Math.min(...(segment.curve ? curveBoundsPoints(segment.curve) : [segment.start, segment.end]).map(p => p.y)),
+      maxX: Math.max(...(segment.curve ? curveBoundsPoints(segment.curve) : [segment.start, segment.end]).map(p => p.x)),
+      maxY: Math.max(...(segment.curve ? curveBoundsPoints(segment.curve) : [segment.start, segment.end]).map(p => p.y)),
     });
   }
   if (bounded.length < 2) return candidates;
@@ -274,6 +321,24 @@ export const buildIntersectionSnapCandidates = (
       // Narrow the broad phase: touching cells does not imply touching boxes.
       if (first.maxX < second.minX || second.maxX < first.minX) continue;
       if (first.maxY < second.minY || second.maxY < first.minY) continue;
+      if (first.segment.curve || second.segment.curve) {
+        for (const point of curvedSegmentIntersections(first.segment, second.segment, epsilon)) {
+          const nearestRatio = (segment: SnapSegment) => segment.curve
+            ? curveRatioAtPoint(segment.curve, point)
+            : ((point.x - segment.start.x) * (segment.end.x - segment.start.x)
+              + (point.y - segment.start.y) * (segment.end.y - segment.start.y))
+              / Math.max(squaredDistance(segment.start, segment.end), 1e-24);
+          const t = nearestRatio(first.segment), u = nearestRatio(second.segment);
+          if (!options.includeEndpoints && (t <= epsilon || t >= 1 - epsilon || u <= epsilon || u >= 1 - epsilon)) continue;
+          const duplicate = index.findDuplicate(candidates, point);
+          if (duplicate) duplicate.sourceIds = [...new Set([...(duplicate.sourceIds ?? []), first.segment.id, second.segment.id])];
+          else {
+            index.add(point, candidates.length);
+            candidates.push({ ...point, kind: 'intersection', sourceIds: [first.segment.id, second.segment.id] });
+          }
+        }
+        continue;
+      }
       const { dx: sx, dy: sy } = second;
 
       const denominator = cross(rx, ry, sx, sy);
@@ -313,6 +378,23 @@ export const buildPerpendicularSnapCandidates = (
   const index = createCandidateIndex(epsilon);
 
   for (const segment of segments) {
+    if (segment.curve) {
+      const arc = segment.curve, dx = origin.x - arc.center.x, dy = origin.y - arc.center.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance <= epsilon) continue;
+      for (const sign of [1, -1]) {
+        const point = { x: arc.center.x + sign * arc.radius * dx / distance,
+          y: arc.center.y + sign * arc.radius * dy / distance };
+        if (!onFiniteArc(arc, point, epsilon) || squaredDistance(point, origin) <= epsilon * epsilon) continue;
+        const duplicate = index.findDuplicate(candidates, point);
+        if (duplicate) duplicate.sourceIds = [...new Set([...(duplicate.sourceIds ?? []), segment.id])];
+        else {
+          index.add(point, candidates.length);
+          candidates.push({ ...point, kind: 'perpendicular', sourceIds: [segment.id] });
+        }
+      }
+      continue;
+    }
     const dx = segment.end.x - segment.start.x;
     const dy = segment.end.y - segment.start.y;
     const lengthSquared = dx * dx + dy * dy;

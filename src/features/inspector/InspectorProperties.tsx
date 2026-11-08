@@ -1,3 +1,4 @@
+import { memberCurveLength } from '../../graphics/memberCurve';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
@@ -171,7 +172,7 @@ export const InspectorProperties = () => {
   const selectedLoadStart = selectedLoadMember ? nodeMap.get(selectedLoadMember.i) : undefined;
   const selectedLoadEnd = selectedLoadMember ? nodeMap.get(selectedLoadMember.j) : undefined;
   const selectedLoadLength = selectedLoadMember && selectedLoadStart && selectedLoadEnd
-    ? Math.max(1e-9, Math.hypot(selectedLoadEnd.x - selectedLoadStart.x, selectedLoadEnd.y - selectedLoadStart.y) - (selectedLoadMember.rigidOffsetI ?? 0) - (selectedLoadMember.rigidOffsetJ ?? 0))
+    ? Math.max(1e-9, memberCurveLength(selectedLoadMember, selectedLoadStart, selectedLoadEnd) - (selectedLoadMember.rigidOffsetI ?? 0) - (selectedLoadMember.rigidOffsetJ ?? 0))
     : 1;
   const selectedLoadChain = selectedMemberLoad?.type === 'distributed'
     ? straightMemberChain(project, selectedMemberLoad.memberId)
@@ -693,7 +694,7 @@ export const InspectorProperties = () => {
     {selectedMember ? (() => {
       const ni = nodeMap.get(selectedMember.i);
       const nj = nodeMap.get(selectedMember.j);
-      const length = ni && nj ? Math.hypot(nj.x - ni.x, nj.y - ni.y) : Number.NaN;
+      const length = ni && nj ? memberCurveLength(selectedMember, ni, nj) : Number.NaN;
       const angle = ni && nj ? Math.atan2(nj.y - ni.y, nj.x - ni.x) * 180 / Math.PI : Number.NaN;
       return <>
         <InspectorPropertyGroup title={t('inspector.frequentProperties')} description={t('inspector.memberFrequentDescription')}>

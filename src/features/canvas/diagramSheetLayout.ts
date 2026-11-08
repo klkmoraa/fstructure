@@ -1,10 +1,10 @@
+import { structureBounds } from '../../graphics/structureGeometry';
 import type { ProjectModel } from '../../types';
 
 /** Shared horizontal scale; each row is a vertical translation of the whole DCL. */
 export const diagramSheetLayout = (project: ProjectModel, size: { width: number; height: number }) => {
-  const xs = project.nodes.map(n => n.x); const ys = project.nodes.map(n => n.y);
-  const minX = xs.length ? Math.min(...xs) : 0; const maxX = xs.length ? Math.max(...xs) : 1;
-  const minY = ys.length ? Math.min(...ys) : 0; const maxY = ys.length ? Math.max(...ys) : 0;
+  const bounds = project.nodes.length ? structureBounds(project.nodes, project.members) : { minX: 0, maxX: 1, minY: 0, maxY: 0 };
+  const { minX, maxX, minY, maxY } = bounds;
   const spanX = Math.max(1e-9, maxX - minX); const spanY = maxY - minY;
   const beam = spanY < Math.max(1e-8, spanX * 1e-4);
   const availableWidth = Math.max(40, size.width - (beam ? 96 : 160));

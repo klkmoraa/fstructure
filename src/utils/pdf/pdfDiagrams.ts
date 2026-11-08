@@ -2,12 +2,14 @@
 import {
   createProjection,
   drawArrow,
+  drawProjectedMember,
   drawMemberLoads,
   drawNodeDot,
   drawSupportGlyph,
   type Point,
 } from './pdfScene';
 import { pdfText } from './pdfGlyphs';
+import { memberAxis, pointAtGrossRatio } from '../../graphics/structureGeometry';
 import {
   clearDisplay,
   
@@ -40,16 +42,19 @@ export const drawGlobalDcl = (
     right: right - 42,
     bottom: bottom + 30,
     top: top - 22,
-  });
+  }, project.members);
   const point = (nodeId: string): Point | undefined => {
     const node = index.node(nodeId);
     return node ? projection.at(node.x, node.y) : undefined;
   };
   for (const member of project.members) {
-    const start = point(member.i); const end = point(member.j);
-    if (!start || !end) continue;
-    page.drawLine({ start, end, thickness: member.type === 'rigid' ? 3 : 2, color: palette.ink });
-    page.drawText(pdfText(member.id), { x: (start.x + end.x) / 2 + 3, y: (start.y + end.y) / 2 + 3, size: 6.5, font: fonts.bold, color: palette.inkSoft });
+    const ni = index.node(member.i), nj = index.node(member.j);
+    if (!ni || !nj) continue;
+    drawProjectedMember(layout, projection, member, ni, nj,
+      { thickness: member.type === 'rigid' ? 3 : 2, color: palette.ink });
+    const axis = memberAxis(member, ni, nj);
+    const middle = pointAtGrossRatio(axis, 0.5), label = projection.at(middle.x, middle.y);
+    page.drawText(pdfText(member.id), { x: label.x + 3, y: label.y + 3, size: 6.5, font: fonts.bold, color: palette.inkSoft });
   }
   for (const node of project.nodes) {
     const location = point(node.id);

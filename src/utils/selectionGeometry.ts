@@ -1,3 +1,4 @@
+import { circularMemberGeometry, curveBoundsPoints, curvePointAt, curveRatioAtPoint, type CircularMemberCurve } from '../graphics/memberCurve';
 interface GeometryPoint {
   x: number;
   y: number;
@@ -7,6 +8,7 @@ interface GeometryMember {
   id: string;
   i: string;
   j: string;
+  curve?: CircularMemberCurve;
 }
 
 interface SelectionGeometryFilter {
@@ -71,6 +73,30 @@ const segmentCrossesBounds = (a: GeometryPoint, b: GeometryPoint, bounds: Bounds
     || segmentsIntersect(a, b, bottomLeft, topLeft);
 };
 
+
+/** Exact rectangle/arc contact: extrema for containment, circle/edge crossings for touching. */
+const arcCrossesBounds = (arc: NonNullable<ReturnType<typeof circularMemberGeometry>>, bounds: Bounds) => {
+  if (curveBoundsPoints(arc).some(point => inside(point, bounds))) return true;
+  const { center: c, radius: r } = arc;
+  const contact = (point: GeometryPoint) => {
+    const nearest = curvePointAt(arc, curveRatioAtPoint(arc, point));
+    return Math.hypot(nearest.x - point.x, nearest.y - point.y) < 1e-8 * Math.max(1, r);
+  };
+  for (const x of [bounds.minX, bounds.maxX]) {
+    const square = r * r - (x - c.x) ** 2;
+    if (square < 0) continue;
+    const h = Math.sqrt(square);
+    if ([c.y - h, c.y + h].some(y => y >= bounds.minY && y <= bounds.maxY && contact({ x, y }))) return true;
+  }
+  for (const y of [bounds.minY, bounds.maxY]) {
+    const square = r * r - (y - c.y) ** 2;
+    if (square < 0) continue;
+    const h = Math.sqrt(square);
+    if ([c.x - h, c.x + h].some(x => x >= bounds.minX && x <= bounds.maxX && contact({ x, y }))) return true;
+  }
+  return false;
+};
+
 /**
  * CAD convention: dragging left-to-right selects only objects completely inside
  * the window; right-to-left selects every object crossed by the rectangle.
@@ -90,9 +116,14 @@ export const selectGeometryByBox = (
     const a = nodeMap.get(member.i);
     const b = nodeMap.get(member.j);
     if (!a || !b) return [];
-    const selected = mode === 'window'
-      ? inside(a, bounds) && inside(b, bounds)
-      : segmentCrossesBounds(a, b, bounds);
+    const arc = member.curve ? circularMemberGeometry(member, a, b) : undefined;
+    const selected = arc
+      ? mode === 'window'
+        ? curveBoundsPoints(arc).every(point => inside(point, bounds))
+        : arcCrossesBounds(arc, bounds)
+      : mode === 'window'
+        ? inside(a, bounds) && inside(b, bounds)
+        : segmentCrossesBounds(a, b, bounds);
     return selected ? [member.id] : [];
   }) : [];
   return { mode, nodeIds, memberIds };

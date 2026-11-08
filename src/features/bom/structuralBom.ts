@@ -1,3 +1,4 @@
+import { memberCurveLength } from '../../graphics/memberCurve';
 import { findStandardMaterial } from '../../data/standardMaterials';
 import { findStandardSection } from '../../data/standardSections';
 import { formatMachineNumber } from '../../utils/numberFormat';
@@ -56,7 +57,7 @@ export interface StructuralBom {
     readonly schemaVersion: number;
   };
   readonly basis: {
-    readonly geometry: 'node-to-node-euclidean';
+    readonly geometry: 'member-centreline-actual';
     readonly grouping: 'explicit-material-section-member-type';
     readonly allowancePercent: 0;
     readonly lengthUnit: 'm';
@@ -177,7 +178,7 @@ export const buildStructuralBom = (
     if (!wantedTypes.has(member.type)) continue;
     const nodeI = nodes.get(member.i);
     const nodeJ = nodes.get(member.j);
-    const lengthM = nodeI && nodeJ ? Math.hypot(nodeJ.x - nodeI.x, nodeJ.y - nodeI.y) : Number.NaN;
+    const lengthM = nodeI && nodeJ ? memberCurveLength(member, nodeI, nodeJ) : Number.NaN;
     if (!Number.isFinite(lengthM) || lengthM <= 0) {
       excluded.push({ memberId: member.id, reason: 'invalid-geometry' });
       continue;
@@ -238,7 +239,7 @@ export const buildStructuralBom = (
     kind: 'structural-bom',
     project: { id: project.id, name: project.name, schemaVersion: project.schemaVersion },
     basis: {
-      geometry: 'node-to-node-euclidean',
+      geometry: 'member-centreline-actual',
       grouping: 'explicit-material-section-member-type',
       allowancePercent: 0,
       lengthUnit: 'm', volumeUnit: 'm³', massUnit: 'kg', selfWeightUnit: 'kN',

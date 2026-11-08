@@ -1,3 +1,5 @@
+import { circularMemberGeometry, curvedMemberPath } from '../../graphics/memberCurve';
+import { structureBounds } from '../../graphics/structureGeometry';
 import { memo, useMemo, useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import type { MemberModel, NodeModel } from '../../types';
 
@@ -28,13 +30,7 @@ const CanvasMiniMapImpl = ({ nodes, members, viewport, label, onFit, onNavigate 
   const svgRef = useRef<SVGSVGElement>(null);
   const bounds = useMemo(() => {
     if (nodes.length === 0) return null;
-    let minX = Infinity; let maxX = -Infinity; let minY = Infinity; let maxY = -Infinity;
-    for (const node of nodes) {
-      if (node.x < minX) minX = node.x;
-      if (node.x > maxX) maxX = node.x;
-      if (node.y < minY) minY = node.y;
-      if (node.y > maxY) maxY = node.y;
-    }
+    const { minX, maxX, minY, maxY } = structureBounds(nodes, members);
     const padX = Math.max(0.5, (maxX - minX) * 0.15);
     const padY = Math.max(0.5, (maxY - minY) * 0.15);
     return {
@@ -43,7 +39,7 @@ const CanvasMiniMapImpl = ({ nodes, members, viewport, label, onFit, onNavigate 
       width: Math.max(1e-6, maxX - minX + padX * 2),
       height: Math.max(1e-6, maxY - minY + padY * 2),
     };
-  }, [nodes]);
+  }, [nodes, members]);
 
   const projected = useMemo(() => {
     if (!bounds) return null;
@@ -101,6 +97,17 @@ const CanvasMiniMapImpl = ({ nodes, members, viewport, label, onFit, onNavigate 
           const start = projected.points.get(member.i);
           const end = projected.points.get(member.j);
           if (!start || !end) return null;
+          const startNode = nodes.find(node => node.id === member.i);
+          const endNode = nodes.find(node => node.id === member.j);
+          const arc = member.curve && startNode && endNode
+            ? circularMemberGeometry(member, startNode, endNode) : undefined;
+          if (arc) {
+            const path = curvedMemberPath(arc, (x, y) => {
+              const point = projected.toSvg(x, y);
+              return { x: point.cx, y: point.cy };
+            });
+            return <path key={member.id} d={path} fill="none" />;
+          }
           return <line key={member.id} x1={start.cx} y1={start.cy} x2={end.cx} y2={end.cy} />;
         })}
       </g>

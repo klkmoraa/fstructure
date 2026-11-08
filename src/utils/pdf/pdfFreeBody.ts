@@ -256,7 +256,7 @@ export const drawFreeBodyScene = (
   const focusNode = scene.focus ? context.index.node(scene.focus.nodeId) : undefined;
   const projection = focusNode && scene.focus
     ? createFocusProjection({ x: focusNode.x, y: focusNode.y }, scene.focus.radius, plot)
-    : createProjection(project.nodes, plot);
+    : createProjection(project.nodes, plot, project.members);
 
   if (scene.title) {
     page.drawText(pdfText(scene.title.toUpperCase()), {

@@ -5,6 +5,7 @@
 .native-curve .candidate-preview-halo { stroke: var(--accent); stroke-width: 11; opacity: .2; }
 .native-curve-dimension { fill: var(--text); font: 11px var(--font-mono, monospace); paint-order: stroke; stroke: var(--sc-color-surface-1); stroke-width: 3; }
 .native-curve-load line, .native-curve-load path { fill: none; stroke: var(--text); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.native-curve-load .native-curve-load-guide { stroke-dasharray: 3 3; stroke-width: 1; opacity: .55; }
 .native-curve-load.selected { filter: drop-shadow(0 0 3px var(--accent)); }
 .structure-generation-ghost__members path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; }
 .native-curve:focus-visible .member-line { stroke-width: 5; }

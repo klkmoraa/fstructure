@@ -1,10 +1,11 @@
+import { curvedMemberPath, curveTangentAt } from '../../graphics/memberCurve';
 import { memo, useMemo } from 'react';
 import { diagramSheetLayout } from './diagramSheetLayout';
 import { readCanvasViewSettings } from '../view/canvasViewSettings';
 import type { AnalysisResult, NodeModel, ProjectModel } from '../../types';
 import type { TranslationKey } from '../../i18n/catalogs';
 import { segmentBezierControls } from '../../engine/diagram';
-import { memberAxis } from '../../graphics/structureGeometry';
+import { memberAxis, pointAtGrossRatio } from '../../graphics/structureGeometry';
 import { unitLabel } from '../../engine/units';
 import { toDisplay } from '../../foundation/units';
 import { formatFixed } from '../../utils/numberFormat';
@@ -71,13 +72,19 @@ export const CanvasDiagramStack = memo(({ project, results, quantities, nodeMap,
           const a = toScreen(i.x, i.y); const b = toScreen(j.x, j.y);
           const result = resultMap.get(member.id);
           const axis = memberAxis(member, i, j);
-          const dx = b.x - a.x; const dy = b.y - a.y;
-          // Same local +y as CanvasResultLayer; screen y grows downwards.
-          const normal = { x: axis.normal.x, y: -axis.normal.y };
+          // The diagram ordinate is normal to the real centreline, not to its chord.
+          const normalAt = (x: number) => {
+            const ratio = ((result?.startOffset ?? 0) + x) / axis.length;
+            const tangent = axis.curve ? curveTangentAt(axis.curve, ratio) : { x: axis.c, y: axis.s };
+            return { x: -tangent.y, y: -tangent.x };
+          };
           const point = (x: number, value = 0) => {
             const ratio = ((result?.startOffset ?? 0) + x) / axis.length;
+            const centreline = pointAtGrossRatio(axis, ratio);
+            const base = toScreen(centreline.x, centreline.y);
+            const normal = normalAt(x);
             const offset = direction * value * amplitude / maximum;
-            return { x: a.x + dx * ratio + normal.x * offset, y: a.y + dy * ratio + normal.y * offset };
+            return { x: base.x + normal.x * offset, y: base.y + normal.y * offset };
           };
           const line: string[] = []; const area: string[] = [];
           if (result?.diagramSegments.length) {
@@ -92,16 +99,24 @@ export const CanvasDiagramStack = memo(({ project, results, quantities, nodeMap,
               const next = result.diagramSegments[index + 1];
               if (next) { const jump = segmentBezierControls(next, quantity); const p = point(jump.x0, jump.y0); line.push(`L ${p.x} ${p.y}`); area.push(`L ${p.x} ${p.y}`); }
             });
-            const end = point(result.length); area.push(`L ${end.x} ${end.y} Z`);
+            const end = point(result.length); area.push(`L ${end.x} ${end.y}`);
+            for (let n = 32; n >= 0; n -= 1) {
+              const p = point(result.length * n / 32);
+              area.push(`L ${p.x} ${p.y}`);
+            }
+            area.push('Z');
           }
           const readings = result?.criticalPoints.filter((p) => p.quantity === quantity && p.kind !== 'zero' && Math.abs(p.value) > maximum * .002)
             .filter((p, index, points) => index === points.findIndex((other) => Math.abs(other.x - p.x) < 1e-8 && Math.abs(other.value - p.value) < 1e-8))
             .sort((a, b) => Math.abs(b.value) - Math.abs(a.value)).slice(0, 3) ?? [];
           return <g key={member.id} data-stack-member={member.id}>
-            <line className="diagram-stack-replica-member" data-replica-member={member.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
+            {axis.curve
+              ? <path className="diagram-stack-replica-member" data-replica-member={member.id} d={curvedMemberPath(axis.curve, toScreen)} fill="none" />
+              : <line className="diagram-stack-replica-member" data-replica-member={member.id} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />}
             {line.length ? <><path className="diagram-stack-member-fill" d={area.join(' ')} /><path className="diagram-stack-member-line" d={line.join(' ')} /></> : null}
             {readings.map((reading) => {
               const p = point(reading.x, reading.value); const side = (Math.sign(reading.value) || 1) * direction;
+              const normal = normalAt(reading.x);
               const display = toDisplay(reading.value, units, quantity === 'moment' ? 'moment' : 'force');
               const rightEnd = p.x > size.width - 72 && result && Math.abs(reading.x - result.length) < Math.max(1, result.length) * 1e-8;
               return <text key={`${reading.x}:${reading.value}`} className="diagram-stack-value" x={Math.max(32, Math.min(size.width - 32, p.x + normal.x * side * 10 - (rightEnd ? 8 : 0)))} y={Math.max(38, Math.min(height - 14, p.y + normal.y * side * 10 - 3))} textAnchor={rightEnd ? 'end' : 'middle'}>{formatFixed(Math.abs(display) < 1e-8 ? 0 : display, 2)}</text>;
